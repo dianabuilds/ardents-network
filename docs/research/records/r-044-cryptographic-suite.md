@@ -1,7 +1,7 @@
 ---
 id: R-044
 title: Which maintained cryptographic mechanism implements threshold Recovery Authorities?
-status: open
+status: decided
 owner: Product Owner
 started: 2026-08-19
 reviewed: 2026-08-20
@@ -126,8 +126,8 @@ zero false authorizations. These are experiment gates, not a reliability claim.
 
 ## Decision-ready candidate O2 — individually authenticated threshold
 
-This candidate is not accepted until its experiment passes and the Product
-Owner chooses it. It interprets `t`-of-`n` literally: one proof carries at least
+The Product Owner accepted this candidate on 2026-08-20. It interprets
+`t`-of-`n` literally: one proof carries at least
 `t` distinct RFC 8032 Ed25519 signatures rather than hiding them behind an
 aggregate or distributed key.
 
@@ -177,7 +177,7 @@ bounded framing; participant privacy is not claimed.
 
 ## Recommendation
 
-Choose O2 after Product Owner review and record a replacement recovery ADR.
+Choose O2 and record the replacement recovery ADR.
 Confidence is high that ADR-0013 cannot be used and high that individually
 authenticated Ed25519 signatures implement the bounded cryptographic threshold.
 The strongest counterargument is that policy membership and every signer become
@@ -186,9 +186,10 @@ availability is provided.
 
 ## Disposition
 
-- State: `open`, O2 decision-ready; ADR-0013 is withdrawn and provides no import
-  authorization.
-- S6.4 recovery and its final evidence remain blocked. R-047 is the separate
-  decision-ready gate for S6.2 authentication and query hiding.
-- Any selected runtime dependency requires `dependencies.md`, an accepted ADR,
-  exact conformance vectors, and failure-path tests.
+- State: `decided`; the Product Owner accepted O2 and ADR-0018 on 2026-08-20.
+  ADR-0013 remains withdrawn.
+- S6.4 `RecoveryPolicy.Authorize` and its state-machine integration are
+  authorized. R-047 remains the separate S6.2 authentication/query-hiding
+  decision.
+- O2 adds no runtime dependency; any future replacement still requires research,
+  dependency registration, and an accepted ADR.

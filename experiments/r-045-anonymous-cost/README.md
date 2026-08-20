@@ -51,5 +51,5 @@ solve p95 gate while passing the verification, retained-state, hostile,
 restart, and parallel invariants. R-045 retains the exact measurements and a
 separately predeclared O1b profile. O1b then passed every unchanged scope,
 replay, restart, capacity, verifier, memory, and accessibility gate with the
-frozen `16/16/17/18`-bit profile. Result: O1 rejected; O1b decision-ready,
-pending Product Owner acceptance.
+frozen `16/16/17/18`-bit profile. Result: O1 rejected; the Product Owner accepted
+O1b and ADR-0019 on 2026-08-20. Maintained behavior belongs to S6.5.

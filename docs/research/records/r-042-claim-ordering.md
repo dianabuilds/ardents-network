@@ -1,7 +1,7 @@
 ---
 id: R-042
 title: What authenticated ordering and inclusion proof makes a permissionless root claim first-valid without rewarding copied pending claims?
-status: open
+status: decided
 owner: Product Owner
 started: 2026-08-19
 reviewed: 2026-08-20
@@ -120,9 +120,9 @@ ordinals. These are experiment gates, not accepted production capacity.
 
 ## Decision-ready candidate O1b — epoch commit/reveal
 
-This candidate is not accepted until its experiment passes and the Product
-Owner chooses it. It deliberately reuses the existing Network Epoch trust root
-instead of inventing a second registrar or consensus mechanism.
+The Product Owner accepted this candidate on 2026-08-20. It deliberately reuses
+the existing Network Epoch trust root instead of inventing a second registrar
+or consensus mechanism.
 
 O1 used a `64`-claim per-Name conflict cap and failed its predeclared weaker-host
 p95 verification gate. O1b changes only that per-Name cap to `32`; it does not
@@ -218,7 +218,7 @@ that a submission reached an honest signer.
 
 ## Recommendation
 
-Choose O1b after Product Owner review. Confidence is high that the previous
+Choose O1b. Confidence is high that the previous
 digest-only option is insufficient and moderate that O1b meets the bounded V1
 semantic contract. The strongest counterargument is that the Network Epoch
 threshold becomes the visible claim-log inclusion authority and can still
@@ -226,11 +226,9 @@ censor or fork the Namespace.
 
 ## Disposition
 
-- State: `open`, O1b decision-ready; the former digest-only option and measured
-  O1/64 profile are rejected.
-- S6.5 claim ordering and every evidence predicate that depends on it remain
-  blocked.
-- R-041 canonical encoding may be used as experiment input; no production claim
-  mechanism or Lease mutation is authorized.
-- The frozen field inventory and eight-scenario map above become S6.5/S6.6
-  acceptance tests if O1b is selected.
+- State: `decided`; the Product Owner accepted O1b and ADR-0017 on 2026-08-20.
+  The former digest-only option and measured O1/64 profile are rejected.
+- S6.5 implementation is authorized through `ClaimOrder.Verify`; no local
+  arrival, digest-priority, registrar, or silent branch selection is permitted.
+- The frozen field inventory and eight-scenario map are S6.5/S6.6 acceptance
+  tests.

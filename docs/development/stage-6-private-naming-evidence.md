@@ -1,12 +1,13 @@
 # Stage 6 private naming evidence contract
 
-Status: **draft behavior inventory. R-046/R-047 are decided; R-042, R-044,
-R-045, and the decision-ready R-055 S6E1 artifact profile remain open.
-ADR-0013 is withdrawn. This document does not yet authorize an S6.6 campaign or
-general coding start.**
+Status: **accepted S6E1 development-evidence contract. The Product Owner
+accepted R-042, R-044, R-045, R-055, and ADR-0017 through ADR-0019 and
+authorized S6.3-S6.6 implementation on 2026-08-20. No Stage 6 completion or
+Qualification verdict has yet been produced.**
 
-This document defines what Stage 6 must prove. It does not select persistence,
-consensus, cryptography, ordering, Anonymous Cost, or wire mechanisms.
+This document defines what Stage 6 must prove. Accepted records own persistence
+properties, ordering, recovery cryptography, Anonymous Cost, and artifact
+encoding; no storage engine, consensus system, or public wire is selected.
 
 ## Verdict meaning and trust split
 
@@ -30,17 +31,16 @@ An expected runtime failure such as `state-conflict` can produce verifier `pass`
 when fail-closed behavior is the cell's declared outcome. Command exit text is
 never a verdict.
 
-## Required artifact responsibilities and open schema
+## Required artifact responsibilities and S6E1 schema
 
-The authority split below is required, but canonical manifest, evidence,
-cleanup, and verdict bytes are **not frozen**. After R-042, R-044, R-045, and
-R-046 close, a schema revision must define at minimum:
+The authority split and canonical S6E1 manifest, evidence, cleanup, and verdict
+bytes are frozen by R-055. Maintained structs and strict readers must implement:
 
 - artifact schema/profile identity, run/cell identity, and source commitments;
 - the accepted R-041 textual and wire name profile;
 - fixture, authority, generation, record, target, parent, policy, and role-view
   commitments appropriate to the cell;
-- the future R-042 eligible-set/order proof, monotonic clock origin, deadlines,
+- the accepted R-042 eligible-set/order proof, monotonic clock origin, deadlines,
   and R-043 cache/replay bounds;
 - the accepted R-046 role views, expected runtime class, and exact predicates; and
 - separate paths and hashes for manifest, evidence, private fixture material, and
@@ -157,22 +157,22 @@ Stage 6 evidence fails if any valid cell shows:
 - public or less-private fallback; or
 - unbounded, identity-linked, or unfrozen admission behavior.
 
-## Blocking S6.0 decisions
+## Accepted S6.0 decisions
 
-The behavior inventory depends on these decisions. Only `decided` rows may
-contribute exact verifier predicates.
+The behavior inventory depends on these accepted decisions. Every row
+contributes exact verifier predicates.
 
 | Decision | Status | Evidence consequence | Record / ADR |
 |---|---|---|---|
 | Canonical name profile | decided | A0/A1 textual and wire vectors may be specified | [R-041](../research/records/r-041-canonical-name-limits.md) |
 | Persistence property boundary | decided | restart/tamper/stale/atomic predicates may be designed; adapter evidence remains future work | [R-043](../research/records/r-043-persistence-restart-rollback.md) |
 | Field-level role matrix and query hiding | decided | D0-D4 exact field predicates use R-046/R-047 and ADR-0014 | [R-046](../research/records/r-046-role-matrix.md), [R-047](../research/records/r-047-stage-6-query-hiding.md), [ADR-0014](../adr/0014-private-naming-ohttp.md) |
-| Threshold Recovery Authorities | open; ADR-0013 withdrawn | B2-B5 recovery proof formats cannot be frozen | [R-044](../research/records/r-044-cryptographic-suite.md), [ADR-0013](../adr/0013-stage-6-cryptographic-suite.md) |
-| Claim ordering and inclusion | open | C4-C6 cannot name a deterministic loser | [R-042](../research/records/r-042-claim-ordering.md) |
-| Anonymous Cost and admission | open | C7 has no accepted numeric thresholds | [R-045](../research/records/r-045-anonymous-cost.md) |
-| Artifact serialization | open, decision-ready | No S6.6 campaign may claim a canonical bundle/verdict yet | [R-055](../research/records/r-055-stage-6-evidence-serialization.md) |
+| Threshold Recovery Authorities | decided | B2-B5 use bounded individual Ed25519 signatures and delayed policy/recovery | [R-044](../research/records/r-044-cryptographic-suite.md), [ADR-0018](../adr/0018-threshold-recovery-multisignatures.md) |
+| Claim ordering and inclusion | decided | C4-C6 use authenticated epoch input ordinal and explicit unavailable/fork | [R-042](../research/records/r-042-claim-ordering.md), [ADR-0017](../adr/0017-authenticated-name-claim-ordering.md) |
+| Anonymous Cost and admission | decided | C7 uses the measured O1b per-surface profile | [R-045](../research/records/r-045-anonymous-cost.md), [ADR-0019](../adr/0019-bounded-anonymous-name-admission.md) |
+| Artifact serialization | decided | S6E1 fixes canonical bytes, bounds, roots, clocks, and mutation classes | [R-055](../research/records/r-055-stage-6-evidence-serialization.md) |
 
-A development fixture may exercise the inventory but is not citable as an S6.6
-result. Stage 6 has no frozen campaign identity, episode count, or qualification
-schedule yet. The Stage 5 R-037/S9.6 campaign is unrelated and is not inherited
-by this evidence contract.
+A development fixture is citable only after the complete S6E1 campaign receives
+an independent `pass`. S6E1 freezes one deterministic episode per A0-D6 cell;
+it is not a qualification schedule. The Stage 5 R-037/S9.6 campaign is unrelated
+and is not inherited by this evidence contract.

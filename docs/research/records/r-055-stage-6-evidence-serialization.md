@@ -1,7 +1,7 @@
 ---
 id: R-055
 title: Which canonical artifact profile proves Stage 6 development completion?
-status: open
+status: decided
 owner: Product Owner
 started: 2026-08-20
 reviewed: 2026-08-20
@@ -27,8 +27,8 @@ claim.
 
 R-041 fixes Service Name encoding, R-043 fixes persistence properties, and
 R-046/R-047 fix S6.2 role views and private resolution. R-042, R-044, and R-045
-remain open and must be accepted before their exact proof fields become
-normative. Recovery cryptography does not select the artifact hash.
+are accepted and their exact proof fields are normative. Recovery cryptography
+does not select the artifact hash.
 
 ## Hypotheses
 
@@ -111,7 +111,7 @@ vectors and bounded summaries are retained.
 
 ## Decision-ready candidate S6E1
 
-This candidate is not accepted until the Product Owner chooses it.
+The Product Owner accepted this candidate on 2026-08-20.
 
 ### Canonical bytes
 
@@ -195,16 +195,15 @@ identifiers, never private fixture material or raw transport errors.
 
 ## Recommendation
 
-Choose S6E1 after R-042/R-044/R-045 are accepted and their exact fields are
-inserted into the cell manifests. Confidence is high that indexed files and
+Choose S6E1 and insert the accepted R-042/R-044/R-045 fields into the cell
+manifests. Confidence is high that indexed files and
 strict re-encoding fit the existing repository evidence model. The strongest
 counterargument is the honest same-account limitation; S6E1 must not be cited as
 hostile-OS isolation or independent external audit.
 
 ## Disposition
 
-- State: `open`, decision-ready.
-- S6.6 implementation remains blocked on Product Owner acceptance of S6E1 and
-  the three remaining S6.0 decisions.
-- If accepted, update the Stage 6 evidence contract, readiness checklist,
-  package map, and implementation brief before maintained code lands.
+- State: `decided`; the Product Owner accepted S6E1 on 2026-08-20.
+- S6.6 implementation is authorized through `Stage6Verifier.Verify`.
+- The Stage 6 evidence contract, readiness checklist, package map, and brief
+  must remain synchronized with the maintained implementation.

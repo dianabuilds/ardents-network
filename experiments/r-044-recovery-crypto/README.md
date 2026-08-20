@@ -18,8 +18,9 @@ The experiment will exercise one behavior seam:
 
 `Authorize(recovery proof) -> authorized | denied`
 
-The Product Owner confirmed this experiment seam on 2026-08-20. The disposable
-implementation does not authorize a maintained recovery interface.
+The Product Owner confirmed this experiment seam and later accepted O2 and
+ADR-0018 on 2026-08-20. The disposable implementation remains research evidence;
+maintained behavior belongs to the S6.4 Module.
 
 ## Frozen scenarios and falsifiers
 

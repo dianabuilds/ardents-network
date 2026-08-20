@@ -125,8 +125,9 @@ complete with local Docker evidence; Stage 5 Bridge + WebTunnel development is
 complete and its final qualification remains S9.6. The Product Owner authorized
 the bounded S6.1 parser/encoding/lifecycle and S6.2 authenticated private
 resolution implementations on 2026-08-20; their independent evidence is still
-pending. Later Stage 6 slices remain closed: R-042, R-044, R-045, evidence
-serialization, and general Product Owner coding authorization are open. The current
+pending. On the same date the Product Owner accepted R-042/R-044/R-045/R-055,
+ADR-0017 through ADR-0019, and authorized S6.3-S6.6. Those slices and the final
+independent S6E1 verdict remain incomplete. The current
 maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
 `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-bridge`,
 `cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded S6.1/S6.2

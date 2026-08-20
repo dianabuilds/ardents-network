@@ -18,8 +18,9 @@ The experiment will exercise one behavior seam:
 
 `Verify(claim-set proof) -> accepted | ordered-collision | conflict | fork | unavailable`
 
-The Product Owner confirmed this experiment seam on 2026-08-20. The disposable
-implementation does not authorize a maintained Namespace interface.
+The Product Owner confirmed this experiment seam and later accepted O1b and
+ADR-0017 on 2026-08-20. The disposable implementation remains research evidence;
+maintained behavior belongs to the S6.5 Module.
 
 ## Frozen scenarios and falsifiers
 

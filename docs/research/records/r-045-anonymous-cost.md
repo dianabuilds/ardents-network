@@ -1,7 +1,7 @@
 ---
 id: R-045
 title: Which measured Anonymous Cost and local admission profile protects Stage 6 naming surfaces?
-status: open
+status: decided
 owner: Product Owner
 started: 2026-08-19
 reviewed: 2026-08-20
@@ -103,8 +103,8 @@ energy proxy, and retained state on R-023 reference hardware and a weaker client
 
 ## Predeclared candidate O1 — scoped challenge work
 
-This candidate is not accepted until the predeclared experiment measures it and
-the Product Owner chooses the resulting profile.
+O1 was not accepted and is retained as the predeclared failed profile. The
+Product Owner accepted the separately predeclared O1b profile on 2026-08-20.
 
 Each admitting Node issues a stateless HMAC-SHA-256 challenge bound to its
 random boot secret, Node identity, network/epoch, surface, operation digest,
@@ -210,15 +210,15 @@ or establish personhood, fairness, or anti-squatting.
 
 ## Recommendation
 
-Select O1b for Stage 6 local admission, subject to Product Owner acceptance of
-its explicit limitations. Confidence is high in the measured local bounds and
+Select O1b for Stage 6 local admission with its explicit limitations.
+Confidence is high in the measured local bounds and
 moderate in their portability beyond the two profiles. O1b must never be
 described as global Sybil resistance.
 
 ## Disposition
 
-- State: `open`, decision-ready; O1 is rejected and O1b passed its frozen gates.
-- S6.5 remains blocked only on Product Owner acceptance and the S6E1 evidence
-  freeze.
-- If accepted, O1b's bits, caps, in-flight limits, 30-second maximum TTL, reason
-  classes, and honest limitations become normative Stage 6 inputs.
+- State: `decided`; the Product Owner accepted O1b and ADR-0019 on 2026-08-20.
+  O1 remains rejected.
+- O1b's bits, caps, in-flight limits, 30-second maximum TTL, reason classes, and
+  honest limitations are normative Stage 6 inputs.
+- S6.5 implementation is authorized through `Admission.Verify`.

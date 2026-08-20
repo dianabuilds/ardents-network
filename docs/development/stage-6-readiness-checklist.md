@@ -1,8 +1,8 @@
 # Stage 6 readiness checklist
 
-Status: **S6.1 and S6.2 implementation are authorized. The general Stage 6
-coding gate is not ready: R-042, R-044, R-045, evidence serialization, document
-acceptance, and general coding authorization remain open.**
+Status: **ready for implementation. The Product Owner accepted R-042 O1b,
+R-044 O2, R-045 O1b, S6E1, ADR-0017 through ADR-0019, and authorized maintained
+S6.3-S6.6 implementation on 2026-08-20. Completion evidence remains open.**
 
 A checked contract item means the requirement is documented. It does not claim
 that maintained code or runtime evidence exists.
@@ -12,9 +12,10 @@ that maintained code or runtime evidence exists.
 - [x] R-039 accepts the bounded Stage 6 scope without authorizing code.
 - [x] Stage 5 maintained development advanced on 2026-08-19; final R-037
   qualification remains S9.6 and is not a Stage 6 predecessor.
-- [ ] Product Owner accepts the corrected brief, plan, checklist, and evidence
+- [x] Product Owner accepts the corrected brief, plan, checklist, and evidence
   contract after all S6.0 decisions are supported.
-- [ ] Product Owner records the Stage 6 coding start decision after A-D pass.
+- [x] Product Owner records the Stage 6 coding start decision after A-D pass on
+  2026-08-20.
 - [x] Product Owner separately authorizes the bounded S6.1 and S6.2
   implementation slices on 2026-08-20; this does not waive the general gate.
 
@@ -22,17 +23,18 @@ that maintained code or runtime evidence exists.
 
 - [x] R-041 freezes textual Service Name limits, textual Service Link behavior,
   a distinct length-prefixed wire form, and `schema_version = 1`.
-- [ ] R-042 freezes an authenticated eligible-set/order proof that covers
+- [x] R-042/ADR-0017 freeze an authenticated eligible-set/order proof that covers
   copying, front-running, withholding, flooding, partition, rollback,
   equivocation, and rule fork without local arrival time.
 - [x] R-043 freezes durable, restart-derived, and cache-bounded property classes,
   tamper/stale failure, and atomic-commit semantics. Its future naming-owned
   interface and `internal/network/store` adapter must pass conformance tests.
-- [ ] R-044 selects and measures a maintained mechanism for distinct scoped
+- [x] R-044/ADR-0018 select and measure a maintained mechanism for distinct scoped
   `t`-of-`n` Recovery Authorities. S6.2 authentication/query hiding is decided
   separately by R-047 and accepted ADR-0014.
-- [ ] R-045 selects measured per-surface Anonymous Cost/admission limits on the
-  R-023 host and a weaker client. Former numeric values are not accepted data.
+- [x] R-045/ADR-0019 select measured per-surface Anonymous Cost/admission limits
+  on the development endpoint and weaker `1 vCPU/512 MiB` Linux profile. O1 is
+  rejected; O1b is accepted.
 - [x] R-046 contains the exact per-operation field matrix for requests,
   responses, logs, errors, retries, caches, identifiers, and evidence, with
   Role Domain and Isolation Context rules.
@@ -65,20 +67,19 @@ that maintained code or runtime evidence exists.
 - [x] Privacy claims state protected information, adversary, conditions,
   measurement, and limitations.
 - [x] Required failure classes are identified as a draft taxonomy.
-- [ ] Canonical manifest, observation, cleanup, and verdict serialization;
+- [x] S6E1 freezes canonical manifest, observation, cleanup, and verdict serialization;
   profile identity; clocks; commitments; and exact per-cell predicates are
   frozen after R-042/R-044/R-045/R-046 close.
-- [ ] Independent schema mutation vectors prove unknown, missing, duplicated,
-  reordered, stale, contaminated, and non-canonical evidence becomes `invalid`.
+- [x] S6E1 freezes mutation requirements for unknown, missing, duplicated,
+  reordered, stale, contaminated, and non-canonical evidence.
 
 ## E. Coding start rule
 
-Except for the recorded S6.1 and S6.2 slices, Stage 6 maintained coding may start only
-when every item in A-D is checked and the Product Owner records the decision.
-Earlier foundation commits remain feasibility work and are not accepted Stage 6
-evidence.
+Every item in A-D is checked and the Product Owner authorized S6.3-S6.6 on
+2026-08-20. Maintained implementation may proceed; no slice is complete until
+its behavior and independent evidence gates pass.
 
-Current verdict: **not ready**.
+Current verdict: **ready for S6.3-S6.6 implementation; not complete**.
 
 ## F. Implementation and completion evidence
 
@@ -93,5 +94,7 @@ Current verdict: **not ready**.
 - [ ] S6.4 authority/delegation/recovery tests pass.
 - [ ] S6.5 collision/fork/abuse tests pass.
 - [ ] S6.6 independent evidence/verifier campaign passes.
+- [ ] S6.6 mutation vectors prove every frozen structural defect becomes
+  `invalid` and behavioral breaches become `fail`.
 - [ ] Maintained J02/J03/J05 command paths are traceable.
 - [ ] Product Owner records the final Stage 6 disposition.

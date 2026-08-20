@@ -1,17 +1,18 @@
 # Horizon 3 Stage 6 implementation brief
 
-Status: **the Product Owner authorized the bounded S6.1 and S6.2 implementation
-slices on 2026-08-20. Stage 6 as a whole is not ready: R-042, R-044, R-045,
-exact evidence serialization, and the general coding-start decision remain
-open. ADR-0013 is withdrawn; ADR-0014 is accepted.**
+Status: **ready for maintained S6.3-S6.6 implementation. On 2026-08-20 the
+Product Owner accepted R-042 O1b, R-044 O2, R-045 O1b, S6E1, and ADR-0017
+through ADR-0019. S6.1/S6.2 are implemented; Stage 6 completion evidence remains
+open. ADR-0013 is withdrawn and ADR-0014 is accepted.**
 
-Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, R-003, R-024,
-R-026, R-039, R-041, R-043, R-046, R-047, the product contract, threat model, operating
-model, H3 technical design, package map, and repository rules.
+Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, ADR-0014,
+ADR-0017 through ADR-0019, R-003, R-024, R-026, R-039, R-041 through R-047,
+R-055, the product contract, threat model, operating model, H3 technical design,
+package map, and repository rules.
 
-Blocking research/status references: open R-042, R-044, R-045,
-withdrawn ADR-0013, the readiness checklist, and the S6.0 preparation summary.
-They constrain entry status but are not accepted design authority.
+Historical status references: withdrawn ADR-0013, the readiness checklist, and
+the S6.0 preparation summary. They explain entry history but do not override the
+accepted decisions above.
 
 ## Current disposition
 
@@ -20,11 +21,11 @@ They constrain entry status but are not accepted design authority.
   `advance` on 2026-08-19. Full R-037 qualification remains an S9.6 gate and is
   not a Stage 6 predecessor.
 - R-041/R-043 freeze syntax/persistence; R-046/R-047 freeze S6.2 role views and
-  authenticated query hiding. R-042 ordering/inclusion, R-044 recovery
-  cryptography, and R-045 measured admission are open.
+  authenticated query hiding. R-042/ADR-0017 freeze ordering, R-044/ADR-0018
+  freeze recovery, R-045/ADR-0019 freeze admission, and R-055 freezes S6E1.
 - ADR-0013 is withdrawn; accepted ADR-0014 authorizes only S6.2 Ed25519/OHTTP.
-- Existing Stage 6 foundation packages are work in progress, not evidence that
-  the Stage 6 entry or completion gate has passed.
+- The Stage 6 entry gate has passed. Existing packages and future code are not
+  completion evidence until the independent S6E1 campaign passes.
 - The Product Owner authorized maintained S6.1 parser, encoding, lifecycle, and
   parent-binding work on 2026-08-20. This narrow exception depends only on the
   decided R-039/R-041 semantics and does not authorize cryptography, claim
@@ -33,9 +34,7 @@ They constrain entry status but are not accepted design authority.
   resolution after accepting R-046, R-047, and ADR-0014. Concrete naming
   control-operation proof codecs remain in their later gated slices.
 
-The general entry verdict remains **not ready** because three research decisions
-and the evidence serialization are unresolved. The recorded slice exceptions are
-not a claim that the general entry gate passed.
+The general entry verdict is **ready**. The completion verdict remains open.
 
 ## Entry gate
 
@@ -45,10 +44,10 @@ Stage 6 implementation may start only when all of the following are true:
    maintained Stage 5 `advance`, including S5.4 and S5.5. **Satisfied
    2026-08-19.**
 2. This brief, the development plan, readiness checklist, and evidence contract
-   have been accepted by the Product Owner after review.
+   have been accepted by the Product Owner after review. **Satisfied 2026-08-20.**
 3. R-003 remains authoritative without a contradictory interpretation.
-4. One accepted S6.0 decision profile freezes all six required boundaries.
-   **Open: R-042, R-044, R-045, and R-046.**
+4. One accepted S6.0 decision profile freezes all required boundaries.
+   **Satisfied by R-041 through R-047, R-055, and ADR-0014/0017/0018/0019.**
 5. Package and command ownership is factual in `package-map.md`; any new verifier
    package or command is added only with its implementation, tests, non-test
    caller, `doc.go`, and exact permitted imports.
@@ -120,7 +119,7 @@ earlier generation. Revisions are monotonic within one generation.
   and enforce identity/known-family exclusion for the same destination context;
 - prevent stable query/session identifiers from crossing Isolation Contexts;
 - freeze the same location/name separation for control operations, while their
-  concrete proof codecs remain owned by later slices after open research closes;
+  concrete proof codecs remain owned by the accepted later slices;
 - fail closed when the private path or role proof is unavailable or invalid.
 
 Privacy claim: the protected information is the association between one User or
@@ -226,7 +225,7 @@ Stage 6 has three disjoint artifact classes:
   expected verdict authority;
 - `verdict`: independent recomputation to `pass|fail|invalid`.
 
-The runner cannot author or mutate a verdict. Command exit text is never evidence
-of Stage 6 success. The current A0-D6 inventory and draft responsibilities are
-defined in `stage-6-private-naming-evidence.md`; serialization and exact
-predicates remain open until the unresolved S6.0 research closes.
+The runner cannot author or mutate a verdict. Command exit text is never
+evidence of Stage 6 success. The A0-D6 inventory, S6E1 serialization, and exact
+responsibilities are defined in `stage-6-private-naming-evidence.md` and R-055.
+Their implementation and mutation evidence remain open until S6.6 passes.

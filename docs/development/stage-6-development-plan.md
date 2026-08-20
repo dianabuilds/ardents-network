@@ -1,8 +1,8 @@
 # Stage 6 development plan
 
-Status: **S6.1 and S6.2 implementation were authorized by the Product Owner on
-2026-08-20. The general Stage 6 gate remains closed while R-042, R-044, R-045
-and evidence serialization are open. ADR-0013 is withdrawn; ADR-0014 is accepted.**
+Status: **S6.1 and S6.2 are implemented. On 2026-08-20 the Product Owner
+accepted R-042 O1b, R-044 O2, R-045 O1b, S6E1, ADR-0017 through ADR-0019, and
+authorized maintained S6.3-S6.6 implementation. Stage 6 completion remains open.**
 
 This plan maps accepted R-003/R-039 semantics and the Stage 6 brief into
 sequential implementation slices without selecting undecided foundations in code.
@@ -18,20 +18,20 @@ Before Stage 6 production implementation starts:
    interface and adapter still require conformance tests.**
 4. R-046 supplies the complete field-level role matrix. **Satisfied.**
 5. R-044 selects a maintained suite matching the distinct Recovery Authority
-   trust model, and a replacement ADR is accepted. **Open; ADR-0013 withdrawn.**
-6. R-045 measures and freezes Anonymous Cost/admission. **Open.**
+   trust model, and a replacement ADR is accepted. **Satisfied by O2/ADR-0018.**
+6. R-045 measures and freezes Anonymous Cost/admission. **Satisfied by O1b/ADR-0019.**
 7. R-042 proves eligible-set inclusion and deterministic ordering across all
-   hostile cases. **Open.**
-8. The manifest/evidence/verdict serialization and mutation vectors freeze only
-   after items 4-7. **Open.**
+   hostile cases. **Satisfied by O1b/ADR-0017.**
+8. The manifest/evidence/verdict serialization and mutation requirements freeze
+   after items 4-7. **Satisfied by S6E1.**
 9. Product Owner accepts the corrected documents and records coding start.
-   **Open.**
+   **Satisfied 2026-08-20.**
 
-Exception: the Product Owner explicitly authorized Slice A (S6.1) on 2026-08-20
+History: the Product Owner explicitly authorized Slice A (S6.1) on 2026-08-20
 so the decided R-039/R-041 lifecycle and encoding core could replace earlier
-feasibility scaffolding. On 2026-08-20 the Product Owner separately authorized
-Slice B after accepting R-046, R-047, and ADR-0014. Neither exception satisfies
-item 9 or permits code to choose a mechanism still open in S6.0.
+feasibility scaffolding. The Product Owner separately authorized Slice B after
+accepting R-046, R-047, and ADR-0014. The general gate later passed as item 9;
+the historical narrow exceptions no longer constrain S6.3-S6.6.
 
 S6.0 produces decisions and schemas, not a disguised implementation spike. A
 decision that selects storage, consensus, wire protocol, cryptography, or another
@@ -54,8 +54,8 @@ Definition of Done:
 
 - every legal and illegal parser/state edge has a maintained behavior test;
 - old generation, revision, parent-generation, and Record-schema replay fails;
-- signature replay remains blocked on R-044 and cache rollback belongs to the
-  R-043 persistence/resolver adapter, not this in-memory lifecycle core;
+- signature replay is exercised by S6.4 and cache rollback belongs to the R-043
+  persistence/resolver adapter, not this in-memory lifecycle core;
 - no command or persistence behavior is added outside the accepted profile.
 
 Authorization: **implementation open since 2026-08-20; independent Stage 6
@@ -72,8 +72,8 @@ Owner: Codex
 - Enforce query hiding, Rendezvous Role Domain and known-family exclusions, and
   Isolation Context unlinkability.
 - Freeze control-operation field separation now, but implement only the complete
-  resolution vertical slice; later owning slices add concrete proof codecs after
-  R-042/R-044/R-045 decide them.
+  resolution vertical slice; the accepted later owning slices add the concrete
+  R-042/R-044/R-045 proof codecs.
 - Return classified failure when the private path or role evidence is absent,
   stale, conflicting, forked, or invalid.
 
@@ -85,8 +85,8 @@ Definition of Done:
   are absent and represented as explicit failure.
 
 Authorization: **open since 2026-08-20 after Product Owner acceptance of R-046
-O1, R-047 O1, and ADR-0014. R-044 threshold recovery remains a separate S6.4
-gate.**
+O1, R-047 O1, and ADR-0014. R-044/ADR-0018 separately authorize S6.4
+recovery.**
 
 ### Slice C - S6.3 target continuity
 
