@@ -1,7 +1,8 @@
 # Stage 6 development plan
 
-Status: **not ready. R-042, R-044, R-045, R-046, evidence serialization,
-document acceptance, and coding authorization are open. ADR-0013 is withdrawn.**
+Status: **S6.1 implementation was authorized by the Product Owner on 2026-08-20.
+The general Stage 6 gate remains closed while R-042, R-044, R-045, R-046 and
+evidence serialization are open. ADR-0013 is withdrawn.**
 
 This plan maps accepted R-003/R-039 semantics and the Stage 6 brief into
 sequential implementation slices without selecting undecided foundations in code.
@@ -26,6 +27,11 @@ Before Stage 6 production implementation starts:
 9. Product Owner accepts the corrected documents and records coding start.
    **Open.**
 
+Exception: the Product Owner explicitly authorized only Slice A (S6.1) on
+2026-08-20 so the decided R-039/R-041 lifecycle and encoding core can replace
+the earlier feasibility scaffolding. This does not satisfy item 9, authorize a
+later slice, or permit code to choose any mechanism still open in S6.0.
+
 S6.0 produces decisions and schemas, not a disguised implementation spike. A
 decision that selects storage, consensus, wire protocol, cryptography, or another
 lock-in follows the repository research and ADR rules.
@@ -46,8 +52,13 @@ Owner: Codex
 Definition of Done:
 
 - every legal and illegal parser/state edge has a maintained behavior test;
-- old generation, revision, descendant, signature, and cache replay fails;
+- old generation, revision, parent-generation, and Record-schema replay fails;
+- signature replay remains blocked on R-044 and cache rollback belongs to the
+  R-043 persistence/resolver adapter, not this in-memory lifecycle core;
 - no command or persistence behavior is added outside the accepted profile.
+
+Authorization: **implementation open since 2026-08-20; independent Stage 6
+evidence remains a later completion gate.**
 
 ### Slice B - S6.2 role separation
 
@@ -153,10 +164,8 @@ The following are current factual package-map entries, not future proposals:
   standard library only.
 - `internal/namelease`: lease, generation, record, and monotonic state contracts;
   standard library only.
-- `internal/nameauthority`: authority transitions and recovery policy;
-  may import only `internal/namelease` and the standard library.
-- `internal/nameresolver`: role-separated private resolution and fail-closed
-  outcomes; may import only `internal/namelease` and the standard library.
+- S6.2 authority/resolver role packages are not reserved while R-046 is open;
+  they land only with accepted field views, maintained callers, and tests.
 
 These entries record existing boundaries, not Stage 6 completion. No verifier or
 lab package name is reserved here. If one is created, its real implementation,
@@ -164,6 +173,10 @@ tests, non-test caller, `doc.go`, exact imports, and package-map row land togeth
 Production packages cannot import `internal/lab/*`.
 
 ## 3. Command and integration impact
+
+S6.1 adds `cmd/ardents-name` only as a bounded canonical encoding validator. It
+cannot claim, update, renew, release, resolve, publish, or recover a Name and
+therefore does not select an R-046 role view or an R-042/R-044 mechanism.
 
 Stage 6 command impact is limited to maintained paths that:
 

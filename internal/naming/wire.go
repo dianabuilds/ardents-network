@@ -16,6 +16,7 @@ var (
 	errWireLabelLength = errors.New("naming wire: declared label length exceeds Stage 6 bound")
 	errWireLabelTrunc  = errors.New("naming wire: input truncated before label body completes")
 	errWireEmpty       = errors.New("naming wire: decoded name is empty")
+	errWireTooLong     = errors.New("naming wire: input exceeds Stage 6 bound")
 	errWireBadAllDigit = errors.New("naming wire: root label is all-digit (R-041)")
 	errRootAllDigit    = errors.New("root label must not be all-digit (R-041)")
 )
@@ -55,6 +56,9 @@ func DecodeWire(in []byte) (Name, error) {
 	if len(in) < 2 {
 		return "", errWireTooShort
 	}
+	if len(in) > 3+maxNameLength {
+		return "", errWireTooLong
+	}
 	version := binary.BigEndian.Uint16(in[:2])
 	if version != SchemaVersion {
 		return "", fmt.Errorf("%w: got %d, want %d", errWireBadVersion, version, SchemaVersion)
@@ -62,9 +66,6 @@ func DecodeWire(in []byte) (Name, error) {
 	labels := make([]string, 0, 4)
 	i := 2
 	for i < len(in) {
-		if i+1 > len(in) {
-			return "", errWireLabelTrunc
-		}
 		n := int(in[i])
 		i++
 		if n == 0 || n > maxLabelLength {
@@ -80,13 +81,14 @@ func DecodeWire(in []byte) (Name, error) {
 		return "", errWireEmpty
 	}
 	canonical := joinDots(labels)
-	if _, err := parseLabels(canonical); err != nil {
+	parsed, err := Parse(canonical)
+	if err != nil {
 		if errors.Is(err, errRootAllDigit) {
 			return "", errWireBadAllDigit
 		}
 		return "", fmt.Errorf("naming wire: %w", err)
 	}
-	return Name(canonical), nil
+	return parsed, nil
 }
 
 func sumLabelLens(labels []string) int {

@@ -1,0 +1,190 @@
+package namelease
+
+import (
+	"encoding/binary"
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/naming"
+)
+
+// recordSchemaVersion identifies the bounded internal Name Record encoding.
+// It is not a selected public naming protocol.
+const recordSchemaVersion uint16 = 1
+
+// EncodeRecord deterministically encodes one validated lifecycle Record.
+func EncodeRecord(record Record) ([]byte, error) {
+	if err := validateRecord(record); err != nil {
+		return nil, err
+	}
+	out := make([]byte, 0, 128)
+	out = binary.BigEndian.AppendUint16(out, recordSchemaVersion)
+	out = appendRecordString(out, record.Name)
+	out = binary.BigEndian.AppendUint64(out, record.Generation)
+	out = binary.BigEndian.AppendUint64(out, record.Revision)
+	out = append(out, leaseCode(record.Lease), consistencyCode(record.Consistency), recoveryCode(record.Recovery))
+	for _, value := range []string{record.Authority, record.Target} {
+		out = appendRecordString(out, value)
+	}
+	out = appendRecordString(out, record.ParentName)
+	for _, value := range []uint64{record.ParentGeneration, uint64(record.LeaseExpiresAt),
+		uint64(record.GraceExpiresAt), uint64(record.RecoveryExpiresAt), record.Continuity} {
+		out = binary.BigEndian.AppendUint64(out, value)
+	}
+	out = appendRecordString(out, record.ConflictIdentifier)
+	return out, nil
+}
+
+// DecodeRecord decodes only the exact canonical Record encoding.
+func DecodeRecord(raw []byte) (Record, error) {
+	c := recordCursor{raw: raw}
+	version, err := c.uint16()
+	if err != nil || version != recordSchemaVersion {
+		return Record{}, errors.New("name record has invalid schema version")
+	}
+	name, err := c.text()
+	if err != nil {
+		return Record{}, err
+	}
+	generation, err := c.uint64()
+	if err != nil {
+		return Record{}, err
+	}
+	revision, err := c.uint64()
+	if err != nil {
+		return Record{}, err
+	}
+	lease, consistency, recovery, err := c.states()
+	if err != nil {
+		return Record{}, err
+	}
+	authority, err := c.text()
+	if err != nil {
+		return Record{}, err
+	}
+	target, err := c.text()
+	if err != nil {
+		return Record{}, err
+	}
+	parent, err := c.text()
+	if err != nil {
+		return Record{}, err
+	}
+	numbers := make([]uint64, 5)
+	for i := range numbers {
+		numbers[i], err = c.uint64()
+		if err != nil {
+			return Record{}, err
+		}
+	}
+	conflict, err := c.text()
+	if err != nil || c.offset != len(raw) {
+		return Record{}, errors.New("name record has trailing or malformed bytes")
+	}
+	record := Record{Name: name, Generation: generation, Revision: revision,
+		Lease: lease, Consistency: consistency, Recovery: recovery,
+		Authority: authority, Target: target, ParentName: parent,
+		ParentGeneration: numbers[0], LeaseExpiresAt: int64(numbers[1]),
+		GraceExpiresAt: int64(numbers[2]), RecoveryExpiresAt: int64(numbers[3]),
+		Continuity: numbers[4], ConflictIdentifier: conflict}
+	if err := validateRecord(record); err != nil {
+		return Record{}, err
+	}
+	canonical, err := EncodeRecord(record)
+	if err != nil || string(canonical) != string(raw) {
+		return Record{}, errors.New("name record is not canonical")
+	}
+	return record, nil
+}
+
+func validateRecord(record Record) error {
+	if _, err := naming.Parse(record.Name); err != nil || record.Generation == 0 || record.Revision == 0 {
+		return errors.New("name record identity is invalid")
+	}
+	if !validStates(record) || !validRecordLifetimes(record) || !hasRequiredParent(record) ||
+		record.Authority == "" {
+		return errors.New("name record state or binding is invalid")
+	}
+	if (record.ParentName == "") != (record.ParentGeneration == 0) {
+		return errors.New("name record parent binding is incomplete")
+	}
+	if record.ParentName != "" {
+		child, childErr := naming.Parse(record.Name)
+		parent, parentErr := naming.Parse(record.ParentName)
+		if childErr != nil || parentErr != nil || !naming.IsDescendant(child, parent) {
+			return errors.New("name record parent is not an ancestor")
+		}
+	}
+	if record.Consistency == consistencyCurrent && record.ConflictIdentifier != "" {
+		return errors.New("current record contains conflict evidence")
+	}
+	if record.Consistency == consistencyConflict && record.ConflictIdentifier == "" {
+		return errors.New("conflict record is missing evidence identifier")
+	}
+	return nil
+}
+
+func appendRecordString(out []byte, value string) []byte {
+	out = binary.BigEndian.AppendUint64(out, uint64(len(value)))
+	return append(out, value...)
+}
+
+type recordCursor struct {
+	raw    []byte
+	offset int
+}
+
+func (c *recordCursor) uint16() (uint16, error) {
+	if len(c.raw)-c.offset < 2 {
+		return 0, errors.New("name record is truncated")
+	}
+	value := binary.BigEndian.Uint16(c.raw[c.offset:])
+	c.offset += 2
+	return value, nil
+}
+
+func (c *recordCursor) uint64() (uint64, error) {
+	if len(c.raw)-c.offset < 8 {
+		return 0, errors.New("name record is truncated")
+	}
+	value := binary.BigEndian.Uint64(c.raw[c.offset:])
+	c.offset += 8
+	return value, nil
+}
+
+func (c *recordCursor) text() (string, error) {
+	size, err := c.uint64()
+	if err != nil || size > uint64(len(c.raw)-c.offset) {
+		return "", errors.New("name record string is malformed")
+	}
+	value := string(c.raw[c.offset : c.offset+int(size)])
+	c.offset += int(size)
+	return value, nil
+}
+
+func (c *recordCursor) states() (string, string, string, error) {
+	if len(c.raw)-c.offset < 3 {
+		return "", "", "", errors.New("name record states are truncated")
+	}
+	lease := []string{"", leaseActive, leaseGrace, leaseReleased}
+	consistency := []string{"", consistencyCurrent, consistencyConflict, consistencyFork, consistencyUnavailable}
+	recovery := []string{"", recoveryStable, recoveryPending}
+	a, b, d := int(c.raw[c.offset]), int(c.raw[c.offset+1]), int(c.raw[c.offset+2])
+	c.offset += 3
+	if a == 0 || a >= len(lease) || b == 0 || b >= len(consistency) || d == 0 || d >= len(recovery) {
+		return "", "", "", errors.New("name record contains an unknown state")
+	}
+	return lease[a], consistency[b], recovery[d], nil
+}
+
+func leaseCode(value string) byte {
+	return map[string]byte{leaseActive: 1, leaseGrace: 2, leaseReleased: 3}[value]
+}
+
+func consistencyCode(value string) byte {
+	return map[string]byte{consistencyCurrent: 1, consistencyConflict: 2,
+		consistencyFork: 3, consistencyUnavailable: 4}[value]
+}
+
+func recoveryCode(value string) byte {
+	return map[string]byte{recoveryStable: 1, recoveryPending: 2}[value]
+}

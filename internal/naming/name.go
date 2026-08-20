@@ -23,28 +23,34 @@ type Name string
 
 // Parse parses a canonical Service Name without any explicit scheme.
 func Parse(raw string) (Name, error) {
-	return parseName(raw, false, false)
+	return parseName(raw, false)
 }
 
-// ParseServiceLink parses `ardents://<Service Name>` and canonicalizes the
-// label case.
+// ParseServiceLink parses one already-canonical `ardents://<Service Name>`.
 func ParseServiceLink(raw string) (Name, error) {
-	return parseName(raw, true, true)
+	return parseName(raw, true)
 }
 
-func canonicalize(raw string) (Name, error) {
-	return parseName(raw, false, true)
+// FormatServiceLink formats one validated Service Name as its textual link.
+func FormatServiceLink(name Name) (string, error) {
+	parsed, err := Parse(string(name))
+	if err != nil {
+		return "", err
+	}
+	return serviceLinkScheme + string(parsed), nil
 }
 
-func parseName(raw string, allowServiceLink bool, canonicalize bool) (Name, error) {
-	text := strings.TrimSpace(raw)
+func parseName(raw string, allowServiceLink bool) (Name, error) {
+	text := raw
 	if text == "" {
 		return "", errors.New("invalid Service Name: empty input")
 	}
+	if len(text) > len(serviceLinkScheme)+maxNameLength {
+		return "", errors.New("serialized Service Name exceeds Stage 6 bound")
+	}
 
 	if allowServiceLink {
-		lower := strings.ToLower(text)
-		if !strings.HasPrefix(lower, serviceLinkScheme) {
+		if !strings.HasPrefix(text, serviceLinkScheme) {
 			return "", errors.New("invalid Service Name: missing ardents:// scheme")
 		}
 		text = text[len(serviceLinkScheme):]
@@ -52,8 +58,8 @@ func parseName(raw string, allowServiceLink bool, canonicalize bool) (Name, erro
 		return "", errors.New("invalid Service Name: must not contain URL scheme")
 	}
 
-	if canonicalize {
-		text = strings.ToLower(text)
+	if len(text) > maxNameLength {
+		return "", errors.New("serialized Service Name exceeds Stage 6 bound")
 	}
 	labels, err := parseLabels(text)
 	if err != nil {
@@ -119,15 +125,21 @@ func parseLabels(text string) ([]string, error) {
 }
 
 func labelsOf(name Name) ([]string, error) {
-	return parseLabels(string(name))
+	parsed, err := Parse(string(name))
+	if err != nil {
+		return nil, err
+	}
+	return parseLabels(string(parsed))
 }
 
-func isDescendant(child, parent Name) bool {
-	parsedChild, err := parseName(string(child), false, false)
+// IsDescendant reports whether child is strictly below parent in the canonical
+// parent-on-the-right hierarchy.
+func IsDescendant(child, parent Name) bool {
+	parsedChild, err := parseName(string(child), false)
 	if err != nil {
 		return false
 	}
-	parsedParent, err := parseName(string(parent), false, false)
+	parsedParent, err := parseName(string(parent), false)
 	if err != nil {
 		return false
 	}
@@ -150,12 +162,5 @@ func isAllDigit(label string) bool {
 }
 
 func joinDots(labels []string) string {
-	out := ""
-	for i, l := range labels {
-		if i > 0 {
-			out += "."
-		}
-		out += l
-	}
-	return out
+	return strings.Join(labels, ".")
 }

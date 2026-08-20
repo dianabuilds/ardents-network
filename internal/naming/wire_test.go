@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -35,6 +36,23 @@ func TestWire_RoundTrip(t *testing.T) {
 		if got != name {
 			t.Errorf("round-trip %q: got %q", in, got)
 		}
+	}
+}
+
+func TestWireRejectsNamesBeyondTextualBound(t *testing.T) {
+	t.Parallel()
+
+	tooLong := Name(strings.Repeat("ab.", 84) + "ab")
+	if _, err := EncodeWire(tooLong); err == nil {
+		t.Fatal("EncodeWire accepted a Name value beyond the 253-byte bound")
+	}
+
+	wire := []byte{0, 1}
+	for range 85 {
+		wire = append(wire, 2, 'a', 'b')
+	}
+	if _, err := DecodeWire(wire); err == nil {
+		t.Fatal("DecodeWire accepted a decoded name beyond the 253-byte bound")
 	}
 }
 

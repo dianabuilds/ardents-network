@@ -36,23 +36,33 @@ func TestParseValidAndInvalid(t *testing.T) {
 	}
 }
 
-func TestParseServiceLinkAndCanonicalize(t *testing.T) {
+func TestParseAndFormatServiceLink(t *testing.T) {
 	t.Parallel()
 
-	name, err := ParseServiceLink("ardents://Blog.Example")
+	name, err := ParseServiceLink("ardents://blog.example")
 	if err != nil {
 		t.Fatalf("ParseServiceLink: %v", err)
 	}
 	if name != "blog.example" {
 		t.Fatalf("ParseServiceLink = %q, want %q", name, "blog.example")
 	}
-
-	canonical, err := canonicalize("  Blog.Example ")
+	link, err := FormatServiceLink(name)
 	if err != nil {
-		t.Fatalf("canonicalize: %v", err)
+		t.Fatalf("FormatServiceLink: %v", err)
 	}
-	if canonical != "blog.example" {
-		t.Fatalf("canonicalize = %q, want %q", canonical, "blog.example")
+	if link != "ardents://blog.example" {
+		t.Fatalf("FormatServiceLink = %q", link)
+	}
+
+	for _, raw := range []string{
+		"ARDENTS://blog.example",
+		"ardents://Blog.Example",
+		" ardents://blog.example",
+		"ardents://blog.example ",
+	} {
+		if _, err := ParseServiceLink(raw); err == nil {
+			t.Errorf("ParseServiceLink(%q) accepted a non-canonical link", raw)
+		}
 	}
 }
 
@@ -66,10 +76,10 @@ func TestLabelsAndDescendant(t *testing.T) {
 	if len(labels) != 2 || labels[0] != "blog" || labels[1] != "example" {
 		t.Fatalf("labelsOf = %v", labels)
 	}
-	if !isDescendant("blog.example", "example") {
+	if !IsDescendant("blog.example", "example") {
 		t.Fatalf("expected blog.example descendant of example")
 	}
-	if isDescendant("example", "blog.example") {
+	if IsDescendant("example", "blog.example") {
 		t.Fatalf("expected example not descendant of blog.example")
 	}
 }

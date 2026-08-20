@@ -1,8 +1,9 @@
 # Horizon 3 Stage 6 implementation brief
 
-Status: **not ready. R-041 and R-043 are decided; R-042, R-044, R-045,
-R-046, exact evidence serialization, document acceptance, and the Product Owner
-coding-start decision remain open. ADR-0013 is withdrawn.**
+Status: **the Product Owner authorized the bounded S6.1 implementation slice on
+2026-08-20. Stage 6 as a whole is not ready: R-042, R-044, R-045, R-046,
+exact evidence serialization, and the general coding-start decision remain
+open. ADR-0013 is withdrawn.**
 
 Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, R-003, R-024,
 R-026, R-039, R-041, R-043, the product contract, threat model, operating
@@ -24,10 +25,14 @@ They constrain entry status but are not accepted design authority.
 - ADR-0013 is withdrawn and authorizes no cryptographic dependency or interface.
 - Existing Stage 6 foundation packages are work in progress, not evidence that
   the Stage 6 entry or completion gate has passed.
+- The Product Owner authorized maintained S6.1 parser, encoding, lifecycle, and
+  parent-binding work on 2026-08-20. This narrow exception depends only on the
+  decided R-039/R-041 semantics and does not authorize cryptography, claim
+  ordering, persistence adapters, role views, recovery, or later slices.
 
-The current entry verdict is **not ready** because four research decisions and
-the evidence serialization are unresolved; document acceptance and coding-start
-authorization follow those decisions.
+The general entry verdict remains **not ready** because four research decisions
+and the evidence serialization are unresolved. The recorded S6.1 exception is
+not a claim that the general entry gate passed.
 
 ## Entry gate
 
