@@ -105,6 +105,59 @@ dependency graph repeats R-047 and R-026; an unremediated reachable
 high/critical vulnerability, unacceptable license, offline-build failure, or
 broken role split selects `stop`, not a fork.
 
+## Proposed Stage 7 release-verifier closure
+
+Status: **review; not authorized for `go.mod` or maintained code.** R-049
+proposes the following exact client-path closure for Product Owner acceptance.
+The Stage 7 entry gate still controls integration.
+
+| Module | Proposed version | License | Purpose |
+|---|---:|---|---|
+| `github.com/theupdateframework/go-tuf/v2` | `v2.4.2`, commit `f5edbde31e5507f46db2069402dc38903fe6d9d4` | Apache-2.0 | TUF trusted-metadata/updater client workflow |
+| `github.com/cenkalti/backoff/v5` | `v5.0.3` | MIT | bounded updater retry policy dependency |
+| `github.com/google/go-containerregistry` | `v0.20.7` | Apache-2.0 | signature/key conversion closure |
+| `github.com/opencontainers/go-digest` | `v1.0.0` | Apache-2.0 | digest conversion closure |
+| `github.com/secure-systems-lab/go-securesystemslib` | `v0.11.0` | MIT | maintained signing-verification support used by go-tuf metadata |
+| `github.com/sigstore/protobuf-specs` | `v0.5.0` | Apache-2.0 | signature verification type closure |
+| `github.com/sigstore/sigstore` | `v1.10.6` | Apache-2.0 | public-key signature verification adapter used by go-tuf |
+| `golang.org/x/crypto` | `v0.52.0` | BSD-3-Clause | raised cryptographic support closure |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
+| `golang.org/x/term` | `v0.43.0` | BSD-3-Clause | raised sigstore terminal support closure |
+| `google.golang.org/genproto/googleapis/api` | `v0.0.0-20250825161204-c5933d9347a5` | Apache-2.0 | protobuf API type closure |
+| `google.golang.org/protobuf` | `v1.36.11` | BSD-3-Clause | signature protobuf runtime |
+
+**Need and owner:** the future Release Decision Module is the sole owner. It may
+import only go-tuf metadata/config/fetcher/trustedmetadata/updater client
+surfaces behind an Ardents Interface. It receives bounded bytes, trusted root,
+exact target identity, and artifact bytes; go-tuf captures one UTC reference
+time when constructing the trusted set. The Module owns neither network
+retrieval nor persistent cache, repository/signing administration,
+multi-repository maps, delegated targets, installation, or activation.
+Ardents-owned durable `version + digest` floors for root, timestamp, snapshot,
+and top-level targets are mandatory inputs. Before `release-accepted`, the owner
+atomically publishes the candidate-verified consecutive root chain and floor
+successors; go-tuf's optional local cache is disabled and is never a watermark.
+
+**Review evidence:** [R-049](../research/records/r-049-stage-7-release-verifier.md)
+records exact source identities, `108/108` TUF conformance, Windows/Linux
+upstream tests, ten-run no-cgo resource tests, permissive-license inventory,
+and the reachable scan. The raised three-module set preserved upstream and
+profile tests. `govulncheck` reported no symbol or imported-package
+vulnerability; its remaining module-only finding is the unimported and
+unmaintained `x/crypto/openpgp` package. Integration repeats the complete root
+module scan and stops on any reachable unpatched high/critical advisory.
+
+**Alternatives and removal:** the DataDog legacy fork failed the reproducible
+maintenance/conformance criterion; first-party TUF or cryptographic primitives,
+distributor authority, and a hand-built threshold workflow are rejected. The
+closure is removed with the one Release Decision Module. A version, module,
+surface, role, delegation, cache, or multi-repository change reopens R-049.
+
+**Offline supply:** S7.1 must add checksums only after acceptance, prepare the
+module cache outside Git, verify it online, and prove an offline no-cgo build.
+No module cache, vendor tree, generated repository, key, or binary belongs in
+the repository.
+
 ## Stage 5 external process runtime
 
 The H3 Camouflage Adapter owns exactly two Linux `amd64` executables built from
