@@ -1,8 +1,8 @@
 # Stage 6 maintained journey trace
 
 Status: **implemented at maintained command and Module seams. The bounded S6E1
-campaign received independent `pass`; Product Owner disposition remains the
-final Stage 6 gate.**
+campaign received independent `pass`; the Product Owner accepted the result and
+recorded Stage 6 `complete` on 2026-08-20.**
 
 This trace links the cross-horizon J02, J03, and J05 journeys to the exact Stage
 6 naming state, maintained command boundary, behavioral evidence, and honest
@@ -85,4 +85,5 @@ The trace is conjunctive: a command smoke alone, a passing S6E1 cell alone, or a
 historical Gate C bundle alone is insufficient. Stage 6 can close only after the
 complete immutable S6E1 campaign receives an independent `pass`, repository
 gates pass, and the Product Owner records the final disposition. The 2026-08-20
-campaign and repository gates satisfied the first two conditions.
+campaign, repository gates, and Product Owner acceptance satisfied all three
+conditions.

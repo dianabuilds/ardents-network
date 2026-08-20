@@ -4,8 +4,8 @@ Status: **accepted S6E1 development-evidence contract. The Product Owner
 accepted R-042, R-044, R-045, R-055, and ADR-0017 through ADR-0019 and
 authorized S6.3-S6.6 implementation on 2026-08-20. Maintained implementation,
 mutation coverage, and the bounded command campaign are complete with independent
-`pass`; Product Owner disposition remains pending. This is development evidence,
-not a Qualification verdict.**
+`pass`; the Product Owner accepted the result and recorded Stage 6 `complete` on
+2026-08-20. This is development evidence, not a Qualification verdict.**
 
 This document defines what Stage 6 must prove. Accepted records own persistence
 properties, ordering, recovery cryptography, Anonymous Cost, and artifact

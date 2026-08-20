@@ -3,7 +3,8 @@
 Status: **maintained S6.1-S6.6 implementation and mutation coverage are complete. The Product Owner accepted R-042 O1b,
 R-044 O2, R-045 O1b, S6E1, ADR-0017 through ADR-0019, and authorized maintained
 S6.3-S6.6 implementation on 2026-08-20. The bounded command campaign received
-independent `pass`; final Product Owner disposition remains open.**
+independent `pass`; the Product Owner accepted the result and recorded Stage 6
+`complete` on 2026-08-20.**
 
 A checked contract item means the requirement is documented. It does not claim
 that maintained code or runtime evidence exists.
@@ -80,8 +81,8 @@ Every item in A-D is checked and the Product Owner authorized S6.3-S6.6 on
 2026-08-20. Maintained implementation may proceed; no slice is complete until
 its behavior and independent evidence gates pass.
 
-Current verdict: **implementation-complete; bounded S6E1 command campaign
-`pass`; Product Owner disposition pending**.
+Current verdict: **Stage 6 complete; bounded S6E1 command campaign `pass`;
+Product Owner disposition accepted 2026-08-20**.
 
 ## F. Implementation and completion evidence
 
@@ -89,15 +90,16 @@ Current verdict: **implementation-complete; bounded S6E1 command campaign
   behavior tests pass.
 - [x] `ardents-name` command smoke reaches strict canonical accept/reject,
   private resolution, and all eight private naming control outcomes.
-- [ ] S6.1 independent evidence passes after the evidence schema is frozen.
+- [x] S6.1 independent evidence passes under the frozen S6E1 schema.
 - [x] S6.2 maintained role-separation behavior/failure tests pass.
-- [ ] S6.2 independent evidence passes after the evidence schema is frozen.
+- [x] S6.2 independent evidence passes under the frozen S6E1 schema.
 - [x] S6.3 Target continuity and connection-binding tests pass.
 - [x] S6.4 authority/delegation/recovery tests pass.
 - [x] S6.5 collision/fork/abuse tests pass.
-- [ ] S6.6 independent evidence/verifier campaign passes.
+- [x] S6.6 independent evidence/verifier campaign passes.
 - [x] S6.6 mutation vectors prove every frozen structural defect becomes
   `invalid` and behavioral breaches become `fail`.
 - [x] Maintained J02/J03/J05 command paths are traceable in
   `stage-6-journey-trace.md`.
-- [ ] Product Owner records the final Stage 6 disposition.
+- [x] Product Owner records the final Stage 6 `complete` disposition on
+  2026-08-20.

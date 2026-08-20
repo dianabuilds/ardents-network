@@ -3,8 +3,8 @@
 Status: **S6.1-S6.6 maintained implementation is complete. On 2026-08-20 the Product Owner
 accepted R-042 O1b, R-044 O2, R-045 O1b, S6E1, ADR-0017 through ADR-0019, and
 authorized maintained S6.3-S6.6 implementation. The bounded S6E1 command
-campaign received independent `pass`; final Product Owner disposition remains
-open.**
+campaign received independent `pass`; the Product Owner accepted the result and
+recorded Stage 6 `complete` on 2026-08-20.**
 
 This plan maps accepted R-003/R-039 semantics and the Stage 6 brief into
 sequential implementation slices without selecting undecided foundations in code.
@@ -210,4 +210,4 @@ Each slice is complete only when:
 
 Failure of any conjunct leaves the slice incomplete. Stage 6 as a whole remains
 open until every slice, J02/J03/J05 trace, independent report, and Product Owner
-disposition is complete.
+disposition is complete. Those conditions were satisfied on 2026-08-20.

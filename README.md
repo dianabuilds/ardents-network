@@ -19,7 +19,7 @@ permitted scope is one bounded Horizon 3 Closed Test Network slice at a time;
 within H3, Stage 1–4 local development is complete and Stage 5 Bridge + WebTunnel
 development is complete, with the final qualification campaign deferred to
 Stage 9.6. Stage 6 private naming implementation and bounded development evidence
-are complete; final Product Owner disposition remains. Public naming,
+are complete and were accepted by the Product Owner on 2026-08-20. Public naming,
 permissionless public Bridge distribution, production
 updates, Windows qualification, multiparty control, and the complete release
 test matrix remain later promotion gates.
@@ -127,7 +127,7 @@ complete and its final qualification remains S9.6. The Product Owner authorized
 Stage 6 on 2026-08-20 after accepting R-042/R-044/R-045/R-055 and ADR-0017
 through ADR-0019. Maintained S6.1-S6.6 implementation, journey trace, and
 mutation coverage are complete; the bounded independent S6E1 command verdict is
-`pass`, and final Product Owner disposition remains. The current
+`pass`, and the Product Owner recorded Stage 6 `complete` on 2026-08-20. The current
 maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
 `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-bridge`,
 `cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded Stage 6

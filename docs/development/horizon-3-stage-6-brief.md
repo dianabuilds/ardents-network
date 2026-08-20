@@ -3,8 +3,8 @@
 Status: **maintained S6.1-S6.6 implementation and mutation coverage are complete. On 2026-08-20 the
 Product Owner accepted R-042 O1b, R-044 O2, R-045 O1b, S6E1, and ADR-0017
 through ADR-0019. The bounded S6E1 command campaign received independent `pass`;
-Product Owner disposition remains open. ADR-0013 is withdrawn and ADR-0014 is
-accepted.**
+the Product Owner accepted the result and recorded Stage 6 `complete` on
+2026-08-20. ADR-0013 is withdrawn and ADR-0014 is accepted.**
 
 Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, ADR-0014,
 ADR-0017 through ADR-0019, R-003, R-024, R-026, R-039, R-041 through R-047,
@@ -35,8 +35,8 @@ accepted decisions above.
   resolution after accepting R-046, R-047, and ADR-0014. Concrete naming
   control-operation proof codecs remain in their later gated slices.
 
-The general entry verdict is **ready**. Implementation and development evidence
-are complete; the completion verdict awaits Product Owner disposition.
+The general entry verdict is **complete**. Implementation, development evidence,
+and Product Owner disposition are complete as of 2026-08-20.
 
 ## Entry gate
 
