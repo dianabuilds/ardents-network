@@ -2,20 +2,19 @@ package releasedecision
 
 import (
 	"context"
-
-	"github.com/theupdateframework/go-tuf/v2/metadata"
+	"strings"
 )
 
 // Evaluate authenticates one offline-import release request and
 // returns a bounded Decision. On release-accepted the package
 // atomically publishes the successor floors through the supplied Store
 // and returns the committed floors in Decision.Floors. On any other
-// outcome the package returns the previously stored floors without
-// committing any partial state.
+// outcome the package retains every root already durably verified in order,
+// while executable metadata floors advance only for accepted/no-update data.
 //
 // Evaluate is the only entry point of the package. It enforces the
 // complete Stage 7 release-safety and protocol transition contract
-// before any floor is published. It is safe to call concurrently with
+// before executable metadata floors are published. It is safe to call concurrently with
 // distinct Inputs and Store values; the package does not share
 // in-memory state across calls.
 func Evaluate(ctx context.Context, in Inputs, store Store) Decision {
@@ -26,17 +25,25 @@ func Evaluate(ctx context.Context, in Inputs, store Store) Decision {
 		return reject(outcomeReleaseInvalid, "local reference time is missing", nil)
 	}
 	refTime := in.Local.RefTime.UTC()
-	verified, decision := buildVerifiedSet(ctx, in, refTime)
-	if decision.Outcome != "" {
-		return decision
-	}
-	target, err := verified.updater.GetTargetInfo(in.TargetPath)
+	existing, err := store.ReadFloors()
 	if err != nil {
-		return reject(outcomeReleaseInvalid, "target lookup failed", err)
+		return reject(outcomeReleaseInvalid, "read existing floors failed", err)
+	}
+	startingFloors := existing
+	verified, decision := buildVerifiedSet(ctx, in, refTime, store, startingFloors)
+	if decision.Outcome != "" {
+		return attachCurrentFloors(store, decision)
+	}
+	rejectCurrent := func(outcome Outcome, notice string, cause error) Decision {
+		return attachCurrentFloors(store, reject(outcome, notice, cause))
+	}
+	target, ok := verified.set.Targets[targetRole].Signed.Targets[in.TargetPath]
+	if !ok {
+		return rejectCurrent(outcomeReleaseInvalid, "target lookup failed", nil)
 	}
 	descriptor, err := customIdentity(target)
 	if err != nil {
-		return reject(outcomeReleaseInvalid, "target identity is invalid", err)
+		return rejectCurrent(outcomeReleaseInvalid, "target identity is invalid", err)
 	}
 	targetDecision, err := verifyTargetIdentity(target, descriptor, in, in.Local)
 	if err != nil {
@@ -44,33 +51,42 @@ func Evaluate(ctx context.Context, in Inputs, store Store) Decision {
 		if errStringContains(err, "match the local binding") {
 			outcome = outcomeReleaseIncompatible
 		}
-		return reject(outcome, "target identity check failed", err)
+		return rejectCurrent(outcome, "target identity check failed", err)
 	}
-	existing, err := store.ReadFloors()
+	existing, err = store.ReadFloors()
 	if err != nil {
-		return reject(outcomeReleaseInvalid, "read existing floors failed", err)
+		return rejectCurrent(outcomeReleaseInvalid, "read existing floors failed", err)
 	}
-	rotation, err := checkRootRotation(verified.rootChain, existing)
+	rotation, err := checkRootRotation(verified.rootChain, startingFloors)
 	if err != nil {
 		if rotation.conflict {
-			return reject(outcomeReleaseConflict, err.Error(), err)
+			return rejectCurrent(outcomeReleaseConflict, err.Error(), err)
 		}
-		return reject(outcomeReleaseInvalid, err.Error(), err)
+		return rejectCurrent(outcomeReleaseInvalid, err.Error(), err)
 	}
 	successor, err := successorFloors(verified, rotation)
 	if err != nil {
-		return reject(outcomeReleaseInvalid, err.Error(), err)
+		return rejectCurrent(outcomeReleaseInvalid, err.Error(), err)
 	}
-	protocol := classifyProtocol(in.Local, refTime)
-	build := classifyBuildSafety(in.Local, refTime)
+	if descriptor.EmergencyReason != "" {
+		if err := verifyEmergencyThreshold(verified.set.Root, verified.targetsBytes); err != nil {
+			return rejectCurrent(outcomeReleaseInvalid, "emergency threshold is not met", err)
+		}
+	}
+	protocol := classifyProtocol(descriptor, refTime)
+	build := classifyBuildSafety(descriptor, refTime)
 	combined, notice := combineOutcomes(protocol, build)
+	if combined == outcomeReleaseAccepted && existing.RootVersion != 0 && floorSetEqual(successor, existing) {
+		combined = outcomeNoUpdate
+		notice = "authenticated release metadata is unchanged"
+	}
 	switch combined {
 	case outcomeReleaseAccepted, outcomeNoUpdate:
 		// Only publish floors when the candidate actually advances them.
 		// NoUpdate leaves the existing durable floors untouched.
-		if rotation.advanced || !equalFloorSet(successor, existing) {
-			if err := store.CommitFloors(successor); err != nil {
-				return reject(outcomeReleaseInvalid, "commit successor floors failed", err)
+		if rotation.advanced || !floorSetEqual(successor, existing) {
+			if err := store.CommitFloors(successor, rootBytes(verified.rootChain)); err != nil {
+				return rejectCurrent(outcomeReleaseInvalid, "commit successor floors failed", err)
 			}
 		}
 		targetDecision.Outcome = combined
@@ -79,6 +95,7 @@ func Evaluate(ctx context.Context, in Inputs, store Store) Decision {
 		targetDecision.Floors = successor
 		targetDecision.RootVersion = successor.RootVersion
 		targetDecision.Notice = notice
+		targetDecision.CustodyNotice = h3CustodyNotice
 		return targetDecision
 	default:
 		targetDecision.Outcome = combined
@@ -86,8 +103,18 @@ func Evaluate(ctx context.Context, in Inputs, store Store) Decision {
 		targetDecision.Protocol = protocol.classification
 		targetDecision.Floors = existing
 		targetDecision.Notice = formatProtocolError(combined, notice)
+		targetDecision.CustodyNotice = h3CustodyNotice
 		return targetDecision
 	}
+}
+
+func attachCurrentFloors(store Store, decision Decision) Decision {
+	floors, err := store.ReadFloors()
+	if err == nil {
+		decision.Floors = floors
+		decision.RootVersion = floors.RootVersion
+	}
+	return decision
 }
 
 // errStringContains reports whether the supplied error's message
@@ -97,32 +124,5 @@ func errStringContains(err error, fragment string) bool {
 	if err == nil {
 		return false
 	}
-	return containsString(err.Error(), fragment)
+	return strings.Contains(err.Error(), fragment)
 }
-
-// containsString is a tiny inline helper that does not allocate.
-func containsString(haystack, needle string) bool {
-	if len(needle) == 0 {
-		return true
-	}
-	if len(haystack) < len(needle) {
-		return false
-	}
-	for i := 0; i+len(needle) <= len(haystack); i++ {
-		if haystack[i:i+len(needle)] == needle {
-			return true
-		}
-	}
-	return false
-}
-
-// equalFloorSet reports whether two floor sets are byte-for-byte
-// equal. The package uses it to decide whether the successor is
-// materially new.
-func equalFloorSet(a, b FloorSet) bool {
-	return floorSetEqual(a, b)
-}
-
-// ensure compile-time reference to the metadata package so the
-// dependency is not dropped on tidy.
-var _ = metadata.TARGETS

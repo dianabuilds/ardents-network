@@ -29,6 +29,9 @@ func validateInputsEnvelope(in Inputs) error {
 	if len(in.Artifact) == 0 {
 		return errors.New("artifact bytes are missing")
 	}
+	if int64(len(in.Artifact)) > maximumArtifactBytes {
+		return errors.New("artifact bytes exceed the bound")
+	}
 	if in.Files == nil {
 		return errors.New("metadata files are missing")
 	}

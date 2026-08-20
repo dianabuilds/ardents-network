@@ -1,9 +1,10 @@
 package releasedecision
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"strings"
 	"testing"
-	"time"
 )
 
 // TestEvaluateRejectsOversizeMetadataFile covers B5: a single
@@ -19,7 +20,7 @@ func TestEvaluateRejectsOversizeMetadataFile(t *testing.T) {
 		}
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -34,7 +35,7 @@ func TestEvaluateRejectsExcessMetadataCount(t *testing.T) {
 		repo.files["https://release.invalid/metadata/spare."+itoa(index)+".json"] = []byte("{}")
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -49,7 +50,7 @@ func TestEvaluateRejectsOversizeAggregate(t *testing.T) {
 	padding := make([]byte, maximumMetadataBytes)
 	repo.rootBytes = append(repo.rootBytes, padding...)
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -84,7 +85,7 @@ func TestEvaluateRejectsExcessSignatureCount(t *testing.T) {
 		}
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -114,7 +115,7 @@ func TestEvaluateRejectsDelegatedTargets(t *testing.T) {
 		}
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -126,14 +127,36 @@ func TestEvaluateRejectsDelegatedTargets(t *testing.T) {
 // threshold.
 func TestEvaluateB10ConsecutiveRootRotationAccepted(t *testing.T) {
 	t.Parallel()
-	repo := newSyntheticRepository(t, syntheticOptions{})
+	repo := withConsecutiveRoots(t, newSyntheticRepository(t, syntheticOptions{}), 2)
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseAccepted {
-		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseAccepted)
+		t.Fatalf("outcome = %s, want %s (notice: %s)", decision.Outcome, outcomeReleaseAccepted, decision.Notice)
 	}
-	if decision.RootVersion != 1 {
-		t.Fatalf("root version = %d, want 1", decision.RootVersion)
+	if decision.RootVersion != 3 {
+		t.Fatalf("root version = %d, want 3", decision.RootVersion)
+	}
+	if fmt.Sprint(store.rootCommits) != "[1 2 3]" {
+		t.Fatalf("durable root publication order = %v, want [1 2 3]", store.rootCommits)
+	}
+}
+
+func TestEvaluateB10RejectsRootVersionGap(t *testing.T) {
+	t.Parallel()
+	repo := withConsecutiveRoots(t, newSyntheticRepository(t, syntheticOptions{}), 2)
+	delete(repo.files, "https://release.invalid/metadata/2.root.json")
+	decision := evaluateWithStore(t, repo, newMemoryStoreForTest(), testRefTime)
+	if decision.Outcome != outcomeReleaseInvalid {
+		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
+	}
+}
+
+func TestEvaluateB11RejectsCrossEnvironmentRoot(t *testing.T) {
+	t.Parallel()
+	repo := withCrossEnvironmentRoot(t, newSyntheticRepository(t, syntheticOptions{}))
+	decision := evaluateWithStore(t, repo, newMemoryStoreForTest(), testRefTime)
+	if decision.Outcome != outcomeReleaseInvalid {
+		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
 }
 
@@ -148,19 +171,20 @@ func TestEvaluateB11RootFloorDecreaseRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() { closeStoreForTest(t, store) })
 	// Pre-commit a higher floor and observe the rejection.
-	digest := sha256Sum([]byte("placeholder"))
+	highRepo := newSyntheticRepository(t, syntheticOptions{rootVersion: 99})
+	digest := sha256.Sum256(highRepo.rootBytes)
 	high := FloorSet{
 		RootVersion: 99, RootDigest: digest[:],
 		TimestampVersion: 1, TimestampDigest: digest[:],
 		SnapshotVersion: 1, SnapshotDigest: digest[:],
 		TargetsVersion: 1, TargetsDigest: digest[:],
 	}
-	if err := store.CommitFloors(high); err != nil {
+	if err := store.CommitFloors(high, [][]byte{highRepo.rootBytes}); err != nil {
 		t.Fatal(err)
 	}
-	decision := evaluateWithRepo(t, repo, store, defaultLocalEnvironment(time.Now().UTC()))
+	decision := evaluateWithRepo(t, repo, store, defaultLocalEnvironment(testRefTime))
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s (notice: %s)", decision.Outcome, outcomeReleaseInvalid, decision.Notice)
 	}

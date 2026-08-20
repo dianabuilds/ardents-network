@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -19,34 +20,37 @@ func main() {
 	}
 }
 
-// renderedDecision is the stable JSON shape the cmd emits. The schema
-// identifier is bound to the offline-import v1 contract; new fields
-// may be appended but never reordered.
+// renderedDecision is the stable offline-import v1 JSON shape.
 type renderedDecision struct {
-	Schema        string                  `json:"schema"`
-	Outcome       releasedecision.Outcome `json:"outcome"`
-	Path          string                  `json:"path"`
-	Length        int64                   `json:"length"`
-	Digest        string                  `json:"digest"`
-	Platform      string                  `json:"platform"`
-	Architecture  string                  `json:"architecture"`
-	Environment   string                  `json:"environment"`
-	Network       string                  `json:"network"`
-	SourceRev     string                  `json:"source_revision"`
-	BuildID       string                  `json:"build_identity"`
-	DependencyID  string                  `json:"dependency_identity"`
-	SBOMID        string                  `json:"sbom_identity"`
-	Attestation   string                  `json:"attestation_policy"`
-	Qualification string                  `json:"qualification"`
-	ProtocolPhase string                  `json:"protocol_phase"`
-	BuildSafety   releasedecision.Outcome `json:"build_safety"`
-	Protocol      releasedecision.Outcome `json:"protocol"`
-	RootVersion   int64                   `json:"root_version"`
-	Floors        floorOut                `json:"floors"`
-	Notice        string                  `json:"notice"`
+	Schema         string                  `json:"schema"`
+	Outcome        releasedecision.Outcome `json:"outcome"`
+	Path           string                  `json:"path"`
+	Length         int64                   `json:"length"`
+	Digest         string                  `json:"digest"`
+	Platform       string                  `json:"platform"`
+	Architecture   string                  `json:"architecture"`
+	Environment    string                  `json:"environment"`
+	Network        string                  `json:"network"`
+	ReleaseID      string                  `json:"release_identity"`
+	ReleaseVersion int64                   `json:"release_version"`
+	SourceRev      string                  `json:"source_revision"`
+	BuildInputs    string                  `json:"build_input_commitment"`
+	BuildID        string                  `json:"build_identity"`
+	DependencyID   string                  `json:"dependency_identity"`
+	SBOMID         string                  `json:"sbom_identity"`
+	Attestation    string                  `json:"attestation_policy"`
+	Qualification  string                  `json:"qualification"`
+	BuildState     string                  `json:"build_state"`
+	ProtocolPhase  string                  `json:"protocol_phase"`
+	BuildSafety    releasedecision.Outcome `json:"build_safety"`
+	Protocol       releasedecision.Outcome `json:"protocol"`
+	RootVersion    int64                   `json:"root_version"`
+	Floors         floorOut                `json:"floors"`
+	Notice         string                  `json:"notice"`
+	CustodyNotice  string                  `json:"custody_notice"`
 }
 
-func run(arguments []string, output io.Writer, errorOutput io.Writer) error {
+func run(arguments []string, output io.Writer, errorOutput io.Writer) (runErr error) {
 	if len(arguments) == 0 {
 		return errors.New("usage: ardents-release offline-import [flags]")
 	}
@@ -55,7 +59,7 @@ func run(arguments []string, output io.Writer, errorOutput io.Writer) error {
 	}
 	flags := flag.NewFlagSet("offline-import", flag.ContinueOnError)
 	flags.SetOutput(errorOutput)
-	raw := newOfflineImportFlags()
+	raw := &offlineImportFlags{}
 	raw.register(flags)
 	if err := flags.Parse(arguments[1:]); err != nil {
 		return err
@@ -71,30 +75,39 @@ func run(arguments []string, output io.Writer, errorOutput io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("open state root: %w", err)
 	}
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			runErr = errors.Join(runErr, fmt.Errorf("close state root: %w", err))
+		}
+	}()
 	decision := releasedecision.Evaluate(context.Background(), inputs, store)
 	rendered, err := json.Marshal(renderedDecision{
-		Schema:        "ardents-release-decision-v1",
-		Outcome:       decision.Outcome,
-		Path:          decision.Path,
-		Length:        decision.Length,
-		Digest:        hexEncodeDigest(decision.Digest),
-		Platform:      decision.Platform,
-		Architecture:  decision.Architecture,
-		Environment:   decision.Environment,
-		Network:       decision.Network,
-		SourceRev:     decision.SourceRevision,
-		BuildID:       decision.BuildIdentity,
-		DependencyID:  decision.DependencyIdentity,
-		SBOMID:        decision.SBOMIdentity,
-		Attestation:   decision.AttestationPolicy,
-		Qualification: decision.Qualification,
-		ProtocolPhase: decision.ProtocolPhase,
-		BuildSafety:   decision.BuildSafety,
-		Protocol:      decision.Protocol,
-		RootVersion:   decision.RootVersion,
-		Floors:        floorToJSON(decision.Floors),
-		Notice:        decision.Notice,
+		Schema:         "ardents-release-decision-v1",
+		Outcome:        decision.Outcome,
+		Path:           decision.Path,
+		Length:         decision.Length,
+		Digest:         hex.EncodeToString(decision.Digest),
+		Platform:       decision.Platform,
+		Architecture:   decision.Architecture,
+		Environment:    decision.Environment,
+		Network:        decision.Network,
+		ReleaseID:      decision.ReleaseIdentity,
+		ReleaseVersion: decision.ReleaseVersion,
+		SourceRev:      decision.SourceRevision,
+		BuildInputs:    decision.BuildInputCommitment,
+		BuildID:        decision.BuildIdentity,
+		DependencyID:   decision.DependencyIdentity,
+		SBOMID:         decision.SBOMIdentity,
+		Attestation:    decision.AttestationPolicy,
+		Qualification:  decision.Qualification,
+		BuildState:     decision.BuildState,
+		ProtocolPhase:  decision.ProtocolPhase,
+		BuildSafety:    decision.BuildSafety,
+		Protocol:       decision.Protocol,
+		RootVersion:    decision.RootVersion,
+		Floors:         floorToJSON(decision.Floors),
+		Notice:         decision.Notice,
+		CustodyNotice:  decision.CustodyNotice,
 	})
 	if err != nil {
 		return err

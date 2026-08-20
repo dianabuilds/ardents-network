@@ -2,9 +2,9 @@ package releasedecision
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 )
@@ -28,6 +28,9 @@ func encodeFloorGeneration(floors FloorSet) ([]byte, error) {
 		default:
 			return nil, fmt.Errorf("releasedecision: unknown role %q", role)
 		}
+		if role != "root" && version == 0 && len(digest) == 0 {
+			continue
+		}
 		if version <= 0 || len(digest) != 32 {
 			return nil, fmt.Errorf("releasedecision: role %q floor is incomplete", role)
 		}
@@ -36,7 +39,7 @@ func encodeFloorGeneration(floors FloorSet) ([]byte, error) {
 		buffer.WriteString(" version=")
 		buffer.WriteString(strconv.FormatInt(version, 10))
 		buffer.WriteString(" digest=")
-		buffer.WriteString(hexEncode(digest))
+		buffer.WriteString(hex.EncodeToString(digest))
 		buffer.WriteByte('\n')
 	}
 	return buffer.Bytes(), nil
@@ -54,17 +57,46 @@ func readFloorGeneration(root, name string) (FloorSet, error) {
 // readFloorGenerationFromPath decodes the state.bin of an existing
 // generation directory into a floor set.
 func readFloorGenerationFromPath(directory string) (FloorSet, error) {
+	entries, err := readFloorStoreDirectory(directory, 2)
+	if err != nil {
+		return FloorSet{}, err
+	}
+	if len(entries) != 2 {
+		return FloorSet{}, errors.New("releasedecision: generation inventory is incomplete")
+	}
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		seen[entry.Name()] = true
+	}
+	if !seen["state.bin"] || !seen["roots"] {
+		return FloorSet{}, errors.New("releasedecision: generation inventory contains an unknown entry")
+	}
 	payload, err := readBoundedFloorFile(filepath.Join(directory, "state.bin"), floorFileSizeLimit)
 	if err != nil {
 		return FloorSet{}, fmt.Errorf("releasedecision: read generation state: %w", err)
 	}
-	return decodeFloorGeneration(payload)
+	floors, err := decodeFloorGeneration(payload)
+	if err != nil {
+		return FloorSet{}, err
+	}
+	if err := validateFloorSet(floors); err != nil {
+		return FloorSet{}, err
+	}
+	canonical, err := encodeFloorGeneration(floors)
+	if err != nil || !bytes.Equal(payload, canonical) {
+		return FloorSet{}, errors.New("releasedecision: generation state is not canonical")
+	}
+	if err := validateStoredRootArchive(directory, floors); err != nil {
+		return FloorSet{}, err
+	}
+	return floors, nil
 }
 
 // decodeFloorGeneration parses the canonical state.bin encoding.
 func decodeFloorGeneration(payload []byte) (FloorSet, error) {
 	parsed := make(map[string]int64)
 	digests := make(map[string][]byte)
+	known := map[string]bool{"root": true, "timestamp": true, "snapshot": true, "targets": true}
 	for _, line := range bytes.Split(bytes.TrimRight(payload, "\n"), []byte{'\n'}) {
 		if len(line) == 0 {
 			continue
@@ -72,6 +104,9 @@ func decodeFloorGeneration(payload []byte) (FloorSet, error) {
 		role, version, digest, err := parseFloorLine(line)
 		if err != nil {
 			return FloorSet{}, err
+		}
+		if !known[role] || parsed[role] != 0 {
+			return FloorSet{}, errors.New("releasedecision: floor role is unknown or duplicated")
 		}
 		parsed[role] = version
 		digests[role] = digest
@@ -128,63 +163,11 @@ func parseFloorLine(line []byte) (role string, version int64, digest []byte, err
 	if len(encoded) != 64 {
 		return "", 0, nil, errors.New("releasedecision: floor digest has the wrong length")
 	}
-	digest, err = hexDecode(encoded)
+	digest, err = hex.DecodeString(string(encoded))
 	if err != nil {
 		return "", 0, nil, fmt.Errorf("releasedecision: floor digest is invalid: %w", err)
 	}
 	return role, version, digest, nil
-}
-
-// publishFloorGeneration stages the payload under a hidden directory,
-// then renames it atomically into the generations tree.
-func publishFloorGeneration(generations, name string, payload []byte) error {
-	staging, err := os.MkdirTemp(generations, ".stage-")
-	if err != nil {
-		return fmt.Errorf("releasedecision: create generation staging: %w", err)
-	}
-	if err := writeSyncedFile(filepath.Join(staging, "state.bin"), payload); err != nil {
-		_ = os.RemoveAll(staging)
-		return err
-	}
-	final := filepath.Join(generations, name)
-	if err := os.Rename(staging, final); err != nil {
-		_ = os.RemoveAll(staging)
-		return fmt.Errorf("releasedecision: publish generation: %w", err)
-	}
-	// The atomic rename is the durable part; the directory sync is
-	// best-effort. Windows may report ACCESS_DENIED while the renamed
-	// directory entry is being closed by the kernel.
-	_ = syncDirectory(generations)
-	return nil
-}
-
-// writeFloorStorePointer writes the supplied generation name as the
-// current pointer using an atomic file replace.
-func writeFloorStorePointer(root, name string) error {
-	temporary, err := os.CreateTemp(root, ".current-")
-	if err != nil {
-		return fmt.Errorf("releasedecision: create current pointer staging: %w", err)
-	}
-	path := temporary.Name()
-	defer func() { _ = os.Remove(path) }()
-	if err = temporary.Chmod(0o600); err == nil {
-		_, err = temporary.WriteString(name + "\n")
-	}
-	if err == nil {
-		err = temporary.Sync()
-	}
-	closeErr := temporary.Close()
-	if err != nil {
-		return fmt.Errorf("releasedecision: write current pointer: %w", err)
-	}
-	if closeErr != nil {
-		return fmt.Errorf("releasedecision: close current pointer: %w", closeErr)
-	}
-	if err := os.Rename(path, filepath.Join(root, "current")); err != nil {
-		return fmt.Errorf("releasedecision: replace current pointer: %w", err)
-	}
-	_ = syncDirectory(root)
-	return nil
 }
 
 // floorSetEqual reports whether two floor sets are byte-for-byte equal.
@@ -197,11 +180,4 @@ func floorSetEqual(a, b FloorSet) bool {
 		bytes.Equal(a.SnapshotDigest, b.SnapshotDigest) &&
 		a.TargetsVersion == b.TargetsVersion &&
 		bytes.Equal(a.TargetsDigest, b.TargetsDigest)
-}
-
-// floorGenerationID returns a stable eight-hex-character id derived
-// from the SHA-256 of the generation payload.
-func floorGenerationID(payload []byte) string {
-	digest := sha256Sum(payload)
-	return hexEncode(digest[:4])
 }

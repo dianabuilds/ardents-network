@@ -108,13 +108,13 @@ broken role split selects `stop`, not a fork.
 ## Selected Stage 7 release-verifier closure
 
 Status: **accepted for S7.1 integration on 2026-08-20.** R-049 selects the
-following exact client-path closure. It enters `go.mod` only with the real
+following exact reviewed module closure. It enters `go.mod` only with the real
 Release Decision package, behavior tests, non-test caller, and package-map entry.
 
 | Module | Proposed version | License | Purpose |
 |---|---:|---|---|
-| `github.com/theupdateframework/go-tuf/v2` | `v2.4.2`, commit `f5edbde31e5507f46db2069402dc38903fe6d9d4` | Apache-2.0 | TUF trusted-metadata/updater client workflow |
-| `github.com/cenkalti/backoff/v5` | `v5.0.3` | MIT | bounded updater retry policy dependency |
+| `github.com/theupdateframework/go-tuf/v2` | `v2.4.2`, commit `f5edbde31e5507f46db2069402dc38903fe6d9d4` | Apache-2.0 | TUF metadata and trusted-metadata workflow |
+| `github.com/cenkalti/backoff/v5` | `v5.0.3` | MIT | transitive go-tuf module dependency; absent from the maintained package import path |
 | `github.com/google/go-containerregistry` | `v0.20.7` | Apache-2.0 | signature/key conversion closure |
 | `github.com/opencontainers/go-digest` | `v1.0.0` | Apache-2.0 | digest conversion closure |
 | `github.com/secure-systems-lab/go-securesystemslib` | `v0.11.0` | MIT | maintained signing-verification support used by go-tuf metadata |
@@ -126,17 +126,21 @@ Release Decision package, behavior tests, non-test caller, and package-map entry
 | `google.golang.org/genproto/googleapis/api` | `v0.0.0-20250825161204-c5933d9347a5` | Apache-2.0 | protobuf API type closure |
 | `google.golang.org/protobuf` | `v1.36.11` | BSD-3-Clause | signature protobuf runtime |
 
-**Need and owner:** the future Release Decision Module is the sole owner. It may
-import only go-tuf metadata/config/fetcher/trustedmetadata/updater client
-surfaces behind an Ardents Interface. It receives bounded bytes, trusted root,
-exact target identity, and artifact bytes; go-tuf captures one UTC reference
-time when constructing the trusted set. The Module owns neither network
+**Need and owner:** the Release Decision Module is the sole owner. Its maintained
+path imports only go-tuf `metadata` and `trustedmetadata`; the broader reviewed
+updater closure remains the removal/review boundary but is not imported by
+production code. The Module receives bounded bytes, trusted root, exact target
+identity, and artifact bytes. It constructs one trusted set, assigns the one
+captured UTC `RefTime` before the first expiry check, then executes the standard
+consecutive root, timestamp, snapshot, and top-level targets update methods.
+The Module owns neither network
 retrieval nor persistent cache, repository/signing administration,
 multi-repository maps, delegated targets, installation, or activation.
 Ardents-owned durable `version + digest` floors for root, timestamp, snapshot,
 and top-level targets are mandatory inputs. Before `release-accepted`, the owner
 atomically publishes the candidate-verified consecutive root chain and floor
-successors; go-tuf's optional local cache is disabled and is never a watermark.
+successors. No go-tuf cache or updater is constructed, so candidate cache remains
+absent and can never become a watermark.
 
 **Review evidence:** [R-049](../research/records/r-049-stage-7-release-verifier.md)
 records exact source identities, `108/108` TUF conformance, Windows/Linux

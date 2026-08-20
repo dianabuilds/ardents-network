@@ -2,8 +2,8 @@ package releasedecision
 
 import (
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -51,9 +51,14 @@ func newSyntheticRepository(t *testing.T, opts syntheticOptions) syntheticReposi
 	}
 	expires := opts.expires
 	if expires.IsZero() {
-		expires = time.Now().UTC().Add(24 * time.Hour)
+		expires = testRefTime.Add(365 * 24 * time.Hour)
 	}
 	root := metadata.Root(expires)
+	root.Signed.UnrecognizedFields = map[string]any{
+		rootSchemaField: targetSchemaVersion, rootProfileField: targetProfile,
+		rootEnvField:     defaultString(opts.rootEnvironment, "h3-test"),
+		rootNetworkField: defaultString(opts.rootNetwork, "ardents-h3-test-1"),
+	}
 	for _, key := range keys {
 		publicKey, err := metadata.KeyFromPublicKey(key.public)
 		if err != nil {
@@ -106,8 +111,8 @@ func newSyntheticRepository(t *testing.T, opts syntheticOptions) syntheticReposi
 		artifactLength = 4096
 	}
 	artifact := make([]byte, artifactLength)
-	if _, err := rand.Read(artifact); err != nil {
-		t.Fatal(err)
+	for index := range artifact {
+		artifact[index] = byte((index*31 + 17) % 251)
 	}
 	targetPath := opts.targetPath
 	if targetPath == "" {
@@ -115,7 +120,7 @@ func newSyntheticRepository(t *testing.T, opts syntheticOptions) syntheticReposi
 	}
 	artifactHash := sha256.Sum256(artifact)
 	selected := &metadata.TargetFiles{Length: int64(len(artifact)), Hashes: metadata.Hashes{"sha256": artifactHash[:]}, Path: targetPath}
-	custom := buildCustomJSON(t, opts)
+	custom := buildCustomJSON(t, opts, artifactHash[:])
 	targets := metadata.Targets(expires)
 	targets.Signed.Targets[targetPath] = &metadata.TargetFiles{
 		Length: selected.Length,
@@ -123,7 +128,14 @@ func newSyntheticRepository(t *testing.T, opts syntheticOptions) syntheticReposi
 		Path:   targetPath,
 		Custom: &custom,
 	}
-	signSyntheticMetadata(t, targets, keys)
+	targetSignatures := opts.targetsSignatureCount
+	if targetSignatures == 0 {
+		targetSignatures = ordinaryThreshold
+		if opts.emergencyReason != "" {
+			targetSignatures = emergencyThreshold
+		}
+	}
+	signSyntheticMetadataCount(t, targets, keys, targetSignatures)
 	targetsBytes, err := targets.ToBytes(false)
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +143,7 @@ func newSyntheticRepository(t *testing.T, opts syntheticOptions) syntheticReposi
 	targetsHash := sha256.Sum256(targetsBytes)
 	snapshot := metadata.Snapshot(expires)
 	snapshot.Signed.Meta["targets.json"] = &metadata.MetaFiles{Version: 1, Length: int64(len(targetsBytes)), Hashes: metadata.Hashes{"sha256": targetsHash[:]}}
-	signSyntheticMetadata(t, snapshot, keys)
+	signSyntheticMetadataCount(t, snapshot, keys, ordinaryThreshold)
 	snapshotBytes, err := snapshot.ToBytes(false)
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +151,7 @@ func newSyntheticRepository(t *testing.T, opts syntheticOptions) syntheticReposi
 	snapshotHash := sha256.Sum256(snapshotBytes)
 	timestamp := metadata.Timestamp(expires)
 	timestamp.Signed.Meta["snapshot.json"] = &metadata.MetaFiles{Version: 1, Length: int64(len(snapshotBytes)), Hashes: metadata.Hashes{"sha256": snapshotHash[:]}}
-	signSyntheticMetadata(t, timestamp, keys)
+	signSyntheticMetadataCount(t, timestamp, keys, ordinaryThreshold)
 	timestampBytes, err := timestamp.ToBytes(false)
 	if err != nil {
 		t.Fatal(err)
@@ -162,10 +174,129 @@ func newSyntheticRepository(t *testing.T, opts syntheticOptions) syntheticReposi
 	}
 }
 
+func defaultString(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
+}
+
+func withConsecutiveRoots(t *testing.T, repo syntheticRepository, count int) syntheticRepository {
+	t.Helper()
+	current := repo.root
+	for index := 0; index < count; index++ {
+		encoded, err := current.ToBytes(false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		next, err := metadata.Root().FromBytes(encoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		next.Signed.Version = current.Signed.Version + 1
+		next.Signatures = nil
+		signSyntheticMetadataCount(t, next, repo.keys, ordinaryThreshold)
+		nextBytes, err := next.ToBytes(false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := fmt.Sprintf("https://release.invalid/metadata/%d.root.json", next.Signed.Version)
+		repo.files[name] = nextBytes
+		current = next
+	}
+	repo.root = current
+	return repo
+}
+
+func withCrossEnvironmentRoot(t *testing.T, repo syntheticRepository) syntheticRepository {
+	t.Helper()
+	repo = withConsecutiveRoots(t, repo, 1)
+	name := "https://release.invalid/metadata/2.root.json"
+	root, err := metadata.Root().FromBytes(repo.files[name])
+	if err != nil {
+		t.Fatal(err)
+	}
+	root.Signed.UnrecognizedFields[rootEnvField] = "development"
+	root.Signatures = nil
+	signSyntheticMetadataCount(t, root, repo.keys, ordinaryThreshold)
+	repo.files[name], err = root.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return repo
+}
+
+func withMetadataVersion(t *testing.T, repo syntheticRepository, version int64) syntheticRepository {
+	t.Helper()
+	files := make(map[string][]byte, len(repo.files))
+	for name, data := range repo.files {
+		files[name] = append([]byte(nil), data...)
+	}
+	repo.files = files
+	targetBytes, err := repo.targets.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets, err := metadata.Targets().FromBytes(targetBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets.Signed.Version = version
+	targets.Signatures = nil
+	signSyntheticMetadataCount(t, targets, repo.keys, ordinaryThreshold)
+	targetBytes, err = targets.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	delete(repo.files, "https://release.invalid/metadata/1.targets.json")
+	repo.files[fmt.Sprintf("https://release.invalid/metadata/%d.targets.json", version)] = targetBytes
+	targetDigest := sha256.Sum256(targetBytes)
+
+	snapshotBytes, err := repo.snapshot.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := metadata.Snapshot().FromBytes(snapshotBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot.Signed.Version = version
+	snapshot.Signed.Meta["targets.json"] = &metadata.MetaFiles{Version: version, Length: int64(len(targetBytes)), Hashes: metadata.Hashes{"sha256": targetDigest[:]}}
+	snapshot.Signatures = nil
+	signSyntheticMetadataCount(t, snapshot, repo.keys, ordinaryThreshold)
+	snapshotBytes, err = snapshot.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	delete(repo.files, "https://release.invalid/metadata/1.snapshot.json")
+	repo.files[fmt.Sprintf("https://release.invalid/metadata/%d.snapshot.json", version)] = snapshotBytes
+	snapshotDigest := sha256.Sum256(snapshotBytes)
+
+	timestampBytes, err := repo.timestamp.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	timestamp, err := metadata.Timestamp().FromBytes(timestampBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	timestamp.Signed.Version = version
+	timestamp.Signed.Meta["snapshot.json"] = &metadata.MetaFiles{Version: version, Length: int64(len(snapshotBytes)), Hashes: metadata.Hashes{"sha256": snapshotDigest[:]}}
+	timestamp.Signatures = nil
+	signSyntheticMetadataCount(t, timestamp, repo.keys, ordinaryThreshold)
+	timestampBytes, err = timestamp.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo.files["https://release.invalid/metadata/timestamp.json"] = timestampBytes
+	repo.targets, repo.snapshot, repo.timestamp = targets, snapshot, timestamp
+	return repo
+}
+
 // buildCustomJSON renders the target custom identity block. The
 // fields are documented in the lifecycle specification; the package
 // rejects any unrecognized critical field name.
-func buildCustomJSON(t *testing.T, opts syntheticOptions) json.RawMessage {
+func buildCustomJSON(t *testing.T, opts syntheticOptions, targetDigest []byte) json.RawMessage {
 	t.Helper()
 	if opts.platform == "" {
 		opts.platform = "windows-amd64"
@@ -188,57 +319,115 @@ func buildCustomJSON(t *testing.T, opts syntheticOptions) json.RawMessage {
 	if opts.dependencyIdentity == "" {
 		opts.dependencyIdentity = "deps-0001"
 	}
-	if opts.sbomIdentity == "" {
+	if opts.sbomIdentity == "" && !opts.omitSBOM {
 		opts.sbomIdentity = "sbom-0001"
 	}
 	if opts.attestationPolicy == "" {
 		opts.attestationPolicy = "two-builder"
 	}
 	if opts.qualification == "" {
-		opts.qualification = "development"
+		opts.qualification = "qualified"
+	}
+	if opts.buildState == "" {
+		opts.buildState = "current"
 	}
 	if opts.protocolPhase == "" {
-		opts.protocolPhase = "overlap-supported"
+		opts.protocolPhase = "required"
+	}
+	if opts.protocolOverlappedSince.IsZero() && !opts.omitProtocolOverlap {
+		opts.protocolOverlappedSince = testRefTime.Add(-100 * 24 * time.Hour)
 	}
 	if opts.buildSafetyNoNewWorkAfter.IsZero() {
-		opts.buildSafetyNoNewWorkAfter = time.Now().UTC().Add(30 * 24 * time.Hour)
+		opts.buildSafetyNoNewWorkAfter = testRefTime.Add(30 * 24 * time.Hour)
 	}
 	if opts.buildSafetyTerminateAfter.IsZero() {
-		opts.buildSafetyTerminateAfter = time.Now().UTC().Add(180 * 24 * time.Hour)
+		opts.buildSafetyTerminateAfter = testRefTime.Add(180 * 24 * time.Hour)
 	}
 	encoded, err := json.Marshal(struct {
-		Platform              string    `json:"platform"`
-		Architecture          string    `json:"architecture"`
-		Environment           string    `json:"environment"`
-		Network               string    `json:"network"`
-		SourceRevision        string    `json:"source_revision"`
-		BuildIdentity         string    `json:"build_identity"`
-		DependencyIdentity    string    `json:"dependency_identity"`
-		SBOMIdentity          string    `json:"sbom_identity"`
-		AttestationPolicy     string    `json:"attestation_policy"`
-		Qualification         string    `json:"qualification"`
-		BuildSafetyNoNewAfter time.Time `json:"build_safety_no_new_work_after"`
-		BuildSafetyTermAfter  time.Time `json:"build_safety_terminate_after"`
-		ProtocolPhase         string    `json:"protocol_phase"`
+		SchemaVersion         int                  `json:"schema_version"`
+		Profile               string               `json:"profile"`
+		Platform              string               `json:"platform"`
+		Architecture          string               `json:"architecture"`
+		Environment           string               `json:"environment"`
+		Network               string               `json:"network"`
+		ReleaseIdentity       string               `json:"release_identity"`
+		ReleaseVersion        int64                `json:"release_version"`
+		SourceRevision        string               `json:"source_revision"`
+		BuildInputCommitment  string               `json:"build_input_commitment"`
+		BuildIdentity         string               `json:"build_identity"`
+		DependencyIdentity    string               `json:"dependency_identity"`
+		SBOMIdentity          string               `json:"sbom_identity"`
+		AttestationPolicy     string               `json:"attestation_policy"`
+		Qualification         string               `json:"qualification"`
+		BuildState            string               `json:"build_state"`
+		BuilderAttestations   []builderAttestation `json:"builder_attestations"`
+		BuildSafetyNoNewAfter time.Time            `json:"build_safety_no_new_work_after"`
+		BuildSafetyTermAfter  time.Time            `json:"build_safety_terminate_after"`
+		ProtocolPhase         string               `json:"protocol_phase"`
+		ProtocolOverlappedAt  time.Time            `json:"protocol_overlapped_since"`
+		CapacityReady         bool                 `json:"capacity_ready"`
+		DrainReady            bool                 `json:"drain_ready"`
+		EmergencyReason       emergencyReason      `json:"emergency_reason,omitempty"`
+		EmergencyExpiry       time.Time            `json:"emergency_expiry,omitempty"`
 	}{
+		SchemaVersion:         targetSchemaVersion,
+		Profile:               targetProfile,
 		Platform:              opts.platform,
 		Architecture:          opts.architecture,
 		Environment:           opts.environment,
 		Network:               opts.network,
+		ReleaseIdentity:       "ardents-release-0001",
+		ReleaseVersion:        1,
 		SourceRevision:        opts.sourceRevision,
+		BuildInputCommitment:  "inputs-0001",
 		BuildIdentity:         opts.buildIdentity,
 		DependencyIdentity:    opts.dependencyIdentity,
 		SBOMIdentity:          opts.sbomIdentity,
 		AttestationPolicy:     opts.attestationPolicy,
 		Qualification:         opts.qualification,
+		BuildState:            opts.buildState,
+		BuilderAttestations:   fixtureAttestations(opts, targetDigest),
 		BuildSafetyNoNewAfter: opts.buildSafetyNoNewWorkAfter,
 		BuildSafetyTermAfter:  opts.buildSafetyTerminateAfter,
 		ProtocolPhase:         opts.protocolPhase,
+		ProtocolOverlappedAt:  opts.protocolOverlappedSince,
+		CapacityReady:         !opts.capacityNotReady,
+		DrainReady:            !opts.drainNotReady,
+		EmergencyReason:       emergencyReason(opts.emergencyReason),
+		EmergencyExpiry:       opts.emergencyExpiry,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	if opts.unknownCustomField {
+		var object map[string]any
+		if err := json.Unmarshal(encoded, &object); err != nil {
+			t.Fatal(err)
+		}
+		object["future_critical_policy"] = "must-not-ignore"
+		encoded, err = json.Marshal(object)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	return encoded
+}
+
+func fixtureAttestations(opts syntheticOptions, targetDigest []byte) []builderAttestation {
+	digest := hex.EncodeToString(targetDigest)
+	if opts.attestationDigestMismatch {
+		digest = hex.EncodeToString(make([]byte, sha256.Size))
+	}
+	records := []builderAttestation{
+		{BuilderIdentity: "builder-a", BuildIdentity: opts.buildIdentity, SourceRevision: opts.sourceRevision,
+			BuildInputCommitment: "inputs-0001", TargetSHA256: digest},
+		{BuilderIdentity: "builder-b", BuildIdentity: opts.buildIdentity, SourceRevision: opts.sourceRevision,
+			BuildInputCommitment: "inputs-0001", TargetSHA256: digest},
+	}
+	if opts.attestationInputMismatch {
+		records[0].BuildInputCommitment = "other-inputs"
+	}
+	return records
 }
 
 // Key generation and signing helpers are in testfixtures_keys.go.
@@ -247,8 +436,9 @@ func buildCustomJSON(t *testing.T, opts syntheticOptions) json.RawMessage {
 // are kept in a struct; restart tampers are simulated by mutating
 // the in-memory copy.
 type memoryStore struct {
-	closed bool
-	floors FloorSet
+	closed      bool
+	floors      FloorSet
+	rootCommits []int64
 }
 
 // ReadFloors returns the in-memory committed floors.
@@ -261,17 +451,28 @@ func (store *memoryStore) ReadFloors() (FloorSet, error) {
 
 // CommitFloors accepts the supplied floors after the watermarking
 // invariant passes.
-func (store *memoryStore) CommitFloors(floors FloorSet) error {
+func (store *memoryStore) CommitFloors(floors FloorSet, _ [][]byte) error {
 	if store.closed {
 		return fmt.Errorf("releasedecision: memory store is closed")
 	}
-	if err := validateFloorSet(floors); err != nil {
+	if err := validateMemoryFloorSet(floors); err != nil {
 		return err
 	}
-	if err := assertFloorAdvance(store.floors, floors); err != nil {
+	if err := validateMemoryAdvance(store.floors, floors); err != nil {
 		return err
 	}
 	store.floors = floors
+	return nil
+}
+
+func (store *memoryStore) CommitRoot(version int64, digest []byte, _ [][]byte) error {
+	next := store.floors
+	next.RootVersion = version
+	next.RootDigest = append([]byte(nil), digest...)
+	if err := store.CommitFloors(next, nil); err != nil {
+		return err
+	}
+	store.rootCommits = append(store.rootCommits, version)
 	return nil
 }
 

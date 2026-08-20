@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Store is the durable floor store interface owned by the caller. The
@@ -15,15 +16,21 @@ import (
 // any tamper, truncation, or missing file is reported as an error and
 // never silently downgrades the security watermark.
 type Store interface {
-	// ReadFloors returns the previously committed floor set. An empty
-	// FloorSet with a nil error means the store has never been committed.
+	// ReadFloors returns the committed set. Root-only means metadata has not
+	// yet been accepted; an empty set means the store has never been committed.
 	ReadFloors() (FloorSet, error)
-	// CommitFloors atomically publishes the supplied floor set. After
+	// CommitRoot durably publishes one fully verified root before the
+	// verifier uses that root to authorize any later root or metadata.
+	// rootChain ends at the supplied root and contains the exact bytes
+	// verified during this evaluation.
+	CommitRoot(version int64, digest []byte, rootChain [][]byte) error
+	// CommitFloors atomically publishes the supplied floor set and exact
+	// verified consecutive root bytes. After
 	// CommitFloors returns nil, a fresh OpenFloorStore on the same path
 	// must observe the same floors. CommitFloors must reject lower or
 	// same-version/different-digest successor floors and must never
 	// leave a partial successor on disk.
-	CommitFloors(floors FloorSet) error
+	CommitFloors(floors FloorSet, rootChain [][]byte) error
 	// Close releases the exclusive lease and flushes any in-memory state.
 	Close() error
 }
@@ -33,9 +40,9 @@ type Store interface {
 // directory and uses an atomic directory rename to publish successor
 // generations, mirroring the network/store atomic publication pattern.
 type floorStore struct {
-	path      string
-	closed    bool
-	committed bool
+	path   string
+	lock   *os.File
+	closed bool
 }
 
 // OpenFloorStore claims or verifies the owned state root at the supplied
@@ -52,10 +59,18 @@ func OpenFloorStore(path string) (Store, error) {
 	if err := inspectFloorStoreRoot(absolute); err != nil {
 		return nil, err
 	}
-	if err := prepareFloorStoreRoot(absolute); err != nil {
+	lock, err := acquireFloorStoreLease(absolute)
+	if err != nil {
 		return nil, err
 	}
-	return &floorStore{path: absolute}, nil
+	store := &floorStore{path: absolute, lock: lock}
+	if err := prepareFloorStoreRoot(absolute); err != nil {
+		return nil, errors.Join(err, store.Close())
+	}
+	if _, err := store.ReadFloors(); err != nil {
+		return nil, errors.Join(fmt.Errorf("releasedecision: validate existing state: %w", err), store.Close())
+	}
+	return store, nil
 }
 
 // floorStoreMarker is the single-byte marker that marks an owned state
@@ -85,6 +100,18 @@ func inspectFloorStoreRoot(root string) error {
 	if markerErr == nil {
 		if !markerInfo.Mode().IsRegular() || markerInfo.Mode()&os.ModeSymlink != 0 {
 			return errors.New("releasedecision: state root marker is not a regular file")
+		}
+		entries, readErr := readFloorStoreDirectory(root, 70)
+		if readErr != nil {
+			return fmt.Errorf("releasedecision: inspect owned state root: %w", readErr)
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if name == floorStoreMarkerName || name == floorStoreLockName || name == "generations" ||
+				name == "current" || strings.HasPrefix(name, ".current-") {
+				continue
+			}
+			return fmt.Errorf("releasedecision: unknown state-root entry %q", name)
 		}
 		return nil
 	}

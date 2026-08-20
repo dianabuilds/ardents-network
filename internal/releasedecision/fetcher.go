@@ -23,6 +23,7 @@ type fetcherAdapter struct {
 	mu       sync.Mutex
 	base     *url.URL
 	files    map[string][]byte
+	used     map[string]struct{}
 	envelope envelopeState
 }
 
@@ -45,7 +46,7 @@ func newMapFetcher(base string, files map[string][]byte) (*fetcherAdapter, error
 		return nil, errors.New("releasedecision: base URL is outside the offline envelope")
 	}
 	parsed.Path = strings.TrimSuffix(path.Clean(parsed.Path), "/") + "/"
-	return &fetcherAdapter{base: parsed, files: copyFiles(files), envelope: envelopeState{}}, nil
+	return &fetcherAdapter{base: parsed, files: copyFiles(files), used: make(map[string]struct{}), envelope: envelopeState{}}, nil
 }
 
 // copyFiles returns a shallow copy of the supplied map so the fetcher
@@ -97,6 +98,7 @@ func (f *fetcherAdapter) DownloadFile(raw string, maxLength int64, _ time.Durati
 		// error the client expects so Refresh can complete.
 		return nil, &metadata.ErrDownloadHTTP{StatusCode: 404, URL: raw}
 	}
+	f.used[raw] = struct{}{}
 	if int64(len(data)) > maxLength || int64(len(data)) > maximumMetadataFileBytes {
 		return nil, &releaseError{class: outcomeReleaseInvalid, message: "metadata file exceeds the per-file bound"}
 	}
@@ -105,6 +107,12 @@ func (f *fetcherAdapter) DownloadFile(raw string, maxLength int64, _ time.Durati
 	}
 	f.envelope.bytes += int64(len(data))
 	return append([]byte(nil), data...), nil
+}
+
+func (f *fetcherAdapter) allFilesUsed() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.used) == len(f.files)
 }
 
 // envelopeUsed reports the bounded fetch and byte envelope that the
@@ -139,6 +147,10 @@ func classifyReleaseError(err error) Outcome {
 	var typed *releaseError
 	if errors.As(err, &typed) {
 		return typed.class
+	}
+	var expired *metadata.ErrExpiredMetadata
+	if errors.As(err, &expired) {
+		return outcomeReleaseExpired
 	}
 	if strings.Contains(err.Error(), "exceeds the bound") {
 		return outcomeReleaseInvalid

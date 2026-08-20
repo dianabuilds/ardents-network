@@ -14,7 +14,7 @@ import (
 func TestEvaluateAcceptsValidOfflineImport(t *testing.T) {
 	t.Parallel()
 	repo := newSyntheticRepository(t, syntheticOptions{})
-	refTime := time.Now().UTC()
+	refTime := testRefTime
 	storeA := newMemoryStoreForTest()
 	decisionA := evaluateWithStore(t, repo, storeA, refTime)
 	if decisionA.Outcome != outcomeReleaseAccepted {
@@ -25,7 +25,7 @@ func TestEvaluateAcceptsValidOfflineImport(t *testing.T) {
 	if decisionB.Outcome != outcomeReleaseAccepted {
 		t.Fatalf("distributor B outcome = %s, want %s (notice: %s)", decisionB.Outcome, outcomeReleaseAccepted, decisionB.Notice)
 	}
-	if !equalFloorSet(decisionA.Floors, decisionB.Floors) {
+	if !floorSetEqual(decisionA.Floors, decisionB.Floors) {
 		t.Fatalf("distributor successor floors disagree:\nA=%+v\nB=%+v", decisionA.Floors, decisionB.Floors)
 	}
 }
@@ -44,7 +44,7 @@ func TestEvaluateRejectsIncompleteImport(t *testing.T) {
 	}
 	repo.files = files
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -64,7 +64,7 @@ func TestEvaluateRejectsTamperedImport(t *testing.T) {
 		}
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -75,17 +75,9 @@ func TestEvaluateRejectsTamperedImport(t *testing.T) {
 // recognises as critical and the package rejects it.
 func TestEvaluateRejectsUnknownCriticalField(t *testing.T) {
 	t.Parallel()
-	repo := newSyntheticRepository(t, syntheticOptions{})
-	for key := range repo.files {
-		if strings.HasSuffix(key, "1.targets.json") {
-			data := append([]byte(nil), repo.files[key]...)
-			// Inject "unknown_critical_fields" inside the custom block.
-			replace := strings.Replace(string(data), `"protocol_phase":"overlap-supported"`, `"protocol_phase":"overlap-supported","unknown_critical_fields":["new"]`, 1)
-			repo.files[key] = []byte(replace)
-		}
-	}
+	repo := newSyntheticRepository(t, syntheticOptions{unknownCustomField: true})
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -104,7 +96,7 @@ func TestEvaluateRejectsBelowThresholdSignature(t *testing.T) {
 		}
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -122,7 +114,7 @@ func TestEvaluateRejectsDuplicateSignature(t *testing.T) {
 		}
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -131,11 +123,35 @@ func TestEvaluateRejectsDuplicateSignature(t *testing.T) {
 // TestEvaluateRejectsExpiredMetadata covers the B3 expired case.
 func TestEvaluateRejectsExpiredMetadata(t *testing.T) {
 	t.Parallel()
-	repo := newSyntheticRepository(t, syntheticOptions{expires: time.Now().UTC().Add(-time.Hour)})
+	repo := newSyntheticRepository(t, syntheticOptions{expires: testRefTime.Add(-time.Hour)})
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
-	if decision.Outcome != outcomeReleaseExpired && decision.Outcome != outcomeReleaseInvalid {
-		t.Fatalf("outcome = %s, want expired or invalid", decision.Outcome)
+	decision := evaluateWithStore(t, repo, store, testRefTime)
+	if decision.Outcome != outcomeReleaseExpired {
+		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseExpired)
+	}
+}
+
+func TestEvaluateUsesFixedRefTimeForExpiry(t *testing.T) {
+	t.Parallel()
+	refTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	repo := newSyntheticRepository(t, syntheticOptions{
+		expires:                   refTime.Add(24 * time.Hour),
+		protocolOverlappedSince:   refTime.Add(-100 * 24 * time.Hour),
+		buildSafetyNoNewWorkAfter: refTime.Add(30 * 24 * time.Hour),
+		buildSafetyTerminateAfter: refTime.Add(60 * 24 * time.Hour),
+	})
+	decision := evaluateWithStore(t, repo, newMemoryStoreForTest(), refTime)
+	if decision.Outcome != outcomeReleaseAccepted {
+		t.Fatalf("outcome = %s, want %s (notice: %s)", decision.Outcome, outcomeReleaseAccepted, decision.Notice)
+	}
+}
+
+func TestEvaluateRejectsMissingSBOMIdentity(t *testing.T) {
+	t.Parallel()
+	repo := newSyntheticRepository(t, syntheticOptions{omitSBOM: true})
+	decision := evaluateWithStore(t, repo, newMemoryStoreForTest(), testRefTime)
+	if decision.Outcome != outcomeReleaseInvalid {
+		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
 }
 
@@ -144,13 +160,15 @@ func TestEvaluateRejectsExpiredMetadata(t *testing.T) {
 func TestEvaluateRejectsFrozenTimestamp(t *testing.T) {
 	t.Parallel()
 	repo := newSyntheticRepository(t, syntheticOptions{})
-	// Set the timestamp to an old version (version 1) to simulate a
-	// freeze: go-tuf refuses to load a frozen timestamp because the
-	// supplied timestamp.json is older than the committed one.
+	advanced := withMetadataVersion(t, repo, 2)
 	store := newMemoryStoreForTest()
-	first := evaluateWithStore(t, repo, store, time.Now().UTC())
-	if first.Outcome != outcomeReleaseAccepted && first.Outcome != outcomeReleaseInvalid {
-		t.Fatalf("first evaluation outcome = %s, want accepted or invalid", first.Outcome)
+	first := evaluateWithStore(t, advanced, store, testRefTime)
+	if first.Outcome != outcomeReleaseAccepted {
+		t.Fatalf("first evaluation outcome = %s, want %s", first.Outcome, outcomeReleaseAccepted)
+	}
+	frozen := evaluateWithStore(t, repo, store, testRefTime)
+	if frozen.Outcome != outcomeReleaseInvalid {
+		t.Fatalf("frozen outcome = %s, want %s", frozen.Outcome, outcomeReleaseInvalid)
 	}
 }
 
@@ -160,7 +178,7 @@ func TestEvaluateRejectsWrongPlatform(t *testing.T) {
 	t.Parallel()
 	repo := newSyntheticRepository(t, syntheticOptions{platform: "windows-amd64"})
 	store := newMemoryStoreForTest()
-	local := defaultLocalEnvironment(time.Now().UTC())
+	local := defaultLocalEnvironment(testRefTime)
 	local.Platform = "linux-amd64"
 	decision := evaluateWithRepo(t, repo, store, local)
 	if decision.Outcome != outcomeReleaseIncompatible {
@@ -172,9 +190,9 @@ func TestEvaluateRejectsWrongPlatform(t *testing.T) {
 // case.
 func TestEvaluateRejectsWrongEnvironment(t *testing.T) {
 	t.Parallel()
-	repo := newSyntheticRepository(t, syntheticOptions{environment: "h3-test"})
+	repo := newSyntheticRepository(t, syntheticOptions{environment: "h3-test", rootEnvironment: "development"})
 	store := newMemoryStoreForTest()
-	local := defaultLocalEnvironment(time.Now().UTC())
+	local := defaultLocalEnvironment(testRefTime)
 	local.Environment = "development"
 	decision := evaluateWithRepo(t, repo, store, local)
 	if decision.Outcome != outcomeReleaseIncompatible {
@@ -185,9 +203,9 @@ func TestEvaluateRejectsWrongEnvironment(t *testing.T) {
 // TestEvaluateRejectsWrongNetwork covers the B4 wrong network case.
 func TestEvaluateRejectsWrongNetwork(t *testing.T) {
 	t.Parallel()
-	repo := newSyntheticRepository(t, syntheticOptions{network: "ardents-h3-test-1"})
+	repo := newSyntheticRepository(t, syntheticOptions{network: "ardents-h3-test-1", rootNetwork: "ardents-other"})
 	store := newMemoryStoreForTest()
-	local := defaultLocalEnvironment(time.Now().UTC())
+	local := defaultLocalEnvironment(testRefTime)
 	local.Network = "ardents-other"
 	decision := evaluateWithRepo(t, repo, store, local)
 	if decision.Outcome != outcomeReleaseIncompatible {
@@ -202,7 +220,7 @@ func TestEvaluateRejectsWrongArtifactDigest(t *testing.T) {
 	repo := newSyntheticRepository(t, syntheticOptions{})
 	repo.artifact[0] ^= 0x01
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -215,7 +233,7 @@ func TestEvaluateRejectsWrongArtifactLength(t *testing.T) {
 	repo := newSyntheticRepository(t, syntheticOptions{artifactLength: 256})
 	repo.artifact = repo.artifact[:128]
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -227,7 +245,7 @@ func TestEvaluateRejectsPathTraversal(t *testing.T) {
 	t.Parallel()
 	repo := newSyntheticRepository(t, syntheticOptions{targetPath: "../escape"})
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid && decision.Outcome != outcomeReleaseIncompatible {
 		t.Fatalf("outcome = %s, want invalid or incompatible", decision.Outcome)
 	}
@@ -239,7 +257,7 @@ func TestEvaluateIsolatesPathFromCache(t *testing.T) {
 	t.Parallel()
 	repo := newSyntheticRepository(t, syntheticOptions{targetPath: "ardents\\windows-amd64"})
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid && decision.Outcome != outcomeReleaseIncompatible {
 		t.Fatalf("outcome = %s, want invalid or incompatible", decision.Outcome)
 	}
@@ -256,7 +274,7 @@ func TestEvaluateNoNetworkFallback(t *testing.T) {
 		"https://release.invalid/metadata/1.snapshot.json": repo.files["https://release.invalid/metadata/1.snapshot.json"],
 	}
 	store := newMemoryStoreForTest()
-	decision := evaluateWithStore(t, repo, store, time.Now().UTC())
+	decision := evaluateWithStore(t, repo, store, testRefTime)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
@@ -269,13 +287,13 @@ func TestEvaluateNoUpdateWhenUnchanged(t *testing.T) {
 	t.Parallel()
 	repo := newSyntheticRepository(t, syntheticOptions{})
 	store := newMemoryStoreForTest()
-	first := evaluateWithStore(t, repo, store, time.Now().UTC())
+	first := evaluateWithStore(t, repo, store, testRefTime)
 	if first.Outcome != outcomeReleaseAccepted {
 		t.Fatalf("first outcome = %s, want %s", first.Outcome, outcomeReleaseAccepted)
 	}
-	second := evaluateWithStore(t, repo, store, time.Now().UTC())
-	if second.Outcome != outcomeNoUpdate && second.Outcome != outcomeReleaseAccepted {
-		t.Fatalf("second outcome = %s, want no-update or accepted", second.Outcome)
+	second := evaluateWithStore(t, repo, store, testRefTime)
+	if second.Outcome != outcomeNoUpdate {
+		t.Fatalf("second outcome = %s, want %s", second.Outcome, outcomeNoUpdate)
 	}
 }
 
@@ -310,18 +328,12 @@ func newMemoryStoreForTest() *memoryStore {
 // defaultLocalEnvironment returns the satisfied local binding for a
 // normal accepted release.
 func defaultLocalEnvironment(refTime time.Time) LocalEnvironment {
-	overlappedSince := refTime.Add(-protocolOverlapWindow - 24*time.Hour)
 	return LocalEnvironment{
-		Environment:               "h3-test",
-		Network:                   "ardents-h3-test-1",
-		Platform:                  "windows-amd64",
-		Architecture:              "amd64",
-		RefTime:                   refTime,
-		ProtocolOverlappedSince:   overlappedSince,
-		CapacityReady:             true,
-		DrainReady:                true,
-		BuildSafetyNoNewWorkAfter: refTime.Add(30 * 24 * time.Hour),
-		BuildSafetyTerminateAfter: refTime.Add(180 * 24 * time.Hour),
+		Environment:  "h3-test",
+		Network:      "ardents-h3-test-1",
+		Platform:     "windows-amd64",
+		Architecture: "amd64",
+		RefTime:      refTime,
 	}
 }
 

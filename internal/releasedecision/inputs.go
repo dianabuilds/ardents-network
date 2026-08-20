@@ -51,38 +51,11 @@ type LocalEnvironment struct {
 	// every expiry check. The package never calls go-tuf's UnsafeSetRefTime
 	// and never reads the wall clock after evaluation starts.
 	RefTime time.Time
-	// ProtocolOverlappedSince is the moment the current protocol generation
-	// entered overlap-supported. An ordinary transition to required needs at
-	// least 90 days since this moment.
-	ProtocolOverlappedSince time.Time
-	// CapacityReady is true when every Role Domain plus the required
-	// control/discovery role has qualified current-generation capacity.
-	CapacityReady bool
-	// DrainReady is true when the bounded drain reserve is qualified for
-	// every required role.
-	DrainReady bool
-	// EmergencyExpiry is the moment an expiring 4-of-5 emergency
-	// transition must be ratified into ordinary metadata. The zero value
-	// means no active emergency.
-	EmergencyExpiry time.Time
-	// EmergencyReason names the accepted safety reason for the emergency
-	// transition: a credible exploitable flaw, a compromised primitive or
-	// key, or a demonstrated safety incompatibility. Empty means no
-	// active emergency.
-	EmergencyReason string
-	// BuildSafetyNoNewWorkAfter bounds the build safety state. Beyond this
-	// moment a superseded build may not accept new network work.
-	BuildSafetyNoNewWorkAfter time.Time
-	// BuildSafetyTerminateAfter is the terminal bound on the same state.
-	// Beyond this moment recovery requires new security work.
-	BuildSafetyTerminateAfter time.Time
 }
 
-// FloorSet is the durable version + digest floor for the four top-level
-// release roles. The same-version/different-digest or lower-version inputs
-// from the candidate are release-invalid; the package never lowers the
-// floor. FloorSet is the security watermark; the go-tuf cache is
-// disposable and never participates in the watermark.
+// FloorSet is the durable version + digest floor for the four top-level roles.
+// A newly published root may exist before the three executable-metadata floors;
+// once present, those three floors advance atomically and never decrease.
 type FloorSet struct {
 	// RootVersion is the active trusted root version.
 	RootVersion int64
@@ -102,33 +75,53 @@ type FloorSet struct {
 	TargetsDigest []byte
 }
 
+// targetIdentity is the authenticated, read-only identity promoted by Decision
+// and reused by the metadata descriptor so identity fields have one owner.
+type targetIdentity struct {
+	Platform             string
+	Architecture         string
+	Environment          string
+	Network              string
+	ReleaseIdentity      string
+	ReleaseVersion       int64
+	SourceRevision       string
+	BuildInputCommitment string
+	BuildIdentity        string
+	DependencyIdentity   string
+	SBOMIdentity         string
+	AttestationPolicy    string
+	Qualification        string
+	BuildState           string
+	ProtocolPhase        string
+}
+
 // Decision is the bounded result of one Evaluate call. Floors is the
-// successor floor set the package durably committed; a non-accepted
-// outcome leaves Floors unchanged on disk and FloorState reflects the
-// previously published value. Notice carries a short human-readable
-// reason string the caller may include in logs; it carries no secret and
-// is bounded to a short fixed list.
+// successor floor set the package durably committed. A rejected executable
+// may still expose a root published earlier in the required verification order.
 type Decision struct {
 	// Outcome is the bounded runtime classification.
 	Outcome Outcome
-	// Path, Length, Digest capture the accepted target identity for a
-	// release-accepted or no-update outcome; they are zero otherwise.
+	// Path, Length, Digest capture an authenticated target identity when target
+	// verification completed, including lifecycle outcomes that reject new work.
 	Path   string
 	Length int64
 	Digest []byte
-	// Identity captures the full authenticated target identity the
-	// candidate declared; the caller can render and log it directly.
-	Platform           string
-	Architecture       string
-	Environment        string
-	Network            string
-	SourceRevision     string
-	BuildIdentity      string
-	DependencyIdentity string
-	SBOMIdentity       string
-	AttestationPolicy  string
-	Qualification      string
-	ProtocolPhase      string
+	// Identity fields are the explicit authenticated caller contract.
+	Platform             string
+	Architecture         string
+	Environment          string
+	Network              string
+	ReleaseIdentity      string
+	ReleaseVersion       int64
+	SourceRevision       string
+	BuildInputCommitment string
+	BuildIdentity        string
+	DependencyIdentity   string
+	SBOMIdentity         string
+	AttestationPolicy    string
+	Qualification        string
+	BuildState           string
+	ProtocolPhase        string
 	// BuildSafety classifies the build safety machine.
 	BuildSafety Outcome
 	// Protocol classifies the protocol machine.
@@ -140,4 +133,7 @@ type Decision struct {
 	Floors FloorSet
 	// Notice is a short, stable reason string; it carries no secret.
 	Notice string
+	// CustodyNotice is always rendered with the decision. H3 threshold
+	// identities and both rebuild records remain project-controlled.
+	CustodyNotice string
 }

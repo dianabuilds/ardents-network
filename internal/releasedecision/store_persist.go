@@ -18,7 +18,7 @@ const floorDigestPrefix = "role="
 // floorGenerationName matches the canonical generation name pattern:
 // eight hex characters derived from the SHA-256 of the generation
 // state.bin. The store never invents other names.
-var floorGenerationName = regexp.MustCompile(`^[0-9a-f]{8}$`)
+var floorGenerationName = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // floorRoles is the canonical ordered list of role names in a generation.
 // The order is fixed so commit and read agree byte-for-byte.
@@ -31,7 +31,7 @@ func (store *floorStore) ReadFloors() (FloorSet, error) {
 		return FloorSet{}, err
 	}
 	pointerPath := filepath.Join(store.path, "current")
-	raw, err := readBoundedFloorFile(pointerPath, 16)
+	raw, err := readBoundedFloorFile(pointerPath, 80)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return FloorSet{}, nil
@@ -47,7 +47,7 @@ func (store *floorStore) ReadFloors() (FloorSet, error) {
 
 // CommitFloors atomically publishes the supplied floor set as a single
 // immutable generation, then points the state root at it.
-func (store *floorStore) CommitFloors(floors FloorSet) error {
+func (store *floorStore) CommitFloors(floors FloorSet, rootChain [][]byte) error {
 	if err := store.available(); err != nil {
 		return err
 	}
@@ -61,11 +61,15 @@ func (store *floorStore) CommitFloors(floors FloorSet) error {
 	if err := assertFloorAdvance(existing, floors); err != nil {
 		return err
 	}
+	archive, err := validateRootArchive(rootChain, floors)
+	if err != nil {
+		return err
+	}
 	payload, err := encodeFloorGeneration(floors)
 	if err != nil {
 		return err
 	}
-	name := floorGenerationID(payload)
+	name := floorGenerationID(payload, archive)
 	generations := filepath.Join(store.path, "generations")
 	final := filepath.Join(generations, name)
 	if existing, err := os.Stat(final); err == nil {
@@ -79,21 +83,37 @@ func (store *floorStore) CommitFloors(floors FloorSet) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("releasedecision: inspect generation: %w", err)
 	} else {
-		if err := publishFloorGeneration(generations, name, payload); err != nil {
+		if err := publishFloorGeneration(generations, name, payload, archive); err != nil {
 			return err
 		}
 	}
 	if err := writeFloorStorePointer(store.path, name); err != nil {
 		return err
 	}
-	store.committed = true
 	return nil
+}
+
+// CommitRoot publishes the next trusted root while preserving any older
+// timestamp, snapshot, and targets floors. This is a separate durable step:
+// callers must complete it before relying on the root for later verification.
+func (store *floorStore) CommitRoot(version int64, digest []byte, rootChain [][]byte) error {
+	existing, err := store.ReadFloors()
+	if err != nil {
+		return err
+	}
+	next := existing
+	next.RootVersion = version
+	next.RootDigest = append([]byte(nil), digest...)
+	return store.CommitFloors(next, rootChain)
 }
 
 // Close releases the in-process marker.
 func (store *floorStore) Close() error {
+	if store.closed {
+		return nil
+	}
 	store.closed = true
-	return nil
+	return store.releaseLease()
 }
 
 // available reports a stored error if the store has been closed.
@@ -104,19 +124,23 @@ func (store *floorStore) available() error {
 	return nil
 }
 
-// validateFloorSet rejects zero or partial floor sets.
+// validateFloorSet accepts a root-only generation because each verified root
+// must become durable before timestamp verification. Metadata floors, once
+// present, must always be complete as one atomic group.
 func validateFloorSet(floors FloorSet) error {
 	if floors.RootVersion <= 0 || len(floors.RootDigest) != 32 {
 		return errors.New("releasedecision: root floor is incomplete")
 	}
-	if floors.TimestampVersion <= 0 || len(floors.TimestampDigest) != 32 {
-		return errors.New("releasedecision: timestamp floor is incomplete")
+	emptyMetadata := floors.TimestampVersion == 0 && len(floors.TimestampDigest) == 0 &&
+		floors.SnapshotVersion == 0 && len(floors.SnapshotDigest) == 0 &&
+		floors.TargetsVersion == 0 && len(floors.TargetsDigest) == 0
+	if emptyMetadata {
+		return nil
 	}
-	if floors.SnapshotVersion <= 0 || len(floors.SnapshotDigest) != 32 {
-		return errors.New("releasedecision: snapshot floor is incomplete")
-	}
-	if floors.TargetsVersion <= 0 || len(floors.TargetsDigest) != 32 {
-		return errors.New("releasedecision: targets floor is incomplete")
+	if floors.TimestampVersion <= 0 || len(floors.TimestampDigest) != 32 ||
+		floors.SnapshotVersion <= 0 || len(floors.SnapshotDigest) != 32 ||
+		floors.TargetsVersion <= 0 || len(floors.TargetsDigest) != 32 {
+		return errors.New("releasedecision: metadata floors are incomplete")
 	}
 	return nil
 }

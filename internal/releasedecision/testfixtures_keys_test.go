@@ -44,10 +44,17 @@ var signSyntheticOnce sync.Mutex
 // because the underlying sigstore signer holds a private-state
 // counter and is not safe to call concurrently.
 func signSyntheticMetadata(t *testing.T, meta signable, keys []syntheticKey) {
+	signSyntheticMetadataCount(t, meta, keys, len(keys))
+}
+
+func signSyntheticMetadataCount(t *testing.T, meta signable, keys []syntheticKey, count int) {
 	t.Helper()
 	signSyntheticOnce.Lock()
 	defer signSyntheticOnce.Unlock()
-	for _, key := range keys {
+	if count > len(keys) {
+		count = len(keys)
+	}
+	for _, key := range keys[:count] {
 		if _, err := meta.Sign(key.signer); err != nil {
 			t.Fatal(err)
 		}

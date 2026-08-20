@@ -1,0 +1,10 @@
+{
+  "artifact_sha256": "a52b68413e0cd723547790c7ac161ece935d6459377442644b18031c3dc27d0a",
+  "build_safety": "release-accepted",
+  "outcome": "release-accepted",
+  "protocol": "release-accepted",
+  "ref_time": "2030-01-02T03:04:05Z",
+  "root_version": 1,
+  "schema": "ardents-r049-public-vector-v1",
+  "target_path": "ardents/windows-amd64/application"
+}

@@ -2,6 +2,7 @@ package releasedecision
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 )
@@ -29,15 +30,17 @@ func checkRootRotation(chain []rootPublication, durable FloorSet) (rootRotationR
 	if len(chain) == 0 {
 		return rootRotationResult{}, errors.New("root chain is empty")
 	}
-	if len(chain) > int(maximumRootRotations) {
+	if len(chain) > int(maximumRootRotations)+1 {
 		return rootRotationResult{}, fmt.Errorf("root chain exceeds the rotation bound of %d", maximumRootRotations)
 	}
 	first := chain[0]
-	if first.Version != 1 {
+	if durable.RootVersion == 0 && first.Version != 1 {
 		return rootRotationResult{}, fmt.Errorf("root chain does not start at version 1, got %d", first.Version)
 	}
-	if durable.RootVersion != 0 && first.Version < durable.RootVersion {
-		return rootRotationResult{}, errors.New("root chain is older than the durable floor")
+	if durable.RootVersion != 0 {
+		if first.Version != durable.RootVersion || !bytes.Equal(first.Digest, durable.RootDigest) {
+			return rootRotationResult{conflict: first.Version == durable.RootVersion}, errors.New("initial root does not match the durable floor")
+		}
 	}
 	previousVersion := first.Version
 	previousDigest := first.Digest
@@ -71,25 +74,16 @@ func successorFloors(set *verifiedSet, rotation rootRotationResult) (FloorSet, e
 	if set == nil {
 		return FloorSet{}, errors.New("trusted set is missing")
 	}
-	rootDigest := sha256Sum(set.rootBytes)
+	rootDigest := sha256.Sum256(set.rootBytes)
 	if len(rotation.root.Digest) == 32 {
 		rootDigest = [32]byte(rotation.root.Digest)
 	}
-	timestampBytes, err := set.set.Timestamp.MarshalJSON()
-	if err != nil {
-		return FloorSet{}, fmt.Errorf("marshal timestamp: %w", err)
+	if len(set.timestampBytes) == 0 || len(set.snapshotBytes) == 0 || len(set.targetsBytes) == 0 {
+		return FloorSet{}, errors.New("verified raw metadata is incomplete")
 	}
-	snapshotBytes, err := set.set.Snapshot.MarshalJSON()
-	if err != nil {
-		return FloorSet{}, fmt.Errorf("marshal snapshot: %w", err)
-	}
-	targetsBytes, err := set.set.Targets[targetRole].MarshalJSON()
-	if err != nil {
-		return FloorSet{}, fmt.Errorf("marshal targets: %w", err)
-	}
-	timestampDigest := sha256Sum(timestampBytes)
-	snapshotDigest := sha256Sum(snapshotBytes)
-	targetsDigest := sha256Sum(targetsBytes)
+	timestampDigest := sha256.Sum256(set.timestampBytes)
+	snapshotDigest := sha256.Sum256(set.snapshotBytes)
+	targetsDigest := sha256.Sum256(set.targetsBytes)
 	return FloorSet{
 		RootVersion:      set.set.Root.Signed.Version,
 		RootDigest:       rootDigest[:],

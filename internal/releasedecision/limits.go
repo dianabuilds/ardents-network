@@ -10,6 +10,9 @@ const (
 	maximumMetadataFileBytes int64 = 1 << 20
 	// maximumMetadataBytes caps the aggregate metadata of one evaluation to 8 MiB.
 	maximumMetadataBytes int64 = 8 << 20
+	// maximumArtifactBytes bounds the in-memory offline artifact supplied to
+	// one decision. Maintained H3 executables are currently below 16 MiB.
+	maximumArtifactBytes int64 = 64 << 20
 	// maximumRoles caps the number of top-level role entries in one root.
 	maximumRoles = 32
 	// maximumKeys caps the number of keys in one root.
@@ -17,15 +20,12 @@ const (
 	// maximumSignatures caps the number of signatures on one role metadata.
 	maximumSignatures = 64
 	// maximumTargets caps the number of target descriptions in one Targets.
-	maximumTargets = 1024
+	maximumTargets = 512
 	// maximumFetches caps the number of fetches per evaluation.
 	maximumFetches = 32
 	// maximumRootRotations caps the number of consecutive root versions per
 	// evaluation.
 	maximumRootRotations int64 = 16
-	// maximumDelegations forces delegation depth 0. Stage 7 has one top-level
-	// release role; delegated targets are not needed and may not be enabled.
-	maximumDelegations = 0
 	// totalTopLevelKeys is the number of top-level release role keys. The
 	// Stage 7 H3 test profile exercises the 3-of-5 ordinary and 4-of-5
 	// emergency threshold mechanics on this exact count.
@@ -33,6 +33,9 @@ const (
 	// ordinaryThreshold is the accepted ordinary protocol transition
 	// threshold: 3-of-5 of the top-level release keys.
 	ordinaryThreshold = 3
+	// emergencyThreshold is the only threshold allowed to shorten protocol
+	// overlap or bypass capacity readiness.
+	emergencyThreshold = 4
 	// protocolOverlapWindow is the minimum overlap period an ordinary
 	// protocol generation must satisfy before it may become required.
 	protocolOverlapWindow = 90 * 24 * time.Hour
