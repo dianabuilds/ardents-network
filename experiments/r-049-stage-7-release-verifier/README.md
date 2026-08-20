@@ -127,12 +127,14 @@ raising `x/crypto`, `x/sys`, and `x/term` to `v0.52.0`, `v0.45.0`, and
 `govulncheck` found no symbol or imported-package vulnerability. Its sole
 module-only finding was unimported `x/crypto/openpgp`.
 
-O1 is therefore proposed for Product Owner acceptance under the exact profile
-in `profile.go`. The experiment does not authorize root `go.mod` or maintained
-Stage 7 code changes. Because candidate cache is disabled, the maintained
+The Product Owner accepted O1 for S7.1 on 2026-08-20 under the exact profile in
+`profile.go`. The experiment alone does not authorize unrelated root `go.mod` or
+maintained code changes; the accepted S7.0 start record authorizes integration
+only with the owning package, tests, caller, and package-map entry. Because
+candidate cache is disabled, the maintained
 Release Decision Module must independently compare durable `version + digest`
 floors for root/timestamp/snapshot/top-level targets and publish the complete
 verified root chain plus successor floors before `release-accepted`; cache is
-never a watermark. R-054 owns that serialization. R-049 remains `review`, and
-S7.1 stays closed until the joint decision and the Stage 7 entry gate are
-recorded.
+never a watermark. R-054 owns that serialization. R-049 is `decided`; S7.1
+integration must repeat the pinned source, test, conformance, license, no-cgo,
+resource, and reachable-advisory checks before handoff.

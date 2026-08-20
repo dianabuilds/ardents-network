@@ -1,8 +1,9 @@
 # Stage 7 lifecycle specification
 
-Status: **review; normative only after R-048 and this document are explicitly
-accepted. Exact serialization, technology candidates, host images, and numeric
-resource profile remain S7.0 decisions R-049–R-054.**
+Status: **accepted and normative for Stage 7 development on 2026-08-20.** Exact
+serialization, technology profiles, Installed/Portable and desktop integration,
+and numeric resources are fixed by decided R-049–R-054/R-056 and ADR-0015,
+ADR-0016, and ADR-0021. Per-run host/artifact identities remain manifest inputs.
 
 This specification defines shared behavior for Ubuntu and Windows. `MUST`,
 `MUST NOT`, `REQUIRED`, `SHOULD`, and `MAY` are normative after acceptance.
@@ -11,17 +12,17 @@ weaken, or omit a shared state or outcome.
 
 ## 1. Environment and release identity
 
-Every installable artifact and metadata root belongs to exactly one environment:
+Every deployable artifact and metadata root belongs to exactly one environment:
 
 - `development` — local development only;
 - `h3-test` — project-controlled Closed Test Network; or
 - `public` — future H4 identity, unavailable in Stage 7.
 
-An installation MUST have one immutable environment marker, network identity,
+An Endpoint deployment MUST have one immutable environment marker, network identity,
 and initial trusted release root. Roots, release floors, Authority state,
 Network State, caches, and evidence MUST NOT be imported or merged across
-environments. Reinstalling with another environment requires a separately owned
-installation root or explicit destructive removal of the old one; it is not an
+environments. Deploying another environment requires a separately owned
+Endpoint state root or explicit destructive removal of the old one; it is not an
 update.
 
 The H3 release profile MUST authenticate at least:
@@ -29,7 +30,7 @@ The H3 release profile MUST authenticate at least:
 | Field | Rule |
 |---|---|
 | `schema_version` and profile identity | Exact supported value; unknown critical semantics reject |
-| environment and network identity | Exact installed values; no cross-environment recovery |
+| environment and network identity | Exact deployed values; no cross-environment recovery |
 | release/build identity and version | Canonical, non-empty, monotonic policy inputs; display version is not authority |
 | target platform | Exact frozen OS family, architecture, and payload-layout compatibility |
 | target length and digest | Verified before staging or execution; source filename is not identity |
@@ -64,9 +65,9 @@ One update operation has exactly one owner-selected mode:
 | `offline-import` | Owner-supplied local complete artifact set | Reject incomplete/untrusted bytes; no network fallback | Local media/path and operator may observe artifact choice |
 
 Metadata lookup MUST carry no account, installation ID, Service/Target/Name
-list, rollout cohort, `from-version`, or exact installed history. Distribution
+list, rollout cohort, `from-version`, or exact deployed history. Distribution
 bytes MUST be verified identically in every mode. Selecting a mode never grants
-install permission; local install policy remains separate.
+deployment permission; local lifecycle policy remains separate.
 
 If Release Safety is expired or the build is revoked, Ardents MUST NOT open a
 new Ardents Service Route to repair itself. Only a preconfigured external privacy
@@ -91,8 +92,8 @@ a revoked build starts no new network work.
 
 ### 3.1 Trusted release-root transition
 
-The installed root version is a non-decreasing security floor. An automatic
-check MUST fetch and validate consecutive root versions from the installed root
+The active root version is a non-decreasing security floor. An automatic
+check MUST fetch and validate consecutive root versions from the active root
 to the newest available version, within R-049's frozen count and byte bounds.
 Each next root MUST be signed by the current root threshold and its own declared
 root threshold, preserve the exact environment/network identity, and define
@@ -136,7 +137,7 @@ the affected capability remains unavailable pending an ordinary current policy.
 The accepted decision for one local target is exactly one of:
 
 - `release-accepted` — artifact may be staged under local policy;
-- `no-update` — installed accepted target is current;
+- `no-update` — active accepted target is current;
 - `update-required` — current build/protocol cannot start new work;
 - `release-expired` — freshness cannot be established;
 - `release-conflict` — authenticated inputs disagree;
@@ -148,20 +149,23 @@ The accepted decision for one local target is exactly one of:
 
 These runtime outcomes are not verifier `invalid`.
 
-## 4. Installed state ownership
+## 4. Deployment state ownership
 
-The installed layout has disjoint owners. Exact paths and ACL/mode rules are
-frozen by R-050/R-053 per platform.
+Program artifacts and protected Endpoint state have different owners. Exact
+Installed paths, Portable artifact contents, state-root selection/locking, and
+ACL/mode rules are frozen by R-050/R-053 per platform.
 
-| State class | Owner | Update/repair/uninstall rule |
+| State class | Owner | Update/repair/removal rule |
 |---|---|---|
-| immutable environment and initial release roots | Install Lifecycle | Package may add an installation; payload update cannot rewrite roots implicitly |
-| stable bootstrap and platform registration | Install Lifecycle | Changed only by an authenticated platform repair/update path with explicit identity |
+| Installed package and registration | Install Lifecycle | Owns only enumerated package objects; repair/update/uninstall cannot rewrite protected state implicitly |
+| Portable executable and unavoidable declared companions | Endpoint Owner | Authenticated release artifact copied, run, replaced only while stopped, or deleted directly; no separate lifecycle Adapter or implicit system object |
+| immutable environment and initial release roots | Owning Endpoint Modules | First start creates/selects protected state independently of program location; program replacement or Distribution Profile change cannot rewrite/merge it implicitly |
+| Installed stable bootstrap and optional platform registration | Install Lifecycle | Changed only by an authenticated Installed repair/update path; no Portable equivalent is required |
 | immutable versioned payloads | Update Transaction | Created only after release acceptance; never mutated after staging verification |
 | activation record and transaction journal | Update Transaction | Bounded, atomic/durable, contains no Authority secret |
-| Authority Vault and authority signing watermarks | Authority Custody | Preserved by repair/update/uninstall; purge only by separate confirmed action |
-| Endpoint config, Local Grants, runtime Instance Keys/Credentials | Owning Endpoint Modules | Preserved by repair; never derived from Bundle; policy decides uninstall retention |
-| release/epoch/Namespace/freshness/generation/rollback floors | Owning security Modules | Non-decreasing across update/rollback/repair; normal uninstall retains required floors |
+| Authority Vault and authority signing watermarks | Authority Custody | Preserved by repair/update/removal; purge only by separate confirmed action |
+| Endpoint config, Local Grants, runtime Instance Keys/Credentials | Owning Endpoint Modules | Preserved by repair; never derived from Bundle; policy decides removal retention |
+| release/epoch/Namespace/freshness/generation/rollback floors | Owning security Modules | Non-decreasing across update/rollback/repair; normal removal retains required floors |
 | authenticated disposable caches | Owning domain Modules | May be discarded and rebuilt; cannot become a watermark source |
 | ephemeral routes/connections/sessions/process handles | Runtime owner | Never survive process restart or update |
 | diagnostics and evidence spool | Diagnostics/evidence owner | Finite, grant-scoped, secret-free export; removed per explicit retention policy |
@@ -172,6 +176,14 @@ unexpected mount/volume transitions, path traversal, device files, hard-link
 confusion, or insecure ownership/permissions MUST fail closed.
 
 ## 5. Update transaction
+
+This managed transaction applies to Installed. Portable has no bootstrap or
+activation Adapter: it follows the authenticated stopped-replacement path in
+Section 6. A trusted existing verifier MUST authenticate the candidate and the
+Owner MUST recheck its exact digest after replacement but before execution. The
+authenticated Portable executable then MUST enforce the same release floors,
+state compatibility, copy-on-write state migration, self-test, Authority
+preservation, and safe previous-build rules before new network work.
 
 ### 5.1 States
 
@@ -230,7 +242,7 @@ returns `activation-unsupported`; it never degrades to in-place overwrite.
 
 ### 5.4 Contributor drain and rejoin
 
-For a Contributor installation, `stop-new-work` rejects new assignments for
+For a Contributor deployment, `stop-new-work` rejects new assignments for
 every active role before process replacement. Each role drains only until the
 earliest local, authenticated transition, credential, assignment, epoch, and
 Work Safety Lease deadline. Update commit does not revive old assignments,
@@ -255,7 +267,7 @@ authority watermark.
 
 Rollback is allowed only to a retained payload that is:
 
-- authenticated by the installed release roots;
+- authenticated by the active release roots;
 - exact-digest verified;
 - schema-compatible with the not-yet-committed mutable state;
 - non-revoked and permitted by current build/protocol policy; and
@@ -268,9 +280,9 @@ If neither forward start nor safe rollback works, state is `repair-required`.
 Normal networking remains stopped. Inspection, offline/direct repair under
 explicit mode, Authority export, and bounded diagnostics remain available.
 
-## 6. Install, repair, uninstall, and purge
+## 6. Deploy, repair, remove, and purge
 
-### Install
+### Installed deployment
 
 Installation verifies platform package integrity plus embedded H3 release/root
 identity, creates only enumerated owned roots, applies owner-only ACL/modes,
@@ -283,22 +295,53 @@ explicit isolation helper selected by R-052. Elevated code MUST NOT receive an
 Authority Vault, Bundle secret, Local Grant, Service Instance Key, or
 Application Data.
 
+### Portable delivery
+
+Portable is the authenticated platform executable plus only unavoidable
+authenticated non-secret static configuration templates/resources. Mutable
+configuration remains protected Endpoint state outside the artifact. There is no Portable installer, stable
+bootstrap, platform lifecycle Adapter, or implicit package, service, startup,
+URI, browser/native-host, proxy, DNS, route, VPN, or machine-wide registration.
+The Owner copies it to a chosen path and runs it directly without elevation.
+
+The Owner or an already trusted verifier MUST authenticate the exact executable
+digest before first execution and after copying/replacement. A raw executable
+cannot authenticate itself after untrusted bytes have started; executing an
+unchecked Portable artifact is outside the Ardents security/privacy claim.
+
+First start creates or selects protected Endpoint state outside the program
+artifact. Repair is trusted re-verification or re-acquisition of the artifact.
+Update is an authenticated replacement while the Endpoint is stopped; restoring an older
+artifact remains subject to release/rollback floors before network work. Moving
+or deleting the executable never implies moving, merging, or deleting protected
+state. Optional per-user URI/browser integration, if selected by R-056, is a
+separate explicit and reversible action rather than part of Portable delivery.
+
+Portable MUST expose the same direct-binary, Client/Publisher, Application
+Interface, resource, state-compatibility, and security/privacy-claim behavior as
+Installed. It need not reproduce package-managed install, automatic activation,
+rollback, repair, or uninstall convenience.
+
 ### Repair
 
-Repair re-verifies/replaces immutable install artifacts and restores platform
-registration. It preserves environment roots, Vault, configuration, Grants,
+Installed repair re-verifies/replaces immutable package artifacts and restores
+only declared Installed registration. Portable repair is stopped artifact
+replacement and owns no registration. Both preserve environment roots, Vault,
+configuration, Grants,
 credentials, and every non-decreasing floor unless a specific item is proven
 corrupt and the owner contract says to lock rather than overwrite it. Repair
-never treats an old package as authorization to lower state.
+never treats an old package/archive as authorization to lower state.
 
-### Uninstall
+### Remove
 
-With an empty Authority Vault, normal uninstall removes program/runtime state
-and retains only state explicitly required to prevent unsafe reinstall rollback.
-With a non-empty Vault, uninstall MUST either preserve Vault plus required floors
-in place or block until an Owner-chosen Authority Recovery Bundle is exported
-and test-verified. It MUST NOT invent a passphrase, destination, cloud backup, or
-help-desk key.
+Installed uninstall removes only its owned package/runtime/registration state
+and retains state required to prevent unsafe rollback. Portable program removal
+is direct Owner deletion of the stopped executable and declared companions; it
+does not invoke an Ardents lifecycle and never authorizes protected-state
+deletion. A separate supported protected-state removal MUST preserve a non-empty
+Vault plus required floors in place or block until an Owner-chosen Authority
+Recovery Bundle is exported and test-verified. It MUST NOT invent a passphrase,
+destination, cloud backup, or help-desk key.
 
 ### Destructive purge
 
@@ -317,6 +360,14 @@ authority-owned generation/revision commitments, and signing watermarks. It
 MUST NOT contain Local Grants, runtime Service Instance Keys, session/bearer
 state, Route state, Application Data, plaintext Name/Target labels in filenames,
 or an automatically chosen recovery destination.
+
+The active exact R-053 O2 candidate is frozen in the
+[Authority Custody specification](stage-7-authority-custody-spec.md): separately
+purposed/passworded canonical Vault and Bundle envelopes, fixed
+Argon2id/AES-256-GCM profile, encrypted-only atomic persistence, and no DPAPI,
+Secret Service, automatic unlock, or platform-account recovery assumption. The
+Product Owner accepted the profile and explicit native-host qualification
+deferrals in ADR-0021; scheduled development evidence remains a slice gate.
 
 States:
 
@@ -347,22 +398,26 @@ launching | os-bound | channel-bound -> denied
 active -> expired
 ```
 
-The broker creates one unpredictable start identity before launch and binds:
+For the active R-051 O2 candidate, the broker creates one unpredictable start
+identity before launch and binds:
 
 - exact executable/launch policy where declared;
 - OS token/UID/SID or sandbox identity and session;
 - complete non-breakaway process-tree owner;
-- exact local IPC endpoint or inherited handle;
+- exact private inherited channel;
 - parent Local Grant and operations;
 - Isolation Context and resource parent;
 - broker/Endpoint start identity; and
 - finite deadline.
 
 PID, UID/SID, desktop user, pipe/socket path, loopback port, process image, or
-copyable capability alone is insufficient. The platform Adapter MUST combine
-the accepted facts from R-051 and fail closed if any fact cannot be obtained or
-changes. A failed Windows impersonation or Linux peer-credential query MUST NOT
-continue under broker privilege.
+copyable capability alone is insufficient. Named owner-scoped endpoints remain
+generic/coarse only. The platform Adapter MUST combine the accepted facts from
+R-051 and fail closed if any fact cannot be obtained or changes. A failed
+Windows impersonation or Linux credential/process/container query MUST NOT
+continue under broker privilege. The exact active candidate and unresolved
+Windows Go-surface constraint are frozen in the
+[Application Principal specification](stage-7-application-principal-spec.md).
 
 A session capability MAY protect framing but works only on the already bound
 channel. It is one-start/session scoped, replay-protected, non-exportable by the
@@ -373,6 +428,27 @@ Connection, per-Service Administration, and Authority Custody grants remain
 disjoint. Revocation denies new work and invalidates descendants. Custody/admin
 closes immediately; data closes immediately unless finite drain was explicitly
 selected first.
+
+### Direct binary Adapter
+
+Both Distribution Profiles MUST expose the same supported direct-binary path to
+the Application Broker and Connection Interface with no browser, extension, URI
+registration, daemon, or mandatory SDK. It accepts only explicit Ardents
+destination, operation, Isolation Context, deadline, and declared stream/
+configuration input; uses the same Local Grant and resource rules; and returns
+the same bounded connection/result classes as any external Application. When
+the command Adapter and Broker boundary are co-resident, the fresh invocation
+is class `direct-invocation` with claim `none`; it does not invent a local peer
+or malicious-sibling claim. Any external Broker hop must instead meet the
+generic or launcher-bound R-051 contract.
+
+The command Adapter owns parsing, bounded input/output/stream adaptation, result
+presentation, cancellation, and exit translation only. It MUST NOT reimplement
+or bypass release trust, destination resolution, Broker authorization, Route,
+retry, update, or isolation behavior. The exact `connect`/`accept` grammar,
+stdio half-close, result schema, exit mapping, and browser handoff are frozen for
+platform falsification in the
+[Application Adapter specification](stage-7-application-adapter-spec.md).
 
 ### Generic profile
 
@@ -447,20 +523,29 @@ Candidate runtime outcomes are separate from verifier `pass|fail|invalid`.
 
 ## 11. Limits to freeze in S7.0
 
-R-049–R-054 MUST freeze before S7.1:
+R-049–R-054 and R-056 MUST freeze before S7.1:
 
 - metadata/file count and byte limits, signature/role/delegation depth, target
   size, update-start time and expiry behavior;
 - source attempts, retries, timeouts, bandwidth, staging and rollback disk/inode
   reserve, retained payload count, transaction journal entries;
 - drain and terminal deadlines, self-test duration, restart recovery attempts;
-- install/state root entries, path lengths, ACL/mode and volume/filesystem rules;
+- Installed program/state root entries and registration; Portable executable
+  and unavoidable companion count/size, stopped replacement, state-root lock,
+  path lengths, ACL/mode, and filesystem rules;
 - Vault/Bundle size, KDF/encryption profile, export/test/reconcile deadlines,
   password attempts, and memory handling;
 - IPC frame/session counts, Applications, processes/helpers, handles/FDs,
   goroutines, queues, timers, CPU, memory, and storage;
 - isolation probe destinations/ports/protocols, process-depth/count, observation
-  windows, restart cycles, and cleanup deadlines; and
+  windows, restart cycles, and cleanup deadlines;
+- exact per-platform URI objects/quoting, default-browser identity,
+  loopback/origin behavior, ordinary Internet/VPN coexistence, registration
+  cleanup, unsupported isolated-browser result, explicit limitation, and no-
+  fallback observations from the frozen Adapter contract;
+- R-054 numeric parents used by the frozen direct-binary destination/operation,
+  output/exit, byte-stream, cancellation, deadline, HTTP, and resource contract;
+  and
 - evidence schema, paths, hashes, clocks, sequence, mutation cases, campaign
   identity, episode count, and verdict predicates.
 

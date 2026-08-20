@@ -11,7 +11,7 @@ export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
-.PHONY: architecture build check e2e format format-check lab-test live mod-check quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture build check e2e format format-check lab-test live mod-check prototype-r053 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 ALL_PACKAGES := $(shell go list ./cmd/... ./internal/...)
 LAB_PACKAGES := $(shell go list ./cmd/carrier-lab ./cmd/named-site-lab ./internal/lab/...)
@@ -66,6 +66,9 @@ quick-check:
 
 check:
 	$(MAKE) --output-sync=target -j 4 $(CHECK_TARGETS)
+
+prototype-r053:
+	go run ./experiments/r-053-stage-7-authority-recovery/profile.go ./experiments/r-053-stage-7-authority-recovery/main.go
 
 tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1

@@ -25,11 +25,22 @@ required by any other endpoint.
 _Avoid_: Network administrator, Ardents operator, central approver
 
 **Endpoint**:
-One installed Ardents runtime and protected local-state boundary controlled by
-an Endpoint Owner. It scopes Local Grants, Entry Sets, Capability Readiness,
+One deployed Ardents runtime and protected local-state boundary controlled by an
+Endpoint Owner. It scopes Local Grants, Entry Sets, Capability Readiness,
 resource accounting, and lifecycle state even when several helper processes are
 used. It is not a Person, Device identity, User identity, Service, or Node.
 _Avoid_: User account, machine identity, infrastructure peer
+
+**Distribution Profile**:
+The supported delivery shape of one Endpoint release: Installed wraps the
+platform executable in host package lifecycle, while Portable is that executable
+plus only unavoidable authenticated non-secret static configuration templates/
+resources, copied and run from an
+Owner-chosen path without implicit system integration. When the exact
+authenticated executable is run, both expose the same Endpoint capabilities and
+claims; pre-execution custody and packaging conveniences differ, and neither
+shape makes protected Endpoint state portable.
+_Avoid_: Edition, feature tier, portable identity, weaker client
 
 **Client**:
 An activated Endpoint capability that initiates Service Connections for local
@@ -350,7 +361,7 @@ quarantined locally by each Endpoint that contacts it.
 _Avoid_: Trusted bootstrap, private resolver, anonymous download
 
 **Direct Source Exposure Set**:
-The bounded installation-local set of authenticated Node identities and known
+The bounded Endpoint-local set of authenticated Node identities and known
 families actually contacted as Direct-Origin Sources. It is never uploaded or
 reset by creating an Application or Isolation Context. Members are excluded
 from Route and Destination Resolution selection until their finite exposure
@@ -591,7 +602,7 @@ bounds, and optional authenticated time observations.
 _Avoid_: Trusted wall clock, one NTP server, exact location time
 
 **Release Safety State**:
-Expiring authenticated public metadata proving that an installed build remains
+Expiring authenticated public metadata proving that an active build remains
 recognized and not revoked, independently of where those same bytes were
 obtained. A still-valid cached state permits restart during distributor outage;
 expired or conflicting state blocks new network work explicitly.
@@ -609,7 +620,7 @@ Readiness Base and applicable credential, not merely an unexpired old stream.
 _Avoid_: Immortal session, cached trust forever, update grace without deadline
 
 **Common Readiness Base**:
-The prerequisites shared by network capabilities: authenticated installed build,
+The prerequisites shared by network capabilities: authenticated active build,
 current non-revoked Release Safety State, compatible Network Epoch, sufficient
 Time Confidence, and finite local resources. It contains no Initiator,
 Publisher, naming, or Contributor path by itself.

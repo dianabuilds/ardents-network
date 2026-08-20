@@ -1,8 +1,21 @@
-# Stage 7 install, update, principal, and isolation evidence contract
+# Stage 7 distribution, update, principal, and isolation evidence contract
 
-Status: **review behavior inventory. R-049–R-054, exact serialization, numeric
-profile, host images, technology candidates, campaign identity, and episode
-counts remain open. This document does not authorize a campaign or coding.**
+Status: **accepted Stage 7 development evidence contract. R-054 S7E1 freezes the shared
+serialization and 91-cell/392-episode reference inventory. The Product Owner
+selected Ubuntu 26.04 Docker plus the current Windows machine for development
+evidence; the campaign manifest must expose scheduled, authorization-pending,
+and environment-deferred coverage. Scheduled native results remain slice
+evidence gates. This contract and the S7.0 start record authorize maintained
+development, but not Windows installation.**
+
+R-056 O1 topology is accepted: direct binary use is first-class and browser
+integration is optional. The A–H inventory therefore includes direct-binary,
+explicit Service Link handoff, generic browser limitation, unsupported isolated-
+browser behavior, Internet/VPN non-interference, update mismatch, and cleanup.
+The exact extension-free candidate behavior is frozen in the
+[Application Adapter specification](stage-7-application-adapter-spec.md); R-056
+must still record exact platform/default-browser identities and pass its
+falsification experiment before the affected cells can run.
 
 ## 1. Verdict meaning and authority split
 
@@ -33,20 +46,32 @@ An expected runtime rejection such as `release-invalid`, `rollback-refused`,
 Candidate exit code, log text, self-test, installer report, or command summary is
 never a verdict.
 
+`pass|fail|invalid` applies only to manifest-scheduled attempts. A separate
+coverage ledger partitions the complete 392-episode reference inventory.
+`authorization-pending` and `environment-deferred` are neither verdicts nor
+successes and cannot be averaged into a `pass`. A development-partial campaign
+may inform an implementation decision but cannot be cited as complete supported-
+host qualification.
+
 ## 2. Required manifest and evidence fields
 
-R-054 freezes canonical bytes. The behavior schema MUST include at least:
+R-054 S7E1 freezes canonical bytes, roots, paths, logical cell order, clocks,
+bounds, controls, and verdict reduction. The behavior schema includes:
 
 - schema/profile/campaign/run/cell/attempt identity and source commit;
-- immutable Ubuntu/Windows image, kernel/build, filesystem/volume, CPU,
-  firmware/hypervisor, resource, package-tool, and external-tool identity;
+- immutable Ubuntu Docker image/runtime/host-kernel identity and current
+  Windows build/filesystem/hardware baseline, plus resource, package-tool, and
+  external-tool identity;
+- exact scheduled/authorization-pending/environment-deferred episode partitions,
+  coverage reasons, and any Product Owner Windows-mutation authorization;
 - environment/network/initial-root identity and project-control declaration;
 - release metadata role/key/threshold/version/expiry and target commitments;
 - artifact length/digest/source/build/dependency/SBOM/attestation/qualification
   commitments and retrieval mode/source schedule;
-- installed layout/ACL/mode/owner, activation generation, transaction state,
-  journal predecessor, staged/current/rollback payload, schema, and watermark
-  commitments;
+- Distribution Profile, exact platform executable digest, Installed layout/
+  ACL/mode/owner, Portable companion/state-root commitments, activation
+  generation, transaction state, journal predecessor, staged/current/rollback
+  payload, schema, and watermark commitments;
 - Vault/Bundle public parameters and secret commitments without secret values;
 - Local Grant, principal start, OS identity, process-tree/job/namespace,
   channel, session, Isolation Context, resource, and deadline commitments;
@@ -63,18 +88,29 @@ resource samples do not replace exact activation, packet, listener, queue, or
 escape observations. Candidate self-reported resource or network facts are
 diagnostic; controlled platform/host observers are authoritative.
 
+The
+[development-host campaign specification](stage-7-host-campaign-spec.md)
+expands the 91 rows to a stable 392-episode reference inventory: A `28`, B `30`,
+C `24`, D `40`, E `60`, F `48`, G `134`, and H `28`. Each run freezes its exact
+scheduled subset and visible deferral ledger before execution. Exact Docker,
+current-machine, authorization, candidate, and observer identities are filled
+only in the immutable pre-execution manifest.
+
 ## 3. Mandatory behavior matrix
 
-Every row is required on each applicable frozen platform. Unless stated,
-correct handling has expected verifier result `pass`. A valid artifact set with
-different behavior is `fail`; incomplete/untrustworthy artifacts are `invalid`.
+Every row remains required for complete supported-host qualification. The
+development campaign executes only its precommitted observable/authorized
+subset and records every other row as pending/deferred without weakening it.
+Unless stated, correct handling of a scheduled attempt has expected verifier
+result `pass`. A valid artifact set with different behavior is `fail`;
+incomplete/untrustworthy scheduled artifacts are `invalid`.
 
-### A — Install, environment, repair, remove
+### A — Distribution, environment, repair, remove
 
 | Cell | Scenario | Expected runtime outcome |
 |---|---|---|
-| A0 | Clean offline install from valid untrusted-channel package | Exact environment/root/platform installed; unprivileged Endpoint; no account/Authority/Service/Node/remote listener; explicit offline readiness |
-| A1 | Wrong environment/network/root/platform/architecture/package identity | `release-incompatible` or `release-invalid`; no owned state mutation |
+| A0 | Clean offline Installed deployment from valid untrusted-channel package | Exact environment/root/platform installed; unprivileged Endpoint; no account/Authority/Service/Node/remote listener; explicit offline readiness |
+| A1 | Wrong environment/network/root/platform/architecture/package or executable identity | `release-incompatible` or `release-invalid`; no owned state mutation |
 | A2 | Package signature valid but Ardents target unauthorized, or reverse | Unauthorized Ardents bytes never execute; channel-signature failure remains separate and explicit |
 | A3 | Repair valid immutable files/registration | Restore exact install artifacts while preserving Vault, config, Grants, credentials, and all monotonic floors |
 | A4 | Repair with old package or corrupt protected state | No floor rollback or silent overwrite; protected state locks or reports repair-required |
@@ -83,6 +119,10 @@ different behavior is `fail`; incomplete/untrustworthy artifacts are `invalid`.
 | A7 | Export verified Bundle then uninstall | Bundle remains only at Owner path; program/runtime removal completes; retained floors exact |
 | A8 | Explicit purge and cancellation | Preflight enumerates loss; cancellation changes nothing; confirmed purge removes owned state best-effort and reports external-copy limitation |
 | A9 | Development/H3/public state merge attempt | Denied; no cache, root, Vault, floor, Grant, or evidence crossing |
+| A10 | Compare Installed package payload with Portable release target | Exact platform executable digest is identical; trusted pre-execution verification passes; declared Portable companions are necessary, bounded, and authenticated |
+| A11 | Run the pre-verified Portable executable from an Owner-chosen path without invoking an installer | No installer/elevation; same direct-binary/runtime features and claims under the authenticated-artifact condition; no package/service/startup/URI/browser/proxy/DNS/route/VPN registration; pre-existing host state is inventoried rather than assumed absent |
+| A12 | Verify candidate, stop, replace, recheck, and later delete Portable executable | Exact authorized digest executes with compatible protected state; rollback floors still apply; deletion removes no Vault/root/floor/Grant/Endpoint state |
+| A13 | Installed and Portable processes contend for one mutable state root | Exactly one owns the state lock; the other fails explicitly without mutation or partial start |
 
 ### B — Release decision and retrieval
 
@@ -104,7 +144,10 @@ different behavior is `fail`; incomplete/untrustworthy artifacts are `invalid`.
 | B13 | Ordinary protocol `required` before/after `90 days` and capacity/drain readiness | Before either conjunct: transition blocked; after both: transition accepted without changing build safety |
 | B14 | Valid/invalid/expired `4-of-5` emergency transition | Only named safety emergency may shorten overlap/bypass capacity; cannot add executable/root; possible unavailability explicit; unratified expiry opens no unsafe work |
 
-### C — Update transaction, interruption, and resources
+### C — Installed update transaction, interruption, and resources
+
+Portable stopped replacement is A12 and remains subject to the B release-safety
+cells. It does not duplicate the Installed bootstrap/activation transaction.
 
 | Cell | Scenario | Expected runtime outcome |
 |---|---|---|
@@ -137,16 +180,21 @@ different behavior is `fail`; incomplete/untrustworthy artifacts are `invalid`.
 
 | Cell | Scenario | Expected runtime outcome |
 |---|---|---|
-| E0 | Authorized launcher-bound client/publisher/admin principal | Exact process tree/channel/grant/context/resource/deadline bound before active work |
-| E1 | Ungranted hostile same-user sibling attaches | `principal-denied`; no other context/Service/diagnostic/Authority visibility |
-| E2 | Bearer/capability copied or replayed off-channel/by sibling | Denied; capability alone grants nothing |
-| E3 | PID reuse, process replacement, channel/pipe/socket substitution | Denied; no identity based on PID/path alone |
-| E4 | Failed peer/token/impersonation/ownership query | Fail closed; broker privilege is not used for request |
-| E5 | Application/broker/Endpoint restart | Old sessions/capabilities invalid; persistent policy requires fresh principal binding |
+| E0 | Authorized native launcher-bound client/publisher/admin | R-051 exact private inherited channel, non-reusable root process handle, complete Job/cgroup tree, grant/context/resource/broker-start/deadline bound before active work |
+| E1 | Ungranted hostile same-user sibling discovers endpoint or attempts channel/handle/FD theft or duplication | `principal-denied`; no inherited-channel access and no other context/Service/diagnostic/Authority visibility |
+| E2 | Challenge/bearer/capability copied or replayed off-channel, by descendant, or after restart | Denied; capability alone grants nothing and descendants remain the same bounded principal |
+| E3 | PID reuse, process replacement, debugger/ptrace, named endpoint or channel substitution | Denied; pidfd/Windows process handle plus tree owner remain continuous; no identity based on PID/UID/SID/path/name alone |
+| E4 | Failed credential/token/session/impersonation/process-handle/Job/cgroup/membership query or unexpected inheritable object | Fail closed before resume/activation; broker privilege is not used for request |
+| E5 | Application/broker/Endpoint restart or Broker crash | Old sessions/capabilities invalid; persistent policy requires fresh principal binding; Job/cgroup tree dies and cleans within `5 s` |
 | E6 | Connection grant requests admin/custody or admin requests connection/custody | Denied by exact privilege lattice |
 | E7 | Immediate revoke and finite drain-then-revoke | New work denied; descendants invalid; custody/admin immediate close; data follows selected finite policy |
-| E8 | IPC/frame/session/process/handle/queue pressure and slow peer | Bounded `resource-denied`/backpressure; established unrelated work isolated; complete cleanup |
-| E9 | Generic indistinguishable same-user attachment | Works only in coarse trust domain and reports unqualified sibling/network status |
+| E8 | IPC/frame/session/process/thread/handle/queue pressure and slow peer | At most 64 principals, 32 processes/principal, 1,024 handles/FDs, 256 queued frames, one channel, and 64 KiB/frame; Ubuntu additionally has a hard 512-task cgroup ceiling because `pids.max` counts threads; first excess is bounded denial or fail-closed principal revocation; established unrelated work isolated; complete cleanup |
+| E9 | Direct invocation and generic indistinguishable same-user attachment | Co-resident direct binary works in both Distribution Profiles with claim `none`; named generic attachment works only in coarse trust domain and reports unqualified sibling/network status |
+| E10 | Exact `connect`/`accept` use from Installed and Portable with browser/registration absent | Same executable digest, strict destination/operation, Broker/Grant/Context, concurrent byte-exact stdio, stdin half-close, Connection Result, exit, cancellation, counts, bounds, and no-fallback behavior; stdout terminal is rejected |
+| E11 | Direct `browse` and optional OS Service-Link handoff | Direct invocation needs no registration; OS handoff needs one explicit per-user association; strict one-argument parsing/quoting preserves the exact link, rejects malformed/injected input, and grants no custody/admin/Route/update authority |
+| E12 | Default browser absent/incompatible/update-mismatched/launch-failed or isolated browser requested | Generic path is explicitly unavailable when its browser fails; isolated returns `isolation-unsupported`; direct-binary/native paths remain usable, no downgrade or public direct fallback appears |
+| E13 | Every direct-binary terminal and pre-admission class | Exactly one bounded stderr result, raw stdout only, fixed exit mapping, product-safe reason/target/counts, no topology leak, and clean close never implies peer processing |
+| E14 | Numeric-loopback browser Adapter request surface | Random OS port and context/capability are unique; exact Host/origin/method/header/count/body/lifetime rules hold; wildcard/LAN/fixed listeners, CORS, absolute/secondary proxying, unsupported redirects, and undeclared buffers fail closed |
 
 ### F — Network-isolated Application boundary
 
@@ -167,6 +215,7 @@ and inherited/duplicated-handle variants where the platform supports the action.
 | F8 | Grant revoke, broker crash, Application crash, Endpoint restart | Tree terminates within bound; policy/rules/profile/IPC/temp storage cleaned; old session unusable |
 | F9 | Unsupported Application or unavailable isolation mechanism | `isolation-unsupported`; never generic or claim-bearing success |
 | F10 | Generic profile runs same escape probes | Result remains `application-networking-unverified`; carrier result cannot be relabeled isolated |
+| F11 | Ordinary default browser versus unsupported isolated-browser request | Ordinary profile remains generic and preserves its Internet/VPN settings; isolated request starts no listener/browser, changes no registration/proxy/DNS/route/VPN state, returns `isolation-unsupported`, and never silently selects generic |
 
 ### G — Platform pairing and maintained H3 use
 
@@ -184,6 +233,7 @@ directions for the short Stage 7 matrix:
 | G5 | Restart and rebind after update/rollback | old local session invalid; new principal uses preserved policy and current security floors |
 | G6 | Generic versus isolated report | generic limitation visible; isolated claim only when both endpoint trees pass |
 | G7 | Ubuntu and Windows Contributor update during bounded role duty | Each host reports the same stop-new-work/drain/update/rejoin-or-withdraw outcome; no old assignment or handle survives |
+| G8 | Installed package versus Portable executable on each platform | Same executable digest, direct-binary/Application outcomes, resource bounds, state compatibility, and claim ceiling; only package lifecycle conveniences differ |
 
 Passing G cells is Stage 7 development evidence, not full cross-platform Route
 Qualification. The complete post-cleanup qualification scope remains S9.6.
@@ -198,9 +248,13 @@ Qualification. The complete post-cleanup qualification scope remains S9.6.
 | H3 | Manifest/evidence/verdict/private roots overlap or candidate writes verdict | `invalid` |
 | H4 | Hash/path traversal/symlink/reparse/cross-volume/cross-cell substitution | `invalid` |
 | H5 | Secret, plaintext Authority, reusable bearer, Name/Target, or private canary leaked to public evidence | `invalid` plus cleanup incident |
-| H6 | Missing process/path/socket/pipe/handle/job/namespace/rule/package/service cleanup or undeclared residue | `invalid` when observation is unreliable; `fail` when valid evidence proves candidate residue |
+| H6 | Missing process/path/profile/socket/listener/pipe/handle/job/namespace/rule/package/service/URI cleanup, any extension/native-host/proxy object, or undeclared residue | `invalid` when observation is unreliable; `fail` when valid evidence proves candidate residue |
 
 ## 4. Platform observation contract
+
+The exact Docker/current-machine sources, control cadence, coverage rules, and
+campaign phases are defined by the development-host campaign specification. An
+observer package/profile/parser substitution creates a new campaign identity.
 
 For both OSes the authoritative observer records:
 
@@ -216,9 +270,10 @@ For both OSes the authoritative observer records:
 - monotonic transaction/principal/isolation events with wall time used only to
   correlate hosts.
 
-Candidate-independent inability to observe a required fact makes the affected
-cell `invalid`; it cannot be replaced with candidate self-report. Candidate
-escape or observer interference caused by the candidate is `fail`.
+Candidate-independent inability known at coverage freeze makes the episode
+`environment-deferred`. Unexpected inability during a scheduled episode makes
+that episode `invalid`; neither can be replaced with candidate self-report.
+Candidate escape or observer interference proved by a valid observer is `fail`.
 
 ## 5. Privacy statements
 
@@ -227,6 +282,10 @@ escape or observer interference caused by the candidate is `fail`.
 | Update-source separation | Release authority from distributor and, in private-only mode, ordinary origin from a direct source | Malicious mirror/source | Current accepted metadata; exact mode; no fallback | Identical bytes decide identically; source contact inventory matches mode | Direct mode reveals origin/artifact/timing; H3 path and keys are project-controlled |
 | Local principal separation | One Application's grant/context/diagnostics/Service authority | Same-user hostile sibling | Accepted launcher/OS binding and fresh session | E1-E8 denials and bounded views | Coarse generic apps may be one trust domain; OS/Owner compromise defeats it |
 | Application network isolation | Endpoint location from Application-induced direct activity | Malicious peer/content/request or scanner | Qualified isolated profile on both complete endpoint trees | F1-F8 show no listener, packet, DNS, connect, escape, or storage crossover | Timing, behavior, content, credentials, intended peer plaintext, fingerprints, and OS compromise remain |
+
+Docker/current-machine development results do not satisfy the word `Qualified`
+in this table for facts that require native Ubuntu Desktop/kernel or pristine
+Windows state. Such cells retain their future gate and no privacy claim.
 
 ## 6. Falsification and stop conditions
 
@@ -240,6 +299,9 @@ Stage 7 evidence fails if valid evidence shows any of:
   Instance Key;
 - unsafe rollback, hidden network repair, or unavailable repair/export;
 - non-empty Vault silently erased or backup secret/destination invented;
+- Installed/Portable executable digest, runtime feature, Interface, resource,
+  state-compatibility, or claim skew; Portable implicit integration or protected-
+  state mutation on executable replacement/deletion;
 - PID/path/bearer/same-user identity accepted as a claim-bearing principal;
 - failed OS identity/impersonation check continuing under broker privilege;
 - grant privilege crossing or post-restart bearer survival;

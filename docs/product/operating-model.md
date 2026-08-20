@@ -4,14 +4,14 @@ Status: **accepted public-product target model; not the current implementation b
 
 Accepted: 2026-08-08
 
-This document closes the operational shape of Ardents from installation through
+This document closes the operational shape of Ardents from deployment through
 withdrawal. It does not select a programming language, library, cryptographic
 suite, wire encoding, or package manager. Those choices must implement this
 contract rather than redefine it.
 
 [Product scope and delivery horizons](scope.md) controls when any part of this
 model may enter implementation. Carrier Lab intentionally implements only its
-controlled Route experiment subset. Installation custody, public bootstrap,
+controlled Route experiment subset. Deployment custody, public bootstrap,
 naming governance, Bridges, updates, cross-platform qualification, independent
 control, and stable operations remain promotion gates even where their product
 decision is already accepted.
@@ -25,8 +25,10 @@ decentralization merely because the state machine runs.
 
 ```mermaid
 flowchart LR
-    A["Authenticated package"] --> B["Installed"]
+    A["Authenticated release"] --> B["Installed profile"]
+    A --> P["Portable profile"]
     B --> C["Starting"]
+    P --> C
     C --> D["Bootstrap and Time Confidence"]
     D --> E["Capability readiness"]
     E --> F["Connect, publish, or contribute"]
@@ -40,25 +42,53 @@ flowchart LR
     X --> D
 ```
 
-## 1. Installation and local state
+## 1. Deployment and local state
 
-### Installation contract
+### Distribution Profile contract
 
-- Windows 11 and Ubuntu LTS `x86-64` receive ordinary signed installation,
-  repair, upgrade, and uninstall journeys. Runtime operation is unprivileged by
-  default; elevation is limited to the operating-system installation action.
-- The default installation creates a local Endpoint, never a public User
+- Windows 11 and Ubuntu LTS `x86-64` support Installed and Portable Distribution
+  Profiles for each release. Installed wraps the exact authenticated platform
+  executable released directly as Portable. Runtime operation is unprivileged
+  in both; elevation is limited to the explicit Installed-profile package/
+  registration action.
+- Installed owns ordinary signed package installation, repair, upgrade,
+  optional explicit OS integration, and uninstall. Portable is the authenticated
+  platform executable plus only unavoidable authenticated non-secret static
+  configuration templates/resources.
+  The Owner copies, runs, stops, replaces, or deletes it from a chosen path; it
+  requires no separate installer, elevation, or implicit package, URI, browser,
+  startup, service, proxy, DNS, route, or VPN registration.
+- Both profiles expose the same Client/Publisher capabilities, Application
+  Interfaces, direct binary behavior, resource limits, protected-state
+  compatibility, and security/privacy claim ceilings when the exact authenticated
+  executable is run. Portable is not a development build or reduced feature
+  tier. Package-managed install, repair,
+  update, rollback, and removal conveniences belong only to Installed; Portable
+  uses authenticated stopped executable replacement and deletion.
+- Installed bootstrap owns pre-execution verification of its payload. Portable
+  instead requires the Owner or an already trusted verifier to authenticate the
+  exact digest before first execution and after copying/replacement. Untrusted
+  raw bytes cannot authenticate themselves after they have already executed;
+  running them is outside Ardents security/privacy claims.
+- Executable portability is not state portability. Vault, Grants, roots,
+  watermarks, Endpoint identity, and network state remain in an explicitly owned
+  protected state root and never move, merge, or become removable-media state
+  merely because a Portable executable moves.
+- A Portable profile may add per-user URI/browser integration only through an
+  explicit, reversible, separately inventoried action. Direct binary and local
+  Application Interface use remain available with no such registration.
+- The default deployment creates a local Endpoint, never a public User
   identity, account, wallet, Service, or Contributor Node. Publishing and
   contribution are separate explicit actions with separate Local Grants and
   resource limits.
-- A public qualified Contributor role in V1 uses a dedicated host/installation
+- A public qualified Contributor role in V1 uses a dedicated host/Endpoint
   with no User connection or Service publication role. A co-resident development
   Node is visibly unqualified and supplies no public capacity or independence
   evidence. Every endpoint also excludes Contributor identities and declared
   families it controls from its own Route selection.
 - The Application Interface listens only on an operating-system local IPC or
-  loopback boundary by default. Remote administration is not enabled by the
-  installer. A shared desktop user, PID, port, or copyable bearer is not enough
+  loopback boundary by default. Remote administration is not enabled by either
+  Distribution Profile. A shared desktop user, PID, port, or copyable bearer is not enough
   for a per-Application security claim: Local Grants bind to an OS-enforced or
   launcher-brokered Application Principal covering one process tree/session.
   Unmediated applications that cannot be distinguished form one local trust
@@ -69,29 +99,31 @@ flowchart LR
   Instance Key. Authority creation, import/export, reconciliation, rotation,
   and Credential issuance use a stronger Authority Custody boundary outside the
   ordinary Application Interface; no lower grant implies it.
-- Generic HTTP/SOCKS/stream or browser adapters may be installed for
+- Generic HTTP/SOCKS/stream or browser Adapters may be added for
   compatibility, but do not by themselves earn an Application-level privacy
   claim. A claim-bearing private-site/application mode uses a Network-Isolated
   Application Boundary that permits only scoped local IPC/loopback with Ardents,
   denies ordinary network ingress/listeners plus DNS/direct egress, isolates
   origin/cache/storage by Isolation Context, and fails rather than falling back
   outside Ardents.
-- The package binds the release identity, target platform, public network
-  identity, immutable trust roots, and an authenticated bootstrap fallback.
+- The Distribution Profile artifact binds the release identity, target
+  platform, public network identity, immutable trust roots, and authenticated
+  bootstrap fallback.
   Development, provisional-test, and public-network roots are distinct and
   their state cannot be merged.
 - Package mirrors, application stores, CDNs, removable media, and peer transfer
   may distribute identical bytes, but none of them defines which bytes are a
   valid Ardents release.
-- A malicious first installer can compromise its own installation and roots.
+- A malicious first installer or Portable artifact can compromise its own
+  deployment and roots.
   Ardents cannot make that fact self-detecting; independent signature and
   reproducible-build verification is the external trust boundary.
 
 ### State separation
 
-Every installation keeps seven lifecycle classes separate:
+Every Endpoint deployment keeps seven lifecycle classes separate:
 
-1. immutable package identity and trust roots;
+1. immutable release-artifact identity and trust roots;
 2. an Authority Vault containing Service and Name root material plus their
    authority-owned monotonic signing state;
 3. endpoint configuration, Local Grants, Service Instance Keys, and public
@@ -121,19 +153,20 @@ A new Service host generates a new Instance Key; no old runtime secret is
 restored. Local Grants are reissued explicitly by the Endpoint Owner or restored
 from a separate local-policy backup, never derived from a Service or Name root.
 
-Normal uninstall removes program/runtime state but retains required security
-watermarks. If the Authority Vault is non-empty, it also preserves that Vault in
-place or blocks removal until the Endpoint Owner completes and verifies an
-explicit Recovery Bundle export to a chosen destination; it never silently
-invents an encryption secret or backup location. An empty Vault may uninstall
-without that export. Erasing a non-empty Vault or rollback watermarks is a
-separate explicitly confirmed destructive purge that enumerates affected
-authority classes and states that recovery may be impossible. Deletion remains
-best effort because filesystems, snapshots, and backups may keep copies. Ardents
-performs no automatic cloud backup and has no help-desk recovery key. Lost
-Service Authority still loses that Target, and lost Name Authority follows only
-its precommitted Recovery Policy. Bundle names, diagnostics, and manifests expose
-no Name or Target in plaintext.
+Installed uninstall removes package-owned program/runtime state but retains
+required security watermarks. Deleting a Portable executable removes only that
+program artifact; it is never interpreted as permission to erase protected
+state. A supported protected-state removal preserves a non-empty Authority Vault
+in place or blocks until the Endpoint Owner completes and verifies an explicit
+Recovery Bundle export to a chosen destination; it never silently invents an
+encryption secret or backup location. Erasing a non-empty Vault or rollback
+watermarks is a separate explicitly confirmed destructive purge that enumerates
+affected authority classes and states that recovery may be impossible. Deletion
+remains best effort because filesystems, snapshots, and backups may keep copies.
+Ardents performs no automatic cloud backup and has no help-desk recovery key.
+Lost Service Authority still loses that Target, and lost Name Authority follows
+only its precommitted Recovery Policy. Bundle names, diagnostics, and manifests
+expose no Name or Target in plaintext.
 
 Disk, log, cache, and update-staging use is finite. On exhausted storage,
 Ardents preserves authority and rollback watermarks, stops accepting new work,
@@ -145,7 +178,7 @@ an unbounded disk queue.
 ### Accepted bootstrap shape
 
 The endpoint accepts an expiring, content-addressed **Network Epoch** only under
-a threshold-authenticated transition from its installed or last-known-good
+a threshold-authenticated transition from its active or last-known-good
 roots. The same bytes may arrive from the package, cache, several mirrors,
 ordinary peers, or an imported file. Sources distribute state; they do not
 define it. Incompatible threshold-valid states are never merged.
@@ -156,7 +189,7 @@ use. A globally advertised direct-origin source identity and known family are
 therefore ineligible for every Route position and Destination Resolution during
 that assignment. An ordinary carrier peer that happens to distribute bytes is
 not globally reclassified; instead the Endpoint places its authenticated
-identity/known family in a bounded, installation-local **Direct Source Exposure
+identity/known family in a bounded, Endpoint-local **Direct Source Exposure
 Set** and excludes it from every local Route/resolution selection until the
 exposure lease and all state/work derived from that contact terminate.
 
@@ -244,7 +277,7 @@ product result when the evidence is insufficient.
 ### Capability readiness
 
 Every capability first requires the **Common Readiness Base**: authenticated
-installed build, a current non-revoked **Release Safety State**, compatible
+active build, a current non-revoked **Release Safety State**, compatible
 Network Epoch, sufficient Time Confidence, and finite local resources. Release
 Safety bytes are expiring, cacheable public metadata distributable through the
 package, cache, mirror, peer, or file channels; no vendor endpoint is mandatory.
@@ -387,7 +420,7 @@ is unavailable rather than shortened or built from a forbidden overlap.
 
 ### Entry exposure and Isolation Contexts
 
-V1 has ordinary and Bridge entry regimes. An installation keeps at most one
+V1 has ordinary and Bridge entry regimes. An Endpoint keeps at most one
 small long-lived Entry Set for each activated **adjacent Role Domain × regime**:
 Initiator for client traffic, Responder for publication data, and Introduction
 for prepared Service introduction paths. Client and Publisher roles co-resident
@@ -640,7 +673,7 @@ closure adds the following rules:
 
 - startup is measured separately for each required capability; a quick
   `Target Connect Ready` result cannot hide unavailable naming or publishing;
-- installation, repair, update download, and process replacement have separate
+- deployment, repair, update download, and process replacement have separate
   measurements and do not consume or escape the existing startup clock;
 - disk, diagnostic, cache, descriptor, update-stage, and Authority Vault use
   receive finite platform budgets before a usable release;
@@ -702,11 +735,11 @@ Ongoing download has three explicit modes:
 2. **direct-allowed**: contact an ordinary source after a visible policy choice;
 3. **offline import**: verify a locally supplied complete artifact.
 
-Metadata checks and downloads carry no installation token, account, Service
+Metadata checks and downloads carry no deployment token, account, Service
 list, rollout cohort, `from-version`, or version-specific delta. A direct source
 still observes requester IP, requested platform and exact target digest/release,
 timing, repetition, and probable Ardents use and can infer download history.
-Initial installer distribution has the same honest limitation. If private
+Initial Distribution Profile delivery has the same honest limitation. If private
 download is unavailable, the User chooses direct disclosure or offline import;
 Ardents never silently changes mode.
 
@@ -761,15 +794,20 @@ build:    current -> superseded
   threshold release/epoch metadata before emergency expiry; otherwise clients
   report conflicting or expired safety state rather than guessing.
 
-### Atomic local update
+### Local update safety
 
-The local sequence is: verify and stage -> reserve rollback space -> stop new
-work -> drain within a finite owner policy -> atomically switch -> local
-self-test -> commit. Mutable state migration is copy-on-write until commit, and
-the Authority Vault, Recovery Bundle state, and signing watermarks are never
-irreversibly transformed before success. Contributor maintenance starts inside a
-bounded locally randomized owner window; no signer assigns per-Node cohorts or
-stable rollout identifiers.
+Installed uses: verify and stage -> reserve rollback space -> stop new work ->
+drain within a finite owner policy -> atomically switch -> local self-test ->
+commit. For Portable, the current trusted verifier authenticates the replacement
+digest, the Endpoint stops and drains, and the Owner replaces the file while
+stopped and rechecks that digest before execution; the authenticated new build
+then applies the same release floors, compatibility, self-test, and safe
+previous-build rules before new network work. Portable does not gain a bootstrap
+or lifecycle Adapter merely to automate file replacement. Mutable state migration is copy-on-write until
+commit in either path, and the Authority Vault, Recovery Bundle state, and
+signing watermarks are never irreversibly transformed before success.
+Contributor maintenance starts inside a bounded locally randomized owner window;
+no signer assigns per-Node cohorts or stable rollout identifiers.
 
 Rollback is permitted only to a previously authenticated, schema-compatible,
 non-revoked build and never rolls back Network Epoch, Namespace, authority, or
@@ -831,10 +869,10 @@ Observation, endpoint compromise, or identity revealed by the Application.
 | Independently hidden endpoint legs could not prove five distinct Node IDs. | Stable disjoint Role Domains make cross-leg identity overlap impossible without a hidden-set rejection oracle. |
 | A Target Link bypassed naming but still needed descriptor lookup, which could otherwise share one identity/family with an endpoint Entry. | Private Reachability Resolution uses a Destination Resolution Role restricted to the non-adjacent Rendezvous Domain and excluded from the same connection's Rendezvous; a Target Link never means direct lookup. |
 | A Service rejecting a proposed Rendezvous against its hidden Entry Set could reveal that set. | The proposed Rendezvous comes from its own domain; Service path construction never conditions an observable result on hidden cross-domain identity overlap. |
-| One Entry Set per freely creatable Isolation Context let an Application force unlimited Entry sampling. | Entry exposure is installation × adjacent Role Domain × regime scoped; co-resident client/publication roles remain domain-separated while per-context channels and all higher state remain separate. |
+| One Entry Set per freely creatable Isolation Context let an Application force unlimited Entry sampling. | Entry exposure is Endpoint × adjacent Role Domain × regime scoped; co-resident client/publication roles remain domain-separated while per-context channels and all higher state remain separate. |
 | One Bridge identity could otherwise expose several endpoint roles. | Every Bridge key has one epoch-bound adjacent Role Domain and its Invite proves that eligibility; an Invite changes only the bounded set in that domain/regime. |
 | A Node/family could switch domains while an old long-lived Entry still used it, recreating cross-domain overlap. | Assignment bounds every new duty; reassignment stops new work and quarantines identity/family until all old-domain duties terminate. Emergency may close work, never overlap domains. |
-| A directly contacted bootstrap/materialization/time source could later learn an exact destination as a resolver or Route Node. | Direct-origin source duty is incompatible with Route/Resolution eligibility, and every actually contacted authenticated identity/known family remains in a bounded installation-local exclusion set through its terminal exposure lease. External hidden common control remains an explicit limitation. |
+| A directly contacted bootstrap/materialization/time source could later learn an exact destination as a resolver or Route Node. | Direct-origin source duty is incompatible with Route/Resolution eligibility, and every actually contacted authenticated identity/known family remains in a bounded Endpoint-local exclusion set through its terminal exposure lease. External hidden common control remains an explicit limitation. |
 | One `network-ready` flag could hide missing naming, Route, publication, or qualification capability. | A Common Readiness Base is shared, then each capability adds its own role path; R-023's existing startup numbers mean Target Connect Ready only. |
 | Expiring state trusted an unchecked wall clock. | Time Confidence combines monotonic runtime, a non-decreasing watermark, authenticated epochs, and explicit failure. |
 | A partial Candidate View download was described as proof of a globally complete view, and signers could silently omit eligible Nodes. | The epoch commits a logical complete View and transparent input cutoff; clients verify indexed material only, while independent full auditors verify global inclusion and summaries. |
@@ -845,7 +883,7 @@ Observation, endpoint compromise, or identity revealed by the Application.
 | Revoking a Local Grant did not define the fate of already-open child sessions. | Revocation immediately kills custody/admin sessions and new work; data either closes immediately or follows an explicitly preselected finite drain, and no ephemeral bearer survives restart. |
 | Service Administration wording collapsed publication privilege back into permanent Service Authority custody. | Connection use, per-Service publication/configuration, and Authority Custody are three non-collapsing grants; only Custody may operate on roots or issue Credentials, and neither raw root nor Instance Key is exportable through Service Administration. |
 | A public Contributor co-resident with a User/Publisher would expose the protected endpoint and invalidate separate resource/independence evidence. | V1 public contribution uses a dedicated host and own controlled identities/families are excluded from local Routes; Client+Publisher co-residence instead requires a separately qualified combined endpoint profile. |
-| Release qualification existed without a safe installed-update lifecycle, and protocol migration was conflated with unsafe-build revocation. | Threshold executable authorization, rollback protection, atomic update, drain, and two separate protocol/build state machines now form the lifecycle. |
+| Release qualification existed without a safe update lifecycle, and protocol migration was conflated with unsafe-build revocation. | Threshold executable authorization, rollback protection, atomic Installed activation or stopped Portable replacement, drain, and two separate protocol/build state machines now form the lifecycle. |
 | An expired Release Safety State required the blocked Ardents runtime to update itself. | Repair then uses only a preconfigured external privacy proxy, an explicit direct choice, or offline import; there is no self-route or silent privacy fallback. |
 | Diagnostics could recreate a User/Service graph or cross Local Grant boundaries. | Default diagnostics are local, bounded, non-uploading, and grant-scoped to connection Application, one Service, Endpoint Owner aggregate, or Contributor role. |
 | A correct Ardents Route was treated as if it also constrained an Application's public listeners, DNS, WebRTC, external-resource, callback, or direct-socket behavior. | Carrier privacy covers only traffic submitted to Ardents. Claim-bearing private application UX requires a deny-by-default Network-Isolated Application Boundary; a generic adapter remains usable but visibly unqualified for that claim. |

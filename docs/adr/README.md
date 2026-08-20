@@ -23,15 +23,18 @@ Current decisions:
 - [0011 — Separate unit, end-to-end, and live tests](0011-separate-unit-e2e-and-live-tests.md)
 - [0012 — Select standalone WebTunnel for the H3 Camouflage Adapter](0012-select-webtunnel-for-h3-camouflage.md)
 - [0014 — Authenticate and hide Stage 6 private naming exchanges](0014-private-naming-ohttp.md)
+- [0015 — Separate release decision from versioned local activation](0015-separate-release-decision-from-local-activation.md)
+- [0016 — Bind and isolate launcher-born Application Principals](0016-bind-and-isolate-launcher-born-application-principals.md)
 - [0017 — Order root-name claims through authenticated epoch input](0017-authenticated-name-claim-ordering.md)
 - [0018 — Authorize recovery with bounded individual signatures](0018-threshold-recovery-multisignatures.md)
 - [0019 — Bound naming admission with scoped anonymous work](0019-bounded-anonymous-name-admission.md)
 - [0020 — Authenticate the current Namespace in each Network Epoch](0020-authenticate-current-namespace-materialization.md)
+- [0021 — Use password-derived Authority Custody](0021-use-password-derived-authority-custody.md)
 
 Withdrawn decisions retained for history:
 
 - [0013 — Withdraw the initial Stage 6 cryptographic suite](0013-stage-6-cryptographic-suite.md)
 
-ADR-0015 and ADR-0016 are reserved by the accepted Stage 7 preparation plan.
-New ADRs use the next unreserved four-digit number and should remain short. When a decision
-is superseded, retain the original record and link the replacement.
+ADR-0015 and ADR-0016 were reserved and accepted for Stage 7 on 2026-08-20.
+New ADRs use the next unreserved four-digit number and should remain short. When
+a decision is superseded, retain the original record and link the replacement.

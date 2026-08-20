@@ -1,7 +1,7 @@
 ---
 id: R-048
 title: What exact bounded contract and decision order makes Horizon 3 Stage 7 implementable?
-status: review
+status: decided
 owner: Product Owner
 started: 2026-08-20
 reviewed: 2026-08-20
@@ -14,20 +14,21 @@ reviewed: 2026-08-20
 Accept one bounded, implementation-ready Stage 7 documentation set without
 starting Stage 7 maintained code before Stage 6 advances. The decision fixes
 the behavior, Module seams, research order, evidence ownership, falsification
-criteria, and Product Owner gates for installation, release verification,
+criteria, and Product Owner gates for deployment, release verification,
 update/rollback, Authority recovery, local Application attachment, and
 Ubuntu/Windows isolation.
 
-This record does not select a package format, updater library, vault mechanism,
-Windows sandbox, Linux sandbox, local IPC Adapter, or executable layout. Those
-choices require R-049 through R-054 and, where consequential, an accepted ADR.
+This record does not select an Installed or Portable format, updater library, vault mechanism,
+Windows sandbox, Linux sandbox, local IPC Adapter, desktop/browser Adapter, or
+executable layout. Those choices require R-049 through R-054 plus R-056 and,
+where consequential, an accepted ADR.
 
 ## Current contract
 
 The following are already authoritative:
 
 - [H3 Stage 7](../../development/horizon-3-technical-design.md#stage-7--install-update-platforms-and-application-isolation)
-  requires Ubuntu and Windows install, repair, update, rollback, recovery,
+  requires Ubuntu and Windows deploy, repair, update, rollback, recovery,
   principal rebinding, generic attachment, and network-isolated attachment;
 - [J-00](../../product/journeys.md#j-00--install-repair-and-remove-ardents),
   [J-04](../../product/journeys.md#j-04--integrate-an-application), and
@@ -48,6 +49,26 @@ Stage 6 has not advanced. Stage 7 research and documentation may be prepared in
 parallel, but no Stage 7 package, command, dependency, platform privilege, or
 maintained Implementation is authorized by this record.
 
+The Product Owner accepted R-056 O1 and the binary-first path on 2026-08-20.
+Installed and Portable are relatively equivalent Distribution Profiles: the
+Installed package wraps the same authenticated platform executable released
+directly as Portable. Portable adds no installer, bootstrap, or lifecycle
+Adapter; neither a browser nor installation is required to use the supported
+binary/Application Interface. R-050 must still freeze exact Installed and
+Portable artifact contracts; R-056 has written the exact direct-binary/browser
+experiment candidate and must still falsify it on Windows/Ubuntu before joint
+documentation acceptance. No Adapter
+may change system DNS/routes/default proxy/browser/VPN policy or mislabel an
+ordinary browser as network-isolated.
+
+R-051 has advanced O2 to an exact, still-unaccepted
+[Application Principal candidate](../../development/stage-7-application-principal-spec.md):
+private inherited channel plus stable root process handle and complete cgroup-v2
+or Job tree; named endpoints remain generic, and co-resident direct binary has
+claim `none`. Development-host evidence, explicit native qualification
+deferrals, and the ADR-0016 disposition of the Windows Job-limit Go
+`unsafe.Pointer` bridge remain open.
+
 The active team is one Product Owner and Codex. H3 can exercise threshold and
 multi-builder mechanics with visibly project-controlled test identities. It
 cannot claim independent custodians, builders, package distributors, operators,
@@ -58,8 +79,8 @@ auditors, or security reviewers. Those remain Horizon 4 gates.
 - **H1:** Stage 7 is feasible as seven ordered vertical slices behind six deep
   Modules: Release Decision, Update Transaction, Install Lifecycle, Authority
   Custody, Application Broker, and Application Isolation. Each Module has a
-  narrow Interface, and Ubuntu/Windows differences stay in real platform
-  Adapters.
+  narrow Interface; Ubuntu/Windows Installed and isolation differences stay in
+  real Adapters, while Portable remains a direct release artifact.
 - **H2:** one platform-specific installer/updater/runtime per operating system is
   necessary, accepting duplicated release, state, rollback, and authorization
   behavior.
@@ -72,16 +93,20 @@ auditors, or security reviewers. Those remain Horizon 4 gates.
 
 ### Exact user outcome
 
-From a package obtained through any source, an Endpoint Owner can install an
-unprivileged default Endpoint on one frozen Ubuntu LTS `x86-64` or Windows 11
-`x86-64` image; start or remain offline; repair; explicitly update or roll back;
-preserve or export Authority state; attach an Application through either an
-honestly limited generic profile or a qualified isolated profile; and remove or
-separately purge owned state.
+From an artifact obtained through any source, an Endpoint Owner can install the
+package or directly run the Portable executable for the same unprivileged
+default Endpoint on supported Ubuntu LTS `x86-64` or Windows 11 `x86-64`;
+use its binary without a browser; start or remain offline; use managed Installed
+repair/update/rollback or authenticated stopped Portable replacement; preserve
+or export Authority state; attach an Application through either an honestly
+limited generic profile or a qualified isolated profile; and uninstall/delete
+program artifacts or separately purge owned protected state.
 
 ### Trust and privacy
 
-- Package distribution never becomes release authority.
+- Package/executable distribution and Distribution Profile never become release
+  authority. Portable requires trusted exact-digest verification before
+  execution; untrusted raw bytes cannot self-authenticate after they start.
 - Development, H3 test, and future public roots and state never merge.
 - An update cannot irreversibly transform Authority or monotonic security state
   before commit.
@@ -99,8 +124,9 @@ separately purge owned state.
 - one shared behavioral contract and deterministic verifier;
 - no first-party `unsafe`, cgo, custom cryptographic primitive, kernel driver,
   or permanent privileged daemon without a superseding accepted ADR;
-- privilege exists only for the exact install or isolation operation that needs
-  it and does not hold Authority material;
+- privilege exists only for the exact Installed-profile or isolation operation
+  that needs it and does not hold Authority material; Portable direct execution,
+  stopped replacement, and deletion remain unprivileged;
 - finite metadata, artifact, staging, rollback, log, IPC, process, disk, memory,
   retry, drain, self-test, and cleanup bounds;
 - one-to-one maintenance: no always-on signing ceremony, help desk, rollout
@@ -152,14 +178,18 @@ R-023, R-024, R-031, ADR-0006, and ADR-0007.
 
 ### Experiments
 
-R-049 through R-054 own the precommitted experiments. Disposable code belongs
-under `experiments/<question-id>-<slug>/`; packages, caches, VMs, signing keys,
-generated installers, artifacts, captures, and evidence remain outside Git.
+R-049 through R-054 plus R-056 own the precommitted experiments. Disposable
+code belongs under `experiments/<question-id>-<slug>/`; packages, caches, VMs,
+signing keys, generated installers, artifacts, captures, and evidence remain
+outside Git.
 
-Every experiment begins from immutable test roots and a frozen host image,
-executes positive, negative, crash, restart, tamper, pressure, and cleanup cases,
-and ends in independently recomputed `pass|fail|invalid`. A spike cannot become
-maintained code or a package-map fact by copying it.
+Every experiment binds immutable test roots and an exact execution-surface
+identity before candidate execution, records any authorization-pending or
+environment-deferred coverage, executes the scheduled positive, negative,
+crash, restart, tamper, pressure, and cleanup cases, and ends in independently
+recomputed `pass|fail|invalid`. Docker/current-machine development evidence is
+not native supported-host qualification. A spike cannot become maintained code
+or a package-map fact by copying it.
 
 ### Failure scenarios
 
@@ -199,6 +229,15 @@ maintained code or a package-map fact by copying it.
 - **Sourced fact:** a Windows named pipe can expose client PID/token information,
   but failed impersonation leaves the server in its own security context. The
   broker must fail closed; PID or a pipe name alone cannot become a principal.
+- **Sourced fact:** Go 1.26 exposes stable Linux pidfd/Windows process handles
+  and Linux atomic cgroup-FD placement. Windows suspended creation and explicit
+  inherited handles are exposed, but the pinned `x/sys/windows` Job-limit
+  setter currently requires a fixed-structure `unsafe.Pointer` bridge from
+  first-party Go.
+- **Inference:** a pre-created Unix socketpair's `SO_PEERCRED` or a pre-opened
+  Windows pipe's client PID identifies its Broker-side creation/open event, not
+  the later child. Claim-bearing binding must therefore join the launcher event,
+  inherited channel, stable process handle, complete tree owner, and grant.
 - **Sourced fact:** Linux seccomp filters and `no_new_privs` inherit across
   `fork`/`clone`/`execve`, while kernel documentation explicitly says seccomp is
   not a complete sandbox. Network, filesystem, process, IPC, and cleanup
@@ -207,11 +246,11 @@ maintained code or a package-map fact by copying it.
   delivery rules. They are additional evidence and cannot replace Ardents
   release roots. Debian maintainer scripts may run at install/upgrade/remove and
   must be idempotent; they therefore must not improvise Authority migration.
-- **Inference:** one stable platform-installed bootstrap plus immutable
-  versioned payload directories and an atomically replaced activation record
-  gives the smallest shared rollback seam. Package-specific install mechanics
-  remain thin Adapters, while release verification and state migration remain
-  identical across platforms.
+- **Inference:** Installed stable bootstraps plus immutable versioned payload
+  directories and an atomically replaced activation record give the smallest
+  managed-update seam. Portable should not duplicate it: the exact authorized
+  platform executable is copied/run directly and replaced only while stopped.
+  Release/state safety, capabilities, and claims remain common.
 - **Inference:** the Application Broker and Application Isolation Modules must
   remain separate. A principal can be authenticated without constraining its
   network, and network confinement can exist without authorizing an Ardents
@@ -229,10 +268,11 @@ maintained code or a package-map fact by copying it.
 
 One Release Decision Module verifies metadata and persisted release watermarks.
 One Update Transaction Module owns stage/drain/activate/self-test/commit/rollback.
-One Install Lifecycle Module owns only platform integration and owned path
-creation/removal. Authority Custody, Application Broker, and Application
-Isolation remain separate Modules. Ubuntu and Windows provide real Adapters at
-the platform seams.
+One Install Lifecycle Module owns only Installed integration and package-owned
+path creation/removal. Ubuntu and Windows provide two real Installed Adapters;
+Portable is the direct executable target and needs no lifecycle Adapter.
+Authority Custody, Application Broker, and Application Isolation remain separate
+Modules.
 
 This maximizes behavioral locality, keeps privilege narrow, and lets the same
 manifest and verifier exercise both platforms. It requires deliberate platform
@@ -253,40 +293,58 @@ network isolation, and root-key custody.
 
 ### O0 — Do not start Stage 7 after Stage 6
 
-Required if R-049 through R-054 cannot select maintained candidates without
-custom cryptography, first-party kernel code, broad permanent privilege, unsafe
-rollback, unverifiable process ownership, or a false privacy claim.
+Required if R-049 through R-054 plus R-056 cannot select maintained candidates
+without custom cryptography, first-party kernel code, broad permanent privilege,
+unsafe rollback, unverifiable process ownership, or a false privacy claim.
 
 ## Recommendation
 
-Choose O1 as the bounded Stage 7 architecture and decision order. Accept the
-linked brief, lifecycle specification, development plan, readiness checklist,
-evidence contract, and decision proposals as the complete preparation set. The
-[readiness checklist](../../development/stage-7-readiness-checklist.md) is the
-sole normative coding-start gate. During the remainder of Stage 6, only
-documentation and disposable R-049–R-054 research are authorized.
+Choose O1 as the bounded Stage 7 architecture and decision order. The Product
+Owner accepted the linked brief, specifications, development plan, evidence
+contract, development-host campaign, explicit qualification deferrals, and
+decision proposals together on 2026-08-20. The
+[readiness checklist](../../development/stage-7-readiness-checklist.md) records
+the completed S7.0 gate; post-implementation evidence remains conjunctive.
 
-Confidence is medium. The strongest counterargument is that Windows and Ubuntu
-may need materially different installation and isolation lifecycles. The shared
-Interfaces remain justified only if the experiments show platform differences
-can stay behind narrow Adapters without hiding weaker guarantees.
+Confidence is medium. The strongest counterargument is that the two Installed
+platform lifecycles and two isolation mechanisms may differ materially. The
+shared Interfaces remain justified only if experiments keep those differences
+behind narrow Adapters without feature or guarantee skew; Portable must remain a
+small artifact check rather than a second lifecycle stack.
 
 ## Disposition
 
-- State: `review`; awaiting Product Owner walkthrough and explicit acceptance.
-- Proposed scope decision: O1.
+- State: `decided`; the Product Owner accepted O1 and authorized `start S7.1`
+  on 2026-08-20 after Stage 6 completion.
 - Prepared development documents:
   [Stage 7 brief](../../development/horizon-3-stage-7-brief.md),
+  [Application Adapter specification](../../development/stage-7-application-adapter-spec.md),
+  [Application Principal specification](../../development/stage-7-application-principal-spec.md),
+  [Application Isolation specification](../../development/stage-7-application-isolation-spec.md),
+  [Authority Custody specification](../../development/stage-7-authority-custody-spec.md),
+  [password-derived custody proposal](../../development/stage-7-password-derived-authority-custody-proposal.md),
   [lifecycle specification](../../development/stage-7-lifecycle-spec.md),
   [development plan](../../development/stage-7-development-plan.md),
   [readiness checklist](../../development/stage-7-readiness-checklist.md), and
-  [evidence contract](../../development/stage-7-platform-evidence.md).
-- Consequential decision proposals, promoted to ADRs only after evidence and
-  explicit Product Owner acceptance:
+  [evidence contract](../../development/stage-7-platform-evidence.md), plus the
+  [development-host campaign specification](../../development/stage-7-host-campaign-spec.md)
+  and [joint review record](../../development/stage-7-joint-review.md).
+- Consequential decisions are recorded in ADR-0015, ADR-0016, and ADR-0021;
+  their source proposals remain:
   [release activation](../../development/stage-7-versioned-release-activation-proposal.md)
   and
-  [Application principals](../../development/stage-7-launcher-bound-application-principals-proposal.md).
-- R-049–R-054 remain required research, not hidden implementation subtasks.
-- `CONTEXT.md` requires no change: every product term used here is already
-  canonical; implementation terms remain outside the glossary.
-- No package, command, dependency, or maintained implementation is authorized.
+  [Application principals](../../development/stage-7-launcher-bound-application-principals-proposal.md),
+  plus
+  [password-derived Authority Custody](../../development/stage-7-password-derived-authority-custody-proposal.md).
+- The exact selected R-051 O2 mechanism is frozen in the
+  [Application Principal specification](../../development/stage-7-application-principal-spec.md).
+- The selected R-052 native mechanisms and unsupported Stage 7 isolated-browser
+  result are frozen in the
+  [Application Isolation specification](../../development/stage-7-application-isolation-spec.md).
+- R-049–R-054 and R-056 are decided development inputs; their scheduled runtime
+  evidence remains owned by the corresponding slices and S7.7.
+- `CONTEXT.md` defines the accepted Distribution Profile term and keeps executable
+  portability distinct from protected-state portability.
+- Maintained implementation starts with S7.1 under the package, dependency,
+  evidence, and quality gates. Windows installation still needs its separate
+  Product Owner command.

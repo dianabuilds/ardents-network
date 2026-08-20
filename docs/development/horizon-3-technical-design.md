@@ -374,13 +374,25 @@ A generic adapter may expose the Application Interface without controlling the
 Application's other networking. It is useful but receives no Application-level
 location-privacy claim.
 
+ADR-0016 and decided R-051 make claim-bearing attachment launcher-only: one
+private inherited channel, stable root process handle, and complete non-breakaway
+Job/cgroup tree are joined with the Local Grant, Isolation Context, resource
+parent, Broker start, and deadline. Named endpoints remain a coarse generic
+trust domain. The co-resident direct-binary Adapter remains first-class in
+Installed and Portable with claim `none`; it neither needs installation nor
+pretends to authenticate an external peer. The exact candidate and its open
+Windows Job-limit Go-surface constraint are recorded in the
+[Application Principal specification](stage-7-application-principal-spec.md).
+
 A Network-Isolated Application Boundary must instead deny ordinary DNS, HTTP,
 WebSocket, WebRTC, QUIC, and arbitrary socket ingress/egress by default for the
-complete Application/helper process tree. Candidate mechanisms:
-
-- Linux namespaces, cgroup ownership, firewall policy, and brokered local IPC;
-- Windows AppContainer or equivalent restricted token, Windows Filtering
-  Platform/firewall rules, Job Objects, and brokered local IPC.
+complete Application/helper process tree. R-052 freezes two exact native
+candidates: non-setuid bubblewrap namespaces around the R-051 cgroup/pidfd tree
+on Ubuntu, and an ephemeral zero-network-capability AppContainer inside the
+R-051 Job on Windows. Neither mutates host firewall, DNS, routes, proxy, or VPN.
+The exact policy and unsupported Stage 7 isolated-browser result are recorded
+in the
+[Application Isolation specification](stage-7-application-isolation-spec.md).
 
 The experiment must prove sibling Application Principal separation, restart
 rebinding, no reusable bearer-only authority, no direct-network fallback, and
@@ -531,8 +543,8 @@ record and, where lock-in is material, an ADR accepts it.
 | Candidate View transparency | Signed append-only log/proof candidates | Complete-view commitment, omission evidence, bounded client materialization, auditor feasibility |
 | Namespace | Signed record/log candidates; ENS-like lease/authority concepts without required chain | Private exact resolution, fork behavior, anonymous admission cost, recovery, governance simplicity |
 | Bridge/camouflage | Pluggable transport specifications and maintained implementations | Blocking profiles, active probing, distinguishability limits, deployment/maintenance cost |
-| Linux containment | systemd, cgroup v2, namespaces, firewall, local IPC | Complete process-tree ownership, cleanup, unprivileged operation |
-| Windows containment | Windows Service, Job Objects, restricted token/AppContainer, WFP/firewall, named pipe | Equivalent process/network/grant ownership and cleanup |
+| Linux containment | ADR-0016 R-051 cgroup v2/pidfd plus non-setuid bubblewrap `v0.11.2` profile | Complete process-tree ownership, no-network namespace, scoped storage/IPC, cleanup, unprivileged operation |
+| Windows containment | ADR-0016 R-051 Job plus ephemeral zero-capability AppContainer profile | Equivalent process/network/grant ownership and cleanup without firewall or loopback mutation |
 | Observability | Go `runtime/metrics`, OS counters, bounded local structured events | No remote listener, no high-cardinality User/Service graph, deterministic evidence |
 | Orchestration | Pre-provisioned hosts/systemd; Docker for non-qualifying reproduction | One-to-one maintainability; no Kubernetes/Nomad production decision |
 
@@ -750,38 +762,54 @@ hidden, or abuse cost is unbounded for the one-to-one project.
 
 ### Stage 7 — Install, Update, Platforms, and Application Isolation
 
-**Outcome:** Ubuntu and Windows client installations exercise start, repair,
-update, rollback, Authority recovery, principal rebinding, and generic/isolated
-Application attachment against the same H3 network.
+**Outcome:** Ubuntu and Windows expose one Installed package and the exact same
+platform executable as a minimal Portable artifact. Both exercise direct-binary
+Client/Publisher behavior, Authority recovery, principal rebinding, and generic/
+isolated Application attachment against the same H3 network; Installed also
+exercises managed repair, update, rollback, and uninstall.
 
 Includes:
 
-- laboratory package/release metadata and environment separation;
+- laboratory package/executable release metadata and environment separation;
+- two thin Installed lifecycle Adapters; Portable is direct execution with no
+  installer, bootstrap, or implicit OS integration;
 - unprivileged default Endpoint;
 - atomic update and compatible rollback;
 - Authority Vault/Recovery Bundle preservation;
 - Ubuntu and Windows local IPC and process/resource ownership;
-- generic adapter plus Network-Isolated Application Boundary candidates;
+- first-class binary Adapter, optional generic browser Adapter, and
+  Network-Isolated Application Boundary candidates;
 - uninstall and explicit destructive-purge behavior;
 - complete cleanup and no secret/evidence leakage.
 
-**Pass:** update distribution is not authority; failed update does not corrupt
-authority/freshness; no bearer survives restart; generic boundary is honestly
-unqualified; isolated boundary blocks ordinary network fallback for the complete
-process tree.
+**Pass:** update/distribution is not authority; Installed package and Portable
+target contain the same executable digest and expose the same runtime features,
+Interfaces, resources, state compatibility, and claims; failed update or stopped
+Portable replacement does not corrupt authority/freshness; no bearer survives
+restart; generic boundary is honestly unqualified; isolated boundary blocks
+ordinary network fallback for the complete process tree.
 
 **Stop/redesign:** platform support requires central account/admin authority,
 privilege broader than the declared broker, unsafe rollback, lost Authority,
 unverifiable process ownership, or a false claim about arbitrary Application code.
 
-The acceptance-ready Stage 7 preparation set is R-048, the
+The Product Owner accepted the Stage 7 S7.0 set and authorized `start S7.1` on
+2026-08-20. The baseline is R-048–R-054, R-056, ADR-0015, ADR-0016, ADR-0021,
+the
 [Stage 7 brief](horizon-3-stage-7-brief.md),
+[Application Adapter specification](stage-7-application-adapter-spec.md),
+[Application Principal specification](stage-7-application-principal-spec.md),
+[Application Isolation specification](stage-7-application-isolation-spec.md),
+[Authority Custody specification](stage-7-authority-custody-spec.md),
+[password-derived custody proposal](stage-7-password-derived-authority-custody-proposal.md),
 [lifecycle specification](stage-7-lifecycle-spec.md),
 [development plan](stage-7-development-plan.md),
 [readiness checklist](stage-7-readiness-checklist.md), and
-[evidence contract](stage-7-platform-evidence.md). The linked
+[evidence contract](stage-7-platform-evidence.md), plus the
+[development-host campaign specification](stage-7-host-campaign-spec.md) and
+[joint review record](stage-7-joint-review.md). The linked
 [readiness checklist](stage-7-readiness-checklist.md) is the sole normative
-Stage 7 coding-start gate. H3 test roots, threshold
+Stage 7 coding-start gate and records it as satisfied. H3 test roots, threshold
 members, rebuilds, distributors, hosts, and review are project-controlled; their
 mechanics cannot satisfy the independent-custodian, independent-builder, or
 independent-review gates of Horizon 4.

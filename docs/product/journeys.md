@@ -39,26 +39,34 @@ cell, SDK, general Application sandbox, or public network claim is present.
 
 **Actor:** Endpoint Owner
 
-**Start:** A supported Windows 11 or Ubuntu LTS `x86-64` host and an Ardents
-package obtained through any distribution channel
+**Start:** A supported Windows 11 or Ubuntu LTS `x86-64` host and an authenticated
+Installed or Portable Distribution Profile artifact obtained through any
+distribution channel
 
 **Flow:** verify threshold release metadata, platform binding, artifact digest,
-and public-network identity → install an unprivileged default Endpoint → create
-local IPC and finite state directories → keep publishing and contribution
-disabled → start or remain offline → later repair, update, create an encrypted
-Authority Recovery Bundle, or uninstall explicitly
+and public-network identity → install the package or directly run the Portable
+executable as an unprivileged default Endpoint → create local IPC and finite
+state directories → keep publishing and contribution disabled → start or remain
+offline → later repair/replace the program artifact, update, create an encrypted
+Authority Recovery Bundle, or remove explicitly
 
-**Done when:** package delivery is not package authority; development, test, and
-public roots cannot share state; no account, wallet, User identity, Service, or
-Node was silently created; remote administration is disabled; repair preserves
-Authorities and freshness watermarks. A test restore is isolated and non-signing;
+**Done when:** distribution is not release authority; Installed wraps the exact
+platform executable released directly as Portable, with the same Interfaces,
+features, claims, and protected-state compatibility. Installed owns package/registration
+lifecycle; Portable remains a directly runnable executable with only unavoidable
+declared companions, requires explicit pre-execution verification, and uses
+stopped replacement/removal. A raw executable cannot establish its own
+authenticity after it has already started. No account, wallet,
+User identity, Service, or Node was silently created; remote administration is
+disabled; repair preserves Authorities and freshness watermarks. A test restore
+is isolated and non-signing;
 restored authority remains `authority locked` until authenticated reconciliation
 permits a strictly higher generation/revision, and Local Grants/runtime Instance
-Keys are never derived from the Bundle. Normal uninstall retains the Bundle and
-required watermarks together or exports them first; specifically, a non-empty
-Authority Vault is preserved in place or uninstall blocks until a Recovery
-Bundle is explicitly exported and verified at an Owner-chosen destination. No
-secret or location is invented silently. An empty Vault can uninstall normally.
+Keys are never derived from the Bundle. Installed uninstall and deletion of a
+Portable executable never silently erase protected state. A supported state
+removal retains required watermarks and either preserves a non-empty Authority
+Vault or blocks until a Recovery Bundle is explicitly exported and verified at
+an Owner-chosen destination. No secret or location is invented silently.
 A separate confirmed destructive purge enumerates affected authority classes,
 distinguishes disposable cache from authority material, warns that recovery may
 be impossible, and states that secure deletion of external snapshots or backups
@@ -68,7 +76,7 @@ cannot be guaranteed.
 
 **Actor:** User or Developer
 
-**Start:** A newly installed local Ardents endpoint on a supported Windows 11 or
+**Start:** A newly deployed local Ardents endpoint on a supported Windows 11 or
 Ubuntu LTS `x86-64` desktop/laptop
 
 **Flow:** Endpoint Owner starts the endpoint → verify release, persistent
@@ -76,7 +84,7 @@ freshness, and Time Confidence → obtain and authenticate one current Network
 Epoch through a finite precommitted source sequence, skipping any authenticated
 identity/family already present in retained Entry/Interior/Introduction state or
 live Route/Resolution work and recording every direct contact in the
-installation-wide Direct Source Exposure Set → detect conflict or rollback →
+Endpoint-wide Direct Source Exposure Set → detect conflict or rollback →
 verify the logical Candidate View commitment and fetch the deterministic proven
 Candidate Materializations required locally → join through each enabled
 capability's own Entry path → report each Capability Readiness or exact lifecycle
@@ -99,7 +107,7 @@ sampling.
 
 **V1 platform gate:** the same ready outcome is required on both Windows and
 Linux; a result demonstrated only on an infrastructure server is insufficient.
-On the normal non-adversarial reference network, an installed process reaches
+On the normal non-adversarial reference network, an active process reaches
 **Target Connect Ready** within `p95 <= 5 s` on routine restart with valid state
 and `p95 <= 15 s` on a clean first start. The clock does not stop at a local
 socket or UI; the Common Readiness Base, a usable Initiator Entry path,
@@ -107,7 +115,7 @@ materialized eligible data-path roles, and a qualified profile are required.
 Private Resolution, configured Publish, and Contribute preparation receive their
 own capability-by-platform budgets before a usable release.
 
-A clean first start retains only the installed candidate, frozen configuration,
+A clean first start retains only the deployed candidate, frozen configuration,
 trust roots, and declared bootstrap manifest; it has no state generated by a
 prior Ardents execution. A routine restart may retain valid authenticated
 persistent state and a non-decreasing freshness watermark, but the earlier
@@ -328,8 +336,9 @@ an indistinguishable admitted Sybil.
 
 **Flow:** receive a narrowly scoped Local Grant → separately authorize Service
 administration when publishing is needed → use the least-privileged local
-Connection Interface → receive a safe default Isolation Context or deliberately
-select an additional one → when an Application-level privacy claim is required,
+Connection Interface directly through the supported binary or from an external
+Application → receive a safe default Isolation Context or deliberately select an
+additional one → when an Application-level privacy claim is required,
 attach the complete client/server process tree through a Network-Isolated
 Application Boundary → supply either exact Service Name or Service Target →
 resolve the name when needed → authenticate and expose the exact target → connect
@@ -339,7 +348,9 @@ rebind the Application to its OS-local principal after process/Endpoint restart
 
 **Done when:** the Application can use its own protocol without treating a Node
 ID as an application address, embedding a mandatory Ardents SDK, or importing
-routing internals. The Application remains responsible for User identity,
+routing internals. The binary path remains fully usable without a browser,
+extension, or URI registration; browser integration is an optional Adapter over
+the same Interface. The Application remains responsible for User identity,
 authorization, persistence, semantic retry, and data format. Access to connection
 traffic alone does not expose Service Authority or Service administration.
 Failed name resolution or target authentication never falls back to another
@@ -552,7 +563,8 @@ bounded drain state, and then expires; a crash does not restore old route handle
 
 **Actor:** Endpoint Owner or Network Contributor
 
-**Start:** A running installation and threshold-authenticated release metadata
+**Start:** A running Installed or Portable Endpoint and threshold-authenticated
+release metadata
 
 **Flow:** automatically check authenticated Release Safety metadata without an
 installation ID, account, Service list, cohort, `from-version`, or exact build
@@ -561,10 +573,13 @@ source, or offline import, with no silent fallback → verify the `3-of-5` publi
 Targets authorization for a new executable, version, expiry, hashes, size,
 platform, source/dependency inputs, SBOM, applicable qualification identity, two
 matching independent build attestations, rollback watermark, build safety, and
-protocol phase → stage with finite disk reserve → install only under local policy
-→ stop accepting new work by the signed deadline → drain within the earlier of
-local policy and signed Work Safety Lease → atomically switch → self-test →
-commit or safely roll back
+protocol phase → under Installed, stage with finite disk reserve, stop accepting
+new work by the signed deadline, drain within the earlier of local policy and
+signed Work Safety Lease, atomically switch, self-test, and commit or safely roll
+back → under Portable, authenticate the replacement executable, stop/drain the
+Endpoint, explicitly replace it while stopped, then enforce the same release
+floors, state compatibility, self-test, and safe previous-build rule before new
+network work
 
 **Done when:** update distribution did not acquire signing authority; a failed
 update did not corrupt Authority Vault or freshness state; rollback can reach
@@ -600,7 +615,7 @@ Every implementation proposal must exercise at least these cases:
   retained Entry/Interior/Introduction state or live Route/Resolution work,
   forces unbounded retries/exposure growth, or later appears in a forbidden role.
   The Endpoint follows finite precommitted source/candidate sequences, preserves
-  installation-wide exclusions, and returns explicit unavailability when
+  Endpoint-wide exclusions, and returns explicit unavailability when
   bounded replacement or post-exclusion reserve is unavailable;
 - one ordinary entry, relay, discovery, or rendezvous Node is malicious, slow,
   or absent;

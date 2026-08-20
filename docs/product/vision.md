@@ -301,7 +301,7 @@ These are responsibility boundaries, not selected binaries or APIs:
     provisional network.
 25. A globally advertised Direct-Origin Source is never Route- or Resolution-
     eligible in the same assignment. An ordinary candidate contacted directly
-    enters the bounded installation-wide Direct Source Exposure Set until all
+    enters the bounded Endpoint-wide Direct Source Exposure Set until all
     derived work expires. Public beta/stable requires three/five effective
     authenticated source-only families in addition to effective post-exclusion
     Route-domain supply.

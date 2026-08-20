@@ -1,8 +1,8 @@
 # Stage 7 development plan
 
-Status: **review; planning and disposable research only. Stage 7 maintained
-coding remains closed until Stage 6 advances and the Product Owner checks the
-S7.0 gate.**
+Status: **accepted execution plan; S7.0 completed and `start S7.1` authorized on
+2026-08-20.** Each later slice still requires its behavior, evidence, dependency,
+package-map, and quality gates.
 
 This plan maps R-048 and the Stage 7 lifecycle specification into ordered,
 independently reviewable vertical slices. It does not create packages,
@@ -22,11 +22,12 @@ map, dependencies, Go module, or maintained command tree for Stage 7.
 | Record | Exact decision | Required evidence | ADR/dependency consequence |
 |---|---|---|---|
 | R-049 | Which maintained TUF-compatible Go verifier and exact release profile meet ADR-0006? | conformance/misuse vectors, dependency/license/advisory closure, bounded fetch/cache, role/threshold/expiry/rollback/mix tests | dependency review; ADR only if profile changes consequential trust semantics |
-| R-050 | Which Ubuntu/Windows package, stable-bootstrap, immutable-layout, atomic activation, crash durability, repair/uninstall Adapters meet the release-activation proposal? | frozen filesystem/API experiments with interruption at each state, open executable, ACL/mode, cross-volume negatives, residue | promote/revise/reject the proposal; external build/package tools recorded |
-| R-051 | Which Ubuntu Unix-IPC and Windows named-pipe/local-channel facts securely bind a launcher-born principal? | peer/token/session/process-tree tests, PID reuse, substitution, restart, failed identity query, privilege crossing | promote/revise/reject the Application-principal proposal; `x/sys` or other dependency review |
-| R-052 | Which stable Ubuntu and Windows mechanisms deny direct networking for a complete helper tree? | capability/privilege/source review plus ingress/egress/child/escape/resource/cleanup experiment | promote/revise/reject the Application-principal proposal; stop if only experimental API, driver, cgo, or broad daemon fits |
-| R-053 | Which Vault protection and Recovery Bundle profile preserves roots and monotonic signing state on both platforms? | cryptographic-library selection, KDF/format bounds, tamper/wrong-secret/restore/reconcile/lock/export tests, secret cleanup | research and ADR for any hard-to-reverse crypto/platform custody selection |
-| R-054 | Which canonical Stage 7 evidence profile independently proves the contract? | schema vectors, mutation corpus, clocks, artifact ownership, exact cells/episodes/resources/cleanup and deterministic calculator | freezes S7 evidence identity; verifier package only with real implementation/caller |
+| R-050 | Which Ubuntu/Windows Installed lifecycle Adapters and minimal Portable executable artifacts meet ADR-0015? | Ubuntu-Docker package/filesystem smoke, current-Windows non-install API evidence, separately authorized MSI lifecycle cells, explicit native durability/residue deferrals, and Portable digest/direct-run/stopped-replacement/state-separation checks | ADR-0015 accepted; external build/package tools recorded; a falsifier reopens it |
+| R-051 | Which Ubuntu and Windows private-channel/process-tree facts securely bind a launcher-born principal? | O2 selected profile: inherited unnamed Unix IPC + atomic cgroup-v2/pidfd tree on Ubuntu; inherited anonymous pipes + suspended root/token/Job tree on Windows; generic named-endpoint and co-resident direct-binary controls; theft, PID reuse, substitution, restart, failed query, privilege crossing, bounds, and cleanup | ADR-0016 accepts O2 and the exact bounded Windows `unsafe.Pointer` bridge with dedicated risk tests |
+| R-052 | Which stable Ubuntu and Windows mechanisms deny direct networking for a complete helper tree? | exact `ubuntu-bwrap-native-v1` and `windows-appcontainer-native-v1` specifications; source/privilege review plus ingress/egress/child/escape/resource/cleanup campaign; isolated browser is explicitly unsupported | ADR-0016 accepts the profiles; stop/reopen if scheduled native predicates fail |
+| R-053 | Which Vault protection and Recovery Bundle profile preserves roots and monotonic signing state on both platforms? | exact password-derived envelope specification; accepted Argon2id/AES-GCM profile, synthetic logic prototype, then the scheduled Docker/current-Windows KDF/RSS/vector/tamper/interruption/cross-restore/reconcile/cleanup subset with weakest-native-host qualification explicitly deferred | ADR-0021 accepted; a falsifier reopens it |
+| R-054 | Which canonical Stage 7 evidence profile independently proves the contract? | S7E1 schema vectors and mutation corpus plus the observer-source profile, exact 91-cell/392-episode reference inventory, and manifest-bound `scheduled`, `authorization-pending`, and `environment-deferred` partition in `stage-7-host-campaign-spec.md` | freezes S7 development-evidence identity and claim ceiling; verifier package only with real implementation/caller |
+| R-056 | Which exact direct-binary and optional desktop/browser Adapters implement accepted topology O1 without changing ordinary Internet or active VPN policy, and which Application profile can be claim-bearing? | accepted Adapter specification plus CLI/input/output, URI/loopback/origin/process/storage/lifecycle source review and Installed/Portable parity, ordinary/VPN/kill-switch, escape, fallback, restart, browser-update, unsupported-isolated, and cleanup evidence | O1 accepted; ADR only for a dedicated/isolated browser or system-network scope change |
 
 Each record begins with falsification criteria. A popular library or OS feature
 is only a candidate. No spike is promoted by copying its directory.
@@ -36,16 +37,20 @@ is only a candidate. No spike is promoted by copying its directory.
 The graph is logical until the owning slice creates real packages:
 
 ```text
-platform package Adapter
+Ubuntu/Windows Installed Adapter
         -> Install Lifecycle Module
         -> stable bootstrap
-                 -> Update Transaction Module
+                 -> authenticated Endpoint executable
+                         -> Update Transaction Module
                          -> Release Decision Module
                          -> existing readiness/drain owners
 
+Portable release target -> same authenticated Endpoint executable directly
+
 Authority Custody Module  (separate state and process authority)
 
-Application -> Application Broker Module -> existing Application Interface
+direct binary / Service Link / native Application / optional browser Adapter
+                    -> Application Broker Module -> existing Application Interface
                     |
                     -> Application Isolation Module -> Ubuntu/Windows Adapter
 ```
@@ -64,6 +69,14 @@ Import direction constraints:
   it cannot decide release, Route, or Authority.
 - Application Isolation returns containment observations; it cannot grant an
   operation or become a transparent proxy.
+- The accepted R-056 O1 topology keeps the specified direct-binary Adapter
+  first-class in both Distribution Profiles. The optional desktop/browser
+  Adapter consumes only an explicit Service Link, uses an ephemeral numeric-
+  loopback HTTP seam, and installs no extension/native host/proxy. Neither can
+  alter system DNS, routes, default proxy/browser, VPN policy, or turn blocked
+  Carrier networking into a direct fallback. R-052 currently selects no Stage
+  7 isolated-browser profile; generic browser integration remains unverified
+  and native controlled Applications carry the isolation campaign.
 - Commands remain thin composition adapters and own no domain state machine.
 
 If a proposed package has only one trivial caller/implementation and moving it
@@ -111,29 +124,43 @@ the R-050-proven internal seam; the test Adapter exercises the same Interface.
 The test surface remains the Update Transaction Interface, not its internal
 files.
 
-### S7.3 Ubuntu lifecycle
+### S7.3 Ubuntu Installed and Portable lifecycle
 
-1. produce the frozen laboratory package outside Git from declared inputs;
-2. install on a clean frozen image and inventory created paths/processes/
-   registrations/privilege;
-3. exercise offline and network start, repair, update, rollback, restart;
-4. exercise empty/non-empty Vault uninstall and explicit purge;
-5. compare actual residue to the predeclared cleanup inventory; and
-6. run the complete Ubuntu A-D subset.
+1. produce the manifest-bound Installed package and raw Portable executable target
+   outside Git from the same declared Endpoint build;
+2. run the Ubuntu 26.04 Docker package smoke and Portable target while
+   inventorying visible paths/processes/registrations/privilege; record native
+   Desktop/boot/filesystem/browser facts as `environment-deferred`;
+3. exercise direct-binary use, offline and network start, Installed repair/
+   update/rollback/restart, and Portable stopped replacement/deletion;
+4. prove package-payload digest equality plus feature, Interface, resource,
+   state-compatibility, and security/privacy-claim parity;
+5. exercise empty/non-empty Vault removal and explicit purge;
+6. compare actual residue to the predeclared cleanup inventory; and
+7. run the complete Ubuntu A-D subset.
 
-### S7.4 Windows lifecycle
+### S7.4 Windows Installed and Portable lifecycle
 
 Repeat the exact shared outcomes with the selected Windows Adapters. Add no
-Windows-specific public outcome except safe diagnostic detail. Explicitly test
-ACL owner, reparse/path behavior, file locking/open executable, platform service
-or startup registration, power-loss equivalent, repair, uninstall, purge, and
-residue.
+Windows/profile-specific public outcome except safe diagnostic detail.
+Explicitly test ACL owner, reparse/path behavior, file locking/open executable,
+Installed registration, Portable no-install direct start and zero-registration
+default, power-loss equivalent for Installed activation, repair, removal, purge,
+parity, and residue.
+
+Portable and non-install filesystem/API work may proceed on the current Windows
+machine. MSI install/repair/update/uninstall/purge and installer-owned
+registration stop until a separate Product Owner command names the artifact and
+permitted cells. Pristine-host and destructive power-loss facts stay deferred.
 
 ### S7.5 Application Broker
 
 1. preserve the existing external Application Interface semantics;
 2. replace laboratory-only principal assumptions behind one broker Interface;
-3. implement launcher-before-untrusted-code and bound local channel per R-051;
+3. only after R-051/ADR-0016 acceptance, implement the exact
+   [Application Principal specification](stage-7-application-principal-spec.md):
+   private inherited channel, non-reusable root process handle, complete Job/
+   cgroup tree, and activation before untrusted work;
 4. test connection/admin/custody privilege lattice and resource parents;
 5. attack with hostile same-user sibling, stolen/replayed capability, PID reuse,
    channel substitution, inherited handle, restart, and revoke/drain; and
@@ -142,15 +169,25 @@ residue.
 Do not delete Stage 3 laboratory adapters until Stage 9 unless an accepted
 cleanup scope proves they have no retained qualification role.
 
-### S7.6 Application Isolation
+### S7.6 direct binary and Application Isolation
 
-1. implement the accepted Ubuntu and Windows Adapters behind one Interface;
-2. launch controlled deterministic client/publisher Applications plus nested
+1. implement the accepted direct-binary, Ubuntu-isolation, and
+   Windows-isolation Adapters behind their narrow Interfaces;
+2. prove the same binary path works from Installed and Portable without a
+   browser, extension, URI registration, or SDK;
+3. launch controlled deterministic client/publisher Applications plus nested
    malicious helpers;
-3. verify scoped IPC and per-context storage still work;
-4. run every ingress/egress/child/escape/resource/restart/cleanup probe;
-5. prove generic attachment reports the unqualified limitation; and
-6. run F/G evidence, including all development platform pairings.
+4. verify scoped IPC and per-context storage still work;
+5. run every ingress/egress/child/escape/resource/restart/cleanup probe;
+6. prove generic attachment reports the unqualified limitation; and
+7. run E/F/G evidence, including all development platform pairings and both
+   Distribution Profiles.
+
+The accepted R-056 O1 topology also exercises its frozen generic browser
+Adapter, origin/storage behavior, ordinary Internet/VPN coexistence, explicit
+registration cleanup, and the side-effect-free unsupported isolated-browser
+result. Failure or absence of browser integration cannot disable direct-binary
+use.
 
 Any escape is a candidate `fail`; harness/observer uncertainty is `invalid`.
 Neither can become generic success inside the same cell.
@@ -159,12 +196,21 @@ Neither can become generic success inside the same cell.
 
 1. freeze source, dependencies, package tools, host images, roots, metadata,
    artifacts, config, manifest, seeds, observers, verifier, and cleanup inputs;
-2. build packages from clean source without runtime downloads;
+2. build each platform's Installed package and raw Portable executable target
+   from clean source without runtime downloads and prove the package contains
+   that exact executable digest;
 3. run all fast/full checks and complete Stage 7 development matrix;
 4. independently recompute verdicts;
 5. retain immutable external evidence and remove all owned runtime artifacts;
 6. document known limitations and exact H3/H4 claim ceiling; and
 7. obtain Product Owner `advance-to-S8`, `redesign`, or `stop`.
+
+The manifest commits to the exact 392-episode reference inventory from the
+[development-host campaign specification](stage-7-host-campaign-spec.md) and
+partitions every episode before execution. It cannot add a retry, move an
+episode between coverage partitions, or drop a scheduled platform/Profile
+tuple after seeing a result. Only `scheduled` episodes receive
+`pass|fail|invalid`; pending or deferred coverage is never reported as success.
 
 ## 5. Test strategy
 

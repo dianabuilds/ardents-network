@@ -1,7 +1,7 @@
 ---
 id: R-049
 title: Which maintained TUF-compatible Go verifier and H3 release profile meet ADR-0006?
-status: review
+status: decided
 owner: Product Owner
 started: 2026-08-20
 reviewed: 2026-08-20
@@ -100,9 +100,11 @@ high/critical advisory.
 
 The maximum test envelope is `1 MiB` per metadata file, `8 MiB` aggregate
 metadata, `32` roles, `64` keys, `64` signatures per role, delegation depth `4`,
-`1,024` target descriptions, and `32` fetches. On the frozen weakest host, the
-complete maximum-metadata decision MUST finish within `2 s` monotonic time and
-`128 MiB` additional peak RSS. Every corpus case must match its precommitted
+`1,024` target descriptions, and `32` fetches. On every scheduled development
+surface, the complete maximum-metadata decision MUST finish within `2 s`
+monotonic time and `128 MiB` additional peak RSS. Weakest-supported-native-host
+performance remains a later qualification gate, not a synthetic development
+pass. Every corpus case must match its precommitted
 classification; exceeding any bound returns a bounded rejection. If no candidate
 meets every conjunct, select O0 rather than relax a threshold after results.
 
@@ -212,11 +214,11 @@ release operation.
 
 ## Disposition
 
-- State: `review`; O1 and the exact bounded profile await Product Owner
-  acceptance. S7.1 maintained coding remains closed.
+- State: `decided`; the Product Owner accepted O1 and the exact bounded profile
+  for S7.1 on 2026-08-20.
 - The proposed closure is preregistered in `dependencies.md`; acceptance does
   not by itself authorize a `go.mod`, package-map, or maintained-code change
-  before the Stage 7 entry gate.
+  outside the owning S7.1 package/test/caller/package-map change.
 - No new ADR is proposed: O1 implements ADR-0006 without changing its trust
   semantics. Widening roles, delegation, cache, multi-repository input, or
   release authority would reopen R-049 and may require a superseding ADR.
