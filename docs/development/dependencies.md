@@ -6,10 +6,12 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 ## Current runtime dependencies
 
-The maintained product-shaped Modules use the Go standard library plus the
-Windows-only `golang.org/x/sys/windows` ACL surface described below. Gate C
-adds the following exact runtime closure to the maintained
-`internal/lab/namedsite` laboratory Module. The OHTTP closure is selected by
+The maintained product-shaped Modules use the Go standard library, the
+Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
+OHTTP closure owned by `internal/nameresolution`. Gate C uses the same closure
+in `internal/lab/namedsite`. The product promotion is selected by
+[R-047](../research/records/r-047-stage-6-query-hiding.md) and ADR-0014; the
+original experiment selection is recorded by
 [R-026](../research/records/r-026-private-resolution-adapter.md), while the bounded
 external socket fault use is selected by [R-032](../research/records/r-032-h3-same-connection-recovery.md); the set must enter
 `go.mod` as this reviewed set rather than as the vulnerable versions declared
@@ -31,8 +33,11 @@ by `openpcc/ohttp v0.0.80`.
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/lab/namedsite` is the sole first-party owner of the OHTTP/CIRCL
-Interface. No product Module imports the OHTTP/CIRCL portion of this closure.
+shape. `internal/nameresolution` owns the maintained product OHTTP/CIRCL Adapter;
+`internal/lab/namedsite` independently owns the Gate C Adapter. No other product
+Module imports the OHTTP/CIRCL portion of this closure. Both owners pin the same
+reviewed version and raised dependency graph; a change repeats R-047/R-026
+instead of allowing their cryptographic configurations to drift.
 
 **Stage 5 Windows ACL need and owner:** `internal/bridge`,
 `internal/localroles`, `internal/lab/blockedentry`, and
@@ -94,8 +99,9 @@ offline-build review.
 to a Docker build with `--network=none`. No vendor tree, module cache, generated
 dependency, or Gateway key is committed.
 
-**Removal plan:** the complete closure leaves with the Gate C OHTTP Adapter. A
-changed version or dependency graph repeats R-026; an unremediated reachable
+**Removal plan:** the complete closure leaves only when both the product private
+resolution Adapter and Gate C Adapter are removed. A changed version or
+dependency graph repeats R-047 and R-026; an unremediated reachable
 high/critical vulnerability, unacceptable license, offline-build failure, or
 broken role split selects `stop`, not a fork.
 

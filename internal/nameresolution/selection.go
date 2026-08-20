@@ -1,0 +1,136 @@
+package nameresolution
+
+import (
+	"crypto/sha256"
+	"errors"
+	"net"
+	"strconv"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+)
+
+func selectPlan(view state.Snapshot, input Selection, profile GatewayProfile) (plan, error) {
+	if invalidView(view, input) || profile.NetworkID != view.NetworkID || profile.NodeID != input.GatewayNodeID ||
+		profile.AssignmentNotAfter.Before(input.Deadline) {
+		return plan{}, errors.New("private resolution selection is invalid")
+	}
+	relay, relayOK := findPosition(view, input.RelayNodeID, input.At, input.Deadline)
+	gateway, gatewayOK := findPosition(view, input.GatewayNodeID, input.At, input.Deadline)
+	rendezvous, rendezvousOK := findPosition(view, input.ConnectionRendezvousNodeID, input.At, input.Deadline)
+	if !relayOK || !gatewayOK || !rendezvousOK || !validGatewayProfile(profile, gateway.PublicKey) ||
+		relay.Domain != initiatorDomain || gateway.Domain != rendezvousDomain ||
+		rendezvous.Domain != rendezvousDomain || !gateway.AssignmentNotAfter.Equal(profile.AssignmentNotAfter) ||
+		collides(relay, gateway, rendezvous) || excluded(input, relay) || excluded(input, gateway) || excluded(input, rendezvous) {
+		return plan{}, errors.New("private resolution roles conflict or are unavailable")
+	}
+	result := plan{NetworkID: view.NetworkID, Generation: view.Generation, EpochDigest: view.Digest,
+		ViewRoot: view.ViewRoot, SelectionAt: input.At.UnixNano(), Deadline: input.Deadline.UnixNano(),
+		Relay: relay, Gateway: gateway, ConnectionRendezvous: rendezvous,
+		GatewayKeyConfig: append([]byte(nil), profile.KeyConfig...), GatewayKeyConfigDigest: profile.KeyConfigDigest,
+		ExcludedIdentities: appendDistinctIdentities(input.ExcludedIdentities, relay.NodeID, gateway.NodeID),
+		ExcludedFamilies:   appendDistinctFamilies(input.ExcludedFamilies, relay.Family, gateway.Family)}
+	if err := validatePlan(result); err != nil {
+		return plan{}, err
+	}
+	return result, nil
+}
+
+func appendDistinctIdentities(existing [][32]byte, values ...[32]byte) [][32]byte {
+	result := append([][32]byte(nil), existing...)
+	for _, value := range values {
+		found := false
+		for _, current := range result {
+			found = found || current == value
+		}
+		if !found {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func appendDistinctFamilies(existing []string, values ...string) []string {
+	result := append([]string(nil), existing...)
+	for _, value := range values {
+		found := false
+		for _, current := range result {
+			found = found || current == value
+		}
+		if !found {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func validatePlan(plan plan) error {
+	selectionAt, deadline := time.Unix(0, plan.SelectionAt), time.Unix(0, plan.Deadline)
+	if plan.NetworkID == [32]byte{} || plan.Generation == "" || plan.EpochDigest == [32]byte{} ||
+		plan.ViewRoot == [32]byte{} || plan.SelectionAt <= 0 || !selectionAt.Before(deadline) ||
+		len(plan.GatewayKeyConfig) == 0 || sha256.Sum256(plan.GatewayKeyConfig) != plan.GatewayKeyConfigDigest ||
+		plan.Relay.Domain != initiatorDomain || plan.Gateway.Domain != rendezvousDomain ||
+		plan.ConnectionRendezvous.Domain != rendezvousDomain || collides(plan.Relay, plan.Gateway, plan.ConnectionRendezvous) {
+		return errors.New("private resolution Plan is invalid")
+	}
+	for _, position := range []position{plan.Relay, plan.Gateway, plan.ConnectionRendezvous} {
+		if position.NodeID == [32]byte{} || position.Family == "" || !literalEndpoint(position.Endpoint) ||
+			position.AssignmentNotAfter.Before(deadline) {
+			return errors.New("private resolution Plan contains an invalid role")
+		}
+	}
+	return nil
+}
+
+func invalidView(view state.Snapshot, input Selection) bool {
+	return view.Generation == "" || view.NetworkID == [32]byte{} || view.Digest == [32]byte{} ||
+		view.ViewRoot == [32]byte{} || view.Freshness != "fresh" || view.Conflicting || view.CandidateCount < 3 ||
+		input.At.IsZero() || !input.At.Before(input.Deadline) || input.Deadline.After(input.At.Add(15*time.Second)) ||
+		input.Deadline.After(view.ValidUntil) ||
+		input.RelayNodeID == [32]byte{} || input.GatewayNodeID == [32]byte{} || input.ConnectionRendezvousNodeID == [32]byte{}
+}
+
+func findPosition(view state.Snapshot, nodeID [32]byte, at, deadline time.Time) (position, bool) {
+	for _, candidate := range view.Candidates[:view.CandidateCount] {
+		if candidate.NodeID != nodeID {
+			continue
+		}
+		valid := candidate.Capacity > 0 && candidate.Family != "" && literalEndpoint(candidate.Endpoint) &&
+			!at.Before(candidate.ValidFrom) && deadline.Before(candidate.ValidUntil) &&
+			!candidate.AssignmentNotAfter.Before(deadline)
+		return position{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: candidate.Family, Endpoint: candidate.Endpoint,
+			Domain: candidate.Domain, AssignmentNotAfter: candidate.AssignmentNotAfter}, valid
+	}
+	return position{}, false
+}
+
+func collides(values ...position) bool {
+	identities, families := map[[32]byte]bool{}, map[string]bool{}
+	for _, value := range values {
+		if identities[value.NodeID] || families[value.Family] {
+			return true
+		}
+		identities[value.NodeID], families[value.Family] = true, true
+	}
+	return false
+}
+
+func excluded(input Selection, position position) bool {
+	for _, identity := range input.ExcludedIdentities {
+		if identity == position.NodeID {
+			return true
+		}
+	}
+	for _, family := range input.ExcludedFamilies {
+		if family == position.Family {
+			return true
+		}
+	}
+	return false
+}
+
+func literalEndpoint(endpoint string) bool {
+	host, port, err := net.SplitHostPort(endpoint)
+	number, portErr := strconv.Atoi(port)
+	return err == nil && net.ParseIP(host) != nil && portErr == nil && number > 0 && number <= 65535
+}

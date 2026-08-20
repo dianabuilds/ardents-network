@@ -211,7 +211,9 @@ resource/evidence appendices, not standalone implementation slices. This
   complete `564`-cell candidate campaign plus six evidence-integrity campaigns
   to S9.6. The Stage 6 product contract
   ([R-039](../research/records/r-039-h3-private-naming-lifecycle.md)) is accepted,
-  but R-042, R-044, R-045, R-046 and coding authorization remain open. These
+  but R-042, R-044, R-045 and the general coding authorization remain open.
+  R-046 and R-047 are decided, and only the bounded S6.1/S6.2 slices are
+  authorized. These
   local results do not change the official gates; Ubuntu Stage 1
   `short`, current `churn-2h`, independent `unattended-24h`, applicable R-023
   qualification, and the deferred S9.6 final campaign remain prerequisites for

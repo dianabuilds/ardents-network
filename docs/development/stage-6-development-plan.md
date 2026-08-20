@@ -1,8 +1,8 @@
 # Stage 6 development plan
 
-Status: **S6.1 implementation was authorized by the Product Owner on 2026-08-20.
-The general Stage 6 gate remains closed while R-042, R-044, R-045, R-046 and
-evidence serialization are open. ADR-0013 is withdrawn.**
+Status: **S6.1 and S6.2 implementation were authorized by the Product Owner on
+2026-08-20. The general Stage 6 gate remains closed while R-042, R-044, R-045
+and evidence serialization are open. ADR-0013 is withdrawn; ADR-0014 is accepted.**
 
 This plan maps accepted R-003/R-039 semantics and the Stage 6 brief into
 sequential implementation slices without selecting undecided foundations in code.
@@ -16,7 +16,7 @@ Before Stage 6 production implementation starts:
 2. R-041 freezes canonical textual/wire name behavior. **Satisfied.**
 3. R-043 freezes the semantic persistence boundary. **Satisfied; the future
    interface and adapter still require conformance tests.**
-4. R-046 supplies the complete field-level role matrix. **Open.**
+4. R-046 supplies the complete field-level role matrix. **Satisfied.**
 5. R-044 selects a maintained suite matching the distinct Recovery Authority
    trust model, and a replacement ADR is accepted. **Open; ADR-0013 withdrawn.**
 6. R-045 measures and freezes Anonymous Cost/admission. **Open.**
@@ -27,10 +27,11 @@ Before Stage 6 production implementation starts:
 9. Product Owner accepts the corrected documents and records coding start.
    **Open.**
 
-Exception: the Product Owner explicitly authorized only Slice A (S6.1) on
-2026-08-20 so the decided R-039/R-041 lifecycle and encoding core can replace
-the earlier feasibility scaffolding. This does not satisfy item 9, authorize a
-later slice, or permit code to choose any mechanism still open in S6.0.
+Exception: the Product Owner explicitly authorized Slice A (S6.1) on 2026-08-20
+so the decided R-039/R-041 lifecycle and encoding core could replace earlier
+feasibility scaffolding. On 2026-08-20 the Product Owner separately authorized
+Slice B after accepting R-046, R-047, and ADR-0014. Neither exception satisfies
+item 9 or permits code to choose a mechanism still open in S6.0.
 
 S6.0 produces decisions and schemas, not a disguised implementation spike. A
 decision that selects storage, consensus, wire protocol, cryptography, or another
@@ -70,8 +71,9 @@ Owner: Codex
   authority-operation, and bounded observer responsibilities.
 - Enforce query hiding, Rendezvous Role Domain and known-family exclusions, and
   Isolation Context unlinkability.
-- Apply the separation to resolution and to claim/update/renew/policy/recovery
-  control operations.
+- Freeze control-operation field separation now, but implement only the complete
+  resolution vertical slice; later owning slices add concrete proof codecs after
+  R-042/R-044/R-045 decide them.
 - Return classified failure when the private path or role evidence is absent,
   stale, conflicting, forked, or invalid.
 
@@ -81,6 +83,10 @@ Definition of Done:
   view and no stable query identifier crosses Isolation Contexts;
 - DNS, HTTP, search, local alias, alternate Namespace, and less-private fallback
   are absent and represented as explicit failure.
+
+Authorization: **open since 2026-08-20 after Product Owner acceptance of R-046
+O1, R-047 O1, and ADR-0014. R-044 threshold recovery remains a separate S6.4
+gate.**
 
 ### Slice C - S6.3 target continuity
 
@@ -164,7 +170,8 @@ The following are current factual package-map entries, not future proposals:
   standard library only.
 - `internal/namelease`: lease, generation, record, and monotonic state contracts;
   standard library only.
-- S6.2 authority/resolver role packages are not reserved while R-046 is open;
+- S6.2 uses `internal/nameauthority` and `internal/nameresolution` only for the
+  accepted R-046/R-047 authenticated private-resolution vertical;
   they land only with accepted field views, maintained callers, and tests.
 
 These entries record existing boundaries, not Stage 6 completion. No verifier or

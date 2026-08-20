@@ -1,6 +1,6 @@
 ---
 id: R-044
-title: Which maintained cryptographic suite implements Name Authority, threshold Recovery Authorities, and resolver query hiding?
+title: Which maintained cryptographic mechanism implements threshold Recovery Authorities?
 status: open
 owner: Product Owner
 started: 2026-08-19
@@ -11,10 +11,10 @@ reviewed: 2026-08-20
 
 ## Decision this unlocks
 
-Select reviewed implementations and a replaceable interface for Name Authority
-signing, a real `t`-of-`n` Recovery Policy operated by scoped Recovery
-Authorities, and resolver query hiding. The selection must precede S6.2, S6.4,
-and cryptographic evidence claims.
+Select a reviewed implementation and complete protocol for a real `t`-of-`n`
+Recovery Policy operated by scoped Recovery Authorities. R-047 separately owns
+the decision-ready narrow S6.2 Name Authority/Record authentication and query
+hiding profile; this record remains the S6.4 threshold-recovery gate.
 
 ## Current contract
 
@@ -24,8 +24,7 @@ visible delay; the current Name Authority alone cannot cancel or satisfy a
 recovery intended to survive its compromise. No project coordinator, registrar,
 or administrator may become an implicit recovery root.
 
-Ed25519 and OHTTP remain plausible reused components. The previous ADR-0013
-selection is withdrawn: `golang.org/x/crypto/bls12381` does not exist, and
+The previous ADR-0013 selection is withdrawn: `golang.org/x/crypto/bls12381` does not exist, and
 ordinary BLS signature aggregation is not by itself a threshold-key setup,
 share-generation, partial-signature, participant-authentication, or recovery
 protocol. No Stage 6 threshold implementation is currently selected.
@@ -52,8 +51,8 @@ protocol. No Stage 6 threshold implementation is currently selected.
    misuse-resistant, and recorded in `dependencies.md` before import.
 5. Signature, proof, state, latency, CPU, and memory fit the R-023 reference
    profile.
-6. Query hiding preserves the R-026/R-039 role boundary and has no less-private
-   fallback.
+6. Recovery signatures cannot be replayed as R-047 Name Record or control
+   signatures; domains and canonical transcripts are distinct.
 
 ## Evidence plan
 
@@ -100,8 +99,9 @@ CPU, memory, and latency on the R-023 host.
   threshold custody and recovery protocol required here.
 - **Inference:** the earlier `ThresholdVerifier` interface was too shallow: it
   could not express participant identity, threshold policy, setup, or shares.
-- **Assumption:** reusing Ed25519 and OHTTP may still be appropriate, but that
-  does not authorize a partial suite before recovery is solved.
+- **Inference:** S6.2 Ed25519/OHTTP and S6.4 threshold recovery are separable
+  decisions because the current Name Authority must not hold recovery shares or
+  satisfy the recovery threshold alone.
 
 ## Options
 
@@ -125,7 +125,7 @@ FROST is its setup and interactive operational burden for a one-person product.
 ## Disposition
 
 - State: `open`; ADR-0013 is withdrawn and provides no import authorization.
-- S6.2 query-hiding integration, S6.4 recovery, and their final evidence remain
-  blocked. Existing R-026 OHTTP research may be reused as evidence, not assumed.
+- S6.4 recovery and its final evidence remain blocked. R-047 is the separate
+  decision-ready gate for S6.2 authentication and query hiding.
 - Any selected runtime dependency requires `dependencies.md`, an accepted ADR,
   exact conformance vectors, and failure-path tests.

@@ -1,15 +1,15 @@
 # Horizon 3 Stage 6 implementation brief
 
-Status: **the Product Owner authorized the bounded S6.1 implementation slice on
-2026-08-20. Stage 6 as a whole is not ready: R-042, R-044, R-045, R-046,
+Status: **the Product Owner authorized the bounded S6.1 and S6.2 implementation
+slices on 2026-08-20. Stage 6 as a whole is not ready: R-042, R-044, R-045,
 exact evidence serialization, and the general coding-start decision remain
-open. ADR-0013 is withdrawn.**
+open. ADR-0013 is withdrawn; ADR-0014 is accepted.**
 
 Authoritative inputs: accepted ADR-0005, ADR-0009, ADR-0012, R-003, R-024,
-R-026, R-039, R-041, R-043, the product contract, threat model, operating
+R-026, R-039, R-041, R-043, R-046, R-047, the product contract, threat model, operating
 model, H3 technical design, package map, and repository rules.
 
-Blocking research/status references: open R-042, R-044, R-045, R-046,
+Blocking research/status references: open R-042, R-044, R-045,
 withdrawn ADR-0013, the readiness checklist, and the S6.0 preparation summary.
 They constrain entry status but are not accepted design authority.
 
@@ -19,19 +19,22 @@ They constrain entry status but are not accepted design authority.
 - The Product Owner recorded the maintained Stage 5 S5.1-S5.5 development
   `advance` on 2026-08-19. Full R-037 qualification remains an S9.6 gate and is
   not a Stage 6 predecessor.
-- R-041 freezes the canonical name profile and R-043 freezes the semantic
-  persistence boundary. R-042 ordering/inclusion, R-044 cryptography,
-  R-045 measured admission, and R-046 field-level role views are open.
-- ADR-0013 is withdrawn and authorizes no cryptographic dependency or interface.
+- R-041/R-043 freeze syntax/persistence; R-046/R-047 freeze S6.2 role views and
+  authenticated query hiding. R-042 ordering/inclusion, R-044 recovery
+  cryptography, and R-045 measured admission are open.
+- ADR-0013 is withdrawn; accepted ADR-0014 authorizes only S6.2 Ed25519/OHTTP.
 - Existing Stage 6 foundation packages are work in progress, not evidence that
   the Stage 6 entry or completion gate has passed.
 - The Product Owner authorized maintained S6.1 parser, encoding, lifecycle, and
   parent-binding work on 2026-08-20. This narrow exception depends only on the
   decided R-039/R-041 semantics and does not authorize cryptography, claim
   ordering, persistence adapters, role views, recovery, or later slices.
+- The Product Owner separately authorized maintained S6.2 authenticated private
+  resolution after accepting R-046, R-047, and ADR-0014. Concrete naming
+  control-operation proof codecs remain in their later gated slices.
 
-The general entry verdict remains **not ready** because four research decisions
-and the evidence serialization are unresolved. The recorded S6.1 exception is
+The general entry verdict remains **not ready** because three research decisions
+and the evidence serialization are unresolved. The recorded slice exceptions are
 not a claim that the general entry gate passed.
 
 ## Entry gate
@@ -116,8 +119,8 @@ earlier generation. Revisions are monotonic within one generation.
 - restrict destination-aware resolution to the accepted Rendezvous Role Domain
   and enforce identity/known-family exclusion for the same destination context;
 - prevent stable query/session identifiers from crossing Isolation Contexts;
-- apply the same location/name separation to claim, update, renew, policy change,
-  release, transfer, and recovery operations;
+- freeze the same location/name separation for control operations, while their
+  concrete proof codecs remain owned by later slices after open research closes;
 - fail closed when the private path or role proof is unavailable or invalid.
 
 Privacy claim: the protected information is the association between one User or

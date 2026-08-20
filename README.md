@@ -123,14 +123,14 @@ The maintained Go tree contains the completed Carrier Lab and Named Site
 laboratories plus the Horizon 3 product runtime. Stage 1–4 development is
 complete with local Docker evidence; Stage 5 Bridge + WebTunnel development is
 complete and its final qualification remains S9.6. The Product Owner authorized
-the bounded S6.1 parser/encoding/lifecycle implementation on 2026-08-20; its
-independent evidence is still pending. All later Stage 6 slices remain closed:
-R-042, R-044, R-045, R-046, evidence serialization, and general Product Owner
-coding authorization are open. The current
+the bounded S6.1 parser/encoding/lifecycle and S6.2 authenticated private
+resolution implementations on 2026-08-20; their independent evidence is still
+pending. Later Stage 6 slices remain closed: R-042, R-044, R-045, evidence
+serialization, and general Product Owner coding authorization are open. The current
 maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
 `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-bridge`,
-`cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded S6.1
-`cmd/ardents-name` contract validator. Cohesive product
+`cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded S6.1/S6.2
+`cmd/ardents-name` validator/private resolver. Cohesive product
 modules live under `internal/network`, `internal/node`, `internal/route`,
 `internal/serviceconn`, `internal/serviceendpoint`, `internal/resource`,
 `internal/applicationipc`, `internal/streamworkload`, `internal/planfile`,

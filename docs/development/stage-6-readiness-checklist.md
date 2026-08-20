@@ -1,7 +1,7 @@
 # Stage 6 readiness checklist
 
-Status: **S6.1 implementation is authorized. The general Stage 6 coding gate is
-not ready: R-042, R-044, R-045, R-046, evidence serialization, document
+Status: **S6.1 and S6.2 implementation are authorized. The general Stage 6
+coding gate is not ready: R-042, R-044, R-045, evidence serialization, document
 acceptance, and general coding authorization remain open.**
 
 A checked contract item means the requirement is documented. It does not claim
@@ -15,8 +15,8 @@ that maintained code or runtime evidence exists.
 - [ ] Product Owner accepts the corrected brief, plan, checklist, and evidence
   contract after all S6.0 decisions are supported.
 - [ ] Product Owner records the Stage 6 coding start decision after A-D pass.
-- [x] Product Owner separately authorizes only the bounded S6.1 implementation
-  slice on 2026-08-20; this does not waive the general gate.
+- [x] Product Owner separately authorizes the bounded S6.1 and S6.2
+  implementation slices on 2026-08-20; this does not waive the general gate.
 
 ## B. S6.0 decision freeze
 
@@ -28,12 +28,12 @@ that maintained code or runtime evidence exists.
 - [x] R-043 freezes durable, restart-derived, and cache-bounded property classes,
   tamper/stale failure, and atomic-commit semantics. Its future naming-owned
   interface and `internal/network/store` adapter must pass conformance tests.
-- [ ] R-044 selects and measures a maintained cryptographic suite that implements
-  distinct scoped `t`-of-`n` Recovery Authorities and resolver query hiding. A
-  replacement ADR is accepted and dependencies are reviewed.
+- [ ] R-044 selects and measures a maintained mechanism for distinct scoped
+  `t`-of-`n` Recovery Authorities. S6.2 authentication/query hiding is decided
+  separately by R-047 and accepted ADR-0014.
 - [ ] R-045 selects measured per-surface Anonymous Cost/admission limits on the
   R-023 host and a weaker client. Former numeric values are not accepted data.
-- [ ] R-046 contains the exact per-operation field matrix for requests,
+- [x] R-046 contains the exact per-operation field matrix for requests,
   responses, logs, errors, retries, caches, identifiers, and evidence, with
   Role Domain and Isolation Context rules.
 
@@ -73,7 +73,7 @@ that maintained code or runtime evidence exists.
 
 ## E. Coding start rule
 
-Except for the recorded S6.1 slice, Stage 6 maintained coding may start only
+Except for the recorded S6.1 and S6.2 slices, Stage 6 maintained coding may start only
 when every item in A-D is checked and the Product Owner records the decision.
 Earlier foundation commits remain feasibility work and are not accepted Stage 6
 evidence.
@@ -87,7 +87,8 @@ Current verdict: **not ready**.
 - [x] `ardents-name` command smoke reaches strict canonical accept/reject
   outcomes without performing a naming control operation.
 - [ ] S6.1 independent evidence passes after the evidence schema is frozen.
-- [ ] S6.2 role-separation tests and evidence pass.
+- [x] S6.2 maintained role-separation behavior/failure tests pass.
+- [ ] S6.2 independent evidence passes after the evidence schema is frozen.
 - [ ] S6.3 Target continuity and connection-binding tests pass.
 - [ ] S6.4 authority/delegation/recovery tests pass.
 - [ ] S6.5 collision/fork/abuse tests pass.
