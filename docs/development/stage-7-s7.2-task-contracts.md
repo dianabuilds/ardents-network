@@ -193,12 +193,14 @@ or declaring any S7.2 evidence cell passed.
 ### S7.2-00a — Freeze the transaction handoff and owned-state format
 
 **Status:** contract and oracle amendment accepted by Product Owner + Codex on
-2026-08-21; bounded implementation authorized after the acceptance commit.
+2026-08-21; implemented in `a3b9ad02cfd765dbfa50907760c3dbdabd950fff`,
+independently reviewed on both Standards and Spec axes, and accepted by the
+Product Owner on 2026-08-21.
 
 **Tag:** contract `Codex+Owner`; bounded implementation `M3-autonomous`;
 review `Codex` followed by fresh `M3-after-contract` only if useful.
 
-**Blocked by:** S7.2-00. **Blocks:** S7.2-01.
+**Blocked by:** S7.2-00. **Unblocked:** S7.2-01.
 
 **User story:** As the Update Transaction Module, I receive the authenticated
 deadline facts already verified by Release Decision and one exact private

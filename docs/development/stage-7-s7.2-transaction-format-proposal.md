@@ -123,8 +123,8 @@ The correction must prove:
 5. no new exported declaration, metadata parser, clock Interface, or runtime
    dependency is added.
 
-S7.2-01 remains blocked until this correction and this format proposal are
-jointly accepted and committed.
+This gate was satisfied by the jointly accepted proposal and the reviewed
+S7.2-00a implementation commit `a3b9ad02cfd765dbfa50907760c3dbdabd950fff`.
 
 ## 3. Owned root and bootstrap generation
 
