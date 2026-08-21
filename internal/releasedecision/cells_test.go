@@ -113,15 +113,22 @@ func TestEvaluateB13BlocksOnMissingCapacity(t *testing.T) {
 func TestEvaluateB14ValidEmergencyTransition(t *testing.T) {
 	t.Parallel()
 	refTime := testRefTime
+	emergencyExpiry := refTime.Add(7 * 24 * time.Hour)
 	repo := newSyntheticRepository(t, syntheticOptions{
 		emergencyReason: "compromised-primitive-or-key",
-		emergencyExpiry: refTime.Add(7 * 24 * time.Hour),
+		emergencyExpiry: emergencyExpiry,
 	})
 	local := defaultLocalEnvironment(refTime)
 	store := newMemoryStoreForTest()
 	decision := evaluateWithRepo(t, repo, store, local)
 	if decision.Outcome != outcomeReleaseAccepted {
 		t.Fatalf("outcome = %s, want %s (notice: %s)", decision.Outcome, outcomeReleaseAccepted, decision.Notice)
+	}
+	if !decision.ReferenceTime.Equal(refTime) ||
+		!decision.BuildSafetyNoNewWorkAfter.Equal(refTime.Add(30*24*time.Hour)) ||
+		!decision.BuildSafetyTerminateAfter.Equal(refTime.Add(180*24*time.Hour)) ||
+		!decision.ProtocolTransitionDeadline.Equal(emergencyExpiry) {
+		t.Fatalf("emergency time facts mismatch: %+v", decision)
 	}
 }
 
@@ -164,6 +171,12 @@ func TestEvaluateB14InvalidEmergencyWithoutReason(t *testing.T) {
 	decision := evaluateWithRepo(t, repo, store, local)
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s (notice: %s)", decision.Outcome, outcomeReleaseInvalid, decision.Notice)
+	}
+	if !decision.ReferenceTime.IsZero() ||
+		!decision.BuildSafetyNoNewWorkAfter.IsZero() ||
+		!decision.BuildSafetyTerminateAfter.IsZero() ||
+		!decision.ProtocolTransitionDeadline.IsZero() {
+		t.Fatalf("identity-invalid decision carried time facts: %+v", decision)
 	}
 }
 

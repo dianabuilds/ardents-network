@@ -126,6 +126,18 @@ type Decision struct {
 	BuildSafety Outcome
 	// Protocol classifies the protocol machine.
 	Protocol Outcome
+	// ReferenceTime is the exact fixed local reference time, normalized to
+	// UTC, captured by the evaluation for every expiry check.
+	ReferenceTime time.Time
+	// BuildSafetyNoNewWorkAfter is the authenticated descriptor value
+	// captured after artifact, builder, and local binding checks passed.
+	BuildSafetyNoNewWorkAfter time.Time
+	// BuildSafetyTerminateAfter is the authenticated descriptor value
+	// captured after artifact, builder, and local binding checks passed.
+	BuildSafetyTerminateAfter time.Time
+	// ProtocolTransitionDeadline is the authenticated emergency expiry
+	// when the candidate carries an emergency transition, otherwise zero.
+	ProtocolTransitionDeadline time.Time
 	// RootVersion is the active trusted root version after the evaluation.
 	RootVersion int64
 	// Floors is the durable successor floor set the package committed.

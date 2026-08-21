@@ -187,23 +187,36 @@ func verifyTargetIdentity(target *metadata.TargetFiles, descriptor targetIdentit
 		return Decision{}, errors.New("target network does not match the local binding")
 	}
 	return Decision{
-		Path:                 in.TargetPath,
-		Length:               int64(len(in.Artifact)),
-		Digest:               append([]byte(nil), digest...),
-		Platform:             descriptor.Platform,
-		Architecture:         descriptor.Architecture,
-		Environment:          descriptor.Environment,
-		Network:              descriptor.Network,
-		ReleaseIdentity:      descriptor.ReleaseIdentity,
-		ReleaseVersion:       descriptor.ReleaseVersion,
-		SourceRevision:       descriptor.SourceRevision,
-		BuildInputCommitment: descriptor.BuildInputCommitment,
-		BuildIdentity:        descriptor.BuildIdentity,
-		DependencyIdentity:   descriptor.DependencyIdentity,
-		SBOMIdentity:         descriptor.SBOMIdentity,
-		AttestationPolicy:    descriptor.AttestationPolicy,
-		Qualification:        descriptor.Qualification,
-		BuildState:           descriptor.BuildState,
-		ProtocolPhase:        descriptor.ProtocolPhase,
+		Path:                       in.TargetPath,
+		Length:                     int64(len(in.Artifact)),
+		Digest:                     append([]byte(nil), digest...),
+		ReferenceTime:              local.RefTime.UTC(),
+		BuildSafetyNoNewWorkAfter:  descriptor.BuildSafetyNoNewAfter.UTC(),
+		BuildSafetyTerminateAfter:  descriptor.BuildSafetyTermAfter.UTC(),
+		ProtocolTransitionDeadline: emergencyDeadlineUTC(descriptor.EmergencyExpiry),
+		Platform:                   descriptor.Platform,
+		Architecture:               descriptor.Architecture,
+		Environment:                descriptor.Environment,
+		Network:                    descriptor.Network,
+		ReleaseIdentity:            descriptor.ReleaseIdentity,
+		ReleaseVersion:             descriptor.ReleaseVersion,
+		SourceRevision:             descriptor.SourceRevision,
+		BuildInputCommitment:       descriptor.BuildInputCommitment,
+		BuildIdentity:              descriptor.BuildIdentity,
+		DependencyIdentity:         descriptor.DependencyIdentity,
+		SBOMIdentity:               descriptor.SBOMIdentity,
+		AttestationPolicy:          descriptor.AttestationPolicy,
+		Qualification:              descriptor.Qualification,
+		BuildState:                 descriptor.BuildState,
+		ProtocolPhase:              descriptor.ProtocolPhase,
 	}, nil
+}
+
+// emergencyDeadlineUTC returns the authenticated emergency expiry
+// normalized to UTC when non-zero, otherwise the exact zero time.Time.
+func emergencyDeadlineUTC(value time.Time) time.Time {
+	if value.IsZero() {
+		return time.Time{}
+	}
+	return value.UTC()
 }

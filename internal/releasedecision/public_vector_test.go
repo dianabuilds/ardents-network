@@ -53,6 +53,20 @@ func TestR049FrozenPublicVector(t *testing.T) {
 		!bytes.Equal(decision.Digest, wantDigest) {
 		t.Fatalf("public vector result mismatch: %+v", decision)
 	}
+	wantNoNewWork, err := time.Parse(time.RFC3339, "2030-02-01T03:04:05Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantTerminate, err := time.Parse(time.RFC3339, "2030-07-01T03:04:05Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !decision.ReferenceTime.Equal(refTime) ||
+		!decision.BuildSafetyNoNewWorkAfter.Equal(wantNoNewWork) ||
+		!decision.BuildSafetyTerminateAfter.Equal(wantTerminate) ||
+		!decision.ProtocolTransitionDeadline.IsZero() {
+		t.Fatalf("public vector time facts mismatch: %+v", decision)
+	}
 }
 
 func readVectorFile(t *testing.T, path string) []byte {
