@@ -28,12 +28,9 @@ func acquireStore(root string, generation uint64) (*ownedStore, rootInspection, 
 		return nil, inspection, errors.Join(errRecordInvalid, err)
 	}
 	store := &ownedStore{root: root, ops: nativeDurability()}
-	if err := writeNewFile(filepath.Join(root, ".ardents-update-transaction-lock"), nil); err != nil {
-		return nil, inspection, err
-	}
 	inspection, err = store.inspect(generation)
 	if err != nil {
-		return nil, inspection, errors.Join(err, store.release())
+		return nil, inspection, err
 	}
 	return store, inspection, nil
 }
@@ -148,7 +145,7 @@ func (store *ownedStore) stage(generation uint64, artifact, manifest []byte) err
 	return store.ops.syncDirectory(directory)
 }
 
-func (store *ownedStore) activate(generation uint64, selection currentSelection, expectedCurrent [32]byte) error {
+func (store *ownedStore) activate(generation uint64, selection currentSelection, expectedCurrent [32]byte, control *applyInterruptionControl) error {
 	if selection.Rollback == nil {
 		return errors.Join(errRecordInvalid, store.cleanup(generation))
 	}
@@ -162,8 +159,14 @@ func (store *ownedStore) activate(generation uint64, selection currentSelection,
 	if err != nil || sha256.Sum256(current) != expectedCurrent {
 		return errors.Join(errRecordInvalid, err, store.cleanup(generation))
 	}
+	if err := applyCheckpoint(control, true, "publish-generation"); err != nil {
+		return err
+	}
 	if err := store.ops.publishGeneration(store.generationPath("staging", generation),
 		filepath.Join(store.root, "generations", strconv.FormatUint(generation, 10))); err != nil {
+		return err
+	}
+	if err := applyCheckpoint(control, false, "publish-generation"); err != nil {
 		return err
 	}
 	raw, err := encodeCurrent(selection)
@@ -175,14 +178,38 @@ func (store *ownedStore) activate(generation uint64, selection currentSelection,
 		return err
 	}
 	temporary := filepath.Join(store.root, ".current."+hex.EncodeToString(token[:])+".tmp")
+	if err := applyCheckpoint(control, true, "current-temp"); err != nil {
+		return err
+	}
 	if err := writeNewFile(temporary, raw); err != nil {
 		return err
 	}
-	return store.ops.replaceCurrent(temporary, filepath.Join(store.root, "current"))
+	if err := applyCheckpoint(control, false, "current-temp"); err != nil {
+		return err
+	}
+	if err := applyCheckpoint(control, true, "replace-current"); err != nil {
+		return err
+	}
+	if err := store.ops.replaceCurrent(temporary, filepath.Join(store.root, "current")); err != nil {
+		return err
+	}
+	if err := applyCheckpoint(control, false, "replace-current"); err != nil {
+		return err
+	}
+	if err := applyCheckpoint(control, true, "durability-ack"); err != nil {
+		return err
+	}
+	if err := store.ops.syncDirectory(store.root); err != nil {
+		return err
+	}
+	if err := applyCheckpoint(control, false, "durability-ack"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (store *ownedStore) release() error {
-	return errors.Join(os.Remove(filepath.Join(store.root, ".ardents-update-transaction-lock")), store.ops.syncDirectory(store.root))
+	return store.ops.syncDirectory(store.root)
 }
 
 func (store *ownedStore) cleanup(generation uint64) error {
@@ -241,7 +268,16 @@ func requireNames(path string, expected []string) error {
 		want[name] = true
 	}
 	for _, entry := range entries {
-		if !want[entry.Name()] || validateOwnedEntry(filepath.Join(path, entry.Name())) != nil {
+		if !want[entry.Name()] {
+			return errRecordInvalid
+		}
+		// The permanent lock is already validated through the exact held
+		// OS handle by acquireOwnedLock. Reopening it here would violate the
+		// one-open invariant and fails by design under Windows zero sharing.
+		if entry.Name() == lockFileName {
+			continue
+		}
+		if validateOwnedEntry(filepath.Join(path, entry.Name())) != nil {
 			return errRecordInvalid
 		}
 	}

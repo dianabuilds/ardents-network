@@ -327,8 +327,9 @@ func TestApplyRejectsEntrySmokeCasesBeforeAdapters(t *testing.T) {
 			if readErr != nil || !bytes.Equal(currentBefore, currentAfter) {
 				t.Fatalf("current changed: %v", readErr)
 			}
-			if _, lockErr := os.Lstat(filepath.Join(root, ".ardents-update-transaction-lock")); !errors.Is(lockErr, os.ErrNotExist) {
-				t.Fatalf("lock residue: %v", lockErr)
+			lockInfo, lockErr := os.Lstat(filepath.Join(root, ".ardents-update-transaction-lock"))
+			if lockErr != nil || !lockInfo.Mode().IsRegular() || lockInfo.Size() != 0 {
+				t.Fatalf("lock absent or non-empty: err=%v size=%d", lockErr, lockInfo.Size())
 			}
 		})
 	}
@@ -353,11 +354,12 @@ func TestExternalCurrentMutationFailsClosed(t *testing.T) {
 	if err := os.WriteFile(artifactPath, mutated, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if result, err := Recover(context.Background(), root); err == nil || result.Outcome != invalidOutcome {
+	if result, err := Recover(context.Background(), root); err == nil || result.Outcome != "transaction-invalid" {
 		t.Fatalf("Recover accepted external mutation: %+v, %v", result, err)
 	}
-	if _, lockErr := os.Lstat(filepath.Join(root, ".ardents-update-transaction-lock")); !errors.Is(lockErr, os.ErrNotExist) {
-		t.Fatalf("lock residue after mutation detection: %v", lockErr)
+	lockInfo, lockErr := os.Lstat(filepath.Join(root, ".ardents-update-transaction-lock"))
+	if lockErr != nil || !lockInfo.Mode().IsRegular() || lockInfo.Size() != 0 {
+		t.Fatalf("lock absent or non-empty after mutation detection: err=%v size=%d", lockErr, lockInfo.Size())
 	}
 }
 
@@ -385,7 +387,7 @@ func TestExternalHardLinkAliasFailsClosed(t *testing.T) {
 	if err := os.Link(aliasSource, artifactPath); err != nil {
 		t.Fatal(err)
 	}
-	if result, err := Recover(context.Background(), root); err == nil || result.Outcome != invalidOutcome {
+	if result, err := Recover(context.Background(), root); err == nil || result.Outcome != "transaction-invalid" {
 		t.Fatalf("Recover accepted hard-link alias: %+v, %v", result, err)
 	}
 }

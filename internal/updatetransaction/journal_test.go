@@ -457,6 +457,10 @@ func oracleBootstrapV0(t *testing.T, root string) v0OracleVector {
 			t.Fatal(err)
 		}
 	}
+	if err := os.WriteFile(filepath.Join(root, ".ardents-update-transaction-lock"),
+		nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(root, ".ardents-update-transaction-v1"),
 		[]byte(oracleMarker), 0o600); err != nil {
 		t.Fatal(err)

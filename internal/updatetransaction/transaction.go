@@ -10,6 +10,19 @@ import (
 
 const invalidOutcome = "release-invalid"
 
+// applyInterruptionControl is the private per-invocation Apply
+// checkpoint control. Public Apply calls applyWithInterruption with
+// nil; only tests may inject one bounded control value. Each
+// invocation is independent: the control is not package-global,
+// context-carried, or exported, and a real crash sentinel preserves
+// every checkpoint byte without running normal failure cleanup.
+type applyInterruptionControl struct {
+	StopBefore func(name string) bool
+	StopAfter  func(name string) bool
+}
+
+var errApplyInterrupted = errors.New("update transaction interrupted at test checkpoint")
+
 type tracer struct {
 	store       *ownedStore
 	request     Request
@@ -18,15 +31,47 @@ type tracer struct {
 	manifest    [32]byte
 	predecessor [32]byte
 	callerLimit time.Time
+	control     *applyInterruptionControl
 }
 
-// Apply executes one complete accepted offline update transaction.
+// Apply executes one complete accepted offline update transaction. It
+// acquires the permanent OS lock at entry and releases it at exit so
+// concurrent Recover calls detect busy ownership. The Module never
+// creates, repairs, replaces, retries, or unlinks the lock.
 func Apply(ctx context.Context, request Request) (Result, error) {
+	return applyWithInterruption(ctx, request, nil)
+}
+
+// applyWithInterruption runs the complete Apply orchestration with
+// the supplied private per-invocation control. Public Apply calls this
+// with nil; tests may inject a non-nil control to stop execution
+// immediately before or after every accepted checkpoint. A non-nil
+// control that signals a stop bypasses normal failure cleanup and
+// normal Result construction, releases only the process-owned OS-lock
+// handle, and preserves every checkpoint byte on disk.
+func applyWithInterruption(ctx context.Context, request Request, control *applyInterruptionControl) (result Result, resultErr error) {
 	start := time.Now()
 	artifact, manifestBytes, manifestDigest, err := validateRequest(ctx, request)
 	if err != nil {
 		return invalidResult(request, "release-accepted"), err
 	}
+	lock, lockErr := acquireOwnedLock(request.UpdateRoot)
+	if lockErr != nil {
+		if errors.Is(lockErr, errLockBusy) {
+			return Result{Outcome: "resource-denied", State: "busy", Generation: 0, StagingPresent: false, SafeNotice: "update transaction busy"}, lockErr
+		}
+		return invalidResult(request, "release-accepted"), lockErr
+	}
+	defer func() {
+		releaseErr := lock.release()
+		if releaseErr == nil {
+			return
+		}
+		if resultErr == nil {
+			result = invalidResult(request, result.State)
+		}
+		resultErr = errors.Join(resultErr, releaseErr)
+	}()
 	store, inspection, err := acquireStore(request.UpdateRoot, request.Generation)
 	if err != nil {
 		return invalidResult(request, "release-accepted"), err
@@ -38,69 +83,70 @@ func Apply(ctx context.Context, request Request) (Result, error) {
 		return result, nil
 	}
 	if inspection.selection.Transaction+1 != request.Generation || inspection.selection.Rollback != nil {
-		return failApply(store, request, "release-accepted", false, errRecordInvalid)
+		return applyFailure(store, request, "release-accepted", false, errRecordInvalid)
 	}
 	predecessorBytes, err := encodePredecessor(inspection.predecessor)
 	if err != nil {
-		return failApply(store, request, "release-accepted", false, err)
+		return applyFailure(store, request, "release-accepted", false, err)
 	}
-	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifestDigest, predecessor: sha256.Sum256(predecessorBytes)}
+	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifestDigest,
+		predecessor: sha256.Sum256(predecessorBytes), control: control}
 	trace.callerLimit, _ = ctx.Deadline()
 	if err := store.prepare(request.Generation); err != nil {
-		return failApply(store, request, "release-accepted", true, err)
+		return applyFailure(store, request, "release-accepted", true, err)
 	}
-	if err := trace.record(ctx, stateReleaseAccepted, adapterNotCalled); err != nil {
-		return failApply(store, request, "release-accepted", true, err)
+	if err := trace.record(ctx, "01-release-accepted", stateReleaseAccepted, adapterNotCalled); err != nil {
+		return applyFailure(store, request, "release-accepted", true, err)
 	}
-	if err := trace.record(ctx, stateArtifactVerified, adapterNotCalled); err != nil {
-		return failApply(store, request, "artifact-verified", true, err)
+	if err := trace.record(ctx, "02-artifact-verified", stateArtifactVerified, adapterNotCalled); err != nil {
+		return applyFailure(store, request, "artifact-verified", true, err)
 	}
 	if err := store.stage(request.Generation, request.Artifact, manifestBytes); err != nil {
-		return failApply(store, request, "artifact-verified", true, err)
+		return applyFailure(store, request, "artifact-verified", true, err)
 	}
-	if err := trace.record(ctx, stateStaged, adapterNotCalled); err != nil {
-		return failApply(store, request, "staged", true, err)
+	if err := trace.record(ctx, "03-staged", stateStaged, adapterNotCalled); err != nil {
+		return applyFailure(store, request, "staged", true, err)
 	}
-	if err := trace.record(ctx, stateRollbackReserved, adapterNotCalled); err != nil {
-		return failApply(store, request, "rollback-reserved", true, err)
+	if err := trace.record(ctx, "04-rollback-reserved", stateRollbackReserved, adapterNotCalled); err != nil {
+		return applyFailure(store, request, "rollback-reserved", true, err)
 	}
 	if err := callBounded(ctx, trace.deadline(stateStopNewWork), request.Work.StopNewWork); err != nil {
-		recordErr := trace.record(ctx, stateStopNewWork, adapterFailed)
-		return failApply(store, request, "stop-new-work", true, errors.Join(err, recordErr))
+		recordErr := trace.record(ctx, "05-stop-new-work", stateStopNewWork, adapterFailed)
+		return applyFailure(store, request, "stop-new-work", true, errors.Join(err, recordErr))
 	}
-	if err := trace.record(ctx, stateStopNewWork, adapterSuccess); err != nil {
-		return failApply(store, request, "stop-new-work", true, err)
+	if err := trace.record(ctx, "05-stop-new-work", stateStopNewWork, adapterSuccess); err != nil {
+		return applyFailure(store, request, "stop-new-work", true, err)
 	}
 	if err := callBounded(ctx, trace.deadline(stateDraining), request.Work.Drain); err != nil {
-		recordErr := trace.record(ctx, stateDraining, adapterFailed)
-		return failApply(store, request, "draining", true, errors.Join(err, recordErr))
+		recordErr := trace.record(ctx, "06-draining", stateDraining, adapterFailed)
+		return applyFailure(store, request, "draining", true, errors.Join(err, recordErr))
 	}
-	if err := trace.record(ctx, stateDraining, adapterSuccess); err != nil {
-		return failApply(store, request, "draining", true, err)
+	if err := trace.record(ctx, "06-draining", stateDraining, adapterSuccess); err != nil {
+		return applyFailure(store, request, "draining", true, err)
 	}
 	current := inspectedTuple{Generation: request.Generation, Length: uint64(len(request.Artifact)), Artifact: artifact, Manifest: manifestDigest}
 	selection := currentSelection{Transaction: request.Generation, Current: current, Rollback: &inspection.selection.Current}
-	if err := store.activate(request.Generation, selection, inspection.predecessor.CurrentRecordDigest); err != nil {
-		return failApply(store, request, "draining", false, err)
+	if err := store.activate(request.Generation, selection, inspection.predecessor.CurrentRecordDigest, control); err != nil {
+		return applyFailure(store, request, "draining", false, err)
 	}
-	if err := trace.record(ctx, stateActivated, adapterNotCalled); err != nil {
-		return failApply(store, request, "activated", false, err)
+	if err := trace.record(ctx, "07-activated", stateActivated, adapterNotCalled); err != nil {
+		return applyFailure(store, request, "activated", false, err)
 	}
 	identity := CandidateIdentity{Generation: request.Generation, TargetPath: request.Decision.Path, Length: request.Decision.Length,
 		Digest: artifact, Platform: request.Decision.Platform, Architecture: request.Decision.Architecture, Environment: request.Decision.Environment, Network: request.Decision.Network}
 	if err := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
 		return request.SelfTest.Check(callCtx, identity)
 	}); err != nil {
-		recordErr := trace.record(ctx, stateSelfTesting, adapterFailed)
-		return failApply(store, request, "self-testing", false, errors.Join(err, recordErr))
+		recordErr := trace.record(ctx, "08-self-testing", stateSelfTesting, adapterFailed)
+		return applyFailure(store, request, "self-testing", false, errors.Join(err, recordErr))
 	}
-	if err := trace.record(ctx, stateSelfTesting, adapterSuccess); err != nil {
-		return failApply(store, request, "self-testing", false, err)
+	if err := trace.record(ctx, "08-self-testing", stateSelfTesting, adapterSuccess); err != nil {
+		return applyFailure(store, request, "self-testing", false, err)
 	}
-	if err := trace.record(ctx, stateCommitted, adapterNotCalled); err != nil {
-		return failApply(store, request, "committed", false, err)
+	if err := trace.record(ctx, "09-committed", stateCommitted, adapterNotCalled); err != nil {
+		return applyFailure(store, request, "committed", false, err)
 	}
-	result := committedResult(request.Generation, artifact, inspection.selection.Current.Artifact, "update committed", request.Decision.CustodyNotice)
+	result = committedResult(request.Generation, artifact, inspection.selection.Current.Artifact, "update committed", request.Decision.CustodyNotice)
 	if err := store.release(); err != nil {
 		return invalidResult(request, "committed"), err
 	}
@@ -134,8 +180,16 @@ func validateRequest(ctx context.Context, request Request) ([32]byte, []byte, [3
 	return artifact, manifest, sha256.Sum256(manifest), nil
 }
 
-func (trace *tracer) record(ctx context.Context, state transactionState, adapter adapterResult) error {
+// record writes one journal entry, observes the bound, and notifies the
+// private Apply checkpoint control before and after each publication.
+// A non-nil control that signals a stop via StopBefore returns a sentinel
+// cancellation error so the caller preserves the bytes on disk and
+// releases only the lock.
+func (trace *tracer) record(ctx context.Context, name string, state transactionState, adapter adapterResult) error {
 	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := applyCheckpoint(trace.control, true, name); err != nil {
 		return err
 	}
 	entry := journalEntry{State: state, Generation: trace.request.Generation,
@@ -146,8 +200,25 @@ func (trace *tracer) record(ctx context.Context, state transactionState, adapter
 	raw, err := trace.store.writeEntry(entry)
 	if err == nil {
 		trace.predecessor = sha256.Sum256(raw)
+		if checkpointErr := applyCheckpoint(trace.control, false, name); checkpointErr != nil {
+			return checkpointErr
+		}
 	}
 	return err
+}
+
+func applyCheckpoint(control *applyInterruptionControl, before bool, name string) error {
+	if control == nil {
+		return nil
+	}
+	stop := control.StopAfter
+	if before {
+		stop = control.StopBefore
+	}
+	if stop != nil && stop(name) {
+		return errApplyInterrupted
+	}
+	return nil
 }
 
 func (trace *tracer) deadline(state transactionState) time.Time {
@@ -211,40 +282,9 @@ func failApply(store *ownedStore, request Request, state string, cleanup bool, c
 	return invalidResult(request, state), errors.Join(cause, store.release())
 }
 
-// Recover returns only a coherent terminal transaction; S7.2-02 adds interruption recovery.
-func Recover(ctx context.Context, root string) (Result, error) {
-	if ctx == nil || ctx.Err() != nil {
-		return Result{Outcome: invalidOutcome}, errRecordInvalid
+func applyFailure(store *ownedStore, request Request, state string, cleanup bool, cause error) (Result, error) {
+	if errors.Is(cause, errApplyInterrupted) {
+		return Result{}, cause
 	}
-	raw, err := readBoundedFile(filepath.Join(root, "current"), maximumRecordBytes)
-	if err != nil {
-		return Result{Outcome: invalidOutcome}, err
-	}
-	selected, err := decodeCurrent(raw)
-	if err != nil || selected.Transaction == 0 {
-		return Result{Outcome: invalidOutcome}, errors.Join(errRecordInvalid, err)
-	}
-	store, inspection, err := acquireStore(root, selected.Transaction)
-	if err != nil {
-		return Result{Outcome: invalidOutcome}, err
-	}
-	selection := inspection.selection
-	if selection.Transaction != selected.Transaction || selection.Rollback == nil || ctx.Err() != nil {
-		return Result{Outcome: invalidOutcome}, errors.Join(errRecordInvalid, store.release())
-	}
-	view, _, _, err := store.inspectPayload("generations", selection.Current)
-	directory := filepath.Join(store.generationPath("transactions", selection.Transaction), "journal")
-	first, firstErr := readExactFile(filepath.Join(directory, "01-release-accepted.entry"), journalRecordBytes)
-	entry, entryErr := decodeJournalEntry(first)
-	_, journalErr := inspectJournal(directory, selection.Transaction, selection.Current.Artifact,
-		selection.Current.Manifest, entry.Predecessor)
-	if err = errors.Join(err, firstErr, entryErr, journalErr); err != nil {
-		return Result{Outcome: invalidOutcome}, errors.Join(err, store.release())
-	}
-	result := committedResult(selection.Transaction, selection.Current.Artifact,
-		selection.Rollback.Artifact, view.SafeNotice, view.CustodyNotice)
-	if err := store.release(); err != nil {
-		return Result{Outcome: invalidOutcome}, err
-	}
-	return result, nil
+	return failApply(store, request, state, cleanup, cause)
 }

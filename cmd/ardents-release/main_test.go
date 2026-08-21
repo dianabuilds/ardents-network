@@ -209,6 +209,7 @@ func bootstrapUpdateRoot(t *testing.T, root string) {
 			t.Fatal(err)
 		}
 	}
+	writeFixture(t, filepath.Join(root, ".ardents-update-transaction-lock"), nil)
 	writeFixture(t, filepath.Join(root, ".ardents-update-transaction-v1"), []byte("ardents-update-transaction-v1\n"))
 	writeFixture(t, filepath.Join(root, "current"), envelope(2, current))
 	writeFixture(t, filepath.Join(root, "generations", "0", "artifact"), previous)
