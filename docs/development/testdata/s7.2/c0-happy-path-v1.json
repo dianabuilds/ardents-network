@@ -1,0 +1,61 @@
+{
+  "schema": "ardents-s72-update-vector-v1",
+  "source_release_vector": "internal/releasedecision/testdata/r049-public-vector-v1",
+  "release_outcome": "release-accepted",
+  "candidate": {
+    "release_identity": "ardents-release-0001",
+    "release_version": 1,
+    "path": "ardents/windows-amd64/application",
+    "length": 4096,
+    "sha256": "a52b68413e0cd723547790c7ac161ece935d6459377442644b18031c3dc27d0a"
+  },
+  "initial": {
+    "transaction_generation": 0,
+    "active_payload": {
+      "identity": "previous-v1",
+      "path": "docs/development/testdata/s7.2/previous-payload-v1.txt",
+      "length": 32,
+      "sha256": "8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af",
+      "stored_authorization": {
+        "classification": "release-accepted",
+        "platform": "windows-amd64",
+        "architecture": "amd64",
+        "environment": "h3-test",
+        "network": "ardents-h3-test-1",
+        "schema_compatible": true,
+        "revoked": false,
+        "above_local_floors": true
+      }
+    },
+    "rollback_payload": null,
+    "staging_payload": null
+  },
+  "request": {
+    "transaction_generation": 1,
+    "active_work": 0,
+    "schema_plan": "no-op-v1",
+    "self_test": "offline-success-v1"
+  },
+  "expected": {
+    "outcome": "committed",
+    "state": "committed",
+    "transaction_generation": 1,
+    "active_sha256": "a52b68413e0cd723547790c7ac161ece935d6459377442644b18031c3dc27d0a",
+    "rollback_sha256": "8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af",
+    "staging_payload": null,
+    "release_floors": {
+      "root_version": 1,
+      "root_sha256": "246c88b483ccb15982710fa661f7e456f9361f95c2529df9d60082c5c35c59fd",
+      "timestamp_version": 1,
+      "timestamp_sha256": "12fcf1537e5f8ea10a3cbb69b95bfd2af43ce1964d84719f668a55d3d06158cb",
+      "snapshot_version": 1,
+      "snapshot_sha256": "5adca7af592d9d686e6b1033c2ef0c8cf60348e80942e4ad98c97a1008d67c02",
+      "targets_version": 1,
+      "targets_sha256": "2bbcb3498c44715a5d36bdc7c91b1fba4c3d639e385db5554b7b04f2b404ae73"
+    },
+    "authority_mutations": 0,
+    "stop_new_work_calls": 1,
+    "drain_calls": 1,
+    "self_test_calls": 1
+  }
+}
