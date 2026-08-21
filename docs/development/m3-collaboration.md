@@ -14,11 +14,32 @@ of them in a single task. M3 must never bundle all four:
 
 | Role | Who | What |
 |---|---|---|
-| Contract author | Owner + Codex | ADR, security boundary, public contract change |
+| Contract author | Owner + Codex | Product behavior, ADR, security boundary, or consequential public contract change; Codex holds the standing engineering delegation below |
 | Implementer | M3 (`M3-autonomous`) | Bounded implementation against an already-accepted contract |
 | Worker reviewer | M3 (`M3-after-contract`) | Independent review of the implementation against the same contract. **No fixes** — only findings. Must run in a fresh context, not the same session that wrote the code |
 | Standards + Spec reviewer | Codex | Two-axis review of the small diff: Standards (architecture, dependency surface, naming) and Spec (every acceptance criterion mapped to a concrete test) |
 | Acceptance | Owner | Final disposition of the slice |
+
+### Product Owner standing engineering delegation
+
+On 2026-08-21 the Product Owner authorized Codex to decide and accept routine
+Stage 7.2 engineering amendments without another confirmation when they follow
+the accepted codebase direction. This includes file/responsibility splits,
+test seams, private recovery algorithms, feasible task caps, remediation text,
+and other reversible implementation-contract details already bounded by the
+accepted ADRs, threat model, product contract, and repository rules.
+It also covers additive declarations inside an `internal/` Module and additive
+owned-state record versions when the accepted product behavior requires them,
+the prior version remains byte-exact supported, and no cross-Module authority
+or compatibility claim is widened.
+
+Codex records those decisions in the repository and still obtains independent
+evidence before authorizing M3 implementation. The delegation does not cover a
+new product behavior, a weaker security/privacy claim, a new trust root, a
+consequential externally public Interface or backward-incompatible wire/storage
+decision, an irreversible external action, or scope outside Stage 7.2. Those
+remain joint Owner + Codex contract decisions. Final slice acceptance remains with the
+Product Owner unless the Owner explicitly delegates that gate too.
 
 ## Slice shape
 
