@@ -113,8 +113,13 @@ oracles, dependencies, and exclusions are maintained in
 [the S7.2 task-contract document](stage-7-s7.2-task-contracts.md). No M3
 implementation starts until that document is jointly accepted.
 The accepted fresh-attempt instructions for the first implementation slice are
-the [S7.2-01 v2 M3 brief](m3-s7.2-01-v2-brief.md); the abandoned first attempt
-remains `scope-blocked` and is not an implementation baseline.
+currently suspended. The MiniMax Interface/layout preflight produced the
+[accepted S7.2 transaction Interface and owned-state format](stage-7-s7.2-transaction-format-proposal.md),
+including the small S7.2-00a authenticated-time handoff correction. Its
+[bounded M3 brief](m3-s7.2-00a-brief.md) is accepted for launch from the exact
+contract commit. S7.2-01 gets a replacement M3 brief only after S7.2-00a is
+implemented, reviewed, and accepted. The abandoned first attempt remains
+`scope-blocked` and is not an implementation baseline.
 
 1. create an immutable versioned filesystem fixture through the selected
    Adapter seam;

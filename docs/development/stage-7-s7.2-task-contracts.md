@@ -3,6 +3,12 @@
 Status: **accepted by the Product Owner and Codex on 2026-08-21 after two M3
 contract-review passes; the S7.2-01 seven-file amendment was jointly accepted
 after the first implementation attempt correctly returned `scope-blocked`.**
+The later MiniMax Interface/layout preflight found a missing authenticated-time
+handoff and still-implicit private record formats. The jointly accepted
+S7.2-00a amendment is in
+[`stage-7-s7.2-transaction-format-proposal.md`](stage-7-s7.2-transaction-format-proposal.md).
+It blocks S7.2-01 until S7.2-00a implementation is separately reviewed and
+accepted.
 Each task follows the independent implementation, worker-review, Codex-review,
 and Owner-acceptance flow in
 [the M3 collaboration workflow](m3-collaboration.md). Acceptance of this
@@ -184,11 +190,74 @@ the Stage 7 development plan, and the M3 collaboration workflow.
 **Not in scope:** production Go code, generated packages, installer execution,
 or declaring any S7.2 evidence cell passed.
 
+### S7.2-00a — Freeze the transaction handoff and owned-state format
+
+**Status:** contract and oracle amendment accepted by Product Owner + Codex on
+2026-08-21; bounded implementation authorized after the acceptance commit.
+
+**Tag:** contract `Codex+Owner`; bounded implementation `M3-autonomous`;
+review `Codex` followed by fresh `M3-after-contract` only if useful.
+
+**Blocked by:** S7.2-00. **Blocks:** S7.2-01.
+
+**User story:** As the Update Transaction Module, I receive the authenticated
+deadline facts already verified by Release Decision and one exact private
+owned-state format, so neither my caller nor an implementation worker must
+re-parse TUF, invent persistence, or guess recovery evidence.
+
+**Contract source:**
+[`stage-7-s7.2-transaction-format-proposal.md`](stage-7-s7.2-transaction-format-proposal.md).
+The bounded worker instructions are accepted in
+[`m3-s7.2-00a-brief.md`](m3-s7.2-00a-brief.md).
+
+**Allowed implementation scope:** `internal/releasedecision/inputs.go`, the
+minimum existing Decision-construction file, focused tests, and factual
+documentation references. At most `5` changed files and `120` production LOC;
+no new package, dependency, command output field, exported declaration, or
+storage format is permitted.
+
+**Frozen V0 deadline oracle:** reference time
+`2030-01-02T03:04:05Z`, build no-new-work time
+`2030-02-01T03:04:05Z`, build terminate time
+`2030-07-01T03:04:05Z`, and no protocol transition deadline.
+
+The S7.2-00a oracle amendment also separates the exact
+`ardents-update-result-v1` command JSON under `expected.command_result` from
+test-only floor, Authority, and Adapter evidence. It freezes `current_sha256`,
+`staging_present`, safe notice, and custody notice instead of requiring a
+command to emit the former `active_sha256`, nullable staging payload, or
+test-probe counters.
+
+**Acceptance criteria:**
+
+1. `releasedecision.Decision` carries the four exact time facts named by the
+   format proposal; the accepted V0 Decision equals the frozen oracle.
+2. Values come only from the already decoded and verified target descriptor
+   and fixed local reference time. No caller, Update Transaction code, notice
+   parser, or second TUF parser derives them.
+3. Accepted Decisions have non-zero ordered build bounds and a non-expired
+   optional protocol transition deadline. Existing outcome and floor behavior
+   is unchanged.
+4. Existing `offline-import` JSON and the S7.1 public vector remain
+   byte-compatible; the new fields are Go handoff facts, not new command
+   output.
+5. Focused tests cover V0, an accepted emergency deadline, and absence of
+   partially trusted time facts on an identity-invalid rejection.
+6. The amended V0 remains human-readable JSON, its previous/candidate hashes
+   are independently recomputed, and command output is compared only with the
+   exact `expected.command_result` object.
+7. `make quick-check`, `make check`, race tests for `releasedecision`, and the
+   existing Windows/Linux build gates pass.
+
+**Not in scope:** Update Transaction production code, bootstrap creation,
+changing signed metadata, adding a clock Interface, or accepting an S7.2
+evidence cell.
+
 ### S7.2-01 — Complete compatible update tracer
 
 **Tag:** implementation `M3-autonomous`; review `M3-after-contract`.
 
-**Blocked by:** S7.2-00.
+**Blocked by:** accepted and implemented S7.2-00a.
 
 **User story:** As an Endpoint Owner applying one accepted update while no work
 is active, I get a complete immutable stage, rollback reserve, activation,

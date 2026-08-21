@@ -37,12 +37,17 @@
     "self_test": "offline-success-v1"
   },
   "expected": {
-    "outcome": "committed",
-    "state": "committed",
-    "transaction_generation": 1,
-    "active_sha256": "a52b68413e0cd723547790c7ac161ece935d6459377442644b18031c3dc27d0a",
-    "rollback_sha256": "8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af",
-    "staging_payload": null,
+    "command_result": {
+      "schema": "ardents-update-result-v1",
+      "outcome": "committed",
+      "state": "committed",
+      "transaction_generation": 1,
+      "current_sha256": "a52b68413e0cd723547790c7ac161ece935d6459377442644b18031c3dc27d0a",
+      "rollback_sha256": "8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af",
+      "staging_present": false,
+      "safe_notice": "update committed",
+      "custody_notice": "H3 threshold identities and both rebuild records are project-controlled; no independent custody or builder claim is made"
+    },
     "release_floors": {
       "root_version": 1,
       "root_sha256": "246c88b483ccb15982710fa661f7e456f9361f95c2529df9d60082c5c35c59fd",
