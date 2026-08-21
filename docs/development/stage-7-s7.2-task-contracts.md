@@ -1,15 +1,11 @@
 # Stage 7.2 task contracts — Update Transaction and custody preservation
 
-Status: **accepted by the Product Owner and Codex on 2026-08-21 after two M3
-contract-review passes; the S7.2-01 seven-file amendment was jointly accepted
-after the first implementation attempt correctly returned `scope-blocked`, and
-the later eight-file locality amendment was jointly accepted on 2026-08-21.**
-The later MiniMax Interface/layout preflight found a missing authenticated-time
-handoff and still-implicit private record formats. The jointly accepted
-S7.2-00a amendment is in
+Status: **accepted by the Product Owner and Codex on 2026-08-21; S7.2-00a and
+S7.2-01 are accepted, and the exact S7.2-02 recovery amendment is authorized.**
+The MiniMax Interface/layout preflight found a missing authenticated-time
+handoff and still-implicit private record formats. The jointly accepted S7.2-00a
+amendment is in
 [`stage-7-s7.2-transaction-format-proposal.md`](stage-7-s7.2-transaction-format-proposal.md).
-It blocks S7.2-01 until S7.2-00a implementation is separately reviewed and
-accepted.
 Each task follows the independent implementation, worker-review, Codex-review,
 and Owner-acceptance flow in
 [the M3 collaboration workflow](m3-collaboration.md). Acceptance of this
@@ -383,6 +379,22 @@ Product Owner and Codex therefore accepted the eighth private Module file
 `generation.go` on 2026-08-21. All other production, file-count, and public
 Interface caps remain unchanged.
 
+#### S7.2-01 final disposition
+
+The Product Owner and Codex jointly accepted S7.2-01 on 2026-08-21. The
+implementation is commit `4bc838601bb677db4bbe471fa495dbe09644d067`;
+the separate gate-orchestration correction is
+`8cad71a57ef999eedf9daa9446855c16d86ee0f2`. Native Windows tests, race,
+Linux cross-build, the complete `make check`, and the authorized Ubuntu 26.04
+clean-host package tests passed. S7.2-01 therefore unblocks S7.2-02; it does not
+by itself close C1 or any later S7.2 evidence cell.
+
+The accepted five-second cleanup ceiling is a continuation budget. No new
+cleanup operation starts after it expires. An already-running non-cancellable
+kernel operation may return later; the overrun is observed, no subsequent
+operation starts, and the bounded result is `cleanup-incomplete`, never
+`committed`.
+
 ### S7.2-02 — Exact restart recovery at every durable transition
 
 **Tag:** implementation `M3-autonomous`; review `M3-after-contract`.
@@ -394,8 +406,11 @@ one unambiguous previous or current state and never execute a guessed commit.
 
 **Evidence:** C1.
 
-**Allowed scope:** `internal/updatetransaction`, its tests, and only the minimum
-caller recovery wiring in `cmd/ardents-release`; no new package.
+**Allowed scope:** `internal/updatetransaction`, its tests, and fixture-only,
+non-growing edits to `cmd/ardents-release/main_test.go`; no caller production
+change and no new package. The exact accepted controller brief is
+`m3-s7.2-02-brief.md`; its Phase 0 evidence is
+`m3-s7.2-02-phase0.md`.
 
 **Fixed interruption table:** before and after each durable state entry
 `release-accepted`, `artifact-verified`, `staged`, `rollback-reserved`,
@@ -404,6 +419,53 @@ before/after atomic activation publication. Before durable publication selects
 the predecessor; after acknowledged durability selects the complete successor;
 an ambiguous, corrupt, missing-predecessor, reused-generation, or conflicting
 record returns `transaction-invalid`.
+
+**Accepted S7.2-02 amendment:** installer/portable bootstrap creates the direct,
+regular, empty, single-link `.ardents-update-transaction-lock` as a permanent
+stable root child. `Apply` and `Recover` each open it exactly once, acquire a
+non-blocking exclusive OS lock, verify the locked handle still names the path,
+and unlock/close without creating, repairing, replacing, retrying, or unlinking
+it. Missing, changed, aliased, linked, or malformed lock evidence is
+`transaction-invalid`; a live owner is `resource-denied/busy`.
+
+The fixed recovery outcomes are:
+
+| Observation | Outcome / state | Error | Result fields |
+|---|---|---|---|
+| coherent nonterminal prefix | `recovered` / exact last durable state, or `idle` | nil | interrupted generation; normalized current/rollback/staging; fixed `update interrupted`; custody from selected current manifest |
+| coherent complete transaction | `committed/committed` | nil | exact committed V0-compatible Result |
+| live owner | `resource-denied/busy` | non-nil | generation 0, zero digests, no staging/custody, fixed `update transaction busy` |
+| cleanup failure/overrun | `cleanup-incomplete` / last coherent journal state | non-nil | verified transaction generation only; zero digests, no staging/custody, fixed `update cleanup incomplete` |
+| corrupt, contradictory, aliased, or ambiguous evidence | `transaction-invalid/transaction-invalid` | non-nil | generation 0, zero digests, no staging/custody, fixed `update transaction invalid` |
+
+The physical checkpoint oracle is frozen as follows:
+
+| ID | Durable prefix and physical fact | Required recovery |
+|---|---|---|
+| R00 | no entry; predecessor current; empty transaction/journal directories | remove only those empty directories; `recovered/idle` |
+| R01-R02 | through `release-accepted` or `artifact-verified`; predecessor current | preserve exact prefix and return that state |
+| R03 | R02 plus complete unacknowledged staging candidate | remove that candidate and return normalized R02 |
+| R04-R07 | through `staged`, `rollback-reserved`, `stop-new-work`, or `draining`; predecessor current and acknowledged staging | preserve and return exact state |
+| R08 | R07; candidate published to generations; predecessor current | move exact candidate back to staging and return normalized R07 |
+| R09 | R08 plus exact complete current temp | remove temp, move candidate back, return normalized R07 |
+| R10-R11 | R07; complete successor current with exact predecessor rollback, before `activated` acknowledgement | verify predecessor commitment, restore predecessor current, move candidate back, return normalized R07 |
+| R12-R13 | through `activated` or `self-testing`; coherent successor selection | preserve and return exact state |
+| R14 | complete nine-entry `committed` chain and successor selection | return unchanged committed Result |
+
+The independent table constructs literal checkpoint records and also exercises
+real `Apply` with a private per-invocation crash sentinel. The sentinel bypasses
+normal failure cleanup and Result construction, releases only the OS-lock
+handle, and preserves checkpoint bytes. A second private per-invocation
+operation seam may fail or delay only recovery remove/move/replace/sync calls;
+public `Recover` always supplies native operations. Neither seam is exported,
+package-global, context-carried, or allowed to replace validation or policy.
+
+**Task caps:** at most `12` changed files, `8` production files, `600` net new
+production LOC, `1,900` total Module production LOC, `250` lines per production
+file, `500` per test file, and one implementation commit. Expected new files
+are `recovery.go`, `recovery_inventory.go`, `cleanup.go`,
+`lock_nonwindows.go`, and `lock_windows.go`; minimum edits to `transaction.go`
+and `store.go` are allowed. Existing durability and `contract.go` files are not.
 
 **Acceptance criteria:**
 
@@ -416,9 +478,12 @@ record returns `transaction-invalid`.
    the journal decides which is committed.
 4. Corrupt or contradictory state returns `transaction-invalid`, performs no
    network work, and preserves repair/export reachability.
-5. Recovery removes only declared incomplete staging/journal objects and meets
-   the `5 s` cleanup deadline without hidden errors.
-6. V0 still passes unchanged after the recovery machinery is added.
+5. Recovery removes only the R00/R03/R08-R11 allowlist in deterministic plan
+   order. It obeys the accepted `5 s` continuation budget, observes every
+   failure/overrun, and starts no later step after expiry.
+6. V0 record bytes, commitments, public Result, and command JSON still pass
+   unchanged. Its physical bootstrap/committed root oracle now includes the
+   permanent empty lock, which is not hashed into a record or Result.
 
 **Not in scope:** disk-pressure admission, failed self-test rollback, live role
 drain, or native power-loss qualification.

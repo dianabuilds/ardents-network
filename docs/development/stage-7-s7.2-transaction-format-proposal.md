@@ -135,6 +135,7 @@ initialized shape:
 ```text
 <updateRoot>/
   .ardents-update-transaction-v1
+  .ardents-update-transaction-lock
   current
   generations/
     0/
@@ -160,24 +161,28 @@ not reconstructed Release Decision claims. Tests independently encode those
 literal values; production S7.2-01 accepts no caller-supplied bootstrap
 manifest and does not synthesize one.
 
-These are the only stable root children. During one active operation the
-following private names are additionally permitted:
+These are the only stable root children. The lock is a permanent stable child;
+during one active operation the following private names are additionally
+permitted:
 
-- `.ardents-update-transaction-lock` — an exclusive create-new lock, absent
-  when no operation owns the root;
 - `.current.<16-lower-hex>.tmp` — one sibling current-record replacement temp;
 - `staging/<generation>/` — at most one complete candidate directory;
 - `transactions/<generation>/` — one transaction and its immutable journal.
 
 There are no symlinks, junctions, reparse components, hard-link shortcuts, or
-path aliases. Unknown entries, an idle leftover lock/temp, a second staging
-generation, a reused generation, or contradictory initialized commitments fail
-inspection before mutation or Adapter calls. External Owner deletion is not
-prevented; it is detected by inspection and fails closed.
+path aliases. Unknown entries, a missing/malformed lock, an idle leftover temp,
+a second staging generation, a reused generation, or contradictory commitments
+fail inspection before mutation or Adapter calls. External Owner deletion is
+not prevented; it is detected by inspection and fails closed.
 
-The lock and current temp are regular files created directly on the same
-supported filesystem/volume as `current`; neither may resolve through a link or
-reparse component. V0 tests, not S7.2-01 production code, copy the saved
+Installer/portable bootstrap creates the lock as a direct, regular, empty,
+single-link file under the already-owned root. `Apply` and `Recover` open the
+existing file exactly once, take a non-blocking exclusive OS lock, verify the
+locked handle still names the path, and unlock/close without creating,
+repairing, replacing, retrying, or unlinking it. The current temp is a direct
+regular single-link file created on the same supported filesystem/volume as
+`current`; neither object may resolve through a link or reparse component. V0
+tests, not S7.2-01 production code, copy the saved
 `previous-payload-v1.txt` bytes and independently encoded manifest/current
 fixtures into a temporary owned root. Production bootstrap source selection
 remains installer/portable work outside S7.2-00a and S7.2-01.
@@ -232,10 +237,11 @@ Activation publishes the already verified `staging/1` directory as
 `generations/0`. The `current` record is the only replace-existing object.
 Generation directories and journal entries are publish-new/no-overwrite.
 
-After a successful S7.2-01 commit, the lock and current temp are absent,
-`staging/` is empty, generation 1 is current, and generation 0 is the sole
-rollback. Transaction 1 and all nine immutable entries remain as evidence.
-There is no `result.json`, staging symlink, global journal, or `.current-prev`.
+After a successful transaction, the permanent lock remains and the current
+temp is absent, `staging/` is empty, generation 1 is current, and generation 0
+is the sole rollback. Transaction 1 and all nine immutable entries remain as
+evidence. There is no `result.json`, staging symlink, global journal, or
+`.current-prev`.
 
 ## 5. Canonical private binary envelope
 
@@ -446,8 +452,8 @@ Under the exclusive private lock, S7.2-01 performs this fixed high-level order:
 6. call `SelfTest.Check` exactly once with the copied bounded identity, publish
    `self-testing`, then publish `committed`;
 7. remove only declared unacknowledged temps/residue, observe every cleanup,
-   close, sync, publication, and lock-release error, and leave the immutable
-   transaction evidence intact.
+   close, sync, publication, unlock, and handle-close error, leave the permanent
+   lock path and immutable transaction evidence intact.
 
 Before the first journal entry, `Apply` requires
 `len(Request.Artifact) == Decision.Length`, SHA-256 of the exact artifact bytes
@@ -521,3 +527,34 @@ or move a responsibility into another package. Crossing a planning target
 triggers Codex review of locality and the existing private helper placement
 before more code is added. Only the accepted hard caps determine
 `scope-blocked`.
+
+## 13. Accepted S7.2-02 recovery amendment
+
+The Product Owner and Codex jointly accepted the S7.2-01 implementation and the
+S7.2-02 recovery amendment on 2026-08-21. The permanent bootstrap lock above is
+part of every idle, in-progress, interrupted, and committed physical root
+oracle. Its empty bytes are not part of a canonical record, commitment, public
+Result, or command JSON.
+
+Recovery accepts only a contiguous canonical journal prefix and one of the
+R00-R14 physical checkpoints frozen in `stage-7-s7.2-task-contracts.md` and
+`m3-s7.2-02-brief.md`. Coherent nonterminal evidence returns `recovered` at the
+exact last durable state after its declared normalization. A complete coherent
+nine-entry chain returns the existing byte-compatible `committed` Result. A
+live lock owner returns `resource-denied/busy`; corrupt, aliased,
+contradictory, or ambiguous evidence returns `transaction-invalid` without
+mutation. Recovery never infers acknowledgement from executable success,
+candidate-authored text, or file presence alone.
+
+The five-second cleanup ceiling is a continuation budget: the implementation
+checks it immediately before each deterministic remove, move, replace, or sync
+step and starts no new step after expiry. An already-running non-cancellable
+kernel operation may finish later; its overrun is observed and returns
+`cleanup-incomplete`, with no subsequent cleanup and never a committed claim.
+
+Private per-invocation interruption and filesystem-operation seams may exist
+only to preserve real `Apply` crash checkpoints and inject exact recovery
+cleanup/durability failures in tests. Public `Apply` and `Recover` always supply
+their production no-op/native dependencies. No exported, package-global,
+context-carried, network, work-control, self-test, schema, Vault, or Authority
+recovery dependency is introduced.
