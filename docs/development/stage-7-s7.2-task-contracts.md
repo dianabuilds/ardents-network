@@ -2,7 +2,8 @@
 
 Status: **accepted by the Product Owner and Codex on 2026-08-21 after two M3
 contract-review passes; the S7.2-01 seven-file amendment was jointly accepted
-after the first implementation attempt correctly returned `scope-blocked`.**
+after the first implementation attempt correctly returned `scope-blocked`, and
+the later eight-file locality amendment was jointly accepted on 2026-08-21.**
 The later MiniMax Interface/layout preflight found a missing authenticated-time
 handoff and still-implicit private record formats. The jointly accepted
 S7.2-00a amendment is in
@@ -270,10 +271,10 @@ self-test, and commit without changing Authority or release floors.
 **Allowed scope:** one new `internal/updatetransaction` package;
 `cmd/ardents-release`; their tests; the two factual `package-map.md` rows; no
 other production package. At most `15` changed files and `10` production files
-are permitted, including at most `7` production files in the Module. Production
+are permitted, including at most `8` production files in the Module. Production
 LOC is at most `1,450` total, nominally at most `1,280` in the Module and `170`
 in the caller. The repository's `250`-line production-file ceiling and the
-seven-Module-file ceiling are conjunctive, so the effective Module maximum may
+eight-Module-file ceiling are conjunctive, so the effective Module maximum may
 be lower than `1,280`. If the complete tracer cannot fit, M3 stops with
 `scope-blocked` without a commit and must not report `implemented`; it must not
 expose an intermediate `staged` operation, omit a durable transition, or exceed
@@ -287,13 +288,16 @@ The permitted Module production files are exactly:
 | `contract.go` | Module Interface, bounded request/result values, and frozen limits |
 | `transaction.go` | Complete `Apply` orchestration and terminal `Recover` entry point |
 | `journal.go` | Immutable state-entry representation, encoding, commitment chain, and inspection |
-| `store.go` | Shared owned-root, payload, activation-record, locking, and cleanup Implementation |
+| `generation.go` | Canonical private manifest, current-selection, and stored-authorization record bodies and codecs |
+| `store.go` | Shared owned-root, payload, staging, activation, locking, and cleanup Implementation |
 | `durability_nonwindows.go` | Non-Windows atomic replacement and durability primitives only |
 | `durability_windows.go` | Windows atomic replacement and durability primitives only |
 
 The durability files must not duplicate journal, payload, inventory, locking,
 or common filesystem orchestration. The private platform seam contains only the
 operations that genuinely vary between the two maintained platforms.
+`generation.go` is private Implementation detail and does not add a public
+operation or widen the fixed Module Interface.
 
 **Acceptance criteria:**
 
@@ -371,6 +375,13 @@ are not the v2 baseline. The v2 implementation is a fresh attempt from the
 commit that accepts this amendment. It must not copy the duplicated platform
 store shape, forbidden `types.go`, uninjectable runtime Adapter, mutable single
 journal file, or unverified success notices from the abandoned worktree.
+
+The later v3 locality review found that keeping three canonical generation
+records plus storage orchestration in `store.go` would exceed its independent
+250-line cap even though the Module total remained within 1,280 LOC. The
+Product Owner and Codex therefore accepted the eighth private Module file
+`generation.go` on 2026-08-21. All other production, file-count, and public
+Interface caps remain unchanged.
 
 ### S7.2-02 — Exact restart recovery at every durable transition
 

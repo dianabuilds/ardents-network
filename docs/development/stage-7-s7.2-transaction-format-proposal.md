@@ -271,7 +271,8 @@ Bounds:
 - journal entry: at most `4,096` bytes.
 
 The implementation uses this one codec vocabulary in `journal.go` and
-`store.go`; platform durability files do not duplicate it.
+`generation.go`; `store.go` owns filesystem orchestration, and platform
+durability files do not duplicate either concern.
 
 ## 6. Manifest v1 body
 
@@ -493,9 +494,11 @@ either implementation or pass any C/D evidence cell.
 
 A throwaway responsibility-sizing spike compared the measured second M3
 attempt (`1,550` Module LOC) with the frozen two-file generation format. It
-found that the seven-file Module can fit the `1,280`-LOC total, but planning
-`transaction.go` at `245` lines or `store.go` at `240` leaves less than five
-percent per-file headroom and predictably recreates `scope-blocked`.
+found that the Module can fit the `1,280`-LOC total, but combining canonical
+manifest/current/authorization codecs with filesystem orchestration makes
+`store.go` exceed the independent `250`-line cap. The accepted eight-file
+layout gives those private record bodies and codecs one cohesive
+`generation.go` responsibility without widening the Module Interface.
 
 The replacement S7.2-01 brief therefore must require a pre-code function/
 responsibility inventory and these planning targets:
@@ -503,13 +506,14 @@ responsibility inventory and these planning targets:
 | File | Planning target | Hard repository cap |
 |---|---:|---:|
 | `doc.go` | `25` | `250` |
-| `contract.go` | `165` | `250` |
+| `contract.go` | `130` | `250` |
 | `transaction.go` | `220` | `250` |
-| `journal.go` | `205` | `250` |
-| `store.go` | `215` | `250` |
+| `journal.go` | `220` | `250` |
+| `generation.go` | `230` | `250` |
+| `store.go` | `200` | `250` |
 | `durability_nonwindows.go` | `55` | `250` |
 | `durability_windows.go` | `65` | `250` |
-| Module total | `950` | effective `1,280` and per-file caps |
+| Module total | `1,150` | effective `1,280` and per-file caps |
 | `cmd/ardents-release` caller | `110` | `170` |
 
 Planning targets are not permission to omit behavior, compress unreadable code,
