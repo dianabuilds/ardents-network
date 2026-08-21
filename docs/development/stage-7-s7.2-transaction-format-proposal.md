@@ -151,6 +151,15 @@ artifact is the exact previous artifact. Its manifest contains the exact
 eight-field V0 stored authorization; stored authorization is part of the
 authenticated manifest and is not a third payload companion.
 
+The complete generation-0 manifest oracle is the exact
+`initial.active_payload.manifest` object in
+`testdata/s7.2/c0-happy-path-v1.json`, combined with the adjacent exact artifact
+length, artifact digest, and stored-authorization object. Its
+`bootstrap-preserved` strings are explicit installer/portable bootstrap facts,
+not reconstructed Release Decision claims. Tests independently encode those
+literal values; production S7.2-01 accepts no caller-supplied bootstrap
+manifest and does not synthesize one.
+
 These are the only stable root children. During one active operation the
 following private names are additionally permitted:
 
