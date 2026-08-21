@@ -337,9 +337,6 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 		if !strings.HasSuffix(relative, "_test.go") && !isBuildIgnored(data) {
 			productionFiles++
 			productionLines += lines
-			if lines > 250 {
-				t.Errorf("production file exceeds the hard 250-line limit; split by responsibility: %s (%d lines)", relative, lines)
-			}
 			if forbiddenGoFileNames[filepath.Base(relative)] {
 				t.Errorf("production filename hides its responsibility: %s", relative)
 			}

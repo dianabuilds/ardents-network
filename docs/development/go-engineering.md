@@ -21,9 +21,11 @@ architecture gate checks both records against the Go tree.
 - Use `gofmt`; package comments are mandatory; command packages remain thin.
 - A command package has a hard aggregate limit of 360 production lines and
   each command file remains below 120 lines; orchestration belongs in Modules.
-- Name each file after one implementation responsibility. Production files
-  have a hard limit of 250 lines; every Go file, including
-  tests, has a hard limit of 500. Split files without inventing package seams.
+- Name each file after one implementation responsibility. A production file
+  above 250 lines requires review evidence for cohesion, invariant locality,
+  the rejected obvious split, and behavior coverage; it is not rejected for
+  size alone. Every Go file, including tests, has an interim hard limit of 500
+  lines. Split files by responsibility without inventing package seams.
 - Do not use catch-all filenames such as `model.go`, `support.go`, `types.go`,
   `helpers.go`, `common.go`, `misc.go`, or `util.go`.
 - Add tests for behavior and failure paths in the same change.

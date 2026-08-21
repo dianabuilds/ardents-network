@@ -109,8 +109,11 @@ criteria:
 
 1. The task changes at most `15` files and `1,500` production LOC, creates at
    most one new internal package and one new command, and ends in one commit.
-2. Production Go files remain at most `250` lines and test Go files at most
-   `500` lines. No forbidden catch-all filename is introduced.
+2. Every Go file remains within the interim hard `500`-line ceiling. A
+   production file above `250` lines records its cohesive responsibility,
+   invariant-locality rationale, rejected obvious split, and behavior coverage
+   for review; `250` is not an executable failure. No forbidden catch-all
+   filename is introduced.
 3. A new package arrives with `doc.go`, maintained Implementation, behavior
    tests, at least one non-test caller, exact imports, and factual
    `package-map.md` entries in the same change.
@@ -269,9 +272,9 @@ self-test, and commit without changing Authority or release floors.
 other production package. At most `15` changed files and `10` production files
 are permitted, including at most `8` production files in the Module. Production
 LOC is at most `1,450` total, nominally at most `1,280` in the Module and `170`
-in the caller. The repository's `250`-line production-file ceiling and the
-eight-Module-file ceiling are conjunctive, so the effective Module maximum may
-be lower than `1,280`. If the complete tracer cannot fit, M3 stops with
+in the caller. The eight-Module-file and total-LOC ceilings are conjunctive;
+production files above the repository's `250`-line review threshold require
+the common-gate evidence. If the complete tracer cannot fit, M3 stops with
 `scope-blocked` without a commit and must not report `implemented`; it must not
 expose an intermediate `staged` operation, omit a durable transition, or exceed
 any cap.
@@ -373,8 +376,8 @@ store shape, forbidden `types.go`, uninjectable runtime Adapter, mutable single
 journal file, or unverified success notices from the abandoned worktree.
 
 The later v3 locality review found that keeping three canonical generation
-records plus storage orchestration in `store.go` would exceed its independent
-250-line cap even though the Module total remained within 1,280 LOC. The
+records plus storage orchestration in `store.go` would exceed the then-active
+250-line hard cap even though the Module total remained within 1,280 LOC. The
 Product Owner and Codex therefore accepted the eighth private Module file
 `generation.go` on 2026-08-21. All other production, file-count, and public
 Interface caps remain unchanged.
@@ -463,7 +466,8 @@ package-global, context-carried, or allowed to replace validation or policy.
 
 **Accepted S7.2-02 v2 caps and delivery:** at most `15` changed files, `9`
 changed production files, `1,100` net-new production LOC, `2,400` total Module
-production LOC, `250` lines per production file, and `500` per test file. The
+production LOC, and `500` lines per Go file. Production files above `250` lines
+require the common-gate review evidence but are not rejected for size. The
 responsibility map is frozen in `m3-s7.2-02-v2-brief.md`: recovery flow,
 inventory, journal validation, pure R00-R14 planning, cleanup execution, and
 the two platform lock implementations remain separate. Existing durability and
@@ -552,14 +556,16 @@ stops and existing work closes by the earliest deadline before activation.
 caller Interfaces; no Node/Route redesign.
 
 **Fixed input table:** no active work; one work item completes before deadline;
-one reaches local `15 s`; authenticated deadline earlier than local; credential
-deadline earlier than both; activation busy; unsupported storage; caller
-cancellation during drain.
+one reaches local `15 s`; caller, Build Safety, or protocol-transition deadline
+earlier than local; activation busy; unsupported storage; caller cancellation
+during drain. Credential and role deadlines remain S7.2-07 inputs and do not
+cross this Interface.
 
 **Acceptance criteria:**
 
-1. `stop-new-work` is durably recorded before any drain and rejects later
-   admission in every table row.
+1. Every `StopNewWork` attempt is durably recorded before any `Drain`. A
+   successful stop rejects later admission; a failed or expired stop never
+   calls `Drain`.
 2. Drain uses the earliest supplied deadline and never extends an authenticated
    or local deadline.
 3. Deadline expiry returns `drain-expired`; the Application operation is not

@@ -64,10 +64,13 @@ foundations.
   adding a package is an explicit architecture change.
 - Keep module interfaces small and implementation details unexported. A new
   package requires a real cohesive boundary, not merely another source file.
-- Name each Go file after one implementation responsibility. Production files
-  have a hard maximum of 250 lines; every Go file,
-  including tests, has a hard maximum of 500. Split a file before creating a
-  package. Catch-all filenames such as `model.go`, `support.go`, `types.go`,
+- Name each Go file after one implementation responsibility. A production file
+  above 250 lines is a review signal, not a build failure: record its cohesive
+  responsibility, the invariants kept local, why the obvious split would add
+  choreography, and the behavior tests that cover it. Every Go file, including
+  tests, has an interim hard maximum of 500 lines. Split by responsibility, not
+  merely by line count, before creating a package. Catch-all filenames such as
+  `model.go`, `support.go`, `types.go`,
   `helpers.go`, `common.go`, `misc.go`, and `util.go` are forbidden.
 - A nested directory is a real package, not visual grouping. Create a
   subpackage only when it independently satisfies the same responsibility,
