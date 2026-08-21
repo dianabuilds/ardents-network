@@ -1,8 +1,10 @@
 # Stage 7.2 task contracts — Update Transaction and custody preservation
 
 Status: **accepted by the Product Owner and Codex on 2026-08-21 after two M3
-contract-review passes.** Each task follows the independent implementation,
-worker-review, Codex-review, and Owner-acceptance flow in
+contract-review passes; the S7.2-01 seven-file amendment was jointly accepted
+after the first implementation attempt correctly returned `scope-blocked`.**
+Each task follows the independent implementation, worker-review, Codex-review,
+and Owner-acceptance flow in
 [the M3 collaboration workflow](m3-collaboration.md). Acceptance of this
 contract authorizes only the named task briefs; it does not mark any S7.2
 implementation or evidence cell accepted.
@@ -42,6 +44,15 @@ states. The Interface has at most:
 - one bounded `Result` view;
 - narrow work-control, self-test, schema, clock, and fault-free production
   dependencies required by those two operations.
+
+`Apply` receives its work-control and self-test Adapters in `Request`; it never
+constructs them. The work-control Interface consists exactly of
+`StopNewWork(context.Context) error` and `Drain(context.Context) error`. The
+self-test Interface is exactly
+`Check(context.Context, CandidateIdentity) error`, where `CandidateIdentity`
+contains only generation, target path, length, digest, platform, architecture,
+environment, and network. It contains neither payload bytes nor Authority or
+Vault material. `Recover` does not require either runtime Adapter.
 
 Filesystem and durability Adapters are private to the Module. The Interface
 must not expose `CommitStaged`, `SetCurrent`, raw journal writes, raw activation
@@ -188,23 +199,42 @@ self-test, and commit without changing Authority or release floors.
 **Allowed scope:** one new `internal/updatetransaction` package;
 `cmd/ardents-release`; their tests; the two factual `package-map.md` rows; no
 other production package. At most `15` changed files and `10` production files
-are permitted, including at most `5` production files in the Module. Production
+are permitted, including at most `7` production files in the Module. Production
 LOC is at most `1,450` total, nominally at most `1,280` in the Module and `170`
 in the caller. The repository's `250`-line production-file ceiling and the
-five-Module-file ceiling are conjunctive, so the effective Module maximum may
+seven-Module-file ceiling are conjunctive, so the effective Module maximum may
 be lower than `1,280`. If the complete tracer cannot fit, M3 stops with
 `scope-blocked` without a commit and must not report `implemented`; it must not
 expose an intermediate `staged` operation, omit a durable transition, or exceed
 any cap.
+
+The permitted Module production files are exactly:
+
+| File | Sole responsibility |
+|---|---|
+| `doc.go` | Package contract and claim ceiling |
+| `contract.go` | Module Interface, bounded request/result values, and frozen limits |
+| `transaction.go` | Complete `Apply` orchestration and terminal `Recover` entry point |
+| `journal.go` | Immutable state-entry representation, encoding, commitment chain, and inspection |
+| `store.go` | Shared owned-root, payload, activation-record, locking, and cleanup Implementation |
+| `durability_nonwindows.go` | Non-Windows atomic replacement and durability primitives only |
+| `durability_windows.go` | Windows atomic replacement and durability primitives only |
+
+The durability files must not duplicate journal, payload, inventory, locking,
+or common filesystem orchestration. The private platform seam contains only the
+operations that genuinely vary between the two maintained platforms.
 
 **Acceptance criteria:**
 
 1. The command evaluates V0 through `releasedecision`; only its exact
    `release-accepted` Decision and exact artifact enter `Apply`.
 2. The transaction durably traverses every normative happy-path state from
-   `release-accepted` through `committed`, with generation, predecessor
-   commitment, digest, Adapter result, monotonic observation, and deadline on
-   every durable entry.
+   `release-accepted` through `committed`. Journal entries are separate,
+   immutable, and ordered. Every entry contains generation, selected release
+   digest, Adapter result, monotonic observation, and deadline. Every entry
+   after the first contains the SHA-256 commitment of the exact preceding entry
+   bytes; the first entry commits the exact inspected predecessor state. No
+   entry is overwritten by its successor.
 3. Before activation, reads still select the previous payload. After commit,
    the candidate digest is current, the previous payload is the sole rollback,
    and staging is absent.
@@ -212,21 +242,47 @@ any cap.
    `staged`; mutation through the Module Interface is impossible. External
    deletion or mutation is detected on inspection and fails closed; the Module
    does not claim to prevent an Owner or administrator from changing files.
-5. The S7.2-01 stopped-runtime Adapter has zero active work. Its no-op
+5. `Request` carries the stopped-runtime work-control and self-test Adapters;
+   `Apply` does not create or replace them. The stopped-runtime Adapter has zero
+   active work. Its no-op
    `stop-new-work` and `drain` methods are nevertheless called exactly once so
    the complete tracer crosses the final Interface. It implements no deadline,
    active-work, or process-control logic; S7.2-04 adds that bounded behavior.
-   The self-test receives the candidate identity exactly once.
+   The self-test receives the exact bounded candidate identity exactly once.
 6. Release floors remain byte-identical to the accepted Decision. The test
-   precommits Vault and authority-watermark digests and proves zero reads of
-   secret material and zero mutations of those commitments.
+   independently snapshots those floor bytes, precommits Vault and
+   authority-watermark digests, and uses counter-based test probes to prove zero
+   reads of secret material and zero Authority mutations. A notice string is
+   not evidence for D0.
 7. The command's bounded JSON equals the V0 expected terminal facts. It does not
    print filesystem internals, secrets, or a verifier verdict. Its schema is
    `ardents-update-result-v1` and includes only outcome, terminal state,
    transaction generation, current/rollback digests, staging presence, safe
    notice, and custody notice.
-8. Re-running the exact committed request is idempotent and creates no fourth
-   payload, second staging entry, or additional live transaction.
+8. Re-running the exact committed request detects the matching committed
+   release before generation allocation or staging, returns the same generation
+   and terminal facts, and creates no fourth payload, second staging entry,
+   journal entry, or additional live transaction. A conflicting request never
+   reuses the committed generation.
+9. Activation publishes the already verified staging directory without
+   deleting the selected active payload and without recreating a manifest that
+   already moved with staging. Atomic current-pointer replacement is the only
+   operation that changes selection. The second identical `Apply` performs no
+   activation replacement.
+10. Every cleanup, close, sync, and atomic-publication error is observed and
+    mapped to a bounded non-success result. Failure cleanup uses the fixed `5 s`
+    ceiling; no `_ = os.Remove*`, errorless `Close`, or equivalent hidden error
+    is permitted.
+11. Interface-level tests reject an oversized candidate, a predecessor payload
+    without its stored authorization, and an already occupied staging slot
+    before `stop-new-work` or current-selection mutation. These are entry
+    smoke-tests only; S7.2-03 still owns the complete resource/fault matrix and
+    exact negative outcome taxonomy.
+12. Tests include V0 happy path, V0 repeated-Apply idempotency, injected Adapter
+    call counts, D0 probes, activation publication, cleanup failure, the three
+    entry smoke-tests, and `apply-offline` JSON. Native Windows tests and race
+    tests pass; Linux/amd64 cross-build and the authorized Ubuntu Docker package
+    tests pass without a source edit between platforms.
 
 **Frozen oracle:** V0. Expected values are read from the saved vector, not
 computed through the Update Transaction Implementation.
@@ -235,6 +291,15 @@ computed through the Update Transaction Implementation.
 duties, interruption injection, rollback on self-test failure, schema
 migration, package installation, or evidence verdicts. Splitting staging into a
 temporary public `CommitStaged`/`ReadActive` Interface is also forbidden.
+
+#### S7.2-01 v2 remediation disposition
+
+The first `M3-autonomous` attempt from contract commit `e3142ec` remains
+`scope-blocked`, uncommitted, and not accepted. Its files are evidence only and
+are not the v2 baseline. The v2 implementation is a fresh attempt from the
+commit that accepts this amendment. It must not copy the duplicated platform
+store shape, forbidden `types.go`, uninjectable runtime Adapter, mutable single
+journal file, or unverified success notices from the abandoned worktree.
 
 ### S7.2-02 — Exact restart recovery at every durable transition
 

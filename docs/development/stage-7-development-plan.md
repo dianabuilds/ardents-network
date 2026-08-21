@@ -112,6 +112,9 @@ The complete small-slice contracts, M3 tags, acceptance criteria, frozen
 oracles, dependencies, and exclusions are maintained in
 [the S7.2 task-contract document](stage-7-s7.2-task-contracts.md). No M3
 implementation starts until that document is jointly accepted.
+The accepted fresh-attempt instructions for the first implementation slice are
+the [S7.2-01 v2 M3 brief](m3-s7.2-01-v2-brief.md); the abandoned first attempt
+remains `scope-blocked` and is not an implementation baseline.
 
 1. create an immutable versioned filesystem fixture through the selected
    Adapter seam;
