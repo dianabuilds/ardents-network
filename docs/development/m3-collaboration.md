@@ -47,8 +47,11 @@ M3 is only given slices that satisfy all of the following. A slice that
 violates any of these is rejected before M3 starts:
 
 - one cohesive responsibility, named without `and everything else`;
-- ≤ 1500 production LOC, ≤ 15 files, ≤ 1 new `internal/<pkg>` + ≤ 1 new
-  `cmd/<name>`, ≤ 10 new B-cell tests, ≤ 2 `package-map.md` row changes;
+- default planning envelope: ≤ 1500 production LOC, ≤ 15 files, ≤ 1 new
+  `internal/<pkg>` + ≤ 1 new `cmd/<name>`, ≤ 10 new B-cell tests, and ≤ 2
+  `package-map.md` row changes. A larger task-specific envelope requires a
+  committed factual inventory, an explicit cohesion/security review, and a
+  named accepted amendment; it is never inferred from an overrun;
 - a contract with explicit acceptance criteria already accepted by Codex;
 - a frozen public vector or fixed input table the worker reviewer can use
   as an independent oracle;

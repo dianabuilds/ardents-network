@@ -464,12 +464,14 @@ operation seam may fail or delay only recovery remove/move/replace/sync calls;
 public `Recover` always supplies native operations. Neither seam is exported,
 package-global, context-carried, or allowed to replace validation or policy.
 
-**Accepted S7.2-02 v2 caps and delivery:** at most `15` changed files, `9`
-changed production files, `1,100` net-new production LOC, `2,400` total Module
+**Accepted S7.2-02 v2 caps and delivery:** the factual second-pass amendment
+permits at most `21` changed files, `10`
+changed production files, `1,650` net-new production LOC, `2,900` total Module
 production LOC, and `500` lines per Go file. Production files above `250` lines
 require the common-gate review evidence but are not rejected for size. The
 responsibility map is frozen in `m3-s7.2-02-v2-brief.md`: recovery flow,
-inventory, journal validation, pure R00-R14 planning, cleanup execution, and
+inventory, low-level bounded physical reads, journal validation, pure R00-R14
+planning, cleanup execution, and
 the two platform lock implementations remain separate. Existing durability and
 `contract.go` files, caller production, dependencies, formats, and exported
 declarations do not change.
