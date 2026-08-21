@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/sys/windows"
 )
@@ -67,7 +68,45 @@ func acquireOwnedLock(root string) (*ownedLock, error) {
 		closeErr := windows.CloseHandle(handle)
 		return nil, errors.Join(fmt.Errorf("%w: held lock shape is invalid", errLockIdentity), unlockErr, closeErr)
 	}
+	if err := heldLockNamesPath(handle, lockPath); err != nil {
+		unlockErr := windows.UnlockFileEx(handle, 0, 1, 0, &lockOverlapped)
+		closeErr := windows.CloseHandle(handle)
+		return nil, errors.Join(fmt.Errorf("%w: handle/path identity: %v", errLockIdentity, err), unlockErr, closeErr)
+	}
 	return &ownedLock{path: lockPath, handle: handle}, nil
+}
+
+// heldLockNamesPath proves that the held lock handle resolves to the exact
+// permanent pathname admitted for this transaction root. The normalized DOS
+// path comes from the handle, so an alias or replacement cannot be accepted
+// merely because the original handle was regular at open time.
+func heldLockNamesPath(handle windows.Handle, expected string) error {
+	const maximumFinalPathUTF16 = 512
+	buffer := make([]uint16, maximumFinalPathUTF16)
+	count, err := windows.GetFinalPathNameByHandle(handle, &buffer[0], uint32(len(buffer)), 0)
+	if err != nil {
+		return err
+	}
+	if count == 0 || count >= uint32(len(buffer)) {
+		return errors.New("final lock path is invalid or exceeds bound")
+	}
+	final := normalizeWindowsFinalPath(windows.UTF16ToString(buffer[:count]))
+	if final == "" || !strings.EqualFold(final, filepath.Clean(expected)) {
+		return errors.New("held lock does not name the admitted path")
+	}
+	return nil
+}
+
+func normalizeWindowsFinalPath(path string) string {
+	const extendedPrefix = `\\?\`
+	if !strings.HasPrefix(path, extendedPrefix) {
+		return ""
+	}
+	path = path[len(extendedPrefix):]
+	if strings.HasPrefix(path, `UNC\`) {
+		path = `\\` + path[len(`UNC\`):]
+	}
+	return filepath.Clean(path)
 }
 
 // release joins UnlockFileEx and CloseHandle errors without ever

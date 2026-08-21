@@ -151,13 +151,7 @@ func recoveryCustodyFor(facts *inventoryResult) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, g := range facts.Generations {
-		if g.Generation != selection.Current.Generation {
-			continue
-		}
-		return g.DecodedManifest.CustodyNotice, nil
-	}
-	return "", fmt.Errorf("%w: selected manifest missing", errInventoryInvalid)
+	return custodyNoticeForTuple(*facts, selection.Current)
 }
 
 func candidateCommitments(facts inventoryResult, generation uint64) ([32]byte, [32]byte) {

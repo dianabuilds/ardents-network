@@ -253,6 +253,11 @@ func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uin
 	if selection, decodeErr := decodeCurrent(facts.Current.Bytes); decodeErr == nil && selection.Rollback != nil {
 		plan.Row = "R10-R11"
 		plan.NeedPredecessorVerify = true
+		predecessorCustody, custodyErr := custodyNoticeForTuple(facts, *selection.Rollback)
+		if custodyErr != nil {
+			return recoveryPlan{}, custodyErr
+		}
+		plan.CustodyNotice = predecessorCustody
 		if len(records.predecessorCurrent) == 0 {
 			return recoveryPlan{}, fmt.Errorf("%w: missing predecessor current bytes", errPlanInvalid)
 		}
@@ -268,6 +273,19 @@ func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uin
 		planOperation{Kind: opSyncDirectory, Path: "staging"},
 	)
 	return plan, nil
+}
+
+// custodyNoticeForTuple returns the notice bound to one already-admitted
+// payload tuple. The planner uses it when recovery changes the selected
+// current generation, so Result custody always describes the normalized
+// selection rather than the selection observed at entry.
+func custodyNoticeForTuple(facts inventoryResult, tuple inspectedTuple) (string, error) {
+	for _, generation := range facts.Generations {
+		if generation.Generation == tuple.Generation && tupleMatchesGeneration(tuple, generation) {
+			return generation.DecodedManifest.CustodyNotice, nil
+		}
+	}
+	return "", fmt.Errorf("%w: custody manifest missing", errPlanInvalid)
 }
 
 func planR12R13(facts inventoryResult, transaction uint64, lastState byte, custodyNotice string) (recoveryPlan, error) {

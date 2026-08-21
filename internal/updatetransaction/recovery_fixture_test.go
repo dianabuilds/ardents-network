@@ -81,6 +81,14 @@ func recoveryOracleWriteChain(t *testing.T, root string, generation uint64,
 // manifest bytes, and SHA-256 digests that every transaction entry must
 // bind. R01 and R02 use this directly; R03 stages the bytes returned here.
 func recoveryOracleCandidateManifest(t *testing.T) (artifact []byte, manifest []byte, artifactDigest, manifestDigest [32]byte) {
+	return recoveryOracleCandidateManifestWithCustody(t, recoveryOracleCustodyNotice)
+}
+
+// recoveryOracleCandidateManifestWithCustody independently builds a valid
+// candidate manifest with the requested notice. It lets recovery rows prove
+// that their public custody notice follows the selected manifest rather than
+// merely the manifest selected when recovery began.
+func recoveryOracleCandidateManifestWithCustody(t *testing.T, custodyNotice string) (artifact []byte, manifest []byte, artifactDigest, manifestDigest [32]byte) {
 	t.Helper()
 	vector := oracleLoadV0(t)
 	artifact = oracleReadExact(t, oracleCandidatePath,
@@ -101,7 +109,7 @@ func recoveryOracleCandidateManifest(t *testing.T) (artifact []byte, manifest []
 		BuildSafetyTerminateAfter:  "2030-07-01T03:04:05Z",
 		ProtocolTransitionDeadline: nil, SchemaPlan: "no-op-v1",
 		SafeNotice:    "update committed",
-		CustodyNotice: vector.Expected.CommandResult.CustodyNotice,
+		CustodyNotice: custodyNotice,
 		ReleaseFloors: vector.Expected.ReleaseFloors,
 	}, v0OracleStoredAuthorization{
 		Classification: "release-accepted",
@@ -118,8 +126,14 @@ func recoveryOracleCandidateManifest(t *testing.T) (artifact []byte, manifest []
 // recoveryOracleCandidateManifest into staging/<generation>/. R03..R14 call
 // this after preparing the in-memory candidate facts.
 func recoveryOracleStage(t *testing.T, root string, generation uint64) (artifactDigest, manifestDigest [32]byte) {
+	return recoveryOracleStageWithCustody(t, root, generation, recoveryOracleCustodyNotice)
+}
+
+// recoveryOracleStageWithCustody writes a valid candidate payload whose
+// manifest has a distinct custody notice for a public Recover assertion.
+func recoveryOracleStageWithCustody(t *testing.T, root string, generation uint64, custodyNotice string) (artifactDigest, manifestDigest [32]byte) {
 	t.Helper()
-	artifact, manifest, artifactDigest, manifestDigest := recoveryOracleCandidateManifest(t)
+	artifact, manifest, artifactDigest, manifestDigest := recoveryOracleCandidateManifestWithCustody(t, custodyNotice)
 	directory := filepath.Join(root, "staging", strconv.FormatUint(generation, 10))
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		t.Fatal(err)
