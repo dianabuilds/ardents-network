@@ -14,9 +14,10 @@ func assertQualityWiring(t *testing.T, root string) {
 	for _, required := range []string{
 		"unit:", "e2e:", "live:",
 		"QUICK_CHECK_TARGETS := format-check vet unit build mod-check",
-		"CHECK_TARGETS := $(QUICK_CHECK_TARGETS) e2e test-race staticcheck vuln",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)",
-		"$(MAKE) --output-sync=target -j 4 $(CHECK_TARGETS)",
+		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln",
+		"$(MAKE) --output-sync=target e2e",
+		"$(MAKE) --output-sync=target test-race",
 		"GOTOOLCHAIN := local",
 		"GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod",
 	} {
@@ -24,9 +25,9 @@ func assertQualityWiring(t *testing.T, root string) {
 			t.Errorf("Makefile is missing mandatory quality control %q", required)
 		}
 	}
-	sequentialCheck := regexp.MustCompile(`(?m)^check:[^\n]*(tools-check|quick-check)`)
-	if sequentialCheck.Match(makefile) {
-		t.Error("make check must launch independent checks in parallel rather than chaining suites")
+	parallelRuntimeSuites := regexp.MustCompile(`(?m)^\t[^\n]*-j[^\n]*(e2e[^\n]*test-race|test-race[^\n]*e2e)`)
+	if parallelRuntimeSuites.Match(makefile) {
+		t.Error("make check must not race wall-clock e2e against the race suite")
 	}
 	dockerRecipe := regexp.MustCompile(`(?m)^\t[^\n]*\bdocker([[:space:]]|$)`)
 	if dockerRecipe.Match(makefile) {

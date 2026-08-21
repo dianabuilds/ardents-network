@@ -17,7 +17,6 @@ ALL_PACKAGES := $(shell go list ./cmd/... ./internal/...)
 LAB_PACKAGES := $(shell go list ./cmd/carrier-lab ./cmd/named-site-lab ./internal/lab/...)
 UNIT_PACKAGES := $(filter-out $(LAB_PACKAGES),$(ALL_PACKAGES))
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check
-CHECK_TARGETS := $(QUICK_CHECK_TARGETS) e2e test-race staticcheck vuln
 
 format:
 	go fmt ./...
@@ -65,7 +64,9 @@ quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
 
 check:
-	$(MAKE) --output-sync=target -j 4 $(CHECK_TARGETS)
+	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln
+	$(MAKE) --output-sync=target e2e
+	$(MAKE) --output-sync=target test-race
 
 prototype-r053:
 	go run ./experiments/r-053-stage-7-authority-recovery/profile.go ./experiments/r-053-stage-7-authority-recovery/main.go

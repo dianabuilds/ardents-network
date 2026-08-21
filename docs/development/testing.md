@@ -59,8 +59,14 @@ is a live-host tool dependency, not a receipt from another test.
 - `make lab-test`: closed historical laboratory Modules, outside product testing and `make check`.
 - `make live`: real product commands in containers and a real Docker network.
 - `make quick-check`: architecture, vet, unit, build, and module tidiness.
-- `make check`: unit, e2e, race, build, formatting, Staticcheck, and vulnerability checks launched concurrently.
+- `make check`: unit, e2e, race, build, formatting, Staticcheck, and
+  vulnerability checks; fast independent checks run concurrently, then the
+  wall-clock e2e suite and race suite run separately.
 
-`make check` launches its independent checks concurrently. Live tests require an explicit
+`make check` does not run the wall-clock cross-process e2e suite concurrently
+with the CPU-intensive race suite. That scheduling would make finite Route
+setup deadlines depend on unrelated host contention and could create a false
+failure without exercising a different product behavior. Both surfaces remain
+independently runnable and mandatory. Live tests require an explicit
 Docker-capable job; lack of Docker is a failed live environment, not a skipped
 passing test.
