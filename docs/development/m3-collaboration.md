@@ -37,6 +37,34 @@ violates any of these is rejected before M3 starts:
 The recommended size is "one small vertical tracer or one contract with
 tests, roughly up to a few hundred LOC diff."
 
+The controller freezes caps from a physical baseline inventory and a named
+file/responsibility map. Optimistic arithmetic is not evidence that a full
+oracle and implementation fit. When the task has a large independent oracle,
+delivery is split into a test-only red gate and a production gate in the same
+isolated worktree. The first gate creates no commit; Codex must observe that the
+specified behavior, rather than a fixture or compile error, is red before the
+production gate starts.
+
+## Parallel execution and controller stop rules
+
+The Product Owner authorizes Codex to run independent M3 work in parallel for
+Stage 7.2. Parallelism never weakens dependency or ownership boundaries:
+
+- only one writer may change a package or one dependency chain at a time;
+- every writer uses a distinct temporary worktree at an exact accepted SHA;
+- read-only contract audits, worker review, and independent-oracle review may
+  run concurrently with a writer when they do not consume its unaccepted diff;
+- a later implementation never starts from an earlier unaccepted task result;
+- Codex alone selects the integration order and no M3 process merges or pushes.
+
+Codex monitors the actual worktree, session evidence, file counts, and focused
+commands rather than waiting for or trusting only the final prose report. It
+stops a run immediately when the worker proposes deleting an acceptance row,
+recovery case, security check, or required test to fit a cap. A discovered cap
+breach is `scope-blocked`; a semantic gap is `contract-blocked`. Neither permits
+"aggressive compression", a responsibility grab by a convenient file, or a
+partial implementation commit.
+
 ## Status flow
 
 ```
@@ -73,6 +101,11 @@ Target split:
 M3 must not re-implement large slices after review. When a worker review
 or a Codex review returns a list of discrepancies, M3's next task is a
 narrow remediation brief, not a rewrite.
+
+An uncommitted failed worktree may be retained as negative review evidence, but
+it is not a code source for the next attempt. Reuse requires an explicit
+finding-by-finding salvage decision from Codex; security-sensitive recovery or
+admission code defaults to a clean accepted baseline.
 
 ## S7.1 lessons the workflow must prevent
 
@@ -125,3 +158,8 @@ review is mandatory (1, 3, 4, 6, 7, 8, 9, 10).
   context for the worker review.
 - "M3 fixes the discrepancies inline." Remediation is a separate task
   from the original implementation.
+- "Fit by deletion." Removing an untested crash row, invariant, or cleanup
+  acknowledgement after discovering the cap is a hard controller stop, not a
+  refactoring opportunity.
+- "One giant red-green run." Where Codex must independently observe the red
+  oracle, production work cannot begin in the same uninterrupted model turn.

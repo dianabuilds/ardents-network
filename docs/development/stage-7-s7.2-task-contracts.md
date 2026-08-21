@@ -409,7 +409,8 @@ one unambiguous previous or current state and never execute a guessed commit.
 **Allowed scope:** `internal/updatetransaction`, its tests, and fixture-only,
 non-growing edits to `cmd/ardents-release/main_test.go`; no caller production
 change and no new package. The exact accepted controller brief is
-`m3-s7.2-02-brief.md`; its Phase 0 evidence is
+`m3-s7.2-02-v2-brief.md`; it preserves the original accepted semantics in
+`m3-s7.2-02-brief.md` and its Phase 0 evidence in
 `m3-s7.2-02-phase0.md`.
 
 **Fixed interruption table:** before and after each durable state entry
@@ -460,12 +461,21 @@ operation seam may fail or delay only recovery remove/move/replace/sync calls;
 public `Recover` always supplies native operations. Neither seam is exported,
 package-global, context-carried, or allowed to replace validation or policy.
 
-**Task caps:** at most `12` changed files, `8` production files, `600` net new
-production LOC, `1,900` total Module production LOC, `250` lines per production
-file, `500` per test file, and one implementation commit. Expected new files
-are `recovery.go`, `recovery_inventory.go`, `cleanup.go`,
-`lock_nonwindows.go`, and `lock_windows.go`; minimum edits to `transaction.go`
-and `store.go` are allowed. Existing durability and `contract.go` files are not.
+**Accepted S7.2-02 v2 caps and delivery:** at most `15` changed files, `9`
+changed production files, `1,100` net-new production LOC, `2,400` total Module
+production LOC, `250` lines per production file, and `500` per test file. The
+responsibility map is frozen in `m3-s7.2-02-v2-brief.md`: recovery flow,
+inventory, journal validation, pure R00-R14 planning, cleanup execution, and
+the two platform lock implementations remain separate. Existing durability and
+`contract.go` files, caller production, dependencies, formats, and exported
+declarations do not change.
+
+Delivery has two mandatory gates in the same isolated worktree. Gate A adds
+only the independent test oracle, creates no commit, and must be observed red
+by Codex for the specified missing behavior while R14 remains green. Gate B is
+authorized only after that review; it preserves the Gate A oracle and creates
+one implementation commit only after every accepted row, mutation, cap, and
+verification gate is green.
 
 **Acceptance criteria:**
 
