@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,6 +9,7 @@ import (
 	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/updatetransaction"
 )
 
 func main() {
@@ -20,52 +19,30 @@ func main() {
 	}
 }
 
-// renderedDecision is the stable offline-import v1 JSON shape.
-type renderedDecision struct {
-	Schema         string                  `json:"schema"`
-	Outcome        releasedecision.Outcome `json:"outcome"`
-	Path           string                  `json:"path"`
-	Length         int64                   `json:"length"`
-	Digest         string                  `json:"digest"`
-	Platform       string                  `json:"platform"`
-	Architecture   string                  `json:"architecture"`
-	Environment    string                  `json:"environment"`
-	Network        string                  `json:"network"`
-	ReleaseID      string                  `json:"release_identity"`
-	ReleaseVersion int64                   `json:"release_version"`
-	SourceRev      string                  `json:"source_revision"`
-	BuildInputs    string                  `json:"build_input_commitment"`
-	BuildID        string                  `json:"build_identity"`
-	DependencyID   string                  `json:"dependency_identity"`
-	SBOMID         string                  `json:"sbom_identity"`
-	Attestation    string                  `json:"attestation_policy"`
-	Qualification  string                  `json:"qualification"`
-	BuildState     string                  `json:"build_state"`
-	ProtocolPhase  string                  `json:"protocol_phase"`
-	BuildSafety    releasedecision.Outcome `json:"build_safety"`
-	Protocol       releasedecision.Outcome `json:"protocol"`
-	RootVersion    int64                   `json:"root_version"`
-	Floors         floorOut                `json:"floors"`
-	Notice         string                  `json:"notice"`
-	CustodyNotice  string                  `json:"custody_notice"`
-}
-
 func run(arguments []string, output io.Writer, errorOutput io.Writer) (runErr error) {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-release offline-import [flags]")
+		return errors.New("usage: ardents-release <offline-import|apply-offline> [flags]")
 	}
-	if arguments[0] != "offline-import" {
+	operation := arguments[0]
+	if operation != "offline-import" && operation != "apply-offline" {
 		return fmt.Errorf("unknown subcommand %q", arguments[0])
 	}
-	flags := flag.NewFlagSet("offline-import", flag.ContinueOnError)
+	flags := flag.NewFlagSet(operation, flag.ContinueOnError)
 	flags.SetOutput(errorOutput)
 	raw := &offlineImportFlags{}
 	raw.register(flags)
+	var updateRoot string
+	if operation == "apply-offline" {
+		flags.StringVar(&updateRoot, "update-root", "", "initialized Update Transaction root")
+	}
 	if err := flags.Parse(arguments[1:]); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 {
-		return errors.New("offline-import has unexpected positional arguments")
+		return fmt.Errorf("%s has unexpected positional arguments", operation)
+	}
+	if operation == "apply-offline" && updateRoot == "" {
+		return errors.New("apply-offline requires -update-root")
 	}
 	inputs, err := raw.buildInputs()
 	if err != nil {
@@ -75,44 +52,53 @@ func run(arguments []string, output io.Writer, errorOutput io.Writer) (runErr er
 	if err != nil {
 		return fmt.Errorf("open state root: %w", err)
 	}
-	defer func() {
-		if err := store.Close(); err != nil {
-			runErr = errors.Join(runErr, fmt.Errorf("close state root: %w", err))
-		}
-	}()
+	defer func() { runErr = errors.Join(runErr, store.Close()) }()
 	decision := releasedecision.Evaluate(context.Background(), inputs, store)
-	rendered, err := json.Marshal(renderedDecision{
-		Schema:         "ardents-release-decision-v1",
-		Outcome:        decision.Outcome,
-		Path:           decision.Path,
-		Length:         decision.Length,
-		Digest:         hex.EncodeToString(decision.Digest),
-		Platform:       decision.Platform,
-		Architecture:   decision.Architecture,
-		Environment:    decision.Environment,
-		Network:        decision.Network,
-		ReleaseID:      decision.ReleaseIdentity,
-		ReleaseVersion: decision.ReleaseVersion,
-		SourceRev:      decision.SourceRevision,
-		BuildInputs:    decision.BuildInputCommitment,
-		BuildID:        decision.BuildIdentity,
-		DependencyID:   decision.DependencyIdentity,
-		SBOMID:         decision.SBOMIdentity,
-		Attestation:    decision.AttestationPolicy,
-		Qualification:  decision.Qualification,
-		BuildState:     decision.BuildState,
-		ProtocolPhase:  decision.ProtocolPhase,
-		BuildSafety:    decision.BuildSafety,
-		Protocol:       decision.Protocol,
-		RootVersion:    decision.RootVersion,
-		Floors:         floorToJSON(decision.Floors),
-		Notice:         decision.Notice,
-		CustodyNotice:  decision.CustodyNotice,
-	})
+	if operation == "apply-offline" {
+		if decision.Outcome != "release-accepted" {
+			return errors.New("apply-offline requires a release-accepted decision")
+		}
+		result, err := updatetransaction.Apply(context.Background(), updatetransaction.Request{
+			UpdateRoot: updateRoot, Generation: 1, ActiveWork: 0, SchemaPlan: "no-op-v1",
+			Decision: decision, Artifact: inputs.Artifact,
+			Work: stoppedRuntime{}, SelfTest: offlineCandidateTest{},
+		})
+		if err != nil {
+			return fmt.Errorf("apply-offline transaction failed in state %q with outcome %q: %w", result.State, result.Outcome, hiddenApplyError{err})
+		}
+		rendered, err := renderUpdateResult(result)
+		if err != nil {
+			return err
+		}
+		_, err = output.Write(rendered)
+		return err
+	}
+	rendered, err := renderDecision(decision)
 	if err != nil {
 		return err
 	}
-	rendered = append(rendered, '\n')
 	_, err = output.Write(rendered)
 	return err
+}
+
+type hiddenApplyError struct{ cause error }
+
+func (failure hiddenApplyError) Error() string { return "bounded internal failure" }
+func (failure hiddenApplyError) Unwrap() error { return failure.cause }
+
+type stoppedRuntime struct{}
+
+func (stoppedRuntime) StopNewWork(ctx context.Context) error { return ctx.Err() }
+func (stoppedRuntime) Drain(ctx context.Context) error       { return ctx.Err() }
+
+type offlineCandidateTest struct{}
+
+func (offlineCandidateTest) Check(ctx context.Context, identity updatetransaction.CandidateIdentity) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if identity.Generation == 0 || identity.TargetPath == "" || identity.Length <= 0 || identity.Digest == ([32]byte{}) || identity.Platform == "" || identity.Architecture == "" || identity.Environment == "" || identity.Network == "" {
+		return errors.New("offline candidate identity is incomplete")
+	}
+	return nil
 }
