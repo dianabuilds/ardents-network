@@ -66,6 +66,44 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 	return result, true, store.release()
 }
 
+// resumeSuccessfulSelfTest completes only an interrupted state-8 success
+// prefix. The candidate was already checked in the interrupted invocation, so
+// replaying the runtime test would silently extend its safety window. The only
+// permitted continuation is the immutable state-9 acknowledgement.
+func resumeSuccessfulSelfTest(ctx context.Context, store *ownedStore, inspection rootInspection, request Request,
+	artifact, manifest [32]byte, start time.Time) (Result, bool, error) {
+	selection := inspection.selection
+	if selection.Transaction != request.Generation {
+		return Result{}, false, nil
+	}
+	if selection.Rollback == nil || selection.Current.Artifact != artifact || selection.Current.Manifest != manifest {
+		return invalidResult(request, "committed"), true, errors.Join(errRecordInvalid, store.release())
+	}
+	facts, err := collectInventory(request.UpdateRoot)
+	if err != nil || facts.InterruptedSelection != request.Generation {
+		return transactionInvalidResult(request.Generation), true, errors.Join(err, store.release())
+	}
+	records, err := reconstructRecoveryRecords(facts)
+	if err != nil {
+		return transactionInvalidResult(request.Generation), true, errors.Join(err, store.release())
+	}
+	candidateArtifact, candidateManifest := candidateCommitments(facts, request.Generation)
+	validation, err := validateJournal(request.Generation, facts.journalLookup(request.Generation), records.predecessorCommitment,
+		candidateArtifact, candidateManifest)
+	if err != nil || len(validation.Entries) != int(stateSelfTesting) ||
+		validation.Entries[stateSelfTesting-1].AdapterResult != adapterSuccess {
+		return Result{}, false, nil
+	}
+	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifest,
+		predecessor: sha256.Sum256(validation.RawEntries[stateSelfTesting-1]), elapsedOffset: validation.Entries[stateSelfTesting-1].ElapsedNanos}
+	if err := trace.record(ctx, "09-committed", stateCommitted, adapterNotCalled); err != nil {
+		result, applyErr := applyFailure(store, request, "committed", false, err)
+		return result, true, applyErr
+	}
+	return committedResult(request.Generation, artifact, selection.Rollback.Artifact, "update committed", inspection.currentCustody), true,
+		store.release()
+}
+
 func networkingUnverifiedResult(generation uint64, current, rollback [32]byte, custody string) Result {
 	return Result{Outcome: "application-networking-unverified", State: "self-testing", Generation: generation,
 		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
