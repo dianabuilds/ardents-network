@@ -1,7 +1,9 @@
 # Stage 7.2 task contracts — Update Transaction and custody preservation
 
-Status: **accepted by the Product Owner and Codex on 2026-08-21; S7.2-00a and
-S7.2-01 are accepted, and the exact S7.2-02 recovery amendment is authorized.**
+Status: **the maintained S7.2 engineering slice was closed by the Product
+Owner and Codex on 2026-08-22. S7.2-00a through S7.2-08 are implemented and
+covered by the committed transaction tests; S7.2-09 is deliberately re-homed
+to Stage 9 qualification.**
 The MiniMax Interface/layout preflight found a missing authenticated-time
 handoff and still-implicit private record formats. The jointly accepted S7.2-00a
 amendment is in
@@ -259,6 +261,10 @@ evidence cell.
 
 **Tag:** implementation `M3-autonomous`; review `M3-after-contract`.
 
+**Status:** implemented in `840266e`, independently reviewed on both Standards
+and Spec axes with no blocking findings, and not yet accepted by the Product
+Owner.
+
 **Blocked by:** accepted and implemented S7.2-00a.
 
 **User story:** As an Endpoint Owner applying one accepted update while no work
@@ -409,8 +415,8 @@ one unambiguous previous or current state and never execute a guessed commit.
 
 **Evidence:** C1.
 
-**Allowed scope:** `internal/updatetransaction`, its tests, and fixture-only,
-non-growing edits to `cmd/ardents-release/main_test.go`; no caller production
+**Allowed scope:** `internal/updatetransaction`, its tests, and fixture-only
+edits to `cmd/ardents-release/main_test.go`; no caller production
 change and no new package. The exact accepted controller brief is
 `m3-s7.2-02-v2-brief.md`; it preserves the original accepted semantics in
 `m3-s7.2-02-brief.md` and its Phase 0 evidence in
@@ -464,9 +470,9 @@ operation seam may fail or delay only recovery remove/move/replace/sync calls;
 public `Recover` always supplies native operations. Neither seam is exported,
 package-global, context-carried, or allowed to replace validation or policy.
 
-**Accepted S7.2-02 v2 caps and delivery:** the factual second-pass amendment
-permits at most `21` changed files, `10`
-changed production files, `1,650` net-new production LOC, `2,900` total Module
+**Accepted S7.2-02 v2 caps and delivery:** the factual final amendment in
+`m3-s7.2-02-gate-b-remediation.md` permits at most `26` changed files, `13`
+changed production files, `1,850` net-new production LOC, `3,250` total Module
 production LOC, and `500` lines per Go file. Production files above `250` lines
 require the common-gate review evidence but are not rejected for size. The
 responsibility map is frozen in `m3-s7.2-02-v2-brief.md`: recovery flow,
@@ -474,7 +480,9 @@ inventory, low-level bounded physical reads, journal validation, pure R00-R14
 planning, cleanup execution, and
 the two platform lock implementations remain separate. Existing durability and
 `contract.go` files, caller production, dependencies, formats, and exported
-declarations do not change.
+declarations do not change. The implemented inventory is `26` changed files,
+`12` changed production files, `1,691` net-new production lines, `2,961` total
+Module production lines, and a maximum Go file size of `487` lines.
 
 Delivery has two mandatory gates in the same isolated worktree. Gate A adds
 only the independent test oracle, creates no commit, and must be observed red
@@ -791,7 +799,17 @@ those remain environment-deferred until the specified clean-host surfaces.
 **Tag:** implementation `M3-autonomous`; review `M3-after-contract` in a context
 that has not implemented any candidate task.
 
-**Blocked by:** S7.2-01 through S7.2-08.
+**Disposition (Product Owner, 2026-08-22):** skipped as a Stage 7.2 delivery
+gate. No producer, manifest format, verifier package, or verifier command is
+authorized in this stage. The requirement is re-homed to the frozen-candidate
+qualification work in Stage 9, specifically S9.5 in
+`horizon-3-stage-9-brief.md`, where independent recomputation is used only for
+claims that require it. This preserves ADR-0011's rule that ordinary Module
+tests do not acquire a second verdict protocol.
+
+The scope and acceptance criteria below are retained as historical provenance
+for that later qualification design; they no longer block joint S7.2
+acceptance.
 
 **User story:** As the Product Owner, I receive a candidate-independent verdict
 for the scheduled C0-C11 and D0 S7.2 evidence, not a trusted application log.
@@ -830,6 +848,35 @@ role, fourth payload, cleanup residue, and candidate-authored `pass`.
 security audit, or native evidence that remains authorization-pending or
 environment-deferred.
 
+### Stage 7.2 closure boundary (Product Owner direction, 2026-08-22)
+
+Stage 7.2 closes the maintained `internal/updatetransaction` engineering
+slice: bounded on-disk update state, restart recovery, pre-stop admission,
+work-control ordering, self-test/rollback terminals, bounded schema-selection
+records, retained-generation rotation, and deterministic pressure coverage.
+It is not an assertion that this repository already has a live schema migration
+or Contributor runtime.
+
+- **S7.2-06:** `no-op-v1` is the only current caller schema plan. The
+  copy-on-write Adapter contract and recovery selection record are implemented
+  and tested, but a real schema migration is deferred until Stage 8 chooses a
+  maintained schema owner.
+- **S7.2-07:** the transaction calls the complete bounded `WorkControl`
+  lifecycle at the update boundary. No existing production Contributor role
+  implementation is present to adapt, so per-role duty inventories and live
+  rejoin behavior are deferred to Stage 8 runtime integration.
+- **S7.2-08:** the deterministic pressure tests prove transaction-owned root
+  bounds and terminal recovery behavior. Live-process, handle, goroutine,
+  timer, and host-resource qualification remain Stage 9 evidence, not claims
+  made by an in-process Module test.
+- **S7.2-09:** independent verdict recomputation is deferred as stated above
+  to Stage 9 S9.5.
+
+These are deliberate scope boundaries, not silent acceptance of absent live
+behavior. A Stage 8 implementation that introduces a schema or Contributor
+runtime must return to the relevant boundary and add its concrete Adapter and
+qualification tests before claiming those behaviors.
+
 ## 3. Dependency graph and acceptance rule
 
 ```text
@@ -845,13 +892,16 @@ S7.2-00 contract/oracles
 
 S7.2-02 .. S7.2-04 + S7.2-05a + S7.2-05b + S7.2-06 .. S7.2-07
   -> S7.2-08 pressure/cleanup
-     -> S7.2-09 independent verifier
-        -> joint S7.2 acceptance
+     -> joint S7.2 acceptance
+
+Stage 9 S9.5 performs any necessary independent qualification recomputation
+after the Stage 8 freeze; it is not a Stage 7.2 code-delivery dependency.
 ```
 
 No task closes an evidence cell merely because its candidate tests are green.
 The cell is development-accepted only after implementation review, independent
-worker review, Codex Standards + Spec review, verifier coverage where scheduled,
-and explicit Product Owner acceptance. Remediation findings become separate
+worker review, Codex Standards + Spec review, and explicit Product Owner
+acceptance. Independent verifier coverage belongs to Stage 9 only where the
+frozen qualification claim requires it. Remediation findings become separate
 narrow tasks against the same frozen contract; they never silently enlarge the
 original scope.

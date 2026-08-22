@@ -1,8 +1,8 @@
 # Stage 7 development plan
 
-Status: **accepted execution plan; S7.0 completed and `start S7.1` authorized on
-2026-08-20.** Each later slice still requires its behavior, evidence, dependency,
-package-map, and quality gates.
+Status: **stopped by the Product Owner on 2026-08-22.** S7.1 and the maintained
+S7.2 engineering slice are retained; S7.3–S7.7 are cancelled rather than
+pending execution. See [the Stage 7 stop record](stage-7-stop-record.md).
 
 This plan maps R-048 and the Stage 7 lifecycle specification into ordered,
 independently reviewable vertical slices. It does not create packages,
@@ -179,8 +179,8 @@ permitted cells. Pristine-host and destructive power-loss facts stay deferred.
    channel substitution, inherited handle, restart, and revoke/drain; and
 6. run E evidence on both platforms.
 
-Do not delete Stage 3 laboratory adapters until Stage 9 unless an accepted
-cleanup scope proves they have no retained qualification role.
+Do not delete Stage 3 laboratory adapters before Stage 8 restructuring unless
+an accepted cleanup scope proves they have no retained qualification role.
 
 ### S7.6 direct binary and Application Isolation
 

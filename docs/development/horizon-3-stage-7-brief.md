@@ -1,10 +1,11 @@
 # Horizon 3 Stage 7 implementation brief
 
-Status: **accepted implementation brief; S7.0 completed and `start S7.1`
-authorized on 2026-08-20.** R-048–R-054/R-056, the specifications, development
-plan, evidence contract, ADR-0015, ADR-0016, and ADR-0021 form the accepted
-baseline. The [readiness checklist](stage-7-readiness-checklist.md) records the
-normative coding-start gate.
+Status: **stopped by the Product Owner on 2026-08-22.** S7.1 and the maintained
+S7.2 engineering slice are preserved; S7.3–S7.7 are not accepted deliveries.
+The [Stage 7 stop record](stage-7-stop-record.md) is the controlling
+disposition. R-048–R-054/R-056, the specifications, development plan, evidence
+contract, ADR-0015, ADR-0016, and ADR-0021 remain historical inputs for later
+productization, not authorization to resume this stage.
 
 Audience: Product Owner and implementation agents after explicit authorization.
 
@@ -131,7 +132,7 @@ through their existing Interfaces and may not rewrite them behind an installer.
   risk tests;
 - automatic cloud backup, help-desk recovery, invented recovery secrets or
   destinations, and guaranteed secure deletion from snapshots/backups;
-- Stage 8 integration, multi-day soak, S9.6 qualification, Route Qualification,
+- Stage 8 reassessment/restructuring, S9.6 multi-day qualification, Route Qualification,
   or H4 claims; and
 - package, command, dependency, or Interface placeholders created before a real
   slice owns them.

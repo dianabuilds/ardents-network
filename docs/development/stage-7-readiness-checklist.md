@@ -1,6 +1,8 @@
 # Stage 7 readiness checklist
 
-Status: **ready; S7.0 completed and `start S7.1` authorized on 2026-08-20.**
+Status: **stopped by the Product Owner on 2026-08-22.** The earlier coding-start
+authorization is historical only; [the Stage 7 stop record](stage-7-stop-record.md)
+controls the disposition.
 Stage 6 is complete at `b8eb3b6ff8386c2b6166ca3a4ed35b04f75ac3bb`;
 the Product Owner accepted the documentation, reduced development coverage,
 future qualification gates, ADR-0015, ADR-0016, and ADR-0021. Windows
@@ -174,7 +176,8 @@ Current verdict: **ready; Product Owner authorized `start S7.1` on 2026-08-20.**
 ## F. Implementation and completion evidence
 
 - [ ] S7.1 release-decision behavior and independent evidence pass.
-- [ ] S7.2 update/rollback/custody-preservation behavior and evidence pass.
+- [x] S7.2 update/rollback/custody-preservation engineering behavior passes;
+  independent qualification recomputation is deferred to Stage 9 S9.5.
 - [ ] S7.3 Ubuntu 26.04 Docker `.deb` lifecycle smoke plus minimal Portable
   direct-run/state-separation evidence pass; native Ubuntu Desktop lifecycle
   remains explicitly deferred.
@@ -192,4 +195,5 @@ Current verdict: **ready; Product Owner authorized `start S7.1` on 2026-08-20.**
 - [ ] `make check` passes on the clean committed Stage 7 candidate.
 - [ ] Package/dependency maps, external evidence inventory, known limitations,
   and cleanup are factual and complete.
-- [ ] Product Owner records `advance-to-S8`, `redesign`, or `stop`.
+- [x] Product Owner records `stop`: S7.3–S7.7 remain incomplete and are not
+  Stage 7 acceptance evidence.
