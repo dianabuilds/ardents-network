@@ -82,10 +82,11 @@ owning seam, observable oracle, fault/adversary or transition, platform/format,
 environment prerequisites, and deletion or migration condition.
 
 The current Make targets are the profile entrypoints, not a claim that every
-current package already has its final role. S8.2 adds checked manifests before
-the existing negative laboratory filters or short-mode selection are replaced.
-Until that promotion, the existing targets remain mandatory and their skipped
-branches remain observations rather than passes.
+current package has its final product role. Their checked manifests list
+maintained, process, and historical-reproduction packages positively; the
+checked registry also assigns every current Go-bearing e2e/live suite root to
+one execution profile. A new package or suite root cannot enter a profile
+through a negative filter or merely by directory naming.
 
 [`tests/profiles/profiles.json`](../../tests/profiles/profiles.json) is the
 checked current registry for the developer, deterministic, process, race, live,
@@ -94,10 +95,12 @@ classification, while scenario ownership remains with the test that proves the
 behavior. The architecture gate verifies its schema, required profile set, and
 Make-target wiring.
 
-The deterministic and historical-reproduction package membership is positive
-and explicit in the adjacent `*-packages.txt` manifests. A package changes
-profile only with its source, test, and product/evidence disposition; adding a
-new package cannot silently make it part of a profile through a negative filter.
+The deterministic, process, and historical-reproduction package memberships
+are positive and explicit in the adjacent `*-packages.txt` manifests. A package
+changes profile only with its source, test, and product/evidence disposition.
+The historical-reproduction entrypoint has a declared 20-minute test-binary
+deadline; expiry is a failing test result with the Go diagnostic, never a pass
+or an automatic retry.
 
 An environment-dependent selected profile has four outcomes: product assertion
 failure, test/harness defect, invalid environment, or nondeterministic/unowned

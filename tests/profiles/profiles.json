@@ -41,7 +41,46 @@
       "make_target": "lab-test",
       "surface": "historical-reproduction",
       "prerequisites": ["scenario-specific pinned inputs"],
-      "invalid_environment": "declared reproduction input unavailable"
+      "invalid_environment": "declared reproduction input unavailable",
+      "timeout": "20m"
+    }
+  ],
+  "suite_roots": [
+    {
+      "id": "e2e-blocked-entry-lab",
+      "path": "tests/e2e/blocked-entry-lab",
+      "profile": "historical-reproduction",
+      "owner": "blocked-entry historical verifier reproduction"
+    },
+    {
+      "id": "e2e-network-source",
+      "path": "tests/e2e/network-source",
+      "profile": "process",
+      "owner": "network source adapter process behavior"
+    },
+    {
+      "id": "e2e-node",
+      "path": "tests/e2e/node",
+      "profile": "process",
+      "owner": "node adapter process behavior"
+    },
+    {
+      "id": "e2e-route",
+      "path": "tests/e2e/route",
+      "profile": "process",
+      "owner": "route adapter process behavior"
+    },
+    {
+      "id": "e2e-service",
+      "path": "tests/e2e/service",
+      "profile": "process",
+      "owner": "service adapter process behavior"
+    },
+    {
+      "id": "live-network",
+      "path": "tests/live/network",
+      "profile": "live",
+      "owner": "network live scenario"
     }
   ]
 }

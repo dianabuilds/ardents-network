@@ -18,6 +18,7 @@ define newline
 
 endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
+PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
 LAB_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/historical-reproduction-packages.txt))
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check
 
@@ -35,10 +36,10 @@ unit:
 	go test $(UNIT_PACKAGES) -short -shuffle=on -count=1
 
 e2e:
-	go test ./tests/e2e/... -shuffle=on -count=1
+	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
 
 lab-test:
-	go test $(LAB_PACKAGES) -short -shuffle=on -count=1
+	go test $(LAB_PACKAGES) -short -shuffle=on -count=1 -timeout=20m
 
 live:
 	go test -tags=live ./tests/live/... -count=1 -timeout=80m

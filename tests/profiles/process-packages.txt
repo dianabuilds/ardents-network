@@ -1,0 +1,4 @@
+github.com/dianabuilds/ardents-network/tests/e2e/network-source
+github.com/dianabuilds/ardents-network/tests/e2e/node
+github.com/dianabuilds/ardents-network/tests/e2e/route
+github.com/dianabuilds/ardents-network/tests/e2e/service
