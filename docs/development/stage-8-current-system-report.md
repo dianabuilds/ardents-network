@@ -101,6 +101,10 @@ laboratory/evidence commands remain in the ordinary package set. The accepted
 G3 test model is therefore planning input only until S8.2 promotes a current
 profile/manifests policy.
 
+The source-bound [journey and claim trace](stage-8-current-system-trace.md)
+names the current caller and observable evidence (or explicitly records its
+absence) for every accepted H3 journey and security/privacy invariant.
+
 ## Clean-baseline discrepancies and findings ledger
 
 S8.0 compares the entry against the preparation identities instead of merging
@@ -151,8 +155,7 @@ The source/input identity, initial current-system inventory, diagnostic
 results, baseline discrepancies, and open-decision ledger are recorded. This
 does **not** yet satisfy the S8.0 exit. Before Product Owner review, this report
 needs (1) a source-bound inventory of every process, format, Interface, external
-Adapter, and trust-zone crossing; (2) a journey/claim-to-caller-to-observable-
-test matrix, including explicit absent evidence; (3) per-suite timing, skip,
+Adapter, and trust-zone crossing; (2) per-suite timing, skip,
 external-requirement, duplicate-role, and flake observations; (4) a complete
 code/test/document disposition inventory that distinguishes inventory from the
 S8.1 decision; and (5) an evidence-based disposition of every prepared G2
