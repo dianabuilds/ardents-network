@@ -122,6 +122,32 @@ func TestRollbackToVerifiedPredecessor(t *testing.T) {
 	}
 }
 
+func TestRollbackSelfTestFailureRequiresRepair(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	work := &oracleWorkControl{}
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector),
+		Artifact: candidate, Work: work, SelfTest: failedSelfTest{}}
+	if _, err := Apply(context.Background(), request); err == nil {
+		t.Fatal("initial failed self-test accepted")
+	}
+	request.RollbackDecision = oracleRollbackDecision(t, vector)
+	result, err := Apply(context.Background(), request)
+	if !errors.Is(err, errRepairRequired) || result.Outcome != "repair-required" || result.State != "repair-required" ||
+		result.CurrentDigest != *oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256) || result.RollbackDigest != [32]byte{} ||
+		work.stopCalls != 1 || work.drainCalls != 1 {
+		t.Fatalf("repair Apply = %+v, %v; work=%#v", result, err, work)
+	}
+	recovered, recoveryErr := Recover(context.Background(), root)
+	if !errors.Is(recoveryErr, errRepairRequired) || recovered != result {
+		t.Fatalf("repair Recover = %+v, %v; want %+v", recovered, recoveryErr, result)
+	}
+}
+
 func TestSelfTestUnavailableRetry(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "update")
 	if err := os.Mkdir(root, 0o700); err != nil {
