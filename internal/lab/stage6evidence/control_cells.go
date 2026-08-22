@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -103,7 +102,7 @@ func runControlRoleCell(trace *traceRecord, secret [32]byte) error {
 
 func runNamespaceForkCell(trace *traceRecord) error {
 	first := evidenceClaim(0, [32]byte{1}, evidenceKey("namespace-fork-claim"))
-	order, proof := evidenceClaimSet([]nameclaim.Claim{first})
+	order, proof := evidenceClaimSet([]namespace.Claim{first})
 	proof.Rule = "ardents-name-claim-order-v2"
 	signEvidenceClaimClose(&proof)
 	result, err := order.Verify(proof)

@@ -1,4 +1,4 @@
-package nameclaim
+package namespace
 
 import "crypto/ed25519"
 
@@ -26,10 +26,10 @@ type Claim struct {
 	Signature       [64]byte
 }
 
-// Proof carries one Name's reveals plus the threshold-authenticated Epoch close
+// ClaimProof carries one Name's reveals plus the threshold-authenticated Epoch close
 // and their input/materialization inclusion paths. AlternateSets contain only
 // close fields and signatures.
-type Proof struct {
+type ClaimProof struct {
 	Network                [32]byte
 	Epoch                  uint64
 	Rule                   string
@@ -45,7 +45,7 @@ type Proof struct {
 	Claims                 []Claim
 	SignerIDs              [][32]byte
 	Signatures             [][]byte
-	AlternateSets          []Proof
+	AlternateSets          []ClaimProof
 }
 
 type result struct {

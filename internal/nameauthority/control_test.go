@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -46,7 +45,7 @@ func TestControlAppliesTheAdmittedCanonicalOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	proof, _ := challenge.Solve()
-	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{current},
+	control, err := NewControl(network, gate, namespace.ClaimOrder{}, []namespace.Record{current},
 		func() time.Time { return now }, policy)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +77,7 @@ func TestControlRejectsChangedContentsWithTheOldAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	proof, _ := challenge.Solve()
-	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, nil, func() time.Time { return now }, namespace.Policy{})
+	control, err := NewControl(network, gate, namespace.ClaimOrder{}, nil, func() time.Time { return now }, namespace.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +95,7 @@ func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 	leasePolicy := namespace.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
 	gate, _ := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
 	clock := now
-	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{current},
+	control, err := NewControl(network, gate, namespace.ClaimOrder{}, []namespace.Record{current},
 		func() time.Time { return clock }, leasePolicy)
 	if err != nil {
 		t.Fatal(err)
@@ -124,7 +123,7 @@ func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 	effective := current
 	effective.RecoveryPolicy, effective.RecoveryPolicyRev = policy.Digest(), 1
 	effective.RecoveryPolicyDelay = policy.Delay.Milliseconds()
-	disableControl, _ := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{effective},
+	disableControl, _ := NewControl(network, gate, namespace.ClaimOrder{}, []namespace.Record{effective},
 		func() time.Time { return clock }, leasePolicy)
 	disableOp := namespace.Op{Kind: "schedule-recovery-policy", Name: effective.Name, Authority: effective.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: 1, PolicyRevision: 2, PolicyDelay: policy.Delay,
@@ -157,7 +156,7 @@ func TestControlExecutesRecoveryCancelCompleteAndResume(t *testing.T) {
 	current.RecoveryPolicyDelay = policy.Delay.Milliseconds()
 	gate, _ := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
 	clock := now
-	control, _ := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{current},
+	control, _ := NewControl(network, gate, namespace.ClaimOrder{}, []namespace.Record{current},
 		func() time.Time { return clock }, namespace.Policy{})
 	successor := deterministicControlKey("recovery-successor")
 	initiate := controlTestRecoveryOperation(t, policy, signers, "initiate", [32]byte{7}, successor, clock)

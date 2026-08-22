@@ -1,4 +1,4 @@
-package nameclaim
+package namespace
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 // Verify authenticates one exact Epoch close and returns only its proven
 // input-ordinal winner or an explicit conflict, fork, or unavailable outcome.
-func (order ClaimOrder) Verify(proof Proof) (result, error) {
+func (order ClaimOrder) Verify(proof ClaimProof) (result, error) {
 	if !validOrderInput(order, proof) || !validStatement(order, proof) {
 		return result{Outcome: "unavailable"}, errors.New("claim Epoch close is incomplete or invalid")
 	}
@@ -75,7 +75,7 @@ func (order ClaimOrder) Verify(proof Proof) (result, error) {
 	return outcome, nil
 }
 
-func validOrderInput(order ClaimOrder, proof Proof) bool {
+func validOrderInput(order ClaimOrder, proof ClaimProof) bool {
 	return order.Network != [32]byte{} && order.Rule == claimOrderRule && order.MinimumEpoch > 0 &&
 		order.MaximumClaims > 0 && order.MaximumClaims <= 32 && order.Threshold >= 2 &&
 		order.Threshold <= len(order.Authorities) && len(order.Authorities) <= 16 &&
@@ -83,7 +83,7 @@ func validOrderInput(order ClaimOrder, proof Proof) bool {
 		uint32(len(proof.Claims)) <= order.MaximumClaims && len(proof.MaterializationPath) <= 32 && validCloseFields(proof)
 }
 
-func validCloseFields(proof Proof) bool {
+func validCloseFields(proof ClaimProof) bool {
 	empty := emptyClaimRoot()
 	return proof.Network != [32]byte{} && proof.Epoch > 0 && proof.Rule != "" && proof.CutoffOffset >= 0 &&
 		proof.InputRoot != [32]byte{} && proof.InputLength > 0 && proof.MaterializationRoot != [32]byte{} &&
@@ -91,7 +91,7 @@ func validCloseFields(proof Proof) bool {
 		proof.RejectionRoot != [32]byte{} && (proof.RejectionLength != 0 || proof.RejectionRoot == empty)
 }
 
-func validStatement(order ClaimOrder, proof Proof) bool {
+func validStatement(order ClaimOrder, proof ClaimProof) bool {
 	if len(proof.SignerIDs) < order.Threshold || len(proof.SignerIDs) != len(proof.Signatures) ||
 		len(proof.SignerIDs) > len(order.Authorities) {
 		return false
@@ -111,7 +111,7 @@ func validStatement(order ClaimOrder, proof Proof) bool {
 	return true
 }
 
-func sameClose(left, right Proof) bool {
+func sameClose(left, right ClaimProof) bool {
 	return left.Rule == right.Rule && left.CutoffOffset == right.CutoffOffset &&
 		left.InputRoot == right.InputRoot && left.InputLength == right.InputLength &&
 		left.MaterializationRoot == right.MaterializationRoot &&

@@ -7,8 +7,8 @@ import (
 	"encoding/binary"
 	"sort"
 
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -65,7 +65,7 @@ func namespacePolicyIDs(policy namestore.Policy) [][32]byte {
 	return ids
 }
 
-func namespaceClaimPolicyIDs(policy nameclaim.ClaimOrder) [][32]byte {
+func namespaceClaimPolicyIDs(policy namespace.ClaimOrder) [][32]byte {
 	ids := make([][32]byte, 0, len(policy.Authorities))
 	for id := range policy.Authorities {
 		ids = append(ids, id)

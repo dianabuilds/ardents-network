@@ -9,8 +9,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type resolutionCellEvidence struct {
@@ -33,7 +33,7 @@ type resolutionCellEvidence struct {
 	DeepNamespaceRecords       [][]byte
 	DeepProofBytes             uint32
 	NamespaceTransitions       [][]byte
-	NamespaceClaim             nameclaim.Proof
+	NamespaceClaim             namespace.ClaimProof
 	NamespaceClaimInputs       []claimInputEvidence
 	NamespaceClaimRejections   []claimRejectionEvidence
 	NamespaceClaimAuthorityIDs [][32]byte

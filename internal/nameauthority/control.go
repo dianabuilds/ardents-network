@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -17,14 +16,14 @@ type control struct {
 	mu        sync.Mutex
 	network   [32]byte
 	admission *namespace.Admission
-	order     nameclaim.ClaimOrder
+	order     namespace.ClaimOrder
 	records   map[string]namespace.Record
 	clock     func() time.Time
 	policy    namespace.Policy
 }
 
 // NewControl installs one bounded authority state view for a Gateway.
-func NewControl(network [32]byte, admission *namespace.Admission, order nameclaim.ClaimOrder,
+func NewControl(network [32]byte, admission *namespace.Admission, order namespace.ClaimOrder,
 	records []namespace.Record, clock func() time.Time, policy namespace.Policy,
 ) (*control, error) {
 	if network == [32]byte{} || admission == nil || clock == nil {
@@ -91,8 +90,8 @@ func (control *control) transition(operation controlOperation) (namespace.Record
 func (control *control) claim(operation controlOperation, current namespace.Record, exists bool,
 	now time.Time,
 ) (namespace.Record, error) {
-	var proof nameclaim.Proof
-	_, decodeErr := nameclaim.CanonicalProof(operation.OrderingProof, &proof)
+	var proof namespace.ClaimProof
+	_, decodeErr := namespace.CanonicalProof(operation.OrderingProof, &proof)
 	if decodeErr != nil {
 		return namespace.Record{}, errors.New("root claim proof is invalid")
 	}

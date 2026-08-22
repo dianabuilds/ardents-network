@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
@@ -38,8 +37,8 @@ type resolutionFixture struct {
 	materialization namespaceFixture
 	records         [][]byte
 	transitions     [][]byte
-	claimOrder      nameclaim.ClaimOrder
-	claimProof      nameclaim.Proof
+	claimOrder      namespace.ClaimOrder
+	claimProof      namespace.ClaimProof
 	root            string
 }
 
@@ -69,7 +68,7 @@ func newResolutionFixture(control ...interface {
 	value.transitions = [][]byte{append([]byte(nil), signedClaim...), append([]byte(nil), signed...)}
 	first := evidenceClaimFor(network, 1, 0, [32]byte{1}, authority)
 	second := evidenceClaimFor(network, 1, 1, [32]byte{2}, evidenceKey("resolution-claim-second"))
-	value.claimOrder, value.claimProof = evidenceClaimSetFor(network, 1, []nameclaim.Claim{first, second})
+	value.claimOrder, value.claimProof = evidenceClaimSetFor(network, 1, []namespace.Claim{first, second})
 	value.root, err = os.MkdirTemp("", "ardents-stage6-resolution-")
 	if err != nil {
 		return value, err

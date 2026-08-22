@@ -4,14 +4,13 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 // ApplyOrderedClaim verifies the authenticated Epoch close and materializes
 // only its input-ordinal winner to an empty or Released root Name. Anonymous
 // admission was consumed before the input entered the signed Epoch log.
-func ApplyOrderedClaim(order nameclaim.ClaimOrder, proof nameclaim.Proof,
+func ApplyOrderedClaim(order namespace.ClaimOrder, proof namespace.ClaimProof,
 	current *namespace.Record, now int64, op namespace.Op, policy namespace.Policy,
 ) (namespace.Record, error) {
 	result, err := order.Verify(proof)
@@ -19,7 +18,7 @@ func ApplyOrderedClaim(order nameclaim.ClaimOrder, proof nameclaim.Proof,
 		len(op.Parents) != 0 {
 		return namespace.Record{}, errors.New("root claim ordering is not accepted")
 	}
-	var winner *nameclaim.Claim
+	var winner *namespace.Claim
 	for index := range proof.Claims {
 		if proof.Claims[index].Ordinal == result.WinnerOrdinal {
 			winner = &proof.Claims[index]

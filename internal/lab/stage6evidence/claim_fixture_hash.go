@@ -6,16 +6,16 @@ import (
 	"encoding/binary"
 	"encoding/json"
 
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
-func evidenceInputLeaf(claim nameclaim.Claim) [32]byte {
+func evidenceInputLeaf(claim namespace.Claim) [32]byte {
 	out := binary.BigEndian.AppendUint32([]byte{0}, claim.Ordinal)
 	out = append(out, claim.Commitment[:]...)
 	return sha256.Sum256(append(out, claim.AdmissionDigest[:]...))
 }
 
-func evidenceMaterializationLeaf(claims []nameclaim.Claim) [32]byte {
+func evidenceMaterializationLeaf(claims []namespace.Claim) [32]byte {
 	out := []byte("ardents-name-claim-materialization-v1\x00")
 	for _, claim := range claims {
 		out = binary.BigEndian.AppendUint32(out, claim.Ordinal)
@@ -54,14 +54,14 @@ func evidenceMerklePath(leaves [][32]byte, index int) [][32]byte {
 	return append(evidenceMerklePath(leaves[split:], index-split), evidenceMerkleRoot(leaves[:split]))
 }
 
-func cloneClaimProof(proof nameclaim.Proof) nameclaim.Proof {
+func cloneClaimProof(proof namespace.ClaimProof) namespace.ClaimProof {
 	raw, _ := json.Marshal(proof)
-	var copied nameclaim.Proof
+	var copied namespace.ClaimProof
 	_ = json.Unmarshal(raw, &copied)
 	return copied
 }
 
-func closeClaimProof(proof nameclaim.Proof) nameclaim.Proof {
+func closeClaimProof(proof namespace.ClaimProof) namespace.ClaimProof {
 	proof.Claims, proof.MaterializationPath, proof.AlternateSets = nil, nil, nil
 	proof.SignerIDs, proof.Signatures = nil, nil
 	return proof

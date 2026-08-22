@@ -1,4 +1,4 @@
-package nameclaim
+package namespace
 
 import (
 	"bytes"
@@ -41,7 +41,7 @@ type claimWire struct {
 
 // CanonicalProof encodes proof when raw is nil, or strictly decodes raw into
 // proof otherwise. Both directions enforce the same bounded canonical wire.
-func CanonicalProof(raw []byte, proof *Proof) ([]byte, error) {
+func CanonicalProof(raw []byte, proof *ClaimProof) ([]byte, error) {
 	if proof == nil {
 		return nil, errors.New("claim proof destination is missing")
 	}
@@ -74,7 +74,7 @@ func CanonicalProof(raw []byte, proof *Proof) ([]byte, error) {
 	return append([]byte(nil), raw...), nil
 }
 
-func proofToWire(proof Proof) proofWire {
+func proofToWire(proof ClaimProof) proofWire {
 	wire := proofWire{Network: proof.Network[:], Epoch: proof.Epoch, Rule: proof.Rule,
 		CutoffOffset: proof.CutoffOffset, InputRoot: proof.InputRoot[:], InputLength: proof.InputLength,
 		MaterializationRoot: proof.MaterializationRoot[:], MaterializationLength: proof.MaterializationLength,
@@ -103,18 +103,18 @@ func proofToWire(proof Proof) proofWire {
 	return wire
 }
 
-func wireToProof(wire proofWire) (Proof, error) {
-	proof := Proof{Epoch: wire.Epoch, Rule: wire.Rule, CutoffOffset: wire.CutoffOffset,
+func wireToProof(wire proofWire) (ClaimProof, error) {
+	proof := ClaimProof{Epoch: wire.Epoch, Rule: wire.Rule, CutoffOffset: wire.CutoffOffset,
 		InputLength: wire.InputLength, MaterializationLength: wire.MaterializationLength,
 		RejectionLength: wire.RejectionLength, MaterializationOrdinal: wire.MaterializationOrdinal}
 	if !copy32(&proof.Network, wire.Network) || !copy32(&proof.InputRoot, wire.InputRoot) ||
 		!copy32(&proof.MaterializationRoot, wire.MaterializationRoot) || !copy32(&proof.RejectionRoot, wire.RejectionRoot) {
-		return Proof{}, errors.New("claim proof fixed field size is invalid")
+		return ClaimProof{}, errors.New("claim proof fixed field size is invalid")
 	}
 	for _, raw := range wire.MaterializationPath {
 		var value [32]byte
 		if !copy32(&value, raw) {
-			return Proof{}, errors.New("claim materialization path is invalid")
+			return ClaimProof{}, errors.New("claim materialization path is invalid")
 		}
 		proof.MaterializationPath = append(proof.MaterializationPath, value)
 	}
@@ -123,13 +123,13 @@ func wireToProof(wire proofWire) (Proof, error) {
 		if !copy32(&claim.Secret, item.Secret) || !copy32(&claim.Authority, item.Authority) ||
 			!copy32(&claim.Commitment, item.Commitment) || !copy32(&claim.AdmissionDigest, item.AdmissionDigest) ||
 			len(item.Signature) != len(claim.Signature) {
-			return Proof{}, errors.New("claim reveal fixed field size is invalid")
+			return ClaimProof{}, errors.New("claim reveal fixed field size is invalid")
 		}
 		copy(claim.Signature[:], item.Signature)
 		for _, raw := range item.InputPath {
 			var value [32]byte
 			if !copy32(&value, raw) {
-				return Proof{}, errors.New("claim input path is invalid")
+				return ClaimProof{}, errors.New("claim input path is invalid")
 			}
 			claim.InputPath = append(claim.InputPath, value)
 		}
@@ -138,7 +138,7 @@ func wireToProof(wire proofWire) (Proof, error) {
 	for _, raw := range wire.SignerIDs {
 		var value [32]byte
 		if !copy32(&value, raw) {
-			return Proof{}, errors.New("claim signer id is invalid")
+			return ClaimProof{}, errors.New("claim signer id is invalid")
 		}
 		proof.SignerIDs = append(proof.SignerIDs, value)
 	}
@@ -146,7 +146,7 @@ func wireToProof(wire proofWire) (Proof, error) {
 	for _, alternate := range wire.AlternateSets {
 		value, err := wireToProof(alternate)
 		if err != nil {
-			return Proof{}, err
+			return ClaimProof{}, err
 		}
 		proof.AlternateSets = append(proof.AlternateSets, value)
 	}

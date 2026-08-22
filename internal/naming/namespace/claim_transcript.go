@@ -1,4 +1,4 @@
-package nameclaim
+package namespace
 
 import (
 	"crypto/sha256"
@@ -27,7 +27,7 @@ func RevealTranscript(network [32]byte, epoch uint64, claim Claim) []byte {
 }
 
 // StatementTranscript returns the exact threshold-signed Epoch close.
-func StatementTranscript(proof Proof) []byte {
+func StatementTranscript(proof ClaimProof) []byte {
 	out := claimText(nil, "ardents-name-claim-epoch-close-v1")
 	out = append(out, proof.Network[:]...)
 	out = binary.BigEndian.AppendUint64(out, proof.Epoch)

@@ -9,16 +9,16 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 var evidenceClaimSigners = []ed25519.PrivateKey{evidenceKey("claim-set-1"), evidenceKey("claim-set-2")}
 
 type claimTraceEvidence struct {
-	Primary    nameclaim.Proof
+	Primary    namespace.ClaimProof
 	Inputs     []claimInputEvidence
 	Rejections []claimRejectionEvidence
-	Hostile    []nameclaim.Proof
+	Hostile    []namespace.ClaimProof
 }
 
 type claimInputEvidence struct {
@@ -36,7 +36,7 @@ type claimRejectionEvidence struct {
 func runClaimCell(trace *traceRecord) error {
 	first := evidenceClaim(0, [32]byte{1}, evidenceKey("claim-first"))
 	second := evidenceClaim(1, [32]byte{2}, evidenceKey("claim-second"))
-	order, proof := evidenceClaimSet([]nameclaim.Claim{first, second})
+	order, proof := evidenceClaimSet([]namespace.Claim{first, second})
 	switch trace.Cell {
 	case "C4":
 		result, err := order.Verify(proof)
@@ -89,7 +89,7 @@ func runClaimCell(trace *traceRecord) error {
 	return nil
 }
 
-func claimInputs(proof nameclaim.Proof) []claimInputEvidence {
+func claimInputs(proof namespace.ClaimProof) []claimInputEvidence {
 	inputs := make([]claimInputEvidence, len(proof.Claims))
 	for index, claim := range proof.Claims {
 		inputs[index] = claimInputEvidence{Ordinal: claim.Ordinal, Commitment: claim.Commitment,
@@ -99,8 +99,8 @@ func claimInputs(proof nameclaim.Proof) []claimInputEvidence {
 	return inputs
 }
 
-func claimRejections(proof nameclaim.Proof) []claimRejectionEvidence {
-	claims := append([]nameclaim.Claim(nil), proof.Claims...)
+func claimRejections(proof namespace.ClaimProof) []claimRejectionEvidence {
+	claims := append([]namespace.Claim(nil), proof.Claims...)
 	sort.Slice(claims, func(i, j int) bool { return claims[i].Ordinal < claims[j].Ordinal })
 	rejections := make([]claimRejectionEvidence, 0, len(claims)-1)
 	for _, claim := range claims[1:] {
@@ -110,7 +110,7 @@ func claimRejections(proof nameclaim.Proof) []claimRejectionEvidence {
 	return rejections
 }
 
-func hostileClaimProofs(proof nameclaim.Proof) []nameclaim.Proof {
+func hostileClaimProofs(proof namespace.ClaimProof) []namespace.ClaimProof {
 	withheld := cloneClaimProof(proof)
 	withheld.Claims = withheld.Claims[:1]
 	equivocation := cloneClaimProof(proof)
@@ -118,7 +118,7 @@ func hostileClaimProofs(proof nameclaim.Proof) []nameclaim.Proof {
 	alternate.RejectionRoot = sha256.Sum256([]byte("equivocation"))
 	alternate.RejectionLength = 1
 	signEvidenceClaimClose(&alternate)
-	equivocation.AlternateSets = []nameclaim.Proof{alternate}
+	equivocation.AlternateSets = []namespace.ClaimProof{alternate}
 	ruleFork := cloneClaimProof(proof)
 	ruleFork.Rule = "ardents-name-claim-order-v2"
 	signEvidenceClaimClose(&ruleFork)
@@ -126,10 +126,10 @@ func hostileClaimProofs(proof nameclaim.Proof) []nameclaim.Proof {
 	copyReveal := copied.Claims[0]
 	copyReveal.Ordinal = 2
 	copied.Claims = append(copied.Claims, copyReveal)
-	return []nameclaim.Proof{withheld, proof, equivocation, ruleFork, copied}
+	return []namespace.ClaimProof{withheld, proof, equivocation, ruleFork, copied}
 }
 
-func hostileClaimOutcomes(order nameclaim.ClaimOrder, proofs []nameclaim.Proof) []string {
+func hostileClaimOutcomes(order namespace.ClaimOrder, proofs []namespace.ClaimProof) []string {
 	outcomes := make([]string, len(proofs))
 	for index, proof := range proofs {
 		policy := order
@@ -142,35 +142,35 @@ func hostileClaimOutcomes(order nameclaim.ClaimOrder, proofs []nameclaim.Proof) 
 	return outcomes
 }
 
-func evidenceClaim(ordinal uint32, secret [32]byte, private ed25519.PrivateKey) nameclaim.Claim {
+func evidenceClaim(ordinal uint32, secret [32]byte, private ed25519.PrivateKey) namespace.Claim {
 	return evidenceClaimFor([32]byte{7}, 11, ordinal, secret, private)
 }
 
 func evidenceClaimFor(network [32]byte, epoch uint64, ordinal uint32, secret [32]byte,
 	private ed25519.PrivateKey,
-) nameclaim.Claim {
+) namespace.Claim {
 	return evidenceNamedClaimFor(network, epoch, ordinal, secret, private, "alice")
 }
 
 func evidenceNamedClaimFor(network [32]byte, epoch uint64, ordinal uint32, secret [32]byte,
 	private ed25519.PrivateKey, name string,
-) nameclaim.Claim {
-	claim := nameclaim.Claim{Ordinal: ordinal, Name: name, Secret: secret,
+) namespace.Claim {
+	claim := namespace.Claim{Ordinal: ordinal, Name: name, Secret: secret,
 		AdmissionDigest: sha256.Sum256(append([]byte("root-claim-admission"), byte(ordinal)))}
 	copy(claim.Authority[:], private.Public().(ed25519.PublicKey))
-	claim.Commitment = nameclaim.CommitmentFor(network, epoch, claim)
-	copy(claim.Signature[:], ed25519.Sign(private, nameclaim.RevealTranscript(network, epoch, claim)))
+	claim.Commitment = namespace.CommitmentFor(network, epoch, claim)
+	copy(claim.Signature[:], ed25519.Sign(private, namespace.RevealTranscript(network, epoch, claim)))
 	return claim
 }
 
-func evidenceClaimSet(claims []nameclaim.Claim) (nameclaim.ClaimOrder, nameclaim.Proof) {
+func evidenceClaimSet(claims []namespace.Claim) (namespace.ClaimOrder, namespace.ClaimProof) {
 	return evidenceClaimSetFor([32]byte{7}, 11, claims)
 }
 
 func evidenceClaimSetFor(network [32]byte, epoch uint64,
-	claims []nameclaim.Claim,
-) (nameclaim.ClaimOrder, nameclaim.Proof) {
-	ordered := append([]nameclaim.Claim(nil), claims...)
+	claims []namespace.Claim,
+) (namespace.ClaimOrder, namespace.ClaimProof) {
+	ordered := append([]namespace.Claim(nil), claims...)
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].Ordinal < ordered[j].Ordinal })
 	leaves := make([][32]byte, len(ordered))
 	for index := range ordered {
@@ -187,11 +187,11 @@ func evidenceClaimSetFor(network [32]byte, epoch uint64,
 		}
 		rejectionRoot = evidenceMerkleRoot(rejectionLeaves)
 	}
-	proof := nameclaim.Proof{Network: network, Epoch: epoch, Rule: "ardents-name-claim-order-v1",
+	proof := namespace.ClaimProof{Network: network, Epoch: epoch, Rule: "ardents-name-claim-order-v1",
 		CutoffOffset: 10_000, InputRoot: evidenceMerkleRoot(leaves), InputLength: uint32(len(leaves)),
 		MaterializationRoot: evidenceMaterializationLeaf(ordered), MaterializationLength: 1,
 		RejectionRoot: rejectionRoot, RejectionLength: uint32(len(ordered) - 1), Claims: ordered}
-	order := nameclaim.ClaimOrder{Network: proof.Network, Rule: proof.Rule, MinimumEpoch: proof.Epoch,
+	order := namespace.ClaimOrder{Network: proof.Network, Rule: proof.Rule, MinimumEpoch: proof.Epoch,
 		MaximumClaims: 32, Authorities: map[[32]byte]ed25519.PublicKey{}, Threshold: 2}
 	for _, signer := range evidenceClaimSigners {
 		public := signer.Public().(ed25519.PublicKey)
@@ -201,7 +201,7 @@ func evidenceClaimSetFor(network [32]byte, epoch uint64,
 	return order, proof
 }
 
-func evidenceRejectionLeaf(claim nameclaim.Claim) [32]byte {
+func evidenceRejectionLeaf(claim namespace.Claim) [32]byte {
 	out := binary.BigEndian.AppendUint32([]byte{3}, claim.Ordinal)
 	out = append(out, claim.Commitment[:]...)
 	out = binary.BigEndian.AppendUint32(out, uint32(len("ordered-collision")))
@@ -209,7 +209,7 @@ func evidenceRejectionLeaf(claim nameclaim.Claim) [32]byte {
 	return sha256.Sum256(out)
 }
 
-func signEvidenceClaimClose(proof *nameclaim.Proof) {
+func signEvidenceClaimClose(proof *namespace.ClaimProof) {
 	proof.SignerIDs, proof.Signatures = nil, nil
 	type signed struct {
 		id  [32]byte
@@ -219,7 +219,7 @@ func signEvidenceClaimClose(proof *nameclaim.Proof) {
 	for _, private := range evidenceClaimSigners {
 		id := sha256.Sum256(private.Public().(ed25519.PublicKey))
 		signatures = append(signatures, signed{id: id,
-			raw: ed25519.Sign(private, nameclaim.StatementTranscript(*proof))})
+			raw: ed25519.Sign(private, namespace.StatementTranscript(*proof))})
 	}
 	sort.Slice(signatures, func(i, j int) bool { return bytes.Compare(signatures[i].id[:], signatures[j].id[:]) < 0 })
 	for _, signature := range signatures {

@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type controlCorpus struct {
-	order      nameclaim.ClaimOrder
+	order      namespace.ClaimOrder
 	records    []namespace.Record
 	operations []controlOperation
 }
@@ -38,9 +37,9 @@ func newControlCorpus(network [32]byte, now time.Time, policy namespace.Policy) 
 	}
 	claimKey := evidenceKey("control-claim")
 	claim := evidenceNamedClaimFor(network, 12, 0, [32]byte{1}, claimKey, "claim-root")
-	order, claimProof := evidenceClaimSetFor(network, 12, []nameclaim.Claim{claim})
+	order, claimProof := evidenceClaimSetFor(network, 12, []namespace.Claim{claim})
 	corpus.order = order
-	claimRaw, err := nameclaim.CanonicalProof(nil, &claimProof)
+	claimRaw, err := namespace.CanonicalProof(nil, &claimProof)
 	if err != nil {
 		return corpus, err
 	}
