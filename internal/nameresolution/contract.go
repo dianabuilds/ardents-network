@@ -60,36 +60,6 @@ type Selection struct {
 	AdmissionChallenge         namespace.Challenge
 }
 
-// controlOperation is the exact naming-side view after OHTTP decapsulation.
-// The public module boundary accepts only its strict canonical bytes.
-type controlOperation struct {
-	Kind               string   `json:"kind"`
-	OperationDigest    [32]byte `json:"operation_digest"`
-	Network            [32]byte `json:"network"`
-	Nonce              [32]byte `json:"nonce"`
-	Deadline           int64    `json:"deadline"`
-	Name               string   `json:"name"`
-	ParentName         string   `json:"parent_name"`
-	Generation         uint64   `json:"generation"`
-	ExpectedRevision   uint64   `json:"expected_revision"`
-	ParentGeneration   uint64   `json:"parent_generation"`
-	ParentRevision     uint64   `json:"parent_revision"`
-	ChildGeneration    uint64   `json:"child_generation"`
-	Authority          [32]byte `json:"authority"`
-	SuccessorAuthority [32]byte `json:"successor_authority"`
-	Target             [32]byte `json:"target"`
-	LeaseNotAfter      int64    `json:"lease_not_after"`
-	RecordNotAfter     int64    `json:"record_not_after"`
-	PolicyNotBefore    int64    `json:"policy_not_before"`
-	RecoveryNotBefore  int64    `json:"recovery_not_before"`
-	PolicyID           [32]byte `json:"policy_id"`
-	RecoveryStep       string   `json:"recovery_step"`
-	OrderingProof      []byte   `json:"ordering_proof"`
-	AuthorityProof     []byte   `json:"authority_proof"`
-	RecoveryPolicy     []byte   `json:"recovery_policy"`
-	RecoveryProof      []byte   `json:"recovery_proof"`
-}
-
 // controlResult is the bounded terminal result of one private naming control
 // operation. Its fields remain readable by the immediate command caller while
 // the concrete result vocabulary stays owned by this module.

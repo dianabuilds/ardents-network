@@ -37,6 +37,14 @@ type controlOperation struct {
 	RecoveryProof      []byte   `json:"recovery_proof"`
 }
 
+// Submission is one validated, canonical Namespace control input. Its
+// lifecycle fields remain private to Namespace; transport may bind and carry
+// only this opaque value and its authenticated digest.
+type Submission struct {
+	raw    []byte
+	digest [32]byte
+}
+
 type recoveryEnvelope struct {
 	Policy RecoveryPolicy `json:"policy"`
 	Proof  RecoveryProof  `json:"proof"`
@@ -61,6 +69,24 @@ func decodeControlOperation(raw []byte) (controlOperation, error) {
 	}
 	return value, nil
 }
+
+// OpenSubmission validates one canonical static control input for private
+// transport. Dynamic transport binding is intentionally not part of the
+// Namespace control representation.
+func OpenSubmission(raw []byte) (Submission, error) {
+	operation, err := decodeControlOperation(raw)
+	if err != nil {
+		return Submission{}, err
+	}
+	return Submission{raw: append([]byte(nil), raw...), digest: operation.OperationDigest}, nil
+}
+
+// Digest returns the operation digest that admission and the response bind.
+func (submission Submission) Digest() [32]byte { return submission.digest }
+
+// Canonical returns a copy of the sole canonical control representation for
+// opaque private transport. It never exposes lifecycle fields individually.
+func (submission Submission) Canonical() []byte { return append([]byte(nil), submission.raw...) }
 
 func decodeCanonical(raw []byte, value any) error {
 	decoder := json.NewDecoder(bytes.NewReader(raw))

@@ -1,8 +1,6 @@
 package nameresolution
 
 import (
-	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -14,27 +12,22 @@ func (gateway *gateway) control(writer http.ResponseWriter, request *http.Reques
 		return
 	}
 	fixed, err := io.ReadAll(io.LimitReader(request.Body, fixedMessageSize+1))
-	operation, admission, decodeErr := decodeControlRequest(fixed)
+	control, decodeErr := decodeControlRequest(fixed)
 	now := gateway.config.Clock()
-	digest, digestErr := dynamicControlDigest(operation)
-	if err != nil || decodeErr != nil || digestErr != nil || operation.Network != gateway.records.network ||
-		operation.Deadline <= now.UnixNano() || operation.Deadline > now.Add(15*time.Second).UnixNano() ||
-		admission.Challenge.Node != gateway.config.NodeID || admission.Challenge.Network != operation.Network ||
-		admission.Challenge.OperationDigest != digest || !gateway.acceptNonce(operation.Nonce, operation.Deadline, now) {
+	if err != nil || decodeErr != nil || control.binding.network != gateway.records.network ||
+		control.binding.deadline <= now.UnixNano() || control.binding.deadline > now.Add(15*time.Second).UnixNano() ||
+		control.admission.Challenge.Node != gateway.config.NodeID || control.admission.Challenge.Network != control.binding.network ||
+		control.admission.Challenge.OperationDigest != control.submission.Digest() ||
+		!gateway.acceptNonce(control.binding.nonce, control.binding.deadline, now) {
 		gateway.reject(writer)
 		return
 	}
-	authorityInput, encodeErr := authorityOperation(operation)
-	if encodeErr != nil {
-		gateway.reject(writer)
-		return
-	}
-	class, _, _, _ := gateway.state.authority.Apply(authorityInput, admission)
+	class, _, _, _ := gateway.state.authority.Apply(control.submission.Canonical(), control.admission)
 	result := controlResult{Class: "denied"}
 	if class == "accepted" {
 		result.Class = "submitted"
 	}
-	response, err := controlResponse(operation, result)
+	response, err := controlResponse(control.binding, control.submission.Digest(), result)
 	if err != nil {
 		gateway.reject(writer)
 		return
@@ -49,22 +42,6 @@ func (gateway *gateway) control(writer http.ResponseWriter, request *http.Reques
 		gateway.observation.ControlDenied++
 	}
 	gateway.mu.Unlock()
-}
-
-func authorityOperation(operation controlOperation) ([]byte, error) {
-	operation.Network, operation.Nonce, operation.Deadline = [32]byte{}, [32]byte{}, 0
-	if _, err := controlDigest(operation); err != nil {
-		return nil, err
-	}
-	return json.Marshal(operation)
-}
-
-func dynamicControlDigest(operation controlOperation) ([32]byte, error) {
-	if operation.Network == [32]byte{} || operation.Nonce == [32]byte{} || operation.Deadline <= 0 {
-		return [32]byte{}, errors.New("private naming control binding is invalid")
-	}
-	operation.Network, operation.Nonce, operation.Deadline = [32]byte{}, [32]byte{}, 0
-	return controlDigest(operation)
 }
 
 // ControlObservation returns only bounded counts, never operation fields.

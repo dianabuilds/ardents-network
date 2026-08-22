@@ -2,7 +2,6 @@ package nameresolution
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"io"
@@ -10,73 +9,76 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
-const controlSchema = "ardents-private-name-control-v1"
+const controlSchema = "ardents-private-name-control-v2"
 
 type controlRequestWire struct {
-	Schema    string           `json:"schema"`
-	Operation controlOperation `json:"operation"`
-	Admission namespace.Proof  `json:"admission"`
+	Schema    string          `json:"schema"`
+	Network   [32]byte        `json:"network"`
+	Nonce     [32]byte        `json:"nonce"`
+	Deadline  int64           `json:"deadline"`
+	Operation json.RawMessage `json:"operation"`
+	Admission namespace.Proof `json:"admission"`
 }
 
 type controlResponseWire struct {
-	Schema   string        `json:"schema"`
-	Network  [32]byte      `json:"network"`
-	Nonce    [32]byte      `json:"nonce"`
-	Deadline int64         `json:"deadline"`
-	Kind     string        `json:"kind"`
-	Name     string        `json:"name"`
-	Result   controlResult `json:"result"`
+	Schema          string        `json:"schema"`
+	Network         [32]byte      `json:"network"`
+	Nonce           [32]byte      `json:"nonce"`
+	Deadline        int64         `json:"deadline"`
+	OperationDigest [32]byte      `json:"operation_digest"`
+	Result          controlResult `json:"result"`
 }
 
-func controlDigest(operation controlOperation) ([32]byte, error) {
-	declared := operation.OperationDigest
-	if operation.Network != [32]byte{} || operation.Nonce != [32]byte{} || operation.Deadline != 0 ||
-		declared == [32]byte{} || !validControlFields(operation, false) {
-		return [32]byte{}, errors.New("private naming control operation is invalid")
-	}
-	operation.OperationDigest = [32]byte{}
-	raw, err := json.Marshal(operation)
-	if err != nil {
-		return [32]byte{}, err
-	}
-	digest := sha256.Sum256(append([]byte("ardents-name-control-operation-v1\x00"), raw...))
-	if digest != declared {
-		return [32]byte{}, errors.New("private naming control digest does not bind the operation")
-	}
-	return digest, nil
+type controlBinding struct {
+	network  [32]byte
+	nonce    [32]byte
+	deadline int64
 }
 
-func controlRequest(operation controlOperation, admission namespace.Proof) ([]byte, error) {
-	digest, err := dynamicControlDigest(operation)
-	if err != nil || admission.Challenge.OperationDigest != digest {
+type controlRequestValue struct {
+	submission namespace.Submission
+	binding    controlBinding
+	admission  namespace.Proof
+}
+
+func controlRequest(submission namespace.Submission, binding controlBinding, admission namespace.Proof) ([]byte, error) {
+	if binding.network == [32]byte{} || binding.nonce == [32]byte{} || binding.deadline <= 0 ||
+		submission.Digest() == [32]byte{} || admission.Challenge.OperationDigest != submission.Digest() {
 		return nil, errors.New("private naming control request is invalid")
 	}
-	raw, err := json.Marshal(controlRequestWire{Schema: controlSchema, Operation: operation, Admission: admission})
+	raw, err := json.Marshal(controlRequestWire{Schema: controlSchema, Network: binding.network, Nonce: binding.nonce,
+		Deadline: binding.deadline, Operation: json.RawMessage(submission.Canonical()), Admission: admission})
 	if err != nil {
 		return nil, err
 	}
 	return padMessage(raw)
 }
 
-func decodeControlRequest(raw []byte) (controlOperation, namespace.Proof, error) {
+func decodeControlRequest(raw []byte) (controlRequestValue, error) {
 	payload, err := unpadMessage(raw)
 	if err != nil {
-		return controlOperation{}, namespace.Proof{}, err
+		return controlRequestValue{}, err
 	}
 	var wire controlRequestWire
 	if err := decodeControlJSON(payload, &wire); err != nil || wire.Schema != controlSchema ||
-		wire.Operation.OperationDigest == [32]byte{} || !validControlFields(wire.Operation, true) {
-		return controlOperation{}, namespace.Proof{}, errors.New("private naming control request is invalid")
+		wire.Network == [32]byte{} || wire.Nonce == [32]byte{} || wire.Deadline <= 0 {
+		return controlRequestValue{}, errors.New("private naming control request is invalid")
 	}
-	return wire.Operation, wire.Admission, nil
+	submission, err := namespace.OpenSubmission(wire.Operation)
+	if err != nil {
+		return controlRequestValue{}, errors.New("private naming control request is invalid")
+	}
+	return controlRequestValue{submission: submission, binding: controlBinding{network: wire.Network,
+		nonce: wire.Nonce, deadline: wire.Deadline}, admission: wire.Admission}, nil
 }
 
-func controlResponse(operation controlOperation, result controlResult) ([]byte, error) {
-	if !validControlResult(result) {
+func controlResponse(binding controlBinding, digest [32]byte, result controlResult) ([]byte, error) {
+	if binding.network == [32]byte{} || binding.nonce == [32]byte{} || binding.deadline <= 0 ||
+		digest == [32]byte{} || !validControlResult(result) {
 		return nil, errors.New("private naming control result is invalid")
 	}
-	raw, err := json.Marshal(controlResponseWire{Schema: controlSchema, Network: operation.Network,
-		Nonce: operation.Nonce, Deadline: operation.Deadline, Kind: operation.Kind, Name: operation.Name, Result: result})
+	raw, err := json.Marshal(controlResponseWire{Schema: controlSchema, Network: binding.network,
+		Nonce: binding.nonce, Deadline: binding.deadline, OperationDigest: digest, Result: result})
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +93,7 @@ func decodeControlResponse(raw []byte) (controlResponseWire, error) {
 	var wire controlResponseWire
 	if err := decodeControlJSON(payload, &wire); err != nil || wire.Schema != controlSchema ||
 		wire.Network == [32]byte{} || wire.Nonce == [32]byte{} || wire.Deadline <= 0 ||
-		wire.Kind == "" || wire.Name == "" || !validControlResult(wire.Result) {
+		wire.OperationDigest == [32]byte{} || !validControlResult(wire.Result) {
 		return controlResponseWire{}, errors.New("private naming control response is invalid")
 	}
 	return wire, nil
