@@ -216,6 +216,12 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 		}
 		return planFailedAdapterAbort(facts, transaction, last.State, predecessorDigest, custodyNotice)
 	}
+	if last.State == stateActivated && last.AdapterResult == adapterUnavailable {
+		if hasGenerations || hasTemporaryStaging || !hasStaging {
+			return recoveryPlan{}, fmt.Errorf("%w: unavailable activation physical state is ambiguous", errPlanInvalid)
+		}
+		return planActivationUnavailableAbort(facts, transaction, predecessorDigest, custodyNotice)
+	}
 	if len(facts.Current.Bytes) > 0 {
 		if selection, decodeErr := decodeCurrent(facts.Current.Bytes); decodeErr == nil {
 			if selection.Transaction == 0 && hasGenerations && lastState >= byte(stateActivated) {

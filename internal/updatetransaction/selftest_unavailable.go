@@ -10,7 +10,7 @@ func (selfTestUnavailable) Error() string { return "self-test network unavailabl
 var ErrSelfTestUnavailable error = selfTestUnavailable{}
 
 // selfTestUnavailableOnly accepts an error tree only when every non-nil leaf
-// is SelfTestUnavailable. Bounds make hostile cyclic or exploding Unwrap
+// is ErrSelfTestUnavailable. Bounds make hostile cyclic or exploding Unwrap
 // implementations a local failure, and recover keeps a panicking caller-owned
 // error implementation from escaping the transaction boundary.
 func selfTestUnavailableOnly(err error) (available bool) {

@@ -218,6 +218,13 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "06-draining", stateDraining, adapterSuccess); err != nil {
 		return applyFailure(store, request, "draining", true, err)
 	}
+	if _, revalidateErr := observeOwnedStorage(request.UpdateRoot); revalidateErr != nil {
+		recordErr := trace.record(context.Background(), "07-activated", stateActivated, adapterUnavailable)
+		if recordErr != nil {
+			return applyFailure(store, request, "draining", true, errors.Join(revalidateErr, recordErr))
+		}
+		return activationRefusal(store, request, inspection, revalidateErr)
+	}
 	current := inspectedTuple{Generation: request.Generation, Length: uint64(len(request.Artifact)), Artifact: artifact, Manifest: manifestDigest}
 	selection := currentSelection{Transaction: request.Generation, Current: current, Rollback: &inspection.selection.Current}
 	if err := store.activate(request.Generation, selection, inspection.predecessor.CurrentRecordDigest, control); err != nil {

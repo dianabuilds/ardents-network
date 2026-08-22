@@ -48,3 +48,33 @@ func planFailedAdapterAbort(facts inventoryResult, transaction uint64, state tra
 	)
 	return plan, nil
 }
+
+func planActivationUnavailableAbort(facts inventoryResult, transaction uint64,
+	predecessorDigest [32]byte, custodyNotice string) (recoveryPlan, error) {
+	staging := stagingFacts(facts.StagingDirs, transaction, false)
+	if staging == nil {
+		return recoveryPlan{}, fmt.Errorf("%w: unavailable activation staging absent", errPlanInvalid)
+	}
+	plan := recoveryPlan{Row: "S7.2-04-activation-unavailable", Outcome: "activation-unsupported", State: "draining",
+		Generation: transaction, CurrentDigest: predecessorDigest, StagingPresent: false,
+		SafeNotice: "update storage unsupported", CustodyNotice: custodyNotice}
+	plan.Operations = append(plan.Operations, stagingRemovalOperations(staging)...)
+	transactionName := strconv.FormatUint(transaction, 10)
+	for entryState := stateReleaseAccepted; entryState <= stateActivated; entryState++ {
+		name, err := journalFileName(entryState)
+		if err != nil {
+			return recoveryPlan{}, err
+		}
+		plan.Operations = append(plan.Operations,
+			planOperation{Kind: opRemoveFile, Path: filepath.Join("transactions", transactionName, "journal", name)},
+			planOperation{Kind: opSyncDirectory, Path: filepath.Join("transactions", transactionName, "journal")},
+		)
+	}
+	plan.Operations = append(plan.Operations,
+		planOperation{Kind: opRemoveDirectory, Path: filepath.Join("transactions", transactionName, "journal")},
+		planOperation{Kind: opSyncDirectory, Path: filepath.Join("transactions", transactionName)},
+		planOperation{Kind: opRemoveDirectory, Path: filepath.Join("transactions", transactionName)},
+		planOperation{Kind: opSyncDirectory, Path: "transactions"},
+	)
+	return plan, nil
+}

@@ -193,6 +193,8 @@ func journalAdapterValid(state transactionState, result adapterResult) bool {
 		return result == adapterSuccess || result == adapterFailed
 	case stateSelfTesting:
 		return result == adapterSuccess || result == adapterFailed || result == adapterUnavailable
+	case stateActivated:
+		return result == adapterNotCalled || result == adapterUnavailable
 	case stateCommitted:
 		return result == adapterNotCalled || result == adapterSuccess
 	default:

@@ -66,3 +66,19 @@ func drainFailure(store *ownedStore, request Request, inspection rootInspection,
 	}
 	return result, errors.Join(cause, releaseErr)
 }
+
+func activationRefusal(store *ownedStore, request Request, inspection rootInspection, cause error) (Result, error) {
+	cleanupErr := store.cleanup(request.Generation)
+	releaseErr := store.release()
+	if cleanupErr != nil {
+		return Result{Outcome: "cleanup-incomplete", State: "draining", Generation: request.Generation,
+			StagingPresent: false, SafeNotice: "update cleanup incomplete"}, errors.Join(cause, cleanupErr, releaseErr)
+	}
+	result := Result{Outcome: "activation-unsupported", State: "draining", Generation: request.Generation,
+		CurrentDigest: inspection.selection.Current.Artifact, StagingPresent: false,
+		SafeNotice: "update storage unsupported", CustodyNotice: inspection.currentCustody}
+	if inspection.selection.Rollback != nil {
+		result.RollbackDigest = inspection.selection.Rollback.Artifact
+	}
+	return result, errors.Join(cause, releaseErr)
+}
