@@ -25,7 +25,7 @@ type inventoryResult struct {
 	RootDirs, RootFiles, UnknownRoot []string
 	Generations, StagingDirs         []generationFacts
 	Transactions                     []transactionFacts
-	CurrentTemps                     []rawFile
+	CurrentTemps, SchemaTemps        []rawFile
 	InterruptedSelection             uint64
 }
 
@@ -77,7 +77,7 @@ func collectInventory(root string) (inventoryResult, error) {
 			present[name] = true
 			facts.RootFiles = append(facts.RootFiles, name)
 		default:
-			if entry.IsDir() || !isCanonicalCurrentTemp(name) {
+			if entry.IsDir() || (!isCanonicalCurrentTemp(name) && !isCanonicalSchemaTemp(name)) {
 				return facts, fmt.Errorf("%w: unknown root child %q", errInventoryInvalid, name)
 			}
 			facts.RootFiles = append(facts.RootFiles, name)
@@ -110,15 +110,23 @@ func collectInventory(root string) (inventoryResult, error) {
 		return facts, err
 	}
 	for _, entry := range entries {
-		if !isCanonicalCurrentTemp(entry.Name()) {
-			continue
+		name := entry.Name()
+		if isCanonicalCurrentTemp(name) {
+			temp, readErr := recoveryReadFile(filepath.Join(root, name), maximumRecordBytes)
+			if readErr != nil {
+				return facts, fmt.Errorf("%w: current temp %q: %v", errInventoryInvalid, name, readErr)
+			}
+			temp.Name = name
+			facts.CurrentTemps = append(facts.CurrentTemps, temp)
 		}
-		temp, readErr := recoveryReadFile(filepath.Join(root, entry.Name()), maximumRecordBytes)
-		if readErr != nil {
-			return facts, fmt.Errorf("%w: current temp %q: %v", errInventoryInvalid, entry.Name(), readErr)
+		if isCanonicalSchemaTemp(name) {
+			temp, readErr := recoveryReadFile(filepath.Join(root, name), int64(recordHeaderBytes+schemaRecordBodyBytes))
+			if readErr != nil || len(temp.Bytes) != recordHeaderBytes+schemaRecordBodyBytes {
+				return facts, fmt.Errorf("%w: schema temp %q: %v", errInventoryInvalid, name, readErr)
+			}
+			temp.Name = name
+			facts.SchemaTemps = append(facts.SchemaTemps, temp)
 		}
-		temp.Name = entry.Name()
-		facts.CurrentTemps = append(facts.CurrentTemps, temp)
 	}
 	if len(facts.Transactions) == 1 && len(facts.Transactions[0].Journal) != 0 {
 		facts.InterruptedSelection = facts.Transactions[0].Generation
@@ -277,6 +285,23 @@ func canonicalUint(name string) (uint64, error) {
 
 func isCanonicalCurrentTemp(name string) bool {
 	const prefix, suffix = ".current.", ".tmp"
+	if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) {
+		return false
+	}
+	inner := name[len(prefix) : len(name)-len(suffix)]
+	if len(inner) != 16 {
+		return false
+	}
+	for _, character := range inner {
+		if !(character >= '0' && character <= '9' || character >= 'a' && character <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func isCanonicalSchemaTemp(name string) bool {
+	const prefix, suffix = ".schema-current.", ".tmp"
 	if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) {
 		return false
 	}

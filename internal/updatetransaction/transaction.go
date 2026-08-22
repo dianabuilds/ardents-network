@@ -211,7 +211,9 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "04-rollback-reserved", stateRollbackReserved, adapterNotCalled); err != nil {
 		return applyFailure(store, request, "rollback-reserved", true, err)
 	}
-	if err := callBounded(ctx, trace.deadline(stateStopNewWork), request.Work.StopNewWork); err != nil {
+	if err := callBounded(ctx, trace.deadline(stateStopNewWork), func(callCtx context.Context) error {
+		return stopRuntimeWork(callCtx, request.Work)
+	}); err != nil {
 		recordErr := trace.record(context.Background(), "05-stop-new-work", stateStopNewWork, adapterFailed)
 		if recordErr != nil {
 			return applyFailure(store, request, "rollback-reserved", true, errors.Join(err, recordErr))
@@ -221,7 +223,9 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "05-stop-new-work", stateStopNewWork, adapterSuccess); err != nil {
 		return applyFailure(store, request, "stop-new-work", true, err)
 	}
-	if err := callBounded(ctx, trace.deadline(stateDraining), request.Work.Drain); err != nil {
+	if err := callBounded(ctx, trace.deadline(stateDraining), func(callCtx context.Context) error {
+		return drainRuntimeWork(callCtx, request.Work)
+	}); err != nil {
 		recordErr := trace.record(context.Background(), "06-draining", stateDraining, adapterFailed)
 		if recordErr != nil {
 			return applyFailure(store, request, "stop-new-work", true, errors.Join(err, recordErr))
@@ -275,6 +279,11 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		}
 		result := selfTestFailedResult(request.Generation, artifact, inspection.selection.Current.Artifact, inspection.currentCustody)
 		return result, errors.Join(err, store.release())
+	}
+	if err := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
+		return rejoinRuntimeWork(callCtx, request.Work)
+	}); err != nil {
+		return rejoinFailure(ctx, trace, store, request, inspection, artifact, err)
 	}
 	if err := trace.record(ctx, "08-self-testing", stateSelfTesting, adapterSuccess); err != nil {
 		return applyFailure(store, request, "self-testing", false, err)
@@ -362,21 +371,6 @@ func resourceDeniedResult(request Request) Result {
 func activationUnsupportedResult(request Request) Result {
 	return Result{Outcome: "activation-unsupported", State: "release-accepted", Generation: request.Generation,
 		StagingPresent: false, SafeNotice: "update storage unsupported"}
-}
-
-// activationBusyFailure preserves the state-six recovery evidence after a
-// platform contention refusal. In particular, it neither retries replacement
-// nor removes a generation that may have been durably published immediately
-// before Windows rejected the current-record replace. Recover owns that exact
-// normalization under the permanent lock.
-func activationBusyFailure(store *ownedStore, request Request, inspection rootInspection, cause error) (Result, error) {
-	result := Result{Outcome: "resource-denied", State: "busy", Generation: request.Generation,
-		CurrentDigest: inspection.selection.Current.Artifact, StagingPresent: false,
-		SafeNotice: "update activation busy", CustodyNotice: inspection.currentCustody}
-	if inspection.selection.Rollback != nil {
-		result.RollbackDigest = inspection.selection.Rollback.Artifact
-	}
-	return result, errors.Join(cause, store.release())
 }
 
 // occupiedStagingResult classifies an already-present staging candidate using

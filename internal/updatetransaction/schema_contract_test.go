@@ -234,6 +234,68 @@ func TestCOWRollbackDiscardsCandidate(t *testing.T) {
 	}
 }
 
+func TestCOWTempRecovery(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	owner := sha256.Sum256([]byte("schema temp owner"))
+	previousContent := sha256.Sum256([]byte("schema temp previous"))
+	previous := SchemaSelection{Owner: owner, Content: previousContent}
+	previous.Identity = schemaSelectionIdentity(previous)
+	previousRaw, err := encodeSchemaCurrent(schemaCurrent{Selection: previous})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "schema-current"), previousRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	candidateContent := sha256.Sum256([]byte("schema temp candidate"))
+	candidateSchema := SchemaSelection{Owner: owner, Generation: 1, Content: candidateContent, Bytes: 4, Entries: 1}
+	candidateSchema.Identity = schemaSelectionIdentity(candidateSchema)
+	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
+		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		SelfTest: &retrySelfTest{}, Schema: probe}
+	if _, applyErr := Apply(context.Background(), request); !errors.Is(applyErr, ErrSelfTestUnavailable) {
+		t.Fatalf("forward Apply = %v", applyErr)
+	}
+	journalPath := filepath.Join(root, "transactions", "1", "journal", "08-self-testing.entry")
+	journalRaw, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := decodeJournalEntry(journalRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry.AdapterResult = adapterSuccess
+	journalRaw, err = encodeJournalEntry(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(journalPath, journalRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	temporary, err := encodeSchemaCurrent(schemaCurrent{Transaction: 1, Selection: candidateSchema, Predecessor: sha256.Sum256(previousRaw)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tempPath := filepath.Join(root, ".schema-current.0123456789abcdef.tmp")
+	if err := os.WriteFile(tempPath, temporary, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, recoverErr := Recover(context.Background(), root)
+	if recoverErr != nil || result.Outcome != "recovered" || result.State != "self-testing" {
+		t.Fatalf("Recover = %+v, %v", result, recoverErr)
+	}
+	if _, statErr := os.Lstat(tempPath); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("schema temp remains after recovery: %v", statErr)
+	}
+}
+
 type failingSchemaPrepare struct{ *schemaCOWProbe }
 
 func (probe failingSchemaPrepare) Prepare(context.Context, SchemaSelection) error {

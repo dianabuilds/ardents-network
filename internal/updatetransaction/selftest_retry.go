@@ -44,7 +44,8 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 		return Result{}, false, nil
 	}
 	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifest,
-		predecessor: sha256.Sum256(validation.RawEntries[stateSelfTesting-1]), callerLimit: callerLimit}
+		predecessor: sha256.Sum256(validation.RawEntries[stateSelfTesting-1]), callerLimit: callerLimit,
+		elapsedOffset: validation.Entries[stateSelfTesting-1].ElapsedNanos}
 	identity := CandidateIdentity{Generation: request.Generation, TargetPath: request.Decision.Path, Length: request.Decision.Length,
 		Digest: artifact, Platform: request.Decision.Platform, Architecture: request.Decision.Architecture,
 		Environment: request.Decision.Environment, Network: request.Decision.Network}
@@ -57,6 +58,12 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 		}
 		result, applyErr := applyFailure(store, request, "self-testing", false, callErr)
 		return result, true, applyErr
+	}
+	if rejoinErr := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
+		return rejoinRuntimeWork(callCtx, request.Work)
+	}); rejoinErr != nil {
+		return networkingUnverifiedResult(request.Generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
+			errors.Join(rejoinErr, store.release())
 	}
 	if err := confirmAndCommitSchema(ctx, store, request, inspection); err != nil {
 		result, applyErr := applyFailure(store, request, "self-testing", false, err)

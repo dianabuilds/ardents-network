@@ -67,7 +67,11 @@ func planRecovery(facts inventoryResult, validation journalValidation, records r
 	if err := journalFirstPredecessorConfirmed(validation, records.predecessorCommitment); err != nil {
 		return recoveryPlan{}, err
 	}
-	return planClassify(facts, validation, records, interrupted, custodyNotice)
+	plan, err := planClassify(facts, validation, records, interrupted, custodyNotice)
+	if err != nil {
+		return recoveryPlan{}, err
+	}
+	return applySchemaTempRecovery(plan, facts, validation)
 }
 
 func validateTemporaryStagingBinding(facts inventoryResult, validation journalValidation) error {
@@ -123,7 +127,7 @@ func validatePhysicalSelection(facts inventoryResult) error {
 			return fmt.Errorf("%w: transaction generation mismatch", errPlanInvalid)
 		}
 	}
-	if len(facts.StagingDirs) > 1 || len(facts.CurrentTemps) > 1 {
+	if len(facts.StagingDirs) > 1 || len(facts.CurrentTemps) > 1 || len(facts.SchemaTemps) > 1 {
 		return fmt.Errorf("%w: multiple staging or current-temp entries", errPlanInvalid)
 	}
 	if err := validateCandidatePlacement(facts, facts.InterruptedSelection, selection); err != nil {
