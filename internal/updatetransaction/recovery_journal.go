@@ -137,6 +137,12 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 		if !journalAdapterValid(entry.State, entry.AdapterResult) {
 			return validation, fmt.Errorf("%w: adapter result invalid in %s", errJournalInvalid, name)
 		}
+		if entry.State == stateCommitted && entry.AdapterResult == adapterSuccess {
+			if len(validation.Entries) == 0 || validation.Entries[len(validation.Entries)-1].State != stateSelfTesting ||
+				validation.Entries[len(validation.Entries)-1].AdapterResult != adapterUnavailable {
+				return validation, fmt.Errorf("%w: committed retry lacks unavailable self-test", errJournalInvalid)
+			}
+		}
 		if state == stateReleaseAccepted {
 			transactionDeadline = entry.DeadlineUnix
 		} else if state == stateStopNewWork {
@@ -183,8 +189,12 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 
 func journalAdapterValid(state transactionState, result adapterResult) bool {
 	switch state {
-	case stateStopNewWork, stateDraining, stateSelfTesting:
+	case stateStopNewWork, stateDraining:
 		return result == adapterSuccess || result == adapterFailed
+	case stateSelfTesting:
+		return result == adapterSuccess || result == adapterFailed || result == adapterUnavailable
+	case stateCommitted:
+		return result == adapterNotCalled || result == adapterSuccess
 	default:
 		return result == adapterNotCalled
 	}

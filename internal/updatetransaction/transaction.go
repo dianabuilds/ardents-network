@@ -149,6 +149,9 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		}
 		return result, nil
 	}
+	if result, handled, resumeErr := resumeUnavailableSelfTest(ctx, store, inspection, request, artifact, manifestDigest, start, callerLimit); handled {
+		return result, resumeErr
+	}
 	if inspection.selection.Transaction+1 != request.Generation {
 		return applyFailure(store, request, "release-accepted", false, errRecordInvalid)
 	}
@@ -228,6 +231,14 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
 		return request.SelfTest.Check(callCtx, identity)
 	}); err != nil {
+		if selfTestUnavailableOnly(err) {
+			recordErr := trace.record(context.Background(), "08-self-testing", stateSelfTesting, adapterUnavailable)
+			if recordErr == nil {
+				result := networkingUnverifiedResult(request.Generation, artifact, inspection.selection.Current.Artifact, inspection.currentCustody)
+				return result, errors.Join(err, store.release())
+			}
+			return applyFailure(store, request, "self-testing", false, errors.Join(err, recordErr))
+		}
 		recordErr := trace.record(ctx, "08-self-testing", stateSelfTesting, adapterFailed)
 		return applyFailure(store, request, "self-testing", false, errors.Join(err, recordErr))
 	}
