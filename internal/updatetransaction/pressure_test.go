@@ -1,0 +1,113 @@
+package updatetransaction
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"reflect"
+	"sort"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+// TestRepeatedUpdatesKeepRetainedStateBounded exercises the retained-success
+// path 100 times. The assertion is intentionally based on the on-disk parent
+// directory rather than private inspection helpers: a successful successor
+// must first retire its old rollback and transaction before it may publish a
+// new pair.
+func TestRepeatedUpdatesKeepRetainedStateBounded(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	var finalMeasurements []pressureMeasurement
+	for generation := uint64(1); generation <= 100; generation++ {
+		request := Request{UpdateRoot: root, Generation: generation, SchemaPlan: "no-op-v1",
+			Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+		result, err := Apply(context.Background(), request)
+		if err != nil || result.Outcome != "committed" || result.Generation != generation || result.StagingPresent {
+			t.Fatalf("episode %d Apply = %+v, %v", generation, result, err)
+		}
+		measurement := measureRetainedRoot(t, root, generation)
+		if generation > 80 {
+			finalMeasurements = append(finalMeasurements, measurement)
+		}
+	}
+	if len(finalMeasurements) != 20 {
+		t.Fatalf("final measurements = %d, want 20", len(finalMeasurements))
+	}
+	for index, measurement := range finalMeasurements[1:] {
+		if measurement != finalMeasurements[0] {
+			t.Fatalf("final episode %d measurement = %+v, baseline = %+v", index+82, measurement, finalMeasurements[0])
+		}
+	}
+}
+
+type pressureMeasurement struct{ Files, Directories, Bytes int }
+
+func measureRetainedRoot(t *testing.T, root string, generation uint64) pressureMeasurement {
+	t.Helper()
+	staging, err := os.ReadDir(filepath.Join(root, "staging"))
+	if err != nil || len(staging) != 0 {
+		t.Fatalf("episode %d staging = %v, %v", generation, staging, err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, rollbackRetireName)); !os.IsNotExist(err) {
+		t.Fatalf("episode %d retained %s: %v", generation, rollbackRetireName, err)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "generations"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantGenerations := []string{strconv.FormatUint(generation-1, 10), strconv.FormatUint(generation, 10)}
+	sort.Strings(wantGenerations)
+	gotGenerations := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		gotGenerations = append(gotGenerations, entry.Name())
+	}
+	if !reflect.DeepEqual(gotGenerations, wantGenerations) {
+		t.Fatalf("episode %d generations = %v, want %v", generation, gotGenerations, wantGenerations)
+	}
+	transactions, err := os.ReadDir(filepath.Join(root, "transactions"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(transactions) != 1 || transactions[0].Name() != strconv.FormatUint(generation, 10) {
+		t.Fatalf("episode %d transactions = %v", generation, transactions)
+	}
+	selectionRaw, err := os.ReadFile(filepath.Join(root, "current"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection, err := decodeCurrent(selectionRaw)
+	if err != nil || selection.Transaction != generation || selection.Current.Generation != generation ||
+		selection.Rollback == nil || selection.Rollback.Generation != generation-1 {
+		t.Fatalf("episode %d selection = %+v, %v", generation, selection, err)
+	}
+	measurement := pressureMeasurement{}
+	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			measurement.Directories++
+			return nil
+		}
+		if strings.HasPrefix(entry.Name(), ".current.") || strings.HasPrefix(entry.Name(), ".schema-current.") {
+			return os.ErrInvalid
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			return infoErr
+		}
+		measurement.Files++
+		measurement.Bytes += int(info.Size())
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("episode %d retained root walk: %v", generation, err)
+	}
+	return measurement
+}
