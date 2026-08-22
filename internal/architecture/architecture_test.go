@@ -96,6 +96,7 @@ func assertRequiredProjectFiles(t *testing.T, root string) {
 		"docs/development/repository-layout.md", "docs/development/package-map.md",
 		"docs/development/documentation.md",
 		"docs/development/scoped-risk-exceptions.md",
+		"docs/development/refactoring-plan.md",
 		"docs/development/stage-8-target-architecture.md",
 		"tests/profiles/profiles.json",
 	}

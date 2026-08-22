@@ -1,6 +1,6 @@
 # Stage 8 target architecture
 
-Status: **S8.3 proposal for Product Owner acceptance.** This is the target
+Status: **S8.3 accepted by the Product Owner on 2026-08-22.** This is the target
 ownership and migration-design authority derived from the accepted S8.1
 [preservation ledger](stage-8-preservation-ledger.md), the S8.1
 [decision-authority register](stage-8-decision-authority-register.md), and
@@ -155,7 +155,7 @@ are not Go packages and do not represent a retained test surface.
 
 ## Acceptance and stop rules
 
-This proposal becomes the S8.3 design authority only when the Product Owner
-accepts it. DA-01 through DA-10 remain explicit stop conditions for their
-dependent waves. On acceptance, S8.4 may instantiate the M0-M14 migration and
-retirement ledger; code moves begin only in an accepted S8.5 wave.
+This accepted map is the S8.3 design authority. DA-01 through DA-10 remain
+explicit stop conditions for their dependent waves. S8.4 may instantiate the
+M0-M14 migration and retirement ledger; code moves begin only in an accepted
+S8.5 wave.
