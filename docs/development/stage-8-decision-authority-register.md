@@ -1,6 +1,6 @@
 # Stage 8 decision-authority register
 
-Status: **S8.1 decision route, pending Product Owner acceptance.** This
+Status: **S8.1 decision route, accepted with the preservation ledger.** This
 temporary register turns every S8.1 `Decide first` item that can constrain
 S8.3 into a named question, authority path, and stop condition. It does not
 select an algorithm, format, package, or dependency. The Product Owner's

@@ -1,6 +1,6 @@
 # Stage 8 preservation and compatibility ledger
 
-Status: **S8.1 in progress.** On 2026-08-22 the Product Owner selected
+Status: **S8.1 accepted.** On 2026-08-22 the Product Owner selected
 `continue` for the accepted Product Core and H3 candidate. This temporary
 ledger applies the resulting preservation disposition to the clean Stage 8
 entry `1cf7100da3ada32ba53abb51201aaf7b6183a3da`. It is not a target package
@@ -114,12 +114,13 @@ real external observers and selects G0-M0 (coordinated switch), G0-M1
 | Custody implementation | Preserve the accepted custody separation and ADR-0021 format authority; no package is assumed to exist. | Custody design and Product Owner acceptance after its dependent authorities stabilize (M12). |
 | Public naming, permissionless admission, independent-operation or public-route claims | Outside current H3 product scope. | A future-horizon Product Owner promotion, research/ADR, and external evidence; no S8 wave may add them as an implied backlog. |
 
-## S8.1 acceptance status
+## S8.1 exit
 
 The product disposition, retained scope, honest limitations, concrete
 preservation classes, and laboratory/deferred-campaign treatment are now
 recorded. The companion
 [decision-authority register](stage-8-decision-authority-register.md) names
-every `Decide first` route that can constrain S8.3. S8.1 is ready for Product
-Owner acceptance; no Module migration is authorized until that acceptance is
-explicitly recorded.
+every `Decide first` route that can constrain S8.3. The Product Owner's
+`continue` disposition accepts this ledger's scope, limitations, and authority
+routes. S8.1 is complete. No Module migration is authorized until S8.2/S8.3
+promote their respective policy and target-design authorities.

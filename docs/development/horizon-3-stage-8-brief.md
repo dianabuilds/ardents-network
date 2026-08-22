@@ -1,7 +1,8 @@
 # Horizon 3 Stage 8 productization and restructuring brief
 
 Status: **execution started by Product Owner authorization on 2026-08-22;
-S8.0 current-system truth is active.** This brief replaces the earlier
+S8.0 current-system truth and S8.1 preservation disposition are complete.**
+This brief replaces the earlier
 reassessment-only Stage 8 plan. Stage 7 was stopped by its separate 2026-08-22
 disposition, and the exact Stage 8 entry is bound by the
 [Stage 8 start record](stage-8-start-record.md).
