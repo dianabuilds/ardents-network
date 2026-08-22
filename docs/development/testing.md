@@ -94,6 +94,11 @@ classification, while scenario ownership remains with the test that proves the
 behavior. The architecture gate verifies its schema, required profile set, and
 Make-target wiring.
 
+The deterministic and historical-reproduction package membership is positive
+and explicit in the adjacent `*-packages.txt` manifests. A package changes
+profile only with its source, test, and product/evidence disposition; adding a
+new package cannot silently make it part of a profile through a negative filter.
+
 An environment-dependent selected profile has four outcomes: product assertion
 failure, test/harness defect, invalid environment, or nondeterministic/unowned
 result. None is green until resolved. Missing Docker, an external binary,

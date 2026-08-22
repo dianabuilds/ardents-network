@@ -13,9 +13,12 @@ export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
 .PHONY: architecture build check e2e format format-check lab-test live mod-check prototype-r053 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
-ALL_PACKAGES := $(shell go list ./cmd/... ./internal/...)
-LAB_PACKAGES := $(shell go list ./cmd/carrier-lab ./cmd/named-site-lab ./internal/lab/...)
-UNIT_PACKAGES := $(filter-out $(LAB_PACKAGES),$(ALL_PACKAGES))
+define newline
+
+
+endef
+UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
+LAB_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/historical-reproduction-packages.txt))
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check
 
 format:
