@@ -25,6 +25,9 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (result Evidenc
 		return Evidence{}, err
 	}
 	input.Lifetime = lifetime
+	if err := validateActor(input, ready); err != nil {
+		return Evidence{}, err
+	}
 	terminal := time.Now().Add(lifetime)
 	producer, err := retainLocalRoute(input, terminal)
 	if err != nil {
@@ -73,9 +76,6 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (result Evidenc
 	err = nil
 	switch input.Role {
 	case "client":
-		if ready != nil {
-			return Evidence{}, errors.New("client has no listener readiness event")
-		}
 		result, err = transfer(attempt, input)
 	case "publisher":
 		result, err = servePublisher(attempt, input, ready)
@@ -114,6 +114,22 @@ func Run(ctx context.Context, input Actor, ready func(Evidence)) (result Evidenc
 		result.Error = err.Error()
 	}
 	return result, err
+}
+
+func validateActor(input Actor, ready func(Evidence)) error {
+	switch input.Role {
+	case "client":
+		if ready != nil {
+			return errors.New("client has no listener readiness event")
+		}
+		return validateClient(input)
+	case "publisher":
+		return validatePublisher(input)
+	case "initiator", "introduction", "rendezvous", "responder":
+		return validateNode(input)
+	default:
+		return errors.New("route actor role is invalid")
+	}
 }
 
 func runtimeIdentity() string {

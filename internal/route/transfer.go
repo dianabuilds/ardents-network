@@ -20,36 +20,6 @@ func transfer(ctx context.Context, input Actor) (evidence Evidence, runErr error
 		ExcludedFamilies:   append([]string(nil), input.Plan.ExcludedFamilies...),
 		ExcludedDomains:    append([]string(nil), input.Plan.ExcludedDomains...),
 		Positions:          append([]Position(nil), input.Plan.Positions...)}
-	if input.NetworkID != [32]byte{} || input.EpochDigest != [32]byte{} || input.NodeID != [32]byte{} ||
-		input.ListenAddress != "" || !emptyCertificate(input.Certificate) || input.UpstreamPin != [32]byte{} ||
-		input.NextNodeID != [32]byte{} || input.NextAddress != "" || input.NextPin != [32]byte{} ||
-		!emptyCertificate(input.ServiceCertificate) || input.IntroductionSetupPeer != [32]byte{} ||
-		input.IntroductionForwardSocket != "" || input.IntroductionForwardPublic != [32]byte{} ||
-		input.IntroductionSetupNode != [32]byte{} {
-		return evidence, errors.New("client received information outside its role-local duty")
-	}
-	if err := Validate(input.Plan); err != nil {
-		return evidence, err
-	}
-	if err := validateCertificate(input.ClientCertificate); err != nil {
-		return evidence, err
-	}
-	if input.RawAttachment && input.Stream == nil {
-		return evidence, errors.New("raw attachment stream is required")
-	}
-	if !input.RawAttachment && input.PublisherPin == [32]byte{} {
-		return evidence, errors.New("publisher test identity is required")
-	}
-	if input.RawAttachment && input.PublisherPin != [32]byte{} {
-		return evidence, errors.New("raw attachment exposes publisher identity to Route")
-	}
-	if err := validateDeadline(input.Deadline); err != nil {
-		return evidence, err
-	}
-	if (input.IntroductionSetupSocket == "") != (input.IntroductionSetupPublic == [32]byte{}) ||
-		(input.IntroductionSetupSocket == "") != (input.IntroductionServicePublic == [32]byte{}) {
-		return evidence, errors.New("sealed Introduction setup input is incomplete")
-	}
 	if input.IntroductionSetupSocket != "" {
 		setup, receipt, err := requestIntroductionSetup(ctx, input)
 		if err != nil {
@@ -108,6 +78,37 @@ func transfer(ctx context.Context, input Actor) (evidence Evidence, runErr error
 	}
 	evidence.CanaryLength, evidence.CanaryDigest, evidence.Canary = result.length, result.digest, result.bytes
 	return evidence, nil
+}
+
+func validateClient(input Actor) error {
+	if input.NetworkID != [32]byte{} || input.EpochDigest != [32]byte{} || input.NodeID != [32]byte{} ||
+		input.ListenAddress != "" || !emptyCertificate(input.Certificate) || input.UpstreamPin != [32]byte{} ||
+		input.NextNodeID != [32]byte{} || input.NextAddress != "" || input.NextPin != [32]byte{} ||
+		!emptyCertificate(input.ServiceCertificate) || input.IntroductionSetupPeer != [32]byte{} ||
+		input.IntroductionForwardSocket != "" || input.IntroductionForwardPublic != [32]byte{} ||
+		input.IntroductionSetupNode != [32]byte{} {
+		return errors.New("client received information outside its role-local duty")
+	}
+	if err := Validate(input.Plan); err != nil {
+		return err
+	}
+	if err := validateCertificate(input.ClientCertificate); err != nil {
+		return err
+	}
+	if input.RawAttachment && input.Stream == nil {
+		return errors.New("raw attachment stream is required")
+	}
+	if !input.RawAttachment && input.PublisherPin == [32]byte{} {
+		return errors.New("publisher test identity is required")
+	}
+	if input.RawAttachment && input.PublisherPin != [32]byte{} {
+		return errors.New("raw attachment exposes publisher identity to Route")
+	}
+	if (input.IntroductionSetupSocket == "") != (input.IntroductionSetupPublic == [32]byte{}) ||
+		(input.IntroductionSetupSocket == "") != (input.IntroductionServicePublic == [32]byte{}) {
+		return errors.New("sealed Introduction setup input is incomplete")
+	}
+	return validateDeadline(input.Deadline)
 }
 
 func openInitiator(ctx context.Context, input Actor, first Position) (*tls.Conn, func() error, error) {

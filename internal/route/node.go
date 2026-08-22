@@ -18,9 +18,6 @@ func serveNode(ctx context.Context, input Actor, ready func(Evidence)) (Evidence
 	observation := Evidence{Schema: observationSchema, Kind: "complete", Role: input.Role,
 		PID: os.Getpid(), ManifestDigest: input.ManifestDigest, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
 		NodeID: input.NodeID, PreviousPin: input.UpstreamPin, NextNodeID: input.NextNodeID}
-	if err := validateNode(input); err != nil {
-		return observation, err
-	}
 	if input.MaximumAttachments > 1 {
 		return serveNodeCapacity(ctx, input, ready, observation)
 	}

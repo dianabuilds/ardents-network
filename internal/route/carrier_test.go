@@ -12,6 +12,8 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -320,6 +322,7 @@ func TestRouteCapacityProtectsEstablishedAttachmentThenDrains(t *testing.T) {
 
 func TestActorsRejectCrossRoleInformation(t *testing.T) {
 	identity, upstream := routeIdentity(t, 51), routeIdentity(t, 52)
+	clientRoleRoot := filepath.Join(t.TempDir(), "local-roles")
 	plan := route.Plan{NetworkID: [32]byte{1}, Generation: "generation", Epoch: 1, Digest: [32]byte{2},
 		Profile: "h3-route-tracer-v1", ViewRoot: [32]byte{6}, Seed: [32]byte{5}, SelectionAt: time.Now().Unix()}
 	roles := []string{"initiator", "introduction", "rendezvous", "responder"}
@@ -338,7 +341,7 @@ func TestActorsRejectCrossRoleInformation(t *testing.T) {
 			ListenAddress: unusedAddress(t), Certificate: identity.certificate, UpstreamPin: upstream.public,
 			ServiceCertificate: identity.certificate, NextNodeID: [32]byte{4}, Deadline: time.Second}},
 		{"Client listener", route.Actor{Role: "client", ManifestDigest: [32]byte{99}, Plan: plan, ClientCertificate: identity.certificate,
-			PublisherPin: upstream.public, ListenAddress: unusedAddress(t), LocalRoleStateRoot: t.TempDir(), Deadline: time.Second}},
+			PublisherPin: upstream.public, ListenAddress: unusedAddress(t), LocalRoleStateRoot: clientRoleRoot, Deadline: time.Second}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -346,6 +349,9 @@ func TestActorsRejectCrossRoleInformation(t *testing.T) {
 				t.Fatalf("cross-role information was not rejected: %v", err)
 			}
 		})
+	}
+	if _, err := os.Stat(clientRoleRoot); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid client actor changed local role state: %v", err)
 	}
 }
 

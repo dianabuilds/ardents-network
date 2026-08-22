@@ -13,9 +13,6 @@ func servePublisher(ctx context.Context, input Actor, ready func(Evidence)) (Evi
 	observation := Evidence{Schema: observationSchema, Kind: "complete", Role: "publisher", PID: os.Getpid(),
 		ManifestDigest: input.ManifestDigest, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
 		NodeID: input.NodeID, PreviousPin: input.UpstreamPin}
-	if err := validatePublisher(input); err != nil {
-		return observation, err
-	}
 	if input.MaximumAttachments > 1 {
 		return servePublisherCapacity(ctx, input, ready, observation)
 	}
