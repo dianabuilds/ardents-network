@@ -158,21 +158,8 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if result, handled, resumeErr := resumeRollbackPending(store, inspection, request, artifact, manifestDigest); handled {
 		return result, resumeErr
 	}
-	if inspection.selection.Rollback != nil && request.Generation == inspection.selection.Transaction+1 {
-		store, inspection, err = retireForNextGeneration(store, inspection, request.Generation)
-		if err != nil {
-			return transactionInvalidResult(request.Generation), err
-		}
-	}
 	if inspection.selection.Transaction+1 != request.Generation {
 		return applyFailure(store, request, "release-accepted", false, errRecordInvalid)
-	}
-	if inspection.selection.Rollback != nil {
-		result := resourceDeniedResult(request)
-		result.CurrentDigest = inspection.selection.Current.Artifact
-		result.RollbackDigest = inspection.selection.Rollback.Artifact
-		result.CustodyNotice = inspection.currentCustody
-		return result, errors.Join(errResourceDenied, store.release())
 	}
 	schema, schemaErr := planSchema(ctx, request, inspection)
 	if schemaErr != nil {
@@ -187,8 +174,22 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if encodeErr != nil {
 		return invalidResult(request, "release-accepted"), errors.Join(encodeErr, store.release())
 	}
-	if envelopeErr := requireResourceEnvelope(observation, request.Artifact, manifestBytes, successorCurrent, schema.resourceParts()...); envelopeErr != nil {
+	resourceParts := schema.resourceParts()
+	if inspection.selection.Rollback != nil {
+		retirement, retirementErr := encodeRollbackRetirement(inspection.currentRaw)
+		if retirementErr != nil {
+			return invalidResult(request, "release-accepted"), errors.Join(retirementErr, store.release())
+		}
+		resourceParts = append(resourceParts, retirement)
+	}
+	if envelopeErr := requireResourceEnvelope(observation, request.Artifact, manifestBytes, successorCurrent, resourceParts...); envelopeErr != nil {
 		return resourceDeniedResult(request), errors.Join(envelopeErr, store.release())
+	}
+	if inspection.selection.Rollback != nil {
+		store, inspection, err = retireForNextGeneration(store, inspection, request.Generation)
+		if err != nil {
+			return transactionInvalidResult(request.Generation), err
+		}
 	}
 	predecessorBytes, err := encodePredecessor(inspection.predecessor)
 	if err != nil {

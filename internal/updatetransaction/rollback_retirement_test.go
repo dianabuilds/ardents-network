@@ -50,6 +50,37 @@ func TestApplyRotatesVerifiedRollbackForNextGeneration(t *testing.T) {
 	}
 }
 
+func TestApplyRefusesSuccessorBeforeRollbackRetirement(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	first := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
+		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+	if _, err := Apply(context.Background(), first); err != nil {
+		t.Fatal(err)
+	}
+	before := recoveryOracleTreeDigest(t, root)
+	second := first
+	second.Generation = 2
+	work := &oracleWorkControl{}
+	second.Work = work
+	result, applyErr := applyWithResourceObservation(context.Background(), second, resourceObservation{
+		allocationUnit: 1, availableBytes: 0, availableItems: resourceObjectCount + 1, itemsKnown: true,
+	})
+	if applyErr == nil || result.Outcome != "resource-denied" || result.State != "release-accepted" {
+		t.Fatalf("Apply = %+v, %v", result, applyErr)
+	}
+	if work.stopCalls != 0 || work.drainCalls != 0 {
+		t.Fatalf("resource refusal called work control: %#v", work)
+	}
+	if after := recoveryOracleTreeDigest(t, root); string(after) != string(before) {
+		t.Fatal("resource refusal rotated retained state")
+	}
+}
+
 func TestRecoverCompletesBoundedRollbackRetirement(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "update")
 	if err := os.Mkdir(root, 0o700); err != nil {
