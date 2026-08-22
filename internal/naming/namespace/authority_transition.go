@@ -138,14 +138,6 @@ func transitionTranscript(network [32]byte, current Record, op Op) ([]byte, erro
 	out = binary.BigEndian.AppendUint64(out, uint64(authorization.StartedAt))
 	out = binary.BigEndian.AppendUint64(out, uint64(authorization.CompletesAt))
 	out = append(out, authorization.ValidSigners)
-	out = append(out, byte(len(op.Parents)))
-	for _, parent := range op.Parents {
-		wire, encodeErr := EncodeRecord(parent)
-		if encodeErr != nil {
-			return nil, errors.New("transition parent Record is invalid")
-		}
-		out = appendTransitionBytes(out, wire)
-	}
 	return out, nil
 }
 

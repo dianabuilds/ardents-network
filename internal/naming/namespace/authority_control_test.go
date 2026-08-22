@@ -84,6 +84,105 @@ func TestControlRejectsChangedContentsWithTheOldAdmission(t *testing.T) {
 	}
 }
 
+func TestControlOwnsMultilevelParentLineage(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	network := [32]byte{9}
+	rootKey := deterministicControlKey("lineage-root")
+	childKey := deterministicControlKey("lineage-child")
+	grandchildKey := deterministicControlKey("lineage-grandchild")
+	root := controlTestRecord("root", rootKey, now)
+	gate, err := NewAdmission([32]byte{2}, network, 1, [32]byte{4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	control, err := NewControl(network, gate, ClaimOrder{}, []Record{root},
+		func() time.Time { return now }, Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	child := controlDelegate(t, network, root, rootKey, "child.root", childKey, now)
+	class, _, _, state := applyControlTest(t, control, gate, now, network, child, 21)
+	childRecord, err := DecodeRecord(state)
+	if class != "accepted" || err != nil || childRecord.ParentName != root.Name {
+		t.Fatalf("child delegation = %q, %+v, %v", class, childRecord, err)
+	}
+
+	grandchild := controlDelegate(t, network, childRecord, childKey, "grandchild.child.root", grandchildKey, now)
+	class, _, _, state = applyControlTest(t, control, gate, now, network, grandchild, 22)
+	grandchildRecord, err := DecodeRecord(state)
+	if class != "accepted" || err != nil || grandchildRecord.ParentName != childRecord.Name {
+		t.Fatalf("grandchild delegation = %q, %+v, %v", class, grandchildRecord, err)
+	}
+
+	publishOp := Op{Kind: "publish", Name: grandchildRecord.Name, Authority: grandchildRecord.Authority,
+		ExpectedGeneration: grandchildRecord.Generation, ExpectedRevision: grandchildRecord.Revision, Target: [32]byte{7}}
+	publishProof, err := SignTransition(network, grandchildRecord, publishOp, grandchildKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publish := controlOperation{Kind: "record", Name: grandchildRecord.Name, Generation: grandchildRecord.Generation,
+		ExpectedRevision: grandchildRecord.Revision, Target: [32]byte{7},
+		RecordNotAfter: now.Add(30 * time.Minute).UnixMilli(), AuthorityProof: publishProof}
+	class, _, _, state = applyControlTest(t, control, gate, now, network, publish, 23)
+	published, err := DecodeRecord(state)
+	if class != "accepted" || err != nil || published.Target != ([32]byte{7}) {
+		t.Fatalf("grandchild publication = %q, %+v, %v", class, published, err)
+	}
+
+	renewOp := Op{Kind: "renew", Name: published.Name, Authority: published.Authority,
+		ExpectedGeneration: published.Generation, ExpectedRevision: published.Revision, LeaseDuration: time.Hour}
+	renewProof, err := SignTransition(network, published, renewOp, grandchildKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	renew := controlOperation{Kind: "renew", Name: published.Name, Generation: published.Generation,
+		ExpectedRevision: published.Revision, LeaseNotAfter: now.Add(time.Hour).UnixMilli(), AuthorityProof: renewProof}
+	class, _, _, state = applyControlTest(t, control, gate, now, network, renew, 24)
+	renewed, err := DecodeRecord(state)
+	if class != "accepted" || err != nil || renewed.Revision != published.Revision+1 {
+		t.Fatalf("grandchild renewal = %q, %+v, %v", class, renewed, err)
+	}
+
+	releaseOp := Op{Kind: "release", Name: root.Name, Authority: root.Authority,
+		ExpectedGeneration: root.Generation, ExpectedRevision: root.Revision}
+	releaseProof, err := SignTransition(network, root, releaseOp, rootKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := controlOperation{Kind: "release", Name: root.Name, Generation: root.Generation,
+		ExpectedRevision: root.Revision, AuthorityProof: releaseProof}
+	if class, _, _, _ = applyControlTest(t, control, gate, now, network, release, 25); class != "accepted" {
+		t.Fatal("root release was denied")
+	}
+	renewedOp := Op{Kind: "renew", Name: renewed.Name, Authority: renewed.Authority,
+		ExpectedGeneration: renewed.Generation, ExpectedRevision: renewed.Revision, LeaseDuration: time.Hour}
+	renewedProof, err := SignTransition(network, renewed, renewedOp, grandchildKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	renew.ExpectedRevision, renew.AuthorityProof = renewed.Revision, renewedProof
+	if class, _, _, _ = applyControlTest(t, control, gate, now, network, renew, 26); class != "denied" {
+		t.Fatal("released root allowed its descendant renewal")
+	}
+}
+
+func controlDelegate(t *testing.T, network [32]byte, parent Record, parentKey ed25519.PrivateKey,
+	name string, childKey ed25519.PrivateKey, now time.Time,
+) controlOperation {
+	t.Helper()
+	childAuthority := authorityBytes(hex.EncodeToString(childKey.Public().(ed25519.PublicKey)))
+	op := Op{Kind: "claim", Name: name, Generation: 1, Authority: hex.EncodeToString(childAuthority[:]),
+		Parents: []Record{parent}, LeaseDuration: time.Hour}
+	proof, err := SignTransition(network, parent, op, parentKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return controlOperation{Kind: "delegate", Name: name, ParentName: parent.Name,
+		ParentGeneration: parent.Generation, ParentRevision: parent.Revision, ChildGeneration: 1,
+		Authority: childAuthority, LeaseNotAfter: now.Add(time.Hour).UnixMilli(), AuthorityProof: proof}
+}
+
 func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	network, currentKey := [32]byte{9}, deterministicControlKey("policy-current")

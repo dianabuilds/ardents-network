@@ -111,8 +111,13 @@ func (control *control) delegate(operation controlOperation, now time.Time) (Rec
 	if !exists || parent.Generation != operation.ParentGeneration || parent.Revision != operation.ParentRevision {
 		return Record{}, errors.New("parent authority predecessor is unavailable")
 	}
+	parents, err := control.lineage(parent, now)
+	if err != nil {
+		return Record{}, err
+	}
+	parents = append([]Record{parent}, parents...)
 	op := Op{Kind: "claim", Name: operation.Name, Generation: operation.ChildGeneration,
-		Authority: hex.EncodeToString(operation.Authority[:]), Parents: []Record{parent},
+		Authority: hex.EncodeToString(operation.Authority[:]), Parents: parents,
 		LeaseDuration: durationUntil(now, operation.LeaseNotAfter)}
 	return applyTransition(control.network, parent, op, operation.AuthorityProof, now.Unix(), control.policy)
 }
@@ -124,10 +129,41 @@ func (control *control) existing(operation controlOperation, current Record,
 	if err != nil {
 		return Record{}, err
 	}
+	op.Parents, err = control.lineage(current, now)
+	if err != nil {
+		return Record{}, err
+	}
 	if threshold {
 		return ApplyAt(&current, now, op, control.policy)
 	}
 	return applyTransition(control.network, current, op, operation.AuthorityProof, now.Unix(), control.policy)
+}
+
+// lineage returns the authoritative immediate-parent-to-root chain for record.
+// The control holds its lock while resolving it, so callers cannot provide a
+// stale or substituted Record graph between predecessor verification and
+// transition application.
+func (control *control) lineage(record Record, now time.Time) ([]Record, error) {
+	parents := make([]Record, 0, 4)
+	seen := map[string]bool{record.Name: true}
+	for current := record; current.ParentName != ""; {
+		if len(parents) >= 126 || seen[current.ParentName] {
+			return nil, errors.New("name Authority parent lineage is invalid")
+		}
+		parent, exists := control.records[current.ParentName]
+		if !exists || parent.Generation != current.ParentGeneration {
+			return nil, errors.New("name Authority parent lineage is unavailable")
+		}
+		if err := validateRecord(parent); err != nil {
+			return nil, errors.New("name Authority parent lineage is invalid")
+		}
+		parents, seen[parent.Name] = append(parents, parent), true
+		current = parent
+	}
+	if _, err := validateParents(record.Name, parents, now.Unix()); err != nil {
+		return nil, errors.New("name Authority parent lineage is not resolvable")
+	}
+	return parents, nil
 }
 
 func durationUntil(now time.Time, notAfter int64) time.Duration {
