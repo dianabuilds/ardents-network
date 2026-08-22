@@ -7,18 +7,17 @@ import (
 	"encoding/binary"
 	"sort"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 type namespaceFixture struct {
-	policy  namestore.Policy
+	policy  namespace.MaterializationPolicy
 	signers []ed25519.PrivateKey
 }
 
 func newNamespaceFixture(network [32]byte) namespaceFixture {
-	value := namespaceFixture{policy: namestore.Policy{Network: network,
+	value := namespaceFixture{policy: namespace.MaterializationPolicy{Network: network,
 		Rule: "ardents-namespace-materialization-v1", Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}}
 	for index := 0; index < 3; index++ {
 		private := evidenceKey("namespace-epoch-" + string(rune('0'+index)))
@@ -56,7 +55,7 @@ func (value namespaceFixture) bind(view *state.Snapshot) {
 	}
 }
 
-func namespacePolicyIDs(policy namestore.Policy) [][32]byte {
+func namespacePolicyIDs(policy namespace.MaterializationPolicy) [][32]byte {
 	ids := make([][32]byte, 0, len(policy.Authorities))
 	for id := range policy.Authorities {
 		ids = append(ids, id)

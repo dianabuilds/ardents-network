@@ -1,12 +1,12 @@
-package namestore
+package namespace
 
 import "crypto/ed25519"
 
 const materializationRule = "ardents-namespace-materialization-v1"
 
-// Policy is the installed Network Epoch trust root for current Namespace
+// MaterializationPolicy is the installed Network Epoch trust root for current Namespace
 // materializations. Keys are copied by Open.
-type Policy struct {
+type MaterializationPolicy struct {
 	Network     [32]byte
 	Rule        string
 	Authorities map[[32]byte]ed25519.PublicKey
@@ -28,7 +28,7 @@ type Epoch struct {
 // Store owns one exclusive bounded durable naming-state root.
 type Store struct {
 	root   *namespaceRoot
-	policy Policy
+	policy MaterializationPolicy
 }
 
 type statement struct {

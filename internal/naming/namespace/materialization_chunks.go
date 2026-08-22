@@ -1,4 +1,4 @@
-package namestore
+package namespace
 
 import "errors"
 

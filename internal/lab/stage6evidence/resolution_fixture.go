@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -32,7 +31,7 @@ type resolutionFixture struct {
 	roleEvidence    func() ([]resolutionGatewayView, []resolutionRelayView)
 	control         func() (uint32, uint32, uint32)
 	capture         *resolutionCapture
-	store           *namestore.Store
+	store           *namespace.Store
 	materialization namespaceFixture
 	records         [][]byte
 	transitions     [][]byte
@@ -72,12 +71,12 @@ func newResolutionFixture(control ...interface {
 	if err != nil {
 		return value, err
 	}
-	value.store, err = namestore.Open(value.root, materialization.policy)
+	value.store, err = namespace.Open(value.root, materialization.policy)
 	if err != nil {
 		value.close()
 		return value, err
 	}
-	epoch := namestore.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: value.claimProof.CutoffOffset,
+	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: value.claimProof.CutoffOffset,
 		TransitionRoot: namespaceTransitionRoot(value.transitions), TransitionLength: uint32(len(value.transitions)),
 		RejectionRoot: value.claimProof.RejectionRoot, RejectionLength: value.claimProof.RejectionLength}
 	if err = value.store.Commit(epoch, value.records, materialization.attest); err != nil {

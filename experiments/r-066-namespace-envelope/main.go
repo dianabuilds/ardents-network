@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -44,10 +43,10 @@ func main() {
 	defer func() { must(os.RemoveAll(root)) }()
 	network := [32]byte{6, 6}
 	policy, signers := materializationPolicy(network)
-	store, err := namestore.Open(root, policy)
+	store, err := namespace.Open(root, policy)
 	must(err)
 	records, name := signedHierarchy(network)
-	epoch := namestore.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: sha256.Sum256([]byte("r066-transitions")), TransitionLength: recordCount,
 		RejectionRoot: sha256.Sum256([]byte("r066-rejections"))}
 	must(store.Commit(epoch, records, thresholdAttester(signers[:2])))
@@ -60,7 +59,7 @@ func main() {
 	checkConcurrent(store, name, epoch.Number)
 	must(store.Close())
 	reopen := samples(lookupSamples, func() {
-		opened, openErr := namestore.Open(root, policy)
+		opened, openErr := namespace.Open(root, policy)
 		must(openErr)
 		_, lookupErr := opened.Lookup(name, epoch.Number)
 		must(lookupErr)
@@ -96,8 +95,8 @@ func signedHierarchy(network [32]byte) ([][]byte, string) {
 	return records, strings.Repeat("a.", recordCount-1) + "a"
 }
 
-func materializationPolicy(network [32]byte) (namestore.Policy, []ed25519.PrivateKey) {
-	policy := namestore.Policy{Network: network, Rule: "ardents-namespace-materialization-v1", Authorities: map[[32]byte]ed25519.PublicKey{}, Threshold: 2}
+func materializationPolicy(network [32]byte) (namespace.MaterializationPolicy, []ed25519.PrivateKey) {
+	policy := namespace.MaterializationPolicy{Network: network, Rule: "ardents-namespace-materialization-v1", Authorities: map[[32]byte]ed25519.PublicKey{}, Threshold: 2}
 	keys := make([]ed25519.PrivateKey, 3)
 	for i := range keys {
 		seed := sha256.Sum256([]byte(fmt.Sprintf("r066-signer-%d", i)))
@@ -140,7 +139,7 @@ func percentile(values []time.Duration, value int) time.Duration {
 	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
 	return values[(len(values)-1)*value/100]
 }
-func checkConcurrent(store *namestore.Store, name string, epoch uint64) {
+func checkConcurrent(store *namespace.Store, name string, epoch uint64) {
 	var group sync.WaitGroup
 	errors := make(chan error, concurrentLookups)
 	for range concurrentLookups {

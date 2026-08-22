@@ -1,4 +1,4 @@
-package namestore
+package namespace
 
 import (
 	"crypto/ed25519"
@@ -8,8 +8,8 @@ import (
 )
 
 // Open claims a naming-state root for exactly one Network Epoch policy.
-func Open(path string, input Policy) (*Store, error) {
-	policy, err := validPolicy(input)
+func Open(path string, input MaterializationPolicy) (*Store, error) {
+	policy, err := validMaterializationPolicy(input)
 	if err != nil {
 		return nil, err
 	}
@@ -104,16 +104,16 @@ func (store *Store) load(minimumEpoch uint64) (snapshot, error) {
 	return snapshot{}, errors.New("naming state is tampered")
 }
 
-func validPolicy(input Policy) (Policy, error) {
+func validMaterializationPolicy(input MaterializationPolicy) (MaterializationPolicy, error) {
 	if input.Network == [32]byte{} || input.Rule != materializationRule || input.Threshold < 2 ||
 		input.Threshold > len(input.Authorities) || len(input.Authorities) > 16 {
-		return Policy{}, errors.New("naming materialization policy is invalid")
+		return MaterializationPolicy{}, errors.New("naming materialization policy is invalid")
 	}
-	policy := Policy{Network: input.Network, Rule: input.Rule,
+	policy := MaterializationPolicy{Network: input.Network, Rule: input.Rule,
 		Authorities: make(map[[32]byte]ed25519.PublicKey, len(input.Authorities)), Threshold: input.Threshold}
 	for id, public := range input.Authorities {
 		if len(public) != ed25519.PublicKeySize || sha256.Sum256(public) != id {
-			return Policy{}, errors.New("naming materialization authority is invalid")
+			return MaterializationPolicy{}, errors.New("naming materialization authority is invalid")
 		}
 		policy.Authorities[id] = append(ed25519.PublicKey(nil), public...)
 	}

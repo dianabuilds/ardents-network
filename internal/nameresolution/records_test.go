@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -24,7 +23,7 @@ func TestMaterializedRecordRejectsAProofThatCannotFitTheFixedResponse(t *testing
 		t.Fatal(err)
 	}
 	materialization := testNamespaceFixture([32]byte{1}, "oversized-proof")
-	store, err := namestore.Open(t.TempDir(), materialization.policy)
+	store, err := namespace.Open(t.TempDir(), materialization.policy)
 	if err != nil {
 		t.Fatal(err)
 	}

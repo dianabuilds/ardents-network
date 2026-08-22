@@ -1,11 +1,9 @@
-package namestore
+package namespace
 
 import (
 	"bytes"
 	"errors"
 	"sort"
-
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const (
@@ -14,7 +12,7 @@ const (
 )
 
 type recordEntry struct {
-	record namespace.Record
+	record Record
 	signed []byte
 }
 
@@ -24,7 +22,7 @@ func materializeRecords(network [32]byte, signed [][]byte) ([][]byte, [][]byte, 
 	}
 	entries := make([]recordEntry, len(signed))
 	for index, raw := range signed {
-		record, err := namespace.VerifyRecord(network, raw)
+		record, err := VerifyRecord(network, raw)
 		if err != nil {
 			return nil, nil, errors.New("naming materialization contains an invalid signed Record")
 		}
@@ -86,7 +84,7 @@ func materializeLeaf(index int, entries []recordEntry, byName map[string]int) (r
 		lineageCount: uint8(len(lineage)), state: state, notAfter: notAfter}, nil
 }
 
-func effectiveLease(record namespace.Record) (byte, int64, bool) {
+func effectiveLease(record Record) (byte, int64, bool) {
 	if record.Consistency != "current" || record.Recovery != "stable" {
 		return 0, 0, false
 	}

@@ -1,4 +1,4 @@
-package namestore
+package namespace
 
 import (
 	"encoding/binary"
@@ -41,7 +41,7 @@ func decodeLeaf(raw []byte) (resolutionLeaf, error) {
 func appendUint16(out []byte, value uint16) []byte { return binary.BigEndian.AppendUint16(out, value) }
 func appendUint32(out []byte, value uint32) []byte { return binary.BigEndian.AppendUint32(out, value) }
 func appendUint64(out []byte, value uint64) []byte { return binary.BigEndian.AppendUint64(out, value) }
-func appendText(out []byte, value string) []byte {
+func appendMaterializationText(out []byte, value string) []byte {
 	out = appendUint16(out, uint16(len(value)))
 	return append(out, value...)
 }

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/circl/hpke"
-	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/openpcc/ohttp"
 )
 
@@ -121,7 +121,7 @@ func (gateway *gateway) resolve(writer http.ResponseWriter, request *http.Reques
 	generation, revision := uint64(0), uint64(0)
 	target := [32]byte{}
 	if found {
-		record, _, _, _, verifyErr := namestore.Verify(gateway.state.policy, proof,
+		record, _, _, _, verifyErr := namespace.Verify(gateway.state.policy, proof,
 			gateway.state.minimum, gateway.state.epochDigest, now.Unix())
 		if verifyErr != nil {
 			gateway.reject(writer)

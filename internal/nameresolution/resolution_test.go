@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -304,10 +303,10 @@ func newResolutionFixtureWithControl(t *testing.T, control interface {
 		relayEvidence: capture.evidence, setTamper: capture.setTamper}
 }
 
-func resolutionRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*namestore.Store, namespaceFixture) {
+func resolutionRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*namespace.Store, namespaceFixture) {
 	t.Helper()
 	materialization := testNamespaceFixture(network, "resolution-namespace")
-	store, err := namestore.Open(t.TempDir(), materialization.policy)
+	store, err := namespace.Open(t.TempDir(), materialization.policy)
 	if err != nil {
 		t.Fatal(err)
 	}

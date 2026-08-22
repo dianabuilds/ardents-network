@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -39,8 +39,8 @@ func selectPlan(view state.Snapshot, input Selection, profile GatewayProfile) (p
 	return result, nil
 }
 
-func namespacePolicy(view state.Snapshot) namestore.Policy {
-	policy := namestore.Policy{Network: view.NetworkID, Rule: "ardents-namespace-materialization-v1",
+func namespacePolicy(view state.Snapshot) namespace.MaterializationPolicy {
+	policy := namespace.MaterializationPolicy{Network: view.NetworkID, Rule: "ardents-namespace-materialization-v1",
 		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: int(view.EpochThreshold)}
 	for index := 0; index < int(view.EpochAuthorityCount); index++ {
 		key := append(ed25519.PublicKey(nil), view.EpochAuthorityKeys[index][:]...)

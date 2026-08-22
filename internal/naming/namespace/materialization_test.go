@@ -1,4 +1,4 @@
-package namestore_test
+package namespace_test
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -17,12 +16,12 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 	t.Parallel()
 	network := [32]byte{7}
 	policy, signers := materializationPolicy("current-namespace", network)
-	store, err := namestore.Open(t.TempDir(), policy)
+	store, err := namespace.Open(t.TempDir(), policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	epoch := namestore.Epoch{Number: 11, Digest: [32]byte{11}, CutoffOffset: 500,
+	epoch := namespace.Epoch{Number: 11, Digest: [32]byte{11}, CutoffOffset: 500,
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 3,
 		RejectionRoot: sha256.Sum256([]byte("rejections")), RejectionLength: 1}
 	if err := store.Commit(epoch, [][]byte{signedRecord(t, network, "alice", "authority-a")},
@@ -33,19 +32,19 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, binding, warning, number, err := namestore.Verify(policy, proof, 11, epoch.Digest, 900)
+	record, binding, warning, number, err := namespace.Verify(policy, proof, 11, epoch.Digest, 900)
 	if err != nil || number != 11 || record.Name != "alice" || binding.Name != "alice" ||
 		binding.Target != [32]byte{1} || binding.Commitment == [32]byte{} || warning != "" {
 		t.Fatalf("verified=%+v binding=%+v warning=%q epoch=%d err=%v", record, binding, warning, number, err)
 	}
 	mutated := append([]byte(nil), proof...)
 	mutated[len(mutated)-1] ^= 1
-	if _, _, _, _, err := namestore.Verify(policy, mutated, 11, epoch.Digest, 900); err == nil {
+	if _, _, _, _, err := namespace.Verify(policy, mutated, 11, epoch.Digest, 900); err == nil {
 		t.Fatal("mutated Namespace membership proof was accepted")
 	}
 
 	attackerPolicy, attacker := materializationPolicy("attacker-namespace", network)
-	attackerStore, err := namestore.Open(t.TempDir(), attackerPolicy)
+	attackerStore, err := namespace.Open(t.TempDir(), attackerPolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := namestore.Verify(policy, attackerProof, 11, epoch.Digest, 900); err == nil {
+	if _, _, _, _, err := namespace.Verify(policy, attackerProof, 11, epoch.Digest, 900); err == nil {
 		t.Fatal("self-consistent attacker Namespace was accepted under the installed epoch policy")
 	}
 }
@@ -67,7 +66,7 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 	t.Parallel()
 	network := [32]byte{8}
 	policy, signers := materializationPolicy("deep-namespace", network)
-	store, err := namestore.Open(t.TempDir(), policy)
+	store, err := namespace.Open(t.TempDir(), policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +92,7 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	epoch := namestore.Epoch{Number: 12, Digest: [32]byte{12}, CutoffOffset: 600,
+	epoch := namespace.Epoch{Number: 12, Digest: [32]byte{12}, CutoffOffset: 600,
 		TransitionRoot: sha256.Sum256([]byte("deep-transitions")), TransitionLength: uint32(len(records)),
 		RejectionRoot: sha256.Sum256([]byte("deep-rejections"))}
 	if err := store.Commit(epoch, records, thresholdAttester(signers[:2])); err != nil {
@@ -107,14 +106,14 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 	if len(proof) >= 3_900 {
 		t.Fatalf("deep-name proof bytes=%d", len(proof))
 	}
-	record, binding, _, number, err := namestore.Verify(policy, proof, 12, epoch.Digest, 900)
+	record, binding, _, number, err := namespace.Verify(policy, proof, 12, epoch.Digest, 900)
 	if err != nil || number != 12 || record.Name != name || binding.Target != [32]byte{1} {
 		t.Fatalf("record=%+v binding=%+v epoch=%d err=%v", record, binding, number, err)
 	}
 }
 
-func materializationPolicy(label string, network [32]byte) (namestore.Policy, []ed25519.PrivateKey) {
-	policy := namestore.Policy{Network: network, Rule: "ardents-namespace-materialization-v1",
+func materializationPolicy(label string, network [32]byte) (namespace.MaterializationPolicy, []ed25519.PrivateKey) {
+	policy := namespace.MaterializationPolicy{Network: network, Rule: "ardents-namespace-materialization-v1",
 		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}
 	var signers []ed25519.PrivateKey
 	for index := 0; index < 3; index++ {

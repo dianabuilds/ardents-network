@@ -1,4 +1,4 @@
-package namestore
+package namespace
 
 import (
 	"bytes"
@@ -13,11 +13,11 @@ const (
 )
 
 func statementTranscript(value statement) []byte {
-	out := appendText(nil, "ardents-namespace-epoch-materialization-v1")
+	out := appendMaterializationText(nil, "ardents-namespace-epoch-materialization-v1")
 	out = append(out, value.network[:]...)
 	out = appendUint64(out, value.epoch)
 	out = append(out, value.epochDigest[:]...)
-	out = appendText(out, value.rule)
+	out = appendMaterializationText(out, value.rule)
 	out = appendUint64(out, uint64(value.cutoff))
 	out = append(out, value.recordRoot[:]...)
 	out = appendUint32(out, value.recordLength)
@@ -27,7 +27,7 @@ func statementTranscript(value statement) []byte {
 	return appendUint32(out, value.rejectionLength)
 }
 
-func verifyAttestation(policy Policy, value attestedStatement) bool {
+func verifyAttestation(policy MaterializationPolicy, value attestedStatement) bool {
 	statement := value.statement
 	if statement.network != policy.Network || statement.rule != policy.Rule || statement.epoch == 0 ||
 		statement.epochDigest == [32]byte{} ||

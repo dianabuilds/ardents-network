@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/openpcc/ohttp"
 )
@@ -40,8 +39,8 @@ type controlAuthority interface {
 
 type gatewayState struct {
 	network     [32]byte
-	recordStore *namestore.Store
-	policy      namestore.Policy
+	recordStore *namespace.Store
+	policy      namespace.MaterializationPolicy
 	minimum     uint64
 	epochDigest [32]byte
 	admission   *namespace.Admission
@@ -137,7 +136,7 @@ type plan struct {
 	ExcludedIdentities     [][32]byte
 	ExcludedFamilies       []string
 	AdmissionChallenge     namespace.Challenge
-	MaterializationPolicy  namestore.Policy
+	MaterializationPolicy  namespace.MaterializationPolicy
 }
 
 type result struct {
@@ -170,7 +169,7 @@ type gatewayObservation struct {
 
 type recordSet struct {
 	network      [32]byte
-	store        *namestore.Store
+	store        *namespace.Store
 	minimumEpoch uint64
 }
 

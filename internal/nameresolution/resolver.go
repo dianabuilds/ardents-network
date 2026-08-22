@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/openpcc/ohttp"
 )
@@ -112,7 +112,7 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 	if response.result != resultResolved {
 		return resolver.failure(resolutionUnavailableClass, errors.New("name is unavailable"))
 	}
-	record, binding, warning, epoch, err := namestore.Verify(resolver.plan.MaterializationPolicy,
+	record, binding, warning, epoch, err := namespace.Verify(resolver.plan.MaterializationPolicy,
 		response.proof, resolver.plan.Epoch, resolver.plan.EpochDigest, at.Unix())
 	if err != nil || record.Name != serviceName || epoch != resolver.plan.Epoch {
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution returned the wrong name"))

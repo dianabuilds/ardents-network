@@ -1,4 +1,4 @@
-package namestore_test
+package namespace_test
 
 import (
 	"crypto/ed25519"
@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -16,7 +15,7 @@ func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
 	t.Parallel()
 	root, network := t.TempDir(), [32]byte{7}
 	policy, signers := materializationPolicy("restart", network)
-	store, err := namestore.Open(root, policy)
+	store, err := namespace.Open(root, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,13 +27,13 @@ func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := namestore.Open(root, policy)
+	reopened, err := namespace.Open(root, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
 	proof, proofErr := reopened.Lookup("alice", 11)
-	record, _, _, _, verifyErr := namestore.Verify(policy, proof, 11, [32]byte{11}, 900)
+	record, _, _, _, verifyErr := namespace.Verify(policy, proof, 11, [32]byte{11}, 900)
 	if proofErr != nil || verifyErr != nil || record.Name != "alice" {
 		t.Fatalf("record=%+v err=%v/%v", record, proofErr, verifyErr)
 	}
@@ -47,7 +46,7 @@ func TestStoreRejectsTamperAndPartialBatch(t *testing.T) {
 	t.Parallel()
 	root, network := t.TempDir(), [32]byte{8}
 	policy, signers := materializationPolicy("tamper", network)
-	store, err := namestore.Open(root, policy)
+	store, err := namespace.Open(root, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,8 +78,8 @@ func TestStoreRejectsTamperAndPartialBatch(t *testing.T) {
 	}
 }
 
-func testEpoch(number uint64) namestore.Epoch {
-	return namestore.Epoch{Number: number, CutoffOffset: int64(number),
+func testEpoch(number uint64) namespace.Epoch {
+	return namespace.Epoch{Number: number, CutoffOffset: int64(number),
 		Digest:         [32]byte{byte(number)},
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 1,
 		RejectionRoot: sha256.Sum256([]byte("rejections"))}

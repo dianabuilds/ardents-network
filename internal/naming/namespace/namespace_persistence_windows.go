@@ -1,6 +1,6 @@
 //go:build windows
 
-package namestore
+package namespace
 
 import (
 	"fmt"

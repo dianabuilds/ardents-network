@@ -7,17 +7,17 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 type namespaceFixture struct {
-	policy  namestore.Policy
+	policy  namespace.MaterializationPolicy
 	signers []ed25519.PrivateKey
 }
 
 func testNamespaceFixture(network [32]byte, label string) namespaceFixture {
-	value := namespaceFixture{policy: namestore.Policy{Network: network,
+	value := namespaceFixture{policy: namespace.MaterializationPolicy{Network: network,
 		Rule: "ardents-namespace-materialization-v1", Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}}
 	for index := 0; index < 3; index++ {
 		seed := sha256.Sum256([]byte(label + string(rune('0'+index))))
@@ -29,9 +29,9 @@ func testNamespaceFixture(network [32]byte, label string) namespaceFixture {
 	return value
 }
 
-func (value namespaceFixture) commit(t *testing.T, store *namestore.Store, epoch uint64, signed [][]byte) {
+func (value namespaceFixture) commit(t *testing.T, store *namespace.Store, epoch uint64, signed [][]byte) {
 	t.Helper()
-	materialization := namestore.Epoch{Number: epoch, Digest: [32]byte{byte(epoch)}, CutoffOffset: int64(epoch),
+	materialization := namespace.Epoch{Number: epoch, Digest: [32]byte{byte(epoch)}, CutoffOffset: int64(epoch),
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: uint32(len(signed)),
 		RejectionRoot: sha256.Sum256([]byte("rejections"))}
 	if err := store.Commit(materialization, signed, value.attest); err != nil {
@@ -57,7 +57,7 @@ func (value namespaceFixture) attest(transcript []byte) ([][32]byte, [][]byte, e
 	return ids, signatures, nil
 }
 
-func bindNamespacePolicy(view *state.Snapshot, policy namestore.Policy) {
+func bindNamespacePolicy(view *state.Snapshot, policy namespace.MaterializationPolicy) {
 	ids := make([][32]byte, 0, len(policy.Authorities))
 	for id := range policy.Authorities {
 		ids = append(ids, id)

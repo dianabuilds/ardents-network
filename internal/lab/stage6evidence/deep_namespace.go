@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -40,12 +39,12 @@ func deepNamespaceEvidence(materialization namespaceFixture, now time.Time) (str
 		return "", nil, nil, err
 	}
 	defer os.RemoveAll(root)
-	store, err := namestore.Open(root, materialization.policy)
+	store, err := namespace.Open(root, materialization.policy)
 	if err != nil {
 		return "", nil, nil, err
 	}
 	defer store.Close()
-	epoch := namestore.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 10_000,
+	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 10_000,
 		TransitionRoot: namespaceTransitionRoot(records), TransitionLength: uint32(len(records)),
 		RejectionRoot: sha256.Sum256([]byte("ardents-stage6-deep-no-rejections"))}
 	if err = store.Commit(epoch, records, materialization.attest); err != nil {

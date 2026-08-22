@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -72,7 +71,7 @@ func TestResolutionRolesRunInSeparateProcesses(t *testing.T) {
 	bootSecret := [32]byte{6}
 	storeRoot := t.TempDir()
 	materialization := testNamespaceFixture(network, "process-namespace")
-	store, err := namestore.Open(storeRoot, materialization.policy)
+	store, err := namespace.Open(storeRoot, materialization.policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +184,7 @@ func TestResolutionRoleProcess(t *testing.T) {
 			t.Fatal(admissionErr)
 		}
 		materializationPolicy := roleMaterializationPolicy(config)
-		recordStore, storeErr := namestore.Open(config.NamingStoreRoot, materializationPolicy)
+		recordStore, storeErr := namespace.Open(config.NamingStoreRoot, materializationPolicy)
 		if storeErr != nil {
 			t.Fatal(storeErr)
 		}
@@ -223,13 +222,13 @@ func TestResolutionRoleProcess(t *testing.T) {
 	_, _ = io.Copy(io.Discard, os.Stdin)
 }
 
-func policyIDs(policy namestore.Policy) [][32]byte {
+func policyIDs(policy namespace.MaterializationPolicy) [][32]byte {
 	view := state.Snapshot{}
 	bindNamespacePolicy(&view, policy)
 	return append([][32]byte(nil), view.EpochAuthorityIDs[:view.EpochAuthorityCount]...)
 }
 
-func policyKeys(policy namestore.Policy) [][]byte {
+func policyKeys(policy namespace.MaterializationPolicy) [][]byte {
 	ids := policyIDs(policy)
 	keys := make([][]byte, len(ids))
 	for index, id := range ids {
@@ -238,8 +237,8 @@ func policyKeys(policy namestore.Policy) [][]byte {
 	return keys
 }
 
-func roleMaterializationPolicy(config roleProcessConfig) namestore.Policy {
-	policy := namestore.Policy{Network: config.Network, Rule: "ardents-namespace-materialization-v1",
+func roleMaterializationPolicy(config roleProcessConfig) namespace.MaterializationPolicy {
+	policy := namespace.MaterializationPolicy{Network: config.Network, Rule: "ardents-namespace-materialization-v1",
 		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: config.EpochThreshold}
 	for index, id := range config.EpochAuthorityIDs {
 		policy.Authorities[id] = append(ed25519.PublicKey(nil), config.EpochAuthorityKeys[index]...)

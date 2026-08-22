@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
-	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -22,7 +21,7 @@ func TestDeepestLegalNameResolvesThroughSeparateRoles(t *testing.T) {
 	name, signed := deepProcessRecords(t, network, authority, now)
 	materialization := testNamespaceFixture(network, "deep-process-namespace")
 	storeRoot := t.TempDir()
-	store, err := namestore.Open(storeRoot, materialization.policy)
+	store, err := namespace.Open(storeRoot, materialization.policy)
 	if err != nil {
 		t.Fatal(err)
 	}
