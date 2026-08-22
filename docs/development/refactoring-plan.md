@@ -49,7 +49,7 @@ one of those conditions.
 |---|---|---|---|
 | **M0 — governance** | Input: S8.3 accepted map and S8.2 policy. Owner: Codex. Objective: make policy, profile, architecture, format, disposition, and retirement control one checked system. | C0 for superseded numeric gates; no runtime writer changes. Current owners are `AGENTS.md`, development policy, profile manifests, package map, target architecture, and this plan. | `quick-check`; architecture/profile/document gates. Delete only obsolete command/export caps and negative profile filters already replaced in S8.2. M0 ends when all later paths below are owned by a wave. |
 | **M1 — Release trust** | Input: `internal/releasedecision`, `cmd/ardents-release`. Owner: `release`. Objective: own verified metadata, root/floor/archive, lease, and opaque update authorization. | DA-01 is mandatory. D06 uses C1 security-forward migration: roots/floors never decrease; no staging/store export survives. | Metadata/adversary/rotation/floor/archive/restart tests and update-authorization integration. Cut all callers to `release`; delete `internal/releasedecision/` and the Release command path or retain only M13-approved adapter. |
-| **M2 — Update lifecycle** | Input: `internal/updatetransaction`, Release interface, `cmd/ardents-release`. Owner: `update`. Objective: own stage, stop/drain, activation, self-test, journal, recovery, rollback, and cleanup. | DA-01 and DA-09 are mandatory. D07 is C1 only after every post-activation state has a forward repair or safe rollback. | Checkpoint/fault/recovery/idempotence/rollback/residue tests plus real supported filesystem/activator evidence. Delete `internal/updatetransaction/` and caller-authored transaction choreography. |
+| **M2 — Update lifecycle** | Input: `internal/updatetransaction`, Release interface, `cmd/ardents-release`. Owner: `update`. Objective: own the bounded H3 technical-tracer stage, stop/drain, activation, self-test, journal, recovery, rollback, and cleanup. | DA-01 and R-064 are mandatory. D07 retains C1 forward-repair/safe-rollback behavior without selecting a supported lifecycle. | Checkpoint/fault/recovery/idempotence/rollback/residue and frozen-C2 tests. Real supported filesystem/activator evidence is explicitly out of scope under R-064. Delete `internal/updatetransaction/` and caller-authored transaction choreography. |
 | **M3 — authenticated Network State** | Input: `internal/network/{epoch,epoch/assignment,epoch/merkle,framing,source,state,store}`, `internal/namestore`, `cmd/ardents`, e2e network-source. Owner: `network/state`; `network/source` is its acquisition port. | DA-02 and DA-05 are closed by R-059/R-060/R-061. **R-061 prerequisite:** first transfer only the currently used Namespace root/pointer and proof mechanics to its existing `namestore` owner, preserve its bytes and one writer, and remove both Network imports. D01 is C1 with one current/pending/control writer; W01 is C3 or C0 only after its observer decision. | Namespace durable/reopen/tamper/stale/partial-write and proof-mutation characterization plus a no-Network-import assertion precede the Network cutover. Then supply decision-time validity, source-wave, corruption, physical-root, restart, source cleanup, and process tests. Delete all listed old epoch/framing/store directories and concrete Source reverse dependency after caller cutover. |
 | **M4 — Duty and Resource** | Input: `internal/localroles`, `internal/resource`, callers in State/Node/Route/Bridge. Owners: `network/duty`, then `resource`. Objective: one monotonic duty writer and one finite resource coordinator. | D02 is C1 with no generation/watermark reset. Resource platform scope must be explicit; unsupported platform fails closed. | Duty conflict/expiry/restart/physical-root tests; resource reservation/hysteresis/oversubscription/counter-reset and native adapter tests. Delete `internal/localroles/`, all displaced per-Module guards, and old duty readers. |
 | **M5 — Namespace** | Input: `internal/{nameadmission,nameauthority,nameclaim,namelease,namerecovery,namestore,naming}`, including the R-061-owned local persistence/proof mechanics, name command, Stage 6 fixtures. Owner: `naming/namespace`. | DA-03, DA-04, and DA-07 remain mandatory; DA-05 is closed by R-060/R-061. D04/W03 uses C1/C3 only after transcript, scale, and proof authority selects it. | Authenticated create/renew/control/recovery/claim/materialization, durable reopen, tamper, and codec/property tests. Delete all seven source directories, their duplicate validators/field bags, stage fixtures, and command-only control wiring after cutover. |
@@ -82,8 +82,8 @@ architecture/profile/document gates to the frozen source identity above;
 later waves establish their own affected-gate evidence. The gate enforces
 ownership facts rather than a package-export count or historical shape receipt;
 its retained 500-line limit is the
-explicit interim safety rule, while the 250-line threshold remains a cohesion
-review signal. The [surface inventory](stage-8-current-system-surface-inventory.md),
+explicit interim safety rule; cohesion is reviewed by responsibility and
+invariant locality, not a soft line-count threshold. The [surface inventory](stage-8-current-system-surface-inventory.md),
 [preservation ledger](stage-8-preservation-ledger.md), target architecture,
 and this plan are the respective current inventory, disposition, ownership,
 and retirement ledgers. Historical Stage 7 material remains only the
@@ -131,6 +131,29 @@ path exceeds the Windows AF_UNIX limit). The former 16-process × 100-run stress
 reproducer passes after the change, and the subsequent complete `make check`
 (format/architecture, mod, build, vet, staticcheck, vuln, unit, e2e, and race)
 passes. The integrating commit records this checked profile.
+
+### M2 — Update lifecycle
+
+**Complete, 2026-08-23.** With DA-01 closed by R-063 and the bounded H3
+technical-tracer scope accepted by [R-064](../research/records/r-064-h3-update-tracer-scope.md),
+M2 moved the complete transaction/recovery owner from
+`internal/updatetransaction` to `internal/update`; the old package path and
+all deterministic-profile references are gone. `update.Request` now accepts
+the opaque Release authorization, candidate bytes, and declared runtime/schema
+Adapters only. It derives the successor or exact idempotent-replay generation
+from its owned root, chooses schema transition mode internally, and exposes no
+caller-controlled generation, active-work count, schema-plan string, or raw
+Release Decision. The external boundary test covers those omissions and the
+frozen V0 command remains the sole C2 tracer observer through M13.
+
+The `Apply` orchestrator remains cohesive at the interim 500-line maximum: it
+orders authorization, root admission, storage reservation, journal checkpoints,
+Adapter calls, activation, and terminal classification. Root admission and
+exact transaction-directory inventory now live in the storage owner rather
+than inflating the orchestrator. The full Update recovery matrix, the C2 V0
+command test, and `make quick-check` passed. This does not claim a supported
+installer, native activation, or Custody lifecycle; any such work reopens
+DA-09.
 
 ### M3 — authenticated Network State
 

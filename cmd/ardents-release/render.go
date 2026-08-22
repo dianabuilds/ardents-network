@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/dianabuilds/ardents-network/internal/release"
-	"github.com/dianabuilds/ardents-network/internal/updatetransaction"
+	"github.com/dianabuilds/ardents-network/internal/update"
 )
 
 type jsonQuoter struct{ err error }
@@ -35,7 +35,7 @@ func renderDecision(decision release.Decision) ([]byte, error) {
 		quoter.value(decision.Notice), quoter.value(decision.CustodyNotice))
 	return []byte(rendered), quoter.err
 }
-func renderUpdateResult(result updatetransaction.Result) ([]byte, error) {
+func renderUpdateResult(result update.Result) ([]byte, error) {
 	quoter := &jsonQuoter{}
 	format := `{"schema":"ardents-update-result-v1","outcome":%s,"state":%s,"transaction_generation":%d,"current_sha256":%s,"rollback_sha256":%s,"staging_present":%t,"safe_notice":%s,"custody_notice":%s}` + "\n"
 	rendered := fmt.Sprintf(format, quoter.value(result.Outcome), quoter.value(result.State), result.Generation,

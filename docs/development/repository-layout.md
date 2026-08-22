@@ -324,21 +324,21 @@ one responsibility or one responsibility plus an aspect: for example
 `tooling/role_runtime.go`. Tests use the corresponding responsibility name.
 `doc.go` contains only the package comment.
 
-- A production file above 250 lines triggers review of its one named
-  responsibility, invariant locality, rejected obvious split, behavior tests,
-  and real hotspot signals; 250 lines is not an executable failure.
 - Every Go file, including tests, has an interim hard maximum of 500 lines.
 - A file is divided at independently varying cohesive type/function clusters,
   not merely at a line threshold. Division does not justify another package or
   exported symbol.
+- When a file's size or complexity makes cohesion non-obvious, record its one
+  named responsibility, invariant locality, rejected obvious split, behavior
+  tests, and real hotspot signals. There is no soft line-count threshold.
 - Catch-all filenames `model.go`, `support.go`, `types.go`, `helpers.go`,
   `common.go`, `misc.go`, and `util.go` are forbidden.
 
 The architecture gate enforces the facts it can prove: the interim 500-line
 limit, command adaptation without exported product behavior, package-map and
-import direction, and forbidden filenames. Semantic responsibility and the
-250-line review threshold remain review rules because a mechanical line count
-cannot determine cohesion or a correct Seam.
+import direction, and forbidden filenames. Semantic responsibility remains a
+review rule because a mechanical line count cannot determine cohesion or a
+correct Seam.
 
 ## Module, Interface, Implementation, Seam, and Adapter
 

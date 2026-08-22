@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/release"
-	"github.com/dianabuilds/ardents-network/internal/updatetransaction"
+	"github.com/dianabuilds/ardents-network/internal/update"
 )
 
 func TestHiddenApplyErrorRetainsCauseWithoutRenderingIt(t *testing.T) {
@@ -100,7 +100,7 @@ func TestRenderedUpdateResultIsExact(t *testing.T) {
 	t.Parallel()
 	current := [32]byte{0xa5, 0x2b}
 	rollback := [32]byte{0x8b, 0xde}
-	rendered, err := renderUpdateResult(updatetransaction.Result{
+	rendered, err := renderUpdateResult(update.Result{
 		Outcome: "committed", State: "committed", Generation: 1,
 		CurrentDigest: current, RollbackDigest: rollback,
 		SafeNotice: "update committed", CustodyNotice: "bounded custody notice",

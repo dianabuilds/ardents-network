@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/release"
-	"github.com/dianabuilds/ardents-network/internal/updatetransaction"
+	"github.com/dianabuilds/ardents-network/internal/update"
 )
 
 func main() {
@@ -61,8 +61,8 @@ func run(arguments []string, output io.Writer, errorOutput io.Writer) (runErr er
 		if !ok {
 			return errors.New("apply-offline requires release authorization")
 		}
-		result, err := updatetransaction.Apply(context.Background(), updatetransaction.Request{
-			UpdateRoot: updateRoot, Generation: 1, ActiveWork: 0, SchemaPlan: "no-op-v1",
+		result, err := update.Apply(context.Background(), update.Request{
+			UpdateRoot:    updateRoot,
 			Authorization: authorization, Artifact: inputs.Artifact,
 			Work: stoppedRuntime{}, SelfTest: offlineCandidateTest{},
 		})
@@ -99,7 +99,7 @@ func (stoppedRuntime) RejoinOrWithdraw(ctx context.Context) error   { return ctx
 
 type offlineCandidateTest struct{}
 
-func (offlineCandidateTest) Check(ctx context.Context, identity updatetransaction.CandidateIdentity) error {
+func (offlineCandidateTest) Check(ctx context.Context, identity update.CandidateIdentity) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

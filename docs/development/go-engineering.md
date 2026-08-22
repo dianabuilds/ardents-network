@@ -19,11 +19,11 @@ architecture gate checks both records against the Go tree.
 - First-party `unsafe`, cgo, and implicit `init` require a superseding accepted
   ADR and dedicated risk tests.
 - Use `gofmt`; package comments are mandatory; command packages remain thin.
-- Name each file after one implementation responsibility. A production file
-  above 250 lines requires review evidence for cohesion, invariant locality,
-  the rejected obvious split, and behavior coverage; it is not rejected for
-  size alone. Every Go file, including tests, has an interim hard limit of 500
-  lines. Split files by responsibility without inventing package seams.
+- Name each file after one implementation responsibility. Every Go file,
+  including tests, has an interim hard limit of 500 lines. Split files by
+  responsibility without inventing package seams. When cohesion is not obvious
+  from the file's responsibility, record the local invariant, rejected split,
+  and behavior coverage; do not use a soft line-count quota.
 - Do not use catch-all filenames such as `model.go`, `support.go`, `types.go`,
   `helpers.go`, `common.go`, `misc.go`, or `util.go`.
 - Add tests for behavior and failure paths in the same change.

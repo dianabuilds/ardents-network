@@ -32,4 +32,4 @@ github.com/dianabuilds/ardents-network/internal/routeplan
 github.com/dianabuilds/ardents-network/internal/serviceconn
 github.com/dianabuilds/ardents-network/internal/serviceendpoint
 github.com/dianabuilds/ardents-network/internal/streamworkload
-github.com/dianabuilds/ardents-network/internal/updatetransaction
+github.com/dianabuilds/ardents-network/internal/update
