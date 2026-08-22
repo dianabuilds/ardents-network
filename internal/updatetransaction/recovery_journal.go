@@ -128,6 +128,14 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 					state, name, raw, ok = stateRollbackPending, pendingName, pending, true
 				}
 			}
+			if state == stateRolledBack {
+				repairName, repairErr := journalFileName(stateRepairRequired)
+				repair, repairOK := raws[repairName]
+				if repairErr == nil && repairOK && len(validation.Entries) > 0 &&
+					validation.Entries[len(validation.Entries)-1].State == stateRollbackPending {
+					state, name, raw, ok = stateRepairRequired, repairName, repair, true
+				}
+			}
 			if !ok {
 				break
 			}
@@ -164,6 +172,11 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 			if len(validation.Entries) == 0 || validation.Entries[len(validation.Entries)-1].State != stateSelfTesting ||
 				validation.Entries[len(validation.Entries)-1].AdapterResult != adapterFailed {
 				return validation, fmt.Errorf("%w: rollback pending lacks failed self-test", errJournalInvalid)
+			}
+		}
+		if entry.State == stateRepairRequired {
+			if len(validation.Entries) == 0 || validation.Entries[len(validation.Entries)-1].State != stateRollbackPending {
+				return validation, fmt.Errorf("%w: repair-required lacks rollback pending", errJournalInvalid)
 			}
 		}
 		if state == stateReleaseAccepted {

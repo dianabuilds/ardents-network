@@ -50,12 +50,20 @@ func TestSelfTestFailureBecomesRollbackPending(t *testing.T) {
 	if !errors.Is(repeatedErr, errRollbackPending) || repeated != result || work.stopCalls != 1 || work.drainCalls != 1 {
 		t.Fatalf("pending Apply = %+v, %v; work=%#v", repeated, repeatedErr, work)
 	}
+	refusedRequest := request
+	refusedRequest.RollbackDecision = request.Decision
+	refused, refusedErr := Apply(context.Background(), refusedRequest)
+	if !errors.Is(refusedErr, errRollbackRefused) || refused.Outcome != "rollback-refused" || refused.State != "repair-required" ||
+		refused.CurrentDigest != result.CurrentDigest || refused.RollbackDigest != result.RollbackDigest ||
+		refused.SafeNotice != "update rollback refused" || work.stopCalls != 1 || work.drainCalls != 1 {
+		t.Fatalf("refused Apply = %+v, %v; work=%#v", refused, refusedErr, work)
+	}
 	entries, readErr := os.ReadDir(filepath.Join(root, "transactions", "1", "journal"))
-	if readErr != nil || len(entries) != 9 || entries[8].Name() != "10-rollback-pending.entry" {
+	if readErr != nil || len(entries) != 10 || entries[9].Name() != "12-repair-required.entry" {
 		t.Fatalf("rollback-pending journal = %v, %v", entries, readErr)
 	}
 	recovered, recoveryErr := Recover(context.Background(), root)
-	if recoveryErr != nil || recovered.Outcome != "recovered" || recovered.State != "rollback-pending" ||
+	if recoveryErr != nil || recovered.Outcome != "rollback-refused" || recovered.State != "repair-required" ||
 		recovered.CurrentDigest != result.CurrentDigest || recovered.RollbackDigest != result.RollbackDigest {
 		t.Fatalf("Recover = %+v, %v", recovered, recoveryErr)
 	}

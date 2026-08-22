@@ -59,6 +59,10 @@ func (writer *bodyWriter) text(value string, maximum int) {
 	writer.body = append(writer.body, value...)
 }
 func encodeManifest(request Request, artifact [32]byte) ([]byte, error) {
+	return encodeManifestWithNotice(request, artifact, "update committed")
+}
+
+func encodeManifestWithNotice(request Request, artifact [32]byte, safeNotice string) ([]byte, error) {
 	decision := request.Decision
 	if !completeFloors(decision.Floors) {
 		return nil, errRecordInvalid
@@ -94,7 +98,7 @@ func encodeManifest(request Request, artifact [32]byte) ([]byte, error) {
 	}
 	writer.number(canonicalUnixSeconds(decision.ProtocolTransitionDeadline))
 	writer.text(request.SchemaPlan, maximumIdentityBytes)
-	writer.text("update committed", maximumNoticeBytes)
+	writer.text(safeNotice, maximumNoticeBytes)
 	writer.text(decision.CustodyNotice, maximumNoticeBytes)
 	for _, value := range []string{string(decision.Outcome), decision.Platform,
 		decision.Architecture, decision.Environment, decision.Network} {

@@ -1,13 +1,18 @@
 package updatetransaction
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
+	"path/filepath"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/releasedecision"
 )
 
 var errRollbackPending = errors.New("update rollback remains pending")
+var errRollbackRefused = errors.New("update rollback decision is refused")
 
 // resumeUnavailableSelfTest admits only the immutable state-8 unavailable
 // prefix. It neither stages nor drains again: the previously selected
@@ -100,6 +105,58 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 	if err != nil || len(validation.Entries) != 9 || validation.Entries[8].State != stateRollbackPending {
 		return transactionInvalidResult(request.Generation), true, errors.Join(errRecordInvalid, err, store.release())
 	}
+	if request.RollbackDecision.Outcome != "" {
+		if rollbackErr := validateRollbackDecision(store, request, selection); rollbackErr != nil {
+			trace := &tracer{store: store, request: request, artifact: artifact, manifest: manifest,
+				predecessor: sha256.Sum256(validation.RawEntries[8])}
+			if recordErr := trace.record(context.Background(), "12-repair-required", stateRepairRequired, adapterNotCalled); recordErr != nil {
+				return transactionInvalidResult(request.Generation), true, errors.Join(rollbackErr, recordErr, store.release())
+			}
+			return rollbackRefusedResult(request.Generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
+				errors.Join(rollbackErr, errRollbackRefused, store.release())
+		}
+	}
 	return selfTestFailedResult(request.Generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
 		errors.Join(errRollbackPending, store.release())
+}
+
+func validateRollbackDecision(store *ownedStore, request Request, selection currentSelection) error {
+	decision := request.RollbackDecision
+	if selection.Rollback == nil || (decision.Outcome != releasedecision.Outcome("release-accepted") &&
+		decision.Outcome != releasedecision.Outcome("no-update")) || decision.BuildSafety != "release-accepted" ||
+		decision.Protocol != "release-accepted" || decision.ReferenceTime.Before(request.Decision.ReferenceTime) ||
+		!decision.BuildSafetyNoNewWorkAfter.After(decision.ReferenceTime) ||
+		!decision.BuildSafetyTerminateAfter.After(decision.BuildSafetyNoNewWorkAfter) {
+		return errRollbackRefused
+	}
+	payload, err := readExactFile(filepath.Join(store.generationPath("generations", selection.Rollback.Generation), "artifact"), int(selection.Rollback.Length))
+	if err != nil || sha256.Sum256(payload) != selection.Rollback.Artifact {
+		return errors.Join(errRollbackRefused, err)
+	}
+	retained := request
+	retained.Generation = selection.Rollback.Generation
+	retained.Decision = decision
+	retained.Artifact = payload
+	manifest, err := readBoundedFile(filepath.Join(store.generationPath("generations", selection.Rollback.Generation), "manifest.bin"), maximumRecordBytes)
+	if err != nil || sha256.Sum256(manifest) != selection.Rollback.Manifest {
+		return errors.Join(errRollbackRefused, err)
+	}
+	view, decodeErr := decodeManifest(manifest)
+	if decodeErr != nil {
+		return errors.Join(errRollbackRefused, decodeErr)
+	}
+	encoded, err := encodeManifestWithNotice(retained, sha256.Sum256(payload), view.SafeNotice)
+	if err != nil {
+		return errors.Join(errRollbackRefused, err)
+	}
+	if !bytes.Equal(encoded, manifest) {
+		return errors.Join(errRollbackRefused, err)
+	}
+	return nil
+}
+
+func rollbackRefusedResult(generation uint64, current, rollback [32]byte, custody string) Result {
+	return Result{Outcome: "rollback-refused", State: "repair-required", Generation: generation,
+		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
+		SafeNotice: "update rollback refused", CustodyNotice: custody}
 }
