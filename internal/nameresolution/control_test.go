@@ -66,7 +66,7 @@ func TestControlUsesTheResolutionOHTTPBoundaryAndExposesOnlyTheAuthorityView(t *
 	}
 	raw, _ := json.Marshal(operation)
 	result, err := client.Execute(context.Background(), raw, fixture.now)
-	if err != nil || result.Class != "accepted" || result.Generation != 4 || result.Revision != 9 {
+	if err != nil || result.Class != "submitted" {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
 	observed, proof := authority.observation()

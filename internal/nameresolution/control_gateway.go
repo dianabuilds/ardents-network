@@ -29,8 +29,11 @@ func (gateway *gateway) control(writer http.ResponseWriter, request *http.Reques
 		gateway.reject(writer)
 		return
 	}
-	class, generation, revision, state := gateway.state.authority.Apply(authorityInput, admission)
-	result := controlResult{Class: class, Generation: generation, Revision: revision, State: state}
+	class, _, _, _ := gateway.state.authority.Apply(authorityInput, admission)
+	result := controlResult{Class: "denied"}
+	if class == "accepted" {
+		result.Class = "submitted"
+	}
 	response, err := controlResponse(operation, result)
 	if err != nil {
 		gateway.reject(writer)
@@ -40,7 +43,7 @@ func (gateway *gateway) control(writer http.ResponseWriter, request *http.Reques
 	_, _ = writer.Write(response)
 	gateway.mu.Lock()
 	gateway.observation.ControlRequests++
-	if result.Class == "accepted" {
+	if result.Class == "submitted" {
 		gateway.observation.ControlAccepted++
 	} else {
 		gateway.observation.ControlDenied++

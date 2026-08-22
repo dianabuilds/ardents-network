@@ -66,7 +66,7 @@ func (client *controlClient) Execute(ctx context.Context, raw []byte,
 		response.Deadline != operation.Deadline || response.Kind != operation.Kind || response.Name != operation.Name {
 		return controlResult{}, errors.New("private naming control response binding is invalid")
 	}
-	if response.Result.Class != "accepted" {
+	if response.Result.Class != "submitted" {
 		return response.Result, errors.New("private naming control was denied")
 	}
 	return response.Result, nil

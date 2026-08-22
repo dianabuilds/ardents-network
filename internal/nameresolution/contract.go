@@ -94,10 +94,7 @@ type controlOperation struct {
 // operation. Its fields remain readable by the immediate command caller while
 // the concrete result vocabulary stays owned by this module.
 type controlResult struct {
-	Class      string `json:"class"`
-	Generation uint64 `json:"generation"`
-	Revision   uint64 `json:"revision"`
-	State      []byte `json:"state"`
+	Class string `json:"class"`
 }
 
 // GatewayProfile is the finite common OHTTP configuration authenticated by the

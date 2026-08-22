@@ -120,19 +120,14 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 				t.Fatalf("control command: %v", runErr)
 			}
 			var result struct {
-				Schema     string `json:"schema"`
-				Kind       string `json:"kind"`
-				Name       string `json:"name"`
-				Class      string `json:"class"`
-				Generation uint64 `json:"generation"`
-				Revision   uint64 `json:"revision"`
-				State      []byte `json:"state"`
+				Schema string `json:"schema"`
+				Kind   string `json:"kind"`
+				Name   string `json:"name"`
+				Class  string `json:"class"`
 			}
-			wantState := []byte("accepted-" + operation.Kind)
 			if decodeErr := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &result); decodeErr != nil ||
 				result.Schema != "ardents-name-control-result-v1" || result.Kind != operation.Kind ||
-				result.Name != operation.Name || result.Class != "accepted" ||
-				result.Generation != 1 || result.Revision != 2 || !bytes.Equal(result.State, wantState) {
+				result.Name != operation.Name || result.Class != "submitted" {
 				t.Fatalf("result=%+v output=%q err=%v", result, output.String(), decodeErr)
 			}
 		})

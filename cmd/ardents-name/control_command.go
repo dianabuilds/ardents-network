@@ -12,13 +12,10 @@ import (
 )
 
 type controlReceipt struct {
-	Schema     string `json:"schema"`
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
-	Class      string `json:"class"`
-	Generation uint64 `json:"generation"`
-	Revision   uint64 `json:"revision"`
-	State      []byte `json:"state"`
+	Schema string `json:"schema"`
+	Kind   string `json:"kind"`
+	Name   string `json:"name"`
+	Class  string `json:"class"`
 }
 
 func runControl(inputPath, operationPath string, isolation [32]byte, output io.Writer,
@@ -53,6 +50,5 @@ func runControl(inputPath, operationPath string, isolation [32]byte, output io.W
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
 	return encoder.Encode(controlReceipt{Schema: "ardents-name-control-result-v1", Kind: identity.Kind,
-		Name: identity.Name, Class: result.Class, Generation: result.Generation,
-		Revision: result.Revision, State: result.State})
+		Name: identity.Name, Class: result.Class})
 }

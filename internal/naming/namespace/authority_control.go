@@ -41,8 +41,9 @@ func NewControl(network [32]byte, admission *Admission, order ClaimOrder,
 		records: values, clock: clock, policy: policy}, nil
 }
 
-// Apply verifies anonymous admission, authority or threshold proof, and the
-// exact predecessor before committing one in-memory transition result.
+// Apply verifies one submission into the Gateway's volatile pending chain.
+// Its detailed result is local to this implementation; Resolution exposes it
+// only as a non-current submission outcome.
 func (control *control) Apply(raw []byte, proof Proof) (string, uint64, uint64, []byte) {
 	control.mu.Lock()
 	defer control.mu.Unlock()

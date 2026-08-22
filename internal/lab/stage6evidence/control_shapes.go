@@ -88,11 +88,10 @@ func executeControlOperations(fixture resolutionFixture, gate *namespace.Admissi
 			return nil, nil, encodeErr
 		}
 		result, executeErr := client.Execute(context.Background(), raw, now)
-		if executeErr != nil || result.Class != "accepted" {
+		if executeErr != nil || result.Class != "submitted" {
 			return nil, nil, fmt.Errorf("private control shape %s was not admitted: %w", operation.Kind, executeErr)
 		}
-		results[index] = controlExecutionResult{Class: result.Class, Generation: result.Generation,
-			Revision: result.Revision, State: append([]byte(nil), result.State...)}
+		results[index] = controlExecutionResult{Class: result.Class}
 	}
 	return isolations, results, nil
 }

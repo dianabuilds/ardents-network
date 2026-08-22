@@ -114,8 +114,5 @@ func decodeControlJSON(raw []byte, value any) error {
 }
 
 func validControlResult(result controlResult) bool {
-	if result.Class == "accepted" {
-		return result.Generation > 0 && result.Revision > 0 && len(result.State) > 0 && len(result.State) <= 3<<10
-	}
-	return result.Class == "denied" && result.Generation == 0 && result.Revision == 0 && len(result.State) == 0
+	return result.Class == "submitted" || result.Class == "denied"
 }
