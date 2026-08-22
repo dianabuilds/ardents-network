@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -56,7 +57,7 @@ func (store *ownedStore) inspect(generation uint64) (rootInspection, error) {
 	if err != nil || selection.Current.Generation != selection.Transaction {
 		return inspection, errors.Join(errRecordInvalid, err)
 	}
-	_, currentArtifact, currentManifest, err := store.inspectPayload("generations", selection.Current)
+	currentView, currentArtifact, currentManifest, err := store.inspectPayload("generations", selection.Current)
 	if err != nil {
 		return inspection, err
 	}
@@ -80,6 +81,7 @@ func (store *ownedStore) inspect(generation uint64) (rootInspection, error) {
 		return inspection, err
 	}
 	inspection.selection = selection
+	inspection.currentCustody = currentView.CustodyNotice
 	inspection.predecessor = predecessorInspection{CurrentRecordDigest: sha256.Sum256(currentRaw),
 		Current: selection.Current, Rollback: selection.Rollback,
 		ArtifactObservation: currentArtifact, ManifestObservation: currentManifest}
@@ -125,24 +127,31 @@ func (store *ownedStore) prepare(generation uint64) error {
 	return store.ops.syncDirectory(filepath.Join(store.root, "transactions"))
 }
 
-func (store *ownedStore) stage(generation uint64, artifact, manifest []byte) error {
+func (store *ownedStore) stage(generation uint64, artifact, manifest []byte, operations stageOperations) error {
+	temporary := stageTemporaryPath(store.root, generation)
 	directory := store.generationPath("staging", generation)
-	if err := os.Mkdir(directory, 0o700); err != nil {
+	if err := os.Mkdir(temporary, 0o700); err != nil {
 		return err
 	}
-	if err := writeNewFile(filepath.Join(directory, "artifact"), artifact); err != nil {
+	if err := writeStageFile(operations, filepath.Join(temporary, "artifact"), artifact); err != nil {
 		return err
 	}
-	if err := writeNewFile(filepath.Join(directory, "manifest.bin"), manifest); err != nil {
+	if err := writeStageFile(operations, filepath.Join(temporary, "manifest.bin"), manifest); err != nil {
 		return err
 	}
-	artifactCheck, artifactErr := readExactFile(filepath.Join(directory, "artifact"), len(artifact))
-	manifestCheck, manifestErr := readExactFile(filepath.Join(directory, "manifest.bin"), len(manifest))
+	artifactCheck, artifactErr := readExactFile(filepath.Join(temporary, "artifact"), len(artifact))
+	manifestCheck, manifestErr := readExactFile(filepath.Join(temporary, "manifest.bin"), len(manifest))
 	if artifactErr != nil || manifestErr != nil || sha256.Sum256(artifactCheck) != sha256.Sum256(artifact) ||
 		sha256.Sum256(manifestCheck) != sha256.Sum256(manifest) {
 		return errors.Join(errRecordInvalid, artifactErr, manifestErr)
 	}
-	return store.ops.syncDirectory(directory)
+	if err := operations.renameDirectory(temporary, directory); err != nil {
+		return err
+	}
+	if err := operations.acknowledge(filepath.Join(store.root, "staging")); err != nil {
+		return fmt.Errorf("acknowledge staging parent: %w", err)
+	}
+	return nil
 }
 
 func (store *ownedStore) activate(generation uint64, selection currentSelection, expectedCurrent [32]byte, control *applyInterruptionControl) error {
@@ -216,8 +225,10 @@ func (store *ownedStore) cleanup(generation uint64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	staging := store.generationPath("staging", generation)
+	temporary := stageTemporaryPath(store.root, generation)
 	transaction := store.generationPath("transactions", generation)
-	paths := []string{filepath.Join(staging, "artifact"), filepath.Join(staging, "manifest.bin"), staging}
+	paths := []string{filepath.Join(staging, "artifact"), filepath.Join(staging, "manifest.bin"), staging,
+		filepath.Join(temporary, "artifact"), filepath.Join(temporary, "manifest.bin"), temporary}
 	var result error
 	for state := stateReleaseAccepted; state <= stateCommitted; state++ {
 		name, err := journalFileName(state)

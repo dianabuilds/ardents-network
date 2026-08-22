@@ -31,6 +31,7 @@ type inventoryResult struct {
 
 type generationFacts struct {
 	Generation         uint64
+	Temporary          bool
 	HasArtifact        bool
 	HasManifest        bool
 	Artifact, Manifest rawFile
@@ -96,7 +97,7 @@ func collectInventory(root string) (inventoryResult, error) {
 	if facts.Generations, err = readGenerationDir(filepath.Join(root, "generations"), maximumGenerationEntries); err != nil {
 		return facts, err
 	}
-	if facts.StagingDirs, err = readGenerationDir(filepath.Join(root, "staging"), maximumStagingEntries); err != nil {
+	if facts.StagingDirs, err = readStagingDir(filepath.Join(root, "staging"), maximumStagingEntries); err != nil {
 		return facts, err
 	}
 	if facts.Transactions, err = readTransactions(filepath.Join(root, "transactions")); err != nil {
@@ -120,6 +121,40 @@ func collectInventory(root string) (inventoryResult, error) {
 }
 
 func readGenerationDir(root string, maximum int) ([]generationFacts, error) {
+	return readPayloadDir(root, maximum, false)
+}
+
+// readStagingDir admits only a canonical complete staging generation or the
+// S7.2-03 declared temporary name. Both are returned separately so recovery
+// can reject their coexistence rather than silently choosing one.
+func readStagingDir(root string, maximum int) ([]generationFacts, error) {
+	entries, err := recoveryReadDir(root, maximum)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]generationFacts, 0, len(entries))
+	for _, entry := range entries {
+		name := entry.Name()
+		isTemporary := strings.HasSuffix(name, ".tmp")
+		generationName := name
+		if isTemporary {
+			generationName = strings.TrimSuffix(name, ".tmp")
+		}
+		generation, parseErr := canonicalUint(generationName)
+		if parseErr != nil || !entry.IsDir() || (isTemporary && name != strconv.FormatUint(generation, 10)+".tmp") {
+			return nil, fmt.Errorf("%w: staging child %q invalid", errInventoryInvalid, name)
+		}
+		facts, factsErr := readPayloadFacts(filepath.Join(root, name), generation)
+		if factsErr != nil {
+			return nil, factsErr
+		}
+		facts.Temporary = isTemporary
+		result = append(result, facts)
+	}
+	return result, nil
+}
+
+func readPayloadDir(root string, maximum int, temporary bool) ([]generationFacts, error) {
 	entries, err := recoveryReadDir(root, maximum)
 	if err != nil {
 		return nil, err
@@ -130,29 +165,36 @@ func readGenerationDir(root string, maximum int) ([]generationFacts, error) {
 		if err != nil || !entry.IsDir() {
 			return nil, fmt.Errorf("%w: generation child %q invalid", errInventoryInvalid, entry.Name())
 		}
-		directory := filepath.Join(root, entry.Name())
-		children, err := recoveryReadDir(directory, maximumPayloadEntries)
-		if err != nil || len(children) != 2 || children[0].Name() != "artifact" || children[1].Name() != "manifest.bin" {
-			return nil, fmt.Errorf("%w: generation %d shape invalid", errInventoryInvalid, generation)
+		facts, factsErr := readPayloadFacts(filepath.Join(root, entry.Name()), generation)
+		if factsErr != nil {
+			return nil, factsErr
 		}
-		artifact, artifactErr := recoveryReadFile(filepath.Join(directory, "artifact"), maximumArtifactBytes)
-		manifest, manifestErr := recoveryReadFile(filepath.Join(directory, "manifest.bin"), maximumRecordBytes)
-		if err := errors.Join(artifactErr, manifestErr); err != nil {
-			return nil, fmt.Errorf("%w: generation %d payload: %v", errInventoryInvalid, generation, err)
-		}
-		view, decodeErr := decodeManifest(manifest.Bytes)
-		artifactDigest := sha256.Sum256(artifact.Bytes)
-		manifestDigest := sha256.Sum256(manifest.Bytes)
-		if decodeErr != nil || view.Generation != generation || view.Length != uint64(len(artifact.Bytes)) || view.Artifact != artifactDigest {
-			return nil, fmt.Errorf("%w: generation %d manifest mismatch", errInventoryInvalid, generation)
-		}
-		if generation == 0 && hex.EncodeToString(manifestDigest[:]) != v0BootstrapManifestHex {
-			return nil, fmt.Errorf("%w: bootstrap manifest mismatch", errInventoryInvalid)
-		}
-		result = append(result, generationFacts{Generation: generation, HasArtifact: true, HasManifest: true,
-			Artifact: artifact, Manifest: manifest, DecodedManifest: view})
+		result = append(result, facts)
 	}
 	return result, nil
+}
+
+func readPayloadFacts(directory string, generation uint64) (generationFacts, error) {
+	children, err := recoveryReadDir(directory, maximumPayloadEntries)
+	if err != nil || len(children) != 2 || children[0].Name() != "artifact" || children[1].Name() != "manifest.bin" {
+		return generationFacts{}, fmt.Errorf("%w: generation %d shape invalid", errInventoryInvalid, generation)
+	}
+	artifact, artifactErr := recoveryReadFile(filepath.Join(directory, "artifact"), maximumArtifactBytes)
+	manifest, manifestErr := recoveryReadFile(filepath.Join(directory, "manifest.bin"), maximumRecordBytes)
+	if err := errors.Join(artifactErr, manifestErr); err != nil {
+		return generationFacts{}, fmt.Errorf("%w: generation %d payload: %v", errInventoryInvalid, generation, err)
+	}
+	view, decodeErr := decodeManifest(manifest.Bytes)
+	artifactDigest := sha256.Sum256(artifact.Bytes)
+	manifestDigest := sha256.Sum256(manifest.Bytes)
+	if decodeErr != nil || view.Generation != generation || view.Length != uint64(len(artifact.Bytes)) || view.Artifact != artifactDigest {
+		return generationFacts{}, fmt.Errorf("%w: generation %d manifest mismatch", errInventoryInvalid, generation)
+	}
+	if generation == 0 && hex.EncodeToString(manifestDigest[:]) != v0BootstrapManifestHex {
+		return generationFacts{}, fmt.Errorf("%w: bootstrap manifest mismatch", errInventoryInvalid)
+	}
+	return generationFacts{Generation: generation, HasArtifact: true, HasManifest: true,
+		Artifact: artifact, Manifest: manifest, DecodedManifest: view}, nil
 }
 
 func readTransactions(root string) ([]transactionFacts, error) {

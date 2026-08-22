@@ -25,8 +25,9 @@ type bodyWriter struct {
 	err  error
 }
 type rootInspection struct {
-	selection   currentSelection
-	predecessor predecessorInspection
+	selection      currentSelection
+	predecessor    predecessorInspection
+	currentCustody string
 }
 
 func canonicalUnixSeconds(value time.Time) uint64 {

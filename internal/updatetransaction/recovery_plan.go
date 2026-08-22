@@ -183,7 +183,8 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 	if lastState == 0 {
 		return recoveryPlan{}, fmt.Errorf("%w: empty chain", errPlanInvalid)
 	}
-	hasStaging := hasOneGen(facts.StagingDirs, transaction)
+	hasStaging := hasStagingKind(facts.StagingDirs, transaction, false)
+	hasTemporaryStaging := hasStagingKind(facts.StagingDirs, transaction, true)
 	hasGenerations := hasOneGen(facts.Generations, transaction)
 	if len(facts.Current.Bytes) > 0 {
 		if selection, decodeErr := decodeCurrent(facts.Current.Bytes); decodeErr == nil {
@@ -207,29 +208,26 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 		}
 		return planR8ToR11(facts, records, transaction, firstCanonicalTemp(facts.CurrentTemps), predecessorDigest, custodyNotice)
 	}
-	return planEarlyNonterminal(facts, transaction, lastState, hasStaging, predecessorDigest, custodyNotice)
+	return planEarlyNonterminal(facts, transaction, lastState, hasStaging, hasTemporaryStaging, predecessorDigest, custodyNotice)
 }
 
-func planEarlyNonterminal(facts inventoryResult, transaction uint64, lastState byte, hasStaging bool, predecessorDigest [32]byte, custodyNotice string) (recoveryPlan, error) {
-	generation := strconv.FormatUint(transaction, 10)
+func planEarlyNonterminal(facts inventoryResult, transaction uint64, lastState byte, hasStaging, hasTemporaryStaging bool, predecessorDigest [32]byte, custodyNotice string) (recoveryPlan, error) {
 	state, ok := stateName(lastState)
 	if !ok {
 		return recoveryPlan{}, fmt.Errorf("%w: invalid state %d", errPlanInvalid, lastState)
 	}
-	if state == "release-accepted" && !hasStaging {
+	if state == "release-accepted" && !hasStaging && !hasTemporaryStaging {
 		return buildRecoveredPlan("R01", state, transaction, predecessorDigest, custodyNotice, false), nil
 	}
 	if state == "artifact-verified" {
+		if hasTemporaryStaging {
+			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, custodyNotice, false)
+			plan.Operations = stagingRemovalOperations(transaction, true)
+			return plan, nil
+		}
 		if hasStaging {
 			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, custodyNotice, false)
-			plan.Operations = []planOperation{
-				{Kind: opRemoveFile, Path: filepath.Join("staging", generation, "artifact")},
-				{Kind: opSyncDirectory, Path: filepath.Join("staging", generation)},
-				{Kind: opRemoveFile, Path: filepath.Join("staging", generation, "manifest.bin")},
-				{Kind: opSyncDirectory, Path: filepath.Join("staging", generation)},
-				{Kind: opRemoveDirectory, Path: filepath.Join("staging", generation)},
-				{Kind: opSyncDirectory, Path: "staging"},
-			}
+			plan.Operations = stagingRemovalOperations(transaction, false)
 			return plan, nil
 		}
 		return buildRecoveredPlan("R02", state, transaction, predecessorDigest, custodyNotice, false), nil
@@ -238,6 +236,30 @@ func planEarlyNonterminal(facts inventoryResult, transaction uint64, lastState b
 		return recoveryPlan{}, fmt.Errorf("%w: missing staging for %s", errPlanInvalid, state)
 	}
 	return buildRecoveredPlan(rowForNonterminal(state), state, transaction, predecessorDigest, custodyNotice, true), nil
+}
+
+func stagingRemovalOperations(generation uint64, temporary bool) []planOperation {
+	name := strconv.FormatUint(generation, 10)
+	if temporary {
+		name += ".tmp"
+	}
+	return []planOperation{
+		{Kind: opRemoveFile, Path: filepath.Join("staging", name, "artifact")},
+		{Kind: opSyncDirectory, Path: filepath.Join("staging", name)},
+		{Kind: opRemoveFile, Path: filepath.Join("staging", name, "manifest.bin")},
+		{Kind: opSyncDirectory, Path: filepath.Join("staging", name)},
+		{Kind: opRemoveDirectory, Path: filepath.Join("staging", name)},
+		{Kind: opSyncDirectory, Path: "staging"},
+	}
+}
+
+func hasStagingKind(generations []generationFacts, generation uint64, temporary bool) bool {
+	for _, candidate := range generations {
+		if candidate.Generation == generation && candidate.Temporary == temporary {
+			return true
+		}
+	}
+	return false
 }
 
 func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uint64, currentTemp rawFile, predecessorDigest [32]byte, custodyNotice string) (recoveryPlan, error) {

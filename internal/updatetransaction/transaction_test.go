@@ -284,18 +284,19 @@ func TestApplyCleansPartialPrepareBeforeRetry(t *testing.T) {
 
 func TestApplyRejectsEntrySmokeCasesBeforeAdapters(t *testing.T) {
 	tests := []struct {
-		name   string
-		mutate func(*testing.T, string, *releasedecision.Decision)
+		name    string
+		outcome string
+		mutate  func(*testing.T, string, *releasedecision.Decision)
 	}{
-		{"oversized-candidate", func(_ *testing.T, _ string, decision *releasedecision.Decision) {
+		{"oversized-candidate", "resource-denied", func(_ *testing.T, _ string, decision *releasedecision.Decision) {
 			decision.Length = maximumArtifactBytes + 1
 		}},
-		{"missing-stored-authorization", func(t *testing.T, root string, _ *releasedecision.Decision) {
+		{"missing-stored-authorization", invalidOutcome, func(t *testing.T, root string, _ *releasedecision.Decision) {
 			if err := os.Remove(filepath.Join(root, "generations", "0", "manifest.bin")); err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{"occupied-staging", func(t *testing.T, root string, _ *releasedecision.Decision) {
+		{"occupied-staging", invalidOutcome, func(t *testing.T, root string, _ *releasedecision.Decision) {
 			if err := os.Mkdir(filepath.Join(root, "staging", "9"), 0o700); err != nil {
 				t.Fatal(err)
 			}
@@ -320,7 +321,7 @@ func TestApplyRejectsEntrySmokeCasesBeforeAdapters(t *testing.T) {
 			result, err := Apply(context.Background(), Request{UpdateRoot: root,
 				Generation: 1, SchemaPlan: "no-op-v1", Decision: decision,
 				Artifact: candidate, Work: work, SelfTest: oraclePassSelfTest{}})
-			if err == nil || result.Outcome != invalidOutcome || work.stopCalls != 0 || work.drainCalls != 0 {
+			if err == nil || result.Outcome != test.outcome || work.stopCalls != 0 || work.drainCalls != 0 {
 				t.Fatalf("Apply = %+v, %v; work=%+v", result, err, work)
 			}
 			currentAfter, readErr := os.ReadFile(filepath.Join(root, "current"))

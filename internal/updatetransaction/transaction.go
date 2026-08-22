@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -22,6 +23,9 @@ type applyInterruptionControl struct {
 }
 
 var errApplyInterrupted = errors.New("update transaction interrupted at test checkpoint")
+var errCandidateMismatch = errors.New("update candidate does not match accepted decision")
+var errResourceDenied = errors.New("update resource envelope is unavailable")
+var errStorageUnsupported = errors.New("update storage is unsupported")
 
 type tracer struct {
 	store       *ownedStore
@@ -50,9 +54,38 @@ func Apply(ctx context.Context, request Request) (Result, error) {
 // normal Result construction, releases only the process-owned OS-lock
 // handle, and preserves every checkpoint byte on disk.
 func applyWithInterruption(ctx context.Context, request Request, control *applyInterruptionControl) (result Result, resultErr error) {
+	return applyWithControls(ctx, request, control, stageOperations{}, nil)
+}
+
+// applyWithStageOperations is the private per-invocation S7.2-03 staging
+// operation seam. Public Apply always supplies the native zero value. Tests
+// may replace only candidate write/flush/close, directory rename, and parent
+// acknowledgement; root admission, records, cleanup, clocks, and Results stay
+// production-owned.
+func applyWithStageOperations(ctx context.Context, request Request, operations stageOperations) (Result, error) {
+	return applyWithControls(ctx, request, nil, operations, nil)
+}
+
+// applyWithResourceObservation is the private S7.2-03 resource seam. Tests
+// may supply one already-observed native value; they cannot replace path
+// admission, arithmetic, journal construction, cleanup, or Result mapping.
+func applyWithResourceObservation(ctx context.Context, request Request, observation resourceObservation) (Result, error) {
+	return applyWithControls(ctx, request, nil, stageOperations{}, func(string) (resourceObservation, error) {
+		return observation, nil
+	})
+}
+
+func applyWithControls(ctx context.Context, request Request, control *applyInterruptionControl, operations stageOperations,
+	observe func(string) (resourceObservation, error)) (result Result, resultErr error) {
 	start := time.Now()
 	artifact, manifestBytes, manifestDigest, err := validateRequest(ctx, request)
 	if err != nil {
+		if errors.Is(err, errCandidateMismatch) {
+			return stagingFailureResult(request, "release-accepted"), err
+		}
+		if errors.Is(err, errResourceDenied) {
+			return resourceDeniedResult(request), err
+		}
 		return invalidResult(request, "release-accepted"), err
 	}
 	lock, lockErr := acquireOwnedLock(request.UpdateRoot)
@@ -72,6 +105,18 @@ func applyWithInterruption(ctx context.Context, request Request, control *applyI
 		}
 		resultErr = errors.Join(resultErr, releaseErr)
 	}()
+	if observe == nil {
+		observe = observeOwnedStorage
+	}
+	observation, observeErr := observe(request.UpdateRoot)
+	if observeErr != nil {
+		return activationUnsupportedResult(request), observeErr
+	}
+	if occupied, present, occupiedErr := occupiedStagingResult(request, request.UpdateRoot); occupiedErr != nil {
+		return invalidResult(request, "release-accepted"), occupiedErr
+	} else if present {
+		return occupied, errResourceDenied
+	}
 	store, inspection, err := acquireStore(request.UpdateRoot, request.Generation)
 	if err != nil {
 		return invalidResult(request, "release-accepted"), err
@@ -82,8 +127,24 @@ func applyWithInterruption(ctx context.Context, request Request, control *applyI
 		}
 		return result, nil
 	}
-	if inspection.selection.Transaction+1 != request.Generation || inspection.selection.Rollback != nil {
+	if inspection.selection.Transaction+1 != request.Generation {
 		return applyFailure(store, request, "release-accepted", false, errRecordInvalid)
+	}
+	if inspection.selection.Rollback != nil {
+		result := resourceDeniedResult(request)
+		result.CurrentDigest = inspection.selection.Current.Artifact
+		result.RollbackDigest = inspection.selection.Rollback.Artifact
+		result.CustodyNotice = inspection.currentCustody
+		return result, errors.Join(errResourceDenied, store.release())
+	}
+	successorCurrent, encodeErr := encodeCurrent(currentSelection{Transaction: request.Generation,
+		Current:  inspectedTuple{Generation: request.Generation, Length: uint64(len(request.Artifact)), Artifact: artifact, Manifest: manifestDigest},
+		Rollback: &inspection.selection.Current})
+	if encodeErr != nil {
+		return invalidResult(request, "release-accepted"), errors.Join(encodeErr, store.release())
+	}
+	if envelopeErr := requireResourceEnvelope(observation, request.Artifact, manifestBytes, successorCurrent); envelopeErr != nil {
+		return resourceDeniedResult(request), errors.Join(envelopeErr, store.release())
 	}
 	predecessorBytes, err := encodePredecessor(inspection.predecessor)
 	if err != nil {
@@ -91,6 +152,9 @@ func applyWithInterruption(ctx context.Context, request Request, control *applyI
 	}
 	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifestDigest,
 		predecessor: sha256.Sum256(predecessorBytes), control: control}
+	if operations.openFile == nil || operations.renameDirectory == nil || operations.acknowledge == nil {
+		operations = nativeStageOperations(store.ops)
+	}
 	trace.callerLimit, _ = ctx.Deadline()
 	if err := store.prepare(request.Generation); err != nil {
 		return applyFailure(store, request, "release-accepted", true, err)
@@ -101,8 +165,8 @@ func applyWithInterruption(ctx context.Context, request Request, control *applyI
 	if err := trace.record(ctx, "02-artifact-verified", stateArtifactVerified, adapterNotCalled); err != nil {
 		return applyFailure(store, request, "artifact-verified", true, err)
 	}
-	if err := store.stage(request.Generation, request.Artifact, manifestBytes); err != nil {
-		return applyFailure(store, request, "artifact-verified", true, err)
+	if err := store.stage(request.Generation, request.Artifact, manifestBytes, operations); err != nil {
+		return stageApplyFailure(store, request, inspection, "artifact-verified", err)
 	}
 	if err := trace.record(ctx, "03-staged", stateStaged, adapterNotCalled); err != nil {
 		return applyFailure(store, request, "staged", true, err)
@@ -156,17 +220,28 @@ func applyWithInterruption(ctx context.Context, request Request, control *applyI
 func validateRequest(ctx context.Context, request Request) ([32]byte, []byte, [32]byte, error) {
 	var artifact, manifestDigest [32]byte
 	if ctx == nil || ctx.Err() != nil || request.Generation == 0 || request.ActiveWork != 0 ||
-		request.SchemaPlan != "no-op-v1" || request.Work == nil || request.SelfTest == nil ||
-		request.Decision.Outcome != "release-accepted" || request.Decision.BuildSafety != "release-accepted" ||
+		request.Decision.Outcome != "release-accepted" {
+		return artifact, nil, manifestDigest, errRecordInvalid
+	}
+	if request.Decision.Length > maximumArtifactBytes || int64(len(request.Artifact)) > maximumArtifactBytes {
+		return artifact, nil, manifestDigest, errResourceDenied
+	}
+	if request.SchemaPlan != "no-op-v1" || request.Work == nil || request.SelfTest == nil ||
+		request.Decision.BuildSafety != "release-accepted" ||
 		request.Decision.Protocol != "release-accepted" || request.Decision.Length <= 0 ||
-		request.Decision.Length > maximumArtifactBytes || int64(len(request.Artifact)) != request.Decision.Length ||
 		len(request.Decision.Digest) != sha256.Size || !completeFloors(request.Decision.Floors) {
 		return artifact, nil, manifestDigest, errRecordInvalid
+	}
+	if int64(len(request.Artifact)) != request.Decision.Length {
+		return artifact, nil, manifestDigest, errCandidateMismatch
 	}
 	artifact = sha256.Sum256(request.Artifact)
 	var expected [32]byte
 	copy(expected[:], request.Decision.Digest)
-	if artifact != expected || request.Decision.Path == "" || len(request.Decision.Path) > maximumTargetBytes ||
+	if artifact != expected {
+		return artifact, nil, manifestDigest, errCandidateMismatch
+	}
+	if request.Decision.Path == "" || len(request.Decision.Path) > maximumTargetBytes ||
 		request.Decision.ReleaseVersion <= 0 || request.Decision.ReferenceTime.IsZero() ||
 		!request.Decision.BuildSafetyNoNewWorkAfter.After(request.Decision.ReferenceTime) ||
 		!request.Decision.BuildSafetyTerminateAfter.After(request.Decision.BuildSafetyNoNewWorkAfter) ||
@@ -178,6 +253,90 @@ func validateRequest(ctx context.Context, request Request) ([32]byte, []byte, [3
 		return artifact, nil, manifestDigest, err
 	}
 	return artifact, manifest, sha256.Sum256(manifest), nil
+}
+
+func stagingFailureResult(request Request, state string) Result {
+	return Result{Outcome: "staging-failed", State: state, Generation: request.Generation,
+		StagingPresent: false, SafeNotice: "update staging failed"}
+}
+
+func stageApplyFailure(store *ownedStore, request Request, inspection rootInspection, state string, cause error) (Result, error) {
+	cleanupErr := store.cleanup(request.Generation)
+	releaseErr := store.release()
+	if cleanupErr != nil {
+		return Result{Outcome: "cleanup-incomplete", State: state, Generation: request.Generation,
+			StagingPresent: false, SafeNotice: "update cleanup incomplete"}, errors.Join(cause, cleanupErr, releaseErr)
+	}
+	result := stagingFailureResult(request, state)
+	result.CurrentDigest = inspection.selection.Current.Artifact
+	if inspection.selection.Rollback != nil {
+		result.RollbackDigest = inspection.selection.Rollback.Artifact
+	}
+	result.CustodyNotice = inspection.currentCustody
+	return result, errors.Join(cause, releaseErr)
+}
+
+func resourceDeniedResult(request Request) Result {
+	return Result{Outcome: "resource-denied", State: "release-accepted", Generation: request.Generation,
+		StagingPresent: false, SafeNotice: "update resources unavailable"}
+}
+
+func activationUnsupportedResult(request Request) Result {
+	return Result{Outcome: "activation-unsupported", State: "release-accepted", Generation: request.Generation,
+		StagingPresent: false, SafeNotice: "update storage unsupported"}
+}
+
+// occupiedStagingResult classifies an already-present staging candidate using
+// the same bounded journal evidence as restart recovery. Apply never repairs
+// or cleans this evidence: a coherent candidate owns the slot, while any
+// ambiguity remains transaction-invalid.
+func occupiedStagingResult(request Request, root string) (Result, bool, error) {
+	entries, readErr := os.ReadDir(filepath.Join(root, "staging"))
+	if readErr != nil {
+		return Result{}, false, readErr
+	}
+	if len(entries) == 0 {
+		return Result{}, false, nil
+	}
+	facts, err := collectInventory(root)
+	if err != nil {
+		return Result{}, false, err
+	}
+	if len(facts.StagingDirs) != 1 || len(facts.Transactions) != 1 {
+		return Result{}, false, errRecordInvalid
+	}
+	generation := facts.Transactions[0].Generation
+	if facts.StagingDirs[0].Generation != generation {
+		return Result{}, false, errRecordInvalid
+	}
+	records, err := reconstructRecoveryRecords(facts)
+	if err != nil {
+		return Result{}, false, err
+	}
+	artifact, manifest := candidateCommitments(facts, generation)
+	validation, err := validateJournal(generation, facts.journalLookup(generation), records.predecessorCommitment, artifact, manifest)
+	if err != nil {
+		return Result{}, false, err
+	}
+	custody, err := recoveryCustodyFor(&facts)
+	if err != nil {
+		return Result{}, false, err
+	}
+	plan, err := planRecovery(facts, validation, records, custody)
+	if err != nil {
+		return Result{}, false, errors.Join(errRecordInvalid, err)
+	}
+	selection, err := decodeCurrent(facts.Current.Bytes)
+	if err != nil {
+		return Result{}, false, err
+	}
+	result := Result{Outcome: "resource-denied", State: plan.State, Generation: generation,
+		CurrentDigest: selection.Current.Artifact, StagingPresent: true,
+		SafeNotice: "update recovery required", CustodyNotice: custody}
+	if selection.Rollback != nil {
+		result.RollbackDigest = selection.Rollback.Artifact
+	}
+	return result, true, nil
 }
 
 // record writes one journal entry, observes the bound, and notifies the
