@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
@@ -56,11 +55,11 @@ func newResolutionFixture(control ...interface {
 		GraceExpiresAt: value.now.Add(2 * time.Hour).Unix(), Continuity: 1}
 	currentRecord := claimRecord
 	currentRecord.Revision, currentRecord.Target = 2, [32]byte{1}
-	signedClaim, err := nameauthority.SignRecord(network, claimRecord, authority)
+	signedClaim, err := namespace.SignRecord(network, claimRecord, authority)
 	if err != nil {
 		return value, err
 	}
-	signed, err := nameauthority.SignRecord(network, currentRecord, authority)
+	signed, err := namespace.SignRecord(network, currentRecord, authority)
 	if err != nil {
 		return value, err
 	}

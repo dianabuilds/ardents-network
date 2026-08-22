@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
@@ -87,7 +86,7 @@ func deepProcessRecords(t *testing.T, network [32]byte, authority ed25519.Privat
 			record.Target = [32]byte{1}
 		}
 		var err error
-		records[depth-1], err = nameauthority.SignRecord(network, record, authority)
+		records[depth-1], err = namespace.SignRecord(network, record, authority)
 		if err != nil {
 			t.Fatal(err)
 		}

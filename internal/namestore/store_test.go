@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
@@ -95,7 +94,7 @@ func signedRecord(t *testing.T, network [32]byte, name, label string) []byte {
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, Continuity: 1}
-	signed, err := nameauthority.SignRecord(network, record, private)
+	signed, err := namespace.SignRecord(network, record, private)
 	if err != nil {
 		t.Fatal(err)
 	}

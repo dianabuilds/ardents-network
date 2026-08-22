@@ -1,12 +1,10 @@
-package nameauthority
+package namespace
 
 import (
 	"crypto/ed25519"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const (
@@ -18,7 +16,7 @@ const (
 // SignRecord signs one canonical Record for exactly one network and returns a
 // strict self-contained container. The Record Authority must be the lowercase
 // hexadecimal public half of private.
-func SignRecord(network [32]byte, record namespace.Record, private ed25519.PrivateKey) ([]byte, error) {
+func SignRecord(network [32]byte, record Record, private ed25519.PrivateKey) ([]byte, error) {
 	if network == [32]byte{} || len(private) != ed25519.PrivateKeySize {
 		return nil, errors.New("name record signing identity is invalid")
 	}
@@ -26,7 +24,7 @@ func SignRecord(network [32]byte, record namespace.Record, private ed25519.Priva
 	if record.Authority != hex.EncodeToString(public) {
 		return nil, errors.New("name record Authority does not match signer")
 	}
-	recordWire, err := namespace.EncodeRecord(record)
+	recordWire, err := EncodeRecord(record)
 	if err != nil || len(recordWire) > maxRecordBytes {
 		return nil, errors.New("name record cannot be signed")
 	}
@@ -43,26 +41,26 @@ func SignRecord(network [32]byte, record namespace.Record, private ed25519.Priva
 }
 
 // VerifyRecord authenticates and decodes one exact signed Record container.
-func VerifyRecord(network [32]byte, signed []byte) (namespace.Record, error) {
+func VerifyRecord(network [32]byte, signed []byte) (Record, error) {
 	if network == [32]byte{} || len(signed) < 2+8+ed25519.SignatureSize || len(signed) > maxRecordBytes+74 {
-		return namespace.Record{}, errors.New("signed name record is malformed")
+		return Record{}, errors.New("signed name record is malformed")
 	}
 	if binary.BigEndian.Uint16(signed[:2]) != signedRecordSchema {
-		return namespace.Record{}, errors.New("signed name record schema is invalid")
+		return Record{}, errors.New("signed name record schema is invalid")
 	}
 	size := binary.BigEndian.Uint64(signed[2:10])
 	if size == 0 || size > maxRecordBytes || size != uint64(len(signed)-10-ed25519.SignatureSize) {
-		return namespace.Record{}, errors.New("signed name record length is invalid")
+		return Record{}, errors.New("signed name record length is invalid")
 	}
 	recordWire := signed[10 : 10+int(size)]
 	signature := signed[10+int(size):]
-	record, err := namespace.DecodeRecord(recordWire)
+	record, err := DecodeRecord(recordWire)
 	if err != nil {
-		return namespace.Record{}, errors.New("signed name record contains an invalid Record")
+		return Record{}, errors.New("signed name record contains an invalid Record")
 	}
 	public, err := canonicalAuthority(record.Authority)
 	if err != nil || !ed25519.Verify(public, recordTranscript(network, recordWire), signature) {
-		return namespace.Record{}, errors.New("name record signature is invalid")
+		return Record{}, errors.New("name record signature is invalid")
 	}
 	return record, nil
 }

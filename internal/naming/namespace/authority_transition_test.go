@@ -1,4 +1,4 @@
-package nameauthority_test
+package namespace_test
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -22,12 +21,12 @@ func TestAuthorityTransitionRequiresPredecessorAndPermanentlyInstallsSuccessor(t
 	op := namespace.Op{Kind: "rotate", Name: record.Name, Authority: record.Authority,
 		SuccessorAuthority: hex.EncodeToString(newKey.Public().(ed25519.PublicKey)),
 		ExpectedGeneration: record.Generation, ExpectedRevision: record.Revision}
-	proof, err := nameauthority.SignTransition(network, record, op, oldKey)
+	proof, err := namespace.SignTransition(network, record, op, oldKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	admission, admissionProof := admittedTransition(t, network, record, op, [32]byte{1})
-	rotated, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
+	rotated, err := namespace.ApplyAdmittedTransition(admission, admissionProof, 100_000,
 		admissionProof.Challenge.OperationDigest, network, record, op, proof, 101, namespace.Policy{})
 	if err != nil || rotated.Authority != op.SuccessorAuthority || rotated.Generation != record.Generation ||
 		rotated.Target != record.Target {
@@ -35,14 +34,14 @@ func TestAuthorityTransitionRequiresPredecessorAndPermanentlyInstallsSuccessor(t
 	}
 	replay := op
 	replay.ExpectedRevision = rotated.Revision
-	if _, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
+	if _, err := namespace.ApplyAdmittedTransition(admission, admissionProof, 100_000,
 		admissionProof.Challenge.OperationDigest, network, rotated, replay, proof, 102, namespace.Policy{}); err == nil {
 		t.Fatal("predecessor transition proof replayed after successor installation")
 	}
-	if _, err := nameauthority.SignRecord(network, rotated, oldKey); err == nil {
+	if _, err := namespace.SignRecord(network, rotated, oldKey); err == nil {
 		t.Fatal("predecessor signed a successor Record")
 	}
-	if _, err := nameauthority.SignRecord(network, rotated, newKey); err != nil {
+	if _, err := namespace.SignRecord(network, rotated, newKey); err != nil {
 		t.Fatalf("successor could not sign the new Record: %v", err)
 	}
 }
@@ -56,12 +55,12 @@ func TestParentAuthorityDelegatesChosenChildAuthorityWithoutTransferringParent(t
 	parent.Name = "root"
 	op := namespace.Op{Kind: "claim", Name: "leaf.root", Generation: 1,
 		Authority: hex.EncodeToString(childKey.Public().(ed25519.PublicKey)), Parents: []namespace.Record{parent}}
-	proof, err := nameauthority.SignTransition(network, parent, op, parentKey)
+	proof, err := namespace.SignTransition(network, parent, op, parentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	admission, admissionProof := admittedTransition(t, network, parent, op, [32]byte{2})
-	child, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
+	child, err := namespace.ApplyAdmittedTransition(admission, admissionProof, 100_000,
 		admissionProof.Challenge.OperationDigest, network, parent, op, proof, 101,
 		namespace.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour})
 	if err != nil || child.Authority != op.Authority || child.ParentName != parent.Name ||
@@ -104,11 +103,11 @@ func TestRecoveryTransitionRequiresThresholdAuthorizationAndAdmission(t *testing
 	op := namespace.Op{Kind: "start-recovery", Name: record.Name, ExpectedGeneration: record.Generation,
 		ExpectedRevision: record.Revision, RecoveryAuthorization: authorization}
 	admission, admissionProof := admittedTransition(t, network, record, op, [32]byte{3})
-	if _, err := nameauthority.ApplyAdmittedTransition(admission, namespace.Proof{}, 100_000,
+	if _, err := namespace.ApplyAdmittedTransition(admission, namespace.Proof{}, 100_000,
 		admissionProof.Challenge.OperationDigest, network, record, op, nil, 100, namespace.Policy{}); err == nil {
 		t.Fatal("threshold authorization bypassed anonymous admission")
 	}
-	pending, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
+	pending, err := namespace.ApplyAdmittedTransition(admission, admissionProof, 100_000,
 		admissionProof.Challenge.OperationDigest, network, record, op, nil, 100, namespace.Policy{})
 	if err != nil || pending.Recovery != "recovery-pending" {
 		t.Fatalf("pending=%+v err=%v", pending, err)
@@ -119,7 +118,7 @@ func admittedTransition(t *testing.T, network [32]byte, current namespace.Record
 	op namespace.Op, isolation [32]byte,
 ) (*namespace.Admission, namespace.Proof) {
 	t.Helper()
-	digest, err := nameauthority.TransitionDigest(network, current, op)
+	digest, err := namespace.TransitionDigest(network, current, op)
 	if err != nil {
 		t.Fatal(err)
 	}

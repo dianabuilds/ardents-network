@@ -1,4 +1,4 @@
-package nameauthority_test
+package namespace_test
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -30,13 +29,13 @@ func TestOrderedClaimMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.
 	order := signedClaimClose(&proof)
 	op := namespace.Op{Kind: "claim", Name: claim.Name, Generation: 1, ClaimOrdinal: claim.Ordinal,
 		Authority: hex.EncodeToString(claim.Authority[:])}
-	record, err := nameauthority.ApplyOrderedClaim(order, proof, nil, 100, op,
+	record, err := namespace.ApplyOrderedClaim(order, proof, nil, 100, op,
 		namespace.Policy{DefaultLeaseDuration: time.Hour})
 	if err != nil || record.Name != claim.Name || record.Authority != op.Authority {
 		t.Fatalf("record=%+v err=%v", record, err)
 	}
 	op.ClaimOrdinal++
-	if _, err := nameauthority.ApplyOrderedClaim(order, proof, nil, 100, op, namespace.Policy{}); err == nil {
+	if _, err := namespace.ApplyOrderedClaim(order, proof, nil, 100, op, namespace.Policy{}); err == nil {
 		t.Fatal("non-winning ordinal was materialized")
 	}
 }

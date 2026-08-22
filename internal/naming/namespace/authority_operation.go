@@ -1,4 +1,4 @@
-package nameauthority
+package namespace
 
 import (
 	"bytes"
@@ -7,8 +7,6 @@ import (
 	"errors"
 	"io"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type controlOperation struct {
@@ -40,8 +38,8 @@ type controlOperation struct {
 }
 
 type recoveryEnvelope struct {
-	Policy namespace.RecoveryPolicy `json:"policy"`
-	Proof  namespace.RecoveryProof  `json:"proof"`
+	Policy RecoveryPolicy `json:"policy"`
+	Proof  RecoveryProof  `json:"proof"`
 }
 
 func decodeControlOperation(raw []byte) (controlOperation, error) {
@@ -80,17 +78,17 @@ func decodeCanonical(raw []byte, value any) error {
 	return nil
 }
 
-func (operation controlOperation) lifecycle(network [32]byte, current namespace.Record,
+func (operation controlOperation) lifecycle(network [32]byte, current Record,
 	now time.Time,
-) (namespace.Op, bool, error) {
-	op := namespace.Op{Name: operation.Name, ExpectedGeneration: operation.Generation,
+) (Op, bool, error) {
+	op := Op{Name: operation.Name, ExpectedGeneration: operation.Generation,
 		ExpectedRevision: operation.ExpectedRevision, Authority: current.Authority}
 	switch operation.Kind {
 	case "renew":
 		op.Kind, op.LeaseDuration = "renew", durationUntil(now, operation.LeaseNotAfter)
 	case "record":
 		if operation.RecordNotAfter <= now.UnixMilli() || operation.RecordNotAfter > current.LeaseExpiresAt*1_000 {
-			return namespace.Op{}, false, errors.New("name Record expiry is invalid")
+			return Op{}, false, errors.New("name Record expiry is invalid")
 		}
 		op.Kind, op.Target = "publish", operation.Target
 	case "release":
@@ -101,32 +99,32 @@ func (operation controlOperation) lifecycle(network [32]byte, current namespace.
 		op.Kind, op.PolicyRevision = "schedule-recovery-policy", current.RecoveryPolicyRev+1
 		if len(operation.RecoveryPolicy) == 0 {
 			if current.RecoveryPolicy == [32]byte{} || current.RecoveryPolicyDelay <= 0 {
-				return namespace.Op{}, false, errors.New("recovery Policy disable is invalid")
+				return Op{}, false, errors.New("recovery Policy disable is invalid")
 			}
 			op.PolicyDelay = time.Duration(current.RecoveryPolicyDelay) * time.Millisecond
 		} else {
-			var policy namespace.RecoveryPolicy
+			var policy RecoveryPolicy
 			if decodeCanonical(operation.RecoveryPolicy, &policy) != nil || policy.Network != network ||
 				policy.Name != current.Name || policy.Generation != current.Generation ||
 				policy.Revision != op.PolicyRevision || policy.CurrentAuthority != authorityBytes(current.Authority) {
-				return namespace.Op{}, false, errors.New("recovery Policy is invalid")
+				return Op{}, false, errors.New("recovery Policy is invalid")
 			}
 			op.PolicyDigest, op.PolicyDelay = policy.Digest(), policy.Delay
 			if op.PolicyDigest == [32]byte{} {
-				return namespace.Op{}, false, errors.New("recovery policy participants are invalid")
+				return Op{}, false, errors.New("recovery policy participants are invalid")
 			}
 		}
 		op.PolicyActivatesAt = operation.PolicyNotBefore
 		if operation.PolicyNotBefore != now.Add(op.PolicyDelay).UnixMilli() {
-			return namespace.Op{}, false, errors.New("recovery Policy activation is invalid")
+			return Op{}, false, errors.New("recovery Policy activation is invalid")
 		}
 	case "recovery":
 		if operation.PolicyID != current.RecoveryPolicy {
-			return namespace.Op{}, false, errors.New("recovery Policy identifier is stale")
+			return Op{}, false, errors.New("recovery Policy identifier is stale")
 		}
 		if operation.RecoveryStep == "resume" {
 			if operation.RecoveryNotBefore > now.UnixMilli() {
-				return namespace.Op{}, false, errors.New("recovery resume is premature")
+				return Op{}, false, errors.New("recovery resume is premature")
 			}
 			op.Kind, op.Target = "resume-recovery", operation.Target
 			return op, false, nil
@@ -134,39 +132,39 @@ func (operation controlOperation) lifecycle(network [32]byte, current namespace.
 		var envelope recoveryEnvelope
 		if decodeCanonical(operation.RecoveryProof, &envelope) != nil || envelope.Policy.Network != network ||
 			envelope.Policy.Name != current.Name || envelope.Policy.Digest() != operation.PolicyID {
-			return namespace.Op{}, false, errors.New("recovery proof is invalid")
+			return Op{}, false, errors.New("recovery proof is invalid")
 		}
 		authorization, err := envelope.Policy.Authorize(envelope.Proof)
 		if err != nil {
-			return namespace.Op{}, false, err
+			return Op{}, false, err
 		}
 		switch operation.RecoveryStep {
 		case "initiate":
 			op.Kind = "start-recovery"
 			if authorization.Operation != "initiate" || operation.RecoveryNotBefore != authorization.StartedAt {
-				return namespace.Op{}, false, errors.New("recovery initiation boundary is invalid")
+				return Op{}, false, errors.New("recovery initiation boundary is invalid")
 			}
 		case "cancel":
 			op.Kind = "cancel-recovery"
 			if authorization.Operation != "cancel" || operation.RecoveryNotBefore != now.UnixMilli() {
-				return namespace.Op{}, false, errors.New("recovery cancellation boundary is invalid")
+				return Op{}, false, errors.New("recovery cancellation boundary is invalid")
 			}
 		case "complete":
 			op.Kind = "complete-recovery"
 			if authorization.Operation != "initiate" || operation.RecoveryNotBefore != authorization.CompletesAt ||
 				now.UnixMilli() < authorization.CompletesAt {
-				return namespace.Op{}, false, errors.New("recovery completion boundary is invalid")
+				return Op{}, false, errors.New("recovery completion boundary is invalid")
 			}
 		default:
-			return namespace.Op{}, false, errors.New("recovery step is invalid")
+			return Op{}, false, errors.New("recovery step is invalid")
 		}
 		op.RecoveryAuthorization = authorization
 		return op, true, nil
 	default:
-		return namespace.Op{}, false, errors.New("name Authority operation is unavailable")
+		return Op{}, false, errors.New("name Authority operation is unavailable")
 	}
 	if op.Kind == "" || (op.Kind == "renew" && op.LeaseDuration <= 0) {
-		return namespace.Op{}, false, errors.New("name Authority operation timing is invalid")
+		return Op{}, false, errors.New("name Authority operation timing is invalid")
 	}
 	return op, false, nil
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -25,7 +24,7 @@ func materializeRecords(network [32]byte, signed [][]byte) ([][]byte, [][]byte, 
 	}
 	entries := make([]recordEntry, len(signed))
 	for index, raw := range signed {
-		record, err := nameauthority.VerifyRecord(network, raw)
+		record, err := namespace.VerifyRecord(network, raw)
 		if err != nil {
 			return nil, nil, errors.New("naming materialization contains an invalid signed Record")
 		}

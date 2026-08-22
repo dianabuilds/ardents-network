@@ -1,4 +1,4 @@
-package nameauthority
+package namespace
 
 import (
 	"reflect"

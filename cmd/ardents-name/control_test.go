@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -58,7 +57,7 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 	current := namespace.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
 		Consistency: "current", Recovery: "stable", Authority: hex.EncodeToString(namePublic),
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix()}
-	signed, err := nameauthority.SignRecord(network, current, namePrivate)
+	signed, err := namespace.SignRecord(network, current, namePrivate)
 	if err != nil {
 		t.Fatal(err)
 	}

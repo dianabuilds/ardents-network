@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
@@ -89,7 +88,7 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 		if depth == len(records) {
 			record.Target = [32]byte{1}
 		}
-		records[depth-1], err = nameauthority.SignRecord(network, record, authority)
+		records[depth-1], err = namespace.SignRecord(network, record, authority)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
@@ -91,7 +90,7 @@ func signedHierarchy(network [32]byte) ([][]byte, string) {
 			record.Target = [32]byte{1}
 		}
 		var err error
-		records[depth-1], err = nameauthority.SignRecord(network, record, authority)
+		records[depth-1], err = namespace.SignRecord(network, record, authority)
 		must(err)
 	}
 	return records, strings.Repeat("a.", recordCount-1) + "a"

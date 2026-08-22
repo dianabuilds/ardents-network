@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
@@ -31,7 +30,7 @@ func deepNamespaceEvidence(materialization namespaceFixture, now time.Time) (str
 			record.Target = [32]byte{1}
 		}
 		var err error
-		records[depth-1], err = nameauthority.SignRecord(network, record, authority)
+		records[depth-1], err = namespace.SignRecord(network, record, authority)
 		if err != nil {
 			return "", nil, nil, err
 		}

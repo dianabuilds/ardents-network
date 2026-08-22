@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -35,7 +34,7 @@ func runControlRoleCell(trace *traceRecord, secret [32]byte) error {
 	if err != nil {
 		return err
 	}
-	control, err := nameauthority.NewControl(network, gate, corpus.order, corpus.records,
+	control, err := namespace.NewControl(network, gate, corpus.order, corpus.records,
 		func() time.Time { return now }, policy)
 	if err != nil {
 		return err

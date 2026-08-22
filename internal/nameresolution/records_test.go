@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
@@ -20,7 +19,7 @@ func TestMaterializedRecordRejectsAProofThatCannotFitTheFixedResponse(t *testing
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		ConflictIdentifier: strings.Repeat("t", 4096),
 		LeaseExpiresAt:     200, GraceExpiresAt: 220}
-	signed, err := nameauthority.SignRecord([32]byte{1}, record, private)
+	signed, err := namespace.SignRecord([32]byte{1}, record, private)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
@@ -27,7 +26,7 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 	}
 	index := -1
 	for candidate, raw := range current.records {
-		record, verifyErr := nameauthority.VerifyRecord(store.policy.Network, raw)
+		record, verifyErr := namespace.VerifyRecord(store.policy.Network, raw)
 		if verifyErr != nil {
 			return nil, errors.New("naming state is tampered")
 		}
@@ -67,7 +66,7 @@ func Verify(input Policy, proof []byte, minimumEpoch uint64, expectedEpochDigest
 	if err != nil || leaf.state == 0 || at > leaf.notAfter {
 		return namespace.Record{}, namespace.Binding{}, "", 0, errors.New("name is unavailable")
 	}
-	record, err := nameauthority.VerifyRecord(policy.Network, leaf.signedRecord)
+	record, err := namespace.VerifyRecord(policy.Network, leaf.signedRecord)
 	if err != nil || record.Target == [32]byte{} {
 		return namespace.Record{}, namespace.Binding{}, "", 0, errors.New("naming proof Record is invalid")
 	}

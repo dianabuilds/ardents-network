@@ -7,7 +7,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -64,7 +63,7 @@ func newControlCorpus(network [32]byte, now time.Time, policy namespace.Policy) 
 			op.SuccessorAuthority = hex.EncodeToString(successor.Public().(ed25519.PublicKey))
 			operation.SuccessorAuthority = publicBytes(successor)
 		}
-		operation.AuthorityProof, err = nameauthority.SignTransition(network, current, op, keys[name])
+		operation.AuthorityProof, err = namespace.SignTransition(network, current, op, keys[name])
 		if err != nil {
 			return corpus, err
 		}
@@ -75,7 +74,7 @@ func newControlCorpus(network [32]byte, now time.Time, policy namespace.Policy) 
 	childOp := namespace.Op{Kind: "claim", Name: "leaf.root", Generation: 1,
 		Authority: hex.EncodeToString(childKey.Public().(ed25519.PublicKey)), Parents: []namespace.Record{parent},
 		LeaseDuration: policy.DefaultLeaseDuration}
-	childProof, err := nameauthority.SignTransition(network, parent, childOp, keys["root"])
+	childProof, err := namespace.SignTransition(network, parent, childOp, keys["root"])
 	if err != nil {
 		return corpus, err
 	}

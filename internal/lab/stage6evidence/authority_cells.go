@@ -10,7 +10,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -48,7 +47,7 @@ func runAuthorityCell(trace *traceRecord) error {
 	op := namespace.Op{Kind: kind, Name: record.Name, Authority: record.Authority,
 		SuccessorAuthority: hex.EncodeToString(successor.Public().(ed25519.PublicKey)),
 		ExpectedGeneration: record.Generation, ExpectedRevision: record.Revision}
-	signature, err := nameauthority.SignTransition(network, record, op, oldKey)
+	signature, err := namespace.SignTransition(network, record, op, oldKey)
 	if err != nil {
 		return err
 	}
@@ -56,7 +55,7 @@ func runAuthorityCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
-	changed, err := nameauthority.ApplyAdmittedTransition(admission, proof, 100_000,
+	changed, err := namespace.ApplyAdmittedTransition(admission, proof, 100_000,
 		proof.Challenge.OperationDigest, network, record, op, signature, 100, namespace.Policy{})
 	if err != nil {
 		return err
@@ -68,7 +67,7 @@ func runAuthorityCell(trace *traceRecord) error {
 		if admissionErr != nil {
 			return admissionErr
 		}
-		if _, replayErr := nameauthority.ApplyAdmittedTransition(otherAdmission, otherProof, 100_000,
+		if _, replayErr := namespace.ApplyAdmittedTransition(otherAdmission, otherProof, 100_000,
 			otherProof.Challenge.OperationDigest, network, changed, replay, signature, 101, namespace.Policy{}); replayErr == nil {
 			return errors.New("predecessor transition replay was accepted")
 		}
@@ -120,7 +119,7 @@ func runRecoveryCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
-	pending, err := nameauthority.ApplyAdmittedTransition(startAdmission, startProof, 100_000,
+	pending, err := namespace.ApplyAdmittedTransition(startAdmission, startProof, 100_000,
 		startProof.Challenge.OperationDigest, network, record, start, nil, 100, namespace.Policy{})
 	if err != nil {
 		return err
@@ -131,7 +130,7 @@ func runRecoveryCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
-	completed, err := nameauthority.ApplyAdmittedTransition(completeAdmission, completeProof, 100_000,
+	completed, err := namespace.ApplyAdmittedTransition(completeAdmission, completeProof, 100_000,
 		completeProof.Challenge.OperationDigest, network, pending, complete, nil,
 		recoveryProof.CompletesAt/1_000, namespace.Policy{})
 	if err != nil {
@@ -139,7 +138,7 @@ func runRecoveryCell(trace *traceRecord) error {
 	}
 	resume := namespace.Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9}}
-	resumeSignature, err := nameauthority.SignTransition(network, completed, resume, successorKey)
+	resumeSignature, err := namespace.SignTransition(network, completed, resume, successorKey)
 	if err != nil {
 		return err
 	}
@@ -147,7 +146,7 @@ func runRecoveryCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
-	resumed, err := nameauthority.ApplyAdmittedTransition(resumeAdmission, resumeProof, 100_000,
+	resumed, err := namespace.ApplyAdmittedTransition(resumeAdmission, resumeProof, 100_000,
 		resumeProof.Challenge.OperationDigest, network, completed, resume, resumeSignature,
 		recoveryProof.CompletesAt/1_000+1, namespace.Policy{})
 	if err != nil {
@@ -174,7 +173,7 @@ func runRecoveryCell(trace *traceRecord) error {
 func transitionAdmission(network [32]byte, record namespace.Record, op namespace.Op,
 	surface string, nonce byte,
 ) (*namespace.Admission, namespace.Proof, error) {
-	digest, err := nameauthority.TransitionDigest(network, record, op)
+	digest, err := namespace.TransitionDigest(network, record, op)
 	if err != nil {
 		return nil, namespace.Proof{}, err
 	}

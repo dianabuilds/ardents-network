@@ -1,4 +1,4 @@
-package nameauthority
+package namespace
 
 import (
 	"crypto/sha256"
@@ -6,8 +6,6 @@ import (
 	"errors"
 	"sync"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 // control owns authenticated naming transitions behind one private Gateway.
@@ -15,26 +13,26 @@ import (
 type control struct {
 	mu        sync.Mutex
 	network   [32]byte
-	admission *namespace.Admission
-	order     namespace.ClaimOrder
-	records   map[string]namespace.Record
+	admission *Admission
+	order     ClaimOrder
+	records   map[string]Record
 	clock     func() time.Time
-	policy    namespace.Policy
+	policy    Policy
 }
 
 // NewControl installs one bounded authority state view for a Gateway.
-func NewControl(network [32]byte, admission *namespace.Admission, order namespace.ClaimOrder,
-	records []namespace.Record, clock func() time.Time, policy namespace.Policy,
+func NewControl(network [32]byte, admission *Admission, order ClaimOrder,
+	records []Record, clock func() time.Time, policy Policy,
 ) (*control, error) {
 	if network == [32]byte{} || admission == nil || clock == nil {
 		return nil, errors.New("name Authority control configuration is invalid")
 	}
-	values := make(map[string]namespace.Record, len(records))
+	values := make(map[string]Record, len(records))
 	for _, record := range records {
 		if _, exists := values[record.Name]; exists {
 			return nil, errors.New("name Authority control state is duplicated")
 		}
-		if _, err := namespace.EncodeRecord(record); err != nil {
+		if _, err := EncodeRecord(record); err != nil {
 			return nil, errors.New("name Authority control state is invalid")
 		}
 		values[record.Name] = record
@@ -45,7 +43,7 @@ func NewControl(network [32]byte, admission *namespace.Admission, order namespac
 
 // Apply verifies anonymous admission, authority or threshold proof, and the
 // exact predecessor before committing one in-memory transition result.
-func (control *control) Apply(raw []byte, proof namespace.Proof) (string, uint64, uint64, []byte) {
+func (control *control) Apply(raw []byte, proof Proof) (string, uint64, uint64, []byte) {
 	control.mu.Lock()
 	defer control.mu.Unlock()
 	operation, err := decodeControlOperation(raw)
@@ -61,7 +59,7 @@ func (control *control) Apply(raw []byte, proof namespace.Proof) (string, uint64
 	if err != nil {
 		return deniedControl()
 	}
-	state, err := namespace.EncodeRecord(updated)
+	state, err := EncodeRecord(updated)
 	if err != nil {
 		return deniedControl()
 	}
@@ -69,7 +67,7 @@ func (control *control) Apply(raw []byte, proof namespace.Proof) (string, uint64
 	return "accepted", updated.Generation, updated.Revision, state
 }
 
-func (control *control) transition(operation controlOperation) (namespace.Record, error) {
+func (control *control) transition(operation controlOperation) (Record, error) {
 	now := control.clock()
 	current, exists := control.records[operation.Name]
 	switch operation.Kind {
@@ -79,27 +77,27 @@ func (control *control) transition(operation controlOperation) (namespace.Record
 		return control.delegate(operation, now)
 	case "renew", "record", "release", "transfer", "policy", "recovery":
 		if !exists {
-			return namespace.Record{}, errors.New("name Authority predecessor is unavailable")
+			return Record{}, errors.New("name Authority predecessor is unavailable")
 		}
 		return control.existing(operation, current, now)
 	default:
-		return namespace.Record{}, errors.New("name Authority operation is unavailable")
+		return Record{}, errors.New("name Authority operation is unavailable")
 	}
 }
 
-func (control *control) claim(operation controlOperation, current namespace.Record, exists bool,
+func (control *control) claim(operation controlOperation, current Record, exists bool,
 	now time.Time,
-) (namespace.Record, error) {
-	var proof namespace.ClaimProof
-	_, decodeErr := namespace.CanonicalProof(operation.OrderingProof, &proof)
+) (Record, error) {
+	var proof ClaimProof
+	_, decodeErr := CanonicalProof(operation.OrderingProof, &proof)
 	if decodeErr != nil {
-		return namespace.Record{}, errors.New("root claim proof is invalid")
+		return Record{}, errors.New("root claim proof is invalid")
 	}
 	result, err := control.order.Verify(proof)
 	if err != nil || result.Outcome != "accepted" {
-		return namespace.Record{}, errors.New("root claim ordering is unavailable")
+		return Record{}, errors.New("root claim ordering is unavailable")
 	}
-	op := namespace.Op{Kind: "claim", Name: operation.Name, Generation: operation.Generation,
+	op := Op{Kind: "claim", Name: operation.Name, Generation: operation.Generation,
 		ClaimOrdinal: result.WinnerOrdinal, Authority: hex.EncodeToString(operation.Authority[:]),
 		LeaseDuration: durationUntil(now, operation.LeaseNotAfter)}
 	if !exists {
@@ -108,26 +106,26 @@ func (control *control) claim(operation controlOperation, current namespace.Reco
 	return ApplyOrderedClaim(control.order, proof, &current, now.Unix(), op, control.policy)
 }
 
-func (control *control) delegate(operation controlOperation, now time.Time) (namespace.Record, error) {
+func (control *control) delegate(operation controlOperation, now time.Time) (Record, error) {
 	parent, exists := control.records[operation.ParentName]
 	if !exists || parent.Generation != operation.ParentGeneration || parent.Revision != operation.ParentRevision {
-		return namespace.Record{}, errors.New("parent authority predecessor is unavailable")
+		return Record{}, errors.New("parent authority predecessor is unavailable")
 	}
-	op := namespace.Op{Kind: "claim", Name: operation.Name, Generation: operation.ChildGeneration,
-		Authority: hex.EncodeToString(operation.Authority[:]), Parents: []namespace.Record{parent},
+	op := Op{Kind: "claim", Name: operation.Name, Generation: operation.ChildGeneration,
+		Authority: hex.EncodeToString(operation.Authority[:]), Parents: []Record{parent},
 		LeaseDuration: durationUntil(now, operation.LeaseNotAfter)}
 	return applyTransition(control.network, parent, op, operation.AuthorityProof, now.Unix(), control.policy)
 }
 
-func (control *control) existing(operation controlOperation, current namespace.Record,
+func (control *control) existing(operation controlOperation, current Record,
 	now time.Time,
-) (namespace.Record, error) {
+) (Record, error) {
 	op, threshold, err := operation.lifecycle(control.network, current, now)
 	if err != nil {
-		return namespace.Record{}, err
+		return Record{}, err
 	}
 	if threshold {
-		return namespace.ApplyAt(&current, now, op, control.policy)
+		return ApplyAt(&current, now, op, control.policy)
 	}
 	return applyTransition(control.network, current, op, operation.AuthorityProof, now.Unix(), control.policy)
 }

@@ -13,7 +13,6 @@ github.com/dianabuilds/ardents-network/internal/bridge
 github.com/dianabuilds/ardents-network/internal/camouflage
 github.com/dianabuilds/ardents-network/internal/network/duty
 github.com/dianabuilds/ardents-network/internal/naming/namespace
-github.com/dianabuilds/ardents-network/internal/nameauthority
 github.com/dianabuilds/ardents-network/internal/nameresolution
 github.com/dianabuilds/ardents-network/internal/namestore
 github.com/dianabuilds/ardents-network/internal/naming

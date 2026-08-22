@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming"
@@ -37,7 +36,7 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix()}
-	signed, err := nameauthority.SignRecord(network, record, private)
+	signed, err := namespace.SignRecord(network, record, private)
 	if err != nil {
 		t.Fatal(err)
 	}

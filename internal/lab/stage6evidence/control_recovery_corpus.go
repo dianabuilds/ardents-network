@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -62,7 +61,7 @@ func policyControlOperation(network [32]byte, now time.Time, records []namespace
 		op.PolicyDigest = policy.Digest()
 		policyRaw, _ = json.Marshal(policy)
 	}
-	signature, err := nameauthority.SignTransition(network, record, op, keys[name])
+	signature, err := namespace.SignTransition(network, record, op, keys[name])
 	return controlOperation{Kind: "policy", Name: name, Generation: 1, ExpectedRevision: 1,
 		PolicyNotBefore: op.PolicyActivatesAt, RecoveryPolicy: policyRaw, AuthorityProof: signature}, err
 }
@@ -113,7 +112,7 @@ func recoveryResumeOperation(network [32]byte, now time.Time, records []namespac
 	records[index] = record
 	op := namespace.Op{Kind: "resume-recovery", Name: name, Authority: record.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: 1, Target: [32]byte{24}}
-	signature, err := nameauthority.SignTransition(network, record, op, successor)
+	signature, err := namespace.SignTransition(network, record, op, successor)
 	return controlOperation{Kind: "recovery", Name: name, Generation: 1, ExpectedRevision: 1,
 		PolicyID: policy.Digest(), RecoveryStep: "resume", RecoveryNotBefore: now.UnixMilli(),
 		Target: op.Target, AuthorityProof: signature}, err

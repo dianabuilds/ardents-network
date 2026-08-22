@@ -1,4 +1,4 @@
-package nameauthority_test
+package namespace_test
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -39,11 +38,11 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220}
 
-	signed, err := nameauthority.SignRecord(network, record, private)
+	signed, err := namespace.SignRecord(network, record, private)
 	if err != nil {
 		t.Fatalf("SignRecord: %v", err)
 	}
-	opened, err := nameauthority.VerifyRecord(network, signed)
+	opened, err := namespace.VerifyRecord(network, signed)
 	if err != nil {
 		t.Fatalf("VerifyRecord: %v", err)
 	}
@@ -53,7 +52,7 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 
 	wrongNetwork := network
 	wrongNetwork[0] ^= 0xff
-	if _, err := nameauthority.VerifyRecord(wrongNetwork, signed); err == nil {
+	if _, err := namespace.VerifyRecord(wrongNetwork, signed); err == nil {
 		t.Fatal("signature was replayed across networks")
 	}
 	for _, mutate := range []func([]byte) []byte{
@@ -63,7 +62,7 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 	} {
 		changed := append([]byte(nil), signed...)
 		changed = mutate(changed)
-		if _, err := nameauthority.VerifyRecord(network, changed); err == nil {
+		if _, err := namespace.VerifyRecord(network, changed); err == nil {
 			t.Fatal("modified signed record was accepted")
 		}
 	}
@@ -84,7 +83,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 		RecoveryOperation: [32]byte{3}, RecoverySuccessor: [32]byte{4},
 		RecoveryPolicy: [32]byte{5}, RecoveryPolicyRev: 1,
 		RecoveryPolicyDelay: (72 * time.Hour).Milliseconds(), Continuity: 6, ConflictIdentifier: "fork-a"}
-	signed, err := nameauthority.SignRecord(network, base, private)
+	signed, err := namespace.SignRecord(network, base, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +136,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 			container = binary.BigEndian.AppendUint64(container, uint64(len(wire)))
 			container = append(container, wire...)
 			container = append(container, signed[len(signed)-ed25519.SignatureSize:]...)
-			if _, err := nameauthority.VerifyRecord(network, container); err == nil {
+			if _, err := namespace.VerifyRecord(network, container); err == nil {
 				t.Fatal("field mutation retained the original signature")
 			}
 		})
@@ -145,7 +144,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 
 	wrongLength := append([]byte(nil), signed...)
 	binary.BigEndian.PutUint64(wrongLength[2:10], binary.BigEndian.Uint64(wrongLength[2:10])+1)
-	if _, err := nameauthority.VerifyRecord(network, wrongLength); err == nil {
+	if _, err := namespace.VerifyRecord(network, wrongLength); err == nil {
 		t.Fatal("modified container length was accepted")
 	}
 }
@@ -160,13 +159,13 @@ func TestSignRecordRejectsWrongAuthorityAndMalformedKeys(t *testing.T) {
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: "not-an-ed25519-key", Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220}
-	if _, err := nameauthority.SignRecord([32]byte{1}, record, private); err == nil {
+	if _, err := namespace.SignRecord([32]byte{1}, record, private); err == nil {
 		t.Fatal("record was signed for a malformed Authority")
 	}
-	if _, err := nameauthority.SignRecord([32]byte{}, record, private); err == nil {
+	if _, err := namespace.SignRecord([32]byte{}, record, private); err == nil {
 		t.Fatal("record was signed without a network")
 	}
-	if _, err := nameauthority.VerifyRecord([32]byte{1}, []byte("short")); err == nil {
+	if _, err := namespace.VerifyRecord([32]byte{1}, []byte("short")); err == nil {
 		t.Fatal("malformed signed record was accepted")
 	}
 }
