@@ -1,0 +1,47 @@
+{
+  "schema": "ardents-test-profiles-v1",
+  "profiles": [
+    {
+      "id": "developer",
+      "make_target": "quick-check",
+      "surface": "deterministic-module",
+      "prerequisites": [],
+      "invalid_environment": "not applicable"
+    },
+    {
+      "id": "deterministic",
+      "make_target": "unit",
+      "surface": "deterministic-module",
+      "prerequisites": [],
+      "invalid_environment": "not applicable"
+    },
+    {
+      "id": "process",
+      "make_target": "e2e",
+      "surface": "adapter-process",
+      "prerequisites": ["local process execution"],
+      "invalid_environment": "process prerequisites unavailable"
+    },
+    {
+      "id": "race",
+      "make_target": "test-race",
+      "surface": "deterministic-race",
+      "prerequisites": ["race-supported Go toolchain"],
+      "invalid_environment": "race toolchain or platform unavailable"
+    },
+    {
+      "id": "live",
+      "make_target": "live",
+      "surface": "live-network",
+      "prerequisites": ["Docker-capable host", "pinned live image/tooling inputs"],
+      "invalid_environment": "Docker host or pinned live input unavailable"
+    },
+    {
+      "id": "historical-reproduction",
+      "make_target": "lab-test",
+      "surface": "historical-reproduction",
+      "prerequisites": ["scenario-specific pinned inputs"],
+      "invalid_environment": "declared reproduction input unavailable"
+    }
+  ]
+}

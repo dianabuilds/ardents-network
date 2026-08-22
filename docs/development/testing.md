@@ -87,6 +87,13 @@ the existing negative laboratory filters or short-mode selection are replaced.
 Until that promotion, the existing targets remain mandatory and their skipped
 branches remain observations rather than passes.
 
+[`tests/profiles/profiles.json`](../../tests/profiles/profiles.json) is the
+checked current registry for the developer, deterministic, process, race, live,
+and historical-reproduction profiles. It records entrypoint and environment
+classification, while scenario ownership remains with the test that proves the
+behavior. The architecture gate verifies its schema, required profile set, and
+Make-target wiring.
+
 An environment-dependent selected profile has four outcomes: product assertion
 failure, test/harness defect, invalid environment, or nondeterministic/unowned
 result. None is green until resolved. Missing Docker, an external binary,
