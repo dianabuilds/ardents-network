@@ -62,27 +62,7 @@ func TestFloorStorePersistsExactConsecutiveRoots(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	pointer, err := os.ReadFile(filepath.Join(dir, "current"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	generation := strings.TrimSpace(string(pointer))
-	for version := int64(1); version <= 3; version++ {
-		name := itoa(int(version)) + ".root.json"
-		stored, err := os.ReadFile(filepath.Join(dir, "generations", generation, "roots", name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var expected []byte
-		if version == 1 {
-			expected = repo.rootBytes
-		} else {
-			expected = repo.files["https://release.invalid/metadata/"+name]
-		}
-		if !bytes.Equal(stored, expected) {
-			t.Fatalf("root %d bytes changed during publication", version)
-		}
-	}
+	assertStoredRootChain(t, dir, repo, 3)
 }
 
 func TestFloorStorePublishesRootBeforeRejectingExecutableMetadata(t *testing.T) {
@@ -103,7 +83,11 @@ func TestFloorStorePublishesRootBeforeRejectingExecutableMetadata(t *testing.T) 
 	if decision.Outcome != outcomeReleaseInvalid {
 		t.Fatalf("outcome = %s, want %s", decision.Outcome, outcomeReleaseInvalid)
 	}
-	if decision.Floors.RootVersion != 2 || decision.Floors.TimestampVersion != 0 {
+	expectedRoot := sha256.Sum256(repo.files["https://release.invalid/metadata/2.root.json"])
+	if decision.Floors.RootVersion != 2 || !bytes.Equal(decision.Floors.RootDigest, expectedRoot[:]) ||
+		decision.Floors.TimestampVersion != 0 || len(decision.Floors.TimestampDigest) != 0 ||
+		decision.Floors.SnapshotVersion != 0 || len(decision.Floors.SnapshotDigest) != 0 ||
+		decision.Floors.TargetsVersion != 0 || len(decision.Floors.TargetsDigest) != 0 {
 		observed, readErr := store.ReadFloors()
 		t.Fatalf("published floors = %+v, observed = %+v, read error = %v, notice = %q; want root 2 and no executable metadata floors",
 			decision.Floors, observed, readErr, decision.Notice)
@@ -119,11 +103,83 @@ func TestFloorStorePublishesRootBeforeRejectingExecutableMetadata(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if floors.RootVersion != 2 || floors.TargetsVersion != 0 {
+	if floors.RootVersion != 2 || !bytes.Equal(floors.RootDigest, expectedRoot[:]) ||
+		floors.TimestampVersion != 0 || len(floors.TimestampDigest) != 0 ||
+		floors.SnapshotVersion != 0 || len(floors.SnapshotDigest) != 0 ||
+		floors.TargetsVersion != 0 || len(floors.TargetsDigest) != 0 {
 		t.Fatalf("reopened floors = %+v, want durable root 2 only", floors)
 	}
+	assertStoredRootChain(t, directory, repo, 2)
 	if err := reopened.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestFloorStoreRetainsAcceptedMetadataFloorsAfterLaterRootOnlyRejection(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	store, err := OpenFloorStore(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := newSyntheticRepository(t, syntheticOptions{})
+	accepted := evaluateWithRepo(t, base, store, defaultLocalEnvironment(testRefTime))
+	if accepted.Outcome != outcomeReleaseAccepted {
+		t.Fatalf("initial outcome = %s, want %s", accepted.Outcome, outcomeReleaseAccepted)
+	}
+	rotated := withConsecutiveRoots(t, base, 1)
+	for name, data := range rotated.files {
+		if strings.HasSuffix(name, "1.targets.json") {
+			rotated.files[name] = stripOneSignature(data)
+		}
+	}
+	rejected := evaluateWithRepo(t, rotated, store, defaultLocalEnvironment(testRefTime))
+	if rejected.Outcome != outcomeReleaseInvalid {
+		t.Fatalf("rejected outcome = %s, want %s", rejected.Outcome, outcomeReleaseInvalid)
+	}
+	expectedRoot := sha256.Sum256(rotated.files["https://release.invalid/metadata/2.root.json"])
+	if rejected.Floors.RootVersion != 2 || !bytes.Equal(rejected.Floors.RootDigest, expectedRoot[:]) ||
+		rejected.Floors.TimestampVersion != accepted.Floors.TimestampVersion || !bytes.Equal(rejected.Floors.TimestampDigest, accepted.Floors.TimestampDigest) ||
+		rejected.Floors.SnapshotVersion != accepted.Floors.SnapshotVersion || !bytes.Equal(rejected.Floors.SnapshotDigest, accepted.Floors.SnapshotDigest) ||
+		rejected.Floors.TargetsVersion != accepted.Floors.TargetsVersion || !bytes.Equal(rejected.Floors.TargetsDigest, accepted.Floors.TargetsDigest) {
+		t.Fatalf("rejected floors = %+v, want root 2 and prior metadata floors %+v", rejected.Floors, accepted.Floors)
+	}
+	closeStoreForTest(t, store)
+	reopened, err := OpenFloorStore(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { closeStoreForTest(t, reopened) })
+	persisted, err := reopened.ReadFloors()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !floorSetEqual(persisted, rejected.Floors) {
+		t.Fatalf("reopened floors = %+v, want %+v", persisted, rejected.Floors)
+	}
+	assertStoredRootChain(t, directory, rotated, 2)
+}
+
+func assertStoredRootChain(t *testing.T, directory string, repo syntheticRepository, through int64) {
+	t.Helper()
+	pointer, err := os.ReadFile(filepath.Join(directory, "current"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generation := strings.TrimSpace(string(pointer))
+	for version := int64(1); version <= through; version++ {
+		name := itoa(int(version)) + ".root.json"
+		stored, err := os.ReadFile(filepath.Join(directory, "generations", generation, "roots", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := repo.rootBytes
+		if version > 1 {
+			expected = repo.files["https://release.invalid/metadata/"+name]
+		}
+		if !bytes.Equal(stored, expected) {
+			t.Fatalf("root %d bytes changed during publication", version)
+		}
 	}
 }
 
