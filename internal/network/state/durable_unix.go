@@ -1,6 +1,6 @@
 //go:build !windows
 
-package store
+package state
 
 import (
 	"fmt"
@@ -9,9 +9,7 @@ import (
 	"syscall"
 )
 
-type rootLease struct {
-	file *os.File
-}
+type rootLease struct{ file *os.File }
 
 func acquireRootLease(root string) (rootLease, error) {
 	file, err := os.OpenFile(filepath.Join(root, rootLockName), os.O_RDWR|os.O_CREATE, 0o600)
@@ -37,4 +35,17 @@ func (lease rootLease) release() error {
 		return fmt.Errorf("release state-root lease: %w", err)
 	}
 	return nil
+}
+
+func syncDirectory(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	err = file.Sync()
+	closeErr := file.Close()
+	if err != nil {
+		return err
+	}
+	return closeErr
 }

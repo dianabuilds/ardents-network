@@ -1,4 +1,4 @@
-package store
+package state
 
 import (
 	"bytes"
@@ -11,14 +11,18 @@ import (
 
 const (
 	maximumStateGenerations = 64
-	maximumEpochBytes       = 1 << 20
-	maximumRecordBytes      = 32 << 10
 )
 
-// LoadState returns every bounded immutable generation and the canonical
-// current pointer. An empty current with generations is left for semantic
-// recovery by network/state.
-func (root *Root) LoadState() (string, []Generation, error) {
+// durableGeneration is one opaque immutable State generation. Its meaning is
+// verified by the State acceptance path before it becomes current.
+type durableGeneration struct {
+	Name     string
+	Epoch    []byte
+	Inputs   [][]byte
+	Activate bool
+}
+
+func (root *durableRoot) loadState() (string, []durableGeneration, error) {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {
@@ -29,7 +33,7 @@ func (root *Root) LoadState() (string, []Generation, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("scan state generations: %w", err)
 	}
-	generations := make([]Generation, 0, len(entries))
+	generations := make([]durableGeneration, 0, len(entries))
 	known := make(map[string]bool, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() || !generationName.MatchString(entry.Name()) {
@@ -56,9 +60,7 @@ func (root *Root) LoadState() (string, []Generation, error) {
 	return current, generations, nil
 }
 
-// CommitState publishes one immutable generation and atomically activates it
-// only when Generation.Activate is true.
-func (root *Root) CommitState(generation Generation) error {
+func (root *durableRoot) commitState(generation durableGeneration) error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {
@@ -110,31 +112,31 @@ func (root *Root) CommitState(generation Generation) error {
 	return nil
 }
 
-func loadStateGeneration(root, name string) (Generation, error) {
+func loadStateGeneration(root, name string) (durableGeneration, error) {
 	directory := filepath.Join(root, name)
 	epoch, err := readBoundedFile(filepath.Join(directory, "epoch.bin"), maximumEpochBytes)
 	if err != nil {
-		return Generation{}, fmt.Errorf("read state generation Epoch: %w", err)
+		return durableGeneration{}, fmt.Errorf("read state generation Epoch: %w", err)
 	}
 	inputsRoot := filepath.Join(directory, "inputs")
 	entries, err := readBoundedDirectory(inputsRoot, 64)
 	if err != nil {
-		return Generation{}, fmt.Errorf("scan state generation inputs: %w", err)
+		return durableGeneration{}, fmt.Errorf("scan state generation inputs: %w", err)
 	}
 	inputs := make([][]byte, len(entries))
 	for index, entry := range entries {
 		if entry.IsDir() || entry.Name() != fmt.Sprintf("%04d.bin", index) {
-			return Generation{}, errors.New("state generation input name is not canonical")
+			return durableGeneration{}, errors.New("state generation input name is not canonical")
 		}
 		inputs[index], err = readBoundedFile(filepath.Join(inputsRoot, entry.Name()), maximumRecordBytes)
 		if err != nil {
-			return Generation{}, fmt.Errorf("read state generation input: %w", err)
+			return durableGeneration{}, fmt.Errorf("read state generation input: %w", err)
 		}
 	}
-	return Generation{Name: name, Epoch: epoch, Inputs: inputs}, nil
+	return durableGeneration{Name: name, Epoch: epoch, Inputs: inputs}, nil
 }
 
-func writeStateGeneration(directory string, generation Generation) error {
+func writeStateGeneration(directory string, generation durableGeneration) error {
 	inputsRoot := filepath.Join(directory, "inputs")
 	if err := os.Mkdir(inputsRoot, 0o700); err != nil {
 		return err
@@ -153,7 +155,7 @@ func writeStateGeneration(directory string, generation Generation) error {
 	return syncDirectory(directory)
 }
 
-func stateGenerationMatches(directory string, generation Generation) bool {
+func stateGenerationMatches(directory string, generation durableGeneration) bool {
 	actual, err := loadStateGeneration(filepath.Dir(directory), filepath.Base(directory))
 	if err != nil || !bytes.Equal(actual.Epoch, generation.Epoch) || len(actual.Inputs) != len(generation.Inputs) {
 		return false

@@ -26,7 +26,6 @@ github.com/dianabuilds/ardents-network/internal/network/epoch/merkle
 github.com/dianabuilds/ardents-network/internal/network/framing
 github.com/dianabuilds/ardents-network/internal/network/source
 github.com/dianabuilds/ardents-network/internal/network/state
-github.com/dianabuilds/ardents-network/internal/network/store
 github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/node/probe
 github.com/dianabuilds/ardents-network/internal/planfile

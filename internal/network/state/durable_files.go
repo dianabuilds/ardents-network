@@ -1,13 +1,10 @@
-package store
+package state
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 )
-
-var generationName = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 func writeSynced(path string, contents []byte) error {
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)

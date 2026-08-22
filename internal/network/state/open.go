@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	statestore "github.com/dianabuilds/ardents-network/internal/network/store"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -19,14 +18,14 @@ func Open(input Config) (*networkState, error) {
 	if err != nil {
 		return nil, err
 	}
-	storage, err := statestore.Open(resolved.root)
+	storage, err := openDurableRoot(resolved.root)
 	if err != nil {
 		return nil, err
 	}
 	opened := false
 	defer func() {
 		if !opened {
-			_ = storage.Close()
+			_ = storage.close()
 		}
 	}()
 	workContext, workCancel := context.WithCancel(context.Background())

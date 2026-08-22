@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
-	statestore "github.com/dianabuilds/ardents-network/internal/network/store"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -20,7 +19,7 @@ type networkState struct {
 	currentDecision *candidateDecision
 	pendingDecision *candidateDecision
 	distribution    distributionState
-	storage         *statestore.Root
+	storage         *durableRoot
 	serverDone      chan struct{}
 	serverErr       error
 	automaticErr    error

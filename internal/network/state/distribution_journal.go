@@ -1,4 +1,4 @@
-package store
+package state
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 
 const maximumControlGenerations = 4096
 
-func (root *Root) prepareControl() error {
+func (root *durableRoot) prepareControl() error {
 	directory := filepath.Join(root.path, "distribution")
 	generations := filepath.Join(directory, "generations")
 	if err := os.MkdirAll(generations, 0o700); err != nil {
@@ -29,9 +29,7 @@ func (root *Root) prepareControl() error {
 	return syncDirectory(root.path)
 }
 
-// LoadControl returns the current opaque security-control generation. Empty
-// values mean that no control state has been committed.
-func (root *Root) LoadControl() (string, []byte, error) {
+func (root *durableRoot) loadControl() (string, []byte, error) {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {
@@ -61,8 +59,7 @@ func (root *Root) LoadControl() (string, []byte, error) {
 	return name, raw, nil
 }
 
-// CommitControl publishes and activates one bounded opaque control generation.
-func (root *Root) CommitControl(name string, raw []byte) error {
+func (root *durableRoot) commitControl(name string, raw []byte) error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if err := root.available(); err != nil {

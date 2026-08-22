@@ -32,7 +32,7 @@ type distributionState struct {
 }
 
 func (s *networkState) loadDistributionState() error {
-	name, raw, err := s.storage.LoadControl()
+	name, raw, err := s.storage.loadControl()
 	if err != nil {
 		return fmt.Errorf("load distribution security state: %w", err)
 	}
@@ -80,7 +80,7 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 func (s *networkState) commitDistribution(state distributionState) error {
 	raw := encodeDistributionState(state)
 	name := distributionDigest(raw)
-	if err := s.storage.CommitControl(name, raw); err != nil {
+	if err := s.storage.commitControl(name, raw); err != nil {
 		return err
 	}
 	s.distribution = state

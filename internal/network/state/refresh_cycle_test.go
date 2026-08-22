@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
-	statestore "github.com/dianabuilds/ardents-network/internal/network/store"
 )
 
 func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 	root := t.TempDir()
-	storage, err := statestore.Open(root)
+	storage, err := openDurableRoot(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,15 +37,15 @@ func TestInterruptedCycleResumesOnlyUnstartedLatestAttempt(t *testing.T) {
 	if err := initial.commitDistribution(cycle); err != nil {
 		t.Fatalf("record first LATEST: %v", err)
 	}
-	if err := storage.Close(); err != nil {
+	if err := storage.close(); err != nil {
 		t.Fatal(err)
 	}
 
-	storage, err = statestore.Open(root)
+	storage, err = openDurableRoot(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer storage.Close()
+	defer storage.close()
 	restarted := &networkState{config: config, storage: storage}
 	if err := restarted.loadDistributionState(); err != nil {
 		t.Fatal(err)
