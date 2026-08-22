@@ -2,7 +2,8 @@
 
 Status: **execution started by Product Owner authorization on 2026-08-22;
 S8.0 current-system truth, S8.1 preservation disposition, S8.2 policy
-promotion, and S8.3 target architecture are complete.**
+promotion, S8.3 target architecture, and S8.4 migration planning are
+complete.**
 This brief replaces the earlier
 reassessment-only Stage 8 plan. Stage 7 was stopped by its separate 2026-08-22
 disposition, and the exact Stage 8 entry is bound by the

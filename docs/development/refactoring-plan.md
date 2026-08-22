@@ -1,6 +1,6 @@
 # Stage 8 refactoring and retirement plan
 
-Status: **S8.4 proposal for Product Owner acceptance.** This temporary control
+Status: **S8.4 accepted by the Product Owner on 2026-08-22.** This temporary control
 document instantiates the accepted S8.3
 [target architecture](stage-8-target-architecture.md). It is not a second
 technical specification and is deleted in M14 after its retained facts have
@@ -83,8 +83,6 @@ outcome, not deferred cleanup.
 
 ## S8.4 acceptance
 
-The Product Owner accepts this plan only if the wave order, conditional
-decisions, compatibility modes, and retirement outcomes are understood. On
-acceptance, Codex starts S8.5 with the earliest wave whose DA and input gates
-are satisfied; it does not create placeholder target packages for blocked
-waves.
+The Product Owner accepted this plan on 2026-08-22. Codex starts S8.5 with the
+earliest wave whose DA and input gates are satisfied; it does not create
+placeholder target packages for blocked waves.
