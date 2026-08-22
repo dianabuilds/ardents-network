@@ -31,6 +31,7 @@ Current decisions:
 - [0020 — Authenticate the current Namespace in each Network Epoch](0020-authenticate-current-namespace-materialization.md)
 - [0021 — Use password-derived Authority Custody](0021-use-password-derived-authority-custody.md)
 - [0022 — Bind Target validity in the signed Name Record](0022-bind-name-record-validity.md)
+- [0023 — Persist signed Namespace successors before materialization](0023-pending-signed-namespace-successors.md)
 
 Withdrawn decisions retained for history:
 
