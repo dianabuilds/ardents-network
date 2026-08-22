@@ -130,6 +130,79 @@ func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
 	}
 }
 
+// TestPressure100 follows the accepted S7.2-08a twenty-row oracle five times.
+func TestPressure100(t *testing.T) {
+	codes := []byte{'S', 'P', 'I', 'R', 'B', 'F', 'Q', 'N', 'P', 'I', 'R', 'B', 'F', 'Q', 'N', 'P', 'I', 'R', 'P', 'S'}
+	for block := 0; block < 5; block++ {
+		var interrupted, refused string
+		for row, code := range codes {
+			root := filepath.Join(t.TempDir(), "root-"+strconv.Itoa(block)+"-"+strconv.Itoa(row+1))
+			var request Request
+			var vector v0OracleVector
+			if code == 'R' {
+				root = interrupted
+			} else if code == 'Q' {
+				root = refused
+			} else {
+				if err := os.Mkdir(root, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				vector = oracleBootstrapV0(t, root)
+				candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+				request = Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+			}
+			switch code {
+			case 'S', 'N':
+				result, err := Apply(context.Background(), request)
+				if err != nil || result.Outcome != "committed" || result.State != "committed" {
+					t.Fatalf("%d/%d %c = %+v, %v", block, row+1, code, result, err)
+				}
+			case 'P':
+				request.Decision.Length = maximumArtifactBytes + 1
+				result, err := Apply(context.Background(), request)
+				if err == nil || result.Outcome != "resource-denied" || result.State != "release-accepted" {
+					t.Fatalf("%d/%d P = %+v, %v", block, row+1, result, err)
+				}
+			case 'I':
+				interrupted = root
+				control := &applyInterruptionControl{StopAfter: func(name string) bool { return name == "03-staged" }}
+				if result, err := applyWithInterruption(context.Background(), request, control); !errors.Is(err, errApplyInterrupted) || result != (Result{}) {
+					t.Fatalf("%d/%d I = %+v, %v", block, row+1, result, err)
+				}
+			case 'R':
+				result, err := Recover(context.Background(), root)
+				if err != nil || result.Outcome != "recovered" || result.State != "staged" {
+					t.Fatalf("%d/%d R = %+v, %v", block, row+1, result, err)
+				}
+			case 'B', 'F':
+				request.SelfTest = failedSelfTest{}
+				if _, err := Apply(context.Background(), request); err == nil {
+					t.Fatalf("%d/%d %c self-test succeeded", block, row+1, code)
+				}
+				if code == 'B' {
+					request.RollbackDecision = oracleRollbackDecision(t, vector)
+					request.SelfTest = oraclePassSelfTest{}
+				} else {
+					request.RollbackDecision = request.Decision
+					refused = root
+				}
+				result, err := Apply(context.Background(), request)
+				if code == 'B' && (!errors.Is(err, errRolledBack) || result.Outcome != "rolled-back") {
+					t.Fatalf("%d/%d B = %+v, %v", block, row+1, result, err)
+				}
+				if code == 'F' && (!errors.Is(err, errRollbackRefused) || result.Outcome != "rollback-refused") {
+					t.Fatalf("%d/%d F = %+v, %v", block, row+1, result, err)
+				}
+			case 'Q':
+				result, err := Recover(context.Background(), root)
+				if !errors.Is(err, errRollbackRefused) || result.Outcome != "rollback-refused" {
+					t.Fatalf("%d/%d Q = %+v, %v", block, row+1, result, err)
+				}
+			}
+		}
+	}
+}
+
 type pressureMeasurement struct{ Files, Directories, Bytes int }
 
 func measureRetainedRoot(t *testing.T, root string, generation uint64) pressureMeasurement {
