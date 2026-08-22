@@ -148,7 +148,7 @@ func apply(current *Record, seconds, milliseconds int64, op Op, policy Policy) (
 	case opRelease:
 		return applyRelease(current, op)
 	case opAdvance:
-		return applyAdvance(current, seconds, milliseconds, op)
+		return applyAdvance(current, seconds, op)
 	case opConflict:
 		return applyConflict(current, op)
 	case opPublish:

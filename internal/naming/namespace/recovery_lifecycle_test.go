@@ -51,16 +51,9 @@ func TestRecoveryPolicyDelayAndSuccessorFreshRecord(t *testing.T) {
 	if err != nil || record.Recovery != "recovery-pending" {
 		t.Fatalf("pending=%+v err=%v", record, err)
 	}
-	held, err := namespace.Apply(&record, proof.CompletesAt/1_000-1, namespace.Op{Kind: "advance", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: record.Revision}, leasePolicy)
-	if err != nil || held != record {
-		t.Fatalf("Recovery Pending was not held exactly to its boundary: held=%+v err=%v", held, err)
-	}
-	automatic, err := namespace.Apply(&record, proof.CompletesAt/1_000, namespace.Op{Kind: "advance", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: record.Revision}, leasePolicy)
-	if err != nil || automatic.Authority != hex.EncodeToString(successor[:]) ||
-		automatic.Consistency != "unavailable" || automatic.Recovery != "stable" {
-		t.Fatalf("automatic recovery outcome=%+v err=%v", automatic, err)
+	if _, err := namespace.Apply(&record, proof.CompletesAt/1_000, namespace.Op{Kind: "advance", Name: "alice",
+		ExpectedGeneration: 1, ExpectedRevision: record.Revision}, leasePolicy); err == nil {
+		t.Fatal("time-only advance completed pending Recovery")
 	}
 	if _, err := namespace.Apply(&record, proof.StartedAt/1_000+1, namespace.Op{Kind: "renew", Name: "alice",
 		Authority: currentAuthority, ExpectedGeneration: 1, ExpectedRevision: record.Revision}, leasePolicy); err == nil {

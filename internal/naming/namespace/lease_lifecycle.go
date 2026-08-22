@@ -23,18 +23,13 @@ func applyRelease(current *Record, op Op) (Record, error) {
 	return result, nil
 }
 
-func applyAdvance(current *Record, seconds, milliseconds int64, op Op) (Record, error) {
+func applyAdvance(current *Record, seconds int64, op Op) (Record, error) {
 	if err := requireCurrent(current, op, opAdvance); err != nil {
 		return Record{}, err
 	}
 	result := *current
 	if current.Recovery == recoveryPending {
-		if milliseconds < current.RecoveryExpiresAt {
-			return result, nil
-		}
-		completePendingRecovery(&result)
-		result.Revision++
-		return result, nil
+		return Record{}, transitionError{Action: opAdvance, Reason: "pending recovery requires threshold completion"}
 	}
 	switch current.Lease {
 	case leaseActive:
