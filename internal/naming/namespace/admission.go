@@ -14,15 +14,13 @@ func NewAdmission(node, network [32]byte, epoch uint64, bootSecret [32]byte) (*A
 		return nil, errors.New("naming admission configuration is not the accepted profile")
 	}
 	copyProfiles := acceptedProfiles()
-	spent := make(map[string]map[[32]byte]int64, len(copyProfiles))
-	nextExpiry := make(map[string]int64, len(copyProfiles))
-	inflight := make(map[string]chan struct{}, len(copyProfiles))
+	surfaces := make(map[string]*admissionSurface, len(copyProfiles))
 	for _, profile := range copyProfiles {
-		spent[profile.Surface] = make(map[[32]byte]int64, profile.MaximumSpent)
-		inflight[profile.Surface] = make(chan struct{}, profile.MaximumInFlight)
+		surfaces[profile.Surface] = &admissionSurface{spent: make(map[[32]byte]int64, profile.MaximumSpent),
+			inflight: make(chan struct{}, profile.MaximumInFlight)}
 	}
 	return &Admission{node: node, network: network, epoch: epoch, bootSecret: bootSecret,
-		profiles: copyProfiles, spent: spent, nextExpiry: nextExpiry, inflight: inflight}, nil
+		profiles: copyProfiles, surfaces: surfaces}, nil
 }
 
 // Issue authenticates one fresh bounded challenge. now and expiry are fixed
@@ -35,6 +33,16 @@ func (admission *Admission) Issue(now int64, surface string, operation, isolatio
 		expires <= now || expires-now > 30_000 {
 		return Challenge{}, errors.New("naming admission request is invalid")
 	}
+	state := admission.surfaces[surface]
+	state.mu.Lock()
+	if state.nextExpiry != 0 && state.nextExpiry <= now {
+		admission.removeExpired(state, now)
+	}
+	full := len(state.spent) >= profile.MaximumSpent
+	state.mu.Unlock()
+	if full {
+		return Challenge{}, errors.New("naming admission capacity is full")
+	}
 	challenge := Challenge{Node: admission.node, Network: admission.network, Epoch: admission.epoch,
 		Surface: surface, OperationDigest: operation,
 		IsolationBinding: isolationBinding(admission.node, operation, isolation, nonce),
@@ -46,20 +54,18 @@ func (admission *Admission) Issue(now int64, surface string, operation, isolatio
 // Verify consumes one valid proof exactly once and rejects full capacity or
 // in-flight state immediately without eviction or queueing.
 func (admission *Admission) Verify(now int64, proof Proof) (bool, string) {
-	limiter, ok := admission.inflight[proof.Challenge.Surface]
+	state, ok := admission.surfaces[proof.Challenge.Surface]
 	if !ok {
 		return false, "invalid-scope"
 	}
 	select {
-	case limiter <- struct{}{}:
-		defer func() { <-limiter }()
+	case state.inflight <- struct{}{}:
+		defer func() { <-state.inflight }()
 	default:
 		return false, "busy"
 	}
-	if !admission.mu.TryLock() {
-		return false, "busy"
-	}
-	defer admission.mu.Unlock()
+	state.mu.Lock()
+	defer state.mu.Unlock()
 	challenge := proof.Challenge
 	profile, ok := admission.profile(challenge.Surface)
 	if !ok || challenge.Node != admission.node || challenge.Network != admission.network ||
@@ -72,32 +78,31 @@ func (admission *Admission) Verify(now int64, proof Proof) (bool, string) {
 	if subtle.ConstantTimeCompare(tag[:], challenge.AuthenticationTag[:]) != 1 {
 		return false, "invalid-challenge"
 	}
-	spent := admission.spent[challenge.Surface]
-	if next := admission.nextExpiry[challenge.Surface]; next != 0 && next <= now {
-		admission.removeExpired(challenge.Surface, spent, now)
+	if state.nextExpiry != 0 && state.nextExpiry <= now {
+		admission.removeExpired(state, now)
 	}
 	digest := challengeDigest(challenge)
-	if _, exists := spent[digest]; exists {
+	if _, exists := state.spent[digest]; exists {
 		return false, "replay"
 	}
-	if len(spent) >= profile.MaximumSpent {
+	if len(state.spent) >= profile.MaximumSpent {
 		return false, "capacity"
 	}
 	if !validWork(challenge, proof.WorkNonce) {
 		return false, "insufficient-work"
 	}
-	spent[digest] = challenge.ExpiresAt
-	if next := admission.nextExpiry[challenge.Surface]; next == 0 || challenge.ExpiresAt < next {
-		admission.nextExpiry[challenge.Surface] = challenge.ExpiresAt
+	state.spent[digest] = challenge.ExpiresAt
+	if state.nextExpiry == 0 || challenge.ExpiresAt < state.nextExpiry {
+		state.nextExpiry = challenge.ExpiresAt
 	}
 	return true, ""
 }
 
-func (admission *Admission) removeExpired(surface string, spent map[[32]byte]int64, now int64) {
+func (admission *Admission) removeExpired(state *admissionSurface, now int64) {
 	next, removed := int64(0), 0
-	for digest, expiry := range spent {
+	for digest, expiry := range state.spent {
 		if expiry <= now {
-			delete(spent, digest)
+			delete(state.spent, digest)
 			removed++
 			if removed%64 == 0 {
 				runtime.Gosched()
@@ -106,7 +111,7 @@ func (admission *Admission) removeExpired(surface string, spent map[[32]byte]int
 			next = expiry
 		}
 	}
-	admission.nextExpiry[surface] = next
+	state.nextExpiry = next
 }
 
 func (admission *Admission) authenticate(challenge Challenge) [32]byte {

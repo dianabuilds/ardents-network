@@ -36,8 +36,12 @@ type Admission struct {
 	epoch         uint64
 	bootSecret    [32]byte
 	profiles      []profile
-	spent         map[string]map[[32]byte]int64
-	nextExpiry    map[string]int64
-	inflight      map[string]chan struct{}
-	mu            sync.Mutex
+	surfaces      map[string]*admissionSurface
+}
+
+type admissionSurface struct {
+	mu         sync.Mutex
+	spent      map[[32]byte]int64
+	nextExpiry int64
+	inflight   chan struct{}
 }
