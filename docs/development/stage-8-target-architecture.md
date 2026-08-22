@@ -110,6 +110,11 @@ unbounded compatibility mode. The S8.4 plan records a concrete mode, observer,
 cutover, rollback/forward-repair behavior, and deletion condition for every row
 it mutates.
 
+The source-controlled limits of the DA-10 caller search are recorded in the
+[compatibility-observer inventory](stage-8-compatibility-observer-inventory.md).
+Its absence-of-evidence result is not a license to break an unrecorded external
+consumer.
+
 ## Complete current-code disposition
 
 The following groups cover every current Go package under `cmd/`, `internal/`,
