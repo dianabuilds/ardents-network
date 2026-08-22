@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var errRollbackPending = errors.New("update rollback remains pending")
+
 // resumeUnavailableSelfTest admits only the immutable state-8 unavailable
 // prefix. It neither stages nor drains again: the previously selected
 // candidate is rechecked under this invocation's bounded context.
@@ -30,9 +32,11 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 	candidateArtifact, candidateManifest := candidateCommitments(facts, request.Generation)
 	validation, err := validateJournal(request.Generation, facts.journalLookup(request.Generation), records.predecessorCommitment,
 		candidateArtifact, candidateManifest)
-	if err != nil || len(validation.Entries) != int(stateSelfTesting) ||
-		validation.Entries[stateSelfTesting-1].AdapterResult != adapterUnavailable {
+	if err != nil {
 		return transactionInvalidResult(request.Generation), true, errors.Join(errRecordInvalid, err, store.release())
+	}
+	if len(validation.Entries) != int(stateSelfTesting) || validation.Entries[stateSelfTesting-1].AdapterResult != adapterUnavailable {
+		return Result{}, false, nil
 	}
 	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifest,
 		predecessor: sha256.Sum256(validation.RawEntries[stateSelfTesting-1]), callerLimit: callerLimit}
@@ -67,4 +71,35 @@ func selfTestFailedResult(generation uint64, current, rollback [32]byte, custody
 	return Result{Outcome: "self-test-failed", State: "rollback-pending", Generation: generation,
 		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
 		SafeNotice: "update self-test failed", CustodyNotice: custody}
+}
+
+// resumeRollbackPending recognizes the durable pre-rollback state and never
+// repeats admission, drain, activation, or the failed self-test. A later slice
+// may proceed only after validating Request.RollbackDecision against the exact
+// retained manifest and payload under this same owned-root lock.
+func resumeRollbackPending(store *ownedStore, inspection rootInspection, request Request,
+	artifact, manifest [32]byte) (Result, bool, error) {
+	selection := inspection.selection
+	if selection.Transaction != request.Generation {
+		return Result{}, false, nil
+	}
+	if selection.Rollback == nil || selection.Current.Artifact != artifact || selection.Current.Manifest != manifest {
+		return invalidResult(request, "committed"), true, errors.Join(errRecordInvalid, store.release())
+	}
+	facts, err := collectInventory(request.UpdateRoot)
+	if err != nil || facts.InterruptedSelection != request.Generation {
+		return transactionInvalidResult(request.Generation), true, errors.Join(err, store.release())
+	}
+	records, err := reconstructRecoveryRecords(facts)
+	if err != nil {
+		return transactionInvalidResult(request.Generation), true, errors.Join(err, store.release())
+	}
+	candidateArtifact, candidateManifest := candidateCommitments(facts, request.Generation)
+	validation, err := validateJournal(request.Generation, facts.journalLookup(request.Generation), records.predecessorCommitment,
+		candidateArtifact, candidateManifest)
+	if err != nil || len(validation.Entries) != 9 || validation.Entries[8].State != stateRollbackPending {
+		return transactionInvalidResult(request.Generation), true, errors.Join(errRecordInvalid, err, store.release())
+	}
+	return selfTestFailedResult(request.Generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
+		errors.Join(errRollbackPending, store.release())
 }

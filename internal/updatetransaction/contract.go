@@ -47,9 +47,12 @@ type Request struct {
 	ActiveWork uint64
 	SchemaPlan string
 	Decision   releasedecision.Decision
-	Artifact   []byte
-	Work       WorkControl
-	SelfTest   SelfTest
+	// RollbackDecision is a fresh caller-evaluated decision for the retained
+	// predecessor. It is consulted only by a later rollback-pending continuation.
+	RollbackDecision releasedecision.Decision
+	Artifact         []byte
+	Work             WorkControl
+	SelfTest         SelfTest
 }
 
 // Result is the bounded terminal transaction result.

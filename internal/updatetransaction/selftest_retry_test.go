@@ -46,6 +46,10 @@ func TestSelfTestFailureBecomesRollbackPending(t *testing.T) {
 	if work.stopCalls != 1 || work.drainCalls != 1 {
 		t.Fatalf("work calls = %#v", work)
 	}
+	repeated, repeatedErr := Apply(context.Background(), request)
+	if !errors.Is(repeatedErr, errRollbackPending) || repeated != result || work.stopCalls != 1 || work.drainCalls != 1 {
+		t.Fatalf("pending Apply = %+v, %v; work=%#v", repeated, repeatedErr, work)
+	}
 	entries, readErr := os.ReadDir(filepath.Join(root, "transactions", "1", "journal"))
 	if readErr != nil || len(entries) != 9 || entries[8].Name() != "10-rollback-pending.entry" {
 		t.Fatalf("rollback-pending journal = %v, %v", entries, readErr)

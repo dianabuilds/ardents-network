@@ -152,6 +152,9 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if result, handled, resumeErr := resumeUnavailableSelfTest(ctx, store, inspection, request, artifact, manifestDigest, start, callerLimit); handled {
 		return result, resumeErr
 	}
+	if result, handled, resumeErr := resumeRollbackPending(store, inspection, request, artifact, manifestDigest); handled {
+		return result, resumeErr
+	}
 	if inspection.selection.Transaction+1 != request.Generation {
 		return applyFailure(store, request, "release-accepted", false, errRecordInvalid)
 	}
