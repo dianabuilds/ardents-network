@@ -96,11 +96,13 @@ func packageSet(t *testing.T, contents string) map[string]bool {
 
 type testProfile struct {
 	ID                 string   `json:"id"`
+	State              string   `json:"state"`
 	MakeTarget         string   `json:"make_target"`
 	Surface            string   `json:"surface"`
 	Prerequisites      []string `json:"prerequisites"`
 	InvalidEnvironment string   `json:"invalid_environment"`
 	Timeout            string   `json:"timeout"`
+	Activation         string   `json:"activation"`
 }
 
 func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
@@ -111,10 +113,14 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"affected-platform":       false,
 		"developer":               false,
 		"deterministic":           false,
+		"fuzz":                    false,
 		"process":                 false,
+		"qualification":           false,
 		"race":                    false,
+		"soak":                    false,
 		"live":                    false,
 		"historical-reproduction": false,
 	}
@@ -127,8 +133,14 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 			t.Errorf("duplicate test profile %q", profile.ID)
 		}
 		required[profile.ID] = true
-		if profile.MakeTarget == "" || !strings.Contains(makefile, "\n"+profile.MakeTarget+":") {
-			t.Errorf("profile %q names absent Make target %q", profile.ID, profile.MakeTarget)
+		if profile.State != "active" && profile.State != "inactive" {
+			t.Errorf("profile %q has invalid state %q", profile.ID, profile.State)
+		}
+		if profile.State == "active" && (profile.MakeTarget == "" || !strings.Contains(makefile, "\n"+profile.MakeTarget+":")) {
+			t.Errorf("active profile %q names absent Make target %q", profile.ID, profile.MakeTarget)
+		}
+		if profile.State == "inactive" && (profile.MakeTarget != "" || profile.Activation == "") {
+			t.Errorf("inactive profile %q must omit its Make target and name its activation condition", profile.ID)
 		}
 		if profile.Surface == "" || profile.InvalidEnvironment == "" {
 			t.Errorf("profile %q lacks surface or invalid-environment result", profile.ID)

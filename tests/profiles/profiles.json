@@ -3,6 +3,7 @@
   "profiles": [
     {
       "id": "developer",
+      "state": "active",
       "make_target": "quick-check",
       "surface": "deterministic-module",
       "prerequisites": [],
@@ -10,6 +11,7 @@
     },
     {
       "id": "deterministic",
+      "state": "active",
       "make_target": "unit",
       "surface": "deterministic-module",
       "prerequisites": [],
@@ -17,6 +19,7 @@
     },
     {
       "id": "process",
+      "state": "active",
       "make_target": "e2e",
       "surface": "adapter-process",
       "prerequisites": ["local process execution"],
@@ -24,6 +27,7 @@
     },
     {
       "id": "race",
+      "state": "active",
       "make_target": "test-race",
       "surface": "deterministic-race",
       "prerequisites": ["race-supported Go toolchain"],
@@ -31,6 +35,7 @@
     },
     {
       "id": "live",
+      "state": "active",
       "make_target": "live",
       "surface": "live-network",
       "prerequisites": ["Docker-capable host", "pinned live image/tooling inputs"],
@@ -38,11 +43,47 @@
     },
     {
       "id": "historical-reproduction",
+      "state": "active",
       "make_target": "lab-test",
       "surface": "historical-reproduction",
       "prerequisites": ["scenario-specific pinned inputs"],
       "invalid_environment": "declared reproduction input unavailable",
       "timeout": "20m"
+    },
+    {
+      "id": "fuzz",
+      "state": "active",
+      "make_target": "fuzz",
+      "surface": "deterministic-fuzz",
+      "prerequisites": ["Go fuzz-capable toolchain"],
+      "invalid_environment": "fuzz-capable Go toolchain unavailable"
+    },
+    {
+      "id": "affected-platform",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "affected-platform",
+      "prerequisites": ["accepted platform scope", "selected eligible host"],
+      "invalid_environment": "no accepted platform-specific test or eligible host",
+      "activation": "S8.3 selects a supported platform contract and its required host evidence"
+    },
+    {
+      "id": "soak",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "sustained-operation",
+      "prerequisites": ["accepted duration, load, and observation contract"],
+      "invalid_environment": "no accepted sustained-operation campaign",
+      "activation": "S8.3 or a claim-bearing wave defines a bounded sustained-operation contract"
+    },
+    {
+      "id": "qualification",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "claim-qualification",
+      "prerequisites": ["accepted claim", "claim-specific acceptance matrix", "eligible environment"],
+      "invalid_environment": "no Stage 8 claim-bearing qualification suite is accepted",
+      "activation": "a Product Owner-accepted claim registers its suite under tests/qualification/<claim>"
     }
   ],
   "suite_roots": [

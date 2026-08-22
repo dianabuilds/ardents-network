@@ -56,6 +56,7 @@ is a live-host tool dependency, not a receipt from another test.
 
 - `make unit`: deterministic Module tests; no Docker or long campaigns.
 - `make e2e`: real product commands in local processes.
+- `make fuzz`: bounded fuzzing of a maintained untrusted parser/encoder pair.
 - `make lab-test`: closed historical laboratory Modules, outside product testing and `make check`.
 - `make live`: real product commands in containers and a real Docker network.
 - `make quick-check`: architecture, vet, unit, build, and module tidiness.
@@ -70,6 +71,23 @@ failure without exercising a different product behavior. Both surfaces remain
 independently runnable and mandatory. Live tests require an explicit
 Docker-capable job; lack of Docker is a failed live environment, not a skipped
 passing test.
+
+## Execution profile registry
+
+The profile registry distinguishes **active** from **inactive** profiles.
+Active profiles have a checked Make entrypoint; an inactive profile has no
+current accepted suite and names the decision that must activate it. Inactive
+does not mean passed, waived, or unavailable evidence.
+
+- developer, deterministic Module, process, race, fuzz, live, and historical
+  reproduction are active at S8.2;
+- affected-platform remains inactive until S8.3 selects a supported platform
+  contract and eligible host;
+- soak remains inactive until a bounded duration/load/observer contract is
+  accepted; and
+- Qualification remains inactive because S8.1 accepted no Stage 8
+  claim-bearing suite. A later accepted claim creates
+  `tests/qualification/<claim>` with its matrix and entrypoint.
 
 ## Profile ownership and validity
 
@@ -89,10 +107,10 @@ one execution profile. A new package or suite root cannot enter a profile
 through a negative filter or merely by directory naming.
 
 [`tests/profiles/profiles.json`](../../tests/profiles/profiles.json) is the
-checked current registry for the developer, deterministic, process, race, live,
-and historical-reproduction profiles. It records entrypoint and environment
-classification, while scenario ownership remains with the test that proves the
-behavior. The architecture gate verifies its schema, required profile set, and
+checked current registry for all active and inactive execution profiles. It
+records entrypoint, activation condition, and environment classification, while
+scenario ownership remains with the test that proves the behavior. The
+architecture gate verifies its schema, required profile set, state, and active
 Make-target wiring.
 
 The deterministic, process, and historical-reproduction package memberships
