@@ -156,8 +156,8 @@ results, baseline discrepancies, and open-decision ledger are recorded. This
 does **not** yet satisfy the S8.0 exit. Before Product Owner review, this report
 needs (1) a source-bound inventory of every process, format, Interface, external
 Adapter, and trust-zone crossing; (2) per-suite timing, skip,
-external-requirement, duplicate-role, and flake observations; (4) a complete
+external-requirement, duplicate-role, and flake observations; (3) a complete
 code/test/document disposition inventory that distinguishes inventory from the
-S8.1 decision; and (5) an evidence-based disposition of every prepared G2
+S8.1 decision; and (4) an evidence-based disposition of every prepared G2
 finding affected by the Stage 7 delta. It has not passed S8.1 and authorizes no
 Module migration.
