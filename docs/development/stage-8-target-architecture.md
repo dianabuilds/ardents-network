@@ -110,6 +110,44 @@ unbounded compatibility mode. The S8.4 plan records a concrete mode, observer,
 cutover, rollback/forward-repair behavior, and deletion condition for every row
 it mutates.
 
+## Complete current-code disposition
+
+The following groups cover every current Go package under `cmd/`, `internal/`,
+`tests/e2e/`, and `tests/live/`. A grouping is only a shared ownership outcome;
+S8.4 still records per-wave paths and deletions. Empty directory placeholders
+are not Go packages and do not represent a retained test surface.
+
+| Current source | Target disposition | Wave and condition |
+|---|---|---|
+| `cmd/ardents` | Replace with thin Endpoint command. | M10/M13 after Endpoint composition exists. |
+| `cmd/ardents-node` | Replace with thin Node/Endpoint composition command. | M11/M13. |
+| `cmd/ardents-name` | Remove current command shape; retain only selected naming/resolution operator journey. | M5/M6/M13, subject to DA-03/04/07/10. |
+| `cmd/ardents-bridge`, `cmd/ardents-route` | Remove current tracer shapes; retain selected Entry/Route operator journey only. | M7/M8/M13, subject to DA-06/10. |
+| `cmd/ardents-service`, `cmd/ardents-publish-app`, `cmd/ardents-stream-app` | Remove tracer commands; retain a real Endpoint/Application operator surface only if DA-10 names its observer. | M9/M10/M13. |
+| `cmd/ardents-release` | Retire as an H3 product command; Release/Update remain technical inputs only until DA-09 changes scope. | M1/M2/M13, subject to DA-01/09. |
+| `cmd/blocked-entry-lab`, `cmd/blocked-entry-verify-lab`, `cmd/carrier-lab`, `cmd/named-site-lab`, `cmd/stage6-evidence-lab`, `cmd/stage6-verify-lab` | Historical reproduction with a named retained obligation, or delete the runner while retaining immutable provenance. | M14, subject to DA-11. |
+| `internal/applicationipc`, `internal/serviceendpoint` | Transfer Application/admin process boundary and composition to Broker/Publication/Endpoint. | M9/M10, subject to DA-08/10. |
+| `internal/serviceconn` | Transfer stream behavior to `service/connection`; remove action/evidence/static-plan unions. | M9, subject to DA-06/10. |
+| `internal/bridge` | Transfer durable Invite/replay/replacement ownership to `entry`. | M7, subject to DA-06. |
+| `internal/camouflage` | Transfer to `route/webtunnel` only if selected; otherwise delete. | M7, subject to DA-06. |
+| `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
+| `internal/nameadmission`, `internal/nameauthority`, `internal/nameclaim`, `internal/namelease`, `internal/namerecovery`, `internal/namestore`, `internal/naming` | Consolidate behind `naming/namespace`; remove duplicate validators, field bags, and stage fixtures. | M5, subject to DA-03/04/05/07. |
+| `internal/nameresolution` | Deepen as `naming/resolution` over opaque Namespace/State views. | M6, subject to DA-03/04/07. |
+| `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, `internal/network/framing`, `internal/network/store`, `internal/network/state` | Consolidate authenticated acceptance, current/pending state, and durable publication under `network/state`. | M3, subject to DA-02/05. |
+| `internal/network/source` | Retain as State-owned acquisition port and selected direct-origin Adapter only. | M3, subject to DA-05/10. |
+| `internal/node`, `internal/node/probe` | Transfer Node lifecycle and private probe to `node`. | M11. |
+| `internal/resource` | Retain/deepen as the sole shared resource coordinator. | M4, subject to supported-platform/resource scope. |
+| `internal/route`, `internal/routeplan` | Consolidate route selection, attachment lifetime, and process cleanup under `route`. | M8, subject to DA-06. |
+| `internal/releasedecision` | Transfer release trust/root/floor ownership to `release`. | M1, subject to DA-01. |
+| `internal/updatetransaction` | Transfer transaction/recovery to `update` only after lifecycle scope and Release authority stabilize. | M2, subject to DA-01/09. |
+| `internal/planfile` | Replace with command/owner-local bounded input decoders; do not retain a generic plan abstraction. | M3/M8/M9/M11/M13 as each consumer moves. |
+| `internal/streamworkload` | Retain only a named test/Qualification workload; otherwise delete. | M9/M14. |
+| `internal/architecture` | Retain factual graph/policy gate; remove historical receipts as their truth moves to current owners. | M0/M14. |
+| `internal/lab/blockedentry`, `internal/lab/blockedverify`, `internal/lab/carrier`, `internal/lab/directcontrol`, `internal/lab/modulecache`, `internal/lab/namedsite`, `internal/lab/nativecircuit`, `internal/lab/preflight`, `internal/lab/routecomparison`, `internal/lab/runlayout`, `internal/lab/sourceidentity`, `internal/lab/stage6evidence`, `internal/lab/stage6verify`, `internal/lab/tooling` | Never promote into product runtime. Retain only a named reproducer/verifier with source identity and retirement condition, otherwise delete code/assets at closure. | M14, subject to DA-11. |
+| `tests/e2e/network-source`, `tests/e2e/node`, `tests/e2e/route`, `tests/e2e/service` | Replace tests through the target Module/process seam, retaining only independently observable process facts. | M3/M8/M9/M11. |
+| `tests/e2e/blocked-entry-lab` | Historical reproduction only; retain or delete with the matching verifier obligation. | M14, subject to DA-11. |
+| `tests/live/network` | Retain only for a selected live-network fact; it is not current Qualification. | M8-M11/M14, subject to DA-06/08 and claim acceptance. |
+
 ## Acceptance and stop rules
 
 This proposal becomes the S8.3 design authority only when the Product Owner
