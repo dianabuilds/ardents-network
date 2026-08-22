@@ -34,6 +34,26 @@ architecture gate checks both records against the Go tree.
 - Do not put caches, evidence, generated dependencies, credentials, binaries,
   profiles, or test artifacts in the repository.
 
+## Architecture review signals
+
+Line count, exported-declaration count, broad records, direct clock use, string
+outcomes, and normalized duplication are investigation signals rather than
+correctness verdicts. A cohesive implementation can legitimately be large; a
+small one can still hide forged authority, unowned state, an unsafe format
+cutover, unbounded work, or a leaked trust boundary. Review the owning Module's
+responsibility, caller knowledge, state/lifecycle writer, failure/cleanup rule,
+format observers, and behavior/fault evidence together.
+
+The current command and export caps remain transitional architecture safeguards
+until S8.2 installs their source-bound replacement checks. They are not a
+reason to split one cohesive invariant into choreographing packages, widen a
+result record, or introduce a generic helper. A proposed exception instead
+records the local invariant, why an obvious split would add choreography, the
+real caller/compatibility boundary, and the tests that cover normal and failure
+behavior. A cap is removed only in the same accepted change that activates the
+replacement authority/interface/lifecycle enforcement; it is never bypassed
+for a passing metric alone.
+
 ## Required workflow
 
 Run `make quick-check` while writing code. It performs structure/format checks,
