@@ -58,6 +58,10 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 		result, applyErr := applyFailure(store, request, "self-testing", false, callErr)
 		return result, true, applyErr
 	}
+	if err := confirmAndCommitSchema(ctx, store, request, inspection); err != nil {
+		result, applyErr := applyFailure(store, request, "self-testing", false, err)
+		return result, true, applyErr
+	}
 	if err := trace.record(ctx, "09-committed", stateCommitted, adapterSuccess); err != nil {
 		result, applyErr := applyFailure(store, request, "committed", false, err)
 		return result, true, applyErr
@@ -96,6 +100,10 @@ func resumeSuccessfulSelfTest(ctx context.Context, store *ownedStore, inspection
 	}
 	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifest,
 		predecessor: sha256.Sum256(validation.RawEntries[stateSelfTesting-1]), elapsedOffset: validation.Entries[stateSelfTesting-1].ElapsedNanos}
+	if err := confirmAndCommitSchema(ctx, store, request, inspection); err != nil {
+		result, applyErr := applyFailure(store, request, "self-testing", false, err)
+		return result, true, applyErr
+	}
 	if err := trace.record(ctx, "09-committed", stateCommitted, adapterNotCalled); err != nil {
 		result, applyErr := applyFailure(store, request, "committed", false, err)
 		return result, true, applyErr
@@ -158,6 +166,14 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 		if rollbackErr := store.rollbackToPredecessor(request.Generation, *selection.Rollback); rollbackErr != nil {
 			return transactionInvalidResult(request.Generation), true, errors.Join(rollbackErr, store.release())
 		}
+		if schemaErr := discardPendingSchema(context.Background(), request, inspection); schemaErr != nil {
+			recordErr := trace.record(context.Background(), "12-repair-required", stateRepairRequired, adapterFailed)
+			if recordErr != nil {
+				return transactionInvalidResult(request.Generation), true, errors.Join(schemaErr, recordErr, store.release())
+			}
+			return repairRequiredResult(request.Generation, selection.Rollback.Artifact, inspection.currentCustody), true,
+				errors.Join(schemaErr, errRepairRequired, store.release())
+		}
 		callErr := callBounded(context.Background(), trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
 			return request.SelfTest.Check(callCtx, rollbackIdentity(request, *selection.Rollback))
 		})
@@ -204,6 +220,7 @@ func validateRollbackDecision(store *ownedStore, request Request, selection curr
 	if decodeErr != nil {
 		return errors.Join(errRollbackRefused, decodeErr)
 	}
+	retained.SchemaPlan = view.SchemaPlan
 	encoded, err := encodeManifestWithNotice(retained, sha256.Sum256(payload), view.SafeNotice)
 	if err != nil {
 		return errors.Join(errRollbackRefused, err)

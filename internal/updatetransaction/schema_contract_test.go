@@ -129,15 +129,21 @@ func TestCOWCommit(t *testing.T) {
 	candidateSchema := SchemaSelection{Owner: owner, Generation: 1, Content: candidateContent, Bytes: 5, Entries: 1}
 	candidateSchema.Identity = schemaSelectionIdentity(candidateSchema)
 	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
+	selfTest := &retrySelfTest{}
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
 		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
-		SelfTest: oraclePassSelfTest{}, Schema: probe}
+		SelfTest: selfTest, Schema: probe}
 
+	first, firstErr := Apply(context.Background(), request)
+	if !errors.Is(firstErr, ErrSelfTestUnavailable) || first.Outcome != "application-networking-unverified" || probe.planCalls != 1 ||
+		probe.prepareCalls != 1 || probe.inspectCalls != 1 {
+		t.Fatalf("first Apply = %+v, %v; schema=%+v", first, firstErr, probe)
+	}
 	result, err := Apply(context.Background(), request)
-	if err != nil || result.Outcome != "committed" || probe.planCalls != 1 || probe.prepareCalls != 1 ||
-		probe.inspectCalls != 1 || probe.discardCalls != 0 {
-		t.Fatalf("Apply = %+v, %v; schema=%+v", result, err, probe)
+	if err != nil || result.Outcome != "committed" || probe.planCalls != 2 || probe.prepareCalls != 1 ||
+		probe.inspectCalls != 2 || probe.discardCalls != 0 || selfTest.calls != 2 {
+		t.Fatalf("second Apply = %+v, %v; schema=%+v", result, err, probe)
 	}
 	raw, readErr := os.ReadFile(filepath.Join(root, "schema-current"))
 	current, decodeErr := decodeSchemaCurrent(raw)
@@ -184,6 +190,47 @@ func TestCOWPrepFailure(t *testing.T) {
 	}
 	if raw, readErr := os.ReadFile(filepath.Join(root, "schema-current")); readErr != nil || string(raw) != string(previousRaw) {
 		t.Fatalf("schema selection changed after prepare failure: %x %v", raw, readErr)
+	}
+}
+
+func TestCOWRollbackDiscardsCandidate(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	owner := sha256.Sum256([]byte("schema rollback owner"))
+	previousContent := sha256.Sum256([]byte("schema rollback previous"))
+	previous := SchemaSelection{Owner: owner, Content: previousContent}
+	previous.Identity = schemaSelectionIdentity(previous)
+	previousRaw, err := encodeSchemaCurrent(schemaCurrent{Selection: previous})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "schema-current"), previousRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	candidateContent := sha256.Sum256([]byte("schema rollback candidate"))
+	candidateSchema := SchemaSelection{Owner: owner, Generation: 1, Content: candidateContent, Bytes: 9, Entries: 1}
+	candidateSchema.Identity = schemaSelectionIdentity(candidateSchema)
+	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
+		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		SelfTest: failedSelfTest{}, Schema: probe}
+	if result, applyErr := Apply(context.Background(), request); applyErr == nil || result.Outcome != "self-test-failed" {
+		t.Fatalf("forward Apply = %+v, %v", result, applyErr)
+	}
+	request.RollbackDecision = oracleRollbackDecision(t, vector)
+	request.SelfTest = oraclePassSelfTest{}
+	result, applyErr := Apply(context.Background(), request)
+	if !errors.Is(applyErr, errRolledBack) || result.Outcome != "rolled-back" || probe.planCalls != 2 ||
+		probe.prepareCalls != 1 || probe.inspectCalls != 1 || probe.discardCalls != 1 {
+		t.Fatalf("rollback Apply = %+v, %v; schema=%+v", result, applyErr, probe)
+	}
+	raw, readErr := os.ReadFile(filepath.Join(root, "schema-current"))
+	if readErr != nil || string(raw) != string(previousRaw) {
+		t.Fatalf("schema selection after rollback=%x %v", raw, readErr)
 	}
 }
 

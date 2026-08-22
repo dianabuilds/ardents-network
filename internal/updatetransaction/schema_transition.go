@@ -97,3 +97,31 @@ func (transition schemaTransition) commit(store *ownedStore) error {
 	}
 	return store.commitSchema(transition.record)
 }
+
+// confirmAndCommitSchema re-establishes the bounded foreign readability fact
+// on an explicit Apply continuation. Recover never calls this Adapter method.
+func confirmAndCommitSchema(ctx context.Context, store *ownedStore, request Request, inspection rootInspection) error {
+	if inspection.schemaCurrent != nil && inspection.schemaCurrent.Transaction == request.Generation {
+		return nil
+	}
+	transition, err := planSchema(ctx, request, inspection)
+	if err != nil || !transition.copy {
+		return err
+	}
+	transition.prepared = true
+	if err := transition.work.Inspect(ctx, transition.candidate); err != nil {
+		return err
+	}
+	return transition.commit(store)
+}
+
+// discardPendingSchema removes only the still-unselected COW candidate after
+// code has been restored to its retained predecessor. A no-op schema has no
+// foreign candidate to remove.
+func discardPendingSchema(ctx context.Context, request Request, inspection rootInspection) error {
+	transition, err := planSchema(ctx, request, inspection)
+	if err != nil || !transition.copy {
+		return err
+	}
+	return transition.work.Discard(ctx, transition.candidate)
+}
