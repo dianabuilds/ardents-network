@@ -1,7 +1,7 @@
 ---
 id: R-059
 title: When may Network State recover a missing current pointer?
-status: proposed
+status: accepted
 owner: product research
 started: 2026-08-22
 reviewed: 2026-08-22
@@ -121,7 +121,7 @@ contract is required before treating rename/directory sync as equivalent.
 
 ## Recommendation
 
-Choose H1 with high confidence: outside the virgin root, missing or malformed
+The Product Owner accepted H1 on 2026-08-22: outside the virgin root, missing or malformed
 `current` must fail closed and must not be recreated automatically from stored
 generations. M3 replaces the current helper with a typed recovery-required
 outcome, preserves forensic artifacts, prevents Node readiness/new work, and
@@ -134,7 +134,8 @@ the activation authority and rejects guessing about interrupted state.
 
 ## Disposition
 
-- State: `proposed`; requires Product Owner acceptance before M3 code mutation.
+- State: `accepted` by the Product Owner on 2026-08-22; M3 may implement the
+  bounded fail-closed recovery change.
 - No ADR is required if this confirms R-027/R-029. A superseding recovery or
   storage model would require the applicable ADR/research route.
 - No experiment code is retained yet; M3 owns the deterministic failure matrix

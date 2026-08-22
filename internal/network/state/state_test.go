@@ -3,6 +3,7 @@ package state_test
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -166,7 +167,7 @@ func TestOpenRefusesNonEmptyUnownedRootWithoutCleanup(t *testing.T) {
 	}
 }
 
-func TestAcceptRecoversCompleteGenerationMissingCurrentPointer(t *testing.T) {
+func TestOpenFailsClosedWhenNonEmptyRootLacksCurrentPointer(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	root := t.TempDir()
@@ -189,14 +190,19 @@ func TestAcceptRecoversCompleteGenerationMissingCurrentPointer(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	restarted, err := state.Open(config)
-	if err != nil {
-		t.Fatal(err)
+	_, err = state.Open(config)
+	var recoveryRequired *state.RecoveryRequiredError
+	if !errors.As(err, &recoveryRequired) {
+		t.Fatalf("missing pointer error = %v, want RecoveryRequiredError", err)
 	}
-	defer restarted.Close()
-	recovered, err := restarted.Current()
-	if err != nil || recovered != accepted {
-		t.Fatalf("recover completed immutable generation: snapshot=%+v err=%v", recovered, err)
+	if recoveryRequired.Reason != "current pointer is missing from a non-empty root" {
+		t.Fatalf("recovery reason = %q", recoveryRequired.Reason)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "current")); !os.IsNotExist(statErr) {
+		t.Fatalf("missing pointer was recreated: %v", statErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "generations", accepted.Generation, "epoch.bin")); statErr != nil {
+		t.Fatalf("generation was not retained for explicit repair: %v", statErr)
 	}
 }
 

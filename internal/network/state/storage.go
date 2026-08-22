@@ -17,7 +17,10 @@ func loadCurrent(config config, storage *statestore.Root) (*Snapshot, *candidate
 		generations[value.Name] = value
 	}
 	if current == "" {
-		return recoverMissingCurrent(config, storage, generations)
+		if err := missingCurrentRecovery(generations); err != nil {
+			return nil, nil, err
+		}
+		return nil, nil, nil
 	}
 	decision, _, err := loadGenerationChain(config, generations, current, make(map[string]bool))
 	if err != nil {
