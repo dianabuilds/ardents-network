@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 type retrySelfTest struct {
@@ -20,11 +20,11 @@ func (failedSelfTest) Check(context.Context, CandidateIdentity) error {
 	return errors.New("local self-test failure")
 }
 
-func oracleRollbackDecision(t *testing.T, vector v0OracleVector) releasedecision.Decision {
+func oracleRollbackDecision(t *testing.T, vector v0OracleVector) release.Decision {
 	t.Helper()
 	manifest := vector.Initial.ActivePayload.Manifest
 	floors := vector.Expected.ReleaseFloors
-	return releasedecision.Decision{Outcome: "release-accepted", Path: manifest.TargetPath, Length: int64(vector.Initial.ActivePayload.Length),
+	return release.Decision{Outcome: "release-accepted", Path: manifest.TargetPath, Length: int64(vector.Initial.ActivePayload.Length),
 		Digest: oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256)[:], Platform: manifest.Platform,
 		Architecture: manifest.Architecture, Environment: manifest.Environment, Network: manifest.Network,
 		ReleaseIdentity: manifest.ReleaseIdentity, ReleaseVersion: int64(manifest.ReleaseVersion), SourceRevision: manifest.SourceRevision,
@@ -34,7 +34,7 @@ func oracleRollbackDecision(t *testing.T, vector v0OracleVector) releasedecision
 		ProtocolPhase: manifest.ProtocolPhase, BuildSafety: "release-accepted", Protocol: "release-accepted",
 		ReferenceTime: oracleTime(t, manifest.ReferenceTime), BuildSafetyNoNewWorkAfter: oracleTime(t, manifest.BuildSafetyNoNewWorkAfter),
 		BuildSafetyTerminateAfter: oracleTime(t, manifest.BuildSafetyTerminateAfter), RootVersion: floors.RootVersion,
-		Floors: releasedecision.FloorSet{RootVersion: floors.RootVersion, RootDigest: oracleDecodeDigest(t, floors.RootSHA256)[:],
+		Floors: release.FloorSet{RootVersion: floors.RootVersion, RootDigest: oracleDecodeDigest(t, floors.RootSHA256)[:],
 			TimestampVersion: floors.TimestampVersion, TimestampDigest: oracleDecodeDigest(t, floors.TimestampSHA256)[:],
 			SnapshotVersion: floors.SnapshotVersion, SnapshotDigest: oracleDecodeDigest(t, floors.SnapshotSHA256)[:],
 			TargetsVersion: floors.TargetsVersion, TargetsDigest: oracleDecodeDigest(t, floors.TargetsSHA256)[:]},
@@ -58,7 +58,7 @@ func TestSelfTestFailureBecomesRollbackPending(t *testing.T) {
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	work := &oracleWorkControl{}
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: work, SelfTest: failedSelfTest{}}
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: work, SelfTest: failedSelfTest{}}
 	result, err := Apply(context.Background(), request)
 	if err == nil || result.Outcome != "self-test-failed" || result.State != "rollback-pending" ||
 		result.Generation != 1 || result.CurrentDigest != *oracleDecodeDigest(t, vector.Candidate.SHA256) ||
@@ -74,7 +74,7 @@ func TestSelfTestFailureBecomesRollbackPending(t *testing.T) {
 		t.Fatalf("pending Apply = %+v, %v; work=%#v", repeated, repeatedErr, work)
 	}
 	refusedRequest := request
-	refusedRequest.RollbackDecision = request.Decision
+	refusedRequest.rollbackDecision = request.decision
 	refused, refusedErr := Apply(context.Background(), refusedRequest)
 	if !errors.Is(refusedErr, errRollbackRefused) || refused.Outcome != "rollback-refused" || refused.State != "repair-required" ||
 		refused.CurrentDigest != result.CurrentDigest || refused.RollbackDigest != result.RollbackDigest ||
@@ -100,12 +100,12 @@ func TestRollbackToVerifiedPredecessor(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	work := &oracleWorkControl{}
-	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector),
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", decision: oracleAcceptedDecision(t, vector),
 		Artifact: candidate, Work: work, SelfTest: failedSelfTest{}}
 	if _, err := Apply(context.Background(), request); err == nil {
 		t.Fatal("local self-test failure was accepted")
 	}
-	request.RollbackDecision = oracleRollbackDecision(t, vector)
+	request.rollbackDecision = oracleRollbackDecision(t, vector)
 	request.SelfTest = oraclePassSelfTest{}
 	result, err := Apply(context.Background(), request)
 	if !errors.Is(err, errRolledBack) || result.Outcome != "rolled-back" || result.State != "rolled-back" ||
@@ -130,12 +130,12 @@ func TestRollbackSelfTestFailureRequiresRepair(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	work := &oracleWorkControl{}
-	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector),
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", decision: oracleAcceptedDecision(t, vector),
 		Artifact: candidate, Work: work, SelfTest: failedSelfTest{}}
 	if _, err := Apply(context.Background(), request); err == nil {
 		t.Fatal("initial failed self-test accepted")
 	}
-	request.RollbackDecision = oracleRollbackDecision(t, vector)
+	request.rollbackDecision = oracleRollbackDecision(t, vector)
 	result, err := Apply(context.Background(), request)
 	if !errors.Is(err, errRepairRequired) || result.Outcome != "repair-required" || result.State != "repair-required" ||
 		result.CurrentDigest != *oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256) || result.RollbackDigest != [32]byte{} ||
@@ -158,7 +158,7 @@ func TestSelfTestUnavailableRetry(t *testing.T) {
 	work := &oracleWorkControl{}
 	selfTest := &retrySelfTest{}
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: work, SelfTest: selfTest}
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: work, SelfTest: selfTest}
 	first, firstErr := Apply(context.Background(), request)
 	if !errors.Is(firstErr, ErrSelfTestUnavailable) || first.Outcome != "application-networking-unverified" ||
 		first.State != "self-testing" || first.Generation != 1 || first.CurrentDigest != *oracleDecodeDigest(t, vector.Candidate.SHA256) ||

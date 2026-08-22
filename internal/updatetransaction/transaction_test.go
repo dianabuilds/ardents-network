@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 type oracleWorkControl struct {
@@ -132,7 +132,7 @@ func TestApplyV0CommitsAndPreservesD0(t *testing.T) {
 		Generation: vector.Request.TransactionGeneration,
 		ActiveWork: vector.Request.ActiveWork,
 		SchemaPlan: vector.Request.SchemaPlan,
-		Decision:   decision,
+		decision:   decision,
 		Artifact:   candidate,
 		Work:       work,
 		SelfTest:   selfTest,
@@ -210,7 +210,7 @@ func TestApplyV0CommitsAndPreservesD0(t *testing.T) {
 	conflict.Artifact = append([]byte(nil), request.Artifact...)
 	conflict.Artifact[0] ^= 0xff
 	conflictDigest := sha256.Sum256(conflict.Artifact)
-	conflict.Decision.Digest = append([]byte(nil), conflictDigest[:]...)
+	conflict.decision.Digest = append([]byte(nil), conflictDigest[:]...)
 	if result, err := Apply(context.Background(), conflict); err == nil || result.Outcome != invalidOutcome {
 		t.Fatalf("conflicting committed generation accepted: %+v, %v", result, err)
 	}
@@ -239,7 +239,7 @@ func TestApplyRevalidatesStagingAfterDrain(t *testing.T) {
 	}}
 	selfTest := &oracleCustodyProbe{}
 	result, err := Apply(context.Background(), Request{UpdateRoot: root, Generation: 1,
-		SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		SchemaPlan: "no-op-v1", decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: work, SelfTest: selfTest})
 	if err == nil || result.Outcome != invalidOutcome || work.stopCalls != 1 ||
 		work.drainCalls != 1 || selfTest.selfTestCalls != 0 {
@@ -256,7 +256,7 @@ func TestApplyRevalidatesStagingAfterDrain(t *testing.T) {
 	}
 	work.drainMutation = nil
 	if retried, retryErr := Apply(context.Background(), Request{UpdateRoot: root, Generation: 1,
-		SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		SchemaPlan: "no-op-v1", decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: work, SelfTest: oraclePassSelfTest{}}); retryErr != nil || retried.Outcome != "committed" {
 		t.Fatalf("Apply after bounded cleanup = %+v, %v", retried, retryErr)
 	}
@@ -273,7 +273,7 @@ func TestApplyCleansPartialPrepareBeforeRetry(t *testing.T) {
 	}
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 	if result, err := Apply(context.Background(), request); err == nil || result.Outcome != invalidOutcome {
 		t.Fatalf("Apply accepted partial prepare: %+v, %v", result, err)
@@ -290,17 +290,17 @@ func TestApplyRejectsEntrySmokeCasesBeforeAdapters(t *testing.T) {
 	tests := []struct {
 		name    string
 		outcome string
-		mutate  func(*testing.T, string, *releasedecision.Decision)
+		mutate  func(*testing.T, string, *release.Decision)
 	}{
-		{"oversized-candidate", "resource-denied", func(_ *testing.T, _ string, decision *releasedecision.Decision) {
+		{"oversized-candidate", "resource-denied", func(_ *testing.T, _ string, decision *release.Decision) {
 			decision.Length = maximumArtifactBytes + 1
 		}},
-		{"missing-stored-authorization", "transaction-invalid", func(t *testing.T, root string, _ *releasedecision.Decision) {
+		{"missing-stored-authorization", "transaction-invalid", func(t *testing.T, root string, _ *release.Decision) {
 			if err := os.Remove(filepath.Join(root, "generations", "0", "manifest.bin")); err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{"occupied-staging", "transaction-invalid", func(t *testing.T, root string, _ *releasedecision.Decision) {
+		{"occupied-staging", "transaction-invalid", func(t *testing.T, root string, _ *release.Decision) {
 			if err := os.Mkdir(filepath.Join(root, "staging", "9"), 0o700); err != nil {
 				t.Fatal(err)
 			}
@@ -323,7 +323,7 @@ func TestApplyRejectsEntrySmokeCasesBeforeAdapters(t *testing.T) {
 				vector.Candidate.Length, vector.Candidate.SHA256)
 			work := &oracleWorkControl{}
 			result, err := Apply(context.Background(), Request{UpdateRoot: root,
-				Generation: 1, SchemaPlan: "no-op-v1", Decision: decision,
+				Generation: 1, SchemaPlan: "no-op-v1", decision: decision,
 				Artifact: candidate, Work: work, SelfTest: oraclePassSelfTest{}})
 			if err == nil || result.Outcome != test.outcome || work.stopCalls != 0 || work.drainCalls != 0 {
 				t.Fatalf("Apply = %+v, %v; work=%+v", result, err, work)
@@ -348,7 +348,7 @@ func TestExternalCurrentMutationFailsClosed(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 	if _, err := Apply(context.Background(), request); err != nil {
 		t.Fatal(err)
@@ -376,7 +376,7 @@ func TestExternalHardLinkAliasFailsClosed(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 	if _, err := Apply(context.Background(), request); err != nil {
 		t.Fatal(err)
@@ -418,11 +418,11 @@ func TestCleanupFailureIsObservedWithinCeiling(t *testing.T) {
 	}
 }
 
-func oracleAcceptedDecision(t *testing.T, vector v0OracleVector) releasedecision.Decision {
+func oracleAcceptedDecision(t *testing.T, vector v0OracleVector) release.Decision {
 	t.Helper()
 	floors := vector.Expected.ReleaseFloors
-	return releasedecision.Decision{
-		Outcome: releasedecision.Outcome("release-accepted"),
+	return release.Decision{
+		Outcome: release.Outcome("release-accepted"),
 		Path:    vector.Candidate.Path, Length: int64(vector.Candidate.Length),
 		Digest:   oracleDecodeDigest(t, vector.Candidate.SHA256)[:],
 		Platform: "windows-amd64", Architecture: "amd64",
@@ -433,13 +433,13 @@ func oracleAcceptedDecision(t *testing.T, vector v0OracleVector) releasedecision
 		BuildIdentity: "build-0001", DependencyIdentity: "deps-0001",
 		SBOMIdentity: "sbom-0001", AttestationPolicy: "two-builder",
 		Qualification: "qualified", BuildState: "current", ProtocolPhase: "required",
-		BuildSafety:               releasedecision.Outcome("release-accepted"),
-		Protocol:                  releasedecision.Outcome("release-accepted"),
+		BuildSafety:               release.Outcome("release-accepted"),
+		Protocol:                  release.Outcome("release-accepted"),
 		ReferenceTime:             oracleTime(t, "2030-01-02T03:04:05Z"),
 		BuildSafetyNoNewWorkAfter: oracleTime(t, "2030-02-01T03:04:05Z"),
 		BuildSafetyTerminateAfter: oracleTime(t, "2030-07-01T03:04:05Z"),
 		RootVersion:               floors.RootVersion,
-		Floors: releasedecision.FloorSet{
+		Floors: release.FloorSet{
 			RootVersion: floors.RootVersion, RootDigest: oracleDecodeDigest(t, floors.RootSHA256)[:],
 			TimestampVersion: floors.TimestampVersion, TimestampDigest: oracleDecodeDigest(t, floors.TimestampSHA256)[:],
 			SnapshotVersion: floors.SnapshotVersion, SnapshotDigest: oracleDecodeDigest(t, floors.SnapshotSHA256)[:],

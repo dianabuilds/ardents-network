@@ -36,7 +36,7 @@ func TestRecoverBusyDoesNotMutate(t *testing.T) {
 		Generation: vector.Request.TransactionGeneration,
 		ActiveWork: vector.Request.ActiveWork,
 		SchemaPlan: vector.Request.SchemaPlan,
-		Decision:   decision,
+		decision:   decision,
 		Artifact:   candidate,
 		Work:       &recoveryOracleBlockingWork{signal: make(chan struct{}), entered: make(chan struct{})},
 		SelfTest:   oraclePassSelfTest{},

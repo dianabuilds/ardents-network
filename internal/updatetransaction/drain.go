@@ -36,12 +36,12 @@ func (trace *tracer) deadline(state transactionState) time.Time {
 }
 
 func (trace *tracer) journalDeadline(state transactionState) time.Time {
-	deadline := trace.request.Decision.BuildSafetyTerminateAfter
-	if protocol := trace.request.Decision.ProtocolTransitionDeadline; !protocol.IsZero() && protocol.Before(deadline) {
+	deadline := trace.request.decision.BuildSafetyTerminateAfter
+	if protocol := trace.request.decision.ProtocolTransitionDeadline; !protocol.IsZero() && protocol.Before(deadline) {
 		deadline = protocol
 	}
-	if state == stateStopNewWork && trace.request.Decision.BuildSafetyNoNewWorkAfter.Before(deadline) {
-		deadline = trace.request.Decision.BuildSafetyNoNewWorkAfter
+	if state == stateStopNewWork && trace.request.decision.BuildSafetyNoNewWorkAfter.Before(deadline) {
+		deadline = trace.request.decision.BuildSafetyNoNewWorkAfter
 	}
 	if !trace.callerLimit.IsZero() && trace.callerLimit.Before(deadline) {
 		deadline = trace.callerLimit

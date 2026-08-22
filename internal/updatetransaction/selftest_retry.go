@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 var errRollbackPending = errors.New("update rollback remains pending")
@@ -46,9 +46,9 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifest,
 		predecessor: sha256.Sum256(validation.RawEntries[stateSelfTesting-1]), callerLimit: callerLimit,
 		elapsedOffset: validation.Entries[stateSelfTesting-1].ElapsedNanos}
-	identity := CandidateIdentity{Generation: request.Generation, TargetPath: request.Decision.Path, Length: request.Decision.Length,
-		Digest: artifact, Platform: request.Decision.Platform, Architecture: request.Decision.Architecture,
-		Environment: request.Decision.Environment, Network: request.Decision.Network}
+	identity := CandidateIdentity{Generation: request.Generation, TargetPath: request.decision.Path, Length: request.decision.Length,
+		Digest: artifact, Platform: request.decision.Platform, Architecture: request.decision.Architecture,
+		Environment: request.decision.Environment, Network: request.decision.Network}
 	if callErr := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
 		return request.SelfTest.Check(callCtx, identity)
 	}); callErr != nil {
@@ -133,7 +133,7 @@ func selfTestFailedResult(generation uint64, current, rollback [32]byte, custody
 
 // resumeRollbackPending recognizes the durable pre-rollback state and never
 // repeats admission, drain, activation, or the failed self-test. A later slice
-// may proceed only after validating Request.RollbackDecision against the exact
+// may proceed only after validating Request.RollbackAuthorization against the exact
 // retained manifest and payload under this same owned-root lock.
 func resumeRollbackPending(store *ownedStore, inspection rootInspection, request Request,
 	artifact, manifest [32]byte) (Result, bool, error) {
@@ -158,7 +158,7 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 	if err != nil || len(validation.Entries) != 9 || validation.Entries[8].State != stateRollbackPending {
 		return transactionInvalidResult(request.Generation), true, errors.Join(errRecordInvalid, err, store.release())
 	}
-	if request.RollbackDecision.Outcome != "" {
+	if request.rollbackDecision.Outcome != "" {
 		if rollbackErr := validateRollbackDecision(store, request, selection); rollbackErr != nil {
 			trace := &tracer{store: store, request: request, start: time.Now(), artifact: artifact, manifest: manifest,
 				predecessor: sha256.Sum256(validation.RawEntries[8]), elapsedOffset: validation.Entries[8].ElapsedNanos}
@@ -203,10 +203,10 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 }
 
 func validateRollbackDecision(store *ownedStore, request Request, selection currentSelection) error {
-	decision := request.RollbackDecision
-	if selection.Rollback == nil || (decision.Outcome != releasedecision.Outcome("release-accepted") &&
-		decision.Outcome != releasedecision.Outcome("no-update")) || decision.BuildSafety != "release-accepted" ||
-		decision.Protocol != "release-accepted" || decision.ReferenceTime.Before(request.Decision.ReferenceTime) ||
+	decision := request.rollbackDecision
+	if selection.Rollback == nil || (decision.Outcome != release.OutcomeReleaseAccepted &&
+		decision.Outcome != release.OutcomeNoUpdate) || decision.BuildSafety != release.OutcomeReleaseAccepted ||
+		decision.Protocol != release.OutcomeReleaseAccepted || decision.ReferenceTime.Before(request.decision.ReferenceTime) ||
 		!decision.BuildSafetyNoNewWorkAfter.After(decision.ReferenceTime) ||
 		!decision.BuildSafetyTerminateAfter.After(decision.BuildSafetyNoNewWorkAfter) {
 		return errRollbackRefused
@@ -217,7 +217,7 @@ func validateRollbackDecision(store *ownedStore, request Request, selection curr
 	}
 	retained := request
 	retained.Generation = selection.Rollback.Generation
-	retained.Decision = decision
+	retained.decision = decision
 	retained.Artifact = payload
 	manifest, err := readBoundedFile(filepath.Join(store.generationPath("generations", selection.Rollback.Generation), "manifest.bin"), maximumRecordBytes)
 	if err != nil || sha256.Sum256(manifest) != selection.Rollback.Manifest {

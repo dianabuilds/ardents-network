@@ -42,7 +42,7 @@ func (store *ownedStore) rollbackToPredecessor(generation uint64, predecessor in
 }
 
 func rollbackIdentity(request Request, tuple inspectedTuple) CandidateIdentity {
-	decision := request.RollbackDecision
+	decision := request.rollbackDecision
 	return CandidateIdentity{Generation: tuple.Generation, TargetPath: decision.Path, Length: decision.Length,
 		Digest: tuple.Artifact, Platform: decision.Platform, Architecture: decision.Architecture,
 		Environment: decision.Environment, Network: decision.Network}

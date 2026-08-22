@@ -18,9 +18,7 @@ func TestSealedIntroductionSetupIsOpaqueToIntroduction(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	client, introduction, service := setupIdentity(t, 71), setupIdentity(t, 72), setupIdentity(t, 73)
-	suffix := time.Now().Format("150405.000000")
-	userSocket := filepath.Join(os.TempDir(), "asi-u-"+suffix+".sock")
-	serviceSocket := filepath.Join(os.TempDir(), "asi-s-"+suffix+".sock")
+	userSocket, serviceSocket := introductionSocketPaths(t)
 	manifest, network, epoch := [32]byte{1}, [32]byte{2}, [32]byte{3}
 	introductionNode, rendezvousNode := [32]byte{4}, [32]byte{5}
 	serviceActor := Actor{Role: "publisher", ManifestDigest: manifest, NetworkID: network, EpochDigest: epoch,
@@ -83,9 +81,7 @@ func TestSealedIntroductionSetupRejectsPeerAndBindingMismatch(t *testing.T) {
 			defer cancel()
 			client, introduction, service := setupIdentity(t, 81), setupIdentity(t, 82), setupIdentity(t, 83)
 			attacker := setupIdentity(t, 84)
-			suffix := time.Now().Format("150405.000000") + test.name
-			userSocket := filepath.Join(os.TempDir(), "asi-u-"+suffix+".sock")
-			serviceSocket := filepath.Join(os.TempDir(), "asi-s-"+suffix+".sock")
+			userSocket, serviceSocket := introductionSocketPaths(t)
 			manifest := [32]byte{11}
 			serviceManifest := manifest
 			if test.wrongManifest {
@@ -135,7 +131,7 @@ func TestIntroductionRelayCancellationCleansSocket(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	identity := setupIdentity(t, 91)
-	path := filepath.Join(os.TempDir(), "asi-c-"+time.Now().Format("150405.000000")+".sock")
+	path, _ := introductionSocketPaths(t)
 	stop, completed, err := startIntroductionRelay(ctx, Actor{IntroductionSetupSocket: path,
 		IntroductionSetupPeer: identity.public, IntroductionForwardSocket: "unused",
 		IntroductionForwardPublic: identity.public, Certificate: identity.certificate, Deadline: time.Second})
@@ -161,6 +157,24 @@ func TestIntroductionRelayCancellationCleansSocket(t *testing.T) {
 type sealedSetupIdentity struct {
 	public      [32]byte
 	certificate tls.Certificate
+}
+
+// introductionSocketPaths gives each concurrent test a short, unique AF_UNIX
+// directory. The global time-derived names formerly collided under the full
+// parallel profile, while testing.T.TempDir can exceed Windows' socket-path
+// limit because it embeds the test name.
+func introductionSocketPaths(t *testing.T) (string, string) {
+	t.Helper()
+	directory, err := os.MkdirTemp(os.TempDir(), "asi-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if cleanupErr := os.RemoveAll(directory); cleanupErr != nil {
+			t.Errorf("clean Introduction socket directory: %v", cleanupErr)
+		}
+	})
+	return filepath.Join(directory, "user.sock"), filepath.Join(directory, "service.sock")
 }
 
 func setupIdentity(t *testing.T, marker byte) sealedSetupIdentity {

@@ -16,7 +16,7 @@ func TestApplyRotatesVerifiedRollbackForNextGeneration(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	first := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 	if result, err := Apply(context.Background(), first); err != nil || result.Outcome != "committed" {
 		t.Fatalf("first Apply = %+v, %v", result, err)
 	}
@@ -58,7 +58,7 @@ func TestApplyRefusesSuccessorBeforeRollbackRetirement(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	first := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 	if _, err := Apply(context.Background(), first); err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestRecoverCompletesBoundedRollbackRetirement(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 	if _, err := Apply(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestRecoverRemovesBoundRetirementCurrentTemp(t *testing.T) {
 	vector := oracleBootstrapV0(t, root)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 	if _, err := Apply(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}

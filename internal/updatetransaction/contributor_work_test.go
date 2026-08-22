@@ -36,7 +36,7 @@ func TestContributorWorkRunsInUpdateOrder(t *testing.T) {
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	work := &contributorWorkProbe{}
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: work, SelfTest: oraclePassSelfTest{}}
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: work, SelfTest: oraclePassSelfTest{}}
 	result, err := Apply(context.Background(), request)
 	if err != nil || result.Outcome != "committed" || work.stopCalls != 1 || work.drainCalls != 1 ||
 		work.stopAssignments != 1 || work.drainAssignments != 1 || work.rejoinOrWithdraw != 1 {

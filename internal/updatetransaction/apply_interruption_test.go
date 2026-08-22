@@ -93,7 +93,7 @@ func applyCheckpointRequest(t *testing.T) (string, Request) {
 	request := Request{
 		UpdateRoot: root, Generation: vector.Request.TransactionGeneration,
 		ActiveWork: vector.Request.ActiveWork, SchemaPlan: vector.Request.SchemaPlan,
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{},
 	}
 	if _, _, _, err := validateRequest(context.Background(), request); err != nil {

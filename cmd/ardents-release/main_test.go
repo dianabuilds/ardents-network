@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/updatetransaction"
 )
 
@@ -122,7 +122,7 @@ func TestApplyOfflineV0IsExact(t *testing.T) {
 	updateRoot := filepath.Join(parent, "update")
 	bootstrapUpdateRoot(t, updateRoot)
 	releaseRoot := filepath.Join(parent, "release")
-	fixture := filepath.Join("..", "..", "internal", "releasedecision", "testdata", "r049-public-vector-v1")
+	fixture := filepath.Join("..", "..", "internal", "release", "testdata", "r049-public-vector-v1")
 	metadata := filepath.Join(parent, "metadata")
 	if err := os.Mkdir(metadata, 0o700); err != nil {
 		t.Fatal(err)
@@ -317,18 +317,18 @@ func TestReadMetadataDirIgnoresNonJSON(t *testing.T) {
 	}
 }
 
-// synthesizedDecision returns a stable releasedecision.Decision
+// synthesizedDecision returns a stable release.Decision
 // used by the JSON-rendering test. The fields are the public
 // values, not derived from any production test fixture.
-func synthesizedDecision() releasedecision.Decision {
-	return releasedecision.Decision{
-		Outcome: releasedecision.Outcome("release-accepted"), Path: "ardents/windows-amd64/application",
+func synthesizedDecision() release.Decision {
+	return release.Decision{
+		Outcome: release.Outcome("release-accepted"), Path: "ardents/windows-amd64/application",
 		Length: 4096, Digest: make([]byte, 32), Platform: "windows-amd64", Architecture: "amd64",
 		Environment: "h3-test", Network: "ardents-h3-test-1", ReleaseIdentity: "ardents-release-0001",
 		ReleaseVersion: 1, SourceRevision: "rev-0001", BuildInputCommitment: "inputs-0001",
 		BuildIdentity: "build-0001", DependencyIdentity: "deps-0001", SBOMIdentity: "sbom-0001",
 		AttestationPolicy: "two-builder", Qualification: "qualified", BuildState: "current", ProtocolPhase: "required",
-		BuildSafety: releasedecision.Outcome("release-accepted"), Protocol: releasedecision.Outcome("release-accepted"),
+		BuildSafety: release.Outcome("release-accepted"), Protocol: release.Outcome("release-accepted"),
 		RootVersion: 1, Notice: "release is accepted by every state machine",
 		CustodyNotice: "H3 project-controlled custody limitation",
 	}

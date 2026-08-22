@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 const invalidOutcome = "release-invalid"
@@ -94,6 +96,11 @@ func applyWithStart(ctx context.Context, request Request, start time.Time) (Resu
 
 func applyWithControls(ctx context.Context, request Request, control *applyInterruptionControl, operations stageOperations,
 	observe func(string) (resourceObservation, error), start, callerLimit time.Time) (result Result, resultErr error) {
+	var authorized bool
+	request, authorized = authorizedRequest(request)
+	if !authorized {
+		return invalidResult(request, "release-accepted"), errRecordInvalid
+	}
 	artifact, manifestBytes, manifestDigest, err := validateRequest(ctx, request)
 	if err != nil {
 		if errors.Is(err, errActiveWorkUnsupported) {
@@ -263,8 +270,8 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "07-activated", stateActivated, adapterNotCalled); err != nil {
 		return applyFailure(store, request, "activated", false, err)
 	}
-	identity := CandidateIdentity{Generation: request.Generation, TargetPath: request.Decision.Path, Length: request.Decision.Length,
-		Digest: artifact, Platform: request.Decision.Platform, Architecture: request.Decision.Architecture, Environment: request.Decision.Environment, Network: request.Decision.Network}
+	identity := CandidateIdentity{Generation: request.Generation, TargetPath: request.decision.Path, Length: request.decision.Length,
+		Digest: artifact, Platform: request.decision.Platform, Architecture: request.decision.Architecture, Environment: request.decision.Environment, Network: request.decision.Network}
 	if err := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
 		return request.SelfTest.Check(callCtx, identity)
 	}); err != nil {
@@ -301,7 +308,7 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "09-committed", stateCommitted, adapterNotCalled); err != nil {
 		return applyFailure(store, request, "committed", false, err)
 	}
-	result = committedResult(request.Generation, artifact, inspection.selection.Current.Artifact, "update committed", request.Decision.CustodyNotice)
+	result = committedResult(request.Generation, artifact, inspection.selection.Current.Artifact, "update committed", request.decision.CustodyNotice)
 	if err := store.release(); err != nil {
 		return invalidResult(request, "committed"), err
 	}
@@ -311,35 +318,35 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 func validateRequest(ctx context.Context, request Request) ([32]byte, []byte, [32]byte, error) {
 	var artifact, manifestDigest [32]byte
 	if ctx == nil || ctx.Err() != nil || request.Generation == 0 || request.ActiveWork > 1 ||
-		request.Decision.Outcome != "release-accepted" {
+		request.decision.Outcome != release.OutcomeReleaseAccepted {
 		if request.ActiveWork > 1 {
 			return artifact, nil, manifestDigest, errActiveWorkUnsupported
 		}
 		return artifact, nil, manifestDigest, errRecordInvalid
 	}
-	if request.Decision.Length > maximumArtifactBytes || int64(len(request.Artifact)) > maximumArtifactBytes {
+	if request.decision.Length > maximumArtifactBytes || int64(len(request.Artifact)) > maximumArtifactBytes {
 		return artifact, nil, manifestDigest, errResourceDenied
 	}
 	if (request.SchemaPlan != "no-op-v1" && request.SchemaPlan != "copy-on-write-v1") || request.Work == nil || request.SelfTest == nil ||
-		request.Decision.BuildSafety != "release-accepted" ||
-		request.Decision.Protocol != "release-accepted" || request.Decision.Length <= 0 ||
-		len(request.Decision.Digest) != sha256.Size || !completeFloors(request.Decision.Floors) {
+		request.decision.BuildSafety != release.OutcomeReleaseAccepted ||
+		request.decision.Protocol != release.OutcomeReleaseAccepted || request.decision.Length <= 0 ||
+		len(request.decision.Digest) != sha256.Size || !completeFloors(request.decision.Floors) {
 		return artifact, nil, manifestDigest, errRecordInvalid
 	}
-	if int64(len(request.Artifact)) != request.Decision.Length {
+	if int64(len(request.Artifact)) != request.decision.Length {
 		return artifact, nil, manifestDigest, errCandidateMismatch
 	}
 	artifact = sha256.Sum256(request.Artifact)
 	var expected [32]byte
-	copy(expected[:], request.Decision.Digest)
+	copy(expected[:], request.decision.Digest)
 	if artifact != expected {
 		return artifact, nil, manifestDigest, errCandidateMismatch
 	}
-	if request.Decision.Path == "" || len(request.Decision.Path) > maximumTargetBytes ||
-		request.Decision.ReleaseVersion <= 0 || request.Decision.ReferenceTime.IsZero() ||
-		!request.Decision.BuildSafetyNoNewWorkAfter.After(request.Decision.ReferenceTime) ||
-		!request.Decision.BuildSafetyTerminateAfter.After(request.Decision.BuildSafetyNoNewWorkAfter) ||
-		request.Decision.RootVersion != request.Decision.Floors.RootVersion {
+	if request.decision.Path == "" || len(request.decision.Path) > maximumTargetBytes ||
+		request.decision.ReleaseVersion <= 0 || request.decision.ReferenceTime.IsZero() ||
+		!request.decision.BuildSafetyNoNewWorkAfter.After(request.decision.ReferenceTime) ||
+		!request.decision.BuildSafetyTerminateAfter.After(request.decision.BuildSafetyNoNewWorkAfter) ||
+		request.decision.RootVersion != request.decision.Floors.RootVersion {
 		return artifact, nil, manifestDigest, errRecordInvalid
 	}
 	manifest, err := encodeManifest(request, artifact)
@@ -368,16 +375,6 @@ func stageApplyFailure(store *ownedStore, request Request, inspection rootInspec
 	}
 	result.CustodyNotice = inspection.currentCustody
 	return result, errors.Join(cause, releaseErr)
-}
-
-func resourceDeniedResult(request Request) Result {
-	return Result{Outcome: "resource-denied", State: "release-accepted", Generation: request.Generation,
-		StagingPresent: false, SafeNotice: "update resources unavailable"}
-}
-
-func activationUnsupportedResult(request Request) Result {
-	return Result{Outcome: "activation-unsupported", State: "release-accepted", Generation: request.Generation,
-		StagingPresent: false, SafeNotice: "update storage unsupported"}
 }
 
 // occupiedStagingResult classifies an already-present staging candidate using
@@ -458,7 +455,7 @@ func committedRequest(store *ownedStore, inspection rootInspection, request Requ
 		return Result{}, false
 	}
 	return committedResult(request.Generation, artifact, selection.Rollback.Artifact,
-		"update committed", request.Decision.CustodyNotice), true
+		"update committed", request.decision.CustodyNotice), true
 }
 
 func committedResult(generation uint64, current, rollback [32]byte, safe, custody string) Result {
@@ -469,7 +466,7 @@ func committedResult(generation uint64, current, rollback [32]byte, safe, custod
 func invalidResult(request Request, state string) Result {
 	return Result{Outcome: invalidOutcome, State: state, Generation: request.Generation,
 		StagingPresent: false, SafeNotice: "update transaction rejected",
-		CustodyNotice: request.Decision.CustodyNotice}
+		CustodyNotice: request.decision.CustodyNotice}
 }
 
 func transactionInvalidResult(generation uint64) Result {

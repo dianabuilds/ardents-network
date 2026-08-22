@@ -27,7 +27,7 @@ func TestRepeatedUpdatesKeepRetainedStateBounded(t *testing.T) {
 	var finalMeasurements []pressureMeasurement
 	for generation := uint64(1); generation <= 100; generation++ {
 		request := Request{UpdateRoot: root, Generation: generation, SchemaPlan: "no-op-v1",
-			Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+			decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 		result, err := Apply(context.Background(), request)
 		if err != nil || result.Outcome != "committed" || result.Generation != generation || result.StagingPresent {
 			t.Fatalf("episode %d Apply = %+v, %v", generation, result, err)
@@ -60,7 +60,7 @@ func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
 		vector := oracleBootstrapV0(t, root)
 		candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 		request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-			Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+			decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 		switch episode % 6 {
 		case 0:
 			work := &drainRefusalWorkControl{stopErr: errors.New("pressure stop refusal")}
@@ -91,7 +91,7 @@ func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
 			if result, err := Apply(context.Background(), request); err == nil || result.Outcome != "self-test-failed" || result.State != "rollback-pending" {
 				t.Fatalf("episode %d failed self-test = %+v, %v", episode, result, err)
 			}
-			request.RollbackDecision = oracleRollbackDecision(t, vector)
+			request.rollbackDecision = oracleRollbackDecision(t, vector)
 			request.SelfTest = oraclePassSelfTest{}
 			result, err := Apply(context.Background(), request)
 			if !errors.Is(err, errRolledBack) || result.Outcome != "rolled-back" || result.State != "rolled-back" {
@@ -103,7 +103,7 @@ func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
 			if result, err := Apply(context.Background(), request); err == nil || result.Outcome != "self-test-failed" {
 				t.Fatalf("episode %d failed self-test = %+v, %v", episode, result, err)
 			}
-			request.RollbackDecision = request.Decision
+			request.rollbackDecision = request.decision
 			result, err := Apply(context.Background(), request)
 			if !errors.Is(err, errRollbackRefused) || result.Outcome != "rollback-refused" || result.State != "repair-required" {
 				t.Fatalf("episode %d rollback refusal = %+v, %v", episode, result, err)
@@ -114,7 +114,7 @@ func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
 			if result, err := Apply(context.Background(), request); err == nil || result.Outcome != "self-test-failed" {
 				t.Fatalf("episode %d failed self-test = %+v, %v", episode, result, err)
 			}
-			request.RollbackDecision = oracleRollbackDecision(t, vector)
+			request.rollbackDecision = oracleRollbackDecision(t, vector)
 			result, err := Apply(context.Background(), request)
 			if !errors.Is(err, errRepairRequired) || result.Outcome != "repair-required" || result.State != "repair-required" {
 				t.Fatalf("episode %d repair required = %+v, %v", episode, result, err)
@@ -149,7 +149,7 @@ func TestPressure100(t *testing.T) {
 				}
 				vector = oracleBootstrapV0(t, root)
 				candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
-				request = Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+				request = Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
 			}
 			switch code {
 			case 'S', 'N':
@@ -158,7 +158,7 @@ func TestPressure100(t *testing.T) {
 					t.Fatalf("%d/%d %c = %+v, %v", block, row+1, code, result, err)
 				}
 			case 'P':
-				request.Decision.Length = maximumArtifactBytes + 1
+				request.decision.Length = maximumArtifactBytes + 1
 				result, err := Apply(context.Background(), request)
 				if err == nil || result.Outcome != "resource-denied" || result.State != "release-accepted" {
 					t.Fatalf("%d/%d P = %+v, %v", block, row+1, result, err)
@@ -180,10 +180,10 @@ func TestPressure100(t *testing.T) {
 					t.Fatalf("%d/%d %c self-test succeeded", block, row+1, code)
 				}
 				if code == 'B' {
-					request.RollbackDecision = oracleRollbackDecision(t, vector)
+					request.rollbackDecision = oracleRollbackDecision(t, vector)
 					request.SelfTest = oraclePassSelfTest{}
 				} else {
-					request.RollbackDecision = request.Decision
+					request.rollbackDecision = request.decision
 					refused = root
 				}
 				result, err := Apply(context.Background(), request)

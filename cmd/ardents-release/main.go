@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/updatetransaction"
 )
 
@@ -47,19 +47,23 @@ func run(arguments []string, output io.Writer, errorOutput io.Writer) (runErr er
 	if err != nil {
 		return err
 	}
-	store, err := releasedecision.OpenFloorStore(raw.stateRoot)
+	verifier, err := release.Open(raw.stateRoot)
 	if err != nil {
 		return fmt.Errorf("open state root: %w", err)
 	}
-	defer func() { runErr = errors.Join(runErr, store.Close()) }()
-	decision := releasedecision.Evaluate(context.Background(), inputs, store)
+	defer func() { runErr = errors.Join(runErr, verifier.Close()) }()
+	decision := verifier.Evaluate(context.Background(), inputs)
 	if operation == "apply-offline" {
-		if decision.Outcome != "release-accepted" {
+		if decision.Outcome != release.OutcomeReleaseAccepted {
 			return errors.New("apply-offline requires a release-accepted decision")
+		}
+		authorization, ok := decision.Authorization()
+		if !ok {
+			return errors.New("apply-offline requires release authorization")
 		}
 		result, err := updatetransaction.Apply(context.Background(), updatetransaction.Request{
 			UpdateRoot: updateRoot, Generation: 1, ActiveWork: 0, SchemaPlan: "no-op-v1",
-			Decision: decision, Artifact: inputs.Artifact,
+			Authorization: authorization, Artifact: inputs.Artifact,
 			Work: stoppedRuntime{}, SelfTest: offlineCandidateTest{},
 		})
 		if err != nil {

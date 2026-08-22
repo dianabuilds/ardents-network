@@ -7,59 +7,59 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
-func (raw *offlineImportFlags) buildInputs() (releasedecision.Inputs, error) {
+func (raw *offlineImportFlags) buildInputs() (release.Inputs, error) {
 	if raw.stateRoot == "" {
-		return releasedecision.Inputs{}, errors.New("state-root is required")
+		return release.Inputs{}, errors.New("state-root is required")
 	}
 	if raw.metadataDir == "" {
-		return releasedecision.Inputs{}, errors.New("metadata-dir is required")
+		return release.Inputs{}, errors.New("metadata-dir is required")
 	}
 	if raw.rootPath == "" {
-		return releasedecision.Inputs{}, errors.New("root path is required")
+		return release.Inputs{}, errors.New("root path is required")
 	}
 	if raw.targetPath == "" {
-		return releasedecision.Inputs{}, errors.New("target path is required")
+		return release.Inputs{}, errors.New("target path is required")
 	}
 	if raw.artifactPath == "" {
-		return releasedecision.Inputs{}, errors.New("artifact path is required")
+		return release.Inputs{}, errors.New("artifact path is required")
 	}
 	if raw.refTime == "" {
-		return releasedecision.Inputs{}, errors.New("ref-time is required")
+		return release.Inputs{}, errors.New("ref-time is required")
 	}
 	for name, value := range map[string]string{
 		"environment": raw.environment, "network": raw.network,
 		"platform": raw.platform, "architecture": raw.architecture,
 	} {
 		if value == "" {
-			return releasedecision.Inputs{}, fmt.Errorf("%s is required", name)
+			return release.Inputs{}, fmt.Errorf("%s is required", name)
 		}
 	}
 	rootBytes, err := readBoundedRegularFile(raw.rootPath, maximumMetadataFileBytes)
 	if err != nil {
-		return releasedecision.Inputs{}, fmt.Errorf("read root: %w", err)
+		return release.Inputs{}, fmt.Errorf("read root: %w", err)
 	}
 	files, err := readMetadataDir(raw.metadataDir)
 	if err != nil {
-		return releasedecision.Inputs{}, err
+		return release.Inputs{}, err
 	}
 	artifact, err := readBoundedRegularFile(raw.artifactPath, maximumArtifactBytes)
 	if err != nil {
-		return releasedecision.Inputs{}, fmt.Errorf("read artifact: %w", err)
+		return release.Inputs{}, fmt.Errorf("read artifact: %w", err)
 	}
 	refTime, err := time.Parse(time.RFC3339, raw.refTime)
 	if err != nil {
-		return releasedecision.Inputs{}, fmt.Errorf("parse time %q: %w", raw.refTime, err)
+		return release.Inputs{}, fmt.Errorf("parse time %q: %w", raw.refTime, err)
 	}
 	refTime = refTime.UTC()
-	return releasedecision.Inputs{
+	return release.Inputs{
 		RootBytes:  rootBytes,
 		Files:      files,
 		TargetPath: raw.targetPath,
 		Artifact:   artifact,
-		Local: releasedecision.LocalEnvironment{
+		Local: release.LocalEnvironment{
 			Environment:  raw.environment,
 			Network:      raw.network,
 			Platform:     raw.platform,

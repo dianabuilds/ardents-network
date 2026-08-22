@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 type manifestView struct {
@@ -67,7 +67,7 @@ func encodeManifest(request Request, artifact [32]byte) ([]byte, error) {
 }
 
 func encodeManifestWithNotice(request Request, artifact [32]byte, safeNotice string) ([]byte, error) {
-	decision := request.Decision
+	decision := request.decision
 	if !completeFloors(decision.Floors) {
 		return nil, errRecordInvalid
 	}
@@ -114,7 +114,7 @@ func encodeManifestWithNotice(request Request, artifact [32]byte, safeNotice str
 	}
 	return encodeRecord(recordManifest, writer.body, maximumRecordBytes)
 }
-func completeFloors(floors releasedecision.FloorSet) bool {
+func completeFloors(floors release.FloorSet) bool {
 	return floors.RootVersion > 0 && len(floors.RootDigest) == 32 && floors.TimestampVersion > 0 && len(floors.TimestampDigest) == 32 &&
 		floors.SnapshotVersion > 0 && len(floors.SnapshotDigest) == 32 && floors.TargetsVersion > 0 && len(floors.TargetsDigest) == 32
 }

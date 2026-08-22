@@ -3,7 +3,7 @@ package updatetransaction
 import (
 	"context"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 const (
@@ -65,20 +65,24 @@ type CandidateIdentity struct {
 	Network      string
 }
 
-// Request carries one accepted release and caller-owned runtime Adapters.
+// Request carries one opaque release authorization and caller-owned runtime
+// Adapters. Its zero Authorization is invalid: an accepted-looking public
+// release.Decision is never sufficient to authorize an update.
 type Request struct {
-	UpdateRoot string
-	Generation uint64
-	ActiveWork uint64
-	SchemaPlan string
-	Decision   releasedecision.Decision
-	// RollbackDecision is a fresh caller-evaluated decision for the retained
-	// predecessor. It is consulted only by a later rollback-pending continuation.
-	RollbackDecision releasedecision.Decision
-	Artifact         []byte
-	Work             WorkControl
-	SelfTest         SelfTest
-	Schema           SchemaWork
+	UpdateRoot    string
+	Generation    uint64
+	ActiveWork    uint64
+	SchemaPlan    string
+	Authorization release.Authorization
+	decision      release.Decision
+	// RollbackAuthorization is a later Release-issued authorization for the
+	// retained predecessor. It is consulted only by rollback-pending recovery.
+	RollbackAuthorization release.Authorization
+	rollbackDecision      release.Decision
+	Artifact              []byte
+	Work                  WorkControl
+	SelfTest              SelfTest
+	Schema                SchemaWork
 }
 
 // Result is the bounded terminal transaction result.

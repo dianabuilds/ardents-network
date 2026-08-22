@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dianabuilds/ardents-network/internal/releasedecision"
+	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/updatetransaction"
 )
 
@@ -17,7 +17,7 @@ func (quoter *jsonQuoter) value(value string) string {
 	quoter.err = errors.Join(quoter.err, err)
 	return string(encoded)
 }
-func renderDecision(decision releasedecision.Decision) ([]byte, error) {
+func renderDecision(decision release.Decision) ([]byte, error) {
 	quoter := &jsonQuoter{}
 	floors := decision.Floors
 	format := `{"schema":"ardents-release-decision-v1","outcome":%s,"path":%s,"length":%d,"digest":%s,"platform":%s,"architecture":%s,"environment":%s,"network":%s,"release_identity":%s,"release_version":%d,"source_revision":%s,"build_input_commitment":%s,"build_identity":%s,"dependency_identity":%s,"sbom_identity":%s,"attestation_policy":%s,"qualification":%s,"build_state":%s,"protocol_phase":%s,"build_safety":%s,"protocol":%s,"root_version":%d,"floors":{"root_version":%d,"root_digest":%s,"timestamp_version":%d,"timestamp_digest":%s,"snapshot_version":%d,"snapshot_digest":%s,"targets_version":%d,"targets_digest":%s},"notice":%s,"custody_notice":%s}` + "\n"

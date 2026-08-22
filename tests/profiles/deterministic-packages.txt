@@ -25,7 +25,7 @@ github.com/dianabuilds/ardents-network/internal/network/state
 github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/node/probe
 github.com/dianabuilds/ardents-network/internal/planfile
-github.com/dianabuilds/ardents-network/internal/releasedecision
+github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
 github.com/dianabuilds/ardents-network/internal/routeplan

@@ -19,7 +19,7 @@ import (
 const (
 	oracleVectorPath    = "../../docs/development/testdata/s7.2/c0-happy-path-v1.json"
 	oraclePreviousPath  = "../../docs/development/testdata/s7.2/previous-payload-v1.txt"
-	oracleCandidatePath = "../releasedecision/testdata/r049-public-vector-v1/artifact.bin"
+	oracleCandidatePath = "../release/testdata/r049-public-vector-v1/artifact.bin"
 	oracleMarker        = "ardents-update-transaction-v1\n"
 )
 
@@ -189,7 +189,7 @@ func TestV0JournalHasExactIndependentChain(t *testing.T) {
 	work := &oracleWorkControl{}
 	_, err = Apply(context.Background(), Request{UpdateRoot: root,
 		Generation: vector.Request.TransactionGeneration, ActiveWork: 0, SchemaPlan: "no-op-v1",
-		Decision: decision, Artifact: candidate, Work: work, SelfTest: oraclePassSelfTest{}})
+		decision: decision, Artifact: candidate, Work: work, SelfTest: oraclePassSelfTest{}})
 	if err != nil {
 		t.Fatal(err)
 	}

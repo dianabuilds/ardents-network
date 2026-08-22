@@ -18,7 +18,7 @@ func TestApplyRejectsMoreThanOneActiveWorkBeforeRootInspection(t *testing.T) {
 	result, err := Apply(context.Background(), Request{
 		UpdateRoot: filepath.Join(t.TempDir(), "uninspected-update-root"),
 		Generation: vector.Request.TransactionGeneration, ActiveWork: 2, SchemaPlan: vector.Request.SchemaPlan,
-		Decision: oracleAcceptedDecision(t, vector), Artifact: oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256),
+		decision: oracleAcceptedDecision(t, vector), Artifact: oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256),
 		Work: work, SelfTest: oraclePassSelfTest{},
 	})
 	if err == nil || result.Outcome != "transaction-invalid" || result.State != "transaction-invalid" ||
@@ -76,7 +76,7 @@ func TestDrainRefusal(t *testing.T) {
 			currentBefore := oracleReadFile(t, filepath.Join(root, "current"))
 			work := &drainRefusalWorkControl{stopErr: test.stopErr, drainErr: test.drainErr}
 			request := Request{UpdateRoot: root, Generation: 1,
-				SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+				SchemaPlan: "no-op-v1", decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 				Work: work, SelfTest: oraclePassSelfTest{}}
 			result, err := Apply(context.Background(), request)
 			if err == nil || result.Outcome != "drain-expired" || result.State != test.wantState ||
@@ -110,7 +110,7 @@ func TestDrainDeadline(t *testing.T) {
 	work := &drainRefusalWorkControl{}
 	start := time.Now().Add(2 * time.Second)
 	result, err := applyWithStart(context.Background(), Request{UpdateRoot: root, Generation: 1, ActiveWork: 1,
-		SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		SchemaPlan: "no-op-v1", decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: work, SelfTest: oraclePassSelfTest{}}, start)
 	if err != nil || result.Outcome != "committed" || work.stopCalls != 1 || work.drainCalls != 1 {
 		t.Fatalf("Apply = %+v, %v; work=%#v", result, err, work)

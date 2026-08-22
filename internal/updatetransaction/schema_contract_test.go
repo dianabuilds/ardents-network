@@ -36,7 +36,7 @@ func TestCOWMissingRootDoesNotInvokeAdapter(t *testing.T) {
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	probe := &schemaContractProbe{}
 	request := Request{UpdateRoot: filepath.Join(t.TempDir(), "not-created"), Generation: 1,
-		SchemaPlan: "copy-on-write-v1", Decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
+		SchemaPlan: "copy-on-write-v1", decision: oracleAcceptedDecision(t, vector), Artifact: candidate,
 		Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}, Schema: probe}
 
 	result, err := Apply(context.Background(), request)
@@ -54,7 +54,7 @@ func TestNoOpSchemaDoesNotInvokeAdapter(t *testing.T) {
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	probe := &schemaContractProbe{}
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
 		SelfTest: oraclePassSelfTest{}, Schema: probe}
 
 	if _, err := Apply(context.Background(), request); err != nil {
@@ -132,7 +132,7 @@ func TestCOWCommit(t *testing.T) {
 	selfTest := &retrySelfTest{}
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
 		SelfTest: selfTest, Schema: probe}
 
 	first, firstErr := Apply(context.Background(), request)
@@ -181,7 +181,7 @@ func TestCOWPrepFailure(t *testing.T) {
 	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
 		SelfTest: oraclePassSelfTest{}, Schema: failingSchemaPrepare{schemaCOWProbe: probe}}
 
 	result, applyErr := Apply(context.Background(), request)
@@ -216,12 +216,12 @@ func TestCOWRollbackDiscardsCandidate(t *testing.T) {
 	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
 		SelfTest: failedSelfTest{}, Schema: probe}
 	if result, applyErr := Apply(context.Background(), request); applyErr == nil || result.Outcome != "self-test-failed" {
 		t.Fatalf("forward Apply = %+v, %v", result, applyErr)
 	}
-	request.RollbackDecision = oracleRollbackDecision(t, vector)
+	request.rollbackDecision = oracleRollbackDecision(t, vector)
 	request.SelfTest = oraclePassSelfTest{}
 	result, applyErr := Apply(context.Background(), request)
 	if !errors.Is(applyErr, errRolledBack) || result.Outcome != "rolled-back" || probe.planCalls != 2 ||
@@ -257,7 +257,7 @@ func TestCOWTempRecovery(t *testing.T) {
 	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
-		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
 		SelfTest: &retrySelfTest{}, Schema: probe}
 	if _, applyErr := Apply(context.Background(), request); !errors.Is(applyErr, ErrSelfTestUnavailable) {
 		t.Fatalf("forward Apply = %v", applyErr)

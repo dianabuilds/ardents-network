@@ -89,6 +89,49 @@ and this plan are the respective current inventory, disposition, ownership,
 and retirement ledgers. Historical Stage 7 material remains only the
 enumerated provenance/transitional material subject to M14's named outcome.
 
+### M1 — Release trust
+
+**Complete, 2026-08-23.** Starting from `7c1c991469d7fef0f47e6d2cf86596c347ad6b35`
+on Go `go1.26.6 windows/amd64`, M1 used the closed DA-01 semantics of accepted
+[R-063](../research/records/r-063-release-root-transaction-boundary.md).
+`internal/release` now owns the D06 root, lease, archive, floors, and private
+persistence seam behind `Open`, `Verifier.Evaluate`, and `Close`; the former
+`internal/releasedecision` path, public `Store`, and public store-open entry
+point are gone. Its accepted Decision yields an opaque Authorization retaining
+a private verified snapshot. Update receives that authorization for both a new
+activation and a rollback-pending predecessor check, not a caller-constructible
+Decision; its package-private synthetic-decision seams are limited to
+same-package behavior tests. The external authorization tests prove that a
+caller-constructed accepted-looking Decision cannot invoke Update and that
+Request exposes neither an initial nor rollback raw Decision; the command's
+frozen V0 test exercises the real Release-to-Update handoff.
+
+With the Product Owner's 2026-08-22 standing Stage 8 delegation, this is the
+explicit delegated M13 disposition for the existing `cmd/ardents-release`:
+it is retained only as a C2 target-owned tracer adapter. Its named bounded
+observer is the frozen V0 offline command contract in
+`TestApplyOfflineV0IsExact`, and it expires in M13. It makes no new installer,
+activation, Custody, or compatibility claim; DA-09 and DA-10 still govern that
+final product-command disposition. The package map and selected deterministic
+profile now name `release`, and active test-data references move with the
+package.
+
+`internal/updatetransaction/transaction.go` remains one cohesive Apply
+orchestrator (495 lines): the local invariant is that opaque authorization is
+resolved before validation, owned-root inspection, lock acquisition, storage,
+or Adapter action. Splitting that ordered lifecycle merely to reduce lines
+would force checkpoint/choreography state across files; the authorization,
+pre-admission refusal, interruption, recovery, and frozen V0 handoff tests
+cover the retained responsibility. Targeted Release, Update, command, and
+architecture tests passed before integration. The first final `make check`
+attempt exposed a concurrent Route Unix-socket collision: global time-derived
+test paths could bind the same address. `introduction_setup_test.go` now uses
+a short unique `asi-*` directory per test (not `t.TempDir`, whose test-name
+path exceeds the Windows AF_UNIX limit). The former 16-process × 100-run stress
+reproducer passes after the change, and the subsequent complete `make check`
+(format/architecture, mod, build, vet, staticcheck, vuln, unit, e2e, and race)
+passes. The integrating commit records this checked profile.
+
 ### M3 — authenticated Network State
 
 **Complete, 2026-08-22 through `d7137a3`.** Namespace first received its

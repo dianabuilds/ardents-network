@@ -47,7 +47,7 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | `route` | One Route selection and volatile role/attachment lifetime, capacity, cutover, and cleanup. | Absorb `routeplan`; consumes opaque View/Duty/Resource/Entry facts. | DA-06. |
 | `route/webtunnel` | Pinned candidate child, local front connection, temporary root, join, and cleanup. | Conditional concrete Route/Entry Adapter replacing `camouflage`. | DA-06; otherwise delete rather than rename. |
 | `node` | One Contributor duty admission, quarantine, listener/probe, protect/drain/withdraw, and joined cleanup. | Fold `node/probe`; no State-root or assignment authority. | D02 and selected Resource/platform contract. |
-| `release` | Verified metadata result, roots/floors/archive, lease, and opaque update authorization. | Deepen `releasedecision`; hide staging/store exports. | DA-01 before D06 mutation. |
+| `release` | Verified metadata result, roots/floors/archive, lease, and opaque update authorization. | Own the release verifier and keep floor persistence private. | DA-01 before D06 mutation. |
 | `update` | Staging, predecessor/rollback, activation, self-test, journal, recovery, and cleanup. | Deepen `updatetransaction`; consumes unforgeable Release authorization. | DA-01 and DA-09 before D07 mutation. |
 | `custody` | Vault/Recovery Bundle, unlock/export/restore/reconcile, revocation, and signing watermark. | New Module; secrets never enter Release/Update/diagnostics. | DA-08 and DA-09; no implementation by implication. |
 
@@ -144,7 +144,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/node`, `internal/node/probe` | Transfer Node lifecycle and private probe to `node`. | M11. |
 | `internal/resource` | Retain/deepen as the sole shared resource coordinator; Linux profiles only and fail closed elsewhere. | M4, R-062 H1 accepted. |
 | `internal/route`, `internal/routeplan` | Consolidate route selection, attachment lifetime, and process cleanup under `route`. | M8, subject to DA-06. |
-| `internal/releasedecision` | Transfer release trust/root/floor ownership to `release`. | M1, subject to DA-01. |
+| `internal/release` | Own release trust/root/floor verification behind `Open`, `Evaluate`, and `Close`. | M1, subject to DA-01. |
 | `internal/updatetransaction` | Transfer transaction/recovery to `update` only after lifecycle scope and Release authority stabilize. | M2, subject to DA-01/09. |
 | `internal/planfile` | Replace with command/owner-local bounded input decoders; do not retain a generic plan abstraction. | M3/M8/M9/M11/M13 as each consumer moves. |
 | `internal/streamworkload` | Retain only a named test/Qualification workload; otherwise delete. | M9/M14. |

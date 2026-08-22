@@ -1,6 +1,6 @@
 {
   "schema": "ardents-s72-update-vector-v1",
-  "source_release_vector": "internal/releasedecision/testdata/r049-public-vector-v1",
+  "source_release_vector": "internal/release/testdata/r049-public-vector-v1",
   "release_outcome": "release-accepted",
   "candidate": {
     "release_identity": "ardents-release-0001",
