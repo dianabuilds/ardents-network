@@ -38,8 +38,14 @@ func acquireStore(root string, generation uint64) (*ownedStore, rootInspection, 
 
 func (store *ownedStore) inspect(generation uint64) (rootInspection, error) {
 	var inspection rootInspection
-	if err := requireNames(store.root, []string{".ardents-update-transaction-lock",
-		".ardents-update-transaction-v1", "current", "generations", "staging", "transactions"}); err != nil {
+	rootNames := []string{".ardents-update-transaction-lock", ".ardents-update-transaction-v1", "current", "generations", "staging", "transactions"}
+	schemaPath := filepath.Join(store.root, "schema-current")
+	if _, err := os.Lstat(schemaPath); err == nil {
+		rootNames = append(rootNames, "schema-current")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return inspection, err
+	}
+	if err := requireNames(store.root, rootNames); err != nil {
 		return inspection, err
 	}
 	marker, err := readExactFile(filepath.Join(store.root, ".ardents-update-transaction-v1"), len(rootMarker))
@@ -56,6 +62,18 @@ func (store *ownedStore) inspect(generation uint64) (rootInspection, error) {
 	selection, err := decodeCurrent(currentRaw)
 	if err != nil || selection.Current.Generation != selection.Transaction {
 		return inspection, errors.Join(errRecordInvalid, err)
+	}
+	if len(rootNames) == 7 {
+		schemaRaw, readErr := readExactFile(schemaPath, recordHeaderBytes+schemaRecordBodyBytes)
+		if readErr != nil {
+			return inspection, errors.Join(errRecordInvalid, readErr)
+		}
+		schema, decodeErr := decodeSchemaCurrent(schemaRaw)
+		if decodeErr != nil || schema.Transaction != selection.Transaction {
+			return inspection, errors.Join(errRecordInvalid, decodeErr)
+		}
+		inspection.schemaCurrent = &schema
+		inspection.schemaRaw = schemaRaw
 	}
 	currentView, currentArtifact, currentManifest, err := store.inspectPayload("generations", selection.Current)
 	if err != nil {

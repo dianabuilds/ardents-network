@@ -28,6 +28,8 @@ type rootInspection struct {
 	selection      currentSelection
 	predecessor    predecessorInspection
 	currentCustody string
+	schemaCurrent  *schemaCurrent
+	schemaRaw      []byte
 }
 
 func canonicalUnixSeconds(value time.Time) uint64 {
