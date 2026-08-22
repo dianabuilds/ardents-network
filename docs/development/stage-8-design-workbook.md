@@ -1,10 +1,11 @@
 # Stage 8 productization design workbook
 
-Status: **transitional pre-Stage-8 workspace, started 2026-08-21.** Stage 7 was
-stopped on 2026-08-22. This document does not start Stage 8, change current
-engineering policy, or authorize production refactoring. An accepted
-working-group result is a Stage 8 planning baseline until it is promoted into
-the applicable active architecture or engineering document.
+Status: **transitional Stage 8 design input; preparation started 2026-08-21 and
+Stage 8 execution started 2026-08-22.** Stage 7 was stopped on 2026-08-22. This
+document did not itself start Stage 8, change engineering policy, or authorize
+production refactoring; that authority now comes from the Stage 8 brief and
+start record. An accepted working-group result remains transitional until it is
+promoted into the applicable active architecture or engineering document.
 
 Owners: Product Owner and Codex.
 

@@ -1,9 +1,10 @@
 # Horizon 3 Stage 8 productization and restructuring brief
 
-Status: **replacement planning contract accepted by the Product Owner on
-2026-08-22. Execution has not started.** This brief replaces the earlier
-reassessment-only Stage 8 plan. Stage 7 was stopped by its separate
-2026-08-22 disposition; Stage 8 still requires an explicit start decision.
+Status: **execution started by Product Owner authorization on 2026-08-22;
+S8.0 current-system truth is active.** This brief replaces the earlier
+reassessment-only Stage 8 plan. Stage 7 was stopped by its separate 2026-08-22
+disposition, and the exact Stage 8 entry is bound by the
+[Stage 8 start record](stage-8-start-record.md).
 
 Authoritative inputs, in order, are accepted ADRs; the product contract and
 threat model; completed research and its evidence; the accepted Stage 7
@@ -60,6 +61,11 @@ Stage 8 starts only when:
    productization; and
 7. current rules remain binding until their accepted replacements are promoted
    into canonical policy and executable gates.
+
+All seven entry conditions were accepted on 2026-08-22. The clean source,
+toolchain inputs, successful ordinary checks, Product Owner authorization, and
+first authorized slice are recorded in the
+[Stage 8 start record](stage-8-start-record.md).
 
 ## Operating rules
 

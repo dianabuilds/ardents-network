@@ -27,8 +27,8 @@ test matrix remain later promotion gates.
 Stage 7 was stopped by the Product Owner on 2026-08-22. S7.1 Release Decision,
 the maintained S7.2 Update Transaction engineering slice, and R-050 mechanism
 evidence remain inputs; S7.3-S7.7 are cancelled, not deferred commitments or
-accepted product delivery. Stage 8 productization has a planning contract but
-has not started.
+accepted product delivery. Stage 8 productization started on 2026-08-22 from
+the verified `1cf7100` entry identity; S8.0 current-system truth is active.
 
 ## Product hypothesis
 
@@ -268,6 +268,7 @@ system at once.
 - [Stage 7 S7.0 start record](docs/development/stage-7-start-record.md)
 - [Stage 7 stop record](docs/development/stage-7-stop-record.md)
 - [Stage 8 productization and restructuring brief](docs/development/horizon-3-stage-8-brief.md)
+- [Stage 8 start record](docs/development/stage-8-start-record.md)
 - [Stage 9 frozen product qualification and closure brief](docs/development/horizon-3-stage-9-brief.md)
 - [R-029 authenticated Node lifecycle (H3 Stage 1)](docs/research/records/r-029-h3-authenticated-node-lifecycle.md)
 - [R-030 real multi-node route (H3 Stage 2)](docs/research/records/r-030-h3-real-multi-node-route.md)
