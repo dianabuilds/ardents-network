@@ -156,6 +156,9 @@ func recoveryCustodyFor(facts *inventoryResult) (string, error) {
 
 func candidateCommitments(facts inventoryResult, generation uint64) ([32]byte, [32]byte) {
 	if candidate := generationByID(facts.StagingDirs, generation); candidate != nil {
+		if !candidate.HasArtifact || !candidate.HasManifest {
+			return [32]byte{}, [32]byte{}
+		}
 		return sha256.Sum256(candidate.Artifact.Bytes), sha256.Sum256(candidate.Manifest.Bytes)
 	}
 	if candidate := generationByID(facts.Generations, generation); candidate != nil {

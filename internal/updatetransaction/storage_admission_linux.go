@@ -32,7 +32,10 @@ func observeOwnedStorage(root string) (resourceObservation, error) {
 		return resourceObservation{}, errors.New("unsupported linux update storage")
 	}
 	var statfs syscall.Statfs_t
-	if err := syscall.Statfs(root, &statfs); err != nil || statfs.Type != ext4SuperMagic || statfs.Frsize <= 0 {
+	if err := syscall.Statfs(root, &statfs); err != nil {
+		return resourceObservation{}, errors.Join(errCapacityObservation, err)
+	}
+	if statfs.Type != ext4SuperMagic || statfs.Frsize <= 0 {
 		return resourceObservation{}, errors.New("unsupported linux update storage")
 	}
 	info, err := os.Lstat(root)
@@ -45,7 +48,7 @@ func observeOwnedStorage(root string) (resourceObservation, error) {
 	}
 	unit := uint64(statfs.Frsize)
 	if uint64(statfs.Bavail) > ^uint64(0)/unit {
-		return resourceObservation{}, errors.New("linux byte observation overflow")
+		return resourceObservation{}, errCapacityObservation
 	}
 	return resourceObservation{allocationUnit: unit, availableBytes: uint64(statfs.Bavail) * unit,
 		availableItems: uint64(statfs.Ffree), itemsKnown: true}, nil

@@ -2,6 +2,8 @@ package updatetransaction
 
 import "errors"
 
+var errCapacityObservation = errors.New("update capacity observation unavailable")
+
 const (
 	journalV1Bytes      = recordHeaderBytes + journalBodyBytes
 	journalV1EntryCount = 9

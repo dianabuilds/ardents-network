@@ -25,7 +25,6 @@ type applyInterruptionControl struct {
 var errApplyInterrupted = errors.New("update transaction interrupted at test checkpoint")
 var errCandidateMismatch = errors.New("update candidate does not match accepted decision")
 var errResourceDenied = errors.New("update resource envelope is unavailable")
-var errStorageUnsupported = errors.New("update storage is unsupported")
 
 type tracer struct {
 	store       *ownedStore
@@ -110,16 +109,19 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	}
 	observation, observeErr := observe(request.UpdateRoot)
 	if observeErr != nil {
+		if errors.Is(observeErr, errCapacityObservation) {
+			return resourceDeniedResult(request), observeErr
+		}
 		return activationUnsupportedResult(request), observeErr
 	}
 	if occupied, present, occupiedErr := occupiedStagingResult(request, request.UpdateRoot); occupiedErr != nil {
-		return invalidResult(request, "release-accepted"), occupiedErr
+		return transactionInvalidResult(request.Generation), occupiedErr
 	} else if present {
 		return occupied, errResourceDenied
 	}
 	store, inspection, err := acquireStore(request.UpdateRoot, request.Generation)
 	if err != nil {
-		return invalidResult(request, "release-accepted"), err
+		return transactionInvalidResult(request.Generation), err
 	}
 	if result, matched := committedRequest(store, inspection, request, artifact, manifestDigest); matched {
 		if err := store.release(); err != nil {
@@ -432,6 +434,11 @@ func invalidResult(request Request, state string) Result {
 	return Result{Outcome: invalidOutcome, State: state, Generation: request.Generation,
 		StagingPresent: false, SafeNotice: "update transaction rejected",
 		CustodyNotice: request.Decision.CustodyNotice}
+}
+
+func transactionInvalidResult(generation uint64) Result {
+	return Result{Outcome: "transaction-invalid", State: "transaction-invalid", Generation: generation,
+		StagingPresent: false, SafeNotice: "update transaction invalid"}
 }
 
 func failApply(store *ownedStore, request Request, state string, cleanup bool, cause error) (Result, error) {

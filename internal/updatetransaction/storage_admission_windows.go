@@ -33,7 +33,7 @@ func observeOwnedStorage(root string) (resourceObservation, error) {
 	}
 	var available, total, free uint64
 	if err := windows.GetDiskFreeSpaceEx(encoded, &available, &total, &free); err != nil {
-		return resourceObservation{}, errors.New("windows byte observation unavailable")
+		return resourceObservation{}, errors.Join(errCapacityObservation, err)
 	}
 	// GetDiskFreeSpaceEx provides the per-caller byte availability but not an
 	// allocation-unit value without raw syscall pointer conversions. Treating

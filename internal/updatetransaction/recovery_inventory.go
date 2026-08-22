@@ -121,7 +121,7 @@ func collectInventory(root string) (inventoryResult, error) {
 }
 
 func readGenerationDir(root string, maximum int) ([]generationFacts, error) {
-	return readPayloadDir(root, maximum, false)
+	return readPayloadDir(root, maximum)
 }
 
 // readStagingDir admits only a canonical complete staging generation or the
@@ -144,7 +144,13 @@ func readStagingDir(root string, maximum int) ([]generationFacts, error) {
 		if parseErr != nil || !entry.IsDir() || (isTemporary && name != strconv.FormatUint(generation, 10)+".tmp") {
 			return nil, fmt.Errorf("%w: staging child %q invalid", errInventoryInvalid, name)
 		}
-		facts, factsErr := readPayloadFacts(filepath.Join(root, name), generation)
+		var facts generationFacts
+		var factsErr error
+		if isTemporary {
+			facts, factsErr = readTemporaryPayloadFacts(filepath.Join(root, name), generation)
+		} else {
+			facts, factsErr = readPayloadFacts(filepath.Join(root, name), generation)
+		}
 		if factsErr != nil {
 			return nil, factsErr
 		}
@@ -154,7 +160,38 @@ func readStagingDir(root string, maximum int) ([]generationFacts, error) {
 	return result, nil
 }
 
-func readPayloadDir(root string, maximum int, temporary bool) ([]generationFacts, error) {
+func readTemporaryPayloadFacts(directory string, generation uint64) (generationFacts, error) {
+	children, err := recoveryReadDir(directory, maximumPayloadEntries)
+	if err != nil || len(children) > 2 {
+		return generationFacts{}, fmt.Errorf("%w: temporary staging %d shape invalid", errInventoryInvalid, generation)
+	}
+	facts := generationFacts{Generation: generation, Temporary: true}
+	for _, child := range children {
+		switch child.Name() {
+		case "artifact":
+			facts.Artifact, err = recoveryReadFile(filepath.Join(directory, child.Name()), maximumArtifactBytes)
+			facts.HasArtifact = err == nil
+		case "manifest.bin":
+			facts.Manifest, err = recoveryReadFile(filepath.Join(directory, child.Name()), maximumRecordBytes)
+			facts.HasManifest = err == nil
+		default:
+			return generationFacts{}, fmt.Errorf("%w: temporary staging %d child invalid", errInventoryInvalid, generation)
+		}
+		if err != nil {
+			return generationFacts{}, fmt.Errorf("%w: temporary staging %d payload: %v", errInventoryInvalid, generation, err)
+		}
+	}
+	if facts.HasManifest {
+		view, decodeErr := decodeManifest(facts.Manifest.Bytes)
+		if decodeErr != nil || view.Generation != generation {
+			return generationFacts{}, fmt.Errorf("%w: temporary staging %d manifest invalid", errInventoryInvalid, generation)
+		}
+		facts.DecodedManifest = view
+	}
+	return facts, nil
+}
+
+func readPayloadDir(root string, maximum int) ([]generationFacts, error) {
 	entries, err := recoveryReadDir(root, maximum)
 	if err != nil {
 		return nil, err

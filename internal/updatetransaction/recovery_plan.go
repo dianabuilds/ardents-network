@@ -53,6 +53,9 @@ func planRecovery(facts inventoryResult, validation journalValidation, records r
 	if err := validatePhysicalSelection(facts); err != nil {
 		return recoveryPlan{}, err
 	}
+	if err := validateTemporaryStagingBinding(facts, validation); err != nil {
+		return recoveryPlan{}, err
+	}
 	interrupted := facts.InterruptedSelection
 	if interrupted == 0 {
 		return planIdle(facts, custodyNotice), nil
@@ -65,6 +68,26 @@ func planRecovery(facts inventoryResult, validation journalValidation, records r
 		return recoveryPlan{}, err
 	}
 	return planClassify(facts, validation, records, interrupted, custodyNotice)
+}
+
+func validateTemporaryStagingBinding(facts inventoryResult, validation journalValidation) error {
+	for _, staging := range facts.StagingDirs {
+		if !staging.Temporary {
+			continue
+		}
+		if len(validation.Entries) == 0 {
+			return fmt.Errorf("%w: temporary staging without journal", errPlanInvalid)
+		}
+		expected := validation.Entries[0]
+		if staging.HasArtifact && sha256.Sum256(staging.Artifact.Bytes) != expected.ArtifactDigest {
+			return fmt.Errorf("%w: temporary artifact mismatch", errPlanInvalid)
+		}
+		if staging.HasManifest && (sha256.Sum256(staging.Manifest.Bytes) != expected.ManifestCommitment ||
+			staging.DecodedManifest.Artifact != expected.ArtifactDigest) {
+			return fmt.Errorf("%w: temporary manifest mismatch", errPlanInvalid)
+		}
+	}
+	return nil
 }
 
 // validatePhysicalSelection is the pure semantic boundary between the raw
@@ -222,12 +245,12 @@ func planEarlyNonterminal(facts inventoryResult, transaction uint64, lastState b
 	if state == "artifact-verified" {
 		if hasTemporaryStaging {
 			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, custodyNotice, false)
-			plan.Operations = stagingRemovalOperations(transaction, true)
+			plan.Operations = stagingRemovalOperations(stagingFacts(facts.StagingDirs, transaction, true))
 			return plan, nil
 		}
 		if hasStaging {
 			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, custodyNotice, false)
-			plan.Operations = stagingRemovalOperations(transaction, false)
+			plan.Operations = stagingRemovalOperations(stagingFacts(facts.StagingDirs, transaction, false))
 			return plan, nil
 		}
 		return buildRecoveredPlan("R02", state, transaction, predecessorDigest, custodyNotice, false), nil
@@ -238,28 +261,43 @@ func planEarlyNonterminal(facts inventoryResult, transaction uint64, lastState b
 	return buildRecoveredPlan(rowForNonterminal(state), state, transaction, predecessorDigest, custodyNotice, true), nil
 }
 
-func stagingRemovalOperations(generation uint64, temporary bool) []planOperation {
-	name := strconv.FormatUint(generation, 10)
-	if temporary {
+func stagingRemovalOperations(staging *generationFacts) []planOperation {
+	if staging == nil {
+		return nil
+	}
+	name := strconv.FormatUint(staging.Generation, 10)
+	if staging.Temporary {
 		name += ".tmp"
 	}
-	return []planOperation{
-		{Kind: opRemoveFile, Path: filepath.Join("staging", name, "artifact")},
-		{Kind: opSyncDirectory, Path: filepath.Join("staging", name)},
-		{Kind: opRemoveFile, Path: filepath.Join("staging", name, "manifest.bin")},
-		{Kind: opSyncDirectory, Path: filepath.Join("staging", name)},
+	operations := make([]planOperation, 0, 6)
+	for _, file := range []struct {
+		name    string
+		present bool
+	}{{"artifact", staging.HasArtifact}, {"manifest.bin", staging.HasManifest}} {
+		if file.present {
+			operations = append(operations,
+				planOperation{Kind: opRemoveFile, Path: filepath.Join("staging", name, file.name)},
+				planOperation{Kind: opSyncDirectory, Path: filepath.Join("staging", name)},
+			)
+		}
+	}
+	return append(operations, []planOperation{
 		{Kind: opRemoveDirectory, Path: filepath.Join("staging", name)},
 		{Kind: opSyncDirectory, Path: "staging"},
-	}
+	}...)
 }
 
 func hasStagingKind(generations []generationFacts, generation uint64, temporary bool) bool {
+	return stagingFacts(generations, generation, temporary) != nil
+}
+
+func stagingFacts(generations []generationFacts, generation uint64, temporary bool) *generationFacts {
 	for _, candidate := range generations {
 		if candidate.Generation == generation && candidate.Temporary == temporary {
-			return true
+			return &candidate
 		}
 	}
-	return false
+	return nil
 }
 
 func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uint64, currentTemp rawFile, predecessorDigest [32]byte, custodyNotice string) (recoveryPlan, error) {

@@ -36,6 +36,28 @@ func TestRecoverRemovesOnlyDeclaredTemporaryStaging(t *testing.T) {
 	}
 }
 
+// TestRecoverRemovesEmptyDeclaredTemporaryStaging covers the crash boundary
+// immediately after temporary-directory creation, before either payload file
+// exists. The journal remains the binding evidence; recovery removes only the
+// declared incomplete tree.
+func TestRecoverRemovesEmptyDeclaredTemporaryStaging(t *testing.T) {
+	root, predecessor := recoveryOracleBootstrap(t)
+	_, _, artifactDigest, manifestDigest := recoveryOracleCandidateManifest(t)
+	if err := os.Mkdir(filepath.Join(root, "staging", "1.tmp"), 0o700); err != nil {
+		t.Fatalf("FIXTURE: create temporary staging: %v", err)
+	}
+	recoveryOracleWriteChain(t, root, 1, predecessor, artifactDigest, manifestDigest, byte(stateArtifactVerified))
+
+	result, err := Recover(context.Background(), root)
+	if err != nil || result.Outcome != "recovered" || result.State != "artifact-verified" || result.Generation != 1 ||
+		result.StagingPresent || result.SafeNotice != "update interrupted" {
+		t.Fatalf("Recover empty temporary staging result=%+v err=%v", result, err)
+	}
+	if _, statErr := os.Lstat(filepath.Join(root, "staging", "1.tmp")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("Recover empty temporary staging retained tree: %v", statErr)
+	}
+}
+
 // TestRecoverRejectsTemporaryAndFinalStaging proves that recovery does not
 // choose between two candidate trees when a rename boundary is ambiguous.
 func TestRecoverRejectsTemporaryAndFinalStaging(t *testing.T) {

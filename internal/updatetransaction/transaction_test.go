@@ -291,12 +291,12 @@ func TestApplyRejectsEntrySmokeCasesBeforeAdapters(t *testing.T) {
 		{"oversized-candidate", "resource-denied", func(_ *testing.T, _ string, decision *releasedecision.Decision) {
 			decision.Length = maximumArtifactBytes + 1
 		}},
-		{"missing-stored-authorization", invalidOutcome, func(t *testing.T, root string, _ *releasedecision.Decision) {
+		{"missing-stored-authorization", "transaction-invalid", func(t *testing.T, root string, _ *releasedecision.Decision) {
 			if err := os.Remove(filepath.Join(root, "generations", "0", "manifest.bin")); err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{"occupied-staging", invalidOutcome, func(t *testing.T, root string, _ *releasedecision.Decision) {
+		{"occupied-staging", "transaction-invalid", func(t *testing.T, root string, _ *releasedecision.Decision) {
 			if err := os.Mkdir(filepath.Join(root, "staging", "9"), 0o700); err != nil {
 				t.Fatal(err)
 			}
