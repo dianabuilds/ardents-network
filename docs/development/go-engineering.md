@@ -19,8 +19,6 @@ architecture gate checks both records against the Go tree.
 - First-party `unsafe`, cgo, and implicit `init` require a superseding accepted
   ADR and dedicated risk tests.
 - Use `gofmt`; package comments are mandatory; command packages remain thin.
-- A command package has a hard aggregate limit of 360 production lines and
-  each command file remains below 120 lines; orchestration belongs in Modules.
 - Name each file after one implementation responsibility. A production file
   above 250 lines requires review evidence for cohesion, invariant locality,
   the rejected obvious split, and behavior coverage; it is not rejected for
@@ -44,15 +42,14 @@ cutover, unbounded work, or a leaked trust boundary. Review the owning Module's
 responsibility, caller knowledge, state/lifecycle writer, failure/cleanup rule,
 format observers, and behavior/fault evidence together.
 
-The current command and export caps remain transitional architecture safeguards
-until S8.2 installs their source-bound replacement checks. They are not a
-reason to split one cohesive invariant into choreographing packages, widen a
-result record, or introduce a generic helper. A proposed exception instead
-records the local invariant, why an obvious split would add choreography, the
-real caller/compatibility boundary, and the tests that cover normal and failure
-behavior. A cap is removed only in the same accepted change that activates the
-replacement authority/interface/lifecycle enforcement; it is never bypassed
-for a passing metric alone.
+S8.2 replaced the command and internal-export caps with source-bound hard facts:
+package-map/import direction, command adaptation without exported product
+behavior, package responsibility/comments, dependency/artifact gates, and the
+scoped high-risk exception registry. They are not a reason to split one
+cohesive invariant into choreographing packages, widen a result record, or
+introduce a generic helper. A review records the local invariant, why an
+obvious split would add choreography, the real caller/compatibility boundary,
+and the tests that cover normal and failure behavior.
 
 ## Required workflow
 

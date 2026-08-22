@@ -304,7 +304,6 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 	hasPackageDoc := false
 	exported := 0
 	productionFiles := 0
-	productionLines := 0
 	packageName := ""
 
 	for _, path := range files {
@@ -339,12 +338,8 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 		}
 		if !strings.HasSuffix(relative, "_test.go") && !isBuildIgnored(data) {
 			productionFiles++
-			productionLines += lines
 			if forbiddenGoFileNames[filepath.Base(relative)] {
 				t.Errorf("production filename hides its responsibility: %s", relative)
-			}
-			if strings.HasPrefix(relative, "cmd/") && lines > 120 {
-				t.Errorf("command must remain a thin adapter (max 120 lines): %s", relative)
 			}
 			exported += inspectProductionFile(t, relative, file)
 		}
@@ -361,22 +356,9 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 		t.Errorf("package lacks a package comment: %s", relativeDirectory)
 	}
 	if strings.HasPrefix(relativeDirectory, "cmd/") {
-		if productionLines > 360 {
-			t.Errorf("command package exceeds thin-adapter budget (max 360 lines): %s (%d lines)", relativeDirectory, productionLines)
-		}
 		if exported > 0 {
 			t.Errorf("command package exposes %d symbols; behavior belongs in an internal Module: %s", exported, relativeDirectory)
 		}
-	}
-	maximumExports := 8
-	if relativeDirectory == "internal/updatetransaction" {
-		// Update Transaction has two independent caller-owned Adapter seams
-		// (runtime work/self-test and schema COW). They cannot be merged
-		// without granting either Adapter custody over the other's concern.
-		maximumExports = 10
-	}
-	if strings.HasPrefix(relativeDirectory, "internal/") && exported > maximumExports {
-		t.Errorf("internal package exposes %d symbols; deepen its interface (max %d): %s", exported, maximumExports, relativeDirectory)
 	}
 	return packageName, productionFiles > 0
 }
