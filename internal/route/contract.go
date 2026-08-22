@@ -48,9 +48,11 @@ type Actor struct {
 	ResourceProfile                               string
 	LocalRoleStateRoot                            string
 	OpenEntry                                     func(context.Context, func(context.Context, net.Conn) (*tls.Conn, error)) (*tls.Conn, func() error, error)
-	ResourceMeasure                               func() (resource.Sample, error)
-	ResourceCheck                                 func() error
-	PressureInterval                              time.Duration
+	// ResourceMeasure and ResourceCheck are behavior-test seams. Maintained
+	// runtime callers leave them nil and use ResourceProfile's platform adapter.
+	ResourceMeasure  func() (resource.Sample, error)
+	ResourceCheck    func() error
+	PressureInterval time.Duration
 }
 
 type attachmentStreamSource interface {

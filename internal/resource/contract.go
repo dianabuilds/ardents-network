@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var errUnsupportedPlatform = errors.New("resource guard is unsupported on this platform")
+
 // Sample is one bounded process/cgroup observation.
 type Sample struct {
 	CPUUsageUsec      uint64  `json:"cpu_usage_usec"`
@@ -32,6 +34,15 @@ type Sample struct {
 
 // Check verifies the fixed runtime and OS placement for this guard's profile.
 func (guard *Guard) Check() error {
+	deadline := time.Now().Add(guard.profile.placementWait)
+	for {
+		if err := checkPlacement(guard.profile); err == nil {
+			break
+		} else if errors.Is(err, errUnsupportedPlatform) || guard.profile.placementWait == 0 || time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	if runtime.GOMAXPROCS(0) != guard.profile.goMaxProcs {
 		return errors.New("resource guard GOMAXPROCS does not match its profile")
 	}
@@ -44,18 +55,11 @@ func (guard *Guard) Check() error {
 	if guard.profile.exactGoMemory && limit != guard.profile.goMemory || !guard.profile.exactGoMemory && limit > guard.profile.goMemory {
 		return errors.New("resource guard Go memory limit does not match its profile")
 	}
-	deadline := time.Now().Add(guard.profile.placementWait)
-	for {
-		if err := checkPlacement(guard.profile); err == nil {
-			return nil
-		} else if guard.profile.placementWait == 0 || time.Now().After(deadline) {
-			return err
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	return nil
 }
 
-// Config selects one fixed H3 profile and its measurement Adapter.
+// Config selects one fixed H3 profile. Measure is a behavior-test seam; a
+// maintained runtime leaves it nil and uses the selected platform adapter.
 type Config struct {
 	Profile  string
 	Interval time.Duration

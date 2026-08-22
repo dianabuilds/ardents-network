@@ -42,7 +42,7 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | `network/state` | Authenticated current/pending View, time floor, source distribution, durable publication, and source-server lifetime. | Absorb epoch/framing/store orchestration and remove concrete Source reversal. | DA-02 and DA-05. |
 | `network/source` | State-owned acquisition port and bounded transport observations, never accepted state. | Retain one direct-origin Adapter only while selected. | Source protocol/compatibility decision under DA-05/DA-10. |
 | `network/duty` | Durable local role-domain generations, watermark, expiry, and conflicts. | Replace `localroles`; State/Node/Route/Entry consume opaque duty facts. | D02 cutover and restart rule. |
-| `resource` | Process profile, measurements, reservations, hysteresis, pressure state, and finite releases. | Retain/deepen current resource owner; native metrics are concrete platform Adapters. | Accepted resource envelope and affected-platform scope. |
+| `resource` | Linux cgroup-v2/rlimit process profile, measurements, reservations, hysteresis, pressure state, and finite releases; explicit unsupported-platform refusal elsewhere. | Retain/deepen current resource owner; native metrics are concrete platform Adapters. | R-062 H1: Linux only until a native Adapter has measured acceptance. |
 | `entry` | Durable Invite/replay/contact history, replacement, and finite acquisition attempts. | Replace `bridge` state/callback ownership. | DA-06 for retained Carrier/Route mechanism. |
 | `route` | One Route selection and volatile role/attachment lifetime, capacity, cutover, and cleanup. | Absorb `routeplan`; consumes opaque View/Duty/Resource/Entry facts. | DA-06. |
 | `route/webtunnel` | Pinned candidate child, local front connection, temporary root, join, and cleanup. | Conditional concrete Route/Entry Adapter replacing `camouflage`. | DA-06; otherwise delete rather than rename. |
@@ -142,7 +142,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, `internal/network/framing`, `internal/network/store`, `internal/network/state` | Consolidate authenticated acceptance, current/pending state, and durable publication under `network/state`. | M3, subject to DA-02/05. |
 | `internal/network/source` | Retain as State-owned acquisition port and selected direct-origin Adapter only. | M3, subject to DA-05/10. |
 | `internal/node`, `internal/node/probe` | Transfer Node lifecycle and private probe to `node`. | M11. |
-| `internal/resource` | Retain/deepen as the sole shared resource coordinator. | M4, subject to supported-platform/resource scope. |
+| `internal/resource` | Retain/deepen as the sole shared resource coordinator; Linux profiles only and fail closed elsewhere. | M4, R-062 H1 accepted. |
 | `internal/route`, `internal/routeplan` | Consolidate route selection, attachment lifetime, and process cleanup under `route`. | M8, subject to DA-06. |
 | `internal/releasedecision` | Transfer release trust/root/floor ownership to `release`. | M1, subject to DA-01. |
 | `internal/updatetransaction` | Transfer transaction/recovery to `update` only after lifecycle scope and Release authority stabilize. | M2, subject to DA-01/09. |

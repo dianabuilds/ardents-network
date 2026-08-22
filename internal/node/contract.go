@@ -46,8 +46,8 @@ type Config struct {
 	Quarantine         time.Duration
 	ResourceProfile    string
 	LocalRoleStateRoot string
-	// ResourceMeasure supplies the process/cgroup observation adapter. Nil uses
-	// the operating-system sampler for ResourceProfile.
+	// ResourceMeasure and CheckPlacement are behavior-test seams. Maintained
+	// runtime callers leave them nil and use ResourceProfile's platform adapter.
 	ResourceMeasure func() (resource.Sample, error)
 	Now             func() time.Time
 	CheckPlacement  func() error

@@ -1,7 +1,7 @@
 ---
 id: R-062
 title: Which supported-platform resource adapters can enforce retained H3 profiles?
-status: open
+status: accepted
 owner: Codex
 started: 2026-08-22
 reviewed: 2026-08-22
@@ -27,8 +27,9 @@ scope and a fail-closed unsupported result.
 
 ## Hypotheses
 
-- **H1:** Linux cgroup-v2 plus rlimit is the only currently supported adapter;
-  every other platform refuses profile creation or readiness.
+- **H1:** Linux cgroup-v2 plus rlimit is the only currently supported runtime
+  adapter; every other platform refuses production readiness. In-repository
+  injected measurements are behavior-test seams, not runtime platform adapters.
 - **H2:** A portable Go-only observation can safely support the same profiles.
 - **H3:** A Windows-native job-object/metric adapter can support the profiles
   now with equivalent enforcement and evidence.
@@ -91,13 +92,22 @@ must produce a stable explicit refusal before any Node/Route/State readiness.
 
 ## Recommendation
 
-Run the H1 characterization first: change the current non-Linux success path
-to a deterministic unsupported-platform refusal, then test it together with
-the existing Linux path. Confidence is high that it matches the only accepted
-profile; the strongest objection is that current Windows Stage 7 work may need
-a different future profile rather than an immediate refusal.
+Accept H1. Linux cgroup-v2 plus rlimit is the only currently supported runtime
+adapter. The default adapter on every other platform must deterministically
+refuse both readiness and observation; a maintained runtime caller must
+therefore remain unready or drain, rather than infer a normal resource state
+from absent OS evidence. `Measure`, `CheckPlacement`, and `ResourceCheck` are
+in-repository behavior-test seams; the caller audit finds no non-test override.
+A future native adapter needs its own measured platform record before widening
+this scope.
 
 ## Disposition
 
-Open. No ADR is required unless a new native resource foundation or profile
-lock-in is selected. M4 resource cutover remains in progress.
+**Accepted H1 by the Product Owner on 2026-08-22.** The `!linux` adapters now
+return the stable unsupported-platform error. `Check` tests that error before
+runtime placement checks, and default `Observe` produces a protected drain
+observation with the same error. The Windows execution test covers the refusal;
+the Linux build is compiled during integration. The only custom measurement or
+placement/check callbacks are behavior tests, so they do not create a supported
+runtime path. No ADR is required unless a new native resource foundation or
+profile lock-in is selected.

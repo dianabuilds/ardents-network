@@ -2,4 +2,4 @@
 
 package resource
 
-func checkPlacement(profile) error { return nil }
+func checkPlacement(profile) error { return errUnsupportedPlatform }

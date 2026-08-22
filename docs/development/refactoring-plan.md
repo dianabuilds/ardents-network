@@ -61,6 +61,15 @@ commitments, materialization, canonical cursor, and durable root. The obsolete
 one-way acquisition port and no longer has a concrete State reverse dependency;
 external fixtures use independently implemented test-only canonical builders.
 | **M4 — Duty and Resource** | Input: `internal/localroles`, `internal/resource`, callers in State/Node/Route/Bridge. Owners: `network/duty`, then `resource`. Objective: one monotonic duty writer and one finite resource coordinator. | D02 is C1 with no generation/watermark reset. Resource platform scope must be explicit; unsupported platform fails closed. | Duty conflict/expiry/restart/physical-root tests; resource reservation/hysteresis/oversubscription/counter-reset and native adapter tests. Delete `internal/localroles/`, all displaced per-Module guards, and old duty readers. |
+
+**M4 execution record (complete, 2026-08-22):** D02 completed through `394f3fc` with
+the compatible `.ardents-local-roles-v1` durable root, unchanged generation
+and watermark semantics, and no `internal/localroles` reader or writer.
+R-062 accepts H1: `internal/resource` is the one shared coordinator for Linux
+cgroup-v2/rlimit profiles; `!linux` adapters refuse readiness and default
+observation fails protected and drained. The caller audit finds State, Node,
+and Route using this one owner and no displaced production resource guard or
+non-test resource-adapter override.
 | **M5 — Namespace** | Input: `internal/{nameadmission,nameauthority,nameclaim,namelease,namerecovery,namestore,naming}`, including the R-061-owned local persistence/proof mechanics, name command, Stage 6 fixtures. Owner: `naming/namespace`. | DA-03, DA-04, and DA-07 remain mandatory; DA-05 is closed by R-060/R-061. D04/W03 uses C1/C3 only after transcript, scale, and proof authority selects it. | Authenticated create/renew/control/recovery/claim/materialization, durable reopen, tamper, and codec/property tests. Delete all seven source directories, their duplicate validators/field bags, stage fixtures, and command-only control wiring after cutover. |
 | **M6 — private Resolution** | Input: `internal/nameresolution`, current name command and e2e role fixtures. Owner: `naming/resolution`. | DA-03, DA-04, and DA-07 are mandatory. C3 applies to retained OHTTP/wire behavior; no plaintext fallback or shared implementation view. | Opaque Namespace/State port tests, replay/admission/failure/scale tests, and selected real resolution process coverage. Delete `internal/nameresolution/` and old plan/command imports. |
 | **M7 — Entry and Carrier** | Input: `internal/bridge`, `internal/camouflage`, bridge/route commands. Owners: `entry`, conditional `route/webtunnel`. | DA-06 is mandatory. D03 is C1 only with revision-safe replay/attempt recovery; W04 is C3 if retained, otherwise C0. | Invite/replay/replacement/durable-fault tests; selected child/front death, process-tree, port/path, and cleanup tests. Delete `internal/bridge/`; delete `internal/camouflage/` unless the selected Adapter replaces it. |
