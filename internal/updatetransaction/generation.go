@@ -29,6 +29,7 @@ type rootInspection struct {
 	selection      currentSelection
 	predecessor    predecessorInspection
 	currentCustody string
+	currentRaw     []byte
 	schemaCurrent  *schemaCurrent
 	schemaRaw      []byte
 }

@@ -59,7 +59,7 @@ type predecessorInspection struct {
 var errRecordInvalid, errJournalChain = errors.New("update transaction record is invalid"), errors.New("update transaction journal chain is invalid")
 
 func encodeRecord(kind byte, body []byte, maximum int) ([]byte, error) {
-	if kind < recordManifest || kind > recordSchemaCurrent || len(body) > maximum ||
+	if kind < recordManifest || kind > recordRollbackRetire || len(body) > maximum ||
 		uint64(len(body)) > uint64(^uint32(0)) {
 		return nil, errRecordInvalid
 	}

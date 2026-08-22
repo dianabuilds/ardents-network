@@ -7,15 +7,15 @@ import (
 )
 
 const (
-	rootMarker, maximumArtifactBytes              = "ardents-update-transaction-v1\n", 64 << 20
-	maximumRecordBytes, maximumIdentityBytes      = 16384, 256
-	maximumTargetBytes, maximumNoticeBytes        = 512, 512
-	recordHeaderBytes, journalBodyBytes           = 16, 123
-	journalRecordBytes, maximumJournalBytes       = recordHeaderBytes + journalBodyBytes, 4096
-	recordManifest, recordCurrent            byte = 1, 2
-	recordPredecessor, recordJournal         byte = 3, 4
-	recordSchemaCurrent                      byte = 5
-	v0BootstrapManifestHex                        = "54d1f66e06df8e09fd734cccb6cc61b9f4880646ecef9dab8926bf65e5bfea96"
+	rootMarker, maximumArtifactBytes               = "ardents-update-transaction-v1\n", 64 << 20
+	maximumRecordBytes, maximumIdentityBytes       = 16384, 256
+	maximumTargetBytes, maximumNoticeBytes         = 512, 512
+	recordHeaderBytes, journalBodyBytes            = 16, 123
+	journalRecordBytes, maximumJournalBytes        = recordHeaderBytes + journalBodyBytes, 4096
+	recordManifest, recordCurrent             byte = 1, 2
+	recordPredecessor, recordJournal          byte = 3, 4
+	recordSchemaCurrent, recordRollbackRetire byte = 5, 6
+	v0BootstrapManifestHex                         = "54d1f66e06df8e09fd734cccb6cc61b9f4880646ecef9dab8926bf65e5bfea96"
 )
 
 // WorkControl stops new admission and drains accepted work before activation.

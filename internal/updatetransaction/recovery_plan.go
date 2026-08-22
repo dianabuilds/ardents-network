@@ -50,6 +50,9 @@ func planRecovery(facts inventoryResult, validation journalValidation, records r
 	if len(facts.Transactions) > 1 {
 		return recoveryPlan{}, fmt.Errorf("%w: second transaction", errPlanInvalid)
 	}
+	if len(facts.RollbackRetirement.Bytes) != 0 {
+		return planRollbackRetirement(facts, custodyNotice)
+	}
 	if err := validatePhysicalSelection(facts); err != nil {
 		return recoveryPlan{}, err
 	}
@@ -72,26 +75,6 @@ func planRecovery(facts inventoryResult, validation journalValidation, records r
 		return recoveryPlan{}, err
 	}
 	return applySchemaTempRecovery(plan, facts, validation)
-}
-
-func validateTemporaryStagingBinding(facts inventoryResult, validation journalValidation) error {
-	for _, staging := range facts.StagingDirs {
-		if !staging.Temporary {
-			continue
-		}
-		if len(validation.Entries) == 0 {
-			return fmt.Errorf("%w: temporary staging without journal", errPlanInvalid)
-		}
-		expected := validation.Entries[0]
-		if staging.HasArtifact && sha256.Sum256(staging.Artifact.Bytes) != expected.ArtifactDigest {
-			return fmt.Errorf("%w: temporary artifact mismatch", errPlanInvalid)
-		}
-		if staging.HasManifest && (sha256.Sum256(staging.Manifest.Bytes) != expected.ManifestCommitment ||
-			staging.DecodedManifest.Artifact != expected.ArtifactDigest) {
-			return fmt.Errorf("%w: temporary manifest mismatch", errPlanInvalid)
-		}
-	}
-	return nil
 }
 
 // validatePhysicalSelection is the pure semantic boundary between the raw

@@ -94,8 +94,15 @@ func (store *ownedStore) inspect(generation uint64) (rootInspection, error) {
 		return inspection, err
 	}
 	transactionNames := []string(nil)
+	if selection.Transaction != 0 && selection.Transaction != generation {
+		if _, err := os.Lstat(store.generationPath("transactions", selection.Transaction)); err == nil {
+			transactionNames = append(transactionNames, strconv.FormatUint(selection.Transaction, 10))
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return inspection, err
+		}
+	}
 	if _, err := os.Lstat(store.generationPath("transactions", generation)); err == nil {
-		transactionNames = []string{strconv.FormatUint(generation, 10)}
+		transactionNames = append(transactionNames, strconv.FormatUint(generation, 10))
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return inspection, err
 	}
@@ -103,6 +110,7 @@ func (store *ownedStore) inspect(generation uint64) (rootInspection, error) {
 		return inspection, err
 	}
 	inspection.selection = selection
+	inspection.currentRaw = append([]byte(nil), currentRaw...)
 	inspection.currentCustody = currentView.CustodyNotice
 	inspection.predecessor = predecessorInspection{CurrentRecordDigest: sha256.Sum256(currentRaw),
 		Current: selection.Current, Rollback: selection.Rollback,

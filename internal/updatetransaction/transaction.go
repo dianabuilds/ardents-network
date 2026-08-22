@@ -158,6 +158,12 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if result, handled, resumeErr := resumeRollbackPending(store, inspection, request, artifact, manifestDigest); handled {
 		return result, resumeErr
 	}
+	if inspection.selection.Rollback != nil && request.Generation == inspection.selection.Transaction+1 {
+		store, inspection, err = retireForNextGeneration(store, inspection, request.Generation)
+		if err != nil {
+			return transactionInvalidResult(request.Generation), err
+		}
+	}
 	if inspection.selection.Transaction+1 != request.Generation {
 		return applyFailure(store, request, "release-accepted", false, errRecordInvalid)
 	}
