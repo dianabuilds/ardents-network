@@ -1,4 +1,4 @@
-package localroles
+package duty
 
 import (
 	"sync"

@@ -136,6 +136,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/bridge` | Transfer durable Invite/replay/replacement ownership to `entry`. | M7, subject to DA-06. |
 | `internal/camouflage` | Transfer to `route/webtunnel` only if selected; otherwise delete. | M7, subject to DA-06. |
 | `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
+| `internal/network/duty` | Own the retained durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth. | M4 D02 C1 cutover; preserve the existing root format and one writer. |
 | `internal/nameadmission`, `internal/nameauthority`, `internal/nameclaim`, `internal/namelease`, `internal/namerecovery`, `internal/namestore`, `internal/naming` | Consolidate behind `naming/namespace`; remove duplicate validators, field bags, and stage fixtures. | M5, subject to DA-03/04/05/07. |
 | `internal/nameresolution` | Deepen as `naming/resolution` over opaque Namespace/State views. | M6, subject to DA-03/04/07. |
 | `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, `internal/network/framing`, `internal/network/store`, `internal/network/state` | Consolidate authenticated acceptance, current/pending state, and durable publication under `network/state`. | M3, subject to DA-02/05. |

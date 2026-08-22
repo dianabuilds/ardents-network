@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 )
 
 var hostileInviteTerminals = map[string]string{

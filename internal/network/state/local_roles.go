@@ -5,17 +5,17 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 )
 
 func (s *networkState) retainSourceExposures(notAfter time.Time) error {
-	roles, err := localroles.Open(localroles.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	roles, err := duty.Open(duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
 	if err != nil {
 		return err
 	}
-	duties := make([]localroles.Duty, len(s.config.sourceInfo.Identities))
+	duties := make([]duty.Duty, len(s.config.sourceInfo.Identities))
 	for index, identity := range s.config.sourceInfo.Identities {
-		duties[index] = localroles.Duty{Identity: identity,
+		duties[index] = duty.Duty{Identity: identity,
 			Family: sha256.Sum256([]byte(s.config.sourceInfo.Families[index])),
 			Class:  "direct-source", State: "exposed", NotAfter: notAfter}
 	}
@@ -26,20 +26,20 @@ func (s *networkState) retainSourceServer() error {
 	if s.current == nil {
 		return errors.New("direct Source server has no current identity")
 	}
-	roles, err := localroles.Open(localroles.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	roles, err := duty.Open(duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
 	if err != nil {
 		return err
 	}
-	duty := localroles.Duty{Identity: s.current.NodeID, Family: sha256.Sum256([]byte(s.current.DeclaredFamily)),
+	retained := duty.Duty{Identity: s.current.NodeID, Family: sha256.Sum256([]byte(s.current.DeclaredFamily)),
 		Class: "direct-source", State: "live", NotAfter: s.current.ValidUntil}
-	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []localroles.Duty{duty}), roles.Close())
+	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{retained}), roles.Close())
 }
 
 func (s *networkState) releaseSourceServer() error {
 	if !s.config.sourceInfo.Serving {
 		return nil
 	}
-	roles, err := localroles.Open(localroles.Config{Root: s.config.localRoles, Clock: s.config.clock})
+	roles, err := duty.Open(duty.Config{Root: s.config.localRoles, Clock: s.config.clock})
 	if err != nil {
 		return err
 	}

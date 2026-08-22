@@ -4,11 +4,11 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 )
 
 func retainLocalDuty(config runtimeConfig, snapshot Facts, state string) error {
-	roles, err := localroles.Open(localroles.Config{Root: config.LocalRoleStateRoot, Clock: config.now, Create: true})
+	roles, err := duty.Open(duty.Config{Root: config.LocalRoleStateRoot, Clock: config.now, Create: true})
 	if err != nil {
 		return err
 	}
@@ -20,13 +20,13 @@ func retainLocalDuty(config runtimeConfig, snapshot Facts, state string) error {
 	if snapshot.RecordValidUntil.Before(notAfter) {
 		notAfter = snapshot.RecordValidUntil
 	}
-	duty := localroles.Duty{Identity: snapshot.NodeID, Family: sha256.Sum256([]byte(snapshot.DeclaredFamily)),
+	retained := duty.Duty{Identity: snapshot.NodeID, Family: sha256.Sum256([]byte(snapshot.DeclaredFamily)),
 		Class: class, State: state, NotAfter: notAfter}
-	return errors.Join(roles.Replace(localDutyProducer(config.NodeID), []localroles.Duty{duty}), roles.Close())
+	return errors.Join(roles.Replace(localDutyProducer(config.NodeID), []duty.Duty{retained}), roles.Close())
 }
 
 func releaseLocalDuty(config runtimeConfig) error {
-	roles, err := localroles.Open(localroles.Config{Root: config.LocalRoleStateRoot, Clock: config.now})
+	roles, err := duty.Open(duty.Config{Root: config.LocalRoleStateRoot, Clock: config.now})
 	if err != nil {
 		return err
 	}

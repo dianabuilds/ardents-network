@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 )
 
 func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {

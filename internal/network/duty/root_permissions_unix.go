@@ -1,6 +1,6 @@
 //go:build !windows
 
-package localroles
+package duty
 
 import (
 	"errors"

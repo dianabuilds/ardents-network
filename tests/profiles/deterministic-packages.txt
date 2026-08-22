@@ -11,7 +11,7 @@ github.com/dianabuilds/ardents-network/internal/applicationipc
 github.com/dianabuilds/ardents-network/internal/architecture
 github.com/dianabuilds/ardents-network/internal/bridge
 github.com/dianabuilds/ardents-network/internal/camouflage
-github.com/dianabuilds/ardents-network/internal/localroles
+github.com/dianabuilds/ardents-network/internal/network/duty
 github.com/dianabuilds/ardents-network/internal/nameadmission
 github.com/dianabuilds/ardents-network/internal/nameauthority
 github.com/dianabuilds/ardents-network/internal/nameclaim

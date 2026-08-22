@@ -78,9 +78,9 @@ The maintained product Modules are:
 
 | Module path | Stable responsibility |
 |---|---|
-| `internal/network/state` | Orchestrate authenticated Network State acceptance, current and pending decisions, acquisition, and publication. |
+| `internal/network/state` | Own authenticated Network State acceptance, Epoch/View verification, current and pending decisions, acquisition, durable publication, and restart recovery. |
 | `internal/network/source` | Own the finite Direct-Origin Source plan, credential binding, private transport, and exposure identity. |
-| `internal/network/store` | Own the exclusive state root, immutable generations, control journal, and atomic pointers. |
+| `internal/network/duty` | Own durable Endpoint-local Role Domain duty, watermark, expiry, and identity/family conflict truth. |
 | `internal/node` | Bind one local Node identity to authenticated assignment, readiness, duty, drain, withdrawal, and terminal cleanup. |
 | `internal/node/probe` | Own authenticated bounded role-probe TLS, framing, replay rejection, listener pressure, and cleanup. |
 | `internal/resource` | Own bounded OS/runtime measurement, process placement, hysteresis, and pressure decisions shared by State and Node; each consumer owns its reaction. |
@@ -109,8 +109,8 @@ The product import direction is:
 ```text
 cmd/ardents -> internal/network/state, internal/network/source, internal/planfile
 cmd/ardents-node -> internal/network/state, internal/network/source, internal/node, internal/node/probe, internal/planfile
-internal/network/state -> internal/network/source, internal/resource
-internal/node -> internal/node/probe, internal/resource
+internal/network/state -> internal/network/duty, internal/network/source, internal/resource
+internal/node -> internal/network/duty, internal/node/probe, internal/resource
 ```
 
 End-to-end and live tests drive product Interfaces and commands but cannot

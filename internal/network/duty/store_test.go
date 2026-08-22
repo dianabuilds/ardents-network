@@ -1,4 +1,4 @@
-package localroles_test
+package duty_test
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 )
 
 func TestOpenDoesNotClaimAnUnrelatedDirectory(t *testing.T) {
@@ -47,6 +47,14 @@ func TestStoreRetainsCurrentConflictTruthAcrossRestart(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
+	marker, err := os.ReadFile(filepath.Join(root, ".ardents-local-roles-v1"))
+	if err != nil || string(marker) != "ardents-local-roles-v1\n" {
+		t.Fatalf("D02 ownership marker changed: %q, %v", marker, err)
+	}
+	current, err := os.ReadFile(filepath.Join(root, "current"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	store, err = localroles.Open(localroles.Config{Root: root, Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
@@ -57,6 +65,10 @@ func TestStoreRetainsCurrentConflictTruthAcrossRestart(t *testing.T) {
 	}
 	if conflict, err := store.Conflict([32]byte{}, family); err != nil || !conflict {
 		t.Fatalf("family conflict = %v, %v", conflict, err)
+	}
+	retainedCurrent, err := os.ReadFile(filepath.Join(root, "current"))
+	if err != nil || string(retainedCurrent) != string(current) {
+		t.Fatalf("D02 current generation reset: %q, %q, %v", current, retainedCurrent, err)
 	}
 }
 

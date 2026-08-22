@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/bridge"
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
@@ -62,7 +62,7 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 		Root: raw.StateRoot, RouteProfile: raw.RouteProfile, CurrentNetwork: network.Current, Clock: clock,
 		TimeConfidence: planfile.FreshRegular(raw.TimeConfidenceFile, clock, 2*time.Second),
 		RoleConflict: func(identity, family [32]byte) (bool, error) {
-			return localroles.ReadConflict(raw.LocalRoleStateRoot, clock, identity, family)
+			return duty.ReadConflict(raw.LocalRoleStateRoot, clock, identity, family)
 		},
 	}
 	return importRuntime{config: config, inviteFile: raw.InviteFile, localRoleRoot: raw.LocalRoleStateRoot,

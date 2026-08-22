@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 )
 
 func retainLocalRoute(input Actor, terminal time.Time) ([32]byte, error) {
@@ -16,18 +16,18 @@ func retainLocalRoute(input Actor, terminal time.Time) ([32]byte, error) {
 	if input.LocalRoleStateRoot == "" || len(input.Plan.Positions) != 4 || input.Deadline <= 0 {
 		return [32]byte{}, errors.New("client local-role projection is incomplete")
 	}
-	roles, err := localroles.Open(localroles.Config{Root: input.LocalRoleStateRoot, Clock: time.Now, Create: true})
+	roles, err := duty.Open(duty.Config{Root: input.LocalRoleStateRoot, Clock: time.Now, Create: true})
 	if err != nil {
 		return [32]byte{}, err
 	}
-	duties := make([]localroles.Duty, len(input.Plan.Positions))
+	duties := make([]duty.Duty, len(input.Plan.Positions))
 	for index, position := range input.Plan.Positions {
 		class, ok := routeDutyClass(position.Role)
 		if !ok {
 			_ = roles.Close()
 			return [32]byte{}, errors.New("client Route has an unknown local duty")
 		}
-		duties[index] = localroles.Duty{Identity: position.NodeID, Family: sha256.Sum256([]byte(position.Family)),
+		duties[index] = duty.Duty{Identity: position.NodeID, Family: sha256.Sum256([]byte(position.Family)),
 			Class: class, State: "live", NotAfter: terminal}
 	}
 	var nonce [32]byte
@@ -45,7 +45,7 @@ func releaseLocalRoute(input Actor, producer [32]byte) error {
 	if producer == ([32]byte{}) {
 		return nil
 	}
-	roles, err := localroles.Open(localroles.Config{Root: input.LocalRoleStateRoot, Clock: time.Now})
+	roles, err := duty.Open(duty.Config{Root: input.LocalRoleStateRoot, Clock: time.Now})
 	if err != nil {
 		return err
 	}

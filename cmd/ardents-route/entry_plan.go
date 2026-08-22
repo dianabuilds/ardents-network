@@ -6,7 +6,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/bridge"
 	"github.com/dianabuilds/ardents-network/internal/camouflage"
-	"github.com/dianabuilds/ardents-network/internal/localroles"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
@@ -63,7 +63,7 @@ func loadEntryPlan(path string) (runtime *entryRuntime, runErr error) {
 		return nil, err
 	}
 	cleanup = func() error { return errors.Join(network.Close(), transition.Close()) }
-	roles, err := localroles.Open(localroles.Config{Root: raw.LocalRoleStateRoot, Clock: time.Now})
+	roles, err := duty.Open(duty.Config{Root: raw.LocalRoleStateRoot, Clock: time.Now})
 	if err != nil {
 		return nil, err
 	}
