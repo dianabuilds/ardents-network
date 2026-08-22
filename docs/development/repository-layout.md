@@ -25,7 +25,7 @@ co-location grants none of them access to another zone's authority material.
 | `internal/<domain>/` | Maintained cohesive deep Modules and their implementation. A directory exists only with real behavior and an owned Interface. |
 | `internal/lab/<name>/` | Maintained laboratory Modules, visibly quarantined from product Modules. The `lab` segment is a namespace, not a Go package. |
 | `lab/` | Human-authored Docker, topology, and immutable-supply inputs owned only by maintained laboratories. It contains no Go Module, generated dependency, runtime state, or evidence. |
-| `tests/` | Shared fixtures, cross-process end-to-end tests, and explicit live-container tests. Unit and single-Module integration tests remain beside their implementation. This zone has no second Go module. |
+| `tests/` | Shared fixtures, checked execution-profile manifests, cross-process end-to-end tests, and explicit live-container tests. Unit and single-Module integration tests remain beside their implementation. This zone has no second Go module. |
 | `docs/product/` | Accepted product promise, delivery horizons, functions, journeys, and operating model. |
 | `docs/security/` | Threat model, claim conditions, adversaries, and honest limitations. |
 | `docs/research/` | Decision-relevant questions, completed evidence records, and the research template. |
@@ -91,6 +91,12 @@ Cross-process tests live under `tests/e2e/<behavior>/`. Live Docker inputs and
 their build-tagged Go tests live under `tests/live/`. Test-only fixture builders
 remain `_test.go` implementation owned by the scenario that uses them. Images,
 keys, state, captures, and generated manifests remain outside Git.
+
+`tests/profiles/` owns the checked profile registry and positive package
+membership manifests. A current package belongs to exactly one deterministic or
+historical-reproduction package profile; process, race, live, and future
+Qualification selection is explicit rather than inferred from a directory name
+or a negative Make filter.
 
 This is a trunk, not a complete future directory tree. Route, Carrier,
 Publication, Service Connection, Namespace, Bridge, Release Safety, platform,

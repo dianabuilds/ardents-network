@@ -86,6 +86,12 @@ foundations.
 - Run `make quick-check` while writing code and `make check` before integration.
   Do not weaken or bypass a failing gate. Tools are installed only through the
   explicit `make tools-install` command.
+- Tests belong to one checked execution profile. A missing selected Docker,
+  binary, privilege, platform, or orchestration prerequisite is an invalid
+  environment, not a passing skip; retries never erase an earlier failure.
+- Current documentation is promoted to its product, security, technical,
+  operations, reference, or engineering owner with the owning change. Stage
+  material and historical evidence are provenance, not a second specification.
 - Disposable research spikes may use `experiments/<question-id>-<slug>/`, but
   maintained Go modules and project packages do not belong there.
 - Each experiment must include a README stating the question, hypothesis, run
