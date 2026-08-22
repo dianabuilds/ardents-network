@@ -58,6 +58,25 @@ func TestRecoverRemovesEmptyDeclaredTemporaryStaging(t *testing.T) {
 	}
 }
 
+func TestRecoverRejectsTamperedPartialTemporaryStaging(t *testing.T) {
+	root, predecessor := recoveryOracleBootstrap(t)
+	artifact, _, artifactDigest, manifestDigest := recoveryOracleCandidateManifest(t)
+	if err := os.Mkdir(filepath.Join(root, "staging", "1.tmp"), 0o700); err != nil {
+		t.Fatalf("FIXTURE: create temporary staging: %v", err)
+	}
+	artifact[0] ^= 0xff
+	if err := os.WriteFile(filepath.Join(root, "staging", "1.tmp", "artifact"), artifact, 0o600); err != nil {
+		t.Fatalf("FIXTURE: write tampered partial artifact: %v", err)
+	}
+	recoveryOracleWriteChain(t, root, 1, predecessor, artifactDigest, manifestDigest, byte(stateArtifactVerified))
+
+	result, err := Recover(context.Background(), root)
+	recoveryOracleAssertInvalid(t, result, err)
+	if _, statErr := os.Lstat(filepath.Join(root, "staging", "1.tmp", "artifact")); statErr != nil {
+		t.Fatalf("Recover tampered partial temporary staging mutated artifact: %v", statErr)
+	}
+}
+
 // TestRecoverRejectsTemporaryAndFinalStaging proves that recovery does not
 // choose between two candidate trees when a rename boundary is ambiguous.
 func TestRecoverRejectsTemporaryAndFinalStaging(t *testing.T) {

@@ -442,10 +442,16 @@ func transactionInvalidResult(generation uint64) Result {
 }
 
 func failApply(store *ownedStore, request Request, state string, cleanup bool, cause error) (Result, error) {
+	var cleanupErr error
 	if cleanup {
-		cause = errors.Join(cause, store.cleanup(request.Generation))
+		cleanupErr = store.cleanup(request.Generation)
 	}
-	return invalidResult(request, state), errors.Join(cause, store.release())
+	releaseErr := store.release()
+	if cleanupErr != nil {
+		return Result{Outcome: "cleanup-incomplete", State: state, Generation: request.Generation,
+			StagingPresent: false, SafeNotice: "update cleanup incomplete"}, errors.Join(cause, cleanupErr, releaseErr)
+	}
+	return invalidResult(request, state), errors.Join(cause, releaseErr)
 }
 
 func applyFailure(store *ownedStore, request Request, state string, cleanup bool, cause error) (Result, error) {
