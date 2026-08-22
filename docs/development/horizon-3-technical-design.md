@@ -762,6 +762,12 @@ hidden, or abuse cost is unbounded for the one-to-one project.
 
 ### Stage 7 — Install, Update, Platforms, and Application Isolation
 
+**Disposition:** stopped by the Product Owner on 2026-08-22. The intended
+outcome below was not achieved or accepted as Stage 7 delivery. S7.1 Release
+Decision and the maintained S7.2 Update Transaction engineering slice remain
+inputs; S7.3-S7.7 are cancelled rather than deferred obligations. The
+[Stage 7 stop record](stage-7-stop-record.md) controls this disposition.
+
 **Outcome:** Ubuntu and Windows expose one Installed package and the exact same
 platform executable as a minimal Portable artifact. Both exercise direct-binary
 Client/Publisher behavior, Authority recovery, principal rebinding, and generic/
@@ -794,8 +800,8 @@ privilege broader than the declared broker, unsafe rollback, lost Authority,
 unverifiable process ownership, or a false claim about arbitrary Application code.
 
 The Product Owner accepted the Stage 7 S7.0 set and authorized `start S7.1` on
-2026-08-20. The baseline is R-048–R-054, R-056, ADR-0015, ADR-0016, ADR-0021,
-the
+2026-08-20, then stopped the stage on 2026-08-22 before S7.3. The historical
+baseline is R-048–R-054, R-056, ADR-0015, ADR-0016, ADR-0021, the
 [Stage 7 brief](horizon-3-stage-7-brief.md),
 [Application Adapter specification](stage-7-application-adapter-spec.md),
 [Application Principal specification](stage-7-application-principal-spec.md),
@@ -808,39 +814,68 @@ the
 [evidence contract](stage-7-platform-evidence.md), plus the
 [development-host campaign specification](stage-7-host-campaign-spec.md) and
 [joint review record](stage-7-joint-review.md). The linked
-[readiness checklist](stage-7-readiness-checklist.md) is the sole normative
-Stage 7 coding-start gate and records it as satisfied. H3 test roots, threshold
+[readiness checklist](stage-7-readiness-checklist.md) records the historical
+coding-start gate and the later stop disposition. H3 test roots, threshold
 members, rebuilds, distributors, hosts, and review are project-controlled; their
 mechanics cannot satisfy the independent-custodian, independent-builder, or
 independent-review gates of Horizon 4.
 
-### Stage 8 — Integrated Closed Test Network
+### Stage 8 — Productization and Restructuring
 
-**Outcome:** all accepted Stage 1–7 mechanisms operate together in one persistent
-project-controlled network and complete the end-to-end User, Developer, Endpoint
-Owner, and Network Contributor journeys.
+**Outcome:** one deliberately scoped, maintainable product candidate created by
+contract-first Module replacement, with all planned mutations complete and an
+accepted immutable Stage 9 freeze proposal.
 
-The integrated campaign includes:
+Stage 8 now uses six explicit gates:
 
-- clean install and routine restart;
-- authenticated state refresh and Node churn;
-- Target and exact-name connections;
-- client and publisher useful workloads;
-- single/sequential/overlapping Route failure;
-- ordinary-entry blocking and Bridge replacement;
-- Service Instance migration;
-- compatible update and failed-update rollback;
-- normal/hostile resource cells and quiescence leak probes;
-- shutdown, restart, evidence spool, and fixture cleanup;
-- a multi-day unattended soak after the complete short adversarial matrix passes.
+1. **S8.0 — freeze and current-system truth:** rescan the clean Stage 7 output,
+   rerun the source/test/document delta audit, and produce factual disposition
+   inventories without claiming final Qualification;
+2. **S8.1 — product and preservation disposition:** choose `continue`, `narrow`,
+   `redesign`, or `stop`, then classify every retained behavior, state, format,
+   command, experiment, caller, and claim;
+3. **S8.2 — development model:** promote the cohesion-based engineering policy,
+   qualitative testing pyramid, Qualification separation, and current-truth/
+   provenance documentation lifecycle into canonical rules and gates;
+4. **S8.3 — target technical shape:** accept deep Module responsibilities,
+   Interfaces, real Adapter seams, command/import/trust direction, state owners,
+   and format/compatibility decisions;
+5. **S8.4-S8.5 — plan and execute:** define M0-M14 with one code-retirement
+   ledger, then move one authority/writer at a time, cut callers/tests/docs to
+   the target Interface, and delete displaced Implementation and scaffolding;
+6. **S8.6 — productization closure:** prove every code/test/dependency/document/
+   experiment disposition, run clean readiness profiles, delete transitional
+   artifacts, and freeze the complete Stage 9 candidate and schedule.
 
-**Pass:** every accepted product journey has a machine-recomputed result, all
-security/resource/cleanup gates are conjunctive, and the human report lists the
-remaining centralized and unqualified claims.
+The target Module responsibilities are Endpoint composition; Application
+Broker/Isolation; Network State/Source/Duty; Resource; Namespace/Resolution;
+Publication/Connection; Entry/Route and a selected Carrier Adapter; Node;
+Release/Update/Custody; thin product commands; and separate claim-bearing
+Qualification tools. Exact packages are admitted only with a real Interface,
+Implementation, caller, tests, imports, and package-map ownership.
 
-**Stop/redesign:** integration needs a parallel control plane, hidden direct path,
-shared authority, unbounded operational state, per-stage security downgrade, or
-maintenance burden beyond the one-to-one project.
+Every migration wave freezes its input, preserves named product contracts,
+defines state/format cutover and rollback or forward repair, tests through the
+new Interface, migrates callers, updates current documentation, and deletes the
+old packages/files/exports/commands/tests/fixtures/plans/configuration/readers.
+An experiment is retained only for a current named Qualification or immutable
+historical-reproduction obligation; otherwise M14 deletes it after its unique
+claim/evidence facts are preserved.
+
+The current journey matrix and bounded install/restart/state/Route/Service/
+update/resource/cleanup diagnostics are Stage 8 readiness inputs. Full
+cross-platform, adversarial, sustained, soak, and deferred claim Qualification
+belongs to Stage 9 after the last mutation.
+
+**Pass:** every G0 preservation row, G2 finding, target Module, format, migration
+wave, test profile, dependency, infrastructure asset, experiment, and document
+has a completed disposition; the Product Owner accepts the maintained candidate
+and Stage 9 freeze. Stage 8 makes no final H3 claim.
+
+**Return/redesign/stop:** unresolved dual authority, unsafe migration,
+unbounded compatibility, unowned deletion, missing current truth, failed
+readiness, or a product unsupported by the actual team prevents the freeze and
+returns to its owning Stage 8 gate.
 
 ### 7.9 Product-journey coverage
 
@@ -860,8 +895,8 @@ journeys has no integrated owner and evidence path.
 | J08 update, rollback, and recover authority | 7, 8 | Signed compatible update succeeds, failed update rolls back, and release infrastructure cannot seize Service/Name authority |
 
 The matrix is a coverage obligation, not permission to implement all journeys in
-one change. Each stage must preserve already-qualified rows and Stage 8 must
-recompute all rows in one integrated campaign.
+one change. Stage 8 uses it to find gaps and define the final candidate; Stage 9
+recomputes every applicable row against one frozen identity.
 
 ## 8. Security and privacy invariants across all stages
 
@@ -890,38 +925,58 @@ Every stage applies these invariants even if its positive claim is narrower:
 12. the project states protected information, adversary, conditions, measurement,
     and limitation for every privacy/security claim.
 
-### Stage 9 - Stabilization and Technical Closure
+### Stage 9 — Frozen Product Qualification and Closure
 
-**Outcome:** the functionally integrated H3 candidate becomes one clean stable
-baseline before Horizon 4: no placeholders, laboratory packages/commands,
-temporary infrastructure, or completed-stage development documentation remains;
-retained mechanisms have current technical documentation and a fixed verification
-owner.
+**Outcome:** one exact post-refactoring source/build/supply/configuration/format/
+normative-document/stand identity receives the complete final H3 regression and
+Qualification cycle and an explicit Product Owner closure disposition.
 
-Includes:
+Stage 9 contains no planned mutation. It separates the evidence surfaces:
 
-- complete code/package/command/document/test/infrastructure disposition ledger;
-- production simplification and removal or promotion of all laboratory surfaces;
-- conversion of stage plans/checklists into one active technical-document set;
-- fixed fast/full/platform/qualification/reproduction check tiers;
-- clean-checkout build, dependency, supply, privilege, and cleanup stabilization;
-- post-cleanup source/supply freeze and complete affected H3 requalification on a
-  dedicated powerful non-overcommitted pre-H4 stand; and
-- independent final verdict and Product Owner H3 closure disposition.
+1. **S9.0** admits the immutable candidate, complete schedule, dedicated stand,
+   observers/verifiers, and external evidence roots;
+2. **S9.1** runs clean deterministic Module, Adapter-contract, composition,
+   compatibility, race, fuzz-corpus, build, architecture, and documentation
+   regression;
+3. **S9.2** proves every supported platform, installer/package, process/IPC/
+   Isolation Adapter, custody, update/rollback/repair, operator procedure,
+   resource, and cleanup lifecycle;
+4. **S9.3** runs the complete J00-J08 integrated journey matrix with failure,
+   restart, recovery, adversarial, no-fallback, redaction, and residue oracles;
+5. **S9.4** runs predeclared sustained, churn, pressure, repeated lifecycle, and
+   multi-hour/day stability campaigns with resource/leak time series;
+6. **S9.5** executes deferred claim-level protocols, including retained R-023
+   and R-037 obligations, and independently recomputes only the claims that
+   require an independent verifier; and
+7. **S9.6** retains its historical meaning as the terminal integrated journey,
+   adversarial-sentinel, multi-day soak, reconciliation, cleanup, and Product
+   Owner handoff campaign.
 
-**Pass:** the cleaned source contains no unfinished or laboratory surface, active
-documentation describes only the final system, every retained artifact is owned
-and mapped, production excludes qualification tooling, and the fixed complete
-verification set passes against the frozen post-cleanup identity.
+Every selected result is `pass`, `fail`, or `invalid`; missing environment,
+actor, evidence, attribution, or cleanup is never pass. A rerun is diagnostic
+and never erases an earlier result. Any source, test, dependency, supply,
+configuration, format, supported-platform claim, acceptance protocol, or
+normative-document change ends the attempt and returns to the owning Stage 8
+wave with a new freeze. Only a recorded external-stand repair may resume the
+same candidate under the predeclared impact graph.
 
-**Stop/redesign:** cleanup changes behavior without a new decision, technical
-truth still depends on obsolete stage plans, hidden infrastructure or mutable
-supply is required, or final evidence applies to a pre-cleanup source identity.
+**Pass:** every applicable conjunctive predicate and required independent
+verdict applies to the same candidate, all regression/soak/claim surfaces are
+complete, cleanup and retained state are correct, limitations remain honest,
+and the Product Owner accepts the Horizon 3 product baseline.
 
-[R-040](../research/records/r-040-h3-stabilization-closure.md) and the
-[Stage 9 brief](horizon-3-stage-9-brief.md) define the mandatory H3-to-H4 closure
-gate. Stage 8 integration evidence is input to Stage 9, not a waiver of final
-post-cleanup qualification.
+**Return/stop:** a candidate or contract change, failed or invalid evidence,
+hidden/mutable supply, unavailable required gate, or infeasible honest claim
+prevents closure. The project returns to Stage 8 or records `stop`; it never
+manufactures a passing claim.
+
+Accepted [R-058](../research/records/r-058-h3-reassessment-and-closure.md), the
+replacement [Stage 8 brief](horizon-3-stage-8-brief.md), and replacement
+[Stage 9 brief](horizon-3-stage-9-brief.md) define the current H3-to-H4 closure
+model. The prepared G0-G5 workbook analysis is promoted through Stage 8 rather
+than becoming another permanent authority. [R-040](../research/records/r-040-h3-stabilization-closure.md)
+remains provenance for cleanup and final freeze, but its original stage ordering
+is superseded.
 
 ## 9. Evidence and decision model
 

@@ -1,21 +1,27 @@
 ---
 id: R-040
 title: How does Horizon 3 become a clean stable baseline before Horizon 4?
-status: accepted
+status: superseded-in-part
 owner: product research
 started: 2026-08-17
-reviewed: 2026-08-17
+reviewed: 2026-08-21
 ---
 
 # R-040 - Horizon 3 stabilization and technical closure
 
 ## Decision status
 
-Status: **accepted by the Product Owner on 2026-08-17.**
+Status: **accepted by the Product Owner on 2026-08-17; Stage ordering
+superseded by accepted R-058 on 2026-08-21.**
 
 Horizon 3 gains a required Stage 9 after functional integration. Stage 9 owns
 code, documentation, test, verification, dependency, build, and infrastructure
 stabilization and qualifies the cleaned source before Horizon 4 begins.
+
+R-058 preserves the cleanup, reduction, freeze, and final-qualification intent
+but moves every planned mutation into Stage 8. Stage 9 now accepts only the
+frozen Stage 8 candidate and performs qualification and closure. The original
+ordering below remains decision provenance, not current execution authority.
 
 ## Decision this unlocks
 
@@ -107,3 +113,13 @@ post-cleanup source cannot reproduce the accepted checks.
   the final source/supply freeze.
 - No technology, package name, dependency, or wire format is selected by this
   record; those remain factual Stage 9 inventory decisions under repository rules.
+
+## Supersession note — 2026-08-21
+
+Accepted R-058 supersedes the original Disposition assignments and execution
+ordering only where this record assigned cleanup, restructuring, documentation conversion, test
+consolidation, or infrastructure stabilization to Stage 9. Those changes now
+belong to Stage 8. Stage 9 remains mandatory, adds no product functionality,
+and owns the frozen final H3 qualification. The requirements to remove obsolete
+surfaces, reduce active documentation, freeze the post-cleanup identity, and
+qualify that exact identity remain in force.

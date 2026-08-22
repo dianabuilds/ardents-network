@@ -24,6 +24,12 @@ permissionless public Bridge distribution, production
 updates, Windows qualification, multiparty control, and the complete release
 test matrix remain later promotion gates.
 
+Stage 7 was stopped by the Product Owner on 2026-08-22. S7.1 Release Decision,
+the maintained S7.2 Update Transaction engineering slice, and R-050 mechanism
+evidence remain inputs; S7.3-S7.7 are cancelled, not deferred commitments or
+accepted product delivery. Stage 8 productization has a planning contract but
+has not started.
+
 ## Product hypothesis
 
 Ardents lets an existing local Application publish or connect to an internal
@@ -256,11 +262,13 @@ system at once.
 - [Stage 4 implementation brief](docs/development/horizon-3-stage-4-brief.md)
 - [Stage 5 implementation brief](docs/development/horizon-3-stage-5-brief.md)
 - [Stage 6 implementation brief](docs/development/horizon-3-stage-6-brief.md)
-- [Accepted Stage 7 implementation brief](docs/development/horizon-3-stage-7-brief.md)
+- [Stopped Stage 7 implementation brief](docs/development/horizon-3-stage-7-brief.md)
 - [Stage 7 development-host campaign specification](docs/development/stage-7-host-campaign-spec.md)
 - [Stage 7 joint review record](docs/development/stage-7-joint-review.md)
 - [Stage 7 S7.0 start record](docs/development/stage-7-start-record.md)
-- [Stage 9 stabilization and technical closure brief](docs/development/horizon-3-stage-9-brief.md)
+- [Stage 7 stop record](docs/development/stage-7-stop-record.md)
+- [Stage 8 productization and restructuring brief](docs/development/horizon-3-stage-8-brief.md)
+- [Stage 9 frozen product qualification and closure brief](docs/development/horizon-3-stage-9-brief.md)
 - [R-029 authenticated Node lifecycle (H3 Stage 1)](docs/research/records/r-029-h3-authenticated-node-lifecycle.md)
 - [R-030 real multi-node route (H3 Stage 2)](docs/research/records/r-030-h3-real-multi-node-route.md)
 - [R-031 Service Connection + Application Interface (H3 Stage 3)](docs/research/records/r-031-h3-service-connection-application-interface.md)
@@ -273,6 +281,7 @@ system at once.
 - [R-038 Stage 4 role capacity (`P3-D3b4`)](docs/research/records/r-038-h3-stage-4-role-capacity.md)
 - [R-039 private naming lifecycle (H3 Stage 6)](docs/research/records/r-039-h3-private-naming-lifecycle.md)
 - [R-048 Stage 7 contract and decision order](docs/research/records/r-048-h3-stage-7-contract.md)
+- [R-058 reassessment, restructuring, and frozen qualification](docs/research/records/r-058-h3-reassessment-and-closure.md)
 
 ## Repository shape
 

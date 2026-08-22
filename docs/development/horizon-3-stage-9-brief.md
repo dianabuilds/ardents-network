@@ -1,397 +1,309 @@
-# Horizon 3 Stage 9 stabilization and technical closure brief
+# Horizon 3 Stage 9 frozen product qualification and closure brief
 
-Status: **scope accepted by the Product Owner on 2026-08-17. Stage 9 is a
-required Horizon 3 gate before Horizon 4.**
+Status: **replacement planning contract accepted by the Product Owner on
+2026-08-22. Execution has not started.** This brief replaces both the original
+Stage 9 cleanup plan and the coarse 2026-08-21 qualification brief. All planned
+product, architecture, code, test, infrastructure, and documentation mutations
+belong to Stage 8.
 
-Authoritative inputs: accepted ADRs, the product contract and threat model,
-accepted Horizon 3 research records, the H3 technical design, factual package and
-dependency maps, completed Stage 1-8 evidence, R-040, and repository rules.
+Authoritative inputs are:
+
+- the Product Owner-accepted Stage 8 execution record and freeze disposition;
+- the frozen product contract, threat model, applicable ADRs, limitations,
+  journey/claim matrix, technical architecture, package/dependency maps,
+  operations/reference documentation, and testing policy;
+- the exact candidate, source, build, supply, toolchain, configuration, format,
+  schema, fixture, Qualification/verifier, platform/stand, schedule, and active
+  normative-document identities frozen at the Stage 8 exit; and
+- applicable completed research and qualification protocols, including retained
+  R-023 and R-037 obligations unless Stage 8 accepted a superseding decision.
 
 ## Purpose
 
-Stage 9 turns the functionally integrated Horizon 3 candidate into one stable,
-clean, technically documented, reproducibly verified baseline for Horizon 4.
+Stage 9 proves one exact post-refactoring product candidate. It separates fast
+deterministic regression, real platform/lifecycle behavior, integrated and
+adversarial regression, long-running stability, and claim-level Qualification
+so that a green result cannot conceal an unexecuted class of risk.
 
-Stage 9 is not a feature stage. It adds no new product behavior, transport,
-storage engine, consensus mechanism, public wire protocol, application feature,
-privacy claim, capacity target, or supported platform. It may change internal
-structure only to remove debt, consolidate ownership, retire temporary machinery,
-and make already accepted behavior maintainable.
-
-Cleanup happens before final qualification. A version cleaned after qualification
-is a different, unqualified version and cannot become the H3 baseline without
-rerunning the affected checks.
+Stage 9 changes nothing about the candidate. It produces immutable raw evidence,
+reproducible verdicts, honest limitations, and an explicit Product Owner Horizon
+3 closure decision.
 
 ## Entry gate
 
 Stage 9 starts only when:
 
-1. Stages 1-8 have produced their required functional and integration outcomes;
-2. no earlier stage still depends on an unimplemented placeholder or an open
-   product decision;
-3. all generated evidence, secrets, captures, caches, images, and build outputs
-   remain outside the repository;
-4. the Product Owner freezes Horizon 3 functionality and rejects feature additions
-   until the Stage 9 disposition; and
-5. one inventory identifies every maintained package, command, test suite,
-   script, infrastructure file, and active documentation class.
-
-Earlier-stage evidence remains useful input, but the final H3 claim belongs only
-to the post-cleanup Stage 9 source and its own frozen verification identity.
-
-## Required outcome
-
-The Stage 9 output is one H3 stable baseline with:
-
-- no placeholders, unfinished branches, temporary adapters, laboratory packages,
-  laboratory commands, speculative interfaces, dead flags, or unowned files;
-- a small factual production package and command graph;
-- maintained qualification tooling that is separate from shipped production
-  binaries and no longer presented as disposable laboratory code;
-- one active technical source of truth for every mechanism, format, state machine,
-  security boundary, operational procedure, and verification profile;
-- no active development plans or readiness documents for completed stages;
-- a fixed, documented, reproducible set of checks with explicit environment and
-  evidence requirements; and
-- a final independent verification result and Product Owner H3 closure decision.
-
-## Working rules
-
-1. **No feature work.** Every change must map to removal, consolidation,
-   documentation conversion, reproducibility, or verification.
-2. **One owner per fact.** Code, documents, tests, and schemas cannot silently
-   define competing versions of one contract.
-3. **No cleanup after the final freeze.** Any source, dependency, configuration,
-   or normative-document change after freeze invalidates the affected result.
-4. **Git is the development archive.** Completed implementation plans and
-   readiness checklists are deleted after their still-valid content is moved;
-   duplicate in-repository archive trees are not created.
-5. **Durable decisions remain durable.** Accepted ADRs and research records stay
-   available as decision provenance but are excluded from the default agent
-   reading set unless a task touches their decision.
-6. **Production and qualification stay separate.** Production packages and
-   binaries cannot import or embed qualification runners, fixtures, expected
-   results, or verdict logic.
-7. **Independent verification remains independent.** Necessary duplication of a
-   contract in a verifier is explicit and hash/schema-bound; accidental duplicate
-   business logic is removed.
-
-## S9.1 - Inventory, classification, and freeze plan
-
-Create one factual disposition ledger covering every relevant repository path.
-Each item receives exactly one class:
-
-| Class | Meaning | Required disposition |
-|---|---|---|
-| Production | Maintained product package, command, configuration, or asset | Keep, simplify, document, and map |
-| Qualification | Maintained test/verifier/harness needed to reproduce an H3 claim | Promote from lab status, isolate from shipping, document, and map |
-| Technical documentation | Current mechanism/interface/operations/verification truth | Keep or consolidate into one authority |
-| Durable decision | Accepted ADR or research record explaining why a contract exists | Retain as provenance; remove from default reading set |
-| Transitional | Migration helper, compatibility branch, temporary schema, development mode, or one-use script | Remove after proving no maintained caller |
-| Obsolete | Superseded, duplicated, unused, or contradicted material | Delete; rely on git history |
-
-The ledger records owner, callers, imports, replacement destination, verification
-impact, and deletion precondition. No unclassified path may enter S9.2.
-
-S9.1 also freezes:
-
-- the intended final production package/command graph;
-- the maintained qualification responsibilities and their non-shipping boundary;
-- the active technical-document set;
-- the fixed verification tiers and exact command owners; and
-- the complete rerun scope after structural changes.
-
-Exit: Product Owner accepts the ledger and no item is labelled merely `later`,
-`temporary`, `maybe`, or `keep for now`.
-
-## S9.2 - Code and package stabilization
-
-### Production code
-
-- remove every `TODO`, placeholder, `not implemented`, unconditional fail-closed
-  development blocker, unused feature flag, dead branch, and test-only control;
-- remove `internal/lab/*`, `cmd/*-lab`, disposable experiment code, and production
-  references to laboratory fixtures;
-- promote only genuinely reusable qualification responsibilities into explicitly
-  maintained non-shipping boundaries selected and registered during S9.1;
-- delete temporary adapters and compatibility paths once all maintained callers
-  use the accepted seam;
-- consolidate duplicate production schemas, state representations, error classes,
-  parsers, encoders, clocks, and lifecycle rules under one owning module;
-- keep verifier recomputation separate without sharing candidate decision logic;
-- reduce exported APIs to operations used by real non-test callers;
-- remove speculative interfaces and single-implementation indirection unless the
-  boundary is security-relevant or independently replaceable by accepted design;
-- keep every package cohesive, every file responsibility-named and within limits,
-  and every import allowed by the factual package map;
-- preserve explicit resource, deadline, restart, cleanup, rollback, and failure
-  behavior while simplifying implementation;
-- remove abandoned dependencies, commands, scripts, build tags, configuration
-  fields, schemas, fixtures, and generated artifacts; and
-- prohibit new generic `util`, `common`, `misc`, `types`, `interfaces`, `api`,
-  `sdk`, or dumping-ground packages.
-
-### Package acceptance
-
-Every retained package must have:
-
-- one documented responsibility and exact permitted imports;
-- maintained implementation and behavior tests;
-- at least one real non-test caller where repository rules require it;
-- no cycle, hidden reverse dependency, lab dependency, or command-owned domain
-  logic;
-- bounded errors and data structures using canonical domain terms; and
-- a factual package-map row updated in the same structural change.
-
-Every retained command must be a thin adapter with one explicit owner. Commands
-used only for qualification are not shipped as product commands.
-
-### Stabilization constraints
-
-Refactoring must preserve accepted behavior. If a simplification changes an
-observable contract, security boundary, evidence meaning, dependency, persistence
-format, or wire/fixture format, it stops and follows normal research/ADR and
-requalification rules rather than being hidden inside cleanup.
-
-Exit: production source contains no laboratory tree or unfinished implementation;
-the package graph matches the accepted S9.1 graph; all affected maintained tests
-pass before documentation is declared final.
-
-## S9.3 - Documentation conversion and reduction
-
-Stage 9 replaces development-oriented documentation with technical documentation.
-The goal is not to preserve every text file. The goal is to preserve every still
-valid fact exactly once.
-
-### Final active documentation set
-
-The active set contains only:
-
-1. repository entry and navigation;
-2. canonical domain language needed to read current H3 code;
-3. current technical architecture and package/dependency maps;
-4. mechanism documentation for Network State, Routes, Service Connection,
-   recovery, Bridge/blocked entry, naming, lifecycle, persistence, isolation,
-   resource control, and other retained H3 components;
-5. canonical formats, state machines, error classes, trust boundaries, and
-   security/privacy limitations;
-6. supported-host, build, configuration, operation, upgrade, recovery, and
-   troubleshooting documentation;
-7. fixed test and qualification specifications, commands, fixture requirements,
-   expected outputs, and evidence retention rules;
-8. known limitations and intentionally unsupported behavior; and
-9. accepted ADRs/research records as selectively consulted decision provenance.
-
-Product-planning narratives, journey planning, rejected scheduling alternatives,
-and completed-stage implementation instructions are not part of the active
-technical set. The canonical product contract and threat model remain only where
-they still define normative behavior or security limitations required by the
-repository authority order.
-
-### Documents to retire
-
-After valid content is migrated, delete:
-
-- completed `horizon-3-stage-*-brief.md` implementation briefs;
-- stage development plans and agent execution prompts;
-- readiness checklists and temporary gate-status documents;
-- intermediate evidence plans replaced by the final qualification specification;
-- development fixture instructions for removed runners;
-- duplicated architecture summaries and repeated contract prose;
-- migration instructions for migrations that can no longer be run; and
-- status texts containing stale `pending`, `in progress`, `next`, or provisional
-  statements.
-
-Stage 9's own brief is retired after its completion facts are captured in the H3
-technical baseline and closure report.
-
-### Migration rule
-
-For each retired document:
-
-1. identify every normative statement still implemented or verified;
-2. move that statement to the single owning technical document;
-3. replace prose with precise formats, state transitions, field tables, commands,
-   invariants, failure behavior, and limitations where appropriate;
-4. update inbound links and the active documentation index;
-5. confirm no current code/test/package map depends on the old path; and
-6. delete the old document rather than copying it into an active archive tree.
-
-### Agent context budget
-
-The final documentation index defines:
-
-- a small mandatory reading set for every task;
-- task-routed technical documents by package/mechanism;
-- decision records consulted only when their decision is relevant; and
-- historical material available through git rather than normal agent discovery.
-
-No technical fact may require reading a chain of stage plans to discover the
-current behavior. No agent should load all Horizon 3 history to modify one module.
-
-Exit: every active document describes the final system, has one current owner,
-contains no development status, and appears in the documentation index; every
-retired document has no remaining unique normative content.
-
-## S9.4 - Test and verification consolidation
-
-Classify every retained check into one tier:
-
-| Tier | Purpose | Normal use |
-|---|---|---|
-| Fast | Formatting, architecture, unit behavior, static invariants | Every change |
-| Full | All maintained unit/integration and platform-independent command tests | Before integration |
-| Platform/live | OS, process, socket, container, resource, restart, and cleanup behavior | Declared affected changes |
-| Qualification | Frozen hostile, capacity, privacy, recovery, migration, and end-to-end matrices with independent verdicts | Release/H3 gate |
-| Reproduction | Rebuild and independently verify retained evidence from frozen source/supply identity | Audit and gate replay |
-
-Stage 9 must:
-
-- remove tests for deleted behavior and duplicate tests that prove the same
-  invariant through the same boundary without additional risk coverage;
-- retain negative tests for malformed, stale, conflicting, replayed, resource,
-  privilege, cleanup, privacy, and rollback behavior;
-- replace laboratory names and development-only modes in the retained
-  qualification suite without weakening independence or evidence identity;
-- remove sleeps, ambient network dependence, uncontrolled randomness, hidden
-  retries, order dependence, and mutable shared fixtures;
-- freeze seeds, clocks, limits, schemas, source/supply identities, host profiles,
-  expected runtime outcomes, and verdict predicates where qualification requires
-  them;
-- map every retained product/security requirement to at least one owning test or
-  explicitly document why it is inspection-only;
-- map every test to one exact command and environment owner;
-- define maximum runtime and resource envelope for each tier;
-- ensure expected runtime failure can yield verifier `pass`, while malformed
-  evidence yields `invalid` and trustworthy contract breach yields `fail`; and
-- keep generated bundles, secrets, captures, caches, databases, and build outputs
-  outside the repository.
-
-The final Make/command surface is selected from real maintained commands during
-S9.1. Stage 9 removes aliases and obsolete targets rather than inventing several
-ways to run the same suite.
-
-Development and regression checks before Stage 9 are not expected to substitute
-for final H3 qualification. They must be strong enough to support implementation,
-detect regressions, and preserve accepted stage contracts, but they do not need to
-simulate the full pre-H4 stand in every development cycle. Stage 9 consolidates
-their durable requirements into the final qualification matrix and removes
-temporary harnesses that have no role in that matrix.
-
-Exit: a clean checkout has one documented command per tier, no undocumented
-required pre-step, and a fixed traceability matrix from requirement to check.
-
-## S9.5 - Build, dependency, and infrastructure stabilization
-
-- build every shipped binary from a clean checkout using the pinned supported
-  toolchain and reviewed runtime dependencies;
-- remove unused Dockerfiles, Compose files, images, scripts, service definitions,
-  environment variables, ports, volumes, capabilities, and temporary host setup;
-- separate production packaging from qualification images and tools;
-- prohibit runtime downloads, ambient proxy/DNS dependence, implicit credentials,
-  mutable tags, and undeclared external services in qualification paths;
-- pin and document every required external binary/image/source identity and its
-  update/removal owner;
-- verify least privilege, owner-only secret/state roots, bounded resources,
-  deterministic cleanup, and zero owned residue;
-- ensure supported-host setup, startup, shutdown, restart, recovery, diagnostics,
-  and removal procedures match the final implementation;
-- remove repository-local caches, generated evidence, captures, secrets, databases,
-  temporary roots, and build outputs;
-- verify dependency/license/advisory records and remove dependencies without a
-  retained production or qualification caller; and
-- freeze the final infrastructure and supply manifest before S9.6.
-
-Exit: production and qualification can be built reproducibly from their declared
-inputs, run without hidden infrastructure, and leave only explicitly retained
-external evidence.
-
-## S9.6 - Final H3 qualification and handoff
-
-After S9.1-S9.5 complete:
-
-1. freeze the exact source, dependency, toolchain, configuration, schema,
-   fixture, image, external binary, and supported-host identities;
-2. freeze the dedicated pre-H4 stand profile: non-overcommitted host classes,
-   topology, capacity, network conditions, clocks, fault schedule, sustained-run
-   duration, observers, collectors, cleanup bounds, and external evidence roots;
-3. deploy the frozen clean candidate to the dedicated powerful stand without
-   rebuilding or substituting supply during the campaign;
-4. build all shipped and qualification binaries from the frozen clean source;
-5. run the complete fixed Fast and Full tiers;
-6. run every required Platform/live and Qualification cell against the cleaned
-   source on the declared stand, including all affected Stage 1-8 contracts,
-   high-capacity operation, sustained work, hostile/fault conditions, restart,
-   recovery, migration, privacy boundaries, and resource pressure;
-7. independently recompute all required verdicts from immutable evidence;
-8. verify clean install/start/restart/shutdown/removal, bounded resources, no
-   forbidden fallback, no privilege expansion, and zero owned residue;
-9. produce the final active technical-document index, package/dependency maps,
-   verification matrix, known limitations, and H3 closure report; and
-10. obtain the Product Owner `advance-to-H4`, `redesign`, or `stop` disposition.
-
-For the Stage 5 contract, step 6 includes the complete unchanged R-037
-`h3-s5-b1-v1` suite of one 564-cell candidate campaign and six independent
-five-episode evidence-integrity campaigns: reference and stronger capacity/refusal,
-ten-minute sustained work in both directions, P0-P4, C0-C6, all nine hostile
-groups, recovery, repeated shutdown, and final cleanup. S9.6 replaces every
-`pending-qualifying-stand` supply-lock value with the reviewed stand identity,
-runs the already complete Stage 5 campaign implementation, and independently
-verifies the immutable bundle. The 2026-08-19
-Stage 5 development advance waives none of these final H3 gates.
-
-The S9.6 stand collector derives runtime allocation evidence from the actual
-candidate process trees rather than accepting it from the Stage 5 reservation
-input. For every reserved host allocation it records the exact disjoint CPU
-set, cgroup path and memory limit, and network-namespace inode. The independent
-verifier rejects a missing, shared, out-of-range, or manifest-inconsistent
-allocation before it can report `pass`.
-
-Any source, dependency, configuration, schema, technical contract, or
-qualification change after step 1 creates a new candidate identity and reruns the
-complete affected scope. A favorable earlier-stage result cannot waive this rule.
-
-## Required final artifacts
-
-- one source/supply identity for the stable H3 baseline;
-- factual production and qualification package/command maps;
-- active technical-document index and agent context routing;
-- requirement-to-test/command traceability matrix;
-- fixed environment and verification profile;
-- frozen dedicated pre-H4 stand topology, capacity, supply, clocks, and fault
-  schedule;
-- independent final verdict set and bounded diagnostics;
-- known limitations and unsupported behavior;
-- complete external evidence/cleanup inventory; and
-- Product Owner Horizon 3 closure disposition.
-
-## Pass condition
-
-Stage 9 passes only when all conjuncts hold:
-
-- no product functionality remains incomplete or represented by a placeholder;
-- no laboratory/experiment package, command, document, or infrastructure file
-  remains in the final maintained tree;
-- no active completed-stage development plan, readiness checklist, or temporary
-  evidence narrative remains;
-- every retained mechanism has current technical documentation and one owner;
-- every retained package, command, dependency, test, and infrastructure file is
-  classified, mapped, called, and justified;
-- production artifacts exclude qualification tooling and secrets;
-- the fixed verification tiers pass against the post-cleanup frozen source;
-- independent verdicts and cleanup are complete; and
-- the Product Owner accepts the H3 stable baseline for Horizon 4.
-
-## Stop/redesign conditions
-
-- cleanup requires changing accepted product or security behavior without a new
-  decision and requalification;
-- a laboratory component cannot be removed or promoted without becoming a hidden
-  production dependency;
-- current behavior cannot be derived without retaining contradictory documents;
-- qualification depends on runner-authored verdicts, mutable supply, hidden
-  services, ambient credentials, or repository-local generated evidence;
-- a retained package has no cohesive owner or real caller;
-- the final suite cannot be reproduced from a clean checkout and declared external
-  inputs; or
-- the project attempts to call H3 complete before qualifying the cleaned source.
+1. Stage 8 has passed and the Product Owner has admitted one freeze proposal;
+2. no planned product, Interface, Implementation, package, command, format,
+   migration, dependency, test, infrastructure, or normative-document change
+   remains;
+3. the candidate builds from a clean checkout with no repository-local cache,
+   generated evidence, secret, capture, database, mutable download, or hidden
+   service supplying the result;
+4. supported platforms, package formats, host capabilities, stand topology,
+   resource allocation, clocks, fault schedule, observers, and external evidence
+   roots are identified and available;
+5. every required check/campaign has a frozen owner, input, duration, timeout,
+   cleanup condition, result predicate, evidence schema, and failure effect;
+6. unavailable external users or independent reviewers are recorded as honest
+   unqualified gates rather than silently replaced with the Product Owner or
+   another Codex pass; and
+7. the complete ordered schedule and worst-case runtime are reviewable before
+   the first attempt starts.
+
+## Immutable-candidate rule
+
+- Do not edit source, tests, build inputs, fixtures, configurations, protocols,
+  acceptance predicates, or normative documents during an attempt.
+- Do not update a dependency, container image, external binary, platform patch,
+  stand topology, clock source, resource allocation, or verifier without ending
+  the attempt or applying a predeclared environment-equivalence rule.
+- Record every failure and invalid environment before diagnosis. A rerun is
+  diagnostic evidence and never erases the original result.
+- A candidate change ends Stage 9 and returns to the owning Stage 8 wave. The
+  changed candidate receives a new freeze and a new affected qualification
+  attempt.
+- Evidence reuse is permitted only where the frozen impact model proves that
+  changed identity cannot affect the claim; security/privacy, durable format,
+  supply, platform, and integrated journey changes default to no reuse.
+- Stage 9 may repair only external stand state without changing its frozen
+  meaning. A stand repair is recorded, re-admitted, and reruns every affected
+  observation.
+
+## Evidence and result model
+
+Every selected check produces `pass`, `fail`, or `invalid` for one candidate and
+environment identity:
+
+- `pass` means every conjunctive predicate was observed under its declared
+  conditions;
+- `fail` means candidate behavior violated a predicate;
+- `invalid` means identity, environment, completeness, attribution, observer,
+  cleanup, or evidence integrity could not support a verdict.
+
+`invalid` is never pass. Missing platforms, tools, capabilities, actors, or raw
+evidence do not reduce the denominator. There is no permanent quarantine, skip
+allowlist, flake budget, or “pass after N retries.” Generated evidence remains
+outside the repository; the repository retains only durable protocols, small
+reviewed conclusions, digests/locations, and allowed limitations.
+
+## S9.0 — Candidate, schedule, and stand admission
+
+Before executing product checks:
+
+1. record commit/tree, dirty-state refusal, reproducible build, binary and
+   package digests, Go/tool/dependency/supply identities;
+2. record all configuration, schema, format, fixture, verifier, active-document,
+   supported-platform, host, topology, resource, clock, and fault identities;
+3. verify the dedicated stand is non-overcommitted where the claim requires it
+   and collectors observe the actual candidate process trees;
+4. prove evidence roots are external, access-controlled, append/immutable as
+   required, capacity-bounded, and mapped to retention/cleanup policy;
+5. precompute the complete scenario matrix, ordering constraints, time budget,
+   stop conditions, and required independent recomputation; and
+6. reject admission on ambiguity, missing identity, mutable supply, hidden
+   infrastructure, shared resources that invalidate attribution, or a changed
+   normative contract.
+
+Exit: one signed/reviewable admission manifest and zero executed result claimed
+before admission.
+
+## S9.1 — Clean deterministic regression
+
+Run from a fresh checkout and clean external fixture roots:
+
+- formatting, architecture/import/dependency/artifact/documentation consistency,
+  build and static analysis gates;
+- every Module behavior suite, including normal, negative, fault, restart,
+  cancellation, deadline, resource, cleanup, corruption, and compatibility
+  outcomes through the target Interface;
+- deterministic Adapter-contract suites with admitted local stand-ins;
+- command composition and bounded local process journeys;
+- race profiles for every concurrency-owning Module on supported race-capable
+  platforms;
+- frozen fuzz/property corpus for every untrusted decoder, canonicalizer, and
+  state transition, plus the scheduled bounded fuzz duration; and
+- exact CLI/configuration/format reference and technical-document checks.
+
+Selection manifests are explicit and positive. `-short`, path exclusions, or a
+skipped external dependency cannot silently remove a required scenario. Any
+selected failure, panic, race, hang, residue, missing cleanup observation, or
+invalid environment stops the attempt before more expensive stages unless the
+schedule explicitly requires collecting additional non-mutating diagnostics.
+
+Exit: complete deterministic regression evidence for the frozen identity.
+
+## S9.2 — Platform, installation, and lifecycle regression
+
+On every supported platform and package/profile combination, prove the retained
+real Adapters and full operator lifecycle:
+
+- install/first start/readiness, normal start/stop/drain/restart, repair,
+  upgrade, failed activation, rollback/forward repair, uninstall and purge;
+- protected durable state, release floors, Namespace/Network/Publication state,
+  Custody material, backup/restore/reconcile, permissions, path identity,
+  locking, replacement/reparse resistance, and post-crash reopen;
+- command/configuration versioning, supported automation, stable results and
+  documented diagnostic/troubleshooting paths;
+- Application peer identity, Grant enforcement/revocation, IPC, Isolation,
+  child/process-tree lifetime, signal/job behavior, and escape/substitution
+  negatives;
+- external WebTunnel/Carrier/source/installer binaries with frozen provenance,
+  failure mapping, cleanup, and platform parity;
+- resource measurement, admission/refusal, pressure, process placement,
+  oversubscription defense, and zero unintended residue; and
+- exact operator runbook execution with every documented postcondition.
+
+Unsupported capability is a typed documented product refusal, not a skipped
+test for a claimed platform. Platform evidence records actual filesystem,
+runtime, package, privilege, resource, process, and cleanup observations.
+
+Exit: complete supported-platform lifecycle and real-Adapter regression.
+
+## S9.3 — Integrated journey, recovery, and adversarial regression
+
+Run the complete retained J00-J08 product journey matrix against real composed
+Endpoint, Node, Application, naming, publication, connection, entry, route,
+release/update, and custody responsibilities. Cover at minimum:
+
+- clean bootstrap and authenticated current-state refresh;
+- exact-name private resolution, publication, connection and opaque bidirectional
+  Application Data;
+- Service migration, generation cutover, concurrent acquire, revocation,
+  unpublish/drain, crash and restart;
+- Route/Entry replacement, blocked-entry behavior, stale/conflicting state,
+  replay, unavailable candidate, capacity/refusal, and explicit no-fallback;
+- contributor admission, quarantine, duty conflicts, resource pressure, drain,
+  withdrawal and residue;
+- update/rollback/repair without rollback of protected authority/freshness state;
+- corruption, cancellation, deadline, child death, network impairment, partial
+  durable transition, host restart, and repeated recovery; and
+- role-local knowledge, diagnostics redaction, secret absence, and every
+  applicable threat-model limitation/negative oracle.
+
+Tests observe through product commands and Module Interfaces. A runner cannot
+author its own success verdict from internal state. Every failure remains
+classified, bounded, recoverable where promised, and leaves only explicitly
+retained state.
+
+Exit: complete integrated functional, failure, recovery, adversarial, and
+cleanup regression for the same frozen identity.
+
+## S9.4 — Sustained, soak, and stability campaigns
+
+Run the predeclared longer campaigns after shorter regressions are green:
+
+- repeated start/stop/restart/update/rollback/restore and network-state churn;
+- sustained Application Data in both directions across sequential and
+  concurrent connections, replacement attachments, and service generations;
+- resource pressure, capacity/refusal hysteresis, slow peers, partial failures,
+  timeouts, cancellation storms, child failures, and recovery cycles;
+- unattended operation with scheduled fault injection and bounded operator
+  intervention assumptions;
+- long-running memory, goroutine, handle/descriptor, process, disk, queue,
+  latency, throughput, error, reconnect, and retained-state trends; and
+- final drain, shutdown, removal/cleanup and external residue inventory.
+
+Duration and load come from accepted claim and resource budgets, not a generic
+“run for a long time.” The schedule defines warm-up, steady-state, fault,
+recovery and cooldown windows; sampling cadence; baselines; allowed envelopes;
+and early-stop predicates before execution. A trend anomaly is a failure or
+named investigation, never averaged away by the final sample.
+
+Exit: source-bound sustained/soak evidence and a complete resource/residue time
+series for the candidate.
+
+## S9.5 — Deferred claim Qualification and independent recomputation
+
+Execute every accepted claim-level protocol deliberately deferred to terminal
+Qualification. This includes, unless Stage 8 accepted a superseding protocol:
+
+- Stage 1 churn and unattended-operation obligations;
+- remaining R-023 live, performance, and cross-platform evidence;
+- Route, privacy-boundary, install/update/isolation/custody Qualification mapped
+  by the Stage 8 claim matrix; and
+- R-037 `h3-s5-b1-v1`: 564 candidate cells plus six five-episode evidence
+  campaigns for reference, strong-capacity, and refusal cases; ten-minute
+  observations in both directions; P0-P4; C0-C6; all nine hostile groups;
+  recovery, repeated shutdown, and final cleanup.
+
+The stand collector derives CPU allocation, cgroup or equivalent identity,
+memory limits, network isolation, clocks, candidate process attribution, and
+cleanup from actual runtime state. A separately built verifier rejects missing,
+shared, out-of-range, unattributable, candidate-mismatched, or internally
+inconsistent evidence.
+
+Independent recomputation is required only for claims whose acceptance contract
+needs an independent observer/verifier. Ordinary Module tests remain ordinary
+tests and do not gain a duplicate verdict protocol. Where no actual independent
+human/security reviewer is available, record the limitation; tool separation
+does not manufacture organizational independence.
+
+Exit: raw immutable claim evidence, reproducible verifier inputs/verdicts, and
+an exception ledger with no waiver hidden as pass.
+
+## S9.6 — Final integrated campaign and Horizon 3 handoff
+
+Existing Horizon 3 references to S9.6 continue to mean this terminal campaign.
+Against the unchanged candidate and admitted stand:
+
+1. rerun the frozen final journey matrix and short adversarial sentinel set;
+2. execute the terminal multi-day integrated/unattended schedule that combines
+   the accepted sustained workload, churn, recovery, pressure, and cleanup
+   predicates without changing earlier protocols;
+3. verify clean install through final purge and protected retained-state rules;
+4. recompute every required verdict from raw evidence and reconcile it with
+   S9.1-S9.5 without discarding failures or invalid attempts;
+5. produce the external Qualification report, source/supply/evidence digest
+   index, known limitations, exception and cleanup ledgers; and
+6. hand the immutable package to the Product Owner for `advance`, `return`, or
+   `stop`.
+
+S9.6 is not a place to add a missing scenario or repair a flaky test. A missing
+predicate returns to Stage 8, produces a new freeze, and re-enters the applicable
+Stage 9 scope.
+
+## Attempt failure and resumption
+
+For every `fail` or `invalid` result:
+
+1. preserve candidate/environment identity, raw observation, failure category,
+   cleanup result, and completed unaffected cells;
+2. diagnose without modifying the admitted candidate;
+3. if only external stand state violated its frozen setup, repair, re-admit, and
+   rerun the affected and dependency-successor cells;
+4. if source, test, protocol, fixture, configuration, documentation, dependency,
+   supply, supported-platform claim, or acceptance logic changes, close the
+   attempt and return to Stage 8; and
+5. accept evidence reuse only through the predeclared impact graph.
+
+Stage 9 has no “continue with known failure” disposition. The Product Owner may
+narrow/redesign the product only back in Stage 8, followed by a new freeze.
+
+## Required outputs
+
+1. immutable candidate, build, supply, configuration, normative-document,
+   schedule, stand, observer, verifier, and evidence identities;
+2. complete S9.1 deterministic regression evidence;
+3. complete S9.2 supported-platform and operator-lifecycle evidence;
+4. complete S9.3 journey/failure/recovery/adversarial evidence;
+5. complete S9.4 sustained/soak/resource/residue evidence;
+6. complete S9.5 claim Qualification and required independent verdicts;
+7. S9.6 terminal integrated evidence and reconciled result;
+8. exception, invalid-attempt, known-limitation, cleanup, retained-state, and
+   evidence-retention ledgers; and
+9. the Product Owner's explicit Horizon 3 closure disposition.
+
+## Pass, return, and stop
+
+- **Pass:** every applicable frozen predicate is `pass` for the same candidate,
+  required independent verdicts reproduce, cleanup/retained state are correct,
+  limitations remain honest, and the Product Owner accepts the Horizon 3
+  product baseline.
+- **Return:** any candidate/normative input must change, a required predicate is
+  missing or fails, evidence is invalid, or the product/claim must narrow;
+  Stage 9 ends and work returns to the owning Stage 8 decision/wave.
+- **Stop:** evidence invalidates the product direction, safe Qualification is
+  infeasible within the actual one-Product-Owner-plus-Codex capacity, or a
+  required external/independent gate cannot be obtained. Record the limitation
+  instead of manufacturing a passing claim.
