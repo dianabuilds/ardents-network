@@ -61,7 +61,7 @@ func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
 		candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 		request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
 			Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
-		switch episode % 3 {
+		switch episode % 6 {
 		case 0:
 			work := &drainRefusalWorkControl{stopErr: errors.New("pressure stop refusal")}
 			request.Work = work
@@ -84,6 +84,40 @@ func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
 			result, err := Apply(context.Background(), request)
 			if err != nil || result.Outcome != "committed" {
 				t.Fatalf("episode %d success = %+v, %v", episode, result, err)
+			}
+			continue
+		case 3:
+			request.SelfTest = failedSelfTest{}
+			if result, err := Apply(context.Background(), request); err == nil || result.Outcome != "self-test-failed" || result.State != "rollback-pending" {
+				t.Fatalf("episode %d failed self-test = %+v, %v", episode, result, err)
+			}
+			request.RollbackDecision = oracleRollbackDecision(t, vector)
+			request.SelfTest = oraclePassSelfTest{}
+			result, err := Apply(context.Background(), request)
+			if !errors.Is(err, errRolledBack) || result.Outcome != "rolled-back" || result.State != "rolled-back" {
+				t.Fatalf("episode %d rollback = %+v, %v", episode, result, err)
+			}
+			continue
+		case 4:
+			request.SelfTest = failedSelfTest{}
+			if result, err := Apply(context.Background(), request); err == nil || result.Outcome != "self-test-failed" {
+				t.Fatalf("episode %d failed self-test = %+v, %v", episode, result, err)
+			}
+			request.RollbackDecision = request.Decision
+			result, err := Apply(context.Background(), request)
+			if !errors.Is(err, errRollbackRefused) || result.Outcome != "rollback-refused" || result.State != "repair-required" {
+				t.Fatalf("episode %d rollback refusal = %+v, %v", episode, result, err)
+			}
+			continue
+		case 5:
+			request.SelfTest = failedSelfTest{}
+			if result, err := Apply(context.Background(), request); err == nil || result.Outcome != "self-test-failed" {
+				t.Fatalf("episode %d failed self-test = %+v, %v", episode, result, err)
+			}
+			request.RollbackDecision = oracleRollbackDecision(t, vector)
+			result, err := Apply(context.Background(), request)
+			if !errors.Is(err, errRepairRequired) || result.Outcome != "repair-required" || result.State != "repair-required" {
+				t.Fatalf("episode %d repair required = %+v, %v", episode, result, err)
 			}
 			continue
 		}
