@@ -34,7 +34,7 @@ contract.
 |---|---|
 | F023 | **Confirmed; open.** Current Claim Order remains a single-Name/two-claim tracer and its wire cap is inconsistent with the accepted global maximum corpus. S8.3 must redesign the global-close versus per-Name proof boundary. |
 | F024 | **Confirmed; open.** Control's in-memory transition map and Store's externally supplied materialization remain uncomposed, with no atomic submit-to-current/restart path. |
-| F025 | **Confirmed; open.** Current caller-supplied parent chains strand admitted deep lifecycle operations. Namespace must own lineage lookup and transition state. |
+| F025 | **Partially repaired in M5 (`f32f65f`); open.** Control now resolves the complete immediate-parent-to-root chain under its transition lock, so admitted root → child → grandchild create, publish, and renew no longer require caller-authored Record graphs; a released root denies descendant renewal. The exported `Record`/`Op` helpers, durable current-state transaction, restart path, and sealed Namespace Interface remain to be replaced before closure. |
 | F026 | **Confirmed; open.** The accepted Record validity limit is checked at control ingress but absent from canonical state, proof, and resolution representation. This is one compatibility migration decision. |
 | F027 | **Confirmed conflict; decide first.** Exact gateway-millisecond signed-time equality and the alternate time-only recovery advance need an accepted transcript/freshness rule before mutation. |
 | F028 | **Confirmed; open.** Current admission is bound to a later control exchange rather than the epoch claim commitment, and the same claim is verified twice. |
