@@ -209,6 +209,13 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 	hasStaging := hasStagingKind(facts.StagingDirs, transaction, false)
 	hasTemporaryStaging := hasStagingKind(facts.StagingDirs, transaction, true)
 	hasGenerations := hasOneGen(facts.Generations, transaction)
+	last := validation.Entries[len(validation.Entries)-1]
+	if last.AdapterResult == adapterFailed {
+		if hasGenerations || hasTemporaryStaging || !hasStaging {
+			return recoveryPlan{}, fmt.Errorf("%w: failed adapter physical state is ambiguous", errPlanInvalid)
+		}
+		return planFailedAdapterAbort(facts, transaction, last.State, predecessorDigest, custodyNotice)
+	}
 	if len(facts.Current.Bytes) > 0 {
 		if selection, decodeErr := decodeCurrent(facts.Current.Bytes); decodeErr == nil {
 			if selection.Transaction == 0 && hasGenerations && lastState >= byte(stateActivated) {

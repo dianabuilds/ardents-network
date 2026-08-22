@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -25,6 +26,7 @@ type applyInterruptionControl struct {
 var errApplyInterrupted = errors.New("update transaction interrupted at test checkpoint")
 var errCandidateMismatch = errors.New("update candidate does not match accepted decision")
 var errResourceDenied = errors.New("update resource envelope is unavailable")
+var errActiveWorkUnsupported = errors.New("update active work exceeds bound")
 
 type tracer struct {
 	store       *ownedStore
@@ -42,7 +44,9 @@ type tracer struct {
 // concurrent Recover calls detect busy ownership. The Module never
 // creates, repairs, replaces, retries, or unlinks the lock.
 func Apply(ctx context.Context, request Request) (Result, error) {
-	return applyWithInterruption(ctx, request, nil)
+	start := time.Now()
+	callerLimit, _ := contextDeadline(ctx)
+	return applyWithControls(ctx, request, nil, stageOperations{}, nil, start, callerLimit)
 }
 
 // applyWithInterruption runs the complete Apply orchestration with
@@ -53,7 +57,9 @@ func Apply(ctx context.Context, request Request) (Result, error) {
 // normal Result construction, releases only the process-owned OS-lock
 // handle, and preserves every checkpoint byte on disk.
 func applyWithInterruption(ctx context.Context, request Request, control *applyInterruptionControl) (result Result, resultErr error) {
-	return applyWithControls(ctx, request, control, stageOperations{}, nil)
+	start := time.Now()
+	callerLimit, _ := contextDeadline(ctx)
+	return applyWithControls(ctx, request, control, stageOperations{}, nil, start, callerLimit)
 }
 
 // applyWithStageOperations is the private per-invocation S7.2-03 staging
@@ -62,23 +68,37 @@ func applyWithInterruption(ctx context.Context, request Request, control *applyI
 // acknowledgement; root admission, records, cleanup, clocks, and Results stay
 // production-owned.
 func applyWithStageOperations(ctx context.Context, request Request, operations stageOperations) (Result, error) {
-	return applyWithControls(ctx, request, nil, operations, nil)
+	start := time.Now()
+	callerLimit, _ := contextDeadline(ctx)
+	return applyWithControls(ctx, request, nil, operations, nil, start, callerLimit)
 }
 
 // applyWithResourceObservation is the private S7.2-03 resource seam. Tests
 // may supply one already-observed native value; they cannot replace path
 // admission, arithmetic, journal construction, cleanup, or Result mapping.
 func applyWithResourceObservation(ctx context.Context, request Request, observation resourceObservation) (Result, error) {
+	start := time.Now()
+	callerLimit, _ := contextDeadline(ctx)
 	return applyWithControls(ctx, request, nil, stageOperations{}, func(string) (resourceObservation, error) {
 		return observation, nil
-	})
+	}, start, callerLimit)
+}
+
+// applyWithStart is the private per-invocation monotonic-clock seam for the
+// bounded-work oracle. It changes only the invocation start used to derive
+// deadlines; all storage, cleanup, and public Apply dependencies remain real.
+func applyWithStart(ctx context.Context, request Request, start time.Time) (Result, error) {
+	callerLimit, _ := contextDeadline(ctx)
+	return applyWithControls(ctx, request, nil, stageOperations{}, nil, start, callerLimit)
 }
 
 func applyWithControls(ctx context.Context, request Request, control *applyInterruptionControl, operations stageOperations,
-	observe func(string) (resourceObservation, error)) (result Result, resultErr error) {
-	start := time.Now()
+	observe func(string) (resourceObservation, error), start, callerLimit time.Time) (result Result, resultErr error) {
 	artifact, manifestBytes, manifestDigest, err := validateRequest(ctx, request)
 	if err != nil {
+		if errors.Is(err, errActiveWorkUnsupported) {
+			return transactionInvalidResult(request.Generation), err
+		}
 		if errors.Is(err, errCandidateMismatch) {
 			return stagingFailureResult(request, "release-accepted"), err
 		}
@@ -153,11 +173,10 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		return applyFailure(store, request, "release-accepted", false, err)
 	}
 	trace := &tracer{store: store, request: request, start: start, artifact: artifact, manifest: manifestDigest,
-		predecessor: sha256.Sum256(predecessorBytes), control: control}
+		predecessor: sha256.Sum256(predecessorBytes), control: control, callerLimit: callerLimit}
 	if operations.openFile == nil || operations.renameDirectory == nil || operations.acknowledge == nil {
 		operations = nativeStageOperations(store.ops)
 	}
-	trace.callerLimit, _ = ctx.Deadline()
 	if err := store.prepare(request.Generation); err != nil {
 		return applyFailure(store, request, "release-accepted", true, err)
 	}
@@ -177,15 +196,21 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		return applyFailure(store, request, "rollback-reserved", true, err)
 	}
 	if err := callBounded(ctx, trace.deadline(stateStopNewWork), request.Work.StopNewWork); err != nil {
-		recordErr := trace.record(ctx, "05-stop-new-work", stateStopNewWork, adapterFailed)
-		return applyFailure(store, request, "stop-new-work", true, errors.Join(err, recordErr))
+		recordErr := trace.record(context.Background(), "05-stop-new-work", stateStopNewWork, adapterFailed)
+		if recordErr != nil {
+			return applyFailure(store, request, "rollback-reserved", true, errors.Join(err, recordErr))
+		}
+		return drainFailure(store, request, inspection, "rollback-reserved", err)
 	}
 	if err := trace.record(ctx, "05-stop-new-work", stateStopNewWork, adapterSuccess); err != nil {
 		return applyFailure(store, request, "stop-new-work", true, err)
 	}
 	if err := callBounded(ctx, trace.deadline(stateDraining), request.Work.Drain); err != nil {
-		recordErr := trace.record(ctx, "06-draining", stateDraining, adapterFailed)
-		return applyFailure(store, request, "draining", true, errors.Join(err, recordErr))
+		recordErr := trace.record(context.Background(), "06-draining", stateDraining, adapterFailed)
+		if recordErr != nil {
+			return applyFailure(store, request, "stop-new-work", true, errors.Join(err, recordErr))
+		}
+		return drainFailure(store, request, inspection, "stop-new-work", err)
 	}
 	if err := trace.record(ctx, "06-draining", stateDraining, adapterSuccess); err != nil {
 		return applyFailure(store, request, "draining", true, err)
@@ -221,8 +246,11 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 
 func validateRequest(ctx context.Context, request Request) ([32]byte, []byte, [32]byte, error) {
 	var artifact, manifestDigest [32]byte
-	if ctx == nil || ctx.Err() != nil || request.Generation == 0 || request.ActiveWork != 0 ||
+	if ctx == nil || ctx.Err() != nil || request.Generation == 0 || request.ActiveWork > 1 ||
 		request.Decision.Outcome != "release-accepted" {
+		if request.ActiveWork > 1 {
+			return artifact, nil, manifestDigest, errActiveWorkUnsupported
+		}
 		return artifact, nil, manifestDigest, errRecordInvalid
 	}
 	if request.Decision.Length > maximumArtifactBytes || int64(len(request.Artifact)) > maximumArtifactBytes {
@@ -357,15 +385,16 @@ func (trace *tracer) record(ctx context.Context, name string, state transactionS
 		Predecessor: trace.predecessor, ArtifactDigest: trace.artifact,
 		ManifestCommitment: trace.manifest, AdapterResult: adapter,
 		Observation: byte(state), ElapsedNanos: uint64(time.Since(trace.start)),
-		DeadlineUnix: trace.deadline(state).Unix()}
+		DeadlineUnix: trace.journalDeadline(state).Unix()}
 	raw, err := trace.store.writeEntry(entry)
-	if err == nil {
-		trace.predecessor = sha256.Sum256(raw)
-		if checkpointErr := applyCheckpoint(trace.control, false, name); checkpointErr != nil {
-			return checkpointErr
-		}
+	if err != nil {
+		return fmt.Errorf("record %s: %w", name, err)
 	}
-	return err
+	trace.predecessor = sha256.Sum256(raw)
+	if checkpointErr := applyCheckpoint(trace.control, false, name); checkpointErr != nil {
+		return checkpointErr
+	}
+	return nil
 }
 
 func applyCheckpoint(control *applyInterruptionControl, before bool, name string) error {
@@ -380,26 +409,6 @@ func applyCheckpoint(control *applyInterruptionControl, before bool, name string
 		return errApplyInterrupted
 	}
 	return nil
-}
-
-func (trace *tracer) deadline(state transactionState) time.Time {
-	deadline := trace.request.Decision.BuildSafetyTerminateAfter
-	if protocol := trace.request.Decision.ProtocolTransitionDeadline; !protocol.IsZero() && protocol.Before(deadline) {
-		deadline = protocol
-	}
-	if state == stateStopNewWork && trace.request.Decision.BuildSafetyNoNewWorkAfter.Before(deadline) {
-		deadline = trace.request.Decision.BuildSafetyNoNewWorkAfter
-	}
-	if !trace.callerLimit.IsZero() && trace.callerLimit.Before(deadline) {
-		deadline = trace.callerLimit
-	}
-	return deadline
-}
-
-func callBounded(parent context.Context, deadline time.Time, call func(context.Context) error) error {
-	ctx, cancel := context.WithDeadline(parent, deadline)
-	defer cancel()
-	return call(ctx)
 }
 
 func committedRequest(store *ownedStore, inspection rootInspection, request Request,
