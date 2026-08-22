@@ -149,6 +149,11 @@ The source-bound [Service and Endpoint composition delta review](stage-8-g2-serv
 gives F034--F040 their current disposition. No relevant production delta exists;
 all seven findings remain live design inputs before any Service migration.
 
+The source-bound [runtime, command, and policy delta review](stage-8-g2-runtime-policy-delta-review.md)
+completes the G2 F001--F067 entry disposition. Only F008 and the former
+recovery portion of F011 are invalidated by the Stage-7 delta; all other
+findings remain open inputs to S8.1--S8.3.
+
 ## Open-decision ledger for S8.1
 
 1. Select `continue`, `narrow`, `redesign`, or `stop` for the Product Core and
