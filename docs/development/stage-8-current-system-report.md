@@ -154,6 +154,15 @@ completes the G2 F001--F067 entry disposition. Only F008 and the former
 recovery portion of F011 are invalidated by the Stage-7 delta; all other
 findings remain open inputs to S8.1--S8.3.
 
+The source-bound [surface inventory](stage-8-current-system-surface-inventory.md)
+records every current process, Interface/format family, external boundary,
+durable root, trust crossing, command, evidence family, and absent accepted
+surface by current owner and S8.1 class. The source-bound
+[test portfolio](stage-8-current-test-portfolio.md) records the present test
+roles, measured package timing, explicit skips, external requirements, and
+unclassified duplicate/flake observations without treating an unavailable
+environment as a passing receipt.
+
 ## Open-decision ledger for S8.1
 
 1. Select `continue`, `narrow`, `redesign`, or `stop` for the Product Core and
@@ -176,13 +185,7 @@ remain binding.
 
 ## S8.0 exit assessment
 
-The source/input identity, initial current-system inventory, diagnostic
-results, baseline discrepancies, and open-decision ledger are recorded. This
-does **not** yet satisfy the S8.0 exit. Before Product Owner review, this report
-needs (1) a source-bound inventory of every process, format, Interface, external
-Adapter, and trust-zone crossing; (2) per-suite timing, skip,
-external-requirement, duplicate-role, and flake observations; (3) a complete
-code/test/document disposition inventory that distinguishes inventory from the
-S8.1 decision; and (4) an evidence-based disposition of every prepared G2
-finding affected by the Stage 7 delta. It has not passed S8.1 and authorizes no
-Module migration.
+The source/input identity, inventories, diagnostic results, baseline
+discrepancies, G2 disposition, test portfolio, and open-decision ledger are
+recorded. S8.0 is ready for Product Owner review. It has **not** passed S8.1
+and authorizes no Module migration, product claim, or target design change.
