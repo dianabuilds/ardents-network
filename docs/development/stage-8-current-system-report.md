@@ -179,9 +179,12 @@ environment as a passing receipt.
    rule for unavailable Docker, pinned binary, privilege, or host-orchestrator
    prerequisites.
 
-No answer is inferred by this diagnostic report. Until an S8.1 disposition is
-accepted, the Stage 7 package, testing, dependency, and documentation rules
-remain binding.
+No answer is inferred by this diagnostic report. The Product Owner selected
+`continue` on 2026-08-22; its scope, limitations, and concrete disposition are
+now recorded in the temporary
+[S8.1 preservation ledger](stage-8-preservation-ledger.md). Until S8.2 promotes
+replacements, the Stage 7 package, testing, dependency, and documentation
+rules remain binding.
 
 ## S8.0 exit assessment
 
