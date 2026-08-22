@@ -129,6 +129,12 @@ The recorded results neither invalidate the accepted G0--G5 preparation nor
 confirm it wholesale. They identify exactly where the final Stage 7 delta must
 be reviewed before its target disposition is accepted.
 
+The source-bound [Release and Update delta review](stage-8-g2-release-update-delta-review.md)
+now gives F001--F012 their current disposition. It confirms the prior
+marker-lock and missing-recovery statements no longer describe the current
+Update tracer, while preserving the unresolved authority, product-activation,
+format, and Custody decisions.
+
 ## Open-decision ledger for S8.1
 
 1. Select `continue`, `narrow`, `redesign`, or `stop` for the Product Core and
