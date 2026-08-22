@@ -2,6 +2,7 @@ package updatetransaction
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -43,6 +44,55 @@ func TestRepeatedUpdatesKeepRetainedStateBounded(t *testing.T) {
 		if measurement != finalMeasurements[0] {
 			t.Fatalf("final episode %d measurement = %+v, baseline = %+v", index+82, measurement, finalMeasurements[0])
 		}
+	}
+}
+
+// TestPressureRefusalsAndRecoveryCycle keeps destructive terminal paths
+// isolated, while repeatedly proving bounded refusal cleanup and idempotent
+// restart recovery. A recovered journal remains an auditable terminal record;
+// a fresh update uses its own next lifecycle rather than overwriting it.
+func TestPressureRefusalsAndRecoveryCycle(t *testing.T) {
+	for episode := 0; episode < 100; episode++ {
+		root := filepath.Join(t.TempDir(), "update")
+		if err := os.Mkdir(root, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		vector := oracleBootstrapV0(t, root)
+		candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+		request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
+			Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+		switch episode % 3 {
+		case 0:
+			work := &drainRefusalWorkControl{stopErr: errors.New("pressure stop refusal")}
+			request.Work = work
+			result, err := Apply(context.Background(), request)
+			if err == nil || result.Outcome != "drain-expired" || work.stopCalls != 1 || work.drainCalls != 0 {
+				t.Fatalf("episode %d stop refusal = %+v, %v; work=%+v", episode, result, err, work)
+			}
+		case 1:
+			control := &applyInterruptionControl{StopBefore: func(name string) bool { return name == "03-staged" }}
+			if result, err := applyWithInterruption(context.Background(), request, control); !errors.Is(err, errApplyInterrupted) || result != (Result{}) {
+				t.Fatalf("episode %d interruption = %+v, %v", episode, result, err)
+			}
+			first, recoverErr := Recover(context.Background(), root)
+			second, repeatErr := Recover(context.Background(), root)
+			if recoverErr != nil || repeatErr != nil || first != second {
+				t.Fatalf("episode %d recovery = %+v, %v; repeat = %+v, %v", episode, first, recoverErr, second, repeatErr)
+			}
+			continue
+		case 2:
+			result, err := Apply(context.Background(), request)
+			if err != nil || result.Outcome != "committed" {
+				t.Fatalf("episode %d success = %+v, %v", episode, result, err)
+			}
+			continue
+		}
+		request.Work = &oracleWorkControl{}
+		result, err := Apply(context.Background(), request)
+		if err != nil || result.Outcome != "committed" {
+			t.Fatalf("episode %d fresh update = %+v, %v", episode, result, err)
+		}
+		measureRetainedRoot(t, root, request.Generation)
 	}
 }
 
