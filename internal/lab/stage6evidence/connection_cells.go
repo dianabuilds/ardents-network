@@ -8,13 +8,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
 type connectionCellEvidence struct {
-	Initial        namelease.Binding
-	Replacement    namelease.Binding
+	Initial        namespace.Binding
+	Replacement    namespace.Binding
 	NameOrigin     bool
 	ClientClass    string
 	PublisherClass string
@@ -32,18 +32,18 @@ func runConnectionCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
-	record := namelease.Record{Name: "alice", Generation: 1, Revision: 2, Lease: "active",
+	record := namespace.Record{Name: "alice", Generation: 1, Revision: 2, Lease: "active",
 		Consistency: "current", Recovery: "stable", Authority: "authority", Target: fixture.credential.Target,
 		LeaseExpiresAt: fixture.now.Add(time.Hour).Unix(), GraceExpiresAt: fixture.now.Add(2 * time.Hour).Unix(),
 		Continuity: 1}
-	binding, _, err := namelease.ResolveBinding(record, fixture.now.Unix(), nil)
+	binding, _, err := namespace.ResolveBinding(record, fixture.now.Unix(), nil)
 	if err != nil {
 		return err
 	}
 	replacement := record
 	replacement.Revision++
 	replacement.Target = [32]byte{99}
-	replacementBinding, _, err := namelease.ResolveBinding(replacement, fixture.now.Add(time.Second).Unix(), nil)
+	replacementBinding, _, err := namespace.ResolveBinding(replacement, fixture.now.Add(time.Second).Unix(), nil)
 	if err != nil {
 		return err
 	}
@@ -81,11 +81,11 @@ func runConnectionCell(trace *traceRecord) error {
 	if !evidence.NameOrigin && evidence.ClientClass != "clean service connection close" {
 		return errors.New("direct Target stream did not remain pinned")
 	}
-	trace.Input, err = packRecords([]namelease.Record{record})
+	trace.Input, err = packRecords([]namespace.Record{record})
 	if err != nil {
 		return err
 	}
-	trace.Output, err = packRecords([]namelease.Record{replacement})
+	trace.Output, err = packRecords([]namespace.Record{replacement})
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func runConnectionCell(trace *traceRecord) error {
 	return nil
 }
 
-func startEvidenceConnection(fixture connectionFixture, binding namelease.Binding, updates chan serviceconn.DestinationBinding,
+func startEvidenceConnection(fixture connectionFixture, binding namespace.Binding, updates chan serviceconn.DestinationBinding,
 	nameOrigin bool,
 ) (<-chan connectionOutcome, [2]net.Conn, error) {
 	clientSession, err := admitConnection(fixture.clientEndpoint, "connection", fixture.client, fixture.now)
@@ -128,7 +128,7 @@ func startEvidenceConnection(fixture connectionFixture, binding namelease.Bindin
 	return outcomes, [2]net.Conn{clientApplication, publisherApplication}, nil
 }
 
-func evidenceServiceBinding(value namelease.Binding) serviceconn.DestinationBinding {
+func evidenceServiceBinding(value namespace.Binding) serviceconn.DestinationBinding {
 	return serviceconn.DestinationBinding{Name: value.Name, Generation: value.Generation, Revision: value.Revision,
 		Authority: value.Authority, Target: value.Target, ParentName: value.ParentName,
 		ParentGeneration: value.ParentGeneration, RecordDigest: value.RecordDigest, Commitment: value.Commitment}

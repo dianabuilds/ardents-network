@@ -16,7 +16,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
@@ -52,7 +51,7 @@ func newResolutionFixture(control ...interface {
 	network, authority := [32]byte{9}, evidenceKey("resolution-authority")
 	materialization := newNamespaceFixture(network)
 	value.materialization = materialization
-	claimRecord := namelease.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
+	claimRecord := namespace.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
 		Consistency: "current", Recovery: "stable", Authority: hex.EncodeToString(authority.Public().(ed25519.PublicKey)),
 		LeaseExpiresAt: value.now.Add(time.Hour).Unix(),
 		GraceExpiresAt: value.now.Add(2 * time.Hour).Unix(), Continuity: 1}

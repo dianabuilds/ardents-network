@@ -9,7 +9,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -28,7 +27,7 @@ type controlRoleEvidence struct {
 func runControlRoleCell(trace *traceRecord, secret [32]byte) error {
 	network := [32]byte{9}
 	now := time.Unix(1_800_000_000, 0).UTC()
-	policy := namelease.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
+	policy := namespace.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
 	corpus, err := newControlCorpus(network, now, policy)
 	if err != nil {
 		return err
@@ -62,12 +61,12 @@ func runControlRoleCell(trace *traceRecord, secret [32]byte) error {
 		return errors.New("private control Relay evidence is incomplete")
 	}
 	exchanges := make([]controlExchangeEvidence, len(corpus.operations))
-	outputs := make([]namelease.Record, len(corpus.operations))
+	outputs := make([]namespace.Record, len(corpus.operations))
 	for index := range corpus.operations {
 		if !cleanControlEnvelope(envelopes[index], isolations[index], observed[index]) {
 			return errors.New("private control Relay observed a forbidden field")
 		}
-		outputs[index], err = namelease.DecodeRecord(results[index].State)
+		outputs[index], err = namespace.DecodeRecord(results[index].State)
 		observedResult := authorityResults[index]
 		if err != nil || results[index].Class != observedResult.Class ||
 			results[index].Generation != observedResult.Generation || results[index].Revision != observedResult.Revision ||

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
@@ -14,13 +14,13 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
-	record := namelease.Record{
+	record := namespace.Record{
 		Name: "alice", Generation: 1, Revision: 2,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: "name-authority", Target: fixture.first.Target,
 		LeaseExpiresAt: fixture.now.Add(time.Hour).Unix(), GraceExpiresAt: fixture.now.Add(2 * time.Hour).Unix(),
 	}
-	binding, _, err := namelease.ResolveBinding(record, fixture.now.Unix(), nil)
+	binding, _, err := namespace.ResolveBinding(record, fixture.now.Unix(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	replacement := record
 	replacement.Revision++
 	replacement.Target = [32]byte{99}
-	replacementBinding, _, err := namelease.ResolveBinding(replacement, fixture.now.Add(time.Second).Unix(), nil)
+	replacementBinding, _, err := namespace.ResolveBinding(replacement, fixture.now.Add(time.Second).Unix(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	}
 }
 
-func serviceBinding(value namelease.Binding) serviceconn.DestinationBinding {
+func serviceBinding(value namespace.Binding) serviceconn.DestinationBinding {
 	return serviceconn.DestinationBinding{Name: value.Name, Generation: value.Generation, Revision: value.Revision,
 		Authority: value.Authority, Target: value.Target, ParentName: value.ParentName,
 		ParentGeneration: value.ParentGeneration, RecordDigest: value.RecordDigest, Commitment: value.Commitment}

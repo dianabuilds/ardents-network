@@ -8,7 +8,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -16,7 +15,7 @@ const transitionDomain = "ardents-name-authority-transition-v1"
 
 // SignTransition authenticates one exact control transition with the current
 // Name Authority. A child claim is authenticated by its immediate parent.
-func SignTransition(network [32]byte, current namelease.Record, op namelease.Op,
+func SignTransition(network [32]byte, current namespace.Record, op namespace.Op,
 	private ed25519.PrivateKey,
 ) ([]byte, error) {
 	if network == [32]byte{} || len(private) != ed25519.PrivateKeySize ||
@@ -33,7 +32,7 @@ func SignTransition(network [32]byte, current namelease.Record, op namelease.Op,
 
 // TransitionDigest binds anonymous admission to one exact current Record and
 // lifecycle operation without disclosing an Endpoint identity.
-func TransitionDigest(network [32]byte, current namelease.Record, op namelease.Op) ([32]byte, error) {
+func TransitionDigest(network [32]byte, current namespace.Record, op namespace.Op) ([32]byte, error) {
 	transcript, err := transitionTranscript(network, current, op)
 	if err != nil {
 		return [32]byte{}, err
@@ -44,45 +43,45 @@ func TransitionDigest(network [32]byte, current namelease.Record, op namelease.O
 // ApplyAdmittedTransition verifies anonymous admission and the operation's
 // predecessor or threshold authorization before applying it.
 func ApplyAdmittedTransition(admission *namespace.Admission, admissionProof namespace.Proof,
-	admissionAt int64, admissionDigest [32]byte, network [32]byte, current namelease.Record, op namelease.Op,
-	proof []byte, now int64, policy namelease.Policy,
-) (namelease.Record, error) {
+	admissionAt int64, admissionDigest [32]byte, network [32]byte, current namespace.Record, op namespace.Op,
+	proof []byte, now int64, policy namespace.Policy,
+) (namespace.Record, error) {
 	_, err := TransitionDigest(network, current, op)
 	surface, allowed := transitionSurface(op.Kind)
 	if err != nil || !allowed || admission == nil || admissionProof.Challenge.Surface != surface ||
 		admissionDigest == [32]byte{} || admissionProof.Challenge.OperationDigest != admissionDigest {
-		return namelease.Record{}, errors.New("invalid Name Authority transition admission")
+		return namespace.Record{}, errors.New("invalid Name Authority transition admission")
 	}
 	if accepted, _ := admission.Verify(admissionAt, admissionProof); !accepted {
-		return namelease.Record{}, errors.New("denied Name Authority transition admission")
+		return namespace.Record{}, errors.New("denied Name Authority transition admission")
 	}
 	if recoveryThresholdTransition(op.Kind) {
 		if len(proof) != 0 || op.Authority != "" {
-			return namelease.Record{}, errors.New("recovery transition contains an authority bypass")
+			return namespace.Record{}, errors.New("recovery transition contains an authority bypass")
 		}
-		return namelease.Apply(&current, now, op, policy)
+		return namespace.Apply(&current, now, op, policy)
 	}
 	return applyTransition(network, current, op, proof, now, policy)
 }
 
-func applyTransition(network [32]byte, current namelease.Record, op namelease.Op,
-	proof []byte, now int64, policy namelease.Policy,
-) (namelease.Record, error) {
+func applyTransition(network [32]byte, current namespace.Record, op namespace.Op,
+	proof []byte, now int64, policy namespace.Policy,
+) (namespace.Record, error) {
 	public, err := canonicalAuthority(current.Authority)
 	if err != nil || len(proof) != ed25519.SignatureSize || !supportedTransition(current, op) {
-		return namelease.Record{}, errors.New("invalid Name Authority transition proof")
+		return namespace.Record{}, errors.New("invalid Name Authority transition proof")
 	}
 	transcript, err := transitionTranscript(network, current, op)
 	if err != nil || !ed25519.Verify(public, transcript, proof) {
-		return namelease.Record{}, errors.New("invalid Name Authority transition signature")
+		return namespace.Record{}, errors.New("invalid Name Authority transition signature")
 	}
 	if op.Kind == "claim" {
-		return namelease.Apply(nil, now, op, policy)
+		return namespace.Apply(nil, now, op, policy)
 	}
-	return namelease.Apply(&current, now, op, policy)
+	return namespace.Apply(&current, now, op, policy)
 }
 
-func supportedTransition(current namelease.Record, op namelease.Op) bool {
+func supportedTransition(current namespace.Record, op namespace.Op) bool {
 	switch op.Kind {
 	case "renew", "release", "publish", "rotate", "transfer", "schedule-recovery-policy", "resume-recovery":
 		return current.Name == op.Name
@@ -108,8 +107,8 @@ func recoveryThresholdTransition(kind string) bool {
 	return kind == "start-recovery" || kind == "cancel-recovery" || kind == "complete-recovery"
 }
 
-func transitionTranscript(network [32]byte, current namelease.Record, op namelease.Op) ([]byte, error) {
-	currentWire, err := namelease.EncodeRecord(current)
+func transitionTranscript(network [32]byte, current namespace.Record, op namespace.Op) ([]byte, error) {
+	currentWire, err := namespace.EncodeRecord(current)
 	if err != nil {
 		return nil, errors.New("current Name Record is invalid")
 	}
@@ -143,7 +142,7 @@ func transitionTranscript(network [32]byte, current namelease.Record, op namelea
 	out = append(out, authorization.ValidSigners)
 	out = append(out, byte(len(op.Parents)))
 	for _, parent := range op.Parents {
-		wire, encodeErr := namelease.EncodeRecord(parent)
+		wire, encodeErr := namespace.EncodeRecord(parent)
 		if encodeErr != nil {
 			return nil, errors.New("transition parent Record is invalid")
 		}

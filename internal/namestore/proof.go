@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const (
@@ -50,34 +50,34 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 // Verify authenticates one current Namespace proof and returns the exact
 // immutable binding asserted by its threshold-signed materialization.
 func Verify(input Policy, proof []byte, minimumEpoch uint64, expectedEpochDigest [32]byte, at int64) (
-	namelease.Record, namelease.Binding, string, uint64, error,
+	namespace.Record, namespace.Binding, string, uint64, error,
 ) {
 	policy, err := validPolicy(input)
 	if err != nil || at < 0 || expectedEpochDigest == [32]byte{} {
-		return namelease.Record{}, namelease.Binding{}, "", 0, errors.New("naming proof policy is invalid")
+		return namespace.Record{}, namespace.Binding{}, "", 0, errors.New("naming proof policy is invalid")
 	}
 	attested, ordinal, leafRaw, siblings, err := decodeProof(proof)
 	statement := attested.statement
 	if err != nil || statement.epoch < minimumEpoch || statement.epochDigest != expectedEpochDigest ||
 		!verifyAttestation(policy, attested) ||
 		!verifyNamespaceProof(leafRaw, ordinal, statement.recordLength, siblings, statement.recordRoot) {
-		return namelease.Record{}, namelease.Binding{}, "", 0, errors.New("naming proof is invalid or stale")
+		return namespace.Record{}, namespace.Binding{}, "", 0, errors.New("naming proof is invalid or stale")
 	}
 	leaf, err := decodeLeaf(leafRaw)
 	if err != nil || leaf.state == 0 || at > leaf.notAfter {
-		return namelease.Record{}, namelease.Binding{}, "", 0, errors.New("name is unavailable")
+		return namespace.Record{}, namespace.Binding{}, "", 0, errors.New("name is unavailable")
 	}
 	record, err := nameauthority.VerifyRecord(policy.Network, leaf.signedRecord)
 	if err != nil || record.Target == [32]byte{} {
-		return namelease.Record{}, namelease.Binding{}, "", 0, errors.New("naming proof Record is invalid")
+		return namespace.Record{}, namespace.Binding{}, "", 0, errors.New("naming proof Record is invalid")
 	}
-	recordWire, err := namelease.EncodeRecord(record)
+	recordWire, err := namespace.EncodeRecord(record)
 	if err != nil {
-		return namelease.Record{}, namelease.Binding{}, "", 0, err
+		return namespace.Record{}, namespace.Binding{}, "", 0, err
 	}
 	recordDigest, leafDigest := sha256.Sum256(recordWire), sha256.Sum256(leafRaw)
 	commitment := sha256.Sum256(append([]byte("ardents-h3-name-materialized-binding-v1\x00"), leafDigest[:]...))
-	binding := namelease.Binding{Name: record.Name, Generation: record.Generation, Revision: record.Revision,
+	binding := namespace.Binding{Name: record.Name, Generation: record.Generation, Revision: record.Revision,
 		Authority: record.Authority, Target: record.Target, ParentName: record.ParentName,
 		ParentGeneration: record.ParentGeneration, RecordDigest: recordDigest, Commitment: commitment}
 	warning := ""

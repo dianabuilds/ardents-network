@@ -1,10 +1,8 @@
-package namelease
+package namespace
 
 import (
 	"fmt"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 // Policy defines the timing parameters for Lease transitions.
@@ -77,7 +75,7 @@ type Op struct {
 	PolicyRevision        uint64
 	PolicyDelay           time.Duration
 	PolicyActivatesAt     int64
-	RecoveryAuthorization namespace.Authorization
+	RecoveryAuthorization Authorization
 }
 
 type transitionError struct {

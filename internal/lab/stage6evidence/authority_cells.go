@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -38,7 +37,7 @@ func runAuthorityCell(trace *traceRecord) error {
 	}
 	network := [32]byte{7}
 	oldKey, successor := evidenceKey("old-authority"), evidenceKey("successor-authority")
-	record := namelease.Record{Name: "alice", Generation: 1, Revision: 2,
+	record := namespace.Record{Name: "alice", Generation: 1, Revision: 2,
 		Lease: "active", Consistency: "current", Recovery: "stable", Target: [32]byte{1},
 		Authority:      hex.EncodeToString(oldKey.Public().(ed25519.PublicKey)),
 		LeaseExpiresAt: 1_000_000, GraceExpiresAt: 1_100_000, Continuity: 1}
@@ -46,7 +45,7 @@ func runAuthorityCell(trace *traceRecord) error {
 	if trace.Cell == "B1" {
 		kind = "transfer"
 	}
-	op := namelease.Op{Kind: kind, Name: record.Name, Authority: record.Authority,
+	op := namespace.Op{Kind: kind, Name: record.Name, Authority: record.Authority,
 		SuccessorAuthority: hex.EncodeToString(successor.Public().(ed25519.PublicKey)),
 		ExpectedGeneration: record.Generation, ExpectedRevision: record.Revision}
 	signature, err := nameauthority.SignTransition(network, record, op, oldKey)
@@ -58,7 +57,7 @@ func runAuthorityCell(trace *traceRecord) error {
 		return err
 	}
 	changed, err := nameauthority.ApplyAdmittedTransition(admission, proof, 100_000,
-		proof.Challenge.OperationDigest, network, record, op, signature, 100, namelease.Policy{})
+		proof.Challenge.OperationDigest, network, record, op, signature, 100, namespace.Policy{})
 	if err != nil {
 		return err
 	}
@@ -70,14 +69,14 @@ func runAuthorityCell(trace *traceRecord) error {
 			return admissionErr
 		}
 		if _, replayErr := nameauthority.ApplyAdmittedTransition(otherAdmission, otherProof, 100_000,
-			otherProof.Challenge.OperationDigest, network, changed, replay, signature, 101, namelease.Policy{}); replayErr == nil {
+			otherProof.Challenge.OperationDigest, network, changed, replay, signature, 101, namespace.Policy{}); replayErr == nil {
 			return errors.New("predecessor transition replay was accepted")
 		}
 		trace.Fields = []string{"stale-proof"}
 	}
 	trace.Auxiliary = signature
 	trace.Fields = append(trace.Fields, hex.EncodeToString(network[:]), op.SuccessorAuthority, kind)
-	return setRecordTrace(trace, []namelease.Record{record}, []namelease.Record{changed}, []int64{100}, nil)
+	return setRecordTrace(trace, []namespace.Record{record}, []namespace.Record{changed}, []int64{100}, nil)
 }
 
 func runRecoveryCell(trace *traceRecord) error {
@@ -97,7 +96,7 @@ func runRecoveryCell(trace *traceRecord) error {
 	successorKey := evidenceKey("recovery-successor")
 	var successor [32]byte
 	copy(successor[:], successorKey.Public().(ed25519.PublicKey))
-	record := namelease.Record{Name: "alice", Generation: 1, Revision: 3,
+	record := namespace.Record{Name: "alice", Generation: 1, Revision: 3,
 		Lease: "active", Consistency: "current", Recovery: "stable", Target: [32]byte{1},
 		Authority:      hex.EncodeToString(currentKey.Public().(ed25519.PublicKey)),
 		LeaseExpiresAt: 1_000_000, GraceExpiresAt: 1_100_000, Continuity: 1,
@@ -115,18 +114,18 @@ func runRecoveryCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
-	start := namelease.Op{Kind: "start-recovery", Name: record.Name, ExpectedGeneration: 1,
+	start := namespace.Op{Kind: "start-recovery", Name: record.Name, ExpectedGeneration: 1,
 		ExpectedRevision: record.Revision, RecoveryAuthorization: authorization}
 	startAdmission, startProof, err := transitionAdmission(network, record, start, "policy-recovery", 3)
 	if err != nil {
 		return err
 	}
 	pending, err := nameauthority.ApplyAdmittedTransition(startAdmission, startProof, 100_000,
-		startProof.Challenge.OperationDigest, network, record, start, nil, 100, namelease.Policy{})
+		startProof.Challenge.OperationDigest, network, record, start, nil, 100, namespace.Policy{})
 	if err != nil {
 		return err
 	}
-	complete := namelease.Op{Kind: "complete-recovery", Name: pending.Name, ExpectedGeneration: 1,
+	complete := namespace.Op{Kind: "complete-recovery", Name: pending.Name, ExpectedGeneration: 1,
 		ExpectedRevision: pending.Revision, RecoveryAuthorization: authorization}
 	completeAdmission, completeProof, err := transitionAdmission(network, pending, complete, "policy-recovery", 4)
 	if err != nil {
@@ -134,11 +133,11 @@ func runRecoveryCell(trace *traceRecord) error {
 	}
 	completed, err := nameauthority.ApplyAdmittedTransition(completeAdmission, completeProof, 100_000,
 		completeProof.Challenge.OperationDigest, network, pending, complete, nil,
-		recoveryProof.CompletesAt/1_000, namelease.Policy{})
+		recoveryProof.CompletesAt/1_000, namespace.Policy{})
 	if err != nil {
 		return err
 	}
-	resume := namelease.Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
+	resume := namespace.Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9}}
 	resumeSignature, err := nameauthority.SignTransition(network, completed, resume, successorKey)
 	if err != nil {
@@ -150,7 +149,7 @@ func runRecoveryCell(trace *traceRecord) error {
 	}
 	resumed, err := nameauthority.ApplyAdmittedTransition(resumeAdmission, resumeProof, 100_000,
 		resumeProof.Challenge.OperationDigest, network, completed, resume, resumeSignature,
-		recoveryProof.CompletesAt/1_000+1, namelease.Policy{})
+		recoveryProof.CompletesAt/1_000+1, namespace.Policy{})
 	if err != nil {
 		return err
 	}
@@ -168,11 +167,11 @@ func runRecoveryCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
-	return setRecordTrace(trace, []namelease.Record{record},
-		[]namelease.Record{pending, completed, resumed}, []int64{recoveryProof.StartedAt, recoveryProof.CompletesAt}, nil)
+	return setRecordTrace(trace, []namespace.Record{record},
+		[]namespace.Record{pending, completed, resumed}, []int64{recoveryProof.StartedAt, recoveryProof.CompletesAt}, nil)
 }
 
-func transitionAdmission(network [32]byte, record namelease.Record, op namelease.Op,
+func transitionAdmission(network [32]byte, record namespace.Record, op namespace.Op,
 	surface string, nonce byte,
 ) (*namespace.Admission, namespace.Proof, error) {
 	digest, err := nameauthority.TransitionDigest(network, record, op)

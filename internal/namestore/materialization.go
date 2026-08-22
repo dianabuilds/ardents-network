@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 )
 
 type recordEntry struct {
-	record namelease.Record
+	record namespace.Record
 	signed []byte
 }
 
@@ -87,7 +87,7 @@ func materializeLeaf(index int, entries []recordEntry, byName map[string]int) (r
 		lineageCount: uint8(len(lineage)), state: state, notAfter: notAfter}, nil
 }
 
-func effectiveLease(record namelease.Record) (byte, int64, bool) {
+func effectiveLease(record namespace.Record) (byte, int64, bool) {
 	if record.Consistency != "current" || record.Recovery != "stable" {
 		return 0, 0, false
 	}

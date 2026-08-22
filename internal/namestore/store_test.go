@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
@@ -91,7 +91,7 @@ func signedRecord(t *testing.T, network [32]byte, name, label string) []byte {
 	t.Helper()
 	seed := sha256.Sum256([]byte(label))
 	private := ed25519.NewKeyFromSeed(seed[:])
-	record := namelease.Record{Name: name, Generation: 1, Revision: 1,
+	record := namespace.Record{Name: name, Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, Continuity: 1}

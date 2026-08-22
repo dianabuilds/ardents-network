@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/lab/stage6verify"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestStage6VerifierRejectsPrivateControlMutations(t *testing.T) {
@@ -81,12 +81,12 @@ func corruptControlResultState(root string) error {
 		}
 		complete := 10
 		oldWire := append([]byte(nil), wires[complete]...)
-		record, err := namelease.DecodeRecord(wires[complete])
+		record, err := namespace.DecodeRecord(wires[complete])
 		if err != nil {
 			return err
 		}
 		record.Authority = strings.Repeat("01", 32)
-		wires[complete], err = namelease.EncodeRecord(record)
+		wires[complete], err = namespace.EncodeRecord(record)
 		if err != nil {
 			return err
 		}

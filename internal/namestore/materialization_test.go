@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T) {
@@ -78,7 +78,7 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 	records := make([][]byte, 127)
 	for depth := 1; depth <= len(records); depth++ {
 		name := strings.Repeat("a.", depth-1) + "a"
-		record := namelease.Record{Name: name, Generation: 1, Revision: 1, Lease: "active",
+		record := namespace.Record{Name: name, Generation: 1, Revision: 1, Lease: "active",
 			Consistency: "current", Recovery: "stable",
 			Authority:      hex.EncodeToString(authority.Public().(ed25519.PublicKey)),
 			LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000}

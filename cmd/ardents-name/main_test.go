@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestEncodeNameCommand(t *testing.T) {
@@ -25,10 +25,10 @@ func TestEncodeNameCommand(t *testing.T) {
 
 func TestValidateRecordCommand(t *testing.T) {
 	t.Parallel()
-	record := namelease.Record{Name: "alice", Generation: 1, Revision: 1,
+	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: "authority", LeaseExpiresAt: 200, GraceExpiresAt: 220}
-	wire, err := namelease.EncodeRecord(record)
+	wire, err := namespace.EncodeRecord(record)
 	if err != nil {
 		t.Fatalf("EncodeRecord: %v", err)
 	}

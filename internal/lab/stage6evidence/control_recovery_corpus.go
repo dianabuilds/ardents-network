@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
-func recoveryControlOperations(network [32]byte, now time.Time, records []namelease.Record,
+func recoveryControlOperations(network [32]byte, now time.Time, records []namespace.Record,
 	keys map[string]ed25519.PrivateKey,
 ) ([]controlOperation, error) {
 	policyAdd, err := policyControlOperation(network, now, records, keys, "policy-name", false)
@@ -42,7 +41,7 @@ func recoveryControlOperations(network [32]byte, now time.Time, records []namele
 	return []controlOperation{policyAdd, policyDisable, initiate, cancel, complete, resume}, nil
 }
 
-func policyControlOperation(network [32]byte, now time.Time, records []namelease.Record,
+func policyControlOperation(network [32]byte, now time.Time, records []namespace.Record,
 	keys map[string]ed25519.PrivateKey, name string, disable bool,
 ) (controlOperation, error) {
 	index := recordIndex(records, name)
@@ -53,7 +52,7 @@ func policyControlOperation(network [32]byte, now time.Time, records []namelease
 		record.RecoveryPolicyDelay = policy.Delay.Milliseconds()
 		records[index] = record
 	}
-	op := namelease.Op{Kind: "schedule-recovery-policy", Name: name, Authority: record.Authority,
+	op := namespace.Op{Kind: "schedule-recovery-policy", Name: name, Authority: record.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: 1, PolicyRevision: 1, PolicyDelay: policy.Delay,
 		PolicyActivatesAt: now.Add(policy.Delay).UnixMilli()}
 	var policyRaw []byte
@@ -68,7 +67,7 @@ func policyControlOperation(network [32]byte, now time.Time, records []namelease
 		PolicyNotBefore: op.PolicyActivatesAt, RecoveryPolicy: policyRaw, AuthorityProof: signature}, err
 }
 
-func recoveryControlOperation(network [32]byte, now time.Time, records []namelease.Record,
+func recoveryControlOperation(network [32]byte, now time.Time, records []namespace.Record,
 	keys map[string]ed25519.PrivateKey, name, step string,
 ) (controlOperation, error) {
 	index := recordIndex(records, name)
@@ -99,7 +98,7 @@ func recoveryControlOperation(network [32]byte, now time.Time, records []namelea
 		PolicyID: policy.Digest(), RecoveryStep: step, RecoveryNotBefore: now.UnixMilli(), RecoveryProof: envelope}, err
 }
 
-func recoveryResumeOperation(network [32]byte, now time.Time, records []namelease.Record,
+func recoveryResumeOperation(network [32]byte, now time.Time, records []namespace.Record,
 	keys map[string]ed25519.PrivateKey,
 ) (controlOperation, error) {
 	name := "recovery-resume-name"
@@ -112,7 +111,7 @@ func recoveryResumeOperation(network [32]byte, now time.Time, records []nameleas
 	record.Authority = hex.EncodeToString(successor.Public().(ed25519.PublicKey))
 	record.Target, record.Consistency = [32]byte{}, "unavailable"
 	records[index] = record
-	op := namelease.Op{Kind: "resume-recovery", Name: name, Authority: record.Authority,
+	op := namespace.Op{Kind: "resume-recovery", Name: name, Authority: record.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: 1, Target: [32]byte{24}}
 	signature, err := nameauthority.SignTransition(network, record, op, successor)
 	return controlOperation{Kind: "recovery", Name: name, Generation: 1, ExpectedRevision: 1,

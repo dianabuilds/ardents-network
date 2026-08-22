@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestMaterializedRecordRejectsAProofThatCannotFitTheFixedResponse(t *testing.T) {
 	t.Parallel()
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))
-	record := namelease.Record{Name: "alice", Generation: 1, Revision: 1,
+	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "conflict", Recovery: "stable",
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		ConflictIdentifier: strings.Repeat("t", 4096),

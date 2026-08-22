@@ -1,4 +1,4 @@
-package namelease
+package namespace
 
 func applyPublish(current *Record, now int64, op Op) (Record, error) {
 	if err := requireCurrent(current, op, opPublish); err != nil {

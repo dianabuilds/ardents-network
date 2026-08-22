@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func deepNamespaceEvidence(materialization namespaceFixture, now time.Time) (string, []byte, [][]byte, error) {
@@ -20,7 +20,7 @@ func deepNamespaceEvidence(materialization namespaceFixture, now time.Time) (str
 	records := make([][]byte, 127)
 	for depth := 1; depth <= len(records); depth++ {
 		name := strings.Repeat("a.", depth-1) + "a"
-		record := namelease.Record{Name: name, Generation: 1, Revision: 1, Lease: "active",
+		record := namespace.Record{Name: name, Generation: 1, Revision: 1, Lease: "active",
 			Consistency: "current", Recovery: "stable", Authority: encodedAuthority,
 			LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(), Continuity: 1}
 		if depth > 1 {

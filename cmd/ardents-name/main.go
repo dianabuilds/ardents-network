@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func main() {
@@ -53,11 +53,11 @@ func runWithRuntime(arguments []string, output io.Writer, transport *http.Transp
 		if err != nil {
 			return err
 		}
-		record, err := namelease.DecodeRecord(wire)
+		record, err := namespace.DecodeRecord(wire)
 		if err != nil {
 			return err
 		}
-		_, err = namelease.EncodeRecord(record)
+		_, err = namespace.EncodeRecord(record)
 		if err != nil {
 			return err
 		}

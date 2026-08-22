@@ -1,4 +1,4 @@
-package namelease
+package namespace
 
 import (
 	"errors"

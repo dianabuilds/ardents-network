@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestEd25519RFC8032Vector(t *testing.T) {
@@ -34,7 +34,7 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	network := [32]byte{1, 2, 3}
-	record := namelease.Record{Name: "alice", Generation: 1, Revision: 4,
+	record := namespace.Record{Name: "alice", Generation: 1, Revision: 4,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220}
@@ -76,7 +76,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 		t.Fatal(err)
 	}
 	network := [32]byte{9, 8, 7}
-	base := namelease.Record{Name: "leaf.sub.root", Generation: 3, Revision: 4,
+	base := namespace.Record{Name: "leaf.sub.root", Generation: 3, Revision: 4,
 		Lease: "active", Consistency: "fork", Recovery: "recovery-pending",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1}, ParentName: "sub.root",
 		ParentGeneration: 2, LeaseExpiresAt: 200, GraceExpiresAt: 220,
@@ -89,46 +89,46 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mutations := map[string]func(*namelease.Record){
-		"name":        func(r *namelease.Record) { r.Name = "other.sub.root" },
-		"generation":  func(r *namelease.Record) { r.Generation++ },
-		"revision":    func(r *namelease.Record) { r.Revision++ },
-		"lease":       func(r *namelease.Record) { r.Lease = "grace" },
-		"consistency": func(r *namelease.Record) { r.Consistency = "unavailable" },
-		"recovery": func(r *namelease.Record) {
+	mutations := map[string]func(*namespace.Record){
+		"name":        func(r *namespace.Record) { r.Name = "other.sub.root" },
+		"generation":  func(r *namespace.Record) { r.Generation++ },
+		"revision":    func(r *namespace.Record) { r.Revision++ },
+		"lease":       func(r *namespace.Record) { r.Lease = "grace" },
+		"consistency": func(r *namespace.Record) { r.Consistency = "unavailable" },
+		"recovery": func(r *namespace.Record) {
 			r.Recovery = "stable"
 			r.RecoveryStartedAt, r.RecoveryExpiresAt = 0, 0
 			r.RecoveryOperation, r.RecoverySuccessor = [32]byte{}, [32]byte{}
 		},
-		"authority": func(r *namelease.Record) {
+		"authority": func(r *namespace.Record) {
 			r.Authority = hex.EncodeToString(bytes.Repeat([]byte{7}, ed25519.PublicKeySize))
 		},
-		"target":            func(r *namelease.Record) { r.Target = [32]byte{2} },
-		"parent name":       func(r *namelease.Record) { r.ParentName = "root" },
-		"parent generation": func(r *namelease.Record) { r.ParentGeneration++ },
-		"lease expiry":      func(r *namelease.Record) { r.LeaseExpiresAt++ },
-		"grace expiry":      func(r *namelease.Record) { r.GraceExpiresAt++ },
-		"recovery window": func(r *namelease.Record) {
+		"target":            func(r *namespace.Record) { r.Target = [32]byte{2} },
+		"parent name":       func(r *namespace.Record) { r.ParentName = "root" },
+		"parent generation": func(r *namespace.Record) { r.ParentGeneration++ },
+		"lease expiry":      func(r *namespace.Record) { r.LeaseExpiresAt++ },
+		"grace expiry":      func(r *namespace.Record) { r.GraceExpiresAt++ },
+		"recovery window": func(r *namespace.Record) {
 			r.RecoveryStartedAt++
 			r.RecoveryExpiresAt++
 		},
-		"recovery operation":  func(r *namelease.Record) { r.RecoveryOperation[0]++ },
-		"recovery successor":  func(r *namelease.Record) { r.RecoverySuccessor[0]++ },
-		"recovery policy":     func(r *namelease.Record) { r.RecoveryPolicy[0]++ },
-		"recovery policy rev": func(r *namelease.Record) { r.RecoveryPolicyRev++ },
-		"recovery policy delay": func(r *namelease.Record) {
+		"recovery operation":  func(r *namespace.Record) { r.RecoveryOperation[0]++ },
+		"recovery successor":  func(r *namespace.Record) { r.RecoverySuccessor[0]++ },
+		"recovery policy":     func(r *namespace.Record) { r.RecoveryPolicy[0]++ },
+		"recovery policy rev": func(r *namespace.Record) { r.RecoveryPolicyRev++ },
+		"recovery policy delay": func(r *namespace.Record) {
 			r.RecoveryPolicyDelay++
 			r.RecoveryExpiresAt++
 		},
-		"continuity":          func(r *namelease.Record) { r.Continuity++ },
-		"conflict identifier": func(r *namelease.Record) { r.ConflictIdentifier = "fork-b" },
+		"continuity":          func(r *namespace.Record) { r.Continuity++ },
+		"conflict identifier": func(r *namespace.Record) { r.ConflictIdentifier = "fork-b" },
 	}
 	for field, mutate := range mutations {
 		field, mutate := field, mutate
 		t.Run(field, func(t *testing.T) {
 			changed := base
 			mutate(&changed)
-			wire, err := namelease.EncodeRecord(changed)
+			wire, err := namespace.EncodeRecord(changed)
 			if err != nil {
 				t.Fatalf("mutation did not remain a valid Record: %v", err)
 			}
@@ -156,7 +156,7 @@ func TestSignRecordRejectsWrongAuthorityAndMalformedKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := namelease.Record{Name: "alice", Generation: 1, Revision: 1,
+	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: "not-an-ed25519-key", Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220}

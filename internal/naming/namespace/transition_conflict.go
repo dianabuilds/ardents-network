@@ -1,4 +1,4 @@
-package namelease
+package namespace
 
 func applyConflict(current *Record, op Op) (Record, error) {
 	if err := requireCurrent(current, op, opConflict); err != nil {

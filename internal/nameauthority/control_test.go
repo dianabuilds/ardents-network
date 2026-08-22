@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -21,12 +20,12 @@ func TestControlAppliesTheAdmittedCanonicalOperation(t *testing.T) {
 	network, node, isolation := [32]byte{9}, [32]byte{2}, [32]byte{3}
 	seed := sha256.Sum256([]byte("control-authority"))
 	private := ed25519.NewKeyFromSeed(seed[:])
-	current := namelease.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
+	current := namespace.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
 		Consistency: "current", Recovery: "stable",
 		Authority:      hex.EncodeToString(private.Public().(ed25519.PublicKey)),
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(), Continuity: 1}
-	policy := namelease.Policy{DefaultLeaseDuration: 2 * time.Hour, DefaultGraceDuration: time.Hour}
-	op := namelease.Op{Kind: "renew", Name: current.Name, Authority: current.Authority,
+	policy := namespace.Policy{DefaultLeaseDuration: 2 * time.Hour, DefaultGraceDuration: time.Hour}
+	op := namespace.Op{Kind: "renew", Name: current.Name, Authority: current.Authority,
 		ExpectedGeneration: current.Generation, ExpectedRevision: current.Revision,
 		LeaseDuration: policy.DefaultLeaseDuration}
 	signature, err := SignTransition(network, current, op, private)
@@ -47,13 +46,13 @@ func TestControlAppliesTheAdmittedCanonicalOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	proof, _ := challenge.Solve()
-	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, []namelease.Record{current},
+	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{current},
 		func() time.Time { return now }, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	class, generation, revision, state := control.Apply(raw, proof)
-	updated, decodeErr := namelease.DecodeRecord(state)
+	updated, decodeErr := namespace.DecodeRecord(state)
 	if class != "accepted" || generation != 1 || revision != 2 || decodeErr != nil ||
 		updated.LeaseExpiresAt != now.Add(policy.DefaultLeaseDuration).Unix() {
 		t.Fatalf("class=%q generation=%d revision=%d updated=%+v decode=%v", class, generation, revision, updated, decodeErr)
@@ -79,7 +78,7 @@ func TestControlRejectsChangedContentsWithTheOldAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	proof, _ := challenge.Solve()
-	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, nil, func() time.Time { return now }, namelease.Policy{})
+	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, nil, func() time.Time { return now }, namespace.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,17 +93,17 @@ func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 	current := controlTestRecord("policy-name", currentKey, now)
 	policy, _ := controlTestRecoveryPolicy(network, current, currentKey, 30*24*time.Hour)
 	policyRaw, _ := json.Marshal(policy)
-	leasePolicy := namelease.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
+	leasePolicy := namespace.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
 	gate, _ := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
 	clock := now
-	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, []namelease.Record{current},
+	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{current},
 		func() time.Time { return clock }, leasePolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	early := controlOperation{Kind: "policy", Name: current.Name, Generation: 1, ExpectedRevision: 1,
 		PolicyNotBefore: now.Add(72 * time.Hour).UnixMilli(), RecoveryPolicy: policyRaw}
-	earlyOp := namelease.Op{Kind: "schedule-recovery-policy", Name: current.Name, Authority: current.Authority,
+	earlyOp := namespace.Op{Kind: "schedule-recovery-policy", Name: current.Name, Authority: current.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: 1, PolicyDigest: policy.Digest(), PolicyRevision: 1,
 		PolicyDelay: 72 * time.Hour, PolicyActivatesAt: early.PolicyNotBefore}
 	early.AuthorityProof, _ = SignTransition(network, current, earlyOp, currentKey)
@@ -117,7 +116,7 @@ func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 	validOp.PolicyDelay, validOp.PolicyActivatesAt = policy.Delay, valid.PolicyNotBefore
 	valid.AuthorityProof, _ = SignTransition(network, current, validOp, currentKey)
 	class, _, _, state := applyControlTest(t, control, gate, clock, network, valid, 2)
-	updated, decodeErr := namelease.DecodeRecord(state)
+	updated, decodeErr := namespace.DecodeRecord(state)
 	if class != "accepted" || decodeErr != nil || updated.PendingPolicy != policy.Digest() {
 		t.Fatalf("policy class=%q state=%+v err=%v", class, updated, decodeErr)
 	}
@@ -125,9 +124,9 @@ func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 	effective := current
 	effective.RecoveryPolicy, effective.RecoveryPolicyRev = policy.Digest(), 1
 	effective.RecoveryPolicyDelay = policy.Delay.Milliseconds()
-	disableControl, _ := NewControl(network, gate, nameclaim.ClaimOrder{}, []namelease.Record{effective},
+	disableControl, _ := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{effective},
 		func() time.Time { return clock }, leasePolicy)
-	disableOp := namelease.Op{Kind: "schedule-recovery-policy", Name: effective.Name, Authority: effective.Authority,
+	disableOp := namespace.Op{Kind: "schedule-recovery-policy", Name: effective.Name, Authority: effective.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: 1, PolicyRevision: 2, PolicyDelay: policy.Delay,
 		PolicyActivatesAt: now.Add(policy.Delay).UnixMilli()}
 	invalidPolicy := policy
@@ -143,7 +142,7 @@ func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 		PolicyNotBefore: disableOp.PolicyActivatesAt}
 	disable.AuthorityProof, _ = SignTransition(network, effective, disableOp, currentKey)
 	class, _, _, state = applyControlTest(t, disableControl, gate, clock, network, disable, 9)
-	updated, decodeErr = namelease.DecodeRecord(state)
+	updated, decodeErr = namespace.DecodeRecord(state)
 	if class != "accepted" || decodeErr != nil || updated.PendingPolicy != [32]byte{} || updated.PendingPolicyRev != 2 {
 		t.Fatalf("disable class=%q state=%+v err=%v", class, updated, decodeErr)
 	}
@@ -158,12 +157,12 @@ func TestControlExecutesRecoveryCancelCompleteAndResume(t *testing.T) {
 	current.RecoveryPolicyDelay = policy.Delay.Milliseconds()
 	gate, _ := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
 	clock := now
-	control, _ := NewControl(network, gate, nameclaim.ClaimOrder{}, []namelease.Record{current},
-		func() time.Time { return clock }, namelease.Policy{})
+	control, _ := NewControl(network, gate, nameclaim.ClaimOrder{}, []namespace.Record{current},
+		func() time.Time { return clock }, namespace.Policy{})
 	successor := deterministicControlKey("recovery-successor")
 	initiate := controlTestRecoveryOperation(t, policy, signers, "initiate", [32]byte{7}, successor, clock)
 	class, _, _, state := applyControlTest(t, control, gate, clock, network, initiate, 4)
-	pending, err := namelease.DecodeRecord(state)
+	pending, err := namespace.DecodeRecord(state)
 	if class != "accepted" || err != nil || pending.Recovery != "recovery-pending" {
 		t.Fatalf("initiate class=%q state=%+v err=%v", class, pending, err)
 	}
@@ -171,7 +170,7 @@ func TestControlExecutesRecoveryCancelCompleteAndResume(t *testing.T) {
 	cancel := controlTestRecoveryOperation(t, policy, signers, "cancel", [32]byte{7}, successor, now)
 	cancel.ExpectedRevision, cancel.RecoveryNotBefore = pending.Revision, clock.UnixMilli()
 	class, _, _, state = applyControlTest(t, control, gate, clock, network, cancel, 5)
-	stable, err := namelease.DecodeRecord(state)
+	stable, err := namespace.DecodeRecord(state)
 	if class != "accepted" || err != nil || stable.Recovery != "stable" {
 		t.Fatalf("cancel class=%q state=%+v err=%v", class, stable, err)
 	}
@@ -179,25 +178,25 @@ func TestControlExecutesRecoveryCancelCompleteAndResume(t *testing.T) {
 	initiate = controlTestRecoveryOperation(t, policy, signers, "initiate", [32]byte{8}, successor, clock)
 	initiate.ExpectedRevision = stable.Revision
 	_, _, _, state = applyControlTest(t, control, gate, clock, network, initiate, 6)
-	pending, _ = namelease.DecodeRecord(state)
+	pending, _ = namespace.DecodeRecord(state)
 	clock = time.UnixMilli(pending.RecoveryExpiresAt)
 	complete := initiate
 	complete.ExpectedRevision, complete.RecoveryStep = pending.Revision, "complete"
 	complete.RecoveryNotBefore = pending.RecoveryExpiresAt
 	class, _, _, state = applyControlTest(t, control, gate, clock, network, complete, 7)
-	completed, err := namelease.DecodeRecord(state)
+	completed, err := namespace.DecodeRecord(state)
 	if class != "accepted" || err != nil || completed.Consistency != "unavailable" {
 		t.Fatalf("complete class=%q state=%+v err=%v", class, completed, err)
 	}
 	clock = clock.Add(time.Second)
-	resumeOp := namelease.Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
+	resumeOp := namespace.Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9}}
 	resumeProof, _ := SignTransition(network, completed, resumeOp, successor)
 	resume := controlOperation{Kind: "recovery", Name: completed.Name, Generation: 1,
 		ExpectedRevision: completed.Revision, PolicyID: policy.Digest(), RecoveryStep: "resume",
 		RecoveryNotBefore: clock.UnixMilli(), Target: [32]byte{9}, AuthorityProof: resumeProof}
 	class, _, _, state = applyControlTest(t, control, gate, clock, network, resume, 8)
-	resumed, err := namelease.DecodeRecord(state)
+	resumed, err := namespace.DecodeRecord(state)
 	if class != "accepted" || err != nil || resumed.Target != ([32]byte{9}) || resumed.Consistency != "current" {
 		t.Fatalf("resume class=%q state=%+v err=%v", class, resumed, err)
 	}
@@ -238,14 +237,14 @@ func deterministicControlKey(label string) ed25519.PrivateKey {
 	return ed25519.NewKeyFromSeed(seed[:])
 }
 
-func controlTestRecord(name string, key ed25519.PrivateKey, now time.Time) namelease.Record {
-	return namelease.Record{Name: name, Generation: 1, Revision: 1, Lease: "active", Consistency: "current",
+func controlTestRecord(name string, key ed25519.PrivateKey, now time.Time) namespace.Record {
+	return namespace.Record{Name: name, Generation: 1, Revision: 1, Lease: "active", Consistency: "current",
 		Recovery: "stable", Authority: hex.EncodeToString(key.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(200 * 24 * time.Hour).Unix(), GraceExpiresAt: now.Add(201 * 24 * time.Hour).Unix(),
 		Continuity: 1}
 }
 
-func controlTestRecoveryPolicy(network [32]byte, record namelease.Record, current ed25519.PrivateKey,
+func controlTestRecoveryPolicy(network [32]byte, record namespace.Record, current ed25519.PrivateKey,
 	delay time.Duration,
 ) (namespace.RecoveryPolicy, []ed25519.PrivateKey) {
 	policy := namespace.RecoveryPolicy{Network: network, Name: record.Name, Generation: record.Generation,

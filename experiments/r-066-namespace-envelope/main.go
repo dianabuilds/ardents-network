@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const (
@@ -83,7 +83,7 @@ func signedHierarchy(network [32]byte) ([][]byte, string) {
 	records := make([][]byte, recordCount)
 	for depth := 1; depth <= recordCount; depth++ {
 		name := strings.Repeat("a.", depth-1) + "a"
-		record := namelease.Record{Name: name, Generation: 1, Revision: 1, Lease: "active", Consistency: "current", Recovery: "stable", Authority: hex.EncodeToString(authority.Public().(ed25519.PublicKey)), LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000}
+		record := namespace.Record{Name: name, Generation: 1, Revision: 1, Lease: "active", Consistency: "current", Recovery: "stable", Authority: hex.EncodeToString(authority.Public().(ed25519.PublicKey)), LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000}
 		if depth > 1 {
 			record.ParentName, record.ParentGeneration = strings.Repeat("a.", depth-2)+"a", 1
 		}

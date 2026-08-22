@@ -8,7 +8,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -81,17 +80,17 @@ func decodeCanonical(raw []byte, value any) error {
 	return nil
 }
 
-func (operation controlOperation) lifecycle(network [32]byte, current namelease.Record,
+func (operation controlOperation) lifecycle(network [32]byte, current namespace.Record,
 	now time.Time,
-) (namelease.Op, bool, error) {
-	op := namelease.Op{Name: operation.Name, ExpectedGeneration: operation.Generation,
+) (namespace.Op, bool, error) {
+	op := namespace.Op{Name: operation.Name, ExpectedGeneration: operation.Generation,
 		ExpectedRevision: operation.ExpectedRevision, Authority: current.Authority}
 	switch operation.Kind {
 	case "renew":
 		op.Kind, op.LeaseDuration = "renew", durationUntil(now, operation.LeaseNotAfter)
 	case "record":
 		if operation.RecordNotAfter <= now.UnixMilli() || operation.RecordNotAfter > current.LeaseExpiresAt*1_000 {
-			return namelease.Op{}, false, errors.New("name Record expiry is invalid")
+			return namespace.Op{}, false, errors.New("name Record expiry is invalid")
 		}
 		op.Kind, op.Target = "publish", operation.Target
 	case "release":
@@ -102,7 +101,7 @@ func (operation controlOperation) lifecycle(network [32]byte, current namelease.
 		op.Kind, op.PolicyRevision = "schedule-recovery-policy", current.RecoveryPolicyRev+1
 		if len(operation.RecoveryPolicy) == 0 {
 			if current.RecoveryPolicy == [32]byte{} || current.RecoveryPolicyDelay <= 0 {
-				return namelease.Op{}, false, errors.New("recovery Policy disable is invalid")
+				return namespace.Op{}, false, errors.New("recovery Policy disable is invalid")
 			}
 			op.PolicyDelay = time.Duration(current.RecoveryPolicyDelay) * time.Millisecond
 		} else {
@@ -110,24 +109,24 @@ func (operation controlOperation) lifecycle(network [32]byte, current namelease.
 			if decodeCanonical(operation.RecoveryPolicy, &policy) != nil || policy.Network != network ||
 				policy.Name != current.Name || policy.Generation != current.Generation ||
 				policy.Revision != op.PolicyRevision || policy.CurrentAuthority != authorityBytes(current.Authority) {
-				return namelease.Op{}, false, errors.New("recovery Policy is invalid")
+				return namespace.Op{}, false, errors.New("recovery Policy is invalid")
 			}
 			op.PolicyDigest, op.PolicyDelay = policy.Digest(), policy.Delay
 			if op.PolicyDigest == [32]byte{} {
-				return namelease.Op{}, false, errors.New("recovery policy participants are invalid")
+				return namespace.Op{}, false, errors.New("recovery policy participants are invalid")
 			}
 		}
 		op.PolicyActivatesAt = operation.PolicyNotBefore
 		if operation.PolicyNotBefore != now.Add(op.PolicyDelay).UnixMilli() {
-			return namelease.Op{}, false, errors.New("recovery Policy activation is invalid")
+			return namespace.Op{}, false, errors.New("recovery Policy activation is invalid")
 		}
 	case "recovery":
 		if operation.PolicyID != current.RecoveryPolicy {
-			return namelease.Op{}, false, errors.New("recovery Policy identifier is stale")
+			return namespace.Op{}, false, errors.New("recovery Policy identifier is stale")
 		}
 		if operation.RecoveryStep == "resume" {
 			if operation.RecoveryNotBefore > now.UnixMilli() {
-				return namelease.Op{}, false, errors.New("recovery resume is premature")
+				return namespace.Op{}, false, errors.New("recovery resume is premature")
 			}
 			op.Kind, op.Target = "resume-recovery", operation.Target
 			return op, false, nil
@@ -135,39 +134,39 @@ func (operation controlOperation) lifecycle(network [32]byte, current namelease.
 		var envelope recoveryEnvelope
 		if decodeCanonical(operation.RecoveryProof, &envelope) != nil || envelope.Policy.Network != network ||
 			envelope.Policy.Name != current.Name || envelope.Policy.Digest() != operation.PolicyID {
-			return namelease.Op{}, false, errors.New("recovery proof is invalid")
+			return namespace.Op{}, false, errors.New("recovery proof is invalid")
 		}
 		authorization, err := envelope.Policy.Authorize(envelope.Proof)
 		if err != nil {
-			return namelease.Op{}, false, err
+			return namespace.Op{}, false, err
 		}
 		switch operation.RecoveryStep {
 		case "initiate":
 			op.Kind = "start-recovery"
 			if authorization.Operation != "initiate" || operation.RecoveryNotBefore != authorization.StartedAt {
-				return namelease.Op{}, false, errors.New("recovery initiation boundary is invalid")
+				return namespace.Op{}, false, errors.New("recovery initiation boundary is invalid")
 			}
 		case "cancel":
 			op.Kind = "cancel-recovery"
 			if authorization.Operation != "cancel" || operation.RecoveryNotBefore != now.UnixMilli() {
-				return namelease.Op{}, false, errors.New("recovery cancellation boundary is invalid")
+				return namespace.Op{}, false, errors.New("recovery cancellation boundary is invalid")
 			}
 		case "complete":
 			op.Kind = "complete-recovery"
 			if authorization.Operation != "initiate" || operation.RecoveryNotBefore != authorization.CompletesAt ||
 				now.UnixMilli() < authorization.CompletesAt {
-				return namelease.Op{}, false, errors.New("recovery completion boundary is invalid")
+				return namespace.Op{}, false, errors.New("recovery completion boundary is invalid")
 			}
 		default:
-			return namelease.Op{}, false, errors.New("recovery step is invalid")
+			return namespace.Op{}, false, errors.New("recovery step is invalid")
 		}
 		op.RecoveryAuthorization = authorization
 		return op, true, nil
 	default:
-		return namelease.Op{}, false, errors.New("name Authority operation is unavailable")
+		return namespace.Op{}, false, errors.New("name Authority operation is unavailable")
 	}
 	if op.Kind == "" || (op.Kind == "renew" && op.LeaseDuration <= 0) {
-		return namelease.Op{}, false, errors.New("name Authority operation timing is invalid")
+		return namespace.Op{}, false, errors.New("name Authority operation timing is invalid")
 	}
 	return op, false, nil
 }

@@ -1,4 +1,4 @@
-package namelease
+package namespace
 
 func applyRelease(current *Record, op Op) (Record, error) {
 	if err := requireCurrent(current, op, opRelease); err != nil {

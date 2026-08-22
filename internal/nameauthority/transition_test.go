@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -20,7 +19,7 @@ func TestAuthorityTransitionRequiresPredecessorAndPermanentlyInstallsSuccessor(t
 	oldKey := deterministicAuthority("old")
 	newKey := deterministicAuthority("new")
 	record := authorityRecord(oldKey)
-	op := namelease.Op{Kind: "rotate", Name: record.Name, Authority: record.Authority,
+	op := namespace.Op{Kind: "rotate", Name: record.Name, Authority: record.Authority,
 		SuccessorAuthority: hex.EncodeToString(newKey.Public().(ed25519.PublicKey)),
 		ExpectedGeneration: record.Generation, ExpectedRevision: record.Revision}
 	proof, err := nameauthority.SignTransition(network, record, op, oldKey)
@@ -29,7 +28,7 @@ func TestAuthorityTransitionRequiresPredecessorAndPermanentlyInstallsSuccessor(t
 	}
 	admission, admissionProof := admittedTransition(t, network, record, op, [32]byte{1})
 	rotated, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
-		admissionProof.Challenge.OperationDigest, network, record, op, proof, 101, namelease.Policy{})
+		admissionProof.Challenge.OperationDigest, network, record, op, proof, 101, namespace.Policy{})
 	if err != nil || rotated.Authority != op.SuccessorAuthority || rotated.Generation != record.Generation ||
 		rotated.Target != record.Target {
 		t.Fatalf("rotated=%+v err=%v", rotated, err)
@@ -37,7 +36,7 @@ func TestAuthorityTransitionRequiresPredecessorAndPermanentlyInstallsSuccessor(t
 	replay := op
 	replay.ExpectedRevision = rotated.Revision
 	if _, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
-		admissionProof.Challenge.OperationDigest, network, rotated, replay, proof, 102, namelease.Policy{}); err == nil {
+		admissionProof.Challenge.OperationDigest, network, rotated, replay, proof, 102, namespace.Policy{}); err == nil {
 		t.Fatal("predecessor transition proof replayed after successor installation")
 	}
 	if _, err := nameauthority.SignRecord(network, rotated, oldKey); err == nil {
@@ -55,8 +54,8 @@ func TestParentAuthorityDelegatesChosenChildAuthorityWithoutTransferringParent(t
 	childKey := deterministicAuthority("child")
 	parent := authorityRecord(parentKey)
 	parent.Name = "root"
-	op := namelease.Op{Kind: "claim", Name: "leaf.root", Generation: 1,
-		Authority: hex.EncodeToString(childKey.Public().(ed25519.PublicKey)), Parents: []namelease.Record{parent}}
+	op := namespace.Op{Kind: "claim", Name: "leaf.root", Generation: 1,
+		Authority: hex.EncodeToString(childKey.Public().(ed25519.PublicKey)), Parents: []namespace.Record{parent}}
 	proof, err := nameauthority.SignTransition(network, parent, op, parentKey)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +63,7 @@ func TestParentAuthorityDelegatesChosenChildAuthorityWithoutTransferringParent(t
 	admission, admissionProof := admittedTransition(t, network, parent, op, [32]byte{2})
 	child, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
 		admissionProof.Challenge.OperationDigest, network, parent, op, proof, 101,
-		namelease.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour})
+		namespace.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour})
 	if err != nil || child.Authority != op.Authority || child.ParentName != parent.Name ||
 		parent.Authority == child.Authority {
 		t.Fatalf("child=%+v err=%v", child, err)
@@ -102,22 +101,22 @@ func TestRecoveryTransitionRequiresThresholdAuthorizationAndAdmission(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	op := namelease.Op{Kind: "start-recovery", Name: record.Name, ExpectedGeneration: record.Generation,
+	op := namespace.Op{Kind: "start-recovery", Name: record.Name, ExpectedGeneration: record.Generation,
 		ExpectedRevision: record.Revision, RecoveryAuthorization: authorization}
 	admission, admissionProof := admittedTransition(t, network, record, op, [32]byte{3})
 	if _, err := nameauthority.ApplyAdmittedTransition(admission, namespace.Proof{}, 100_000,
-		admissionProof.Challenge.OperationDigest, network, record, op, nil, 100, namelease.Policy{}); err == nil {
+		admissionProof.Challenge.OperationDigest, network, record, op, nil, 100, namespace.Policy{}); err == nil {
 		t.Fatal("threshold authorization bypassed anonymous admission")
 	}
 	pending, err := nameauthority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
-		admissionProof.Challenge.OperationDigest, network, record, op, nil, 100, namelease.Policy{})
+		admissionProof.Challenge.OperationDigest, network, record, op, nil, 100, namespace.Policy{})
 	if err != nil || pending.Recovery != "recovery-pending" {
 		t.Fatalf("pending=%+v err=%v", pending, err)
 	}
 }
 
-func admittedTransition(t *testing.T, network [32]byte, current namelease.Record,
-	op namelease.Op, isolation [32]byte,
+func admittedTransition(t *testing.T, network [32]byte, current namespace.Record,
+	op namespace.Op, isolation [32]byte,
 ) (*namespace.Admission, namespace.Proof) {
 	t.Helper()
 	digest, err := nameauthority.TransitionDigest(network, current, op)
@@ -146,8 +145,8 @@ func deterministicAuthority(label string) ed25519.PrivateKey {
 	return ed25519.NewKeyFromSeed(seed[:])
 }
 
-func authorityRecord(private ed25519.PrivateKey) namelease.Record {
-	return namelease.Record{Name: "alice", Generation: 1, Revision: 2,
+func authorityRecord(private ed25519.PrivateKey) namespace.Record {
+	return namespace.Record{Name: "alice", Generation: 1, Revision: 2,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, Continuity: 1}

@@ -12,7 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestOrderedClaimMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.T) {
@@ -29,15 +29,15 @@ func TestOrderedClaimMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.
 		MaterializationRoot: orderedMaterializationLeaf(claim), MaterializationLength: 1,
 		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []nameclaim.Claim{claim}}
 	order := signedClaimClose(&proof)
-	op := namelease.Op{Kind: "claim", Name: claim.Name, Generation: 1, ClaimOrdinal: claim.Ordinal,
+	op := namespace.Op{Kind: "claim", Name: claim.Name, Generation: 1, ClaimOrdinal: claim.Ordinal,
 		Authority: hex.EncodeToString(claim.Authority[:])}
 	record, err := nameauthority.ApplyOrderedClaim(order, proof, nil, 100, op,
-		namelease.Policy{DefaultLeaseDuration: time.Hour})
+		namespace.Policy{DefaultLeaseDuration: time.Hour})
 	if err != nil || record.Name != claim.Name || record.Authority != op.Authority {
 		t.Fatalf("record=%+v err=%v", record, err)
 	}
 	op.ClaimOrdinal++
-	if _, err := nameauthority.ApplyOrderedClaim(order, proof, nil, 100, op, namelease.Policy{}); err == nil {
+	if _, err := nameauthority.ApplyOrderedClaim(order, proof, nil, 100, op, namespace.Policy{}); err == nil {
 		t.Fatal("non-winning ordinal was materialized")
 	}
 }

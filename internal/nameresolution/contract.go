@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/openpcc/ohttp"
@@ -144,8 +143,8 @@ type plan struct {
 type result struct {
 	Class   string
 	Warning string
-	Record  namelease.Record
-	Binding namelease.Binding
+	Record  namespace.Record
+	Binding namespace.Binding
 }
 
 type resolverObservation struct {

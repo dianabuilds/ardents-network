@@ -9,17 +9,16 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
-	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type controlCorpus struct {
 	order      nameclaim.ClaimOrder
-	records    []namelease.Record
+	records    []namespace.Record
 	operations []controlOperation
 }
 
-func newControlCorpus(network [32]byte, now time.Time, policy namelease.Policy) (controlCorpus, error) {
+func newControlCorpus(network [32]byte, now time.Time, policy namespace.Policy) (controlCorpus, error) {
 	var corpus controlCorpus
 	longLease := now.Add(100 * 24 * time.Hour)
 	fixtures := []struct {
@@ -51,7 +50,7 @@ func newControlCorpus(network [32]byte, now time.Time, policy namelease.Policy) 
 	for _, kind := range []string{"renew", "record", "release", "transfer"} {
 		name := kind + "-name"
 		current := recordByName(corpus.records, name)
-		op := namelease.Op{Kind: kind, Name: name, Authority: current.Authority,
+		op := namespace.Op{Kind: kind, Name: name, Authority: current.Authority,
 			ExpectedGeneration: 1, ExpectedRevision: 1}
 		operation := controlOperation{Kind: kind, Name: name, Generation: 1, ExpectedRevision: 1}
 		switch kind {
@@ -74,8 +73,8 @@ func newControlCorpus(network [32]byte, now time.Time, policy namelease.Policy) 
 	}
 	parent := recordByName(corpus.records, "root")
 	childKey := evidenceKey("control-child")
-	childOp := namelease.Op{Kind: "claim", Name: "leaf.root", Generation: 1,
-		Authority: hex.EncodeToString(childKey.Public().(ed25519.PublicKey)), Parents: []namelease.Record{parent},
+	childOp := namespace.Op{Kind: "claim", Name: "leaf.root", Generation: 1,
+		Authority: hex.EncodeToString(childKey.Public().(ed25519.PublicKey)), Parents: []namespace.Record{parent},
 		LeaseDuration: policy.DefaultLeaseDuration}
 	childProof, err := nameauthority.SignTransition(network, parent, childOp, keys["root"])
 	if err != nil {
@@ -96,13 +95,13 @@ func newControlCorpus(network [32]byte, now time.Time, policy namelease.Policy) 
 	return corpus, nil
 }
 
-func controlRecord(name string, key ed25519.PrivateKey, lease time.Time) namelease.Record {
-	return namelease.Record{Name: name, Generation: 1, Revision: 1, Lease: "active", Consistency: "current",
+func controlRecord(name string, key ed25519.PrivateKey, lease time.Time) namespace.Record {
+	return namespace.Record{Name: name, Generation: 1, Revision: 1, Lease: "active", Consistency: "current",
 		Recovery: "stable", Authority: hex.EncodeToString(key.Public().(ed25519.PublicKey)),
 		LeaseExpiresAt: lease.Unix(), GraceExpiresAt: lease.Add(time.Hour).Unix(), Continuity: 1}
 }
 
-func controlRecoveryPolicy(network [32]byte, record namelease.Record,
+func controlRecoveryPolicy(network [32]byte, record namespace.Record,
 	current ed25519.PrivateKey,
 ) (namespace.RecoveryPolicy, []ed25519.PrivateKey) {
 	policy := namespace.RecoveryPolicy{Network: network, Name: record.Name, Generation: 1, Revision: 1,
@@ -123,10 +122,10 @@ func publicBytes(key ed25519.PrivateKey) [32]byte {
 	return out
 }
 
-func recordByName(records []namelease.Record, name string) namelease.Record {
+func recordByName(records []namespace.Record, name string) namespace.Record {
 	return records[recordIndex(records, name)]
 }
-func recordIndex(records []namelease.Record, name string) int {
+func recordIndex(records []namespace.Record, name string) int {
 	for index := range records {
 		if records[index].Name == name {
 			return index
