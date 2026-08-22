@@ -54,7 +54,7 @@ func TestRecordDecoderRejectsMutationAndTrailingBytes(t *testing.T) {
 	}
 	for _, mutated := range [][]byte{
 		append(append([]byte(nil), wire...), 0),
-		append([]byte{0, 4}, wire[2:]...),
+		append([]byte{0, 5}, wire[2:]...),
 		wire[:len(wire)-1],
 	} {
 		if _, err := DecodeRecord(mutated); err == nil {

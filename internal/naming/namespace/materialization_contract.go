@@ -52,6 +52,7 @@ type attestedStatement struct {
 }
 
 type resolutionLeaf struct {
+	schema       uint16
 	signedRecord []byte
 	lineageRoot  [32]byte
 	lineageCount uint8

@@ -80,10 +80,10 @@ func validControlOperation(value controlOperation) bool {
 			}
 			expected.RecoveryProof = value.RecoveryProof
 		case "resume":
-			if value.Target == [32]byte{} || len(value.AuthorityProof) == 0 {
+			if value.Target == [32]byte{} || value.RecordNotAfter <= 0 || len(value.AuthorityProof) == 0 {
 				return false
 			}
-			expected.Target, expected.AuthorityProof = value.Target, value.AuthorityProof
+			expected.Target, expected.RecordNotAfter, expected.AuthorityProof = value.Target, value.RecordNotAfter, value.AuthorityProof
 		default:
 			return false
 		}

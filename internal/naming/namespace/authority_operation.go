@@ -87,10 +87,10 @@ func (operation controlOperation) lifecycle(network [32]byte, current Record,
 	case "renew":
 		op.Kind, op.LeaseDuration = "renew", durationUntil(now, operation.LeaseNotAfter)
 	case "record":
-		if operation.RecordNotAfter <= now.UnixMilli() || operation.RecordNotAfter > current.LeaseExpiresAt*1_000 {
+		if operation.RecordNotAfter <= now.UnixMilli() {
 			return Op{}, false, errors.New("name Record expiry is invalid")
 		}
-		op.Kind, op.Target = "publish", operation.Target
+		op.Kind, op.Target, op.RecordNotAfter = "publish", operation.Target, operation.RecordNotAfter
 	case "release":
 		op.Kind = "release"
 	case "transfer":
@@ -123,10 +123,10 @@ func (operation controlOperation) lifecycle(network [32]byte, current Record,
 			return Op{}, false, errors.New("recovery Policy identifier is stale")
 		}
 		if operation.RecoveryStep == "resume" {
-			if operation.RecoveryNotBefore > now.UnixMilli() {
+			if operation.RecoveryNotBefore > now.UnixMilli() || operation.RecordNotAfter <= now.UnixMilli() {
 				return Op{}, false, errors.New("recovery resume is premature")
 			}
-			op.Kind, op.Target = "resume-recovery", operation.Target
+			op.Kind, op.Target, op.RecordNotAfter = "resume-recovery", operation.Target, operation.RecordNotAfter
 			return op, false, nil
 		}
 		var envelope recoveryEnvelope

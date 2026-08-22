@@ -35,6 +35,7 @@ type Record struct {
 	Recovery            string
 	Authority           string
 	Target              [32]byte
+	RecordNotAfter      int64
 	ParentName          string
 	ParentGeneration    uint64
 	LeaseExpiresAt      int64
@@ -66,6 +67,7 @@ type Op struct {
 	ExpectedRevision      uint64
 	Authority             string
 	Target                [32]byte
+	RecordNotAfter        int64
 	Parents               []Record
 	LeaseDuration         time.Duration
 	GraceDuration         time.Duration

@@ -33,7 +33,7 @@ func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
 	proof, proofErr := reopened.Lookup("alice", 11)
-	record, _, _, _, verifyErr := namespace.Verify(policy, proof, 11, [32]byte{11}, 900)
+	record, _, _, _, verifyErr := namespace.Verify(policy, proof, 11, [32]byte{11}, 900_000)
 	if proofErr != nil || verifyErr != nil || record.Name != "alice" {
 		t.Fatalf("record=%+v err=%v/%v", record, proofErr, verifyErr)
 	}
@@ -92,7 +92,7 @@ func signedRecord(t *testing.T, network [32]byte, name, label string) []byte {
 	record := namespace.Record{Name: name, Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
-		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, Continuity: 1}
+		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, RecordNotAfter: 950_000, Continuity: 1}
 	signed, err := namespace.SignRecord(network, record, private)
 	if err != nil {
 		t.Fatal(err)

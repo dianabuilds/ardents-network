@@ -45,8 +45,9 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 	return proof, nil
 }
 
-// Verify authenticates one current Namespace proof and returns the exact
-// immutable binding asserted by its threshold-signed materialization.
+// Verify authenticates one current Namespace proof at epoch milliseconds and
+// returns the exact immutable binding asserted by its threshold-signed
+// materialization.
 func Verify(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expectedEpochDigest [32]byte, at int64) (
 	Record, Binding, string, uint64, error,
 ) {
@@ -66,7 +67,7 @@ func Verify(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expe
 		return Record{}, Binding{}, "", 0, errors.New("name is unavailable")
 	}
 	record, err := VerifyRecord(policy.Network, leaf.signedRecord)
-	if err != nil || record.Target == [32]byte{} {
+	if err != nil || leaf.schema != leafSchema || record.Target == [32]byte{} || record.RecordNotAfter <= 0 {
 		return Record{}, Binding{}, "", 0, errors.New("naming proof Record is invalid")
 	}
 	recordWire, err := EncodeRecord(record)

@@ -32,14 +32,20 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, binding, warning, number, err := namespace.Verify(policy, proof, 11, epoch.Digest, 900)
+	record, binding, warning, number, err := namespace.Verify(policy, proof, 11, epoch.Digest, 900_000)
 	if err != nil || number != 11 || record.Name != "alice" || binding.Name != "alice" ||
 		binding.Target != [32]byte{1} || binding.Commitment == [32]byte{} || warning != "" {
 		t.Fatalf("verified=%+v binding=%+v warning=%q epoch=%d err=%v", record, binding, warning, number, err)
 	}
+	if _, _, _, _, err := namespace.Verify(policy, proof, 11, epoch.Digest, 950_000); err != nil {
+		t.Fatalf("Record was unavailable at its exact validity boundary: %v", err)
+	}
+	if _, _, _, _, err := namespace.Verify(policy, proof, 11, epoch.Digest, 950_001); err == nil {
+		t.Fatal("Record remained available after its signed validity boundary")
+	}
 	mutated := append([]byte(nil), proof...)
 	mutated[len(mutated)-1] ^= 1
-	if _, _, _, _, err := namespace.Verify(policy, mutated, 11, epoch.Digest, 900); err == nil {
+	if _, _, _, _, err := namespace.Verify(policy, mutated, 11, epoch.Digest, 900_000); err == nil {
 		t.Fatal("mutated Namespace membership proof was accepted")
 	}
 
@@ -57,7 +63,7 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := namespace.Verify(policy, attackerProof, 11, epoch.Digest, 900); err == nil {
+	if _, _, _, _, err := namespace.Verify(policy, attackerProof, 11, epoch.Digest, 900_000); err == nil {
 		t.Fatal("self-consistent attacker Namespace was accepted under the installed epoch policy")
 	}
 }
@@ -85,7 +91,7 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 			record.ParentGeneration = 1
 		}
 		if depth == len(records) {
-			record.Target = [32]byte{1}
+			record.Target, record.RecordNotAfter = [32]byte{1}, 950_000
 		}
 		records[depth-1], err = namespace.SignRecord(network, record, authority)
 		if err != nil {
@@ -106,7 +112,7 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 	if len(proof) >= 3_900 {
 		t.Fatalf("deep-name proof bytes=%d", len(proof))
 	}
-	record, binding, _, number, err := namespace.Verify(policy, proof, 12, epoch.Digest, 900)
+	record, binding, _, number, err := namespace.Verify(policy, proof, 12, epoch.Digest, 900_000)
 	if err != nil || number != 12 || record.Name != name || binding.Target != [32]byte{1} {
 		t.Fatalf("record=%+v binding=%+v epoch=%d err=%v", record, binding, number, err)
 	}

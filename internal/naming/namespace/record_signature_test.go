@@ -36,7 +36,7 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 	record := namespace.Record{Name: "alice", Generation: 1, Revision: 4,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
-		LeaseExpiresAt: 200, GraceExpiresAt: 220}
+		LeaseExpiresAt: 200, GraceExpiresAt: 220, RecordNotAfter: 190_000}
 
 	signed, err := namespace.SignRecord(network, record, private)
 	if err != nil {
@@ -79,6 +79,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 		Lease: "active", Consistency: "fork", Recovery: "recovery-pending",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1}, ParentName: "sub.root",
 		ParentGeneration: 2, LeaseExpiresAt: 200, GraceExpiresAt: 220,
+		RecordNotAfter:    190_000,
 		RecoveryStartedAt: 1_000, RecoveryExpiresAt: 1_000 + (72 * time.Hour).Milliseconds(),
 		RecoveryOperation: [32]byte{3}, RecoverySuccessor: [32]byte{4},
 		RecoveryPolicy: [32]byte{5}, RecoveryPolicyRev: 1,
@@ -103,6 +104,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 			r.Authority = hex.EncodeToString(bytes.Repeat([]byte{7}, ed25519.PublicKeySize))
 		},
 		"target":            func(r *namespace.Record) { r.Target = [32]byte{2} },
+		"record expiry":     func(r *namespace.Record) { r.RecordNotAfter-- },
 		"parent name":       func(r *namespace.Record) { r.ParentName = "root" },
 		"parent generation": func(r *namespace.Record) { r.ParentGeneration++ },
 		"lease expiry":      func(r *namespace.Record) { r.LeaseExpiresAt++ },

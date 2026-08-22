@@ -116,7 +116,8 @@ func TestControlOwnsMultilevelParentLineage(t *testing.T) {
 	}
 
 	publishOp := Op{Kind: "publish", Name: grandchildRecord.Name, Authority: grandchildRecord.Authority,
-		ExpectedGeneration: grandchildRecord.Generation, ExpectedRevision: grandchildRecord.Revision, Target: [32]byte{7}}
+		ExpectedGeneration: grandchildRecord.Generation, ExpectedRevision: grandchildRecord.Revision,
+		Target: [32]byte{7}, RecordNotAfter: now.Add(30 * time.Minute).UnixMilli()}
 	publishProof, err := SignTransition(network, grandchildRecord, publishOp, grandchildKey)
 	if err != nil {
 		t.Fatal(err)
@@ -286,11 +287,13 @@ func TestControlExecutesRecoveryCancelCompleteAndResume(t *testing.T) {
 	}
 	clock = clock.Add(time.Second)
 	resumeOp := Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
-		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9}}
+		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9},
+		RecordNotAfter: clock.Add(time.Hour).UnixMilli()}
 	resumeProof, _ := SignTransition(network, completed, resumeOp, successor)
 	resume := controlOperation{Kind: "recovery", Name: completed.Name, Generation: 1,
 		ExpectedRevision: completed.Revision, PolicyID: policy.Digest(), RecoveryStep: "resume",
-		RecoveryNotBefore: clock.UnixMilli(), Target: [32]byte{9}, AuthorityProof: resumeProof}
+		RecoveryNotBefore: clock.UnixMilli(), Target: [32]byte{9}, RecordNotAfter: resumeOp.RecordNotAfter,
+		AuthorityProof: resumeProof}
 	class, _, _, state = applyControlTest(t, control, gate, clock, network, resume, 8)
 	resumed, err := DecodeRecord(state)
 	if class != "accepted" || err != nil || resumed.Target != ([32]byte{9}) || resumed.Consistency != "current" {

@@ -122,7 +122,7 @@ func (gateway *gateway) resolve(writer http.ResponseWriter, request *http.Reques
 	target := [32]byte{}
 	if found {
 		record, _, _, _, verifyErr := namespace.Verify(gateway.state.policy, proof,
-			gateway.state.minimum, gateway.state.epochDigest, now.Unix())
+			gateway.state.minimum, gateway.state.epochDigest, now.UnixMilli())
 		if verifyErr != nil {
 			gateway.reject(writer)
 			return

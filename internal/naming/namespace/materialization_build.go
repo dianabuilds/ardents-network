@@ -80,7 +80,7 @@ func materializeLeaf(index int, entries []recordEntry, byName map[string]int) (r
 	if !available {
 		state, notAfter = 0, 0
 	}
-	return resolutionLeaf{signedRecord: head.signed, lineageRoot: namespaceCommitmentRoot(lineage, emptyLineageTag),
+	return resolutionLeaf{schema: leafSchema, signedRecord: head.signed, lineageRoot: namespaceCommitmentRoot(lineage, emptyLineageTag),
 		lineageCount: uint8(len(lineage)), state: state, notAfter: notAfter}, nil
 }
 
@@ -90,12 +90,28 @@ func effectiveLease(record Record) (byte, int64, bool) {
 	}
 	switch record.Lease {
 	case "active":
-		return 1, record.LeaseExpiresAt, record.LeaseExpiresAt > 0
+		if record.LeaseExpiresAt <= 0 {
+			return 0, 0, false
+		}
+		return effectiveRecordNotAfter(record, 1, record.LeaseExpiresAt*1_000)
 	case "grace":
-		return 2, record.GraceExpiresAt, record.GraceExpiresAt > 0
+		if record.GraceExpiresAt <= 0 {
+			return 0, 0, false
+		}
+		return effectiveRecordNotAfter(record, 2, record.GraceExpiresAt*1_000)
 	default:
 		return 0, 0, false
 	}
+}
+
+func effectiveRecordNotAfter(record Record, state byte, leaseNotAfter int64) (byte, int64, bool) {
+	if record.Target == [32]byte{} {
+		return state, leaseNotAfter, true
+	}
+	if record.RecordNotAfter <= 0 {
+		return 0, 0, false
+	}
+	return state, min(leaseNotAfter, record.RecordNotAfter), true
 }
 
 func recordRoot(leaves [][]byte) [32]byte { return namespaceCommitmentRoot(leaves, emptyRecordTag) }

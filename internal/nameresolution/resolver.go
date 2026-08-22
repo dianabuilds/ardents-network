@@ -113,7 +113,7 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 		return resolver.failure(resolutionUnavailableClass, errors.New("name is unavailable"))
 	}
 	record, binding, warning, epoch, err := namespace.Verify(resolver.plan.MaterializationPolicy,
-		response.proof, resolver.plan.Epoch, resolver.plan.EpochDigest, at.Unix())
+		response.proof, resolver.plan.Epoch, resolver.plan.EpochDigest, at.UnixMilli())
 	if err != nil || record.Name != serviceName || epoch != resolver.plan.Epoch {
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution returned the wrong name"))
 	}

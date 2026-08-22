@@ -236,7 +236,8 @@ func newResolutionFixtureWithControl(t *testing.T, control interface {
 	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
-		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix()}
+		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(),
+		RecordNotAfter: now.Add(30 * time.Minute).UnixMilli()}
 	signed, err := namespace.SignRecord(network, record, private)
 	if err != nil {
 		t.Fatal(err)

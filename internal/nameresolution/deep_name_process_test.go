@@ -82,7 +82,7 @@ func deepProcessRecords(t *testing.T, network [32]byte, authority ed25519.Privat
 			record.ParentGeneration = 1
 		}
 		if depth == len(records) {
-			record.Target = [32]byte{1}
+			record.Target, record.RecordNotAfter = [32]byte{1}, now.Add(30*time.Minute).UnixMilli()
 		}
 		var err error
 		records[depth-1], err = namespace.SignRecord(network, record, authority)

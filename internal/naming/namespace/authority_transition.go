@@ -122,6 +122,7 @@ func transitionTranscript(network [32]byte, current Record, op Op) ([]byte, erro
 	out = appendTransitionText(out, op.Authority)
 	out = appendTransitionText(out, op.SuccessorAuthority)
 	out = append(out, op.Target[:]...)
+	out = binary.BigEndian.AppendUint64(out, uint64(op.RecordNotAfter))
 	out = binary.BigEndian.AppendUint64(out, uint64(op.LeaseDuration))
 	out = binary.BigEndian.AppendUint64(out, uint64(op.GraceDuration))
 	out = appendTransitionText(out, op.ConflictContext)

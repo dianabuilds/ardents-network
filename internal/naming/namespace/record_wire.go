@@ -7,17 +7,27 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming"
 )
 
-// recordSchemaVersion identifies the bounded internal Name Record encoding.
-// It is not a selected public naming protocol.
-const recordSchemaVersion uint16 = 3
+// Record V3 is decode-only migration input. Record V4 adds the signed Target
+// validity boundary selected by ADR-0022.
+const (
+	legacyRecordSchemaVersion uint16 = 3
+	recordSchemaVersion       uint16 = 4
+)
 
 // EncodeRecord deterministically encodes one validated lifecycle Record.
 func EncodeRecord(record Record) ([]byte, error) {
+	return encodeRecord(record, recordSchemaVersion)
+}
+
+func encodeRecord(record Record, schema uint16) ([]byte, error) {
+	if schema != legacyRecordSchemaVersion && schema != recordSchemaVersion {
+		return nil, errors.New("name record schema is unavailable")
+	}
 	if err := validateRecord(record); err != nil {
 		return nil, err
 	}
 	out := make([]byte, 0, 128)
-	out = binary.BigEndian.AppendUint16(out, recordSchemaVersion)
+	out = binary.BigEndian.AppendUint16(out, schema)
 	out = appendRecordString(out, record.Name)
 	out = binary.BigEndian.AppendUint64(out, record.Generation)
 	out = binary.BigEndian.AppendUint64(out, record.Revision)
@@ -36,6 +46,9 @@ func EncodeRecord(record Record) ([]byte, error) {
 		out = binary.BigEndian.AppendUint64(out, value)
 	}
 	out = appendRecordString(out, record.ConflictIdentifier)
+	if schema == recordSchemaVersion {
+		out = binary.BigEndian.AppendUint64(out, uint64(record.RecordNotAfter))
+	}
 	return out, nil
 }
 
@@ -43,7 +56,7 @@ func EncodeRecord(record Record) ([]byte, error) {
 func DecodeRecord(raw []byte) (Record, error) {
 	c := recordCursor{raw: raw}
 	version, err := c.uint16()
-	if err != nil || version != recordSchemaVersion {
+	if err != nil || (version != legacyRecordSchemaVersion && version != recordSchemaVersion) {
 		return Record{}, errors.New("name record has invalid schema version")
 	}
 	name, err := c.text()
@@ -98,7 +111,18 @@ func DecodeRecord(raw []byte) (Record, error) {
 		}
 	}
 	conflict, err := c.text()
-	if err != nil || c.offset != len(raw) {
+	if err != nil {
+		return Record{}, errors.New("name record has trailing or malformed bytes")
+	}
+	recordNotAfter := int64(0)
+	if version == recordSchemaVersion {
+		value, valueErr := c.uint64()
+		if valueErr != nil || value > uint64(^uint64(0)>>1) {
+			return Record{}, errors.New("name record validity is malformed")
+		}
+		recordNotAfter = int64(value)
+	}
+	if c.offset != len(raw) {
 		return Record{}, errors.New("name record has trailing or malformed bytes")
 	}
 	record := Record{Name: name, Generation: generation, Revision: revision,
@@ -110,11 +134,12 @@ func DecodeRecord(raw []byte) (Record, error) {
 		GraceExpiresAt: int64(numbers[2]), RecoveryExpiresAt: int64(numbers[3]), RecoveryStartedAt: int64(numbers[4]),
 		RecoveryPolicyRev: numbers[5], RecoveryPolicyDelay: int64(numbers[6]),
 		PendingPolicyRev: numbers[7], PendingPolicyDelay: int64(numbers[8]),
-		PolicyActivatesAt: int64(numbers[9]), Continuity: numbers[10], ConflictIdentifier: conflict}
+		PolicyActivatesAt: int64(numbers[9]), Continuity: numbers[10], ConflictIdentifier: conflict,
+		RecordNotAfter: recordNotAfter}
 	if err := validateRecord(record); err != nil {
 		return Record{}, err
 	}
-	canonical, err := EncodeRecord(record)
+	canonical, err := encodeRecord(record, version)
 	if err != nil || string(canonical) != string(raw) {
 		return Record{}, errors.New("name record is not canonical")
 	}
@@ -125,7 +150,7 @@ func validateRecord(record Record) error {
 	if _, err := naming.Parse(record.Name); err != nil || record.Generation == 0 || record.Revision == 0 {
 		return errors.New("name record identity is invalid")
 	}
-	if !validStates(record) || !validRecordLifetimes(record) || !hasRequiredParent(record) ||
+	if !validStates(record) || !validRecordLifetimes(record) || !hasRequiredParent(record) || record.RecordNotAfter < 0 ||
 		record.Authority == "" {
 		return errors.New("name record state or binding is invalid")
 	}

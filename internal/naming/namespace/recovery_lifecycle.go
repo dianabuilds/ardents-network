@@ -94,10 +94,11 @@ func applyRecovery(current *Record, seconds, milliseconds int64, op Op) (Record,
 		completePendingRecovery(&result)
 	case opResumeRecovery:
 		if current.Recovery != recoveryStable || current.Consistency != consistencyUnavailable ||
-			current.Target != [32]byte{} || op.Authority != current.Authority || op.Target == [32]byte{} {
+			current.Target != [32]byte{} || op.Authority != current.Authority || op.Target == [32]byte{} ||
+			op.RecordNotAfter <= milliseconds || op.RecordNotAfter > leaseNotAfter(*current)*1_000 {
 			return Record{}, transitionError{Action: op.Kind, Reason: "fresh successor Record is invalid"}
 		}
-		result.Target = op.Target
+		result.Target, result.RecordNotAfter = op.Target, op.RecordNotAfter
 		result.Consistency = consistencyCurrent
 	}
 	result.Revision++
@@ -122,7 +123,7 @@ func clearPendingRecovery(record *Record) {
 
 func completePendingRecovery(record *Record) {
 	record.Authority = hex.EncodeToString(record.RecoverySuccessor[:])
-	record.Target = [32]byte{}
+	record.Target, record.RecordNotAfter = [32]byte{}, 0
 	record.Consistency = consistencyUnavailable
 	clearPendingRecovery(record)
 }

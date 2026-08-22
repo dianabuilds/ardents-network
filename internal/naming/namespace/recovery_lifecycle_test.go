@@ -75,13 +75,14 @@ func TestRecoveryPolicyDelayAndSuccessorFreshRecord(t *testing.T) {
 	}
 	if _, err := namespace.Apply(&record, proof.CompletesAt/1_000+1, namespace.Op{Kind: "resume-recovery", Name: "alice",
 		Authority: currentAuthority, ExpectedGeneration: 1, ExpectedRevision: record.Revision,
-		Target: [32]byte{9}}, leasePolicy); err == nil {
+		Target: [32]byte{9}, RecordNotAfter: proof.CompletesAt + time.Hour.Milliseconds()}, leasePolicy); err == nil {
 		t.Fatal("predecessor published the post-recovery Record")
 	}
 	record, err = namespace.Apply(&record, proof.CompletesAt/1_000+1, namespace.Op{Kind: "resume-recovery", Name: "alice",
 		Authority: record.Authority, ExpectedGeneration: 1, ExpectedRevision: record.Revision,
-		Target: [32]byte{9}}, leasePolicy)
-	if err != nil || record.Recovery != "stable" || record.Target != ([32]byte{9}) {
+		Target: [32]byte{9}, RecordNotAfter: proof.CompletesAt + time.Hour.Milliseconds()}, leasePolicy)
+	if err != nil || record.Recovery != "stable" || record.Target != ([32]byte{9}) ||
+		record.RecordNotAfter != proof.CompletesAt+time.Hour.Milliseconds() {
 		t.Fatalf("resumed=%+v err=%v", record, err)
 	}
 }
