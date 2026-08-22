@@ -84,16 +84,6 @@ func verifyEpochDecision(policy epochPolicy, epochBytes []byte, inputs, encodedM
 	return verifyEpochCandidate(policy, policy.Previous, epochBytes, inputs, materials, requireMaterials)
 }
 
-// Inspect validates canonical Epoch framing and returns only authenticated-
-// independent metadata needed to load bounded persisted input files.
-func inspectEpoch(raw []byte) (epochVerificationSnapshot, error) {
-	parsed, err := parseEpoch(raw)
-	if err != nil {
-		return epochVerificationSnapshot{}, err
-	}
-	return snapshotFor(parsed), nil
-}
-
 // Materialization returns one canonical inclusion proof for resource.
 func (decision verifiedEpochDecision) Materialization(index uint32) ([]byte, error) {
 	if index >= uint32(len(decision.accepted)) {
