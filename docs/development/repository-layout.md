@@ -93,10 +93,11 @@ remain `_test.go` implementation owned by the scenario that uses them. Images,
 keys, state, captures, and generated manifests remain outside Git.
 
 `tests/profiles/` owns the checked profile registry and positive package
-membership manifests. A current package belongs to exactly one deterministic or
-historical-reproduction package profile; process, race, live, and future
+membership manifests. Every maintained and Go-bearing e2e package belongs to
+the one active profile appropriate to its surface; live and future
 Qualification selection is explicit rather than inferred from a directory name
-or a negative Make filter.
+or a negative Make filter. Inactive profiles record the decision required to
+activate them and are not passing evidence.
 
 This is a trunk, not a complete future directory tree. Route, Carrier,
 Publication, Service Connection, Namespace, Bridge, Release Safety, platform,
@@ -247,9 +248,9 @@ behavior has its own invocation, lifecycle, configuration, and exit contract.
 The command may parse CLI input, load configuration, construct selected
 Adapters, call one or more Modules, render a bounded result, and select an exit
 code. Domain state machines, protocol behavior, evidence policy, retry logic,
-and security decisions stay in `internal` Modules. The architecture gate uses
-source-size and exported-surface limits as an executable proxy; semantic review
-still decides whether a command contains product Implementation.
+and security decisions stay in `internal` Modules. The architecture gate
+verifies that a command exposes no exported product behavior; semantic review
+decides whether it remains a thin adapter over its actual Module boundary.
 
 A new `internal/<domain>` package is justified only when all are true:
 
@@ -329,8 +330,6 @@ one responsibility or one responsibility plus an aspect: for example
   responsibility, invariant locality, rejected obvious split, behavior tests,
   and real hotspot signals; 250 lines is not an executable failure.
 - Every Go file, including tests, has an interim hard maximum of 500 lines.
-- A command file may never exceed 120 lines and the complete command package
-  remains capped at 360 production lines.
 - A file is divided at independently varying cohesive type/function clusters,
   not merely at a line threshold. Division does not justify another package or
   exported symbol.
@@ -338,9 +337,10 @@ one responsibility or one responsibility plus an aspect: for example
   `common.go`, `misc.go`, and `util.go` are forbidden.
 
 The architecture gate enforces the facts it can prove: the interim 500-line
-limit, thin-command limits, and forbidden filenames. Semantic responsibility
-and the 250-line review threshold remain review rules because a mechanical line
-count cannot determine cohesion or a correct Seam.
+limit, command adaptation without exported product behavior, package-map and
+import direction, and forbidden filenames. Semantic responsibility and the
+250-line review threshold remain review rules because a mechanical line count
+cannot determine cohesion or a correct Seam.
 
 ## Module, Interface, Implementation, Seam, and Adapter
 
@@ -516,9 +516,9 @@ moving source code to another repository.
 
 The architecture gate automatically checks the single root module, factual
 package-map registration, permitted current imports, forbidden generic package
-names, command size, Go source placement, absence of product imports from
-laboratory/experiment/script code, formatting, selected unsafe constructs, and
-common generated-artifact patterns. The Make targets add vet, tests, build,
+names, command adaptation, Go source placement, absence of product imports
+from laboratory/experiment/script code, formatting, selected unsafe constructs,
+and common generated-artifact patterns. The Make targets add vet, tests, build,
 module tidiness, race, Staticcheck, and vulnerability analysis.
 
 Human review remains responsible for cohesive responsibility, Interface depth,
