@@ -1,7 +1,7 @@
 ---
 id: R-060
 title: May Network State and Namespace share persistence or commitments?
-status: proposed
+status: accepted
 owner: product research
 started: 2026-08-22
 reviewed: 2026-08-22
@@ -121,7 +121,7 @@ falsification criterion is met.
 
 ## Recommendation
 
-Choose H1 with medium-high confidence. M3 folds current Network storage and
+The Product Owner accepted H1 on 2026-08-22 with medium-high confidence. M3 folds current Network storage and
 Merkle ownership into `network/state`; M5 separately creates Namespace-owned
 persistence and commitment behavior. R-043 is superseded only where it names
 `network/store` as the naming adapter candidate; its durable/restart/tamper/
@@ -131,8 +131,9 @@ creating a durable cross-domain lock-in.
 
 ## Disposition
 
-- State: `proposed`; requires Product Owner acceptance before M3/M5 move the
-  current Network Store or Merkle implementations.
-- On acceptance, update R-043's supersession note and DA-05; M3 owns Network
-  fault/conformance characterization, while M5 owns Namespace replacement.
+- State: `accepted` by the Product Owner on 2026-08-22. R-061 supplies the
+  accepted prerequisite ordering before either source-path deletion.
+- R-043's default `network/store` adapter candidate is superseded; DA-05 is
+  closed. M3 owns Network fault/conformance characterization, while M5 owns
+  Namespace replacement.
 - No experiment code or shared package is retained.

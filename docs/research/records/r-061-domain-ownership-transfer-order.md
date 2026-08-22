@@ -1,7 +1,7 @@
 ---
 id: R-061
 title: In which order may Network and Namespace take separate persistence ownership?
-status: proposed
+status: accepted
 owner: product research
 started: 2026-08-22
 reviewed: 2026-08-22
@@ -71,7 +71,7 @@ expose Namespace to Network migration or recovery policy after M3 begins.
 
 - Accepted S8.3 target architecture and accepted S8.4 refactoring plan,
   accessed 2026-08-22.
-- Proposed R-060 and decided R-043/R-027/R-029/R-039, accessed 2026-08-22.
+- Accepted R-060 and decided R-043/R-027/R-029/R-039, accessed 2026-08-22.
 - Current `internal/namestore/{store,contract,proof,materialization}.go`,
   `internal/network/store/{contract,state,files}.go`, and
   `internal/network/epoch/merkle/{tree,proof}.go`, inspected 2026-08-22.
@@ -120,8 +120,8 @@ it is not repaired by an adapter or shared package.
 
 ## Recommendation
 
-After acceptance of R-060, choose H1 with high confidence. Amend M3/M5 before
-code work: an explicitly named prerequisite transfers only current Namespace
+The Product Owner accepted H1 on 2026-08-22 with high confidence. Amend M3/M5
+before code work: an explicitly named prerequisite transfers only current Namespace
 persistence and proof mechanics into `namestore`, removes its Network imports,
 and changes no Namespace format or writer semantics. M3 then transfers and
 deletes Network State's source implementations; M5 later performs the already
@@ -135,8 +135,7 @@ to R-060's falsification condition and separate authority.
 
 ## Disposition
 
-- State: `proposed`; it has no effect until R-060 and this record are both
-  accepted by the Product Owner.
-- On acceptance, amend S8.4's M3/M5 rows and dependency paragraph before
-  source moves; update the DA-05 route with both decision identities.
+- State: `accepted` by the Product Owner on 2026-08-22, together with R-060.
+- S8.4's M3/M5 rows and dependency paragraph are amended before source moves;
+  DA-05 is closed by both decision identities.
 - No ADR, experiment code, package, dependency, or format is selected.

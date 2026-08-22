@@ -161,6 +161,11 @@ silently select another engine.
 
 ## Disposition
 
+- **Stage 8 supersession:** accepted R-060 supersedes only this record's
+  `internal/network/store` default-adapter candidate. Its durable,
+  restart-derived, cache-bounded, tamper, stale, and atomic-publication
+  properties remain binding on the Namespace owner; no generic storage API or
+  engine is selected.
 - R-043 becomes `decided`. The open row in `docs/research/questions.md`
   is updated to point at this record and the frozen contract.
 - §B.3 of `stage-6-readiness-checklist.md` is checked.
