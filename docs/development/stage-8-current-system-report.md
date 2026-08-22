@@ -145,6 +145,10 @@ gives F023--F033 their current disposition. No relevant production delta exists;
 all eleven findings remain live inputs, with F027 and F032 requiring accepted
 research/contract decisions before their respective mutations.
 
+The source-bound [Service and Endpoint composition delta review](stage-8-g2-service-composition-delta-review.md)
+gives F034--F040 their current disposition. No relevant production delta exists;
+all seven findings remain live design inputs before any Service migration.
+
 ## Open-decision ledger for S8.1
 
 1. Select `continue`, `narrow`, `redesign`, or `stop` for the Product Core and
