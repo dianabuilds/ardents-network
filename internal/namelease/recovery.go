@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const (
@@ -106,7 +106,7 @@ func applyRecovery(current *Record, seconds, milliseconds int64, op Op) (Record,
 	return result, nil
 }
 
-func matchingPendingRecovery(current *Record, authorization namerecovery.Authorization, operation string) bool {
+func matchingPendingRecovery(current *Record, authorization namespace.Authorization, operation string) bool {
 	return authorization.Verified() && authorization.Operation == operation &&
 		authorization.PolicyDigest == current.RecoveryPolicy &&
 		authorization.PolicyRevision == current.RecoveryPolicyRev &&

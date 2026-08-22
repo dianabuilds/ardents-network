@@ -1,4 +1,4 @@
-package namerecovery
+package namespace
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 )
 
 // Authorize independently verifies one initiation or cancellation proof.
-func (policy RecoveryPolicy) Authorize(proof Proof) (Authorization, error) {
+func (policy RecoveryPolicy) Authorize(proof RecoveryProof) (Authorization, error) {
 	if !validPolicy(policy) {
 		return Authorization{}, errors.New("invalid Recovery Policy")
 	}
@@ -63,7 +63,7 @@ func validPolicy(policy RecoveryPolicy) bool {
 	return true
 }
 
-func logicalSize(policy RecoveryPolicy, proof Proof) int {
+func logicalSize(policy RecoveryPolicy, proof RecoveryProof) int {
 	return 32 + len(policy.Name) + 90 + len(policy.Participants)*32 + len(proof.Operation) +
 		len(proof.Signatures)*(32+ed25519.SignatureSize)
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -248,8 +247,8 @@ func controlTestRecord(name string, key ed25519.PrivateKey, now time.Time) namel
 
 func controlTestRecoveryPolicy(network [32]byte, record namelease.Record, current ed25519.PrivateKey,
 	delay time.Duration,
-) (namerecovery.RecoveryPolicy, []ed25519.PrivateKey) {
-	policy := namerecovery.RecoveryPolicy{Network: network, Name: record.Name, Generation: record.Generation,
+) (namespace.RecoveryPolicy, []ed25519.PrivateKey) {
+	policy := namespace.RecoveryPolicy{Network: network, Name: record.Name, Generation: record.Generation,
 		Revision: 1, CurrentAuthority: authorityBytes(record.Authority), Threshold: 2, Delay: delay}
 	signers := []ed25519.PrivateKey{deterministicControlKey("recovery-1"), deterministicControlKey("recovery-2")}
 	sort.Slice(signers, func(i, j int) bool {
@@ -263,18 +262,18 @@ func controlTestRecoveryPolicy(network [32]byte, record namelease.Record, curren
 	return policy, signers
 }
 
-func controlTestRecoveryOperation(t *testing.T, policy namerecovery.RecoveryPolicy,
+func controlTestRecoveryOperation(t *testing.T, policy namespace.RecoveryPolicy,
 	signers []ed25519.PrivateKey, step string, operationID [32]byte, successor ed25519.PrivateKey,
 	started time.Time,
 ) controlOperation {
 	t.Helper()
-	proof := namerecovery.Proof{Operation: step, PolicyDigest: policy.Digest(), OperationID: operationID,
+	proof := namespace.RecoveryProof{Operation: step, PolicyDigest: policy.Digest(), OperationID: operationID,
 		Successor: authorityBytes(hex.EncodeToString(successor.Public().(ed25519.PublicKey))),
 		StartedAt: started.UnixMilli(), CompletesAt: started.Add(policy.Delay).UnixMilli()}
 	for _, signer := range signers {
 		var identity [32]byte
 		copy(identity[:], signer.Public().(ed25519.PublicKey))
-		proof.Signatures = append(proof.Signatures, namerecovery.Signature{Signer: identity,
+		proof.Signatures = append(proof.Signatures, namespace.Signature{Signer: identity,
 			Bytes: ed25519.Sign(signer, policy.Transcript(proof))})
 	}
 	raw, err := json.Marshal(recoveryEnvelope{Policy: policy, Proof: proof})

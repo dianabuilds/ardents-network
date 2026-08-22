@@ -9,7 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func recoveryControlOperations(network [32]byte, now time.Time, records []namelease.Record,
@@ -92,8 +92,8 @@ func recoveryControlOperation(network [32]byte, now time.Time, records []namelea
 	}
 	records[index] = record
 	envelope, err := json.Marshal(struct {
-		Policy namerecovery.RecoveryPolicy `json:"policy"`
-		Proof  namerecovery.Proof          `json:"proof"`
+		Policy namespace.RecoveryPolicy `json:"policy"`
+		Proof  namespace.RecoveryProof  `json:"proof"`
 	}{policy, proof})
 	return controlOperation{Kind: "recovery", Name: name, Generation: 1, ExpectedRevision: 1,
 		PolicyID: policy.Digest(), RecoveryStep: step, RecoveryNotBefore: now.UnixMilli(), RecoveryProof: envelope}, err
@@ -120,15 +120,15 @@ func recoveryResumeOperation(network [32]byte, now time.Time, records []nameleas
 		Target: op.Target, AuthorityProof: signature}, err
 }
 
-func signedRecoveryProof(policy namerecovery.RecoveryPolicy, signers []ed25519.PrivateKey,
+func signedRecoveryProof(policy namespace.RecoveryPolicy, signers []ed25519.PrivateKey,
 	operation, label string, started time.Time,
-) namerecovery.Proof {
-	proof := namerecovery.Proof{Operation: operation, PolicyDigest: policy.Digest(),
+) namespace.RecoveryProof {
+	proof := namespace.RecoveryProof{Operation: operation, PolicyDigest: policy.Digest(),
 		OperationID: sha256.Sum256([]byte("control-" + label)),
 		Successor:   publicBytes(evidenceKey("control-" + label + "-successor")),
 		StartedAt:   started.UnixMilli(), CompletesAt: started.Add(policy.Delay).UnixMilli()}
 	for _, signer := range signers {
-		proof.Signatures = append(proof.Signatures, namerecovery.Signature{Signer: publicBytes(signer),
+		proof.Signatures = append(proof.Signatures, namespace.Signature{Signer: publicBytes(signer),
 			Bytes: ed25519.Sign(signer, policy.Transcript(proof))})
 	}
 	return proof

@@ -12,7 +12,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -83,7 +82,7 @@ func runAuthorityCell(trace *traceRecord) error {
 
 func runRecoveryCell(trace *traceRecord) error {
 	network, currentKey := [32]byte{7}, evidenceKey("recovery-current")
-	policy := namerecovery.RecoveryPolicy{Network: network, Name: "alice", Generation: 1,
+	policy := namespace.RecoveryPolicy{Network: network, Name: "alice", Generation: 1,
 		Revision: 1, Threshold: 2, Delay: 72 * time.Hour}
 	copy(policy.CurrentAuthority[:], currentKey.Public().(ed25519.PublicKey))
 	signers := []ed25519.PrivateKey{evidenceKey("recovery-1"), evidenceKey("recovery-2")}
@@ -103,13 +102,13 @@ func runRecoveryCell(trace *traceRecord) error {
 		Authority:      hex.EncodeToString(currentKey.Public().(ed25519.PublicKey)),
 		LeaseExpiresAt: 1_000_000, GraceExpiresAt: 1_100_000, Continuity: 1,
 		RecoveryPolicy: policy.Digest(), RecoveryPolicyRev: 1, RecoveryPolicyDelay: policy.Delay.Milliseconds()}
-	recoveryProof := namerecovery.Proof{Operation: "initiate", PolicyDigest: policy.Digest(),
+	recoveryProof := namespace.RecoveryProof{Operation: "initiate", PolicyDigest: policy.Digest(),
 		OperationID: sha256.Sum256([]byte("stage6-recovery-operation")), Successor: successor,
 		StartedAt: 100_000, CompletesAt: 100_000 + policy.Delay.Milliseconds()}
 	for _, signer := range signers {
 		var id [32]byte
 		copy(id[:], signer.Public().(ed25519.PublicKey))
-		recoveryProof.Signatures = append(recoveryProof.Signatures, namerecovery.Signature{Signer: id,
+		recoveryProof.Signatures = append(recoveryProof.Signatures, namespace.Signature{Signer: id,
 			Bytes: ed25519.Sign(signer, policy.Transcript(recoveryProof))})
 	}
 	authorization, err := policy.Authorize(recoveryProof)

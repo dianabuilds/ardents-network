@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type controlOperation struct {
@@ -41,8 +41,8 @@ type controlOperation struct {
 }
 
 type recoveryEnvelope struct {
-	Policy namerecovery.RecoveryPolicy `json:"policy"`
-	Proof  namerecovery.Proof          `json:"proof"`
+	Policy namespace.RecoveryPolicy `json:"policy"`
+	Proof  namespace.RecoveryProof  `json:"proof"`
 }
 
 func decodeControlOperation(raw []byte) (controlOperation, error) {
@@ -106,7 +106,7 @@ func (operation controlOperation) lifecycle(network [32]byte, current namelease.
 			}
 			op.PolicyDelay = time.Duration(current.RecoveryPolicyDelay) * time.Millisecond
 		} else {
-			var policy namerecovery.RecoveryPolicy
+			var policy namespace.RecoveryPolicy
 			if decodeCanonical(operation.RecoveryPolicy, &policy) != nil || policy.Network != network ||
 				policy.Name != current.Name || policy.Generation != current.Generation ||
 				policy.Revision != op.PolicyRevision || policy.CurrentAuthority != authorityBytes(current.Authority) {

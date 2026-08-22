@@ -1,4 +1,4 @@
-package namerecovery_test
+package namespace_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestRecoveryPolicyAuthorizeRequiresDistinctThresholdProof(t *testing.T) {
@@ -30,32 +30,32 @@ func TestRecoveryPolicyAuthorizeRequiresDistinctThresholdProof(t *testing.T) {
 func TestRecoveryPolicyAuthorizeRejectsHostileProofs(t *testing.T) {
 	policy, signers := recoveryFixture(t, 2, 3)
 	valid := signedProof(policy, signers[:2], "initiate")
-	tests := map[string]func(*namerecovery.RecoveryPolicy, *namerecovery.Proof){
-		"threshold minus one": func(_ *namerecovery.RecoveryPolicy, proof *namerecovery.Proof) {
+	tests := map[string]func(*namespace.RecoveryPolicy, *namespace.RecoveryProof){
+		"threshold minus one": func(_ *namespace.RecoveryPolicy, proof *namespace.RecoveryProof) {
 			proof.Signatures = proof.Signatures[:1]
 		},
-		"duplicate signer": func(_ *namerecovery.RecoveryPolicy, proof *namerecovery.Proof) {
+		"duplicate signer": func(_ *namespace.RecoveryPolicy, proof *namespace.RecoveryProof) {
 			proof.Signatures[1] = proof.Signatures[0]
 		},
-		"unknown signer": func(_ *namerecovery.RecoveryPolicy, proof *namerecovery.Proof) {
+		"unknown signer": func(_ *namespace.RecoveryPolicy, proof *namespace.RecoveryProof) {
 			proof.Signatures[0].Signer = [32]byte{99}
 		},
-		"wrong generation": func(policy *namerecovery.RecoveryPolicy, _ *namerecovery.Proof) {
+		"wrong generation": func(policy *namespace.RecoveryPolicy, _ *namespace.RecoveryProof) {
 			policy.Generation++
 		},
-		"wrong policy": func(policy *namerecovery.RecoveryPolicy, _ *namerecovery.Proof) {
+		"wrong policy": func(policy *namespace.RecoveryPolicy, _ *namespace.RecoveryProof) {
 			policy.Revision++
 		},
-		"changed successor": func(_ *namerecovery.RecoveryPolicy, proof *namerecovery.Proof) {
+		"changed successor": func(_ *namespace.RecoveryPolicy, proof *namespace.RecoveryProof) {
 			proof.Successor[0]++
 		},
-		"changed boundary": func(_ *namerecovery.RecoveryPolicy, proof *namerecovery.Proof) {
+		"changed boundary": func(_ *namespace.RecoveryPolicy, proof *namespace.RecoveryProof) {
 			proof.CompletesAt++
 		},
-		"wrong domain": func(_ *namerecovery.RecoveryPolicy, proof *namerecovery.Proof) {
+		"wrong domain": func(_ *namespace.RecoveryPolicy, proof *namespace.RecoveryProof) {
 			proof.Operation = "cancel"
 		},
-		"malformed signature": func(_ *namerecovery.RecoveryPolicy, proof *namerecovery.Proof) {
+		"malformed signature": func(_ *namespace.RecoveryPolicy, proof *namespace.RecoveryProof) {
 			proof.Signatures[0].Bytes = []byte{1}
 		},
 	}
@@ -73,10 +73,10 @@ func TestRecoveryPolicyAuthorizeRejectsHostileProofs(t *testing.T) {
 
 func TestRecoveryPolicyDigestRejectsInvalidParticipantSets(t *testing.T) {
 	policy, _ := recoveryFixture(t, 2, 3)
-	for name, mutate := range map[string]func(*namerecovery.RecoveryPolicy){
-		"threshold":         func(value *namerecovery.RecoveryPolicy) { value.Threshold = 1 },
-		"duplicate":         func(value *namerecovery.RecoveryPolicy) { value.Participants[1] = value.Participants[0] },
-		"current authority": func(value *namerecovery.RecoveryPolicy) { value.Participants[0] = value.CurrentAuthority },
+	for name, mutate := range map[string]func(*namespace.RecoveryPolicy){
+		"threshold":         func(value *namespace.RecoveryPolicy) { value.Threshold = 1 },
+		"duplicate":         func(value *namespace.RecoveryPolicy) { value.Participants[1] = value.Participants[0] },
+		"current authority": func(value *namespace.RecoveryPolicy) { value.Participants[0] = value.CurrentAuthority },
 	} {
 		t.Run(name, func(t *testing.T) {
 			changed := clonePolicy(policy)
@@ -88,13 +88,13 @@ func TestRecoveryPolicyDigestRejectsInvalidParticipantSets(t *testing.T) {
 	}
 }
 
-func recoveryFixture(t *testing.T, threshold, count int) (namerecovery.RecoveryPolicy, []ed25519.PrivateKey) {
+func recoveryFixture(t *testing.T, threshold, count int) (namespace.RecoveryPolicy, []ed25519.PrivateKey) {
 	t.Helper()
 	current, _, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy := namerecovery.RecoveryPolicy{Network: [32]byte{7}, Name: "alice", Generation: 3,
+	policy := namespace.RecoveryPolicy{Network: [32]byte{7}, Name: "alice", Generation: 3,
 		Revision: 2, Threshold: uint8(threshold), Delay: 72 * time.Hour}
 	copy(policy.CurrentAuthority[:], current)
 	var signers []ed25519.PrivateKey
@@ -117,26 +117,26 @@ func recoveryFixture(t *testing.T, threshold, count int) (namerecovery.RecoveryP
 	return policy, signers
 }
 
-func signedProof(policy namerecovery.RecoveryPolicy, signers []ed25519.PrivateKey, operation string) namerecovery.Proof {
-	proof := namerecovery.Proof{Operation: operation, PolicyDigest: policy.Digest(),
+func signedProof(policy namespace.RecoveryPolicy, signers []ed25519.PrivateKey, operation string) namespace.RecoveryProof {
+	proof := namespace.RecoveryProof{Operation: operation, PolicyDigest: policy.Digest(),
 		OperationID: sha256.Sum256([]byte("recovery-operation-1")), Successor: sha256.Sum256([]byte("successor")),
 		StartedAt: 1_000, CompletesAt: 1_000 + policy.Delay.Milliseconds()}
 	for _, private := range signers {
 		var signer [32]byte
 		copy(signer[:], private.Public().(ed25519.PublicKey))
-		proof.Signatures = append(proof.Signatures, namerecovery.Signature{Signer: signer,
+		proof.Signatures = append(proof.Signatures, namespace.Signature{Signer: signer,
 			Bytes: ed25519.Sign(private, policy.Transcript(proof))})
 	}
 	return proof
 }
 
-func clonePolicy(policy namerecovery.RecoveryPolicy) namerecovery.RecoveryPolicy {
+func clonePolicy(policy namespace.RecoveryPolicy) namespace.RecoveryPolicy {
 	policy.Participants = append([][32]byte(nil), policy.Participants...)
 	return policy
 }
 
-func cloneProof(proof namerecovery.Proof) namerecovery.Proof {
-	proof.Signatures = append([]namerecovery.Signature(nil), proof.Signatures...)
+func cloneProof(proof namespace.RecoveryProof) namespace.RecoveryProof {
+	proof.Signatures = append([]namespace.Signature(nil), proof.Signatures...)
 	for index := range proof.Signatures {
 		proof.Signatures[index].Bytes = append([]byte(nil), proof.Signatures[index].Bytes...)
 	}

@@ -1,4 +1,4 @@
-package namerecovery
+package namespace
 
 import (
 	"crypto/sha256"
@@ -35,7 +35,7 @@ func (policy RecoveryPolicy) Digest() [32]byte {
 }
 
 // Transcript returns the canonical bytes every participant signs.
-func (policy RecoveryPolicy) Transcript(proof Proof) []byte {
+func (policy RecoveryPolicy) Transcript(proof RecoveryProof) []byte {
 	domain := "ardents-name-recovery-initiate-v1"
 	if proof.Operation == "cancel" {
 		domain = "ardents-name-recovery-cancel-v1"

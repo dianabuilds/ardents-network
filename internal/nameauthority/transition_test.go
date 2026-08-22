@@ -11,7 +11,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -76,7 +75,7 @@ func TestRecoveryTransitionRequiresThresholdAuthorizationAndAdmission(t *testing
 	t.Parallel()
 	network, currentKey := [32]byte{6}, deterministicAuthority("recovery-current")
 	record := authorityRecord(currentKey)
-	policy := namerecovery.RecoveryPolicy{Network: network, Name: record.Name, Generation: record.Generation,
+	policy := namespace.RecoveryPolicy{Network: network, Name: record.Name, Generation: record.Generation,
 		Revision: 1, Threshold: 2, Delay: 72 * time.Hour}
 	copy(policy.CurrentAuthority[:], currentKey.Public().(ed25519.PublicKey))
 	signers := []ed25519.PrivateKey{deterministicAuthority("recovery-1"), deterministicAuthority("recovery-2")}
@@ -90,13 +89,13 @@ func TestRecoveryTransitionRequiresThresholdAuthorizationAndAdmission(t *testing
 	}
 	record.RecoveryPolicy, record.RecoveryPolicyRev = policy.Digest(), policy.Revision
 	record.RecoveryPolicyDelay = policy.Delay.Milliseconds()
-	proof := namerecovery.Proof{Operation: "initiate", PolicyDigest: policy.Digest(),
+	proof := namespace.RecoveryProof{Operation: "initiate", PolicyDigest: policy.Digest(),
 		OperationID: sha256.Sum256([]byte("operation")), Successor: sha256.Sum256([]byte("successor")),
 		StartedAt: 100_000, CompletesAt: 100_000 + policy.Delay.Milliseconds()}
 	for _, signer := range signers {
 		var id [32]byte
 		copy(id[:], signer.Public().(ed25519.PublicKey))
-		proof.Signatures = append(proof.Signatures, namerecovery.Signature{Signer: id,
+		proof.Signatures = append(proof.Signatures, namespace.Signature{Signer: id,
 			Bytes: ed25519.Sign(signer, policy.Transcript(proof))})
 	}
 	authorization, err := policy.Authorize(proof)

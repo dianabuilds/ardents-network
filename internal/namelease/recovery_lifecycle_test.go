@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestRecoveryPolicyDelayAndSuccessorFreshRecord(t *testing.T) {
@@ -180,10 +180,10 @@ func TestPendingPolicyChangeKeepsPrecedingPolicyEffective(t *testing.T) {
 	}
 }
 
-func lifecycleRecoveryFixture() (namerecovery.RecoveryPolicy, []ed25519.PrivateKey, ed25519.PrivateKey, [32]byte) {
+func lifecycleRecoveryFixture() (namespace.RecoveryPolicy, []ed25519.PrivateKey, ed25519.PrivateKey, [32]byte) {
 	currentSeed := sha256.Sum256([]byte("current"))
 	current := ed25519.NewKeyFromSeed(currentSeed[:])
-	policy := namerecovery.RecoveryPolicy{Network: [32]byte{7}, Name: "alice", Generation: 1,
+	policy := namespace.RecoveryPolicy{Network: [32]byte{7}, Name: "alice", Generation: 1,
 		Revision: 1, Threshold: 2, Delay: 72 * time.Hour}
 	copy(policy.CurrentAuthority[:], current.Public().(ed25519.PublicKey))
 	var signers []ed25519.PrivateKey
@@ -208,16 +208,16 @@ func lifecycleRecoveryFixture() (namerecovery.RecoveryPolicy, []ed25519.PrivateK
 	return policy, signers, current, successor
 }
 
-func lifecycleProof(policy namerecovery.RecoveryPolicy, signers []ed25519.PrivateKey,
+func lifecycleProof(policy namespace.RecoveryPolicy, signers []ed25519.PrivateKey,
 	operation string, started int64, successor [32]byte,
-) namerecovery.Proof {
-	proof := namerecovery.Proof{Operation: operation, PolicyDigest: policy.Digest(),
+) namespace.RecoveryProof {
+	proof := namespace.RecoveryProof{Operation: operation, PolicyDigest: policy.Digest(),
 		OperationID: sha256.Sum256([]byte("operation")), Successor: successor,
 		StartedAt: started, CompletesAt: started + policy.Delay.Milliseconds()}
 	for _, private := range signers[:2] {
 		var signer [32]byte
 		copy(signer[:], private.Public().(ed25519.PublicKey))
-		proof.Signatures = append(proof.Signatures, namerecovery.Signature{Signer: signer,
+		proof.Signatures = append(proof.Signatures, namespace.Signature{Signer: signer,
 			Bytes: ed25519.Sign(private, policy.Transcript(proof))})
 	}
 	return proof

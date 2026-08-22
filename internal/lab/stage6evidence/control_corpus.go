@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type controlCorpus struct {
@@ -104,8 +104,8 @@ func controlRecord(name string, key ed25519.PrivateKey, lease time.Time) namelea
 
 func controlRecoveryPolicy(network [32]byte, record namelease.Record,
 	current ed25519.PrivateKey,
-) (namerecovery.RecoveryPolicy, []ed25519.PrivateKey) {
-	policy := namerecovery.RecoveryPolicy{Network: network, Name: record.Name, Generation: 1, Revision: 1,
+) (namespace.RecoveryPolicy, []ed25519.PrivateKey) {
+	policy := namespace.RecoveryPolicy{Network: network, Name: record.Name, Generation: 1, Revision: 1,
 		CurrentAuthority: publicBytes(current), Threshold: 2, Delay: 72 * time.Hour}
 	signers := []ed25519.PrivateKey{evidenceKey("control-recovery-1"), evidenceKey("control-recovery-2")}
 	sort.Slice(signers, func(i, j int) bool {

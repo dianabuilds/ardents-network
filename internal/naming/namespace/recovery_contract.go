@@ -1,4 +1,4 @@
-package namerecovery
+package namespace
 
 import "time"
 
@@ -22,8 +22,8 @@ type Signature struct {
 	Bytes  []byte
 }
 
-// Proof binds one initiation or cancellation to fixed time boundaries.
-type Proof struct {
+// RecoveryProof binds one initiation or cancellation to fixed time boundaries.
+type RecoveryProof struct {
 	Operation    string
 	PolicyDigest [32]byte
 	OperationID  [32]byte
