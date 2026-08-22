@@ -2,6 +2,7 @@ package updatetransaction
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"os"
 	"path/filepath"
@@ -30,7 +31,7 @@ func (probe *schemaContractProbe) Discard(context.Context, SchemaSelection) erro
 	return errors.New("unexpected schema discard")
 }
 
-func TestCopyOnWritePlanIsRejectedBeforeAdapterOrRootMutation(t *testing.T) {
+func TestCOWMissingRootDoesNotInvokeAdapter(t *testing.T) {
 	vector := oracleLoadV0(t)
 	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
 	probe := &schemaContractProbe{}
@@ -39,7 +40,7 @@ func TestCopyOnWritePlanIsRejectedBeforeAdapterOrRootMutation(t *testing.T) {
 		Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}, Schema: probe}
 
 	result, err := Apply(context.Background(), request)
-	if !errors.Is(err, errRecordInvalid) || result.Outcome != invalidOutcome || result.State != "release-accepted" || probe.calls != 0 {
+	if err == nil || result.Outcome != invalidOutcome || result.State != "release-accepted" || probe.calls != 0 {
 		t.Fatalf("Apply = %+v, %v; schema calls=%d", result, err, probe.calls)
 	}
 }
@@ -62,4 +63,134 @@ func TestNoOpSchemaDoesNotInvokeAdapter(t *testing.T) {
 	if probe.calls != 0 {
 		t.Fatalf("no-op invoked schema adapter %d times", probe.calls)
 	}
+}
+
+type schemaCOWProbe struct {
+	previous, candidate SchemaSelection
+	planCalls           uint64
+	prepareCalls        uint64
+	inspectCalls        uint64
+	discardCalls        uint64
+	prepared            bool
+}
+
+func (probe *schemaCOWProbe) Plan(_ context.Context, generation uint64, plan string, previous SchemaSelection) (SchemaSelection, bool, error) {
+	probe.planCalls++
+	if generation != 1 || plan != "copy-on-write-v1" || previous != probe.previous {
+		return SchemaSelection{}, false, errors.New("unexpected COW plan input")
+	}
+	return probe.candidate, true, nil
+}
+
+func (probe *schemaCOWProbe) Prepare(_ context.Context, candidate SchemaSelection) error {
+	probe.prepareCalls++
+	if candidate != probe.candidate {
+		return errors.New("unexpected COW prepare input")
+	}
+	probe.prepared = true
+	return nil
+}
+
+func (probe *schemaCOWProbe) Inspect(_ context.Context, candidate SchemaSelection) error {
+	probe.inspectCalls++
+	if candidate != probe.candidate || !probe.prepared {
+		return errors.New("unexpected COW inspect input")
+	}
+	return nil
+}
+
+func (probe *schemaCOWProbe) Discard(_ context.Context, candidate SchemaSelection) error {
+	probe.discardCalls++
+	if candidate != probe.candidate {
+		return errors.New("unexpected COW discard input")
+	}
+	probe.prepared = false
+	return nil
+}
+
+func TestCOWCommit(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	owner := sha256.Sum256([]byte("schema COW owner"))
+	previousContent := sha256.Sum256([]byte("schema COW previous"))
+	previous := SchemaSelection{Owner: owner, Content: previousContent}
+	previous.Identity = schemaSelectionIdentity(previous)
+	previousRaw, err := encodeSchemaCurrent(schemaCurrent{Selection: previous})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "schema-current"), previousRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	candidateContent := sha256.Sum256([]byte("schema COW candidate"))
+	candidateSchema := SchemaSelection{Owner: owner, Generation: 1, Content: candidateContent, Bytes: 5, Entries: 1}
+	candidateSchema.Identity = schemaSelectionIdentity(candidateSchema)
+	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
+		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		SelfTest: oraclePassSelfTest{}, Schema: probe}
+
+	result, err := Apply(context.Background(), request)
+	if err != nil || result.Outcome != "committed" || probe.planCalls != 1 || probe.prepareCalls != 1 ||
+		probe.inspectCalls != 1 || probe.discardCalls != 0 {
+		t.Fatalf("Apply = %+v, %v; schema=%+v", result, err, probe)
+	}
+	raw, readErr := os.ReadFile(filepath.Join(root, "schema-current"))
+	current, decodeErr := decodeSchemaCurrent(raw)
+	if readErr != nil || decodeErr != nil || current.Transaction != 1 || current.Selection != candidateSchema ||
+		current.Predecessor != sha256.Sum256(previousRaw) {
+		t.Fatalf("schema current=%+v read=%v decode=%v", current, readErr, decodeErr)
+	}
+	recovered, recoverErr := Recover(context.Background(), root)
+	if recoverErr != nil || recovered != result {
+		t.Fatalf("Recover = %+v, %v; want %+v", recovered, recoverErr, result)
+	}
+}
+
+func TestCOWPrepFailure(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	owner := sha256.Sum256([]byte("schema failure owner"))
+	content := sha256.Sum256([]byte("schema failure content"))
+	previous := SchemaSelection{Owner: owner, Content: content}
+	previous.Identity = schemaSelectionIdentity(previous)
+	previousRaw, err := encodeSchemaCurrent(schemaCurrent{Selection: previous})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "schema-current"), previousRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	candidateSchema := previous
+	candidateSchema.Generation = 1
+	candidateSchema.Content = sha256.Sum256([]byte("schema failure candidate"))
+	candidateSchema.Identity = schemaSelectionIdentity(candidateSchema)
+	probe := &schemaCOWProbe{previous: previous, candidate: candidateSchema}
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "copy-on-write-v1",
+		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{},
+		SelfTest: oraclePassSelfTest{}, Schema: failingSchemaPrepare{schemaCOWProbe: probe}}
+
+	result, applyErr := Apply(context.Background(), request)
+	if applyErr == nil || result.Outcome != "staging-failed" || result.State != "draining" || probe.discardCalls != 1 {
+		t.Fatalf("Apply = %+v, %v; schema=%+v", result, applyErr, probe)
+	}
+	if raw, readErr := os.ReadFile(filepath.Join(root, "schema-current")); readErr != nil || string(raw) != string(previousRaw) {
+		t.Fatalf("schema selection changed after prepare failure: %x %v", raw, readErr)
+	}
+}
+
+type failingSchemaPrepare struct{ *schemaCOWProbe }
+
+func (probe failingSchemaPrepare) Prepare(context.Context, SchemaSelection) error {
+	probe.prepareCalls++
+	probe.prepared = true
+	return errors.New("schema prepare failed")
 }

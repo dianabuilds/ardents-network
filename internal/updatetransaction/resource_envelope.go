@@ -20,22 +20,28 @@ type resourceObservation struct {
 	itemsKnown     bool
 }
 
-func requireResourceEnvelope(observation resourceObservation, artifact, manifest []byte, successorCurrent []byte) error {
+func requireResourceEnvelope(observation resourceObservation, artifact, manifest []byte, successorCurrent []byte, extra ...[]byte) error {
 	if observation.allocationUnit == 0 || len(artifact) == 0 || len(manifest) == 0 || len(successorCurrent) == 0 {
 		return errResourceDenied
 	}
-	requiredBytes, err := allocatedResourceBytes(observation.allocationUnit, artifact, manifest, successorCurrent)
+	requiredBytes, err := allocatedResourceBytes(observation.allocationUnit, artifact, manifest, successorCurrent, extra...)
 	if err != nil || observation.availableBytes < requiredBytes {
 		return errResourceDenied
 	}
-	if observation.itemsKnown && observation.availableItems < resourceObjectCount {
+	if observation.itemsKnown && observation.availableItems < resourceObjectCount+uint64(len(extra)) {
 		return errResourceDenied
 	}
 	return nil
 }
 
-func allocatedResourceBytes(unit uint64, artifact, manifest, successorCurrent []byte) (uint64, error) {
+func allocatedResourceBytes(unit uint64, artifact, manifest, successorCurrent []byte, extra ...[]byte) (uint64, error) {
 	parts := []uint64{uint64(len(artifact)), uint64(len(manifest)), journalV1EntryCount * journalV1Bytes, uint64(len(successorCurrent))}
+	for _, bytes := range extra {
+		if len(bytes) == 0 {
+			return 0, errors.New("empty extra resource")
+		}
+		parts = append(parts, uint64(len(bytes)))
+	}
 	var total uint64
 	for _, length := range parts {
 		allocated, err := roundAllocation(length, unit)

@@ -114,6 +114,9 @@ func validatePhysicalSelection(facts inventoryResult) error {
 			return err
 		}
 	}
+	if err := validateSchemaSelection(facts, selection); err != nil {
+		return err
+	}
 	if len(facts.Transactions) == 1 {
 		transaction := facts.Transactions[0]
 		if transaction.Generation == 0 || transaction.Generation != selection.Current.Generation+1 && transaction.Generation != selection.Transaction {
@@ -128,15 +131,6 @@ func validatePhysicalSelection(facts inventoryResult) error {
 	}
 	if len(facts.CurrentTemps) == 1 {
 		return validateCurrentTemp(facts, selection, facts.InterruptedSelection)
-	}
-	return nil
-}
-
-func verifyGenerationMatchesTuple(facts inventoryResult, tuple inspectedTuple) error {
-	generation := generationByID(facts.Generations, tuple.Generation)
-	if generation == nil || uint64(len(generation.Artifact.Bytes)) != tuple.Length ||
-		sha256.Sum256(generation.Artifact.Bytes) != tuple.Artifact || sha256.Sum256(generation.Manifest.Bytes) != tuple.Manifest {
-		return fmt.Errorf("%w: selected generation %d mismatch", errPlanInvalid, tuple.Generation)
 	}
 	return nil
 }

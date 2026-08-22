@@ -168,13 +168,20 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		result.CustodyNotice = inspection.currentCustody
 		return result, errors.Join(errResourceDenied, store.release())
 	}
+	schema, schemaErr := planSchema(ctx, request, inspection)
+	if schemaErr != nil {
+		if errors.Is(schemaErr, errResourceDenied) {
+			return resourceDeniedResult(request), errors.Join(schemaErr, store.release())
+		}
+		return invalidResult(request, "release-accepted"), errors.Join(schemaErr, store.release())
+	}
 	successorCurrent, encodeErr := encodeCurrent(currentSelection{Transaction: request.Generation,
 		Current:  inspectedTuple{Generation: request.Generation, Length: uint64(len(request.Artifact)), Artifact: artifact, Manifest: manifestDigest},
 		Rollback: &inspection.selection.Current})
 	if encodeErr != nil {
 		return invalidResult(request, "release-accepted"), errors.Join(encodeErr, store.release())
 	}
-	if envelopeErr := requireResourceEnvelope(observation, request.Artifact, manifestBytes, successorCurrent); envelopeErr != nil {
+	if envelopeErr := requireResourceEnvelope(observation, request.Artifact, manifestBytes, successorCurrent, schema.resourceParts()...); envelopeErr != nil {
 		return resourceDeniedResult(request), errors.Join(envelopeErr, store.release())
 	}
 	predecessorBytes, err := encodePredecessor(inspection.predecessor)
@@ -224,6 +231,9 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "06-draining", stateDraining, adapterSuccess); err != nil {
 		return applyFailure(store, request, "draining", true, err)
 	}
+	if err := schema.prepare(ctx); err != nil {
+		return schemaPreparationFailure(store, request, inspection, &schema, err)
+	}
 	if _, revalidateErr := observeOwnedStorage(request.UpdateRoot); revalidateErr != nil {
 		recordErr := trace.record(context.Background(), "07-activated", stateActivated, adapterUnavailable)
 		if recordErr != nil {
@@ -269,6 +279,9 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "08-self-testing", stateSelfTesting, adapterSuccess); err != nil {
 		return applyFailure(store, request, "self-testing", false, err)
 	}
+	if err := schema.commit(store); err != nil {
+		return applyFailure(store, request, "self-testing", false, err)
+	}
 	if err := trace.record(ctx, "09-committed", stateCommitted, adapterNotCalled); err != nil {
 		return applyFailure(store, request, "committed", false, err)
 	}
@@ -291,7 +304,7 @@ func validateRequest(ctx context.Context, request Request) ([32]byte, []byte, [3
 	if request.Decision.Length > maximumArtifactBytes || int64(len(request.Artifact)) > maximumArtifactBytes {
 		return artifact, nil, manifestDigest, errResourceDenied
 	}
-	if request.SchemaPlan != "no-op-v1" || request.Work == nil || request.SelfTest == nil ||
+	if (request.SchemaPlan != "no-op-v1" && request.SchemaPlan != "copy-on-write-v1") || request.Work == nil || request.SelfTest == nil ||
 		request.Decision.BuildSafety != "release-accepted" ||
 		request.Decision.Protocol != "release-accepted" || request.Decision.Length <= 0 ||
 		len(request.Decision.Digest) != sha256.Size || !completeFloors(request.Decision.Floors) {

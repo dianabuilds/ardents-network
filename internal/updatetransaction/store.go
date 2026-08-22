@@ -69,7 +69,11 @@ func (store *ownedStore) inspect(generation uint64) (rootInspection, error) {
 			return inspection, errors.Join(errRecordInvalid, readErr)
 		}
 		schema, decodeErr := decodeSchemaCurrent(schemaRaw)
-		if decodeErr != nil || schema.Transaction != selection.Transaction {
+		schemaMatchesCode := schema.Transaction == selection.Transaction
+		if selection.Rollback != nil {
+			schemaMatchesCode = schemaMatchesCode || schema.Transaction == selection.Rollback.Generation
+		}
+		if decodeErr != nil || !schemaMatchesCode {
 			return inspection, errors.Join(errRecordInvalid, decodeErr)
 		}
 		inspection.schemaCurrent = &schema
@@ -170,6 +174,27 @@ func (store *ownedStore) stage(generation uint64, artifact, manifest []byte, ope
 		return fmt.Errorf("acknowledge staging parent: %w", err)
 	}
 	return nil
+}
+
+// commitSchema atomically selects a fully prepared, Adapter-owned schema
+// descriptor. The sibling temp is private to this selection change and is
+// never reused for the code-current record.
+func (store *ownedStore) commitSchema(raw []byte) error {
+	if len(raw) != recordHeaderBytes+schemaRecordBodyBytes {
+		return errRecordInvalid
+	}
+	var token [8]byte
+	if _, err := io.ReadFull(rand.Reader, token[:]); err != nil {
+		return err
+	}
+	temporary := filepath.Join(store.root, ".schema-current."+hex.EncodeToString(token[:])+".tmp")
+	if err := writeNewFile(temporary, raw); err != nil {
+		return err
+	}
+	if err := store.ops.replaceCurrent(temporary, filepath.Join(store.root, "schema-current")); err != nil {
+		return err
+	}
+	return store.ops.syncDirectory(store.root)
 }
 
 func (store *ownedStore) activate(generation uint64, selection currentSelection, expectedCurrent [32]byte, control *applyInterruptionControl) error {

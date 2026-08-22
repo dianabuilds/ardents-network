@@ -12,6 +12,7 @@ import (
 type manifestView struct {
 	Generation                            uint64
 	TargetPath, SafeNotice, CustodyNotice string
+	SchemaPlan                            string
 	Length                                uint64
 	Artifact                              [32]byte
 }
@@ -198,7 +199,8 @@ func decodeManifest(raw []byte) (manifestView, error) {
 	for range 4 {
 		reader.number()
 	}
-	if reader.text(maximumIdentityBytes) != "no-op-v1" {
+	view.SchemaPlan = reader.text(maximumIdentityBytes)
+	if view.SchemaPlan != "no-op-v1" && view.SchemaPlan != "copy-on-write-v1" {
 		reader.err = errRecordInvalid
 	}
 	view.SafeNotice = reader.text(maximumNoticeBytes)

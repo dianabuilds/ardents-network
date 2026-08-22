@@ -21,7 +21,7 @@ type rawFile struct {
 
 type inventoryResult struct {
 	RootPath                         string
-	Marker, Current                  rawFile
+	Marker, Current, SchemaCurrent   rawFile
 	RootDirs, RootFiles, UnknownRoot []string
 	Generations, StagingDirs         []generationFacts
 	Transactions                     []transactionFacts
@@ -70,7 +70,7 @@ func collectInventory(root string) (inventoryResult, error) {
 			}
 			present[name] = true
 			facts.RootDirs = append(facts.RootDirs, name)
-		case lockFileName, ".ardents-update-transaction-v1", "current":
+		case lockFileName, ".ardents-update-transaction-v1", "current", "schema-current":
 			if entry.IsDir() {
 				return facts, fmt.Errorf("%w: %s is not a file", errInventoryInvalid, name)
 			}
@@ -93,6 +93,12 @@ func collectInventory(root string) (inventoryResult, error) {
 	}
 	if facts.Current, err = recoveryReadFile(filepath.Join(root, "current"), maximumRecordBytes); err != nil {
 		return facts, fmt.Errorf("%w: current invalid: %v", errInventoryInvalid, err)
+	}
+	if present["schema-current"] {
+		facts.SchemaCurrent, err = recoveryReadFile(filepath.Join(root, "schema-current"), int64(recordHeaderBytes+schemaRecordBodyBytes))
+		if err != nil || len(facts.SchemaCurrent.Bytes) != recordHeaderBytes+schemaRecordBodyBytes {
+			return facts, fmt.Errorf("%w: schema current invalid: %v", errInventoryInvalid, err)
+		}
 	}
 	if facts.Generations, err = readGenerationDir(filepath.Join(root, "generations"), maximumGenerationEntries); err != nil {
 		return facts, err
