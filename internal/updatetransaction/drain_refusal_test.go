@@ -50,6 +50,10 @@ func (control *drainRefusalWorkControl) Drain(ctx context.Context) error {
 	return control.drainErr
 }
 
+func (*drainRefusalWorkControl) StopNewAssignments(context.Context) error { return nil }
+func (*drainRefusalWorkControl) DrainAssignments(context.Context) error   { return nil }
+func (*drainRefusalWorkControl) RejoinOrWithdraw(context.Context) error   { return nil }
+
 func TestDrainRefusal(t *testing.T) {
 	tests := []struct {
 		name       string

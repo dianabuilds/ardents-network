@@ -18,7 +18,6 @@ func main() {
 		os.Exit(2)
 	}
 }
-
 func run(arguments []string, output io.Writer, errorOutput io.Writer) (runErr error) {
 	if len(arguments) == 0 {
 		return errors.New("usage: ardents-release <offline-import|apply-offline> [flags]")
@@ -88,8 +87,11 @@ func (failure hiddenApplyError) Unwrap() error { return failure.cause }
 
 type stoppedRuntime struct{}
 
-func (stoppedRuntime) StopNewWork(ctx context.Context) error { return ctx.Err() }
-func (stoppedRuntime) Drain(ctx context.Context) error       { return ctx.Err() }
+func (stoppedRuntime) StopNewWork(ctx context.Context) error        { return ctx.Err() }
+func (stoppedRuntime) Drain(ctx context.Context) error              { return ctx.Err() }
+func (stoppedRuntime) StopNewAssignments(ctx context.Context) error { return ctx.Err() }
+func (stoppedRuntime) DrainAssignments(ctx context.Context) error   { return ctx.Err() }
+func (stoppedRuntime) RejoinOrWithdraw(ctx context.Context) error   { return ctx.Err() }
 
 type offlineCandidateTest struct{}
 

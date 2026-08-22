@@ -22,6 +22,9 @@ const (
 type WorkControl interface {
 	StopNewWork(context.Context) error
 	Drain(context.Context) error
+	StopNewAssignments(context.Context) error
+	DrainAssignments(context.Context) error
+	RejoinOrWithdraw(context.Context) error
 }
 
 // SelfTest checks the activated candidate before commit.

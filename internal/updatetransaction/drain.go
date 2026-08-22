@@ -6,43 +6,22 @@ import (
 	"time"
 )
 
-// contributorWorkControl is an optional capability of the existing runtime
-// Adapter. Keeping it private preserves the small public WorkControl seam:
-// runtimes without Contributor duties keep their exact S7.2-01 behavior.
-// A Contributor-capable Adapter owns role identities, lease deadlines, and
-// terminal inventories; Update Transaction supplies only its already bounded
-// operation context.
-type contributorWorkControl interface {
-	StopNewAssignments(context.Context) error
-	DrainAssignments(context.Context) error
-	RejoinOrWithdraw(context.Context) error
-}
-
 func stopRuntimeWork(ctx context.Context, work WorkControl) error {
 	if err := work.StopNewWork(ctx); err != nil {
 		return err
 	}
-	if contributor, ok := work.(contributorWorkControl); ok {
-		return contributor.StopNewAssignments(ctx)
-	}
-	return nil
+	return work.StopNewAssignments(ctx)
 }
 
 func drainRuntimeWork(ctx context.Context, work WorkControl) error {
 	if err := work.Drain(ctx); err != nil {
 		return err
 	}
-	if contributor, ok := work.(contributorWorkControl); ok {
-		return contributor.DrainAssignments(ctx)
-	}
-	return nil
+	return work.DrainAssignments(ctx)
 }
 
 func rejoinRuntimeWork(ctx context.Context, work WorkControl) error {
-	if contributor, ok := work.(contributorWorkControl); ok {
-		return contributor.RejoinOrWithdraw(ctx)
-	}
-	return nil
+	return work.RejoinOrWithdraw(ctx)
 }
 
 // deadline derives the one operation deadline from the invocation timestamp.

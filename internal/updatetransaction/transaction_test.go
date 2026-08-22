@@ -36,6 +36,10 @@ func (control *oracleWorkControl) Drain(context.Context) error {
 	return control.observeActive()
 }
 
+func (*oracleWorkControl) StopNewAssignments(context.Context) error { return nil }
+func (*oracleWorkControl) DrainAssignments(context.Context) error   { return nil }
+func (*oracleWorkControl) RejoinOrWithdraw(context.Context) error   { return nil }
+
 func (control *oracleWorkControl) observeActive() error {
 	if control.currentPath != "" && oracleSelectedArtifact(control.currentPath) != control.expectedActive {
 		return &oracleTestError{"current changed before activation"}

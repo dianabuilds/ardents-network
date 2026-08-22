@@ -291,3 +291,7 @@ func (work *recoveryOracleBlockingWork) Drain(context.Context) error {
 	<-work.signal
 	return nil
 }
+
+func (*recoveryOracleBlockingWork) StopNewAssignments(context.Context) error { return nil }
+func (*recoveryOracleBlockingWork) DrainAssignments(context.Context) error   { return nil }
+func (*recoveryOracleBlockingWork) RejoinOrWithdraw(context.Context) error   { return nil }

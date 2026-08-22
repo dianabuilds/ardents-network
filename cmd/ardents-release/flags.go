@@ -3,16 +3,14 @@ package main
 import "flag"
 
 type offlineImportFlags struct {
-	stateRoot    string
-	metadataDir  string
-	rootPath     string
-	targetPath   string
-	artifactPath string
-	environment  string
-	network      string
-	platform     string
-	architecture string
-	refTime      string
+	stateRoot, metadataDir   string
+	rootPath                 string
+	targetPath, artifactPath string
+	environment              string
+	network                  string
+	platform                 string
+	architecture             string
+	refTime                  string
 }
 
 func (raw *offlineImportFlags) register(flags *flag.FlagSet) {
