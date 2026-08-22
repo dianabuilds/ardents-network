@@ -70,3 +70,65 @@ failure without exercising a different product behavior. Both surfaces remain
 independently runnable and mandatory. Live tests require an explicit
 Docker-capable job; lack of Docker is a failed live environment, not a skipped
 passing test.
+
+## Profile ownership and validity
+
+Every retained test belongs to one primary profile: deterministic Module,
+Adapter/process, affected platform, live, Qualification, or historical
+reproduction. A higher profile is retained only when it proves a distinct
+process, platform, network, evidence-independence, or claim fact unavailable at
+the lower profile. A test's profile registration records its requirement,
+owning seam, observable oracle, fault/adversary or transition, platform/format,
+environment prerequisites, and deletion or migration condition.
+
+The current Make targets are the profile entrypoints, not a claim that every
+current package already has its final role. S8.2 adds checked manifests before
+the existing negative laboratory filters or short-mode selection are replaced.
+Until that promotion, the existing targets remain mandatory and their skipped
+branches remain observations rather than passes.
+
+An environment-dependent selected profile has four outcomes: product assertion
+failure, test/harness defect, invalid environment, or nondeterministic/unowned
+result. None is green until resolved. Missing Docker, an external binary,
+required privilege, a platform capability, a pinned image, toolchain, or host
+orchestrator is an invalid environment for the selected profile, never a
+successful skipped test. Helper subprocesses and unselected matrix cells may
+skip only under an orchestrator that proves that every required cell ran.
+
+Rerunning is diagnostic evidence; it never erases the first failure. There is
+no automatic retry, permanent quarantine, skip allowlist, or flake budget. A
+flaky test may leave a developer profile only with a named owner, captured
+reproducer/seed, risk statement, repair deadline, and continued blocking
+presence in full/release profiles. A timeout reports the last observed state,
+owned resources, seed, and host envelope.
+
+## Test design and retirement
+
+Stateful Modules own injectable wall-clock, monotonic duration, entropy, and
+private fault seams at the smallest real owner. Fixed sleeps cannot be readiness
+or eventual-consistency oracles: wait for an observable state/event with a
+derived deadline. Every goroutine, process, listener, file, lock, timer, and
+fixture created by a test has one `testing.T` or scenario owner, cancellation
+path, join, residue assertion, and cleanup failure path. `t.Parallel` is
+allowed only where fixtures, ports, environment, runtime settings, process
+names, and resource budgets are isolated.
+
+Two tests are duplicate-removal candidates only when this identity tuple is
+the same: requirement, owning seam, observable oracle, input/transition class,
+fault/adversary, platform/format, and independence role. Similar names, source,
+or fixtures are insufficient. A migration replaces old shallow-seam coverage
+with the target Module Interface suite, retains a higher-level test only for a
+distinct fact, and deletes obsolete tests, fixtures, exports, and runners in
+the same wave. Compatibility characterization must name its old observer,
+format/caller, and deletion condition.
+
+Security vectors are deterministic. Shuffle and randomized schedules publish
+their seed. Fuzz/property coverage belongs to every retained untrusted decoder
+and canonical encoder pair at Module scope; a minimized retained failure becomes
+regression corpus. Race coverage is required wherever a Module owns callbacks,
+goroutines, locks, shared admission, cancellation, cutover, pressure, or
+mutable durable state, and asserts terminal join and state invariants in
+addition to detector cleanliness. Golden compatibility tests cover only accepted
+wire, persisted, configuration, command, evidence, and migration formats with
+explicit unknown-version and rollback behavior; they do not freeze incidental
+struct layout.
