@@ -94,6 +94,7 @@ func assertRequiredProjectFiles(t *testing.T, root string) {
 		"go.mod", "Makefile", "CONTRIBUTING.md", ".github/workflows/quality.yml", ".github/workflows/carrier-lab.yml", ".githooks/pre-commit",
 		"docs/development/go-engineering.md", "docs/development/dependencies.md",
 		"docs/development/repository-layout.md", "docs/development/package-map.md",
+		"docs/development/documentation.md",
 		"tests/profiles/profiles.json",
 	}
 	for _, relative := range required {
