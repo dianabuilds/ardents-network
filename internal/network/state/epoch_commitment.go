@@ -1,4 +1,4 @@
-package merkle
+package state
 
 import (
 	"crypto/sha256"
@@ -6,7 +6,7 @@ import (
 )
 
 // Leaf returns the canonical hash of one length-delimited record.
-func Leaf(value []byte) [32]byte {
+func epochCommitmentLeaf(value []byte) [32]byte {
 	encoded := make([]byte, 5+len(value))
 	binary.BigEndian.PutUint32(encoded[1:5], uint32(len(value)))
 	copy(encoded[5:], value)
@@ -14,7 +14,7 @@ func Leaf(value []byte) [32]byte {
 }
 
 // RejectionLeaf commits one rejected input index, code, and raw digest.
-func RejectionLeaf(index uint32, code uint16, raw []byte) [32]byte {
+func epochRejectionLeaf(index uint32, code uint16, raw []byte) [32]byte {
 	rawDigest := sha256.Sum256(raw)
 	encoded := make([]byte, 39)
 	encoded[0] = 2
@@ -25,16 +25,16 @@ func RejectionLeaf(index uint32, code uint16, raw []byte) [32]byte {
 }
 
 // Root returns the canonical root of raw records.
-func Root(values [][]byte, emptyTag byte) [32]byte {
+func epochCommitmentRoot(values [][]byte, emptyTag byte) [32]byte {
 	leaves := make([][32]byte, len(values))
 	for index, value := range values {
-		leaves[index] = Leaf(value)
+		leaves[index] = epochCommitmentLeaf(value)
 	}
-	return HashedRoot(leaves, emptyTag)
+	return epochHashedCommitmentRoot(leaves, emptyTag)
 }
 
 // HashedRoot returns the canonical root of pre-hashed leaves.
-func HashedRoot(leaves [][32]byte, emptyTag byte) [32]byte {
+func epochHashedCommitmentRoot(leaves [][32]byte, emptyTag byte) [32]byte {
 	if len(leaves) == 0 {
 		return sha256.Sum256([]byte{emptyTag})
 	}
@@ -42,10 +42,10 @@ func HashedRoot(leaves [][32]byte, emptyTag byte) [32]byte {
 		return leaves[0]
 	}
 	split := splitAt(len(leaves))
-	return branch(HashedRoot(leaves[:split], emptyTag), HashedRoot(leaves[split:], emptyTag))
+	return epochCommitmentBranch(epochHashedCommitmentRoot(leaves[:split], emptyTag), epochHashedCommitmentRoot(leaves[split:], emptyTag))
 }
 
-func branch(left, right [32]byte) [32]byte {
+func epochCommitmentBranch(left, right [32]byte) [32]byte {
 	encoded := make([]byte, 65)
 	encoded[0] = 1
 	copy(encoded[1:33], left[:])

@@ -7,8 +7,8 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
+	"github.com/dianabuilds/ardents-network/tests/epochfixture/assignment"
+	"github.com/dianabuilds/ardents-network/tests/epochfixture/merkle"
 )
 
 type domainSummary struct {

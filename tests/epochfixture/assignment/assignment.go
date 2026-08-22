@@ -1,3 +1,6 @@
+// Package assignment independently constructs deterministic role domains for
+// black-box Network State fixtures. It is test-only and must not be imported by
+// maintained product code.
 package assignment
 
 import (
@@ -7,7 +10,6 @@ import (
 	"errors"
 )
 
-// Select returns the domain with the lowest canonical assignment digest.
 func Select(network [32]byte, epoch uint64, seed [32]byte, family string, domains []string) (string, error) {
 	var selected string
 	var selectedDigest [32]byte
@@ -26,7 +28,6 @@ func Select(network [32]byte, epoch uint64, seed [32]byte, family string, domain
 	return selected, nil
 }
 
-// Digest returns the canonical assignment commitment for one family/domain pair.
 func Digest(network [32]byte, epoch uint64, seed [32]byte, family, domain string) [32]byte {
 	encoded := make([]byte, 0, 27+32+8+32+len(family)+len(domain))
 	encoded = append(encoded, []byte("ardents-h3-role-domain-v1\x00")...)

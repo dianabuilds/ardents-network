@@ -170,7 +170,7 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 	inlineCode := regexp.MustCompile("`([^`]+)`")
 	for _, line := range strings.Split(contents, "\n") {
 		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "| `cmd/") && !strings.HasPrefix(trimmed, "| `internal/") {
+		if !strings.HasPrefix(trimmed, "| `cmd/") && !strings.HasPrefix(trimmed, "| `internal/") && !strings.HasPrefix(trimmed, "| `tests/") {
 			continue
 		}
 		cells := strings.Split(strings.Trim(trimmed, "|"), "|")

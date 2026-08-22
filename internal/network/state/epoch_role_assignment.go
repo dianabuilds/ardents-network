@@ -1,9 +1,7 @@
-package epoch
+package state
 
 import (
 	"errors"
-
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
 )
 
 func verifyDomainSummaries(epoch epochEnvelope, families map[string][2]uint32) error {
@@ -35,5 +33,5 @@ func assignedDomain(epoch epochEnvelope, family string) (string, error) {
 	for index, domain := range epoch.domains {
 		domains[index] = domain.id
 	}
-	return assignment.Select(epoch.networkID, epoch.number, epoch.assignmentSeed, family, domains)
+	return selectEpochDomain(epoch.networkID, epoch.number, epoch.assignmentSeed, family, domains)
 }

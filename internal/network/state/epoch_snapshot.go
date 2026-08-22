@@ -1,7 +1,7 @@
-package epoch
+package state
 
-func snapshotFor(value epochEnvelope) Snapshot {
-	return Snapshot{
+func snapshotFor(value epochEnvelope) epochVerificationSnapshot {
+	return epochVerificationSnapshot{
 		Generation:     value.digestString(),
 		NetworkID:      value.networkID,
 		Epoch:          value.number,

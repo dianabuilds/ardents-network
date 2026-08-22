@@ -39,7 +39,7 @@ e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
 
 fuzz:
-	go test ./internal/network/epoch -run '^$$' -fuzz '^FuzzCanonicalParsers$$' -fuzztime=1m
+	go test ./internal/network/state -run '^$$' -fuzz '^FuzzCanonicalParsers$$' -fuzztime=1m
 
 lab-test:
 	go test $(LAB_PACKAGES) -short -shuffle=on -count=1 -timeout=20m

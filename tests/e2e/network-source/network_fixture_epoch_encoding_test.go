@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"sort"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
+	"github.com/dianabuilds/ardents-network/tests/epochfixture/merkle"
 )
 
 func encodeEpochCommitment(spec EpochSpec, view [][]byte, rejected [][32]byte, summaries []domainSummary,

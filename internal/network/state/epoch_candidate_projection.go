@@ -1,8 +1,8 @@
-package epoch
+package state
 
 import "crypto/sha256"
 
-func attachCandidates(decision *candidateDecision, accepted []nodeRecord, epoch epochEnvelope) error {
+func attachCandidates(decision *verifiedEpochDecision, accepted []nodeRecord, epoch epochEnvelope) error {
 	for index, record := range accepted {
 		domain, err := assignedDomain(epoch, record.family)
 		if err != nil {

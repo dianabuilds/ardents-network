@@ -8,9 +8,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
 )
 
 type testEpochSpec struct {
@@ -55,7 +52,7 @@ func buildTestEpoch(t *testing.T, spec testEpochSpec) testEpoch {
 	raw := signTestEpoch(digest, unsigned, spec.authorities)
 	materials := make([][]byte, len(view))
 	for index, record := range view {
-		materials[index] = encodeTestMaterial(digest, uint32(index), record, merkle.Proof(view, index, 0x11))
+		materials[index] = encodeTestMaterial(digest, uint32(index), record, fixtureCommitmentProof(view, index, 0x11))
 	}
 	return testEpoch{Raw: raw, Digest: digest, Materials: materials}
 }
@@ -92,7 +89,7 @@ func testRejectionLeaves(t *testing.T, spec testEpochSpec) [][32]byte {
 		if index < 0 || index >= len(spec.inputs) {
 			t.Fatalf("rejection index %d is outside fixture inputs", index)
 		}
-		values = append(values, merkle.RejectionLeaf(uint32(index), spec.rejections[uint32(index)], spec.inputs[index]))
+		values = append(values, fixtureRejectionLeaf(uint32(index), spec.rejections[uint32(index)], spec.inputs[index]))
 	}
 	return values
 }
@@ -106,7 +103,7 @@ func testSummaries(t *testing.T, spec testEpochSpec, records []fixtureRecord) ([
 	families := make(map[string][2]uint32)
 	var capacity uint32
 	for _, record := range records {
-		selected, err := assignment.Select(spec.networkID, spec.number, spec.assignmentSeed, record.family, spec.domains)
+		selected, err := fixtureAssignmentDomain(spec.networkID, spec.number, spec.assignmentSeed, record.family, spec.domains)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -142,11 +139,11 @@ func encodeTestEpoch(spec testEpochSpec, view [][]byte, rejected [][32]byte, sum
 	writeTestI64(buffer, spec.validUntil.Unix())
 	writeTestU32(buffer, uint32(len(spec.inputs)))
 	writeTestText(buffer, "h3-role-probe-v1")
-	inputRoot, viewRoot := merkle.Root(spec.inputs, 0x10), merkle.Root(view, 0x11)
+	inputRoot, viewRoot := fixtureCommitmentRoot(spec.inputs, 0x10), fixtureCommitmentRoot(view, 0x11)
 	buffer.Write(inputRoot[:])
 	buffer.Write(viewRoot[:])
 	writeTestU32(buffer, uint32(len(view)))
-	rejectedRoot := merkle.HashedRoot(rejected, 0x12)
+	rejectedRoot := fixtureHashedCommitmentRoot(rejected, 0x12)
 	buffer.Write(rejectedRoot[:])
 	writeTestU32(buffer, uint32(len(rejected)))
 	buffer.Write(spec.assignmentSeed[:])

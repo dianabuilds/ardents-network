@@ -20,10 +20,6 @@ github.com/dianabuilds/ardents-network/internal/namerecovery
 github.com/dianabuilds/ardents-network/internal/nameresolution
 github.com/dianabuilds/ardents-network/internal/namestore
 github.com/dianabuilds/ardents-network/internal/naming
-github.com/dianabuilds/ardents-network/internal/network/epoch
-github.com/dianabuilds/ardents-network/internal/network/epoch/assignment
-github.com/dianabuilds/ardents-network/internal/network/epoch/merkle
-github.com/dianabuilds/ardents-network/internal/network/framing
 github.com/dianabuilds/ardents-network/internal/network/source
 github.com/dianabuilds/ardents-network/internal/network/state
 github.com/dianabuilds/ardents-network/internal/node

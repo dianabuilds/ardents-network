@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
+	"github.com/dianabuilds/ardents-network/tests/epochfixture/assignment"
 )
 
 type processCert struct {

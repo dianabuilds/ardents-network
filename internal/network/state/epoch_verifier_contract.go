@@ -1,30 +1,28 @@
-package epoch
+package state
 
 import (
 	"crypto/ed25519"
 	"errors"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
 )
 
 // Policy contains the installed authority and predecessor state used for one
 // deterministic Network Epoch decision. Verify copies authority keys and all
 // returned byte slices; a zero Policy is invalid.
-type Policy struct {
+type epochPolicy struct {
 	NetworkID            [32]byte
 	Authorities          map[[32]byte]ed25519.PublicKey
 	Threshold            int
 	Profile              string
 	Now                  time.Time
 	MaterializationIndex uint32
-	Previous             *Snapshot
+	Previous             *epochVerificationSnapshot
 }
 
 // Snapshot is the immutable, complete Epoch/View result consumed atomically by
 // Network State. The broad value keeps the authenticated identity, validity,
 // commitments, record, and assignment from being observed out of generation.
-type Snapshot struct {
+type epochVerificationSnapshot struct {
 	Generation       string
 	NetworkID        [32]byte
 	Epoch            uint64
@@ -53,10 +51,10 @@ type Snapshot struct {
 // Decision retains the canonical bytes needed to persist and redistribute one
 // verified result. Its slices are owned immutable copies and preserve canonical
 // input order. A zero Decision has not been verified.
-type Decision struct {
+type verifiedEpochDecision struct {
 	EpochBytes         []byte
 	Inputs             [][]byte
-	Snapshot           Snapshot
+	Snapshot           epochVerificationSnapshot
 	NodeIDs            [][32]byte
 	KeyIDs             [][32]byte
 	PublicKeys         [][32]byte
@@ -78,26 +76,26 @@ type Decision struct {
 
 // Verify authenticates one exact Epoch/View decision and its encoded
 // materializations.
-func Verify(policy Policy, epochBytes []byte, inputs, encodedMaterials [][]byte, requireMaterials bool) (Decision, error) {
+func verifyEpochDecision(policy epochPolicy, epochBytes []byte, inputs, encodedMaterials [][]byte, requireMaterials bool) (verifiedEpochDecision, error) {
 	materials, err := decodeMaterializations(encodedMaterials)
 	if err != nil {
-		return Decision{}, err
+		return verifiedEpochDecision{}, err
 	}
-	return verifyDecision(policy, policy.Previous, epochBytes, inputs, materials, requireMaterials)
+	return verifyEpochCandidate(policy, policy.Previous, epochBytes, inputs, materials, requireMaterials)
 }
 
 // Inspect validates canonical Epoch framing and returns only authenticated-
 // independent metadata needed to load bounded persisted input files.
-func Inspect(raw []byte) (Snapshot, error) {
+func inspectEpoch(raw []byte) (epochVerificationSnapshot, error) {
 	parsed, err := parseEpoch(raw)
 	if err != nil {
-		return Snapshot{}, err
+		return epochVerificationSnapshot{}, err
 	}
 	return snapshotFor(parsed), nil
 }
 
 // Materialization returns one canonical inclusion proof for resource.
-func (decision Decision) Materialization(index uint32) ([]byte, error) {
+func (decision verifiedEpochDecision) Materialization(index uint32) ([]byte, error) {
 	if index >= uint32(len(decision.accepted)) {
 		return nil, errors.New("requested materialization index is unavailable")
 	}
@@ -109,14 +107,14 @@ func (decision Decision) Materialization(index uint32) ([]byte, error) {
 		epochDigest: decision.epoch.digest,
 		index:       index,
 		record:      append([]byte(nil), values[index]...),
-		siblings:    merkle.Proof(values, int(index), emptyViewTag),
+		siblings:    epochCommitmentProof(values, int(index), emptyViewTag),
 	}
 	return encodeMaterialization(material), nil
 }
 
 // VerifyMaterials checks proofs for an already verified decision without
 // accepting a second or successor Epoch.
-func (decision Decision) VerifyMaterials(encoded [][]byte) error {
+func (decision verifiedEpochDecision) VerifyMaterials(encoded [][]byte) error {
 	materials, err := decodeMaterializations(encoded)
 	if err != nil {
 		return err

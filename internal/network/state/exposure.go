@@ -8,7 +8,6 @@ import (
 	"sort"
 	"time"
 
-	stateepoch "github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
@@ -42,7 +41,7 @@ func sourceCollides(info source.Details, decision candidateDecision) bool {
 	return false
 }
 
-func epochDecisionCollides(decision stateepoch.Decision, identity [32]byte, family, endpoint string) bool {
+func epochDecisionCollides(decision verifiedEpochDecision, identity [32]byte, family, endpoint string) bool {
 	for _, candidate := range decision.NodeIDs {
 		if candidate == identity {
 			return true

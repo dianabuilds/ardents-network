@@ -1,4 +1,4 @@
-package epoch
+package state
 
 import (
 	"errors"
@@ -7,25 +7,25 @@ import (
 
 // VerifyEvidence authenticates every retained generation and fully verifies
 // the current Epoch decision through the canonical Epoch implementation.
-func VerifyEvidence(policy Policy, current string, generations map[string][]byte, inputs, materializations [][]byte) (Decision, error) {
+func verifyEpochEvidence(policy epochPolicy, current string, generations map[string][]byte, inputs, materializations [][]byte) (verifiedEpochDecision, error) {
 	indexed, err := indexEvidence(current, generations, inputs, materializations)
 	if err != nil {
-		return Decision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	tip, previous, seen, err := authenticateEvidenceChain(policy, indexed, current)
 	if err != nil {
-		return Decision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	if len(seen) != len(indexed) {
-		return Decision{}, errors.New("generation evidence contains an unrelated member")
+		return verifiedEpochDecision{}, errors.New("generation evidence contains an unrelated member")
 	}
 	policy.Previous = previous
-	decision, err := Verify(policy, indexed[current], inputs, materializations, true)
+	decision, err := verifyEpochDecision(policy, indexed[current], inputs, materializations, true)
 	if err != nil {
-		return Decision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	if decision.Snapshot.Digest != tip.digest || decision.Snapshot.Generation != current {
-		return Decision{}, errors.New("current generation disagrees with authenticated evidence")
+		return verifiedEpochDecision{}, errors.New("current generation disagrees with authenticated evidence")
 	}
 	return decision, nil
 }
@@ -45,10 +45,10 @@ func indexEvidence(current string, generations map[string][]byte, inputs, materi
 	return indexed, nil
 }
 
-func authenticateEvidenceChain(policy Policy, generations map[string][]byte, current string) (epochEnvelope, *Snapshot, map[string]bool, error) {
+func authenticateEvidenceChain(policy epochPolicy, generations map[string][]byte, current string) (epochEnvelope, *epochVerificationSnapshot, map[string]bool, error) {
 	seen := make(map[string]bool)
-	var load func(string, bool) (epochEnvelope, *Snapshot, error)
-	load = func(name string, tip bool) (epochEnvelope, *Snapshot, error) {
+	var load func(string, bool) (epochEnvelope, *epochVerificationSnapshot, error)
+	load = func(name string, tip bool) (epochEnvelope, *epochVerificationSnapshot, error) {
 		if !canonicalGeneration(name) || seen[name] || len(seen) >= maximumEpochChain {
 			return epochEnvelope{}, nil, errors.New("generation chain is cyclic or exceeds its bound")
 		}

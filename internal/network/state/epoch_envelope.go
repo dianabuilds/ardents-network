@@ -1,4 +1,4 @@
-package epoch
+package state
 
 import (
 	"bytes"
@@ -205,7 +205,7 @@ func decodeSummaries(d *decoder, epoch *epochEnvelope) error {
 	return nil
 }
 
-func verifyEpoch(config Policy, current *Snapshot, raw []byte) (epochEnvelope, error) {
+func verifyEpoch(config epochPolicy, current *epochVerificationSnapshot, raw []byte) (epochEnvelope, error) {
 	epoch, err := parseEpoch(raw)
 	if err != nil {
 		return epochEnvelope{}, err
@@ -225,7 +225,7 @@ func verifyEpoch(config Policy, current *Snapshot, raw []byte) (epochEnvelope, e
 	return epoch, nil
 }
 
-func authenticateEnvelope(config Policy, epoch epochEnvelope, now time.Time) error {
+func authenticateEnvelope(config epochPolicy, epoch epochEnvelope, now time.Time) error {
 	if epoch.networkID != config.NetworkID {
 		return errors.New("epoch network identity is wrong")
 	}

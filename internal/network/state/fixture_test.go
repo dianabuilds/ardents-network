@@ -7,8 +7,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
 )
 
 const fixtureNow = int64(1_800_000_100)
@@ -93,9 +91,9 @@ func buildFixtureEpoch(t *testing.T, value fixture, number uint64, previous, see
 	}
 	sort.Ints(indices)
 	for _, index := range indices {
-		rejected = append(rejected, merkle.RejectionLeaf(uint32(index), value.rejections[uint32(index)], value.inputs[index]))
+		rejected = append(rejected, fixtureRejectionLeaf(uint32(index), value.rejections[uint32(index)], value.inputs[index]))
 	}
-	value.inputRoot, value.viewRoot, value.rejectedRoot = merkle.Root(value.inputs, 0x10), merkle.Root(view, 0x11), merkle.HashedRoot(rejected, 0x12)
+	value.inputRoot, value.viewRoot, value.rejectedRoot = fixtureCommitmentRoot(value.inputs, 0x10), fixtureCommitmentRoot(view, 0x11), fixtureHashedCommitmentRoot(rejected, 0x12)
 	return value
 }
 

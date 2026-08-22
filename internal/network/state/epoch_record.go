@@ -1,4 +1,4 @@
-package epoch
+package state
 
 import (
 	"crypto/ed25519"

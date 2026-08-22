@@ -1,8 +1,6 @@
-package epoch
+package state
 
-import "github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
-
-func attachMaterializedRecord(index uint32, decision *candidateDecision) {
+func attachMaterializedRecord(index uint32, decision *verifiedEpochDecision) {
 	if index >= uint32(len(decision.accepted)) {
 		return
 	}
@@ -21,6 +19,6 @@ func attachMaterializedRecord(index uint32, decision *candidateDecision) {
 	decision.Snapshot.ProbeEndpoint = record.endpoint
 	decision.Snapshot.ProbeCapacity = record.capacity
 	decision.Snapshot.Assignment = domain
-	decision.Snapshot.AssignmentDigest = assignment.Digest(decision.epoch.networkID, decision.epoch.number,
+	decision.Snapshot.AssignmentDigest = epochAssignmentDigest(decision.epoch.networkID, decision.epoch.number,
 		decision.epoch.assignmentSeed, record.family, domain)
 }

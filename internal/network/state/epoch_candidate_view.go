@@ -1,12 +1,10 @@
-package epoch
+package state
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"sort"
-
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
 )
 
 const (
@@ -23,8 +21,6 @@ const (
 	rejectEndpoint        = uint16(11)
 )
 
-type candidateDecision = Decision
-
 type rejection struct {
 	index uint32
 	code  uint16
@@ -37,35 +33,35 @@ type evaluatedRecord struct {
 	code   uint16
 }
 
-func verifyDecision(config Policy, current *Snapshot, epochBytes []byte, inputs [][]byte, materials []materialization, requireMaterials bool) (candidateDecision, error) {
+func verifyEpochCandidate(config epochPolicy, current *epochVerificationSnapshot, epochBytes []byte, inputs [][]byte, materials []materialization, requireMaterials bool) (verifiedEpochDecision, error) {
 	if err := preflightDecision(epochBytes, inputs, materials); err != nil {
-		return candidateDecision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	epoch, err := verifyEpoch(config, current, epochBytes)
 	if err != nil {
-		return candidateDecision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	if len(inputs) != int(epoch.cutoff) || len(inputs) > 64 {
-		return candidateDecision{}, errors.New("input log does not match the committed cutoff")
+		return verifiedEpochDecision{}, errors.New("input log does not match the committed cutoff")
 	}
-	if merkle.Root(inputs, emptyInputTag) != epoch.inputRoot {
-		return candidateDecision{}, errors.New("input log root does not match the epoch")
+	if epochCommitmentRoot(inputs, emptyInputTag) != epoch.inputRoot {
+		return verifiedEpochDecision{}, errors.New("input log root does not match the epoch")
 	}
 	accepted, rejected := evaluateInputs(config, epoch, inputs)
 	if err := verifyViewCommitment(epoch, accepted, rejected); err != nil {
-		return candidateDecision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	if err := verifyMaterializations(epoch, accepted, materials, requireMaterials); err != nil {
-		return candidateDecision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	generation := fmt.Sprintf("%x", epoch.digest)
-	decision := candidateDecision{
+	decision := verifiedEpochDecision{
 		epoch:      epoch,
 		EpochBytes: append([]byte(nil), epochBytes...),
 		Inputs:     cloneInputs(inputs),
 		accepted:   accepted,
 		rejections: rejected,
-		Snapshot: Snapshot{
+		Snapshot: epochVerificationSnapshot{
 			Generation:     generation,
 			NetworkID:      epoch.networkID,
 			Epoch:          epoch.number,
@@ -81,7 +77,7 @@ func verifyDecision(config Policy, current *Snapshot, epochBytes []byte, inputs 
 		},
 	}
 	if err := attachCandidates(&decision, accepted, epoch); err != nil {
-		return candidateDecision{}, err
+		return verifiedEpochDecision{}, err
 	}
 	attachMaterializedRecord(config.MaterializationIndex, &decision)
 	return decision, nil
@@ -104,7 +100,7 @@ func preflightDecision(epoch []byte, inputs [][]byte, materials []materializatio
 	return nil
 }
 
-func evaluateInputs(config Policy, epoch epochEnvelope, inputs [][]byte) ([]nodeRecord, []rejection) {
+func evaluateInputs(config epochPolicy, epoch epochEnvelope, inputs [][]byte) ([]nodeRecord, []rejection) {
 	evaluated := make([]evaluatedRecord, len(inputs))
 	for index, raw := range inputs {
 		record, err := parseRecord(raw)
@@ -142,7 +138,7 @@ func evaluateInputs(config Policy, epoch epochEnvelope, inputs [][]byte) ([]node
 	return accepted, rejected
 }
 
-func authorityOwnsKey(config Policy, keyID [32]byte) bool {
+func authorityOwnsKey(config epochPolicy, keyID [32]byte) bool {
 	_, exists := config.Authorities[keyID]
 	return exists
 }
@@ -197,7 +193,7 @@ func verifyViewCommitment(epoch epochEnvelope, accepted []nodeRecord, rejected [
 	}
 	rejectionLeaves := make([][32]byte, len(rejected))
 	for index, item := range rejected {
-		rejectionLeaves[index] = merkle.RejectionLeaf(item.index, item.code, item.raw)
+		rejectionLeaves[index] = epochRejectionLeaf(item.index, item.code, item.raw)
 	}
 	var maxCount, maxCapacity uint32
 	for _, summary := range families {
@@ -205,8 +201,8 @@ func verifyViewCommitment(epoch epochEnvelope, accepted []nodeRecord, rejected [
 		maxCapacity = max(maxCapacity, summary[1])
 	}
 	if uint32(len(accepted)) != epoch.viewLength || uint32(len(rejected)) != epoch.rejectedLength ||
-		merkle.Root(acceptedBytes, emptyViewTag) != epoch.viewRoot ||
-		merkle.HashedRoot(rejectionLeaves, emptyRejectionTag) != epoch.rejectedRoot {
+		epochCommitmentRoot(acceptedBytes, emptyViewTag) != epoch.viewRoot ||
+		epochHashedCommitmentRoot(rejectionLeaves, emptyRejectionTag) != epoch.rejectedRoot {
 		return errors.New("candidate view or rejection commitment is inconsistent")
 	}
 	if epoch.eligibleCount != uint32(len(accepted)) || epoch.eligibleCapacity != capacity ||
@@ -231,7 +227,7 @@ func verifyMaterializations(epoch epochEnvelope, accepted []nodeRecord, material
 		}
 		seen[material.index] = true
 		record := accepted[material.index].raw
-		if !bytes.Equal(material.record, record) || !merkle.Verify(record, material.index, uint32(len(accepted)), material.siblings, epoch.viewRoot) {
+		if !bytes.Equal(material.record, record) || !verifyEpochCommitment(record, material.index, uint32(len(accepted)), material.siblings, epoch.viewRoot) {
 			return errors.New("candidate materialization proof is invalid")
 		}
 	}

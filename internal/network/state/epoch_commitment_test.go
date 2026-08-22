@@ -1,10 +1,6 @@
-package merkle_test
+package state
 
-import (
-	"testing"
-
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
-)
+import "testing"
 
 func TestProofCoversCanonicalTreeShapes(t *testing.T) {
 	t.Parallel()
@@ -13,10 +9,10 @@ func TestProofCoversCanonicalTreeShapes(t *testing.T) {
 		for index := range values {
 			values[index] = []byte{byte(index), byte(length)}
 		}
-		root := merkle.Root(values, 0x11)
+		root := epochCommitmentRoot(values, 0x11)
 		for index, value := range values {
-			proof := merkle.Proof(values, index, 0x11)
-			if !merkle.Verify(value, uint32(index), uint32(length), proof, root) {
+			proof := epochCommitmentProof(values, index, 0x11)
+			if !verifyEpochCommitment(value, uint32(index), uint32(length), proof, root) {
 				t.Fatalf("length %d index %d proof rejected", length, index)
 			}
 		}

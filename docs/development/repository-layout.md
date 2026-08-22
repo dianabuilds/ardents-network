@@ -79,7 +79,6 @@ The maintained product Modules are:
 | Module path | Stable responsibility |
 |---|---|
 | `internal/network/state` | Orchestrate authenticated Network State acceptance, current and pending decisions, acquisition, and publication. |
-| `internal/network/epoch` | Verify Network Epoch, Candidate View, materialization, and assignment semantics. |
 | `internal/network/source` | Own the finite Direct-Origin Source plan, credential binding, private transport, and exposure identity. |
 | `internal/network/store` | Own the exclusive state root, immutable generations, control journal, and atomic pointers. |
 | `internal/node` | Bind one local Node identity to authenticated assignment, readiness, duty, drain, withdrawal, and terminal cleanup. |
@@ -110,8 +109,7 @@ The product import direction is:
 ```text
 cmd/ardents -> internal/network/state, internal/network/source, internal/planfile
 cmd/ardents-node -> internal/network/state, internal/network/source, internal/node, internal/node/probe, internal/planfile
-internal/network/state -> internal/network/epoch, internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing, internal/network/source, internal/network/store, internal/resource
-internal/network/epoch -> internal/network/epoch/assignment, internal/network/epoch/merkle, internal/network/framing
+internal/network/state -> internal/network/source, internal/resource
 internal/node -> internal/node/probe, internal/resource
 ```
 

@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/assignment"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/tests/epochfixture/assignment"
 )
 
 type processIdentity struct {

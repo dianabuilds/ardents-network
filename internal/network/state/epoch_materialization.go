@@ -1,4 +1,4 @@
-package epoch
+package state
 
 import (
 	"bytes"
@@ -73,7 +73,7 @@ func encodeMaterialization(value materialization) []byte {
 	buffer := new(bytes.Buffer)
 	buffer.Write(value.epochDigest[:])
 	_ = binary.Write(buffer, binary.BigEndian, value.index)
-	writeLengthBytes(buffer, value.record)
+	writeEpochLengthBytes(buffer, value.record)
 	_ = binary.Write(buffer, binary.BigEndian, uint16(len(value.siblings)))
 	for _, sibling := range value.siblings {
 		buffer.Write(sibling[:])
@@ -92,7 +92,7 @@ func lengthBytes(d *decoder, maximum int) ([]byte, error) {
 	return d.bytes(int(length))
 }
 
-func writeLengthBytes(buffer *bytes.Buffer, raw []byte) {
+func writeEpochLengthBytes(buffer *bytes.Buffer, raw []byte) {
 	_ = binary.Write(buffer, binary.BigEndian, uint32(len(raw)))
 	buffer.Write(raw)
 }
