@@ -23,13 +23,13 @@ func applyRelease(current *Record, op Op) (Record, error) {
 	return result, nil
 }
 
-func applyAdvance(current *Record, now int64, op Op) (Record, error) {
+func applyAdvance(current *Record, seconds, milliseconds int64, op Op) (Record, error) {
 	if err := requireCurrent(current, op, opAdvance); err != nil {
 		return Record{}, err
 	}
 	result := *current
 	if current.Recovery == recoveryPending {
-		if now*1_000 < current.RecoveryExpiresAt {
+		if milliseconds < current.RecoveryExpiresAt {
 			return result, nil
 		}
 		completePendingRecovery(&result)
@@ -38,11 +38,11 @@ func applyAdvance(current *Record, now int64, op Op) (Record, error) {
 	}
 	switch current.Lease {
 	case leaseActive:
-		if now <= current.LeaseExpiresAt {
+		if seconds <= current.LeaseExpiresAt {
 			return result, nil
 		}
 		result.Revision++
-		if current.GraceExpiresAt > 0 && now <= current.GraceExpiresAt {
+		if current.GraceExpiresAt > 0 && seconds <= current.GraceExpiresAt {
 			result.Lease = leaseGrace
 			return result, nil
 		}
@@ -50,7 +50,7 @@ func applyAdvance(current *Record, now int64, op Op) (Record, error) {
 		result.LeaseExpiresAt, result.GraceExpiresAt = 0, 0
 		return result, nil
 	case leaseGrace:
-		if now <= current.GraceExpiresAt {
+		if seconds <= current.GraceExpiresAt {
 			return result, nil
 		}
 		result.Revision++

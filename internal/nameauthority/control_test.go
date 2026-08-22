@@ -18,7 +18,7 @@ import (
 
 func TestControlAppliesTheAdmittedCanonicalOperation(t *testing.T) {
 	t.Parallel()
-	now := time.Unix(1_800_000_000, 0).UTC()
+	now := time.Unix(1_800_000_000, 123_000_000).UTC()
 	network, node, isolation := [32]byte{9}, [32]byte{2}, [32]byte{3}
 	seed := sha256.Sum256([]byte("control-authority"))
 	private := ed25519.NewKeyFromSeed(seed[:])

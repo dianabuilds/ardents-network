@@ -129,7 +129,7 @@ func (control *control) existing(operation controlOperation, current namelease.R
 		return namelease.Record{}, err
 	}
 	if threshold {
-		return namelease.Apply(&current, now.Unix(), op, control.policy)
+		return namelease.ApplyAt(&current, now, op, control.policy)
 	}
 	return applyTransition(control.network, current, op, operation.AuthorityProof, now.Unix(), control.policy)
 }

@@ -28,20 +28,20 @@ func applyRotate(current *Record, now int64, op Op) (Record, error) {
 	return result, nil
 }
 
-func applyRecoveryPolicy(current *Record, now int64, op Op) (Record, error) {
+func applyRecoveryPolicy(current *Record, seconds, milliseconds int64, op Op) (Record, error) {
 	if err := requireCurrent(current, op, op.Kind); err != nil {
 		return Record{}, err
 	}
 	result := *current
 	switch op.Kind {
 	case opScheduleRecoveryPolicy:
-		if ok, _ := liveLease(*current, now); !ok {
+		if ok, _ := liveLease(*current, seconds); !ok {
 			return Record{}, transitionError{Action: op.Kind, Reason: "policy change requires a live current Lease"}
 		}
 		if op.Authority != current.Authority ||
 			current.PendingPolicyRev != 0 || op.PolicyRevision != current.RecoveryPolicyRev+1 ||
 			op.PolicyDelay < minimumRecoveryDelay || op.PolicyDelay > maximumRecoveryDelay ||
-			op.PolicyActivatesAt != now*1_000+op.PolicyDelay.Milliseconds() ||
+			op.PolicyActivatesAt != milliseconds+op.PolicyDelay.Milliseconds() ||
 			(op.PolicyDigest == [32]byte{} && current.RecoveryPolicy == [32]byte{}) {
 			return Record{}, transitionError{Action: op.Kind, Reason: "policy change is invalid or already pending"}
 		}
@@ -49,7 +49,7 @@ func applyRecoveryPolicy(current *Record, now int64, op Op) (Record, error) {
 		result.PendingPolicyDelay = op.PolicyDelay.Milliseconds()
 		result.PolicyActivatesAt = op.PolicyActivatesAt
 	case opActivateRecoveryPolicy:
-		if current.PendingPolicyRev == 0 || now*1_000 < current.PolicyActivatesAt || current.Recovery != recoveryStable {
+		if current.PendingPolicyRev == 0 || milliseconds < current.PolicyActivatesAt || current.Recovery != recoveryStable {
 			return Record{}, transitionError{Action: op.Kind, Reason: "policy change is not eligible"}
 		}
 		result.RecoveryPolicy, result.RecoveryPolicyRev = current.PendingPolicy, current.PendingPolicyRev
@@ -61,7 +61,7 @@ func applyRecoveryPolicy(current *Record, now int64, op Op) (Record, error) {
 	return result, nil
 }
 
-func applyRecovery(current *Record, now int64, op Op) (Record, error) {
+func applyRecovery(current *Record, seconds, milliseconds int64, op Op) (Record, error) {
 	if err := requireCurrent(current, op, op.Kind); err != nil {
 		return Record{}, err
 	}
@@ -69,12 +69,13 @@ func applyRecovery(current *Record, now int64, op Op) (Record, error) {
 	authorization := op.RecoveryAuthorization
 	switch op.Kind {
 	case opStartRecovery:
-		if ok, _ := liveLease(*current, now); !ok {
+		if ok, _ := liveLease(*current, seconds); !ok {
 			return Record{}, transitionError{Action: op.Kind, Reason: "recovery requires a live current Lease"}
 		}
 		if !authorization.Verified() || authorization.Operation != "initiate" ||
 			current.RecoveryPolicy == [32]byte{} || authorization.PolicyDigest != current.RecoveryPolicy ||
-			authorization.PolicyRevision != current.RecoveryPolicyRev || authorization.StartedAt != now*1_000 ||
+			authorization.PolicyRevision != current.RecoveryPolicyRev || authorization.StartedAt > milliseconds ||
+			milliseconds-authorization.StartedAt > 30*time.Second.Milliseconds() ||
 			hex.EncodeToString(authorization.Successor[:]) == current.Authority {
 			return Record{}, transitionError{Action: op.Kind, Reason: "recovery authorization is invalid"}
 		}
@@ -82,13 +83,13 @@ func applyRecovery(current *Record, now int64, op Op) (Record, error) {
 		result.RecoveryOperation, result.RecoverySuccessor = authorization.OperationID, authorization.Successor
 		result.RecoveryStartedAt, result.RecoveryExpiresAt = authorization.StartedAt, authorization.CompletesAt
 	case opCancelRecovery:
-		if !matchingPendingRecovery(current, authorization, "cancel") || now*1_000 >= current.RecoveryExpiresAt ||
+		if !matchingPendingRecovery(current, authorization, "cancel") || milliseconds >= current.RecoveryExpiresAt ||
 			current.Authority == hex.EncodeToString(current.RecoverySuccessor[:]) {
 			return Record{}, transitionError{Action: op.Kind, Reason: "recovery cancellation is invalid"}
 		}
 		clearPendingRecovery(&result)
 	case opCompleteRecovery:
-		if !matchingPendingRecovery(current, authorization, "initiate") || now*1_000 < current.RecoveryExpiresAt ||
+		if !matchingPendingRecovery(current, authorization, "initiate") || milliseconds < current.RecoveryExpiresAt ||
 			current.Authority == hex.EncodeToString(current.RecoverySuccessor[:]) {
 			return Record{}, transitionError{Action: op.Kind, Reason: "recovery is not eligible for completion"}
 		}
