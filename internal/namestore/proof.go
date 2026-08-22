@@ -7,7 +7,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/naming"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
 )
 
 const (
@@ -41,7 +40,7 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 		return nil, errors.New("name is unavailable")
 	}
 	proof := encodeProof(current.attested, uint32(index), current.leaves[index],
-		merkle.Proof(current.leaves, index, emptyRecordTag))
+		namespaceProof(current.leaves, index, emptyRecordTag))
 	if len(proof) > maximumProofBytes {
 		return nil, errors.New("naming proof exceeds the fixed response bound")
 	}
@@ -61,7 +60,7 @@ func Verify(input Policy, proof []byte, minimumEpoch uint64, expectedEpochDigest
 	statement := attested.statement
 	if err != nil || statement.epoch < minimumEpoch || statement.epochDigest != expectedEpochDigest ||
 		!verifyAttestation(policy, attested) ||
-		!merkle.Verify(leafRaw, ordinal, statement.recordLength, siblings, statement.recordRoot) {
+		!verifyNamespaceProof(leafRaw, ordinal, statement.recordLength, siblings, statement.recordRoot) {
 		return namelease.Record{}, namelease.Binding{}, "", 0, errors.New("naming proof is invalid or stale")
 	}
 	leaf, err := decodeLeaf(leafRaw)

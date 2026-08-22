@@ -5,8 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-
-	networkstore "github.com/dianabuilds/ardents-network/internal/network/store"
 )
 
 // Open claims a naming-state root for exactly one Network Epoch policy.
@@ -15,7 +13,7 @@ func Open(path string, input Policy) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	root, err := networkstore.Open(path)
+	root, err := openNamespaceRoot(path)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +42,7 @@ func (store *Store) Commit(epoch Epoch, signed [][]byte,
 	if err != nil || !verifyAttestation(store.policy, attested) {
 		return errors.New("naming materialization threshold is invalid")
 	}
-	current, _, loadErr := store.root.LoadState()
+	current, _, loadErr := store.root.load()
 	if loadErr != nil {
 		return errors.New("naming state is tampered")
 	}
@@ -63,7 +61,7 @@ func (store *Store) Commit(epoch Epoch, signed [][]byte,
 		return err
 	}
 	name := snapshotDigest(metadata, chunks)
-	return store.root.CommitState(networkstore.Generation{Name: hex.EncodeToString(name[:]),
+	return store.root.commit(namespaceGeneration{Name: hex.EncodeToString(name[:]),
 		Epoch: metadata, Inputs: chunks, Activate: true})
 }
 
@@ -72,14 +70,14 @@ func (store *Store) Close() error {
 	if store == nil || store.root == nil {
 		return nil
 	}
-	return store.root.Close()
+	return store.root.close()
 }
 
 func (store *Store) load(minimumEpoch uint64) (snapshot, error) {
 	if store == nil || store.root == nil {
 		return snapshot{}, errors.New("naming state store is unavailable")
 	}
-	current, generations, err := store.root.LoadState()
+	current, generations, err := store.root.load()
 	if err != nil || current == "" {
 		return snapshot{}, errors.New("naming state is tampered")
 	}

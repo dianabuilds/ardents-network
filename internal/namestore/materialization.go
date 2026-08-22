@@ -7,7 +7,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch/merkle"
 )
 
 const (
@@ -84,7 +83,7 @@ func materializeLeaf(index int, entries []recordEntry, byName map[string]int) (r
 	if !available {
 		state, notAfter = 0, 0
 	}
-	return resolutionLeaf{signedRecord: head.signed, lineageRoot: merkle.Root(lineage, emptyLineageTag),
+	return resolutionLeaf{signedRecord: head.signed, lineageRoot: namespaceCommitmentRoot(lineage, emptyLineageTag),
 		lineageCount: uint8(len(lineage)), state: state, notAfter: notAfter}, nil
 }
 
@@ -102,7 +101,7 @@ func effectiveLease(record namelease.Record) (byte, int64, bool) {
 	}
 }
 
-func recordRoot(leaves [][]byte) [32]byte { return merkle.Root(leaves, emptyRecordTag) }
+func recordRoot(leaves [][]byte) [32]byte { return namespaceCommitmentRoot(leaves, emptyRecordTag) }
 
 func sameInputs(left, right [][]byte) bool {
 	if len(left) != len(right) {

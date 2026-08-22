@@ -1,10 +1,6 @@
 package namestore
 
-import (
-	"crypto/ed25519"
-
-	networkstore "github.com/dianabuilds/ardents-network/internal/network/store"
-)
+import "crypto/ed25519"
 
 const materializationRule = "ardents-namespace-materialization-v1"
 
@@ -31,7 +27,7 @@ type Epoch struct {
 
 // Store owns one exclusive bounded durable naming-state root.
 type Store struct {
-	root   *networkstore.Root
+	root   *namespaceRoot
 	policy Policy
 }
 
