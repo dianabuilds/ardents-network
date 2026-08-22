@@ -28,6 +28,27 @@ type SelfTest interface {
 	Check(context.Context, CandidateIdentity) error
 }
 
+// SchemaSelection is the bounded opaque fact identifying one schema
+// generation owned by a caller-provided SchemaWork Adapter.
+type SchemaSelection struct {
+	Owner      [32]byte
+	Generation uint64
+	Identity   [32]byte
+	Content    [32]byte
+	Bytes      uint64
+	Entries    uint64
+}
+
+// SchemaWork materializes and verifies an unselected schema generation. Its
+// implementation owns all schema-root paths and never receives the update
+// root, release floors, or other Module-owned state.
+type SchemaWork interface {
+	Plan(context.Context, uint64, string, SchemaSelection) (SchemaSelection, bool, error)
+	Prepare(context.Context, SchemaSelection) error
+	Inspect(context.Context, SchemaSelection) error
+	Discard(context.Context, SchemaSelection) error
+}
+
 // CandidateIdentity is the bounded value supplied to SelfTest.
 type CandidateIdentity struct {
 	Generation   uint64
@@ -53,6 +74,7 @@ type Request struct {
 	Artifact         []byte
 	Work             WorkControl
 	SelfTest         SelfTest
+	Schema           SchemaWork
 }
 
 // Result is the bounded terminal transaction result.
