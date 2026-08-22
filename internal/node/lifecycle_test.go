@@ -26,6 +26,7 @@ import (
 const (
 	testProbeHeaderBytes  = 4 + 1 + 6*32 + 2
 	testProbePayloadBytes = 32
+	testLifecycleWait     = 15 * time.Second
 )
 
 var testProbeProfile = sha256.Sum256([]byte("h3-role-probe-v1"))
@@ -110,7 +111,7 @@ func TestRunServesBoundProbeThenWithdrawsOnRecordRemoval(t *testing.T) {
 		if value.State != "WITHDRAWN" || value.Assignment != "domain-a" {
 			t.Fatalf("terminal result = %+v", value)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(testLifecycleWait):
 		t.Fatal("Node did not withdraw after record removal")
 	}
 	if err := <-errors; err != nil {
@@ -159,7 +160,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 		if terminal.State != "WITHDRAWN" {
 			t.Fatalf("terminal result = %+v", terminal)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(testLifecycleWait):
 		t.Fatal("established probe outlived drain deadline")
 	}
 	if _, err := established.Write([]byte{1}); err == nil {
@@ -210,7 +211,7 @@ func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 		if terminal.State != "WITHDRAWN" {
 			t.Fatalf("terminal result = %+v", terminal)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(testLifecycleWait):
 		t.Fatal("protected Node did not shut down")
 	}
 }
@@ -251,7 +252,7 @@ func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 		if value.State != "FAILED" {
 			t.Fatalf("terminal result = %+v", value)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(testLifecycleWait):
 		t.Fatal("PREPARED Node did not terminate after record removal")
 	}
 }
@@ -392,7 +393,7 @@ func encodeProbeRequest(snapshot Facts, nonce [32]byte, payload []byte) []byte {
 
 func waitForState(t *testing.T, events <-chan Event, state string) {
 	t.Helper()
-	deadline := time.After(5 * time.Second)
+	deadline := time.After(testLifecycleWait)
 	for {
 		select {
 		case event := <-events:

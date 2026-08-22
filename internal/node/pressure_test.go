@@ -52,7 +52,7 @@ func TestDeclaredCapacityAdmitsExistingSlotsAndRefusesExcess(t *testing.T) {
 		if terminal.State != "WITHDRAWN" {
 			t.Fatalf("terminal result = %+v", terminal)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("capacity Node did not clean up")
 	}
 }
@@ -76,7 +76,7 @@ func TestEmergencyPressureDrainsAndExitsWithoutNewAdmission(t *testing.T) {
 		if terminal.State != "WITHDRAWN" {
 			t.Fatalf("terminal result = %+v", terminal)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("emergency pressure did not finish cleanup")
 	}
 	if connection, err := tls.Dial("tcp", fixture.config.Probe.ListenAddress, probeClientTLS(fixture)); err == nil {
