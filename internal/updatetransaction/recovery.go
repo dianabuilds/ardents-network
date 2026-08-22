@@ -81,7 +81,22 @@ func recoverWithOperations(ctx context.Context, root string, ops cleanupOps) (Re
 	if releaseErr := lock.release(); releaseErr != nil {
 		return cleanupIncompleteResult(plan), fmt.Errorf("update transaction lock release: %w", releaseErr)
 	}
-	return planToResult(plan), nil
+	result := planToResult(plan)
+	return result, recoveryTerminalError(result)
+}
+
+func recoveryTerminalError(result Result) error {
+	switch result.Outcome {
+	case "application-networking-unverified":
+		return ErrSelfTestUnavailable
+	case "rolled-back":
+		return errRolledBack
+	case "rollback-refused":
+		return errRollbackRefused
+	case "repair-required":
+		return errRepairRequired
+	}
+	return nil
 }
 
 type recoveryRecords struct {

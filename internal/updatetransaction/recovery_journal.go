@@ -179,6 +179,11 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 				return validation, fmt.Errorf("%w: repair-required lacks rollback pending", errJournalInvalid)
 			}
 		}
+		if entry.State == stateRolledBack {
+			if len(validation.Entries) == 0 || validation.Entries[len(validation.Entries)-1].State != stateRollbackPending {
+				return validation, fmt.Errorf("%w: rolled-back lacks rollback pending", errJournalInvalid)
+			}
+		}
 		if state == stateReleaseAccepted {
 			transactionDeadline = entry.DeadlineUnix
 		} else if state == stateStopNewWork {

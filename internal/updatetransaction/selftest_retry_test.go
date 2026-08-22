@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/releasedecision"
 )
 
 type retrySelfTest struct {
@@ -16,6 +18,27 @@ type failedSelfTest struct{}
 
 func (failedSelfTest) Check(context.Context, CandidateIdentity) error {
 	return errors.New("local self-test failure")
+}
+
+func oracleRollbackDecision(t *testing.T, vector v0OracleVector) releasedecision.Decision {
+	t.Helper()
+	manifest := vector.Initial.ActivePayload.Manifest
+	floors := vector.Expected.ReleaseFloors
+	return releasedecision.Decision{Outcome: "release-accepted", Path: manifest.TargetPath, Length: int64(vector.Initial.ActivePayload.Length),
+		Digest: oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256)[:], Platform: manifest.Platform,
+		Architecture: manifest.Architecture, Environment: manifest.Environment, Network: manifest.Network,
+		ReleaseIdentity: manifest.ReleaseIdentity, ReleaseVersion: int64(manifest.ReleaseVersion), SourceRevision: manifest.SourceRevision,
+		BuildInputCommitment: manifest.BuildInputCommitment, BuildIdentity: manifest.BuildIdentity,
+		DependencyIdentity: manifest.DependencyIdentity, SBOMIdentity: manifest.SBOMIdentity,
+		AttestationPolicy: manifest.AttestationPolicy, Qualification: manifest.Qualification, BuildState: manifest.BuildState,
+		ProtocolPhase: manifest.ProtocolPhase, BuildSafety: "release-accepted", Protocol: "release-accepted",
+		ReferenceTime: oracleTime(t, manifest.ReferenceTime), BuildSafetyNoNewWorkAfter: oracleTime(t, manifest.BuildSafetyNoNewWorkAfter),
+		BuildSafetyTerminateAfter: oracleTime(t, manifest.BuildSafetyTerminateAfter), RootVersion: floors.RootVersion,
+		Floors: releasedecision.FloorSet{RootVersion: floors.RootVersion, RootDigest: oracleDecodeDigest(t, floors.RootSHA256)[:],
+			TimestampVersion: floors.TimestampVersion, TimestampDigest: oracleDecodeDigest(t, floors.TimestampSHA256)[:],
+			SnapshotVersion: floors.SnapshotVersion, SnapshotDigest: oracleDecodeDigest(t, floors.SnapshotSHA256)[:],
+			TargetsVersion: floors.TargetsVersion, TargetsDigest: oracleDecodeDigest(t, floors.TargetsSHA256)[:]},
+		CustodyNotice: manifest.CustodyNotice}
 }
 
 func (test *retrySelfTest) Check(context.Context, CandidateIdentity) error {
@@ -63,9 +86,39 @@ func TestSelfTestFailureBecomesRollbackPending(t *testing.T) {
 		t.Fatalf("rollback-pending journal = %v, %v", entries, readErr)
 	}
 	recovered, recoveryErr := Recover(context.Background(), root)
-	if recoveryErr != nil || recovered.Outcome != "rollback-refused" || recovered.State != "repair-required" ||
+	if !errors.Is(recoveryErr, errRollbackRefused) || recovered.Outcome != "rollback-refused" || recovered.State != "repair-required" ||
 		recovered.CurrentDigest != result.CurrentDigest || recovered.RollbackDigest != result.RollbackDigest {
 		t.Fatalf("Recover = %+v, %v", recovered, recoveryErr)
+	}
+}
+
+func TestRollbackToVerifiedPredecessor(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	work := &oracleWorkControl{}
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1", Decision: oracleAcceptedDecision(t, vector),
+		Artifact: candidate, Work: work, SelfTest: failedSelfTest{}}
+	if _, err := Apply(context.Background(), request); err == nil {
+		t.Fatal("local self-test failure was accepted")
+	}
+	request.RollbackDecision = oracleRollbackDecision(t, vector)
+	request.SelfTest = oraclePassSelfTest{}
+	result, err := Apply(context.Background(), request)
+	if !errors.Is(err, errRolledBack) || result.Outcome != "rolled-back" || result.State != "rolled-back" ||
+		result.CurrentDigest != *oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256) || result.RollbackDigest != [32]byte{} ||
+		result.SafeNotice != "update rolled back" || work.stopCalls != 1 || work.drainCalls != 1 {
+		t.Fatalf("rollback Apply = %+v, %v; work=%#v", result, err, work)
+	}
+	if _, statErr := os.Lstat(filepath.Join(root, "generations", "1")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("failed candidate remains: %v", statErr)
+	}
+	recovered, recoveryErr := Recover(context.Background(), root)
+	if !errors.Is(recoveryErr, errRolledBack) || recovered != result {
+		t.Fatalf("rollback Recover = %+v, %v; want %+v", recovered, recoveryErr, result)
 	}
 }
 

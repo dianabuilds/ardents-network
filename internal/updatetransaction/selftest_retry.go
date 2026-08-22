@@ -107,14 +107,35 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 	}
 	if request.RollbackDecision.Outcome != "" {
 		if rollbackErr := validateRollbackDecision(store, request, selection); rollbackErr != nil {
-			trace := &tracer{store: store, request: request, artifact: artifact, manifest: manifest,
-				predecessor: sha256.Sum256(validation.RawEntries[8])}
+			trace := &tracer{store: store, request: request, start: time.Now(), artifact: artifact, manifest: manifest,
+				predecessor: sha256.Sum256(validation.RawEntries[8]), elapsedOffset: validation.Entries[8].ElapsedNanos}
 			if recordErr := trace.record(context.Background(), "12-repair-required", stateRepairRequired, adapterNotCalled); recordErr != nil {
 				return transactionInvalidResult(request.Generation), true, errors.Join(rollbackErr, recordErr, store.release())
 			}
 			return rollbackRefusedResult(request.Generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
 				errors.Join(rollbackErr, errRollbackRefused, store.release())
 		}
+		trace := &tracer{store: store, request: request, start: time.Now(), artifact: artifact, manifest: manifest,
+			predecessor: sha256.Sum256(validation.RawEntries[8]), elapsedOffset: validation.Entries[8].ElapsedNanos}
+		if rollbackErr := store.rollbackToPredecessor(request.Generation, *selection.Rollback); rollbackErr != nil {
+			return transactionInvalidResult(request.Generation), true, errors.Join(rollbackErr, store.release())
+		}
+		callErr := callBounded(context.Background(), trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
+			return request.SelfTest.Check(callCtx, rollbackIdentity(request, *selection.Rollback))
+		})
+		if callErr != nil {
+			recordErr := trace.record(context.Background(), "12-repair-required", stateRepairRequired, adapterFailed)
+			if recordErr != nil {
+				return transactionInvalidResult(request.Generation), true, errors.Join(callErr, recordErr, store.release())
+			}
+			return repairRequiredResult(request.Generation, selection.Rollback.Artifact, inspection.currentCustody), true,
+				errors.Join(callErr, errRepairRequired, store.release())
+		}
+		if recordErr := trace.record(context.Background(), "11-rolled-back", stateRolledBack, adapterSuccess); recordErr != nil {
+			return transactionInvalidResult(request.Generation), true, errors.Join(recordErr, store.release())
+		}
+		return rolledBackResult(request.Generation, selection.Rollback.Artifact, inspection.currentCustody), true,
+			errors.Join(errRolledBack, store.release())
 	}
 	return selfTestFailedResult(request.Generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
 		errors.Join(errRollbackPending, store.release())
@@ -159,4 +180,17 @@ func rollbackRefusedResult(generation uint64, current, rollback [32]byte, custod
 	return Result{Outcome: "rollback-refused", State: "repair-required", Generation: generation,
 		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
 		SafeNotice: "update rollback refused", CustodyNotice: custody}
+}
+
+var errRolledBack = errors.New("update rolled back")
+var errRepairRequired = errors.New("update repair required")
+
+func rolledBackResult(generation uint64, current [32]byte, custody string) Result {
+	return Result{Outcome: "rolled-back", State: "rolled-back", Generation: generation, CurrentDigest: current,
+		StagingPresent: false, SafeNotice: "update rolled back", CustodyNotice: custody}
+}
+
+func repairRequiredResult(generation uint64, current [32]byte, custody string) Result {
+	return Result{Outcome: "repair-required", State: "repair-required", Generation: generation, CurrentDigest: current,
+		StagingPresent: false, SafeNotice: "update repair required", CustodyNotice: custody}
 }

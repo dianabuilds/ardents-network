@@ -232,6 +232,9 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 			}
 		}
 	}
+	if lastState == byte(stateRolledBack) && !hasGenerations && !hasStaging && !hasTemporaryStaging {
+		return planRolledBack(facts, transaction, custodyNotice)
+	}
 	if hasGenerations {
 		if lastState == byte(stateRepairRequired) {
 			return planRollbackRefused(facts, transaction, custodyNotice)

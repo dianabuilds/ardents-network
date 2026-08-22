@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -29,14 +28,15 @@ var errResourceDenied = errors.New("update resource envelope is unavailable")
 var errActiveWorkUnsupported = errors.New("update active work exceeds bound")
 
 type tracer struct {
-	store       *ownedStore
-	request     Request
-	start       time.Time
-	artifact    [32]byte
-	manifest    [32]byte
-	predecessor [32]byte
-	callerLimit time.Time
-	control     *applyInterruptionControl
+	store         *ownedStore
+	request       Request
+	start         time.Time
+	artifact      [32]byte
+	manifest      [32]byte
+	predecessor   [32]byte
+	callerLimit   time.Time
+	elapsedOffset uint64
+	control       *applyInterruptionControl
 }
 
 // Apply executes one complete accepted offline update transaction. It
@@ -403,43 +403,6 @@ func occupiedStagingResult(request Request, root string) (Result, bool, error) {
 // A non-nil control that signals a stop via StopBefore returns a sentinel
 // cancellation error so the caller preserves the bytes on disk and
 // releases only the lock.
-func (trace *tracer) record(ctx context.Context, name string, state transactionState, adapter adapterResult) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if err := applyCheckpoint(trace.control, true, name); err != nil {
-		return err
-	}
-	entry := journalEntry{State: state, Generation: trace.request.Generation,
-		Predecessor: trace.predecessor, ArtifactDigest: trace.artifact,
-		ManifestCommitment: trace.manifest, AdapterResult: adapter,
-		Observation: byte(state), ElapsedNanos: uint64(time.Since(trace.start)),
-		DeadlineUnix: trace.journalDeadline(state).Unix()}
-	raw, err := trace.store.writeEntry(entry)
-	if err != nil {
-		return fmt.Errorf("record %s: %w", name, err)
-	}
-	trace.predecessor = sha256.Sum256(raw)
-	if checkpointErr := applyCheckpoint(trace.control, false, name); checkpointErr != nil {
-		return checkpointErr
-	}
-	return nil
-}
-
-func applyCheckpoint(control *applyInterruptionControl, before bool, name string) error {
-	if control == nil {
-		return nil
-	}
-	stop := control.StopAfter
-	if before {
-		stop = control.StopBefore
-	}
-	if stop != nil && stop(name) {
-		return errApplyInterrupted
-	}
-	return nil
-}
-
 func committedRequest(store *ownedStore, inspection rootInspection, request Request,
 	artifact, manifest [32]byte) (Result, bool) {
 	selection := inspection.selection
