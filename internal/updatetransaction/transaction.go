@@ -231,6 +231,9 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	current := inspectedTuple{Generation: request.Generation, Length: uint64(len(request.Artifact)), Artifact: artifact, Manifest: manifestDigest}
 	selection := currentSelection{Transaction: request.Generation, Current: current, Rollback: &inspection.selection.Current}
 	if err := store.activate(request.Generation, selection, inspection.predecessor.CurrentRecordDigest, control); err != nil {
+		if isActivationBusy(err) {
+			return activationBusyFailure(store, request, inspection, err)
+		}
 		return applyFailure(store, request, "draining", false, err)
 	}
 	if err := trace.record(ctx, "07-activated", stateActivated, adapterNotCalled); err != nil {
@@ -343,6 +346,21 @@ func resourceDeniedResult(request Request) Result {
 func activationUnsupportedResult(request Request) Result {
 	return Result{Outcome: "activation-unsupported", State: "release-accepted", Generation: request.Generation,
 		StagingPresent: false, SafeNotice: "update storage unsupported"}
+}
+
+// activationBusyFailure preserves the state-six recovery evidence after a
+// platform contention refusal. In particular, it neither retries replacement
+// nor removes a generation that may have been durably published immediately
+// before Windows rejected the current-record replace. Recover owns that exact
+// normalization under the permanent lock.
+func activationBusyFailure(store *ownedStore, request Request, inspection rootInspection, cause error) (Result, error) {
+	result := Result{Outcome: "resource-denied", State: "busy", Generation: request.Generation,
+		CurrentDigest: inspection.selection.Current.Artifact, StagingPresent: false,
+		SafeNotice: "update activation busy", CustodyNotice: inspection.currentCustody}
+	if inspection.selection.Rollback != nil {
+		result.RollbackDigest = inspection.selection.Rollback.Artifact
+	}
+	return result, errors.Join(cause, store.release())
 }
 
 // occupiedStagingResult classifies an already-present staging candidate using
