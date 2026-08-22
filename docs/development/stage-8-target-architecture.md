@@ -48,7 +48,7 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | `route/webtunnel` | Pinned candidate child, local front connection, temporary root, join, and cleanup. | Conditional concrete Route/Entry Adapter replacing `camouflage`. | DA-06; otherwise delete rather than rename. |
 | `node` | One Contributor duty admission, quarantine, listener/probe, protect/drain/withdraw, and joined cleanup. | Fold `node/probe`; no State-root or assignment authority. | D02 and selected Resource/platform contract. |
 | `release` | Verified metadata result, roots/floors/archive, lease, and opaque update authorization. | Own the release verifier and keep floor persistence private. | DA-01 before D06 mutation. |
-| `update` | Staging, predecessor/rollback, activation, self-test, journal, recovery, and cleanup. | Deepen `updatetransaction`; consumes unforgeable Release authorization. | DA-01 and DA-09 before D07 mutation. |
+| `update` | Staging, predecessor/rollback, technical-tracer activation/self-test, journal, recovery, and cleanup. | Deepen `updatetransaction`; consumes unforgeable Release authorization and owns no Custody state. | R-064 limits M2 to one offline H3 tracer; a supported lifecycle reopens DA-09. |
 | `custody` | Vault/Recovery Bundle, unlock/export/restore/reconcile, revocation, and signing watermark. | New Module; secrets never enter Release/Update/diagnostics. | DA-08 and DA-09; no implementation by implication. |
 
 ## Intended dependency and trust direction
@@ -81,7 +81,8 @@ remain concrete Adapters at their consumer boundary.
 ## Commands and evidence
 
 The retained end state has thin `ardents` and `ardents-node` commands. A third
-bootstrap/update command exists only if DA-09 accepts a supported lifecycle.
+bootstrap/update command exists only if DA-09 accepts a supported lifecycle;
+R-064 does not do so.
 Current name, bridge, route, service, release, publish-app, stream-app, and
 laboratory commands are not compatibility promises. M13 classifies actual
 automation observers before removing or replacing them.
@@ -101,7 +102,7 @@ retirement condition; all other runners and fixtures are deleted.
 | D03 Entry and D04 naming roots | Migrate only with replay, monotonicity, recovery, tamper, and proof rules preserved. | DA-03 through DA-07 as applicable. |
 | D05 publication/Instance hand-off | One generation/publisher owner with explicit drain/cutover. | Publication observer inventory and DA-10. |
 | D06 Release floors | Security-forward-only: never decrease trusted roots or floors. | DA-01. |
-| D07 update transaction and D08 custody envelope | No mutation until real activation/recovery or custody lifecycle is selected. | DA-09 (and DA-08 for platform custody). |
+| D07 update transaction and D08 custody envelope | D07 may retain only the R-064 bounded offline technical tracer; no supported activation/recovery mutation. D08 has no mutation until a custody lifecycle is selected. | R-064 for M2; DA-09 (and DA-08 for platform custody) reopens for any product lifecycle. |
 | W01-W04 peer-visible, cryptographic, Route, naming, and WebTunnel bytes | Retain semantic contract only; choose `read/migrate`, `break`, or `delete` per observer. | DA-05 through DA-07 and DA-10. |
 | Q01-Q03 evidence/test/document records | Keep provenance separately from current product truth; only accepted claim evidence becomes Qualification. | S8.2 profile policy and M14 retirement ledger. |
 
@@ -129,7 +130,7 @@ are not Go packages and do not represent a retained test surface.
 | `cmd/ardents-name` | Remove current command shape; retain only selected naming/resolution operator journey. | M5/M6/M13, subject to DA-03/04/07/10. |
 | `cmd/ardents-bridge`, `cmd/ardents-route` | Remove current tracer shapes; retain selected Entry/Route operator journey only. | M7/M8/M13, subject to DA-06/10. |
 | `cmd/ardents-service`, `cmd/ardents-publish-app`, `cmd/ardents-stream-app` | Remove tracer commands; retain a real Endpoint/Application operator surface only if DA-10 names its observer. | M9/M10/M13. |
-| `cmd/ardents-release` | Retire as an H3 product command; Release/Update remain technical inputs only until DA-09 changes scope. | M1/M2/M13, subject to DA-01/09. |
+| `cmd/ardents-release` | Retire as an H3 product command; its sole retained C2 V0 observer is a bounded R-064 technical tracer through M13. | M1/M2/M13, subject to DA-01/R-064 and DA-10. |
 | `cmd/blocked-entry-lab`, `cmd/blocked-entry-verify-lab`, `cmd/carrier-lab`, `cmd/named-site-lab`, `cmd/stage6-evidence-lab`, `cmd/stage6-verify-lab` | Historical reproduction with a named retained obligation, or delete the runner while retaining immutable provenance. | M14, subject to DA-11. |
 | `internal/applicationipc`, `internal/serviceendpoint` | Transfer Application/admin process boundary and composition to Broker/Publication/Endpoint. | M9/M10, subject to DA-08/10. |
 | `internal/serviceconn` | Transfer stream behavior to `service/connection`; remove action/evidence/static-plan unions. | M9, subject to DA-06/10. |
@@ -145,7 +146,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/resource` | Retain/deepen as the sole shared resource coordinator; Linux profiles only and fail closed elsewhere. | M4, R-062 H1 accepted. |
 | `internal/route`, `internal/routeplan` | Consolidate route selection, attachment lifetime, and process cleanup under `route`. | M8, subject to DA-06. |
 | `internal/release` | Own release trust/root/floor verification behind `Open`, `Evaluate`, and `Close`. | M1, subject to DA-01. |
-| `internal/updatetransaction` | Transfer transaction/recovery to `update` only after lifecycle scope and Release authority stabilize. | M2, subject to DA-01/09. |
+| `internal/updatetransaction` | Transfer the bounded offline transaction/recovery tracer to `update`; do not add a supported activator, installer, or Custody writer. | M2, subject to DA-01/R-064. |
 | `internal/planfile` | Replace with command/owner-local bounded input decoders; do not retain a generic plan abstraction. | M3/M8/M9/M11/M13 as each consumer moves. |
 | `internal/streamworkload` | Retain only a named test/Qualification workload; otherwise delete. | M9/M14. |
 | `internal/architecture` | Retain factual graph/policy gate; remove historical receipts as their truth moves to current owners. | M0/M14. |
