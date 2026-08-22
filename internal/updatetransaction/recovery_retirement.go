@@ -32,6 +32,15 @@ func planRollbackRetirement(facts inventoryResult, custody string) (recoveryPlan
 	if generationByID(facts.Generations, previous.Current.Generation) == nil {
 		return recoveryPlan{}, fmt.Errorf("%w: retirement current generation missing", errPlanInvalid)
 	}
+	if len(facts.CurrentTemps) > 1 {
+		return recoveryPlan{}, fmt.Errorf("%w: multiple retirement current temps", errPlanInvalid)
+	}
+	if len(facts.CurrentTemps) == 1 {
+		temporary, tempErr := decodeCurrent(facts.CurrentTemps[0].Bytes)
+		if tempErr != nil || temporary.Transaction != previous.Transaction || temporary.Rollback != nil || temporary.Current != previous.Current {
+			return recoveryPlan{}, fmt.Errorf("%w: retirement current temp does not bind marker", errPlanInvalid)
+		}
+	}
 	retired := generationByID(facts.Generations, previous.Rollback.Generation)
 	if oldCurrent && retired == nil {
 		return recoveryPlan{}, fmt.Errorf("%w: retirement rollback generation missing", errPlanInvalid)
@@ -41,6 +50,9 @@ func planRollbackRetirement(facts inventoryResult, custody string) (recoveryPlan
 	}
 	plan := recoveryPlan{Row: "R-retire", Outcome: "recovered", State: "idle", Generation: previous.Transaction,
 		CurrentDigest: previous.Current.Artifact, SafeNotice: "update interrupted", CustodyNotice: custody}
+	if len(facts.CurrentTemps) == 1 {
+		plan.Operations = append(plan.Operations, planOperation{Kind: opRemoveFile, Path: facts.CurrentTemps[0].Name})
+	}
 	if oldCurrent {
 		raw, encodeErr := encodeCurrent(currentSelection{Transaction: previous.Transaction, Current: previous.Current})
 		if encodeErr != nil {

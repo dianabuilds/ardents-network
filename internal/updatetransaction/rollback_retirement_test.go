@@ -91,3 +91,47 @@ func TestRecoverCompletesBoundedRollbackRetirement(t *testing.T) {
 		t.Fatalf("retired current = %+v, %v", selection, err)
 	}
 }
+
+func TestRecoverRemovesBoundRetirementCurrentTemp(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
+		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: &oracleWorkControl{}, SelfTest: oraclePassSelfTest{}}
+	if _, err := Apply(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	previous, err := os.ReadFile(filepath.Join(root, "current"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker, err := encodeRollbackRetirement(previous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection, err := decodeCurrent(previous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutRollback, err := encodeCurrent(currentSelection{Transaction: selection.Transaction, Current: selection.Current})
+	if err != nil {
+		t.Fatal(err)
+	}
+	temp := ".current.0123456789abcdef.tmp"
+	if err := os.WriteFile(filepath.Join(root, rollbackRetireName), marker, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, temp), withoutRollback, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, recoverErr := Recover(context.Background(), root)
+	if recoverErr != nil || result.Outcome != "recovered" || result.State != "idle" {
+		t.Fatalf("Recover = %+v, %v", result, recoverErr)
+	}
+	if _, statErr := os.Lstat(filepath.Join(root, temp)); !os.IsNotExist(statErr) {
+		t.Fatalf("retirement recovery retained current temp: %v", statErr)
+	}
+}
