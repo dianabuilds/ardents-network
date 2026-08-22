@@ -140,6 +140,11 @@ gives F013--F022 their current disposition: the entry contains no relevant
 production delta, so all ten prepared findings remain live design inputs, with
 F014 an explicit authority conflict that must be decided before state repair.
 
+The source-bound [naming and private-resolution delta review](stage-8-g2-naming-delta-review.md)
+gives F023--F033 their current disposition. No relevant production delta exists;
+all eleven findings remain live inputs, with F027 and F032 requiring accepted
+research/contract decisions before their respective mutations.
+
 ## Open-decision ledger for S8.1
 
 1. Select `continue`, `narrow`, `redesign`, or `stop` for the Product Core and
