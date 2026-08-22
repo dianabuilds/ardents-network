@@ -247,7 +247,15 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 			return applyFailure(store, request, "self-testing", false, errors.Join(err, recordErr))
 		}
 		recordErr := trace.record(ctx, "08-self-testing", stateSelfTesting, adapterFailed)
-		return applyFailure(store, request, "self-testing", false, errors.Join(err, recordErr))
+		if recordErr != nil {
+			return applyFailure(store, request, "self-testing", false, errors.Join(err, recordErr))
+		}
+		pendingErr := trace.record(context.Background(), "10-rollback-pending", stateRollbackPending, adapterNotCalled)
+		if pendingErr != nil {
+			return applyFailure(store, request, "self-testing", false, errors.Join(err, pendingErr))
+		}
+		result := selfTestFailedResult(request.Generation, artifact, inspection.selection.Current.Artifact, inspection.currentCustody)
+		return result, errors.Join(err, store.release())
 	}
 	if err := trace.record(ctx, "08-self-testing", stateSelfTesting, adapterSuccess); err != nil {
 		return applyFailure(store, request, "self-testing", false, err)

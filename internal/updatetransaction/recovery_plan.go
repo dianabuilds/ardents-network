@@ -233,6 +233,9 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 		}
 	}
 	if hasGenerations {
+		if lastState == byte(stateRollbackPending) {
+			return planRollbackPending(facts, transaction, custodyNotice)
+		}
 		if lastState < byte(stateDraining) {
 			return recoveryPlan{}, fmt.Errorf("%w: candidate published before draining", errPlanInvalid)
 		}
@@ -447,6 +450,12 @@ func stateNameForByte(state byte) string {
 		return "self-testing"
 	case stateCommitted:
 		return "committed"
+	case stateRollbackPending:
+		return "rollback-pending"
+	case stateRolledBack:
+		return "rolled-back"
+	case stateRepairRequired:
+		return "repair-required"
 	}
 	return "invalid"
 }

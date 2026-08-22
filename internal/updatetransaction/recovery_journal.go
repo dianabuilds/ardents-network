@@ -81,6 +81,12 @@ func journalStateFromName(name string) (byte, bool) {
 		return 8, true
 	case "09-committed.entry":
 		return 9, true
+	case "10-rollback-pending.entry":
+		return 10, true
+	case "11-rolled-back.entry":
+		return 11, true
+	case "12-repair-required.entry":
+		return 12, true
 	}
 	return 0, false
 }
@@ -106,14 +112,25 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 	var elapsed uint64
 	var hasMonotonic bool
 	var transactionDeadline int64
-	for state := transactionState(1); state <= stateCommitted; state++ {
+	for state := transactionState(1); state <= stateRepairRequired; state++ {
 		name, err := journalFileName(state)
 		if err != nil {
 			return validation, fmt.Errorf("%w: name %d: %v", errJournalInvalid, state, err)
 		}
 		raw, ok := raws[name]
 		if !ok {
-			break
+			if state == stateCommitted {
+				pendingName, pendingErr := journalFileName(stateRollbackPending)
+				pending, pendingOK := raws[pendingName]
+				if pendingErr == nil && pendingOK && len(validation.Entries) > 0 &&
+					validation.Entries[len(validation.Entries)-1].State == stateSelfTesting &&
+					validation.Entries[len(validation.Entries)-1].AdapterResult == adapterFailed {
+					state, name, raw, ok = stateRollbackPending, pendingName, pending, true
+				}
+			}
+			if !ok {
+				break
+			}
 		}
 		entry, decodeErr := decodeJournalEntry(raw.Bytes)
 		if decodeErr != nil {
@@ -143,6 +160,12 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 				return validation, fmt.Errorf("%w: committed retry lacks unavailable self-test", errJournalInvalid)
 			}
 		}
+		if entry.State == stateRollbackPending {
+			if len(validation.Entries) == 0 || validation.Entries[len(validation.Entries)-1].State != stateSelfTesting ||
+				validation.Entries[len(validation.Entries)-1].AdapterResult != adapterFailed {
+				return validation, fmt.Errorf("%w: rollback pending lacks failed self-test", errJournalInvalid)
+			}
+		}
 		if state == stateReleaseAccepted {
 			transactionDeadline = entry.DeadlineUnix
 		} else if state == stateStopNewWork {
@@ -164,7 +187,11 @@ func validateJournal(transaction uint64, raws journalRawEntries, predecessorComm
 		elapsed = entry.ElapsedNanos
 		hasMonotonic = true
 	}
-	for state := transactionState(len(validation.Entries) + 1); state <= stateCommitted; state++ {
+	lastState := transactionState(0)
+	if len(validation.Entries) > 0 {
+		lastState = validation.Entries[len(validation.Entries)-1].State
+	}
+	for state := lastState + 1; state <= stateRepairRequired; state++ {
 		name, _ := journalFileName(state)
 		if raw, ok := raws[name]; ok && raw.state != 0 {
 			return validation, fmt.Errorf("%w: gap in chain %s present without lower states", errJournalInvalid, name)
@@ -197,6 +224,12 @@ func journalAdapterValid(state transactionState, result adapterResult) bool {
 		return result == adapterNotCalled || result == adapterUnavailable
 	case stateCommitted:
 		return result == adapterNotCalled || result == adapterSuccess
+	case stateRollbackPending:
+		return result == adapterNotCalled || result == adapterFailed
+	case stateRolledBack:
+		return result == adapterSuccess
+	case stateRepairRequired:
+		return result == adapterNotCalled || result == adapterFailed
 	default:
 		return result == adapterNotCalled
 	}

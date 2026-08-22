@@ -12,12 +12,49 @@ type retrySelfTest struct {
 	calls uint64
 }
 
+type failedSelfTest struct{}
+
+func (failedSelfTest) Check(context.Context, CandidateIdentity) error {
+	return errors.New("local self-test failure")
+}
+
 func (test *retrySelfTest) Check(context.Context, CandidateIdentity) error {
 	test.calls++
 	if test.calls == 1 {
 		return ErrSelfTestUnavailable
 	}
 	return nil
+}
+
+func TestSelfTestFailureBecomesRollbackPending(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "update")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vector := oracleBootstrapV0(t, root)
+	candidate := oracleReadExact(t, oracleCandidatePath, vector.Candidate.Length, vector.Candidate.SHA256)
+	work := &oracleWorkControl{}
+	request := Request{UpdateRoot: root, Generation: 1, SchemaPlan: "no-op-v1",
+		Decision: oracleAcceptedDecision(t, vector), Artifact: candidate, Work: work, SelfTest: failedSelfTest{}}
+	result, err := Apply(context.Background(), request)
+	if err == nil || result.Outcome != "self-test-failed" || result.State != "rollback-pending" ||
+		result.Generation != 1 || result.CurrentDigest != *oracleDecodeDigest(t, vector.Candidate.SHA256) ||
+		result.RollbackDigest != *oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256) || result.StagingPresent ||
+		result.SafeNotice != "update self-test failed" {
+		t.Fatalf("Apply = %+v, %v", result, err)
+	}
+	if work.stopCalls != 1 || work.drainCalls != 1 {
+		t.Fatalf("work calls = %#v", work)
+	}
+	entries, readErr := os.ReadDir(filepath.Join(root, "transactions", "1", "journal"))
+	if readErr != nil || len(entries) != 9 || entries[8].Name() != "10-rollback-pending.entry" {
+		t.Fatalf("rollback-pending journal = %v, %v", entries, readErr)
+	}
+	recovered, recoveryErr := Recover(context.Background(), root)
+	if recoveryErr != nil || recovered.Outcome != "recovered" || recovered.State != "rollback-pending" ||
+		recovered.CurrentDigest != result.CurrentDigest || recovered.RollbackDigest != result.RollbackDigest {
+		t.Fatalf("Recover = %+v, %v", recovered, recoveryErr)
+	}
 }
 
 func TestSelfTestUnavailableRetry(t *testing.T) {

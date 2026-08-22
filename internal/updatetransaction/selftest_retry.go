@@ -62,3 +62,9 @@ func networkingUnverifiedResult(generation uint64, current, rollback [32]byte, c
 		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
 		SafeNotice: "update networking unverified", CustodyNotice: custody}
 }
+
+func selfTestFailedResult(generation uint64, current, rollback [32]byte, custody string) Result {
+	return Result{Outcome: "self-test-failed", State: "rollback-pending", Generation: generation,
+		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
+		SafeNotice: "update self-test failed", CustodyNotice: custody}
+}

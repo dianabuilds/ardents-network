@@ -21,6 +21,9 @@ const (
 	stateActivated
 	stateSelfTesting
 	stateCommitted
+	stateRollbackPending
+	stateRolledBack
+	stateRepairRequired
 )
 
 type adapterResult byte
@@ -79,7 +82,7 @@ func decodeRecord(raw []byte, kind byte, maximum int) ([]byte, error) {
 }
 
 func encodeJournalEntry(entry journalEntry) ([]byte, error) {
-	if entry.State < stateReleaseAccepted || entry.State > stateCommitted ||
+	if entry.State < stateReleaseAccepted || entry.State > stateRepairRequired ||
 		entry.AdapterResult > adapterFailed || entry.Observation != byte(entry.State) ||
 		entry.DeadlineUnix == 0 {
 		return nil, errRecordInvalid
@@ -112,7 +115,7 @@ func decodeJournalEntry(raw []byte) (journalEntry, error) {
 	entry.Observation = body[106]
 	entry.ElapsedNanos = binary.BigEndian.Uint64(body[107:115])
 	entry.DeadlineUnix = int64(binary.BigEndian.Uint64(body[115:123]))
-	if entry.State < stateReleaseAccepted || entry.State > stateCommitted ||
+	if entry.State < stateReleaseAccepted || entry.State > stateRepairRequired ||
 		entry.AdapterResult > adapterFailed || entry.Observation != byte(entry.State) ||
 		entry.DeadlineUnix == 0 {
 		return journalEntry{}, errRecordInvalid
@@ -148,7 +151,8 @@ func journalFileName(state transactionState) (string, error) {
 	names := [...]string{"", "01-release-accepted.entry", "02-artifact-verified.entry",
 		"03-staged.entry", "04-rollback-reserved.entry", "05-stop-new-work.entry",
 		"06-draining.entry", "07-activated.entry", "08-self-testing.entry",
-		"09-committed.entry"}
+		"09-committed.entry", "10-rollback-pending.entry", "11-rolled-back.entry",
+		"12-repair-required.entry"}
 	if int(state) >= len(names) || state == 0 {
 		return "", errRecordInvalid
 	}

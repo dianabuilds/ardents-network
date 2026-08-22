@@ -230,7 +230,7 @@ func (store *ownedStore) cleanup(generation uint64) error {
 	paths := []string{filepath.Join(staging, "artifact"), filepath.Join(staging, "manifest.bin"), staging,
 		filepath.Join(temporary, "artifact"), filepath.Join(temporary, "manifest.bin"), temporary}
 	var result error
-	for state := stateReleaseAccepted; state <= stateCommitted; state++ {
+	for state := stateReleaseAccepted; state <= stateRepairRequired; state++ {
 		name, err := journalFileName(state)
 		result = errors.Join(result, err)
 		paths = append(paths, filepath.Join(transaction, "journal", name))
