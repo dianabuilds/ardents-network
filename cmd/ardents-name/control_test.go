@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -65,7 +65,7 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 	}
 	store, materialization := commandRecordStore(t, network, signed)
 	bootSecret := [32]byte{43}
-	admission, err := nameadmission.NewAdmission([32]byte{2}, network, 1, bootSecret)
+	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, bootSecret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 
 type commandControlAuthority struct{}
 
-func (commandControlAuthority) Apply(raw []byte, _ nameadmission.Proof) (string, uint64, uint64, []byte) {
+func (commandControlAuthority) Apply(raw []byte, _ namespace.Proof) (string, uint64, uint64, []byte) {
 	var operation commandControlOperation
 	if json.Unmarshal(raw, &operation) != nil {
 		return "denied", 0, 0, nil

@@ -17,12 +17,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -46,7 +46,7 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	admission, err := nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
+	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/openpcc/ohttp"
 )
 
@@ -36,7 +36,7 @@ type GatewayConfig struct {
 }
 
 type controlAuthority interface {
-	Apply([]byte, nameadmission.Proof) (string, uint64, uint64, []byte)
+	Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
 }
 
 type gatewayState struct {
@@ -45,7 +45,7 @@ type gatewayState struct {
 	policy      namestore.Policy
 	minimum     uint64
 	epochDigest [32]byte
-	admission   *nameadmission.Admission
+	admission   *namespace.Admission
 	authority   controlAuthority
 }
 
@@ -59,7 +59,7 @@ type Selection struct {
 	ConnectionRendezvousNodeID [32]byte
 	ExcludedIdentities         [][32]byte
 	ExcludedFamilies           []string
-	AdmissionChallenge         nameadmission.Challenge
+	AdmissionChallenge         namespace.Challenge
 }
 
 // controlOperation is the exact naming-side view after OHTTP decapsulation.
@@ -137,7 +137,7 @@ type plan struct {
 	GatewayKeyConfigDigest [32]byte
 	ExcludedIdentities     [][32]byte
 	ExcludedFamilies       []string
-	AdmissionChallenge     nameadmission.Challenge
+	AdmissionChallenge     namespace.Challenge
 	MaterializationPolicy  namestore.Policy
 }
 
@@ -220,5 +220,5 @@ type controlPlan struct {
 	Relay              position
 	Gateway            position
 	GatewayKeyConfig   []byte
-	AdmissionChallenge nameadmission.Challenge
+	AdmissionChallenge namespace.Challenge
 }

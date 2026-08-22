@@ -9,13 +9,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type controlExchangeEvidence struct {
 	Isolation [32]byte
-	Admission nameadmission.Proof
+	Admission namespace.Proof
 	Envelope  []byte
 	Operation controlOperation
 	Result    controlExecutionResult
@@ -63,7 +63,7 @@ func controlShapeDigest(operation controlOperation) [32]byte {
 	return sha256.Sum256(append([]byte("ardents-name-control-operation-v1\x00"), raw...))
 }
 
-func executeControlOperations(fixture resolutionFixture, gate *nameadmission.Admission,
+func executeControlOperations(fixture resolutionFixture, gate *namespace.Admission,
 	operations []controlOperation, now time.Time,
 ) ([][32]byte, []controlExecutionResult, error) {
 	isolations := make([][32]byte, len(operations))

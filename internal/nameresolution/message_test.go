@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestMessageCodecRejectsNonCanonicalMutations(t *testing.T) {
 	t.Parallel()
 	request := resolutionRequest{network: [32]byte{1}, nonce: [32]byte{2},
 		deadline: time.Unix(1_800_000_000, 0).Add(time.Second).UnixNano(), name: "alice"}
-	gate, err := nameadmission.NewAdmission([32]byte{3}, request.network, 1, [32]byte{4})
+	gate, err := namespace.NewAdmission([32]byte{3}, request.network, 1, [32]byte{4})
 	if err != nil {
 		t.Fatal(err)
 	}

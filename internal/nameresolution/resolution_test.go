@@ -18,12 +18,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/openpcc/ohttp"
 )
@@ -218,7 +218,7 @@ type resolutionFixture struct {
 	relayEvidence   func() ([][]byte, []string)
 	roleEvidence    func() ([]gatewayRoleView, []relayRoleView)
 	setTamper       func(bool)
-	admission       *nameadmission.Admission
+	admission       *namespace.Admission
 }
 
 func newResolutionFixture(t *testing.T) resolutionFixture {
@@ -226,7 +226,7 @@ func newResolutionFixture(t *testing.T) resolutionFixture {
 }
 
 func newResolutionFixtureWithControl(t *testing.T, control interface {
-	Apply([]byte, nameadmission.Proof) (string, uint64, uint64, []byte)
+	Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
 },
 ) resolutionFixture {
 	t.Helper()
@@ -248,7 +248,7 @@ func newResolutionFixtureWithControl(t *testing.T, control interface {
 	if err != nil {
 		t.Fatal(err)
 	}
-	admission, err := nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
+	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
 	if err != nil {
 		t.Fatal(err)
 	}

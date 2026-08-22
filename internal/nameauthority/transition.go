@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const transitionDomain = "ardents-name-authority-transition-v1"
@@ -43,7 +43,7 @@ func TransitionDigest(network [32]byte, current namelease.Record, op namelease.O
 
 // ApplyAdmittedTransition verifies anonymous admission and the operation's
 // predecessor or threshold authorization before applying it.
-func ApplyAdmittedTransition(admission *nameadmission.Admission, admissionProof nameadmission.Proof,
+func ApplyAdmittedTransition(admission *namespace.Admission, admissionProof namespace.Proof,
 	admissionAt int64, admissionDigest [32]byte, network [32]byte, current namelease.Record, op namelease.Op,
 	proof []byte, now int64, policy namelease.Policy,
 ) (namelease.Record, error) {

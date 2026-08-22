@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
-func encodeAdmissionProof(proof nameadmission.Proof) ([]byte, error) {
+func encodeAdmissionProof(proof namespace.Proof) ([]byte, error) {
 	challenge := proof.Challenge
 	if challenge.Node == [32]byte{} || challenge.Network == [32]byte{} || challenge.Epoch == 0 ||
 		challenge.Surface != "resolution" || len(challenge.Surface) > 255 || challenge.OperationDigest == [32]byte{} ||
@@ -49,12 +49,12 @@ func resolutionAdmissionDigest(network [32]byte, name string, deadline int64) ([
 	return sha256.Sum256(out), nil
 }
 
-func decodeAdmissionProof(raw []byte) (nameadmission.Proof, error) {
+func decodeAdmissionProof(raw []byte) (namespace.Proof, error) {
 	const fixed = 32 + 32 + 8 + 1 + 32 + 32 + 8 + 8 + 16 + 1 + 32 + 8
 	if len(raw) < fixed {
-		return nameadmission.Proof{}, errors.New("resolution admission proof is truncated")
+		return namespace.Proof{}, errors.New("resolution admission proof is truncated")
 	}
-	var proof nameadmission.Proof
+	var proof namespace.Proof
 	offset := 0
 	copy(proof.Challenge.Node[:], raw[offset:offset+32])
 	offset += 32
@@ -65,7 +65,7 @@ func decodeAdmissionProof(raw []byte) (nameadmission.Proof, error) {
 	surfaceSize := int(raw[offset])
 	offset++
 	if surfaceSize == 0 || len(raw) != fixed+surfaceSize {
-		return nameadmission.Proof{}, errors.New("resolution admission surface is malformed")
+		return namespace.Proof{}, errors.New("resolution admission surface is malformed")
 	}
 	proof.Challenge.Surface = string(raw[offset : offset+surfaceSize])
 	offset += surfaceSize
@@ -85,7 +85,7 @@ func decodeAdmissionProof(raw []byte) (nameadmission.Proof, error) {
 	offset += 32
 	proof.WorkNonce = binary.BigEndian.Uint64(raw[offset:])
 	if canonical, err := encodeAdmissionProof(proof); err != nil || string(canonical) != string(raw) {
-		return nameadmission.Proof{}, errors.New("resolution admission proof is not canonical")
+		return namespace.Proof{}, errors.New("resolution admission proof is not canonical")
 	}
 	return proof, nil
 }

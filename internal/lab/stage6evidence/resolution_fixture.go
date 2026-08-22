@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -29,7 +29,7 @@ type resolutionFixture struct {
 	selection       nameresolution.Selection
 	gateway         *httptest.Server
 	relay           *httptest.Server
-	gate            *nameadmission.Admission
+	gate            *namespace.Admission
 	profile         func() nameresolution.GatewayProfile
 	observations    func() (uint32, uint32, uint32, uint32)
 	roleEvidence    func() ([]resolutionGatewayView, []resolutionRelayView)
@@ -45,7 +45,7 @@ type resolutionFixture struct {
 }
 
 func newResolutionFixture(control ...interface {
-	Apply([]byte, nameadmission.Proof) (string, uint64, uint64, []byte)
+	Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
 },
 ) (resolutionFixture, error) {
 	value := resolutionFixture{now: time.Unix(1_800_000_000, 0).UTC()}
@@ -88,13 +88,13 @@ func newResolutionFixture(control ...interface {
 		return value, err
 	}
 	gatewayIdentity := evidenceKey("resolution-gateway")
-	value.gate, err = nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
+	value.gate, err = namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
 	if err != nil {
 		value.close()
 		return value, err
 	}
 	var controlAuthority interface {
-		Apply([]byte, nameadmission.Proof) (string, uint64, uint64, []byte)
+		Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
 	}
 	if len(control) == 1 {
 		controlAuthority = control[0]

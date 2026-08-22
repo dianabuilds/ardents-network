@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const admissionPressureSamples = 10_000
@@ -16,11 +16,11 @@ const admissionPressureSamples = 10_000
 func measureAdmissionCapacity(secret [32]byte, evidence admissionCellEvidence, profileIndex int,
 	profile admissionProfileEvidence,
 ) (admissionCapacityEvidence, error) {
-	gate, err := nameadmission.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, secret)
+	gate, err := namespace.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, secret)
 	if err != nil {
 		return admissionCapacityEvidence{}, err
 	}
-	proofs := make([]nameadmission.Proof, profile.MaximumSpent)
+	proofs := make([]namespace.Proof, profile.MaximumSpent)
 	hashes := make([]uint64, profile.MaximumSpent)
 	var workers sync.WaitGroup
 	jobs := make(chan int)
@@ -56,7 +56,7 @@ func measureAdmissionCapacity(secret [32]byte, evidence admissionCellEvidence, p
 	if err != nil {
 		return admissionCapacityEvidence{}, err
 	}
-	overflow := nameadmission.Proof{Challenge: overflowChallenge}
+	overflow := namespace.Proof{Challenge: overflowChallenge}
 	_, result.Overflow = gate.Verify(evidence.Now, overflow)
 	if result.Overflow != "capacity" {
 		return admissionCapacityEvidence{}, errors.New("admission capacity did not fail closed")
@@ -65,7 +65,7 @@ func measureAdmissionCapacity(secret [32]byte, evidence admissionCellEvidence, p
 	if err != nil {
 		return admissionCapacityEvidence{}, err
 	}
-	if err := measureAdmissionBusy(secret, evidence, proofs, nameadmission.Proof{Challenge: busyChallenge},
+	if err := measureAdmissionBusy(secret, evidence, proofs, namespace.Proof{Challenge: busyChallenge},
 		profile.MaximumInFlight, &result); err != nil {
 		return admissionCapacityEvidence{}, err
 	}
@@ -84,15 +84,15 @@ func measureAdmissionCapacity(secret [32]byte, evidence admissionCellEvidence, p
 	return result, nil
 }
 
-func pressureChallenge(gate *nameadmission.Admission, evidence admissionCellEvidence, profileIndex int,
+func pressureChallenge(gate *namespace.Admission, evidence admissionCellEvidence, profileIndex int,
 	surface string, ordinal int,
-) (nameadmission.Challenge, error) {
+) (namespace.Challenge, error) {
 	return pressureChallengeUntil(gate, evidence, profileIndex, surface, ordinal, 951)
 }
 
-func pressureChallengeUntil(gate *nameadmission.Admission, evidence admissionCellEvidence, profileIndex int,
+func pressureChallengeUntil(gate *namespace.Admission, evidence admissionCellEvidence, profileIndex int,
 	surface string, ordinal int, expires int64,
-) (nameadmission.Challenge, error) {
+) (namespace.Challenge, error) {
 	label := []byte("ardents-stage-6-admission-pressure-v1\x00" + surface)
 	label = binary.BigEndian.AppendUint32(label, uint32(ordinal))
 	operation := sha256.Sum256(label)
@@ -102,8 +102,8 @@ func pressureChallengeUntil(gate *nameadmission.Admission, evidence admissionCel
 	return gate.Issue(900, surface, operation, evidence.Isolation, expires, nonce)
 }
 
-func measureAdmissionBusy(secret [32]byte, evidence admissionCellEvidence, proofs []nameadmission.Proof,
-	probe nameadmission.Proof, maximum int, result *admissionCapacityEvidence,
+func measureAdmissionBusy(secret [32]byte, evidence admissionCellEvidence, proofs []namespace.Proof,
+	probe namespace.Proof, maximum int, result *admissionCapacityEvidence,
 ) error {
 	previousProcs := runtime.GOMAXPROCS(0)
 	if previousProcs < maximum+1 {
@@ -112,7 +112,7 @@ func measureAdmissionBusy(secret [32]byte, evidence admissionCellEvidence, proof
 	}
 	attempts := maximum*16 + 1
 	for range 8 {
-		gate, err := nameadmission.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, secret)
+		gate, err := namespace.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, secret)
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func measureAdmissionBusy(secret [32]byte, evidence admissionCellEvidence, proof
 	return errors.New("admission in-flight limit was not observed")
 }
 
-func concurrentAdmissionOutcomes(gate *nameadmission.Admission, proof nameadmission.Proof, attempts int) []string {
+func concurrentAdmissionOutcomes(gate *namespace.Admission, proof namespace.Proof, attempts int) []string {
 	start := make(chan struct{})
 	outcomes := make(chan string, attempts)
 	var ready, workers sync.WaitGroup

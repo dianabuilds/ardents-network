@@ -7,15 +7,15 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const controlSchema = "ardents-private-name-control-v1"
 
 type controlRequestWire struct {
-	Schema    string              `json:"schema"`
-	Operation controlOperation    `json:"operation"`
-	Admission nameadmission.Proof `json:"admission"`
+	Schema    string           `json:"schema"`
+	Operation controlOperation `json:"operation"`
+	Admission namespace.Proof  `json:"admission"`
 }
 
 type controlResponseWire struct {
@@ -46,7 +46,7 @@ func controlDigest(operation controlOperation) ([32]byte, error) {
 	return digest, nil
 }
 
-func controlRequest(operation controlOperation, admission nameadmission.Proof) ([]byte, error) {
+func controlRequest(operation controlOperation, admission namespace.Proof) ([]byte, error) {
 	digest, err := dynamicControlDigest(operation)
 	if err != nil || admission.Challenge.OperationDigest != digest {
 		return nil, errors.New("private naming control request is invalid")
@@ -58,15 +58,15 @@ func controlRequest(operation controlOperation, admission nameadmission.Proof) (
 	return padMessage(raw)
 }
 
-func decodeControlRequest(raw []byte) (controlOperation, nameadmission.Proof, error) {
+func decodeControlRequest(raw []byte) (controlOperation, namespace.Proof, error) {
 	payload, err := unpadMessage(raw)
 	if err != nil {
-		return controlOperation{}, nameadmission.Proof{}, err
+		return controlOperation{}, namespace.Proof{}, err
 	}
 	var wire controlRequestWire
 	if err := decodeControlJSON(payload, &wire); err != nil || wire.Schema != controlSchema ||
 		wire.Operation.OperationDigest == [32]byte{} || !validControlFields(wire.Operation, true) {
-		return controlOperation{}, nameadmission.Proof{}, errors.New("private naming control request is invalid")
+		return controlOperation{}, namespace.Proof{}, errors.New("private naming control request is invalid")
 	}
 	return wire.Operation, wire.Admission, nil
 }

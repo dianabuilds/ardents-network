@@ -5,22 +5,22 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type evidenceControlAuthority struct {
 	mu      sync.Mutex
 	control interface {
-		Apply([]byte, nameadmission.Proof) (string, uint64, uint64, []byte)
+		Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
 	}
 	observed  []controlOperation
-	admission []nameadmission.Proof
+	admission []namespace.Proof
 	results   []controlExecutionResult
 	err       error
 }
 
 func (authority *evidenceControlAuthority) Apply(raw []byte,
-	admission nameadmission.Proof,
+	admission namespace.Proof,
 ) (string, uint64, uint64, []byte) {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
@@ -41,11 +41,11 @@ func (authority *evidenceControlAuthority) Apply(raw []byte,
 }
 
 func (authority *evidenceControlAuthority) observation() ([]controlOperation,
-	[]nameadmission.Proof, []controlExecutionResult, error,
+	[]namespace.Proof, []controlExecutionResult, error,
 ) {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
 	return append([]controlOperation(nil), authority.observed...),
-		append([]nameadmission.Proof(nil), authority.admission...),
+		append([]namespace.Proof(nil), authority.admission...),
 		append([]controlExecutionResult(nil), authority.results...), authority.err
 }

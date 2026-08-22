@@ -10,10 +10,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type recoveryTrace struct {
@@ -175,18 +175,18 @@ func runRecoveryCell(trace *traceRecord) error {
 
 func transitionAdmission(network [32]byte, record namelease.Record, op namelease.Op,
 	surface string, nonce byte,
-) (*nameadmission.Admission, nameadmission.Proof, error) {
+) (*namespace.Admission, namespace.Proof, error) {
 	digest, err := nameauthority.TransitionDigest(network, record, op)
 	if err != nil {
-		return nil, nameadmission.Proof{}, err
+		return nil, namespace.Proof{}, err
 	}
-	admission, err := nameadmission.NewAdmission([32]byte{9}, network, 1, [32]byte{8, nonce})
+	admission, err := namespace.NewAdmission([32]byte{9}, network, 1, [32]byte{8, nonce})
 	if err != nil {
-		return nil, nameadmission.Proof{}, err
+		return nil, namespace.Proof{}, err
 	}
 	challenge, err := admission.Issue(100_000, surface, digest, [32]byte{nonce}, 110_000, [16]byte{nonce})
 	if err != nil {
-		return nil, nameadmission.Proof{}, err
+		return nil, namespace.Proof{}, err
 	}
 	proof, _ := challenge.Solve()
 	return admission, proof, nil

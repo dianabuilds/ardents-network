@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 // control owns authenticated naming transitions behind one private Gateway.
@@ -17,7 +17,7 @@ import (
 type control struct {
 	mu        sync.Mutex
 	network   [32]byte
-	admission *nameadmission.Admission
+	admission *namespace.Admission
 	order     nameclaim.ClaimOrder
 	records   map[string]namelease.Record
 	clock     func() time.Time
@@ -25,7 +25,7 @@ type control struct {
 }
 
 // NewControl installs one bounded authority state view for a Gateway.
-func NewControl(network [32]byte, admission *nameadmission.Admission, order nameclaim.ClaimOrder,
+func NewControl(network [32]byte, admission *namespace.Admission, order nameclaim.ClaimOrder,
 	records []namelease.Record, clock func() time.Time, policy namelease.Policy,
 ) (*control, error) {
 	if network == [32]byte{} || admission == nil || clock == nil {
@@ -47,7 +47,7 @@ func NewControl(network [32]byte, admission *nameadmission.Admission, order name
 
 // Apply verifies anonymous admission, authority or threshold proof, and the
 // exact predecessor before committing one in-memory transition result.
-func (control *control) Apply(raw []byte, proof nameadmission.Proof) (string, uint64, uint64, []byte) {
+func (control *control) Apply(raw []byte, proof namespace.Proof) (string, uint64, uint64, []byte) {
 	control.mu.Lock()
 	defer control.mu.Unlock()
 	operation, err := decodeControlOperation(raw)

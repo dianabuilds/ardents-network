@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 const (
@@ -21,7 +21,7 @@ type resolutionRequest struct {
 	nonce     [32]byte
 	deadline  int64
 	name      string
-	admission nameadmission.Proof
+	admission namespace.Proof
 }
 
 type resolutionResponse struct {

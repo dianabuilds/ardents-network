@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestControlAppliesTheAdmittedCanonicalOperation(t *testing.T) {
@@ -38,7 +38,7 @@ func TestControlAppliesTheAdmittedCanonicalOperation(t *testing.T) {
 		ExpectedRevision: current.Revision, LeaseNotAfter: now.Add(policy.DefaultLeaseDuration).UnixMilli(),
 		AuthorityProof: signature}
 	raw, digest := signedControlOperation(t, operation)
-	gate, err := nameadmission.NewAdmission(node, network, 1, [32]byte{4})
+	gate, err := namespace.NewAdmission(node, network, 1, [32]byte{4})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestControlRejectsChangedContentsWithTheOldAdmission(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	network := [32]byte{9}
-	gate, err := nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
+	gate, err := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestControlEnforcesPolicyDelayAndSupportsDisable(t *testing.T) {
 	policy, _ := controlTestRecoveryPolicy(network, current, currentKey, 30*24*time.Hour)
 	policyRaw, _ := json.Marshal(policy)
 	leasePolicy := namelease.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
-	gate, _ := nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
+	gate, _ := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
 	clock := now
 	control, err := NewControl(network, gate, nameclaim.ClaimOrder{}, []namelease.Record{current},
 		func() time.Time { return clock }, leasePolicy)
@@ -157,7 +157,7 @@ func TestControlExecutesRecoveryCancelCompleteAndResume(t *testing.T) {
 	policy, signers := controlTestRecoveryPolicy(network, current, currentKey, 72*time.Hour)
 	current.RecoveryPolicy, current.RecoveryPolicyRev = policy.Digest(), policy.Revision
 	current.RecoveryPolicyDelay = policy.Delay.Milliseconds()
-	gate, _ := nameadmission.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
+	gate, _ := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{4})
 	clock := now
 	control, _ := NewControl(network, gate, nameclaim.ClaimOrder{}, []namelease.Record{current},
 		func() time.Time { return clock }, namelease.Policy{})
@@ -220,7 +220,7 @@ func signedControlOperation(t *testing.T, operation controlOperation) ([]byte, [
 	return raw, digest
 }
 
-func applyControlTest(t *testing.T, control *control, gate *nameadmission.Admission, now time.Time,
+func applyControlTest(t *testing.T, control *control, gate *namespace.Admission, now time.Time,
 	network [32]byte, operation controlOperation, salt byte,
 ) (string, uint64, uint64, []byte) {
 	t.Helper()

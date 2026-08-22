@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type admissionCellEvidence struct {
@@ -26,7 +26,7 @@ type admissionProfileEvidence struct {
 	WorkBits        uint8
 	MaximumSpent    int
 	MaximumInFlight int
-	Proof           nameadmission.Proof
+	Proof           namespace.Proof
 	Accepted        bool
 	Capacity        admissionCapacityEvidence
 }
@@ -42,7 +42,7 @@ type admissionCapacityEvidence struct {
 func runAdmissionCell(trace *traceRecord, secret [32]byte) error {
 	evidence := admissionCellEvidence{Node: [32]byte{31}, Network: [32]byte{32}, Epoch: 9,
 		Now: 950, Isolation: sha256.Sum256([]byte("stage-6-admission-isolation"))}
-	gate, err := nameadmission.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, secret)
+	gate, err := namespace.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, secret)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func runAdmissionCell(trace *traceRecord, secret [32]byte) error {
 	evidence.Profiles = profiles
 	_, evidence.Replay = gate.Verify(evidence.Now, profiles[0].Proof)
 	_, evidence.Expired = gate.Verify(1_000, profiles[1].Proof)
-	restarted, restartErr := nameadmission.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, [32]byte{99})
+	restarted, restartErr := namespace.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, [32]byte{99})
 	if restartErr != nil {
 		return restartErr
 	}

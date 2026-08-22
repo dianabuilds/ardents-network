@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/nameclaim"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type controlRoleEvidence struct {
@@ -33,7 +33,7 @@ func runControlRoleCell(trace *traceRecord, secret [32]byte) error {
 	if err != nil {
 		return err
 	}
-	gate, err := nameadmission.NewAdmission([32]byte{2}, network, 1, secret)
+	gate, err := namespace.NewAdmission([32]byte{2}, network, 1, secret)
 	if err != nil {
 		return err
 	}

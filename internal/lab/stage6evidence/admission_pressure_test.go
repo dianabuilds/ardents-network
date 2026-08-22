@@ -6,18 +6,18 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestMeasureAdmissionBusyCreatesARealOverlap(t *testing.T) {
 	evidence := admissionCellEvidence{Node: [32]byte{1}, Network: [32]byte{2}, Epoch: 3,
 		Now: 950, Isolation: sha256.Sum256([]byte("pressure-test-isolation"))}
-	gate, err := nameadmission.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, [32]byte{4})
+	gate, err := namespace.NewAdmission(evidence.Node, evidence.Network, evidence.Epoch, [32]byte{4})
 	if err != nil {
 		t.Fatal(err)
 	}
 	const maximumSpent = 2048
-	proofs := make([]nameadmission.Proof, maximumSpent)
+	proofs := make([]namespace.Proof, maximumSpent)
 	jobs := make(chan int)
 	var workers sync.WaitGroup
 	for range 12 {
@@ -46,7 +46,7 @@ func TestMeasureAdmissionBusyCreatesARealOverlap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	overflow := nameadmission.Proof{Challenge: overflowChallenge}
+	overflow := namespace.Proof{Challenge: overflowChallenge}
 	if ok, reason := gate.Verify(evidence.Now, overflow); ok || reason != "capacity" {
 		t.Fatalf("overflow proof ok=%v reason=%q", ok, reason)
 	}
@@ -59,7 +59,7 @@ func TestMeasureAdmissionBusyCreatesARealOverlap(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := measureAdmissionBusy([32]byte{4}, evidence, proofs,
-		nameadmission.Proof{Challenge: busyChallenge}, 32, &capacity); err != nil {
+		namespace.Proof{Challenge: busyChallenge}, 32, &capacity); err != nil {
 		t.Fatal(err)
 	}
 	if !containsAdmissionOutcome(capacity.BusyOutcomes, "busy") ||

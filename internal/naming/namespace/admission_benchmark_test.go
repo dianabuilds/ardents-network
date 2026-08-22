@@ -1,4 +1,4 @@
-package nameadmission_test
+package namespace_test
 
 import "testing"
 

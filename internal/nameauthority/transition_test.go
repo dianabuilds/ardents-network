@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/namerecovery"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestAuthorityTransitionRequiresPredecessorAndPermanentlyInstallsSuccessor(t *testing.T) {
@@ -106,7 +106,7 @@ func TestRecoveryTransitionRequiresThresholdAuthorizationAndAdmission(t *testing
 	op := namelease.Op{Kind: "start-recovery", Name: record.Name, ExpectedGeneration: record.Generation,
 		ExpectedRevision: record.Revision, RecoveryAuthorization: authorization}
 	admission, admissionProof := admittedTransition(t, network, record, op, [32]byte{3})
-	if _, err := nameauthority.ApplyAdmittedTransition(admission, nameadmission.Proof{}, 100_000,
+	if _, err := nameauthority.ApplyAdmittedTransition(admission, namespace.Proof{}, 100_000,
 		admissionProof.Challenge.OperationDigest, network, record, op, nil, 100, namelease.Policy{}); err == nil {
 		t.Fatal("threshold authorization bypassed anonymous admission")
 	}
@@ -119,13 +119,13 @@ func TestRecoveryTransitionRequiresThresholdAuthorizationAndAdmission(t *testing
 
 func admittedTransition(t *testing.T, network [32]byte, current namelease.Record,
 	op namelease.Op, isolation [32]byte,
-) (*nameadmission.Admission, nameadmission.Proof) {
+) (*namespace.Admission, namespace.Proof) {
 	t.Helper()
 	digest, err := nameauthority.TransitionDigest(network, current, op)
 	if err != nil {
 		t.Fatal(err)
 	}
-	admission, err := nameadmission.NewAdmission([32]byte{9}, network, 1, [32]byte{8})
+	admission, err := namespace.NewAdmission([32]byte{9}, network, 1, [32]byte{8})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,8 +9,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
@@ -35,7 +35,7 @@ type resolutionInput struct {
 	ExcludedIdentities         []string                      `json:"excluded_identities"`
 	ExcludedFamilies           []string                      `json:"excluded_families"`
 	GatewayProfile             nameresolution.GatewayProfile `json:"gateway_profile"`
-	AdmissionChallenge         nameadmission.Challenge       `json:"admission_challenge"`
+	AdmissionChallenge         namespace.Challenge           `json:"admission_challenge"`
 }
 
 type snapshotLoader func(state.Config) (state.Snapshot, error)

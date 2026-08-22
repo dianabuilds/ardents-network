@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 type testControlOperation struct {
@@ -185,13 +185,13 @@ func testControlDigest(t *testing.T, operation testControlOperation) [32]byte {
 type capturingControlAuthority struct {
 	mu                   sync.Mutex
 	operation            testControlOperation
-	proof                nameadmission.Proof
+	proof                namespace.Proof
 	class                string
 	generation, revision uint64
 	state                []byte
 }
 
-func (authority *capturingControlAuthority) Apply(raw []byte, proof nameadmission.Proof,
+func (authority *capturingControlAuthority) Apply(raw []byte, proof namespace.Proof,
 ) (string, uint64, uint64, []byte) {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
@@ -203,7 +203,7 @@ func (authority *capturingControlAuthority) Apply(raw []byte, proof nameadmissio
 	return authority.class, authority.generation, authority.revision, append([]byte(nil), authority.state...)
 }
 
-func (authority *capturingControlAuthority) observation() (testControlOperation, nameadmission.Proof) {
+func (authority *capturingControlAuthority) observation() (testControlOperation, namespace.Proof) {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
 	return authority.operation, authority.proof

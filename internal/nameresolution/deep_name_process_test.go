@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameadmission"
 	"github.com/dianabuilds/ardents-network/internal/nameauthority"
 	"github.com/dianabuilds/ardents-network/internal/namelease"
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/namestore"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func TestDeepestLegalNameResolvesThroughSeparateRoles(t *testing.T) {
@@ -47,7 +47,7 @@ func TestDeepestLegalNameResolvesThroughSeparateRoles(t *testing.T) {
 	bindNamespacePolicy(&view, materialization.policy)
 	selection := nameresolution.Selection{At: now, Deadline: now.Add(15 * time.Second),
 		RelayNodeID: [32]byte{1}, GatewayNodeID: [32]byte{2}, ConnectionRendezvousNodeID: [32]byte{3}}
-	admission, err := nameadmission.NewAdmission([32]byte{2}, network, 1, bootSecret)
+	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, bootSecret)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-package nameadmission
+package namespace
 
 import (
 	"crypto/hmac"
