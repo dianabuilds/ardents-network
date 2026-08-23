@@ -19,6 +19,8 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -27,15 +29,26 @@ import (
 const profile = "ardents-interactive-route-v1"
 
 type measurement struct {
-	Schema              string `json:"schema"`
-	Connections         int    `json:"connections"`
-	PayloadBytes        int    `json:"payload_bytes"`
-	TotalCarriedBytes   int    `json:"total_carried_bytes"`
-	ElapsedNanoseconds  int64  `json:"elapsed_nanoseconds"`
-	AllocatedBytes      uint64 `json:"allocated_bytes"`
-	HeapAllocationDelta int64  `json:"heap_allocation_delta"`
-	GoroutinesBefore    int    `json:"goroutines_before"`
-	GoroutinesAfter     int    `json:"goroutines_after"`
+	Schema              string            `json:"schema"`
+	Connections         int               `json:"connections"`
+	PayloadBytes        int               `json:"payload_bytes"`
+	TotalCarriedBytes   int               `json:"total_carried_bytes"`
+	ElapsedNanoseconds  int64             `json:"elapsed_nanoseconds"`
+	AllocatedBytes      uint64            `json:"allocated_bytes"`
+	HeapAllocationDelta int64             `json:"heap_allocation_delta"`
+	GoroutinesBefore    int               `json:"goroutines_before"`
+	GoroutinesAfter     int               `json:"goroutines_after"`
+	Linux               *linuxMeasurement `json:"linux,omitempty"`
+}
+
+type linuxMeasurement struct {
+	Before linuxSample `json:"before"`
+	After  linuxSample `json:"after"`
+}
+
+type linuxSample struct {
+	UnixNano, RSSBytes, UserTicks, SystemTicks int64
+	FileDescriptors                            int
 }
 
 func main() {
@@ -82,6 +95,10 @@ func run(connections, payloadSize int, timeout time.Duration) (measurement, erro
 	go serve(ctx, listener, server, clientKey, connections, payload, notAfter, serverDone)
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
+	linuxBefore, err := sampleLinux()
+	if err != nil {
+		return measurement{}, err
+	}
 	started, goroutines := time.Now(), runtime.NumGoroutine()
 	for index := 0; index < connections; index++ {
 		if err := carry(ctx, listener.Addr().String(), client, serverKey, index, payload, notAfter); err != nil {
@@ -92,11 +109,70 @@ func run(connections, payloadSize int, timeout time.Duration) (measurement, erro
 		return measurement{}, err
 	}
 	runtime.ReadMemStats(&after)
-	return measurement{Schema: "ardents-r092-native-leg-baseline-v1", Connections: connections,
+	linuxAfter, err := sampleLinux()
+	if err != nil {
+		return measurement{}, err
+	}
+	result := measurement{Schema: "ardents-r092-native-leg-baseline-v1", Connections: connections,
 		PayloadBytes: payloadSize, TotalCarriedBytes: connections * payloadSize * 2,
 		ElapsedNanoseconds: time.Since(started).Nanoseconds(), AllocatedBytes: after.TotalAlloc - before.TotalAlloc,
 		HeapAllocationDelta: int64(after.HeapAlloc) - int64(before.HeapAlloc), GoroutinesBefore: goroutines,
-		GoroutinesAfter: runtime.NumGoroutine()}, nil
+		GoroutinesAfter: runtime.NumGoroutine()}
+	if linuxBefore != nil && linuxAfter != nil {
+		result.Linux = &linuxMeasurement{Before: *linuxBefore, After: *linuxAfter}
+	}
+	return result, nil
+}
+
+func sampleLinux() (*linuxSample, error) {
+	if runtime.GOOS != "linux" {
+		return nil, nil
+	}
+	status, err := os.ReadFile("/proc/self/status")
+	if err != nil {
+		return nil, err
+	}
+	var rss int64
+	for _, line := range strings.Split(string(status), "\n") {
+		if !strings.HasPrefix(line, "VmRSS:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 3 {
+			return nil, errors.New("Linux RSS observation is invalid")
+		}
+		value, parseErr := strconv.ParseInt(fields[1], 10, 64)
+		if parseErr != nil || value < 0 {
+			return nil, errors.New("Linux RSS observation is invalid")
+		}
+		rss = value * 1024
+	}
+	if rss == 0 {
+		return nil, errors.New("Linux RSS observation is absent")
+	}
+	stat, err := os.ReadFile("/proc/self/stat")
+	if err != nil {
+		return nil, err
+	}
+	right := strings.LastIndex(string(stat), ")")
+	if right < 0 {
+		return nil, errors.New("Linux CPU observation is invalid")
+	}
+	fields := strings.Fields(string(stat)[right+1:])
+	if len(fields) < 13 {
+		return nil, errors.New("Linux CPU observation is invalid")
+	}
+	user, userErr := strconv.ParseInt(fields[11], 10, 64)
+	system, systemErr := strconv.ParseInt(fields[12], 10, 64)
+	if userErr != nil || systemErr != nil || user < 0 || system < 0 {
+		return nil, errors.New("Linux CPU observation is invalid")
+	}
+	fds, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		return nil, err
+	}
+	return &linuxSample{UnixNano: time.Now().UnixNano(), RSSBytes: rss, UserTicks: user,
+		SystemTicks: system, FileDescriptors: len(fds)}, nil
 }
 
 func serve(ctx context.Context, listener net.Listener, certificate tls.Certificate, client ed25519.PublicKey,

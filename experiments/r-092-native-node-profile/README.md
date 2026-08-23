@@ -16,9 +16,11 @@ go run experiments/r-092-native-node-profile/main.go -connections 1 -payload 655
 The program generates ephemeral synthetic Ed25519 certificates and loopback
 addresses; it writes no state, credentials, captures, or generated artifacts to
 the repository. Its JSON output records elapsed time plus Go allocation and
-goroutine deltas. Those are diagnostic baseline observations only. A selection
-run must execute on the R-092 Ubuntu reference host and retain raw OS CPU/RSS/
-FD/socket, pressure, drain, withdrawal, and cleanup evidence outside Git.
+goroutine deltas. On Linux it also records raw before/after process RSS, file
+descriptor, and CPU-tick snapshots; those are not the per-second full-profile
+observations required for selection. A selection run must execute on the R-092
+Ubuntu reference host and retain raw OS CPU/RSS/FD/socket, pressure, drain,
+withdrawal, and cleanup evidence outside Git.
 
 Falsification: absent TLS 1.3/ALPN, an unverified peer key, a nonreciprocal
 binding, a byte mismatch, or any worker that fails to join is a failed baseline.
