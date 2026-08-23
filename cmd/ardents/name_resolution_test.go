@@ -19,6 +19,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/naming"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -31,12 +34,12 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
+	current := record.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(),
 		RecordNotAfter: now.Add(30 * time.Minute).UnixMilli()}
-	signed, err := namespace.SignRecord(network, record, private)
+	signed, err := record.SignRecord(network, current, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +47,7 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
+	admission, err := admission.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,18 +139,18 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	}
 }
 
-func commandRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*namespace.Store, namespace.MaterializationPolicy) {
+func commandRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*epoch.Store, epoch.MaterializationPolicy) {
 	t.Helper()
 	policy, signers := commandMaterializationPolicy(network)
-	store, err := namespace.Open(t.TempDir(), policy)
+	store, err := epoch.Open(t.TempDir(), policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+	materialization := epoch.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 1,
 		RejectionRoot: sha256.Sum256([]byte("rejections"))}
-	if err := store.CommitLegacy(epoch, signed, func(transcript []byte) ([][32]byte, [][]byte, error) {
+	if err := store.CommitLegacy(materialization, signed, func(transcript []byte) ([][32]byte, [][]byte, error) {
 		ids, signatures := make([][32]byte, 2), make([][]byte, 2)
 		for index, private := range signers[:2] {
 			ids[index] = sha256.Sum256(private.Public().(ed25519.PublicKey))
@@ -163,8 +166,8 @@ func commandRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*name
 	return store, policy
 }
 
-func commandMaterializationPolicy(network [32]byte) (namespace.MaterializationPolicy, []ed25519.PrivateKey) {
-	policy := namespace.MaterializationPolicy{Network: network, Rule: "ardents-namespace-materialization-v1",
+func commandMaterializationPolicy(network [32]byte) (epoch.MaterializationPolicy, []ed25519.PrivateKey) {
+	policy := epoch.MaterializationPolicy{Network: network, Rule: "ardents-namespace-materialization-v1",
 		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}
 	var signers []ed25519.PrivateKey
 	for index := 0; index < 3; index++ {
@@ -177,7 +180,7 @@ func commandMaterializationPolicy(network [32]byte) (namespace.MaterializationPo
 	return policy, signers
 }
 
-func commandPolicyIDs(policy namespace.MaterializationPolicy) [][32]byte {
+func commandPolicyIDs(policy epoch.MaterializationPolicy) [][32]byte {
 	ids := make([][32]byte, 0, len(policy.Authorities))
 	for id := range policy.Authorities {
 		ids = append(ids, id)
@@ -186,7 +189,7 @@ func commandPolicyIDs(policy namespace.MaterializationPolicy) [][32]byte {
 	return ids
 }
 
-func commandPolicyPublic(policy namespace.MaterializationPolicy) []string {
+func commandPolicyPublic(policy epoch.MaterializationPolicy) []string {
 	ids, values := commandPolicyIDs(policy), make([]string, 0, len(policy.Authorities))
 	for _, id := range ids {
 		values = append(values, hex.EncodeToString(policy.Authorities[id]))
@@ -194,7 +197,7 @@ func commandPolicyPublic(policy namespace.MaterializationPolicy) []string {
 	return values
 }
 
-func bindCommandMaterialization(view *state.Snapshot, policy namespace.MaterializationPolicy) {
+func bindCommandMaterialization(view *state.Snapshot, policy epoch.MaterializationPolicy) {
 	ids := commandPolicyIDs(policy)
 	view.EpochAuthorityCount, view.EpochThreshold = uint8(len(ids)), uint8(policy.Threshold)
 	for index, id := range ids {

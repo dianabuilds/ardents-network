@@ -15,6 +15,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -54,16 +57,16 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	current := namespace.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
+	current := record.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
 		Consistency: "current", Recovery: "stable", Authority: hex.EncodeToString(namePublic),
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix()}
-	signed, err := namespace.SignRecord(network, current, namePrivate)
+	signed, err := record.SignRecord(network, current, namePrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
 	store, materialization := commandRecordStore(t, network, signed)
 	bootSecret := [32]byte{43}
-	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, bootSecret)
+	admission, err := admission.NewAdmission([32]byte{2}, network, 1, bootSecret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +142,7 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 
 type commandControlAuthority struct{}
 
-func (commandControlAuthority) Submit(submission namespace.Submission, _ namespace.Proof) string {
+func (commandControlAuthority) Submit(submission authority.Submission, _ admission.Proof) string {
 	var operation commandControlOperation
 	if json.Unmarshal(submission.Canonical(), &operation) != nil {
 		return "denied"
