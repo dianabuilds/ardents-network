@@ -54,6 +54,73 @@ func TestSealedIntroductionV1AuthenticatesItsVisibleContext(t *testing.T) {
 	}
 }
 
+func TestSealedIntroductionV1KnownAnswer(t *testing.T) {
+	const wire = "617264656e74732d696e7465726163746976652d726f7574652d76310001590001031c617264656e74732d696e7465726163746976652d726f7574652d76310b00000000000000000000000000000000000000000000000000000000000000000000000000000d0c000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000f00000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000684ee18011000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000002045111aa82f358cf4071b9000447b26c1f52cb51c4981251355f3a9140db0bf51002544bb7ed1eaac09ae913167549c58926c8bf4616257bcf0db2a10ec5137782f8064c4a00c82"
+	raw, err := hex.DecodeString(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := DecodeSealedIntroduction(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	private, err := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{7}, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recipient, err := hpke.NewDHKEMPrivateKey(private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plaintext, err := OpenSealedIntroduction(input, recipient)
+	if err != nil || string(plaintext) != "service-only material" {
+		t.Fatalf("known-answer OpenSealedIntroduction = %q, %v", plaintext, err)
+	}
+}
+
+func TestSealedIntroductionV1RefusesEveryContextSubstitution(t *testing.T) {
+	private, err := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{7}, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	public, err := hpke.NewDHKEMPublicKey(private.PublicKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	recipient, err := hpke.NewDHKEMPrivateKey(private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := SealIntroduction(introductionFixture(), public, []byte("service-only material"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutations := map[string]func(*SealedIntroduction){
+		"network":       func(value *SealedIntroduction) { value.NetworkID[0]++ },
+		"epoch":         func(value *SealedIntroduction) { value.Epoch++ },
+		"digest":        func(value *SealedIntroduction) { value.Digest[0]++ },
+		"introduction":  func(value *SealedIntroduction) { value.IntroductionNodeID[0]++ },
+		"rendezvous":    func(value *SealedIntroduction) { value.RendezvousNodeID[0]++ },
+		"reachability":  func(value *SealedIntroduction) { value.Reachability[0]++ },
+		"expiry":        func(value *SealedIntroduction) { value.NotAfter = value.NotAfter.Add(time.Second) },
+		"join":          func(value *SealedIntroduction) { value.JoinHandle[0]++ },
+		"handshake":     func(value *SealedIntroduction) { value.EndpointHandshake[0]++ },
+		"encapsulation": func(value *SealedIntroduction) { value.Enc[0]++ },
+		"ciphertext":    func(value *SealedIntroduction) { value.Ciphertext[0]++ },
+	}
+	for name, mutate := range mutations {
+		t.Run(name, func(t *testing.T) {
+			changed := input
+			changed.Enc = append([]byte(nil), input.Enc...)
+			changed.Ciphertext = append([]byte(nil), input.Ciphertext...)
+			mutate(&changed)
+			if _, err := OpenSealedIntroduction(changed, recipient); err == nil {
+				t.Fatal("substituted sealed Introduction decrypted")
+			}
+		})
+	}
+}
+
 func TestSealedIntroductionV1RejectsInvalidLengths(t *testing.T) {
 	input := introductionFixture()
 	input.Enc = bytes.Repeat([]byte{1}, encapsulationLength-1)

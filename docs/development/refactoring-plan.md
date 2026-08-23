@@ -291,6 +291,31 @@ replay refusal, TLS-key substitution, and the no-allocation-before-admission
 order. The previous `net.Pipe` cleanup test now holds its peer through setup;
 its 20-run reproduction passes rather than depending on close scheduling.
 
+### M8 — Route
+
+**In progress, 2026-08-23.** `route` now exposes the deep native lifecycle
+`Open`, `Attach`, and `Close`, rather than a caller-visible complete Route
+plan or stage actor. `Attach` reads one atomic authenticated View, creates an
+unexposed selection and attachment identifier, reserves disjoint live
+candidate identities/families, limits its deadline to current View/candidate/
+duty facts, and obtains a caller-owned resource reservation before it invokes
+Entry. Attachment close releases the Entry attempt, resource reservation, and
+Route selection exactly once; Route close cancels and joins pending Attach
+calls before it releases active attachments. `TestRouteAttachRefusesBeforeEntryAcquisition`,
+`TestRouteAttachmentCapacityReleasesOnlyAfterClose`,
+`TestRouteConcurrentAttachmentsUseDistinctCandidates`,
+`TestRouteCloseCancelsPendingAttachmentAndReleasesReservation`, and
+`TestRouteCloseReleasesEveryActiveAttachment` cover that interface.
+
+The C0 H3 Route runtime, plan package, command path, live runners, and State
+H3 Route-profile reader are retired. The R-078/R-079 v1 records have canonical
+EntryBinding, Node LegBinding, and Sealed Introduction vectors; the latter now
+includes a fixed HPKE known-answer and each visible/AAD/HPKE substitution
+fails closed. M8 intentionally does not announce or run a peer-facing Node
+profile: R-081 assigns measured Node admission, pressure, drain, and listener
+integration to M11. The remaining M8 work is the selected native role-carriage
+and impairment path that can be integrated only with that later Node work.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

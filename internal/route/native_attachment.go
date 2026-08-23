@@ -2,63 +2,61 @@ package route
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"net"
+	"sync"
 	"time"
 )
 
-// NativeAttachmentRequest contains the endpoint-selected facts needed to open
-// one native User-to-Initiator attachment. Admit is the caller-owned resource
-// decision; Route does not select a Node resource profile.
-type NativeAttachmentRequest struct {
-	Entry             EntryAcquirer
-	NetworkID, Digest [32]byte
-	Epoch             uint64
-	Deadline          time.Time
-	Admit             func(context.Context) error
-}
-
-// NativeAttachment is one admitted native Entry connection. Its identifier is
-// created by Route and is never a command or caller-selected plan field.
-type NativeAttachment struct {
-	ID         [32]byte
+// Attachment is one admitted native Entry connection. Route creates and owns
+// its identifier, selection, resource reservation, and Entry cleanup; callers
+// receive only the opaque byte carrier and must close it exactly once.
+type Attachment struct {
 	Connection net.Conn
-	close      func() error
+
+	mu    sync.Mutex
+	close func() error
 }
 
-// Close releases the Entry attempt state and its authenticated connection.
-func (attachment *NativeAttachment) Close() error {
-	if attachment == nil || attachment.Connection == nil || attachment.close == nil {
+// Close releases the authenticated Entry attempt, its caller-owned resource
+// reservation, and Route's local selection. A closed Attachment cannot be
+// reused for another Service Connection generation.
+func (attachment *Attachment) Close() error {
+	if attachment == nil {
 		return errors.New("native Route attachment is unavailable")
 	}
-	err := attachment.close()
+	attachment.mu.Lock()
+	if attachment.Connection == nil || attachment.close == nil {
+		attachment.mu.Unlock()
+		return errors.New("native Route attachment is unavailable")
+	}
+	close := attachment.close
 	attachment.Connection, attachment.close = nil, nil
-	return err
+	attachment.mu.Unlock()
+	return close()
 }
 
-// OpenNativeAttachment obtains resource admission before allocating a fresh
-// Entry attempt. A refusal never dials an Entry candidate or consumes an Invite.
-func OpenNativeAttachment(ctx context.Context, input NativeAttachmentRequest) (*NativeAttachment, error) {
-	if input.Entry == nil || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.Epoch == 0 ||
-		input.Deadline.IsZero() || !time.Now().Before(input.Deadline) || input.Admit == nil {
+func openNativeAttachment(ctx context.Context, source EntryAcquirer, network, digest [32]byte, epoch uint64,
+	identifier [32]byte, deadline time.Time, admit ResourceAdmission, released func()) (*Attachment, error) {
+	if source == nil || network == [32]byte{} || digest == [32]byte{} || epoch == 0 || identifier == [32]byte{} ||
+		deadline.IsZero() || !time.Now().Before(deadline) || admit == nil {
 		return nil, errors.New("native Route attachment request is invalid")
 	}
-	if err := input.Admit(ctx); err != nil {
-		return nil, err
-	}
-	var identifier [32]byte
-	if _, err := rand.Read(identifier[:]); err != nil {
-		return nil, err
-	}
-	connection, closeAttempt, err := OpenEntryAttachment(ctx, input.Entry, EntryAttachmentRequest{
-		NetworkID: input.NetworkID, Digest: input.Digest, Epoch: input.Epoch, AttachmentID: identifier,
-		Deadline: input.Deadline,
-	})
+	release, err := admit(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &NativeAttachment{ID: identifier, Connection: connection, close: func() error {
-		return errors.Join(connection.Close(), closeAttempt())
+	if release == nil {
+		return nil, errors.New("native Route resource admission has no release")
+	}
+	connection, closeAttempt, err := OpenEntryAttachment(ctx, source, EntryAttachmentRequest{
+		NetworkID: network, Digest: digest, Epoch: epoch, AttachmentID: identifier, Deadline: deadline,
+	})
+	if err != nil {
+		return nil, errors.Join(err, release())
+	}
+	return &Attachment{Connection: connection, close: func() error {
+		defer released()
+		return errors.Join(connection.Close(), closeAttempt(), release())
 	}}, nil
 }
