@@ -118,18 +118,18 @@ consumer.
 ## Complete current-code disposition
 
 The following groups cover every current Go package under `cmd/`, `internal/`,
-`tests/e2e/`, and `tests/live/`. A grouping is only a shared ownership outcome;
+and `tests/e2e/`. A grouping is only a shared ownership outcome;
 S8.4 still records per-wave paths and deletions. Empty directory placeholders
 are not Go packages and do not represent a retained test surface.
 
 | Current source | Target disposition | Wave and condition |
 |---|---|---|
-| `cmd/ardents` | Replace with thin Endpoint command. | M10/M13 after Endpoint composition exists. |
-| `cmd/ardents-custody` | Retain the separate custody-process adapter. It performs public envelope inspection and active-record verification through a no-echo interactive terminal secret boundary, returning only bounded public verification facts. Bundle, restore, reconciliation, and signing operation routes remain admitted only with their complete M12 custody lifecycle. | M12/M13 under ADR-0021 and DA-08/DA-09. |
-| `cmd/ardents-node` | Replace with thin Node/Endpoint composition command. | M11/M13. |
-| `cmd/ardents-name` | Remove current command shape; retain only selected naming/resolution operator journey. | M5/M6/M13, subject to DA-03/04/07/10. |
-| `cmd/ardents-bridge`, `cmd/ardents-route` | Remove current tracer shapes; retain selected Entry/Route operator journey only. | M7/M8/M13, subject to DA-06/10. |
-| `cmd/ardents-service`, `cmd/ardents-publish-app`, `cmd/ardents-stream-app` | Remove tracer commands; retain a real Endpoint/Application operator surface only if DA-10 names its observer. | M9/M10/M13. |
+| `cmd/ardents` | **Complete for Stage 8, 2026-08-24:** thin current adapter for Endpoint, State, Entry, and naming routes. | M10/M13; command inputs remain owner-scoped and bounded. |
+| `cmd/ardents-custody` | **Complete for Stage 8, 2026-08-24:** separate custody-process adapter for public envelope inspection and active-record verification through a no-echo terminal secret boundary. Bundle, restore, reconciliation, and signing routes remain unexposed pending any complete future M12 operator lifecycle. | M12/M13 under ADR-0021 and DA-08/DA-09. |
+| `cmd/ardents-node` | **Complete for Stage 8, 2026-08-24:** thin Node and Direct-Origin Source adapter. | M11/M13. |
+| `cmd/ardents-name` | **C0 completed, 2026-08-23:** standalone shape removed; selected naming/resolution routes are `ardents name`. | M5/M6/M13, subject to DA-03/04/07/10. |
+| `cmd/ardents-bridge`, `cmd/ardents-route` | **C0 completed, 2026-08-23:** tracer shapes removed. | M7/M8/M13, subject to DA-06/10. |
+| `cmd/ardents-service`, `cmd/ardents-publish-app`, `cmd/ardents-stream-app` | **C0 completed, 2026-08-23:** tracer commands removed; the named e2e fixtures are not an operator surface. | M9/M10/M13. |
 | `cmd/ardents-release` | **C0 completed, 2026-08-23:** retired as an H3 product command with the V2 Update fixture cutover. Exact V0 command/result/manifest evidence remains only in the independent C4 verifier; no C2 operator observer remains. | M1/M2/M13 under DA-01/R-064/R-088 and DA-10. |
 | `tests/e2e/service/fixturecommand/publish-app`, `tests/e2e/service/fixturecommand/stream-app` | Retain only as explicit non-shipped process-profile fixtures for the separately granted publication socket and opaque Application stream. They are built by the Endpoint recovery process test, never installed or promoted as operator UI. | M13 C0 completed; delete with the named e2e evidence when a replacement test owns those boundaries. |
 | `cmd/blocked-entry-verify-lab` | **C0 completed, 2026-08-23:** R-090 deletes the unbound H3 verifier. Stage 5 records and frozen preparation inputs remain C4 provenance; they are not a native-v1 Qualification suite. | M14 under DA-11/R-080/R-090. |
