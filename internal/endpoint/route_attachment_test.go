@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 func TestRouteAttachmentOpenerReusesListenerAndReleasesAcceptedIPC(t *testing.T) {
@@ -41,7 +41,7 @@ func TestRouteAttachmentOpenerReusesListenerAndReleasesAcceptedIPC(t *testing.T)
 	opener := routeAttachmentOpener(listener, resources)
 	for generation := uint64(1); generation <= 2; generation++ {
 		peer := dialRouteSocket(t, path)
-		attachment, err := opener(context.Background(), serviceconn.Recovery{
+		attachment, err := opener(context.Background(), serviceconnection.Recovery{
 			Generation: generation, Deadline: time.Now().Add(time.Second)})
 		if err != nil {
 			t.Fatal(err)
@@ -70,7 +70,7 @@ func TestRouteAttachmentOpenerStopsOnContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	started := time.Now()
-	_, err = opener(ctx, serviceconn.Recovery{Generation: 2, Deadline: time.Now().Add(time.Second)})
+	_, err = opener(ctx, serviceconnection.Recovery{Generation: 2, Deadline: time.Now().Add(time.Second)})
 	if err == nil || time.Since(started) > 250*time.Millisecond {
 		t.Fatalf("cancelled attachment request did not stop promptly: %v", err)
 	}

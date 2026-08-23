@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 func routeAttachmentOpener(listener *net.UnixListener,
-	resources func(string, int) uint32) func(context.Context, serviceconn.Recovery) (net.Conn, error) {
-	return func(ctx context.Context, request serviceconn.Recovery) (net.Conn, error) {
+	resources func(string, int) uint32) func(context.Context, serviceconnection.Recovery) (net.Conn, error) {
+	return func(ctx context.Context, request serviceconnection.Recovery) (net.Conn, error) {
 		if request.Generation == 0 || request.Deadline.IsZero() {
 			return nil, errors.New("route Attachment request is incomplete")
 		}

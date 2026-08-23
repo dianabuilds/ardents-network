@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/planfile"
+	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
@@ -72,8 +73,8 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	_, err = administrator.Write([]byte("published\n"))
 	return result, err
 }
-func publicationInputs(plan endpointPlan) (serviceconn.Credential, ed25519.PrivateKey, error) {
-	var credential serviceconn.Credential
+func publicationInputs(plan endpointPlan) (publication.Credential, ed25519.PrivateKey, error) {
+	var credential publication.Credential
 	if err := planfile.Decode(plan.CredentialFile, 8<<10, &credential); err != nil {
 		return credential, nil, err
 	}

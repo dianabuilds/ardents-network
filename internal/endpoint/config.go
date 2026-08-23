@@ -109,8 +109,8 @@ func (value endpointPlan) validStreamBounds() bool {
 
 func (value endpointPlan) recoveryEnabled() bool { return value.CandidateView != "" }
 
-func (value endpointPlan) recoveryBinding() (serviceconn.Recovery, error) {
-	var binding serviceconn.Recovery
+func (value endpointPlan) recoveryBinding() (serviceconnection.Recovery, error) {
+	var binding serviceconnection.Recovery
 	if !value.recoveryEnabled() {
 		return binding, nil
 	}
@@ -120,7 +120,7 @@ func (value endpointPlan) recoveryBinding() (serviceconn.Recovery, error) {
 	}{{value.CandidateView, binding.CandidateView[:]}, {value.IsolationContext, binding.IsolationContext[:]},
 		{value.DestinationBinding, binding.DestinationBinding[:]}} {
 		if err := planfile.FixedHex(field.encoded, field.destination); err != nil {
-			return serviceconn.Recovery{}, err
+			return serviceconnection.Recovery{}, err
 		}
 	}
 	binding.RouteProfile = value.RouteProfile
