@@ -90,6 +90,26 @@ func buildProductCommand(t *testing.T, name string) string {
 	return path
 }
 
+func buildE2EFixtureCommand(t *testing.T, name string) string {
+	t.Helper()
+	_, current, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot locate repository root")
+	}
+	root := filepath.Clean(filepath.Join(filepath.Dir(current), "..", "..", ".."))
+	filename := name
+	if runtime.GOOS == "windows" {
+		filename += ".exe"
+	}
+	path := filepath.Join(t.TempDir(), filename)
+	command := exec.Command("go", "build", "-trimpath", "-o", path, "./tests/e2e/service/fixturecommand/"+name)
+	command.Dir = root
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build e2e fixture %s: %v\n%s", name, err, output)
+	}
+	return path
+}
+
 type replacementRouteObservation struct {
 	firstInterruption, secondInterruption, finished time.Time
 	carrierBytes                                    int64

@@ -85,6 +85,14 @@ encoding, private resolution, and private control operations now sit under
 remain unchanged; none becomes a general command configuration contract. The
 former executable, its deterministic profile entry, and its package-map row
 are deleted together.
+
+The former `ardents-stream-app` and `ardents-publish-app` commands are C0
+product tracers. Their only current caller is the Endpoint recovery process
+test, so their implementations and unit suites now live as explicit
+`tests/e2e/service/fixturecommand` fixtures in the e2e process profile, built
+only by that test. This preserves
+the Application-stream and separately granted publication-boundary evidence
+without shipping test workloads as operator commands.
 | **M14 — retirement and current truth** | Input: every remaining lab, verifier, e2e/live matrix, stage document, fixture, and this plan. Owner: Codex under Product Owner final disposition. | DA-11 chooses C4 provenance/reproduction or C0 deletion; Qualification requires an accepted claim and active profile, never a historical receipt. | Full profile/reader-route audit, claim/evidence identity check, package-map/import graph, artifact/residue scan. Delete obsolete `internal/lab/`, six lab commands, obsolete e2e/live suites, stage materials whose current facts are promoted, target/disposition ledgers, and this plan. |
 
 **M10 progress, 2026-08-23.** `internal/applicationipc` and
