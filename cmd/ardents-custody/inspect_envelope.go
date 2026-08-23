@@ -11,16 +11,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
-func run(ctx context.Context, arguments []string, output io.Writer) error {
-	if len(arguments) == 0 || arguments[0] != "inspect-envelope" {
-		return errors.New("usage: ardents-custody inspect-envelope [flags]")
-	}
+func inspectEnvelope(ctx context.Context, arguments []string, output io.Writer) error {
 	flags := flag.NewFlagSet("inspect-envelope", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var root, path string
 	flags.StringVar(&root, "vault-root", "", "exclusive custody vault root")
 	flags.StringVar(&path, "envelope", "", "canonical custody envelope")
-	if err := flags.Parse(arguments[1:]); err != nil {
+	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || root == "" || path == "" {

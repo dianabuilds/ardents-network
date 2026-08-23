@@ -414,8 +414,9 @@ creates an independent encrypted Authority Vault record after double explicit
 secret entry, and verifies an expected Authority binding after authenticated
 unlock without returning root material. Wrong passwords and authenticated
 ciphertext changes both return the same bounded unlock failure. The separate
-`cmd/ardents-custody inspect-envelope` caller exposes only public canonical
-header facts and has no secret-input path. The same owner now exports a Bundle
+`cmd/ardents-custody` caller exposes public canonical header facts and can
+verify an active record through a no-echo interactive terminal secret boundary,
+returning no root material. The same owner now exports a Bundle
 only to a new owner-selected destination after a distinct double-entered
 password, reopens it, and isolatedly test-restores its expected binding. This
 is intentionally not M12 completion: confirmed replacement, restore

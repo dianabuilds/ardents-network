@@ -122,7 +122,7 @@ Release Decision package, behavior tests, non-test caller, and package-map entry
 | `github.com/sigstore/sigstore` | `v1.10.6` | Apache-2.0 | public-key signature verification adapter used by go-tuf |
 | `golang.org/x/crypto` | `v0.52.0` | BSD-3-Clause | raised cryptographic support closure |
 | `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
-| `golang.org/x/term` | `v0.43.0` | BSD-3-Clause | raised sigstore terminal support closure |
+| `golang.org/x/term` | `v0.43.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
 | `google.golang.org/genproto/googleapis/api` | `v0.0.0-20250825161204-c5933d9347a5` | Apache-2.0 | protobuf API type closure |
 | `google.golang.org/protobuf` | `v1.36.11` | BSD-3-Clause | signature protobuf runtime |
 
@@ -206,6 +206,12 @@ store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The
 [R-053 record](../research/records/r-053-stage-7-authority-recovery.md) and
 [exact Authority Custody specification](stage-7-authority-custody-spec.md) own vectors,
 resource bounds, envelope rules, and removal.
+
+`cmd/ardents-custody` is the separate interactive adapter and imports only
+`golang.org/x/term` to reject a non-terminal descriptor and read one password
+without echo for active-record verification. The adapter neither accepts a
+password from arguments, environment, configuration, nor a stream shared with
+Application data; it does not expose decrypted Authority material.
 
 The disposable logic prototype first used the current root module's `v0.51.0`
 to test format/state coherence, then repeated the full 64 MiB sequence in a
