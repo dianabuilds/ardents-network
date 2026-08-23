@@ -51,4 +51,13 @@ func TestClaimCommitmentAdmissionIsSpentAndRevealDerivesItsDigest(t *testing.T) 
 	if _, err := namespace.OpenClaimWinner(signedClaimClose(&close), close); err != nil {
 		t.Fatalf("admitted input did not yield verified winner: %v", err)
 	}
+	substituted := reveal
+	substituted.AdmissionDigest = [32]byte{9}
+	forged := namespace.ClaimProof{Network: network, Epoch: 7, Rule: "ardents-name-claim-order-v1",
+		CutoffOffset: 1_000, InputRoot: input.InputLeaf(0), InputLength: 1,
+		MaterializationRoot: orderedMaterializationLeaf(substituted), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{substituted}}
+	if _, err := namespace.OpenClaimWinner(signedClaimClose(&forged), forged); err == nil {
+		t.Fatal("close accepted a reveal whose admission digest did not match its committed input")
+	}
 }
