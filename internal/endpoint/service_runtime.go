@@ -98,6 +98,35 @@ type WithdrawalResult struct {
 	Receipt             broker.Receipt
 }
 
+// OutboundConnectionRequest contains exactly the client-side facts for one
+// authenticated Connection. It has no publisher publication owner or signer.
+type OutboundConnectionRequest struct {
+	Principal, Capability, Target [32]byte
+	Publication                   []byte
+	Route                         net.Conn
+	Application                   io.ReadWriteCloser
+	OpenAttachment                func(context.Context, Recovery) (net.Conn, error)
+	RecoveryBinding               Recovery
+	NameBinding                   DestinationBinding
+	NameUpdates                   <-chan DestinationBinding
+	BytesEachDirection            uint32
+	SendBytes, ReceiveBytes       uint32
+	At                            time.Time
+}
+
+// InboundConnectionRequest contains exactly the publisher-side facts for one
+// authenticated Connection. It has no public record or resolved target input.
+type InboundConnectionRequest struct {
+	Principal, Capability   [32]byte
+	Route                   net.Conn
+	Application             io.ReadWriteCloser
+	OpenAttachment          func(context.Context, Recovery) (net.Conn, error)
+	RecoveryBinding         Recovery
+	BytesEachDirection      uint32
+	SendBytes, ReceiveBytes uint32
+	At                      time.Time
+}
+
 // RuntimeResult is a bounded endpoint-runtime outcome with no Route internals.
 // It is transitional while Endpoint replaces the former action/result union
 // with role-specific internal operations.
@@ -235,8 +264,29 @@ func (endpoint *endpoint) Withdraw(ctx context.Context, input WithdrawalRequest)
 	return endpoint.unpublish(ctx, input)
 }
 
+// Connect runs one client-side native Connection with only outbound facts.
+func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionRequest) (RuntimeResult, error) {
+	return endpoint.runConnection(ctx, Request{Action: "connect", Principal: input.Principal, Session: input.Capability,
+		Target: input.Target, Publication: input.Publication, Route: input.Route, Application: input.Application,
+		OpenAttachment: input.OpenAttachment, RecoveryBinding: input.RecoveryBinding, NameBinding: input.NameBinding,
+		NameUpdates: input.NameUpdates, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
+		ReceiveBytes: input.ReceiveBytes, At: input.At})
+}
+
+// Accept runs one publisher-side native Connection with only inbound facts.
+func (endpoint *endpoint) Accept(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
+	return endpoint.runConnection(ctx, Request{Action: "accept", Principal: input.Principal, Session: input.Capability,
+		Route: input.Route, Application: input.Application, OpenAttachment: input.OpenAttachment,
+		RecoveryBinding: input.RecoveryBinding, BytesEachDirection: input.BytesEachDirection,
+		SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes, At: input.At})
+}
+
 // Do executes one admitted operation and returns only an R-002 product class.
 func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult, error) {
+	return endpoint.runConnection(ctx, input)
+}
+
+func (endpoint *endpoint) runConnection(ctx context.Context, input Request) (RuntimeResult, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return denied("local operation is incomplete")
 	}

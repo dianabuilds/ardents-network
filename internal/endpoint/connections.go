@@ -16,7 +16,8 @@ type endpointConnection struct {
 	application net.Conn
 	result      net.Conn
 	route       net.Conn
-	request     Request
+	outbound    *OutboundConnectionRequest
+	inbound     *InboundConnectionRequest
 }
 
 type endpointOutcome struct {
@@ -78,22 +79,31 @@ func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint c
 		_ = route.Close()
 		return fail(err)
 	}
-	request := Request{Action: plan.roleAction(), Principal: setup.ConnectionPrincipal,
-		Session: session, Route: route, Application: application, BytesEachDirection: plan.BytesEachDirection,
-		SendBytes: plan.SendBytes, ReceiveBytes: plan.ReceiveBytes, At: at}
-	request.RecoveryBinding, err = plan.recoveryBinding()
+	binding, err := plan.recoveryBinding()
 	if err != nil {
 		_ = route.Close()
 		return fail(err)
 	}
+	if plan.Role == "client" {
+		request := OutboundConnectionRequest{Principal: setup.ConnectionPrincipal, Capability: session, Route: route,
+			Application: application, RecoveryBinding: binding, BytesEachDirection: plan.BytesEachDirection,
+			SendBytes: plan.SendBytes, ReceiveBytes: plan.ReceiveBytes, At: at}
+		if plan.recoveryEnabled() {
+			request.OpenAttachment = openAttachment
+		}
+		if err := addClientPublication(plan, &request); err != nil {
+			_ = route.Close()
+			return fail(err)
+		}
+		return endpointConnection{application: application, result: result, route: route, outbound: &request}, nil
+	}
+	request := InboundConnectionRequest{Principal: setup.ConnectionPrincipal, Capability: session, Route: route,
+		Application: application, RecoveryBinding: binding, BytesEachDirection: plan.BytesEachDirection,
+		SendBytes: plan.SendBytes, ReceiveBytes: plan.ReceiveBytes, At: at}
 	if plan.recoveryEnabled() {
 		request.OpenAttachment = openAttachment
 	}
-	if err := addClientPublication(plan, &request); err != nil {
-		_ = route.Close()
-		return fail(err)
-	}
-	return endpointConnection{application: application, result: result, route: route, request: request}, nil
+	return endpointConnection{application: application, result: result, route: route, inbound: &request}, nil
 }
 
 func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, setup Setup,
@@ -108,7 +118,13 @@ func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, set
 	defer connection.result.Close()
 	operation, cancel := context.WithTimeout(ctx, lifetime)
 	defer cancel()
-	result, err := endpoint.Do(operation, connection.request)
+	var result RuntimeResult
+	var err error
+	if connection.outbound != nil {
+		result, err = endpoint.Connect(operation, *connection.outbound)
+	} else {
+		result, err = endpoint.Accept(operation, *connection.inbound)
+	}
 	result.ApplicationIPCAccepts = setup.Resources("application-accept", 0)
 	result.RouteAttachmentsAccepted = setup.Resources("route-attachment-accept", 0)
 	result.IntroductionReceipt = published.IntroductionReceipt
@@ -144,7 +160,7 @@ func collectEndpointOutcomes(input <-chan endpointOutcome, count int, setup Setu
 	return result, err
 }
 
-func addClientPublication(plan endpointPlan, request *Request) error {
+func addClientPublication(plan endpointPlan, request *OutboundConnectionRequest) error {
 	if plan.Role != "client" {
 		return nil
 	}

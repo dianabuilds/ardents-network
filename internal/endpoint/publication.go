@@ -19,6 +19,8 @@ type connectionEndpoint interface {
 	Do(context.Context, Request) (RuntimeResult, error)
 	Admit([32]byte, broker.Surface) ([32]byte, error)
 	Publish(context.Context, PublicationRequest) (PublicationResult, error)
+	Connect(context.Context, OutboundConnectionRequest) (RuntimeResult, error)
+	Accept(context.Context, InboundConnectionRequest) (RuntimeResult, error)
 }
 
 func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,

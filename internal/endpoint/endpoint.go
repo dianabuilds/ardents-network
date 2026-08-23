@@ -76,9 +76,3 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (RuntimeR
 	}
 	return result, runErr
 }
-func (plan endpointPlan) roleAction() string {
-	if plan.Role == "client" {
-		return "connect"
-	}
-	return "accept"
-}

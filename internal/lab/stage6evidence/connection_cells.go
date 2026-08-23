@@ -116,16 +116,16 @@ func startEvidenceConnection(fixture connectionFixture, binding namespace.Bindin
 	outcomes := make(chan connectionOutcome, 2)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	_ = cancel
-	go runEvidenceEndpoint(ctx, outcomes, "publisher", fixture.publisherNode, serviceconn.Request{Action: "accept",
-		Principal: fixture.publisher, Session: publisherSession, Route: publisherRoute,
+	go runEvidenceInbound(ctx, outcomes, fixture.publisherNode, serviceconn.InboundConnectionRequest{
+		Principal: fixture.publisher, Capability: publisherSession, Route: publisherRoute,
 		Application: publisherEndpoint, BytesEachDirection: 1, At: fixture.now})
-	request := serviceconn.Request{Action: "connect", Principal: fixture.client, Session: clientSession,
+	request := serviceconn.OutboundConnectionRequest{Principal: fixture.client, Capability: clientSession,
 		Target: fixture.credential.Target, Publication: fixture.publication, Route: clientRoute,
 		Application: clientEndpoint, BytesEachDirection: 1, At: fixture.now}
 	if nameOrigin {
 		request.NameBinding, request.NameUpdates = evidenceServiceBinding(binding), updates
 	}
-	go runEvidenceEndpoint(ctx, outcomes, "client", fixture.clientEndpoint, request)
+	go runEvidenceOutbound(ctx, outcomes, fixture.clientEndpoint, request)
 	return outcomes, [2]net.Conn{clientApplication, publisherApplication}, nil
 }
 
@@ -135,11 +135,18 @@ func evidenceServiceBinding(value namespace.Binding) serviceconn.DestinationBind
 		ParentGeneration: value.ParentGeneration, RecordDigest: value.RecordDigest, Commitment: value.Commitment}
 }
 
-func runEvidenceEndpoint(ctx context.Context, outcomes chan<- connectionOutcome, role string,
-	endpoint evidenceEndpoint, request serviceconn.Request,
+func runEvidenceInbound(ctx context.Context, outcomes chan<- connectionOutcome, endpoint evidenceEndpoint,
+	request serviceconn.InboundConnectionRequest,
 ) {
-	result, err := endpoint.Do(ctx, request)
-	outcomes <- connectionOutcome{role, result, err}
+	result, err := endpoint.Accept(ctx, request)
+	outcomes <- connectionOutcome{"publisher", result, err}
+}
+
+func runEvidenceOutbound(ctx context.Context, outcomes chan<- connectionOutcome, endpoint evidenceEndpoint,
+	request serviceconn.OutboundConnectionRequest,
+) {
+	result, err := endpoint.Connect(ctx, request)
+	outcomes <- connectionOutcome{"client", result, err}
 }
 
 func exchangeEvidenceBytes(applications [2]net.Conn) error {
