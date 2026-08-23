@@ -1,6 +1,9 @@
 package namespace
 
-import "crypto/ed25519"
+import (
+	"crypto/ed25519"
+	"sync"
+)
 
 const claimOrderRule = "ardents-name-claim-order-v1"
 
@@ -46,6 +49,23 @@ type ClaimProof struct {
 	SignerIDs              [][32]byte
 	Signatures             [][]byte
 	AlternateSets          []ClaimProof
+}
+
+// ClaimWinner is one verified, process-local result of an authenticated claim
+// Epoch close. Its fields are private so only OpenClaimWinner can create a
+// materializable root claim; the signed ClaimProof remains the interoperable
+// Epoch evidence under R-042.
+type ClaimWinner struct {
+	value *claimWinner
+}
+
+type claimWinner struct {
+	mu        sync.Mutex
+	name      string
+	authority [32]byte
+	ordinal   uint32
+	epoch     uint64
+	consumed  bool
 }
 
 type result struct {

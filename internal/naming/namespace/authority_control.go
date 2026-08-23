@@ -199,17 +199,19 @@ func (control *control) claim(operation controlOperation, current Record, exists
 	if decodeErr != nil {
 		return Record{}, errors.New("root claim proof is invalid")
 	}
-	result, err := control.order.Verify(proof)
-	if err != nil || result.Outcome != "accepted" {
+	winner, err := OpenClaimWinner(control.order, proof)
+	if err != nil {
 		return Record{}, errors.New("root claim ordering is unavailable")
 	}
-	op := Op{Kind: "claim", Name: operation.Name, Generation: operation.Generation,
-		ClaimOrdinal: result.WinnerOrdinal, Authority: hex.EncodeToString(operation.Authority[:]),
-		LeaseDuration: durationUntil(now, operation.LeaseNotAfter)}
-	if !exists {
-		return ApplyOrderedClaim(control.order, proof, nil, now.Unix(), op, control.policy)
+	var predecessor *Record
+	if exists {
+		predecessor = &current
 	}
-	return ApplyOrderedClaim(control.order, proof, &current, now.Unix(), op, control.policy)
+	updated, err := winner.Materialize(predecessor, now, control.policy)
+	if err != nil || updated.Name != operation.Name || updated.Authority != hex.EncodeToString(operation.Authority[:]) {
+		return Record{}, errors.New("root claim materialization is unavailable")
+	}
+	return updated, nil
 }
 
 func (control *control) delegate(operation controlOperation, now time.Time) (Record, error) {

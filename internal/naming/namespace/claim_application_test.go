@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
-func TestOrderedClaimMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.T) {
+func TestClaimWinnerMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.T) {
 	t.Parallel()
 	claimKey := deterministicAuthority("ordered-claim")
 	claim := namespace.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{1},
@@ -27,16 +27,51 @@ func TestOrderedClaimMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.
 		MaterializationRoot: orderedMaterializationLeaf(claim), MaterializationLength: 1,
 		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{claim}}
 	order := signedClaimClose(&proof)
-	op := namespace.Op{Kind: "claim", Name: claim.Name, Generation: 1, ClaimOrdinal: claim.Ordinal,
-		Authority: hex.EncodeToString(claim.Authority[:])}
-	record, err := namespace.ApplyOrderedClaim(order, proof, nil, 100, op,
+	winner, err := namespace.OpenClaimWinner(order, proof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := winner.Materialize(nil, time.Unix(100, 0).UTC(),
 		namespace.Policy{DefaultLeaseDuration: time.Hour})
-	if err != nil || record.Name != claim.Name || record.Authority != op.Authority {
+	if err != nil || record.Name != claim.Name || record.Authority != hex.EncodeToString(claim.Authority[:]) {
 		t.Fatalf("record=%+v err=%v", record, err)
 	}
-	op.ClaimOrdinal++
-	if _, err := namespace.ApplyOrderedClaim(order, proof, nil, 100, op, namespace.Policy{}); err == nil {
-		t.Fatal("non-winning ordinal was materialized")
+	if _, err := winner.Materialize(nil, time.Unix(101, 0).UTC(), namespace.Policy{}); err == nil {
+		t.Fatal("one verified winner materialized more than once")
+	}
+}
+
+func TestClaimWinnerDerivesReclaimInsteadOfAcceptingCallerOperation(t *testing.T) {
+	t.Parallel()
+	claimKey := deterministicAuthority("reclaim-winner")
+	claim := namespace.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{2},
+		AdmissionDigest: sha256.Sum256([]byte("reclaim root-claim admission"))}
+	copy(claim.Authority[:], claimKey.Public().(ed25519.PublicKey))
+	claim.Commitment = namespace.CommitmentFor([32]byte{8}, 12, claim)
+	copy(claim.Signature[:], ed25519.Sign(claimKey, namespace.RevealTranscript([32]byte{8}, 12, claim)))
+	proof := namespace.ClaimProof{Network: [32]byte{8}, Epoch: 12, Rule: "ardents-name-claim-order-v1",
+		CutoffOffset: 10_001, InputRoot: orderedInputLeaf(claim), InputLength: 1,
+		MaterializationRoot: orderedMaterializationLeaf(claim), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{claim}}
+	order := signedClaimClose(&proof)
+	winner, err := namespace.OpenClaimWinner(order, proof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previousKey := deterministicAuthority("reclaim-previous")
+	previous, err := namespace.Apply(nil, 90, namespace.Op{Kind: "claim", Name: "alice", Generation: 1,
+		Authority: hex.EncodeToString(previousKey.Public().(ed25519.PublicKey))}, namespace.Policy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	released, err := namespace.Apply(&previous, 91, namespace.Op{Kind: "release", Name: "alice",
+		Authority: previous.Authority, ExpectedGeneration: previous.Generation, ExpectedRevision: previous.Revision}, namespace.Policy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reclaimed, err := winner.Materialize(&released, time.Unix(100, 0).UTC(), namespace.Policy{})
+	if err != nil || reclaimed.Generation != 2 || reclaimed.Authority != hex.EncodeToString(claim.Authority[:]) {
+		t.Fatalf("reclaimed=%+v err=%v", reclaimed, err)
 	}
 }
 
