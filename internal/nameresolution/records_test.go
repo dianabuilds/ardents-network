@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
-func TestMaterializedRecordRejectsAProofThatCannotFitTheFixedResponse(t *testing.T) {
+func TestRecordTooLargeForTheFixedResponseIsRejectedBeforeMaterialization(t *testing.T) {
 	t.Parallel()
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))
 	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
@@ -19,17 +19,7 @@ func TestMaterializedRecordRejectsAProofThatCannotFitTheFixedResponse(t *testing
 		ConflictIdentifier: strings.Repeat("t", 4096),
 		LeaseExpiresAt:     200, GraceExpiresAt: 220}
 	signed, err := namespace.SignRecord([32]byte{1}, record, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	materialization := testNamespaceFixture([32]byte{1}, "oversized-proof")
-	store, err := namespace.Open(t.TempDir(), materialization.policy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = store.Close() })
-	materialization.commit(t, store, 1, [][]byte{signed})
-	if _, err := store.Lookup("alice", 1); err == nil {
-		t.Fatal("oversized signed Record proof was accepted")
+	if err == nil || signed != nil {
+		t.Fatalf("oversized Record signed=%d err=%v", len(signed), err)
 	}
 }

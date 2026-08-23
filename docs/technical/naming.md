@@ -62,7 +62,7 @@ ingestion remains open; an incomplete or forked close must not mutate a Lease.
 | Concurrent exact local readers | 8 in R-066 measurement | measured tracer condition, not a concurrency promise |
 | Pending journal | ≤127 entries; each submission/successor ≤64 KiB | Namespace-local restart bridge |
 | Static control input | ≤16 KiB | C0 internal control representation pending F031 cutover |
-| Signed Record | payload ≤16 MiB; container ≤16 MiB + 74 bytes | legacy decoder ceiling, not a Resolution-safe product limit |
+| Signed Record | payload ≤1,846 bytes; container ≤1,920 bytes | R-073 retains 76 bytes below the measured worst-case proof fit |
 | Private Resolution request/response | exactly 4,096 bytes | retained R-067 OHTTP envelope |
 | Relay OHTTP envelope | ≤8 KiB | role-local transport bound |
 | Admission profiles | resolution `16/4096/64`; renewal-update `16/2048/32`; policy-recovery `17/1024/16`; root-claim `18/1024/8` (`work bits/spent/in-flight`) | retained R-045 local amplification guard; not Sybil resistance |

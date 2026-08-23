@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	signedRecordSchema uint16 = 1
-	maxRecordBytes            = 16 << 20
-	recordDomain              = "ardents-name-record-v1"
+	signedRecordSchema        uint16 = 1
+	maximumRecordPayloadBytes        = 1_846
+	maximumSignedRecordBytes         = maximumRecordPayloadBytes + 2 + 8 + ed25519.SignatureSize
+	recordDomain                     = "ardents-name-record-v1"
 )
 
 // SignRecord signs one canonical Record for exactly one network and returns a
@@ -25,7 +26,7 @@ func SignRecord(network [32]byte, record Record, private ed25519.PrivateKey) ([]
 		return nil, errors.New("name record Authority does not match signer")
 	}
 	recordWire, err := EncodeRecord(record)
-	if err != nil || len(recordWire) > maxRecordBytes {
+	if err != nil || len(recordWire) > maximumRecordPayloadBytes {
 		return nil, errors.New("name record cannot be signed")
 	}
 	signature := ed25519.Sign(private, recordTranscript(network, recordWire))
@@ -42,14 +43,14 @@ func SignRecord(network [32]byte, record Record, private ed25519.PrivateKey) ([]
 
 // VerifyRecord authenticates and decodes one exact signed Record container.
 func VerifyRecord(network [32]byte, signed []byte) (Record, error) {
-	if network == [32]byte{} || len(signed) < 2+8+ed25519.SignatureSize || len(signed) > maxRecordBytes+74 {
+	if network == [32]byte{} || len(signed) < 2+8+ed25519.SignatureSize || len(signed) > maximumSignedRecordBytes {
 		return Record{}, errors.New("signed name record is malformed")
 	}
 	if binary.BigEndian.Uint16(signed[:2]) != signedRecordSchema {
 		return Record{}, errors.New("signed name record schema is invalid")
 	}
 	size := binary.BigEndian.Uint64(signed[2:10])
-	if size == 0 || size > maxRecordBytes || size != uint64(len(signed)-10-ed25519.SignatureSize) {
+	if size == 0 || size > maximumRecordPayloadBytes || size != uint64(len(signed)-10-ed25519.SignatureSize) {
 		return Record{}, errors.New("signed name record length is invalid")
 	}
 	recordWire := signed[10 : 10+int(size)]
