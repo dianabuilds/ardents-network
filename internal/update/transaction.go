@@ -106,7 +106,7 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 			request.schemaPlan = "copy-on-write-v1"
 		}
 	}
-	artifact, manifestBytes, manifestDigest, err := validateRequest(ctx, request)
+	artifact, _, _, err := validateRequest(ctx, request)
 	if err != nil {
 		if errors.Is(err, errCandidateMismatch) {
 			return stagingFailureResult(request, "release-accepted"), err
@@ -153,11 +153,11 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		return transactionInvalidResult(generation), err
 	}
 	request.generation = generation
-	manifestBytes, err = encodeManifest(request, artifact)
+	manifestBytes, err := encodeManifest(request, artifact)
 	if err != nil {
 		return invalidResult(request, "release-accepted"), errors.Join(err, store.release())
 	}
-	manifestDigest = sha256.Sum256(manifestBytes)
+	manifestDigest := sha256.Sum256(manifestBytes)
 	if result, matched := committedRequest(store, inspection, request, artifact, manifestDigest); matched {
 		if err := store.release(); err != nil {
 			return invalidResult(request, "committed"), err
