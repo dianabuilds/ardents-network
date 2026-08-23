@@ -19,9 +19,14 @@ type Binding struct {
 	Commitment       [32]byte
 }
 
-// ResolveBinding validates a current Record lineage and returns the exact
-// immutable provenance needed by a later Service Connection.
-func ResolveBinding(current Record, now int64, parents []Record) (Binding, string, error) {
+// ResolveBindingLegacy validates a caller-built Record lineage. It remains for
+// compatibility tests and evidence; runtime resolution receives Binding only
+// from a threshold-authenticated Namespace proof.
+func ResolveBindingLegacy(current Record, now int64, parents []Record) (Binding, string, error) {
+	return resolveBinding(current, now, parents)
+}
+
+func resolveBinding(current Record, now int64, parents []Record) (Binding, string, error) {
 	if err := validateRecord(current); err != nil {
 		return Binding{}, "", errors.New("name record is invalid")
 	}

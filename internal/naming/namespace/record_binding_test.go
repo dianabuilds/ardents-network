@@ -16,7 +16,7 @@ func TestResolvedBindingAcceptsOnlyCurrentSameTargetLineage(t *testing.T) {
 		Authority: "authority-a", Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(),
 	}
-	binding, _, err := namespace.ResolveBinding(record, now.Unix(), nil)
+	binding, _, err := namespace.ResolveBindingLegacy(record, now.Unix(), nil)
 	if err != nil || binding.Target != record.Target || binding.Commitment == ([32]byte{}) {
 		t.Fatalf("binding=%+v err=%v", binding, err)
 	}
@@ -25,7 +25,7 @@ func TestResolvedBindingAcceptsOnlyCurrentSameTargetLineage(t *testing.T) {
 	renewed.Revision++
 	renewed.LeaseExpiresAt = now.Add(2 * time.Hour).Unix()
 	renewed.GraceExpiresAt = now.Add(3 * time.Hour).Unix()
-	renewedBinding, _, err := namespace.ResolveBinding(renewed, now.Add(time.Minute).Unix(), nil)
+	renewedBinding, _, err := namespace.ResolveBindingLegacy(renewed, now.Add(time.Minute).Unix(), nil)
 	if err != nil || renewedBinding.Target != binding.Target || renewedBinding.Revision <= binding.Revision {
 		t.Fatal("same-Target monotonic renewal invalidated the binding")
 	}
@@ -41,7 +41,7 @@ func TestResolvedBindingAcceptsOnlyCurrentSameTargetLineage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			changed := renewed
 			mutate(&changed)
-			if _, _, err := namespace.ResolveBinding(changed, now.Add(time.Minute).Unix(), nil); err == nil {
+			if _, _, err := namespace.ResolveBindingLegacy(changed, now.Add(time.Minute).Unix(), nil); err == nil {
 				t.Fatalf("unresolvable Record produced a binding: %+v", changed)
 			}
 		})

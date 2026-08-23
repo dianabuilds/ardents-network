@@ -114,7 +114,8 @@ tracer can grow.
 
 ## Remaining M5 work
 
-The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`, raw
+The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`,
+`ResolveBindingLegacy`, raw
 `Store.CommitLegacy`, and historical Stage 6 fixtures remain compatibility surface.
 They must be replaced by sealed Namespace constructors and one final
 installation Interface. The remaining global-close owner must accept the

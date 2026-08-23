@@ -1,7 +1,7 @@
 package namespace
 
 func canResolve(current Record, now int64, parents []Record) (bool, string) {
-	_, warning, err := ResolveBinding(current, now, parents)
+	_, warning, err := resolveBinding(current, now, parents)
 	if err != nil {
 		return false, err.Error()
 	}

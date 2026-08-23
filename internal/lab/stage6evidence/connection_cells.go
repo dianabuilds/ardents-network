@@ -36,14 +36,14 @@ func runConnectionCell(trace *traceRecord) error {
 		Consistency: "current", Recovery: "stable", Authority: "authority", Target: fixture.credential.Target,
 		LeaseExpiresAt: fixture.now.Add(time.Hour).Unix(), GraceExpiresAt: fixture.now.Add(2 * time.Hour).Unix(),
 		RecordNotAfter: fixture.now.Add(30 * time.Minute).UnixMilli(), Continuity: 1}
-	binding, _, err := namespace.ResolveBinding(record, fixture.now.Unix(), nil)
+	binding, _, err := namespace.ResolveBindingLegacy(record, fixture.now.Unix(), nil)
 	if err != nil {
 		return err
 	}
 	replacement := record
 	replacement.Revision++
 	replacement.Target = [32]byte{99}
-	replacementBinding, _, err := namespace.ResolveBinding(replacement, fixture.now.Add(time.Second).Unix(), nil)
+	replacementBinding, _, err := namespace.ResolveBindingLegacy(replacement, fixture.now.Add(time.Second).Unix(), nil)
 	if err != nil {
 		return err
 	}

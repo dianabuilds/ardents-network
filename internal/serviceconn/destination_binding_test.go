@@ -20,7 +20,7 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 		Authority: "name-authority", Target: fixture.first.Target,
 		LeaseExpiresAt: fixture.now.Add(time.Hour).Unix(), GraceExpiresAt: fixture.now.Add(2 * time.Hour).Unix(),
 	}
-	binding, _, err := namespace.ResolveBinding(record, fixture.now.Unix(), nil)
+	binding, _, err := namespace.ResolveBindingLegacy(record, fixture.now.Unix(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	replacement := record
 	replacement.Revision++
 	replacement.Target = [32]byte{99}
-	replacementBinding, _, err := namespace.ResolveBinding(replacement, fixture.now.Add(time.Second).Unix(), nil)
+	replacementBinding, _, err := namespace.ResolveBindingLegacy(replacement, fixture.now.Add(time.Second).Unix(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
