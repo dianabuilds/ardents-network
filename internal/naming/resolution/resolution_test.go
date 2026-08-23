@@ -20,6 +20,10 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/naming"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/openpcc/ohttp"
@@ -105,7 +109,7 @@ func TestResolveFailsClosedOnRoleConflictAndTampering(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := resolver.Resolve(context.Background(), "alice", fixture.now)
-	if err == nil || result.Class != "invalid naming evidence" || result.Binding != (namespace.Binding{}) {
+	if err == nil || result.Class != "invalid naming evidence" || result.Binding != (record.Binding{}) {
 		t.Fatalf("tampered response result=%+v err=%v", result, err)
 	}
 }
@@ -194,7 +198,7 @@ func TestResolveDoesNotExposeUnboundOrUnknownNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := resolver.Resolve(context.Background(), "missing", fixture.now)
-	if err == nil || result.Class != "private resolution unavailable" || result.Binding != (namespace.Binding{}) {
+	if err == nil || result.Class != "private resolution unavailable" || result.Binding != (record.Binding{}) {
 		t.Fatalf("missing name result=%+v err=%v", result, err)
 	}
 	if _, err := nameresolution.OpenEvidence(fixture.view, fixture.selection, fixture.gatewayProfile(), [32]byte{},
@@ -215,27 +219,27 @@ type resolutionFixture struct {
 	relayEvidence   func() ([][]byte, []string)
 	roleEvidence    func() ([]gatewayRoleView, []relayRoleView)
 	setTamper       func(bool)
-	admission       *namespace.Admission
+	admission       *admission.Admission
 	network         [32]byte
-	current         namespace.Record
+	current         record.Record
 	authorityKey    ed25519.PrivateKey
 }
 
 type testControlAuthority interface {
-	Submit(namespace.Submission, namespace.Proof) string
+	Submit(authority.Submission, admission.Proof) string
 }
 
-type testControlAuthorityFactory func(*namespace.Store, *namespace.Admission, time.Time) (testControlAuthority, error)
+type testControlAuthorityFactory func(*epoch.Store, *admission.Admission, time.Time) (testControlAuthority, error)
 
 func newResolutionFixture(t *testing.T) resolutionFixture {
 	return newResolutionFixtureWithControl(t, nil)
 }
 
 func newResolutionFixtureWithControl(t *testing.T, control interface {
-	Submit(namespace.Submission, namespace.Proof) string
+	Submit(authority.Submission, admission.Proof) string
 },
 ) resolutionFixture {
-	return newResolutionFixtureWithAuthority(t, func(*namespace.Store, *namespace.Admission, time.Time,
+	return newResolutionFixtureWithAuthority(t, func(*epoch.Store, *admission.Admission, time.Time,
 	) (testControlAuthority, error) {
 		return control, nil
 	})
@@ -249,12 +253,12 @@ func newResolutionFixtureWithAuthority(t *testing.T, build testControlAuthorityF
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
+	current := record.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(),
 		RecordNotAfter: now.Add(30 * time.Minute).UnixMilli()}
-	signed, err := namespace.SignRecord(network, record, private)
+	signed, err := record.SignRecord(network, current, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,20 +266,20 @@ func newResolutionFixtureWithAuthority(t *testing.T, build testControlAuthorityF
 	if err != nil {
 		t.Fatal(err)
 	}
-	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
+	gate, err := admission.NewAdmission([32]byte{2}, network, 1, [32]byte{6})
 	if err != nil {
 		t.Fatal(err)
 	}
 	store, materialization := resolutionRecordStore(t, network, signed)
-	authority, err := build(store, admission, now)
+	control, err := build(store, gate, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	namespaceView, err := namespace.OpenResolutionGateway(store, 1, [32]byte{1}, admission)
+	namespaceView, err := namespace.OpenResolutionGateway(store, 1, [32]byte{1}, gate)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gatewayState, err := nameresolution.BindGatewayState(namespaceView, authority)
+	gatewayState, err := nameresolution.BindGatewayState(namespaceView, control)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,8 +307,8 @@ func newResolutionFixtureWithAuthority(t *testing.T, build testControlAuthorityF
 	bindNamespacePolicy(&view, materialization.policy)
 	selection := nameresolution.Selection{At: now, Deadline: now.Add(15 * time.Second),
 		RelayNodeID: [32]byte{1}, GatewayNodeID: [32]byte{2}, ConnectionRendezvousNodeID: [32]byte{3}}
-	return resolutionFixture{now: now, view: view, selection: selection, relayServer: relayServer, admission: admission,
-		network: network, current: record, authorityKey: private,
+	return resolutionFixture{now: now, view: view, selection: selection, relayServer: relayServer, admission: gate,
+		network: network, current: current, authorityKey: private,
 		gatewayProfile:  gateway.Profile,
 		gatewayRequests: func() uint32 { requests, _, _ := gateway.Observation(); return requests },
 		gatewayRejected: func() uint32 { _, _, rejected := gateway.Observation(); return rejected },
@@ -342,10 +346,10 @@ func (fixture resolutionFixture) controlSelection(t *testing.T, digest [32]byte,
 	return selection
 }
 
-func resolutionRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*namespace.Store, namespaceFixture) {
+func resolutionRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*epoch.Store, namespaceFixture) {
 	t.Helper()
 	materialization := testNamespaceFixture(network, "resolution-namespace")
-	store, err := namespace.Open(t.TempDir(), materialization.policy)
+	store, err := epoch.Open(t.TempDir(), materialization.policy)
 	if err != nil {
 		t.Fatal(err)
 	}
