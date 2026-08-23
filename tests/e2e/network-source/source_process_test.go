@@ -86,13 +86,15 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 		t.Fatalf("refresh source processes: %v\n%s", err, output)
 	}
 	var event struct {
+		Schema             string    `json:"schema"`
 		Kind               string    `json:"kind"`
 		Generation         string    `json:"generation"`
 		SourceAttempts     uint16    `json:"source_attempts"`
 		SourceOutcomes     [4]string `json:"source_outcomes"`
 		LatestCompleteness string    `json:"latest_completeness"`
 	}
-	if err := json.Unmarshal(bytes.TrimSpace(output), &event); err != nil || event.Kind != "source-wave-accepted" ||
+	if err := json.Unmarshal(bytes.TrimSpace(output), &event); err != nil || event.Schema != "ardents-source-event-v1" ||
+		event.Kind != "source-wave-accepted" ||
 		event.Generation != fixture.generation || event.SourceAttempts != 2 ||
 		event.SourceOutcomes != [4]string{"valid", "valid", "not-attempted", "not-attempted"} ||
 		event.LatestCompleteness != "latest completeness unproven" {

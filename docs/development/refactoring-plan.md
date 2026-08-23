@@ -86,6 +86,13 @@ remain unchanged; none becomes a general command configuration contract. The
 former executable, its deterministic profile entry, and its package-map row
 are deleted together.
 
+The retained `ardents` and `ardents-node` commands have no repository-visible
+reader for their former H3 event schemas. Their source and Node lifecycle JSON
+events therefore make one C0 cutover to `ardents-source-event-v1` and
+`ardents-node-event-v1`. Process tests assert those exact schemas; no H3 event
+schema reader or support window remains. This does not rename or select the
+separate H3 role-probe baseline, which remains outside a supported Node profile.
+
 The former `ardents-stream-app` and `ardents-publish-app` commands are C0
 product tracers. Their only current caller is the Endpoint recovery process
 test, so their implementations and unit suites now live as explicit

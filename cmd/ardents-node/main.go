@@ -36,7 +36,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	snapshot, err := store.Current()
 	if err == nil {
 		err = events.encode(map[string]any{
-			"schema": "ardents-h3-source-event-v1", "kind": "source-ready",
+			"schema": "ardents-source-event-v1", "kind": "source-ready",
 			"generation": snapshot.Generation, "epoch": snapshot.Epoch,
 		})
 	}

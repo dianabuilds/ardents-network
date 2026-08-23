@@ -8,7 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-const eventSchema = "ardents-h3-node-event-v1"
+const eventSchema = "ardents-node-event-v1"
 
 // DutyView is the narrow authenticated input required to decide one Node duty.
 // It does not expose Network State persistence, source, retry, or pending

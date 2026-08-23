@@ -75,7 +75,7 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 		SourceAttempts     uint16    `json:"source_attempts"`
 		SourceOutcomes     [4]string `json:"source_outcomes"`
 		LatestCompleteness string    `json:"latest_completeness"`
-	}{"ardents-h3-source-event-v1", "source-wave-accepted", snapshot.Generation, snapshot.Epoch,
+	}{"ardents-source-event-v1", "source-wave-accepted", snapshot.Generation, snapshot.Epoch,
 		snapshot.SourceAttempts, snapshot.SourceOutcomes, snapshot.LatestCompleteness})
 	if err != nil || once || config.AutomaticRefreshInterval == 0 {
 		return err

@@ -46,6 +46,7 @@ type nodeProcess struct {
 }
 
 type nodeEvent struct {
+	Schema           string   `json:"schema"`
 	State            string   `json:"state"`
 	Epoch            uint64   `json:"epoch"`
 	Assignment       string   `json:"assignment"`
@@ -264,7 +265,10 @@ func startSource(t *testing.T, binary, plan string) func() {
 	}
 	scanner := bufio.NewScanner(stdout)
 	ready := make(chan bool, 1)
-	go func() { ready <- scanner.Scan() && strings.Contains(scanner.Text(), `"kind":"source-ready"`) }()
+	go func() {
+		ready <- scanner.Scan() && strings.Contains(scanner.Text(), `"schema":"ardents-source-event-v1"`) &&
+			strings.Contains(scanner.Text(), `"kind":"source-ready"`)
+	}()
 	select {
 	case ok := <-ready:
 		if !ok {
@@ -320,6 +324,9 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 	for {
 		select {
 		case event, open := <-process.events:
+			if event.Schema != "ardents-node-event-v1" {
+				t.Fatalf("Node event schema = %q, want ardents-node-event-v1", event.Schema)
+			}
 			if !open {
 				select {
 				case <-process.done:
@@ -334,6 +341,9 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 			}
 		case <-process.done:
 			for event := range process.events {
+				if event.Schema != "ardents-node-event-v1" {
+					t.Fatalf("Node event schema = %q, want ardents-node-event-v1", event.Schema)
+				}
 				t.Logf("Node %d event: state=%s epoch=%d assignment=%s", process.command.Process.Pid, event.State, event.Epoch, event.Assignment)
 				if event.State == state {
 					return event
