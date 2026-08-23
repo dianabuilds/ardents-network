@@ -75,8 +75,9 @@ fallback are C0 retired, with delayed, mismatch, and partial-handshake tests.
 It does not create an isolation claim. The temporary `serviceconn` package,
 its public `Do(Request)` action union, and its test callers are deleted;
 Endpoint now exposes role-specific `Admit`, `Publish`, `Withdraw`, `Connect`,
-and `Accept` operations. M10 still needs to reduce the remaining endpoint
-runtime-report projection. The remaining deepening cutover has no new forwarding
+and `Accept` operations. M10 is structurally complete under R-085: its generic
+Broker remains explicitly `unqualified`, and no placeholder platform-isolation
+package is created. The remaining deepening cutover has no new forwarding
 Interface: Endpoint directly acquires a Publication lease, performs the
 role-local TLS carrier and exact-Instance exchange, and supplies the resulting
 opaque Attachment plus Application stream to `service/connection`. Broker
