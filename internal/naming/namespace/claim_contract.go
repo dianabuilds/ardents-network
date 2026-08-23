@@ -59,6 +59,15 @@ type ClaimWinner struct {
 	value *claimWinner
 }
 
+// ClaimCommitment is an opaque, locally admitted R-042 commit input. Only
+// AdmitClaimCommitment can create it after consuming the root-claim proof.
+type ClaimCommitment struct {
+	network    [32]byte
+	epoch      uint64
+	commitment [32]byte
+	admission  [32]byte
+}
+
 type claimWinner struct {
 	mu        sync.Mutex
 	name      string
