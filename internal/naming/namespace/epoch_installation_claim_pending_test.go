@@ -21,7 +21,7 @@ func TestEpochInstallationCommitsVerifiedClaimWithSelectedPendingPrefix(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Commit(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+	if err := store.CommitLegacy(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: [32]byte{2}, TransitionLength: 1, RejectionRoot: [32]byte{3}},
 		[][]byte{signedCurrent}, pendingTestAttester(attesters)); err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestEpochInstallationRejectsChangedCurrentGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Commit(epoch, [][]byte{signed}, pendingTestAttester(attesters)); err != nil {
+	if err := store.CommitLegacy(epoch, [][]byte{signed}, pendingTestAttester(attesters)); err != nil {
 		t.Fatal(err)
 	}
 	if err := installation.Commit(pendingTestAttester(attesters)); err == nil {

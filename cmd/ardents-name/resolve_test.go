@@ -143,7 +143,7 @@ func commandRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*name
 	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 1,
 		RejectionRoot: sha256.Sum256([]byte("rejections"))}
-	if err := store.Commit(epoch, signed, func(transcript []byte) ([][32]byte, [][]byte, error) {
+	if err := store.CommitLegacy(epoch, signed, func(transcript []byte) ([][32]byte, [][]byte, error) {
 		ids, signatures := make([][32]byte, 2), make([][]byte, 2)
 		for index, private := range signers[:2] {
 			ids[index] = sha256.Sum256(private.Public().(ed25519.PublicKey))

@@ -20,9 +20,10 @@ func Open(path string, input MaterializationPolicy) (*Store, error) {
 	return &Store{root: root, policy: policy}, nil
 }
 
-// Commit threshold-attests and atomically publishes one strictly newer current
-// Namespace. The attester receives only the canonical statement transcript.
-func (store *Store) Commit(epoch Epoch, signed [][]byte,
+// CommitLegacy threshold-attests a caller-built corpus and atomically publishes
+// it as current. It exists only for retained evidence and fixture construction;
+// runtime materialization must use EpochInstallation.Commit.
+func (store *Store) CommitLegacy(epoch Epoch, signed [][]byte,
 	attest func([]byte) ([][32]byte, [][]byte, error),
 ) error {
 	if store == nil || store.root == nil || attest == nil || !validEpoch(epoch) {
@@ -35,8 +36,8 @@ func (store *Store) Commit(epoch Epoch, signed [][]byte,
 	return store.commitAtPending(epoch, signed, pending, attest)
 }
 
-// commitInstallation publishes a Store-owned installation candidate. Unlike
-// the compatibility Commit method, it may include a verified ClaimWinner in
+// commitInstallation publishes a Store-owned installation candidate. Unlike the
+// CommitLegacy compatibility method, it may include a verified ClaimWinner in
 // addition to the selected durable pending prefix. The candidate's private
 // construction and captured current generation prevent an arbitrary corpus
 // from using this route.

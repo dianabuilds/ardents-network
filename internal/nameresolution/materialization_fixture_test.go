@@ -34,7 +34,7 @@ func (value namespaceFixture) commit(t *testing.T, store *namespace.Store, epoch
 	materialization := namespace.Epoch{Number: epoch, Digest: [32]byte{byte(epoch)}, CutoffOffset: int64(epoch),
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: uint32(len(signed)),
 		RejectionRoot: sha256.Sum256([]byte("rejections"))}
-	if err := store.Commit(materialization, signed, value.attest); err != nil {
+	if err := store.CommitLegacy(materialization, signed, value.attest); err != nil {
 		t.Fatal(err)
 	}
 }

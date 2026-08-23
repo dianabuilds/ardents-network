@@ -80,7 +80,7 @@ func newResolutionFixture(control ...interface {
 	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: value.claimProof.CutoffOffset,
 		TransitionRoot: namespaceTransitionRoot(value.transitions), TransitionLength: uint32(len(value.transitions)),
 		RejectionRoot: value.claimProof.RejectionRoot, RejectionLength: value.claimProof.RejectionLength}
-	if err = value.store.Commit(epoch, value.records, materialization.attest); err != nil {
+	if err = value.store.CommitLegacy(epoch, value.records, materialization.attest); err != nil {
 		value.close()
 		return value, err
 	}

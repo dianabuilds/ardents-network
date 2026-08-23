@@ -21,7 +21,7 @@ func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
 	}
 	first := signedRecord(t, network, "alice", "authority-a")
 	second := signedRecord(t, network, "bob", "authority-b")
-	if err := store.Commit(testEpoch(11), [][]byte{first, second}, thresholdAttester(signers[:2])); err != nil {
+	if err := store.CommitLegacy(testEpoch(11), [][]byte{first, second}, thresholdAttester(signers[:2])); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {
@@ -52,10 +52,10 @@ func TestStoreRejectsTamperAndPartialBatch(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	valid := signedRecord(t, network, "alice", "authority-a")
-	if err := store.Commit(testEpoch(3), [][]byte{valid}, thresholdAttester(signers[:2])); err != nil {
+	if err := store.CommitLegacy(testEpoch(3), [][]byte{valid}, thresholdAttester(signers[:2])); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Commit(testEpoch(4), [][]byte{valid, []byte{1}}, thresholdAttester(signers[:2])); err == nil {
+	if err := store.CommitLegacy(testEpoch(4), [][]byte{valid, []byte{1}}, thresholdAttester(signers[:2])); err == nil {
 		t.Fatal("partial invalid batch committed")
 	}
 	if _, err := store.Lookup("alice", 3); err != nil {

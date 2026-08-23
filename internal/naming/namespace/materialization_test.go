@@ -25,7 +25,7 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 	epoch := namespace.Epoch{Number: 11, Digest: [32]byte{11}, CutoffOffset: 500,
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 3,
 		RejectionRoot: sha256.Sum256([]byte("rejections")), RejectionLength: 1}
-	if err := store.Commit(epoch, [][]byte{signedRecord(t, network, "alice", "authority-a")},
+	if err := store.CommitLegacy(epoch, [][]byte{signedRecord(t, network, "alice", "authority-a")},
 		thresholdAttester(signers[:2])); err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = attackerStore.Close() })
-	if err := attackerStore.Commit(epoch, [][]byte{signedRecord(t, network, "alice", "attacker-authority")},
+	if err := attackerStore.CommitLegacy(epoch, [][]byte{signedRecord(t, network, "alice", "attacker-authority")},
 		thresholdAttester(attacker[:2])); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 	epoch := namespace.Epoch{Number: 12, Digest: [32]byte{12}, CutoffOffset: 600,
 		TransitionRoot: sha256.Sum256([]byte("deep-transitions")), TransitionLength: uint32(len(records)),
 		RejectionRoot: sha256.Sum256([]byte("deep-rejections"))}
-	if err := store.Commit(epoch, records, thresholdAttester(signers[:2])); err != nil {
+	if err := store.CommitLegacy(epoch, records, thresholdAttester(signers[:2])); err != nil {
 		t.Fatal(err)
 	}
 	name := strings.Repeat("a.", 126) + "a"
@@ -135,7 +135,7 @@ func TestNamespaceTracerRejectsCorpusBeyondAcceptedEnvelope(t *testing.T) {
 	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: sha256.Sum256([]byte("tracer-transitions")), TransitionLength: uint32(len(records)),
 		RejectionRoot: sha256.Sum256([]byte("tracer-rejections"))}
-	if err := store.Commit(epoch, records, thresholdAttester(signers[:2])); err == nil {
+	if err := store.CommitLegacy(epoch, records, thresholdAttester(signers[:2])); err == nil {
 		t.Fatal("corpus above the accepted 127-record tracer envelope was installed")
 	}
 }

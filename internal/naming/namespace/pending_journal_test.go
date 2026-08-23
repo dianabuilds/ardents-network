@@ -112,7 +112,7 @@ func TestDurableControlRestoresExactSignedPendingSuccessor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Commit(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+	if err := store.CommitLegacy(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: [32]byte{2}, TransitionLength: 1, RejectionRoot: [32]byte{3}},
 		[][]byte{signedCurrent}, pendingTestAttester(attesters)); err != nil {
 		t.Fatal(err)
@@ -154,7 +154,7 @@ func TestDurableControlRestoresExactSignedPendingSuccessor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Commit(Epoch{Number: 3, Digest: [32]byte{7}, CutoffOffset: 3,
+	if err := store.CommitLegacy(Epoch{Number: 3, Digest: [32]byte{7}, CutoffOffset: 3,
 		TransitionRoot: [32]byte{8}, TransitionLength: 1, RejectionRoot: [32]byte{9}},
 		[][]byte{forged}, pendingTestAttester(attesters)); err == nil {
 		t.Fatal("arbitrary current corpus bypassed durable pending state")
@@ -195,7 +195,7 @@ func TestDurableControlRejectsLateRootClaim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Commit(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+	if err := store.CommitLegacy(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: [32]byte{2}, TransitionLength: 1, RejectionRoot: [32]byte{3}},
 		[][]byte{signedCurrent}, pendingTestAttester(attesters)); err != nil {
 		t.Fatal(err)
