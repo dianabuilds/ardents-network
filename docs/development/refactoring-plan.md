@@ -430,10 +430,9 @@ Connection and endpoint process tests exercise the caller cutover.
 The former `serviceconn` caller delegated publication persistence, generation,
 acquisition and Instance signing to the opaque Publication lease, so it could
 not copy or persist the private key. Its action union is now deleted;
-Introduction acknowledgement tracer, H3 connection records, and result/evidence
-bag remain explicit M9 deletion inputs. ADR-0028's native connection grammar, vectors and its
-new focused caller replace them in the next M9 slice; this partial cutover
-does not claim that R-083 is implemented or that M9 is complete.
+Introduction acknowledgement tracer, H3 connection records, and obsolete
+result/evidence bag are C0 retired. ADR-0028's native connection grammar,
+vectors, and focused caller replaced them; no M9 compatibility adapter remains.
 
 R-083's native wire now owns immutable Name-origin and finite recovery
 contracts, plus all six records in `service/connection`: exact
