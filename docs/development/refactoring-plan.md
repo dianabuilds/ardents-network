@@ -311,6 +311,15 @@ consumes `Binding` through sealed Namespace views. M14's C4 disposition, not a
 cosmetic M5 rename, removes the remaining historical verifier seam without
 losing required provenance.
 
+**Facade narrowing, 2026-08-24.** Maintained production callers and external
+behavior fixtures now import concrete `admission`, `authority`, `claim`,
+`epoch`, and `record` modules for every concrete type and operation. The root
+`namespace` import remains only at Resolution's owned opaque Gateway/verifier
+composition seam. Its broad aliases therefore have no maintained runtime or
+external-fixture consumer; they remain C4 compatibility for the root's
+historical verifier tests until M14 retires or rewrites those tests with their
+current technical owners.
+
 Under the Product Owner's standing Stage 8 delegation, M5 has also removed the
 unobserved C0 `ardents-name validate-record` adapter. It was the sole
 non-laboratory command caller of the raw Record codec; canonical Service Name
