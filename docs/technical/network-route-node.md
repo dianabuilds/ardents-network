@@ -72,6 +72,11 @@ own decision, compatibility rule, and Qualification evidence.
   cancellation, pressure, listener drain, withdrawal, and cleanup.
 - Process tests cover authenticated source-to-State and Node lifecycles; they
   do not qualify a public network or native host profile.
+- One disposable Windows-to-Linux cross-host carrier-leg run selected TLS 1.3
+  and the exact Route ALPN, carried a 65,536-byte opaque payload with matching
+  digest, and rejected a changed Attachment before payload. It is functional
+  integration evidence only: it does not establish Route topology, privacy,
+  independent operation, public deployment, or a Node profile.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md),
   [ADR-0025](../adr/0025-state-referenced-entry-invites.md),
   [ADR-0026](../adr/0026-interactive-route-v1-wire.md), and
