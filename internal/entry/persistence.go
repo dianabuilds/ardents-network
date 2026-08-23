@@ -94,10 +94,10 @@ func verifyPrevious(root string, state durableState) error {
 }
 
 func validState(state durableState) bool {
-	if state.Version != 1 || state.Generation == 0 || len(state.Records) > 4 || state.Previous != "" && !stateName.MatchString(state.Previous) {
+	if state.Version != 1 || state.Generation == 0 || len(state.Records) > 4 || len(state.Contacts) > 4 || state.Previous != "" && !stateName.MatchString(state.Previous) {
 		return false
 	}
-	seen, active := map[[32]byte]bool{}, [2]bool{}
+	seen, active, retained := map[[32]byte]bool{}, [2]bool{}, [2]byte{}
 	for _, record := range state.Records {
 		if seen[record.InviteID] || record.InviteID == [32]byte{} || record.Identity == [32]byte{} || record.Family == [32]byte{} ||
 			record.Slot > 1 || record.Generation < 1 || record.Generation > 2 {
@@ -110,6 +110,12 @@ func validState(state durableState) bool {
 				return false
 			}
 			active[record.Slot] = true
+			retained[record.Slot]++
+		case memberDraining, memberVerified:
+			if len(record.Invite) == 0 || len(record.Invite) > maximumInviteSize || retained[record.Slot] >= 2 {
+				return false
+			}
+			retained[record.Slot]++
 		case memberRetired:
 			if len(record.Invite) != 0 {
 				return false
@@ -118,7 +124,43 @@ func validState(state durableState) bool {
 			return false
 		}
 	}
+	return validAttemptState(state)
+}
+
+func validAttemptState(state durableState) bool {
+	if state.Attempt == nil {
+		return len(state.Contacts) == 0
+	}
+	attempt := state.Attempt
+	if attempt.ID == [32]byte{} || attempt.Started <= 0 || attempt.Deadline <= attempt.Started ||
+		attempt.Terminal == "" && attempt.Ended != 0 || attempt.Terminal != "" && (attempt.Ended < attempt.Started || !validAttemptTerminal(attempt.Terminal)) {
+		return false
+	}
+	previous := -1
+	for _, contact := range state.Contacts {
+		record, found := state.find(contact.InviteID)
+		if contact.AttemptID != attempt.ID || contact.InviteID == [32]byte{} || contact.Slot > 1 || contact.Ordinal > 3 ||
+			contact.Slot != contact.Ordinal/2 || int(contact.Ordinal) <= previous || contact.Started < attempt.Started ||
+			!found || record.Slot != contact.Slot || contact.Outcome == "" && contact.Terminal != 0 ||
+			contact.Outcome != "" && (contact.Terminal < contact.Started || !validContactOutcome(contact.Outcome)) {
+			return false
+		}
+		previous = int(contact.Ordinal)
+	}
 	return true
+}
+
+func validAttemptTerminal(value string) bool {
+	switch value {
+	case "", "opened", "entry-attempt-exhausted", "entry-deadline-exceeded", "entry-interrupted", "entry-local-denial":
+		return true
+	default:
+		return false
+	}
+}
+
+func validContactOutcome(value string) bool {
+	return value == "opened" || value == "failed" || value == "interrupted"
 }
 
 func (owner *owner) commit(next durableState, retainPrevious bool) error {

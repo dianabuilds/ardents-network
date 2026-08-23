@@ -1,6 +1,8 @@
 package entry
 
 import (
+	"context"
+	"net"
 	"sync"
 	"time"
 )
@@ -62,6 +64,21 @@ type Result struct {
 	Slot       uint8    `json:"slot"`
 	Generation uint8    `json:"generation"`
 }
+
+// Attempt identifies one endpoint-owned use of the bounded Entry set. Entry
+// does not derive this identity from a Route, Target, or carrier protocol.
+// Deadline is an absolute caller bound that Entry can only shorten.
+type Attempt struct {
+	ID       [32]byte
+	Deadline time.Time
+}
+
+// CandidateOpener opens one State-derived adjacent candidate. On an open
+// error, cleanupComplete states whether the opener has fully disposed of any
+// carrier state it created. A successful result must contain both a
+// connection and its cleanup function. Entry owns the order and persistence
+// of calls; the opener owns the TCP/TLS implementation.
+type CandidateOpener func(context.Context, Candidate, time.Time) (connection net.Conn, cleanup func() error, cleanupComplete bool, err error)
 
 type owner struct {
 	mu      sync.Mutex

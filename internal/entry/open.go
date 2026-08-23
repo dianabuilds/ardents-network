@@ -51,9 +51,32 @@ func Open(input Config) (*owner, error) {
 	owner := &owner{root: root, lease: lease, config: config, state: state, current: current}
 	next := owner.state.clone()
 	changed := false
+	interrupted := false
+	ended := int64(0)
+	for index := range next.Contacts {
+		contact := &next.Contacts[index]
+		if contact.Outcome == "" {
+			contact.Outcome = "interrupted"
+			contact.Terminal = contact.Started
+			changed = true
+		}
+		if !contact.Cleanup {
+			interrupted = true
+		}
+		if contact.Terminal > ended {
+			ended = contact.Terminal
+		}
+	}
+	if next.Attempt != nil && (next.Attempt.Terminal == "" || interrupted) {
+		if ended < next.Attempt.Started {
+			ended = next.Attempt.Started
+		}
+		next.Attempt.Terminal, next.Attempt.Ended = "entry-interrupted", ended
+		changed = true
+	}
 	for index := range next.Records {
 		record := &next.Records[index]
-		if record.Status != memberActive {
+		if record.Status != memberActive && record.Status != memberDraining && record.Status != memberVerified {
 			continue
 		}
 		decoded, _, class, validateErr := owner.validate(record.Invite)
@@ -64,6 +87,12 @@ func Open(input Config) (*owner, error) {
 			retireMember(record)
 			changed = true
 		}
+	}
+	if next.Attempt != nil && next.Attempt.Terminal != "" {
+		if err := owner.retireInvalidVerifiedLocked(&next); err != nil {
+			return nil, err
+		}
+		changed = next.settleReplacements() || changed
 	}
 	if changed {
 		if err := owner.commit(next, false); err != nil {

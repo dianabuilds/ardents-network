@@ -134,7 +134,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/applicationipc`, `internal/serviceendpoint` | Transfer Application/admin process boundary and composition to Broker/Publication/Endpoint. | M9/M10, subject to DA-08/10. |
 | `internal/serviceconn` | Transfer stream behavior to `service/connection`; remove action/evidence/static-plan unions. | M9, subject to DA-06/10. |
 | `internal/bridge` | Transfer durable Invite/replay/replacement ownership to `entry`. | M7, subject to DA-06. |
-| `internal/entry` | Retain the M7 target: signed State-referenced Invite v1, bounded durable Entry set, and adjacent candidate lookup. | M7 under R-076/R-077; complete attempt lifecycle before deleting `internal/bridge`. |
+| `internal/entry` | Retain the M7 target: signed State-referenced Invite v1, bounded durable Entry/replay set, adjacent candidate lookup, and candidate-opener lifecycle. | M7 under R-076/R-077; complete TCP/TLS cutover before deleting `internal/bridge`. |
 | `internal/camouflage` | Delete: R-076/ADR-0024 retire the H3 WebTunnel adapter from the maintained Profile. | M7. |
 | `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
 | `internal/network/duty` | Own the retained durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth. | M4 D02 C1 cutover; preserve the existing root format and one writer. |

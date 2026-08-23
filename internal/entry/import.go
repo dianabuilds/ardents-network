@@ -47,10 +47,17 @@ func (owner *owner) Import(raw []byte) (Result, error) {
 			result.Class = ReplacementRejected
 			return result, nil
 		}
-		retireMember(&next.Records[activeIndex])
+		if next.Attempt != nil && next.Attempt.Terminal == "" {
+			next.Records[activeIndex].Status = memberDraining
+		} else {
+			retireMember(&next.Records[activeIndex])
+		}
 	}
 	next.Records = append(next.Records, memberRecord{InviteID: decoded.id, Identity: decoded.nodeID, Family: decoded.familyID,
 		Slot: decoded.slot, Generation: decoded.slotGeneration, Status: memberActive, Invite: append([]byte(nil), raw...)})
+	if occupied && next.Attempt != nil && next.Attempt.Terminal == "" {
+		next.Records[len(next.Records)-1].Status = memberVerified
+	}
 	if err := owner.commit(next, true); err != nil {
 		owner.failed = err
 		return Result{}, err

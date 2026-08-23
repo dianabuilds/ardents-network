@@ -254,6 +254,30 @@ role separation. `process_test.go` starts the Gateway and Relay as distinct
 processes and completes an admitted private resolution through their OHTTP
 boundary. No plaintext fallback or shared implementation view remains.
 
+## Active wave review notes
+
+### M7 — Entry lifecycle
+
+`internal/entry/attempt.go` (265 lines) is one bounded Entry-attempt state
+machine: it persists a State-derived candidate before exposure, permits at
+most four ordered contacts over two slots, records cleanup before retry, and
+terminally settles a draining replacement. Its local invariant is that a
+replacement cannot become active while its predecessor can still have live
+carrier work, and that incomplete cleanup never advances to another contact.
+Splitting contact selection, terminal settlement, or cleanup handling merely
+to shorten the file would distribute one durable state transition across
+choreographing helpers; persistence, State validation, and guarded connection
+behavior are already separate responsibilities. `TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup`,
+`TestAcquireFailsClosedWhenOpenerCannotProveCleanup`,
+`TestReplacementDrainsUntilLiveAttemptSettles`,
+`TestOpenTerminalizesInterruptedAttemptAndSettlesReplacement`, and
+`TestAcquiredCarrierStopsAfterTimeConfidenceLoss` cover its normal, failure,
+replacement, restart, and time-confidence paths.
+`TestAcquirePassesStateCandidateToMutualTLSOpener` separately proves that the
+opener receives the literal State endpoint and authenticates the State Ed25519
+pin through a mutually authenticated TLS 1.3 handshake. The file remains below
+the interim 500-line hard maximum.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

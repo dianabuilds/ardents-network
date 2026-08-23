@@ -1,8 +1,11 @@
 package entry
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
+	"net"
 	"testing"
 	"time"
 )
@@ -85,6 +88,161 @@ func TestReplacementImmediatelyRetiresInactiveGenerationOne(t *testing.T) {
 	}
 }
 
+func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
+	fixture := newLiveEntryFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	if result, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil || result.Class != Accepted {
+		t.Fatalf("import = %+v, %v", result, err)
+	}
+	starts := 0
+	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{99}, Deadline: fixture.now.Add(5 * time.Second)},
+		func(context.Context, Candidate, time.Time) (net.Conn, func() error, bool, error) {
+			starts++
+			if starts == 1 {
+				return nil, nil, true, errors.New("injected contact failure")
+			}
+			client, server := net.Pipe()
+			go func() { _ = server.Close() }()
+			return client, client.Close, true, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if starts != 2 || connection == nil {
+		t.Fatalf("starts=%d connection=%v", starts, connection)
+	}
+	if err := cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if owner.state.Attempt == nil || owner.state.Attempt.Terminal != "opened" || len(owner.state.Contacts) != 2 ||
+		owner.state.Contacts[0].Outcome != "failed" || owner.state.Contacts[1].Outcome != "opened" || !owner.state.Contacts[1].Cleanup {
+		t.Fatalf("durable attempt = %+v contacts = %+v", owner.state.Attempt, owner.state.Contacts)
+	}
+}
+
+func TestAcquireFailsClosedWhenOpenerCannotProveCleanup(t *testing.T) {
+	fixture := newLiveEntryFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	if _, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = owner.Acquire(context.Background(), Attempt{ID: [32]byte{98}, Deadline: fixture.now.Add(5 * time.Second)},
+		func(context.Context, Candidate, time.Time) (net.Conn, func() error, bool, error) {
+			return nil, nil, false, errors.New("injected incomplete cleanup")
+		})
+	if err == nil || owner.state.Attempt == nil || owner.state.Attempt.Terminal != "entry-local-denial" ||
+		len(owner.state.Contacts) != 1 || owner.state.Contacts[0].Cleanup {
+		t.Fatalf("unclean failure err=%v attempt=%+v contacts=%+v", err, owner.state.Attempt, owner.state.Contacts)
+	}
+}
+
+func TestReplacementDrainsUntilLiveAttemptSettles(t *testing.T) {
+	fixture := newLiveEntryFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	first, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil))
+	if err != nil || first.Class != Accepted {
+		t.Fatalf("first import = %+v, %v", first, err)
+	}
+	_, _, ordinal, _, err := owner.beginAttempt(Attempt{ID: [32]byte{97}, Deadline: fixture.now.Add(5 * time.Second)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := owner.Import(fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID))
+	if err != nil || second.Class != Accepted {
+		t.Fatalf("replacement import = %+v, %v", second, err)
+	}
+	if owner.state.Records[0].Status != memberDraining || owner.state.Records[1].Status != memberVerified {
+		t.Fatalf("replacement activated early: %+v", owner.state.Records)
+	}
+	if err := owner.finishContact(ordinal, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, _, err := owner.nextContact(); err == nil {
+		t.Fatal("settled old attempt unexpectedly found another eligible contact")
+	}
+	contact, err := owner.Contact()
+	if err != nil || contact.NodeID != fixture.candidates[1].NodeID {
+		t.Fatalf("settled replacement contact = %+v, %v", contact, err)
+	}
+}
+
+func TestOpenTerminalizesInterruptedAttemptAndSettlesReplacement(t *testing.T) {
+	fixture := newLiveEntryFixture(t)
+	root := t.TempDir()
+	owner, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil))
+	if err != nil || first.Class != Accepted {
+		t.Fatalf("first import = %+v, %v", first, err)
+	}
+	if _, _, _, _, err := owner.beginAttempt(Attempt{ID: [32]byte{96}, Deadline: fixture.now.Add(5 * time.Second)}); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := owner.Import(fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID)); err != nil || result.Class != Accepted {
+		t.Fatalf("replacement import = %+v, %v", result, err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	if reopened.state.Attempt == nil || reopened.state.Attempt.Terminal != "entry-interrupted" {
+		t.Fatalf("reopened attempt = %+v", reopened.state.Attempt)
+	}
+	contact, err := reopened.Contact()
+	if err != nil || contact.NodeID != fixture.candidates[1].NodeID {
+		t.Fatalf("interrupted replacement contact = %+v, %v", contact, err)
+	}
+}
+
+func TestAcquiredCarrierStopsAfterTimeConfidenceLoss(t *testing.T) {
+	fixture := newLiveEntryFixture(t)
+	confident := true
+	config := fixture.config(t.TempDir())
+	config.TimeConfident = func() bool { return confident }
+	owner, err := Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	if _, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil {
+		t.Fatal(err)
+	}
+	client, server := net.Pipe()
+	defer server.Close()
+	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{95}, Deadline: fixture.now.Add(5 * time.Second)},
+		func(context.Context, Candidate, time.Time) (net.Conn, func() error, bool, error) {
+			return client, client.Close, true, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	confident = false
+	if _, err := connection.Write([]byte("forbidden")); err == nil || err.Error() != "entry carrier is no longer eligible" {
+		t.Fatalf("write after confidence loss = %v", err)
+	}
+	if err := cleanup(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type entryFixture struct {
 	now        time.Time
 	view       View
@@ -109,6 +267,19 @@ func newEntryFixture(t *testing.T) entryFixture {
 		fixture.candidates = append(fixture.candidates, candidate)
 		fixture.view.Candidates = append(fixture.view.Candidates, candidate)
 		fixture.private[candidate.KeyID] = private
+	}
+	return fixture
+}
+
+func newLiveEntryFixture(t *testing.T) entryFixture {
+	t.Helper()
+	fixture := newEntryFixture(t)
+	fixture.now = time.Now().UTC()
+	for index := range fixture.candidates {
+		fixture.candidates[index].ValidFrom = fixture.now.Add(-time.Minute)
+		fixture.candidates[index].ValidUntil = fixture.now.Add(time.Minute)
+		fixture.candidates[index].AssignmentNotAfter = fixture.now.Add(time.Minute)
+		fixture.view.Candidates[index] = fixture.candidates[index]
 	}
 	return fixture
 }
