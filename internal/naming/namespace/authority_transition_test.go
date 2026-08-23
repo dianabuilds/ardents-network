@@ -46,6 +46,44 @@ func TestAuthorityTransitionRequiresPredecessorAndPermanentlyInstallsSuccessor(t
 	}
 }
 
+func TestAuthorityTransitionUsesOneSealedNamespaceSigningRequest(t *testing.T) {
+	t.Parallel()
+	network, key := [32]byte{17}, deterministicAuthority("sealed-transition")
+	current := authorityRecord(key)
+	op := namespace.Op{Kind: "renew", Name: current.Name, Authority: current.Authority,
+		ExpectedGeneration: current.Generation, ExpectedRevision: current.Revision, LeaseDuration: time.Hour}
+	var requests int
+	proof, err := namespace.SignTransitionWith(network, current, op, transitionSignerFunc(func(request namespace.TransitionSigningRequest) ([]byte, error) {
+		requests++
+		var expected [ed25519.PublicKeySize]byte
+		copy(expected[:], key.Public().(ed25519.PublicKey))
+		if request.Authority() != expected || len(request.Transcript()) == 0 {
+			t.Fatal("Namespace supplied an invalid sealed transition request")
+		}
+		return ed25519.Sign(key, request.Transcript()), nil
+	}))
+	if err != nil || requests != 1 {
+		t.Fatalf("sealed transition = %x, requests=%d, err=%v", proof, requests, err)
+	}
+	admission, admissionProof := admittedTransition(t, network, current, op, [32]byte{7})
+	updated, err := namespace.ApplyAdmittedTransition(admission, admissionProof, 100_000,
+		admissionProof.Challenge.OperationDigest, network, current, op, proof, 101, namespace.Policy{})
+	if err != nil || updated.Revision != current.Revision+1 {
+		t.Fatalf("sealed transition did not apply: updated=%+v err=%v", updated, err)
+	}
+	if _, err := namespace.SignTransitionWith(network, current, op, transitionSignerFunc(func(namespace.TransitionSigningRequest) ([]byte, error) {
+		return ed25519.Sign(key, []byte("substituted transcript")), nil
+	})); err == nil {
+		t.Fatal("sealed transition accepted a substituted transcript signature")
+	}
+}
+
+type transitionSignerFunc func(namespace.TransitionSigningRequest) ([]byte, error)
+
+func (sign transitionSignerFunc) Sign(request namespace.TransitionSigningRequest) ([]byte, error) {
+	return sign(request)
+}
+
 func TestParentAuthorityDelegatesChosenChildAuthorityWithoutTransferringParent(t *testing.T) {
 	t.Parallel()
 	network := [32]byte{8}

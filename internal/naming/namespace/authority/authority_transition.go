@@ -4,7 +4,6 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -14,21 +13,99 @@ import (
 
 const transitionDomain = "ardents-name-authority-transition-v1"
 
+// TransitionSigner owns one Authority private-key operation for an exact
+// Namespace-derived transition. It receives no caller-constructible record or
+// transcript bytes.
+type TransitionSigner interface {
+	Sign(TransitionSigningRequest) ([]byte, error)
+}
+
+// TransitionSigningRequest is the sealed transition transcript generated from
+// one canonical predecessor and lifecycle operation.
+type TransitionSigningRequest struct {
+	authority  [ed25519.PublicKeySize]byte
+	transcript []byte
+}
+
+// Authority returns the exact Authority key required for this transition.
+func (request TransitionSigningRequest) Authority() [ed25519.PublicKeySize]byte {
+	return request.authority
+}
+
+// Transcript returns a copy of the exact Namespace transition transcript.
+func (request TransitionSigningRequest) Transcript() []byte {
+	return append([]byte(nil), request.transcript...)
+}
+
 // SignTransition authenticates one exact control transition with the current
 // Name Authority. A child claim is authenticated by its immediate parent.
 func SignTransition(network [32]byte, current record.Record, op record.Op,
 	private ed25519.PrivateKey,
 ) ([]byte, error) {
-	if network == [32]byte{} || len(private) != ed25519.PrivateKeySize ||
-		current.Authority != hex.EncodeToString(private.Public().(ed25519.PublicKey)) ||
-		!supportedTransition(current, op) {
+	if len(private) != ed25519.PrivateKeySize {
 		return nil, errors.New("invalid Name Authority transition signer or operation")
 	}
-	transcript, err := transitionTranscript(network, current, op)
+	return SignTransitionWith(network, current, op, directTransitionSigner{private: private})
+}
+
+// SignTransitionWith authenticates one exact transition through a sealed
+// Namespace signer request. It is the custody-facing signing boundary.
+func SignTransitionWith(network [32]byte, current record.Record, op record.Op, signer TransitionSigner) ([]byte, error) {
+	if signer == nil {
+		return nil, errors.New("invalid Name Authority transition signer or operation")
+	}
+	request, err := newTransitionSigningRequest(network, current, op)
 	if err != nil {
 		return nil, err
 	}
-	return ed25519.Sign(private, transcript), nil
+	signature, err := signer.Sign(request)
+	if err != nil {
+		return nil, err
+	}
+	return request.seal(signature)
+}
+
+type directTransitionSigner struct{ private ed25519.PrivateKey }
+
+func (signer directTransitionSigner) Sign(request TransitionSigningRequest) ([]byte, error) {
+	if len(signer.private) != ed25519.PrivateKeySize {
+		return nil, errors.New("invalid Name Authority transition signer")
+	}
+	public, ok := signer.private.Public().(ed25519.PublicKey)
+	if !ok || len(public) != ed25519.PublicKeySize {
+		return nil, errors.New("invalid Name Authority transition signer")
+	}
+	var actual [ed25519.PublicKeySize]byte
+	copy(actual[:], public)
+	if actual != request.authority {
+		return nil, errors.New("invalid Name Authority transition signer")
+	}
+	return ed25519.Sign(signer.private, request.transcript), nil
+}
+
+func newTransitionSigningRequest(network [32]byte, current record.Record, op record.Op) (TransitionSigningRequest, error) {
+	if network == [32]byte{} || !supportedTransition(current, op) {
+		return TransitionSigningRequest{}, errors.New("invalid Name Authority transition signer or operation")
+	}
+	public, err := record.AuthorityKey(current.Authority)
+	if err != nil {
+		return TransitionSigningRequest{}, errors.New("invalid Name Authority transition signer or operation")
+	}
+	transcript, err := transitionTranscript(network, current, op)
+	if err != nil {
+		return TransitionSigningRequest{}, err
+	}
+	request := TransitionSigningRequest{transcript: transcript}
+	copy(request.authority[:], public)
+	return request, nil
+}
+
+func (request TransitionSigningRequest) seal(signature []byte) ([]byte, error) {
+	if len(request.transcript) == 0 || len(signature) != ed25519.SignatureSize ||
+		!ed25519.Verify(ed25519.PublicKey(request.authority[:]), request.transcript, signature) {
+		return nil, errors.New("invalid Name Authority transition signature")
+	}
+	return append([]byte(nil), signature...), nil
 }
 
 // TransitionDigest binds anonymous admission to one exact current Record and

@@ -32,6 +32,8 @@ type Policy = record.Policy
 type Record = record.Record
 type RecordSigner = record.RecordSigner
 type RecordSigningRequest = record.RecordSigningRequest
+type TransitionSigner = authority.TransitionSigner
+type TransitionSigningRequest = authority.TransitionSigningRequest
 type Epoch = epoch.Epoch
 type EpochInstallation = epoch.EpochInstallation
 type MaterializationPolicy = epoch.MaterializationPolicy
@@ -66,6 +68,7 @@ var (
 	VerifyBinding           = epoch.VerifyBinding
 	OpenSubmission          = authority.OpenSubmission
 	SignTransition          = authority.SignTransition
+	SignTransitionWith      = authority.SignTransitionWith
 	TransitionDigest        = authority.TransitionDigest
 	ApplyAdmittedTransition = authority.ApplyAdmittedTransition
 )

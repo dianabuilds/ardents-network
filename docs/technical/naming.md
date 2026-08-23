@@ -22,7 +22,8 @@ lifecycle `Record` in its production Gateway or Resolver path.
 The current flow is:
 
 ```text
-Custody signs the exact Namespace-derived successor
+Namespace derives an exact successor and creates a sealed signing request
+  -> Custody signs only that request once its authenticated active Authority is selected
   -> private Gateway accepts only submitted/denied
   -> Namespace persists the signed successor as pending
   -> authenticated Epoch installation selects a pending prefix and/or ClaimWinner
@@ -96,6 +97,10 @@ tracer can grow.
 - A Gateway cannot manufacture a durable/current Record: ordinary control
   carries an Authority-signed exact successor, which Namespace recomputes and
   verifies before journaling.
+- Namespace's `TransitionSigningRequest` carries the exact predecessor/operation
+  transcript and expected Authority key; a custody boundary may not receive a
+  raw private key or arbitrary transcript. The production control-to-custody
+  successor route remains pending, so this seam is not yet a signing feature.
 - Current materialization may advance only from the durable pending prefix
   and/or verified `ClaimWinner` on the new installation path; restart
   reconstructs verified current plus unapplied pending state but never promotes

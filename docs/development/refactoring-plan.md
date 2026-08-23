@@ -433,6 +433,13 @@ a superseded record fails active verification. The missing piece is
 the real authenticated Network/Namespace successor source, not a caller-supplied
 claim of freshness.
 
+Namespace transition signing now has the same sealed-request shape as Record
+signing: `TransitionSigningRequest` contains only Namespace's exact canonical
+predecessor/operation transcript and expected Authority key, and refuses a
+substituted signature. The production control still lacks the complete
+derived-successor-to-custody caller; this deliberately prepares that path
+without adding a raw-key or generic-signing escape hatch.
+
 Record and floor publication now flush the encrypted temporary file, use the
 selected same-directory platform replacement primitive, flush the parent where
 the platform permits it, and reopen before reporting success. This is an
