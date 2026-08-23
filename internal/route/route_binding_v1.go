@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	legBindingKind   = 1
+	legBindingKind   = 2
 	initiatorRole    = 1
 	introductionRole = 2
 	rendezvousRole   = 3

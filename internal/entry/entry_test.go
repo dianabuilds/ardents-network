@@ -62,6 +62,26 @@ func TestImportRejectsInviteWithWrongSignatureOrSurplusBytes(t *testing.T) {
 	}
 }
 
+func TestVerifyReturnsOnlyCurrentInitiatorAuthorization(t *testing.T) {
+	fixture := newEntryFixture(t)
+	raw := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
+	authorization, candidate, class, err := Verify(raw, fixture.verification())
+	if err != nil || class != Accepted {
+		t.Fatalf("Verify = %+v, %+v, %q, %v", authorization, candidate, class, err)
+	}
+	if authorization.InviteID == [32]byte{} || authorization.NetworkID != fixture.view.NetworkID ||
+		authorization.Digest != fixture.view.Digest || authorization.Epoch != fixture.view.Epoch ||
+		authorization.InitiatorNodeID != fixture.candidates[0].NodeID || !authorization.NotAfter.After(fixture.now) ||
+		candidate != fixture.candidates[0] {
+		t.Fatalf("unexpected authorization = %+v, candidate = %+v", authorization, candidate)
+	}
+	mutated := append([]byte(nil), raw...)
+	mutated[len(mutated)-1] ^= 1
+	if authorization, _, class, err := Verify(mutated, fixture.verification()); err != nil || class != Invalid || authorization != (Authorization{}) {
+		t.Fatalf("mutated Verify = %+v, %q, %v", authorization, class, err)
+	}
+}
+
 func TestReplacementImmediatelyRetiresInactiveGenerationOne(t *testing.T) {
 	fixture := newEntryFixture(t)
 	owner, err := Open(fixture.config(t.TempDir()))
@@ -286,6 +306,11 @@ func newLiveEntryFixture(t *testing.T) entryFixture {
 
 func (fixture entryFixture) config(root string) Config {
 	return Config{Root: root, Current: func() (View, error) { return fixture.view, nil },
+		Conflict: func([32]byte, [32]byte) (bool, error) { return false, nil }, Clock: func() time.Time { return fixture.now }, TimeConfident: func() bool { return true }}
+}
+
+func (fixture entryFixture) verification() Verification {
+	return Verification{Current: func() (View, error) { return fixture.view, nil },
 		Conflict: func([32]byte, [32]byte) (bool, error) { return false, nil }, Clock: func() time.Time { return fixture.now }, TimeConfident: func() bool { return true }}
 }
 

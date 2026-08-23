@@ -1,4 +1,4 @@
-// Package route owns endpoint-selected multi-position Route construction and
-// bounded H3 canary, legacy stream, or endpoint-secured raw attachment transfer. Its carrier is a replaceable
-// laboratory adapter, not a selected public transport or wire protocol.
+// Package route owns the native Interactive Route v1 codecs and the evolving
+// endpoint-selected Route transition. The inherited H3 tracer is a temporary
+// migration input, not a selected transport or public wire protocol.
 package route

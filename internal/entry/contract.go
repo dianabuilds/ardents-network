@@ -41,6 +41,24 @@ type Config struct {
 	TimeConfident func() bool
 }
 
+// Verification supplies the current facts needed to verify one presented
+// Invite at an Initiator. It has no durable Entry root or User identity.
+type Verification struct {
+	Current       func() (View, error)
+	Conflict      func([32]byte, [32]byte) (bool, error)
+	Clock         func() time.Time
+	TimeConfident func() bool
+}
+
+// Authorization is the non-secret, current result of one verified Invite.
+// It is valid only for the caller's present attempt and does not identify the
+// User that presented the Invite.
+type Authorization struct {
+	InviteID, NetworkID, Digest, InitiatorNodeID [32]byte
+	Epoch                                        uint64
+	NotAfter                                     time.Time
+}
+
 // Class is the closed result of one Invite import.
 type Class string
 

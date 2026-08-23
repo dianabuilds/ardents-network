@@ -79,8 +79,10 @@ uint16(entry-invite-length) || entry-invite
 
 The Invite is the exact R-077 bytes, at most 1024 bytes. The User creates a
 fresh Ed25519 TLS certificate for this attempt and sends EntryBinding only
-after TLS 1.3 mutual handshake. The Initiator hashes the peer certificate's
-Ed25519 public key, compares it to `client-tls-public-key-digest`, validates
+after TLS 1.3 mutual handshake. `client-tls-public-key-digest` is SHA-256 of
+the exact DER `SubjectPublicKeyInfo` from that certificate. The Initiator
+hashes the received peer certificate's same Ed25519 public-key encoding,
+compares it to the binding, validates
 the embedded Invite using its current State/duty/time facts and its own issuer
 key, checks exact network/epoch/digest/profile/node/expiry/attachment bounds,
 then atomically consumes `(invite-id, attachment-id, client-key-digest)` before

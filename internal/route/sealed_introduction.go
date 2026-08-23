@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	sealedIntroductionKind = 2
+	sealedIntroductionKind = 3
 	encapsulationLength    = 32
 	minimumCiphertext      = 16
 )
