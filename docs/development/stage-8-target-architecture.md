@@ -145,8 +145,8 @@ are not Go packages and do not represent a retained test surface.
 | `internal/naming/namespace/record` | Own canonical Record/Lease lifecycle, signatures, lineage, and destination binding as one state machine. | M5 under the root composition; Lease is not a separate package. |
 | `internal/naming/namespace/claim` | Own root-claim commitment/reveal and authenticated winning-claim materialization. | M5; may consume Admission and Record, never Authority or Epoch. |
 | `internal/naming/namespace/recovery` | Own Recovery Policy, quorum proof verification, and sealed authorization facts. | M5; may consume only canonical vocabulary. |
-| `internal/naming/namespace/epoch` | Own durable current/pending Namespace materialization, attestation, and proof verification. | M5; consumes Record and Claim, never Authority. |
-| `internal/naming/namespace/authority` | Own canonical private control submission and authorized transition orchestration. | M5; the sole upper Namespace orchestrator over Admission, Record, Claim, Recovery, and Epoch. |
+| `internal/naming/namespace/epoch` | Own durable current/pending Namespace materialization, its exact-successor pending journal/cursor, attestation, and proof verification. | M5; consumes Record and Claim, never Authority. |
+| `internal/naming/namespace/authority` | Own canonical private control submission and authorized transition orchestration; writes only validated successors through Epoch's pending port. | M5; the sole upper Namespace orchestrator over Admission, Record, Claim, Recovery, and Epoch. |
 | `internal/naming/resolution` | Own private resolution/control over opaque Namespace/State views. | M6, subject to DA-03/04/07. |
 | `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, `internal/network/framing`, `internal/network/store`, `internal/network/state` | Consolidate authenticated acceptance, current/pending state, and durable publication under `network/state`. | M3, subject to DA-02/05. |
 | `internal/network/source` | Retain as State-owned acquisition port and selected direct-origin Adapter only. | M3, subject to DA-05/10. |
