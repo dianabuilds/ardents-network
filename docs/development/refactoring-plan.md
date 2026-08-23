@@ -427,9 +427,10 @@ compatibility text. A restored Bundle now enters a separately encrypted
 export-only; it cannot pass the active-record verification path. Strictly
 higher authenticated reconciliation and activation remain absent. An active
 Name record can sign one exact sealed Namespace transition request after
-checking its local floor and the hash commitment of its Ed25519 public key;
-the callback cannot return an unrelated or stale proof, and root material never
-leaves custody. The complete derived-successor control caller remains pending.
+checking its local floor, the hash commitment of its Ed25519 public key, and
+the request's exact predecessor generation/revision; the callback cannot return
+an unrelated or stale proof, and root material never leaves custody. The
+complete derived-successor control caller remains pending.
 The same owner now writes a canonical non-decreasing local floor only after a
 new encrypted active record is published, reopened byte-for-byte, and admitted
 again as a canonical envelope; equal/lower records fail before secret input and
@@ -439,8 +440,9 @@ claim of freshness.
 
 Namespace transition signing now has the same sealed-request shape as Record
 signing: `TransitionSigningRequest` contains only Namespace's exact canonical
-predecessor/operation transcript and expected Authority key, and refuses a
-substituted signature. The production control still lacks the complete
+predecessor generation/revision, operation transcript, and expected Authority
+key, and refuses a substituted signature or a request for an older active
+record. The production control still lacks the complete
 derived-successor-to-custody caller; this deliberately prepares that path
 without adding a raw-key or generic-signing escape hatch.
 

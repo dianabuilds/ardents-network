@@ -64,6 +64,16 @@ func TestVaultSignsOneSealedNamespaceTransitionWithoutReleasingRoot(t *testing.T
 	if err != nil || updated.Revision != current.Revision+1 {
 		t.Fatalf("apply custody proof: updated=%+v err=%v", updated, err)
 	}
+	stale := current
+	stale.Revision--
+	staleOp := op
+	staleOp.ExpectedRevision = stale.Revision
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationSignNamespaceTransition, RecordID: created.RecordID, Expected: state.Binding,
+		Transition: func(signer namespace.TransitionSigner) ([]byte, error) {
+			return namespace.SignTransitionWith(network, stale, staleOp, signer)
+		}}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("stale predecessor signing = %v, want invalid", err)
+	}
 	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationSignNamespaceTransition, RecordID: created.RecordID, Expected: state.Binding,
 		Transition: func(namespace.TransitionSigner) ([]byte, error) { return []byte("not a sealed Namespace proof"), nil }}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("generic signing callback = %v, want invalid", err)

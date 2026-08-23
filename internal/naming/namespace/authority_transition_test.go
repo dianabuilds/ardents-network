@@ -57,7 +57,8 @@ func TestAuthorityTransitionUsesOneSealedNamespaceSigningRequest(t *testing.T) {
 		requests++
 		var expected [ed25519.PublicKeySize]byte
 		copy(expected[:], key.Public().(ed25519.PublicKey))
-		if request.Authority() != expected || len(request.Transcript()) == 0 {
+		generation, revision := request.Predecessor()
+		if request.Authority() != expected || generation != current.Generation || revision != current.Revision || len(request.Transcript()) == 0 {
 			t.Fatal("Namespace supplied an invalid sealed transition request")
 		}
 		return ed25519.Sign(key, request.Transcript()), nil

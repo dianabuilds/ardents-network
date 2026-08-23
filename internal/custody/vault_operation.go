@@ -169,7 +169,7 @@ func (vault *Vault) signNamespaceTransition(ctx context.Context, operation Opera
 	if !ok || sha256.Sum256(public) != state.Binding.IDCommitment {
 		return Receipt{}, ErrInvalid
 	}
-	signer := custodyTransitionSigner{private: private}
+	signer := custodyTransitionSigner{private: private, generation: state.Generation, revision: state.Revision}
 	proof, err := operation.Transition(&signer)
 	defer signer.erase()
 	if err != nil {
@@ -183,9 +183,11 @@ func (vault *Vault) signNamespaceTransition(ctx context.Context, operation Opera
 }
 
 type custodyTransitionSigner struct {
-	private   ed25519.PrivateKey
-	signature []byte
-	used      bool
+	private    ed25519.PrivateKey
+	signature  []byte
+	generation uint64
+	revision   uint64
+	used       bool
 }
 
 func (signer *custodyTransitionSigner) Sign(request authority.TransitionSigningRequest) ([]byte, error) {
@@ -194,7 +196,9 @@ func (signer *custodyTransitionSigner) Sign(request authority.TransitionSigningR
 	}
 	signer.used = true
 	public, ok := signer.private.Public().(ed25519.PublicKey)
-	if !ok || request.Authority() != [ed25519.PublicKeySize]byte(public) {
+	generation, revision := request.Predecessor()
+	if !ok || request.Authority() != [ed25519.PublicKeySize]byte(public) ||
+		generation != signer.generation || revision != signer.revision {
 		return nil, ErrInvalid
 	}
 	signer.signature = ed25519.Sign(signer.private, request.Transcript())

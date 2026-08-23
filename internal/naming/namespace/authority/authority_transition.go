@@ -24,12 +24,20 @@ type TransitionSigner interface {
 // one canonical predecessor and lifecycle operation.
 type TransitionSigningRequest struct {
 	authority  [ed25519.PublicKeySize]byte
+	generation uint64
+	revision   uint64
 	transcript []byte
 }
 
 // Authority returns the exact Authority key required for this transition.
 func (request TransitionSigningRequest) Authority() [ed25519.PublicKeySize]byte {
 	return request.authority
+}
+
+// Predecessor returns the exact current Record generation and revision from
+// which Namespace derived this transition.
+func (request TransitionSigningRequest) Predecessor() (uint64, uint64) {
+	return request.generation, request.revision
 }
 
 // Transcript returns a copy of the exact Namespace transition transcript.
@@ -95,7 +103,7 @@ func newTransitionSigningRequest(network [32]byte, current record.Record, op rec
 	if err != nil {
 		return TransitionSigningRequest{}, err
 	}
-	request := TransitionSigningRequest{transcript: transcript}
+	request := TransitionSigningRequest{generation: current.Generation, revision: current.Revision, transcript: transcript}
 	copy(request.authority[:], public)
 	return request, nil
 }
