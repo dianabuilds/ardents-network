@@ -48,9 +48,10 @@ cannot sign.
   H3 evidence text in the frozen `ardents-release-decision-v1`,
   `ardents-update-result-v1`, and update-manifest V0 formats. Go projections
   call it `EvidenceNotice`; the old byte name remains only as the C2 R-064
-  tracer writer/reader through M13. M13 must remove that writer and field
-  together, or retain the vector as C4 provenance; it must not add a v2
-  compatibility writer or treat the text as Vault status.
+  tracer writer/reader through M13. [R-087](../research/records/r-087-update-v0-provenance-retirement.md)
+  selects one owned C1 V1→V2 root conversion: V2 omits the field, exact V0
+  vectors become C4 provenance, and no V2 compatibility writer or Vault-status
+  interpretation is permitted.
 - Windows/Ubuntu crash, permissions, and power-loss qualification remain open.
 - R-044 threshold recovery already replaces the effective Name Authority in
   Namespace; its completed Record rejects a signature from the former key.
