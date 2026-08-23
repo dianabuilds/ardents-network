@@ -90,6 +90,12 @@ func validControlOperation(value controlOperation) bool {
 	default:
 		return false
 	}
+	if len(value.SuccessorRecord) > maximumPendingBytes {
+		return false
+	}
+	if len(value.SuccessorRecord) > 0 {
+		expected.SuccessorRecord = value.SuccessorRecord
+	}
 	return reflect.DeepEqual(value, expected)
 }
 

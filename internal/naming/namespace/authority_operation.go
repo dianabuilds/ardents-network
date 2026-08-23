@@ -35,6 +35,7 @@ type controlOperation struct {
 	AuthorityProof     []byte   `json:"authority_proof,omitempty"`
 	RecoveryPolicy     []byte   `json:"recovery_policy,omitempty"`
 	RecoveryProof      []byte   `json:"recovery_proof,omitempty"`
+	SuccessorRecord    []byte   `json:"successor_record,omitempty"`
 }
 
 // Submission is one validated, canonical Namespace control input. Its

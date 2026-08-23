@@ -1,6 +1,7 @@
 package namespace
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -18,6 +19,7 @@ type control struct {
 	records   map[string]Record
 	clock     func() time.Time
 	policy    Policy
+	store     *Store
 }
 
 // NewControl installs one bounded authority state view for a Gateway.
@@ -68,8 +70,105 @@ func (control *control) Apply(raw []byte, proof Proof) (string, uint64, uint64, 
 	return "accepted", updated.Generation, updated.Revision, state
 }
 
-func (control *control) transition(operation controlOperation) (Record, error) {
+// OpenControl restores one durable control chain. The control holds no
+// caller-provided Record state: verified current records plus immutable pending
+// successors are the only source from which it rebuilds its transition view.
+func OpenControl(store *Store, admission *Admission, order ClaimOrder,
+	clock func() time.Time, policy Policy,
+) (*control, error) {
+	if store == nil || store.root == nil || admission == nil || clock == nil {
+		return nil, errors.New("name Authority control configuration is invalid")
+	}
+	control := &control{network: store.policy.Network, admission: admission, order: order,
+		records: make(map[string]Record), clock: clock, policy: policy, store: store}
+	if err := control.restore(); err != nil {
+		return nil, err
+	}
+	return control, nil
+}
+
+// Submit records one opaque private control input as pending. It is never a
+// current-state result: a threshold materialization remains the only route to
+// an externally resolvable Name state.
+func (control *control) Submit(submission Submission, proof Proof) string {
+	control.mu.Lock()
+	defer control.mu.Unlock()
+	if control.store == nil {
+		return "denied"
+	}
+	operation, err := decodeControlOperation(submission.raw)
+	if err != nil || submission.digest != operation.OperationDigest || len(operation.SuccessorRecord) == 0 ||
+		proof.Challenge.Network != control.network || proof.Challenge.OperationDigest != operation.OperationDigest ||
+		proof.Challenge.Surface != operation.surface() {
+		return "denied"
+	}
 	now := control.clock()
+	if accepted, _ := control.admission.Verify(now.UnixMilli(), proof); !accepted {
+		return "denied"
+	}
+	updated, err := control.transitionAt(operation, now)
+	if err != nil || !control.exactSignedSuccessor(updated, operation.SuccessorRecord) {
+		return "denied"
+	}
+	if _, err := control.store.appendPending(submission.raw, operation.SuccessorRecord, now.UnixMilli()); err != nil {
+		return "denied"
+	}
+	control.records[updated.Name] = updated
+	return "submitted"
+}
+
+func (control *control) restore() error {
+	current, _, err := control.store.root.load()
+	if err != nil {
+		return errors.New("name Authority control state is tampered")
+	}
+	if current != "" {
+		snapshot, loadErr := control.store.load(0)
+		if loadErr != nil {
+			return loadErr
+		}
+		for _, signed := range snapshot.records {
+			record, verifyErr := VerifyRecord(control.network, signed)
+			if verifyErr != nil {
+				return errors.New("name Authority current record is invalid")
+			}
+			control.records[record.Name] = record
+		}
+	}
+	entries, err := control.store.pending()
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		operation, decodeErr := decodeControlOperation(entry.submission)
+		if decodeErr != nil || len(operation.SuccessorRecord) == 0 ||
+			!bytes.Equal(operation.SuccessorRecord, entry.successor) {
+			return errors.New("name Authority pending submission is invalid")
+		}
+		updated, transitionErr := control.transitionAt(operation, time.UnixMilli(entry.decisionAt).UTC())
+		if transitionErr != nil || !control.exactSignedSuccessor(updated, entry.successor) {
+			return errors.New("name Authority pending chain is invalid")
+		}
+		control.records[updated.Name] = updated
+	}
+	return nil
+}
+
+func (control *control) exactSignedSuccessor(updated Record, signed []byte) bool {
+	record, err := VerifyRecord(control.network, signed)
+	if err != nil {
+		return false
+	}
+	updatedWire, updatedErr := EncodeRecord(updated)
+	recordWire, recordErr := EncodeRecord(record)
+	return updatedErr == nil && recordErr == nil && bytes.Equal(updatedWire, recordWire)
+}
+
+func (control *control) transition(operation controlOperation) (Record, error) {
+	return control.transitionAt(operation, control.clock())
+}
+
+func (control *control) transitionAt(operation controlOperation, now time.Time) (Record, error) {
 	current, exists := control.records[operation.Name]
 	switch operation.Kind {
 	case "claim":
