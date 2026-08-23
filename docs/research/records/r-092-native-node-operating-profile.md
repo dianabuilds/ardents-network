@@ -82,10 +82,25 @@ its raw Linux observations outside Git.
   and byte-identical echo on the local development host. It is a harness sanity
   result only: that host is not the R-092 Linux reference environment and its
   timing/allocation output is not a capacity measurement.
-- **Measurement:** no Linux reference-host result has yet been captured.
-- **Measurement (2026-08-23):** the local WSL distribution enumeration returned
-  `E_ACCESSDENIED`; it supplies no Linux observation and does not relax the
-  declared reference-host requirement.
+- **Measurement (2026-08-23, preliminary Linux sanity):** an initial sandboxed
+  WSL enumeration returned `E_ACCESSDENIED`; a subsequent local read identified
+  `Ubuntu-24.04`, Linux
+  `6.6.87.2-microsoft-standard-WSL2`, `x86_64`, 12 logical CPUs, and
+  `31,603,916 KiB` advertised memory. This is materially different from the
+  NET-01A 2-vCPU/2-GiB reference host.
+- **Measurement (2026-08-23, preliminary Linux sanity):** the disposable
+  harness, cross-compiled with `go1.26.6 windows/amd64` from commit
+  `9769d6065e6a4af834770b3ea389054dbcda978d` to Linux/amd64 (SHA-256
+  `9d84818ebb77b306fcb9a4fb2f4297b5485c788af426f1315a4579badf3b0108`),
+  completed four sequential 4,096-byte legs under that WSL runtime. It carried
+  32,768 bytes in 4,845,675 ns; RSS changed from 5,505,024 to 7,340,032 bytes,
+  CPU ticks from 1/0 to 1/0 (user/system), and FDs remained 8. The WSL guest has
+  no Go installation, so this is an executed Linux binary rather than a
+  source-native guest build. It confirms only the synthetic TLS/ALPN,
+  reciprocal-binding, echo, and basic FD-cleanup path; it has no pressure,
+  listener, concurrent workload, per-second sampling, socket count, or network
+  shape evidence.
+- **Measurement:** no Linux *reference-host* result has yet been captured.
 
 ## Recommendation
 
