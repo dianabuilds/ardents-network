@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type controlReceipt struct {
@@ -32,7 +31,7 @@ func runControl(inputPath, operationPath string, isolation [32]byte, output io.W
 	if err != nil {
 		return err
 	}
-	raw, err := planfile.Read(operationPath, 16<<10)
+	raw, err := readOperatorInput(operationPath, 16<<10)
 	if err != nil {
 		return err
 	}

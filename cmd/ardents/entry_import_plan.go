@@ -8,7 +8,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type importPlan struct {
@@ -30,7 +29,7 @@ type importRuntime struct {
 
 func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) {
 	var raw importPlan
-	if err := planfile.Decode(path, 16<<10, &raw); err != nil {
+	if err := decodeOperatorInput(path, 16<<10, &raw); err != nil {
 		return importRuntime{}, err
 	}
 	if raw.StateRoot == "" || raw.NetworkStateRoot == "" || raw.InviteFile == "" || raw.NetworkProfile == "" || raw.LocalRoleStateRoot == "" ||
@@ -38,10 +37,10 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 		return importRuntime{}, errors.New("import plan is incomplete")
 	}
 	var networkID [32]byte
-	if err := planfile.FixedHex(raw.NetworkID, networkID[:]); err != nil {
+	if err := decodeOperatorFixedHex(raw.NetworkID, networkID[:]); err != nil {
 		return importRuntime{}, fmt.Errorf("network_id: %w", err)
 	}
-	authorities, err := planfile.Authorities(raw.NetworkAuthorities, 16)
+	authorities, err := decodeOperatorAuthorities(raw.NetworkAuthorities, 16)
 	if err != nil {
 		return importRuntime{}, fmt.Errorf("network_authorities: %w", err)
 	}
@@ -64,7 +63,7 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 			}
 			return entryView(current), nil
 		}, Clock: clock,
-		TimeConfident: planfile.FreshRegular(raw.TimeConfidenceFile, clock, 2*time.Second),
+		TimeConfident: freshOperatorRegularFile(raw.TimeConfidenceFile, clock, 2*time.Second),
 		Conflict: func(identity, family [32]byte) (bool, error) {
 			return duty.ReadConflict(raw.LocalRoleStateRoot, clock, identity, family)
 		},

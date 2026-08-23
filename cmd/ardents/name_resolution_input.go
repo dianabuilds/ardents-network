@@ -6,17 +6,16 @@ import (
 
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 func (input resolutionInput) runtimeValues() (state.Config, nameresolution.Selection, error) {
 	config := state.Config{Root: input.StateRoot, Threshold: input.AuthorityThreshold,
 		AcceptedProfile: input.AcceptedProfile}
-	if err := planfile.FixedHex(input.NetworkID, config.NetworkID[:]); err != nil {
+	if err := decodeOperatorFixedHex(input.NetworkID, config.NetworkID[:]); err != nil {
 		return config, nameresolution.Selection{}, err
 	}
 	var err error
-	config.Authorities, err = planfile.Authorities(input.AuthorityPublic, 16)
+	config.Authorities, err = decodeOperatorAuthorities(input.AuthorityPublic, 16)
 	if err != nil {
 		return config, nameresolution.Selection{}, err
 	}
@@ -39,13 +38,13 @@ func (input resolutionInput) runtimeValues() (state.Config, nameresolution.Selec
 	}{{input.RelayNodeID, &selection.RelayNodeID}, {input.GatewayNodeID, &selection.GatewayNodeID},
 		{input.ConnectionRendezvousNodeID, &selection.ConnectionRendezvousNodeID}}
 	for _, identity := range identities {
-		if err := planfile.FixedHex(identity.raw, identity.target[:]); err != nil {
+		if err := decodeOperatorFixedHex(identity.raw, identity.target[:]); err != nil {
 			return config, selection, err
 		}
 	}
 	for _, raw := range input.ExcludedIdentities {
 		var identity [32]byte
-		if err := planfile.FixedHex(raw, identity[:]); err != nil {
+		if err := decodeOperatorFixedHex(raw, identity[:]); err != nil {
 			return config, selection, err
 		}
 		selection.ExcludedIdentities = append(selection.ExcludedIdentities, identity)

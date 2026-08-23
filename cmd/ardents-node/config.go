@@ -8,7 +8,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type sourceServerPlan struct {
@@ -37,7 +36,7 @@ type sourceStore interface {
 func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	var err error
 	var plan sourceServerPlan
-	if err := planfile.Decode(path, 32<<10, &plan); err != nil {
+	if err := decodeOperatorInput(path, 32<<10, &plan); err != nil {
 		return nil, fmt.Errorf("decode source server plan: %w", err)
 	}
 	if plan.Schema != "ardents-h3-source-server-v1" || plan.LocalRoleStateRoot == "" {
@@ -49,10 +48,10 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	config := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
 		Source: source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile}
 	config.ObserveResources = emit
-	if err := planfile.FixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
+	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
 		return nil, err
 	}
-	config.Authorities, err = planfile.Authorities(plan.AuthorityPublic, 16)
+	config.Authorities, err = decodeOperatorAuthorities(plan.AuthorityPublic, 16)
 	if err != nil {
 		return nil, err
 	}
@@ -60,15 +59,15 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.Source.ServeCertificate, err = planfile.KeyPair(plan.ServerCertificate, plan.ServerKey)
+	config.Source.ServeCertificate, err = readOperatorKeyPair(plan.ServerCertificate, plan.ServerKey)
 	if err != nil {
 		return nil, err
 	}
-	config.Source.ServeClientRootPEM, err = planfile.Read(plan.ClientRoot, 64<<10)
+	config.Source.ServeClientRootPEM, err = readOperatorInput(plan.ClientRoot, 64<<10)
 	if err != nil {
 		return nil, err
 	}
-	config.Source.ServeClientKeyDigests, err = planfile.Digests(plan.ClientKeyDigests, 3)
+	config.Source.ServeClientKeyDigests, err = decodeOperatorDigests(plan.ClientKeyDigests, 3)
 	if err != nil {
 		return nil, err
 	}

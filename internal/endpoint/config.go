@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -30,7 +29,7 @@ type endpointPlan struct {
 
 func readPlan(path string) (endpointPlan, error) {
 	var value endpointPlan
-	if err := planfile.Decode(path, 64<<10, &value); err != nil {
+	if err := decodeEndpointPlan(path, 64<<10, &value); err != nil {
 		return endpointPlan{}, err
 	}
 	if err := value.validate(); err != nil {
@@ -119,7 +118,7 @@ func (value endpointPlan) recoveryBinding() (serviceconnection.Recovery, error) 
 		destination []byte
 	}{{value.CandidateView, binding.CandidateView[:]}, {value.IsolationContext, binding.IsolationContext[:]},
 		{value.DestinationBinding, binding.DestinationBinding[:]}} {
-		if err := planfile.FixedHex(field.encoded, field.destination); err != nil {
+		if err := decodeEndpointFixedHex(field.encoded, field.destination); err != nil {
 			return serviceconnection.Recovery{}, err
 		}
 	}
@@ -137,17 +136,17 @@ func endpointSetup(plan endpointPlan) (Setup, time.Time, time.Duration, error) {
 		{plan.NetworkID, setup.NetworkID[:]}, {plan.BrokerID, setup.BrokerID[:]},
 		{plan.ConnectionPrincipal, setup.ConnectionPrincipal[:]}, {plan.AdministrationPrincipal, setup.AdministrationPrincipal[:]}} {
 		if field.encoded != "" {
-			if err := planfile.FixedHex(field.encoded, field.destination); err != nil {
+			if err := decodeEndpointFixedHex(field.encoded, field.destination); err != nil {
 				return setup, time.Time{}, 0, err
 			}
 		}
 	}
 	setup.AuthorityPublic = make([]byte, ed25519.PublicKeySize)
-	if err := planfile.FixedHex(plan.AuthorityPublic, setup.AuthorityPublic); err != nil {
+	if err := decodeEndpointFixedHex(plan.AuthorityPublic, setup.AuthorityPublic); err != nil {
 		return setup, time.Time{}, 0, err
 	}
 	setup.IntroductionPublic = make([]byte, ed25519.PublicKeySize)
-	if err := planfile.FixedHex(plan.IntroductionPublic, setup.IntroductionPublic); err != nil {
+	if err := decodeEndpointFixedHex(plan.IntroductionPublic, setup.IntroductionPublic); err != nil {
 		return setup, time.Time{}, 0, err
 	}
 	setup.PublicationRoot, setup.LegacyGenerationFloor = plan.PublicationRoot, plan.LegacyGenerationFloor

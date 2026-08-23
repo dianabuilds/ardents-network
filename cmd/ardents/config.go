@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type rawConfig struct {
@@ -19,7 +18,7 @@ type rawConfig struct {
 
 func (raw rawConfig) networkStateConfig() (state.Config, error) {
 	var networkID [32]byte
-	if err := planfile.FixedHex(raw.network, networkID[:]); err != nil {
+	if err := decodeOperatorFixedHex(raw.network, networkID[:]); err != nil {
 		return state.Config{}, fmt.Errorf("network-id: %w", err)
 	}
 	authorities := make(map[[32]byte]ed25519.PublicKey)
@@ -28,7 +27,7 @@ func (raw rawConfig) networkStateConfig() (state.Config, error) {
 			return state.Config{}, errors.New("authorities are required")
 		}
 		public := make([]byte, ed25519.PublicKeySize)
-		if err := planfile.FixedHex(encoded, public); err != nil {
+		if err := decodeOperatorFixedHex(encoded, public); err != nil {
 			return state.Config{}, fmt.Errorf("authority: %w", err)
 		}
 		authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)

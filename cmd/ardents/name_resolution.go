@@ -12,7 +12,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 const (
@@ -98,7 +97,7 @@ func readResolutionInput(path string) (resolutionInput, state.Config, nameresolu
 
 func readNetworkInput(path, schema string) (resolutionInput, state.Config, nameresolution.Selection, error) {
 	var input resolutionInput
-	if err := planfile.Decode(path, maxResolutionInput, &input); err != nil {
+	if err := decodeOperatorInput(path, maxResolutionInput, &input); err != nil {
 		return input, state.Config{}, nameresolution.Selection{}, err
 	}
 	if input.Schema != schema || input.StateRoot == "" || len(input.AuthorityPublic) == 0 ||

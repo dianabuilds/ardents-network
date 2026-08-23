@@ -7,12 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 func readOfflineInputs(raw rawConfig) ([]byte, [][]byte, []byte, error) {
-	epoch, err := planfile.Read(raw.epoch, 1<<20)
+	epoch, err := readOperatorInput(raw.epoch, 1<<20)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("read epoch: %w", err)
 	}
@@ -20,7 +18,7 @@ func readOfflineInputs(raw rawConfig) ([]byte, [][]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	materialBytes, err := planfile.Read(raw.material, 35<<10)
+	materialBytes, err := readOperatorInput(raw.material, 35<<10)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("read materialization: %w", err)
 	}
@@ -50,7 +48,7 @@ func readInputDirectory(path string) ([][]byte, error) {
 		if entry.IsDir() || entry.Name() != expected {
 			return nil, fmt.Errorf("input entry %q is not canonical %q", entry.Name(), expected)
 		}
-		inputs[index], err = planfile.Read(filepath.Join(path, entry.Name()), 32<<10)
+		inputs[index], err = readOperatorInput(filepath.Join(path, entry.Name()), 32<<10)
 		if err != nil {
 			return nil, fmt.Errorf("read input %d: %w", index, err)
 		}

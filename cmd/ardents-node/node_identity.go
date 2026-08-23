@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
@@ -12,11 +11,11 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 	if err != nil {
 		return node.Config{}, err
 	}
-	certificate, err := planfile.KeyPair(plan.ServerCertificate, plan.ServerKey)
+	certificate, err := readOperatorKeyPair(plan.ServerCertificate, plan.ServerKey)
 	if err != nil {
 		return node.Config{}, err
 	}
-	root, err := planfile.Read(plan.ClientRoot, 64<<10)
+	root, err := readOperatorInput(plan.ClientRoot, 64<<10)
 	if err != nil {
 		return node.Config{}, err
 	}
@@ -26,10 +25,10 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 			MaximumDuty:  time.Duration(plan.MaximumDutyMS) * time.Millisecond,
 			DrainTimeout: time.Duration(plan.DrainTimeoutMS) * time.Millisecond}, PollInterval: 100 * time.Millisecond,
 		Quarantine: time.Second, Now: time.Now, ResourceProfile: plan.NodeResourceProfile}
-	if err := planfile.FixedHex(plan.NodeID, node.NodeID[:]); err != nil {
+	if err := decodeOperatorFixedHex(plan.NodeID, node.NodeID[:]); err != nil {
 		return node, err
 	}
-	node.Probe.ClientKeyPins, err = planfile.Digests(plan.ClientKeyDigests, 16)
+	node.Probe.ClientKeyPins, err = decodeOperatorDigests(plan.ClientKeyDigests, 16)
 	if err != nil {
 		return node, err
 	}

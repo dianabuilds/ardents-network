@@ -93,6 +93,12 @@ test, so their implementations and unit suites now live as explicit
 only by that test. This preserves
 the Application-stream and separately granted publication-boundary evidence
 without shipping test workloads as operator commands.
+
+**M13 progress, 2026-08-23.** `internal/planfile` is C0 deleted. Its former
+generic bounded read, JSON, exact-field, credential, and freshness helpers had
+made historical plans an implicit cross-command Interface. `ardents`,
+`ardents-node`, `endpoint`, and Node identity now each own only their bounded
+input boundary; no maintained package imports a generic plan abstraction.
 | **M14 — retirement and current truth** | Input: every remaining lab, verifier, e2e/live matrix, stage document, fixture, and this plan. Owner: Codex under Product Owner final disposition. | DA-11 chooses C4 provenance/reproduction or C0 deletion; Qualification requires an accepted claim and active profile, never a historical receipt. | Full profile/reader-route audit, claim/evidence identity check, package-map/import graph, artifact/residue scan. Delete obsolete `internal/lab/`, six lab commands, obsolete e2e/live suites, stage materials whose current facts are promoted, target/disposition ledgers, and this plan. |
 
 **M10 progress, 2026-08-23.** `internal/applicationipc` and

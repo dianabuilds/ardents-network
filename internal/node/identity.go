@@ -5,13 +5,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-
-	"github.com/dianabuilds/ardents-network/internal/planfile"
+	"io"
+	"os"
 )
 
 // IdentityKey reads one bounded PKCS#8 PEM Ed25519 Node identity.
 func IdentityKey(path string) (ed25519.PrivateKey, error) {
-	raw, err := planfile.Read(path, 64<<10)
+	raw, err := readIdentityFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -28,4 +28,23 @@ func IdentityKey(path string) (ed25519.PrivateKey, error) {
 		return nil, errors.New("node identity key is not Ed25519")
 	}
 	return identity, nil
+}
+
+func readIdentityFile(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	raw, readErr := io.ReadAll(io.LimitReader(file, (64<<10)+1))
+	closeErr := file.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
+	if closeErr != nil {
+		return nil, closeErr
+	}
+	if len(raw) > 64<<10 {
+		return nil, errors.New("node identity key exceeds its bound")
+	}
+	return raw, nil
 }

@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -160,7 +159,7 @@ func addClientPublication(plan endpointPlan, request *OutboundConnectionRequest)
 	if plan.Role != "client" {
 		return nil
 	}
-	if err := planfile.FixedHex(plan.Target, request.Target[:]); err != nil {
+	if err := decodeEndpointFixedHex(plan.Target, request.Target[:]); err != nil {
 		return err
 	}
 	file, err := os.Open(plan.PublicationFile)

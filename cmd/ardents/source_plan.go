@@ -10,7 +10,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type sourcePlan struct {
@@ -85,7 +84,7 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 }
 func readSourcePlan(root, path string) (state.Config, error) {
 	var plan sourcePlan
-	if err := planfile.Decode(path, 32<<10, &plan); err != nil {
+	if err := decodeOperatorInput(path, 32<<10, &plan); err != nil {
 		return state.Config{}, fmt.Errorf("decode source plan: %w", err)
 	}
 	if plan.Schema != "ardents-h3-source-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 {
@@ -95,10 +94,10 @@ func readSourcePlan(root, path string) (state.Config, error) {
 	config := state.Config{Root: root, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
 		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile,
 		AutomaticRefreshInterval: time.Duration(plan.RefreshIntervalMS) * time.Millisecond}
-	if err := planfile.FixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
+	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
 		return config, err
 	}
-	config.Authorities, err = planfile.Authorities(plan.AuthorityPublic, 16)
+	config.Authorities, err = decodeOperatorAuthorities(plan.AuthorityPublic, 16)
 	if err != nil {
 		return config, err
 	}
@@ -107,7 +106,7 @@ func readSourcePlan(root, path string) (state.Config, error) {
 	if config.ClockObservation, err = time.Parse(time.RFC3339, plan.ClockObservedAt); err != nil {
 		return config, err
 	}
-	if err := planfile.FixedHex(plan.OrderSeed, config.Source.OrderSeed[:]); err != nil {
+	if err := decodeOperatorFixedHex(plan.OrderSeed, config.Source.OrderSeed[:]); err != nil {
 		return config, err
 	}
 	if err := loadSourceCredentials(&config, plan); err != nil {

@@ -10,7 +10,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 type nodePlan struct {
@@ -43,7 +42,7 @@ type nodeRuntime struct {
 func readNodePlan(path string) (nodeRuntime, error) {
 	var err error
 	var plan nodePlan
-	if err := planfile.Decode(path, 64<<10, &plan); err != nil {
+	if err := decodeOperatorInput(path, 64<<10, &plan); err != nil {
 		return nodeRuntime{}, fmt.Errorf("decode node plan: %w", err)
 	}
 	if plan.Schema != "ardents-h3-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
@@ -52,33 +51,33 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	state := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot,
 		Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), Clock: time.Now,
 		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, AutomaticRefreshInterval: 5 * time.Second, ClockObservationFile: plan.ClockObservationFile}
-	if err := planfile.FixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
+	if err := decodeOperatorFixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err
 	}
 	for _, encoded := range plan.AuthorityPublic {
 		public := make([]byte, ed25519.PublicKeySize)
-		if err := planfile.FixedHex(encoded, public); err != nil {
+		if err := decodeOperatorFixedHex(encoded, public); err != nil {
 			return nodeRuntime{}, err
 		}
 		state.Authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)
 	}
-	if err := planfile.FixedHex(plan.OrderSeed, state.Source.OrderSeed[:]); err != nil {
+	if err := decodeOperatorFixedHex(plan.OrderSeed, state.Source.OrderSeed[:]); err != nil {
 		return nodeRuntime{}, err
 	}
-	if state.Source.ClientCertificate, err = planfile.KeyPair(plan.SourceClientCertificate, plan.SourceClientKey); err != nil {
+	if state.Source.ClientCertificate, err = readOperatorKeyPair(plan.SourceClientCertificate, plan.SourceClientKey); err != nil {
 		return nodeRuntime{}, err
 	}
 	for index, source := range plan.Sources {
 		declared := &state.Source.Sources[index]
 		declared.Address, declared.ServerName = source.Address, source.ServerName
 		declared.Family, declared.EndpointHandle = source.Family, source.EndpointHandle
-		if err := planfile.FixedHex(source.Identity, declared.Identity[:]); err != nil {
+		if err := decodeOperatorFixedHex(source.Identity, declared.Identity[:]); err != nil {
 			return nodeRuntime{}, err
 		}
-		if err := planfile.FixedHex(source.LeafKeyDigest, declared.LeafKeyDigest[:]); err != nil {
+		if err := decodeOperatorFixedHex(source.LeafKeyDigest, declared.LeafKeyDigest[:]); err != nil {
 			return nodeRuntime{}, err
 		}
-		if declared.RootPEM, err = planfile.Read(source.RootCA, 64<<10); err != nil {
+		if declared.RootPEM, err = readOperatorInput(source.RootCA, 64<<10); err != nil {
 			return nodeRuntime{}, err
 		}
 	}

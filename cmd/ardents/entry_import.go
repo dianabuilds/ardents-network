@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 // runEntryImport adapts a single signed Entry Invite into the retained
@@ -27,8 +26,8 @@ func runEntryImport(ctx context.Context, arguments []string, output io.Writer) (
 		return fmt.Errorf("load import plan: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, runtime.close()) }()
-	invite, err := planfile.Read(runtime.inviteFile, 4096)
-	if err != nil && !errors.Is(err, planfile.ErrTooLarge) {
+	invite, err := readOperatorInput(runtime.inviteFile, 4096)
+	if err != nil && !errors.Is(err, errOperatorInputTooLarge) {
 		return fmt.Errorf("read Bridge Invite: %w", err)
 	}
 	owner, err := entry.Open(runtime.config)

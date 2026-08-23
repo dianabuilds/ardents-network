@@ -67,7 +67,6 @@ The maintained product Modules are:
 | `internal/network/duty` | Own durable Endpoint-local Role Domain duty, watermark, expiry, and identity/family conflict truth. |
 | `internal/node` | Bind one local Node identity to authenticated assignment, private role-probe TLS/framing/replay/capacity, readiness, duty, drain, withdrawal, and terminal cleanup. |
 | `internal/resource` | Own bounded OS/runtime measurement, process placement, hysteresis, and pressure decisions shared by State and Node; each consumer owns its reaction. |
-| `internal/planfile` | Own bounded operator-plan and credential decoding shared by command adapters. |
 
 Cross-process tests live under `tests/e2e/<behavior>/`. Live Docker inputs and
 their build-tagged Go tests live under `tests/live/`. Test-only fixture builders
@@ -90,8 +89,8 @@ appear in product package paths or product command names.
 The product import direction is:
 
 ```text
-cmd/ardents -> internal/network/state, internal/network/source, internal/planfile
-cmd/ardents-node -> internal/network/state, internal/network/source, internal/node, internal/planfile
+cmd/ardents -> internal/network/state, internal/network/source
+cmd/ardents-node -> internal/network/state, internal/network/source, internal/node
 internal/network/state -> internal/network/duty, internal/network/source, internal/resource
 internal/node -> internal/network/duty, internal/resource
 ```

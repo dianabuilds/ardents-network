@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/planfile"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
@@ -78,10 +77,10 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 }
 func publicationInputs(plan endpointPlan) (publication.Credential, ed25519.PrivateKey, error) {
 	var credential publication.Credential
-	if err := planfile.Decode(plan.CredentialFile, 8<<10, &credential); err != nil {
+	if err := decodeEndpointPlan(plan.CredentialFile, 8<<10, &credential); err != nil {
 		return credential, nil, err
 	}
-	raw, err := planfile.Read(plan.InstanceKeyFile, ed25519.PrivateKeySize*2)
+	raw, err := readPlanInput(plan.InstanceKeyFile, ed25519.PrivateKeySize*2)
 	if err != nil || len(raw) != ed25519.PrivateKeySize*2 {
 		return credential, nil, errors.New("instance Key file is invalid")
 	}
