@@ -490,8 +490,12 @@ update-result, and update-manifest formats, not a Custody status channel.
 the R-064 `cmd/ardents-release` tracer renders the old key. M13 removes the
 writer and field together when the named C2 observer expires, or preserves the
 frozen vector as C4 provenance. No second compatibility writer is introduced.
-Authority-lifecycle revocation still requires an accepted source; Broker Grant
-revocation is intentionally a separate local-admission transition.
+R-044 already revokes a former Name Authority at the authenticated Namespace
+Record: the former key cannot sign its recovered successor. The active Vault
+cannot discover that event safely because D08 has no Name-scoped replacement
+commitment. R-086 now owns any opaque proof and format migration for local Vault
+demotion; Broker Grant revocation is intentionally a separate local-admission
+transition.
 
 ## Dependency and retirement rules
 

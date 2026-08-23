@@ -52,10 +52,15 @@ cannot sign.
   together, or retain the vector as C4 provenance; it must not add a v2
   compatibility writer or treat the text as Vault status.
 - Windows/Ubuntu crash, permissions, and power-loss qualification remain open.
-- Custody does not yet have an accepted Authority-lifecycle revocation source;
-  the present Broker Grant revocation is a distinct local-admission rule.
-  Inventing a root-revocation operation here would conflate those authorities.
-  Authority revocation and supported lifecycle/installer work remain open.
+- R-044 threshold recovery already replaces the effective Name Authority in
+  Namespace; its completed Record rejects a signature from the former key.
+  However, an active Vault has only opaque environment/network/root/authority
+  commitments, not the Name needed to discover that replacement. It therefore
+  cannot safely demote itself merely from a generic current-state view.
+  [R-086](../research/records/r-086-custody-authority-revocation.md) owns a
+  possible opaque replacement proof and any D08 migration. Broker Grant
+  revocation remains a separate local-admission transition.
+- Supported lifecycle/installer work remains open.
 
 ## Evidence
 

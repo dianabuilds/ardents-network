@@ -285,6 +285,15 @@ func TestControlExecutesRecoveryCancelCompleteAndResume(t *testing.T) {
 	if class != "accepted" || err != nil || completed.Consistency != "unavailable" {
 		t.Fatalf("complete class=%q state=%+v err=%v", class, completed, err)
 	}
+	// A completed threshold recovery replaces the effective Name Authority.
+	// The former key therefore cannot create a proof for the recovered current
+	// Record, even before that Record is resumed for resolution.
+	formerAuthorityOp := Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
+		ExpectedGeneration: completed.Generation, ExpectedRevision: completed.Revision, Target: [32]byte{9},
+		RecordNotAfter: clock.Add(time.Hour).UnixMilli()}
+	if _, err := SignTransition(network, completed, formerAuthorityOp, currentKey); err == nil {
+		t.Fatal("former Name Authority signed after threshold recovery completion")
+	}
 	clock = clock.Add(time.Second)
 	resumeOp := Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
 		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9},
