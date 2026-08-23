@@ -389,7 +389,7 @@ func resolutionView(t *testing.T, network [32]byte, now time.Time, relayURL, gat
 	gatewayPublic ed25519.PublicKey) state.Snapshot {
 	t.Helper()
 	view := state.Snapshot{Generation: "generation-a", NetworkID: network, Epoch: 1,
-		Digest: [32]byte{1}, ValidUntil: now.Add(time.Hour), Profile: "h3-route-tracer-v1",
+		Digest: [32]byte{1}, ValidUntil: now.Add(time.Hour), Profile: "ardents-interactive-route-v1",
 		ViewRoot: [32]byte{2}, Freshness: "fresh", CandidateCount: 3}
 	roles := []struct {
 		id       byte

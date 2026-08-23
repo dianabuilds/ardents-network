@@ -184,7 +184,7 @@ func (value resolutionFixture) admitted(name string, isolation [32]byte, nonce b
 
 func resolutionSnapshot(network [32]byte, now time.Time, relayURL, gatewayURL string, gatewayKey ed25519.PublicKey) state.Snapshot {
 	view := state.Snapshot{Generation: "generation-a", NetworkID: network, Epoch: 1, Digest: [32]byte{1},
-		ValidUntil: now.Add(time.Hour), Profile: "h3-route-tracer-v1", ViewRoot: [32]byte{2}, Freshness: "fresh", CandidateCount: 3}
+		ValidUntil: now.Add(time.Hour), Profile: "ardents-interactive-route-v1", ViewRoot: [32]byte{2}, Freshness: "fresh", CandidateCount: 3}
 	roles := []struct {
 		id                       byte
 		family, domain, endpoint string

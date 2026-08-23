@@ -64,18 +64,30 @@ func TestRouteViewUnavailableAfterStateClose(t *testing.T) {
 	}
 }
 
-func TestRouteProfileCannotConsumeRoleProbeEpoch(t *testing.T) {
+func TestNativeRouteProfileCannotConsumeRoleProbeEpoch(t *testing.T) {
 	value := newFixture(t)
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
-		Threshold:   1, Now: time.Unix(value.now, 0), AcceptedProfile: "h3-route-tracer-v1",
+		Threshold:   1, Now: time.Unix(value.now, 0), AcceptedProfile: "ardents-interactive-route-v1",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer opened.Close()
 	if _, err := opened.Accept(context.Background(), value.epoch, value.inputs, value.materializations); err == nil {
-		t.Fatal("Route-configured Network State accepted the role-probe profile")
+		t.Fatal("native Route-configured Network State accepted the role-probe profile")
+	}
+}
+
+func TestRouteProfileRejectsRetiredH3Tracer(t *testing.T) {
+	value := newFixture(t)
+	_, err := state.Open(state.Config{
+		Root: t.TempDir(), NetworkID: value.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
+		Threshold:   1, Now: time.Unix(value.now, 0), AcceptedProfile: "h3-route-tracer-v1",
+	})
+	if err == nil {
+		t.Fatal("retired H3 Route profile remained accepted")
 	}
 }
