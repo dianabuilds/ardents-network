@@ -26,13 +26,13 @@ co-location grants none of them access to another zone's authority material.
 | `tests/` | Shared fixtures, checked execution-profile manifests, cross-process end-to-end tests, and explicit live-container tests. Unit and single-Module integration tests remain beside their implementation. This zone has no second Go module. |
 | `docs/product/` | Accepted product promise, delivery horizons, functions, journeys, and operating model. |
 | `docs/security/` | Threat model, claim conditions, adversaries, and honest limitations. |
-| `docs/research/` | Decision-relevant questions, completed evidence records, and the research template. |
+| `docs/research/` | Active decision-relevant questions and the research template. |
 | `docs/adr/` | Accepted consequential decisions. Open questions and implementation progress do not belong here. |
 | `docs/development/` | Normative engineering policy, factual registries, and developer runbooks. |
 | `experiments/` | Disposable question-scoped research spikes and their instructions. It is not a maintained project tree. |
 | `scripts/` | Thin, explicitly invoked bootstrap and developer wrappers. Product behavior remains in Go Modules. |
 | `packaging/` | Conditional source definitions for distributable images or operating-system packages after a delivery gate authorizes them. It contains no generated package output. |
-| `deployments/` | Conditional environment/deployment definitions after production orchestration is selected. It is not created for Carrier Lab. |
+| `deployments/` | Conditional environment/deployment definitions after production orchestration is selected. It is not created before a real environment owner exists. |
 | `.github/workflows/` | Repository CI and release automation after the applicable horizon authorizes it. |
 | `.githooks/` | Optional local developer checks; CI remains authoritative. |
 | repository root | Project-wide policy and build entrypoints such as `AGENTS.md`, `README.md`, `CONTEXT.md`, `go.mod`, and `Makefile`. |
@@ -42,31 +42,24 @@ instructions to create empty directories. A new top-level zone requires a real
 artifact, a responsibility not owned by an existing zone, and an architecture
 review in the same change. Generated output has no repository zone.
 
-R-091 removed the closed `lab/` and `internal/lab/` trees. Their records remain
-under `docs/research/`; a future experiment must create a new approved,
-purpose-named boundary rather than restore this historical corpus.
+R-091 removed the closed `lab/` and `internal/lab/` trees. Their provenance is
+in Git history. A future experiment must create a new approved, purpose-named
+boundary rather than restore that historical corpus.
 
-## Horizon 3 product trunk
+## Current maintained trunk
 
-Horizon 3 starts the maintained product from the accepted records; it does not
-restore a closed laboratory command or package.
+The maintained product does not restore a closed laboratory command or package.
+Exact package responsibilities and allowed project imports are authoritative in
+the [package map](package-map.md); this document states growth policy rather
+than duplicating that rapidly changing table.
 
 The first real product commands are:
 
 | Command | Stable responsibility |
 |---|---|
-| `cmd/ardents` | Run the local Endpoint process. It grows only through accepted Endpoint capabilities and remains a thin adapter over product Modules. |
-| `cmd/ardents-node` | Run one separately configured Contributor Node identity and one active role per process. Co-resident roles require distinct processes, keys, state, and resource ownership. |
-
-The maintained product Modules are:
-
-| Module path | Stable responsibility |
-|---|---|
-| `internal/network/state` | Own authenticated Network State acceptance, Epoch/View verification, current and pending decisions, acquisition, durable publication, and restart recovery. |
-| `internal/network/source` | Own the finite Direct-Origin Source plan, credential binding, private transport, and exposure identity. |
-| `internal/network/duty` | Own durable Endpoint-local Role Domain duty, watermark, expiry, and identity/family conflict truth. |
-| `internal/node` | Bind one local Node identity to authenticated assignment, private role-probe TLS/framing/replay/capacity, readiness, duty, drain, withdrawal, and terminal cleanup. |
-| `internal/resource` | Own bounded OS/runtime measurement, process placement, hysteresis, and pressure decisions shared by State and Node; each consumer owns its reaction. |
+| `cmd/ardents` | Adapt bounded Network State, Endpoint, Entry, and naming routes. |
+| `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
+| `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
 
 Cross-process tests live under `tests/e2e/<behavior>/`. Live Docker inputs and
 their build-tagged Go tests live under `tests/live/`. Test-only fixture builders
@@ -80,20 +73,12 @@ Qualification selection is explicit rather than inferred from a directory name
 or a negative Make filter. Inactive profiles record the decision required to
 activate them and are not passing evidence.
 
-This is a trunk, not a complete future directory tree. Route, Carrier,
-Publication, Service Connection, Namespace, Bridge, Release Safety, platform,
-and Application Interface paths do not exist until their promoted vertical
-slice supplies real maintained behavior. Horizon numbers and stage names never
-appear in product package paths or product command names.
-
-The product import direction is:
-
-```text
-cmd/ardents -> internal/network/state, internal/network/source
-cmd/ardents-node -> internal/network/state, internal/network/source, internal/node
-internal/network/state -> internal/network/duty, internal/network/source, internal/resource
-internal/node -> internal/network/duty, internal/resource
-```
+This is a trunk, not a complete future directory tree. Maintained Route,
+Publication, Service Connection, Namespace, Release, Update, Endpoint, Node,
+and Custody behavior has its existing package owner; unselected behavior does
+not earn a placeholder directory. Horizon numbers and stage names never appear
+in product package paths or product command names. The package map is the
+executable current-state import policy.
 
 End-to-end and live tests drive product Interfaces and commands but cannot
 implement missing product behavior on their behalf. A passing harness shortcut
@@ -119,51 +104,17 @@ scripts/
 .github/workflows/
   quality.yml                  mandatory ordinary CI quality gate
 .githooks/pre-commit           local quick gate
-docs/                          product, security, research, ADR, and development records
+docs/                          product, security, research, ADR, development, technical, and reference records
 docs/development/README.md     current contributor route through development records
-experiments/README.md          policy for future disposable spikes
+docs/reference/commands.md     current command route and limits
+experiments/README.md          policy and active disposable spike route
 go.mod                         the only Go module
 Makefile                       common build and quality entrypoints
 ```
 
 Only the Go packages listed in [package-map.md](package-map.md) exist as
-maintained packages. R-091 removed the closed Carrier and Gate C execution
-tree; its source-bound results remain research provenance rather than current
-directories, commands, imports, or deployment inputs.
-
-## Conditional target map and delivery horizons
-
-The following names are logical product Modules, not approved Go package names
-or directories:
-
-- Endpoint Runtime;
-- Destination;
-- Service Connection;
-- Publication;
-- Route;
-- Carrier Channel;
-- Infrastructure Node;
-- Service Authority Custody;
-- Namespace;
-- Network State;
-- Release Safety;
-- Platform capabilities;
-- Carrier Lab and verification.
-
-They guide future placement only after product evidence promotes their behavior:
-
-| Delivery horizon | Permitted growth after its gate |
-|---|---|
-| Closed Carrier Lab and Named Unlisted Site | Frozen Modules, commands, fixtures, and checks required to reproduce the accepted evidence. No later-horizon product behavior grows inside them. |
-| Closed Test Network (current) | Concrete Infrastructure Node, Network State, private resolution/Namespace, public-role process separation, and expanded custody behavior, one promoted vertical slice at a time. |
-| Public Beta (conditional) | Release Safety, supported platform packaging, deployment definitions, and complete qualification behavior only after their individual gates and technology decisions. |
-
-The logical map does not require every item to become one package. A cohesive
-Module may own several closely related behaviors behind one small Interface;
-one broad concept may later require several Modules after evidence reveals real
-independent seams. The package name is chosen from implemented responsibility,
-not copied mechanically from this list. No directory is created until the first
-maintained Implementation and tests arrive in the same change.
+maintained packages. Retired execution trees are Git provenance rather than
+current directories, commands, imports, or deployment inputs.
 
 ## Commands and packages
 
@@ -270,67 +221,32 @@ details merely to make tests convenient.
 
 ## Dependency direction
 
-An arrow means the source may depend on the target. It does not require the
-dependency to exist, nor does it authorize a package:
+The [package map](package-map.md) is the executable current-state dependency
+policy. It names each permitted first-party import; a diagram cannot grant a
+dependency that the map does not name. Commands adapt owned Modules, and
+product Modules never import `tests/`, `experiments/`, or `scripts/`. Cyclic
+project imports are forbidden.
 
-```text
-cmd
-  -> Endpoint Runtime
-       -> Destination
-       -> Service Connection
-            -> Route
-                 -> Carrier Channel
-       -> Publication
-       -> Platform capabilities
+## Experiment promotion lifecycle
 
-Infrastructure Node
-  -> Route
-  -> Carrier Channel
-  -> Network State
-  -> Platform capabilities
+An active experiment owns its fixtures, orchestration, fault injection,
+bounded observations, evidence finalization, and cleanup. It may call a
+maintained Module through that Module's Interface. The dependency never
+reverses.
 
-Service Authority Custody
-  -> Platform capabilities
-
-Carrier Lab / verification
-  -> proven product Modules
-```
-
-The following directions are forbidden:
-
-- Route -> Endpoint Runtime;
-- Carrier Channel -> Route, Application Interface, or Namespace;
-- Service Connection -> Namespace;
-- Service Authority Custody -> Endpoint Runtime;
-- Infrastructure Node -> User-facing or Application-specific Modules;
-- product Modules -> Carrier Lab, test harnesses, `experiments`, or
-  `scripts`;
-- Ardents core -> an optional Overlay or Application;
-- cyclic project imports.
-
-The package map is the executable current-state dependency policy. The logical
-future map remains documentary until both endpoint packages exist; tests do not
-pretend that hypothetical packages are real.
-
-## Carrier Lab promotion lifecycle
-
-Carrier Lab owns fixed fixtures, orchestration, fault injection, bounded
-observations, evidence finalization, and cleanup. It may call a product-shaped
-Module through that Module's Interface. The dependency never reverses.
-
-When laboratory behavior is proven and the Product Owner promotes the next
+When experiment behavior is proven and the Product Owner promotes a maintained
 slice:
 
 1. record the evidence and promotion decision;
 2. define the smallest product Interface from the accepted behavior rather
-   than from laboratory topology or tooling;
+   than from experiment topology or tooling;
 3. place the maintained Implementation in its owning product Module and use it
    from both the product caller and tests through the same Interface;
 4. update the factual package map, dependency tests, and product records;
-5. retain or remove laboratory code according to its evidence disposition.
+5. retain or remove experiment code according to its evidence disposition.
 
-Promotion is not a wholesale copy of a harness directory. A future product
-Module must not import laboratory configuration, evidence schemas, fault
+Promotion is not a wholesale copy of an experiment directory. A maintained
+Module must not import experiment configuration, evidence schemas, fault
 controls, Docker assumptions, or experiment state.
 
 ## Tests and test data
@@ -352,11 +268,10 @@ created. Generated test evidence follows the artifact rules below.
 
 ## Docker, infrastructure, and packaging
 
-R-091 retired the closed Carrier Lab and Gate C container source trees. Their
-source-bound records remain research provenance, but no tracked Dockerfile,
-Compose input, lock, live profile, or workflow is a current reproduction or
-product interface. A future experiment must create its own accepted,
-purpose-named source boundary; it must not restore those paths by implication.
+No tracked Dockerfile, Compose input, lock, live profile, or workflow is a
+current product interface. A future experiment or selected environment creates
+its own accepted, purpose-named source boundary; it does not restore retired
+paths by implication.
 
 If supported image or operating-system package definitions become real, their
 source belongs under `packaging/<target>/`; image definitions use
@@ -366,9 +281,8 @@ production packaging.
 
 Environment-specific infrastructure or orchestration source belongs under
 `deployments/<environment>/` only after an accepted delivery decision chooses
-its ownership and lifecycle. Carrier Lab topology stays in its purpose-named
-Compose file. Product logic never moves into Dockerfiles, Compose, deployment
-templates, CI, or shell wrappers.
+its ownership and lifecycle. Product logic never moves into Dockerfiles,
+Compose, deployment templates, CI, or shell wrappers.
 
 `scripts/` contains only thin bootstrap or developer wrappers that validate
 inputs and call maintained Go behavior or an explicit tool. Scripts do not
@@ -418,12 +332,12 @@ moving source code to another repository.
 The architecture gate automatically checks the single root module, factual
 package-map registration, permitted current imports, forbidden generic package
 names, command adaptation, Go source placement, absence of product imports
-from laboratory/experiment/script code, formatting, selected unsafe constructs,
+from test/experiment/script code, formatting, selected unsafe constructs,
 and common generated-artifact patterns. The Make targets add vet, tests, build,
 module tidiness, race, Staticcheck, and vulnerability analysis.
 
 Human review remains responsible for cohesive responsibility, Interface depth,
 whether a Seam and two Adapters are real, product meaning of a dependency,
 technology-neutral naming, delivery-horizon authorization, placement of
-non-Go infrastructure, promotion from Carrier Lab, and repository extraction.
-Those decisions cannot be inferred safely from path names or line counts.
+non-Go infrastructure, experiment promotion, and repository extraction. Those
+decisions cannot be inferred safely from path names or line counts.
