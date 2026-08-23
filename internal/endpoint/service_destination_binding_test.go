@@ -41,14 +41,14 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	go func() {
-		result, runErr := publisher.Do(ctx, serviceconn.Request{Action: "accept",
-			Principal: fixture.publisherPrincipal, Session: session(publisher, fixture.publisherPrincipal, fixture.now),
+		result, runErr := publisher.Accept(ctx, serviceconn.InboundConnectionRequest{
+			Principal: fixture.publisherPrincipal, Capability: session(publisher, fixture.publisherPrincipal, fixture.now),
 			Route: publisherRoute, Application: publisherEndpoint, BytesEachDirection: 1, At: fixture.now})
 		results <- outcome{result, runErr}
 	}()
 	go func() {
-		result, runErr := client.Do(ctx, serviceconn.Request{Action: "connect",
-			Principal: fixture.clientPrincipal, Session: session(client, fixture.clientPrincipal, fixture.now),
+		result, runErr := client.Connect(ctx, serviceconn.OutboundConnectionRequest{
+			Principal: fixture.clientPrincipal, Capability: session(client, fixture.clientPrincipal, fixture.now),
 			Target: fixture.first.Target, Publication: publication, Route: clientRoute,
 			Application: clientEndpoint, BytesEachDirection: 1, At: fixture.now,
 			NameBinding: serviceBinding(binding), NameUpdates: updates})
