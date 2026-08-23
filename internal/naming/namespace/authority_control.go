@@ -98,6 +98,7 @@ func (control *control) Submit(submission Submission, proof Proof) string {
 	}
 	operation, err := decodeControlOperation(submission.raw)
 	if err != nil || submission.digest != operation.OperationDigest || len(operation.SuccessorRecord) == 0 ||
+		operation.Kind == "claim" ||
 		proof.Challenge.Network != control.network || proof.Challenge.OperationDigest != operation.OperationDigest ||
 		proof.Challenge.Surface != operation.surface() {
 		return "denied"

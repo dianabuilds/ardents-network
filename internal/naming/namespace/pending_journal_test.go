@@ -179,6 +179,54 @@ func TestDurableControlRestoresExactSignedPendingSuccessor(t *testing.T) {
 	}
 }
 
+func TestDurableControlRejectsLateRootClaim(t *testing.T) {
+	now, network := time.Unix(1_800_000_300, 0).UTC(), [32]byte{6}
+	policy, attesters := pendingTestPolicy(network)
+	store, err := Open(t.TempDir(), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	key := deterministicControlKey("durable-root-claim")
+	current := controlTestRecord("alice", key, now)
+	signedCurrent, err := SignRecord(network, current, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Commit(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+		TransitionRoot: [32]byte{2}, TransitionLength: 1, RejectionRoot: [32]byte{3}},
+		[][]byte{signedCurrent}, pendingTestAttester(attesters)); err != nil {
+		t.Fatal(err)
+	}
+	gate, err := NewAdmission([32]byte{2}, network, 1, [32]byte{4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	control, err := OpenControl(store, gate, ClaimOrder{}, func() time.Time { return now }, Policy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, digest := signedControlOperation(t, controlOperation{Kind: "claim", Name: current.Name, Generation: 1,
+		Authority: authorityBytes(current.Authority), LeaseNotAfter: now.Add(time.Hour).UnixMilli(),
+		OrderingProof: []byte("{}"), SuccessorRecord: signedCurrent})
+	submission, err := OpenSubmission(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	challenge, err := gate.Issue(now.UnixMilli(), "root-claim", digest, [32]byte{1},
+		now.Add(15*time.Second).UnixMilli(), [16]byte{1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	proof, _ := challenge.Solve()
+	if class := control.Submit(submission, proof); class != "denied" {
+		t.Fatalf("late root claim=%q", class)
+	}
+	if entries, pendingErr := store.pending(); pendingErr != nil || len(entries) != 0 {
+		t.Fatalf("late root claim changed pending journal: %+v / %v", entries, pendingErr)
+	}
+}
+
 func durableRenew(t *testing.T, network [32]byte, current Record, key ed25519.PrivateKey,
 	now time.Time, policy Policy,
 ) Record {
