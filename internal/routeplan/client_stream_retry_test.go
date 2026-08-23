@@ -53,13 +53,17 @@ func TestClientStreamRetryBridgesOneRecoveryPublicationGap(t *testing.T) {
 }
 
 func TestClientStreamRetryRemainsBounded(t *testing.T) {
-	started := time.Now()
-	if _, err := dialClientStream(filepath.Join(t.TempDir(), "absent.sock"), 80*time.Millisecond,
-		replacementStreamWait); err == nil {
+	clock := time.Unix(1_800_000_000, 0)
+	attempts := 0
+	if _, err := dialClientStreamWith("absent.sock", 80*time.Millisecond, replacementStreamWait,
+		func() time.Time { return clock }, func(_, _ string, _ time.Duration) (net.Conn, error) {
+			attempts++
+			return nil, errors.New("absent stream")
+		}, func(delay time.Duration) { clock = clock.Add(delay) }); err == nil {
 		t.Fatal("absent recovery stream was accepted")
 	}
-	if elapsed := time.Since(started); elapsed < 60*time.Millisecond || elapsed > 250*time.Millisecond {
-		t.Fatalf("bounded recovery stream wait took %s", elapsed)
+	if attempts != 8 || !clock.Equal(time.Unix(1_800_000_000, 80_000_000)) {
+		t.Fatalf("retry attempts=%d deadline=%s", attempts, clock)
 	}
 }
 

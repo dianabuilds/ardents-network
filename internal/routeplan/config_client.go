@@ -104,22 +104,28 @@ func (raw actorPlan) client(initialStream bool) (route.Actor, func() error, erro
 }
 
 func dialClientStream(path string, setupDeadline, wait time.Duration) (net.Conn, error) {
+	return dialClientStreamWith(path, setupDeadline, wait, time.Now, net.DialTimeout, time.Sleep)
+}
+
+func dialClientStreamWith(path string, setupDeadline, wait time.Duration, now func() time.Time,
+	dial func(string, string, time.Duration) (net.Conn, error), pause func(time.Duration),
+) (net.Conn, error) {
 	if setupDeadline <= 0 {
 		return nil, errors.New("client stream setup deadline is invalid")
 	}
-	if wait <= 0 {
+	if wait <= 0 || now == nil || dial == nil || pause == nil {
 		return nil, errors.New("client stream wait is invalid")
 	}
-	deadline := time.Now().Add(min(setupDeadline, wait))
+	deadline := now().Add(min(setupDeadline, wait))
 	var lastErr error
-	for time.Now().Before(deadline) {
-		remaining := time.Until(deadline)
-		connection, err := net.DialTimeout("unix", path, min(50*time.Millisecond, remaining))
+	for now().Before(deadline) {
+		remaining := deadline.Sub(now())
+		connection, err := dial("unix", path, min(50*time.Millisecond, remaining))
 		if err == nil {
 			return connection, nil
 		}
 		lastErr = err
-		time.Sleep(min(10*time.Millisecond, max(time.Duration(0), time.Until(deadline))))
+		pause(min(10*time.Millisecond, max(time.Duration(0), deadline.Sub(now()))))
 	}
 	if lastErr == nil {
 		return nil, errors.New("client recovery stream wait expired before dialing")
