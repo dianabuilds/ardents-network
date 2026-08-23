@@ -140,7 +140,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/service/publication` | Retain the M9 target owner for one exclusive C1 Instance publication generation, floor, volatile signer, and drain lifecycle. It has no local admission, IPC, connection/recovery, or legacy H3 reader authority. | M9 under R-084; Endpoint is its direct role-local composition caller. |
 | `internal/service/connection` | Retain the M9 target owner for closed ADR-0028 endpoint records, immutable context, logical stream/recovery lifecycle, and native terminal outcome. It accepts only opaque already-authenticated Attachments; no H3 record reader may be added. | M9 under R-083/ADR-0028. |
 | `internal/bridge` | Deleted after transferring the required durable Invite/replay/replacement responsibility to `entry`. | M7 complete under R-076/R-080. |
-| `internal/entry` | Retain the M7 target: signed State-referenced Invite v1, bounded durable Entry/replay set, adjacent candidate lookup, and candidate-opener lifecycle. | M7 under R-076/R-077/R-079. |
+| `internal/entry` | **Complete, 2026-08-24:** owns signed State-referenced Invite v1, bounded durable Entry/replay state, adjacent candidate lookup, and candidate-opener lifecycle. | M7 under R-076/R-077/R-079; no carrier or public-network claim. |
 | `internal/camouflage` | Deleted: R-076/ADR-0024 retire the H3 WebTunnel adapter from the maintained Profile. | M7 complete under R-080. |
 | `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
 | `internal/network/duty` | Own the retained durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth. | M4 D02 C1 cutover; preserve the existing root format and one writer. |

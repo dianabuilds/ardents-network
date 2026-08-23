@@ -360,6 +360,13 @@ boundary. No plaintext fallback or shared implementation view remains.
 
 ### M7 — Entry lifecycle
 
+**Complete, 2026-08-24.** `entry` is the sole owner of the retained signed
+Invite, durable replay/replacement state, adjacent contact lifecycle, and
+EntryBinding admission. The former `bridge` and `camouflage` packages, their
+commands, and the retired WebTunnel runtime are deleted. The focused Entry
+suite proves replay, replacement, mutual-TLS candidate opening, cleanup, and
+restart behavior; no carrier or public-network claim follows from it.
+
 `internal/entry/attempt.go` (265 lines) is one bounded Entry-attempt state
 machine: it persists a State-derived candidate before exposure, permits at
 most four ordered contacts over two slots, records cleanup before retry, and
