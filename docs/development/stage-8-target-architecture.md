@@ -145,7 +145,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/network/source` | Retain as State-owned acquisition port and selected direct-origin Adapter only. | M3, subject to DA-05/10. |
 | `internal/node`, `internal/node/probe` | Transfer Node lifecycle and private probe to `node`. | M11. |
 | `internal/resource` | Retain/deepen as the sole shared resource coordinator; Linux profiles only and fail closed elsewhere. | M4, R-062 H1 accepted. |
-| `internal/route`, `internal/routeplan` | Consolidate route selection, attachment lifetime, and process cleanup under `route`. | M8, subject to DA-06. |
+| `internal/route`, `internal/routeplan` | Consolidate route selection, attachment lifetime, process cleanup, and the R-078 closed v1 wire under `route`; no legacy reader survives cutover. | M8, subject to DA-06. |
 | `internal/release` | Own release trust/root/floor verification behind `Open`, `Evaluate`, and `Close`. | M1, subject to DA-01. |
 | `internal/update` | Own the bounded offline transaction/recovery tracer; do not add a supported activator, installer, or Custody writer. | M2, subject to DA-01/R-064. |
 | `internal/planfile` | Replace with command/owner-local bounded input decoders; do not retain a generic plan abstraction. | M3/M8/M9/M11/M13 as each consumer moves. |
