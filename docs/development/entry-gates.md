@@ -112,7 +112,7 @@ controls a real Node lifecycle. R-027 and R-028 are accepted only as its
 bootstrap and resource/evidence appendices, not as separately runnable slices;
 the standalone H3-A brief is withdrawn. The Product Owner decision and
 [Stage 1 brief](horizon-3-stage-1-brief.md) satisfy the scope-promotion part of
-this gate. Patched Go 1.26.5 and the ordinary repository baseline must pass
+this gate. Patched Go 1.26.6 and the ordinary repository baseline must pass
 before S1-0 feature code. One dedicated Ubuntu Docker host with the exact
 isolated E/S1/S2/N1/N2/H logical topology is the S1-4 qualification precondition,
 not a reason to block offline or local Stage 1 implementation. Separate physical

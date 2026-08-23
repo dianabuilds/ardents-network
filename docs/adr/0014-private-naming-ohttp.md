@@ -16,7 +16,7 @@ cryptography and must not be partially implemented by S6.2.
 
 ## Decision
 
-Accept R-047 Option O1: use Go 1.26.5 standard-library Ed25519 with the exact
+Accept R-047 Option O1: use Go 1.26.6 standard-library Ed25519 with the exact
 domain-separated transcripts defined by R-047, and promote
 `github.com/openpcc/ohttp v0.0.80` at commit
 `79bec89d804248df1a71a0f56c882b116579035d` and its registered raised closure

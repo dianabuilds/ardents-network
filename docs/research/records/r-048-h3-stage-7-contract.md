@@ -61,13 +61,10 @@ documentation acceptance. No Adapter
 may change system DNS/routes/default proxy/browser/VPN policy or mislabel an
 ordinary browser as network-isolated.
 
-R-051 has advanced O2 to an exact, still-unaccepted
-[Application Principal candidate](../../development/stage-7-application-principal-spec.md):
-private inherited channel plus stable root process handle and complete cgroup-v2
-or Job tree; named endpoints remain generic, and co-resident direct binary has
-claim `none`. Development-host evidence, explicit native qualification
-deferrals, and the ADR-0016 disposition of the Windows Job-limit Go
-`unsafe.Pointer` bridge remain open.
+R-051's O2 launcher-bound candidate is historical. R-085 instead selects only
+a generic/unqualified Broker; named endpoints remain generic and the
+co-resident direct binary has claim `none`. No Windows bridge or qualified
+platform profile remains selected.
 
 The active team is one Product Owner and Codex. H3 can exercise threshold and
 multi-builder mechanics with visibly project-controlled test identities. It
@@ -299,12 +296,10 @@ unsafe rollback, unverifiable process ownership, or a false privacy claim.
 
 ## Recommendation
 
-Choose O1 as the bounded Stage 7 architecture and decision order. The Product
-Owner accepted the linked brief, specifications, development plan, evidence
-contract, development-host campaign, explicit qualification deferrals, and
-decision proposals together on 2026-08-20. The
-[readiness checklist](../../development/stage-7-readiness-checklist.md) records
-the completed S7.0 gate; post-implementation evidence remains conjunctive.
+Choose O1 as the historical Stage 7 architecture and decision order. The
+Product Owner accepted its planning set on 2026-08-20, then stopped the stage
+on 2026-08-22. Its readiness/campaign material is historical provenance in
+Git; post-implementation evidence was never a current qualification result.
 
 Confidence is medium. The strongest counterargument is that the two Installed
 platform lifecycles and two isolation mechanisms may differ materially. The
@@ -316,31 +311,9 @@ small artifact check rather than a second lifecycle stack.
 
 - State: `decided`; the Product Owner accepted O1 and authorized `start S7.1`
   on 2026-08-20 after Stage 6 completion.
-- Prepared development documents:
-  [Stage 7 brief](../../development/horizon-3-stage-7-brief.md),
-  [Application Adapter specification](../../development/stage-7-application-adapter-spec.md),
-  [Application Principal specification](../../development/stage-7-application-principal-spec.md),
-  [Application Isolation specification](../../development/stage-7-application-isolation-spec.md),
-  [Authority Custody specification](../../development/stage-7-authority-custody-spec.md),
-  [password-derived custody proposal](../../development/stage-7-password-derived-authority-custody-proposal.md),
-  [lifecycle specification](../../development/stage-7-lifecycle-spec.md),
-  [development plan](../../development/stage-7-development-plan.md),
-  [readiness checklist](../../development/stage-7-readiness-checklist.md), and
-  [evidence contract](../../development/stage-7-platform-evidence.md), plus the
-  [development-host campaign specification](../../development/stage-7-host-campaign-spec.md)
-  and [joint review record](../../development/stage-7-joint-review.md).
-- Consequential decisions are recorded in ADR-0015, ADR-0016, and ADR-0021;
-  their source proposals remain:
-  [release activation](../../development/stage-7-versioned-release-activation-proposal.md)
-  and
-  [Application principals](../../development/stage-7-launcher-bound-application-principals-proposal.md),
-  plus
-  [password-derived Authority Custody](../../development/stage-7-password-derived-authority-custody-proposal.md).
-- The exact selected R-051 O2 mechanism is frozen in the
-  [Application Principal specification](../../development/stage-7-application-principal-spec.md).
-- The selected R-052 native mechanisms and unsupported Stage 7 isolated-browser
-  result are frozen in the
-  [Application Isolation specification](../../development/stage-7-application-isolation-spec.md).
+- The stopped Stage 7 brief, specifications, proposals, campaign, and review
+  are retired provenance in Git. ADR-0016 is superseded by R-085 for the
+  maintained generic Broker path.
 - R-049–R-054 and R-056 are decided development inputs; their scheduled runtime
   evidence remains owned by the corresponding slices and S7.7.
 - `CONTEXT.md` defines the accepted Distribution Profile term and keeps executable

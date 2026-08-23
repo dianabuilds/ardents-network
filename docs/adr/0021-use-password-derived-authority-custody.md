@@ -18,7 +18,7 @@ runtime work performed through bounded credentials.
 Both Vault records and Recovery Bundles use canonical
 `ardents-authority-envelope-v1` with distinct authenticated purposes and
 separately entered passwords. The envelope derives a 32-byte key with Argon2id
-v1.3 through `golang.org/x/crypto v0.52.0` using `256 MiB`, `t=3`, `p=4`, a fresh
+v1.3 through `golang.org/x/crypto v0.55.0` using `256 MiB`, `t=3`, `p=4`, a fresh
 16-byte salt, and then encrypts with Go 1.26 AES-256-GCM and a fresh random
 nonce. A v1 Vault contains at most 1024 independently atomic encrypted records
 and 1 GiB under one Vault password; it has no in-place password rotation.

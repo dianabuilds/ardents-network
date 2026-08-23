@@ -228,8 +228,8 @@ Stage 6 has three disjoint artifact classes:
 - `verdict`: independent recomputation to `pass|fail|invalid`.
 
 The runner cannot author or mutate a verdict. Command exit text is never
-evidence of Stage 6 success. The A0-D6 inventory, S6E1 serialization, and exact
-responsibilities are defined in `stage-6-private-naming-evidence.md` and R-055.
+evidence of Stage 6 success. The retired evidence contract and R-055 record the
+A0-D6 inventory, S6E1 serialization, and exact historical responsibilities.
 Their maintained implementation and mutation coverage are complete. Stage 6
 still requires the separately built command campaign to publish an independent
 `pass` and the Product Owner to record the disposition.

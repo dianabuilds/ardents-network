@@ -86,7 +86,7 @@ Primary sources, accessed 2026-08-19:
 
 - R-039 — H3 private naming lifecycle (accepted 2026-08-17).
 - `horizon-3-stage-6-brief.md` S6.4.
-- `stage-6-readiness-checklist.md` §B.3.
+- the former Stage 6 readiness §B.3 item.
 - `internal/network/store` — existing H3 state ownership (per
   `package-map.md`).
 - R-005 — hostile bootstrap and Time Confidence.
@@ -168,7 +168,7 @@ silently select another engine.
   engine is selected.
 - R-043 becomes `decided`. The open row in `docs/research/questions.md`
   is updated to point at this record and the frozen contract.
-- §B.3 of `stage-6-readiness-checklist.md` is checked.
+- The former Stage 6 readiness §B.3 item was checked before the stage closed.
 - S6.4 may define a naming-owned storage interface and an
   `internal/network/store` adapter. Neither the interface file nor the adapter
   exists at S6.0, and this record does not claim otherwise.

@@ -8,7 +8,8 @@ date: 2026-08-08
 Ardents uses one root Go module for maintained project code. Executables are
 thin adapters under `cmd`; cohesive implementation modules are internal;
 disposable experiments remain evidence and cannot become a second project
-tree. Go 1.26.x is the language family, while CI and Carrier Lab pin Go 1.26.5.
+tree. Go 1.26.x is the language family, while CI pins Go 1.26.6. Carrier Lab is
+historical provenance, not a current toolchain owner.
 
 Every change must pass executable architecture, format, vet, test, build, module
 tidiness, race, Staticcheck, and vulnerability gates. Quality tools are pinned

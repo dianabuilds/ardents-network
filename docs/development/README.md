@@ -37,6 +37,7 @@ specification.
 - [Private naming and namespace](../technical/naming.md)
 - [Release update and authority custody](../technical/release-update-custody.md)
 - [Endpoint and Service runtime](../technical/endpoint-service-runtime.md)
+- [Network State, Entry, Route, and Node](../technical/network-route-node.md)
 
 ## Historical provenance
 

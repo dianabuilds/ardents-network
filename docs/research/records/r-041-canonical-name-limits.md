@@ -16,8 +16,7 @@ encoding, and `schema_version` that the S6.1 encoding/lifecycle slice will
 consume. Without this freeze, S6.1 implementation would either embed an
 unresearched default or duplicate DNS heritage that R-039 explicitly
 rejects. The accepted profile replaces the open `R-041` row in
-`docs/research/questions.md` and the unchecked §B.1 item in
-`stage-6-readiness-checklist.md`.
+`docs/research/questions.md` and the former Stage 6 readiness §B.1 item.
 
 ## Current contract
 
@@ -160,7 +159,7 @@ additional restriction.
 
 - R-041 becomes `decided`. The open row in `docs/research/questions.md` is
   updated to point at this record and the frozen values.
-- §B.1 of `stage-6-readiness-checklist.md` is checked.
+- The former Stage 6 readiness §B.1 item was checked before the stage closed.
 - S6.1 (encoding/lifecycle) may consume the frozen profile. Any future
   change requires a new `schema_version` and a new research record.
 - This freeze does not authorize code; the Stage 6 coding gate remains

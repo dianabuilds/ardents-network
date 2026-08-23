@@ -374,25 +374,18 @@ A generic adapter may expose the Application Interface without controlling the
 Application's other networking. It is useful but receives no Application-level
 location-privacy claim.
 
-ADR-0016 and decided R-051 make claim-bearing attachment launcher-only: one
-private inherited channel, stable root process handle, and complete non-breakaway
-Job/cgroup tree are joined with the Local Grant, Isolation Context, resource
-parent, Broker start, and deadline. Named endpoints remain a coarse generic
-trust domain. The co-resident direct-binary Adapter remains first-class in
-Installed and Portable with claim `none`; it neither needs installation nor
-pretends to authenticate an external peer. The exact candidate and its open
-Windows Job-limit Go-surface constraint are recorded in the
-[Application Principal specification](stage-7-application-principal-spec.md).
+The former ADR-0016/R-051 launcher-bound candidate is historical only.
+R-085 selects the current generic/unqualified Broker instead; it makes no
+claim-bearing attachment, platform, process-tree, or Windows bridge selection.
+Named endpoints remain a coarse generic trust domain. The co-resident
+direct-binary Adapter remains first-class with claim `none`; it neither needs
+installation nor pretends to authenticate an external peer.
 
-A Network-Isolated Application Boundary must instead deny ordinary DNS, HTTP,
-WebSocket, WebRTC, QUIC, and arbitrary socket ingress/egress by default for the
-complete Application/helper process tree. R-052 freezes two exact native
-candidates: non-setuid bubblewrap namespaces around the R-051 cgroup/pidfd tree
-on Ubuntu, and an ephemeral zero-network-capability AppContainer inside the
-R-051 Job on Windows. Neither mutates host firewall, DNS, routes, proxy, or VPN.
-The exact policy and unsupported Stage 7 isolated-browser result are recorded
-in the
-[Application Isolation specification](stage-7-application-isolation-spec.md).
+A Network-Isolated Application Boundary is not selected in the maintained
+system. The retired R-052 candidates remain historical research; any future
+candidate must deny ordinary DNS, HTTP, WebSocket, WebRTC, QUIC, and arbitrary
+socket ingress/egress for the complete Application/helper process tree without
+mutating host firewall, DNS, routes, proxy, or VPN.
 
 The experiment must prove sibling Application Principal separation, restart
 rebinding, no reusable bearer-only authority, no direct-network fallback, and
@@ -765,8 +758,8 @@ hidden, or abuse cost is unbounded for the one-to-one project.
 **Disposition:** stopped by the Product Owner on 2026-08-22. The intended
 outcome below was not achieved or accepted as Stage 7 delivery. S7.1 Release
 Decision and the maintained S7.2 Update Transaction engineering slice remain
-inputs; S7.3-S7.7 are cancelled rather than deferred obligations. The
-[Stage 7 stop record](stage-7-stop-record.md) controls this disposition.
+inputs; S7.3-S7.7 are cancelled rather than deferred obligations. The stop
+disposition and its planning material are historical provenance in Git.
 
 **Outcome:** Ubuntu and Windows expose one Installed package and the exact same
 platform executable as a minimal Portable artifact. Both exercise direct-binary
@@ -801,21 +794,9 @@ unverifiable process ownership, or a false claim about arbitrary Application cod
 
 The Product Owner accepted the Stage 7 S7.0 set and authorized `start S7.1` on
 2026-08-20, then stopped the stage on 2026-08-22 before S7.3. The historical
-baseline is R-048–R-054, R-056, ADR-0015, ADR-0016, ADR-0021, the
-[Stage 7 brief](horizon-3-stage-7-brief.md),
-[Application Adapter specification](stage-7-application-adapter-spec.md),
-[Application Principal specification](stage-7-application-principal-spec.md),
-[Application Isolation specification](stage-7-application-isolation-spec.md),
-[Authority Custody specification](stage-7-authority-custody-spec.md),
-[password-derived custody proposal](stage-7-password-derived-authority-custody-proposal.md),
-[lifecycle specification](stage-7-lifecycle-spec.md),
-[development plan](stage-7-development-plan.md),
-[readiness checklist](stage-7-readiness-checklist.md), and
-[evidence contract](stage-7-platform-evidence.md), plus the
-[development-host campaign specification](stage-7-host-campaign-spec.md) and
-[joint review record](stage-7-joint-review.md). The linked
-[readiness checklist](stage-7-readiness-checklist.md) records the historical
-coding-start gate and the later stop disposition. H3 test roots, threshold
+baseline is R-048–R-054, R-056, ADR-0015, ADR-0016, and ADR-0021. Its stopped
+brief, specifications, campaign material, and review are retired provenance in
+Git, not normative operational documents. H3 test roots, threshold
 members, rebuilds, distributors, hosts, and review are project-controlled; their
 mechanics cannot satisfy the independent-custodian, independent-builder, or
 independent-review gates of Horizon 4.

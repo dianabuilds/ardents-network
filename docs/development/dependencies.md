@@ -19,17 +19,17 @@ by `openpcc/ohttp v0.0.80`.
 | Module | Reviewed version | License | Purpose |
 |---|---:|---|---|
 | `github.com/openpcc/ohttp` | `v0.0.80`, commit `79bec89d804248df1a71a0f56c882b116579035d` | Apache-2.0 | RFC 9458 client and Gateway encapsulation |
-| `github.com/openpcc/twoway` | `v0.0.73` | Apache-2.0 | request/response HPKE context used by OHTTP |
-| `github.com/openpcc/bhttp` | `v0.0.73` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
-| `github.com/cloudflare/circl` | `v1.6.3` | BSD-3-Clause | reviewed HPKE implementation; raised from vulnerable `v1.6.1` |
-| `github.com/quic-go/quic-go` | `v0.57.1` | MIT | QUIC varint implementation required by BHTTP |
+| `github.com/openpcc/twoway` | `v0.0.80` | Apache-2.0 | request/response HPKE context used by OHTTP |
+| `github.com/openpcc/bhttp` | `v0.0.80` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
+| `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed HPKE implementation |
+| `github.com/quic-go/quic-go` | `v0.61.0` | MIT | QUIC varint implementation required by BHTTP |
 | `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
-| `go.opentelemetry.io/otel` | `v1.39.0` | Apache-2.0 | OHTTP tracing types |
-| `go.opentelemetry.io/otel/trace` | `v1.39.0` | Apache-2.0 | OHTTP tracing Interface |
-| `golang.org/x/crypto` | `v0.51.0` | BSD-3-Clause | selected cryptographic support closure |
-| `golang.org/x/net` | `v0.55.0` | BSD-3-Clause | BHTTP HTTP support; raised from vulnerable `v0.48.0` |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | Windows owner-only DACL enforcement and platform atomic replacement support |
-| `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
+| `go.opentelemetry.io/otel` | `v1.45.0` | Apache-2.0 | OHTTP tracing types |
+| `go.opentelemetry.io/otel/trace` | `v1.45.0` | Apache-2.0 | OHTTP tracing Interface |
+| `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | selected cryptographic support closure |
+| `golang.org/x/net` | `v0.58.0` | BSD-3-Clause | BHTTP HTTP support |
+| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL enforcement and platform atomic replacement support |
+| `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
 shape. `internal/naming/resolution` owns the maintained product OHTTP/CIRCL Adapter.
@@ -53,13 +53,13 @@ remaining callers use no cgo or first-party `unsafe`.
 Apache-2.0 license, tests including RFC vectors and malformed inputs, and a
 published security contact. Its selected tag predates three now-known reachable
 dependency advisories, so the raised versions above are mandatory. On Go
-1.26.5 the exact set passes checksums, upstream and independent role-view tests,
+1.26.6 the exact set passes checksums, upstream and independent role-view tests,
 offline build/test with cgo disabled, and reachable `govulncheck`. The reachable
 Go packages have no cgo files or `unsafe` imports. CIRCL contains optimized
 assembly behind portable Go APIs; Gate C selects no custom cryptographic suite.
 
 **Alternatives:** `chris-wood/ohttp-go` at commit `776f22a178b8` has a smaller
-MIT/BSD closure and passes after CIRCL is raised to `v1.6.3`, but has no release
+MIT/BSD closure and passes with CIRCL `v1.6.5`, but has no release
 and declares its implementation/API experimental. First-party OHTTP/PIR, local
 lookup, direct/DNS/HTTP resolution, alternate Namespace, and cached-success
 fallback are rejected.
@@ -93,16 +93,17 @@ tests, non-test caller, and package-map entry now own it.
 |---|---:|---|---|
 | `github.com/theupdateframework/go-tuf/v2` | `v2.4.2`, commit `f5edbde31e5507f46db2069402dc38903fe6d9d4` | Apache-2.0 | TUF metadata and trusted-metadata workflow |
 | `github.com/cenkalti/backoff/v5` | `v5.0.3` | MIT | transitive go-tuf module dependency; absent from the maintained package import path |
-| `github.com/google/go-containerregistry` | `v0.20.7` | Apache-2.0 | signature/key conversion closure |
+| `github.com/google/go-containerregistry` | `v0.21.9` | Apache-2.0 | signature/key conversion closure |
 | `github.com/opencontainers/go-digest` | `v1.0.0` | Apache-2.0 | digest conversion closure |
 | `github.com/secure-systems-lab/go-securesystemslib` | `v0.11.0` | MIT | maintained signing-verification support used by go-tuf metadata |
-| `github.com/sigstore/protobuf-specs` | `v0.5.0` | Apache-2.0 | signature verification type closure |
-| `github.com/sigstore/sigstore` | `v1.10.6` | Apache-2.0 | public-key signature verification adapter used by go-tuf |
-| `golang.org/x/crypto` | `v0.52.0` | BSD-3-Clause | raised cryptographic support closure |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
-| `golang.org/x/term` | `v0.43.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
-| `google.golang.org/genproto/googleapis/api` | `v0.0.0-20250825161204-c5933d9347a5` | Apache-2.0 | protobuf API type closure |
-| `google.golang.org/protobuf` | `v1.36.11` | BSD-3-Clause | signature protobuf runtime |
+| `github.com/sigstore/protobuf-specs` | `v0.5.2` | Apache-2.0 | signature verification type closure |
+| `github.com/sigstore/sigstore` | `v1.10.9` | Apache-2.0 | public-key signature verification adapter used by go-tuf |
+| `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
+| `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | raised cryptographic support closure |
+| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
+| `golang.org/x/term` | `v0.45.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
+| `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260819154853-08b0e4226688` | Apache-2.0 | protobuf API type closure |
+| `google.golang.org/protobuf` | `v1.36.12` | BSD-3-Clause | signature protobuf runtime |
 
 **Need and owner:** the Release Decision Module is the sole owner. Its maintained
 path imports only go-tuf `metadata` and `trustedmetadata`; the broader reviewed
@@ -144,7 +145,7 @@ the repository.
 
 Status: **current maintained dependency under ADR-0021.** R-053 selects
 `golang.org/x/crypto/argon2` from module
-`golang.org/x/crypto v0.52.0` (BSD-3-Clause) as the sole non-standard-library
+`golang.org/x/crypto v0.55.0` (BSD-3-Clause) as the sole non-standard-library
 cryptographic dependency for password-derived Authority Custody. R-049 already
 selects the same module version in its release-verifier closure; integration
 must produce one shared exact root-module version, never parallel copies.
@@ -257,7 +258,7 @@ normal dependency review before `go.mod` changes.
 
 | Tool | Version | Purpose |
 |---|---:|---|
-| Go | 1.26.x; CI pins 1.26.5 | compiler, formatter, tests, vet |
+| Go | 1.26.x; CI pins 1.26.6 | compiler, formatter, tests, vet |
 | Staticcheck | 2025.1.1 | additional correctness analysis |
 | govulncheck | v1.1.4 | reachable Go vulnerability analysis |
 
