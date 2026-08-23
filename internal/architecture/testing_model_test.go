@@ -7,13 +7,14 @@ import (
 	"testing"
 )
 
-func TestRepositorySeparatesUnitE2EAndLiveTestsWithoutStages(t *testing.T) {
+func TestRepositorySeparatesUnitAndE2ETestsWithoutGenericLiveTree(t *testing.T) {
 	root := repositoryRoot(t)
-	for _, directory := range []string{"tests/e2e", "tests/live"} {
-		info, err := os.Stat(filepath.Join(root, filepath.FromSlash(directory)))
-		if err != nil || !info.IsDir() {
-			t.Errorf("required test surface %s is missing", directory)
-		}
+	info, err := os.Stat(filepath.Join(root, "tests", "e2e"))
+	if err != nil || !info.IsDir() {
+		t.Error("required test surface tests/e2e is missing")
+	}
+	if _, err := os.Stat(filepath.Join(root, "tests", "live")); !os.IsNotExist(err) {
+		t.Error("generic tests/live tree is retired until a selected scenario owns a purpose-named boundary")
 	}
 	for _, obsolete := range []string{"tests/qualification", "internal/qualification"} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(obsolete))); !os.IsNotExist(err) {

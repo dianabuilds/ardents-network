@@ -204,7 +204,7 @@ func readTestProfileRegistry(t *testing.T, root string) testProfileRegistry {
 func suiteRootSet(t *testing.T, root string) map[string]bool {
 	t.Helper()
 	roots := make(map[string]bool)
-	for _, parent := range []string{"tests/e2e", "tests/live"} {
+	for _, parent := range []string{"tests/e2e"} {
 		entries, err := os.ReadDir(filepath.Join(root, parent))
 		if err != nil {
 			t.Fatalf("read suite parent %s: %v", parent, err)
