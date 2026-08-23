@@ -56,8 +56,6 @@ func (endpoint *endpoint) observe(result *RuntimeResult, input Request, resource
 		result.GrantSurface = "connection"
 	case "publish", "unpublish":
 		result.GrantSurface = "administration"
-	default:
-		result.GrantSurface = input.Surface
 	}
 	result.MemoryHighWater = uint64(resources.memory)
 	result.GoroutinesHighWater = resources.goroutines

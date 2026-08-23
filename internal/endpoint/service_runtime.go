@@ -42,7 +42,7 @@ type Setup struct {
 
 // Request is one role-scoped operation at the Service Connection seam.
 type Request struct {
-	Action, Surface             string
+	Action                      string
 	Principal, Session, Target  [32]byte
 	Credential                  Credential
 	InstancePrivate             ed25519.PrivateKey
@@ -182,7 +182,7 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult,
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
 	switch input.Action {
-	case "admit", "publish", "unpublish", "connect", "accept":
+	case "publish", "unpublish", "connect", "accept":
 	default:
 		return denied("local operation is not permitted")
 	}
@@ -190,8 +190,6 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult,
 	var result RuntimeResult
 	var err error
 	switch input.Action {
-	case "admit":
-		result, err = endpoint.admit(input)
 	case "publish":
 		result, err = endpoint.publish(ctx, input)
 	case "unpublish":

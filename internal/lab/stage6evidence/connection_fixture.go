@@ -8,11 +8,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 type evidenceEndpoint interface {
 	Do(context.Context, serviceconn.Request) (serviceconn.RuntimeResult, error)
+	Admit([32]byte, broker.Surface) ([32]byte, error)
 	Close() error
 }
 
@@ -82,9 +84,10 @@ func (value connectionFixture) Close() error {
 }
 
 func admitConnection(endpoint evidenceEndpoint, surface string, principal [32]byte, at time.Time) ([32]byte, error) {
-	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface,
-		Principal: principal, At: at})
-	return result.Session, err
+	if at.IsZero() {
+		return [32]byte{}, errors.New("evidence admission time is absent")
+	}
+	return endpoint.Admit(principal, broker.Surface(surface))
 }
 
 func (value connectionFixture) acknowledgement() []byte {

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
@@ -116,6 +117,7 @@ type serviceOutcome struct {
 
 type endpointRunner interface {
 	Do(context.Context, serviceconn.Request) (serviceconn.RuntimeResult, error)
+	Admit([32]byte, broker.Surface) ([32]byte, error)
 }
 
 func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
@@ -295,9 +297,11 @@ func runConnections(ctx context.Context, fixture fixture, client, publisher endp
 }
 
 func session(endpoint endpointRunner, principal [32]byte, at time.Time) [32]byte {
-	result, _ := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit",
-		Surface: "connection", Principal: principal, At: at})
-	return result.Session
+	if at.IsZero() {
+		return [32]byte{}
+	}
+	result, _ := endpoint.Admit(principal, broker.Connection)
+	return result
 }
 
 func writePartial(t *testing.T, connection net.Conn, count, seed int) {

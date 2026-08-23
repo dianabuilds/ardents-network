@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
@@ -20,14 +21,12 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	fixture := newFixture(t)
 	publisher := newPublisher(t, fixture)
 
-	connection, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "admit", Surface: "connection", Principal: fixture.publisherPrincipal, At: fixture.now,
-	})
-	if err != nil || connection.Class != "authorized" {
-		t.Fatalf("admit connection: result=%+v err=%v", connection, err)
+	connection, err := publisher.Admit(fixture.publisherPrincipal, broker.Connection)
+	if err != nil || connection == [32]byte{} {
+		t.Fatalf("admit connection: session=%x err=%v", connection, err)
 	}
 	if result, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "publish", Principal: fixture.publisherPrincipal, Session: connection.Session,
+		Action: "publish", Principal: fixture.publisherPrincipal, Session: connection,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
@@ -61,14 +60,14 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 		t.Fatalf("one-use administration session replayed: result=%+v err=%v", result, err)
 	}
 	if result, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "accept", Principal: fixture.hostilePrincipal, Session: connection.Session, At: fixture.now,
+		Action: "accept", Principal: fixture.hostilePrincipal, Session: connection, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("stolen session accepted for sibling: result=%+v err=%v", result, err)
 	}
 
 	restarted := newPublisher(t, fixture)
 	if result, err := restarted.Do(context.Background(), serviceconn.Request{
-		Action: "accept", Principal: fixture.publisherPrincipal, Session: connection.Session, At: fixture.now,
+		Action: "accept", Principal: fixture.publisherPrincipal, Session: connection, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("session survived broker restart: result=%+v err=%v", result, err)
 	}
@@ -325,11 +324,14 @@ func newPublisher(t *testing.T, fixture fixture) endpointRunner {
 
 func admit(t *testing.T, endpoint endpointRunner, surface string, principal [32]byte, at time.Time) [32]byte {
 	t.Helper()
-	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface, Principal: principal, At: at})
-	if err != nil || result.Class != "authorized" || result.Session == [32]byte{} {
-		t.Fatalf("admit %s: result=%+v err=%v", surface, result, err)
+	if at.IsZero() {
+		t.Fatal("admit time is absent")
 	}
-	return result.Session
+	result, err := endpoint.Admit(principal, broker.Surface(surface))
+	if err != nil || result == [32]byte{} {
+		t.Fatalf("admit %s: session=%x err=%v", surface, result, err)
+	}
+	return result
 }
 
 func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential serviceconn.Credential, private ed25519.PrivateKey) []byte {

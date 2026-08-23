@@ -10,12 +10,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 type connectionEndpoint interface {
 	Do(context.Context, Request) (RuntimeResult, error)
+	Admit([32]byte, broker.Surface) ([32]byte, error)
 }
 
 func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
@@ -108,6 +110,8 @@ func deliverResult(output io.Writer, result RuntimeResult) error {
 }
 
 func admit(endpoint connectionEndpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
-	result, err := endpoint.Do(context.Background(), Request{Action: "admit", Surface: surface, Principal: principal, At: at})
-	return result.Session, err
+	if at.IsZero() {
+		return [32]byte{}, errors.New("local admission time is absent")
+	}
+	return endpoint.Admit(principal, broker.Surface(surface))
 }

@@ -1,19 +1,18 @@
 package endpoint
 
-import "github.com/dianabuilds/ardents-network/internal/application/broker"
+import (
+	"errors"
 
-func (endpoint *endpoint) admit(input Request) (RuntimeResult, error) {
-	switch input.Surface {
-	case "connection":
-	case "administration":
-	default:
-		return denied("local interface surface is not granted")
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
+)
+
+// Admit issues one local capability for the exact Broker grant. Endpoint's
+// role-specific operations consume it before touching publication or a Route.
+func (endpoint *endpoint) Admit(principal [32]byte, surface broker.Surface) ([32]byte, error) {
+	if endpoint == nil || (surface != broker.Connection && surface != broker.Administration) {
+		return [32]byte{}, errors.New("local interface surface is not granted")
 	}
-	capability, err := endpoint.admission.Admit(input.Principal, broker.Surface(input.Surface))
-	if err != nil {
-		return failed("local authorization or policy denial", err.Error(), err)
-	}
-	return RuntimeResult{Class: "authorized", Session: capability}, nil
+	return endpoint.admission.Admit(principal, surface)
 }
 
 func (endpoint *endpoint) consume(capability, principal [32]byte, surface string) (broker.Receipt, error) {
