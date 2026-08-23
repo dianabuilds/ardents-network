@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
 func main() {
@@ -79,7 +78,7 @@ func run(arguments []string, output io.Writer) error {
 	if err := encoder.Encode(map[string]string{"schema": "ardents-stream-ready-v1", "role": arguments[1]}); err != nil {
 		return err
 	}
-	write, err := streamworkload.PacingWriter(stream, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
+	write, err := PacingWriter(stream, os.Getenv("ARDENTS_STREAM_CHUNK_DELAY"))
 	if err != nil {
 		return err
 	}
@@ -90,15 +89,15 @@ func run(arguments []string, output io.Writer) error {
 		}
 	}
 	classifiedResult := waitForResult(stream)
-	var result streamworkload.Observation
+	var result Observation
 	var streamErr error
 	if arguments[0] == "run-short" {
 		if sendCount+receiveCount != 512+(64<<10) {
 			return errors.New("short corpus byte counts are not canonical")
 		}
-		result, streamErr = streamworkload.ExchangeShort(stream, arguments[1], sendSeed, expectSeed, write, progress)
+		result, streamErr = ExchangeShort(stream, arguments[1], sendSeed, expectSeed, write, progress)
 	} else {
-		result, streamErr = streamworkload.Exchange(stream, arguments[1], sendSeed, expectSeed,
+		result, streamErr = Exchange(stream, arguments[1], sendSeed, expectSeed,
 			sendCount, receiveCount, write, progress)
 	}
 	classifiedOutcome := <-classifiedResult

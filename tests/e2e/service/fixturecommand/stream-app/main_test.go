@@ -7,7 +7,6 @@ import (
 	"time"
 
 	endpointpkg "github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
 func TestStreamLifetimeIsBoundedIndependentlyFromDial(t *testing.T) {
@@ -38,7 +37,7 @@ func TestEarlyFailureResultInterruptsIncompleteRawWorkload(t *testing.T) {
 	classified := waitForResult(stream)
 	exchange := make(chan error, 1)
 	go func() {
-		_, err := streamworkload.Exchange(stream, "client", [32]byte{1}, [32]byte{2},
+		_, err := Exchange(stream, "client", [32]byte{1}, [32]byte{2},
 			0, 64<<10, nil, nil)
 		exchange <- err
 	}()

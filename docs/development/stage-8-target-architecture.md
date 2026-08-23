@@ -161,7 +161,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/release` | Own release trust/root/floor verification behind `Open`, `Evaluate`, and `Close`. | M1, subject to DA-01. |
 | `internal/update` | Own the bounded offline transaction/recovery tracer; do not add a supported activator, installer, or Custody writer. Its C0 V2 fixture cutover removes the V0 EvidenceNotice from runtime while preserving only C4 vectors. | M2/M13, subject to DA-01/R-064/R-088. |
 | `internal/planfile` | **C0 completed, 2026-08-23:** deleted. Each retained command or owner now owns its own bounded input decoder; no generic plan abstraction or import remains. | M3/M8/M9/M11/M13 cutover complete. |
-| `internal/streamworkload` | Retain only a named test/Qualification workload; otherwise delete. | M9/M14. |
+| `internal/streamworkload` | **C0 completed, 2026-08-23:** deleted. Its deterministic opaque-stream and direct-baseline workload is owned only by the named `tests/e2e/service/fixturecommand/stream-app` process fixture; no product Module imports or exposes it. | M9/M14 cutover complete. |
 | `internal/architecture` | Retain factual graph/policy gate; remove historical receipts as their truth moves to current owners. | M0/M14. |
 | `internal/lab/blockedverify` | **C0 completed, 2026-08-23:** R-090 deletes the unbound H3 verifier. No immutable bundle or accepted native-v1 claim names it; records and frozen inputs remain C4 provenance. | M14 under DA-11/R-080/R-090. |
 | remaining `internal/lab/*` Modules | **C0 completed, 2026-08-23:** R-091 deletes the closed Carrier/Gate C execution corpus and its shared helpers. Their source-bound records remain C4, never product-runtime dependencies. | M14 under DA-11/R-091. |

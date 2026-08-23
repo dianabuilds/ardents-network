@@ -8,7 +8,6 @@ import (
 	"time"
 
 	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
 func TestServiceProcessesKeepConnectionWhenReplacementFails(t *testing.T) {
@@ -84,14 +83,24 @@ func TestServiceProcessesKeepConnectionWhenReplacementFails(t *testing.T) {
 	}
 }
 
-func decodeApplicationResult(t *testing.T, result commandResult) streamworkload.Observation {
+type applicationObservation struct {
+	Schema              string   `json:"schema"`
+	Terminal            string   `json:"terminal"`
+	SentDigest          [32]byte `json:"sent_digest"`
+	ReceivedDigest      [32]byte `json:"received_digest"`
+	ReceivedBytes       uint32   `json:"received_bytes"`
+	ResultClass         string   `json:"result_class"`
+	AuthenticatedTarget [32]byte `json:"authenticated_target"`
+}
+
+func decodeApplicationResult(t *testing.T, result commandResult) applicationObservation {
 	t.Helper()
 	if result.err != nil {
 		t.Fatalf("Application process failed: %v\n%s", result.err, result.output)
 	}
-	var value streamworkload.Observation
+	var value applicationObservation
 	for _, line := range bytes.Split(result.output, []byte{'\n'}) {
-		var candidate streamworkload.Observation
+		var candidate applicationObservation
 		if json.Unmarshal(bytes.TrimSpace(line), &candidate) == nil && candidate.Schema != "" {
 			value = candidate
 		}

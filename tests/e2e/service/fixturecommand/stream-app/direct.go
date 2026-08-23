@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
 func runDirectCommand(arguments []string, output io.Writer) error {
@@ -36,7 +34,7 @@ func runDirectCommand(arguments []string, output io.Writer) error {
 	if err := waitDirectStart(ctx, os.Getenv("ARDENTS_STREAM_START_FILE")); err != nil {
 		return err
 	}
-	config := streamworkload.DirectConfig{Role: arguments[0], Address: arguments[1], Seed: seed,
+	config := DirectConfig{Role: arguments[0], Address: arguments[1], Seed: seed,
 		Bytes: count, Output: output, StartDelay: delay}
 	if encoded := os.Getenv("ARDENTS_STREAM_MEASURE_DURATION"); encoded != "" {
 		config.MeasureDuration, err = time.ParseDuration(encoded)
@@ -50,7 +48,7 @@ func runDirectCommand(arguments []string, output io.Writer) error {
 			_ = encoder.Encode(map[string]string{"kind": "ready", "address": address})
 		}
 	}
-	return streamworkload.Direct(ctx, config)
+	return Direct(ctx, config)
 }
 
 func waitDirectStart(ctx context.Context, path string) error {

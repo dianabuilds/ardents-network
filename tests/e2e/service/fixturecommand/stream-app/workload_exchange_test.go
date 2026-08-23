@@ -1,4 +1,4 @@
-package streamworkload
+package main
 
 import (
 	"bytes"

@@ -591,3 +591,9 @@ but their manual workflows rebuild current code and upload artifacts for only
 native-v1 claim duty. Commands, shared lab Modules, workflows, supply inputs,
 and the now-empty historical-reproduction profile are C0 deleted. The records
 remain C4 provenance. M14's laboratory-corpus audit is complete.
+
+**M14 progress, 2026-08-23.** `internal/streamworkload` had no maintained
+product caller: the only consumers were the named Endpoint recovery process
+test and its `stream-app` fixture command. The bounded opaque workload and
+direct baseline therefore move to that sole evidence owner and the internal
+package, package-map row, and deterministic-package entry are C0 deleted.
