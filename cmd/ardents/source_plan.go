@@ -87,7 +87,7 @@ func readSourcePlan(root, path string) (state.Config, error) {
 	if err := decodeOperatorInput(path, 32<<10, &plan); err != nil {
 		return state.Config{}, fmt.Errorf("decode source plan: %w", err)
 	}
-	if plan.Schema != "ardents-h3-source-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 {
+	if plan.Schema != "ardents-source-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 {
 		return state.Config{}, errors.New("source plan is not canonical or complete")
 	}
 	var err error

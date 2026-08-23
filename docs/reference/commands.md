@@ -16,7 +16,7 @@ configuration format or an authority source.
 | Route | Purpose |
 |---|---|
 | `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH` | Accept one complete authenticated offline Network State generation. It emits one `ardents-state-event-v1` `generation-accepted` JSON event. |
-| `refresh-sources --state-root PATH --source-plan PATH [--once] [--resume]` | Run one selected Direct-Origin Source wave, or wait for the plan-owned refresh interval. It emits an `ardents-source-event-v1` `source-wave-accepted` event after acceptance. |
+| `refresh-sources --state-root PATH --source-plan PATH [--once] [--resume]` | Run one selected Direct-Origin Source wave, or wait for the plan-owned `ardents-source-plan-v1` input. It emits an `ardents-source-event-v1` `source-wave-accepted` event after acceptance. |
 | `endpoint run <endpoint-plan.json>` | Run one bounded local Endpoint process. The plan remains Endpoint-owned and temporary; it is not a supported service-management format. |
 | `entry import <entry-import-plan.json>` | Import one signed State-referenced Entry Invite into Entry-owned durable replay and replacement state. |
 | `name encode <name>` | Print one canonical Service Name wire encoding as lowercase hexadecimal. |
@@ -30,9 +30,11 @@ Module diagnostics, not a capacity or hosting claim.
 ## `ardents-node`
 
 `ardents-node source --config PATH` runs one selected Direct-Origin Source
-server and emits `ardents-source-event-v1` after its State view is ready.
+server from an `ardents-source-server-v1` input and emits
+`ardents-source-event-v1` after its State view is ready.
 
-`ardents-node node --config PATH` runs one separately keyed Node process. It
+`ardents-node node --config PATH` runs one separately keyed Node process from
+an `ardents-node-plan-v1` input. It
 owns one admitted duty, private probe implementation, pressure reaction, drain,
 withdrawal, and joined cleanup; lifecycle JSON uses
 `ardents-node-event-v1`. The private probe is not a supported peer runtime or

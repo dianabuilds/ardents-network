@@ -68,7 +68,7 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 	defer stopSecond()
 
 	plan := map[string]any{
-		"schema": "ardents-h3-source-plan-v1", "network_id": hex.EncodeToString(fixture.networkID[:]),
+		"schema": "ardents-source-plan-v1", "network_id": hex.EncodeToString(fixture.networkID[:]),
 		"local_role_state_root": endpointRoot + "-local-roles",
 		"authority_public":      []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
 		"clock_observed_at":     time.Now().UTC().Format(time.RFC3339),
@@ -186,7 +186,7 @@ func startSourceProcess(t *testing.T, binary, plan string) func() {
 func writeServerPlan(t *testing.T, fixture verifierFixture, root, address string, server processCertificate, clientRoot string, clientPin [32]byte) string {
 	t.Helper()
 	return writeProcessJSON(t, "source-server-plan.json", map[string]any{
-		"schema": "ardents-h3-source-server-v1", "state_root": root,
+		"schema": "ardents-source-server-v1", "state_root": root,
 		"local_role_state_root": root + "-local-roles",
 		"network_id":            hex.EncodeToString(fixture.networkID[:]),
 		"authority_public":      []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,

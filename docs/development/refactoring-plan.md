@@ -94,6 +94,13 @@ lifecycle JSON events therefore make one C0 cutover to
 no H3 event-schema reader or support window remains. This does not rename or select the
 separate H3 role-probe baseline, which remains outside a supported Node profile.
 
+The command-owned `ardents-source-plan-v1`, `ardents-source-server-v1`, and
+`ardents-node-plan-v1` inputs likewise have no repository-visible H3 reader or
+support obligation. Their former H3 values therefore make the same C0 cutover;
+negative command tests reject those retired schemas. This does not alter
+persisted State, Route, or probe commitments, each of which needs its own
+format migration decision.
+
 The former `ardents-stream-app` and `ardents-publish-app` commands are C0
 product tracers. Their only current caller is the Endpoint recovery process
 test, so their implementations and unit suites now live as explicit

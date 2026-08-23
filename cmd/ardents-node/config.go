@@ -39,7 +39,7 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	if err := decodeOperatorInput(path, 32<<10, &plan); err != nil {
 		return nil, fmt.Errorf("decode source server plan: %w", err)
 	}
-	if plan.Schema != "ardents-h3-source-server-v1" || plan.LocalRoleStateRoot == "" {
+	if plan.Schema != "ardents-source-server-v1" || plan.LocalRoleStateRoot == "" {
 		return nil, errors.New("source server plan is not canonical")
 	}
 	if len(plan.ClientKeyDigests) == 0 || len(plan.ClientKeyDigests) > 3 {

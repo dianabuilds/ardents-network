@@ -45,7 +45,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err := decodeOperatorInput(path, 64<<10, &plan); err != nil {
 		return nodeRuntime{}, fmt.Errorf("decode node plan: %w", err)
 	}
-	if plan.Schema != "ardents-h3-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
+	if plan.Schema != "ardents-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
 	state := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot,

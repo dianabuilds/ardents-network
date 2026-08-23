@@ -93,6 +93,17 @@ func TestRootUsageListsRetainedRoutes(t *testing.T) {
 	}
 }
 
+func TestSourcePlanRejectsRetiredH3Schema(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "retired-source-plan.json")
+	if err := os.WriteFile(path, []byte(`{"schema":"ardents-h3-source-plan-v1"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readSourcePlan(t.TempDir(), path); err == nil {
+		t.Fatal("retired H3 source plan schema was accepted")
+	}
+}
+
 func writeCommandGolden(t *testing.T, directory, name, source string) string {
 	t.Helper()
 	encoded, err := os.ReadFile(source)

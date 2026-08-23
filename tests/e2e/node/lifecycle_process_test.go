@@ -206,7 +206,7 @@ func sourceServerPlan(fixture lifecycleStateFixture, root, address string, serve
 	for index := range clientPins {
 		encodedPins[index] = hex.EncodeToString(clientPins[index][:])
 	}
-	return map[string]any{"schema": "ardents-h3-source-server-v1", "state_root": root,
+	return map[string]any{"schema": "ardents-source-server-v1", "state_root": root,
 		"local_role_state_root": root + "-local-roles", "network_id": hex.EncodeToString(fixture.network[:]),
 		"authority_public": []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
 		"at": time.Unix(fixture.now, 0).UTC().Format(time.RFC3339), "listen": address, "server_certificate": server.certificate,
@@ -223,7 +223,7 @@ func nodePlan(fixture lifecycleStateFixture, root string, index uint32, identity
 			"endpoint_handle": fmt.Sprintf("source-%d-handle", source), "root_ca": sourceServers[source].root,
 			"leaf_key_digest": hex.EncodeToString(sourceServers[source].sourcePin[:])}
 	}
-	return map[string]any{"schema": "ardents-h3-node-plan-v1", "state_root": root,
+	return map[string]any{"schema": "ardents-node-plan-v1", "state_root": root,
 		"local_role_state_root": root + "-local-roles", "network_id": hex.EncodeToString(fixture.network[:]),
 		"authority_public": []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1, "at": time.Unix(fixture.now, 0).UTC().Format(time.RFC3339),
 		"listen": listen, "server_certificate": server.certificate, "server_key": server.key, "client_root": clientRoot,
@@ -243,7 +243,7 @@ func sourcePlan(fixture lifecycleStateFixture, addresses [2]string, servers [2]p
 			"endpoint_handle": fmt.Sprintf("source-%d-handle", index), "root_ca": servers[index].root,
 			"leaf_key_digest": hex.EncodeToString(servers[index].sourcePin[:])}
 	}
-	return map[string]any{"schema": "ardents-h3-source-plan-v1", "local_role_state_root": filepath.Join(filepath.Dir(client.certificate), "local-roles"),
+	return map[string]any{"schema": "ardents-source-plan-v1", "local_role_state_root": filepath.Join(filepath.Dir(client.certificate), "local-roles"),
 		"network_id":       hex.EncodeToString(fixture.network[:]),
 		"authority_public": []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
 		"clock_observed_at": time.Now().UTC().Format(time.RFC3339), "order_seed": strings.Repeat("44", 32),
