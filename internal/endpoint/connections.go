@@ -27,7 +27,7 @@ type endpointOutcome struct {
 
 func serveEndpointConnections(ctx context.Context, plan endpointPlan, endpoint connectionEndpoint,
 	setup Setup, applications, results *net.UnixListener,
-	openAttachment func(context.Context, serviceconnection.Recovery) (net.Conn, error), published RuntimeResult,
+	openAttachment func(context.Context, serviceconnection.Recovery) (net.Conn, error), published PublicationResult,
 	at time.Time, setupDeadline, lifetime time.Duration,
 ) (RuntimeResult, error) {
 	maximum := int(plan.MaximumConnections)
@@ -107,7 +107,7 @@ func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint c
 }
 
 func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, setup Setup,
-	connection endpointConnection, published RuntimeResult, lifetime time.Duration, output chan<- endpointOutcome,
+	connection endpointConnection, published PublicationResult, lifetime time.Duration, output chan<- endpointOutcome,
 ) {
 	setup.Resources("timer", 1)
 	defer setup.Resources("timer", -1)
@@ -133,7 +133,7 @@ func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, set
 }
 
 func collectEndpointOutcomes(input <-chan endpointOutcome, count int, setup Setup,
-	published RuntimeResult, initial error,
+	published PublicationResult, initial error,
 ) (RuntimeResult, error) {
 	result := RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: published.AuthenticatedTarget}
 	err := initial

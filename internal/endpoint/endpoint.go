@@ -57,7 +57,7 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (RuntimeR
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = routeListener.Close(); _ = os.Remove(plan.RouteSocket) }()
-	var published RuntimeResult
+	var published PublicationResult
 	if plan.Role == "publisher" {
 		var publishErr error
 		published, publishErr = publishCurrent(endpoint, setup.Resources, plan, setup.AdministrationPrincipal, at, deadline, ready)

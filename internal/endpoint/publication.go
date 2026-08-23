@@ -23,10 +23,10 @@ type connectionEndpoint interface {
 }
 
 func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
-	deadline time.Duration, ready func()) (RuntimeResult, error) {
+	deadline time.Duration, ready func()) (PublicationResult, error) {
 	listener, err := listenLocal(plan.AdministrationSocket, deadline)
 	if err != nil {
-		return RuntimeResult{}, err
+		return PublicationResult{}, err
 	}
 	resources("timer", 1)
 	defer resources("timer", -1)
@@ -38,7 +38,7 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	}
 	administrator, err := listener.Accept()
 	if err != nil {
-		return RuntimeResult{}, err
+		return PublicationResult{}, err
 	}
 	resources("accepted-ipc", 1)
 	defer resources("accepted-ipc", -1)
@@ -52,31 +52,29 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	request, err := ReadControl(operation, administrator, 8)
 	if err != nil || string(request) != "publish\n" {
 		err = errors.Join(err, errors.New("administration request is malformed, partial, or oversized"))
-		return RuntimeResult{}, err
+		return PublicationResult{}, err
 	}
 	credential, private, err := publicationInputs(plan)
 	if err != nil {
-		return RuntimeResult{}, err
+		return PublicationResult{}, err
 	}
 	defer clear(private)
 	session, err := admit(endpoint, principal, "administration", at)
 	if err != nil {
-		return RuntimeResult{}, err
+		return PublicationResult{}, err
 	}
 	publicationResult, err := endpoint.Publish(operation, PublicationRequest{
 		Principal: principal, Capability: session, Credential: credential,
 		InstancePrivate: private, IntroductionSocket: plan.IntroductionSocket, At: at})
 	if err != nil {
-		return RuntimeResult{}, err
+		return PublicationResult{}, err
 	}
 	if err := os.WriteFile(plan.PublicationFile, publicationResult.Record, 0o600); err != nil {
-		return RuntimeResult{}, err
+		return PublicationResult{}, err
 	}
 	resources("control-file", 1)
 	_, err = administrator.Write([]byte("published\n"))
-	return RuntimeResult{Class: publicationResult.Class, Reason: publicationResult.Reason,
-		AuthenticatedTarget: publicationResult.AuthenticatedTarget,
-		Generation:          publicationResult.Generation}, err
+	return publicationResult, err
 }
 func publicationInputs(plan endpointPlan) (publication.Credential, ed25519.PrivateKey, error) {
 	var credential publication.Credential
