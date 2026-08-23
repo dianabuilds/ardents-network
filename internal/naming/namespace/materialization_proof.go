@@ -45,10 +45,10 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 	return proof, nil
 }
 
-// Verify authenticates one current Namespace proof at epoch milliseconds and
-// returns the signed Record plus its immutable binding. It remains a
-// compatibility decoder while callers move to VerifyBinding.
-func Verify(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expectedEpochDigest [32]byte, at int64) (
+// VerifyLegacy authenticates one current Namespace proof at epoch milliseconds
+// and returns the lifecycle Record. It remains only for compatibility tests;
+// runtime callers use VerifyBinding.
+func VerifyLegacy(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expectedEpochDigest [32]byte, at int64) (
 	Record, Binding, string, uint64, error,
 ) {
 	policy, err := validMaterializationPolicy(input)
@@ -92,7 +92,7 @@ func Verify(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expe
 func VerifyBinding(input MaterializationPolicy, proof []byte, minimumEpoch uint64,
 	expectedEpochDigest [32]byte, at int64,
 ) (Binding, string, uint64, error) {
-	_, binding, warning, epoch, err := Verify(input, proof, minimumEpoch, expectedEpochDigest, at)
+	_, binding, warning, epoch, err := VerifyLegacy(input, proof, minimumEpoch, expectedEpochDigest, at)
 	return binding, warning, epoch, err
 }
 

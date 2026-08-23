@@ -201,7 +201,7 @@ selected in Stage 8. Namespace must therefore not claim root-claim current
 behavior from its local input verifier; a future selected Network Epoch
 protocol must commit the opaque inputs and issue the complete threshold close.
 The public `Record`,
-`Op`, `ApplyLegacy`/`ApplyAtLegacy`, raw `Store.CommitLegacy`, and historical
+`Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`, raw `Store.CommitLegacy`, and historical
 Stage-6 fixtures remain compatibility surfaces. Production Resolution
 already consumes `Binding` rather than lifecycle `Record`, but only the later
 sealed Namespace interface plus the M14 C4 disposition can remove the old

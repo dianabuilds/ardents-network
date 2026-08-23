@@ -158,7 +158,7 @@ func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := namespace.Verify(policy, current, 13, epoch.Digest, 100_000); err == nil || err.Error() != "name is unavailable" {
+	if _, _, _, _, err := namespace.VerifyLegacy(policy, current, 13, epoch.Digest, 100_000); err == nil || err.Error() != "name is unavailable" {
 		t.Fatalf("unpublished root claim verification err=%v", err)
 	}
 }
