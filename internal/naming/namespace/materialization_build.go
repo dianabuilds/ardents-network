@@ -127,3 +127,9 @@ func sameInputs(left, right [][]byte) bool {
 	}
 	return true
 }
+
+func sameRecord(left, right Record) bool {
+	leftWire, leftErr := EncodeRecord(left)
+	rightWire, rightErr := EncodeRecord(right)
+	return leftErr == nil && rightErr == nil && bytes.Equal(leftWire, rightWire)
+}

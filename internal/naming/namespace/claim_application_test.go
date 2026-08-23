@@ -75,6 +75,60 @@ func TestClaimWinnerDerivesReclaimInsteadOfAcceptingCallerOperation(t *testing.T
 	}
 }
 
+func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
+	t.Parallel()
+	network := [32]byte{10}
+	policy, attesters := materializationPolicy("epoch-claim-installation", network)
+	store, err := namespace.Open(t.TempDir(), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	claimKey := deterministicAuthority("epoch-installation-winner")
+	claim := namespace.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{3},
+		AdmissionDigest: sha256.Sum256([]byte("epoch installation claim admission"))}
+	copy(claim.Authority[:], claimKey.Public().(ed25519.PublicKey))
+	claim.Commitment = namespace.CommitmentFor(network, 13, claim)
+	copy(claim.Signature[:], ed25519.Sign(claimKey, namespace.RevealTranscript(network, 13, claim)))
+	proof := namespace.ClaimProof{Network: network, Epoch: 13, Rule: "ardents-name-claim-order-v1",
+		CutoffOffset: 10_002, InputRoot: orderedInputLeaf(claim), InputLength: 1,
+		MaterializationRoot: orderedMaterializationLeaf(claim), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{claim}}
+	winner, err := namespace.OpenClaimWinner(signedClaimClose(&proof), proof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	epoch := namespace.Epoch{Number: 13, Digest: [32]byte{13}, CutoffOffset: 10_002,
+		TransitionRoot: sha256.Sum256([]byte("claim transitions")), TransitionLength: 1,
+		RejectionRoot: sha256.Sum256([]byte("claim rejections")), RejectionLength: 0}
+	installation, err := store.BeginEpochInstallation(epoch, time.Unix(100, 0).UTC(),
+		namespace.Policy{DefaultLeaseDuration: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := installation.MaterializeClaim(winner, func(record namespace.Record) ([]byte, error) {
+		record.Continuity++
+		return namespace.SignRecord(network, record, claimKey)
+	}); err == nil {
+		t.Fatal("substituted signed claim Record was installed")
+	}
+	if err := installation.MaterializeClaim(winner, func(record namespace.Record) ([]byte, error) {
+		return namespace.SignRecord(network, record, claimKey)
+	}); err != nil {
+		t.Fatalf("exact derived signed claim was denied after substitution: %v", err)
+	}
+	if err := installation.Commit(thresholdAttester(attesters[:2])); err != nil {
+		t.Fatal(err)
+	}
+	current, err := store.Lookup("alice", 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, _, err := namespace.Verify(policy, current, 13, epoch.Digest, 100_000); err == nil || err.Error() != "name is unavailable" {
+		t.Fatalf("unpublished root claim verification err=%v", err)
+	}
+}
+
 func signedClaimClose(proof *namespace.ClaimProof) namespace.ClaimOrder {
 	order := namespace.ClaimOrder{Network: proof.Network, Rule: proof.Rule, MinimumEpoch: proof.Epoch,
 		MaximumClaims: 32, Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}

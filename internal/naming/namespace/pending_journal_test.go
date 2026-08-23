@@ -139,14 +139,16 @@ func TestDurableControlRestoresExactSignedPendingSuccessor(t *testing.T) {
 	if class := durableSubmit(t, control, gate, network, now, updated, current, key, 5); class != "submitted" {
 		t.Fatalf("first durable submission=%q", class)
 	}
-	signedUpdated, err := SignRecord(network, updated, key)
+	installation, err := store.BeginEpochInstallation(Epoch{Number: 2, Digest: [32]byte{4}, CutoffOffset: 2,
+		TransitionRoot: [32]byte{5}, TransitionLength: 1, RejectionRoot: [32]byte{6}}, now, leasePolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Commit(Epoch{Number: 2, Digest: [32]byte{4}, CutoffOffset: 2,
-		TransitionRoot: [32]byte{5}, TransitionLength: 1, RejectionRoot: [32]byte{6}},
-		[][]byte{signedUpdated}, pendingTestAttester(attesters)); err != nil {
-		t.Fatalf("pending selected materialization: %v", err)
+	if err := installation.IncludePendingThrough(1); err != nil {
+		t.Fatalf("pending selection: %v", err)
+	}
+	if err := installation.Commit(pendingTestAttester(attesters)); err != nil {
+		t.Fatalf("pending selected installation: %v", err)
 	}
 	forged, err := SignRecord(network, current, key)
 	if err != nil {

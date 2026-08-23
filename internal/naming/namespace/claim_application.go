@@ -36,6 +36,17 @@ func OpenClaimWinner(order ClaimOrder, proof ClaimProof) (*ClaimWinner, error) {
 func (winner *ClaimWinner) Materialize(current *Record, materializedAt time.Time,
 	policy Policy,
 ) (Record, error) {
+	record, err := winner.prepare(current, materializedAt, policy)
+	if err != nil {
+		return Record{}, err
+	}
+	if !winner.consume() {
+		return Record{}, errors.New("root claim winner was already materialized")
+	}
+	return record, nil
+}
+
+func (winner *ClaimWinner) prepare(current *Record, materializedAt time.Time, policy Policy) (Record, error) {
 	if winner == nil || winner.value == nil || materializedAt.IsZero() || materializedAt.Unix() <= 0 {
 		return Record{}, errors.New("root claim materialization input is invalid")
 	}
@@ -56,10 +67,18 @@ func (winner *ClaimWinner) Materialize(current *Record, materializedAt time.Time
 	op := Op{Kind: opClaim, Name: winner.value.name, Generation: generation,
 		ExpectedGeneration: expectedGeneration, ExpectedRevision: expectedRevision,
 		Authority: hex.EncodeToString(winner.value.authority[:])}
-	record, err := ApplyAt(current, materializedAt, op, policy)
-	if err != nil {
-		return Record{}, err
+	return ApplyAt(current, materializedAt, op, policy)
+}
+
+func (winner *ClaimWinner) consume() bool {
+	if winner == nil || winner.value == nil {
+		return false
+	}
+	winner.value.mu.Lock()
+	defer winner.value.mu.Unlock()
+	if winner.value.consumed {
+		return false
 	}
 	winner.value.consumed = true
-	return record, nil
+	return true
 }
