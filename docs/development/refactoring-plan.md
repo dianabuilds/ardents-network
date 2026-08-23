@@ -564,3 +564,12 @@ two lab packages, and historical-reproduction profile entries are deleted as
 C0. R-055 and the Stage 6 documents remain C4 decision provenance. This does
 not dispose of the remaining Carrier, Named Site, or blocked-entry lab
 families; each still needs its own M14 record-or-removal outcome.
+
+**M14 progress, 2026-08-23.** R-090 completes the deferred whole-record audit
+for `blocked-entry-verify-lab` and `blockedverify`. The tracked Stage 5 files
+are only frozen preparation inputs, not an immutable H3 campaign bundle, and
+the accepted native-v1 Route profile makes an H3 S9.6 result ineligible for a
+future claim. The unbound reader, its command, package-map rows, and active
+historical-profile entries are therefore C0 deleted. R-080, the Stage 5
+records, and `tests/live/stage5-final` remain C4 provenance; Carrier and Named
+Site are the remaining M14 laboratory families.

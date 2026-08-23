@@ -40,9 +40,9 @@ reviewed version and raised dependency graph; a change repeats R-047/R-026
 instead of allowing their cryptographic configurations to drift.
 
 **Stage 5 Windows ACL historical record and remaining owners:** the removed
-`internal/bridge` and the retired Stage-5 evidence generator formerly used this
-Windows ACL path; `internal/localroles` and `internal/lab/blockedverify` use only
-`golang.org/x/sys/windows` on Windows to apply a
+`internal/bridge`, Stage-5 evidence generator, and R-090-retired
+`internal/lab/blockedverify` formerly used this Windows ACL path. The retained
+platform-specific owners use `golang.org/x/sys/windows` on Windows to apply a
 protected DACL granting the current process owner full control and nobody else.
 The module was already pinned and reviewed in the Gate C closure; this makes
 that exact version a direct platform-specific product dependency. It avoids a
@@ -52,24 +52,6 @@ Unix builds retain the standard-library permission implementation.
 the selected version has the existing checksum/license review, passes the
 repository's offline build/tests and reachable vulnerability scan, and the
 remaining callers use no cgo or first-party `unsafe`.
-
-**Stage 5 evidence-publication need and owner:**
-`internal/lab/blockedentry` uses `unix.Renameat2(..., RENAME_NOREPLACE)` on
-Linux and `windows.MoveFile` on Windows to publish one completed external
-evidence directory without replacing an existing path. The standard-library
-`os.Rename` may replace an existing empty directory on Unix, so it cannot meet
-the immutable/no-replay publication contract. Other platforms fail closed.
-This use is removed when the standard library exposes a portable atomic
-no-replace directory rename; copying or check-then-rename remain rejected
-because they expose partial evidence or a replacement race.
-
-`internal/lab/blockedverify` uses `unix.Flock` or Windows `LockFileEx` plus the
-platform atomic replace/write-through operations to serialize and durably
-replace its external consumed-run registry. The lock is advisory and released
-by the operating system after a verifier crash; the single registry state file
-is recovered from any uncommitted temporary successor. This use is removed
-when the standard library provides equivalent cross-process file locking and a
-durable atomic replacement primitive on both maintained platforms.
 
 **Maintenance and security review:** `openpcc/ohttp` has versioned releases, an
 Apache-2.0 license, tests including RFC vectors and malformed inputs, and a

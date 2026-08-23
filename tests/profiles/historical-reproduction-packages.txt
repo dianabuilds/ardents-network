@@ -1,7 +1,5 @@
-github.com/dianabuilds/ardents-network/cmd/blocked-entry-verify-lab
 github.com/dianabuilds/ardents-network/cmd/carrier-lab
 github.com/dianabuilds/ardents-network/cmd/named-site-lab
-github.com/dianabuilds/ardents-network/internal/lab/blockedverify
 github.com/dianabuilds/ardents-network/internal/lab/carrier
 github.com/dianabuilds/ardents-network/internal/lab/directcontrol
 github.com/dianabuilds/ardents-network/internal/lab/modulecache

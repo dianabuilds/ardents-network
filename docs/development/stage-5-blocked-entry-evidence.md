@@ -1,8 +1,14 @@
 # Stage 5 blocked-entry evidence harness
 
-Status: completed maintained Stage 5 development evidence and a frozen,
-fail-closed S9.6 qualification contract. The Product Owner closed Stage 5
-development on 2026-08-19 without claiming a qualifying run.
+> Historical provenance only. R-090 retired the generator-less independent
+> H3 verifier in M14: no immutable campaign bundle or current native-v1 claim
+> names it. This document and `tests/live/stage5-final` remain C4 records; the
+> text below describes the 2026-08-19 development contract, not an executable
+> Qualification instruction or result.
+
+Status at record close: completed maintained Stage 5 development evidence and
+a frozen, fail-closed S9.6 qualification contract. The Product Owner closed
+Stage 5 development on 2026-08-19 without claiming a qualifying run.
 
 The complete `h3-s5-b1-v1` campaign execution, stand-specific supply freeze,
 long sustained runtime, and immutable final verdict are S9.6 work. Stage 5 still
