@@ -7,20 +7,20 @@ import (
 	"time"
 
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
-	record := namespace.Record{
+	current := record.Record{
 		Name: "alice", Generation: 1, Revision: 2,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: "name-authority", Target: fixture.first.Target,
 		LeaseExpiresAt: fixture.now.Add(time.Hour).Unix(), GraceExpiresAt: fixture.now.Add(2 * time.Hour).Unix(),
 	}
-	binding, _, err := namespace.ResolveBindingLegacy(record, fixture.now.Unix(), nil)
+	binding, _, err := record.ResolveBindingLegacy(current, fixture.now.Unix(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,10 +54,10 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 			NameBinding: serviceBinding(binding), NameUpdates: updates})
 		results <- outcome{result, runErr}
 	}()
-	replacement := record
+	replacement := current
 	replacement.Revision++
 	replacement.Target = [32]byte{99}
-	replacementBinding, _, err := namespace.ResolveBindingLegacy(replacement, fixture.now.Add(time.Second).Unix(), nil)
+	replacementBinding, _, err := record.ResolveBindingLegacy(replacement, fixture.now.Add(time.Second).Unix(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	}
 }
 
-func serviceBinding(value namespace.Binding) endpointapi.DestinationBinding {
+func serviceBinding(value record.Binding) endpointapi.DestinationBinding {
 	return endpointapi.DestinationBinding{Name: value.Name, Generation: value.Generation, Revision: value.Revision,
 		Authority: value.Authority, Target: value.Target, ParentName: value.ParentName,
 		ParentGeneration: value.ParentGeneration, RecordDigest: value.RecordDigest, Commitment: value.Commitment}
