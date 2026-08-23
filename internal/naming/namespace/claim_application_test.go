@@ -10,39 +10,41 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/claim"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
-type claimSigningPort func(namespace.RecordSigningRequest) ([]byte, error)
+type claimSigningPort func(record.RecordSigningRequest) ([]byte, error)
 
-func (sign claimSigningPort) Sign(request namespace.RecordSigningRequest) ([]byte, error) {
+func (sign claimSigningPort) Sign(request record.RecordSigningRequest) ([]byte, error) {
 	return sign(request)
 }
 
 func TestClaimWinnerMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.T) {
 	t.Parallel()
 	claimKey := deterministicAuthority("ordered-claim")
-	claim := namespace.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{1},
+	value := claim.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{1},
 		AdmissionDigest: sha256.Sum256([]byte("accepted root-claim admission"))}
-	copy(claim.Authority[:], claimKey.Public().(ed25519.PublicKey))
-	claim.Commitment = namespace.CommitmentFor([32]byte{7}, 11, claim)
-	copy(claim.Signature[:], ed25519.Sign(claimKey, namespace.RevealTranscript([32]byte{7}, 11, claim)))
-	inputRoot := orderedInputLeaf(claim)
-	proof := namespace.ClaimProof{Network: [32]byte{7}, Epoch: 11, Rule: "ardents-name-claim-order-v1",
+	copy(value.Authority[:], claimKey.Public().(ed25519.PublicKey))
+	value.Commitment = claim.CommitmentFor([32]byte{7}, 11, value)
+	copy(value.Signature[:], ed25519.Sign(claimKey, claim.RevealTranscript([32]byte{7}, 11, value)))
+	inputRoot := orderedInputLeaf(value)
+	proof := claim.ClaimProof{Network: [32]byte{7}, Epoch: 11, Rule: "ardents-name-claim-order-v1",
 		CutoffOffset: 10_000, InputRoot: inputRoot, InputLength: 1,
-		MaterializationRoot: orderedMaterializationLeaf(claim), MaterializationLength: 1,
-		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{claim}}
+		MaterializationRoot: orderedMaterializationLeaf(value), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []claim.Claim{value}}
 	order := signedClaimClose(&proof)
-	winner, err := namespace.OpenClaimWinner(order, proof)
+	winner, err := claim.OpenClaimWinner(order, proof)
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err := winner.Materialize(nil, time.Unix(100, 0).UTC(),
-		namespace.Policy{DefaultLeaseDuration: time.Hour})
-	if err != nil || record.Name != claim.Name || record.Authority != hex.EncodeToString(claim.Authority[:]) {
-		t.Fatalf("record=%+v err=%v", record, err)
+	current, err := winner.Materialize(nil, time.Unix(100, 0).UTC(),
+		record.Policy{DefaultLeaseDuration: time.Hour})
+	if err != nil || current.Name != value.Name || current.Authority != hex.EncodeToString(value.Authority[:]) {
+		t.Fatalf("record=%+v err=%v", current, err)
 	}
-	if _, err := winner.Materialize(nil, time.Unix(101, 0).UTC(), namespace.Policy{}); err == nil {
+	if _, err := winner.Materialize(nil, time.Unix(101, 0).UTC(), record.Policy{}); err == nil {
 		t.Fatal("one verified winner materialized more than once")
 	}
 }
@@ -50,33 +52,33 @@ func TestClaimWinnerMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.T
 func TestClaimWinnerDerivesReclaimInsteadOfAcceptingCallerOperation(t *testing.T) {
 	t.Parallel()
 	claimKey := deterministicAuthority("reclaim-winner")
-	claim := namespace.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{2},
+	value := claim.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{2},
 		AdmissionDigest: sha256.Sum256([]byte("reclaim root-claim admission"))}
-	copy(claim.Authority[:], claimKey.Public().(ed25519.PublicKey))
-	claim.Commitment = namespace.CommitmentFor([32]byte{8}, 12, claim)
-	copy(claim.Signature[:], ed25519.Sign(claimKey, namespace.RevealTranscript([32]byte{8}, 12, claim)))
-	proof := namespace.ClaimProof{Network: [32]byte{8}, Epoch: 12, Rule: "ardents-name-claim-order-v1",
-		CutoffOffset: 10_001, InputRoot: orderedInputLeaf(claim), InputLength: 1,
-		MaterializationRoot: orderedMaterializationLeaf(claim), MaterializationLength: 1,
-		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{claim}}
+	copy(value.Authority[:], claimKey.Public().(ed25519.PublicKey))
+	value.Commitment = claim.CommitmentFor([32]byte{8}, 12, value)
+	copy(value.Signature[:], ed25519.Sign(claimKey, claim.RevealTranscript([32]byte{8}, 12, value)))
+	proof := claim.ClaimProof{Network: [32]byte{8}, Epoch: 12, Rule: "ardents-name-claim-order-v1",
+		CutoffOffset: 10_001, InputRoot: orderedInputLeaf(value), InputLength: 1,
+		MaterializationRoot: orderedMaterializationLeaf(value), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []claim.Claim{value}}
 	order := signedClaimClose(&proof)
-	winner, err := namespace.OpenClaimWinner(order, proof)
+	winner, err := claim.OpenClaimWinner(order, proof)
 	if err != nil {
 		t.Fatal(err)
 	}
 	previousKey := deterministicAuthority("reclaim-previous")
-	previous, err := namespace.ApplyLegacy(nil, 90, namespace.Op{Kind: "claim", Name: "alice", Generation: 1,
-		Authority: hex.EncodeToString(previousKey.Public().(ed25519.PublicKey))}, namespace.Policy{})
+	previous, err := record.ApplyLegacy(nil, 90, record.Op{Kind: "claim", Name: "alice", Generation: 1,
+		Authority: hex.EncodeToString(previousKey.Public().(ed25519.PublicKey))}, record.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	released, err := namespace.ApplyLegacy(&previous, 91, namespace.Op{Kind: "release", Name: "alice",
-		Authority: previous.Authority, ExpectedGeneration: previous.Generation, ExpectedRevision: previous.Revision}, namespace.Policy{})
+	released, err := record.ApplyLegacy(&previous, 91, record.Op{Kind: "release", Name: "alice",
+		Authority: previous.Authority, ExpectedGeneration: previous.Generation, ExpectedRevision: previous.Revision}, record.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	reclaimed, err := winner.Materialize(&released, time.Unix(100, 0).UTC(), namespace.Policy{})
-	if err != nil || reclaimed.Generation != 2 || reclaimed.Authority != hex.EncodeToString(claim.Authority[:]) {
+	reclaimed, err := winner.Materialize(&released, time.Unix(100, 0).UTC(), record.Policy{})
+	if err != nil || reclaimed.Generation != 2 || reclaimed.Authority != hex.EncodeToString(value.Authority[:]) {
 		t.Fatalf("reclaimed=%+v err=%v", reclaimed, err)
 	}
 }
@@ -85,68 +87,68 @@ func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
 	t.Parallel()
 	network := [32]byte{10}
 	policy, attesters := materializationPolicy("epoch-claim-installation", network)
-	store, err := namespace.Open(t.TempDir(), policy)
+	store, err := epoch.Open(t.TempDir(), policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	claimKey := deterministicAuthority("epoch-installation-winner")
-	claim := namespace.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{3},
+	value := claim.Claim{Ordinal: 0, Name: "alice", Secret: [32]byte{3},
 		AdmissionDigest: sha256.Sum256([]byte("epoch installation claim admission"))}
-	copy(claim.Authority[:], claimKey.Public().(ed25519.PublicKey))
-	claim.Commitment = namespace.CommitmentFor(network, 13, claim)
-	copy(claim.Signature[:], ed25519.Sign(claimKey, namespace.RevealTranscript(network, 13, claim)))
-	proof := namespace.ClaimProof{Network: network, Epoch: 13, Rule: "ardents-name-claim-order-v1",
-		CutoffOffset: 10_002, InputRoot: orderedInputLeaf(claim), InputLength: 1,
-		MaterializationRoot: orderedMaterializationLeaf(claim), MaterializationLength: 1,
-		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{claim}}
-	winner, err := namespace.OpenClaimWinner(signedClaimClose(&proof), proof)
+	copy(value.Authority[:], claimKey.Public().(ed25519.PublicKey))
+	value.Commitment = claim.CommitmentFor(network, 13, value)
+	copy(value.Signature[:], ed25519.Sign(claimKey, claim.RevealTranscript(network, 13, value)))
+	proof := claim.ClaimProof{Network: network, Epoch: 13, Rule: "ardents-name-claim-order-v1",
+		CutoffOffset: 10_002, InputRoot: orderedInputLeaf(value), InputLength: 1,
+		MaterializationRoot: orderedMaterializationLeaf(value), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []claim.Claim{value}}
+	winner, err := claim.OpenClaimWinner(signedClaimClose(&proof), proof)
 	if err != nil {
 		t.Fatal(err)
 	}
-	epoch := namespace.Epoch{Number: 13, Digest: [32]byte{13}, CutoffOffset: 10_002,
+	currentEpoch := epoch.Epoch{Number: 13, Digest: [32]byte{13}, CutoffOffset: 10_002,
 		TransitionRoot: sha256.Sum256([]byte("claim transitions")), TransitionLength: 1,
 		RejectionRoot: sha256.Sum256([]byte("claim rejections")), RejectionLength: 0}
-	installation, err := store.BeginEpochInstallation(epoch, time.Unix(100, 0).UTC(),
-		namespace.Policy{DefaultLeaseDuration: time.Hour})
+	installation, err := store.BeginEpochInstallation(currentEpoch, time.Unix(100, 0).UTC(),
+		record.Policy{DefaultLeaseDuration: time.Hour})
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherEpoch := epoch
+	otherEpoch := currentEpoch
 	otherEpoch.Number++
 	wrongInstallation, err := store.BeginEpochInstallation(otherEpoch, time.Unix(100, 0).UTC(),
-		namespace.Policy{DefaultLeaseDuration: time.Hour})
+		record.Policy{DefaultLeaseDuration: time.Hour})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := wrongInstallation.MaterializeClaim(winner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+	if err := wrongInstallation.MaterializeClaim(winner, claimSigningPort(func(request record.RecordSigningRequest) ([]byte, error) {
 		return ed25519.Sign(claimKey, request.Transcript()), nil
 	})); err == nil {
 		t.Fatal("winner from a different Epoch was installed")
 	}
 	foreignNetwork := [32]byte{11}
-	foreignClaim := claim
-	foreignClaim.Commitment = namespace.CommitmentFor(foreignNetwork, 13, foreignClaim)
-	copy(foreignClaim.Signature[:], ed25519.Sign(claimKey, namespace.RevealTranscript(foreignNetwork, 13, foreignClaim)))
-	foreignProof := namespace.ClaimProof{Network: foreignNetwork, Epoch: 13, Rule: "ardents-name-claim-order-v1",
+	foreignClaim := value
+	foreignClaim.Commitment = claim.CommitmentFor(foreignNetwork, 13, foreignClaim)
+	copy(foreignClaim.Signature[:], ed25519.Sign(claimKey, claim.RevealTranscript(foreignNetwork, 13, foreignClaim)))
+	foreignProof := claim.ClaimProof{Network: foreignNetwork, Epoch: 13, Rule: "ardents-name-claim-order-v1",
 		CutoffOffset: 10_002, InputRoot: orderedInputLeaf(foreignClaim), InputLength: 1,
 		MaterializationRoot: orderedMaterializationLeaf(foreignClaim), MaterializationLength: 1,
-		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{foreignClaim}}
-	foreignWinner, err := namespace.OpenClaimWinner(signedClaimClose(&foreignProof), foreignProof)
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []claim.Claim{foreignClaim}}
+	foreignWinner, err := claim.OpenClaimWinner(signedClaimClose(&foreignProof), foreignProof)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.MaterializeClaim(foreignWinner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+	if err := installation.MaterializeClaim(foreignWinner, claimSigningPort(func(request record.RecordSigningRequest) ([]byte, error) {
 		return ed25519.Sign(claimKey, request.Transcript()), nil
 	})); err == nil {
 		t.Fatal("winner from a different Network was installed")
 	}
-	if err := installation.MaterializeClaim(winner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+	if err := installation.MaterializeClaim(winner, claimSigningPort(func(request record.RecordSigningRequest) ([]byte, error) {
 		return ed25519.Sign(claimKey, append(request.Transcript(), 0)), nil
 	})); err == nil {
 		t.Fatal("substituted signed claim Record was installed")
 	}
-	if err := installation.MaterializeClaim(winner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+	if err := installation.MaterializeClaim(winner, claimSigningPort(func(request record.RecordSigningRequest) ([]byte, error) {
 		return ed25519.Sign(claimKey, request.Transcript()), nil
 	})); err != nil {
 		t.Fatalf("exact derived signed claim was denied after substitution: %v", err)
@@ -158,13 +160,13 @@ func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := namespace.VerifyLegacy(policy, current, 13, epoch.Digest, 100_000); err == nil || err.Error() != "name is unavailable" {
+	if _, _, _, _, err := epoch.VerifyLegacy(policy, current, 13, currentEpoch.Digest, 100_000); err == nil || err.Error() != "name is unavailable" {
 		t.Fatalf("unpublished root claim verification err=%v", err)
 	}
 }
 
-func signedClaimClose(proof *namespace.ClaimProof) namespace.ClaimOrder {
-	order := namespace.ClaimOrder{Network: proof.Network, Rule: proof.Rule, MinimumEpoch: proof.Epoch,
+func signedClaimClose(proof *claim.ClaimProof) claim.ClaimOrder {
+	order := claim.ClaimOrder{Network: proof.Network, Rule: proof.Rule, MinimumEpoch: proof.Epoch,
 		MaximumClaims: 32, Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}
 	type signed struct {
 		id  [32]byte
@@ -177,7 +179,7 @@ func signedClaimClose(proof *namespace.ClaimProof) namespace.ClaimOrder {
 		id := sha256.Sum256(public)
 		order.Authorities[id] = public
 		signatures = append(signatures, signed{id: id,
-			raw: ed25519.Sign(private, namespace.StatementTranscript(*proof))})
+			raw: ed25519.Sign(private, claim.StatementTranscript(*proof))})
 	}
 	sort.Slice(signatures, func(i, j int) bool {
 		return bytes.Compare(signatures[i].id[:], signatures[j].id[:]) < 0
@@ -189,19 +191,19 @@ func signedClaimClose(proof *namespace.ClaimProof) namespace.ClaimOrder {
 	return order
 }
 
-func orderedInputLeaf(claim namespace.Claim) [32]byte {
-	out := binary.BigEndian.AppendUint32([]byte{0}, claim.Ordinal)
-	out = append(out, claim.Commitment[:]...)
-	return sha256.Sum256(append(out, claim.AdmissionDigest[:]...))
+func orderedInputLeaf(value claim.Claim) [32]byte {
+	out := binary.BigEndian.AppendUint32([]byte{0}, value.Ordinal)
+	out = append(out, value.Commitment[:]...)
+	return sha256.Sum256(append(out, value.AdmissionDigest[:]...))
 }
 
-func orderedMaterializationLeaf(claim namespace.Claim) [32]byte {
+func orderedMaterializationLeaf(value claim.Claim) [32]byte {
 	out := []byte("ardents-name-claim-materialization-v1\x00")
-	out = binary.BigEndian.AppendUint32(out, claim.Ordinal)
-	out = binary.BigEndian.AppendUint32(out, uint32(len(claim.Name)))
-	out = append(out, claim.Name...)
-	out = append(out, claim.Commitment[:]...)
-	out = append(out, claim.Authority[:]...)
-	out = append(out, claim.AdmissionDigest[:]...)
+	out = binary.BigEndian.AppendUint32(out, value.Ordinal)
+	out = binary.BigEndian.AppendUint32(out, uint32(len(value.Name)))
+	out = append(out, value.Name...)
+	out = append(out, value.Commitment[:]...)
+	out = append(out, value.Authority[:]...)
+	out = append(out, value.AdmissionDigest[:]...)
 	return sha256.Sum256(out)
 }
