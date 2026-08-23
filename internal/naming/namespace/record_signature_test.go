@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 func TestEd25519RFC8032Vector(t *testing.T) {
@@ -33,26 +33,26 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	network := [32]byte{1, 2, 3}
-	record := namespace.Record{Name: "alice", Generation: 1, Revision: 4,
+	value := record.Record{Name: "alice", Generation: 1, Revision: 4,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220, RecordNotAfter: 190_000}
 
-	signed, err := namespace.SignRecord(network, record, private)
+	signed, err := record.SignRecord(network, value, private)
 	if err != nil {
 		t.Fatalf("SignRecord: %v", err)
 	}
-	opened, err := namespace.VerifyRecord(network, signed)
+	opened, err := record.VerifyRecord(network, signed)
 	if err != nil {
 		t.Fatalf("VerifyRecord: %v", err)
 	}
-	if opened != record {
-		t.Fatalf("opened record = %+v, want %+v", opened, record)
+	if opened != value {
+		t.Fatalf("opened record = %+v, want %+v", opened, value)
 	}
 
 	wrongNetwork := network
 	wrongNetwork[0] ^= 0xff
-	if _, err := namespace.VerifyRecord(wrongNetwork, signed); err == nil {
+	if _, err := record.VerifyRecord(wrongNetwork, signed); err == nil {
 		t.Fatal("signature was replayed across networks")
 	}
 	for _, mutate := range []func([]byte) []byte{
@@ -62,7 +62,7 @@ func TestSignedRecordBindsAuthorityNetworkAndCanonicalRecord(t *testing.T) {
 	} {
 		changed := append([]byte(nil), signed...)
 		changed = mutate(changed)
-		if _, err := namespace.VerifyRecord(network, changed); err == nil {
+		if _, err := record.VerifyRecord(network, changed); err == nil {
 			t.Fatal("modified signed record was accepted")
 		}
 	}
@@ -75,7 +75,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 		t.Fatal(err)
 	}
 	network := [32]byte{9, 8, 7}
-	base := namespace.Record{Name: "leaf.sub.root", Generation: 3, Revision: 4,
+	base := record.Record{Name: "leaf.sub.root", Generation: 3, Revision: 4,
 		Lease: "active", Consistency: "fork", Recovery: "recovery-pending",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1}, ParentName: "sub.root",
 		ParentGeneration: 2, LeaseExpiresAt: 200, GraceExpiresAt: 220,
@@ -84,52 +84,52 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 		RecoveryOperation: [32]byte{3}, RecoverySuccessor: [32]byte{4},
 		RecoveryPolicy: [32]byte{5}, RecoveryPolicyRev: 1,
 		RecoveryPolicyDelay: (72 * time.Hour).Milliseconds(), Continuity: 6, ConflictIdentifier: "fork-a"}
-	signed, err := namespace.SignRecord(network, base, private)
+	signed, err := record.SignRecord(network, base, private)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	mutations := map[string]func(*namespace.Record){
-		"name":        func(r *namespace.Record) { r.Name = "other.sub.root" },
-		"generation":  func(r *namespace.Record) { r.Generation++ },
-		"revision":    func(r *namespace.Record) { r.Revision++ },
-		"lease":       func(r *namespace.Record) { r.Lease = "grace" },
-		"consistency": func(r *namespace.Record) { r.Consistency = "unavailable" },
-		"recovery": func(r *namespace.Record) {
+	mutations := map[string]func(*record.Record){
+		"name":        func(r *record.Record) { r.Name = "other.sub.root" },
+		"generation":  func(r *record.Record) { r.Generation++ },
+		"revision":    func(r *record.Record) { r.Revision++ },
+		"lease":       func(r *record.Record) { r.Lease = "grace" },
+		"consistency": func(r *record.Record) { r.Consistency = "unavailable" },
+		"recovery": func(r *record.Record) {
 			r.Recovery = "stable"
 			r.RecoveryStartedAt, r.RecoveryExpiresAt = 0, 0
 			r.RecoveryOperation, r.RecoverySuccessor = [32]byte{}, [32]byte{}
 		},
-		"authority": func(r *namespace.Record) {
+		"authority": func(r *record.Record) {
 			r.Authority = hex.EncodeToString(bytes.Repeat([]byte{7}, ed25519.PublicKeySize))
 		},
-		"target":            func(r *namespace.Record) { r.Target = [32]byte{2} },
-		"record expiry":     func(r *namespace.Record) { r.RecordNotAfter-- },
-		"parent name":       func(r *namespace.Record) { r.ParentName = "root" },
-		"parent generation": func(r *namespace.Record) { r.ParentGeneration++ },
-		"lease expiry":      func(r *namespace.Record) { r.LeaseExpiresAt++ },
-		"grace expiry":      func(r *namespace.Record) { r.GraceExpiresAt++ },
-		"recovery window": func(r *namespace.Record) {
+		"target":            func(r *record.Record) { r.Target = [32]byte{2} },
+		"record expiry":     func(r *record.Record) { r.RecordNotAfter-- },
+		"parent name":       func(r *record.Record) { r.ParentName = "root" },
+		"parent generation": func(r *record.Record) { r.ParentGeneration++ },
+		"lease expiry":      func(r *record.Record) { r.LeaseExpiresAt++ },
+		"grace expiry":      func(r *record.Record) { r.GraceExpiresAt++ },
+		"recovery window": func(r *record.Record) {
 			r.RecoveryStartedAt++
 			r.RecoveryExpiresAt++
 		},
-		"recovery operation":  func(r *namespace.Record) { r.RecoveryOperation[0]++ },
-		"recovery successor":  func(r *namespace.Record) { r.RecoverySuccessor[0]++ },
-		"recovery policy":     func(r *namespace.Record) { r.RecoveryPolicy[0]++ },
-		"recovery policy rev": func(r *namespace.Record) { r.RecoveryPolicyRev++ },
-		"recovery policy delay": func(r *namespace.Record) {
+		"recovery operation":  func(r *record.Record) { r.RecoveryOperation[0]++ },
+		"recovery successor":  func(r *record.Record) { r.RecoverySuccessor[0]++ },
+		"recovery policy":     func(r *record.Record) { r.RecoveryPolicy[0]++ },
+		"recovery policy rev": func(r *record.Record) { r.RecoveryPolicyRev++ },
+		"recovery policy delay": func(r *record.Record) {
 			r.RecoveryPolicyDelay++
 			r.RecoveryExpiresAt++
 		},
-		"continuity":          func(r *namespace.Record) { r.Continuity++ },
-		"conflict identifier": func(r *namespace.Record) { r.ConflictIdentifier = "fork-b" },
+		"continuity":          func(r *record.Record) { r.Continuity++ },
+		"conflict identifier": func(r *record.Record) { r.ConflictIdentifier = "fork-b" },
 	}
 	for field, mutate := range mutations {
 		field, mutate := field, mutate
 		t.Run(field, func(t *testing.T) {
 			changed := base
 			mutate(&changed)
-			wire, err := namespace.EncodeRecord(changed)
+			wire, err := record.EncodeRecord(changed)
 			if err != nil {
 				t.Fatalf("mutation did not remain a valid Record: %v", err)
 			}
@@ -138,7 +138,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 			container = binary.BigEndian.AppendUint64(container, uint64(len(wire)))
 			container = append(container, wire...)
 			container = append(container, signed[len(signed)-ed25519.SignatureSize:]...)
-			if _, err := namespace.VerifyRecord(network, container); err == nil {
+			if _, err := record.VerifyRecord(network, container); err == nil {
 				t.Fatal("field mutation retained the original signature")
 			}
 		})
@@ -146,7 +146,7 @@ func TestSignedRecordBindsEveryLifecycleField(t *testing.T) {
 
 	wrongLength := append([]byte(nil), signed...)
 	binary.BigEndian.PutUint64(wrongLength[2:10], binary.BigEndian.Uint64(wrongLength[2:10])+1)
-	if _, err := namespace.VerifyRecord(network, wrongLength); err == nil {
+	if _, err := record.VerifyRecord(network, wrongLength); err == nil {
 		t.Fatal("modified container length was accepted")
 	}
 }
@@ -157,17 +157,17 @@ func TestSignRecordRejectsWrongAuthorityAndMalformedKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := namespace.Record{Name: "alice", Generation: 1, Revision: 1,
+	value := record.Record{Name: "alice", Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: "not-an-ed25519-key", Target: [32]byte{1},
 		LeaseExpiresAt: 200, GraceExpiresAt: 220}
-	if _, err := namespace.SignRecord([32]byte{1}, record, private); err == nil {
+	if _, err := record.SignRecord([32]byte{1}, value, private); err == nil {
 		t.Fatal("record was signed for a malformed Authority")
 	}
-	if _, err := namespace.SignRecord([32]byte{}, record, private); err == nil {
+	if _, err := record.SignRecord([32]byte{}, value, private); err == nil {
 		t.Fatal("record was signed without a network")
 	}
-	if _, err := namespace.VerifyRecord([32]byte{1}, []byte("short")); err == nil {
+	if _, err := record.VerifyRecord([32]byte{1}, []byte("short")); err == nil {
 		t.Fatal("malformed signed record was accepted")
 	}
 }

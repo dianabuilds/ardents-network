@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
 )
 
 func TestAdmissionVerifyRejectsReplayAndScopeMutation(t *testing.T) {
@@ -68,7 +68,7 @@ func TestAdmissionVerifyFreezesEverySurfaceAndFailsClosedAcrossRestart(t *testin
 	}
 	old := admissionGate(t)
 	proof := admissionProof(t, old, "root-claim", 42)
-	restarted, err := namespace.NewAdmission([32]byte{1}, [32]byte{2}, 3, [32]byte{9})
+	restarted, err := admission.NewAdmission([32]byte{1}, [32]byte{2}, 3, [32]byte{9})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,16 +77,16 @@ func TestAdmissionVerifyFreezesEverySurfaceAndFailsClosedAcrossRestart(t *testin
 	}
 }
 
-func admissionGate(t testing.TB) *namespace.Admission {
+func admissionGate(t testing.TB) *admission.Admission {
 	t.Helper()
-	gate, err := namespace.NewAdmission([32]byte{1}, [32]byte{2}, 3, [32]byte{4})
+	gate, err := admission.NewAdmission([32]byte{1}, [32]byte{2}, 3, [32]byte{4})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return gate
 }
 
-func admissionProof(t testing.TB, gate *namespace.Admission, surface string, nonce byte) namespace.Proof {
+func admissionProof(t testing.TB, gate *admission.Admission, surface string, nonce byte) admission.Proof {
 	t.Helper()
 	challenge, err := gate.Issue(900, surface, sha256.Sum256([]byte{nonce, 1}),
 		sha256.Sum256([]byte{nonce, 2}), 1_000, [16]byte{nonce})
