@@ -129,12 +129,12 @@ Control Plane risks rather than being hidden behind the word “decentralized.�
 
 ## Current implementation state
 
-The maintained Go tree contains the completed Carrier Lab and Named Site
-laboratories plus the Horizon 3 product runtime. Stage 1–4 development is
-complete with local Docker evidence. Stage 5 Bridge/WebTunnel material is C4
-historical provenance under R-080; its runtime and live runners are retired and
-cannot qualify the native profile. The Product Owner authorized
-Stage 6 on 2026-08-20 after accepting R-042/R-044/R-045/R-055 and ADR-0017
+The maintained Go tree contains the evolving Horizon 3 product runtime. The
+completed Carrier Lab and Named Site laboratories are C4 historical provenance:
+R-091 retired their commands, Modules, Docker inputs, and manual workflows.
+The Stage 1–4 local Docker results and Stage 5 Bridge/WebTunnel material are
+historical evidence only; none can qualify the native profile. The Product
+Owner authorized Stage 6 on 2026-08-20 after accepting R-042/R-044/R-045/R-055 and ADR-0017
 through ADR-0019. Maintained S6.1-S6.6 implementation, journey trace, and
 mutation coverage are complete; the bounded independent S6E1 command verdict is
 `pass`, and the Product Owner recorded Stage 6 `complete` on 2026-08-20. Stage
@@ -149,6 +149,9 @@ and [compatibility observer inventory](docs/development/stage-8-compatibility-ob
 Current maintained Module ownership is recorded in the
 [package map](docs/development/package-map.md). R-091 retired the frozen lab
 quarantine; product work neither imports it nor revives its runners.
+R-092 is measuring a native Node role-carriage profile on the declared Ubuntu
+reference host; until it selects one, no peer-facing Node runtime or H3 capacity
+is reused or announced.
 
 The first completed maintained vertical slice was an Ubuntu-to-Ubuntu
 **Carrier Lab**. It
