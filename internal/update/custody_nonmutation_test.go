@@ -83,3 +83,7 @@ func (input *oracleCustodySecrets) ReadSecret(context.Context, custody.SecretPro
 	input.values = input.values[1:]
 	return value, nil
 }
+
+func (*oracleCustodySecrets) Confirm(context.Context, custody.ConfirmationPrompt) (bool, error) {
+	return false, errors.New("unexpected custody confirmation")
+}

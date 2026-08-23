@@ -56,6 +56,7 @@ type Operation struct {
 // a stdin stream shared with Application data.
 type SecretInput interface {
 	ReadSecret(context.Context, SecretPrompt) ([]byte, error)
+	Confirm(context.Context, ConfirmationPrompt) (bool, error)
 }
 
 // SecretPrompt tells a trusted custody-front-end why it is reading a password.
@@ -68,6 +69,13 @@ const (
 	SecretPromptBundleExport        SecretPrompt = "bundle-export"
 	SecretPromptBundleExportConfirm SecretPrompt = "bundle-export-confirm"
 	SecretPromptBundleRestore       SecretPrompt = "bundle-restore"
+)
+
+// ConfirmationPrompt identifies a non-secret explicit Owner confirmation.
+type ConfirmationPrompt string
+
+const (
+	ConfirmationPromptBundleReplacement ConfirmationPrompt = "bundle-replacement"
 )
 
 // Receipt contains only bounded public custody facts. In particular it never

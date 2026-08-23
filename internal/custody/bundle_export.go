@@ -60,10 +60,7 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 		return Receipt{}, err
 	}
 	defer zero(bundle)
-	if err := writeNewBundle(operation.Path, bundle); err != nil {
-		return Receipt{}, err
-	}
-	info, err := testRestoreBundle(operation.Path, bundlePassword, operation.Expected)
+	info, err := publishAndTestBundle(ctx, operation.Path, bundle, bundlePassword, operation.Expected, secrets)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -89,46 +86,91 @@ func (vault *Vault) readExportableRecord(recordID string) ([]byte, RecordState, 
 	return nil, "", fmt.Errorf("read vault record: %w", os.ErrNotExist)
 }
 
-func writeNewBundle(path string, body []byte) error {
+func publishAndTestBundle(ctx context.Context, path string, body, password []byte, expected AuthorityBinding, input SecretInput) (EnvelopeInfo, error) {
 	destination, err := filepath.Abs(path)
 	if err != nil {
-		return fmt.Errorf("bundle destination: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("bundle destination: %w", err)
 	}
 	parent := filepath.Dir(destination)
 	parentInfo, err := os.Stat(parent)
 	if err != nil || !parentInfo.IsDir() {
-		return fmt.Errorf("bundle destination parent: %w", ErrInvalid)
+		return EnvelopeInfo{}, fmt.Errorf("bundle destination parent: %w", ErrInvalid)
 	}
+	existing := false
 	if _, err := os.Lstat(destination); err == nil {
-		return fmt.Errorf("bundle destination already exists: %w", ErrInvalid)
+		existing = true
 	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("inspect bundle destination: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("inspect bundle destination: %w", err)
 	}
 	temporary, err := os.CreateTemp(parent, ".ardents-recovery-bundle-")
 	if err != nil {
-		return fmt.Errorf("create encrypted bundle temporary: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("create encrypted bundle temporary: %w", err)
 	}
 	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
 	if err := temporary.Chmod(0o600); err != nil {
 		_ = temporary.Close()
-		return fmt.Errorf("protect bundle temporary: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("protect bundle temporary: %w", err)
 	}
 	if _, err := temporary.Write(body); err != nil {
 		_ = temporary.Close()
-		return fmt.Errorf("write bundle: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("write bundle: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {
 		_ = temporary.Close()
-		return fmt.Errorf("flush bundle: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("flush bundle: %w", err)
 	}
 	if err := temporary.Close(); err != nil {
-		return fmt.Errorf("close bundle: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("close bundle: %w", err)
+	}
+	if _, err := testRestoreBundle(temporaryPath, password, expected); err != nil {
+		return EnvelopeInfo{}, err
+	}
+	backupPath := ""
+	committed := false
+	if existing {
+		confirmed, err := input.Confirm(ctx, ConfirmationPromptBundleReplacement)
+		if err != nil {
+			return EnvelopeInfo{}, fmt.Errorf("confirm bundle replacement: %w", err)
+		}
+		if !confirmed {
+			return EnvelopeInfo{}, ErrInvalid
+		}
+		backup, err := os.CreateTemp(parent, ".ardents-recovery-bundle-previous-")
+		if err != nil {
+			return EnvelopeInfo{}, fmt.Errorf("reserve bundle backup: %w", err)
+		}
+		backupPath = backup.Name()
+		if err := backup.Close(); err != nil {
+			return EnvelopeInfo{}, fmt.Errorf("close bundle backup reservation: %w", err)
+		}
+		if err := os.Remove(backupPath); err != nil {
+			return EnvelopeInfo{}, fmt.Errorf("clear bundle backup reservation: %w", err)
+		}
+		if err := os.Rename(destination, backupPath); err != nil {
+			return EnvelopeInfo{}, fmt.Errorf("protect previous bundle: %w", err)
+		}
+		defer func() {
+			if !committed {
+				_ = os.Remove(destination)
+				_ = os.Rename(backupPath, destination)
+			}
+		}()
 	}
 	if err := os.Rename(temporaryPath, destination); err != nil {
-		return fmt.Errorf("publish bundle: %w", err)
+		return EnvelopeInfo{}, fmt.Errorf("publish bundle: %w", err)
 	}
-	return nil
+	info, err := testRestoreBundle(destination, password, expected)
+	if err != nil {
+		return EnvelopeInfo{}, err
+	}
+	committed = true
+	if backupPath != "" {
+		if err := os.Remove(backupPath); err != nil {
+			return EnvelopeInfo{}, fmt.Errorf("remove replaced bundle: %w", err)
+		}
+	}
+	return info, nil
 }
 
 func testRestoreBundle(path string, password []byte, expected AuthorityBinding) (EnvelopeInfo, error) {

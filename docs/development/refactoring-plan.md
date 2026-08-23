@@ -437,6 +437,13 @@ black-box Update transaction. The production Update Module never receives that
 root or a custody input; the test fails if any Vault/floor bytes or paths
 change.
 
+Bundle export now permits replacement only after a separate explicit Owner
+confirmation. It seals and test-restores a new encrypted temporary Bundle
+first, moves the prior encrypted bytes to a same-directory backup, publishes
+and reopens the new Bundle, then restores the previous bytes on any ordinary
+publication or final test-restore failure. Crash/interruption recovery and
+platform durability qualification remain separate M12 obligations.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

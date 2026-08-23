@@ -129,26 +129,32 @@ func TestVaultExportsDistinctPasswordBundleAndTestRestoresIt(t *testing.T) {
 	if bytes.Contains(raw, state.RootMaterial) {
 		t.Fatal("recovery bundle retains plaintext root material")
 	}
-	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID, Expected: state.Binding, Path: filepath.Join(t.TempDir(), "same-password.json")}, &sequenceSecrets{values: [][]byte{vaultPassword, vaultPassword, vaultPassword}}); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("same password bundle export = %v, want invalid", err)
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID, Expected: state.Binding, Path: bundlePath}, &sequenceSecrets{values: [][]byte{vaultPassword, []byte("replacement bundle password"), []byte("replacement bundle password")}, confirmations: []bool{false}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("unconfirmed bundle replacement = %v, want invalid", err)
 	}
-}
-
-func TestVaultDoesNotReplaceExistingBundleDestination(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "bundle.json")
-	original := []byte("existing encrypted bytes")
-	if err := os.WriteFile(path, original, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := writeNewBundle(path, []byte("new encrypted bytes")); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("replace bundle = %v, want invalid", err)
-	}
-	retained, err := os.ReadFile(path)
+	retained, err := os.ReadFile(bundlePath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(retained, original) {
-		t.Fatalf("existing bundle changed: got %q want %q", retained, original)
+	if !bytes.Equal(retained, raw) {
+		t.Fatal("unconfirmed replacement changed the previous bundle")
+	}
+	replaced, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID, Expected: state.Binding, Path: bundlePath}, &sequenceSecrets{values: [][]byte{vaultPassword, []byte("replacement bundle password"), []byte("replacement bundle password")}, confirmations: []bool{true}})
+	if err != nil {
+		t.Fatalf("confirmed bundle replacement: %v", err)
+	}
+	if !replaced.TestRestored || replaced.Envelope.Purpose != PurposeBundle {
+		t.Fatalf("unexpected replacement receipt: %+v", replaced)
+	}
+	replacedBytes, err := os.ReadFile(bundlePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(replacedBytes, raw) {
+		t.Fatal("confirmed replacement retained old bundle bytes")
+	}
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID, Expected: state.Binding, Path: filepath.Join(t.TempDir(), "same-password.json")}, &sequenceSecrets{values: [][]byte{vaultPassword, vaultPassword, vaultPassword}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("same password bundle export = %v, want invalid", err)
 	}
 }
 
@@ -233,13 +239,27 @@ func TestVaultFloorRejectsNonAdvancingRecordAndLocksSupersededRecord(t *testing.
 }
 
 type sequenceSecrets struct {
-	values [][]byte
+	values        [][]byte
+	confirmations []bool
+}
+
+func (input *sequenceSecrets) Confirm(context.Context, ConfirmationPrompt) (bool, error) {
+	if len(input.confirmations) == 0 {
+		return false, errors.New("unexpected confirmation")
+	}
+	confirmed := input.confirmations[0]
+	input.confirmations = input.confirmations[1:]
+	return confirmed, nil
 }
 
 type unreadSecrets struct{}
 
 func (unreadSecrets) ReadSecret(context.Context, SecretPrompt) ([]byte, error) {
 	return nil, errors.New("floor rejection must precede secret read")
+}
+
+func (unreadSecrets) Confirm(context.Context, ConfirmationPrompt) (bool, error) {
+	return false, errors.New("floor rejection must precede confirmation")
 }
 
 func (input *sequenceSecrets) ReadSecret(context.Context, SecretPrompt) ([]byte, error) {
