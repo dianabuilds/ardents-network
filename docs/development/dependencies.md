@@ -198,7 +198,7 @@ cryptographic dependency for password-derived Authority Custody. R-049 already
 selects the same module version in its release-verifier closure; integration
 must produce one shared exact root-module version, never parallel copies.
 
-The future Authority Custody Module is the sole caller. It uses only
+The Authority Custody Module is the sole caller. It uses only
 `argon2.IDKey` with the fixed v1 profile and passes the derived 32-byte key to Go
 1.26 standard-library `crypto/aes` and `cipher.NewGCMWithRandomNonce`. No other
 Argon2 variant, dynamic parameter negotiation, signing primitive, password

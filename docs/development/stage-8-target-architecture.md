@@ -48,7 +48,7 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | `node` | One Contributor duty admission, quarantine, listener/probe, protect/drain/withdraw, and joined cleanup. | Fold `node/probe`; no State-root or assignment authority. | D02 and selected Resource/platform contract. |
 | `release` | Verified metadata result, roots/floors/archive, lease, and opaque update authorization. | Own the release verifier and keep floor persistence private. | DA-01 before D06 mutation. |
 | `update` | Staging, predecessor/rollback, technical-tracer activation/self-test, journal, recovery, and cleanup. | Deepen `updatetransaction`; consumes unforgeable Release authorization and owns no Custody state. | R-064 limits M2 to one offline H3 tracer; a supported lifecycle reopens DA-09. |
-| `custody` | Vault/Recovery Bundle, unlock/export/restore/reconcile, revocation, and signing watermark. | New Module; secrets never enter Release/Update/diagnostics. | DA-08 and DA-09; no implementation by implication. |
+| `internal/custody` | Vault/Recovery Bundle, unlock/export/restore/reconcile, revocation, and signing watermark. | New Module; secrets never enter Release/Update/diagnostics. The first M12 slice owns canonical envelope admission and independent encrypted Vault-record create/verify; it returns no root material. | ADR-0021; DA-08 and DA-09 remain required for platform and full lifecycle qualification. |
 
 ## Intended dependency and trust direction
 
@@ -58,6 +58,7 @@ the stated responsibility.
 
 ```text
 cmd/ardents -> internal/endpoint
+cmd/ardents-custody -> internal/custody
 cmd/ardents-node -> node, internal/endpoint composition inputs
 internal/endpoint -> internal/application/broker, service/publication, service/connection, route
 service/connection -> route
@@ -124,6 +125,7 @@ are not Go packages and do not represent a retained test surface.
 | Current source | Target disposition | Wave and condition |
 |---|---|---|
 | `cmd/ardents` | Replace with thin Endpoint command. | M10/M13 after Endpoint composition exists. |
+| `cmd/ardents-custody` | Retain the separate custody-process adapter while it performs only public envelope inspection. Secret-input, Bundle, restore, and signing operation routes are admitted only with the complete M12 custody lifecycle. | M12/M13 under ADR-0021 and DA-08/DA-09. |
 | `cmd/ardents-node` | Replace with thin Node/Endpoint composition command. | M11/M13. |
 | `cmd/ardents-name` | Remove current command shape; retain only selected naming/resolution operator journey. | M5/M6/M13, subject to DA-03/04/07/10. |
 | `cmd/ardents-bridge`, `cmd/ardents-route` | Remove current tracer shapes; retain selected Entry/Route operator journey only. | M7/M8/M13, subject to DA-06/10. |
@@ -131,6 +133,7 @@ are not Go packages and do not represent a retained test surface.
 | `cmd/ardents-release` | Retire as an H3 product command; its sole retained C2 V0 observer is a bounded R-064 technical tracer through M13. | M1/M2/M13, subject to DA-01/R-064 and DA-10. |
 | `cmd/blocked-entry-verify-lab`, `cmd/carrier-lab`, `cmd/named-site-lab`, `cmd/stage6-evidence-lab`, `cmd/stage6-verify-lab` | Historical reproduction with a named retained obligation, or delete the runner while retaining immutable provenance. | M14, subject to DA-11; R-080 already retires the Stage-5 evidence generator. |
 | `internal/endpoint` | Retain the M10 target owner for Application/admin process composition, raw opaque Application bytes, exactly one classified terminal result, readiness, and cleanup. The former `internal/applicationipc` and `internal/serviceendpoint` paths are deleted. | M10 under R-085; old raw-tail and timing-selected result delivery are C0 retired in favour of Endpoint's one explicit v1 local contract. |
+| `internal/custody` | Retain the M12 owner for canonical envelope admission, encrypted Vault records, explicit bounded secret use, and public header inspection. It neither releases root material nor allows Release/Update/Endpoint to mutate custody state. | M12 begins under ADR-0021; Bundle export/test restore, quarantine/reconciliation, revocation, and platform qualification remain before the foreign limitation fields are removed. |
 | `internal/service/publication` | Retain the M9 target owner for one exclusive C1 Instance publication generation, floor, volatile signer, and drain lifecycle. It has no local admission, IPC, connection/recovery, or legacy H3 reader authority. | M9 under R-084; Endpoint is its direct role-local composition caller. |
 | `internal/service/connection` | Retain the M9 target owner for closed ADR-0028 endpoint records, immutable context, logical stream/recovery lifecycle, and native terminal outcome. It accepts only opaque already-authenticated Attachments; no H3 record reader may be added. | M9 under R-083/ADR-0028. |
 | `internal/bridge` | Deleted after transferring the required durable Invite/replay/replacement responsibility to `entry`. | M7 complete under R-076/R-080. |

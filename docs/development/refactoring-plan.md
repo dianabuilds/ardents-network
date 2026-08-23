@@ -407,6 +407,19 @@ offset/terminal refusal. This completes the R-083 grammar and stream-state
 transfer. M9 remains open only for the M10-coordinated removal of the
 temporary `serviceconn` local action/result adapter.
 
+**M12 progress, 2026-08-23.** `internal/custody` is now a real owner rather
+than a Release/Update limitation string. Its first vertical slice admits the
+accepted canonical outer envelope and fixed KDF/AEAD profile before derivation,
+creates an independent encrypted Authority Vault record after double explicit
+secret entry, and verifies an expected Authority binding after authenticated
+unlock without returning root material. Wrong passwords and authenticated
+ciphertext changes both return the same bounded unlock failure. The separate
+`cmd/ardents-custody inspect-envelope` caller exposes only public canonical
+header facts and has no secret-input path. This is intentionally not M12
+completion: Bundle export/test restore, restore quarantine/reconciliation,
+revocation, foreign-format migration, and platform qualification remain
+required before Release and Update can lose their custody compatibility text.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

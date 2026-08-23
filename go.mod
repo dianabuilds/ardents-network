@@ -7,6 +7,7 @@ require (
 	github.com/openpcc/ohttp v0.0.80
 	github.com/sigstore/sigstore v1.10.6
 	github.com/theupdateframework/go-tuf/v2 v2.4.2
+	golang.org/x/crypto v0.52.0
 	golang.org/x/sys v0.45.0
 )
 
@@ -21,7 +22,6 @@ require (
 	github.com/sigstore/protobuf-specs v0.5.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
-	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.39.0 // indirect

@@ -1,0 +1,241 @@
+package custody
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+)
+
+// Execute performs exactly one bounded custody operation. It never retains a
+// password, derived key, plaintext root, or signing capability after return.
+func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
+	vault.mu.Lock()
+	defer vault.mu.Unlock()
+	if vault.closed {
+		return Receipt{}, ErrClosed
+	}
+	if err := ctx.Err(); err != nil {
+		return Receipt{}, err
+	}
+	switch operation.Kind {
+	case OperationCreateVaultRecord:
+		return vault.createRecord(ctx, operation, secrets)
+	case OperationVerifyVaultRecord:
+		return vault.verifyRecord(ctx, operation, secrets)
+	case OperationInspectEnvelope:
+		return vault.inspect(operation)
+	default:
+		return Receipt{}, ErrInvalid
+	}
+}
+
+func (vault *Vault) createRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
+	if secrets == nil || operation.RecordID != "" || operation.Path != "" || operation.Expected != (AuthorityBinding{}) {
+		return Receipt{}, ErrInvalid
+	}
+	password, err := readPassword(ctx, secrets, SecretPromptVaultCreate)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(password)
+	confirmation, err := readPassword(ctx, secrets, SecretPromptVaultCreateConfirm)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(confirmation)
+	if subtle.ConstantTimeCompare(password, confirmation) != 1 {
+		return Receipt{}, ErrInvalid
+	}
+	plaintext, err := encodeAuthorityState(PurposeVault, operation.Authority)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(plaintext)
+	envelopeBytes, err := sealEnvelope(PurposeVault, plaintext, password)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(envelopeBytes)
+	recordID, err := freshRecordID()
+	if err != nil {
+		return Receipt{}, err
+	}
+	if err := vault.writeRecord(recordID, envelopeBytes); err != nil {
+		return Receipt{}, err
+	}
+	info, err := inspectEnvelope(envelopeBytes)
+	if err != nil {
+		return Receipt{}, err
+	}
+	return Receipt{Operation: OperationCreateVaultRecord, RecordID: recordID, Envelope: info, Authority: authorityReceipt(operation.Authority)}, nil
+}
+
+func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
+	if secrets == nil || operation.Path != "" || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
+		return Receipt{}, ErrInvalid
+	}
+	raw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
+	if err != nil {
+		return Receipt{}, fmt.Errorf("read vault record: %w", err)
+	}
+	password, err := readPassword(ctx, secrets, SecretPromptVaultUnlock)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(password)
+	purpose, plaintext, info, err := openEnvelope(raw, password)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(plaintext)
+	if purpose != PurposeVault {
+		return Receipt{}, ErrInvalid
+	}
+	state, err := decodeAuthorityState(plaintext, PurposeVault)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(state.RootMaterial)
+	if state.Binding != operation.Expected {
+		return Receipt{}, ErrInvalid
+	}
+	return Receipt{Operation: OperationVerifyVaultRecord, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state)}, nil
+}
+
+func (vault *Vault) inspect(operation Operation) (Receipt, error) {
+	if operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Expected != (AuthorityBinding{}) || operation.Path == "" {
+		return Receipt{}, ErrInvalid
+	}
+	raw, err := readEnvelopeFile(operation.Path)
+	if err != nil {
+		return Receipt{}, fmt.Errorf("read custody envelope: %w", err)
+	}
+	info, err := inspectEnvelope(raw)
+	if err != nil {
+		return Receipt{}, err
+	}
+	return Receipt{Operation: OperationInspectEnvelope, Envelope: info}, nil
+}
+
+func readPassword(ctx context.Context, input SecretInput, prompt SecretPrompt) ([]byte, error) {
+	password, err := input.ReadSecret(ctx, prompt)
+	if err != nil {
+		return nil, fmt.Errorf("read custody secret: %w", err)
+	}
+	if err := validatePassword(password); err != nil {
+		zero(password)
+		return nil, err
+	}
+	return password, nil
+}
+
+func (vault *Vault) writeRecord(recordID string, body []byte) error {
+	path := filepath.Join(vault.records, "record-"+recordID+".json")
+	if err := vault.reserveRecordSpace(int64(len(body))); err != nil {
+		return err
+	}
+	file, err := os.CreateTemp(vault.records, ".record-")
+	if err != nil {
+		return fmt.Errorf("create encrypted vault temporary: %w", err)
+	}
+	temporary := file.Name()
+	defer os.Remove(temporary)
+	if err := file.Chmod(0o600); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("protect vault temporary: %w", err)
+	}
+	if _, err := file.Write(body); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("write vault record: %w", err)
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("flush vault record: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close vault record: %w", err)
+	}
+	if _, err := os.Lstat(path); err == nil {
+		return fmt.Errorf("vault record collision: %w", ErrInvalid)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("inspect vault record destination: %w", err)
+	}
+	if err := os.Rename(temporary, path); err != nil {
+		return fmt.Errorf("publish vault record: %w", err)
+	}
+	return nil
+}
+
+func (vault *Vault) reserveRecordSpace(incoming int64) error {
+	entries, err := os.ReadDir(vault.records)
+	if err != nil {
+		return fmt.Errorf("list vault records: %w", err)
+	}
+	var count int
+	var total int64
+	for _, entry := range entries {
+		if entry.IsDir() || !validRecordFilename(entry.Name()) {
+			return fmt.Errorf("vault record root: %w", ErrInvalid)
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return fmt.Errorf("inspect vault record: %w", err)
+		}
+		count++
+		total += info.Size()
+	}
+	if count >= maximumVaultRecords || incoming > maximumVaultBytes || total > maximumVaultBytes-incoming {
+		return ErrInvalid
+	}
+	return nil
+}
+
+func validRecordFilename(value string) bool {
+	if len(value) != len("record-")+32+len(".json") || value[:len("record-")] != "record-" || value[len(value)-len(".json"):] != ".json" {
+		return false
+	}
+	return validRecordID(value[len("record-") : len(value)-len(".json")])
+}
+
+func readEnvelopeFile(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	body, err := io.ReadAll(io.LimitReader(file, maximumEnvelopeBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maximumEnvelopeBytes {
+		zero(body)
+		return nil, ErrInvalid
+	}
+	return body, nil
+}
+
+func freshRecordID() (string, error) {
+	bytes := make([]byte, 16)
+	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
+		return "", fmt.Errorf("record identifier: %w", err)
+	}
+	defer zero(bytes)
+	return hex.EncodeToString(bytes), nil
+}
+
+func validRecordID(value string) bool {
+	if len(value) != 32 {
+		return false
+	}
+	decoded, err := hex.DecodeString(value)
+	return err == nil && hex.EncodeToString(decoded) == value
+}
+
+func authorityReceipt(state AuthorityState) AuthorityReceipt {
+	return AuthorityReceipt{Binding: state.Binding, Generation: state.Generation, Revision: state.Revision, Watermarks: append([]Watermark(nil), state.Watermarks...)}
+}
