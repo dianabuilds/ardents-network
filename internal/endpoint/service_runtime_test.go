@@ -223,11 +223,10 @@ func TestExactTargetServiceConnectionCarriesOpaqueBytesBothDirections(t *testing
 			completed.result.AcceptedBytes != 64<<10 || completed.result.ReceivedBytes != 64<<10 {
 			t.Fatalf("Service Connection failed: result=%+v err=%v", completed.result, completed.err)
 		}
-		if !completed.result.SessionConsumed || completed.result.PrincipalCommitment == [32]byte{} ||
-			completed.result.SessionCommitment == [32]byte{} || completed.result.BrokerCommitment == [32]byte{} ||
-			completed.result.GrantCommitment == [32]byte{} || completed.result.SessionIssuedAt == 0 ||
-			completed.result.SessionExpiresAt <= completed.result.SessionIssuedAt {
-			t.Fatalf("consumed Broker receipt was not projected: result=%+v", completed.result)
+		if completed.result.Admission.Session == [32]byte{} || completed.result.Admission.Principal == [32]byte{} ||
+			completed.result.Admission.Broker == [32]byte{} || completed.result.Admission.Grant == [32]byte{} ||
+			completed.result.Admission.IssuedAt == 0 || completed.result.Admission.ExpiresAt <= completed.result.Admission.IssuedAt {
+			t.Fatalf("consumed Broker receipt is invalid: result=%+v", completed.result)
 		}
 	}
 
