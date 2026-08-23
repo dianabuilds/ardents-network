@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
@@ -39,13 +39,13 @@ func TestVaultSignsOneSealedNamespaceTransitionWithoutReleasingRoot(t *testing.T
 	if err != nil {
 		t.Fatalf("create name authority record: %v", err)
 	}
-	current := namespace.Record{Name: "alice", Generation: 1, Revision: 2, Lease: "active", Consistency: "current", Recovery: "stable",
+	current := record.Record{Name: "alice", Generation: 1, Revision: 2, Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(public), Target: [32]byte{1}, LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, Continuity: 1}
-	op := namespace.Op{Kind: "renew", Name: current.Name, Authority: current.Authority,
+	op := record.Op{Kind: "renew", Name: current.Name, Authority: current.Authority,
 		ExpectedGeneration: current.Generation, ExpectedRevision: current.Revision, LeaseDuration: 2 * time.Hour}
 	signed, err := vault.Execute(t.Context(), Operation{Kind: OperationSignNamespaceTransition, RecordID: created.RecordID, Expected: state.Binding,
-		Transition: func(signer namespace.TransitionSigner) ([]byte, error) {
-			return namespace.SignTransitionWith(network, current, op, signer)
+		Transition: func(signer authority.TransitionSigner) ([]byte, error) {
+			return authority.SignTransitionWith(network, current, op, signer)
 		}}, &sequenceSecrets{values: [][]byte{password}})
 	if err != nil {
 		t.Fatalf("sign sealed Namespace transition: %v", err)
@@ -53,11 +53,11 @@ func TestVaultSignsOneSealedNamespaceTransitionWithoutReleasingRoot(t *testing.T
 	if signed.Operation != OperationSignNamespaceTransition || len(signed.Proof) != ed25519.SignatureSize || bytes.Contains(signed.Proof, state.RootMaterial) {
 		t.Fatalf("unexpected signing receipt: %+v", signed)
 	}
-	digest, err := namespace.TransitionDigest(network, current, op)
+	digest, err := authority.TransitionDigest(network, current, op)
 	if err != nil {
 		t.Fatal(err)
 	}
-	admission, err := namespace.NewAdmission([32]byte{1}, network, 1, [32]byte{2})
+	admission, err := admission.NewAdmission([32]byte{1}, network, 1, [32]byte{2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,8 +66,8 @@ func TestVaultSignsOneSealedNamespaceTransitionWithoutReleasingRoot(t *testing.T
 		t.Fatal(err)
 	}
 	admissionProof, _ := challenge.Solve()
-	updated, err := namespace.ApplyAdmittedTransition(admission, admissionProof, 100_000,
-		admissionProof.Challenge.OperationDigest, network, current, op, signed.Proof, 101, namespace.Policy{})
+	updated, err := authority.ApplyAdmittedTransition(admission, admissionProof, 100_000,
+		admissionProof.Challenge.OperationDigest, network, current, op, signed.Proof, 101, record.Policy{})
 	if err != nil || updated.Revision != current.Revision+1 {
 		t.Fatalf("apply custody proof: updated=%+v err=%v", updated, err)
 	}
@@ -76,13 +76,13 @@ func TestVaultSignsOneSealedNamespaceTransitionWithoutReleasingRoot(t *testing.T
 	staleOp := op
 	staleOp.ExpectedRevision = stale.Revision
 	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationSignNamespaceTransition, RecordID: created.RecordID, Expected: state.Binding,
-		Transition: func(signer namespace.TransitionSigner) ([]byte, error) {
-			return namespace.SignTransitionWith(network, stale, staleOp, signer)
+		Transition: func(signer authority.TransitionSigner) ([]byte, error) {
+			return authority.SignTransitionWith(network, stale, staleOp, signer)
 		}}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("stale predecessor signing = %v, want invalid", err)
 	}
 	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationSignNamespaceTransition, RecordID: created.RecordID, Expected: state.Binding,
-		Transition: func(namespace.TransitionSigner) ([]byte, error) { return []byte("not a sealed Namespace proof"), nil }}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
+		Transition: func(authority.TransitionSigner) ([]byte, error) { return []byte("not a sealed Namespace proof"), nil }}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("generic signing callback = %v, want invalid", err)
 	}
 }
@@ -225,7 +225,7 @@ func TestRecoveredNameAuthorityActivatesOnlyFromStrictCurrentNamespaceWitness(t 
 		t.Fatalf("second activation err=%v, want invalid", err)
 	}
 	if _, err := recovered.Execute(t.Context(), Operation{Kind: OperationSignNamespaceTransition, RecordID: locked.RecordID,
-		Expected: initial.Binding, Transition: func(namespace.TransitionSigner) ([]byte, error) { return nil, nil }},
+		Expected: initial.Binding, Transition: func(authority.TransitionSigner) ([]byte, error) { return nil, nil }},
 		&sequenceSecrets{values: [][]byte{recoveredPassword}}); err == nil {
 		t.Fatal("authority-locked record signed after activation of its successor")
 	}
@@ -234,7 +234,7 @@ func TestRecoveredNameAuthorityActivatesOnlyFromStrictCurrentNamespaceWitness(t 
 func currentNameAuthorityWitness(t *testing.T, network [32]byte, current record.Record, private ed25519.PrivateKey) epoch.NameAuthorityReconciliation {
 	t.Helper()
 	keys := make([]ed25519.PrivateKey, 0, 2)
-	policy := namespace.MaterializationPolicy{Network: network, Rule: "ardents-namespace-materialization-v1",
+	policy := epoch.MaterializationPolicy{Network: network, Rule: "ardents-namespace-materialization-v1",
 		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}
 	for _, label := range []string{"custody-reconciliation-a", "custody-reconciliation-b"} {
 		seed := sha256.Sum256([]byte(label))
@@ -242,7 +242,7 @@ func currentNameAuthorityWitness(t *testing.T, network [32]byte, current record.
 		policy.Authorities[sha256.Sum256(key.Public().(ed25519.PublicKey))] = key.Public().(ed25519.PublicKey)
 		keys = append(keys, key)
 	}
-	store, err := namespace.Open(t.TempDir(), policy)
+	store, err := epoch.Open(t.TempDir(), policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func currentNameAuthorityWitness(t *testing.T, network [32]byte, current record.
 	if err != nil {
 		t.Fatal(err)
 	}
-	installation := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+	installation := epoch.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
 		TransitionRoot: [32]byte{2}, TransitionLength: 1, RejectionRoot: [32]byte{3}}
 	if err := store.CommitLegacy(installation, [][]byte{signed}, func(transcript []byte) ([][32]byte, [][]byte, error) {
 		type signature struct {
