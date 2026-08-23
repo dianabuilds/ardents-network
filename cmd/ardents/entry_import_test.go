@@ -60,7 +60,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+	if err := run(t.Context(), []string{"entry", "import", planPath}, &output); err != nil {
 		t.Fatalf("run import: %v", err)
 	}
 	var event struct {
@@ -79,7 +79,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+	if err := run(t.Context(), []string{"entry", "import", planPath}, &output); err != nil {
 		t.Fatalf("run idempotent import: %v", err)
 	}
 	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "already-present" {
@@ -97,7 +97,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 		t.Fatal(err)
 	}
 	output.Reset()
-	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+	if err := run(t.Context(), []string{"entry", "import", planPath}, &output); err != nil {
 		t.Fatalf("run uncertain import: %v", err)
 	}
 	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "incompatible" {
@@ -131,7 +131,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if err := run(t.Context(), []string{"import", planPath}, &output); err != nil {
+	if err := run(t.Context(), []string{"entry", "import", planPath}, &output); err != nil {
 		t.Fatalf("run conflicting import: %v", err)
 	}
 	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "conflicting-role" {

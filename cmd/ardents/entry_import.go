@@ -12,14 +12,17 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
-func run(ctx context.Context, arguments []string, output io.Writer) (runErr error) {
-	if len(arguments) != 2 || arguments[0] != "import" {
-		return errors.New("usage: ardents-bridge import <plan>")
+// runEntryImport adapts a single signed Entry Invite into the retained
+// operator command. Entry retains validation and replay-state ownership; this
+// command only selects the explicit import operation and renders its receipt.
+func runEntryImport(ctx context.Context, arguments []string, output io.Writer) (runErr error) {
+	if len(arguments) != 3 || arguments[1] != "import" || arguments[2] == "" {
+		return errors.New("usage: ardents entry import <entry-import-plan.json>")
 	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	runtime, err := loadImportPlan(arguments[1], time.Now)
+	runtime, err := loadImportPlan(arguments[2], time.Now)
 	if err != nil {
 		return fmt.Errorf("load import plan: %w", err)
 	}

@@ -68,6 +68,14 @@ func TestEndpointRouteRejectsIncompleteCommand(t *testing.T) {
 	}
 }
 
+func TestEntryImportRouteRejectsIncompleteCommand(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	if err := run(t.Context(), []string{"entry", "import"}, &output); err == nil || output.Len() != 0 {
+		t.Fatalf("incomplete entry command err=%v output=%q", err, output.String())
+	}
+}
+
 func writeCommandGolden(t *testing.T, directory, name, source string) string {
 	t.Helper()
 	encoded, err := os.ReadFile(source)

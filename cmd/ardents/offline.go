@@ -15,6 +15,9 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) > 0 && arguments[0] == "endpoint" {
 		return runEndpoint(ctx, arguments, output)
 	}
+	if len(arguments) > 0 && arguments[0] == "entry" {
+		return runEntryImport(ctx, arguments, output)
+	}
 	if len(arguments) > 0 && arguments[0] == "refresh-sources" {
 		return runRefreshSources(ctx, arguments, output)
 	}

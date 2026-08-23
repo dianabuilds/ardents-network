@@ -71,6 +71,13 @@ the existing process readiness/cleanup and recovery journey. The plan remains
 an explicitly temporary Endpoint-owned input, not a new general command
 configuration contract. The former executable, its deterministic profile
 entry, and its package-map row are deleted together.
+
+The `ardents-bridge import` tracer is likewise C0: its only retained journey is
+now `ardents entry import <entry-import-plan.json>`, with the authenticated
+Network State, local-duty, replay, and classified-receipt behavior covered by
+the moved command test. Its plan is an explicitly temporary Entry-owned input,
+not a new general operator configuration contract. The former executable, its
+deterministic profile entry, and its package-map row are deleted together.
 | **M14 — retirement and current truth** | Input: every remaining lab, verifier, e2e/live matrix, stage document, fixture, and this plan. Owner: Codex under Product Owner final disposition. | DA-11 chooses C4 provenance/reproduction or C0 deletion; Qualification requires an accepted claim and active profile, never a historical receipt. | Full profile/reader-route audit, claim/evidence identity check, package-map/import graph, artifact/residue scan. Delete obsolete `internal/lab/`, six lab commands, obsolete e2e/live suites, stage materials whose current facts are promoted, target/disposition ledgers, and this plan. |
 
 **M10 progress, 2026-08-23.** `internal/applicationipc` and
