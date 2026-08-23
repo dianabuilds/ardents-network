@@ -389,7 +389,7 @@ and impairment path that can be integrated only with that later Node work.
 
 ### M9 — Publication and Connection
 
-**In progress, 2026-08-23.** Under R-084, `service/publication` is now the
+**Complete, 2026-08-23.** Under R-084, `service/publication` is now the
 single C1 owner of the publication root. It creates an exclusive owned root,
 reads the old numeric floor only when that root is empty, writes only its own
 monotonic floor, stages one immutable public record under its 16-hex
@@ -438,8 +438,11 @@ labels, and connection-binding tags are gone. The native codec's fixed context
 vector and mutation tests, together with the retained Service Connection
 recovery suite, cover profile/kind/length, proof/context, continuity MAC, and
 offset/terminal refusal. This completes the R-083 grammar and stream-state
-transfer. M9 remains open only for the M10-coordinated removal of the
-temporary `serviceconn` local action/result adapter.
+transfer. M10 subsequently removed the temporary `serviceconn` local
+action/result adapter, so M9's Publication/Connection ownership transfer is
+complete. `go test ./internal/service/publication ./internal/service/connection
+./internal/endpoint ./tests/e2e/service -count=1` covers the direct owners and
+their retained process journey.
 
 **M12 progress, 2026-08-23.** `internal/custody` is now a real owner rather
 than a Release/Update limitation string. Its first vertical slice admits the
