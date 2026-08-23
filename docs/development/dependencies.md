@@ -83,11 +83,11 @@ dependency graph repeats R-047 and R-026; an unremediated reachable
 high/critical vulnerability, unacceptable license, offline-build failure, or
 broken role split selects `stop`, not a fork.
 
-## Selected Stage 7 release-verifier closure
+## Current release-verifier closure
 
-Status: **accepted for S7.1 integration on 2026-08-20.** R-049 selects the
-following exact reviewed module closure. It enters `go.mod` only with the real
-Release Decision package, behavior tests, non-test caller, and package-map entry.
+Status: **current maintained dependency.** R-049 selected the following exact
+reviewed module closure; the current `internal/release` package, behavior
+tests, non-test caller, and package-map entry now own it.
 
 | Module | Proposed version | License | Purpose |
 |---|---:|---|---|
@@ -140,36 +140,9 @@ module cache outside Git, verify it online, and prove an offline no-cgo build.
 No module cache, vendor tree, generated repository, key, or binary belongs in
 the repository.
 
-## Selected Stage 7 Ubuntu isolation runtime
+## Current Authority Custody dependency
 
-Status: **accepted for the S7.6 Ubuntu Adapter under ADR-0016; native-host
-qualification remains deferred where Docker cannot observe the fact.** R-052 freezes upstream bubblewrap
-`v0.11.2` (`LGPL-2.0-or-later`) as the external-process candidate for
-`ubuntu-bwrap-native-v1`. Each native qualification campaign must pin the exact
-Ubuntu package/source, executable SHA-256, dynamic-library closure, build
-options, and current advisory state. The Ubuntu 26.04 Docker development run
-pins the same facts but cannot qualify native Ubuntu Desktop integration or
-host containment that the container cannot observe. The executable must have setuid support disabled and
-must carry no setuid/setgid bit or file capability.
-
-The future Application Isolation Ubuntu Adapter is the sole owner. It supplies
-one exact argument/environment/mount manifest, runs bubblewrap inside the R-051
-cgroup/pidfd resource tree, and accepts only the inherited Broker descriptor and
-declared context/runtime handles. Bubblewrap is never linked into `go.mod`,
-downloaded at runtime, granted Authority access, or treated as the evidence
-verdict. Installed may declare the reviewed package after acceptance; Portable
-only preflights an already present matching host dependency and otherwise
-returns `isolation-unsupported` while direct/generic use remains available.
-
-R-052 selected bubblewrap instead of first-party namespace/mount/seccomp
-machinery, setuid mode, a privileged daemon, or a kernel driver. Removing the
-Ubuntu claim-bearing profile removes this process dependency without changing
-the shared Application Broker or generic/direct Adapters. Any version/source/
-build/capability/policy change reopens R-052 and repeats F-cell qualification.
-
-## Selected Stage 7 Authority-envelope dependency
-
-Status: **accepted for S7.2 integration under ADR-0021.** R-053 selects
+Status: **current maintained dependency under ADR-0021.** R-053 selects
 `golang.org/x/crypto/argon2` from module
 `golang.org/x/crypto v0.52.0` (BSD-3-Clause) as the sole non-standard-library
 cryptographic dependency for password-derived Authority Custody. R-049 already
@@ -181,9 +154,10 @@ The Authority Custody Module is the sole caller. It uses only
 1.26 standard-library `crypto/aes` and `cipher.NewGCMWithRandomNonce`. No other
 Argon2 variant, dynamic parameter negotiation, signing primitive, password
 store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The
-[R-053 record](../research/records/r-053-stage-7-authority-recovery.md) and
-[exact Authority Custody specification](stage-7-authority-custody-spec.md) own vectors,
-resource bounds, envelope rules, and removal.
+[R-053 record](../research/records/r-053-stage-7-authority-recovery.md) is
+decision provenance. The current
+[release, update, and Authority Custody reference](../technical/release-update-custody.md)
+owns the maintained envelope and lifecycle boundary.
 
 `cmd/ardents-custody` is the separate interactive adapter and imports only
 `golang.org/x/term` to reject a non-terminal descriptor and read one password

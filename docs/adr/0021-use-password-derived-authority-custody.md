@@ -53,5 +53,5 @@ Authority Custody.
 
 - [R-053](../research/records/r-053-stage-7-authority-recovery.md) records the
   exact dependency, format, resource, restore, and reconciliation evidence.
-- The [Authority Custody specification](../development/stage-7-authority-custody-spec.md)
-  is normative for envelope and lifecycle behavior.
+- The [release, update, and Authority Custody reference](../technical/release-update-custody.md)
+  owns the maintained envelope and lifecycle boundary.

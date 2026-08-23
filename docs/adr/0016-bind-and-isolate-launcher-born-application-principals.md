@@ -1,9 +1,16 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-20
+superseded_by: R-085 generic Broker scope
 ---
 
 # ADR-0016 — Bind and isolate launcher-born Application Principals
+
+> Superseded by [R-085](../research/records/r-085-m10-generic-broker-scope.md)
+> for the maintained Stage 8 path. The selected platform profiles were never
+> promoted; current code exposes only explicit generic/unqualified Broker
+> admission. This record remains historical evidence for any future qualified
+> isolation decision.
 
 ## Context
 

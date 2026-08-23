@@ -120,6 +120,7 @@ scripts/
   quality.yml                  mandatory ordinary CI quality gate
 .githooks/pre-commit           local quick gate
 docs/                          product, security, research, ADR, and development records
+docs/development/README.md     current contributor route through development records
 experiments/README.md          policy for future disposable spikes
 go.mod                         the only Go module
 Makefile                       common build and quality entrypoints

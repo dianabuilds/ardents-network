@@ -1,9 +1,14 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-16
+superseded_by: ADR-0024 (maintained Route applicability)
 ---
 
 # Select standalone WebTunnel for the H3 Camouflage Adapter
+
+> Superseded for maintained runtime use by
+> [ADR-0024](0024-native-interactive-route-foundation.md). This record retains
+> only the bounded H3 experiment decision and its provenance.
 
 Horizon 3 Stage 5 uses standalone WebTunnel `v0.0.6` at commit
 `d729fde1f38357dcefa2a751eb4752e9ca78f910` behind the replaceable,

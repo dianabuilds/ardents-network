@@ -12,10 +12,9 @@ disposition, and the exact Stage 8 entry is bound by the
 Authoritative inputs, in order, are accepted ADRs; the product contract and
 threat model; completed research and its evidence; the accepted Stage 7
 disposition; and the clean repository identity recorded at Stage 8 entry. The
-[Stage 8 productization design workbook](stage-8-design-workbook.md) supplies
-the prepared G0-G5 analysis. It remains transitional: this brief defines the
-stage, while accepted policies and factual architecture are promoted into their
-canonical documents during Stage 8.
+The prepared G0-G5 analysis has been promoted into its current owners and its
+transitional workbook is deleted. This brief defines the stage while accepted
+policies and factual architecture remain in their canonical documents.
 
 ## Purpose
 
@@ -119,7 +118,7 @@ Exit:
 - one temporary factual current-system report;
 - updated finding and open-decision ledgers;
 - complete code/test/document disposition inventories; and
-- a clean-baseline discrepancy report against the prepared workbook.
+- a clean-baseline discrepancy report against the frozen Stage 8 entry.
 
 ## S8.1 — Product and preservation disposition
 

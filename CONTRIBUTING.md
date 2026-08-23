@@ -11,9 +11,8 @@ honest.
    package only when a real cohesive boundary exists.
 3. Add or update behavioral and failure-path tests with the code.
 4. Run `make quick-check` during development and `make check` before integration.
-   These gates never build or run Docker. When frozen Carrier Lab source or
-   container inputs change, run the explicit qualification flow once after the
-   normal gate, following `docs/development/carrier-lab-preflight.md`.
+   These gates never build or run Docker. Historical Carrier Lab material is
+   not a current qualification flow or contributor prerequisite.
 5. Review `git diff --check` and confirm no caches, evidence, credentials,
    binaries, or unrelated edits were included.
 

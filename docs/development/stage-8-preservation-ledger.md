@@ -69,10 +69,9 @@ meantime.
 
 ## Concrete boundary and compatibility disposition
 
-The S8.0 [surface inventory](stage-8-current-system-surface-inventory.md)
-locates the source owners. This ledger supplies the product disposition. A
-`Migrate` row does not promise a public compatibility window: S8.3 discovers
-real external observers and selects G0-M0 (coordinated switch), G0-M1
+The frozen S8.0 source audit is recoverable from Git at the Stage 8 entry.
+This ledger supplies the product disposition. A `Migrate` row does not promise
+a public compatibility window: S8.3 discovers real external observers and selects G0-M0 (coordinated switch), G0-M1
 (side-by-side state conversion), G0-M2 (bounded external Adapter), G0-M3
 (protocol phase), or G0-M4 (retire/export).
 

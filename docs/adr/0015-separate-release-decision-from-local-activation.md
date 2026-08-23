@@ -56,5 +56,5 @@ replacement is stopped, authenticated, and rechecked before execution.
   bounded release-verification client profile.
 - [R-050](../research/records/r-050-stage-7-install-update-adapters.md) records
   the platform and Portable evidence and explicit qualification deferrals.
-- The [lifecycle specification](../development/stage-7-lifecycle-spec.md) is
-  normative for state ownership and transition behavior.
+- The [release, update, and Authority Custody reference](../technical/release-update-custody.md)
+  owns the maintained state boundary and its current limitations.

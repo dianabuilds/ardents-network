@@ -164,10 +164,10 @@ later waves establish their own affected-gate evidence. The gate enforces
 ownership facts rather than a package-export count or historical shape receipt;
 its retained 500-line limit is the
 explicit interim safety rule; cohesion is reviewed by responsibility and
-invariant locality, not a soft line-count threshold. The [surface inventory](stage-8-current-system-surface-inventory.md),
-[preservation ledger](stage-8-preservation-ledger.md), target architecture,
-and this plan are the respective current inventory, disposition, ownership,
-and retirement ledgers. Historical Stage 7 material remains only the
+invariant locality, not a soft line-count threshold. The factual
+[package map](package-map.md), [preservation ledger](stage-8-preservation-ledger.md),
+target architecture, and this plan are the respective package, disposition,
+ownership, and retirement authorities. Historical Stage 7 material remains only the
 enumerated provenance/transitional material subject to M14's named outcome.
 
 ### M1 — Release trust
@@ -614,9 +614,7 @@ or second implementation. `experiments/` retains only open R-092, whose
 reference-host measurement has a present falsification duty.
 
 **M14 progress, 2026-08-23.** The four frozen S8.0 source-entry diagnostics
-(`stage-8-current-system-report`, `stage-8-current-system-trace`,
-`stage-8-current-system-surface-inventory`, and
-`stage-8-current-test-portfolio`) are now explicitly marked historical. They
-record the pre-cutover tree at `1cf7100`, not current ownership; the package map
-and this plan remain current. They are C4 provenance until their retained facts
-have canonical owners, after which the planned S8.6 deletion remains required.
+are C0 deleted after their package, disposition, ownership, and retirement
+facts were promoted to the package map, preservation ledger, target
+architecture, and this plan. The source entry `1cf7100` remains recoverable
+from Git; it is not current ownership or Qualification evidence.
