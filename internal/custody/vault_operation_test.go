@@ -328,6 +328,30 @@ func TestVaultReopensExactAuthorityFloorAfterAtomicPublication(t *testing.T) {
 	}
 }
 
+func TestCustodyRejectsNonRegularFileInputs(t *testing.T) {
+	directory := t.TempDir()
+	if _, err := readEnvelopeFile(directory); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("read directory as envelope = %v, want invalid", err)
+	}
+	if _, err := readSmallFile(directory); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("read directory as authority floor = %v, want invalid", err)
+	}
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	state := testAuthorityState()
+	password := []byte("correct horse battery staple")
+	created, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: state}, &sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatalf("create vault record: %v", err)
+	}
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID, Expected: state.Binding, Path: directory}, &sequenceSecrets{values: [][]byte{password, []byte("bundle password that is distinct"), []byte("bundle password that is distinct")}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("export to directory = %v, want invalid", err)
+	}
+}
+
 type sequenceSecrets struct {
 	values        [][]byte
 	confirmations []bool

@@ -98,7 +98,10 @@ func publishAndTestBundle(ctx context.Context, path string, body, password []byt
 		return EnvelopeInfo{}, fmt.Errorf("bundle destination parent: %w", ErrInvalid)
 	}
 	existing := false
-	if _, err := os.Lstat(destination); err == nil {
+	if info, err := os.Lstat(destination); err == nil {
+		if !info.Mode().IsRegular() {
+			return EnvelopeInfo{}, ErrInvalid
+		}
 		existing = true
 	} else if !os.IsNotExist(err) {
 		return EnvelopeInfo{}, fmt.Errorf("inspect bundle destination: %w", err)

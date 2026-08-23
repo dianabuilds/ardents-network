@@ -262,33 +262,35 @@ func validRecordFilename(value string) bool {
 }
 
 func readEnvelopeFile(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	body, err := io.ReadAll(io.LimitReader(file, maximumEnvelopeBytes+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(body) > maximumEnvelopeBytes {
-		zero(body)
-		return nil, ErrInvalid
-	}
-	return body, nil
+	return readRegularFile(path, maximumEnvelopeBytes)
 }
 
 func readSmallFile(path string) ([]byte, error) {
+	return readRegularFile(path, maximumFloorBytes)
+}
+
+// readRegularFile excludes directories, symlinks, devices, and other special
+// objects before bounded reading. Platform handle/reparse resistance remains a
+// separate qualification obligation; this is the portable lexical admission
+// guard used by every custody file reader.
+func readRegularFile(path string, maximum uint64) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, ErrInvalid
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	body, err := io.ReadAll(io.LimitReader(file, maximumFloorBytes+1))
+	body, err := io.ReadAll(io.LimitReader(file, int64(maximum)+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(body) > maximumFloorBytes {
+	if uint64(len(body)) > maximum {
 		zero(body)
 		return nil, ErrInvalid
 	}
