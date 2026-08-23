@@ -235,13 +235,12 @@ digest, and one-use admission gate only through Namespace-owned
 only the exact `resolution` proof for its configured Gateway Node and returns
 only a verified immutable Binding with its compact proof; the client view
 re-verifies that proof without exposing a lifecycle Record. The temporary
-`state.Snapshot`-to-verifier construction remains M6 work: it will become the
-paired opaque State view when `internal/nameresolution` moves to
-`internal/naming/resolution`.
+`state.Snapshot`-to-verifier construction was retired in M6: the paired
+opaque State view now reaches target `internal/naming/resolution` directly.
 
 ### M6 — private Resolution
 
-**In progress, 2026-08-23.** The first M6 seam is now real: Network State
+**Complete, 2026-08-23.** Network State
 owns `ResolutionView`, which admits only a fresh bounded selection window and
 returns one immutable Epoch trust fact or one authenticated candidate valid
 throughout that window. Target `internal/naming/resolution` accepts only that
@@ -249,7 +248,11 @@ view for runtime `Open` and `OpenControl`; `cmd/ardents-name` acquires it
 through `CurrentResolution`. Explicit `OpenEvidence` adapters are retained
 only for Stage-6 evidence and test fixtures. The old
 `internal/nameresolution` directory and every Go import are deleted.
-Remaining M6 process evidence remains M6 work.
+The retained replay/admission/failure suites cover fixed OHTTP envelopes,
+finite replay capacity, response tampering, unavailable selected relays, and
+role separation. `process_test.go` starts the Gateway and Relay as distinct
+processes and completes an admitted private resolution through their OHTTP
+boundary. No plaintext fallback or shared implementation view remains.
 
 ## Dependency and retirement rules
 
