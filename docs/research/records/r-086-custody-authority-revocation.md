@@ -1,8 +1,8 @@
 ---
 id: R-086
 title: How can Authority Custody observe Name Authority replacement safely?
-status: open
-owner: Product Owner
+status: accepted
+owner: Product Owner and Codex
 started: 2026-08-23
 reviewed: 2026-08-23
 ---
@@ -69,6 +69,11 @@ record; or a local Grant revocation is mistaken for a Name Authority transition.
   after a completed recovery Record replaces it.
 - **Inference:** D08 lacks the Name-scoped linkage needed for a Vault to locate
   that event, so a local demotion operation cannot be safely invented.
+- **Inspection:** the implemented `NameAuthorityReconciliation` authenticates
+  that one Authority key is current and strictly newer for recovered-Bundle
+  activation. It does not commit an old Authority key to a different successor;
+  extending it for active-Vault demotion would add the prohibited new D08 and
+  Namespace format surface.
 
 ## Options
 
@@ -86,5 +91,14 @@ custody operation too complex for the one-to-one maintained product.
 
 ## Disposition
 
-Open. No Authority format, Namespace wire, or Vault operation changes are
-authorized by this record yet.
+**Accepted H2, 2026-08-23, under the Product Owner's standing Stage 8
+delegation.** Namespace-level rejection is the effective Name Authority
+revocation for the selected custody scope. An active local Vault remains
+locally usable until an operation reaches Namespace, where the former key is
+rejected; it is not evidence that the former Authority remains effective.
+
+No local kill switch, D08 field, Namespace wire, or Vault demotion operation is
+added. A future requirement for preflight local demotion must introduce a
+Name-scoped, predecessor-to-successor opaque proof; it requires a new format
+decision, old/new reader and migration analysis, and the adversarial vectors
+listed above. Broker Grant revocation remains a separate local transition.

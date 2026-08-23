@@ -530,9 +530,10 @@ no second compatibility writer was introduced.
 R-044 already revokes a former Name Authority at the authenticated Namespace
 Record: the former key cannot sign its recovered successor. The active Vault
 cannot discover that event safely because D08 has no Name-scoped replacement
-commitment. R-086 now owns any opaque proof and format migration for local Vault
-demotion; Broker Grant revocation is intentionally a separate local-admission
-transition.
+commitment. R-086 accepts Namespace-level effective revocation for the selected
+custody scope: no local Vault demotion is added without a new Name-scoped
+predecessor-to-successor proof and format decision. Broker Grant revocation is
+intentionally a separate local-admission transition.
 
 ## Dependency and retirement rules
 
