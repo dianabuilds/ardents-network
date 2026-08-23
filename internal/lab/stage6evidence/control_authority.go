@@ -11,7 +11,7 @@ import (
 type evidenceControlAuthority struct {
 	mu      sync.Mutex
 	control interface {
-		Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
+		ApplyEvidence([]byte, namespace.Proof) (string, uint64, uint64, []byte)
 	}
 	observed  []controlOperation
 	admission []namespace.Proof
@@ -20,7 +20,7 @@ type evidenceControlAuthority struct {
 }
 
 // Submit is the historical C4 bridge into the current Gateway boundary. Only
-// the Stage 6 evidence package retains the old detailed Apply result for its
+// the Stage 6 evidence package retains the detailed ApplyEvidence result for its
 // archived observations; the runtime Gateway cannot observe that result.
 func (authority *evidenceControlAuthority) Submit(submission namespace.Submission,
 	admission namespace.Proof,
@@ -35,7 +35,7 @@ func (authority *evidenceControlAuthority) Submit(submission namespace.Submissio
 	}
 	authority.observed = append(authority.observed, operation)
 	authority.admission = append(authority.admission, admission)
-	class, generation, revision, state := authority.control.Apply(raw, admission)
+	class, generation, revision, state := authority.control.ApplyEvidence(raw, admission)
 	authority.results = append(authority.results, controlExecutionResult{Class: class,
 		Generation: generation, Revision: revision, State: append([]byte(nil), state...)})
 	if class != "accepted" {

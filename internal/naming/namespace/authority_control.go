@@ -22,8 +22,10 @@ type control struct {
 	store     *Store
 }
 
-// NewControl installs one bounded authority state view for a Gateway.
-func NewControl(network [32]byte, admission *Admission, order ClaimOrder,
+// NewEvidenceControl installs the bounded volatile authority view retained by
+// the Stage 6 evidence runner. Durable Gateways must use OpenControl and Submit
+// so their accepted work enters the Namespace pending journal.
+func NewEvidenceControl(network [32]byte, admission *Admission, order ClaimOrder,
 	records []Record, clock func() time.Time, policy Policy,
 ) (*control, error) {
 	if network == [32]byte{} || admission == nil || clock == nil {
@@ -43,10 +45,9 @@ func NewControl(network [32]byte, admission *Admission, order ClaimOrder,
 		records: values, clock: clock, policy: policy}, nil
 }
 
-// Apply verifies one submission into the Gateway's volatile pending chain.
-// Its detailed result is local to this implementation; Resolution exposes it
-// only as a non-current submission outcome.
-func (control *control) Apply(raw []byte, proof Proof) (string, uint64, uint64, []byte) {
+// ApplyEvidence verifies one historical evidence operation in the volatile
+// view. Its detailed result is deliberately unavailable to a durable Gateway.
+func (control *control) ApplyEvidence(raw []byte, proof Proof) (string, uint64, uint64, []byte) {
 	control.mu.Lock()
 	defer control.mu.Unlock()
 	operation, err := decodeControlOperation(raw)

@@ -210,6 +210,9 @@ non-laboratory command caller of the raw Record codec; canonical Service Name
 encoding and the still-required private resolution/control tracer journeys
 remain. This narrows the runtime raw-Record surface without declaring the
 remaining command, C4 evidence codec, or Namespace compatibility API retired.
+The volatile detailed-control constructor is now explicitly
+`NewEvidenceControl`/`ApplyEvidence`; its sole caller is the Stage 6 evidence
+runner, while the durable Gateway path remains `OpenControl`/`Submit`.
 
 ## Dependency and retirement rules
 

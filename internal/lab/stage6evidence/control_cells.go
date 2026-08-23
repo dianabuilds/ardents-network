@@ -33,7 +33,7 @@ func runControlRoleCell(trace *traceRecord, secret [32]byte) error {
 	if err != nil {
 		return err
 	}
-	control, err := namespace.NewControl(network, gate, corpus.order, corpus.records,
+	control, err := namespace.NewEvidenceControl(network, gate, corpus.order, corpus.records,
 		func() time.Time { return now }, policy)
 	if err != nil {
 		return err
