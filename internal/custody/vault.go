@@ -12,6 +12,7 @@ type Vault struct {
 	root       string
 	records    string
 	quarantine string
+	floors     string
 	mu         sync.Mutex
 	closed     bool
 }
@@ -41,7 +42,7 @@ func Open(config VaultConfig) (*Vault, error) {
 	if err := os.MkdirAll(quarantine, 0o700); err != nil {
 		return nil, fmt.Errorf("create quarantine record root: %w", err)
 	}
-	return &Vault{root: root, records: records, quarantine: quarantine}, nil
+	return &Vault{root: root, records: records, quarantine: quarantine, floors: filepath.Join(root, "authority-floors.json")}, nil
 }
 
 // Close rejects future operations. It never leaves a record unlocked because

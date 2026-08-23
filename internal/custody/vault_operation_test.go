@@ -197,8 +197,49 @@ func TestVaultRestoreKeepsBundleAuthorityLockedAndExportOnly(t *testing.T) {
 	}
 }
 
+func TestVaultFloorRejectsNonAdvancingRecordAndLocksSupersededRecord(t *testing.T) {
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	password := []byte("correct horse battery staple")
+	initial := testAuthorityState()
+	first, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: initial}, &sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatalf("create initial record: %v", err)
+	}
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: initial}, unreadSecrets{}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("equal active record = %v, want invalid", err)
+	}
+	successor := initial
+	successor.Generation++
+	successor.Revision++
+	successor.Watermarks = []Watermark{{Domain: "credential-generation", Value: initial.Watermarks[0].Value + 1}}
+	second, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: successor}, &sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatalf("create successor record: %v", err)
+	}
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationVerifyVaultRecord, RecordID: first.RecordID, Expected: initial.Binding}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("superseded record verify = %v, want invalid", err)
+	}
+	verified, err := vault.Execute(t.Context(), Operation{Kind: OperationVerifyVaultRecord, RecordID: second.RecordID, Expected: successor.Binding}, &sequenceSecrets{values: [][]byte{password}})
+	if err != nil {
+		t.Fatalf("verify successor: %v", err)
+	}
+	if verified.Authority.Generation != successor.Generation || verified.Authority.Revision != successor.Revision {
+		t.Fatalf("successor receipt = %+v", verified)
+	}
+}
+
 type sequenceSecrets struct {
 	values [][]byte
+}
+
+type unreadSecrets struct{}
+
+func (unreadSecrets) ReadSecret(context.Context, SecretPrompt) ([]byte, error) {
+	return nil, errors.New("floor rejection must precede secret read")
 }
 
 func (input *sequenceSecrets) ReadSecret(context.Context, SecretPrompt) ([]byte, error) {

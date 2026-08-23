@@ -42,6 +42,9 @@ func (vault *Vault) createRecord(ctx context.Context, operation Operation, secre
 	if secrets == nil || operation.RecordID != "" || operation.Path != "" || operation.Expected != (AuthorityBinding{}) {
 		return Receipt{}, ErrInvalid
 	}
+	if err := vault.prepareFloor(operation.Authority); err != nil {
+		return Receipt{}, err
+	}
 	password, err := readPassword(ctx, secrets, SecretPromptVaultCreate)
 	if err != nil {
 		return Receipt{}, err
@@ -70,6 +73,9 @@ func (vault *Vault) createRecord(ctx context.Context, operation Operation, secre
 		return Receipt{}, err
 	}
 	if err := vault.writeRecord(recordID, envelopeBytes); err != nil {
+		return Receipt{}, err
+	}
+	if err := vault.advanceFloor(operation.Authority); err != nil {
 		return Receipt{}, err
 	}
 	info, err := inspectEnvelope(envelopeBytes)
@@ -107,6 +113,9 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	defer zero(state.RootMaterial)
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
+	}
+	if err := vault.matchesFloor(state); err != nil {
+		return Receipt{}, err
 	}
 	return Receipt{Operation: OperationVerifyVaultRecord, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state), State: RecordActive}, nil
 }
@@ -240,6 +249,23 @@ func readEnvelopeFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	if len(body) > maximumEnvelopeBytes {
+		zero(body)
+		return nil, ErrInvalid
+	}
+	return body, nil
+}
+
+func readSmallFile(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	body, err := io.ReadAll(io.LimitReader(file, maximumFloorBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maximumFloorBytes {
 		zero(body)
 		return nil, ErrInvalid
 	}

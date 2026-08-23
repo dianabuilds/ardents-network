@@ -425,6 +425,11 @@ compatibility text. A restored Bundle now enters a separately encrypted
 `authority-locked` quarantine record in a previously empty Vault and is
 export-only; it cannot pass the active-record verification path. Strictly
 higher authenticated reconciliation and any signing activation remain absent.
+The same owner now writes a canonical non-decreasing local floor only after a
+new encrypted active record is durable; equal/lower records fail before secret
+input and a superseded record fails active verification. The missing piece is
+the real authenticated Network/Namespace successor source, not a caller-supplied
+claim of freshness.
 
 ## Dependency and retirement rules
 

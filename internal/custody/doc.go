@@ -12,5 +12,8 @@
 // operation seam. The current vertical slice also exports a Bundle only to a
 // new Owner-selected destination and isolatedly test-restores it. Restore
 // creates an encrypted authority-locked export-only record in a separate
-// quarantine root; replacement and reconciliation remain later operations.
+// quarantine root. Active records advance one durable non-decreasing local
+// Authority floor only after their encrypted record is published, and active
+// verification requires an exact matching floor; reconciliation remains a later
+// authenticated-source operation.
 package custody

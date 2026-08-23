@@ -22,6 +22,7 @@ const (
 	maximumWatermarkDomainBytes = 64
 	maximumVaultRecords         = 1024
 	maximumVaultBytes           = 1 << 30
+	maximumFloorBytes           = 1 << 20
 	minimumPasswordBytes        = 16
 	maximumPasswordBytes        = 1024
 	kdfMemoryKiB                = 262144
