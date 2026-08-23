@@ -91,7 +91,8 @@ Module that owns its full duty lifecycle. `cmd/ardents-node` configures
 runtime to compose or import. The Node process and lifecycle behavior tests
 continue to exercise the same public Node seam. State now supplies a narrow
 opaque Node-duty view, so the command no longer copies a broad `Snapshot` into
-Node facts.
+Node facts. The resulting immutable facts are private Node implementation;
+the only cross-Module contract is the consumer-owned `DutyView`.
 
 ## Completed wave records
 

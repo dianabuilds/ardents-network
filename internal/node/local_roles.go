@@ -7,7 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 )
 
-func retainLocalDuty(config runtimeConfig, snapshot Facts, state string) error {
+func retainLocalDuty(config runtimeConfig, snapshot dutyFacts, state string) error {
 	roles, err := duty.Open(duty.Config{Root: config.LocalRoleStateRoot, Clock: config.now, Create: true})
 	if err != nil {
 		return err

@@ -21,7 +21,7 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 			runErr = errors.Join(runErr, releaseLocalDuty(config))
 		}
 	}()
-	if err := emitState(config, machine, Facts{}, "process started"); err != nil {
+	if err := emitState(config, machine, dutyFacts{}, "process started"); err != nil {
 		return Result{State: stateNames[stateFailed], Reason: err.Error()}, err
 	}
 	ticker := time.NewTicker(config.PollInterval)
@@ -64,7 +64,7 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	}
 }
 
-func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, snapshot Facts) (Result, error) {
+func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, snapshot dutyFacts) (Result, error) {
 	if err := retainLocalDuty(config, snapshot, "quarantined"); err != nil {
 		return fail(config, machine, nil, "local role state is unavailable", err)
 	}
@@ -162,7 +162,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	}
 }
 
-func emitResourceDiagnostic(config runtimeConfig, snapshot Facts, at time.Time, sample resource.Sample) error {
+func emitResourceDiagnostic(config runtimeConfig, snapshot dutyFacts, at time.Time, sample resource.Sample) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource-sample", State: "OBSERVED", At: at,
@@ -170,7 +170,7 @@ func emitResourceDiagnostic(config runtimeConfig, snapshot Facts, at time.Time, 
 		AssignmentDigest: snapshot.AssignmentDigest, Resource: &sample})
 }
 
-func emitResourceState(config runtimeConfig, snapshot Facts, state, reason string) error {
+func emitResourceState(config runtimeConfig, snapshot dutyFacts, state, reason string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource", State: state, At: config.now(),
@@ -178,7 +178,7 @@ func emitResourceState(config runtimeConfig, snapshot Facts, state, reason strin
 		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot Facts, reason string) (Result, error) {
+func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot dutyFacts, reason string) (Result, error) {
 	server.Stop()
 	if err := moveAndEmit(config, machine, stateDraining, snapshot, reason); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
@@ -195,7 +195,7 @@ func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reas
 		server.Stop()
 	}
 	if moveErr := machine.move(stateFailed); moveErr == nil {
-		_ = emitState(config, *machine, Facts{}, reason)
+		_ = emitState(config, *machine, dutyFacts{}, reason)
 	}
 	if server != nil {
 		server.Drain(context.Background())
@@ -203,7 +203,7 @@ func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reas
 	return Result{State: stateNames[stateFailed], Reason: reason}, cause
 }
 
-func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot Facts, cause error) (Result, error) {
+func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot dutyFacts, cause error) (Result, error) {
 	if machine.current != statePrepared {
 		return fail(config, machine, nil, "shutdown before assignment admission", cause)
 	}
@@ -214,20 +214,20 @@ func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot F
 	return resultFor(machine, snapshot, "shutdown before assignment admission"), cause
 }
 
-func sameDuty(first, second Facts) bool {
+func sameDuty(first, second dutyFacts) bool {
 	return first.Digest == second.Digest && first.NodeID == second.NodeID &&
 		first.AssignmentDigest == second.AssignmentDigest
 }
 
-func currentFacts(config runtimeConfig) (Facts, error) {
+func currentFacts(config runtimeConfig) (dutyFacts, error) {
 	view, err := config.Current()
 	if err != nil {
-		return Facts{}, err
+		return dutyFacts{}, err
 	}
 	if view == nil {
-		return Facts{}, errors.New("Node duty view is unavailable")
+		return dutyFacts{}, errors.New("node duty view is unavailable")
 	}
-	return Facts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
+	return dutyFacts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
 		Digest: view.DutyDigest(), EpochValidFrom: view.DutyEpochValidFrom(), ValidUntil: view.DutyValidUntil(),
 		Profile: view.DutyProfile(), Fresh: view.DutyFresh(), Conflicting: view.DutyConflicting(),
 		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(),
@@ -237,21 +237,21 @@ func currentFacts(config runtimeConfig) (Facts, error) {
 		AssignmentDigest: view.DutyAssignmentDigest()}, nil
 }
 
-func newProbeDuty(snapshot Facts) probeDuty {
+func newProbeDuty(snapshot dutyFacts) probeDuty {
 	return probeDuty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
 		AssignmentDigest: snapshot.AssignmentDigest, EpochValidFrom: snapshot.EpochValidFrom,
 		EpochValidUntil: snapshot.ValidUntil, RecordValidFrom: snapshot.RecordValidFrom,
 		RecordValidUntil: snapshot.RecordValidUntil, Capacity: snapshot.ProbeCapacity}
 }
 
-func moveAndEmit(config runtimeConfig, machine *stateMachine, next lifecycleState, snapshot Facts, reason string) error {
+func moveAndEmit(config runtimeConfig, machine *stateMachine, next lifecycleState, snapshot dutyFacts, reason string) error {
 	if err := machine.move(next); err != nil {
 		return err
 	}
 	return emitState(config, *machine, snapshot, reason)
 }
 
-func emitState(config runtimeConfig, machine stateMachine, snapshot Facts, reason string) error {
+func emitState(config runtimeConfig, machine stateMachine, snapshot dutyFacts, reason string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "lifecycle", State: machine.name(), At: config.now(),
@@ -259,7 +259,7 @@ func emitState(config runtimeConfig, machine stateMachine, snapshot Facts, reaso
 		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func resultFor(machine *stateMachine, snapshot Facts, reason string) Result {
+func resultFor(machine *stateMachine, snapshot dutyFacts, reason string) Result {
 	return Result{State: machine.name(), Epoch: snapshot.Epoch, Assignment: snapshot.Assignment,
 		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason}
 }

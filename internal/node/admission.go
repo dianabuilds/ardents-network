@@ -67,7 +67,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	return config, nil
 }
 
-func assessAdmission(config runtimeConfig, snapshot Facts) admission {
+func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 	if !snapshot.RecordPresent || snapshot.NodeID != config.NodeID {
 		return admission{kind: admissionAbsent, reason: "local Node has no accepted materialized record"}
 	}

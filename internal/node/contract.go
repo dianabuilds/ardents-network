@@ -35,9 +35,9 @@ type DutyView interface {
 	DutyAssignmentDigest() [32]byte
 }
 
-// Facts is the Node-owned immutable copy of one DutyView. It is also useful to
+// dutyFacts is the Node-owned immutable copy of one DutyView. It is also useful to
 // behavior-test the lifecycle without a Network State runtime.
-type Facts struct {
+type dutyFacts struct {
 	Generation       string
 	NetworkID        [32]byte
 	Epoch            uint64
@@ -79,25 +79,25 @@ type Config struct {
 	Emit func(context.Context, Event) error
 }
 
-func (facts Facts) DutyGeneration() string          { return facts.Generation }
-func (facts Facts) DutyNetworkID() [32]byte         { return facts.NetworkID }
-func (facts Facts) DutyEpoch() uint64               { return facts.Epoch }
-func (facts Facts) DutyDigest() [32]byte            { return facts.Digest }
-func (facts Facts) DutyEpochValidFrom() time.Time   { return facts.EpochValidFrom }
-func (facts Facts) DutyValidUntil() time.Time       { return facts.ValidUntil }
-func (facts Facts) DutyProfile() string             { return facts.Profile }
-func (facts Facts) DutyFresh() bool                 { return facts.Fresh }
-func (facts Facts) DutyConflicting() bool           { return facts.Conflicting }
-func (facts Facts) DutyRecordPresent() bool         { return facts.RecordPresent }
-func (facts Facts) DutyNodeID() [32]byte            { return facts.NodeID }
-func (facts Facts) DutyNodePublicKey() [32]byte     { return facts.NodePublicKey }
-func (facts Facts) DutyRecordValidFrom() time.Time  { return facts.RecordValidFrom }
-func (facts Facts) DutyRecordValidUntil() time.Time { return facts.RecordValidUntil }
-func (facts Facts) DutyDeclaredFamily() string      { return facts.DeclaredFamily }
-func (facts Facts) DutyProbeEndpoint() string       { return facts.ProbeEndpoint }
-func (facts Facts) DutyProbeCapacity() uint16       { return facts.ProbeCapacity }
-func (facts Facts) DutyAssignment() string          { return facts.Assignment }
-func (facts Facts) DutyAssignmentDigest() [32]byte  { return facts.AssignmentDigest }
+func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }
+func (facts dutyFacts) DutyNetworkID() [32]byte         { return facts.NetworkID }
+func (facts dutyFacts) DutyEpoch() uint64               { return facts.Epoch }
+func (facts dutyFacts) DutyDigest() [32]byte            { return facts.Digest }
+func (facts dutyFacts) DutyEpochValidFrom() time.Time   { return facts.EpochValidFrom }
+func (facts dutyFacts) DutyValidUntil() time.Time       { return facts.ValidUntil }
+func (facts dutyFacts) DutyProfile() string             { return facts.Profile }
+func (facts dutyFacts) DutyFresh() bool                 { return facts.Fresh }
+func (facts dutyFacts) DutyConflicting() bool           { return facts.Conflicting }
+func (facts dutyFacts) DutyRecordPresent() bool         { return facts.RecordPresent }
+func (facts dutyFacts) DutyNodeID() [32]byte            { return facts.NodeID }
+func (facts dutyFacts) DutyNodePublicKey() [32]byte     { return facts.NodePublicKey }
+func (facts dutyFacts) DutyRecordValidFrom() time.Time  { return facts.RecordValidFrom }
+func (facts dutyFacts) DutyRecordValidUntil() time.Time { return facts.RecordValidUntil }
+func (facts dutyFacts) DutyDeclaredFamily() string      { return facts.DeclaredFamily }
+func (facts dutyFacts) DutyProbeEndpoint() string       { return facts.ProbeEndpoint }
+func (facts dutyFacts) DutyProbeCapacity() uint16       { return facts.ProbeCapacity }
+func (facts dutyFacts) DutyAssignment() string          { return facts.Assignment }
+func (facts dutyFacts) DutyAssignmentDigest() [32]byte  { return facts.AssignmentDigest }
 
 // Event is one bounded external observation of Node lifecycle state.
 type Event struct {

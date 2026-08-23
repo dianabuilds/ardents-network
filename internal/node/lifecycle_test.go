@@ -32,7 +32,7 @@ var testProbeProfile = sha256.Sum256([]byte("h3-role-probe-v1"))
 
 type lifecycleFixture struct {
 	config      Config
-	snapshot    Facts
+	snapshot    dutyFacts
 	serverRoots *x509.CertPool
 	client      tls.Certificate
 	serverName  string
@@ -280,7 +280,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	server := createCertificate(t, &ca, "node.test", false)
 	client := createCertificate(t, &ca, "harness.test", false)
 	address := reserveAddress(t)
-	snapshot := Facts{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
+	snapshot := dutyFacts{Generation: "generation-1", NetworkID: [32]byte{1}, Epoch: 1,
 		Digest: [32]byte{3}, EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour),
 		Profile: "h3-role-probe-v1", Fresh: true, RecordPresent: true, NodeID: [32]byte{2}, DeclaredFamily: "family-a",
 		RecordValidFrom: now.Add(-time.Hour), RecordValidUntil: now.Add(time.Hour), ProbeEndpoint: address, ProbeCapacity: 4,
@@ -375,7 +375,7 @@ func probeClientTLS(fixture *lifecycleFixture) *tls.Config {
 		ServerName: fixture.serverName, Certificates: []tls.Certificate{fixture.client}, SessionTicketsDisabled: true}
 }
 
-func encodeProbeRequest(snapshot Facts, nonce [32]byte, payload []byte) []byte {
+func encodeProbeRequest(snapshot dutyFacts, nonce [32]byte, payload []byte) []byte {
 	request := make([]byte, testProbeHeaderBytes+testProbePayloadBytes)
 	copy(request, "ARNP")
 	request[4] = 1
