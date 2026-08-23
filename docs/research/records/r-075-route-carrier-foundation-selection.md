@@ -111,8 +111,13 @@ not a reason to mislabel the tracer as a foundation.
 ## Disposition
 
 **Accepted H0 on 2026-08-23 under the Product Owner's standing Stage 8
-delegation.** DA-06 remains open: H0 is an explicit non-selection, not an
-authorization to implement a substitute. M7--M9 remain frozen. R-013 stays
-active for a future profile-bound candidate; WebTunnel remains only the H3
-Adapter selected by ADR-0012. No ADR is created because this record selects no
-technology, protocol, or format.
+delegation.** At this point DA-06 remained open: H0 was an explicit
+non-selection, not an authorization to implement a substitute. R-013 stayed
+active for a future profile-bound candidate and WebTunnel remained only the H3
+Adapter selected by ADR-0012. No ADR was created because this record selected
+no technology, protocol, or format.
+
+**Subsequent disposition, 2026-08-23:** R-076 supplied the missing concrete
+native Profile and ADR-0024 selected it. DA-06 is therefore closed for
+M7--M9. This record's rejection of promoting the existing H3 tracer, Tor/Arti,
+libp2p Circuit Relay, or WebTunnel remains in force.

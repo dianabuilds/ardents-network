@@ -32,6 +32,7 @@ Current decisions:
 - [0021 — Use password-derived Authority Custody](0021-use-password-derived-authority-custody.md)
 - [0022 — Bind Target validity in the signed Name Record](0022-bind-name-record-validity.md)
 - [0023 — Persist signed Namespace successors before materialization](0023-pending-signed-namespace-successors.md)
+- [0024 — Select the native Interactive Route foundation](0024-native-interactive-route-foundation.md)
 
 Withdrawn decisions retained for history:
 

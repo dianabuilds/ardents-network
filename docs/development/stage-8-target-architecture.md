@@ -35,7 +35,7 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | `endpoint` | Local process composition, readiness, signal/drain order, terminal cleanup, and one terminal result. | Replace command/`serviceendpoint` choreography; owns no domain state. | M10 selects the Broker/Isolation process boundary. |
 | `application/broker` | Volatile Application/Admin/Custody Principal, Grant, session, revocation, and drain tree. | Replaces split `applicationipc`/`serviceconn` admission logic. | DA-08 platform/process profile. |
 | `application/isolation` | One admitted native sandbox/process lifetime and its terminal observation; no product truth. | New concrete platform Adapter, never a boolean capability bag. | DA-08 and platform evidence. |
-| `service/connection` | One live authenticated byte stream, replay/cutover state, bounded buffers, and terminal outcome. | Deepen `serviceconn`; remove operation/evidence unions and static plan authority. | DA-06 decides retained Route protocol representation. |
+| `service/connection` | One live authenticated byte stream, replay/cutover state, bounded buffers, and terminal outcome. | Deepen `serviceconn`; remove operation/evidence unions and static plan authority. | R-076/ADR-0024 bind it to `ardents-interactive-route-v1`; it owns recovery, not Route selection. |
 | `service/publication` | Instance generation, private material, admissions, unpublish/drain/erase, and crash-atomic publication. | Extract from connection/endpoint choreography. | Publication observer and format rule from DA-10. |
 | `naming/namespace` | Authority, Lease, Claim, Recovery, admission, durable generation, and bounded materialization. | Consolidate six Namespace-state packages beneath the cohesive canonical `naming` vocabulary package; no shared generic store is presumed. | DA-03, DA-04, DA-05, and DA-07 as applicable. |
 | `naming/resolution` | Private resolution/control exchange, gateway binding, replay state, and observer-safe counters. | Deepen `nameresolution` over opaque Namespace/State views; no plaintext fallback. | DA-03, DA-04, and DA-07. |
@@ -43,9 +43,8 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | `network/source` | State-owned acquisition port and bounded transport observations, never accepted state. | Retain one direct-origin Adapter only while selected. | Source protocol/compatibility decision under DA-05/DA-10. |
 | `network/duty` | Durable local role-domain generations, watermark, expiry, and conflicts. | Replace `localroles`; State/Node/Route/Entry consume opaque duty facts. | D02 cutover and restart rule. |
 | `resource` | Linux cgroup-v2/rlimit process profile, measurements, reservations, hysteresis, pressure state, and finite releases; explicit unsupported-platform refusal elsewhere. | Retain/deepen current resource owner; native metrics are concrete platform Adapters. | R-062 H1: Linux only until a native Adapter has measured acceptance. |
-| `entry` | Durable Invite/replay/contact history, replacement, and finite acquisition attempts. | Replace `bridge` state/callback ownership. | DA-06 for retained Carrier/Route mechanism. |
-| `route` | One Route selection and volatile role/attachment lifetime, capacity, cutover, and cleanup. | Absorb `routeplan`; consumes opaque View/Duty/Resource/Entry facts. | DA-06. |
-| `route/webtunnel` | Pinned candidate child, local front connection, temporary root, join, and cleanup. | Conditional concrete Route/Entry Adapter replacing `camouflage`. | DA-06; otherwise delete rather than rename. |
+| `entry` | Durable Invite/replay/contact history, replacement, and finite acquisition attempts. | Replace `bridge` state/callback ownership. | R-076/ADR-0024: adjacent TCP/TLS candidate only; it never selects a complete Route. |
+| `route` | One Route selection and volatile role/attachment lifetime, capacity, cutover, and cleanup. | Absorb `routeplan`; consumes opaque View/Duty/Resource/Entry facts. | R-076/ADR-0024 selects the native Profile. |
 | `node` | One Contributor duty admission, quarantine, listener/probe, protect/drain/withdraw, and joined cleanup. | Fold `node/probe`; no State-root or assignment authority. | D02 and selected Resource/platform contract. |
 | `release` | Verified metadata result, roots/floors/archive, lease, and opaque update authorization. | Own the release verifier and keep floor persistence private. | DA-01 before D06 mutation. |
 | `update` | Staging, predecessor/rollback, technical-tracer activation/self-test, journal, recovery, and cleanup. | Deepen `updatetransaction`; consumes unforgeable Release authorization and owns no Custody state. | R-064 limits M2 to one offline H3 tracer; a supported lifecycle reopens DA-09. |
@@ -64,7 +63,7 @@ endpoint -> application/broker, service/publication, service/connection, route
 application/broker -> application/isolation (platform adapter only)
 service/connection -> route
 route -> entry, network/duty, resource, network/state views
-entry -> route/webtunnel (only if DA-06 retains it)
+entry -> selected adjacent TCP/TLS carrier
 node -> network/duty, resource, network/state views, route views
 network/state -> network/source (caller-owned acquisition port)
 naming/resolution -> naming/namespace views, network/state views
@@ -73,7 +72,7 @@ custody -> application/broker/isolation ports; never release or update state
 ```
 
 Forbidden target direction includes product Modules to `internal/lab`, test
-harnesses, `experiments`, or `scripts`; `route/webtunnel` to Route policy;
+harnesses, `experiments`, or `scripts`; an Entry Carrier to Route policy;
 `network/source` to accepted State; `service/connection` to Namespace; and
 Custody to Endpoint/Release/Update state. Platform and external dependencies
 remain concrete Adapters at their consumer boundary.
@@ -135,7 +134,7 @@ are not Go packages and do not represent a retained test surface.
 | `internal/applicationipc`, `internal/serviceendpoint` | Transfer Application/admin process boundary and composition to Broker/Publication/Endpoint. | M9/M10, subject to DA-08/10. |
 | `internal/serviceconn` | Transfer stream behavior to `service/connection`; remove action/evidence/static-plan unions. | M9, subject to DA-06/10. |
 | `internal/bridge` | Transfer durable Invite/replay/replacement ownership to `entry`. | M7, subject to DA-06. |
-| `internal/camouflage` | Transfer to `route/webtunnel` only if selected; otherwise delete. | M7, subject to DA-06. |
+| `internal/camouflage` | Delete: R-076/ADR-0024 retire the H3 WebTunnel adapter from the maintained Profile. | M7. |
 | `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
 | `internal/network/duty` | Own the retained durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth. | M4 D02 C1 cutover; preserve the existing root format and one writer. |
 | `internal/naming` | Retain the cohesive canonical Service Name V1 parser and encoder as the parent Namespace vocabulary package. | M5 retains it with its exact R-041 responsibility; no generic naming utility surface. |
