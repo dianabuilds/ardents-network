@@ -352,13 +352,19 @@ M9 deletion inputs. ADR-0028's native connection grammar, vectors and its
 new focused caller replace them in the next M9 slice; this partial cutover
 does not claim that R-083 is implemented or that M9 is complete.
 
-The first R-083 cutover now places the Data, Acknowledgement, and Terminal
-wire records in `service/connection`: each is an exact
-`ardents-service-connection-v1` envelope with an exact profile, closed kind,
-whole-body parser, and a 16 KiB Data bound. The temporary adapter calls that
-codec, so the old `ASCF` reader/writer is gone. Instance Challenge/Proof and
-Continuity remain explicit next-slice inputs; until they move, M9 must not be
-reported as an ADR-0028-complete connection implementation.
+R-083's native wire now owns all six records in `service/connection`: exact
+ConnectionContext, Instance Challenge/Proof, deterministic exporter-bound
+Continuity, Data, Acknowledgement, and Terminal. Each is one exact
+`ardents-service-connection-v1` envelope with the fixed native Profile,
+closed kind, whole-body parser, and a 16 KiB Data bound. The temporary adapter
+uses that codec for the live TLS proof, every fresh attachment, and stream
+records, so the old `ASCF`, `ASAT`, `ASCH`, `ASPR`, associated H3 exporter
+labels, and connection-binding tags are gone. The native codec's fixed context
+vector and mutation tests, together with the retained Service Connection
+recovery suite, cover profile/kind/length, proof/context, continuity MAC, and
+offset/terminal refusal. This completes the R-083 grammar transfer, but M9 is
+still open until `service/connection` owns stream state and the temporary
+`serviceconn` action/result adapter is deleted.
 
 ## Dependency and retirement rules
 

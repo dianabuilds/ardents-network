@@ -71,9 +71,9 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 			var attachment *securedAttachment
 			var fresh [32]byte
 			if stream.client {
-				attachment, fresh, err = secureClient(attempt, raw, stream.credential, stream.binding, generation)
+				attachment, fresh, err = secureClient(attempt, raw, stream.credential, stream.context, generation)
 			} else {
-				attachment, fresh, err = securePublisher(attempt, raw, stream.credential, stream.private, stream.binding, generation)
+				attachment, fresh, err = securePublisher(attempt, raw, stream.credential, stream.private, stream.context, generation)
 			}
 			erase(fresh[:])
 			if errors.Is(err, errInstanceMismatch) {

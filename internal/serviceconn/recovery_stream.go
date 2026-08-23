@@ -29,6 +29,7 @@ type recoveryStream struct {
 	client      bool
 	opener      func(context.Context, Recovery) (net.Conn, error)
 	continuity  [32]byte
+	context     [32]byte
 	ackSignal   chan struct{}
 	authorized  time.Time
 	started     time.Time
@@ -83,6 +84,7 @@ func newRecoveryStream(ctx context.Context, application io.ReadWriteCloser, cred
 	now := time.Now()
 	stream := &recoveryStream{ctx: ctx, application: application, credential: credential, binding: binding,
 		private: private, client: client, opener: opener, current: initial, continuity: continuity,
+		context:   initial.context,
 		ackSignal: make(chan struct{}, 1), authorized: authorized, started: now, lastProgress: now,
 		nameBinding: nameBinding, nameUpdates: nameUpdates, done: make(chan struct{}), resources: resources}
 	stream.cond = sync.NewCond(&stream.mu)

@@ -12,14 +12,15 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/binary"
 	"errors"
 	"math/big"
 	"net"
 	"time"
+
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-const exporterLabel = "EXPORTER-ardents-h3-service-continuity-v1"
+const exporterLabel = "EXPORTER-ardents-service-connection-v1"
 
 var errInstanceMismatch = errors.New("service Instance certificate does not match the current Credential")
 
@@ -27,6 +28,7 @@ type securedAttachment struct {
 	connection         *tls.Conn
 	transport          net.Conn
 	generation         uint64
+	context            [32]byte
 	exporterCommitment [32]byte
 }
 
@@ -37,7 +39,7 @@ func (attachment *securedAttachment) close() {
 	_ = attachment.transport.Close()
 }
 
-func secureClient(ctx context.Context, raw net.Conn, credential Credential, binding Recovery,
+func secureClient(ctx context.Context, raw net.Conn, credential Credential, connectionContext [32]byte,
 	generation uint64) (*securedAttachment, [32]byte, error) {
 	config := &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
 		InsecureSkipVerify: true, SessionTicketsDisabled: true, VerifyConnection: verifyInstance(credential.InstancePublic)}
@@ -46,11 +48,11 @@ func secureClient(ctx context.Context, raw net.Conn, credential Credential, bind
 		raw.Close()
 		return nil, [32]byte{}, err
 	}
-	return exportedAttachment(connection, credential, binding, generation)
+	return exportedAttachment(connection, connectionContext, generation)
 }
 
 func securePublisher(ctx context.Context, raw net.Conn, credential Credential,
-	signer crypto.Signer, binding Recovery, generation uint64) (*securedAttachment, [32]byte, error) {
+	signer crypto.Signer, connectionContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
 	certificate, err := instanceCertificate(credential, signer)
 	if err != nil {
 		raw.Close()
@@ -63,48 +65,39 @@ func securePublisher(ctx context.Context, raw net.Conn, credential Credential,
 		raw.Close()
 		return nil, [32]byte{}, err
 	}
-	return exportedAttachment(connection, credential, binding, generation)
+	return exportedAttachment(connection, connectionContext, generation)
 }
 
-func exportedAttachment(connection *tls.Conn, credential Credential, recovery Recovery,
-	generation uint64) (*securedAttachment, [32]byte, error) {
-	binding := connectionBinding(credential, recovery)
+func exportedAttachment(connection *tls.Conn, connectionContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
+	if connectionContext == [32]byte{} {
+		_ = connection.Close()
+		return nil, [32]byte{}, errors.New("native ConnectionContext is absent")
+	}
 	state := connection.ConnectionState()
-	material, err := state.ExportKeyingMaterial(exporterLabel, binding[:], 32)
+	material, err := state.ExportKeyingMaterial(exporterLabel, connectionContext[:], 32)
 	if err != nil {
 		_ = connection.Close()
 		return nil, [32]byte{}, err
 	}
 	key := hmac.New(sha256.New, material)
-	_, _ = key.Write([]byte("ardents-h3-continuity-key-v1\x00"))
+	_, _ = key.Write([]byte("ardents-service-connection-continuity-key-v1\x00"))
 	continuityBytes := key.Sum(nil)
 	var continuity [32]byte
 	copy(continuity[:], continuityBytes)
 	erase(material)
 	erase(continuityBytes)
-	exporterCommitment := sha256.Sum256(append([]byte("ardents-h3-exporter-commitment-v1\x00"), continuity[:]...))
+	exporterCommitment := sha256.Sum256(append([]byte("ardents-service-connection-exporter-v1\x00"), continuity[:]...))
 	return &securedAttachment{connection: connection, generation: generation,
-		transport: connection.NetConn(), exporterCommitment: exporterCommitment}, continuity, nil
+		context: connectionContext, transport: connection.NetConn(), exporterCommitment: exporterCommitment}, continuity, nil
 }
 
-func connectionBinding(credential Credential, recovery Recovery) [32]byte {
-	value := make([]byte, 0, 512)
-	value = append(value, "ardents-h3-connection-binding-v1\x00"...)
-	value = append(value, credential.Target[:]...)
-	value = append(value, credential.InstancePublic[:]...)
-	value = append(value, credential.NetworkID[:]...)
-	value = append(value, legacyCredentialBody(credential)...)
-	value = append(value, recovery.CandidateView[:]...)
-	value = append(value, recovery.IsolationContext[:]...)
-	value = append(value, recovery.DestinationBinding[:]...)
-	value = append(value, byte(len(recovery.RouteProfile)))
-	value = append(value, recovery.RouteProfile...)
-	for _, bound := range []int64{recovery.WorkSafetyNotAfter, recovery.WorkSafetyMaximum, recovery.NoNewRecoveryAfter} {
-		encoded := make([]byte, 8)
-		binary.BigEndian.PutUint64(encoded, uint64(bound))
-		value = append(value, encoded...)
-	}
-	return sha256.Sum256(value)
+func connectionContext(credential Credential, recovery Recovery, publicationDigest [32]byte) ([32]byte, error) {
+	return nativeconnection.Context(nativeconnection.ContextInput{Network: credential.NetworkID, Target: credential.Target,
+		InstancePublic: credential.InstancePublic, PublicationDigest: publicationDigest,
+		InstanceGeneration: credential.Generation, CandidateView: recovery.CandidateView,
+		IsolationContext: recovery.IsolationContext, DestinationBinding: recovery.DestinationBinding,
+		WorkSafetyNotAfter: recovery.WorkSafetyNotAfter, WorkSafetyMaximum: recovery.WorkSafetyMaximum,
+		NoNewRecoveryAfter: recovery.NoNewRecoveryAfter})
 }
 
 func verifyInstance(expected [32]byte) func(tls.ConnectionState) error {

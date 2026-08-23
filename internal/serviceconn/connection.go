@@ -5,13 +5,12 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
-	"encoding/binary"
+	"crypto/sha256"
 	"errors"
 	"io"
-)
 
-const challengeSize = 4 + 1 + 32 + 8 + 32
-const proofSize = 4 + 1 + ed25519.SignatureSize
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
+)
 
 func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, error) {
 	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
@@ -31,6 +30,11 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, e
 		return failed("local authorization or policy denial", "recovery binding is invalid", err)
 	}
 	binding := input.RecoveryBinding
+	publicationDigest := sha256.Sum256(input.Publication)
+	connectionContext, err := connectionContext(credential, binding, publicationDigest)
+	if err != nil {
+		return failed("service target authentication failure", "native Service Connection context is invalid", err)
+	}
 	releaseConnection := acquireResource(endpoint.resources, "service-connection")
 	defer releaseConnection()
 	defer input.Route.Close()
@@ -39,11 +43,11 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, e
 		_ = input.Application.Close()
 	})
 	defer stop()
-	attachment, continuity, err := secureClient(ctx, input.Route, credential, binding, 1)
+	attachment, continuity, err := secureClient(ctx, input.Route, credential, connectionContext, 1)
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance TLS proof failed", err)
 	}
-	canary, err := authenticateInstance(attachment.connection, credential)
+	canary, err := authenticateInstance(attachment.connection, credential, connectionContext)
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
@@ -87,17 +91,21 @@ func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, er
 		return failed("local authorization or policy denial", "recovery binding is invalid", err)
 	}
 	binding := input.RecoveryBinding
+	connectionContext, contextErr := connectionContext(credential, binding, lease.Current().Digest)
+	if contextErr != nil {
+		return failed("service target authentication failure", "native Service Connection context is invalid", contextErr)
+	}
 	defer input.Route.Close()
 	stop := context.AfterFunc(ctx, func() {
 		_ = input.Route.Close()
 		_ = input.Application.Close()
 	})
 	defer stop()
-	attachment, continuity, err := securePublisher(ctx, input.Route, credential, lease, binding, 1)
+	attachment, continuity, err := securePublisher(ctx, input.Route, credential, lease, connectionContext, 1)
 	if err != nil {
 		return failed("service target authentication failure", "incoming Service Instance TLS proof failed", err)
 	}
-	canary, err := proveInstance(attachment.connection, credential, lease)
+	canary, err := proveInstance(attachment.connection, credential, connectionContext, lease)
 	if err != nil {
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
@@ -161,58 +169,51 @@ func validateRecoveryBinding(input Request, credential Credential) error {
 	return nil
 }
 
-func authenticateInstance(connection io.ReadWriter, credential Credential) ([32]byte, error) {
+func authenticateInstance(connection io.ReadWriter, credential Credential, connectionContext [32]byte) ([32]byte, error) {
 	var canary [32]byte
-	challenge := make([]byte, challengeSize)
-	copy(challenge[:4], "ASCH")
-	challenge[4] = 1
-	copy(challenge[5:37], credential.Target[:])
-	binary.BigEndian.PutUint64(challenge[37:45], credential.Generation)
-	if _, err := rand.Read(challenge[45:]); err != nil {
+	if _, err := rand.Read(canary[:]); err != nil {
 		return canary, err
 	}
-	copy(canary[:], challenge[45:])
-	if err := writeAll(connection, challenge); err != nil {
+	challenge := nativeconnection.Challenge{Network: credential.NetworkID, Target: credential.Target,
+		InstanceGeneration: credential.Generation, Context: connectionContext, Nonce: canary}
+	if err := nativeconnection.Write(connection, nativeconnection.Record{Challenge: &challenge}); err != nil {
 		return canary, err
 	}
-	proof := make([]byte, proofSize)
-	if _, err := io.ReadFull(connection, proof); err != nil {
+	record, err := nativeconnection.Read(connection)
+	if err != nil {
 		return canary, err
 	}
-	if string(proof[:4]) != "ASPR" || proof[4] != 1 ||
-		!ed25519.Verify(ed25519.PublicKey(credential.InstancePublic[:]), proofMessage(challenge), proof[5:]) {
+	digest, err := nativeconnection.ChallengeDigest(challenge)
+	if err != nil || record.Proof == nil || record.Proof.ChallengeDigest != digest ||
+		!ed25519.Verify(ed25519.PublicKey(credential.InstancePublic[:]), digest[:], record.Proof.Signature[:]) {
 		return canary, errors.New("instance proof is invalid")
 	}
 	return canary, nil
 }
 
-func proveInstance(connection io.ReadWriter, credential Credential, signer crypto.Signer) ([32]byte, error) {
+func proveInstance(connection io.ReadWriter, credential Credential, connectionContext [32]byte, signer crypto.Signer) ([32]byte, error) {
 	var canary [32]byte
-	challenge := make([]byte, challengeSize)
-	if _, err := io.ReadFull(connection, challenge); err != nil {
+	record, err := nativeconnection.Read(connection)
+	if err != nil {
 		return canary, err
 	}
-	if string(challenge[:4]) != "ASCH" || challenge[4] != 1 ||
-		!equal32(challenge[5:37], credential.Target) || binary.BigEndian.Uint64(challenge[37:45]) != credential.Generation {
+	challenge := record.Challenge
+	if challenge == nil || challenge.Network != credential.NetworkID || challenge.Target != credential.Target ||
+		challenge.InstanceGeneration != credential.Generation || challenge.Context != connectionContext {
 		return canary, errors.New("connection challenge does not bind current Target and generation")
 	}
-	copy(canary[:], challenge[45:])
-	proof := make([]byte, proofSize)
-	copy(proof[:4], "ASPR")
-	proof[4] = 1
-	signature, err := signer.Sign(nil, proofMessage(challenge), crypto.Hash(0))
+	canary = challenge.Nonce
+	digest, err := nativeconnection.ChallengeDigest(*challenge)
+	if err != nil {
+		return canary, err
+	}
+	signature, err := signer.Sign(nil, digest[:], crypto.Hash(0))
 	if err != nil || len(signature) != ed25519.SignatureSize {
 		return canary, errors.New("Instance signer cannot prove this connection")
 	}
-	copy(proof[5:], signature)
-	return canary, writeAll(connection, proof)
-}
-
-func proofMessage(challenge []byte) []byte {
-	message := make([]byte, 0, 30+len(challenge))
-	message = append(message, "ardents-h3-instance-proof-v1\x00"...)
-	message = append(message, challenge...)
-	return message
+	var proof [64]byte
+	copy(proof[:], signature)
+	return canary, nativeconnection.Write(connection, nativeconnection.Record{Proof: &nativeconnection.Proof{ChallengeDigest: digest, Signature: proof}})
 }
 
 func equal32(value []byte, expected [32]byte) bool {
