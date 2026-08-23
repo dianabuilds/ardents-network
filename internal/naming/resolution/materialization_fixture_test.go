@@ -7,17 +7,17 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 type namespaceFixture struct {
-	policy  namespace.MaterializationPolicy
+	policy  epoch.MaterializationPolicy
 	signers []ed25519.PrivateKey
 }
 
 func testNamespaceFixture(network [32]byte, label string) namespaceFixture {
-	value := namespaceFixture{policy: namespace.MaterializationPolicy{Network: network,
+	value := namespaceFixture{policy: epoch.MaterializationPolicy{Network: network,
 		Rule: "ardents-namespace-materialization-v1", Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}}
 	for index := 0; index < 3; index++ {
 		seed := sha256.Sum256([]byte(label + string(rune('0'+index))))
@@ -29,9 +29,9 @@ func testNamespaceFixture(network [32]byte, label string) namespaceFixture {
 	return value
 }
 
-func (value namespaceFixture) commit(t *testing.T, store *namespace.Store, epoch uint64, signed [][]byte) {
+func (value namespaceFixture) commit(t *testing.T, store *epoch.Store, number uint64, signed [][]byte) {
 	t.Helper()
-	materialization := namespace.Epoch{Number: epoch, Digest: [32]byte{byte(epoch)}, CutoffOffset: int64(epoch),
+	materialization := epoch.Epoch{Number: number, Digest: [32]byte{byte(number)}, CutoffOffset: int64(number),
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: uint32(len(signed)),
 		RejectionRoot: sha256.Sum256([]byte("rejections"))}
 	if err := store.CommitLegacy(materialization, signed, value.attest); err != nil {
@@ -57,7 +57,7 @@ func (value namespaceFixture) attest(transcript []byte) ([][32]byte, [][]byte, e
 	return ids, signatures, nil
 }
 
-func bindNamespacePolicy(view *state.Snapshot, policy namespace.MaterializationPolicy) {
+func bindNamespacePolicy(view *state.Snapshot, policy epoch.MaterializationPolicy) {
 	ids := make([][32]byte, 0, len(policy.Authorities))
 	for id := range policy.Authorities {
 		ids = append(ids, id)

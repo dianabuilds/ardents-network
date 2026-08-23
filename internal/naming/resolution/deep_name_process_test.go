@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 )
 
@@ -21,7 +23,7 @@ func TestDeepestLegalNameResolvesThroughSeparateRoles(t *testing.T) {
 	name, signed := deepProcessRecords(t, network, authority, now)
 	materialization := testNamespaceFixture(network, "deep-process-namespace")
 	storeRoot := t.TempDir()
-	store, err := namespace.Open(storeRoot, materialization.policy)
+	store, err := epoch.Open(storeRoot, materialization.policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +46,7 @@ func TestDeepestLegalNameResolvesThroughSeparateRoles(t *testing.T) {
 	bindNamespacePolicy(&view, materialization.policy)
 	selection := nameresolution.Selection{At: now, Deadline: now.Add(15 * time.Second),
 		RelayNodeID: [32]byte{1}, GatewayNodeID: [32]byte{2}, ConnectionRendezvousNodeID: [32]byte{3}}
-	admission, err := namespace.NewAdmission([32]byte{2}, network, 1, bootSecret)
+	admission, err := admission.NewAdmission([32]byte{2}, network, 1, bootSecret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,18 +76,18 @@ func deepProcessRecords(t *testing.T, network [32]byte, authority ed25519.Privat
 	records := make([][]byte, 127)
 	for depth := 1; depth <= len(records); depth++ {
 		name := strings.Repeat("a.", depth-1) + "a"
-		record := namespace.Record{Name: name, Generation: 1, Revision: 1, Lease: "active",
+		value := record.Record{Name: name, Generation: 1, Revision: 1, Lease: "active",
 			Consistency: "current", Recovery: "stable", Authority: encodedAuthority,
 			LeaseExpiresAt: now.Add(time.Hour).Unix(), GraceExpiresAt: now.Add(2 * time.Hour).Unix(), Continuity: 1}
 		if depth > 1 {
-			record.ParentName = strings.Repeat("a.", depth-2) + "a"
-			record.ParentGeneration = 1
+			value.ParentName = strings.Repeat("a.", depth-2) + "a"
+			value.ParentGeneration = 1
 		}
 		if depth == len(records) {
-			record.Target, record.RecordNotAfter = [32]byte{1}, now.Add(30*time.Minute).UnixMilli()
+			value.Target, value.RecordNotAfter = [32]byte{1}, now.Add(30*time.Minute).UnixMilli()
 		}
 		var err error
-		records[depth-1], err = namespace.SignRecord(network, record, authority)
+		records[depth-1], err = record.SignRecord(network, value, authority)
 		if err != nil {
 			t.Fatal(err)
 		}
