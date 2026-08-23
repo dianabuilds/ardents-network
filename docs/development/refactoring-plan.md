@@ -75,7 +75,12 @@ fallback are C0 retired, with delayed, mismatch, and partial-handshake tests.
 It does not create an isolation claim. `serviceconn` remains the deliberately
 temporary M9 native connection/publication action-result adapter, so M10 is
 not complete until its action union is removed and Endpoint owns its final
-composition ports.
+composition ports. The remaining deletion cutover has no new forwarding
+Interface: Endpoint directly acquires a Publication lease, performs the
+role-local TLS carrier and exact-Instance exchange, and supplies the resulting
+opaque Attachment plus Application stream to `service/connection`. Broker
+remains only the Local Grant/receipt owner; Publication retains private
+Instance material and `service/connection` retains stream/recovery state.
 
 ## Completed wave records
 
