@@ -33,6 +33,9 @@ The live profile is inactive. A native peer-facing Route and the measured
 R-092 Node operating profile must exist before a new bounded live suite and
 its explicit entrypoint are registered. Docker or a development VPS can test a
 selected implementation path, but cannot select the missing operating profile.
+There is no generic `tests/live/` directory or implicit build tag; ADR-0031
+requires a selected scenario to own its purpose-named source boundary and
+complete lifecycle.
 
 ## Commands
 

@@ -35,6 +35,7 @@ Current decisions:
 - [0026 — Use the closed Interactive Route v1 wire](0026-interactive-route-v1-wire.md)
 - [0027 — Bind each Entry Invite to a fresh TLS attempt key](0027-entry-binding-v1.md)
 - [0028 — Use the native Service Connection v1 grammar](0028-native-service-connection-v1.md)
+- [0031 — Retire the generic live-test tree](0031-retire-generic-live-test-tree.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)

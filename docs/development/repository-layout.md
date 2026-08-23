@@ -8,8 +8,10 @@ This is the normative source for repository structure, Module growth, and Go
 dependency direction. [ADR-0010](../adr/0010-modular-monorepository.md) records
 the monorepository decision, while
 [ADR-0009](../adr/0009-go-project-foundation.md) selects the single root Go
-module. [Product scope](../product/scope.md) remains authoritative for what may
-be implemented now. The [package map](package-map.md) is a factual registry of
+module. [ADR-0031](../adr/0031-retire-generic-live-test-tree.md) retires the
+generic live-test tree while preserving an explicit future live-profile route.
+[Product scope](../product/scope.md) remains authoritative for what may be
+implemented now. The [package map](package-map.md) is a factual registry of
 packages that exist; it is not a roadmap.
 
 Ardents may contain several executables and runtime trust zones without

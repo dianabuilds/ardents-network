@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-08-15
+superseded_by: ADR-0031 (generic `tests/live/` location only)
 ---
 
 # Separate unit, end-to-end, and live tests
