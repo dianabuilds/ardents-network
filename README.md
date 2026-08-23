@@ -147,8 +147,8 @@ explicit C0/C2/C4 dispositions in the
 [Stage 8 target architecture](docs/development/stage-8-target-architecture.md)
 and [compatibility observer inventory](docs/development/stage-8-compatibility-observer-inventory.md).
 Current maintained Module ownership is recorded in the
-[package map](docs/development/package-map.md). Product work never grows inside
-or imports the frozen `internal/lab` quarantine.
+[package map](docs/development/package-map.md). R-091 retired the frozen lab
+quarantine; product work neither imports it nor revives its runners.
 
 The first completed maintained vertical slice was an Ubuntu-to-Ubuntu
 **Carrier Lab**. It
@@ -160,20 +160,11 @@ or public-network governance, and it makes no anonymity or decentralization
 claim. Its exact disposable technology and evidence contract is
 [R-013](docs/research/records/r-013-carrier-lab-technology-candidates.md).
 
-Carrier Lab is not a second repository, Go module, product runtime, or future
-top-level architecture. The repository has one root `go.mod`. `cmd/carrier-lab`
-is only its executable adapter; `internal/lab/carrier`,
-`internal/lab/tooling`, `internal/lab/preflight`, `internal/lab/directcontrol`, and
-`internal/lab/nativecircuit` are laboratory Modules; and `lab/carrier/` contains
-only four human-authored inputs needed to run them reproducibly: one Dockerfile,
-one Compose topology, and two immutable supply locks. Product
-Modules may later be promoted from accepted evidence, but never import the lab.
-
-All maintained laboratory source is quarantined under `internal/lab/`; its
-human-authored Docker and topology inputs are under `lab/`. The completed Gate C
-implementation is factually named `internal/lab/namedsite`, with the thin
-`cmd/named-site-lab` adapter. Future product Modules are created as cohesive
-siblings under `internal/<responsibility>` and cannot import laboratory code.
+Carrier Lab and Gate C are not product runtime or a future top-level
+architecture. R-091 removed their commands, Modules, Docker inputs, and manual
+workflows after their source-bound results closed. Future product Modules must
+be new cohesive owners under `internal/<responsibility>`; they cannot reactivate
+the closed H3 laboratory corpus.
 
 The native C-5/C2 laboratory implementation and frozen R-013 comparison are
 complete. Official Ubuntu run
@@ -258,7 +249,7 @@ system at once.
 - [Go engineering rules](docs/development/go-engineering.md)
 - [Repository layout and growth rules](docs/development/repository-layout.md)
 - [Current package map](docs/development/package-map.md)
-- [Carrier Lab preflight contract](docs/development/carrier-lab-preflight.md)
+- [Carrier Lab preflight record](docs/development/carrier-lab-preflight.md)
 - [Contributor workflow](CONTRIBUTING.md)
 - [Architecture decisions](docs/adr/README.md)
 - [H3 technical design](docs/development/horizon-3-technical-design.md)
@@ -298,14 +289,9 @@ retained cross-process behavior, and `make check` before integration. The
 native Route live profile is inactive until M8/M11 select and measure its
 peer-facing runtime.
 
-Carrier Lab preflight is run with:
-
-```sh
-bash ./scripts/preflight.sh --go-archive /absolute/path/go1.26.5.linux-amd64.tar.gz
-```
-
-The command requires the R-013-pinned Ubuntu image and Go archive to already be
-present; it never substitutes mutable inputs or installs missing dependencies.
+R-091 retires the closed Carrier/Gate C execution corpus. Its source-bound
+R-013/R-017 receipts remain historical provenance, not a current command or
+Qualification suite.
 
 ## Non-goals for the network core
 

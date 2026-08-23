@@ -6,10 +6,9 @@ change: name the responsibility first, add the real Implementation and tests,
 then update this table in the same change. The normative growth and dependency
 rules are in [repository-layout.md](repository-layout.md).
 
-Every package below `internal/lab/` is laboratory code. The path prefix is the
-executable classification: product packages and commands cannot import it.
-Only purpose-named `cmd/*-lab` adapters may start laboratory Modules.
-`internal/lab` itself contains no Go files and is not a package.
+R-091 retired the closed laboratory namespace. Historical laboratory receipts
+remain in their research records; no current package may import or start a lab
+Module.
 
 | Directory | Go declaration | Responsibility | May import |
 |---|---|---|---|
@@ -18,18 +17,6 @@ Only purpose-named `cmd/*-lab` adapters may start laboratory Modules.
 | `cmd/ardents-node` | `package main` | Parse one bounded source or Node configuration and run one private distributor or separately keyed Node process. | `internal/network/state`, `internal/network/source`, `internal/node`, `internal/planfile`, standard library |
 | `tests/e2e/service/fixturecommand/publish-app` | `package main` | E2E-only separately granted publication-operator fixture. It uses only the bounded local Service Administration socket and is built solely by the Endpoint recovery process test. | standard library |
 | `tests/e2e/service/fixturecommand/stream-app` | `package main` | E2E-only external opaque-stream Application fixture. It uses supplied local byte/result streams and runs the paired direct workload only as test evidence; it is built solely by the Endpoint recovery process test. | `internal/endpoint`, `internal/streamworkload`, standard library |
-| `cmd/carrier-lab` | `package main` | Parse fixed Carrier Lab commands, call the selected Module, and translate results to exit codes. | `internal/lab/directcontrol`, `internal/lab/carrier`, `internal/lab/tooling`, `internal/lab/nativecircuit`, `internal/lab/preflight`, `internal/lab/routecomparison`, standard library |
-| `cmd/named-site-lab` | `package main` | Parse fixed Gate C commands, derive one experiment identity, call `namedsite`, and translate its result to an exit code. | `internal/lab/runlayout`, `internal/lab/namedsite`, standard library |
-| `internal/lab/carrier` | `package carrier` | Own the fixed two-role Carrier Lab isolation scenario: role configuration, Compose lifecycle, bounded observations, fault injection, verdict, and cleanup. | `internal/lab/preflight`, standard library |
-| `internal/lab/tooling` | `package tooling` | Verify the exact external tool supply and runnable image pair; own shaping, capture, tracer, bounded live pressure, fail-closed smoke, and evidence behind `VerifyInputs`, `VerifyNativeImages`, `RunSmoke`, `RunRole`, `RunNativeRole`, and `RunMemoryPressure`. | `internal/lab/sourceidentity`, `internal/lab/preflight`, standard library |
-| `internal/lab/preflight` | `package preflight` | Orchestrate pinned Carrier Lab setup and write canonical preflight evidence and cleanup verdicts for a verified experiment run. | `internal/lab/sourceidentity`, `internal/lab/runlayout`, standard library |
-| `internal/lab/runlayout` | `package runlayout` | Own and revalidate the filesystem identity and derived paths of one maintained laboratory run. | standard library |
-| `internal/lab/sourceidentity` | `package sourceidentity` | Bind all maintained experiment code, tests, workflows, and container inputs into one shared source SHA-256. | standard library |
-| `internal/lab/namedsite` | `package namedsite` | Own the bounded Gate C Named Unlisted Site scenario, role processes, security decisions, evidence, and cleanup. | `internal/lab/sourceidentity`, `internal/lab/runlayout`, `internal/lab/nativecircuit`, standard library; reviewed OHTTP closure |
-| `internal/lab/directcontrol` | `package directcontrol` | Own the complete lab-only Direct TLS fixture, control lifecycle, roles, protected-record fault, evidence, and cleanup behind `RunControl`, `RunRole`, and `RunTamper`; never act as a Route or fallback. | `internal/lab/preflight`, standard library |
-| `internal/lab/nativecircuit` | `package nativecircuit` | Own the fixed lab-only native C-5/C2 candidate: bounded wire protocol, HPKE Introduction, telescoped Node TLS, joined endpoint TLS, opaque UDS attachment, role-local runtime, Compose lifecycle, evidence, and cleanup behind its small run/role interface. | `internal/lab/runlayout`, `internal/lab/tooling`, `internal/lab/preflight`, standard library |
-| `internal/lab/routecomparison` | `package routecomparison` | Own the frozen R-013 comparative sequence, immutable workload/seed manifest, coarse statistics, conjunctive C-5 verdict, retained evidence, and cleanup behind `Run`. | `internal/lab/sourceidentity`, `internal/lab/nativecircuit`, `internal/lab/preflight`, standard library |
-| `internal/lab/modulecache` | `package modulecache` | Generate one canonical external Stage 5 Go module-cache archive from an empty cache, the exact module graph, bounded tool processes, and atomic external publication behind `Generate`. | standard library |
 | `internal/entry` | `package entry` | Own strict native-Profile Entry Invite v1 decoding/validation, including the Initiator-side current-fact verification and bounded durable EntryBinding replay ledger; a two-slot replacement/replay set; a bounded durable adjacent-contact lifecycle with restart settlement; and State-derived candidate lookup. It never selects a Route, implements a carrier, or creates a User identity. | standard library; `golang.org/x/sys/windows` on Windows |
 | `internal/network/duty` | `package duty` | Own the bounded, owner-only, durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth used by maintained role producers. | `golang.org/x/sys/windows` on Windows, standard library |
 | `internal/naming` | `package naming` | Own Stage 6 canonical Service Name parsing, normalization, and deterministic encoding checks as production-owned input gates. | standard library |
@@ -58,28 +45,3 @@ Only purpose-named `cmd/*-lab` adapters may start laboratory Modules.
 | `internal/custody` | `package custody` | Own canonical `ardents-authority-envelope-v1` admission, fixed Argon2id/AES-GCM protection, exclusive encrypted Vault records, bounded per-operation secret use, public-only envelope inspection, distinct-password Recovery Bundle export with isolated test restore, confirmed replacement that preserves the old encrypted Bundle on ordinary publication/test failure, encrypted authority-locked export-only restore into a previously empty Vault quarantine root, and an exact non-decreasing local Authority floor. Record/floor writes flush ciphertext, use same-directory platform durable replacement, reopen before acknowledgement, and advance a floor only after encrypted publication; active verification requires exact floor agreement. A locked Name Bundle may activate only from a fresh opaque witness of one current active Namespace Authority strictly above its stored generation/revision; activation durably creates a higher-watermark active successor and floor before a signature can occur. An active Name record can sign one exact sealed transition or one Namespace-derived transition/successor-Record pair only when its Authority key, generation, and revision match the active record, without exposing its root. Runtime Instance Keys and Local Grants remain outside custody. | `internal/naming/namespace/authority`, `internal/naming/namespace/epoch`, `internal/naming/namespace/record`, `internal/naming/namespace` in behavior tests, `golang.org/x/crypto/argon2`, `golang.org/x/sys/windows` on Windows, standard library |
 | `internal/release` | `package release` | Own exclusive release-floor state and authenticate the accepted TUF-compatible H3 metadata profile, exact target identity, local binding, consecutive root rotation, build/protocol states, emergency transition, and durable non-decreasing floors. It returns a bounded Decision view and opaque authorization only for a verified accepted decision; it never downloads, installs, signs, exposes floor storage, repository administration, delegated targets, multi-repository maps, or ambient network/cache paths. | `github.com/theupdateframework/go-tuf/v2/metadata`, `github.com/theupdateframework/go-tuf/v2/metadata/trustedmetadata`, `golang.org/x/sys/windows` on Windows, standard library |
 | `internal/update` | `package update` | Own one bounded compatible offline update transaction from a Release-issued opaque authorization through immutable staging, rollback reservation, stopped-runtime Adapter calls, atomic activation, self-test, committed journal evidence, idempotent replay, terminal inspection, and a caller-owned schema copy-on-write boundary without reading secrets or mutating Authority. Its D0 behavior fixture imports `internal/custody` only to create and commit a real encrypted Vault before the black-box transaction; maintained Update code receives neither the Vault nor its secret. | `internal/release`, `internal/custody` in D0 behavior tests only, `golang.org/x/sys/windows` on Windows, standard library |
-## Carrier Lab command registry
-
-| Command | Owning Module | Fixed responsibility |
-|---|---|---|
-| `bootstrap` | `internal/lab/preflight` | Orchestrate pinned host/container setup while reserving canonical evidence and verdicts for the pinned verifier. |
-| `evaluate` | `internal/lab/preflight` | Verify prepared pinned inputs and write intermediate preflight evidence. |
-| `finalize-cleanup` | `internal/lab/preflight` | Verify owned-resource removal and publish the final preflight verdict. |
-| `compose-smoke` | `internal/lab/carrier` | Run the fixed two-role isolated scenario and own its lifecycle and summary. |
-| `smoke-role` | `internal/lab/carrier` | Run one data-only role whose config names only its allowed peer. |
-| `tooling-verify` | `internal/lab/tooling` | Verify the exact external `.deb` set against the committed tool lock. |
-| `tooling-smoke` | `internal/lab/tooling` | Bind the runnable image to base/lock/source/binary identity, then own real shaping/capture, exact topology evidence, fail-closed verdict, and cleanup. |
-| `tooling-role` | `internal/lab/tooling` | Run one fixed synthetic tracer, shaper, or capture role. |
-| `direct-control` | `internal/lab/directcontrol` | Generate one ephemeral Target/Instance fixture and run the positive and fixed Direct TLS negative cases. |
-| `direct-role` | `internal/lab/directcontrol` | Run one User or Service tracer role for the fixed Direct TLS control. |
-| `direct-tamper` | `internal/lab/directcontrol` | Modify one TLS-protected record without receiving endpoint or Application knowledge. |
-| `native-run` | `internal/lab/nativecircuit` | Run the fixed isolated native C-5/C2 development smoke and retain its bounded verdict. |
-| `native-role` | `internal/lab/nativecircuit` | Run one role-local native User, Service, relay, Rendezvous, or Introduction process. |
-| `native-tool-role` | `internal/lab/tooling` | Apply real link shaping or capture for one native role namespace with one exact capability. |
-| `native-negative` | `internal/lab/nativecircuit` | Execute one fixed fail-closed R-013 negative inside the immutable application image. |
-| `route-experiment` | `internal/lab/routecomparison` | Run the frozen Direct/C-3/C-5 comparison, required negatives, conditional Tor reference, and canonical verdict without building or downloading. |
-| `pressure-memory` | `internal/lab/tooling` | Hold one bounded resident allocation, optionally alongside an incomplete local TCP setup, to exercise real container pressure and admission. |
-
-The architecture gate parses this table and rejects an unregistered or stale
-package, a mismatched Go declaration, or a current project import absent from
-the owning row's `May import` column.

@@ -8,8 +8,7 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 The maintained product-shaped Modules use the Go standard library, the
 Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
-OHTTP closure owned by `internal/naming/resolution`. Gate C uses the same closure
-in `internal/lab/namedsite`. The product promotion is selected by
+OHTTP closure owned by `internal/naming/resolution`. The product promotion is selected by
 [R-047](../research/records/r-047-stage-6-query-hiding.md) and ADR-0014; the
 original experiment selection is recorded by
 [R-026](../research/records/r-026-private-resolution-adapter.md), while the bounded
@@ -25,27 +24,24 @@ by `openpcc/ohttp v0.0.80`.
 | `github.com/cloudflare/circl` | `v1.6.3` | BSD-3-Clause | reviewed HPKE implementation; raised from vulnerable `v1.6.1` |
 | `github.com/quic-go/quic-go` | `v0.57.1` | MIT | QUIC varint implementation required by BHTTP |
 | `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
-| `go.opentelemetry.io/otel` | `v1.39.0` | Apache-2.0 | OHTTP tracing types; Gate C emits no external telemetry |
+| `go.opentelemetry.io/otel` | `v1.39.0` | Apache-2.0 | OHTTP tracing types |
 | `go.opentelemetry.io/otel/trace` | `v1.39.0` | Apache-2.0 | OHTTP tracing Interface |
 | `golang.org/x/crypto` | `v0.51.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.55.0` | BSD-3-Clause | BHTTP HTTP support; raised from vulnerable `v0.48.0` |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | Windows owner-only DACL enforcement plus Linux/Windows atomic no-replace Stage 5 evidence publication; transitive Gate C operating-system support elsewhere |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause | Windows owner-only DACL enforcement and platform atomic replacement support |
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/naming/resolution` owns the maintained product OHTTP/CIRCL Adapter;
-`internal/lab/namedsite` independently owns the Gate C Adapter. No other product
-Module imports the OHTTP/CIRCL portion of this closure. Both owners pin the same
-reviewed version and raised dependency graph; a change repeats R-047/R-026
-instead of allowing their cryptographic configurations to drift.
+shape. `internal/naming/resolution` owns the maintained product OHTTP/CIRCL Adapter.
+No other product Module imports this closure. A change repeats R-047/R-026
+instead of allowing its cryptographic configuration to drift.
 
 **Stage 5 Windows ACL historical record and remaining owners:** the removed
 `internal/bridge`, Stage-5 evidence generator, and R-090-retired
 `internal/lab/blockedverify` formerly used this Windows ACL path. The retained
 platform-specific owners use `golang.org/x/sys/windows` on Windows to apply a
 protected DACL granting the current process owner full control and nobody else.
-The module was already pinned and reviewed in the Gate C closure; this makes
-that exact version a direct platform-specific product dependency. It avoids a
+The module is a direct platform-specific product dependency. It avoids a
 child PowerShell process during Invite import and avoids first-party `unsafe`.
 Unix builds retain the standard-library permission implementation.
 `x/sys` is the Go project's maintained, tagged operating-system support module;
@@ -258,18 +254,9 @@ receipts. A separately generated deterministic module-cache archive contains
 the complete `go mod download all` graph; its hash is locked and embedded by
 the same recipe, while the cache itself remains outside Git. Preparation
 verifies the exact builder base ancestry and recipe/archive/module-cache labels
-and receipt files before the offline product build. The maintained generator
-`scripts/generate-stage5-module-cache.go` starts from an empty external cache,
-runs `go mod download all`, `go mod verify`, and `go list -m all`, then writes
-a canonical archive with committed `go.mod`/`go.sum` hashes and the exact module
-list. It fixes the official Go proxy/checksum service and disables ambient Go,
-proxy, private-module, credential, and workspace settings. After online
-verification it removes volatile checksum-database, version-list, lock,
-temporary, and partial-download state. It preserves the deterministic
-`cache/download` `.mod`, `.zip`, `.ziphash`, and `.info` verification inputs
-required by offline `go mod verify`, together with the extracted modules and
-manifest. The offline product build repeats all three consistency checks
-before compilation.
+and receipt files before the offline product build. R-091 retired the former
+module-cache generator; this Stage 5 supply text remains historical provenance
+and cannot be activated by a current command.
 
 **Maintenance and security:** R-036 found no reachable vulnerability with the
 recorded database timestamp `2026-08-14T16:22:54Z`, no cgo or Go `unsafe`
@@ -303,7 +290,10 @@ normal dependency review before `go.mod` changes.
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
 
-## Carrier Lab-only tool inputs
+## Historical Carrier Lab tool inputs
+
+R-091 retired these inputs and their executable consumer. The details below are
+C4 provenance for R-013/R-025, not current dependencies or build inputs.
 
 These tools are not product runtime dependencies and do not enter `go.mod` or
 the `application` image target. They exist only in the disposable `tooling`
@@ -323,7 +313,7 @@ prepared input outside Git. Normal build and run use no package repository,
 installer, maintainer script, or download fallback; a missing, extra, or
 mismatched artifact fails closed.
 
-## Carrier Lab external reference inputs
+## Historical Carrier Lab external reference inputs
 
 The R-013 comparison uses Tor and Chutney only as a black-box laboratory
 reference. They are not linked into the Go binary, included in either Carrier

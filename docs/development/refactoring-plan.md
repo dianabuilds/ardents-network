@@ -573,3 +573,11 @@ future claim. The unbound reader, its command, package-map rows, and active
 historical-profile entries are therefore C0 deleted. R-080, the Stage 5
 records, and `tests/live/stage5-final` remain C4 provenance; Carrier and Named
 Site are the remaining M14 laboratory families.
+
+**M14 progress, 2026-08-23.** R-091 closes the remaining Carrier and Named
+Site laboratory family. R-013/R-017 retain the historical result identities,
+but their manual workflows rebuild current code and upload artifacts for only
+30 days; they cannot reproduce the source-bound accepted runs and have no
+native-v1 claim duty. Commands, shared lab Modules, workflows, supply inputs,
+and the now-empty historical-reproduction profile are C0 deleted. The records
+remain C4 provenance. M14's laboratory-corpus audit is complete.

@@ -41,7 +41,6 @@ func TestRepositoryArchitecture(t *testing.T) {
 	root := repositoryRoot(t)
 
 	assertRequiredProjectFiles(t, root)
-	assertLaboratoryQuarantine(t, root)
 	assertSingleModule(t, root)
 	assertDependenciesRegistered(t, root)
 	assertGoFilesAreProjectCode(t, root)
@@ -91,7 +90,7 @@ func assertDependenciesRegistered(t *testing.T, root string) {
 func assertRequiredProjectFiles(t *testing.T, root string) {
 	t.Helper()
 	required := []string{
-		"go.mod", "Makefile", "CONTRIBUTING.md", ".github/workflows/quality.yml", ".github/workflows/carrier-lab.yml", ".githooks/pre-commit",
+		"go.mod", "Makefile", "CONTRIBUTING.md", ".github/workflows/quality.yml", ".githooks/pre-commit",
 		"docs/development/go-engineering.md", "docs/development/dependencies.md",
 		"docs/development/repository-layout.md", "docs/development/package-map.md",
 		"docs/development/documentation.md",

@@ -101,7 +101,7 @@ real external observers and selects G0-M0 (coordinated switch), G0-M1
 | `ardents-bridge` | Bridge/camouflage remains only a bounded H3 experiment, not a public entry promise. | Retire or replace as M7 determines; no external command support is assumed. |
 | `ardents-release` | Security-forward release/update constraints remain technical inputs; production release/update is outside H3 shipped scope. | Replace/retire the command topology after M1/M2; do not infer an installer or updater product promise. |
 | `ardents-publish-app`, `ardents-stream-app` | Not product UI. They currently expose publication/Application tracer seams. | Keep only while a named test/example Adapter needs them; then remove with its replacement test. |
-| Carrier Lab and Named Unlisted Site lab commands/evidence | Historical provenance, not current runtime product or live qualification. | Retain immutable record/evidence access; remove code runners at M14 unless a specific accepted reproduction obligation still names them. |
+| Carrier Lab and Named Unlisted Site lab commands/evidence | Historical provenance, not current runtime product or live qualification. | **M14 complete:** R-091 retains R-013/R-017 source-bound receipts as C4 and deletes the unbound execution corpus as C0. |
 | Blocked-entry and Stage 6 lab/verifier commands/evidence | H3 historical/claim evidence inputs only; they make no production or public claim. | Keep a reproducer only while linked to an accepted claim/source identity; otherwise retain the record and remove the code at M14. |
 | `internal/lab/*`, live test cells, external images/binaries | No product-runtime role. | S8.2 must assign one evidence profile and prerequisite receipt to each retained item; unowned code/fixtures are removed at M14. |
 

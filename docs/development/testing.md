@@ -39,7 +39,6 @@ then register a new bounded live suite and its explicit entrypoint.
 - `make unit`: deterministic Module tests; no Docker or long campaigns.
 - `make e2e`: real product commands in local processes.
 - `make fuzz`: bounded fuzzing of a maintained untrusted parser/encoder pair.
-- `make lab-test`: closed historical laboratory Modules, outside product testing and `make check`.
 - `make quick-check`: architecture, vet, unit, build, and module tidiness.
 - `make check`: unit, e2e, race, build, formatting, Staticcheck, and
   vulnerability checks; fast independent checks run concurrently, then the
@@ -60,8 +59,7 @@ Active profiles have a checked Make entrypoint; an inactive profile has no
 current accepted suite and names the decision that must activate it. Inactive
 does not mean passed, waived, or unavailable evidence.
 
-- developer, deterministic Module, process, race, fuzz, live, and historical
-  reproduction are active at S8.2;
+- developer, deterministic Module, process, race, and fuzz are active at S8.2;
 - affected-platform remains inactive until S8.3 selects a supported platform
   contract and eligible host;
 - soak remains inactive until a bounded duration/load/observer contract is
@@ -73,8 +71,7 @@ does not mean passed, waived, or unavailable evidence.
 ## Profile ownership and validity
 
 Every retained test belongs to one primary profile: deterministic Module,
-Adapter/process, affected platform, live, Qualification, or historical
-reproduction. A higher profile is retained only when it proves a distinct
+Adapter/process, affected platform, live, or Qualification. A higher profile proves a distinct
 process, platform, network, evidence-independence, or claim fact unavailable at
 the lower profile. A test's profile registration records its requirement,
 owning seam, observable oracle, fault/adversary or transition, platform/format,
@@ -82,7 +79,7 @@ environment prerequisites, and deletion or migration condition.
 
 The current Make targets are the profile entrypoints, not a claim that every
 current package has its final product role. Their checked manifests list
-maintained, process, and historical-reproduction packages positively; the
+maintained and process packages positively; the
 checked registry also assigns every current Go-bearing e2e/live suite root to
 one execution profile. A new package or suite root cannot enter a profile
 through a negative filter or merely by directory naming.
@@ -94,12 +91,9 @@ scenario ownership remains with the test that proves the behavior. The
 architecture gate verifies its schema, required profile set, state, and active
 Make-target wiring.
 
-The deterministic, process, and historical-reproduction package memberships
-are positive and explicit in the adjacent `*-packages.txt` manifests. A package
-changes profile only with its source, test, and product/evidence disposition.
-The historical-reproduction entrypoint has a declared 20-minute test-binary
-deadline; expiry is a failing test result with the Go diagnostic, never a pass
-or an automatic retry.
+The deterministic and process package memberships are positive and explicit in
+the adjacent `*-packages.txt` manifests. A package changes profile only with
+its source, test, and product/evidence disposition.
 
 An environment-dependent selected profile has four outcomes: product assertion
 failure, test/harness defect, invalid environment, or nondeterministic/unowned

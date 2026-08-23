@@ -12,7 +12,7 @@ export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
-.PHONY: architecture build check e2e format format-check fuzz lab-test mod-check prototype-r053 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture build check e2e format format-check fuzz mod-check prototype-r053 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -20,7 +20,6 @@ define newline
 endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
 PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
-LAB_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/historical-reproduction-packages.txt))
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check
 
 format:
@@ -41,9 +40,6 @@ e2e:
 
 fuzz:
 	go test ./internal/network/state -run '^$$' -fuzz '^FuzzCanonicalParsers$$' -fuzztime=1m
-
-lab-test:
-	go test $(LAB_PACKAGES) -short -shuffle=on -count=1 -timeout=20m
 
 test: unit e2e
 

@@ -26,12 +26,10 @@ func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
 	actual := listedPackages(t, root, "./cmd/...", "./internal/...")
 	deterministic := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
-	historical := listedProfilePackages(t, root, "tests/profiles/historical-reproduction-packages.txt")
 	for packagePath := range actual {
 		_, inDeterministic := deterministic[packagePath]
-		_, inHistorical := historical[packagePath]
-		if inDeterministic == inHistorical {
-			t.Errorf("package %s must belong to exactly one execution profile", packagePath)
+		if !inDeterministic {
+			t.Errorf("package %s must belong to the deterministic profile", packagePath)
 		}
 	}
 }
@@ -40,12 +38,10 @@ func TestEndToEndPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
 	actual := listedPackages(t, root, "./tests/e2e/...")
 	process := listedProfilePackages(t, root, "tests/profiles/process-packages.txt")
-	historical := listedProfilePackages(t, root, "tests/profiles/historical-reproduction-packages.txt")
 	for packagePath := range actual {
 		_, inProcess := process[packagePath]
-		_, inHistorical := historical[packagePath]
-		if inProcess == inHistorical {
-			t.Errorf("e2e package %s must belong to exactly one execution profile", packagePath)
+		if !inProcess {
+			t.Errorf("e2e package %s must belong to the process profile", packagePath)
 		}
 	}
 }
@@ -56,7 +52,6 @@ func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",
-		"tests/profiles/historical-reproduction-packages.txt",
 	} {
 		for packagePath := range listedProfilePackages(t, root, path) {
 			if !actual[packagePath] {
@@ -113,16 +108,15 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
-		"affected-platform":       false,
-		"developer":               false,
-		"deterministic":           false,
-		"fuzz":                    false,
-		"process":                 false,
-		"qualification":           false,
-		"race":                    false,
-		"soak":                    false,
-		"live":                    false,
-		"historical-reproduction": false,
+		"affected-platform": false,
+		"developer":         false,
+		"deterministic":     false,
+		"fuzz":              false,
+		"process":           false,
+		"qualification":     false,
+		"race":              false,
+		"soak":              false,
+		"live":              false,
 	}
 	for _, profile := range registry.Profiles {
 		if _, known := required[profile.ID]; !known {

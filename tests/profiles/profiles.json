@@ -43,15 +43,6 @@
       "activation": "M8/M11 provide a native peer-facing Route and a selected measured Node operating profile"
     },
     {
-      "id": "historical-reproduction",
-      "state": "active",
-      "make_target": "lab-test",
-      "surface": "historical-reproduction",
-      "prerequisites": ["scenario-specific pinned inputs"],
-      "invalid_environment": "declared reproduction input unavailable",
-      "timeout": "20m"
-    },
-    {
       "id": "fuzz",
       "state": "active",
       "make_target": "fuzz",

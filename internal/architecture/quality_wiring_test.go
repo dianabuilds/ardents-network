@@ -44,14 +44,7 @@ func assertQualityWiring(t *testing.T, root string) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}
 	}
-	carrierWorkflow := readProjectFile(t, root, ".github/workflows/carrier-lab.yml")
-	for _, required := range []string{"workflow_dispatch:", "runs-on: ubuntu-26.04", "route-experiment", "--network=none", "ardents-experiment-session.", "experiment-verdict.json"} {
-		if !bytes.Contains(carrierWorkflow, []byte(required)) {
-			t.Errorf("Carrier Lab workflow is missing qualification control %q", required)
-		}
-	}
 	assertPinnedActions(t, workflow)
-	assertPinnedActions(t, carrierWorkflow)
 }
 
 func moduleGoVersion(t *testing.T, root string) string {

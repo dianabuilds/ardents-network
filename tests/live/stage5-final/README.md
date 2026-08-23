@@ -37,11 +37,9 @@ hashes; preparation checks its exact base ancestry, labels, embedded receipts,
 and `go version`. The builder therefore contains the hash-bound module graph
 before final preparation disables its network:
 
-```text
-go run ./scripts/generate-stage5-module-cache.go \
-  -workspace . \
-  -output <external-builder-context>/gomodcache.tar.gz
-```
+R-091 retired the former module-cache generator with the closed laboratory
+corpus. This retained specification is historical provenance and cannot be
+prepared or qualified by a current repository command.
 
 The generator starts from an empty external cache, runs `go mod download all`,
 `go mod verify`, and `go list -m all`, embeds hashes of the committed
