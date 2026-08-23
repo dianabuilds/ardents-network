@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
@@ -38,6 +39,7 @@ type testControlOperation struct {
 	AuthorityProof     []byte   `json:"authority_proof,omitempty"`
 	RecoveryPolicy     []byte   `json:"recovery_policy,omitempty"`
 	RecoveryProof      []byte   `json:"recovery_proof,omitempty"`
+	SuccessorRecord    []byte   `json:"successor_record,omitempty"`
 }
 
 func TestControlUsesTheResolutionOHTTPBoundaryAndExposesOnlyTheAuthorityView(t *testing.T) {
@@ -165,6 +167,60 @@ func TestControlCarriesEveryFrozenOperationShape(t *testing.T) {
 		if _, err := client.Execute(context.Background(), raw, fixture.now); err != nil {
 			t.Fatalf("%s Execute: %v", operation.Kind, err)
 		}
+	}
+}
+
+func TestControlSubmitsOnlyAnExactSignedDurableSuccessor(t *testing.T) {
+	t.Parallel()
+	policy := namespace.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
+	fixture := newResolutionFixtureWithAuthority(t, func(store *namespace.Store, admission *namespace.Admission,
+		now time.Time,
+	) (testControlAuthority, error) {
+		return namespace.OpenControl(store, admission, namespace.ClaimOrder{}, func() time.Time { return now }, policy)
+	})
+	operation := namespace.Op{Kind: "renew", Name: fixture.current.Name, ExpectedGeneration: fixture.current.Generation,
+		ExpectedRevision: fixture.current.Revision,
+		Authority:        fixture.current.Authority, LeaseDuration: policy.DefaultLeaseDuration}
+	proof, err := namespace.SignTransition(fixture.network, fixture.current, operation, fixture.authorityKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := namespace.ApplyAt(&fixture.current, fixture.now, operation, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	successor, err := namespace.SignRecord(fixture.network, updated, fixture.authorityKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	control := testControlOperation{Kind: "renew", Name: fixture.current.Name, Generation: fixture.current.Generation,
+		ExpectedRevision: fixture.current.Revision, LeaseNotAfter: fixture.now.Add(policy.DefaultLeaseDuration).UnixMilli(),
+		AuthorityProof: proof, SuccessorRecord: successor}
+	control.OperationDigest = testControlDigest(t, control)
+	selection := fixture.controlSelection(t, control.OperationDigest, [32]byte{71})
+	client, err := nameresolution.OpenControl(fixture.view, selection, fixture.gatewayProfile(), [32]byte{71},
+		relayTransport(fixture.relayServer))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(control)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := client.Execute(context.Background(), raw, fixture.now)
+	if err != nil || result.Class != "submitted" {
+		t.Fatalf("first control result=%+v err=%v", result, err)
+	}
+
+	selection = fixture.controlSelection(t, control.OperationDigest, [32]byte{72})
+	client, err = nameresolution.OpenControl(fixture.view, selection, fixture.gatewayProfile(), [32]byte{72},
+		relayTransport(fixture.relayServer))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = client.Execute(context.Background(), raw, fixture.now)
+	if err == nil || result.Class != "denied" {
+		t.Fatalf("stale successor result=%+v err=%v", result, err)
 	}
 }
 

@@ -216,7 +216,16 @@ type resolutionFixture struct {
 	roleEvidence    func() ([]gatewayRoleView, []relayRoleView)
 	setTamper       func(bool)
 	admission       *namespace.Admission
+	network         [32]byte
+	current         namespace.Record
+	authorityKey    ed25519.PrivateKey
 }
+
+type testControlAuthority interface {
+	Submit(namespace.Submission, namespace.Proof) string
+}
+
+type testControlAuthorityFactory func(*namespace.Store, *namespace.Admission, time.Time) (testControlAuthority, error)
 
 func newResolutionFixture(t *testing.T) resolutionFixture {
 	return newResolutionFixtureWithControl(t, nil)
@@ -226,6 +235,13 @@ func newResolutionFixtureWithControl(t *testing.T, control interface {
 	Submit(namespace.Submission, namespace.Proof) string
 },
 ) resolutionFixture {
+	return newResolutionFixtureWithAuthority(t, func(*namespace.Store, *namespace.Admission, time.Time,
+	) (testControlAuthority, error) {
+		return control, nil
+	})
+}
+
+func newResolutionFixtureWithAuthority(t *testing.T, build testControlAuthorityFactory) resolutionFixture {
 	t.Helper()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	network := [32]byte{9}
@@ -251,7 +267,11 @@ func newResolutionFixtureWithControl(t *testing.T, control interface {
 		t.Fatal(err)
 	}
 	store, materialization := resolutionRecordStore(t, network, signed)
-	gatewayState, err := nameresolution.BindGatewayState(store, materialization.policy, 1, [32]byte{1}, admission, control)
+	authority, err := build(store, admission, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gatewayState, err := nameresolution.BindGatewayState(store, materialization.policy, 1, [32]byte{1}, admission, authority)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,6 +300,7 @@ func newResolutionFixtureWithControl(t *testing.T, control interface {
 	selection := nameresolution.Selection{At: now, Deadline: now.Add(15 * time.Second),
 		RelayNodeID: [32]byte{1}, GatewayNodeID: [32]byte{2}, ConnectionRendezvousNodeID: [32]byte{3}}
 	return resolutionFixture{now: now, view: view, selection: selection, relayServer: relayServer, admission: admission,
+		network: network, current: record, authorityKey: private,
 		gatewayProfile:  gateway.Profile,
 		gatewayRequests: func() uint32 { requests, _, _ := gateway.Observation(); return requests },
 		gatewayRejected: func() uint32 { _, _, rejected := gateway.Observation(); return rejected },
@@ -302,6 +323,19 @@ func newResolutionFixtureWithControl(t *testing.T, control interface {
 			return gatewayViews, relayViews
 		},
 		relayEvidence: capture.evidence, setTamper: capture.setTamper}
+}
+
+func (fixture resolutionFixture) controlSelection(t *testing.T, digest [32]byte, isolation [32]byte) nameresolution.Selection {
+	t.Helper()
+	challenge, err := fixture.admission.Issue(fixture.now.UnixMilli(), "renewal-update", digest, isolation,
+		fixture.selection.Deadline.UnixMilli(), [16]byte{isolation[0]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection := fixture.selection
+	selection.ConnectionRendezvousNodeID = [32]byte{}
+	selection.AdmissionChallenge = challenge
+	return selection
 }
 
 func resolutionRecordStore(t *testing.T, network [32]byte, signed ...[]byte) (*namespace.Store, namespaceFixture) {
