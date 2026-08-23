@@ -25,7 +25,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		return runRefreshSources(ctx, arguments, output)
 	}
 	if len(arguments) == 0 || arguments[0] != "accept-offline" {
-		return errors.New("usage: ardents accept-offline [flags]")
+		return errors.New("usage: ardents <accept-offline|refresh-sources|endpoint|entry|name> ...")
 	}
 	flags := flag.NewFlagSet("accept-offline", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
