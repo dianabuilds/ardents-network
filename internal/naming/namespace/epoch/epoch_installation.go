@@ -4,6 +4,9 @@ import (
 	"errors"
 	"sort"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/claim"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 // EpochInstallation is one opaque Namespace-owned candidate for an Epoch
@@ -14,7 +17,7 @@ type EpochInstallation struct {
 	store   *Store
 	epoch   Epoch
 	at      time.Time
-	policy  Policy
+	policy  record.Policy
 	base    string
 	records map[string][]byte
 	cursor  uint64
@@ -24,7 +27,7 @@ type EpochInstallation struct {
 // the Store's verified current snapshot. Its result becomes current only after
 // Commit obtains the existing threshold attestation.
 func (store *Store) BeginEpochInstallation(epoch Epoch, materializedAt time.Time,
-	policy Policy,
+	policy record.Policy,
 ) (*EpochInstallation, error) {
 	if store == nil || store.root == nil || !validEpoch(epoch) || materializedAt.IsZero() || materializedAt.Unix() <= 0 {
 		return nil, errors.New("naming Epoch installation input is invalid")
@@ -44,11 +47,11 @@ func (store *Store) BeginEpochInstallation(epoch Epoch, materializedAt time.Time
 	}
 	installation.cursor = snapshot.pending
 	for _, signed := range snapshot.records {
-		record, verifyErr := VerifyRecord(store.policy.Network, signed)
-		if verifyErr != nil || installation.records[record.Name] != nil {
+		current, verifyErr := record.VerifyRecord(store.policy.Network, signed)
+		if verifyErr != nil || installation.records[current.Name] != nil {
 			return nil, errors.New("naming current installation state is invalid")
 		}
-		installation.records[record.Name] = append([]byte(nil), signed...)
+		installation.records[current.Name] = append([]byte(nil), signed...)
 	}
 	return installation, nil
 }
@@ -65,11 +68,11 @@ func (installation *EpochInstallation) IncludePendingThrough(sequence uint64) er
 		return errors.New("naming Epoch pending selection is unavailable")
 	}
 	for index := installation.cursor; index < sequence; index++ {
-		record, verifyErr := VerifyRecord(installation.store.policy.Network, entries[index].successor)
+		current, verifyErr := record.VerifyRecord(installation.store.policy.Network, entries[index].successor)
 		if verifyErr != nil {
 			return errors.New("naming Epoch pending successor is invalid")
 		}
-		installation.records[record.Name] = append([]byte(nil), entries[index].successor...)
+		installation.records[current.Name] = append([]byte(nil), entries[index].successor...)
 	}
 	installation.cursor = sequence
 	return nil
@@ -78,8 +81,8 @@ func (installation *EpochInstallation) IncludePendingThrough(sequence uint64) er
 // MaterializeClaim derives exactly the verified winner's root Record and asks
 // the claimant's signing port to sign its sealed transcript. A substituted
 // signature is denied before it changes this installation or consumes the winner.
-func (installation *EpochInstallation) MaterializeClaim(winner *ClaimWinner,
-	signer RecordSigner,
+func (installation *EpochInstallation) MaterializeClaim(winner *claim.ClaimWinner,
+	signer record.RecordSigner,
 ) error {
 	if installation == nil || installation.store == nil || winner == nil || signer == nil {
 		return errors.New("naming Epoch claim installation is invalid")
@@ -87,24 +90,24 @@ func (installation *EpochInstallation) MaterializeClaim(winner *ClaimWinner,
 	if !winner.BelongsTo(installation.store.policy.Network, installation.epoch.Number) {
 		return errors.New("root claim winner does not belong to this Namespace Epoch")
 	}
-	var current *Record
+	var current *record.Record
 	if signed := installation.records[winner.Name()]; signed != nil {
-		decoded, err := VerifyRecord(installation.store.policy.Network, signed)
+		decoded, err := record.VerifyRecord(installation.store.policy.Network, signed)
 		if err != nil {
 			return errors.New("naming Epoch claim predecessor is invalid")
 		}
 		candidate := decoded
 		current = &candidate
 	}
-	record, signed, err := winner.MaterializeSigned(current, installation.at, installation.policy, signer)
+	materialized, signed, err := winner.MaterializeSigned(current, installation.at, installation.policy, signer)
 	if err != nil {
 		return errors.New("naming Epoch claim materialization is invalid")
 	}
-	verified, err := VerifyRecord(installation.store.policy.Network, signed)
-	if err != nil || !sameRecord(record, verified) {
+	verified, err := record.VerifyRecord(installation.store.policy.Network, signed)
+	if err != nil || !sameRecord(materialized, verified) {
 		return errors.New("naming Epoch claim signer substituted the derived Record")
 	}
-	installation.records[record.Name] = append([]byte(nil), signed...)
+	installation.records[materialized.Name] = append([]byte(nil), signed...)
 	return nil
 }
 

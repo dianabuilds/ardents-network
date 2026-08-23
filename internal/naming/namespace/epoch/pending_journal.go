@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 const (
@@ -104,8 +106,8 @@ func (store *Store) appendPending(name string, submission, successor []byte, dec
 	if store == nil || store.root == nil {
 		return pendingEntry{}, errors.New("naming state store is unavailable")
 	}
-	record, recordErr := VerifyRecord(store.policy.Network, successor)
-	if name == "" || decisionAt <= 0 || len(submission) == 0 || recordErr != nil || name != record.Name {
+	current, recordErr := record.VerifyRecord(store.policy.Network, successor)
+	if name == "" || decisionAt <= 0 || len(submission) == 0 || recordErr != nil || name != current.Name {
 		return pendingEntry{}, errors.New("naming pending submission is invalid")
 	}
 	return store.root.appendPending(pendingEntry{decisionAt: decisionAt,
@@ -121,8 +123,8 @@ func (store *Store) pending() ([]pendingEntry, error) {
 		return nil, err
 	}
 	for index, entry := range entries {
-		record, recordErr := VerifyRecord(store.policy.Network, entry.successor)
-		if recordErr != nil || record.Name == "" {
+		current, recordErr := record.VerifyRecord(store.policy.Network, entry.successor)
+		if recordErr != nil || current.Name == "" {
 			return nil, errors.New("naming pending journal is tampered")
 		}
 		entries[index].submission = append([]byte(nil), entry.submission...)
@@ -168,11 +170,11 @@ func (store *Store) pendingCursorFor(records [][]byte) (uint64, error) {
 		}
 		cursor = snapshot.pending
 		for _, signed := range snapshot.records {
-			record, verifyErr := VerifyRecord(store.policy.Network, signed)
+			current, verifyErr := record.VerifyRecord(store.policy.Network, signed)
 			if verifyErr != nil {
 				return 0, errors.New("naming current record is invalid")
 			}
-			baseline[record.Name] = signed
+			baseline[current.Name] = signed
 		}
 	}
 	entries, err := store.pending()
@@ -191,11 +193,11 @@ func (store *Store) pendingCursorFor(records [][]byte) (uint64, error) {
 	}
 	for index := cursor; index < uint64(len(entries)); index++ {
 		entry := entries[index]
-		record, verifyErr := VerifyRecord(store.policy.Network, entry.successor)
+		current, verifyErr := record.VerifyRecord(store.policy.Network, entry.successor)
 		if verifyErr != nil {
 			return 0, errors.New("naming pending journal is tampered")
 		}
-		baseline[record.Name] = entry.successor
+		baseline[current.Name] = entry.successor
 		if sameSignedRecordMap(baseline, candidate) {
 			return entry.sequence, nil
 		}
@@ -206,11 +208,11 @@ func (store *Store) pendingCursorFor(records [][]byte) (uint64, error) {
 func signedRecordMap(network [32]byte, signed [][]byte) (map[string][]byte, error) {
 	values := make(map[string][]byte, len(signed))
 	for _, raw := range signed {
-		record, err := VerifyRecord(network, raw)
-		if err != nil || values[record.Name] != nil {
+		current, err := record.VerifyRecord(network, raw)
+		if err != nil || values[current.Name] != nil {
 			return nil, errors.New("naming materialization Record corpus is invalid")
 		}
-		values[record.Name] = raw
+		values[current.Name] = raw
 	}
 	return values, nil
 }

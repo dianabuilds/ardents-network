@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 // Open claims a naming-state root for exactly one Network Epoch policy.
@@ -48,7 +50,7 @@ func (store *Store) Path() string {
 }
 
 // CurrentRecords returns the verified current records and committed pending cursor.
-func (store *Store) CurrentRecords() (map[string]Record, uint64, error) {
+func (store *Store) CurrentRecords() (map[string]record.Record, uint64, error) {
 	if store == nil || store.root == nil {
 		return nil, 0, errors.New("naming state store is unavailable")
 	}
@@ -56,7 +58,7 @@ func (store *Store) CurrentRecords() (map[string]Record, uint64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	records := make(map[string]Record)
+	records := make(map[string]record.Record)
 	if current == "" {
 		return records, 0, nil
 	}
@@ -65,7 +67,7 @@ func (store *Store) CurrentRecords() (map[string]Record, uint64, error) {
 		return nil, 0, err
 	}
 	for _, signed := range snapshot.records {
-		value, err := VerifyRecord(store.policy.Network, signed)
+		value, err := record.VerifyRecord(store.policy.Network, signed)
 		if err != nil || records[value.Name].Name != "" {
 			return nil, 0, errors.New("naming current record is invalid")
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 const (
@@ -25,11 +26,11 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 	}
 	index := -1
 	for candidate, raw := range current.records {
-		record, verifyErr := VerifyRecord(store.policy.Network, raw)
+		current, verifyErr := record.VerifyRecord(store.policy.Network, raw)
 		if verifyErr != nil {
 			return nil, errors.New("naming state is tampered")
 		}
-		if record.Name == rawName {
+		if current.Name == rawName {
 			index = candidate
 			break
 		}
@@ -49,41 +50,41 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 // and returns the lifecycle Record. It remains only for compatibility tests;
 // runtime callers use VerifyBinding.
 func VerifyLegacy(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expectedEpochDigest [32]byte, at int64) (
-	Record, Binding, string, uint64, error,
+	record.Record, record.Binding, string, uint64, error,
 ) {
 	policy, err := validMaterializationPolicy(input)
 	if err != nil || at < 0 || expectedEpochDigest == [32]byte{} {
-		return Record{}, Binding{}, "", 0, errors.New("naming proof policy is invalid")
+		return record.Record{}, record.Binding{}, "", 0, errors.New("naming proof policy is invalid")
 	}
 	attested, ordinal, leafRaw, siblings, err := decodeProof(proof)
 	statement := attested.statement
 	if err != nil || statement.epoch < minimumEpoch || statement.epochDigest != expectedEpochDigest ||
 		!verifyAttestation(policy, attested) ||
 		!verifyNamespaceProof(leafRaw, ordinal, statement.recordLength, siblings, statement.recordRoot) {
-		return Record{}, Binding{}, "", 0, errors.New("naming proof is invalid or stale")
+		return record.Record{}, record.Binding{}, "", 0, errors.New("naming proof is invalid or stale")
 	}
 	leaf, err := decodeLeaf(leafRaw)
 	if err != nil || leaf.state == 0 || at > leaf.notAfter {
-		return Record{}, Binding{}, "", 0, errors.New("name is unavailable")
+		return record.Record{}, record.Binding{}, "", 0, errors.New("name is unavailable")
 	}
-	record, err := VerifyRecord(policy.Network, leaf.signedRecord)
-	if err != nil || leaf.schema != leafSchema || record.Target == [32]byte{} || record.RecordNotAfter <= 0 {
-		return Record{}, Binding{}, "", 0, errors.New("naming proof Record is invalid")
+	current, err := record.VerifyRecord(policy.Network, leaf.signedRecord)
+	if err != nil || leaf.schema != leafSchema || current.Target == [32]byte{} || current.RecordNotAfter <= 0 {
+		return record.Record{}, record.Binding{}, "", 0, errors.New("naming proof Record is invalid")
 	}
-	recordWire, err := EncodeRecord(record)
+	recordWire, err := record.EncodeRecord(current)
 	if err != nil {
-		return Record{}, Binding{}, "", 0, err
+		return record.Record{}, record.Binding{}, "", 0, err
 	}
 	recordDigest, leafDigest := sha256.Sum256(recordWire), sha256.Sum256(leafRaw)
 	commitment := sha256.Sum256(append([]byte("ardents-h3-name-materialized-binding-v1\x00"), leafDigest[:]...))
-	binding := Binding{Name: record.Name, Generation: record.Generation, Revision: record.Revision,
-		Authority: record.Authority, Target: record.Target, ParentName: record.ParentName,
-		ParentGeneration: record.ParentGeneration, RecordDigest: recordDigest, Commitment: commitment}
+	binding := record.Binding{Name: current.Name, Generation: current.Generation, Revision: current.Revision,
+		Authority: current.Authority, Target: current.Target, ParentName: current.ParentName,
+		ParentGeneration: current.ParentGeneration, RecordDigest: recordDigest, Commitment: commitment}
 	warning := ""
 	if leaf.state == 2 {
 		warning = "name lineage is in grace and should be treated as volatile"
 	}
-	return record, binding, warning, statement.epoch, nil
+	return current, binding, warning, statement.epoch, nil
 }
 
 // VerifyBinding authenticates one current Namespace proof and returns only the
@@ -91,7 +92,7 @@ func VerifyLegacy(input MaterializationPolicy, proof []byte, minimumEpoch uint64
 // hides the lifecycle Record from production callers.
 func VerifyBinding(input MaterializationPolicy, proof []byte, minimumEpoch uint64,
 	expectedEpochDigest [32]byte, at int64,
-) (Binding, string, uint64, error) {
+) (record.Binding, string, uint64, error) {
 	_, binding, warning, epoch, err := VerifyLegacy(input, proof, minimumEpoch, expectedEpochDigest, at)
 	return binding, warning, epoch, err
 }

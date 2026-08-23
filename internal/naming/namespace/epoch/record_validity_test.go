@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 func TestLegacyTargetRecordFailsClosedInNewMaterialization(t *testing.T) {
@@ -13,11 +15,11 @@ func TestLegacyTargetRecordFailsClosedInNewMaterialization(t *testing.T) {
 	network := [32]byte{6}
 	seed := sha256.Sum256([]byte("legacy-record-authority"))
 	private := ed25519.NewKeyFromSeed(seed[:])
-	record := Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
+	value := record.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
 		Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000}
-	wire, err := EncodeRecord(record)
+	wire, err := record.EncodeRecord(value)
 	if err != nil {
 		t.Fatal(err)
 	}

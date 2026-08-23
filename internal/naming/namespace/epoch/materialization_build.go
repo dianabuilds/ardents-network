@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"sort"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 const (
@@ -12,7 +14,7 @@ const (
 )
 
 type recordEntry struct {
-	record Record
+	record record.Record
 	signed []byte
 }
 
@@ -22,11 +24,11 @@ func materializeRecords(network [32]byte, signed [][]byte) ([][]byte, [][]byte, 
 	}
 	entries := make([]recordEntry, len(signed))
 	for index, raw := range signed {
-		record, err := VerifyRecord(network, raw)
+		current, err := record.VerifyRecord(network, raw)
 		if err != nil {
 			return nil, nil, errors.New("naming materialization contains an invalid signed Record")
 		}
-		entries[index] = recordEntry{record: record, signed: append([]byte(nil), raw...)}
+		entries[index] = recordEntry{record: current, signed: append([]byte(nil), raw...)}
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].record.Name < entries[j].record.Name })
 	byName := make(map[string]int, len(entries))
@@ -84,7 +86,7 @@ func materializeLeaf(index int, entries []recordEntry, byName map[string]int) (r
 		lineageCount: uint8(len(lineage)), state: state, notAfter: notAfter}, nil
 }
 
-func effectiveLease(record Record) (byte, int64, bool) {
+func effectiveLease(record record.Record) (byte, int64, bool) {
 	if record.Consistency != "current" || record.Recovery != "stable" {
 		return 0, 0, false
 	}
@@ -104,7 +106,7 @@ func effectiveLease(record Record) (byte, int64, bool) {
 	}
 }
 
-func effectiveRecordNotAfter(record Record, state byte, leaseNotAfter int64) (byte, int64, bool) {
+func effectiveRecordNotAfter(record record.Record, state byte, leaseNotAfter int64) (byte, int64, bool) {
 	if record.Target == [32]byte{} {
 		return state, leaseNotAfter, true
 	}
@@ -128,8 +130,8 @@ func sameInputs(left, right [][]byte) bool {
 	return true
 }
 
-func sameRecord(left, right Record) bool {
-	leftWire, leftErr := EncodeRecord(left)
-	rightWire, rightErr := EncodeRecord(right)
+func sameRecord(left, right record.Record) bool {
+	leftWire, leftErr := record.EncodeRecord(left)
+	rightWire, rightErr := record.EncodeRecord(right)
 	return leftErr == nil && rightErr == nil && bytes.Equal(leftWire, rightWire)
 }
