@@ -202,26 +202,29 @@ passes. The integrating commit records this checked profile.
 
 ### M2 — Update lifecycle
 
-**Complete, 2026-08-23.** With DA-01 closed by R-063 and the bounded H3
-technical-tracer scope accepted by [R-064](../research/records/r-064-h3-update-tracer-scope.md),
-M2 moved the complete transaction/recovery owner from
+**Owner transfer complete, format cutover active, 2026-08-23.** With DA-01
+closed by R-063 and the bounded H3 technical-tracer scope accepted by
+[R-064](../research/records/r-064-h3-update-tracer-scope.md), M2 moved the
+complete transaction/recovery owner from
 `internal/updatetransaction` to `internal/update`; the old package path and
 all deterministic-profile references are gone. `update.Request` now accepts
 the opaque Release authorization, candidate bytes, and declared runtime/schema
 Adapters only. It derives the successor or exact idempotent-replay generation
 from its owned root, chooses schema transition mode internally, and exposes no
 caller-controlled generation, active-work count, schema-plan string, or raw
-Release Decision. The external boundary test covers those omissions and the
-frozen V0 command remains the sole C2 tracer observer through M13.
+Release Decision. The external boundary test covers those omissions. The
+former V0 command/result is not a C2 observer: [R-087](../research/records/r-087-update-v0-provenance-retirement.md)
+and ADR-0029 require its one-shot V1→V2 root conversion, C4 verifier, and
+command deletion before the M2/M13 format work is complete.
 
 The `Apply` orchestrator remains cohesive at the interim 500-line maximum: it
 orders authorization, root admission, storage reservation, journal checkpoints,
 Adapter calls, activation, and terminal classification. Root admission and
 exact transaction-directory inventory now live in the storage owner rather
-than inflating the orchestrator. The full Update recovery matrix, the C2 V0
-command test, and `make quick-check` passed. This does not claim a supported
-installer, native activation, or Custody lifecycle; any such work reopens
-DA-09.
+than inflating the orchestrator. The full Update recovery matrix, the V0
+characterization test, and `make quick-check` passed. This does not claim a
+supported installer, native activation, or Custody lifecycle; any such work
+reopens DA-09.
 
 ### M3 — authenticated Network State
 
