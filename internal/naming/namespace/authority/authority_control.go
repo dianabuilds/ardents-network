@@ -7,6 +7,11 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/claim"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 // control owns authenticated naming transitions behind one private Gateway.
@@ -14,40 +19,40 @@ import (
 type control struct {
 	mu        sync.Mutex
 	network   [32]byte
-	admission *Admission
-	order     ClaimOrder
+	admission *admission.Admission
+	order     claim.ClaimOrder
 	records   map[string]Record
 	clock     func() time.Time
 	policy    Policy
-	store     *Store
+	store     *epoch.Store
 }
 
 // NewEvidenceControl installs the bounded volatile authority view retained by
 // the Stage 6 evidence runner. Durable Gateways must use OpenControl and Submit
 // so their accepted work enters the Namespace pending journal.
-func NewEvidenceControl(network [32]byte, admission *Admission, order ClaimOrder,
-	records []Record, clock func() time.Time, policy Policy,
+func NewEvidenceControl(network [32]byte, gate *admission.Admission, order claim.ClaimOrder,
+	records []record.Record, clock func() time.Time, policy record.Policy,
 ) (*control, error) {
-	if network == [32]byte{} || admission == nil || clock == nil {
+	if network == [32]byte{} || gate == nil || clock == nil {
 		return nil, errors.New("name Authority control configuration is invalid")
 	}
 	values := make(map[string]Record, len(records))
-	for _, record := range records {
-		if _, exists := values[record.Name]; exists {
+	for _, value := range records {
+		if _, exists := values[value.Name]; exists {
 			return nil, errors.New("name Authority control state is duplicated")
 		}
-		if _, err := EncodeRecord(record); err != nil {
+		if _, err := record.EncodeRecord(value); err != nil {
 			return nil, errors.New("name Authority control state is invalid")
 		}
-		values[record.Name] = record
+		values[value.Name] = value
 	}
-	return &control{network: network, admission: admission, order: order,
+	return &control{network: network, admission: gate, order: order,
 		records: values, clock: clock, policy: policy}, nil
 }
 
 // ApplyEvidence verifies one historical evidence operation in the volatile
 // view. Its detailed result is deliberately unavailable to a durable Gateway.
-func (control *control) ApplyEvidence(raw []byte, proof Proof) (string, uint64, uint64, []byte) {
+func (control *control) ApplyEvidence(raw []byte, proof admission.Proof) (string, uint64, uint64, []byte) {
 	control.mu.Lock()
 	defer control.mu.Unlock()
 	operation, err := decodeControlOperation(raw)
@@ -63,7 +68,7 @@ func (control *control) ApplyEvidence(raw []byte, proof Proof) (string, uint64, 
 	if err != nil {
 		return deniedControl()
 	}
-	state, err := EncodeRecord(updated)
+	state, err := record.EncodeRecord(updated)
 	if err != nil {
 		return deniedControl()
 	}
@@ -74,13 +79,13 @@ func (control *control) ApplyEvidence(raw []byte, proof Proof) (string, uint64, 
 // OpenControl restores one durable control chain. The control holds no
 // caller-provided Record state: verified current records plus immutable pending
 // successors are the only source from which it rebuilds its transition view.
-func OpenControl(store *Store, admission *Admission, order ClaimOrder,
-	clock func() time.Time, policy Policy,
+func OpenControl(store *epoch.Store, gate *admission.Admission, order claim.ClaimOrder,
+	clock func() time.Time, policy record.Policy,
 ) (*control, error) {
-	if store == nil || !store.Valid() || admission == nil || clock == nil {
+	if store == nil || !store.Valid() || gate == nil || clock == nil {
 		return nil, errors.New("name Authority control configuration is invalid")
 	}
-	control := &control{network: store.Policy().Network, admission: admission, order: order,
+	control := &control{network: store.Policy().Network, admission: gate, order: order,
 		records: make(map[string]Record), clock: clock, policy: policy, store: store}
 	if err := control.restore(); err != nil {
 		return nil, err
@@ -91,7 +96,7 @@ func OpenControl(store *Store, admission *Admission, order ClaimOrder,
 // Submit records one opaque private control input as pending. It is never a
 // current-state result: a threshold materialization remains the only route to
 // an externally resolvable Name state.
-func (control *control) Submit(submission Submission, proof Proof) string {
+func (control *control) Submit(submission Submission, proof admission.Proof) string {
 	control.mu.Lock()
 	defer control.mu.Unlock()
 	if control.store == nil {
