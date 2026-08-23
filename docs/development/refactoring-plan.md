@@ -204,6 +204,13 @@ already consumes `Binding` rather than lifecycle `Record`, but only the later
 sealed Namespace interface plus the M14 C4 disposition can remove the old
 field bags and historical verifier seam without losing required provenance.
 
+Under the Product Owner's standing Stage 8 delegation, M5 has also removed the
+unobserved C0 `ardents-name validate-record` adapter. It was the sole
+non-laboratory command caller of the raw Record codec; canonical Service Name
+encoding and the still-required private resolution/control tracer journeys
+remain. This narrows the runtime raw-Record surface without declaring the
+remaining command, C4 evidence codec, or Namespace compatibility API retired.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

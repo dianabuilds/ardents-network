@@ -137,7 +137,7 @@ mutation coverage are complete; the bounded independent S6E1 command verdict is
 maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
 `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-bridge`,
 `cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded Stage 6
-`cmd/ardents-name` validator/private resolver/control adapter. Cohesive product
+`cmd/ardents-name` canonical-name/private resolver/control adapter. Cohesive product
 modules live under `internal/network`, `internal/node`, `internal/route`,
 `internal/serviceconn`, `internal/serviceendpoint`, `internal/resource`,
 `internal/applicationipc`, `internal/streamworkload`, `internal/planfile`,

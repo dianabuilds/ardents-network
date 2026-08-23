@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/naming"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
 func main() {
@@ -45,24 +44,6 @@ func runWithRuntime(arguments []string, output io.Writer, transport *http.Transp
 		}
 		_, err = fmt.Fprintf(output, "%x\n", wire)
 		return err
-	case "validate-record":
-		if len(arguments) != 2 {
-			return usageError()
-		}
-		wire, err := readBoundedRecord(arguments[1])
-		if err != nil {
-			return err
-		}
-		record, err := namespace.DecodeRecord(wire)
-		if err != nil {
-			return err
-		}
-		_, err = namespace.EncodeRecord(record)
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintln(output, "valid")
-		return err
 	case "resolve":
 		if len(arguments) != 4 {
 			return usageError()
@@ -87,5 +68,5 @@ func runWithRuntime(arguments []string, output io.Writer, transport *http.Transp
 }
 
 func usageError() error {
-	return errors.New("usage: ardents-name encode-name <name> | validate-record <file> | resolve <input-file> <name> <context-hex> | control <input-file> <operation-file> <context-hex>")
+	return errors.New("usage: ardents-name encode-name <name> | resolve <input-file> <name> <context-hex> | control <input-file> <operation-file> <context-hex>")
 }
