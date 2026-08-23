@@ -253,8 +253,11 @@ func writeAtomicPrivate(path string, body []byte) error {
 	if err := temporary.Close(); err != nil {
 		return fmt.Errorf("close authority floor: %w", err)
 	}
-	if err := os.Rename(temporaryPath, path); err != nil {
+	if err := durableRename(temporaryPath, path); err != nil {
 		return fmt.Errorf("publish authority floor: %w", err)
+	}
+	if err := syncDirectory(directory); err != nil {
+		return fmt.Errorf("flush authority floor directory: %w", err)
 	}
 	return nil
 }

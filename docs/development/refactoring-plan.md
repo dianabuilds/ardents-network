@@ -433,6 +433,12 @@ a superseded record fails active verification. The missing piece is
 the real authenticated Network/Namespace successor source, not a caller-supplied
 claim of freshness.
 
+Record and floor publication now flush the encrypted temporary file, use the
+selected same-directory platform replacement primitive, flush the parent where
+the platform permits it, and reopen before reporting success. This is an
+implementation precondition, not a Windows/Ubuntu crash or power-loss
+qualification result.
+
 M12's D0 Update behavior test now creates a real encrypted custody Vault and
 floor through the test fixture, commits its whole-root digest, then runs the
 black-box Update transaction. The production Update Module never receives that

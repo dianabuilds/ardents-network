@@ -187,8 +187,11 @@ func (vault *Vault) writeRecordIn(directory, recordID string, body []byte) error
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("inspect vault record destination: %w", err)
 	}
-	if err := os.Rename(temporary, path); err != nil {
+	if err := durableRename(temporary, path); err != nil {
 		return fmt.Errorf("publish vault record: %w", err)
+	}
+	if err := syncDirectory(directory); err != nil {
+		return fmt.Errorf("flush vault record directory: %w", err)
 	}
 	if err := verifyPersistedEnvelope(path, body); err != nil {
 		_ = os.Remove(path)
