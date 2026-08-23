@@ -53,7 +53,7 @@ type Plan struct {
 func Select(view state.Snapshot, input Selection) (Plan, error) {
 	if input.Seed == [32]byte{} || input.At.IsZero() || view.Generation == "" || view.Epoch == 0 ||
 		view.NetworkID == [32]byte{} || view.Digest == [32]byte{} || !input.At.Before(view.ValidUntil) ||
-		view.Profile != "h3-route-tracer-v1" || view.ViewRoot == [32]byte{} || view.Freshness != "fresh" ||
+		view.Profile != routeProfile || view.ViewRoot == [32]byte{} || view.Freshness != "fresh" ||
 		view.Conflicting || view.CandidateCount == 0 || view.CandidateCount > 64 {
 		return Plan{}, errors.New("route selection input is invalid")
 	}
@@ -125,8 +125,8 @@ func choose(view state.Snapshot, role string, input Selection, excludedIDs map[[
 }
 
 func candidateRank(seed [32]byte, role string, identity [32]byte) [32]byte {
-	value := make([]byte, 0, 28+32+len(role)+32)
-	value = append(value, "ardents-h3-route-select-v1\x00"...)
+	value := make([]byte, 0, 37+32+len(role)+32)
+	value = append(value, "ardents-interactive-route-select-v1\x00"...)
 	value = append(value, seed[:]...)
 	value = append(value, role...)
 	value = append(value, identity[:]...)
@@ -142,7 +142,7 @@ func literalEndpoint(endpoint string) bool {
 // Validate rejects incomplete, reordered, repeated, or non-literal plans.
 func Validate(plan Plan) error {
 	if plan.NetworkID == [32]byte{} || plan.Generation == "" || plan.Epoch == 0 || plan.Digest == [32]byte{} ||
-		plan.Profile != "h3-route-tracer-v1" || plan.ViewRoot == [32]byte{} || plan.Seed == [32]byte{} || plan.SelectionAt <= 0 ||
+		plan.Profile != routeProfile || plan.ViewRoot == [32]byte{} || plan.Seed == [32]byte{} || plan.SelectionAt <= 0 ||
 		len(plan.Positions) != len(routeRoles) {
 		return errors.New("route must contain every fixed position")
 	}

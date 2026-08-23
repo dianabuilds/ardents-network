@@ -4,7 +4,6 @@ github.com/dianabuilds/ardents-network/cmd/ardents-name
 github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/cmd/ardents-publish-app
 github.com/dianabuilds/ardents-network/cmd/ardents-release
-github.com/dianabuilds/ardents-network/cmd/ardents-route
 github.com/dianabuilds/ardents-network/cmd/ardents-service
 github.com/dianabuilds/ardents-network/cmd/ardents-stream-app
 github.com/dianabuilds/ardents-network/internal/applicationipc
@@ -22,7 +21,6 @@ github.com/dianabuilds/ardents-network/internal/planfile
 github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
-github.com/dianabuilds/ardents-network/internal/routeplan
 github.com/dianabuilds/ardents-network/internal/serviceconn
 github.com/dianabuilds/ardents-network/internal/serviceendpoint
 github.com/dianabuilds/ardents-network/internal/streamworkload

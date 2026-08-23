@@ -10,7 +10,7 @@ import (
 
 func TestValidateRejectsIncompleteOrRepeatedRoutePositions(t *testing.T) {
 	valid := Plan{NetworkID: [32]byte{1}, Generation: "generation", Epoch: 1, Digest: [32]byte{2},
-		Profile: "h3-route-tracer-v1", ViewRoot: [32]byte{3}, Seed: [32]byte{4}, SelectionAt: 1,
+		Profile: routeProfile, ViewRoot: [32]byte{3}, Seed: [32]byte{4}, SelectionAt: 1,
 		Positions: []Position{
 			{Role: "initiator", Domain: "initiator", NodeID: [32]byte{1}, PublicKey: [32]byte{11}, Family: "a", Endpoint: "127.0.0.1:1", Capacity: 1},
 			{Role: "introduction", Domain: "introduction", NodeID: [32]byte{2}, PublicKey: [32]byte{12}, Family: "b", Endpoint: "127.0.0.1:2", Capacity: 1},
@@ -46,7 +46,7 @@ func TestValidateRejectsIncompleteOrRepeatedRoutePositions(t *testing.T) {
 func TestMaximumExclusionUnionRetainsFourAttachmentFloor(t *testing.T) {
 	now := time.Now().UTC()
 	view := state.Snapshot{Generation: "generation", NetworkID: [32]byte{1}, Epoch: 1, Digest: [32]byte{2},
-		ValidUntil: now.Add(time.Hour), Profile: "h3-route-tracer-v1", ViewRoot: [32]byte{3},
+		ValidUntil: now.Add(time.Hour), Profile: routeProfile, ViewRoot: [32]byte{3},
 		Freshness: "fresh", CandidateCount: 8}
 	for index, role := range routeRoles {
 		for alternative := range 2 {
@@ -70,6 +70,27 @@ func TestMaximumExclusionUnionRetainsFourAttachmentFloor(t *testing.T) {
 	for _, position := range plan.Positions {
 		if position.Capacity < 4 {
 			t.Fatalf("post-exclusion position has capacity %d: %+v", position.Capacity, position)
+		}
+	}
+}
+
+func TestSelectRejectsRetiredOrUnknownProfile(t *testing.T) {
+	now := time.Now().UTC()
+	view := state.Snapshot{Generation: "generation", NetworkID: [32]byte{1}, Epoch: 1, Digest: [32]byte{2},
+		ValidUntil: now.Add(time.Hour), Profile: routeProfile, ViewRoot: [32]byte{3}, Freshness: "fresh", CandidateCount: 4}
+	for index, role := range routeRoles {
+		candidate := &view.Candidates[index]
+		candidate.NodeID = [32]byte{byte(index + 1)}
+		candidate.PublicKey = [32]byte{byte(index + 21)}
+		candidate.Family, candidate.Domain = role, role
+		candidate.Endpoint = "127.0.0.1:" + strconv.Itoa(index+1)
+		candidate.Capacity = 1
+		candidate.ValidFrom, candidate.ValidUntil = now.Add(-time.Minute), now.Add(time.Hour)
+	}
+	for _, profile := range []string{"h3-route-tracer-v1", "ardents-interactive-route-v0"} {
+		view.Profile = profile
+		if _, err := Select(view, Selection{Seed: [32]byte{4}, At: now}); err == nil {
+			t.Fatalf("retired or unknown profile %q selected a Route", profile)
 		}
 	}
 }

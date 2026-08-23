@@ -3,6 +3,7 @@ package route
 import (
 	"errors"
 	"fmt"
+	"io"
 )
 
 const (
@@ -122,4 +123,18 @@ func wireIdentifier(reader *wireReader, name string) ([32]byte, error) {
 		return [32]byte{}, fmt.Errorf("route wire %s is missing", name)
 	}
 	return result, nil
+}
+
+func writeAll(writer io.Writer, value []byte) error {
+	for len(value) != 0 {
+		count, err := writer.Write(value)
+		if err != nil {
+			return err
+		}
+		if count <= 0 || count > len(value) {
+			return io.ErrShortWrite
+		}
+		value = value[count:]
+	}
+	return nil
 }

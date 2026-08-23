@@ -1,4 +1,3 @@
-// Package route owns the native Interactive Route v1 codecs and the evolving
-// endpoint-selected Route transition. The inherited H3 tracer is a temporary
-// migration input, not a selected transport or public wire protocol.
+// Package route owns native Interactive Route v1 selection, Entry attachment,
+// closed wire codecs, and setup cleanup. It has no H3 reader or peer runtime.
 package route
