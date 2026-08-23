@@ -88,12 +88,6 @@
   ],
   "suite_roots": [
     {
-      "id": "e2e-blocked-entry-lab",
-      "path": "tests/e2e/blocked-entry-lab",
-      "profile": "historical-reproduction",
-      "owner": "blocked-entry historical verifier reproduction"
-    },
-    {
       "id": "e2e-network-source",
       "path": "tests/e2e/network-source",
       "profile": "process",

@@ -128,8 +128,9 @@ Control Plane risks rather than being hidden behind the word “decentralized.�
 
 The maintained Go tree contains the completed Carrier Lab and Named Site
 laboratories plus the Horizon 3 product runtime. Stage 1–4 development is
-complete with local Docker evidence; Stage 5 Bridge + WebTunnel development is
-complete and its final qualification remains S9.6. The Product Owner authorized
+complete with local Docker evidence. Stage 5 Bridge/WebTunnel material is C4
+historical provenance under R-080; its runtime and live runners are retired and
+cannot qualify the native profile. The Product Owner authorized
 Stage 6 on 2026-08-20 after accepting R-042/R-044/R-045/R-055 and ADR-0017
 through ADR-0019. Maintained S6.1-S6.6 implementation, journey trace, and
 mutation coverage are complete; the bounded independent S6E1 command verdict is
@@ -141,7 +142,7 @@ maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
 modules live under `internal/network`, `internal/node`, `internal/route`,
 `internal/serviceconn`, `internal/serviceendpoint`, `internal/resource`,
 `internal/applicationipc`, `internal/streamworkload`, `internal/planfile`,
-`internal/bridge`, `internal/camouflage`, `internal/localroles`,
+`internal/entry`, `internal/localroles`,
 `internal/naming`, `internal/namelease`, `internal/nameauthority`,
 `internal/nameclaim`, `internal/nameadmission`, `internal/namerecovery`,
 `internal/naming/resolution`, and `internal/namestore`. Product work never grows inside or imports the frozen

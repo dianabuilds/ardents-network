@@ -2,7 +2,8 @@
 
 These versioned files define the non-secret S5.5-to-S9.6 topology, cgroup,
 network, workload, and observer handoff contracts. They are copied to a new external
-configuration root before `blocked-entry-lab -prepare-final-root` runs.
+configuration root before the now-retired Stage-5 campaign generator ran. R-080
+retains this material as historical provenance only.
 
 The external root must additionally contain:
 

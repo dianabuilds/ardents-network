@@ -1,10 +1,8 @@
-github.com/dianabuilds/ardents-network/cmd/blocked-entry-lab
 github.com/dianabuilds/ardents-network/cmd/blocked-entry-verify-lab
 github.com/dianabuilds/ardents-network/cmd/carrier-lab
 github.com/dianabuilds/ardents-network/cmd/named-site-lab
 github.com/dianabuilds/ardents-network/cmd/stage6-evidence-lab
 github.com/dianabuilds/ardents-network/cmd/stage6-verify-lab
-github.com/dianabuilds/ardents-network/internal/lab/blockedentry
 github.com/dianabuilds/ardents-network/internal/lab/blockedverify
 github.com/dianabuilds/ardents-network/internal/lab/carrier
 github.com/dianabuilds/ardents-network/internal/lab/directcontrol
@@ -18,4 +16,3 @@ github.com/dianabuilds/ardents-network/internal/lab/sourceidentity
 github.com/dianabuilds/ardents-network/internal/lab/stage6evidence
 github.com/dianabuilds/ardents-network/internal/lab/stage6verify
 github.com/dianabuilds/ardents-network/internal/lab/tooling
-github.com/dianabuilds/ardents-network/tests/e2e/blocked-entry-lab

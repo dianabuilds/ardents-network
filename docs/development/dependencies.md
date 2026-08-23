@@ -39,9 +39,9 @@ Module imports the OHTTP/CIRCL portion of this closure. Both owners pin the same
 reviewed version and raised dependency graph; a change repeats R-047/R-026
 instead of allowing their cryptographic configurations to drift.
 
-**Stage 5 Windows ACL need and owner:** `internal/bridge`,
-`internal/localroles`, `internal/lab/blockedentry`, and
-`internal/lab/blockedverify` use only
+**Stage 5 Windows ACL historical record and remaining owners:** the removed
+`internal/bridge` and the retired Stage-5 evidence generator formerly used this
+Windows ACL path; `internal/localroles` and `internal/lab/blockedverify` use only
 `golang.org/x/sys/windows` on Windows to apply a
 protected DACL granting the current process owner full control and nobody else.
 The module was already pinned and reviewed in the Gate C closure; this makes
@@ -50,8 +50,8 @@ child PowerShell process during Invite import and avoids first-party `unsafe`.
 Unix builds retain the standard-library permission implementation.
 `x/sys` is the Go project's maintained, tagged operating-system support module;
 the selected version has the existing checksum/license review, passes the
-repository's offline build/tests and reachable vulnerability scan, and the four
-callers use no cgo or first-party `unsafe`.
+repository's offline build/tests and reachable vulnerability scan, and the
+remaining callers use no cgo or first-party `unsafe`.
 
 **Stage 5 evidence-publication need and owner:**
 `internal/lab/blockedentry` uses `unix.Renameat2(..., RENAME_NOREPLACE)` on
@@ -219,16 +219,16 @@ performance remains a separate qualification gate. Removing password-derived cus
 R-049 is also rejected/removed, the module can return to the independently
 justified root version. A version/profile/surface change reopens R-053.
 
-## Stage 5 external process runtime
+## Historical Stage 5 external process record
 
-The H3 Camouflage Adapter owns exactly two Linux `amd64` executables built from
+The former H3 Camouflage Adapter owned exactly two Linux `amd64` executables built from
 standalone WebTunnel `v0.0.6`: client SHA-256
 `de581c8dd36193bb4168aee840406294af406bf8187817c10ac2bcd9464fd120`
 (`7,690,615` bytes) and server SHA-256
 `5fe32f8ab736ed54fc66027775761084e68f0e1ec9b5fea7c3417c6617255336`
-(`5,899,325` bytes). `internal/camouflage` is their sole first-party owner.
-They are external processes, never linked into the root module, and add no
-`go.mod` requirement.
+(`5,899,325` bytes). R-080 deleted `internal/camouflage` and active runners;
+the identities below are C4 historical provenance, not a current external
+process dependency or a `go.mod` requirement.
 
 **Source and license:** the signed upstream tag `v0.0.6` resolves to commit
 `d729fde1f38357dcefa2a751eb4752e9ca78f910`, tree
@@ -295,9 +295,8 @@ binary identity reopens R-036 rather than being upgraded in place.
 **Alternatives and removal:** R-036 rejected a first-party camouflage protocol
 and selected no Lyrebird/obfs4 fallback. Default WebTunnel discovery, public
 DNS, ambient proxy configuration, and runtime download remain forbidden.
-Removing Stage 5 Camouflage deletes both external binaries and the
-`internal/camouflage` process owner without changing Route, Service Connection,
-or Application interfaces.
+R-080 removed Stage 5 Camouflage's binary owner and live runners without
+changing Route, Service Connection, or Application interfaces.
 
 The native Carrier Lab candidate uses the Go 1.26 standard-library
 `crypto/hpke`, `crypto/tls`, `crypto/x509`, and `crypto/ecdh` implementations.

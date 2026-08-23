@@ -130,12 +130,12 @@ are not Go packages and do not represent a retained test surface.
 | `cmd/ardents-bridge`, `cmd/ardents-route` | Remove current tracer shapes; retain selected Entry/Route operator journey only. | M7/M8/M13, subject to DA-06/10. |
 | `cmd/ardents-service`, `cmd/ardents-publish-app`, `cmd/ardents-stream-app` | Remove tracer commands; retain a real Endpoint/Application operator surface only if DA-10 names its observer. | M9/M10/M13. |
 | `cmd/ardents-release` | Retire as an H3 product command; its sole retained C2 V0 observer is a bounded R-064 technical tracer through M13. | M1/M2/M13, subject to DA-01/R-064 and DA-10. |
-| `cmd/blocked-entry-lab`, `cmd/blocked-entry-verify-lab`, `cmd/carrier-lab`, `cmd/named-site-lab`, `cmd/stage6-evidence-lab`, `cmd/stage6-verify-lab` | Historical reproduction with a named retained obligation, or delete the runner while retaining immutable provenance. | M14, subject to DA-11. |
+| `cmd/blocked-entry-verify-lab`, `cmd/carrier-lab`, `cmd/named-site-lab`, `cmd/stage6-evidence-lab`, `cmd/stage6-verify-lab` | Historical reproduction with a named retained obligation, or delete the runner while retaining immutable provenance. | M14, subject to DA-11; R-080 already retires the Stage-5 evidence generator. |
 | `internal/applicationipc`, `internal/serviceendpoint` | Transfer Application/admin process boundary and composition to Broker/Publication/Endpoint. | M9/M10, subject to DA-08/10. |
 | `internal/serviceconn` | Transfer stream behavior to `service/connection`; remove action/evidence/static-plan unions. | M9, subject to DA-06/10. |
-| `internal/bridge` | Transfer durable Invite/replay/replacement ownership to `entry`. | M7, subject to DA-06. |
-| `internal/entry` | Retain the M7 target: signed State-referenced Invite v1, bounded durable Entry/replay set, adjacent candidate lookup, and candidate-opener lifecycle. | M7 under R-076/R-077; complete TCP/TLS cutover before deleting `internal/bridge`. |
-| `internal/camouflage` | Delete: R-076/ADR-0024 retire the H3 WebTunnel adapter from the maintained Profile. | M7. |
+| `internal/bridge` | Deleted after transferring the required durable Invite/replay/replacement responsibility to `entry`. | M7 complete under R-076/R-080. |
+| `internal/entry` | Retain the M7 target: signed State-referenced Invite v1, bounded durable Entry/replay set, adjacent candidate lookup, and candidate-opener lifecycle. | M7 under R-076/R-077/R-079. |
+| `internal/camouflage` | Deleted: R-076/ADR-0024 retire the H3 WebTunnel adapter from the maintained Profile. | M7 complete under R-080. |
 | `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
 | `internal/network/duty` | Own the retained durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth. | M4 D02 C1 cutover; preserve the existing root format and one writer. |
 | `internal/naming` | Retain the cohesive canonical Service Name V1 parser and encoder as the parent Namespace vocabulary package. | M5 retains it with its exact R-041 responsibility; no generic naming utility surface. |
@@ -151,9 +151,8 @@ are not Go packages and do not represent a retained test surface.
 | `internal/planfile` | Replace with command/owner-local bounded input decoders; do not retain a generic plan abstraction. | M3/M8/M9/M11/M13 as each consumer moves. |
 | `internal/streamworkload` | Retain only a named test/Qualification workload; otherwise delete. | M9/M14. |
 | `internal/architecture` | Retain factual graph/policy gate; remove historical receipts as their truth moves to current owners. | M0/M14. |
-| `internal/lab/blockedentry`, `internal/lab/blockedverify`, `internal/lab/carrier`, `internal/lab/directcontrol`, `internal/lab/modulecache`, `internal/lab/namedsite`, `internal/lab/nativecircuit`, `internal/lab/preflight`, `internal/lab/routecomparison`, `internal/lab/runlayout`, `internal/lab/sourceidentity`, `internal/lab/stage6evidence`, `internal/lab/stage6verify`, `internal/lab/tooling` | Never promote into product runtime. Retain only a named reproducer/verifier with source identity and retirement condition, otherwise delete code/assets at closure. | M14, subject to DA-11. |
+| `internal/lab/blockedverify`, `internal/lab/carrier`, `internal/lab/directcontrol`, `internal/lab/modulecache`, `internal/lab/namedsite`, `internal/lab/nativecircuit`, `internal/lab/preflight`, `internal/lab/routecomparison`, `internal/lab/runlayout`, `internal/lab/sourceidentity`, `internal/lab/stage6evidence`, `internal/lab/stage6verify`, `internal/lab/tooling` | Never promote into product runtime. Retain only a named reproducer/verifier with source identity and retirement condition, otherwise delete code/assets at closure. R-080 already removed the Stage-5 evidence generator. | M14, subject to DA-11. |
 | `tests/e2e/network-source`, `tests/e2e/node`, `tests/e2e/route`, `tests/e2e/service` | Replace tests through the target Module/process seam, retaining only independently observable process facts. | M3/M8/M9/M11. |
-| `tests/e2e/blocked-entry-lab` | Historical reproduction only; retain or delete with the matching verifier obligation. | M14, subject to DA-11. |
 | `tests/live/network` | Retain only for a selected live-network fact; it is not current Qualification. | M8-M11/M14, subject to DA-06/08 and claim acceptance. |
 
 ## Acceptance and stop rules

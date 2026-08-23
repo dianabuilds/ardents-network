@@ -5,14 +5,8 @@ while replacing only the Client-to-Initiator entry channel with the pinned
 WebTunnel carrier. It is a deterministic development tracer, not the final
 R-037 campaign or a general censorship-resistance claim.
 
-Run the Windows host driver with the two externally built, R-036-pinned Linux
-binaries:
-
-```powershell
-.\scripts\test-stage5-webtunnel.ps1 `
-  -ClientBinary C:\outside-repository\webtunnel-client `
-  -ServerBinary C:\outside-repository\webtunnel-server
-```
+R-080 retired the Windows host driver and the live runner. This document is
+historical provenance, not an executable test instruction.
 
 The PowerShell file is only a thin launcher. The directly runnable Go live test
 verifies both binary hashes, builds the current product image, owns the full

@@ -18,12 +18,6 @@ assertion: project containers, networks, volumes, and the built image must all
 be absent before a scenario passes. Keys and state live under Go test-owned
 temporary directories.
 
-The Stage 5 blocked-entry fixture is also owned here. It runs the ordinary C0
-control, blocked C1/C2 success, C3/C4 terminal faults, C5/C6 external probes,
-and the recovery-parent cell with distinct role, Application, policy, probe,
-and observer namespaces. Its exact workload and pinned-binary instructions are
-recorded in `docs/development/stage-5-blocked-entry-test.md`.
-
 Live tests do not consume receipts from earlier runs, retain qualification
 bundles, or expose stage/profile selectors. A failed scenario can be rerun
 directly with `go test -tags=live ./tests/live/network -count=1`.

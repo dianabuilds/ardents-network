@@ -42,7 +42,7 @@ provenance, not a support promise under the documentation policy.
 | A03 publication Administration socket | `cmd/ardents-publish-app` and source tests use it. | No current operator reference or external automation found. Preserve authority separation, not `publish`/`published` text. |
 | A05 plans and A06 JSON results | Command/source/e2e tests and stage records consume them. | No current reference schema or support version found. Tests are characterization input, not external observers. |
 | A07 `ARDENTS_STREAM_*` and direct stream modes | Source and live/tracer harnesses use them. | Test-only workload evidence unless a Product Owner names a consumer; not shipped configuration. |
-| Laboratory commands, manifest/verifier formats | Historical profile manifests and runners consume them. | DA-11 decides a named reproduction obligation; they are not product compatibility. |
+| Laboratory commands, manifest/verifier formats | Historical profile manifests and readers consume them. | R-080 makes the Stage-5 Bridge/WebTunnel subset C4 provenance only; it is not product compatibility or native-profile Qualification evidence. M14 decides the remaining corpus. |
 
 No reference was found in source-controlled packaging, deployments, CI, or
 operations/reference documentation that invokes the old product tracer commands

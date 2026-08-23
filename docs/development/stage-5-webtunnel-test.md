@@ -4,14 +4,8 @@ This test is controlled H3 evidence, not a public deployment or a
 censorship-resistance claim. It consumes the two externally prepared R-036
 Linux `amd64` binaries and performs no download or build repair.
 
-From the repository root on a host with Go `1.26.6`, Docker Engine, the pinned
-Ubuntu image already present, and the two binaries outside Git, run:
-
-```powershell
-.\scripts\test-stage5-webtunnel.ps1 `
-  -ClientBinary C:\owned-temp\webtunnel-client `
-  -ServerBinary C:\owned-temp\webtunnel-server
-```
+R-080 retired this test runner. The pinned binary details below are historical
+provenance, not instructions for a maintained execution path.
 
 The script rejects either binary hash mismatch, cross-compiles the maintained
 package test into a unique system-temporary directory, and runs it as UID/GID
