@@ -48,9 +48,12 @@ func TestAcquirePassesStateCandidateToMutualTLSOpener(t *testing.T) {
 		_ = secured.Close()
 	}()
 	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{91}, Deadline: fixture.now.Add(5 * time.Second)},
-		func(ctx context.Context, candidate Candidate, deadline time.Time) (net.Conn, func() error, bool, error) {
+		func(ctx context.Context, candidate Candidate, presentation Presentation, deadline time.Time) (net.Conn, func() error, bool, error) {
 			if candidate.Endpoint != fixture.candidates[0].Endpoint || candidate.PublicKey != fixture.candidates[0].PublicKey {
 				return nil, nil, true, errors.New("opener did not receive the authenticated State candidate")
+			}
+			if presentation.InviteID == [32]byte{} || !bytes.Equal(presentation.Invite, fixture.invite(t, fixture.candidates[0], 0, 1, nil)) {
+				return nil, nil, true, errors.New("opener did not receive the exact Entry Invite")
 			}
 			raw, dialErr := (&net.Dialer{}).DialContext(ctx, "tcp", candidate.Endpoint)
 			if dialErr != nil {

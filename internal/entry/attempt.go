@@ -12,12 +12,13 @@ const maximumContacts = 4
 // Acquire opens one bounded sequence of State-derived adjacent candidates.
 // It persists each contact before exposure and does not retry after an opener
 // reports unclean failure. The caller supplies the carrier implementation;
-// Entry supplies no carrier bytes, endpoint discovery, or Route selection.
+// Entry supplies the exact opaque Invite but no endpoint discovery or Route
+// selection.
 func (owner *owner) Acquire(ctx context.Context, attempt Attempt, open CandidateOpener) (net.Conn, func() error, error) {
 	if open == nil {
 		return nil, nil, errors.New("entry opener is unavailable")
 	}
-	_, candidate, ordinal, deadline, err := owner.beginAttempt(attempt)
+	record, candidate, ordinal, deadline, err := owner.beginAttempt(attempt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -28,7 +29,8 @@ func (owner *owner) Acquire(ctx context.Context, attempt Attempt, open Candidate
 			terminalErr := owner.terminalize("entry-deadline-exceeded")
 			return nil, nil, errors.Join(contextErr, finishErr, terminalErr)
 		}
-		connection, cleanup, cleanupComplete, openErr := open(contactCtx, candidate, deadline)
+		presentation := Presentation{InviteID: record.InviteID, Invite: append([]byte(nil), record.Invite...)}
+		connection, cleanup, cleanupComplete, openErr := open(contactCtx, candidate, presentation, deadline)
 		cancel()
 		if openErr == nil && (connection == nil || cleanup == nil) {
 			openErr = errors.New("entry opener returned an incomplete result")
@@ -39,7 +41,7 @@ func (owner *owner) Acquire(ctx context.Context, attempt Attempt, open Candidate
 			if !cleanupComplete || finishErr != nil {
 				return nil, nil, errors.Join(errors.New("entry local denial"), openErr, finishErr)
 			}
-			_, candidate, ordinal, deadline, err = owner.nextContact()
+			record, candidate, ordinal, deadline, err = owner.nextContact()
 			if err != nil {
 				return nil, nil, errors.Join(openErr, err)
 			}

@@ -120,7 +120,7 @@ func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
 	}
 	starts := 0
 	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{99}, Deadline: fixture.now.Add(5 * time.Second)},
-		func(context.Context, Candidate, time.Time) (net.Conn, func() error, bool, error) {
+		func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
 			starts++
 			if starts == 1 {
 				return nil, nil, true, errors.New("injected contact failure")
@@ -155,7 +155,7 @@ func TestAcquireFailsClosedWhenOpenerCannotProveCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _, err = owner.Acquire(context.Background(), Attempt{ID: [32]byte{98}, Deadline: fixture.now.Add(5 * time.Second)},
-		func(context.Context, Candidate, time.Time) (net.Conn, func() error, bool, error) {
+		func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
 			return nil, nil, false, errors.New("injected incomplete cleanup")
 		})
 	if err == nil || owner.state.Attempt == nil || owner.state.Attempt.Terminal != "entry-local-denial" ||
@@ -248,7 +248,7 @@ func TestAcquiredCarrierStopsAfterTimeConfidenceLoss(t *testing.T) {
 	client, server := net.Pipe()
 	defer server.Close()
 	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{95}, Deadline: fixture.now.Add(5 * time.Second)},
-		func(context.Context, Candidate, time.Time) (net.Conn, func() error, bool, error) {
+		func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
 			return client, client.Close, true, nil
 		})
 	if err != nil {

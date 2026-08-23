@@ -91,12 +91,20 @@ type Attempt struct {
 	Deadline time.Time
 }
 
+// Presentation is the exact already-validated Invite attached to one
+// selected Entry contact. Its bytes are copied for the opener and remain an
+// opaque capability; the opener must not parse, retain, or repurpose them.
+type Presentation struct {
+	InviteID [32]byte
+	Invite   []byte
+}
+
 // CandidateOpener opens one State-derived adjacent candidate. On an open
 // error, cleanupComplete states whether the opener has fully disposed of any
 // carrier state it created. A successful result must contain both a
 // connection and its cleanup function. Entry owns the order and persistence
 // of calls; the opener owns the TCP/TLS implementation.
-type CandidateOpener func(context.Context, Candidate, time.Time) (connection net.Conn, cleanup func() error, cleanupComplete bool, err error)
+type CandidateOpener func(context.Context, Candidate, Presentation, time.Time) (connection net.Conn, cleanup func() error, cleanupComplete bool, err error)
 
 type owner struct {
 	mu      sync.Mutex
