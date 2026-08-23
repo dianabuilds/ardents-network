@@ -49,7 +49,7 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance TLS proof failed", err)
 	}
-	canary, err := authenticateInstance(attachment.connection, credential, connectionContext)
+	_, err = authenticateInstance(attachment.connection, credential, connectionContext)
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
@@ -69,7 +69,7 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
 		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
-		ConnectionCanary: canary, QueueHighWater: outcome.QueueHigh,
+		QueueHighWater:  outcome.QueueHigh,
 		RouteGeneration: outcome.Generation, RecoveryCount: outcome.Recoveries,
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
@@ -112,7 +112,7 @@ func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (re
 	if err != nil {
 		return failed("service target authentication failure", "incoming Service Instance TLS proof failed", err)
 	}
-	canary, err := proveInstance(attachment.connection, credential, connectionContext, lease)
+	_, err = proveInstance(attachment.connection, credential, connectionContext, lease)
 	if err != nil {
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
@@ -132,7 +132,7 @@ func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (re
 	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
 		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
-		ConnectionCanary: canary, QueueHighWater: outcome.QueueHigh,
+		QueueHighWater:  outcome.QueueHigh,
 		RouteGeneration: outcome.Generation, RecoveryCount: outcome.Recoveries,
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }

@@ -127,8 +127,6 @@ func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, set
 	}
 	result.ApplicationIPCAccepts = setup.Resources("application-accept", 0)
 	result.RouteAttachmentsAccepted = setup.Resources("route-attachment-accept", 0)
-	result.IntroductionReceipt = published.IntroductionReceipt
-	result.IntroductionAcknowledgement = published.IntroductionAcknowledgement
 	err = errors.Join(err, connection.application.SetDeadline(time.Time{}))
 	err = errors.Join(err, deliverResult(connection.result, result))
 	output <- endpointOutcome{result: result, err: err}
@@ -137,9 +135,7 @@ func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, set
 func collectEndpointOutcomes(input <-chan endpointOutcome, count int, setup Setup,
 	published RuntimeResult, initial error,
 ) (RuntimeResult, error) {
-	result := RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: published.AuthenticatedTarget,
-		IntroductionReceipt:         published.IntroductionReceipt,
-		IntroductionAcknowledgement: published.IntroductionAcknowledgement}
+	result := RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: published.AuthenticatedTarget}
 	err := initial
 	var accepted, received uint64
 	for index := range count {

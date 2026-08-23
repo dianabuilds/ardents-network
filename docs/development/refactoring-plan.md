@@ -85,7 +85,8 @@ Instance material and `service/connection` retains stream/recovery state. The
 remaining connection result now retains only evidence with a current caller
 (terminal outcome, stream/recovery facts, broker receipt, and process-bound
 IPC/attachment counters); dead publication/session and sampled process-metric
-projection is deleted.
+projection is deleted. The result no longer carries transient TLS canaries,
+Introduction bytes, or unobserved IPC high-water state.
 
 **M11 progress, 2026-08-23.** `internal/node/probe` is deleted. Its
 authenticated role-probe TLS, framing, replay, listener capacity, pressure,

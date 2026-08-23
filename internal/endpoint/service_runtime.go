@@ -130,24 +130,20 @@ type InboundConnectionRequest struct {
 // Its remaining evidence projection is reduced independently of the
 // role-specific operation inputs.
 type RuntimeResult struct {
-	Class                       string         `json:"class"`
-	Reason                      string         `json:"reason"`
-	AuthenticatedTarget         [32]byte       `json:"authenticated_target"`
-	Generation                  uint64         `json:"generation"`
-	RouteGeneration             uint64         `json:"route_generation"`
-	RecoveryCount               uint32         `json:"recovery_count"`
-	ContinuityCommitment        [32]byte       `json:"continuity_commitment"`
-	AcceptedBytes               uint32         `json:"accepted_bytes"`
-	AcknowledgedBytes           uint32         `json:"acknowledged_bytes"`
-	ReceivedBytes               uint32         `json:"received_bytes"`
-	ConnectionCanary            [32]byte       `json:"connection_canary"`
-	IntroductionReceipt         [32]byte       `json:"introduction_receipt"`
-	IntroductionAcknowledgement []byte         `json:"introduction_acknowledgement,omitempty"`
-	Admission                   broker.Receipt `json:"admission"`
-	QueueHighWater              uint32         `json:"queue_high_water"`
-	AcceptedIPCHighWater        uint32         `json:"accepted_ipc_high_water"`
-	ApplicationIPCAccepts       uint32         `json:"application_ipc_accepts"`
-	RouteAttachmentsAccepted    uint32         `json:"route_attachments_accepted"`
+	Class                    string         `json:"class"`
+	Reason                   string         `json:"reason"`
+	AuthenticatedTarget      [32]byte       `json:"authenticated_target"`
+	Generation               uint64         `json:"generation"`
+	RouteGeneration          uint64         `json:"route_generation"`
+	RecoveryCount            uint32         `json:"recovery_count"`
+	ContinuityCommitment     [32]byte       `json:"continuity_commitment"`
+	AcceptedBytes            uint32         `json:"accepted_bytes"`
+	AcknowledgedBytes        uint32         `json:"acknowledged_bytes"`
+	ReceivedBytes            uint32         `json:"received_bytes"`
+	Admission                broker.Receipt `json:"admission"`
+	QueueHighWater           uint32         `json:"queue_high_water"`
+	ApplicationIPCAccepts    uint32         `json:"application_ipc_accepts"`
+	RouteAttachmentsAccepted uint32         `json:"route_attachments_accepted"`
 }
 
 // endpoint owns one broker generation's sessions and current publication.
@@ -270,9 +266,7 @@ func (endpoint *endpoint) runOutbound(ctx context.Context, input connectionInput
 	if err := ctx.Err(); err != nil {
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
-	result, err := endpoint.connect(ctx, input)
-	endpoint.observe(&result)
-	return result, err
+	return endpoint.connect(ctx, input)
 }
 
 func (endpoint *endpoint) runInbound(ctx context.Context, input connectionInput) (RuntimeResult, error) {
@@ -282,9 +276,7 @@ func (endpoint *endpoint) runInbound(ctx context.Context, input connectionInput)
 	if err := ctx.Err(); err != nil {
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
-	result, err := endpoint.accept(ctx, input)
-	endpoint.observe(&result)
-	return result, err
+	return endpoint.accept(ctx, input)
 }
 
 func publicationDenied(reason string) (PublicationResult, error) {

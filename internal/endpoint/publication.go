@@ -76,8 +76,7 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	_, err = administrator.Write([]byte("published\n"))
 	return RuntimeResult{Class: publicationResult.Class, Reason: publicationResult.Reason,
 		AuthenticatedTarget: publicationResult.AuthenticatedTarget,
-		Generation:          publicationResult.Generation, IntroductionReceipt: publicationResult.IntroductionReceipt,
-		IntroductionAcknowledgement: publicationResult.IntroductionAcknowledgement}, err
+		Generation:          publicationResult.Generation}, err
 }
 func publicationInputs(plan endpointPlan) (publication.Credential, ed25519.PrivateKey, error) {
 	var credential publication.Credential
