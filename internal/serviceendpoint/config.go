@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/planfile"
+	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
@@ -78,7 +79,7 @@ func (value endpointPlan) validate() error {
 			return errors.New("recovery binding is partial")
 		}
 	}
-	if enabled && (len(value.RouteProfile) > 63 || value.WorkSafetyNotAfter <= at.Unix() ||
+	if enabled && (value.RouteProfile != serviceconnection.Profile || value.WorkSafetyNotAfter <= at.Unix() ||
 		value.WorkSafetyMaximum < value.WorkSafetyNotAfter || value.NoNewRecoveryAfter <= at.Unix() ||
 		value.NoNewRecoveryAfter > value.WorkSafetyNotAfter) {
 		return errors.New("recovery binding safety bounds are invalid")

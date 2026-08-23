@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
@@ -19,34 +20,11 @@ const (
 	maximumStreamBytes = uint32(768 << 20)
 )
 
-// Recovery fixes connection values and constrains one fresh Route Attachment.
-type Recovery struct {
-	Generation         uint64
-	Deadline           time.Time
-	NetworkID          [32]byte
-	CandidateView      [32]byte
-	IsolationContext   [32]byte
-	DestinationBinding [32]byte
-	RouteProfile       string
-	Role               string
-	WorkSafetyNotAfter int64
-	WorkSafetyMaximum  int64
-	NoNewRecoveryAfter int64
-}
+// Recovery is owned by the native connection lifecycle.
+type Recovery = nativeconnection.Recovery
 
-// DestinationBinding is the opaque, immutable destination-continuity fact
-// supplied by the Endpoint composition layer for a name-origin connection.
-type DestinationBinding struct {
-	Name             string
-	Generation       uint64
-	Revision         uint64
-	Authority        string
-	Target           [32]byte
-	ParentName       string
-	ParentGeneration uint64
-	RecordDigest     [32]byte
-	Commitment       [32]byte
-}
+// DestinationBinding is owned by the native connection lifecycle.
+type DestinationBinding = nativeconnection.DestinationBinding
 
 // Setup fixes one Endpoint broker generation and its two local principals.
 type Setup struct {

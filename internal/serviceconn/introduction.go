@@ -25,7 +25,7 @@ func requestIntroductionAcknowledgement(ctx context.Context, socket string, cred
 	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
 	defer stop()
 	body := make([]byte, acknowledgementBodySize)
-	copy(body[:4], "ASIA")
+	copy(body[:4], acknowledgementMagic)
 	body[4] = 1
 	copy(body[5:37], credential.Target[:])
 	binary.BigEndian.PutUint64(body[37:45], credential.Generation)

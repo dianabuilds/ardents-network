@@ -297,7 +297,7 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 
 func testRecoveryBinding(fixture fixture) serviceconn.Recovery {
 	return serviceconn.Recovery{CandidateView: [32]byte{41}, IsolationContext: [32]byte{42},
-		DestinationBinding: [32]byte{43}, RouteProfile: "h3-recovery-tracer-v1",
+		DestinationBinding: [32]byte{43}, RouteProfile: "ardents-interactive-route-v1",
 		WorkSafetyNotAfter: fixture.first.NotAfter, WorkSafetyMaximum: fixture.first.NotAfter,
 		NoNewRecoveryAfter: fixture.first.NotAfter}
 }

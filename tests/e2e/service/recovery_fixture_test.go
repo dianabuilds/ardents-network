@@ -77,7 +77,7 @@ func newRecoveryProcessFixture(t *testing.T) recoveryProcessFixture {
 		"Deadline": "5s", "Lifetime": "25s", "SendBytes": 8 << 20, "ReceiveBytes": 0,
 		"PublicationFile": path("publication.bin"), "CandidateView": hex32Fixture(candidateView),
 		"IsolationContext": hex32Fixture(isolation), "DestinationBinding": hex32Fixture(destination),
-		"RouteProfile": "h3-route-tracer-v1", "WorkSafetyNotAfter": now.Add(30 * time.Second).Unix(),
+		"RouteProfile": "ardents-interactive-route-v1", "WorkSafetyNotAfter": now.Add(30 * time.Second).Unix(),
 		"WorkSafetyMaximum": now.Add(30 * time.Second).Unix(), "NoNewRecoveryAfter": now.Add(30 * time.Second).Unix(),
 	}
 	client := cloneFixture(common)
@@ -123,7 +123,7 @@ func startIntroductionFixture(t *testing.T, path string, private ed25519.Private
 		body := make([]byte, 149)
 		_, readErr := io.ReadFull(connection, body)
 		if readErr == nil {
-			message := append([]byte("ardents-h3-introduction-ack-v1\x00"), body...)
+			message := append([]byte("ardents-service-introduction-ack-v1\x00"), body...)
 			_, readErr = connection.Write(ed25519.Sign(private, message))
 		}
 		result <- readErr

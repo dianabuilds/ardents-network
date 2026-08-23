@@ -1,6 +1,4 @@
-// Package serviceconn owns bounded local admission, Service publication, exact
-// Target authentication, endpoint continuity, and Application-visible ordered
-// Service Connection semantics across replaceable raw Route Attachments.
-// Its IPC, credential, publication, and session encodings are replaceable H3
-// laboratory adapters rather than selected public protocols.
+// Package serviceconn is the temporary M9 local-admission and product-result
+// adapter. Publication and native logical Connection lifecycle are owned by
+// service/publication and service/connection respectively.
 package serviceconn

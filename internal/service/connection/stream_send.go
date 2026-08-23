@@ -1,4 +1,4 @@
-package serviceconn
+package connection
 
 import (
 	"errors"
@@ -6,8 +6,57 @@ import (
 	"time"
 )
 
-func (stream *recoveryStream) sendApplication(limit uint64) error {
-	buffer := make([]byte, maximumFrameData)
+func (stream *Stream) sendAcknowledgements(limit uint64) error {
+	for {
+		stream.mu.Lock()
+		if stream.terminal != nil {
+			err := stream.terminal
+			stream.mu.Unlock()
+			return err
+		}
+		if stream.ackSent == limit {
+			stream.mu.Unlock()
+			return nil
+		}
+		stream.mu.Unlock()
+		select {
+		case <-stream.ackSignal:
+		case <-stream.ctx.Done():
+			return stream.ctx.Err()
+		}
+		for {
+			stream.mu.Lock()
+			offset, already := stream.ackPending, stream.ackSent
+			stream.mu.Unlock()
+			if offset <= already {
+				break
+			}
+			attachment, err := stream.attachment()
+			if err != nil {
+				return err
+			}
+			if err := stream.writeRecord(attachment, StreamRecord{Acknowledgement: &Acknowledgement{
+				AttachmentGeneration: attachment.generation, Offset: offset}}); err != nil {
+				if recoverErr := stream.recoverAttachment(attachment); recoverErr != nil {
+					return errors.Join(errRecoveryTerminal, err, recoverErr)
+				}
+				continue
+			}
+			stream.mu.Lock()
+			if offset > stream.ackSent {
+				stream.ackSent = offset
+			}
+			more := stream.ackPending > stream.ackSent
+			stream.mu.Unlock()
+			if !more {
+				break
+			}
+		}
+	}
+}
+
+func (stream *Stream) sendApplication(limit uint64) error {
+	buffer := make([]byte, MaximumDataBytes)
 	for {
 		stream.mu.Lock()
 		for stream.sendQueueBlockedLocked() && stream.terminal == nil {
@@ -33,8 +82,7 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 			stream.mu.Unlock()
 			return err
 		}
-		remaining := limit - stream.sendEnd
-		available := logicalQueueLimit - len(stream.sendData)
+		remaining, available := limit-stream.sendEnd, logicalQueueLimit-len(stream.sendData)
 		want := len(buffer)
 		if uint64(want) > remaining {
 			want = int(remaining)
@@ -70,11 +118,11 @@ func (stream *recoveryStream) sendApplication(limit uint64) error {
 	}
 }
 
-func (stream *recoveryStream) sendQueueBlockedLocked() bool {
+func (stream *Stream) sendQueueBlockedLocked() bool {
 	return len(stream.sendData) >= logicalQueueLimit && stream.sendNext >= stream.sendEnd
 }
 
-func (stream *recoveryStream) sendTerminal() {
+func (stream *Stream) sendTerminal() {
 	attachment, err := stream.attachment()
 	if err != nil {
 		return
@@ -82,11 +130,10 @@ func (stream *recoveryStream) sendTerminal() {
 	stream.mu.Lock()
 	offset := stream.sendEnd
 	stream.mu.Unlock()
-	_ = stream.writeFrame(attachment, connectionFrame{kind: terminalFrameType,
-		generation: attachment.generation, offset: offset})
+	_ = stream.writeRecord(attachment, StreamRecord{Terminal: &Terminal{AttachmentGeneration: attachment.generation, Offset: offset}})
 }
 
-func (stream *recoveryStream) flushAvailable() error {
+func (stream *Stream) flushAvailable() error {
 	for {
 		stream.mu.Lock()
 		if stream.terminal != nil {
@@ -99,10 +146,9 @@ func (stream *recoveryStream) flushAvailable() error {
 			return nil
 		}
 		offset := stream.sendNext
-		start := offset - stream.sendBase
-		length := stream.sendEnd - offset
-		if length > maximumFrameData {
-			length = maximumFrameData
+		start, length := offset-stream.sendBase, stream.sendEnd-offset
+		if length > MaximumDataBytes {
+			length = MaximumDataBytes
 		}
 		payload := append([]byte(nil), stream.sendData[start:start+length]...)
 		stream.mu.Unlock()
@@ -111,8 +157,8 @@ func (stream *recoveryStream) flushAvailable() error {
 		if err != nil {
 			return err
 		}
-		frame := connectionFrame{kind: dataFrameType, generation: attachment.generation, offset: offset, data: payload}
-		if err := stream.writeFrame(attachment, frame); err != nil {
+		if err := stream.writeRecord(attachment, StreamRecord{Data: &Data{
+			AttachmentGeneration: attachment.generation, Offset: offset, Payload: payload}}); err != nil {
 			if recoverErr := stream.recoverAttachment(attachment); recoverErr != nil {
 				return errors.Join(errRecoveryTerminal, err, recoverErr)
 			}
@@ -126,7 +172,7 @@ func (stream *recoveryStream) flushAvailable() error {
 	}
 }
 
-func (stream *recoveryStream) writeFrame(attachment *securedAttachment, frame connectionFrame) error {
+func (stream *Stream) writeRecord(attachment *Attachment, record StreamRecord) error {
 	stream.writerMu.Lock()
 	defer stream.writerMu.Unlock()
 	stream.mu.Lock()
@@ -135,5 +181,5 @@ func (stream *recoveryStream) writeFrame(attachment *securedAttachment, frame co
 	if !current {
 		return io.ErrClosedPipe
 	}
-	return writeConnectionFrame(attachment.connection, frame)
+	return Write(attachment.carrier, Record{Data: record.Data, Acknowledgement: record.Acknowledgement, Terminal: record.Terminal})
 }

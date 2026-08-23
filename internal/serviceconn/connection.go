@@ -51,22 +51,25 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, e
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
-	stream := newRecoveryStream(ctx, input.Application, credential, binding,
-		nil, true, input.OpenAttachment, attachment, continuity, input.At,
-		input.NameBinding, input.NameUpdates, endpoint.resources)
+	stream, streamErr := newNativeStream(ctx, input, credential, binding, nil, true, attachment, continuity,
+		connectionContext, endpoint.resources)
+	if streamErr != nil {
+		attachment.close()
+		return failed("service target authentication failure", "native Service Connection stream is invalid", streamErr)
+	}
 	sendBytes, receiveBytes := streamBounds(input)
-	outcome, err := stream.run(sendBytes, receiveBytes)
+	outcome, err := stream.Run(sendBytes, receiveBytes)
 	if err != nil {
-		result, failure := streamFailure(ctx, outcome.accepted, outcome.received, err)
+		result, failure := streamFailure(ctx, outcome.Accepted, outcome.Received, err)
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
-		AcknowledgedBytes: outcome.acknowledged, ReceivedBytes: receiveBytes,
-		ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
-		RouteGeneration: outcome.generation, RecoveryCount: outcome.recoveries,
-		ContinuityCommitment: outcome.continuity}, nil
+		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
+		ConnectionCanary: canary, QueueHighWater: outcome.QueueHigh,
+		RouteGeneration: outcome.Generation, RecoveryCount: outcome.Recoveries,
+		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
 func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, error) {
@@ -109,30 +112,79 @@ func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, er
 	if err != nil {
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
-	stream := newRecoveryStream(ctx, input.Application, credential, binding,
-		lease, false, input.OpenAttachment, attachment, continuity, input.At,
-		DestinationBinding{}, nil, endpoint.resources)
+	stream, streamErr := newNativeStream(ctx, input, credential, binding, lease, false, attachment, continuity,
+		connectionContext, endpoint.resources)
+	if streamErr != nil {
+		attachment.close()
+		return failed("service target authentication failure", "native Service Connection stream is invalid", streamErr)
+	}
 	sendBytes, receiveBytes := streamBounds(input)
-	outcome, err := stream.run(sendBytes, receiveBytes)
+	outcome, err := stream.Run(sendBytes, receiveBytes)
 	if err != nil {
-		result, failure := streamFailure(ctx, outcome.accepted, outcome.received, err)
+		result, failure := streamFailure(ctx, outcome.Accepted, outcome.Received, err)
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
 	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
-		AcknowledgedBytes: outcome.acknowledged, ReceivedBytes: receiveBytes,
-		ConnectionCanary: canary, QueueHighWater: outcome.queueHigh,
-		RouteGeneration: outcome.generation, RecoveryCount: outcome.recoveries,
-		ContinuityCommitment: outcome.continuity}, nil
+		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
+		ConnectionCanary: canary, QueueHighWater: outcome.QueueHigh,
+		RouteGeneration: outcome.Generation, RecoveryCount: outcome.Recoveries,
+		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
-func applyRecoveryOutcome(result *Result, outcome recoveryOutcome) {
-	result.AcknowledgedBytes = outcome.acknowledged
-	result.QueueHighWater = outcome.queueHigh
-	result.RouteGeneration = outcome.generation
-	result.RecoveryCount = outcome.recoveries
-	result.ContinuityCommitment = outcome.continuity
+func applyRecoveryOutcome(result *Result, outcome nativeconnection.Outcome) {
+	result.AcknowledgedBytes = outcome.Acknowledged
+	result.QueueHighWater = outcome.QueueHigh
+	result.RouteGeneration = outcome.Generation
+	result.RecoveryCount = outcome.Recoveries
+	result.ContinuityCommitment = outcome.ContinuityCommitment
+}
+
+func newNativeStream(ctx context.Context, input Request, credential Credential, recovery Recovery,
+	private crypto.Signer, client bool, initial *securedAttachment, continuity, connectionContext [32]byte,
+	resources func(string, int) uint32) (*nativeconnection.Stream, error) {
+	first, err := nativeAttachment(initial)
+	if err != nil {
+		return nil, err
+	}
+	var opener nativeconnection.AttachmentOpener
+	if input.OpenAttachment != nil {
+		opener = func(attempt context.Context, binding nativeconnection.Recovery) (*nativeconnection.Attachment, error) {
+			raw, err := input.OpenAttachment(attempt, binding)
+			if err != nil {
+				return nil, err
+			}
+			var replacement *securedAttachment
+			var fresh [32]byte
+			if client {
+				replacement, fresh, err = secureClient(attempt, raw, credential, connectionContext, binding.Generation)
+			} else {
+				replacement, fresh, err = securePublisher(attempt, raw, credential, private, connectionContext, binding.Generation)
+			}
+			erase(fresh[:])
+			if errors.Is(err, errInstanceMismatch) {
+				return nil, nativeconnection.ErrActiveViolation
+			}
+			if err != nil {
+				return nil, err
+			}
+			return nativeAttachment(replacement)
+		}
+	}
+	nameBinding, nameUpdates := input.NameBinding, input.NameUpdates
+	if !client {
+		nameBinding, nameUpdates = DestinationBinding{}, nil
+	}
+	return nativeconnection.NewStream(nativeconnection.StreamConfig{Context: ctx, Application: input.Application,
+		NetworkID: credential.NetworkID, Recovery: recovery, OpenAttachment: opener, Initial: first,
+		ContinuityKey: continuity, Authorized: input.At, Client: client, NameBinding: nameBinding,
+		NameUpdates: nameUpdates, Resources: resources})
+}
+
+func nativeAttachment(attachment *securedAttachment) (*nativeconnection.Attachment, error) {
+	return nativeconnection.NewAttachment(attachment.connection, attachment.generation, attachment.context,
+		attachment.exporterCommitment, attachment.close)
 }
 
 func validateStreams(input Request) error {
@@ -152,21 +204,8 @@ func streamBounds(input Request) (uint32, uint32) {
 }
 
 func validateRecoveryBinding(input Request, credential Credential) error {
-	binding := input.RecoveryBinding
-	if input.OpenAttachment == nil {
-		if binding != (Recovery{}) {
-			return errors.New("recovery binding exists without an attachment opener")
-		}
-		return nil
-	}
-	if binding.CandidateView == [32]byte{} || binding.IsolationContext == [32]byte{} ||
-		binding.DestinationBinding == [32]byte{} || len(binding.RouteProfile) == 0 || len(binding.RouteProfile) > 63 ||
-		binding.WorkSafetyNotAfter <= input.At.Unix() || binding.WorkSafetyMaximum < binding.WorkSafetyNotAfter ||
-		binding.WorkSafetyMaximum > credential.NotAfter || binding.NoNewRecoveryAfter <= input.At.Unix() ||
-		binding.NoNewRecoveryAfter > binding.WorkSafetyNotAfter {
-		return errors.New("fixed recovery values or finite safety bounds are incomplete")
-	}
-	return nil
+	return nativeconnection.ValidateRecovery(input.OpenAttachment != nil, input.RecoveryBinding,
+		input.At.Unix(), credential.NotAfter)
 }
 
 func authenticateInstance(connection io.ReadWriter, credential Credential, connectionContext [32]byte) ([32]byte, error) {

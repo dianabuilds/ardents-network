@@ -1,4 +1,4 @@
-package serviceconn
+package connection
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 const recoveryPublicationReserve = 10 * time.Millisecond
 
-func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error {
+func (stream *Stream) recoverAttachment(failed *Attachment) error {
 	stream.mu.Lock()
 	for stream.recovering && stream.terminal == nil && stream.current == failed {
 		stream.cond.Wait()
@@ -26,7 +26,7 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 		stream.mu.Unlock()
 		return errors.New("no safe eligible Route Attachment remains")
 	}
-	if !stream.authorizationTime().Before(time.Unix(stream.binding.NoNewRecoveryAfter, 0)) {
+	if !stream.authorizationTime().Before(time.Unix(stream.recovery.NoNewRecoveryAfter, 0)) {
 		stream.mu.Unlock()
 		return errors.New("current Credential and Work Safety expired before recovery")
 	}
@@ -35,18 +35,19 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 		stream.episodeEnd = recoveryEpisodeDeadline(stream.lastProgress, time.Now())
 	}
 	deadline := recoveryWorkDeadline(stream.episodeEnd)
-	safetyRemaining := time.Unix(stream.binding.NoNewRecoveryAfter, 0).Sub(stream.authorizationTime())
+	safetyRemaining := time.Unix(stream.recovery.NoNewRecoveryAfter, 0).Sub(stream.authorizationTime())
 	if safetyDeadline := time.Now().Add(safetyRemaining); safetyDeadline.Before(deadline) {
 		deadline = safetyDeadline
 	}
 	generation := failed.generation + 1
-	state := continuityState{sendBase: stream.sendBase, sendEnd: stream.sendEnd, recvNext: stream.recvNext}
+	state := ContinuityExchange{Key: stream.continuity, Generation: generation, SendBase: stream.sendBase,
+		SendEnd: stream.sendEnd, ReceiveNext: stream.recvNext}
 	stream.mu.Unlock()
-	failed.close()
+	failed.closeCarrier()
 
 	var last error
 	for {
-		if !stream.authorizationTime().Before(time.Unix(stream.binding.NoNewRecoveryAfter, 0)) {
+		if !stream.authorizationTime().Before(time.Unix(stream.recovery.NoNewRecoveryAfter, 0)) {
 			last = errors.New("current Credential and Work Safety expired during recovery")
 			break
 		}
@@ -59,36 +60,28 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 		stream.mu.Unlock()
 		releaseTimer := acquireResource(stream.resources, "timer")
 		attempt, cancel := context.WithDeadline(stream.ctx, deadline)
-		request := stream.binding
-		request.Generation, request.Deadline, request.NetworkID = generation, deadline, stream.credential.NetworkID
+		request := stream.recovery
+		request.Generation, request.Deadline, request.NetworkID = generation, deadline, stream.networkID
 		if stream.client {
 			request.Role = "client"
 		} else {
 			request.Role = "publisher"
 		}
-		raw, err := stream.opener(attempt, request)
+		attachment, err := stream.opener(attempt, request)
 		if err == nil {
-			var attachment *securedAttachment
-			var fresh [32]byte
-			if stream.client {
-				attachment, fresh, err = secureClient(attempt, raw, stream.credential, stream.context, generation)
+			state.Role = RoleClient
+			if !stream.client {
+				state.Role = RolePublisher
+			}
+			state.Context, state.ExporterCommitment = attachment.context, attachment.exporterCommitment
+			peer, exchangeErr := ExchangeContinuity(attempt, attachment.carrier, state)
+			if exchangeErr != nil {
+				err = ErrActiveViolation
 			} else {
-				attachment, fresh, err = securePublisher(attempt, raw, stream.credential, stream.private, stream.context, generation)
+				err = stream.commitAttachment(failed, attachment, peer)
 			}
-			erase(fresh[:])
-			if errors.Is(err, errInstanceMismatch) {
-				err = errActiveViolation
-			}
-			if err == nil {
-				var peer peerContinuity
-				peer, err = exchangeContinuityProof(attempt, attachment, stream.continuity,
-					stream.credential, stream.binding, stream.client, state)
-				if err == nil {
-					err = stream.commitAttachment(failed, attachment, peer)
-				}
-				if err != nil {
-					attachment.close()
-				}
+			if err != nil {
+				attachment.closeCarrier()
 			}
 		}
 		cancel()
@@ -97,7 +90,7 @@ func (stream *recoveryStream) recoverAttachment(failed *securedAttachment) error
 			return nil
 		}
 		last = err
-		if errors.Is(err, errActiveViolation) {
+		if errors.Is(err, ErrActiveViolation) {
 			break
 		}
 	}
@@ -123,17 +116,17 @@ func recoveryEpisodeStart(lastProgress, detected time.Time) time.Time {
 	return lastProgress
 }
 
-func (stream *recoveryStream) commitAttachment(failed, attachment *securedAttachment, peer peerContinuity) error {
+func (stream *Stream) commitAttachment(failed, attachment *Attachment, peer ContinuityPeer) error {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 	if stream.current != failed || attachment.generation <= failed.generation ||
-		peer.recvNext < stream.sendBase || peer.recvNext > stream.sendEnd || peer.sendEnd < stream.recvNext {
-		return errActiveViolation
+		peer.ReceiveNext < stream.sendBase || peer.ReceiveNext > stream.sendEnd || peer.SendEnd < stream.recvNext {
+		return ErrActiveViolation
 	}
-	if peer.peerNonce == [32]byte{} || peer.localNonce == [32]byte{} || peer.peerNonce == peer.localNonce {
-		return errActiveViolation
+	if peer.PeerNonce == [32]byte{} || peer.LocalNonce == [32]byte{} || peer.PeerNonce == peer.LocalNonce {
+		return ErrActiveViolation
 	}
-	if err := stream.acknowledgeLocked(peer.recvNext); err != nil {
+	if err := stream.acknowledgeLocked(peer.ReceiveNext); err != nil {
 		return err
 	}
 	stream.current = attachment

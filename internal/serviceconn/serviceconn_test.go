@@ -340,7 +340,7 @@ func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential 
 
 func acknowledgement(value fixture, credential serviceconn.Credential) []byte {
 	body := make([]byte, 149)
-	copy(body[:4], "ASIA")
+	copy(body[:4], "ARIA")
 	body[4] = 1
 	copy(body[5:37], credential.Target[:])
 	binary.BigEndian.PutUint64(body[37:45], credential.Generation)
@@ -349,7 +349,7 @@ func acknowledgement(value fixture, credential serviceconn.Credential) []byte {
 	body[85] = 7
 	body[117] = byte(credential.Generation)
 	signature := ed25519.Sign(value.introductionPrivate,
-		append([]byte("ardents-h3-introduction-ack-v1\x00"), body...))
+		append([]byte("ardents-service-introduction-ack-v1\x00"), body...))
 	return append(body, signature...)
 }
 

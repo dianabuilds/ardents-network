@@ -347,14 +347,19 @@ Connection and endpoint process tests exercise the caller cutover.
 it delegates publication persistence, generation, acquisition and Instance
 signing to the opaque Publication lease, so it cannot copy or persist the
 private key. Its old action union, Introduction acknowledgement tracer, H3
-connection records, recovery stream, and result/evidence bag remain explicit
-M9 deletion inputs. ADR-0028's native connection grammar, vectors and its
+connection records, and result/evidence bag remain explicit M9 deletion
+inputs. ADR-0028's native connection grammar, vectors and its
 new focused caller replace them in the next M9 slice; this partial cutover
 does not claim that R-083 is implemented or that M9 is complete.
 
-R-083's native wire now owns all six records in `service/connection`: exact
+R-083's native wire now owns immutable Name-origin and finite recovery
+contracts, plus all six records in `service/connection`: exact
 ConnectionContext, Instance Challenge/Proof, deterministic exporter-bound
-Continuity, Data, Acknowledgement, and Terminal. Each is one exact
+Continuity, Data, Acknowledgement, and Terminal. It also owns the role-ordered
+Continuity exchange and record verification, plus the entire ordered/replayed
+logical-stream, Attachment-replacement, and native-terminal lifecycle. The
+temporary adapter supplies only the selected TLS carrier, retained local
+admission, and product result projection. Each record is one exact
 `ardents-service-connection-v1` envelope with the fixed native Profile,
 closed kind, whole-body parser, and a 16 KiB Data bound. The temporary adapter
 uses that codec for the live TLS proof, every fresh attachment, and stream
@@ -362,9 +367,9 @@ records, so the old `ASCF`, `ASAT`, `ASCH`, `ASPR`, associated H3 exporter
 labels, and connection-binding tags are gone. The native codec's fixed context
 vector and mutation tests, together with the retained Service Connection
 recovery suite, cover profile/kind/length, proof/context, continuity MAC, and
-offset/terminal refusal. This completes the R-083 grammar transfer, but M9 is
-still open until `service/connection` owns stream state and the temporary
-`serviceconn` action/result adapter is deleted.
+offset/terminal refusal. This completes the R-083 grammar and stream-state
+transfer. M9 remains open only for the M10-coordinated removal of the
+temporary `serviceconn` local action/result adapter.
 
 ## Dependency and retirement rules
 

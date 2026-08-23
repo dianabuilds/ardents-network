@@ -1,5 +1,7 @@
 package connection
 
+import "time"
+
 const (
 	// Profile is the only endpoint record profile accepted by native Service
 	// Connection v1. It is never negotiated or chosen by a peer.
@@ -18,6 +20,38 @@ type ContextInput struct {
 	InstanceGeneration                                        uint64
 	CandidateView, IsolationContext, DestinationBinding       [32]byte
 	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter int64
+}
+
+// DestinationBinding is the immutable Service Name provenance that a logical
+// connection pins for its entire lifetime. It contains no Namespace record or
+// mutable resolution owner.
+type DestinationBinding struct {
+	Name             string
+	Generation       uint64
+	Revision         uint64
+	Authority        string
+	Target           [32]byte
+	ParentName       string
+	ParentGeneration uint64
+	RecordDigest     [32]byte
+	Commitment       [32]byte
+}
+
+// Recovery fixes the immutable constraints for one fresh Route Attachment.
+// The lifecycle replaces only the attachment generation and deadline; it must
+// carry every other fact unchanged into each opening attempt.
+type Recovery struct {
+	Generation         uint64
+	Deadline           time.Time
+	NetworkID          [32]byte
+	CandidateView      [32]byte
+	IsolationContext   [32]byte
+	DestinationBinding [32]byte
+	RouteProfile       string
+	Role               string
+	WorkSafetyNotAfter int64
+	WorkSafetyMaximum  int64
+	NoNewRecoveryAfter int64
 }
 
 // Challenge proves the exact Target and Instance before application success.
@@ -73,6 +107,15 @@ type Record struct {
 	Challenge       *Challenge
 	Proof           *Proof
 	Continuity      *Continuity
+	Data            *Data
+	Acknowledgement *Acknowledgement
+	Terminal        *Terminal
+}
+
+// StreamRecord is the closed record subset permitted after Instance and
+// Continuity authentication. Handshake records can never be interpreted as
+// application-stream traffic.
+type StreamRecord struct {
 	Data            *Data
 	Acknowledgement *Acknowledgement
 	Terminal        *Terminal

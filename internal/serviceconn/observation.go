@@ -118,11 +118,11 @@ func higherResources(left, right resourceSample) resourceSample {
 }
 
 func commitment(kind string, value [32]byte) [32]byte {
-	return sha256.Sum256(append([]byte("ardents-h3-service-"+kind+"-v1\x00"), value[:]...))
+	return sha256.Sum256(append([]byte("ardents-service-"+kind+"-v1\x00"), value[:]...))
 }
 
 func grantCommitment(broker, principal [32]byte, surface string) [32]byte {
-	value := append([]byte("ardents-h3-service-grant-v1\x00"), broker[:]...)
+	value := append([]byte("ardents-service-grant-v1\x00"), broker[:]...)
 	value = append(value, principal[:]...)
 	value = append(value, surface...)
 	return sha256.Sum256(value)

@@ -66,6 +66,26 @@ func Read(reader io.Reader) (Record, error) {
 	return decodeRecord(body)
 }
 
+// ReadStream consumes one native application-stream record. It rejects the
+// Challenge, Proof, and Continuity record kinds, which belong only to the
+// fixed authentication and attachment phases.
+func ReadStream(reader io.Reader) (StreamRecord, error) {
+	record, err := Read(reader)
+	if err != nil {
+		return StreamRecord{}, err
+	}
+	switch {
+	case record.Data != nil:
+		return StreamRecord{Data: record.Data}, nil
+	case record.Acknowledgement != nil:
+		return StreamRecord{Acknowledgement: record.Acknowledgement}, nil
+	case record.Terminal != nil:
+		return StreamRecord{Terminal: record.Terminal}, nil
+	default:
+		return StreamRecord{}, errors.New("native connection stream received a non-stream record")
+	}
+}
+
 // ChallengeDigest hashes the exact canonical Challenge envelope used by the
 // matching InstanceProof. It has no H3 predecessor interpretation.
 func ChallengeDigest(challenge Challenge) ([32]byte, error) {

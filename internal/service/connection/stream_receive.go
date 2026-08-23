@@ -1,4 +1,4 @@
-package serviceconn
+package connection
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func (stream *recoveryStream) receiveApplication(receiveLimit, sendLimit uint64) error {
+func (stream *Stream) receiveApplication(receiveLimit, sendLimit uint64) error {
 	for {
 		stream.mu.Lock()
 		complete := stream.recvNext == receiveLimit && stream.sendBase == sendLimit
@@ -24,7 +24,7 @@ func (stream *recoveryStream) receiveApplication(receiveLimit, sendLimit uint64)
 		if err != nil {
 			return err
 		}
-		frame, err := readConnectionFrame(attachment.connection)
+		record, err := ReadStream(attachment.carrier)
 		if err != nil {
 			stream.mu.Lock()
 			complete = stream.recvNext == receiveLimit && stream.sendBase == sendLimit
@@ -37,22 +37,33 @@ func (stream *recoveryStream) receiveApplication(receiveLimit, sendLimit uint64)
 			}
 			continue
 		}
-		if frame.generation != attachment.generation {
-			return errActiveViolation
+		var generation, offset uint64
+		switch {
+		case record.Data != nil:
+			generation, offset = record.Data.AttachmentGeneration, record.Data.Offset
+		case record.Acknowledgement != nil:
+			generation, offset = record.Acknowledgement.AttachmentGeneration, record.Acknowledgement.Offset
+		case record.Terminal != nil:
+			generation, offset = record.Terminal.AttachmentGeneration, record.Terminal.Offset
+		default:
+			return ErrActiveViolation
 		}
-		switch frame.kind {
-		case ackFrameType:
+		if generation != attachment.generation {
+			return ErrActiveViolation
+		}
+		switch {
+		case record.Acknowledgement != nil:
 			stream.mu.Lock()
-			err = stream.acknowledgeLocked(frame.offset)
+			err = stream.acknowledgeLocked(offset)
 			stream.mu.Unlock()
-		case dataFrameType:
-			err = stream.acceptData(attachment, frame, receiveLimit)
-		case terminalFrameType:
+		case record.Data != nil:
+			err = stream.acceptData(record.Data, receiveLimit)
+		case record.Terminal != nil:
 			stream.mu.Lock()
-			valid := frame.offset == stream.recvNext
+			valid := offset == stream.recvNext
 			stream.mu.Unlock()
 			if !valid {
-				return errActiveViolation
+				return ErrActiveViolation
 			}
 			return errors.New("remote Application stream ended before the declared byte count")
 		}
@@ -62,12 +73,12 @@ func (stream *recoveryStream) receiveApplication(receiveLimit, sendLimit uint64)
 	}
 }
 
-func (stream *recoveryStream) acknowledgeLocked(offset uint64) error {
+func (stream *Stream) acknowledgeLocked(offset uint64) error {
 	if offset < stream.sendBase {
 		return nil
 	}
 	if offset > stream.sendEnd {
-		return errActiveViolation
+		return ErrActiveViolation
 	}
 	trim := offset - stream.sendBase
 	stream.sendData = append(stream.sendData[:0], stream.sendData[trim:]...)
@@ -79,32 +90,35 @@ func (stream *recoveryStream) acknowledgeLocked(offset uint64) error {
 	return nil
 }
 
-func (stream *recoveryStream) acceptData(attachment *securedAttachment, frame connectionFrame, limit uint64) error {
-	end := frame.offset + uint64(len(frame.data))
-	if len(frame.data) == 0 || end < frame.offset || end > limit {
-		return errActiveViolation
+func (stream *Stream) acceptData(data *Data, limit uint64) error {
+	if data == nil {
+		return ErrActiveViolation
+	}
+	end := data.Offset + uint64(len(data.Payload))
+	if len(data.Payload) == 0 || end < data.Offset || end > limit {
+		return ErrActiveViolation
 	}
 	stream.mu.Lock()
 	next := stream.recvNext
-	if frame.offset < next {
-		prefix := next - frame.offset
-		if prefix > uint64(len(frame.data)) {
-			prefix = uint64(len(frame.data))
+	offset, payload := data.Offset, data.Payload
+	if offset < next {
+		prefix := next - offset
+		if prefix > uint64(len(payload)) {
+			prefix = uint64(len(payload))
 		}
-		if !stream.matchesRecentLocked(frame.offset, frame.data[:prefix]) {
+		if !stream.matchesRecentLocked(offset, payload[:prefix]) {
 			stream.mu.Unlock()
-			return errActiveViolation
+			return ErrActiveViolation
 		}
-		frame.offset += prefix
-		frame.data = frame.data[prefix:]
-		if len(frame.data) == 0 {
+		offset += prefix
+		payload = payload[prefix:]
+		if len(payload) == 0 {
 			stream.mu.Unlock()
 			stream.queueAcknowledgement(next)
 			return nil
 		}
 	}
-	if err := stream.storeRangeLocked(receivedRange{offset: frame.offset,
-		data: append([]byte(nil), frame.data...)}); err != nil {
+	if err := stream.storeRangeLocked(receivedRange{offset: offset, data: append([]byte(nil), payload...)}); err != nil {
 		stream.mu.Unlock()
 		return err
 	}
@@ -127,7 +141,7 @@ func (stream *recoveryStream) acceptData(attachment *securedAttachment, frame co
 	return nil
 }
 
-func (stream *recoveryStream) storeRangeLocked(candidate receivedRange) error {
+func (stream *Stream) storeRangeLocked(candidate receivedRange) error {
 	retained := stream.pending[:0]
 	for _, existing := range stream.pending {
 		candidateEnd := candidate.offset + uint64(len(candidate.data))
@@ -136,12 +150,10 @@ func (stream *recoveryStream) storeRangeLocked(candidate receivedRange) error {
 			retained = append(retained, existing)
 			continue
 		}
-		overlapStart := max(candidate.offset, existing.offset)
-		overlapEnd := min(candidateEnd, existingEnd)
-		if overlapStart < overlapEnd && !bytes.Equal(
-			candidate.data[overlapStart-candidate.offset:overlapEnd-candidate.offset],
+		overlapStart, overlapEnd := max(candidate.offset, existing.offset), min(candidateEnd, existingEnd)
+		if overlapStart < overlapEnd && !bytes.Equal(candidate.data[overlapStart-candidate.offset:overlapEnd-candidate.offset],
 			existing.data[overlapStart-existing.offset:overlapEnd-existing.offset]) {
-			return errActiveViolation
+			return ErrActiveViolation
 		}
 		mergedStart, mergedEnd := min(candidate.offset, existing.offset), max(candidateEnd, existingEnd)
 		merged := make([]byte, mergedEnd-mergedStart)
@@ -152,13 +164,13 @@ func (stream *recoveryStream) storeRangeLocked(candidate receivedRange) error {
 	retained = append(retained, candidate)
 	sort.Slice(retained, func(first, second int) bool { return retained[first].offset < retained[second].offset })
 	if len(retained) > 8 {
-		return errActiveViolation
+		return ErrActiveViolation
 	}
 	stream.pending = retained
 	pending := stream.pendingBytesLocked()
 	stream.trimRecentLocked(pending)
 	if pending+len(stream.recent) > logicalQueueLimit {
-		return errActiveViolation
+		return ErrActiveViolation
 	}
 	if queued := uint32(pending + len(stream.recent)); queued > stream.queueMax {
 		stream.queueMax = queued
@@ -166,7 +178,7 @@ func (stream *recoveryStream) storeRangeLocked(candidate receivedRange) error {
 	return nil
 }
 
-func (stream *recoveryStream) pendingBytesLocked() int {
+func (stream *Stream) pendingBytesLocked() int {
 	total := 0
 	for _, value := range stream.pending {
 		total += len(value.data)
@@ -174,7 +186,7 @@ func (stream *recoveryStream) pendingBytesLocked() int {
 	return total
 }
 
-func (stream *recoveryStream) trimRecentLocked(reserved int) {
+func (stream *Stream) trimRecentLocked(reserved int) {
 	keep := logicalQueueLimit - reserved
 	if keep < 0 {
 		keep = 0
@@ -186,7 +198,7 @@ func (stream *recoveryStream) trimRecentLocked(reserved int) {
 	}
 }
 
-func (stream *recoveryStream) matchesRecentLocked(offset uint64, data []byte) bool {
+func (stream *Stream) matchesRecentLocked(offset uint64, data []byte) bool {
 	end := offset + uint64(len(data))
 	if end < offset || offset < stream.recentAt || end > stream.recentAt+uint64(len(stream.recent)) {
 		return false
@@ -195,7 +207,7 @@ func (stream *recoveryStream) matchesRecentLocked(offset uint64, data []byte) bo
 	return bytes.Equal(stream.recent[start:start+uint64(len(data))], data)
 }
 
-func (stream *recoveryStream) queueAcknowledgement(offset uint64) {
+func (stream *Stream) queueAcknowledgement(offset uint64) {
 	stream.mu.Lock()
 	if offset > stream.ackPending {
 		stream.ackPending = offset

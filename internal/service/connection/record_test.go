@@ -101,3 +101,23 @@ func TestNativeRecordRejectsProfileKindLengthAndContinuityMutations(t *testing.T
 		t.Fatal("truncated record was accepted")
 	}
 }
+
+func TestReadStreamRejectsHandshakeRecords(t *testing.T) {
+	t.Parallel()
+	var wire bytes.Buffer
+	challenge := Challenge{Network: [32]byte{1}, Target: [32]byte{2}, InstanceGeneration: 1,
+		Context: [32]byte{3}, Nonce: [32]byte{4}}
+	if err := Write(&wire, Record{Challenge: &challenge}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadStream(&wire); err == nil {
+		t.Fatal("handshake record was accepted as application-stream traffic")
+	}
+	if err := Write(&wire, Record{Data: &Data{AttachmentGeneration: 1, Payload: []byte{1}}}); err != nil {
+		t.Fatal(err)
+	}
+	record, err := ReadStream(&wire)
+	if err != nil || record.Data == nil || !bytes.Equal(record.Data.Payload, []byte{1}) {
+		t.Fatalf("Data stream record was not preserved: record=%+v err=%v", record, err)
+	}
+}
