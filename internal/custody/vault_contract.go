@@ -19,6 +19,9 @@ const (
 	// OperationSignNamespaceTransition signs one sealed Namespace transition with
 	// an active Name Authority record without releasing its root material.
 	OperationSignNamespaceTransition OperationKind = "sign-namespace-transition"
+	// OperationPrepareNamespaceSubmission derives and signs one complete
+	// existing-Name control submission without releasing its root material.
+	OperationPrepareNamespaceSubmission OperationKind = "prepare-namespace-submission"
 	// OperationInspectEnvelope validates only an envelope's public canonical header.
 	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
@@ -49,18 +52,24 @@ type OperationKind string
 // for export. Fields unrelated to the selected operation must retain their zero
 // value.
 type Operation struct {
-	Kind       OperationKind
-	Authority  AuthorityState
-	RecordID   string
-	Expected   AuthorityBinding
-	Path       string
-	Transition NamespaceTransition
+	Kind        OperationKind
+	Authority   AuthorityState
+	RecordID    string
+	Expected    AuthorityBinding
+	Path        string
+	Transition  NamespaceTransition
+	Preparation NamespaceSubmission
 }
 
 // NamespaceTransition invokes one sealed Namespace signer and returns its
 // public transition proof. It may not manufacture a signing request: Namespace
 // owns the exact request construction.
 type NamespaceTransition func(authority.TransitionSigner) ([]byte, error)
+
+// NamespaceSubmission invokes Namespace's control-preparation seam. Namespace
+// derives the exact transition and successor Record; custody only supplies the
+// paired Authority operations and returns the resulting opaque Submission.
+type NamespaceSubmission func(authority.ControlSigner) (authority.Submission, error)
 
 // SecretInput obtains one explicit password entry for the custody boundary.
 // Implementations must not source it from argv, environment, configuration, or
@@ -99,6 +108,7 @@ type Receipt struct {
 	TestRestored bool
 	State        RecordState
 	Proof        []byte
+	Submission   []byte
 }
 
 // RecordState is the non-secret local lifecycle classification of a protected

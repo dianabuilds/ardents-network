@@ -6,6 +6,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming"
 )
 
+const custodyDerivedSigningMode = "custody-derived-v1"
+
 func validControlOperation(value controlOperation) bool {
 	name, err := naming.Parse(value.Name)
 	if err != nil || string(name) != value.Name || value.OperationDigest == [32]byte{} ||
@@ -13,7 +15,11 @@ func validControlOperation(value controlOperation) bool {
 		len(value.RecoveryPolicy) > 2<<10 || len(value.RecoveryProof) > 2<<10 {
 		return false
 	}
-	expected := controlOperation{Kind: value.Kind, OperationDigest: value.OperationDigest, Name: value.Name}
+	if value.SigningMode != "" && value.SigningMode != custodyDerivedSigningMode {
+		return false
+	}
+	expected := controlOperation{Kind: value.Kind, SigningMode: value.SigningMode,
+		OperationDigest: value.OperationDigest, Name: value.Name}
 	switch value.Kind {
 	case "claim":
 		if value.Generation == 0 || value.Authority == [32]byte{} || value.LeaseNotAfter <= 0 ||

@@ -34,13 +34,16 @@ type RecordSigner = record.RecordSigner
 type RecordSigningRequest = record.RecordSigningRequest
 type TransitionSigner = authority.TransitionSigner
 type TransitionSigningRequest = authority.TransitionSigningRequest
+type ControlSigner = authority.ControlSigner
 type Epoch = epoch.Epoch
 type EpochInstallation = epoch.EpochInstallation
 type MaterializationPolicy = epoch.MaterializationPolicy
 type Store = epoch.Store
 type Submission = authority.Submission
+type Intent = authority.Intent
 
 type control interface {
+	Prepare(Intent, ControlSigner) (Submission, error)
 	Submit(Submission, Proof) string
 }
 
@@ -67,6 +70,7 @@ var (
 	VerifyLegacy            = epoch.VerifyLegacy
 	VerifyBinding           = epoch.VerifyBinding
 	OpenSubmission          = authority.OpenSubmission
+	OpenIntent              = authority.OpenIntent
 	SignTransition          = authority.SignTransition
 	SignTransitionWith      = authority.SignTransitionWith
 	TransitionDigest        = authority.TransitionDigest

@@ -25,6 +25,8 @@ type RecordSigner interface {
 // Namespace. It exposes only the retained Record transcript and Authority key.
 type RecordSigningRequest struct {
 	authority  [ed25519.PublicKeySize]byte
+	generation uint64
+	revision   uint64
 	recordWire []byte
 	transcript []byte
 }
@@ -50,6 +52,11 @@ func (request RecordSigningRequest) Authority() [ed25519.PublicKeySize]byte {
 	return request.authority
 }
 
+// Successor returns the exact Record generation and revision being signed.
+func (request RecordSigningRequest) Successor() (uint64, uint64) {
+	return request.generation, request.revision
+}
+
 // Transcript returns a copy of the exact retained signing transcript.
 func (request RecordSigningRequest) Transcript() []byte {
 	return append([]byte(nil), request.transcript...)
@@ -67,8 +74,8 @@ func newRecordSigningRequest(network [32]byte, record Record) (RecordSigningRequ
 	if err != nil || len(recordWire) > maximumRecordPayloadBytes {
 		return RecordSigningRequest{}, errors.New("name record cannot be signed")
 	}
-	request := RecordSigningRequest{recordWire: append([]byte(nil), recordWire...),
-		transcript: recordTranscript(network, recordWire)}
+	request := RecordSigningRequest{generation: record.Generation, revision: record.Revision,
+		recordWire: append([]byte(nil), recordWire...), transcript: recordTranscript(network, recordWire)}
 	copy(request.authority[:], public)
 	return request, nil
 }

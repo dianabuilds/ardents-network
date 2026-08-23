@@ -22,9 +22,10 @@ lifecycle `Record` in its production Gateway or Resolver path.
 The current flow is:
 
 ```text
-Namespace derives an exact successor and creates a sealed signing request
-  -> Custody signs only that request when its authenticated active Authority,
-     predecessor generation, and predecessor revision match
+Namespace derives an exact successor/Record pair from a canonical unsigned
+existing-Name Intent
+  -> Custody signs only that sealed pair when its authenticated active
+     Authority, predecessor generation, and predecessor revision match
   -> private Gateway accepts only submitted/denied
   -> Namespace persists the signed successor as pending
   -> authenticated Epoch installation selects a pending prefix and/or ClaimWinner
@@ -101,9 +102,15 @@ tracer can grow.
 - Namespace's `TransitionSigningRequest` carries the exact predecessor
   generation/revision, operation transcript, and expected Authority key; a
   custody boundary may not receive a raw private key or arbitrary transcript,
-  nor sign a request derived from an older local predecessor. The production
-  control-to-custody successor route remains pending, so this seam is not yet a
-  signing feature.
+  nor sign a request derived from an older local predecessor. The command and
+  Gateway intake migration into this path remains pending.
+- The durable Authority's `Prepare` seam now accepts only a canonical unsigned
+  existing-Name Intent, derives the transition and successor Record without
+  mutating its chain, and obtains their signatures as one custody pair. Its
+  static intent digest remains the anonymous-admission binding; only a later
+  `Submit` appends the prepared canonical submission. The command/Gateway still
+  consumes the retained complete signed wire, so migration of that intake is
+  pending and the retained wire is not a second signing route.
 - Current materialization may advance only from the durable pending prefix
   and/or verified `ClaimWinner` on the new installation path; restart
   reconstructs verified current plus unapplied pending state but never promotes

@@ -20,6 +20,14 @@ type TransitionSigner interface {
 	Sign(TransitionSigningRequest) ([]byte, error)
 }
 
+// ControlSigner owns the paired Authority operations that prepare one
+// existing-Name control submission. Namespace derives both requests and never
+// gives the caller a lifecycle record or transcript to construct.
+type ControlSigner interface {
+	SignTransition(TransitionSigningRequest) ([]byte, error)
+	SignRecord(record.RecordSigningRequest) ([]byte, error)
+}
+
 // TransitionSigningRequest is the sealed transition transcript generated from
 // one canonical predecessor and lifecycle operation.
 type TransitionSigningRequest struct {

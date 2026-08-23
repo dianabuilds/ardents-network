@@ -2,6 +2,7 @@ package authority
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 
 type controlOperation struct {
 	Kind               string   `json:"kind"`
+	SigningMode        string   `json:"signing_mode,omitempty"`
 	OperationDigest    [32]byte `json:"operation_digest"`
 	Network            [32]byte `json:"network,omitempty"`
 	Nonce              [32]byte `json:"nonce,omitempty"`
@@ -61,17 +63,22 @@ func decodeControlOperation(raw []byte) (controlOperation, error) {
 		value.OperationDigest == [32]byte{} {
 		return controlOperation{}, errors.New("name Authority operation is invalid")
 	}
-	declared := value.OperationDigest
-	value.OperationDigest = [32]byte{}
-	canonical, _ := json.Marshal(value)
-	if declared != controlOperationDigest(canonical) {
+	if value.OperationDigest != canonicalControlDigest(value) {
 		return controlOperation{}, errors.New("name Authority operation digest is invalid")
 	}
-	value.OperationDigest = declared
 	if !validControlOperation(value) {
 		return controlOperation{}, errors.New("name Authority operation shape is invalid")
 	}
 	return value, nil
+}
+
+func canonicalControlDigest(value controlOperation) [32]byte {
+	value.OperationDigest = [32]byte{}
+	if value.SigningMode == custodyDerivedSigningMode {
+		value.AuthorityProof, value.SuccessorRecord = nil, nil
+	}
+	canonical, _ := json.Marshal(value)
+	return controlOperationDigest(canonical)
 }
 
 // OpenSubmission validates one canonical static control input for private
@@ -91,6 +98,15 @@ func (submission Submission) Digest() [32]byte { return submission.digest }
 // Canonical returns a copy of the sole canonical control representation for
 // opaque private transport. It never exposes lifecycle fields individually.
 func (submission Submission) Canonical() []byte { return append([]byte(nil), submission.raw...) }
+
+// MatchesSignatures reports whether this custody-derived Submission contains
+// exactly the paired Authority proofs produced by one ControlSigner.
+func (submission Submission) MatchesSignatures(transition, successor []byte) bool {
+	operation, err := decodeControlOperation(submission.raw)
+	return err == nil && operation.SigningMode == custodyDerivedSigningMode &&
+		bytes.Equal(operation.AuthorityProof, transition) && len(operation.SuccessorRecord) >= ed25519.SignatureSize &&
+		bytes.Equal(operation.SuccessorRecord[len(operation.SuccessorRecord)-ed25519.SignatureSize:], successor)
+}
 
 func decodeCanonical(raw []byte, value any) error {
 	decoder := json.NewDecoder(bytes.NewReader(raw))

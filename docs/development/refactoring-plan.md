@@ -446,6 +446,18 @@ record. The production control still lacks the complete
 derived-successor-to-custody caller; this deliberately prepares that path
 without adding a raw-key or generic-signing escape hatch.
 
+The durable Authority now has that inner caller: `Prepare` accepts only a
+canonical unsigned existing-Name Intent, derives its exact transition and
+successor Record while retaining the current chain, and invokes custody for the
+two ordered sealed requests. Custody accepts only the active Authority key and
+its exact predecessor generation/revision, then requires the successor Record
+to advance precisely one revision before returning the opaque prepared
+Submission. The static Intent digest still binds anonymous admission and
+`Submit` remains the sole durable pending-journal writer. This does not yet
+migrate the command/Gateway source: it still consumes the retained complete
+signed wire, which is a compatibility path rather than another custody signing
+interface.
+
 Record and floor publication now flush the encrypted temporary file, use the
 selected same-directory platform replacement primitive, flush the parent where
 the platform permits it, and reopen before reporting success. This is an
