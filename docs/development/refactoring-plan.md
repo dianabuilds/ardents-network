@@ -278,6 +278,19 @@ opener receives the literal State endpoint and authenticates the State Ed25519
 pin through a mutually authenticated TLS 1.3 handshake. The file remains below
 the interim 500-line hard maximum.
 
+`internal/entry/admission.go` is the separate Initiator-side durable replay
+owner for R-079. It verifies the opaque Invite again and commits the finite
+`(invite-id, attachment-id, client-key-digest)` tuple under one Entry lock;
+the tuple is retained only through its expiry and survives reopening. Route's
+native accept path supplies a narrow adapter, so it receives only the admitted
+non-secret facts and cannot inspect an Entry root or User identity.
+`TestAdmitterPersistsExactReplayTupleAcrossReopen`,
+`TestAdmitEntryBindingRejectsSubstitutionAndConsumesOneTuple`, and
+`TestAcceptEntryAttachmentVerifiesAndConsumesBeforeReturning` cover durable
+replay refusal, TLS-key substitution, and the no-allocation-before-admission
+order. The previous `net.Pipe` cleanup test now holds its peer through setup;
+its 20-run reproduction passes rather than depending on close scheduling.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

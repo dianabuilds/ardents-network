@@ -38,8 +38,24 @@ type EntryAttachmentAcceptance struct {
 	Epoch                              uint64
 	Deadline                           time.Time
 	Certificate                        tls.Certificate
-	Verify                             EntryVerifier
-	Consume                            EntryConsumer
+	Admit                              EntryBindingAdmitter
+}
+
+// EntryAdmitterPort adapts Entry's durable one-operation admission to Route's
+// opaque port. It exposes no Entry root, candidate, User identifier, or raw
+// State fact to the Route accept loop.
+func EntryAdmitterPort(value *entry.Admitter) EntryBindingAdmitter {
+	if value == nil {
+		return nil
+	}
+	return func(invite []byte, attachment, clientKey [32]byte, notAfter time.Time) (EntryAdmission, error) {
+		authorization, err := value.AdmitAndConsume(invite, attachment, clientKey, notAfter)
+		if err != nil {
+			return EntryAdmission{}, err
+		}
+		return EntryAdmission{InviteID: authorization.InviteID, NetworkID: authorization.NetworkID, Digest: authorization.Digest,
+			Epoch: authorization.Epoch, InitiatorNodeID: authorization.InitiatorNodeID, NotAfter: authorization.NotAfter}, nil
+	}
 }
 
 // OpenEntryAttachment creates one State-pinned native User-to-Initiator TLS
@@ -84,7 +100,7 @@ func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryA
 // usable attachment. It leaves no Route work allocated on refusal.
 func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input EntryAttachmentAcceptance) (net.Conn, error) {
 	if connection == nil || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.InitiatorNodeID == [32]byte{} ||
-		input.Epoch == 0 || input.Deadline.IsZero() || input.Certificate.PrivateKey == nil || input.Verify == nil || input.Consume == nil ||
+		input.Epoch == 0 || input.Deadline.IsZero() || input.Certificate.PrivateKey == nil || input.Admit == nil ||
 		!time.Now().Before(input.Deadline) {
 		return nil, errors.New("Entry attachment acceptance is invalid")
 	}
@@ -116,7 +132,7 @@ func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input Entry
 		_ = connection.Close()
 		return nil, errors.New("Entry TLS client certificate is unavailable")
 	}
-	if err := VerifyAndConsumeEntryBinding(binding, peer[0], time.Now().UTC(), input.Verify, input.Consume); err != nil {
+	if err := AdmitEntryBinding(binding, peer[0], time.Now().UTC(), input.Admit); err != nil {
 		_ = connection.Close()
 		return nil, err
 	}

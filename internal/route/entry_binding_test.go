@@ -81,7 +81,7 @@ func TestEntryBindingBindsFreshMutualTLSClientKey(t *testing.T) {
 	}
 }
 
-func TestVerifyAndConsumeEntryBindingRejectsSubstitutionAndConsumesOneTuple(t *testing.T) {
+func TestAdmitEntryBindingRejectsSubstitutionAndConsumesOneTuple(t *testing.T) {
 	certificate := entryBindingCertificate(t, 41)
 	digest, err := ClientTLSKeyDigest(certificate.Leaf)
 	if err != nil {
@@ -91,38 +91,35 @@ func TestVerifyAndConsumeEntryBindingRejectsSubstitutionAndConsumesOneTuple(t *t
 	binding.ClientKeyDigest = digest
 	admission := EntryAdmission{InviteID: identifier(42), NetworkID: binding.NetworkID, Digest: binding.Digest,
 		Epoch: binding.Epoch, InitiatorNodeID: binding.InitiatorNodeID, NotAfter: binding.NotAfter.Add(time.Minute)}
-	verify := func(raw []byte) (EntryAdmission, error) {
+	var lock sync.Mutex
+	consumed := map[[96]byte]struct{}{}
+	admit := func(raw []byte, attachment, clientKey [32]byte, notAfter time.Time) (EntryAdmission, error) {
 		if !bytes.Equal(raw, binding.Invite) {
 			return EntryAdmission{}, errors.New("wrong opaque Invite")
 		}
-		return admission, nil
-	}
-	var lock sync.Mutex
-	consumed := map[[96]byte]struct{}{}
-	consume := func(value EntryAdmission, attachment, clientKey [32]byte, notAfter time.Time) error {
-		if value != admission || notAfter != binding.NotAfter {
-			return errors.New("wrong admission tuple")
+		if notAfter != binding.NotAfter {
+			return EntryAdmission{}, errors.New("wrong binding expiry")
 		}
 		var key [96]byte
-		copy(key[:32], value.InviteID[:])
+		copy(key[:32], admission.InviteID[:])
 		copy(key[32:64], attachment[:])
 		copy(key[64:], clientKey[:])
 		lock.Lock()
 		defer lock.Unlock()
 		if _, exists := consumed[key]; exists {
-			return errors.New("replayed Entry binding")
+			return EntryAdmission{}, errors.New("replayed Entry binding")
 		}
 		consumed[key] = struct{}{}
-		return nil
+		return admission, nil
 	}
-	if err := VerifyAndConsumeEntryBinding(binding, certificate.Leaf, binding.NotAfter.Add(-time.Second), verify, consume); err != nil {
+	if err := AdmitEntryBinding(binding, certificate.Leaf, binding.NotAfter.Add(-time.Second), admit); err != nil {
 		t.Fatal(err)
 	}
-	if err := VerifyAndConsumeEntryBinding(binding, certificate.Leaf, binding.NotAfter.Add(-time.Second), verify, consume); err == nil {
+	if err := AdmitEntryBinding(binding, certificate.Leaf, binding.NotAfter.Add(-time.Second), admit); err == nil {
 		t.Fatal("replayed Entry binding was consumed twice")
 	}
 	other := entryBindingCertificate(t, 43)
-	if err := VerifyAndConsumeEntryBinding(binding, other.Leaf, binding.NotAfter.Add(-time.Second), verify, consume); err == nil {
+	if err := AdmitEntryBinding(binding, other.Leaf, binding.NotAfter.Add(-time.Second), admit); err == nil {
 		t.Fatal("different TLS client key was accepted")
 	}
 }

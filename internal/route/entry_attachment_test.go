@@ -1,6 +1,7 @@
 package route
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/tls"
@@ -110,19 +111,16 @@ func TestAcceptEntryAttachmentVerifiesAndConsumesBeforeReturning(t *testing.T) {
 		secured, acceptErr := AcceptEntryAttachment(t.Context(), raw, EntryAttachmentAcceptance{
 			NetworkID: request.NetworkID, Digest: request.Digest, Epoch: request.Epoch, InitiatorNodeID: candidate.NodeID,
 			Deadline: deadline, Certificate: serverCertificate,
-			Verify: func(invite []byte) (EntryAdmission, error) {
+			Admit: func(invite []byte, attachment, key [32]byte, notAfter time.Time) (EntryAdmission, error) {
 				if string(invite) != string(presentation.Invite) {
 					return EntryAdmission{}, errors.New("wrong Invite")
 				}
-				verified <- struct{}{}
-				return admission, nil
-			},
-			Consume: func(value EntryAdmission, attachment, key [32]byte, notAfter time.Time) error {
-				if value != admission || attachment != request.AttachmentID || key == [32]byte{} || !notAfter.Equal(deadline) {
-					return errors.New("wrong consumed Entry tuple")
+				if attachment != request.AttachmentID || key == [32]byte{} || !notAfter.Equal(deadline) {
+					return EntryAdmission{}, errors.New("wrong consumed Entry tuple")
 				}
+				verified <- struct{}{}
 				consumed <- struct{}{}
-				return nil
+				return admission, nil
 			}})
 		if secured != nil {
 			_ = secured.Close()
@@ -158,8 +156,66 @@ func TestAcceptEntryAttachmentVerifiesAndConsumesBeforeReturning(t *testing.T) {
 	}
 }
 
+func TestEntryAdmitterPortUsesOneDurableEntryOperation(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{74}, ed25519.SeedSize))
+	public := private.Public().(ed25519.PublicKey)
+	candidate := entry.Candidate{NodeID: identifier(75), KeyID: identifier(76), FamilyID: identifier(77),
+		RecordDigest: identifier(78), DomainProofDigest: identifier(79), Endpoint: "127.0.0.1:7999", Capacity: 1,
+		Domain: "initiator", ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), AssignmentNotAfter: now.Add(time.Hour)}
+	copy(candidate.PublicKey[:], public)
+	view := entry.View{NetworkID: identifier(80), Epoch: 81, Digest: identifier(82), Profile: routeProfile, Fresh: true,
+		Candidates: []entry.Candidate{candidate}}
+	verification := entry.Verification{Current: func() (entry.View, error) { return view, nil },
+		Conflict: func([32]byte, [32]byte) (bool, error) { return false, nil }, Clock: func() time.Time { return now }, TimeConfident: func() bool { return true }}
+	admitter, err := entry.OpenAdmitter(entry.AdmitterConfig{Root: t.TempDir(), Verification: verification})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admitter.Close()
+	raw := routeTestInvite(view, candidate, private, now)
+	port := EntryAdmitterPort(admitter)
+	if port == nil {
+		t.Fatal("Entry Admitter port is unavailable")
+	}
+	attachment, clientKey := identifier(83), identifier(84)
+	admission, err := port(raw, attachment, clientKey, now.Add(time.Minute))
+	if err != nil || admission.NetworkID != view.NetworkID || admission.Digest != view.Digest || admission.Epoch != view.Epoch ||
+		admission.InitiatorNodeID != candidate.NodeID {
+		t.Fatalf("Entry Admitter port = %+v, %v", admission, err)
+	}
+	if _, err := port(raw, attachment, clientKey, now.Add(time.Minute)); err == nil {
+		t.Fatal("Entry Admitter port accepted a replayed tuple")
+	}
+}
+
 type entryAcquirerFunc func(context.Context, entry.Attempt, entry.CandidateOpener) (net.Conn, func() error, error)
 
 func (call entryAcquirerFunc) Acquire(ctx context.Context, attempt entry.Attempt, opener entry.CandidateOpener) (net.Conn, func() error, error) {
 	return call(ctx, attempt, opener)
+}
+
+func routeTestInvite(view entry.View, candidate entry.Candidate, private ed25519.PrivateKey, now time.Time) []byte {
+	body := make([]byte, 0, 256)
+	body = appendUint16(body, 1)
+	body = append(body, view.NetworkID[:]...)
+	body = appendUint64(body, view.Epoch)
+	body = append(body, view.Digest[:]...)
+	body = append(body, byte(len(routeProfile)))
+	body = append(body, routeProfile...)
+	body = append(body, candidate.KeyID[:]...)
+	body = append(body, candidate.NodeID[:]...)
+	body = append(body, candidate.FamilyID[:]...)
+	body = append(body, candidate.RecordDigest[:]...)
+	body = append(body, candidate.DomainProofDigest[:]...)
+	body = appendUint64(body, uint64(candidate.AssignmentNotAfter.Unix()))
+	body = appendUint64(body, uint64(now.Add(-time.Minute).Unix()))
+	body = appendUint64(body, uint64(now.Add(30*time.Minute).Unix()))
+	body = append(body, 1, 0, 0)
+	signature := ed25519.Sign(private, append([]byte("ardents-entry-invite-signature-v1\x00"), body...))
+	raw := make([]byte, 0, len("ardents-entry-invite-v1")+2+len(body)+len(signature))
+	raw = append(raw, "ardents-entry-invite-v1"...)
+	raw = appendUint16(raw, uint16(len(body)))
+	raw = append(raw, body...)
+	return append(raw, signature...)
 }

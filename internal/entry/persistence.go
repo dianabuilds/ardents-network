@@ -94,7 +94,7 @@ func verifyPrevious(root string, state durableState) error {
 }
 
 func validState(state durableState) bool {
-	if state.Version != 1 || state.Generation == 0 || len(state.Records) > 4 || len(state.Contacts) > 4 || state.Previous != "" && !stateName.MatchString(state.Previous) {
+	if state.Version != 1 || state.Generation == 0 || len(state.Records) > 4 || len(state.Contacts) > 4 || len(state.Admissions) > maximumAdmissions || state.Previous != "" && !stateName.MatchString(state.Previous) {
 		return false
 	}
 	seen, active, retained := map[[32]byte]bool{}, [2]bool{}, [2]byte{}
@@ -124,7 +124,23 @@ func validState(state durableState) bool {
 			return false
 		}
 	}
-	return validAttemptState(state)
+	return validAttemptState(state) && validAdmissions(state.Admissions)
+}
+
+func validAdmissions(records []admissionRecord) bool {
+	seen := map[[96]byte]bool{}
+	for _, record := range records {
+		var key [96]byte
+		copy(key[:32], record.InviteID[:])
+		copy(key[32:64], record.AttachmentID[:])
+		copy(key[64:], record.ClientKeyDigest[:])
+		if record.InviteID == [32]byte{} || record.AttachmentID == [32]byte{} || record.ClientKeyDigest == [32]byte{} ||
+			record.NotAfter <= 0 || seen[key] {
+			return false
+		}
+		seen[key] = true
+	}
+	return true
 }
 
 func validAttemptState(state durableState) bool {

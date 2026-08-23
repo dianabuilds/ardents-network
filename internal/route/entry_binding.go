@@ -33,14 +33,11 @@ type EntryAdmission struct {
 	NotAfter                                     time.Time
 }
 
-// EntryVerifier validates an opaque Invite against current Entry/State facts.
-// The composition adapter maps the Entry-owned result to EntryAdmission;
-// Route never reads an Entry root or verifies an Invite signature itself.
-type EntryVerifier func([]byte) (EntryAdmission, error)
-
-// EntryConsumer atomically records the one-use tuple before Route allocates
-// attachment work. Its durable replay policy belongs to the Entry owner.
-type EntryConsumer func(EntryAdmission, [32]byte, [32]byte, time.Time) error
+// EntryBindingAdmitter verifies an opaque Invite against current Entry/State
+// facts and records its replay tuple in one owner-controlled operation. The
+// composition adapter maps the Entry-owned result to EntryAdmission; Route
+// never reads an Entry root or verifies an Invite signature itself.
+type EntryBindingAdmitter func([]byte, [32]byte, [32]byte, time.Time) (EntryAdmission, error)
 
 // EncodeEntryBinding returns the only canonical v1 User-to-Initiator binding.
 func EncodeEntryBinding(input EntryBinding) ([]byte, error) {
@@ -107,19 +104,18 @@ func ClientTLSKeyDigest(certificate *x509.Certificate) ([32]byte, error) {
 	return sha256.Sum256(certificate.RawSubjectPublicKeyInfo), nil
 }
 
-// VerifyAndConsumeEntryBinding proves the presenting TLS peer, current Entry
-// capability, and exact Route attempt belong together. consume is called only
-// after every non-mutating check; callers must allocate Route work only after
-// it succeeds.
-func VerifyAndConsumeEntryBinding(input EntryBinding, peer *x509.Certificate, now time.Time,
-	verify EntryVerifier, consume EntryConsumer) error {
+// AdmitEntryBinding proves the presenting TLS peer and exact Route attempt
+// belong together, then delegates Invite validation and tuple consumption as
+// one Entry-owned operation. Callers allocate Route work only after it
+// succeeds.
+func AdmitEntryBinding(input EntryBinding, peer *x509.Certificate, now time.Time, admit EntryBindingAdmitter) error {
 	if err := validEntryBinding(input); err != nil {
 		return err
 	}
 	if now.IsZero() || !now.UTC().Before(input.NotAfter) {
 		return errors.New("Entry binding is expired")
 	}
-	if verify == nil || consume == nil {
+	if admit == nil {
 		return errors.New("Entry binding admission port is incomplete")
 	}
 	digest, err := ClientTLSKeyDigest(peer)
@@ -129,7 +125,7 @@ func VerifyAndConsumeEntryBinding(input EntryBinding, peer *x509.Certificate, no
 	if digest != input.ClientKeyDigest {
 		return errors.New("Entry binding does not match the TLS client key")
 	}
-	admission, err := verify(append([]byte(nil), input.Invite...))
+	admission, err := admit(append([]byte(nil), input.Invite...), input.AttachmentID, input.ClientKeyDigest, input.NotAfter)
 	if err != nil {
 		return err
 	}
@@ -138,7 +134,7 @@ func VerifyAndConsumeEntryBinding(input EntryBinding, peer *x509.Certificate, no
 		input.NotAfter.After(admission.NotAfter) {
 		return errors.New("Entry binding does not match current Invite authorization")
 	}
-	return consume(admission, input.AttachmentID, input.ClientKeyDigest, input.NotAfter)
+	return nil
 }
 
 func entryBindingPrefix(input EntryBinding) []byte {

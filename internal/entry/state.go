@@ -8,12 +8,13 @@ const (
 )
 
 type durableState struct {
-	Version    uint8           `json:"version"`
-	Generation uint64          `json:"generation"`
-	Previous   string          `json:"previous,omitempty"`
-	Records    []memberRecord  `json:"records"`
-	Attempt    *attemptRecord  `json:"attempt,omitempty"`
-	Contacts   []contactRecord `json:"contacts,omitempty"`
+	Version    uint8             `json:"version"`
+	Generation uint64            `json:"generation"`
+	Previous   string            `json:"previous,omitempty"`
+	Records    []memberRecord    `json:"records"`
+	Attempt    *attemptRecord    `json:"attempt,omitempty"`
+	Contacts   []contactRecord   `json:"contacts,omitempty"`
+	Admissions []admissionRecord `json:"admissions,omitempty"`
 }
 
 type attemptRecord struct {
@@ -57,6 +58,7 @@ func (state durableState) clone() durableState {
 		cloned.Attempt = &value
 	}
 	cloned.Contacts = append([]contactRecord(nil), state.Contacts...)
+	cloned.Admissions = append([]admissionRecord(nil), state.Admissions...)
 	return cloned
 }
 

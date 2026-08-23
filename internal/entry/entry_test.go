@@ -119,6 +119,7 @@ func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
 		t.Fatalf("import = %+v, %v", result, err)
 	}
 	starts := 0
+	var peer net.Conn
 	connection, cleanup, err := owner.Acquire(context.Background(), Attempt{ID: [32]byte{99}, Deadline: fixture.now.Add(5 * time.Second)},
 		func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
 			starts++
@@ -126,7 +127,7 @@ func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
 				return nil, nil, true, errors.New("injected contact failure")
 			}
 			client, server := net.Pipe()
-			go func() { _ = server.Close() }()
+			peer = server
 			return client, client.Close, true, nil
 		})
 	if err != nil {
@@ -136,6 +137,9 @@ func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
 		t.Fatalf("starts=%d connection=%v", starts, connection)
 	}
 	if err := cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if err := peer.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if owner.state.Attempt == nil || owner.state.Attempt.Terminal != "opened" || len(owner.state.Contacts) != 2 ||
