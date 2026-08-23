@@ -351,16 +351,11 @@ created. Generated test evidence follows the artifact rules below.
 
 ## Docker, infrastructure, and packaging
 
-`lab/carrier/{Dockerfile,compose.yaml,tools.lock,reference.lock}` and
-`lab/named-site/{Dockerfile,compose.yaml}` are the complete human-authored
-container-source interface for the maintained Carrier Lab and Gate C
-laboratories. The Carrier Dockerfile shares one reproducible Go build and exposes
-only the `application` and `tooling` targets; the Reference Site Dockerfile
-exposes its closed role image. Carrier Compose exposes separate
-`isolation`, `tooling`, and `native` profiles in one file. The lock is separate
-because it is supplied-artifact identity, not build or topology behavior. These files
-contain no production deployment promise and receive no secrets from version
-control.
+R-091 retired the closed Carrier Lab and Gate C container source trees. Their
+source-bound records remain research provenance, but no tracked Dockerfile,
+Compose input, lock, live profile, or workflow is a current reproduction or
+product interface. A future experiment must create its own accepted,
+purpose-named source boundary; it must not restore those paths by implication.
 
 If supported image or operating-system package definitions become real, their
 source belongs under `packaging/<target>/`; image definitions use
