@@ -90,6 +90,9 @@ tracer can grow.
   and/or verified `ClaimWinner` on the new installation path; restart
   reconstructs verified current plus unapplied pending state but never promotes
   pending on its own.
+- A `ClaimWinner` materializes only into an installation for the same Network
+  and Epoch that authenticated its close; a valid foreign close is not a local
+  Namespace authority.
 - Durable control rejects late root `claim` operations before consuming a
   Gateway admission proof. Claim admission belongs to Epoch input ingestion.
 - Target resolution is valid only while its signed Record validity, own Lease,
