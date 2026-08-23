@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -136,23 +137,13 @@ func publishAndTestBundle(ctx context.Context, path string, body, password []byt
 		if !confirmed {
 			return EnvelopeInfo{}, ErrInvalid
 		}
-		backup, err := os.CreateTemp(parent, ".ardents-recovery-bundle-previous-")
+		backupPath, err = copyEncryptedBundle(destination, parent)
 		if err != nil {
-			return EnvelopeInfo{}, fmt.Errorf("reserve bundle backup: %w", err)
+			return EnvelopeInfo{}, err
 		}
-		backupPath = backup.Name()
-		if err := backup.Close(); err != nil {
-			return EnvelopeInfo{}, fmt.Errorf("close bundle backup reservation: %w", err)
-		}
-		if err := os.Remove(backupPath); err != nil {
-			return EnvelopeInfo{}, fmt.Errorf("clear bundle backup reservation: %w", err)
-		}
-		if err := os.Rename(destination, backupPath); err != nil {
-			return EnvelopeInfo{}, fmt.Errorf("protect previous bundle: %w", err)
-		}
+		defer os.Remove(backupPath)
 		defer func() {
 			if !committed {
-				_ = os.Remove(destination)
 				_ = os.Rename(backupPath, destination)
 			}
 		}()
@@ -165,12 +156,48 @@ func publishAndTestBundle(ctx context.Context, path string, body, password []byt
 		return EnvelopeInfo{}, err
 	}
 	committed = true
-	if backupPath != "" {
-		if err := os.Remove(backupPath); err != nil {
-			return EnvelopeInfo{}, fmt.Errorf("remove replaced bundle: %w", err)
-		}
-	}
 	return info, nil
+}
+
+// copyEncryptedBundle preserves an existing encrypted destination before an
+// atomic replacement. The destination stays in place until the replacement
+// rename, so a process interruption cannot create a missing-bundle interval.
+func copyEncryptedBundle(destination, parent string) (string, error) {
+	source, err := os.Open(destination)
+	if err != nil {
+		return "", fmt.Errorf("open previous bundle: %w", err)
+	}
+	defer source.Close()
+	backup, err := os.CreateTemp(parent, ".ardents-recovery-bundle-previous-")
+	if err != nil {
+		return "", fmt.Errorf("reserve bundle backup: %w", err)
+	}
+	backupPath := backup.Name()
+	failed := true
+	defer func() {
+		if failed {
+			_ = backup.Close()
+			_ = os.Remove(backupPath)
+		}
+	}()
+	if err := backup.Chmod(0o600); err != nil {
+		return "", fmt.Errorf("protect previous bundle: %w", err)
+	}
+	written, err := io.Copy(backup, io.LimitReader(source, maximumEnvelopeBytes+1))
+	if err != nil {
+		return "", fmt.Errorf("copy previous bundle: %w", err)
+	}
+	if written > maximumEnvelopeBytes {
+		return "", ErrInvalid
+	}
+	if err := backup.Sync(); err != nil {
+		return "", fmt.Errorf("flush previous bundle: %w", err)
+	}
+	if err := backup.Close(); err != nil {
+		return "", fmt.Errorf("close previous bundle: %w", err)
+	}
+	failed = false
+	return backupPath, nil
 }
 
 func testRestoreBundle(path string, password []byte, expected AuthorityBinding) (EnvelopeInfo, error) {

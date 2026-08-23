@@ -439,10 +439,11 @@ change.
 
 Bundle export now permits replacement only after a separate explicit Owner
 confirmation. It seals and test-restores a new encrypted temporary Bundle
-first, moves the prior encrypted bytes to a same-directory backup, publishes
-and reopens the new Bundle, then restores the previous bytes on any ordinary
-publication or final test-restore failure. Crash/interruption recovery and
-platform durability qualification remain separate M12 obligations.
+first, copies the prior encrypted bytes to a same-directory backup while
+leaving its destination in place, atomically publishes and reopens the new
+Bundle, then restores the previous bytes on any ordinary publication or final
+test-restore failure. Crash/interruption recovery and platform durability
+qualification remain separate M12 obligations.
 
 ## Dependency and retirement rules
 

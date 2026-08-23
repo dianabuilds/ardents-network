@@ -158,6 +158,34 @@ func TestVaultExportsDistinctPasswordBundleAndTestRestoresIt(t *testing.T) {
 	}
 }
 
+func TestCopyEncryptedBundleKeepsDestinationDuringReplacementPreparation(t *testing.T) {
+	parent := t.TempDir()
+	destination := filepath.Join(parent, "owner-chosen-bundle.json")
+	previous := []byte(`{"already":"encrypted-by-its-own-envelope"}`)
+	if err := os.WriteFile(destination, previous, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	backup, err := copyEncryptedBundle(destination, parent)
+	if err != nil {
+		t.Fatalf("copy previous encrypted bundle: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Remove(backup) })
+	retained, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatalf("read original destination: %v", err)
+	}
+	if !bytes.Equal(retained, previous) {
+		t.Fatal("preparing rollback copy changed the current bundle")
+	}
+	copied, err := os.ReadFile(backup)
+	if err != nil {
+		t.Fatalf("read encrypted backup: %v", err)
+	}
+	if !bytes.Equal(copied, previous) {
+		t.Fatal("rollback copy differs from the encrypted destination")
+	}
+}
+
 func TestVaultRestoreKeepsBundleAuthorityLockedAndExportOnly(t *testing.T) {
 	state := testAuthorityState()
 	bundlePassword := []byte("restored bundle password long")
