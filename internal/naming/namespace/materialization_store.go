@@ -55,7 +55,7 @@ func (store *Store) commitInstallation(installation *EpochInstallation, signed [
 	if err != nil {
 		return err
 	}
-	return store.commitAtPending(installation.epoch, signed, pending, attest)
+	return store.commitAtCurrent(installation.epoch, signed, pending, &installation.base, attest)
 }
 
 func (store *Store) installationPendingCursor(cursor uint64, current string) (uint64, error) {
@@ -75,6 +75,12 @@ func (store *Store) installationPendingCursor(cursor uint64, current string) (ui
 }
 
 func (store *Store) commitAtPending(epoch Epoch, signed [][]byte, pending uint64,
+	attest func([]byte) ([][32]byte, [][]byte, error),
+) error {
+	return store.commitAtCurrent(epoch, signed, pending, nil, attest)
+}
+
+func (store *Store) commitAtCurrent(epoch Epoch, signed [][]byte, pending uint64, expected *string,
 	attest func([]byte) ([][32]byte, [][]byte, error),
 ) error {
 	records, leaves, err := materializeRecords(store.policy.Network, signed)
@@ -110,8 +116,12 @@ func (store *Store) commitAtPending(epoch Epoch, signed [][]byte, pending uint64
 		return err
 	}
 	name := snapshotGenerationDigest(metadata, chunks, pending)
-	return store.root.commit(namespaceGeneration{Name: hex.EncodeToString(name[:]),
-		Epoch: metadata, Inputs: chunks, Pending: pending, Activate: true})
+	generation := namespaceGeneration{Name: hex.EncodeToString(name[:]), Epoch: metadata,
+		Inputs: chunks, Pending: pending, Activate: true}
+	if expected != nil {
+		return store.root.commitFrom(*expected, generation)
+	}
+	return store.root.commit(generation)
 }
 
 // Close releases the exclusive root lease.
