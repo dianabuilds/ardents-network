@@ -57,7 +57,8 @@ func newControlCorpus(network [32]byte, now time.Time, policy namespace.Policy) 
 				now.Add(policy.DefaultLeaseDuration).UnixMilli()
 		case "record":
 			op.Kind, op.Target = "publish", [32]byte{12}
-			operation.Target, operation.RecordNotAfter = op.Target, now.Add(time.Hour).UnixMilli()
+			op.RecordNotAfter = now.Add(time.Hour).UnixMilli()
+			operation.Target, operation.RecordNotAfter = op.Target, op.RecordNotAfter
 		case "transfer":
 			successor := evidenceKey("control-transfer-successor")
 			op.SuccessorAuthority = hex.EncodeToString(successor.Public().(ed25519.PublicKey))

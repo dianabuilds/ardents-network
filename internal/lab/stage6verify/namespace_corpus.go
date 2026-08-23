@@ -33,7 +33,13 @@ func verifyNamespaceRecordCorpus(signed [][]byte, statement namespaceStatement, 
 		}
 		leaves[index] = leaf
 	}
-	return namespaceRawRoot(leaves, 0x61) == statement.recordRoot && bytes.Equal(leaves[ordinal], proofLeaf)
+	if !bytes.Equal(leaves[ordinal], proofLeaf) {
+		return false
+	}
+	if namespaceRawRoot(leaves, 0x61) != statement.recordRoot {
+		return false
+	}
+	return true
 }
 
 func namespaceCorpusLeaf(index int, entries []namespaceRecordEntry, byName map[string]int) ([]byte, bool) {
@@ -63,7 +69,7 @@ func namespaceCorpusLeaf(index int, entries []namespaceRecordEntry, byName map[s
 	if head.record.Target == [32]byte{} || !available {
 		state, notAfter = 0, 0
 	}
-	out := binary.BigEndian.AppendUint16(nil, 1)
+	out := binary.BigEndian.AppendUint16(nil, namespaceLeafSchema)
 	out = binary.BigEndian.AppendUint32(out, uint32(len(head.signed)))
 	out = append(out, head.signed...)
 	root := namespaceRawRoot(lineage, 0x62)
@@ -76,14 +82,34 @@ func namespaceLease(record decodedRecord) (byte, uint64, bool) {
 	if record.Consistency != "current" || record.Recovery != "stable" {
 		return 0, 0, false
 	}
+	limit := int64(0)
+	if record.Target != [32]byte{} {
+		if record.RecordNotAfter <= 0 {
+			return 0, 0, false
+		}
+		limit = record.RecordNotAfter
+	}
 	switch record.Lease {
 	case "active":
-		return 1, uint64(record.LeaseExpires), record.LeaseExpires > 0
+		if record.LeaseExpires <= 0 {
+			return 0, 0, false
+		}
+		return 1, namespaceNotAfter(record.LeaseExpires*1_000, limit), true
 	case "grace":
-		return 2, uint64(record.GraceExpires), record.GraceExpires > 0
+		if record.GraceExpires <= 0 {
+			return 0, 0, false
+		}
+		return 2, namespaceNotAfter(record.GraceExpires*1_000, limit), true
 	default:
 		return 0, 0, false
 	}
+}
+
+func namespaceNotAfter(lease, record int64) uint64 {
+	if record > 0 && record < lease {
+		return uint64(record)
+	}
+	return uint64(lease)
 }
 
 func namespaceRawRoot(values [][]byte, emptyTag byte) [32]byte {

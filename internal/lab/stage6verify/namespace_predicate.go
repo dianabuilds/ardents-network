@@ -18,6 +18,8 @@ type namespaceStatement struct {
 	signatures                                             [][]byte
 }
 
+const namespaceLeafSchema uint16 = 2
+
 func verifyNamespaceMaterialization(evidence resolutionCellEvidence) bool {
 	if evidence.EpochThreshold != 2 || len(evidence.EpochSignerIDs) != 3 ||
 		len(evidence.EpochPublicKeys) != len(evidence.EpochSignerIDs) {
@@ -58,7 +60,8 @@ func verifyNamespaceMaterialization(evidence resolutionCellEvidence) bool {
 	}
 	record, state, notAfter, err := verifyNamespaceLeaf(leaf, statement.network)
 	return err == nil && record.Name == "alice" && record.Generation == 1 && record.Revision == 2 &&
-		record.Target == [32]byte{1} && state == 1 && notAfter == 1_800_003_600
+		record.Target == [32]byte{1} && record.RecordNotAfter == 1_800_001_800_000 &&
+		state == 1 && notAfter == 1_800_001_800_000
 }
 
 func decodeNamespaceProof(raw []byte) (namespaceStatement, uint32, []byte, [][32]byte, error) {
@@ -151,7 +154,7 @@ func verifyNamespaceLeaf(raw []byte, network [32]byte) (decodedRecord, byte, uin
 	state, stateErr := cursor.u8()
 	notAfter, timeErr := cursor.u64()
 	if schemaErr != nil || sizeErr != nil || signedErr != nil || rootErr != nil || countErr != nil ||
-		stateErr != nil || timeErr != nil || !cursor.done() || schema != 1 || lineageCount != 0 ||
+		stateErr != nil || timeErr != nil || !cursor.done() || schema != namespaceLeafSchema || lineageCount != 0 ||
 		lineageRoot != sha256.Sum256([]byte{0x62}) {
 		return decodedRecord{}, 0, 0, errors.New("namespace leaf is invalid")
 	}

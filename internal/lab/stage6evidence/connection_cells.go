@@ -35,7 +35,7 @@ func runConnectionCell(trace *traceRecord) error {
 	record := namespace.Record{Name: "alice", Generation: 1, Revision: 2, Lease: "active",
 		Consistency: "current", Recovery: "stable", Authority: "authority", Target: fixture.credential.Target,
 		LeaseExpiresAt: fixture.now.Add(time.Hour).Unix(), GraceExpiresAt: fixture.now.Add(2 * time.Hour).Unix(),
-		Continuity: 1}
+		RecordNotAfter: fixture.now.Add(30 * time.Minute).UnixMilli(), Continuity: 1}
 	binding, _, err := namespace.ResolveBinding(record, fixture.now.Unix(), nil)
 	if err != nil {
 		return err

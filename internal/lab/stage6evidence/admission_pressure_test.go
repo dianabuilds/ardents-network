@@ -17,6 +17,14 @@ func TestMeasureAdmissionBusyCreatesARealOverlap(t *testing.T) {
 		t.Fatal(err)
 	}
 	const maximumSpent = 2048
+	overflowChallenge, err := pressureChallenge(gate, evidence, 1, "renewal-update", maximumSpent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	busyChallenge, err := pressureChallengeUntil(gate, evidence, 1, "renewal-update", maximumSpent+1, 1_000)
+	if err != nil {
+		t.Fatal(err)
+	}
 	proofs := make([]namespace.Proof, maximumSpent)
 	jobs := make(chan int)
 	var workers sync.WaitGroup
@@ -42,10 +50,6 @@ func TestMeasureAdmissionBusyCreatesARealOverlap(t *testing.T) {
 			t.Fatalf("saturating proof was rejected: %q", reason)
 		}
 	}
-	overflowChallenge, err := pressureChallenge(gate, evidence, 1, "renewal-update", maximumSpent)
-	if err != nil {
-		t.Fatal(err)
-	}
 	overflow := namespace.Proof{Challenge: overflowChallenge}
 	if ok, reason := gate.Verify(evidence.Now, overflow); ok || reason != "capacity" {
 		t.Fatalf("overflow proof ok=%v reason=%q", ok, reason)
@@ -54,10 +58,6 @@ func TestMeasureAdmissionBusyCreatesARealOverlap(t *testing.T) {
 	previous := runtime.GOMAXPROCS(1)
 	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	var capacity admissionCapacityEvidence
-	busyChallenge, err := pressureChallengeUntil(gate, evidence, 1, "renewal-update", maximumSpent+1, 1_000)
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := measureAdmissionBusy([32]byte{4}, evidence, proofs,
 		namespace.Proof{Challenge: busyChallenge}, 32, &capacity); err != nil {
 		t.Fatal(err)

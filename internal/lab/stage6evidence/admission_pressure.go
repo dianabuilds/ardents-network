@@ -20,6 +20,15 @@ func measureAdmissionCapacity(secret [32]byte, evidence admissionCellEvidence, p
 	if err != nil {
 		return admissionCapacityEvidence{}, err
 	}
+	overflowChallenge, err := pressureChallenge(gate, evidence, profileIndex, profile.Surface, profile.MaximumSpent)
+	if err != nil {
+		return admissionCapacityEvidence{}, err
+	}
+	busyChallenge, err := pressureChallengeUntil(gate, evidence, profileIndex, profile.Surface,
+		profile.MaximumSpent+1, 1_000)
+	if err != nil {
+		return admissionCapacityEvidence{}, err
+	}
 	proofs := make([]namespace.Proof, profile.MaximumSpent)
 	hashes := make([]uint64, profile.MaximumSpent)
 	var workers sync.WaitGroup
@@ -52,18 +61,10 @@ func measureAdmissionCapacity(secret [32]byte, evidence admissionCellEvidence, p
 		}
 		result.WorkNonces[ordinal] = proof.WorkNonce
 	}
-	overflowChallenge, err := pressureChallenge(gate, evidence, profileIndex, profile.Surface, len(proofs))
-	if err != nil {
-		return admissionCapacityEvidence{}, err
-	}
 	overflow := namespace.Proof{Challenge: overflowChallenge}
 	_, result.Overflow = gate.Verify(evidence.Now, overflow)
 	if result.Overflow != "capacity" {
 		return admissionCapacityEvidence{}, errors.New("admission capacity did not fail closed")
-	}
-	busyChallenge, err := pressureChallengeUntil(gate, evidence, profileIndex, profile.Surface, len(proofs)+1, 1_000)
-	if err != nil {
-		return admissionCapacityEvidence{}, err
 	}
 	if err := measureAdmissionBusy(secret, evidence, proofs, namespace.Proof{Challenge: busyChallenge},
 		profile.MaximumInFlight, &result); err != nil {

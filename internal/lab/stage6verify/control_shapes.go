@@ -16,9 +16,7 @@ func verifyControlExchanges(evidence controlRoleEvidence, before, after []decode
 		transitionOK := kind == "claim" && verifyControlClaim(evidence, exchange.Operation, output) ||
 			kind != "claim" && verifyControlTransition(exchange, before, output, evidence.Network)
 		if exchange.Operation.Kind != kind || !verifyControlEnvelope(exchange, evidence.Network, secret) ||
-			exchange.Result.Class != "accepted" || exchange.Result.Generation != output.Generation ||
-			exchange.Result.Revision != output.Revision || !bytes.Equal(exchange.Result.State, encodeRecord(output)) ||
-			!transitionOK {
+			exchange.Result.Class != "submitted" || !transitionOK {
 			return false
 		}
 	}
@@ -73,7 +71,7 @@ func verifyControlTransition(exchange controlExchangeEvidence, before []decodedR
 		if op.RecordNotAfter > current.LeaseExpires*1_000 {
 			return false
 		}
-		want.Target = op.Target
+		want.Target, want.RecordNotAfter = op.Target, op.RecordNotAfter
 	case "release":
 		want.Lease, want.LeaseExpires, want.GraceExpires = "released", 0, 0
 	case "transfer":
@@ -117,7 +115,7 @@ func verifyControlTransition(exchange controlExchangeEvidence, before []decodedR
 				!verifyControlSignature(network, current, op, exchange.Admission.Challenge.IssuedAt) {
 				return false
 			}
-			want.Target, want.Consistency = op.Target, "current"
+			want.Target, want.RecordNotAfter, want.Consistency = op.Target, op.RecordNotAfter, "current"
 		default:
 			return false
 		}
@@ -153,7 +151,6 @@ func controlTransitionTranscript(network [32]byte, current decodedRecord, operat
 	generation, revision := uint64(0), operation.ExpectedRevision
 	successor, target, leaseDuration := "", [32]byte{}, time.Duration(0)
 	policyDigest, policyRevision, policyDelay, policyActivates := [32]byte{}, uint64(0), time.Duration(0), int64(0)
-	parents := []decodedRecord{}
 	switch operation.Kind {
 	case "renew":
 		leaseDuration = time.Duration(operation.LeaseNotAfter-issuedAt) * time.Millisecond
@@ -166,7 +163,6 @@ func controlTransitionTranscript(network [32]byte, current decodedRecord, operat
 		kind, generation, revision, authority = "claim", operation.ChildGeneration, 0,
 			hex.EncodeToString(operation.Authority[:])
 		leaseDuration = time.Duration(operation.LeaseNotAfter-issuedAt) * time.Millisecond
-		parents = []decodedRecord{current}
 	case "policy":
 		kind = "schedule-recovery-policy"
 		policyDigest, policyRevision, policyDelay, policyActivates = controlPolicyFields(current, operation, issuedAt)
@@ -193,6 +189,7 @@ func controlTransitionTranscript(network [32]byte, current decodedRecord, operat
 	out = appendText64(out, authority)
 	out = appendText64(out, successor)
 	out = append(out, target[:]...)
+	out = binary.BigEndian.AppendUint64(out, uint64(operation.RecordNotAfter))
 	out = binary.BigEndian.AppendUint64(out, uint64(leaseDuration))
 	out = binary.BigEndian.AppendUint64(out, 0)
 	out = appendText64(out, "")
@@ -202,11 +199,7 @@ func controlTransitionTranscript(network [32]byte, current decodedRecord, operat
 	out = binary.BigEndian.AppendUint64(out, uint64(policyActivates))
 	out = appendText64(out, "")
 	out = append(out, make([]byte, 32+8+32+32+8+8)...)
-	out = append(out, 0, byte(len(parents)))
-	for _, parent := range parents {
-		out = appendBytes64(out, encodeRecord(parent))
-	}
-	return out, true
+	return append(out, 0), true
 }
 
 func controlPolicyFields(current decodedRecord, operation controlOperationEvidence,

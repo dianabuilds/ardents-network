@@ -27,6 +27,7 @@ func deepNamespaceEvidence(materialization namespaceFixture, now time.Time) (str
 		}
 		if depth == len(records) {
 			record.Target = [32]byte{1}
+			record.RecordNotAfter = now.Add(30 * time.Minute).UnixMilli()
 		}
 		var err error
 		records[depth-1], err = namespace.SignRecord(network, record, authority)

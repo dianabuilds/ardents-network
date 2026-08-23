@@ -30,29 +30,29 @@ type controlExecutionResult struct {
 type controlOperationEvidence struct {
 	Kind               string   `json:"kind"`
 	OperationDigest    [32]byte `json:"operation_digest"`
-	Network            [32]byte `json:"network"`
-	Nonce              [32]byte `json:"nonce"`
-	Deadline           int64    `json:"deadline"`
+	Network            [32]byte `json:"network,omitempty"`
+	Nonce              [32]byte `json:"nonce,omitempty"`
+	Deadline           int64    `json:"deadline,omitempty"`
 	Name               string   `json:"name"`
-	ParentName         string   `json:"parent_name"`
-	Generation         uint64   `json:"generation"`
-	ExpectedRevision   uint64   `json:"expected_revision"`
-	ParentGeneration   uint64   `json:"parent_generation"`
-	ParentRevision     uint64   `json:"parent_revision"`
-	ChildGeneration    uint64   `json:"child_generation"`
-	Authority          [32]byte `json:"authority"`
-	SuccessorAuthority [32]byte `json:"successor_authority"`
-	Target             [32]byte `json:"target"`
-	LeaseNotAfter      int64    `json:"lease_not_after"`
-	RecordNotAfter     int64    `json:"record_not_after"`
-	PolicyNotBefore    int64    `json:"policy_not_before"`
-	RecoveryNotBefore  int64    `json:"recovery_not_before"`
-	PolicyID           [32]byte `json:"policy_id"`
-	RecoveryStep       string   `json:"recovery_step"`
-	OrderingProof      []byte   `json:"ordering_proof"`
-	AuthorityProof     []byte   `json:"authority_proof"`
-	RecoveryPolicy     []byte   `json:"recovery_policy"`
-	RecoveryProof      []byte   `json:"recovery_proof"`
+	ParentName         string   `json:"parent_name,omitempty"`
+	Generation         uint64   `json:"generation,omitempty"`
+	ExpectedRevision   uint64   `json:"expected_revision,omitempty"`
+	ParentGeneration   uint64   `json:"parent_generation,omitempty"`
+	ParentRevision     uint64   `json:"parent_revision,omitempty"`
+	ChildGeneration    uint64   `json:"child_generation,omitempty"`
+	Authority          [32]byte `json:"authority,omitempty"`
+	SuccessorAuthority [32]byte `json:"successor_authority,omitempty"`
+	Target             [32]byte `json:"target,omitempty"`
+	LeaseNotAfter      int64    `json:"lease_not_after,omitempty"`
+	RecordNotAfter     int64    `json:"record_not_after,omitempty"`
+	PolicyNotBefore    int64    `json:"policy_not_before,omitempty"`
+	RecoveryNotBefore  int64    `json:"recovery_not_before,omitempty"`
+	PolicyID           [32]byte `json:"policy_id,omitempty"`
+	RecoveryStep       string   `json:"recovery_step,omitempty"`
+	OrderingProof      []byte   `json:"ordering_proof,omitempty"`
+	AuthorityProof     []byte   `json:"authority_proof,omitempty"`
+	RecoveryPolicy     []byte   `json:"recovery_policy,omitempty"`
+	RecoveryProof      []byte   `json:"recovery_proof,omitempty"`
 }
 
 func verifyControlRoleTrace(trace traceRecord, secret [32]byte) bool {

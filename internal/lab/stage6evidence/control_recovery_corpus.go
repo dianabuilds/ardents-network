@@ -111,11 +111,12 @@ func recoveryResumeOperation(network [32]byte, now time.Time, records []namespac
 	record.Target, record.Consistency = [32]byte{}, "unavailable"
 	records[index] = record
 	op := namespace.Op{Kind: "resume-recovery", Name: name, Authority: record.Authority,
-		ExpectedGeneration: 1, ExpectedRevision: 1, Target: [32]byte{24}}
+		ExpectedGeneration: 1, ExpectedRevision: 1, Target: [32]byte{24},
+		RecordNotAfter: now.Add(time.Hour).UnixMilli()}
 	signature, err := namespace.SignTransition(network, record, op, successor)
 	return controlOperation{Kind: "recovery", Name: name, Generation: 1, ExpectedRevision: 1,
 		PolicyID: policy.Digest(), RecoveryStep: "resume", RecoveryNotBefore: now.UnixMilli(),
-		Target: op.Target, AuthorityProof: signature}, err
+		Target: op.Target, RecordNotAfter: op.RecordNotAfter, AuthorityProof: signature}, err
 }
 
 func signedRecoveryProof(policy namespace.RecoveryPolicy, signers []ed25519.PrivateKey,

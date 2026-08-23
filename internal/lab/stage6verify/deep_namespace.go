@@ -20,10 +20,16 @@ func verifyDeepNamespaceMeasurement(evidence resolutionCellEvidence) bool {
 		statement.rule != "ardents-namespace-materialization-v1" || statement.records != 127 ||
 		ordinal != 126 || statement.transitions != 127 || statement.rejections != 0 ||
 		statement.transition != namespaceRawRoot(evidence.DeepNamespaceRecords, 0x63) ||
-		statement.rejected != sha256.Sum256([]byte("ardents-stage6-deep-no-rejections")) ||
-		!verifyDeepNamespaceSignatures(evidence, statement) ||
-		!verifyNamespaceInclusion(leaf, ordinal, statement.records, path, statement.recordRoot) ||
-		!verifyNamespaceRecordCorpus(evidence.DeepNamespaceRecords, statement, ordinal, leaf) {
+		statement.rejected != sha256.Sum256([]byte("ardents-stage6-deep-no-rejections")) {
+		return false
+	}
+	if !verifyDeepNamespaceSignatures(evidence, statement) {
+		return false
+	}
+	if !verifyNamespaceInclusion(leaf, ordinal, statement.records, path, statement.recordRoot) {
+		return false
+	}
+	if !verifyNamespaceRecordCorpus(evidence.DeepNamespaceRecords, statement, ordinal, leaf) {
 		return false
 	}
 	cursor := namespaceCursor{raw: leaf}
@@ -36,9 +42,9 @@ func verifyDeepNamespaceMeasurement(evidence resolutionCellEvidence) bool {
 	notAfter, timeErr := cursor.u64()
 	record, recordErr := verifySignedNamespaceRecord(signed, statement.network)
 	return schemaErr == nil && sizeErr == nil && signedErr == nil && rootErr == nil && lineageErr == nil &&
-		stateErr == nil && timeErr == nil && recordErr == nil && cursor.done() && schema == 1 && lineage == 126 &&
-		state == 1 && notAfter == 1_800_003_600 && record.Name == evidence.DeepName && record.Generation == 1 &&
-		record.Revision == 1 && record.Target == [32]byte{1}
+		stateErr == nil && timeErr == nil && recordErr == nil && cursor.done() && schema == namespaceLeafSchema && lineage == 126 &&
+		state == 1 && notAfter == 1_800_001_800_000 && record.Name == evidence.DeepName && record.Generation == 1 &&
+		record.Revision == 1 && record.Target == [32]byte{1} && record.RecordNotAfter == 1_800_001_800_000
 }
 
 func verifyDeepNamespaceSignatures(evidence resolutionCellEvidence, statement namespaceStatement) bool {

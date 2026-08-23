@@ -1,7 +1,6 @@
 package stage6evidence
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,12 +63,10 @@ func runControlRoleCell(trace *traceRecord, secret [32]byte) error {
 		if !cleanControlEnvelope(envelopes[index], isolations[index], observed[index]) {
 			return errors.New("private control Relay observed a forbidden field")
 		}
-		outputs[index], err = namespace.DecodeRecord(results[index].State)
 		observedResult := authorityResults[index]
-		if err != nil || results[index].Class != observedResult.Class ||
-			results[index].Generation != observedResult.Generation || results[index].Revision != observedResult.Revision ||
-			!bytes.Equal(results[index].State, observedResult.State) {
-			return errors.New("private control result is not canonical authority state")
+		outputs[index], err = namespace.DecodeRecord(observedResult.State)
+		if err != nil || results[index].Class != "submitted" || observedResult.Class != "accepted" {
+			return errors.New("private control submission or authority result is invalid")
 		}
 		exchanges[index] = controlExchangeEvidence{Isolation: isolations[index], Admission: admissions[index],
 			Envelope: envelopes[index], Operation: observed[index], Result: results[index]}

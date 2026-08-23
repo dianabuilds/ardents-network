@@ -137,7 +137,8 @@ func runRecoveryCell(trace *traceRecord) error {
 		return err
 	}
 	resume := namespace.Op{Kind: "resume-recovery", Name: completed.Name, Authority: completed.Authority,
-		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9}}
+		ExpectedGeneration: 1, ExpectedRevision: completed.Revision, Target: [32]byte{9},
+		RecordNotAfter: recoveryProof.CompletesAt + time.Hour.Milliseconds()}
 	resumeSignature, err := namespace.SignTransition(network, completed, resume, successorKey)
 	if err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 )
 
 type decodedRecord struct {
+	Schema                                                          uint16
 	Name, Lease, Consistency, Recovery, Authority, Parent, Conflict string
 	Generation, Revision, ParentGeneration, RecoveryPolicyRev       uint64
 	PendingPolicyRev, Continuity                                    uint64
@@ -15,6 +16,7 @@ type decodedRecord struct {
 	RecoveryOperation, RecoverySuccessor                            [32]byte
 	LeaseExpires, GraceExpires, RecoveryExpires, RecoveryStarted    int64
 	RecoveryPolicyDelay, PendingPolicyDelay, PolicyActivates        int64
+	RecordNotAfter                                                  int64
 }
 
 func decodeRecords(raw []byte) ([]decodedRecord, error) {
@@ -48,10 +50,10 @@ func decodeRecords(raw []byte) ([]decodedRecord, error) {
 func decodeRecord(raw []byte) (decodedRecord, error) {
 	cursor := wireCursor{raw: raw}
 	version, err := cursor.u16()
-	if err != nil || version != 3 {
+	if err != nil || (version != 3 && version != 4) {
 		return decodedRecord{}, errors.New("record schema is invalid")
 	}
-	var record decodedRecord
+	record := decodedRecord{Schema: version}
 	if record.Name, err = cursor.text(); err != nil {
 		return record, err
 	}
@@ -97,7 +99,17 @@ func decodeRecord(raw []byte) (decodedRecord, error) {
 	record.RecoveryPolicyRev, record.RecoveryPolicyDelay = values[5], int64(values[6])
 	record.PendingPolicyRev, record.PendingPolicyDelay = values[7], int64(values[8])
 	record.PolicyActivates, record.Continuity = int64(values[9]), values[10]
-	if record.Conflict, err = cursor.text(); err != nil || cursor.offset != len(raw) || !validDecodedRecord(record) {
+	if record.Conflict, err = cursor.text(); err != nil {
+		return decodedRecord{}, errors.New("record is malformed")
+	}
+	if version == 4 {
+		value, valueErr := cursor.u64()
+		if valueErr != nil || value > uint64(^uint64(0)>>1) {
+			return decodedRecord{}, errors.New("record validity is malformed")
+		}
+		record.RecordNotAfter = int64(value)
+	}
+	if cursor.offset != len(raw) || !validDecodedRecord(record) {
 		return decodedRecord{}, errors.New("record is malformed")
 	}
 	canonical := encodeRecord(record)
@@ -130,7 +142,11 @@ func validDecodedRecord(record decodedRecord) bool {
 }
 
 func encodeRecord(record decodedRecord) []byte {
-	out := binary.BigEndian.AppendUint16(nil, 3)
+	schema := record.Schema
+	if schema == 0 {
+		schema = 4
+	}
+	out := binary.BigEndian.AppendUint16(nil, schema)
 	out = appendText64(out, record.Name)
 	out = binary.BigEndian.AppendUint64(out, record.Generation)
 	out = binary.BigEndian.AppendUint64(out, record.Revision)
@@ -149,7 +165,11 @@ func encodeRecord(record decodedRecord) []byte {
 		uint64(record.PolicyActivates), record.Continuity} {
 		out = binary.BigEndian.AppendUint64(out, value)
 	}
-	return appendText64(out, record.Conflict)
+	out = appendText64(out, record.Conflict)
+	if schema == 4 {
+		out = binary.BigEndian.AppendUint64(out, uint64(record.RecordNotAfter))
+	}
+	return out
 }
 
 type wireCursor struct {

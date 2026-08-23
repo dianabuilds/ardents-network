@@ -81,18 +81,19 @@ func authorityTransitionTranscript(network []byte, current decodedRecord, kind, 
 	for range 3 {
 		out = binary.BigEndian.AppendUint64(out, 0)
 	}
+	out = appendText64(out, "")
 	out = append(out, make([]byte, 32)...)
-	for range 4 {
+	for range 3 {
 		out = binary.BigEndian.AppendUint64(out, 0)
 	}
+	out = appendText64(out, "")
 	out = append(out, make([]byte, 32)...)
 	out = binary.BigEndian.AppendUint64(out, 0)
 	out = append(out, make([]byte, 32+32)...)
 	for range 2 {
 		out = binary.BigEndian.AppendUint64(out, 0)
 	}
-	out = append(out, 0, 0)
-	return out
+	return append(out, 0)
 }
 
 func verifyRecoveryTrace(before decodedRecord, after []decodedRecord, raw []byte) bool {

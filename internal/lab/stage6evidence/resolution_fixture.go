@@ -54,6 +54,7 @@ func newResolutionFixture(control ...interface {
 		GraceExpiresAt: value.now.Add(2 * time.Hour).Unix(), Continuity: 1}
 	currentRecord := claimRecord
 	currentRecord.Revision, currentRecord.Target = 2, [32]byte{1}
+	currentRecord.RecordNotAfter = value.now.Add(30 * time.Minute).UnixMilli()
 	signedClaim, err := namespace.SignRecord(network, claimRecord, authority)
 	if err != nil {
 		return value, err

@@ -17,7 +17,8 @@ func runLifecycleCell(trace *traceRecord) error {
 			return err
 		}
 		published, err := namespace.Apply(&claimed, 101, namespace.Op{Kind: "publish", Name: "alice",
-			Authority: claimed.Authority, Target: [32]byte{1}, ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
+			Authority: claimed.Authority, Target: [32]byte{1}, RecordNotAfter: 900_000,
+			ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		return setRecordTrace(trace, nil, []namespace.Record{claimed, published}, []int64{100, 101}, err)
 	case "A3":
 		short := namespace.Policy{DefaultLeaseDuration: 100 * time.Second, DefaultGraceDuration: 100 * time.Second}
@@ -106,7 +107,8 @@ func runLifecycleCell(trace *traceRecord) error {
 			return err
 		}
 		bound, err := namespace.Apply(&initial, 101, namespace.Op{Kind: "publish", Name: "alice",
-			Authority: initial.Authority, Target: [32]byte{1}, ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
+			Authority: initial.Authority, Target: [32]byte{1}, RecordNotAfter: 900_000,
+			ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		return setRecordTrace(trace, []namespace.Record{bound}, []namespace.Record{bound}, []int64{102}, err)
 	case "C1":
 		initial, err := claimRecord("alice", "authority-a", 100, policy, nil)
@@ -114,12 +116,14 @@ func runLifecycleCell(trace *traceRecord) error {
 			return err
 		}
 		first, err := namespace.Apply(&initial, 101, namespace.Op{Kind: "publish", Name: "alice",
-			Authority: initial.Authority, Target: [32]byte{1}, ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
+			Authority: initial.Authority, Target: [32]byte{1}, RecordNotAfter: 900_000,
+			ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		if err != nil {
 			return err
 		}
 		second, err := namespace.Apply(&first, 102, namespace.Op{Kind: "publish", Name: "alice",
-			Authority: first.Authority, Target: [32]byte{2}, ExpectedGeneration: 1, ExpectedRevision: first.Revision}, policy)
+			Authority: first.Authority, Target: [32]byte{2}, RecordNotAfter: 900_000,
+			ExpectedGeneration: 1, ExpectedRevision: first.Revision}, policy)
 		return setRecordTrace(trace, []namespace.Record{first}, []namespace.Record{second}, []int64{102}, err)
 	case "D5":
 		initial, err := claimRecord("alice", "authority-a", 100, policy, nil)
