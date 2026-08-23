@@ -106,6 +106,35 @@ func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	otherEpoch := epoch
+	otherEpoch.Number++
+	wrongInstallation, err := store.BeginEpochInstallation(otherEpoch, time.Unix(100, 0).UTC(),
+		namespace.Policy{DefaultLeaseDuration: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := wrongInstallation.MaterializeClaim(winner, func(record namespace.Record) ([]byte, error) {
+		return namespace.SignRecord(network, record, claimKey)
+	}); err == nil {
+		t.Fatal("winner from a different Epoch was installed")
+	}
+	foreignNetwork := [32]byte{11}
+	foreignClaim := claim
+	foreignClaim.Commitment = namespace.CommitmentFor(foreignNetwork, 13, foreignClaim)
+	copy(foreignClaim.Signature[:], ed25519.Sign(claimKey, namespace.RevealTranscript(foreignNetwork, 13, foreignClaim)))
+	foreignProof := namespace.ClaimProof{Network: foreignNetwork, Epoch: 13, Rule: "ardents-name-claim-order-v1",
+		CutoffOffset: 10_002, InputRoot: orderedInputLeaf(foreignClaim), InputLength: 1,
+		MaterializationRoot: orderedMaterializationLeaf(foreignClaim), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{foreignClaim}}
+	foreignWinner, err := namespace.OpenClaimWinner(signedClaimClose(&foreignProof), foreignProof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := installation.MaterializeClaim(foreignWinner, func(record namespace.Record) ([]byte, error) {
+		return namespace.SignRecord(network, record, claimKey)
+	}); err == nil {
+		t.Fatal("winner from a different Network was installed")
+	}
 	if err := installation.MaterializeClaim(winner, func(record namespace.Record) ([]byte, error) {
 		record.Continuity++
 		return namespace.SignRecord(network, record, claimKey)

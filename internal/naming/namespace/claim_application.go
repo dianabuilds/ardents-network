@@ -25,7 +25,7 @@ func OpenClaimWinner(order ClaimOrder, proof ClaimProof) (*ClaimWinner, error) {
 	if winner == nil {
 		return nil, errors.New("root claim winner is unavailable")
 	}
-	return &ClaimWinner{value: &claimWinner{name: winner.Name, authority: winner.Authority,
+	return &ClaimWinner{value: &claimWinner{network: proof.Network, name: winner.Name, authority: winner.Authority,
 		ordinal: result.WinnerOrdinal, epoch: proof.Epoch}}, nil
 }
 

@@ -83,6 +83,9 @@ func (installation *EpochInstallation) MaterializeClaim(winner *ClaimWinner,
 	if installation == nil || installation.store == nil || winner == nil || winner.value == nil || sign == nil {
 		return errors.New("naming Epoch claim installation is invalid")
 	}
+	if winner.value.network != installation.store.policy.Network || winner.value.epoch != installation.epoch.Number {
+		return errors.New("root claim winner does not belong to this Namespace Epoch")
+	}
 	name := winner.value.name
 	var current *Record
 	if signed := installation.records[name]; signed != nil {

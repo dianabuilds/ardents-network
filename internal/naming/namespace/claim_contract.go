@@ -77,6 +77,7 @@ type EpochClaimInput struct {
 
 type claimWinner struct {
 	mu        sync.Mutex
+	network   [32]byte
 	name      string
 	authority [32]byte
 	ordinal   uint32
