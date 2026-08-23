@@ -12,7 +12,7 @@ export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
-.PHONY: architecture build check e2e format format-check fuzz mod-check prototype-r053 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture build check e2e format format-check fuzz mod-check quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -68,9 +68,6 @@ check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln
 	$(MAKE) --output-sync=target e2e
 	$(MAKE) --output-sync=target test-race
-
-prototype-r053:
-	go run ./experiments/r-053-stage-7-authority-recovery/profile.go ./experiments/r-053-stage-7-authority-recovery/main.go
 
 tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1

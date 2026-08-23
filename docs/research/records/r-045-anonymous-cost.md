@@ -67,11 +67,11 @@ measurements. They are no longer frozen and must not appear as accepted limits.
 
 ### Experiment
 
-Create `experiments/r-045-anonymous-cost/`. Before running it, freeze a matrix of
-the five surfaces, legitimate rates, attacker concurrency, candidate work
-factors, capability TTLs, restart/rollback cases, and pass/fail resource limits.
-Measure latency distributions, CPU, RSS, queue depth, accepted/rejected work,
-energy proxy, and retained state on R-023 reference hardware and a weaker client.
+The now-retired disposable experiment froze a matrix of the five surfaces,
+legitimate rates, attacker concurrency, candidate work factors, capability
+TTLs, restart/rollback cases, and pass/fail resource limits. It measured
+latency distributions, CPU, RSS, queue depth, accepted/rejected work, energy
+proxy, and retained state on R-023 reference hardware and a weaker client.
 
 ### Failure scenarios
 

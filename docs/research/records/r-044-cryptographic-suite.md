@@ -78,11 +78,11 @@ protocol. No Stage 6 threshold implementation is currently selected.
 
 ### Experiment
 
-Create `experiments/r-044-recovery-crypto/` after candidate implementations are
-identified. Exercise setup, `t-1`, `t`, and `n` participants; duplicate and
-rogue keys; mixed policies/generations; lost participants; delayed completion;
-restart; malformed shares; and independent verification. Measure retained bytes,
-CPU, memory, and latency on the R-023 host.
+The now-retired disposable simulator exercised setup, `t-1`, `t`, and `n`
+participants; duplicate and rogue keys; mixed policies/generations; lost
+participants; delayed completion; restart; malformed shares; and independent
+verification. It measured retained bytes, CPU, memory, and latency on the
+R-023 host.
 
 The frozen O2 experiment uses the worst supported `5-of-8` policy with all
 eight signatures, caps logical policy-plus-proof bytes at `2 KiB`, verification

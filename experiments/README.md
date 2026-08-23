@@ -1,20 +1,19 @@
 # Experiments
 
-This directory is reserved for disposable spikes written to answer named
-research questions. It is not the maintained project source tree.
+This directory contains only the active disposable spike for a named research
+question. It is not the maintained project source tree.
 
-Carrier Lab is closed C4 provenance under R-091, not the current maintained
-slice. A new spike must begin with a decision-relevant question, an accepted
-scope decision where the horizon requires one, and a purpose-named directory.
-This directory may hold only those separately authorized, disposable comparison
-spikes or fixtures. Naming, public bootstrap, Bridges, updater/governance,
-Windows, SDK/browser work, and complete public qualification must not be added
-by implication.
+All closed Stage 8 spikes were C0 retired on 2026-08-23 after their
+decision-relevant results were recorded. The research records, target-module
+tests, and independent historical evidence retain their facts; a disposable
+implementation is not a second maintained version. The remaining
+`r-092-native-node-profile` baseline is active only until its reference-host
+campaign selects or rejects a native Node profile.
 
-[R-013](../docs/research/records/r-013-carrier-lab-technology-candidates.md)
-retains Gate B evidence only; R-091 retires its execution corpus. ADR-0009
-separately establishes the project foundation without promoting any networking
-claim or later delivery horizon.
+A new spike must begin with a decision-relevant question, an accepted scope
+decision where the horizon requires one, and a purpose-named directory. Remove
+it in the owning change when its result is absorbed, rejected, or superseded;
+retain source only while it has a live measurement or falsification duty.
 
 Create one directory per question:
 
@@ -25,7 +24,7 @@ experiments/
     ...disposable code and fixtures...
 ```
 
-Each experiment README must include:
+Each active experiment README must include:
 
 - research question and linked record;
 - hypotheses and falsification criteria;

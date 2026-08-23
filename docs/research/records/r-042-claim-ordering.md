@@ -75,11 +75,11 @@ ordering different sets. It is therefore not an accepted ordering mechanism.
 
 ### Experiment
 
-Build a disposable simulator under `experiments/r-042-claim-ordering/`. Run the
-same signed claims through permutations of observation copying, reveal
-withholding, flooding, partition, rollback, equivocation, and rule fork. Retain
-the exact eligible-set proof and verify it independently. Define latency,
-storage, verification-work, and false-accept thresholds before running it.
+The now-retired disposable simulator ran the same signed claims through
+permutations of observation copying, reveal withholding, flooding, partition,
+rollback, equivocation, and rule fork. It retained the exact eligible-set proof
+for independent verification and used the frozen latency, storage,
+verification-work, and false-accept thresholds below.
 
 The frozen experiment caps one claim set at `64` commitments, its logical proof
 encoding at `64 KiB`, and one verification at `10 ms` p95 on the declared weaker

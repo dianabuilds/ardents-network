@@ -127,11 +127,11 @@ Accessed 2026-08-20:
 
 ### Experiment
 
-[The build-ignored R-050 experiment](../../../experiments/r-050-stage-7-install-update-adapters/README.md)
-precommits candidate identities, layout, falsifiers, interruption points, and
-qualification limits. Generated packages, keys, local repositories,
-toolchains, module caches, state, VM disks, snapshots, binaries, and raw output
-remain outside Git.
+The now-retired build-ignored R-050 experiment precommitted candidate
+identities, layout, falsifiers, interruption points, and qualification limits.
+Generated packages, keys, local repositories, toolchains, module caches, state,
+VM disks, snapshots, binaries, and raw output remain outside Git. The record,
+not the disposable source, retains this historical development evidence.
 
 All development runs use the immutable axes, coverage partitions, observer
 controls, and episode-authority rules in the

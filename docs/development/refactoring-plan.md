@@ -604,6 +604,14 @@ test and its `stream-app` fixture command. The bounded opaque workload and
 direct baseline therefore move to that sole evidence owner and the internal
 package, package-map row, and deterministic-package entry are C0 deleted.
 
+**M14 progress, 2026-08-23.** The closed disposable source corpus is C0
+deleted: R-036, R-042, R-044, R-045, R-049, R-050, R-053, R-054, R-056,
+R-066, and R-073. Their accepted records retain the question, method,
+measurement, result, and limitation; target-module tests retain applicable
+behavior. None is a maintained package, test profile, compatibility reader,
+or second implementation. `experiments/` retains only open R-092, whose
+reference-host measurement has a present falsification duty.
+
 **M14 progress, 2026-08-23.** The four frozen S8.0 source-entry diagnostics
 (`stage-8-current-system-report`, `stage-8-current-system-trace`,
 `stage-8-current-system-surface-inventory`, and

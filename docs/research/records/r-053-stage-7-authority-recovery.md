@@ -83,11 +83,11 @@ Accessed 2026-08-20:
 
 ### Experiment
 
-The disposable
-[R-053 logic prototype](../../../experiments/r-053-stage-7-authority-recovery/README.md)
-freezes synthetic Authority vectors and secret commitments and exercises the
-strict shared envelope plus locked-restore state model. It does not persist
-bytes or qualify a cryptographic/platform implementation.
+The historical R-053 logic prototype froze synthetic Authority vectors and
+secret commitments and exercised the strict shared envelope plus locked-restore
+state model. It did not persist bytes or qualify a cryptographic/platform
+implementation. M12 C0-retired it after `internal/custody` and its
+`cmd/ardents-custody` caller supplied the target-owned operation boundary.
 
 The remaining development-host campaign follows the
 [Stage 7 development-host campaign specification](../../development/stage-7-host-campaign-spec.md)
@@ -205,4 +205,7 @@ fixed KDF/platform fit before weakest-native-host evidence.
   platform restore/cleanup evidence remains an S7.2 gate. The Product Owner
   accepted that weakest-native-host performance and unavailable durability
   cells are deferred, not passed; a falsifier reopens ADR-0021.
+- The disposable R-053 prototype and its `make prototype-r053` entry point are
+  C0 retired in M12. Their measured facts above remain in this record; Custody
+  behavior is now exercised only through the maintained owner and callers.
 - R-044 remains separate and cannot be partially solved by this record.

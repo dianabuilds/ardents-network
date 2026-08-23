@@ -278,10 +278,9 @@ Ardents.
 
 ## 6. Required evidence and acceptance
 
-The disposable
-[R-056 state model](../../experiments/r-056-stage-7-desktop-browser-integration/README.md)
-checks logical fallback and Distribution-Profile invariants only. It is not
-platform evidence.
+The historical R-056 state-model result checks logical fallback and
+Distribution-Profile invariants only. The disposable source is C0 retired; the
+research record retains the result. It is not platform evidence.
 
 During S7.6 evidence, the scheduled current-Windows/Ubuntu-26.04-Docker
 development subset MUST exercise every

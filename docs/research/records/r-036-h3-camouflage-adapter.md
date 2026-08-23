@@ -401,12 +401,11 @@ and independent verifier.
 
 ### Comparison execution — 2026-08-15
 
-The retained disposable harness is
-[experiments/r-036-h3-camouflage-adapter](../../../experiments/r-036-h3-camouflage-adapter/README.md).
+The disposable harness was C0 retired in M14 after its recorded result closed.
 Candidate source, vendor trees, binaries, certificates, state, module cache, and
-raw logs remained under an owned system-temporary directory. The harness and
-its malformed-control tests use only the Go standard library and introduce no
-root module dependency.
+raw logs remained under an owned system-temporary directory. The historical
+harness and its malformed-control tests used only the Go standard library and
+introduced no root module dependency.
 
 Supply preparation used Go `1.26.6`, `govulncheck v1.1.4`, vulnerability DB
 timestamp `2026-08-14T16:22:54Z`, and the pinned Ubuntu image. `go mod verify`

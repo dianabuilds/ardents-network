@@ -187,12 +187,11 @@ Accessed 2026-08-20:
 
 ### Experiment
 
-The disposable
-[R-056 state model](../../../experiments/r-056-stage-7-desktop-browser-integration/README.md)
-was run first. It models both Distribution Profiles, direct and OS entry,
-generic versus explicitly unsupported isolated mode, browser availability,
-permitted VPN, and blocked Carrier states. It performs no OS mutation or network activity and
-cannot count as platform qualification.
+The now-retired R-056 state model was run first. It modeled both Distribution
+Profiles, direct and OS entry, generic versus explicitly unsupported isolated
+mode, browser availability, permitted VPN, and blocked Carrier states. It
+performed no OS mutation or network activity and cannot count as platform
+qualification. This record retains its result, not a second application model.
 
 The remaining experiment uses the exact manifest and observer protocol in the
 [Stage 7 host-campaign specification](../../development/stage-7-host-campaign-spec.md)

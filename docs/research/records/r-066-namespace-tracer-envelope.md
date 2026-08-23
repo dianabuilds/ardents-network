@@ -58,11 +58,12 @@ capacity claim.
 
 ### Experiment
 
-Run `go run experiments/r-066-namespace-envelope/main.go` on the current
-development host. It creates a temporary Namespace root, deterministically signs the 127
-record hierarchy, commits it once, measures exact-name lookup and reopen-plus-
-lookup samples, runs eight simultaneous independent lookups, and removes the
-temporary root on exit. Its JSON output is the measured artifact.
+The now-retired disposable spike created a temporary Namespace root,
+deterministically signed the 127-record hierarchy, committed it once, measured
+exact-name lookup and reopen-plus-lookup samples, ran eight simultaneous
+independent lookups, and removed the temporary root on exit. Its recorded JSON
+result below is the historical measured artifact; maintained Namespace tests
+now enforce the accepted envelope.
 
 ### Failure scenarios
 
@@ -87,11 +88,11 @@ temporary root on exit. Its JSON output is the measured artifact.
   lookup was `24,594/27,548 us`; heap observation was `2,793,192` bytes.
   These host/load-sensitive samples remain local tracer evidence, not a
   performance or capacity claim.
-- **Measurement:** `go run -race ./experiments/r-066-namespace-envelope` is an
-  invalid local environment: the Windows linker inherits the repository's
-  native dependency closure and cannot resolve `-ldl`. This is recorded as an
-  unavailable detector, not a passing race result; the accepted envelope does
-  not claim race qualification.
+- **Measurement:** the historical disposable spike's race command was an
+  invalid local environment: the Windows linker inherited the repository's
+  native dependency closure and could not resolve `-ldl`. This is recorded as
+  an unavailable detector, not a passing race result; the accepted envelope
+  does not claim race qualification.
 - **Sourced fact:** R-057's independently recomputed 127-record fixture has
   the same 1,667-byte proof result, so this run reproduces the retained proof
   measurement rather than establishing a new global capacity.

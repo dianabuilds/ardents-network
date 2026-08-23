@@ -106,11 +106,11 @@ pristine.
 
 ### Experiment
 
-The build-ignored
-[S7E1 shared-profile experiment](../../../experiments/r-054-stage-7-evidence-profile/README.md)
-defines canonical admission, derived-path validation, and verdict precedence
-independently of candidate command code. It runs a synthetic 91-cell campaign
-through 100 byte-stable rounds plus bounded schema/path/verdict mutations.
+The now-retired build-ignored S7E1 shared-profile experiment defined canonical
+admission, derived-path validation, and verdict precedence independently of
+candidate command code. It ran a synthetic 91-cell campaign through 100
+byte-stable rounds plus bounded schema/path/verdict mutations. The recorded
+result is historical design evidence, not a maintained verifier.
 
 The local experiment now also streams the synthetic `1 GiB` maximum. The
 remaining experiment expands to the real multi-file/index artifact union,

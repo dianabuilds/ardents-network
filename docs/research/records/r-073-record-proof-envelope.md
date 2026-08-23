@@ -42,11 +42,12 @@ headroom rather than treating a zero-margin maximum as a product capacity.
 
 ## Evidence plan
 
-`experiments/r-073-record-proof-envelope/` builds the complete tracer corpus,
-binary-searches the variable canonical Record field, signs the complete
-threshold statement with 16 accepted authorities, and records the exact
-signed-Record/proof sizes. It uses a fresh temporary Namespace store per
-candidate and removes it after the run.
+The now-retired disposable spike built the complete tracer corpus,
+binary-searched the variable canonical Record field, signed the complete
+threshold statement with 16 accepted authorities, and recorded the exact
+signed-Record/proof sizes. It used a fresh temporary Namespace store per
+candidate and removed it after the run. The result below, together with
+maintained Namespace limits, replaces the spike as the durable evidence route.
 
 ## Failure scenarios
 

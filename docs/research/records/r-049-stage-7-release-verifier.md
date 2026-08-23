@@ -73,11 +73,11 @@ Accessed 2026-08-20:
 
 ### Experiment
 
-The build-ignored harness in
-[`experiments/r-049-stage-7-release-verifier/`](../../../experiments/r-049-stage-7-release-verifier/)
-pins candidate source/module closure and runs upstream conformance plus Ardents
-vectors through a bounded byte Adapter. Clones, caches, generated repositories,
-binaries, and raw output stay in fresh owned system-temporary roots outside Git.
+The now-retired build-ignored harness pinned candidate source/module closure and
+ran upstream conformance plus Ardents vectors through a bounded byte Adapter.
+Clones, caches, generated repositories, binaries, and raw output stayed in
+fresh owned system-temporary roots outside Git. Its recorded result remains
+historical research evidence; `internal/release` is the maintained owner.
 
 ### Failure scenarios
 
