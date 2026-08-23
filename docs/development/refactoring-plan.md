@@ -655,3 +655,11 @@ are C0 deleted after their package, disposition, ownership, and retirement
 facts were promoted to the package map, preservation ledger, target
 architecture, and this plan. The source entry `1cf7100` remains recoverable
 from Git; it is not current ownership or Qualification evidence.
+
+**M14 progress, 2026-08-24.** ADR-0031's C0 retirement of the generic
+`tests/live/` tree is now complete in both repository layout and the checked
+architecture model. The profile registry keeps `live` inactive as a future
+selection condition, but no suite-root scan, package listing, or race gate
+requires an absent generic tree or build tag. A future live scenario must add
+its own purpose-named boundary together with an active profile; it cannot
+reactivate the retired generic surface implicitly.
