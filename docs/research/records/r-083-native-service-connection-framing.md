@@ -1,7 +1,7 @@
 ---
 id: R-083
 title: What exact native endpoint-to-endpoint connection framing preserves authenticated Target/Instance binding and bounded attachment recovery after H3 Service Connection bytes are retired?
-status: open
+status: accepted
 owner: Product Owner and Codex
 started: 2026-08-23
 reviewed: 2026-08-23
@@ -106,16 +106,61 @@ when M11 supplies the measured Node runtime.
 | TLS-only connection | Reject unless it supplies an equivalent explicit Target/generation and recovery proof; current TLS pin does not. |
 | H3 `AS*` compatibility adapter | Reject under R-082. It reintroduces a retired reader without an observer. |
 
+## Selected v1 format
+
+Choose `ardents-service-connection-v1` as a closed endpoint grammar carried
+only after fresh endpoint TLS 1.3. TLS is pinned to the exact current Instance
+Ed25519 key, permits neither tickets/resumption nor alternate ALPN, and uses
+the exact native Profile `ardents-interactive-route-v1`. A Node sees only this
+TLS ciphertext after opaque Route legs join.
+
+Every record is `"ardents-service-connection-v1\x00" || uint16(body-length)
+|| body`. The body has `uint16(version=1)`, one closed kind byte, and the
+exact ASCII native Profile. A decoder consumes the whole body, rejects all
+unknown kinds/versions/profiles and lengths outside their kind bound, and has
+no H3 or generic reader.
+
+`ConnectionContext` is the SHA-256 digest of a canonical, domain-separated
+concatenation of Network ID, Target, Instance key and generation, publication
+digest, Candidate View, Isolation Context, Destination Binding, exact Profile,
+and every Work Safety/recovery deadline. It is immutable for one logical
+connection. The selected records are:
+
+1. **InstanceChallenge**: Network ID, Target, Instance generation,
+   ConnectionContext, and a fresh 32-byte nonce.
+2. **InstanceProof**: the challenge digest and an Ed25519 signature by the
+   exact Instance key over the canonical challenge record.
+3. **Continuity**: role, attachment generation, send base/end, receive next,
+   deterministic role/attachment nonce, ConnectionContext, TLS exporter
+   commitment, and HMAC-SHA-256. Its key comes from `EXPORTER-ardents-service-
+   connection-v1` and its domain tags use the same v1 literal. It is exchanged
+   before data on every attachment.
+4. **Data**: attachment generation, logical offset, uint16 payload length,
+   and at most 16 KiB payload. This is an allocation/parser bound, not a
+   product stream or workload ceiling.
+5. **Acknowledgement**: attachment generation and acknowledged logical
+   offset.
+6. **Terminal**: attachment generation and final logical offset. It has no
+   peer-selected error taxonomy or optional payload.
+
+The User sends InstanceChallenge and receives InstanceProof before it gives
+Application success. Both sides exchange Continuity in fixed client/server
+order on every attachment. Data/ack/terminal are accepted only after that
+exchange and only with the current generation/offset rules. A replacement may
+use a fresh Route Attachment, but may not change ConnectionContext, lower the
+Profile, replay an acknowledged range, or become a direct connection.
+
 ## Recommendation
 
-Do not mutate endpoint connection bytes until H1 specifies the exact records,
-domain separation, canonical vectors, and peer/recovery failure rules. The
-strongest objection is that a new connection wire is hard to reverse; the
-format must therefore remain unannounced and C0 until it has accepted
-conformance evidence and an ADR analysis.
+Choose H1 with medium confidence. The strongest objection is that this is a
+hard-to-reverse wire; its scope is deliberately only endpoint connection
+framing, unannounced, vector-bound, and has no predecessor reader. Publication
+and local IPC stay separate so this format cannot acquire their authority.
 
 ## Disposition
 
-**Open.** R-083 owns native endpoint-connection framing only. M9 may continue
-characterization and owner/interface work, but no successor writer/reader or
-ADR is selected yet. No experiment directory exists at this stage.
+**Accepted 2026-08-23 under the Product Owner's standing Stage 8 delegation.**
+ADR-0028 records the consequential wire selection. M9 may implement the new
+owner, canonical vectors, and mutation/recovery tests; it must delete every
+H3 Service Connection reader/writer in the same C0 cutover. No experiment
+directory is retained.
