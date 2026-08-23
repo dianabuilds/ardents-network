@@ -27,8 +27,11 @@ test matrix remain later promotion gates.
 Stage 7 was stopped by the Product Owner on 2026-08-22. S7.1 Release Decision,
 the maintained S7.2 Update Transaction engineering slice, and R-050 mechanism
 evidence remain inputs; S7.3-S7.7 are cancelled, not deferred commitments or
-accepted product delivery. Stage 8 productization started on 2026-08-22 from
-the verified `1cf7100` entry identity; S8.0 current-system truth is active.
+accepted product delivery. Stage 8 productization is in progress from the
+verified `1cf7100` entry identity. Its S8.0 current-system snapshot is
+historical provenance, not current architecture: maintained owners and command
+routes are registered in the [package map](docs/development/package-map.md) and
+[Stage 8 target architecture](docs/development/stage-8-target-architecture.md).
 
 ## Product hypothesis
 
