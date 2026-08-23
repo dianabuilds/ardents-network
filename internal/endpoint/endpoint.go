@@ -57,6 +57,12 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (RuntimeR
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = routeListener.Close(); _ = os.Remove(plan.RouteSocket) }()
+	stopListeners := context.AfterFunc(ctx, func() {
+		_ = applicationListener.Close()
+		_ = resultListener.Close()
+		_ = routeListener.Close()
+	})
+	defer stopListeners()
 	var published PublicationResult
 	if plan.Role == "publisher" {
 		var publishErr error

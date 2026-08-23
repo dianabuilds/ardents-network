@@ -126,6 +126,13 @@ IPC/attachment counters); dead publication/session and sampled process-metric
 projection is deleted. The result no longer carries transient TLS canaries,
 Introduction bytes, or unobserved IPC high-water state.
 
+**M10 progress, 2026-08-23.** `ardents` converts `os.Interrupt` into Endpoint
+context cancellation. Endpoint then closes only its owned application, result,
+and Route listeners, joins the blocked accept loop, and removes all three
+socket paths before returning; it does not wait for the ordinary deadline or
+leave a listener owned by a cancelled process. The direct lifecycle test covers
+readiness, cancellation, join, and residue with a real local socket set.
+
 **M11 progress, 2026-08-23.** `internal/node/probe` is deleted. Its
 authenticated role-probe TLS, framing, replay, listener capacity, pressure,
 and joined-drain implementation now remains private to the single `node`
