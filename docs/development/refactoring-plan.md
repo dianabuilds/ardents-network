@@ -179,7 +179,7 @@ non-test resource-adapter override.
 
 ### M5 — Namespace
 
-**In progress, 2026-08-23.** The R-061 prerequisite is complete: Namespace
+**Complete, 2026-08-23.** The R-061 prerequisite is complete: Namespace
 owns its compatible current/pending root and proof mechanics without a Network
 State persistence or commitment import. R-065 through R-073 now bound the
 retained tracer's decision time, 127-record envelope, byte profiles, record
@@ -195,17 +195,19 @@ same Network and Epoch installation that authenticated its close.
 
 The focused Namespace, Resolution, and independent Stage-6 evidence suites
 pass, as does the full `make check` profile (format, architecture, build, vet,
-module, staticcheck, vuln, unit, e2e, and race) after this slice. This is not a
-wave-complete claim: accepted R-074 records that no global-close owner is
-selected in Stage 8. Namespace must therefore not claim root-claim current
-behavior from its local input verifier; a future selected Network Epoch
-protocol must commit the opaque inputs and issue the complete threshold close.
+module, staticcheck, vuln, unit, e2e, and race) after this slice. M5 is
+complete within its accepted local scope: R-074 records that no global-close
+owner is selected in Stage 8. Namespace must therefore not claim root-claim
+current behavior from its local input verifier; a future selected Network
+Epoch protocol must commit the opaque inputs and issue the complete threshold
+close.
 The public `Record`,
 `Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`, `ResolveBindingLegacy`, raw `Store.CommitLegacy`, and historical
-Stage-6 fixtures remain compatibility surfaces. Production Resolution
-already consumes `Binding` rather than lifecycle `Record`, but only the later
-sealed Namespace interface plus the M14 C4 disposition can remove the old
-field bags and historical verifier seam without losing required provenance.
+Stage-6 fixtures remain C4 compatibility surfaces. The caller audit finds no
+runtime consumer of their caller-built field bags: production Resolution
+consumes `Binding` through sealed Namespace views. M14's C4 disposition, not a
+cosmetic M5 rename, removes the remaining historical verifier seam without
+losing required provenance.
 
 Under the Product Owner's standing Stage 8 delegation, M5 has also removed the
 unobserved C0 `ardents-name validate-record` adapter. It was the sole
