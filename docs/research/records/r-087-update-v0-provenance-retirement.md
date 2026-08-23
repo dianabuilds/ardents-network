@@ -1,7 +1,7 @@
 ---
 id: R-087
 title: How may the Update tracer retire its V0 custody evidence safely?
-status: accepted
+status: superseded
 owner: Product Owner and Codex
 started: 2026-08-23
 reviewed: 2026-08-23
@@ -91,7 +91,9 @@ reader.
 
 ## Disposition
 
-Accepted under the Product Owner's standing Stage 8 delegation. ADR-0029
-records the hard-to-reverse root format/retirement rule. M13 implements the
-conversion, C4 verifier, and command deletion as one cutover; no platform,
-installer, activation, or custody surface is authorized.
+Superseded by R-088 and ADR-0030 on 2026-08-23. Their source audit found no
+production root initializer or parent-pointer owner: the only V1 roots are
+test fixtures and `cmd/ardents-release` receives an already initialized path.
+The C1 mechanism selected here would therefore create an unowned selector.
+R-088 retains the transaction behavior but replaces the unobservable V1 test
+format by C0 V2 fixtures and a C4 V0 verifier.

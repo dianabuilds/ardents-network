@@ -47,11 +47,11 @@ cannot sign.
 - The retained `custody_notice` key is not live custody state. It is the exact
   H3 evidence text in the frozen `ardents-release-decision-v1`,
   `ardents-update-result-v1`, and update-manifest V0 formats. Go projections
-  call it `EvidenceNotice`; the old byte name remains only as the C2 R-064
-  tracer writer/reader through M13. [R-087](../research/records/r-087-update-v0-provenance-retirement.md)
-  selects one owned C1 V1→V2 root conversion: V2 omits the field, exact V0
-  vectors become C4 provenance, and no V2 compatibility writer or Vault-status
-  interpretation is permitted.
+  call it `EvidenceNotice`; the old byte name remains only in the unobserved
+  V0 tracer fixtures through M13. [R-088](../research/records/r-088-update-test-root-format-cutover.md)
+  selects a C0 V2 fixture cutover: V2 omits the field, exact V0 vectors become
+  C4 provenance, and no V2 compatibility writer or Vault-status interpretation
+  is permitted.
 - Windows/Ubuntu crash, permissions, and power-loss qualification remain open.
 - R-044 threshold recovery already replaces the effective Name Authority in
   Namespace; its completed Record rejects a signature from the former key.
