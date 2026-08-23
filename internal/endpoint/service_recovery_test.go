@@ -302,6 +302,16 @@ func testRecoveryBinding(fixture fixture) serviceconn.Recovery {
 		NoNewRecoveryAfter: fixture.first.NotAfter}
 }
 
+func recoveryOutbound(request serviceconn.OutboundConnectionRequest, binding serviceconn.Recovery) serviceconn.OutboundConnectionRequest {
+	request.RecoveryBinding = binding
+	return request
+}
+
+func recoveryInbound(request serviceconn.InboundConnectionRequest, binding serviceconn.Recovery) serviceconn.InboundConnectionRequest {
+	request.RecoveryBinding = binding
+	return request
+}
+
 func recoveryRequest(request serviceconn.Request, binding serviceconn.Recovery) serviceconn.Request {
 	request.RecoveryBinding = binding
 	return request

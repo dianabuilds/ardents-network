@@ -34,19 +34,19 @@ func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "connect", Principal: fixture.clientPrincipal,
-			Session: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
+		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 320<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
-		result, err := client.Do(ctx, request)
+		result, err := client.Connect(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "accept", Principal: fixture.publisherPrincipal,
-			Session: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
+		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: publisherAttachments, Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)
-		result, err := publisher.Do(ctx, request)
+		result, err := publisher.Accept(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 
