@@ -64,4 +64,5 @@ type snapshot struct {
 	attested attestedStatement
 	records  [][]byte
 	leaves   [][]byte
+	pending  uint64
 }

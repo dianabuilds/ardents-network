@@ -2,6 +2,7 @@ package namespace
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -44,6 +45,7 @@ type namespaceGeneration struct {
 	Name     string
 	Epoch    []byte
 	Inputs   [][]byte
+	Pending  uint64
 	Activate bool
 }
 
@@ -192,6 +194,17 @@ func loadNamespaceGeneration(root, name string) (namespaceGeneration, error) {
 	if err != nil {
 		return namespaceGeneration{}, fmt.Errorf("read naming state generation epoch: %w", err)
 	}
+	pending, pendingErr := readNamespaceFile(filepath.Join(directory, "pending.bin"), 8)
+	if pendingErr != nil && !os.IsNotExist(pendingErr) {
+		return namespaceGeneration{}, fmt.Errorf("read naming state pending cursor: %w", pendingErr)
+	}
+	value := uint64(0)
+	if pendingErr == nil {
+		if len(pending) != 8 {
+			return namespaceGeneration{}, errors.New("naming state pending cursor is invalid")
+		}
+		value = binary.BigEndian.Uint64(pending)
+	}
 	inputsRoot := filepath.Join(directory, "inputs")
 	entries, err := readNamespaceDirectory(inputsRoot, maximumChunks)
 	if err != nil {
@@ -207,7 +220,7 @@ func loadNamespaceGeneration(root, name string) (namespaceGeneration, error) {
 			return namespaceGeneration{}, fmt.Errorf("read naming state generation input: %w", err)
 		}
 	}
-	return namespaceGeneration{Name: name, Epoch: epoch, Inputs: inputs}, nil
+	return namespaceGeneration{Name: name, Epoch: epoch, Inputs: inputs, Pending: value}, nil
 }
 
 func writeNamespaceGeneration(directory string, generation namespaceGeneration) error {
@@ -217,6 +230,12 @@ func writeNamespaceGeneration(directory string, generation namespaceGeneration) 
 	}
 	if err := writeNamespaceFile(filepath.Join(directory, "epoch.bin"), generation.Epoch); err != nil {
 		return err
+	}
+	if generation.Pending != 0 {
+		pending := binary.BigEndian.AppendUint64(nil, generation.Pending)
+		if err := writeNamespaceFile(filepath.Join(directory, "pending.bin"), pending); err != nil {
+			return err
+		}
 	}
 	for index, input := range generation.Inputs {
 		if err := writeNamespaceFile(filepath.Join(inputsRoot, fmt.Sprintf("%04d.bin", index)), input); err != nil {
@@ -231,7 +250,7 @@ func writeNamespaceGeneration(directory string, generation namespaceGeneration) 
 
 func namespaceGenerationMatches(directory string, generation namespaceGeneration) bool {
 	actual, err := loadNamespaceGeneration(filepath.Dir(directory), filepath.Base(directory))
-	if err != nil || !bytes.Equal(actual.Epoch, generation.Epoch) || len(actual.Inputs) != len(generation.Inputs) {
+	if err != nil || !bytes.Equal(actual.Epoch, generation.Epoch) || actual.Pending != generation.Pending || len(actual.Inputs) != len(generation.Inputs) {
 		return false
 	}
 	for index := range actual.Inputs {

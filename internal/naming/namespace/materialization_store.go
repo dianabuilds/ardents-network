@@ -32,6 +32,10 @@ func (store *Store) Commit(epoch Epoch, signed [][]byte,
 	if err != nil {
 		return err
 	}
+	pending, err := store.pendingCursorFor(records)
+	if err != nil {
+		return err
+	}
 	value := statement{network: store.policy.Network, epoch: epoch.Number, epochDigest: epoch.Digest, rule: store.policy.Rule,
 		cutoff: epoch.CutoffOffset, recordRoot: recordRoot(leaves), recordLength: uint32(len(leaves)),
 		transitionRoot: epoch.TransitionRoot, transitionLength: epoch.TransitionLength,
@@ -60,9 +64,9 @@ func (store *Store) Commit(epoch Epoch, signed [][]byte,
 	if err != nil {
 		return err
 	}
-	name := snapshotDigest(metadata, chunks)
+	name := snapshotGenerationDigest(metadata, chunks, pending)
 	return store.root.commit(namespaceGeneration{Name: hex.EncodeToString(name[:]),
-		Epoch: metadata, Inputs: chunks, Activate: true})
+		Epoch: metadata, Inputs: chunks, Pending: pending, Activate: true})
 }
 
 // Close releases the exclusive root lease.
@@ -85,7 +89,7 @@ func (store *Store) load(minimumEpoch uint64) (snapshot, error) {
 		if generation.Name != current {
 			continue
 		}
-		digest := snapshotDigest(generation.Epoch, generation.Inputs)
+		digest := snapshotGenerationDigest(generation.Epoch, generation.Inputs, generation.Pending)
 		attested, decodeErr := decodeAttested(generation.Epoch)
 		persistedRecords, persistenceErr := decodeRecordChunks(generation.Inputs)
 		records, leaves, materialErr := materializeRecords(store.policy.Network, persistedRecords)
@@ -99,7 +103,7 @@ func (store *Store) load(minimumEpoch uint64) (snapshot, error) {
 		if attested.statement.epoch < minimumEpoch {
 			return snapshot{}, errors.New("naming state is stale")
 		}
-		return snapshot{attested: attested, records: records, leaves: leaves}, nil
+		return snapshot{attested: attested, records: records, leaves: leaves, pending: generation.Pending}, nil
 	}
 	return snapshot{}, errors.New("naming state is tampered")
 }
@@ -126,10 +130,18 @@ func validEpoch(value Epoch) bool {
 }
 
 func snapshotDigest(metadata []byte, inputs [][]byte) [32]byte {
+	return snapshotGenerationDigest(metadata, inputs, 0)
+}
+
+func snapshotGenerationDigest(metadata []byte, inputs [][]byte, pending uint64) [32]byte {
 	out := append([]byte("ardents-naming-state-snapshot-v2\x00"), metadata...)
 	for _, input := range inputs {
 		out = appendUint32(out, uint32(len(input)))
 		out = append(out, input...)
+	}
+	if pending != 0 {
+		out = append(out, "pending-v1\x00"...)
+		out = appendUint64(out, pending)
 	}
 	return sha256.Sum256(out)
 }

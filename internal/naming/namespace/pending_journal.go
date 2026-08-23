@@ -125,6 +125,82 @@ func (store *Store) pending() ([]pendingEntry, error) {
 	return entries, nil
 }
 
+// pendingCursorFor admits a materialization only when its complete signed
+// corpus is exactly the next prefix of the one durable pending chain. A caller
+// cannot splice an independently supplied Record into current state.
+func (store *Store) pendingCursorFor(records [][]byte) (uint64, error) {
+	current, _, rootErr := store.root.load()
+	if rootErr != nil {
+		return 0, errors.New("naming state is tampered")
+	}
+	baseline := make(map[string][]byte)
+	cursor := uint64(0)
+	if current != "" {
+		snapshot, loadErr := store.load(0)
+		if loadErr != nil {
+			return 0, loadErr
+		}
+		cursor = snapshot.pending
+		for _, signed := range snapshot.records {
+			record, verifyErr := VerifyRecord(store.policy.Network, signed)
+			if verifyErr != nil {
+				return 0, errors.New("naming current record is invalid")
+			}
+			baseline[record.Name] = signed
+		}
+	}
+	entries, err := store.pending()
+	if err != nil {
+		return 0, err
+	}
+	if cursor > uint64(len(entries)) {
+		return 0, errors.New("naming state pending cursor is invalid")
+	}
+	if len(entries) == 0 {
+		return 0, nil
+	}
+	candidate, mapErr := signedRecordMap(store.policy.Network, records)
+	if mapErr != nil {
+		return 0, mapErr
+	}
+	for index := cursor; index < uint64(len(entries)); index++ {
+		entry := entries[index]
+		record, verifyErr := VerifyRecord(store.policy.Network, entry.successor)
+		if verifyErr != nil {
+			return 0, errors.New("naming pending journal is tampered")
+		}
+		baseline[record.Name] = entry.successor
+		if sameSignedRecordMap(baseline, candidate) {
+			return entry.sequence, nil
+		}
+	}
+	return 0, errors.New("naming materialization is not selected from pending state")
+}
+
+func signedRecordMap(network [32]byte, signed [][]byte) (map[string][]byte, error) {
+	values := make(map[string][]byte, len(signed))
+	for _, raw := range signed {
+		record, err := VerifyRecord(network, raw)
+		if err != nil || values[record.Name] != nil {
+			return nil, errors.New("naming materialization Record corpus is invalid")
+		}
+		values[record.Name] = raw
+	}
+	return values, nil
+}
+
+func sameSignedRecordMap(left, right map[string][]byte) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for name, value := range left {
+		if !bytes.Equal(value, right[name]) {
+			return false
+		}
+	}
+	return true
+}
+
 func (root *namespaceRoot) appendPending(entry pendingEntry) (pendingEntry, error) {
 	root.mu.Lock()
 	defer root.mu.Unlock()

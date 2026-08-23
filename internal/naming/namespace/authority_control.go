@@ -122,6 +122,7 @@ func (control *control) restore() error {
 	if err != nil {
 		return errors.New("name Authority control state is tampered")
 	}
+	cursor := uint64(0)
 	if current != "" {
 		snapshot, loadErr := control.store.load(0)
 		if loadErr != nil {
@@ -134,12 +135,16 @@ func (control *control) restore() error {
 			}
 			control.records[record.Name] = record
 		}
+		cursor = snapshot.pending
 	}
 	entries, err := control.store.pending()
 	if err != nil {
 		return err
 	}
 	for _, entry := range entries {
+		if entry.sequence <= cursor {
+			continue
+		}
 		operation, decodeErr := decodeControlOperation(entry.submission)
 		if decodeErr != nil || len(operation.SuccessorRecord) == 0 ||
 			!bytes.Equal(operation.SuccessorRecord, entry.successor) {
