@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -44,10 +45,10 @@ func selectPlan(view state.ResolutionView, input Selection, profile GatewayProfi
 	return result, nil
 }
 
-func namespacePolicy(epoch state.ResolutionEpoch) namespace.MaterializationPolicy {
-	policy := namespace.MaterializationPolicy{Network: epoch.NetworkID, Rule: "ardents-namespace-materialization-v1",
-		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: int(epoch.Threshold)}
-	for _, authority := range epoch.Authorities {
+func namespacePolicy(resolutionEpoch state.ResolutionEpoch) epoch.MaterializationPolicy {
+	policy := epoch.MaterializationPolicy{Network: resolutionEpoch.NetworkID, Rule: "ardents-namespace-materialization-v1",
+		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: int(resolutionEpoch.Threshold)}
+	for _, authority := range resolutionEpoch.Authorities {
 		key := append(ed25519.PublicKey(nil), authority.PublicKey[:]...)
 		policy.Authorities[authority.ID] = key
 	}

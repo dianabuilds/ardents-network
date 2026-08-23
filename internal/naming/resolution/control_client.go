@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 )
 
 // Execute performs one fixed-size private control exchange without a fallback.
@@ -19,7 +19,7 @@ func (client *controlClient) Execute(ctx context.Context, raw []byte,
 	if !client.begin() || ctx == nil || at.IsZero() || at.UnixNano() != client.plan.SelectionAt {
 		return controlResult{}, errors.New("private naming control input is invalid")
 	}
-	submission, err := namespace.OpenSubmission(raw)
+	submission, err := authority.OpenSubmission(raw)
 	if err != nil {
 		return controlResult{}, err
 	}

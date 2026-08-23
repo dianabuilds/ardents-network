@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 	"github.com/openpcc/ohttp"
 )
 
@@ -34,7 +37,7 @@ type GatewayConfig struct {
 }
 
 type controlAuthority interface {
-	Submit(namespace.Submission, namespace.Proof) string
+	Submit(authority.Submission, admission.Proof) string
 }
 
 type gatewayState struct {
@@ -52,7 +55,7 @@ type Selection struct {
 	ConnectionRendezvousNodeID [32]byte
 	ExcludedIdentities         [][32]byte
 	ExcludedFamilies           []string
-	AdmissionChallenge         namespace.Challenge
+	AdmissionChallenge         admission.Challenge
 }
 
 // controlResult is the bounded terminal result of one private naming control
@@ -97,14 +100,14 @@ type plan struct {
 	GatewayKeyConfigDigest [32]byte
 	ExcludedIdentities     [][32]byte
 	ExcludedFamilies       []string
-	AdmissionChallenge     namespace.Challenge
+	AdmissionChallenge     admission.Challenge
 	NamespaceVerifier      *namespace.ResolutionVerifier
 }
 
 type result struct {
 	Class   string
 	Warning string
-	Binding namespace.Binding
+	Binding record.Binding
 }
 
 type resolverObservation struct {
@@ -172,5 +175,5 @@ type controlPlan struct {
 	Relay              position
 	Gateway            position
 	GatewayKeyConfig   []byte
-	AdmissionChallenge namespace.Challenge
+	AdmissionChallenge admission.Challenge
 }

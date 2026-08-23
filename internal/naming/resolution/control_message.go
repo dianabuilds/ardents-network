@@ -6,7 +6,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 )
 
 const controlSchema = "ardents-private-name-control-v2"
@@ -17,7 +18,7 @@ type controlRequestWire struct {
 	Nonce     [32]byte        `json:"nonce"`
 	Deadline  int64           `json:"deadline"`
 	Operation json.RawMessage `json:"operation"`
-	Admission namespace.Proof `json:"admission"`
+	Admission admission.Proof `json:"admission"`
 }
 
 type controlResponseWire struct {
@@ -36,12 +37,12 @@ type controlBinding struct {
 }
 
 type controlRequestValue struct {
-	submission namespace.Submission
+	submission authority.Submission
 	binding    controlBinding
-	admission  namespace.Proof
+	admission  admission.Proof
 }
 
-func controlRequest(submission namespace.Submission, binding controlBinding, admission namespace.Proof) ([]byte, error) {
+func controlRequest(submission authority.Submission, binding controlBinding, admission admission.Proof) ([]byte, error) {
 	if binding.network == [32]byte{} || binding.nonce == [32]byte{} || binding.deadline <= 0 ||
 		submission.Digest() == [32]byte{} || admission.Challenge.OperationDigest != submission.Digest() {
 		return nil, errors.New("private naming control request is invalid")
@@ -64,7 +65,7 @@ func decodeControlRequest(raw []byte) (controlRequestValue, error) {
 		wire.Network == [32]byte{} || wire.Nonce == [32]byte{} || wire.Deadline <= 0 {
 		return controlRequestValue{}, errors.New("private naming control request is invalid")
 	}
-	submission, err := namespace.OpenSubmission(wire.Operation)
+	submission, err := authority.OpenSubmission(wire.Operation)
 	if err != nil {
 		return controlRequestValue{}, errors.New("private naming control request is invalid")
 	}
