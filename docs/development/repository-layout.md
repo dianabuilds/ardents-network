@@ -61,10 +61,13 @@ The first real product commands are:
 | `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
 | `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
 
-Cross-process tests live under `tests/e2e/<behavior>/`. Live Docker inputs and
-their build-tagged Go tests live under `tests/live/`. Test-only fixture builders
-remain `_test.go` implementation owned by the scenario that uses them. Images,
-keys, state, captures, and generated manifests remain outside Git.
+Cross-process tests live under `tests/e2e/<behavior>/`. No live-container test
+tree or active live profile is currently retained. A future selected live
+scenario must introduce one purpose-named test boundary, its complete
+lifecycle, and its explicit profile selection in the owning change. Test-only
+fixture builders remain `_test.go` implementation owned by the scenario that
+uses them. Images, keys, state, captures, and generated manifests remain
+outside Git.
 
 `tests/profiles/` owns the checked profile registry and positive package
 membership manifests. Every maintained and Go-bearing e2e package belongs to
@@ -256,8 +259,10 @@ controls, Docker assumptions, or experiment state.
 - A test crossing several Modules or processes lives under
   `tests/e2e/<behavior>/` only when the real cross-boundary behavior is
   implemented. It uses the root module and owns no product Implementation.
-- A real-container network test lives under `tests/live/`, is selected by the
-  `live` build tag, owns its complete lifecycle, and can run independently.
+- A selected real-container network test owns a purpose-named test boundary,
+  explicit profile selection, its complete lifecycle, and an independently
+  runnable command. No generic `tests/live/` tree or build tag exists by
+  default.
 - `testdata/` lives directly below the Module, command, or e2e test that owns
   it. Test surfaces do not import fixtures or golden evidence from each other.
 - Test Adapters satisfy the same Interface as real callers. Tests do not reach
