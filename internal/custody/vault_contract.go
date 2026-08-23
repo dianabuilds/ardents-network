@@ -10,6 +10,8 @@ const (
 	OperationCreateVaultRecord OperationKind = "create-vault-record"
 	// OperationVerifyVaultRecord authenticates one record without releasing its root material.
 	OperationVerifyVaultRecord OperationKind = "verify-vault-record"
+	// OperationExportRecoveryBundle creates and isolatedly test-restores one new Bundle.
+	OperationExportRecoveryBundle OperationKind = "export-recovery-bundle"
 	// OperationInspectEnvelope validates only an envelope's public canonical header.
 	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
@@ -35,8 +37,10 @@ type VaultConfig struct {
 // is accepted.
 type OperationKind string
 
-// Operation supplies the bounded data for exactly one Kind. Fields unrelated to
-// the selected operation must retain their zero value.
+// Operation supplies the bounded data for exactly one Kind. Path is a public
+// envelope source for inspection and an Owner-selected new Bundle destination
+// for export. Fields unrelated to the selected operation must retain their zero
+// value.
 type Operation struct {
 	Kind      OperationKind
 	Authority AuthorityState
@@ -56,18 +60,21 @@ type SecretInput interface {
 type SecretPrompt string
 
 const (
-	SecretPromptVaultCreate        SecretPrompt = "vault-create"
-	SecretPromptVaultCreateConfirm SecretPrompt = "vault-create-confirm"
-	SecretPromptVaultUnlock        SecretPrompt = "vault-unlock"
+	SecretPromptVaultCreate         SecretPrompt = "vault-create"
+	SecretPromptVaultCreateConfirm  SecretPrompt = "vault-create-confirm"
+	SecretPromptVaultUnlock         SecretPrompt = "vault-unlock"
+	SecretPromptBundleExport        SecretPrompt = "bundle-export"
+	SecretPromptBundleExportConfirm SecretPrompt = "bundle-export-confirm"
 )
 
 // Receipt contains only bounded public custody facts. In particular it never
 // includes root material, a password, a derived key, or plaintext bytes.
 type Receipt struct {
-	Operation OperationKind
-	RecordID  string
-	Envelope  EnvelopeInfo
-	Authority AuthorityReceipt
+	Operation    OperationKind
+	RecordID     string
+	Envelope     EnvelopeInfo
+	Authority    AuthorityReceipt
+	TestRestored bool
 }
 
 // EnvelopeInfo is the public header metadata admitted from one canonical

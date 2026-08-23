@@ -27,6 +27,8 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return vault.createRecord(ctx, operation, secrets)
 	case OperationVerifyVaultRecord:
 		return vault.verifyRecord(ctx, operation, secrets)
+	case OperationExportRecoveryBundle:
+		return vault.exportBundle(ctx, operation, secrets)
 	case OperationInspectEnvelope:
 		return vault.inspect(operation)
 	default:

@@ -415,10 +415,13 @@ secret entry, and verifies an expected Authority binding after authenticated
 unlock without returning root material. Wrong passwords and authenticated
 ciphertext changes both return the same bounded unlock failure. The separate
 `cmd/ardents-custody inspect-envelope` caller exposes only public canonical
-header facts and has no secret-input path. This is intentionally not M12
-completion: Bundle export/test restore, restore quarantine/reconciliation,
-revocation, foreign-format migration, and platform qualification remain
-required before Release and Update can lose their custody compatibility text.
+header facts and has no secret-input path. The same owner now exports a Bundle
+only to a new owner-selected destination after a distinct double-entered
+password, reopens it, and isolatedly test-restores its expected binding. This
+is intentionally not M12 completion: confirmed replacement, restore
+quarantine/reconciliation, revocation, foreign-format migration, and platform
+qualification remain required before Release and Update can lose their custody
+compatibility text.
 
 ## Dependency and retirement rules
 

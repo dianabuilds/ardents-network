@@ -101,6 +101,57 @@ func TestInspectEnvelopeRejectsUnsupportedParametersBeforeSecretInput(t *testing
 	}
 }
 
+func TestVaultExportsDistinctPasswordBundleAndTestRestoresIt(t *testing.T) {
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	state := testAuthorityState()
+	vaultPassword := []byte("correct horse battery staple")
+	created, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: state}, &sequenceSecrets{values: [][]byte{vaultPassword, vaultPassword}})
+	if err != nil {
+		t.Fatalf("create record: %v", err)
+	}
+	bundlePath := filepath.Join(t.TempDir(), "owner-chosen-bundle.json")
+	bundlePassword := []byte("another long bundle password")
+	exported, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID, Expected: state.Binding, Path: bundlePath}, &sequenceSecrets{values: [][]byte{vaultPassword, bundlePassword, bundlePassword}})
+	if err != nil {
+		t.Fatalf("export bundle: %v", err)
+	}
+	if !exported.TestRestored || exported.Envelope.Purpose != PurposeBundle || exported.Authority.Binding != state.Binding {
+		t.Fatalf("unexpected bundle receipt: %+v", exported)
+	}
+	raw, err := os.ReadFile(bundlePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(raw, state.RootMaterial) {
+		t.Fatal("recovery bundle retains plaintext root material")
+	}
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID, Expected: state.Binding, Path: filepath.Join(t.TempDir(), "same-password.json")}, &sequenceSecrets{values: [][]byte{vaultPassword, vaultPassword, vaultPassword}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("same password bundle export = %v, want invalid", err)
+	}
+}
+
+func TestVaultDoesNotReplaceExistingBundleDestination(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bundle.json")
+	original := []byte("existing encrypted bytes")
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeNewBundle(path, []byte("new encrypted bytes")); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("replace bundle = %v, want invalid", err)
+	}
+	retained, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(retained, original) {
+		t.Fatalf("existing bundle changed: got %q want %q", retained, original)
+	}
+}
+
 type sequenceSecrets struct {
 	values [][]byte
 }

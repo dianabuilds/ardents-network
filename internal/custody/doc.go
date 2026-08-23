@@ -9,5 +9,7 @@
 // an expensive derivation. The current vertical slice creates independent Vault
 // records, verifies their semantic binding, and inspects unencrypted envelope
 // headers; Bundle export, restore, and reconciliation extend the same custody
-// operation seam.
+// operation seam. The current vertical slice also exports a Bundle only to a
+// new Owner-selected destination and isolatedly test-restores it; replacement,
+// quarantine restore, and reconciliation remain later custody operations.
 package custody

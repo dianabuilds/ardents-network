@@ -48,7 +48,7 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | `node` | One Contributor duty admission, quarantine, listener/probe, protect/drain/withdraw, and joined cleanup. | Fold `node/probe`; no State-root or assignment authority. | D02 and selected Resource/platform contract. |
 | `release` | Verified metadata result, roots/floors/archive, lease, and opaque update authorization. | Own the release verifier and keep floor persistence private. | DA-01 before D06 mutation. |
 | `update` | Staging, predecessor/rollback, technical-tracer activation/self-test, journal, recovery, and cleanup. | Deepen `updatetransaction`; consumes unforgeable Release authorization and owns no Custody state. | R-064 limits M2 to one offline H3 tracer; a supported lifecycle reopens DA-09. |
-| `internal/custody` | Vault/Recovery Bundle, unlock/export/restore/reconcile, revocation, and signing watermark. | New Module; secrets never enter Release/Update/diagnostics. The first M12 slice owns canonical envelope admission and independent encrypted Vault-record create/verify; it returns no root material. | ADR-0021; DA-08 and DA-09 remain required for platform and full lifecycle qualification. |
+| `internal/custody` | Vault/Recovery Bundle, unlock/export/restore/reconcile, revocation, and signing watermark. | New Module; secrets never enter Release/Update/diagnostics. The first M12 slice owns canonical envelope admission, independent encrypted Vault-record create/verify, and distinct-password Bundle export/test restore to a new destination; it returns no root material. | ADR-0021; DA-08 and DA-09 remain required for platform and full lifecycle qualification. |
 
 ## Intended dependency and trust direction
 
