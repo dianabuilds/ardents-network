@@ -46,3 +46,31 @@ func (commitment *ClaimCommitment) Reveal(name string, secret [32]byte, authorit
 	}
 	return claim, nil
 }
+
+// EpochInput returns the only log representation of a locally admitted
+// commitment. Network/Epoch code may order and commit these opaque bytes but
+// cannot inspect the local admission proof or the hidden claim reveal.
+func (commitment *ClaimCommitment) EpochInput() (EpochClaimInput, error) {
+	if commitment == nil || commitment.network == [32]byte{} || commitment.epoch == 0 ||
+		commitment.commitment == [32]byte{} || commitment.admission == [32]byte{} {
+		return EpochClaimInput{}, errors.New("claim Epoch input is invalid")
+	}
+	var input EpochClaimInput
+	copy(input.raw[:32], commitment.commitment[:])
+	copy(input.raw[32:], commitment.admission[:])
+	input.commitment = commitment.commitment
+	return input, nil
+}
+
+// Canonical returns a copy of the fixed opaque Epoch-log input.
+func (input EpochClaimInput) Canonical() []byte { return append([]byte(nil), input.raw[:]...) }
+
+// Commitment returns the exact digest bound by the admission proof.
+func (input EpochClaimInput) Commitment() [32]byte { return input.commitment }
+
+// InputLeaf returns the domain-separated leaf which the authenticated Epoch
+// input root must contain at ordinal. The Epoch log owns ordinal assignment;
+// this opaque fact owns only the admitted bytes that are committed there.
+func (input EpochClaimInput) InputLeaf(ordinal uint32) [32]byte {
+	return epochClaimInputLeaf(ordinal, input.raw)
+}

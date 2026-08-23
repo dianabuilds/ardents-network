@@ -46,9 +46,16 @@ proof, arbitrary ordinal, Name, Authority, or lease deadline.
 `EpochInstallation` starts from the verified Store snapshot, can select only
 the next durable pending prefix, accepts a `ClaimWinner` only through a signer
 that returns the exact derived Record, and uses the existing threshold
-materialization statement for publication. It is not the Network Epoch log or
-the R-045 commit-admission owner. Complete global-close/commit-admission
-ingestion remains open; an incomplete or forked close must not mutate a Lease.
+materialization statement for publication. `AdmitClaimCommitment` consumes one
+local R-045 `root-claim` proof and yields an opaque `EpochClaimInput`: its
+canonical 64 bytes are the commitment followed by the admitted challenge
+digest. The input leaf also binds the Epoch-assigned ordinal. Network/Epoch
+code can order and commit only those opaque bytes; it receives no Name,
+Authority, secret, or local proof state. A threshold-signed close must still
+prove that the revealed claim opens that exact input leaf before
+`OpenClaimWinner` can yield a materializable fact. This boundary does not
+select a Network log, transport, or shared persistence foundation. An
+incomplete or forked close must not mutate a Lease.
 
 ## Retained technical limits
 
@@ -97,10 +104,10 @@ tracer can grow.
 The public `Record`, `Op`, `Apply`, raw `Store.Commit`, historical Stage 6
 fixtures, and interim Record signing callback remain compatibility surface.
 They must be replaced by sealed Namespace constructors and one final
-installation Interface. The actual commit-ingestion owner must verify
-R-045's commitment-bound admission and complete global close before it yields
-a `ClaimWinner`. Scale, index/cache, product capacity, and supported-platform
-claims remain outside this tracer.
+installation Interface. The remaining global-close owner must accept the
+opaque admitted input, commit its ordinal/root, and issue the complete
+threshold-signed close before it yields a `ClaimWinner`. Scale, index/cache,
+product capacity, and supported-platform claims remain outside this tracer.
 
 ## Verification
 
@@ -125,3 +132,4 @@ before integration. Focused Namespace/Resolution behavior is covered by
   [ADR-0023](../adr/0023-pending-signed-namespace-successors.md)
 - [R-071](../research/records/r-071-typed-epoch-claim-winner.md)
 - [R-072](../research/records/r-072-namespace-epoch-installation.md)
+- [R-073](../research/records/r-073-record-proof-envelope.md)

@@ -2,6 +2,7 @@ package namespace_test
 
 import (
 	"crypto/ed25519"
+	"crypto/sha256"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
@@ -37,5 +38,17 @@ func TestClaimCommitmentAdmissionIsSpentAndRevealDerivesItsDigest(t *testing.T) 
 	}
 	if _, err := accepted.Reveal("bob", claim.Secret, claim.Authority, claim.Signature); err == nil {
 		t.Fatal("signature opened a different Name")
+	}
+	input, err := accepted.EpochInput()
+	if err != nil || input.Commitment() != commitment || len(input.Canonical()) != 64 ||
+		input.InputLeaf(0) != orderedInputLeaf(reveal) {
+		t.Fatalf("Epoch input=%x commitment=%x err=%v", input.Canonical(), input.Commitment(), err)
+	}
+	close := namespace.ClaimProof{Network: network, Epoch: 7, Rule: "ardents-name-claim-order-v1",
+		CutoffOffset: 1_000, InputRoot: input.InputLeaf(0), InputLength: 1,
+		MaterializationRoot: orderedMaterializationLeaf(reveal), MaterializationLength: 1,
+		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{reveal}}
+	if _, err := namespace.OpenClaimWinner(signedClaimClose(&close), close); err != nil {
+		t.Fatalf("admitted input did not yield verified winner: %v", err)
 	}
 }

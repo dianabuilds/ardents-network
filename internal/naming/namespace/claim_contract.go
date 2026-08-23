@@ -68,6 +68,13 @@ type ClaimCommitment struct {
 	admission  [32]byte
 }
 
+// EpochClaimInput is one opaque canonical commit input for the authenticated
+// Epoch log. It contains no Name, Authority, Secret, or local proof state.
+type EpochClaimInput struct {
+	raw        [64]byte
+	commitment [32]byte
+}
+
 type claimWinner struct {
 	mu        sync.Mutex
 	name      string

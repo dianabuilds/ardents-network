@@ -120,10 +120,15 @@ func sameClose(left, right ClaimProof) bool {
 }
 
 func claimInputLeaf(claim Claim) [32]byte {
-	out := []byte{0}
-	out = binary.BigEndian.AppendUint32(out, claim.Ordinal)
-	out = append(out, claim.Commitment[:]...)
-	out = append(out, claim.AdmissionDigest[:]...)
+	var input [64]byte
+	copy(input[:32], claim.Commitment[:])
+	copy(input[32:], claim.AdmissionDigest[:])
+	return epochClaimInputLeaf(claim.Ordinal, input)
+}
+
+func epochClaimInputLeaf(ordinal uint32, input [64]byte) [32]byte {
+	out := binary.BigEndian.AppendUint32([]byte{0}, ordinal)
+	out = append(out, input[:]...)
 	return sha256.Sum256(out)
 }
 
