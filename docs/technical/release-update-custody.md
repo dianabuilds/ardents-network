@@ -69,3 +69,46 @@ cannot sign.
 - [R-053](../research/records/r-053-stage-7-authority-recovery.md)
 - `internal/custody/vault_operation_test.go`
 - `internal/custody/vault_namespace_signing_test.go`
+
+## Release and Update ownership
+
+internal/release is the sole owner of release trust roots and non-decreasing
+release floors. It verifies the selected TUF-compatible metadata profile,
+consecutive root rotation, exact target identity, protocol/build state, and
+the captured reference time. Its output is a bounded public Decision and
+opaque authorization. It does not download artifacts, run a repository,
+maintain an ambient cache, sign metadata, select a mirror, or expose its floor
+storage.
+
+internal/update consumes only that opaque authorization. It owns the bounded
+offline technical transaction: immutable staging, rollback reservation,
+stopped-runtime Adapter calls, atomic activation, self-test, journal,
+idempotent recovery, terminal inspection, and the caller-owned schema
+copy-on-write boundary. It never receives a Vault, password, Authority root,
+or generic Custody writer. Its D0 behavior fixture proves that a real encrypted
+Vault and floor stay unchanged during the transaction.
+
+The current Update Module is a technical tracer, not a supported installer or
+automatic updater. It selects no platform packaging, bootstrap, system
+registration, unattended activation, repair, or uninstall behavior. A
+supported lifecycle and its platform durability evidence remain separate
+decisions.
+
+## Cross-module invariants
+
+- Release floors and trusted roots never decrease.
+- Update cannot authorize itself or interpret Authority/Custody state.
+- Custody never supplies secrets to Release or Update.
+- A failed or interrupted tracer transaction returns an explicit bounded
+  outcome; it must not silently activate a candidate or erase the predecessor.
+- The retired V0 evidence field remains only in independent provenance vectors;
+  current V2 tracer fixtures do not create a compatibility writer.
+
+## Verification
+
+Focused Release, Update, and Custody behavior tests cover metadata rejection,
+root/floor progression, interruption/recovery, rollback, residue, encrypted
+Vault non-mutation, export/restore, reconciliation, and sealed Name-control
+signing. Run the normal repository gate during development and the full check
+before integration. Platform crash, power-loss, permissions, and supported
+lifecycle qualification are not satisfied by these tests.

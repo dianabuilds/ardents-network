@@ -36,6 +36,7 @@ specification.
 
 - [Private naming and namespace](../technical/naming.md)
 - [Release update and authority custody](../technical/release-update-custody.md)
+- [Endpoint and Service runtime](../technical/endpoint-service-runtime.md)
 
 ## Historical provenance
 

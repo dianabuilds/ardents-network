@@ -108,9 +108,8 @@ Project sources, accessed 2026-08-21:
 - `docs/development/repository-layout.md`;
 - `docs/development/go-engineering.md`;
 - `docs/development/testing.md`;
-- `docs/development/m3-collaboration.md`; and
-- the accepted S7.2 contracts and M3 briefs as current examples of the task
-  formation cost.
+- the retired Stage 7 collaboration rule and M3 briefs, recoverable from Git,
+  as historical examples of task-formation cost.
 
 ### Repository measurements
 
@@ -175,8 +174,8 @@ working tree. Measurements are descriptive signals, not quality verdicts:
    rather than a second evidence protocol around the same Module. Stage 8 must
    reconcile this with later stage-specific manifest/verifier growth instead
    of automatically retaining both.
-10. **Sourced fact:** `m3-collaboration.md` is explicitly a Stage 7 rule. Its
-    `70–85%` M3 code/test target is not a project-wide allocation policy.
+10. **Sourced fact:** the retired Stage 7 collaboration rule used a `70–85%`
+    M3 code/test target. It is not a project-wide allocation policy.
 11. **Inference:** cognitively global reassessment, Module redesign,
     cross-package refactoring, and documentation authority require one coherent
     Codex context. M3 remains useful after those decisions for bounded work
