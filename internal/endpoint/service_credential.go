@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 import (
 	"time"

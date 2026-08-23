@@ -1,4 +1,4 @@
-package serviceconn_test
+package endpoint_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 type finalEOFApplication struct{ *bytes.Reader }
@@ -110,12 +110,12 @@ func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
 }
 
 type serviceOutcome struct {
-	result serviceconn.Result
+	result serviceconn.RuntimeResult
 	err    error
 }
 
 type endpointRunner interface {
-	Do(context.Context, serviceconn.Request) (serviceconn.Result, error)
+	Do(context.Context, serviceconn.Request) (serviceconn.RuntimeResult, error)
 }
 
 func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {

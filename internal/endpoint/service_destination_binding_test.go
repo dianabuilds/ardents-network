@@ -1,4 +1,4 @@
-package serviceconn_test
+package endpoint_test
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
 func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
@@ -34,7 +34,7 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	})
 
 	type outcome struct {
-		result serviceconn.Result
+		result serviceconn.RuntimeResult
 		err    error
 	}
 	results := make(chan outcome, 2)

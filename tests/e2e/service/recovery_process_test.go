@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
@@ -55,11 +55,11 @@ func TestServiceProcessesKeepConnectionWhenReplacementFails(t *testing.T) {
 		t.Fatalf("one recovery episode added more than 8 MiB of carrier traffic: total=%d additional=%d",
 			recovery.observation.carrierBytes, additionalCarrier)
 	}
-	var clientResult, publisherResult serviceconn.Result
+	var clientResult, publisherResult serviceconn.RuntimeResult
 	client.finish(t, &clientResult)
 	publisher.finish(t, &publisherResult)
 
-	for role, result := range map[string]serviceconn.Result{"client": clientResult, "publisher": publisherResult} {
+	for role, result := range map[string]serviceconn.RuntimeResult{"client": clientResult, "publisher": publisherResult} {
 		if result.Class != "clean service connection close" || result.AuthenticatedTarget != fixture.target ||
 			result.RouteGeneration != 2 || result.RecoveryCount != 1 || result.RouteAttachmentsAccepted != 3 ||
 			result.ApplicationIPCAccepts != 1 || result.AcceptedBytes != result.AcknowledgedBytes ||

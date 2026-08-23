@@ -1,4 +1,4 @@
-package serviceconn_test
+package endpoint_test
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {

@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (endpoint *endpoint) connect(ctx context.Context, input Request) (result Result, err error) {
+func (endpoint *endpoint) connect(ctx context.Context, input Request) (result RuntimeResult, err error) {
 	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
 	if consumeErr != nil {
 		return denied(consumeErr.Error())
@@ -66,7 +66,7 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (result Re
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
-	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
+	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
 		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
 		ConnectionCanary: canary, QueueHighWater: outcome.QueueHigh,
@@ -74,7 +74,7 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (result Re
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
-func (endpoint *endpoint) accept(ctx context.Context, input Request) (result Result, err error) {
+func (endpoint *endpoint) accept(ctx context.Context, input Request) (result RuntimeResult, err error) {
 	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
 	if consumeErr != nil {
 		return denied(consumeErr.Error())
@@ -129,7 +129,7 @@ func (endpoint *endpoint) accept(ctx context.Context, input Request) (result Res
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
-	return Result{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
+	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: sendBytes,
 		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
 		ConnectionCanary: canary, QueueHighWater: outcome.QueueHigh,
@@ -137,7 +137,7 @@ func (endpoint *endpoint) accept(ctx context.Context, input Request) (result Res
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
-func applyRecoveryOutcome(result *Result, outcome nativeconnection.Outcome) {
+func applyRecoveryOutcome(result *RuntimeResult, outcome nativeconnection.Outcome) {
 	result.AcknowledgedBytes = outcome.Acknowledged
 	result.QueueHighWater = outcome.QueueHigh
 	result.RouteGeneration = outcome.Generation

@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 import (
 	"context"
@@ -19,7 +19,7 @@ func writeAll(writer io.Writer, value []byte) error {
 	return nil
 }
 
-func streamFailure(ctx context.Context, accepted, received uint32, err error) (Result, error) {
+func streamFailure(ctx context.Context, accepted, received uint32, err error) (RuntimeResult, error) {
 	if ctx.Err() != nil {
 		result, failure := failed("local timeout or cancellation", "Service Connection was cancelled locally", ctx.Err())
 		result.AcceptedBytes, result.ReceivedBytes = accepted, received

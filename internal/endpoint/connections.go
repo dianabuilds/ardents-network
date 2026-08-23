@@ -9,26 +9,26 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/planfile"
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 type endpointConnection struct {
 	application net.Conn
 	result      net.Conn
 	route       net.Conn
-	request     serviceconn.Request
+	request     Request
 }
 
 type endpointOutcome struct {
-	result serviceconn.Result
+	result RuntimeResult
 	err    error
 }
 
 func serveEndpointConnections(ctx context.Context, plan endpointPlan, endpoint connectionEndpoint,
-	setup serviceconn.Setup, applications, results *net.UnixListener,
-	openAttachment func(context.Context, serviceconn.Recovery) (net.Conn, error), published serviceconn.Result,
+	setup Setup, applications, results *net.UnixListener,
+	openAttachment func(context.Context, serviceconnection.Recovery) (net.Conn, error), published RuntimeResult,
 	at time.Time, setupDeadline, lifetime time.Duration,
-) (serviceconn.Result, error) {
+) (RuntimeResult, error) {
 	maximum := int(plan.MaximumConnections)
 	if maximum == 0 {
 		maximum = 1
@@ -47,8 +47,8 @@ func serveEndpointConnections(ctx context.Context, plan endpointPlan, endpoint c
 }
 
 func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint connectionEndpoint,
-	setup serviceconn.Setup, applications, results *net.UnixListener,
-	openAttachment func(context.Context, serviceconn.Recovery) (net.Conn, error), at time.Time, deadline time.Duration,
+	setup Setup, applications, results *net.UnixListener,
+	openAttachment func(context.Context, serviceconnection.Recovery) (net.Conn, error), at time.Time, deadline time.Duration,
 ) (endpointConnection, error) {
 	application, err := applications.Accept()
 	if err != nil {
@@ -69,7 +69,7 @@ func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint c
 		setup.Resources("result-ipc", -1)
 		return endpointConnection{}, errors.Join(cause, application.Close(), closeConnection(result))
 	}
-	route, err := openAttachment(ctx, serviceconn.Recovery{Generation: 1, Deadline: time.Now().Add(deadline)})
+	route, err := openAttachment(ctx, serviceconnection.Recovery{Generation: 1, Deadline: time.Now().Add(deadline)})
 	if err != nil {
 		return fail(err)
 	}
@@ -78,7 +78,7 @@ func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint c
 		_ = route.Close()
 		return fail(err)
 	}
-	request := serviceconn.Request{Action: plan.roleAction(), Principal: setup.ConnectionPrincipal,
+	request := Request{Action: plan.roleAction(), Principal: setup.ConnectionPrincipal,
 		Session: session, Route: route, Application: application, BytesEachDirection: plan.BytesEachDirection,
 		SendBytes: plan.SendBytes, ReceiveBytes: plan.ReceiveBytes, At: at}
 	request.RecoveryBinding, err = plan.recoveryBinding()
@@ -96,8 +96,8 @@ func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint c
 	return endpointConnection{application: application, result: result, route: route, request: request}, nil
 }
 
-func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, setup serviceconn.Setup,
-	connection endpointConnection, published serviceconn.Result, lifetime time.Duration, output chan<- endpointOutcome,
+func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, setup Setup,
+	connection endpointConnection, published RuntimeResult, lifetime time.Duration, output chan<- endpointOutcome,
 ) {
 	setup.Resources("timer", 1)
 	defer setup.Resources("timer", -1)
@@ -118,10 +118,10 @@ func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, set
 	output <- endpointOutcome{result: result, err: err}
 }
 
-func collectEndpointOutcomes(input <-chan endpointOutcome, count int, setup serviceconn.Setup,
-	published serviceconn.Result, initial error,
-) (serviceconn.Result, error) {
-	result := serviceconn.Result{Class: "clean service connection close", AuthenticatedTarget: published.AuthenticatedTarget,
+func collectEndpointOutcomes(input <-chan endpointOutcome, count int, setup Setup,
+	published RuntimeResult, initial error,
+) (RuntimeResult, error) {
+	result := RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: published.AuthenticatedTarget,
 		IntroductionReceipt:         published.IntroductionReceipt,
 		IntroductionAcknowledgement: published.IntroductionAcknowledgement}
 	err := initial
@@ -144,7 +144,7 @@ func collectEndpointOutcomes(input <-chan endpointOutcome, count int, setup serv
 	return result, err
 }
 
-func addClientPublication(plan endpointPlan, request *serviceconn.Request) error {
+func addClientPublication(plan endpointPlan, request *Request) error {
 	if plan.Role != "client" {
 		return nil
 	}

@@ -12,18 +12,17 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
 type connectionEndpoint interface {
-	Do(context.Context, serviceconn.Request) (serviceconn.Result, error)
+	Do(context.Context, Request) (RuntimeResult, error)
 }
 
 func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
-	deadline time.Duration, ready func()) (serviceconn.Result, error) {
+	deadline time.Duration, ready func()) (RuntimeResult, error) {
 	listener, err := listenLocal(plan.AdministrationSocket, deadline)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	resources("timer", 1)
 	defer resources("timer", -1)
@@ -35,7 +34,7 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	}
 	administrator, err := listener.Accept()
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	resources("accepted-ipc", 1)
 	defer resources("accepted-ipc", -1)
@@ -49,25 +48,25 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	request, err := ReadControl(operation, administrator, 8)
 	if err != nil || string(request) != "publish\n" {
 		err = errors.Join(err, errors.New("administration request is malformed, partial, or oversized"))
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	credential, private, err := publicationInputs(plan)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	defer clear(private)
 	session, err := admit(endpoint, principal, "administration", at)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
-	result, err := endpoint.Do(operation, serviceconn.Request{Action: "publish",
+	result, err := endpoint.Do(operation, Request{Action: "publish",
 		Principal: principal, Session: session, Credential: credential,
 		InstancePrivate: private, IntroductionSocket: plan.IntroductionSocket, At: at})
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	if err := os.WriteFile(plan.PublicationFile, result.Publication, 0o600); err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	resources("control-file", 1)
 	_, err = administrator.Write([]byte("published\n"))
@@ -102,13 +101,13 @@ func listenLocal(path string, deadline time.Duration) (*net.UnixListener, error)
 	return listener, nil
 }
 
-func deliverResult(output io.Writer, result serviceconn.Result) error {
+func deliverResult(output io.Writer, result RuntimeResult) error {
 	return Write(output, Result{Class: result.Class, Reason: result.Reason,
 		AuthenticatedTarget: result.AuthenticatedTarget, AcceptedBytes: result.AcceptedBytes,
 		ReceivedBytes: result.ReceivedBytes})
 }
 
 func admit(endpoint connectionEndpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
-	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "admit", Surface: surface, Principal: principal, At: at})
+	result, err := endpoint.Do(context.Background(), Request{Action: "admit", Surface: surface, Principal: principal, At: at})
 	return result.Session, err
 }

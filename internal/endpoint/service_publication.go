@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-func (endpoint *endpoint) publish(ctx context.Context, input Request) (result Result, err error) {
+func (endpoint *endpoint) publish(ctx context.Context, input Request) (result RuntimeResult, err error) {
 	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "administration")
 	if consumeErr != nil {
 		return denied(consumeErr.Error())
@@ -44,13 +44,13 @@ func (endpoint *endpoint) publish(ctx context.Context, input Request) (result Re
 		return failed("service target authentication failure", "exclusive Instance generation could not be published", err)
 	}
 	endpoint.resources("control-file", 1)
-	return Result{Class: "published", Publication: current.Record,
+	return RuntimeResult{Class: "published", Publication: current.Record,
 		IntroductionReceipt:         sha256.Sum256(input.IntroductionAcknowledgement),
 		IntroductionAcknowledgement: append([]byte(nil), input.IntroductionAcknowledgement...),
 		AuthenticatedTarget:         current.Credential.Target, Generation: current.Credential.Generation}, nil
 }
 
-func (endpoint *endpoint) unpublish(ctx context.Context, input Request) (result Result, err error) {
+func (endpoint *endpoint) unpublish(ctx context.Context, input Request) (result RuntimeResult, err error) {
 	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "administration")
 	if consumeErr != nil {
 		return denied(consumeErr.Error())
@@ -70,7 +70,7 @@ func (endpoint *endpoint) unpublish(ctx context.Context, input Request) (result 
 	if err := endpoint.publications.Unpublish(ctx); err != nil {
 		return failed("service unavailable", "Service publication could not be withdrawn", err)
 	}
-	return Result{Class: "unpublished", AuthenticatedTarget: current.Credential.Target, Generation: current.Credential.Generation}, nil
+	return RuntimeResult{Class: "unpublished", AuthenticatedTarget: current.Credential.Target, Generation: current.Credential.Generation}, nil
 }
 
 func decodePublication(encoded []byte, authority, network [32]byte, at time.Time) (Credential, error) {

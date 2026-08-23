@@ -9,7 +9,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
 const maximumEndpointStreamBytes = uint32(768 << 20)
@@ -129,8 +128,8 @@ func (value endpointPlan) recoveryBinding() (serviceconnection.Recovery, error) 
 	binding.NoNewRecoveryAfter = value.NoNewRecoveryAfter
 	return binding, nil
 }
-func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Duration, error) {
-	var setup serviceconn.Setup
+func endpointSetup(plan endpointPlan) (Setup, time.Time, time.Duration, error) {
+	var setup Setup
 	for _, field := range []struct {
 		encoded     string
 		destination []byte

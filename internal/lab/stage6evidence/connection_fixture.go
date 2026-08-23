@@ -8,11 +8,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 type evidenceEndpoint interface {
-	Do(context.Context, serviceconn.Request) (serviceconn.Result, error)
+	Do(context.Context, serviceconn.Request) (serviceconn.RuntimeResult, error)
 	Close() error
 }
 

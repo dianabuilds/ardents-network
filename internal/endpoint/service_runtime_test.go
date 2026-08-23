@@ -1,4 +1,4 @@
-package serviceconn_test
+package endpoint_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
+	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T) {
@@ -192,7 +192,7 @@ func TestExactTargetServiceConnectionCarriesOpaqueBytesBothDirections(t *testing
 	defer publisherApplication.Close()
 
 	type outcome struct {
-		result serviceconn.Result
+		result serviceconn.RuntimeResult
 		err    error
 	}
 	outcomes := make(chan outcome, 2)

@@ -4,15 +4,13 @@ import (
 	"context"
 	"errors"
 	"os"
-
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
 // Run loads one role-local plan and owns its Endpoint process composition.
-func Run(ctx context.Context, planPath string, ready func(string)) (serviceconn.Result, error) {
+func Run(ctx context.Context, planPath string, ready func(string)) (RuntimeResult, error) {
 	plan, err := readPlan(planPath)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	return runEndpoint(ctx, plan, func() {
 		if ready != nil {
@@ -21,22 +19,22 @@ func Run(ctx context.Context, planPath string, ready func(string)) (serviceconn.
 	})
 }
 
-func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (serviceconn.Result, error) {
+func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (RuntimeResult, error) {
 	setup, at, deadline, err := endpointSetup(plan)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	lifetime, err := plan.connectionLifetime(deadline)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
-	endpoint, err := serviceconn.New(setup)
+	endpoint, err := New(setup)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	applicationListener, err := listenLocal(plan.ApplicationSocket, deadline)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	setup.Resources("timer", 1)
 	defer setup.Resources("timer", -1)
@@ -45,26 +43,26 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	defer func() { _ = applicationListener.Close(); _ = os.Remove(plan.ApplicationSocket) }()
 	resultPath, resultListener, err := listenResult(plan.ApplicationSocket, deadline)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = resultListener.Close(); _ = os.Remove(resultPath) }()
 	routeListener, err := listenLocal(plan.RouteSocket, deadline)
 	if err != nil {
-		return serviceconn.Result{}, err
+		return RuntimeResult{}, err
 	}
 	setup.Resources("timer", 1)
 	defer setup.Resources("timer", -1)
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = routeListener.Close(); _ = os.Remove(plan.RouteSocket) }()
-	var published serviceconn.Result
+	var published RuntimeResult
 	if plan.Role == "publisher" {
 		var publishErr error
 		published, publishErr = publishCurrent(endpoint, setup.Resources, plan, setup.AdministrationPrincipal, at, deadline, ready)
 		if publishErr != nil {
-			return serviceconn.Result{}, publishErr
+			return RuntimeResult{}, publishErr
 		}
 		defer setup.Resources("control-file", -2)
 	} else if ready != nil {

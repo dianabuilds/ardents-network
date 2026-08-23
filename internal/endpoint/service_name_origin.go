@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 import nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 

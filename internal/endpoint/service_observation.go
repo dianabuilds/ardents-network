@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 import (
 	"os"
@@ -49,7 +49,7 @@ func (monitor resourceMonitor) stop() resourceSample {
 	return <-monitor.done
 }
 
-func (endpoint *endpoint) observe(result *Result, input Request, resources resourceSample) {
+func (endpoint *endpoint) observe(result *RuntimeResult, input Request, resources resourceSample) {
 	activeSessions := endpoint.admission.Active()
 	switch input.Action {
 	case "connect", "accept":

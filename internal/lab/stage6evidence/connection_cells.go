@@ -8,8 +8,8 @@ import (
 	"net"
 	"time"
 
+	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
-	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
 
 type connectionCellEvidence struct {
@@ -23,7 +23,7 @@ type connectionCellEvidence struct {
 
 type connectionOutcome struct {
 	role   string
-	result serviceconn.Result
+	result serviceconn.RuntimeResult
 	err    error
 }
 

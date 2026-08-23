@@ -1,8 +1,8 @@
-package serviceconn
+package endpoint
 
 import "github.com/dianabuilds/ardents-network/internal/application/broker"
 
-func (endpoint *endpoint) admit(input Request) (Result, error) {
+func (endpoint *endpoint) admit(input Request) (RuntimeResult, error) {
 	switch input.Surface {
 	case "connection":
 	case "administration":
@@ -13,14 +13,14 @@ func (endpoint *endpoint) admit(input Request) (Result, error) {
 	if err != nil {
 		return failed("local authorization or policy denial", err.Error(), err)
 	}
-	return Result{Class: "authorized", Session: capability}, nil
+	return RuntimeResult{Class: "authorized", Session: capability}, nil
 }
 
 func (endpoint *endpoint) consume(capability, principal [32]byte, surface string) (broker.Receipt, error) {
 	return endpoint.admission.Consume(capability, principal, broker.Surface(surface))
 }
 
-func projectReceipt(result *Result, receipt broker.Receipt) {
+func projectReceipt(result *RuntimeResult, receipt broker.Receipt) {
 	result.PrincipalCommitment = receipt.Principal
 	result.SessionCommitment = receipt.Session
 	result.GrantSurface = string(receipt.Surface)

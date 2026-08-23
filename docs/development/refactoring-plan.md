@@ -72,10 +72,10 @@ frame, plan decoding, socket cleanup, and Route Attachment acceptance moved as
 one composition boundary. The sole Endpoint v1 Application handshake declares
 its sideband result channel before opaque bytes; raw-tail and timing-based
 fallback are C0 retired, with delayed, mismatch, and partial-handshake tests.
-It does not create an isolation claim. `serviceconn` remains the deliberately
-temporary M9 native connection/publication action-result adapter, so M10 is
-not complete until its action union is removed and Endpoint owns its final
-composition ports. The remaining deletion cutover has no new forwarding
+It does not create an isolation claim. The temporary `serviceconn` package is
+deleted; its runtime now lives with Endpoint. M10 is not complete until that
+remaining internal action union is replaced with role-specific operations.
+The remaining deepening cutover has no new forwarding
 Interface: Endpoint directly acquires a Publication lease, performs the
 role-local TLS carrier and exact-Instance exchange, and supplies the resulting
 opaque Attachment plus Application stream to `service/connection`. Broker

@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 // erase overwrites a volatile byte slice once its lifecycle owner has ended.
 func erase(value []byte) {

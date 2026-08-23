@@ -1,4 +1,4 @@
-package serviceconn
+package endpoint
 
 import (
 	"context"
@@ -60,8 +60,10 @@ type Request struct {
 	At                          time.Time
 }
 
-// Result is a bounded product-class outcome with no Route internals.
-type Result struct {
+// RuntimeResult is a bounded endpoint-runtime outcome with no Route internals.
+// It is transitional while Endpoint replaces the former action/result union
+// with role-specific internal operations.
+type RuntimeResult struct {
 	Class                       string   `json:"class"`
 	Reason                      string   `json:"reason"`
 	Session                     [32]byte `json:"session"`
@@ -172,7 +174,7 @@ func (endpoint *endpoint) Close() error {
 }
 
 // Do executes one admitted operation and returns only an R-002 product class.
-func (endpoint *endpoint) Do(ctx context.Context, input Request) (Result, error) {
+func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return denied("local operation is incomplete")
 	}
@@ -185,7 +187,7 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (Result, error)
 		return denied("local operation is not permitted")
 	}
 	monitor := startResourceMonitor(endpoint.resources)
-	var result Result
+	var result RuntimeResult
 	var err error
 	switch input.Action {
 	case "admit":
@@ -203,10 +205,10 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (Result, error)
 	return result, err
 }
 
-func denied(reason string) (Result, error) {
+func denied(reason string) (RuntimeResult, error) {
 	return failed("local authorization or policy denial", reason, errors.New(reason))
 }
 
-func failed(class, reason string, err error) (Result, error) {
-	return Result{Class: class, Reason: reason}, err
+func failed(class, reason string, err error) (RuntimeResult, error) {
+	return RuntimeResult{Class: class, Reason: reason}, err
 }

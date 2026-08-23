@@ -10,7 +10,7 @@ Unit and single-Module integration tests live beside their implementation as
 I/O at the owning seam, and must not start Docker. `make unit` is the normal
 feedback loop and should remain fast enough to run after each meaningful edit.
 Exact-Target Service Connection transfer, backpressure, cancellation, and
-same-connection recovery are tested here through `internal/serviceconn`; those
+same-connection recovery are tested here through `internal/endpoint`; those
 behaviors do not need a second private verifier around the same Module.
 
 ## End to end
