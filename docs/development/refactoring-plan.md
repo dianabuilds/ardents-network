@@ -556,3 +556,11 @@ outcome, not deferred cleanup.
 The Product Owner accepted this plan on 2026-08-22. Codex starts S8.5 with the
 earliest wave whose DA and input gates are satisfied; it does not create
 placeholder target packages for blocked waves.
+
+**M14 progress, 2026-08-23.** R-089 closes DA-11 for the self-referential
+S6E1 runner subset. The repository retained no immutable campaign input and
+the evidence/verify commands now fail before a verdict, so their two commands,
+two lab packages, and historical-reproduction profile entries are deleted as
+C0. R-055 and the Stage 6 documents remain C4 decision provenance. This does
+not dispose of the remaining Carrier, Named Site, or blocked-entry lab
+families; each still needs its own M14 record-or-removal outcome.
