@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
+	"io"
 	"math/big"
 	"net"
 	"time"
@@ -27,6 +28,18 @@ type EntryAttachmentRequest struct {
 	NetworkID, Digest, AttachmentID [32]byte
 	Epoch                           uint64
 	Deadline                        time.Time
+}
+
+// EntryAttachmentAcceptance is the Initiator's narrow state and replay port.
+// Its verifier and consumer are supplied by the owning Entry/State
+// composition; Route never receives a State root or durable replay map.
+type EntryAttachmentAcceptance struct {
+	NetworkID, Digest, InitiatorNodeID [32]byte
+	Epoch                              uint64
+	Deadline                           time.Time
+	Certificate                        tls.Certificate
+	Verify                             EntryVerifier
+	Consume                            EntryConsumer
 }
 
 // OpenEntryAttachment creates one State-pinned native User-to-Initiator TLS
@@ -66,6 +79,54 @@ func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryA
 		})
 }
 
+// AcceptEntryAttachment performs the native Initiator-side TLS handshake,
+// reads one EntryBinding, and consumes its replay tuple before it returns the
+// usable attachment. It leaves no Route work allocated on refusal.
+func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input EntryAttachmentAcceptance) (net.Conn, error) {
+	if connection == nil || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.InitiatorNodeID == [32]byte{} ||
+		input.Epoch == 0 || input.Deadline.IsZero() || input.Certificate.PrivateKey == nil || input.Verify == nil || input.Consume == nil ||
+		!time.Now().Before(input.Deadline) {
+		return nil, errors.New("Entry attachment acceptance is invalid")
+	}
+	secured := tls.Server(connection, nativeInitiatorTLS(input.Certificate))
+	if err := secured.SetDeadline(input.Deadline); err != nil {
+		_ = connection.Close()
+		return nil, err
+	}
+	if err := secured.HandshakeContext(ctx); err != nil {
+		_ = connection.Close()
+		return nil, err
+	}
+	if secured.ConnectionState().NegotiatedProtocol != routeProfile {
+		_ = connection.Close()
+		return nil, errors.New("Entry TLS ALPN is invalid")
+	}
+	binding, err := readEntryBinding(secured)
+	if err != nil {
+		_ = connection.Close()
+		return nil, err
+	}
+	if binding.NetworkID != input.NetworkID || binding.Digest != input.Digest || binding.Epoch != input.Epoch ||
+		binding.InitiatorNodeID != input.InitiatorNodeID || binding.NotAfter.After(input.Deadline) {
+		_ = connection.Close()
+		return nil, errors.New("Entry binding does not match Initiator duty")
+	}
+	peer := secured.ConnectionState().PeerCertificates
+	if len(peer) != 1 {
+		_ = connection.Close()
+		return nil, errors.New("Entry TLS client certificate is unavailable")
+	}
+	if err := VerifyAndConsumeEntryBinding(binding, peer[0], time.Now().UTC(), input.Verify, input.Consume); err != nil {
+		_ = connection.Close()
+		return nil, err
+	}
+	if err := secured.SetDeadline(time.Time{}); err != nil {
+		_ = connection.Close()
+		return nil, err
+	}
+	return secured, nil
+}
+
 func closedEntryOpener(connection net.Conn, cause error) (net.Conn, func() error, bool, error) {
 	closeErr := connection.Close()
 	return nil, nil, closeErr == nil, errors.Join(cause, closeErr)
@@ -100,6 +161,11 @@ func nativeEntryTLS(certificate tls.Certificate, peer [32]byte) *tls.Config {
 		InsecureSkipVerify: true, SessionTicketsDisabled: true, NextProtos: []string{routeProfile}, VerifyConnection: exactPeer(peer)}
 }
 
+func nativeInitiatorTLS(certificate tls.Certificate) *tls.Config {
+	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
+		ClientAuth: tls.RequireAnyClientCert, SessionTicketsDisabled: true, NextProtos: []string{routeProfile}}
+}
+
 func freshEntryClientCertificate() (tls.Certificate, error) {
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -117,4 +183,21 @@ func freshEntryClientCertificate() (tls.Certificate, error) {
 		return tls.Certificate{}, err
 	}
 	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private, Leaf: leaf}, nil
+}
+
+func readEntryBinding(reader io.Reader) (EntryBinding, error) {
+	header := make([]byte, len(routeWireMagic)+2)
+	if _, err := io.ReadFull(reader, header); err != nil {
+		return EntryBinding{}, err
+	}
+	length := int(header[len(routeWireMagic)])<<8 | int(header[len(routeWireMagic)+1])
+	if length == 0 || length > maximumWireBody {
+		return EntryBinding{}, errors.New("Entry binding wire length is invalid")
+	}
+	raw := append([]byte(nil), header...)
+	body := make([]byte, length)
+	if _, err := io.ReadFull(reader, body); err != nil {
+		return EntryBinding{}, err
+	}
+	return DecodeEntryBinding(append(raw, body...))
 }
