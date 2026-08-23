@@ -67,7 +67,7 @@ withdraws its test listener, holds them, drains them, joins its workers, and
 samples the Linux process. It has no product Node listener, State root, H3
 reader, or capacity decision. A reference-host follow-up must inject and
 measure the complete selected resource-pressure rule and retain its raw Linux
-observations outside Git.
+observations, host identity, and source/binary digest outside Git.
 
 ### Failure scenarios
 

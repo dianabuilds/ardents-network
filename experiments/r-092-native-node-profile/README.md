@@ -23,14 +23,33 @@ go run experiments/r-092-native-node-profile/main.go \
   -sample-interval 1s -timeout 30s
 ```
 
+For a decision-bearing reference-host campaign, retain the command transcript,
+`go version`, `uname -srmo`, the binary SHA-256, and unmodified JSON stdout in
+an external evidence directory. For example, on the declared Ubuntu host:
+
+```sh
+evidence_dir="$(mktemp -d)"
+go version | tee "$evidence_dir/go-version.txt"
+uname -srmo | tee "$evidence_dir/uname.txt"
+go build -trimpath -o "$evidence_dir/r092-role-carriage" \
+  experiments/r-092-native-node-profile/main.go \
+  experiments/r-092-native-node-profile/role_carriage.go \
+  experiments/r-092-native-node-profile/linux_sampler.go
+sha256sum "$evidence_dir/r092-role-carriage" | tee "$evidence_dir/binary.sha256"
+"$evidence_dir/r092-role-carriage" -scenario role-carriage -capacity 2 \
+  -payload 65536 -hold 10s -sample-interval 1s -timeout 30s \
+  | tee "$evidence_dir/result.json"
+```
+
 The program generates ephemeral synthetic Ed25519 certificates and loopback
 addresses; it writes no state, credentials, captures, or generated artifacts to
 the repository. Its JSON output records elapsed time plus Go allocation and
-goroutine deltas. On Linux it also records raw before/after process RSS, file
-descriptor, and CPU-tick snapshots; those are not the per-second full-profile
-observations required for selection. A selection run must execute on the R-092
-Ubuntu reference host and retain raw OS CPU/RSS/FD/socket, pressure, drain,
-withdrawal, and cleanup evidence outside Git.
+goroutine deltas. `role-carriage` also records runtime/OS/architecture/kernel/
+CPU/RAM host identity and raw per-interval Linux process RSS, file descriptor,
+socket, and CPU-tick samples. Those still are not the full-profile observations
+required for selection. A selection run must execute on the R-092 Ubuntu
+reference host and retain raw OS CPU/RSS/FD/socket, pressure, drain, withdrawal,
+and cleanup evidence outside Git.
 
 `role-carriage` is a synthetic, bounded pressure injection: it carries exactly
 `capacity` simultaneous reciprocal TLS/LegBinding legs, withdraws the synthetic

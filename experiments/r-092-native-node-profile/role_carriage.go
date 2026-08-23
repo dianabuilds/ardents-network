@@ -20,6 +20,7 @@ import (
 
 type roleCarriageMeasurement struct {
 	Schema             string        `json:"schema"`
+	Host               hostIdentity  `json:"host"`
 	Capacity           int           `json:"capacity"`
 	PayloadBytes       int           `json:"payload_bytes"`
 	AdmittedLegs       int           `json:"admitted_legs"`
@@ -35,6 +36,10 @@ type roleCarriageMeasurement struct {
 func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout time.Duration) (roleCarriageMeasurement, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	host, err := currentHostIdentity()
+	if err != nil {
+		return roleCarriageMeasurement{}, err
+	}
 	client, clientKey, err := identity(10)
 	if err != nil {
 		return roleCarriageMeasurement{}, err
@@ -100,7 +105,7 @@ func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout ti
 		return roleCarriageMeasurement{}, err
 	}
 	return roleCarriageMeasurement{
-		Schema: "ardents-r092-native-role-carriage-v1", Capacity: capacity, PayloadBytes: payloadSize,
+		Schema: "ardents-r092-native-role-carriage-v1", Host: host, Capacity: capacity, PayloadBytes: payloadSize,
 		AdmittedLegs: capacity, RefusedDials: refused, Withdrawn: true, HoldNanoseconds: hold.Nanoseconds(),
 		ElapsedNanoseconds: time.Since(started).Nanoseconds(), GoroutinesBefore: goroutines,
 		GoroutinesAfter: runtime.NumGoroutine(), LinuxSamples: linuxSamples,

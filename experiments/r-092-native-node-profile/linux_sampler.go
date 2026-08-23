@@ -4,9 +4,59 @@ package main
 
 import (
 	"context"
+	"errors"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
+
+type hostIdentity struct {
+	OperatingSystem string `json:"operating_system"`
+	Architecture    string `json:"architecture"`
+	GoVersion       string `json:"go_version"`
+	KernelRelease   string `json:"kernel_release,omitempty"`
+	LogicalCPUs     int    `json:"logical_cpus"`
+	MemoryBytes     int64  `json:"memory_bytes,omitempty"`
+}
+
+func currentHostIdentity() (hostIdentity, error) {
+	result := hostIdentity{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, GoVersion: runtime.Version(),
+		LogicalCPUs: runtime.NumCPU()}
+	if runtime.GOOS != "linux" {
+		return result, nil
+	}
+	kernel, err := os.ReadFile("/proc/sys/kernel/osrelease")
+	if err != nil {
+		return hostIdentity{}, err
+	}
+	result.KernelRelease = strings.TrimSpace(string(kernel))
+	if result.KernelRelease == "" {
+		return hostIdentity{}, errors.New("Linux kernel release is absent")
+	}
+	meminfo, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return hostIdentity{}, err
+	}
+	for _, line := range strings.Split(string(meminfo), "\n") {
+		if !strings.HasPrefix(line, "MemTotal:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 3 || fields[2] != "kB" {
+			return hostIdentity{}, errors.New("Linux memory observation is invalid")
+		}
+		memory, parseErr := strconv.ParseInt(fields[1], 10, 64)
+		if parseErr != nil || memory <= 0 {
+			return hostIdentity{}, errors.New("Linux memory observation is invalid")
+		}
+		result.MemoryBytes = memory * 1024
+		return result, nil
+	}
+	return hostIdentity{}, errors.New("Linux memory observation is absent")
+}
 
 type linuxSampler struct {
 	cancel context.CancelFunc
