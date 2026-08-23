@@ -1,4 +1,4 @@
-package serviceendpoint
+package endpoint
 
 import (
 	"context"
@@ -43,12 +43,13 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (servicec
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = applicationListener.Close(); _ = os.Remove(plan.ApplicationSocket) }()
-	resultPath, resultListener := optionalResultListener(plan.ApplicationSocket, deadline)
-	if resultListener != nil {
-		setup.Resources("control-file", 1)
-		defer setup.Resources("control-file", -1)
-		defer func() { _ = resultListener.Close(); _ = os.Remove(resultPath) }()
+	resultPath, resultListener, err := listenResult(plan.ApplicationSocket, deadline)
+	if err != nil {
+		return serviceconn.Result{}, err
 	}
+	setup.Resources("control-file", 1)
+	defer setup.Resources("control-file", -1)
+	defer func() { _ = resultListener.Close(); _ = os.Remove(resultPath) }()
 	routeListener, err := listenLocal(plan.RouteSocket, deadline)
 	if err != nil {
 		return serviceconn.Result{}, err

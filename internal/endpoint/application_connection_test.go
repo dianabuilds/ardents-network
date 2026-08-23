@@ -1,4 +1,4 @@
-package applicationipc_test
+package endpoint
 
 import (
 	"bytes"
@@ -6,19 +6,15 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/applicationipc"
 )
 
-func TestConnectionPreservesStage4RawBytesBeforeResult(t *testing.T) {
-	want := applicationipc.Result{Class: "clean service connection close", AuthenticatedTarget: [32]byte{1}}
+func TestApplicationConnectionPreservesRawBytesAfterHandshake(t *testing.T) {
+	want := Result{Class: "clean service connection close", AuthenticatedTarget: [32]byte{1}}
 	data := []byte("opaque-ASRS\x01\x00\x02{}")
-	left, right := net.Pipe()
-	resultLeft, resultRight := net.Pipe()
-	reader := applicationipc.NewConnection(right, resultRight)
+	reader, left, resultLeft := openApplicationPair(t)
 	go func() {
 		_, _ = left.Write(data)
-		_ = applicationipc.Write(resultLeft, want)
+		_ = Write(resultLeft, want)
 		_ = left.Close()
 		_ = resultLeft.Close()
 	}()
@@ -30,10 +26,8 @@ func TestConnectionPreservesStage4RawBytesBeforeResult(t *testing.T) {
 	}
 }
 
-func TestConnectionWritesRawBytesForStage4Peer(t *testing.T) {
-	left, right := net.Pipe()
-	resultLeft, resultRight := net.Pipe()
-	writer := applicationipc.NewConnection(left, resultLeft)
+func TestApplicationConnectionWritesRawBytesAfterHandshake(t *testing.T) {
+	writer, right, resultRight := openApplicationPair(t)
 	defer resultRight.Close()
 	request := bytes.Repeat([]byte{7}, 512)
 	written := make(chan error, 1)
@@ -50,10 +44,8 @@ func TestConnectionWritesRawBytesForStage4Peer(t *testing.T) {
 	_ = right.Close()
 }
 
-func TestConnectionFailsClosedWithoutTerminalResult(t *testing.T) {
-	left, right := net.Pipe()
-	resultLeft, resultRight := net.Pipe()
-	reader := applicationipc.NewConnection(right, resultRight)
+func TestApplicationConnectionFailsClosedWithoutTerminalResult(t *testing.T) {
+	reader, left, resultLeft := openApplicationPair(t)
 	go func() { _, _ = left.Write([]byte("opaque-only")); _ = left.Close() }()
 	got := make([]byte, len("opaque-only"))
 	if _, err := io.ReadFull(reader, got); err != nil || string(got) != "opaque-only" {
@@ -66,10 +58,26 @@ func TestConnectionFailsClosedWithoutTerminalResult(t *testing.T) {
 }
 
 func TestResultPathIsDerivedOnce(t *testing.T) {
-	if got, err := applicationipc.ResultPath("/run/ardents/app.sock"); err != nil || got != "/run/ardents/app.sock.result" {
+	if got, err := ResultPath("/run/ardents/app.sock"); err != nil || got != "/run/ardents/app.sock.result" {
 		t.Fatalf("result path=%q error=%v", got, err)
 	}
-	if _, err := applicationipc.ResultPath("/run/ardents/app.sock.result"); err == nil {
+	if _, err := ResultPath("/run/ardents/app.sock.result"); err == nil {
 		t.Fatal("recursive result path was accepted")
 	}
+}
+
+func openApplicationPair(t *testing.T) (*connection, net.Conn, net.Conn) {
+	t.Helper()
+	application, peer := net.Pipe()
+	result, resultPeer := net.Pipe()
+	accepted := make(chan error, 1)
+	go func() { accepted <- acceptApplication(peer, time.Now().Add(time.Second)) }()
+	stream, err := OpenApplication(application, result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-accepted; err != nil {
+		t.Fatal(err)
+	}
+	return stream, peer, resultPeer
 }

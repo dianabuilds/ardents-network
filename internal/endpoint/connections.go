@@ -1,4 +1,4 @@
-package serviceendpoint
+package endpoint
 
 import (
 	"context"
@@ -54,20 +54,19 @@ func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint c
 	if err != nil {
 		return endpointConnection{}, err
 	}
-	var result net.Conn
-	if results != nil {
-		result, _ = acceptOptionalResult(results)
+	if err := acceptApplication(application, time.Now().Add(deadline)); err != nil {
+		return endpointConnection{}, errors.Join(err, application.Close())
+	}
+	result, err := acceptResult(results, time.Now().Add(deadline))
+	if err != nil {
+		return endpointConnection{}, errors.Join(err, application.Close())
 	}
 	setup.Resources("accepted-ipc", 1)
 	setup.Resources("application-accept", 1)
-	if result != nil {
-		setup.Resources("result-ipc", 1)
-	}
+	setup.Resources("result-ipc", 1)
 	fail := func(cause error) (endpointConnection, error) {
 		setup.Resources("accepted-ipc", -1)
-		if result != nil {
-			setup.Resources("result-ipc", -1)
-		}
+		setup.Resources("result-ipc", -1)
 		return endpointConnection{}, errors.Join(cause, application.Close(), closeConnection(result))
 	}
 	route, err := openAttachment(ctx, serviceconn.Recovery{Generation: 1, Deadline: time.Now().Add(deadline)})
@@ -105,10 +104,8 @@ func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, set
 	defer setup.Resources("accepted-ipc", -1)
 	defer connection.application.Close()
 	defer connection.route.Close()
-	if connection.result != nil {
-		defer setup.Resources("result-ipc", -1)
-		defer connection.result.Close()
-	}
+	defer setup.Resources("result-ipc", -1)
+	defer connection.result.Close()
 	operation, cancel := context.WithTimeout(ctx, lifetime)
 	defer cancel()
 	result, err := endpoint.Do(operation, connection.request)
@@ -117,11 +114,7 @@ func runEndpointConnection(ctx context.Context, endpoint connectionEndpoint, set
 	result.IntroductionReceipt = published.IntroductionReceipt
 	result.IntroductionAcknowledgement = published.IntroductionAcknowledgement
 	err = errors.Join(err, connection.application.SetDeadline(time.Time{}))
-	resultOutput := io.Writer(connection.application)
-	if connection.result != nil {
-		resultOutput = connection.result
-	}
-	err = errors.Join(err, deliverResult(resultOutput, result))
+	err = errors.Join(err, deliverResult(connection.result, result))
 	output <- endpointOutcome{result: result, err: err}
 }
 

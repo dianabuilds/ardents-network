@@ -32,7 +32,7 @@ before its wave has a real caller, behavior, tests, and package-map row.
 
 | Target Module | Owns | Migration source and boundary | Entry condition |
 |---|---|---|---|
-| `endpoint` | Local process composition, readiness, signal/drain order, terminal cleanup, and one terminal result. | Replace command/`serviceendpoint` choreography; owns no domain state. | M10 selects the Broker/Isolation process boundary. |
+| `internal/endpoint` | Local process composition, readiness, signal/drain order, terminal cleanup, and one terminal result. | Replace command/`serviceendpoint` choreography; owns no domain state. | M10 selects the Broker/Isolation process boundary. |
 | `internal/application/broker` | Volatile Application/Admin Principal, Grant, one-use capability, revocation, and drain tree; its only current isolation result is explicit `generic/unqualified`. | Replaces split `applicationipc`/`serviceconn` admission logic. | R-085 generic/unqualified profile; qualified principal adapters remain future work. |
 | Future qualified platform adapter | A selected platform Adapter may supply a qualified isolation observation; no package exists merely to name that future claim. | Replaces the generic Broker observation only through a new qualified profile decision. | Platform threat evidence and ADR remain required. |
 | `service/connection` | One live authenticated byte stream, replay/cutover state, bounded buffers, and terminal outcome. | Deepen `serviceconn`; remove operation/evidence unions and static plan authority. | R-076/ADR-0024 bind it to `ardents-interactive-route-v1`; it owns recovery, not Route selection. |
@@ -57,9 +57,9 @@ early. A Module may depend only on the smallest consumer-owned port needed for
 the stated responsibility.
 
 ```text
-cmd/ardents -> endpoint
-cmd/ardents-node -> node, endpoint composition inputs
-endpoint -> internal/application/broker, service/publication, service/connection, route
+cmd/ardents -> internal/endpoint
+cmd/ardents-node -> node, internal/endpoint composition inputs
+internal/endpoint -> internal/application/broker, service/publication, service/connection, route
 service/connection -> route
 route -> entry, network/duty, resource, network/state views
 entry -> selected adjacent TCP/TLS carrier
@@ -130,7 +130,7 @@ are not Go packages and do not represent a retained test surface.
 | `cmd/ardents-service`, `cmd/ardents-publish-app`, `cmd/ardents-stream-app` | Remove tracer commands; retain a real Endpoint/Application operator surface only if DA-10 names its observer. | M9/M10/M13. |
 | `cmd/ardents-release` | Retire as an H3 product command; its sole retained C2 V0 observer is a bounded R-064 technical tracer through M13. | M1/M2/M13, subject to DA-01/R-064 and DA-10. |
 | `cmd/blocked-entry-verify-lab`, `cmd/carrier-lab`, `cmd/named-site-lab`, `cmd/stage6-evidence-lab`, `cmd/stage6-verify-lab` | Historical reproduction with a named retained obligation, or delete the runner while retaining immutable provenance. | M14, subject to DA-11; R-080 already retires the Stage-5 evidence generator. |
-| `internal/applicationipc`, `internal/serviceendpoint` | Transfer Application/admin process boundary and composition to Broker/Publication/Endpoint. | M9/M10, subject to DA-08/10. |
+| `internal/endpoint` | Retain the M10 target owner for Application/admin process composition, raw opaque Application bytes, exactly one classified terminal result, readiness, and cleanup. The former `internal/applicationipc` and `internal/serviceendpoint` paths are deleted. | M10 under R-085; old raw-tail and timing-selected result delivery are C0 retired in favour of Endpoint's one explicit v1 local contract. |
 | `internal/service/publication` | Retain the M9 target owner for one exclusive C1 Instance publication generation, floor, volatile signer, and drain lifecycle. It has no local admission, IPC, connection/recovery, or legacy H3 reader authority. | M9 under R-084; `serviceconn` is a temporary caller until `service/connection` cutover. |
 | `internal/service/connection` | Retain the M9 target owner for closed ADR-0028 endpoint records, immutable context, logical stream/recovery lifecycle, and native terminal outcome. It accepts only opaque already-authenticated Attachments; no H3 record reader may be added. | M9 under R-083/ADR-0028. |
 | `internal/serviceconn` | Delete its remaining local action/evidence/static-plan unions after M10 transfers local admission and result projection. | M9/M10, subject to DA-06/10. |

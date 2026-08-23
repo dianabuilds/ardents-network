@@ -1,4 +1,4 @@
-package applicationipc
+package endpoint
 
 import (
 	"errors"
@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+var applicationHello = []byte{'A', 'S', 'A', 'P', 1, 1}
+
 type connection struct {
 	net.Conn
 	result     net.Conn
@@ -14,10 +16,17 @@ type connection struct {
 	resultSent bool
 }
 
-// NewConnection preserves the Stage 4 raw Application byte stream and binds
-// its classified Result to an optional owner-only channel selected by the peer.
-func NewConnection(raw, result net.Conn) *connection {
-	return &connection{Conn: raw, result: result}
+// OpenApplication selects the sole versioned local Application contract before
+// it carries opaque bytes. Its terminal Result is always delivered through the
+// supplied sideband connection; raw-tail fallback is not part of this contract.
+func OpenApplication(raw, result net.Conn) (*connection, error) {
+	if raw == nil || result == nil {
+		return nil, errors.New("application connections are incomplete")
+	}
+	if _, err := raw.Write(applicationHello); err != nil {
+		return nil, err
+	}
+	return &connection{Conn: raw, result: result}, nil
 }
 
 // ResultPath derives the bounded local result-channel address without adding

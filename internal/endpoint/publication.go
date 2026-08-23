@@ -1,4 +1,4 @@
-package serviceendpoint
+package endpoint
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/applicationipc"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
 )
@@ -46,7 +45,7 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	defer cancel()
 	resources("timer", 1)
 	defer resources("timer", -1)
-	request, err := applicationipc.ReadControl(operation, administrator, 8)
+	request, err := ReadControl(operation, administrator, 8)
 	if err != nil || string(request) != "publish\n" {
 		err = errors.Join(err, errors.New("administration request is malformed, partial, or oversized"))
 		return serviceconn.Result{}, err
@@ -103,7 +102,7 @@ func listenLocal(path string, deadline time.Duration) (*net.UnixListener, error)
 }
 
 func deliverResult(output io.Writer, result serviceconn.Result) error {
-	return applicationipc.Write(output, applicationipc.Result{Class: result.Class, Reason: result.Reason,
+	return Write(output, Result{Class: result.Class, Reason: result.Reason,
 		AuthenticatedTarget: result.AuthenticatedTarget, AcceptedBytes: result.AcceptedBytes,
 		ReceivedBytes: result.ReceivedBytes})
 }

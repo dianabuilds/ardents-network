@@ -1,11 +1,12 @@
 package main
 
 import (
+	"io"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/applicationipc"
+	endpointpkg "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
@@ -23,10 +24,17 @@ func TestStreamLifetimeIsBoundedIndependentlyFromDial(t *testing.T) {
 func TestEarlyFailureResultInterruptsIncompleteRawWorkload(t *testing.T) {
 	application, endpoint := net.Pipe()
 	applicationResult, endpointResult := net.Pipe()
-	stream := applicationipc.NewConnection(application, applicationResult)
-	peer := applicationipc.NewConnection(endpoint, endpointResult)
+	accepted := make(chan error, 1)
+	go func() { _, err := io.ReadFull(endpoint, make([]byte, 6)); accepted <- err }()
+	stream, err := endpointpkg.OpenApplication(application, applicationResult)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-accepted; err != nil {
+		t.Fatal(err)
+	}
 	defer stream.Close()
-	defer peer.Close()
+	defer endpoint.Close()
 	classified := waitForResult(stream)
 	exchange := make(chan error, 1)
 	go func() {
@@ -35,7 +43,7 @@ func TestEarlyFailureResultInterruptsIncompleteRawWorkload(t *testing.T) {
 		exchange <- err
 	}()
 	go func() {
-		_ = peer.SendResult(applicationipc.Result{Class: "abrupt connection loss",
+		_ = endpointpkg.Write(endpointResult, endpointpkg.Result{Class: "abrupt connection loss",
 			Reason: "route Attachment proposal limit or recovery deadline reached"})
 	}()
 	select {
@@ -67,10 +75,17 @@ func TestExternalApplicationRequiresClassifiedConnectionResult(t *testing.T) {
 	applicationResult, endpointResult := net.Pipe()
 	defer application.Close()
 	defer endpoint.Close()
-	applicationStream := applicationipc.NewConnection(application, applicationResult)
-	endpointStream := applicationipc.NewConnection(endpoint, endpointResult)
+	accepted := make(chan error, 1)
+	go func() { _, err := io.ReadFull(endpoint, make([]byte, 6)); accepted <- err }()
+	applicationStream, err := endpointpkg.OpenApplication(application, applicationResult)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-accepted; err != nil {
+		t.Fatal(err)
+	}
 	go func() {
-		_ = endpointStream.SendResult(applicationipc.Result{Class: "clean service connection close",
+		_ = endpointpkg.Write(endpointResult, endpointpkg.Result{Class: "clean service connection close",
 			AuthenticatedTarget: [32]byte{1}, AcceptedBytes: 4096, ReceivedBytes: 4096})
 	}()
 	result, err := applicationStream.Result()
@@ -80,11 +95,14 @@ func TestExternalApplicationRequiresClassifiedConnectionResult(t *testing.T) {
 
 	cleanEOF, peer := net.Pipe()
 	resultEOF, resultPeer := net.Pipe()
-	_ = peer.Close()
-	_ = resultPeer.Close()
+	go func() { _, _ = io.ReadFull(peer, make([]byte, 6)); _ = resultPeer.Close() }()
 	defer cleanEOF.Close()
 	defer resultEOF.Close()
-	if _, err := applicationipc.NewConnection(cleanEOF, resultEOF).Result(); err == nil {
+	stream, err := endpointpkg.OpenApplication(cleanEOF, resultEOF)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Result(); err == nil {
 		t.Fatal("clean EOF was treated as semantic Application success")
 	}
 }

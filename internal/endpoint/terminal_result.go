@@ -1,4 +1,4 @@
-package applicationipc
+package endpoint
 
 import (
 	"bytes"

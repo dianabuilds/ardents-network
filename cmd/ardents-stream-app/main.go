@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/applicationipc"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/streamworkload"
 )
 
@@ -39,7 +39,7 @@ func run(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	resultPath, err := applicationipc.ResultPath(arguments[2])
+	resultPath, err := endpoint.ResultPath(arguments[2])
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,12 @@ func run(arguments []string, output io.Writer) error {
 		_ = resultConnection.Close()
 		return fmt.Errorf("bound Application result lifetime: %w", err)
 	}
-	stream := applicationipc.NewConnection(connection, resultConnection)
+	stream, err := endpoint.OpenApplication(connection, resultConnection)
+	if err != nil {
+		_ = connection.Close()
+		_ = resultConnection.Close()
+		return err
+	}
 	defer stream.Close()
 	encoder := json.NewEncoder(output)
 	if err := encoder.Encode(map[string]string{"schema": "ardents-stream-ready-v1", "role": arguments[1]}); err != nil {
