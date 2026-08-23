@@ -53,7 +53,7 @@ type linuxSample struct {
 }
 
 func main() {
-	scenario := flag.String("scenario", "baseline", "baseline or role-carriage")
+	scenario := flag.String("scenario", "baseline", "baseline, role-carriage, or role-cancellation")
 	connections := flag.Int("connections", 1, "synthetic sequential mTLS legs (1..32)")
 	payloadSize := flag.Int("payload", 64<<10, "opaque bytes per leg (1..1048576)")
 	timeout := flag.Duration("timeout", 10*time.Second, "complete baseline deadline")
@@ -74,7 +74,13 @@ func main() {
 			*sampleInterval <= 0 || *timeout <= *hold {
 			fail(errors.New("role-carriage flags are outside their bound"))
 		}
-		result, err = runRoleCarriage(*capacity, *payloadSize, *hold, *sampleInterval, *timeout)
+		result, err = runRoleCarriage(*capacity, *payloadSize, *hold, *sampleInterval, *timeout, roleDrain)
+	case "role-cancellation":
+		if *capacity < 1 || *capacity > 32 || *payloadSize < 1 || *payloadSize > 1<<20 || *hold < time.Second ||
+			*sampleInterval <= 0 || *timeout <= *hold {
+			fail(errors.New("role-cancellation flags are outside their bound"))
+		}
+		result, err = runRoleCarriage(*capacity, *payloadSize, *hold, *sampleInterval, *timeout, roleCancellation)
 	default:
 		fail(errors.New("scenario is not supported"))
 	}

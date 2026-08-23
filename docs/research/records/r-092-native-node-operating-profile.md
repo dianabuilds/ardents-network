@@ -63,11 +63,12 @@ native Node profile.
 [`experiments/r-092-native-node-profile/`](../../../experiments/r-092-native-node-profile/)
 contains disposable synthetic mTLS plus reciprocal-LegBinding baseline and
 role-carriage scenarios. The latter carries a bounded set of synthetic legs,
-withdraws its test listener, holds them, drains them, joins its workers, and
-samples the Linux process. It has no product Node listener, State root, H3
-reader, or capacity decision. A reference-host follow-up must inject and
-measure the complete selected resource-pressure rule and retain its raw Linux
-observations, host identity, and source/binary digest outside Git.
+withdraws its test listener, holds them, drains or cancels them, joins its
+workers, and samples the Linux process through final cleanup. It has no product
+Node listener, State root, H3 reader, or capacity decision. A reference-host
+follow-up must inject and measure the complete selected resource-pressure rule
+and retain its raw Linux observations, host identity, and source/binary digest
+outside Git.
 
 ### Failure scenarios
 
@@ -115,6 +116,18 @@ observations, host identity, and source/binary digest outside Git.
   This verifies only synthetic capacity-triggered withdrawal and cleanup in
   WSL. It is not pre-kernel admission refusal, a real resource-pressure test,
   a NET-01A measurement, or a selected profile.
+- **Measurement (2026-08-23, preliminary Linux cancellation):** an initial
+  cancellation run showed that the sampler inherited the cancelled workload
+  context and could report a pre-cleanup final sample. The harness was changed
+  so the sampler stops only after all clients and server workers have joined,
+  then rebuilt to Linux/amd64 (binary SHA-256
+  `77aaeb5eb884d07a989f7404d863c3dec8e0ea9e0eaed0c00f6d4091de954608`).
+  In the same non-reference WSL guest, two active 4,096-byte legs withdrew,
+  one subsequent dial was refused, and cancellation joined both clients and
+  server workers in 2,003,160,204 ns. Its post-cleanup sample was 7 FDs and
+  zero sockets (from 11/3 before work); Go goroutines fell from 2 to 1. This
+  confirms only the synthetic cancellation cleanup path in WSL, not an OS
+  resource-pressure rule, a NET-01A result, or a selected profile.
 - **Measurement:** no Linux *reference-host* result has yet been captured.
 
 ## Recommendation

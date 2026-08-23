@@ -21,6 +21,7 @@ import (
 type roleCarriageMeasurement struct {
 	Schema             string        `json:"schema"`
 	Host               hostIdentity  `json:"host"`
+	Termination        string        `json:"termination"`
 	Capacity           int           `json:"capacity"`
 	PayloadBytes       int           `json:"payload_bytes"`
 	AdmittedLegs       int           `json:"admitted_legs"`
@@ -30,10 +31,20 @@ type roleCarriageMeasurement struct {
 	ElapsedNanoseconds int64         `json:"elapsed_nanoseconds"`
 	GoroutinesBefore   int           `json:"goroutines_before"`
 	GoroutinesAfter    int           `json:"goroutines_after"`
+	CancelledClients   int           `json:"cancelled_clients,omitempty"`
 	LinuxSamples       []linuxSample `json:"linux_samples,omitempty"`
 }
 
-func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout time.Duration) (roleCarriageMeasurement, error) {
+type roleTermination byte
+
+const (
+	roleDrain roleTermination = iota
+	roleCancellation
+)
+
+func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout time.Duration,
+	termination roleTermination,
+) (roleCarriageMeasurement, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	host, err := currentHostIdentity()
@@ -59,10 +70,10 @@ func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout ti
 		return roleCarriageMeasurement{}, err
 	}
 	notAfter := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	samples := newLinuxSampler(context.Background(), sampleInterval)
+	defer samples.Stop()
 	server := newRoleCarrier(ctx, listener, serverCertificate, clientKey, capacity, payload, notAfter)
 	defer server.Close()
-	samples := newLinuxSampler(ctx, sampleInterval)
-	defer samples.Stop()
 	started, goroutines := time.Now(), runtime.NumGoroutine()
 	go server.Run()
 	clientErrors := make(chan error, capacity)
@@ -74,6 +85,11 @@ func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout ti
 			clientErrors <- carryHeld(ctx, address, client, serverKey, payload, notAfter)
 		}()
 	}
+	clientsDone := make(chan struct{})
+	go func() {
+		clients.Wait()
+		close(clientsDone)
+	}()
 	if err := server.WaitForAdmissions(ctx); err != nil {
 		return roleCarriageMeasurement{}, err
 	}
@@ -89,15 +105,36 @@ func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout ti
 	case <-ctx.Done():
 		return roleCarriageMeasurement{}, ctx.Err()
 	}
-	server.BeginDrain()
-	clients.Wait()
+	if termination == roleDrain {
+		server.BeginDrain()
+	} else {
+		cancel()
+	}
+	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cleanupCancel()
+	select {
+	case <-clientsDone:
+	case <-cleanupCtx.Done():
+		return roleCarriageMeasurement{}, errors.New("role-carriage clients did not join after termination")
+	}
 	close(clientErrors)
+	cancelledClients := 0
 	for err := range clientErrors {
-		if err != nil {
+		if termination == roleDrain && err != nil {
 			return roleCarriageMeasurement{}, err
 		}
+		if termination == roleCancellation {
+			if err == nil {
+				return roleCarriageMeasurement{}, errors.New("cancelled role-carriage client completed normally")
+			}
+			cancelledClients++
+		}
 	}
-	if err := server.Wait(ctx); err != nil {
+	if termination == roleDrain {
+		if err := server.Wait(ctx); err != nil {
+			return roleCarriageMeasurement{}, err
+		}
+	} else if err := server.WaitDone(cleanupCtx); err != nil {
 		return roleCarriageMeasurement{}, err
 	}
 	linuxSamples, err := samples.Stop()
@@ -105,11 +142,18 @@ func runRoleCarriage(capacity, payloadSize int, hold, sampleInterval, timeout ti
 		return roleCarriageMeasurement{}, err
 	}
 	return roleCarriageMeasurement{
-		Schema: "ardents-r092-native-role-carriage-v1", Host: host, Capacity: capacity, PayloadBytes: payloadSize,
-		AdmittedLegs: capacity, RefusedDials: refused, Withdrawn: true, HoldNanoseconds: hold.Nanoseconds(),
+		Schema: "ardents-r092-native-role-carriage-v1", Host: host, Termination: termination.String(), Capacity: capacity,
+		PayloadBytes: payloadSize, AdmittedLegs: capacity, RefusedDials: refused, Withdrawn: true, HoldNanoseconds: hold.Nanoseconds(),
 		ElapsedNanoseconds: time.Since(started).Nanoseconds(), GoroutinesBefore: goroutines,
-		GoroutinesAfter: runtime.NumGoroutine(), LinuxSamples: linuxSamples,
+		GoroutinesAfter: runtime.NumGoroutine(), CancelledClients: cancelledClients, LinuxSamples: linuxSamples,
 	}, nil
+}
+
+func (termination roleTermination) String() string {
+	if termination == roleCancellation {
+		return "cancellation"
+	}
+	return "drain"
 }
 
 type roleCarrier struct {
@@ -256,6 +300,15 @@ func (carrier *roleCarrier) Wait(ctx context.Context) error {
 	select {
 	case <-carrier.done:
 		return carrier.Err()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (carrier *roleCarrier) WaitDone(ctx context.Context) error {
+	select {
+	case <-carrier.done:
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}

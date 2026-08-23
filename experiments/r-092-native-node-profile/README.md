@@ -21,6 +21,12 @@ go run experiments/r-092-native-node-profile/main.go \
   experiments/r-092-native-node-profile/linux_sampler.go \
   -scenario role-carriage -capacity 2 -payload 65536 -hold 10s \
   -sample-interval 1s -timeout 30s
+
+go run experiments/r-092-native-node-profile/main.go \
+  experiments/r-092-native-node-profile/role_carriage.go \
+  experiments/r-092-native-node-profile/linux_sampler.go \
+  -scenario role-cancellation -capacity 2 -payload 65536 -hold 10s \
+  -sample-interval 1s -timeout 30s
 ```
 
 For a decision-bearing reference-host campaign, retain the command transcript,
@@ -39,7 +45,10 @@ go build -trimpath -o "$evidence_dir/r092-role-carriage" \
 sha256sum "$evidence_dir/r092-role-carriage" | tee "$evidence_dir/binary.sha256"
 "$evidence_dir/r092-role-carriage" -scenario role-carriage -capacity 2 \
   -payload 65536 -hold 10s -sample-interval 1s -timeout 30s \
-  | tee "$evidence_dir/result.json"
+  | tee "$evidence_dir/drain.json"
+"$evidence_dir/r092-role-carriage" -scenario role-cancellation -capacity 2 \
+  -payload 65536 -hold 10s -sample-interval 1s -timeout 30s \
+  | tee "$evidence_dir/cancellation.json"
 ```
 
 The program generates ephemeral synthetic Ed25519 certificates and loopback
@@ -56,13 +65,17 @@ pressure, drain, withdrawal, and cleanup evidence outside Git.
 `role-carriage` is a synthetic, bounded pressure injection: it carries exactly
 `capacity` simultaneous reciprocal TLS/LegBinding legs, withdraws the synthetic
 listener before a subsequent dial, holds the admitted legs, then drains and
-joins every worker. It samples Linux process RSS/CPU/FD/socket state at the
-requested interval. It does **not** demonstrate an actual Node admission
-decision before a kernel accepts a TCP socket, real resource pressure, a
-production listener, a capacity selection, or a product claim.
+joins every worker. `role-cancellation` follows the same admission/withdrawal
+setup but cancels the carried legs and requires every client and server worker
+to join within two seconds. Both sample Linux process RSS/CPU/FD/socket state
+through the final post-cleanup observation. They do **not** demonstrate an
+actual Node admission decision before a kernel accepts a TCP socket, real
+resource pressure, a production listener, a capacity selection, or a product
+claim.
 
 Falsification: absent TLS 1.3/ALPN, an unverified peer key, a nonreciprocal
 binding, a byte mismatch, a listener that remains reachable after withdrawal,
-missing Linux samples on the selected host, or any worker that fails to join is
-a failed baseline. A local two-leg, 4,096-byte sanity run passed; no number
-emitted by this program authorizes a native Node admission limit.
+missing Linux samples on the selected host, non-zero post-cleanup sockets, or
+any worker that fails to join is a failed baseline. A local two-leg, 4,096-byte
+sanity run passed; no number emitted by this program authorizes a native Node
+admission limit.
