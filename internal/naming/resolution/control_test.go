@@ -9,7 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/claim"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 )
 
@@ -172,24 +176,24 @@ func TestControlCarriesEveryFrozenOperationShape(t *testing.T) {
 
 func TestControlSubmitsOnlyAnExactSignedDurableSuccessor(t *testing.T) {
 	t.Parallel()
-	policy := namespace.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
-	fixture := newResolutionFixtureWithAuthority(t, func(store *namespace.Store, admission *namespace.Admission,
+	policy := record.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
+	fixture := newResolutionFixtureWithAuthority(t, func(store *epoch.Store, gate *admission.Admission,
 		now time.Time,
 	) (testControlAuthority, error) {
-		return namespace.OpenControl(store, admission, namespace.ClaimOrder{}, func() time.Time { return now }, policy)
+		return authority.OpenControl(store, gate, claim.ClaimOrder{}, func() time.Time { return now }, policy)
 	})
-	operation := namespace.Op{Kind: "renew", Name: fixture.current.Name, ExpectedGeneration: fixture.current.Generation,
+	operation := record.Op{Kind: "renew", Name: fixture.current.Name, ExpectedGeneration: fixture.current.Generation,
 		ExpectedRevision: fixture.current.Revision,
 		Authority:        fixture.current.Authority, LeaseDuration: policy.DefaultLeaseDuration}
-	proof, err := namespace.SignTransition(fixture.network, fixture.current, operation, fixture.authorityKey)
+	proof, err := authority.SignTransition(fixture.network, fixture.current, operation, fixture.authorityKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated, err := namespace.ApplyAtLegacy(&fixture.current, fixture.now, operation, policy)
+	updated, err := record.ApplyAtLegacy(&fixture.current, fixture.now, operation, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	successor, err := namespace.SignRecord(fixture.network, updated, fixture.authorityKey)
+	successor, err := record.SignRecord(fixture.network, updated, fixture.authorityKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,11 +242,11 @@ func testControlDigest(t *testing.T, operation testControlOperation) [32]byte {
 type capturingControlAuthority struct {
 	mu        sync.Mutex
 	operation testControlOperation
-	proof     namespace.Proof
+	proof     admission.Proof
 	class     string
 }
 
-func (authority *capturingControlAuthority) Submit(submission namespace.Submission, proof namespace.Proof) string {
+func (authority *capturingControlAuthority) Submit(submission authority.Submission, proof admission.Proof) string {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
 	var operation testControlOperation
@@ -253,7 +257,7 @@ func (authority *capturingControlAuthority) Submit(submission namespace.Submissi
 	return authority.class
 }
 
-func (authority *capturingControlAuthority) observation() (testControlOperation, namespace.Proof) {
+func (authority *capturingControlAuthority) observation() (testControlOperation, admission.Proof) {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
 	return authority.operation, authority.proof
