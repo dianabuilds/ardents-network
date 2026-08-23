@@ -9,21 +9,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/recovery"
 )
 
 func TestRecoveryPolicyDelayAndSuccessorFreshRecord(t *testing.T) {
 	t.Parallel()
 	policy, signers, currentPrivate, successor := lifecycleRecoveryFixture()
 	currentAuthority := hex.EncodeToString(currentPrivate.Public().(ed25519.PublicKey))
-	leasePolicy := namespace.Policy{DefaultLeaseDuration: 200 * time.Hour, DefaultGraceDuration: time.Hour}
-	record, err := namespace.ApplyLegacy(nil, 100, namespace.Op{Kind: "claim", Name: "alice",
+	leasePolicy := record.Policy{DefaultLeaseDuration: 200 * time.Hour, DefaultGraceDuration: time.Hour}
+	current, err := record.ApplyLegacy(nil, 100, record.Op{Kind: "claim", Name: "alice",
 		Generation: 1, Authority: currentAuthority}, leasePolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	activation := int64(101_000) + policy.Delay.Milliseconds()
-	record, err = namespace.ApplyLegacy(&record, 101, namespace.Op{Kind: "schedule-recovery-policy", Name: "alice",
+	current, err = record.ApplyLegacy(&current, 101, record.Op{Kind: "schedule-recovery-policy", Name: "alice",
 		ExpectedGeneration: 1, ExpectedRevision: 1, Authority: currentAuthority,
 		PolicyDigest: policy.Digest(), PolicyRevision: 1, PolicyDelay: policy.Delay,
 		PolicyActivatesAt: activation}, leasePolicy)
@@ -35,55 +36,55 @@ func TestRecoveryPolicyDelayAndSuccessorFreshRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := namespace.ApplyLegacy(&record, activation/1_000-1, namespace.Op{Kind: "start-recovery", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: record.Revision,
+	if _, err := record.ApplyLegacy(&current, activation/1_000-1, record.Op{Kind: "start-recovery", Name: "alice",
+		ExpectedGeneration: 1, ExpectedRevision: current.Revision,
 		RecoveryAuthorization: authorization}, leasePolicy); err == nil {
 		t.Fatal("pending Recovery Policy authorized recovery before activation")
 	}
-	record, err = namespace.ApplyLegacy(&record, activation/1_000, namespace.Op{Kind: "activate-recovery-policy", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: record.Revision}, leasePolicy)
+	current, err = record.ApplyLegacy(&current, activation/1_000, record.Op{Kind: "activate-recovery-policy", Name: "alice",
+		ExpectedGeneration: 1, ExpectedRevision: current.Revision}, leasePolicy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = namespace.ApplyLegacy(&record, proof.StartedAt/1_000, namespace.Op{Kind: "start-recovery", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: record.Revision,
+	current, err = record.ApplyLegacy(&current, proof.StartedAt/1_000, record.Op{Kind: "start-recovery", Name: "alice",
+		ExpectedGeneration: 1, ExpectedRevision: current.Revision,
 		RecoveryAuthorization: authorization}, leasePolicy)
-	if err != nil || record.Recovery != "recovery-pending" {
-		t.Fatalf("pending=%+v err=%v", record, err)
+	if err != nil || current.Recovery != "recovery-pending" {
+		t.Fatalf("pending=%+v err=%v", current, err)
 	}
-	if _, err := namespace.ApplyLegacy(&record, proof.CompletesAt/1_000, namespace.Op{Kind: "advance", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: record.Revision}, leasePolicy); err == nil {
+	if _, err := record.ApplyLegacy(&current, proof.CompletesAt/1_000, record.Op{Kind: "advance", Name: "alice",
+		ExpectedGeneration: 1, ExpectedRevision: current.Revision}, leasePolicy); err == nil {
 		t.Fatal("time-only advance completed pending Recovery")
 	}
-	if _, err := namespace.ApplyLegacy(&record, proof.StartedAt/1_000+1, namespace.Op{Kind: "renew", Name: "alice",
-		Authority: currentAuthority, ExpectedGeneration: 1, ExpectedRevision: record.Revision}, leasePolicy); err == nil {
+	if _, err := record.ApplyLegacy(&current, proof.StartedAt/1_000+1, record.Op{Kind: "renew", Name: "alice",
+		Authority: currentAuthority, ExpectedGeneration: 1, ExpectedRevision: current.Revision}, leasePolicy); err == nil {
 		t.Fatal("current Authority renewed during Recovery Pending")
 	}
-	record, err = namespace.ApplyLegacy(&record, proof.CompletesAt/1_000, namespace.Op{Kind: "complete-recovery", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: record.Revision,
+	current, err = record.ApplyLegacy(&current, proof.CompletesAt/1_000, record.Op{Kind: "complete-recovery", Name: "alice",
+		ExpectedGeneration: 1, ExpectedRevision: current.Revision,
 		RecoveryAuthorization: authorization}, leasePolicy)
-	if err != nil || record.Authority != hex.EncodeToString(successor[:]) || record.Recovery != "stable" ||
-		record.Consistency != "unavailable" || record.Target != ([32]byte{}) {
-		t.Fatalf("completed=%+v err=%v", record, err)
+	if err != nil || current.Authority != hex.EncodeToString(successor[:]) || current.Recovery != "stable" ||
+		current.Consistency != "unavailable" || current.Target != ([32]byte{}) {
+		t.Fatalf("completed=%+v err=%v", current, err)
 	}
-	if _, err := namespace.ApplyLegacy(&record, proof.CompletesAt/1_000+1, namespace.Op{Kind: "resume-recovery", Name: "alice",
-		Authority: currentAuthority, ExpectedGeneration: 1, ExpectedRevision: record.Revision,
+	if _, err := record.ApplyLegacy(&current, proof.CompletesAt/1_000+1, record.Op{Kind: "resume-recovery", Name: "alice",
+		Authority: currentAuthority, ExpectedGeneration: 1, ExpectedRevision: current.Revision,
 		Target: [32]byte{9}, RecordNotAfter: proof.CompletesAt + time.Hour.Milliseconds()}, leasePolicy); err == nil {
 		t.Fatal("predecessor published the post-recovery Record")
 	}
-	record, err = namespace.ApplyLegacy(&record, proof.CompletesAt/1_000+1, namespace.Op{Kind: "resume-recovery", Name: "alice",
-		Authority: record.Authority, ExpectedGeneration: 1, ExpectedRevision: record.Revision,
+	current, err = record.ApplyLegacy(&current, proof.CompletesAt/1_000+1, record.Op{Kind: "resume-recovery", Name: "alice",
+		Authority: current.Authority, ExpectedGeneration: 1, ExpectedRevision: current.Revision,
 		Target: [32]byte{9}, RecordNotAfter: proof.CompletesAt + time.Hour.Milliseconds()}, leasePolicy)
-	if err != nil || record.Recovery != "stable" || record.Target != ([32]byte{9}) ||
-		record.RecordNotAfter != proof.CompletesAt+time.Hour.Milliseconds() {
-		t.Fatalf("resumed=%+v err=%v", record, err)
+	if err != nil || current.Recovery != "stable" || current.Target != ([32]byte{9}) ||
+		current.RecordNotAfter != proof.CompletesAt+time.Hour.Milliseconds() {
+		t.Fatalf("resumed=%+v err=%v", current, err)
 	}
 }
 
 func TestRecoveryCancellationRequiresDistinctThresholdDomain(t *testing.T) {
 	t.Parallel()
 	policy, signers, currentPrivate, successor := lifecycleRecoveryFixture()
-	record := namespace.Record{Name: "alice", Generation: 1, Revision: 3,
+	current := record.Record{Name: "alice", Generation: 1, Revision: 3,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(currentPrivate.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: 1_000_000, GraceExpiresAt: 1_100_000,
@@ -95,14 +96,14 @@ func TestRecoveryCancellationRequiresDistinctThresholdDomain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pending, err := namespace.ApplyLegacy(&record, started/1_000, namespace.Op{Kind: "start-recovery", Name: "alice",
-		ExpectedGeneration: 1, ExpectedRevision: 3, RecoveryAuthorization: initiate}, namespace.Policy{})
+	pending, err := record.ApplyLegacy(&current, started/1_000, record.Op{Kind: "start-recovery", Name: "alice",
+		ExpectedGeneration: 1, ExpectedRevision: 3, RecoveryAuthorization: initiate}, record.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := namespace.ApplyLegacy(&pending, started/1_000+1, namespace.Op{Kind: "cancel-recovery", Name: "alice",
+	if _, err := record.ApplyLegacy(&pending, started/1_000+1, record.Op{Kind: "cancel-recovery", Name: "alice",
 		ExpectedGeneration: 1, ExpectedRevision: pending.Revision,
-		RecoveryAuthorization: initiate}, namespace.Policy{}); err == nil {
+		RecoveryAuthorization: initiate}, record.Policy{}); err == nil {
 		t.Fatal("initiation-domain signatures cancelled recovery")
 	}
 	cancelProof := lifecycleProof(policy, signers, "cancel", started, successor)
@@ -110,10 +111,10 @@ func TestRecoveryCancellationRequiresDistinctThresholdDomain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stable, err := namespace.ApplyLegacy(&pending, started/1_000+1, namespace.Op{Kind: "cancel-recovery", Name: "alice",
+	stable, err := record.ApplyLegacy(&pending, started/1_000+1, record.Op{Kind: "cancel-recovery", Name: "alice",
 		ExpectedGeneration: 1, ExpectedRevision: pending.Revision,
-		RecoveryAuthorization: cancel}, namespace.Policy{})
-	if err != nil || stable.Recovery != "stable" || stable.Authority != record.Authority {
+		RecoveryAuthorization: cancel}, record.Policy{})
+	if err != nil || stable.Recovery != "stable" || stable.Authority != current.Authority {
 		t.Fatalf("cancelled=%+v err=%v", stable, err)
 	}
 }
@@ -124,17 +125,17 @@ func TestPendingPolicyChangeKeepsPrecedingPolicyEffective(t *testing.T) {
 	newPolicy := oldPolicy
 	newPolicy.Revision++
 	newPolicy.Delay = 96 * time.Hour
-	record := namespace.Record{Name: "alice", Generation: 1, Revision: 5,
+	current := record.Record{Name: "alice", Generation: 1, Revision: 5,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(currentPrivate.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: 10_000_000, GraceExpiresAt: 11_000_000,
 		RecoveryPolicy: oldPolicy.Digest(), RecoveryPolicyRev: oldPolicy.Revision,
 		RecoveryPolicyDelay: oldPolicy.Delay.Milliseconds(), Continuity: 1}
 	activation := int64(200_000) + newPolicy.Delay.Milliseconds()
-	scheduled, err := namespace.ApplyLegacy(&record, 200, namespace.Op{Kind: "schedule-recovery-policy", Name: "alice",
-		Authority: record.Authority, ExpectedGeneration: 1, ExpectedRevision: record.Revision,
+	scheduled, err := record.ApplyLegacy(&current, 200, record.Op{Kind: "schedule-recovery-policy", Name: "alice",
+		Authority: current.Authority, ExpectedGeneration: 1, ExpectedRevision: current.Revision,
 		PolicyDigest: newPolicy.Digest(), PolicyRevision: newPolicy.Revision,
-		PolicyDelay: newPolicy.Delay, PolicyActivatesAt: activation}, namespace.Policy{})
+		PolicyDelay: newPolicy.Delay, PolicyActivatesAt: activation}, record.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,40 +144,40 @@ func TestPendingPolicyChangeKeepsPrecedingPolicyEffective(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := namespace.ApplyLegacy(&scheduled, 201, namespace.Op{Kind: "start-recovery", Name: "alice",
+	if _, err := record.ApplyLegacy(&scheduled, 201, record.Op{Kind: "start-recovery", Name: "alice",
 		ExpectedGeneration: 1, ExpectedRevision: scheduled.Revision,
-		RecoveryAuthorization: oldAuthorization}, namespace.Policy{}); err != nil {
+		RecoveryAuthorization: oldAuthorization}, record.Policy{}); err != nil {
 		t.Fatalf("preceding policy stopped before replacement activation: %v", err)
 	}
-	active, err := namespace.ApplyLegacy(&scheduled, activation/1_000, namespace.Op{Kind: "activate-recovery-policy",
-		Name: "alice", ExpectedGeneration: 1, ExpectedRevision: scheduled.Revision}, namespace.Policy{})
+	active, err := record.ApplyLegacy(&scheduled, activation/1_000, record.Op{Kind: "activate-recovery-policy",
+		Name: "alice", ExpectedGeneration: 1, ExpectedRevision: scheduled.Revision}, record.Policy{})
 	if err != nil || active.RecoveryPolicy != newPolicy.Digest() {
 		t.Fatalf("active=%+v err=%v", active, err)
 	}
-	if _, err := namespace.ApplyLegacy(&active, activation/1_000+1, namespace.Op{Kind: "start-recovery", Name: "alice",
+	if _, err := record.ApplyLegacy(&active, activation/1_000+1, record.Op{Kind: "start-recovery", Name: "alice",
 		ExpectedGeneration: 1, ExpectedRevision: active.Revision,
-		RecoveryAuthorization: oldAuthorization}, namespace.Policy{}); err == nil {
+		RecoveryAuthorization: oldAuthorization}, record.Policy{}); err == nil {
 		t.Fatal("preceding policy authorized recovery after replacement")
 	}
 	disableAt := (activation/1_000+2)*1_000 + newPolicy.Delay.Milliseconds()
-	disabling, err := namespace.ApplyLegacy(&active, activation/1_000+2, namespace.Op{Kind: "schedule-recovery-policy",
+	disabling, err := record.ApplyLegacy(&active, activation/1_000+2, record.Op{Kind: "schedule-recovery-policy",
 		Name: "alice", Authority: active.Authority, ExpectedGeneration: 1, ExpectedRevision: active.Revision,
 		PolicyRevision: newPolicy.Revision + 1, PolicyDelay: newPolicy.Delay,
-		PolicyActivatesAt: disableAt}, namespace.Policy{})
+		PolicyActivatesAt: disableAt}, record.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	disabled, err := namespace.ApplyLegacy(&disabling, disableAt/1_000, namespace.Op{Kind: "activate-recovery-policy",
-		Name: "alice", ExpectedGeneration: 1, ExpectedRevision: disabling.Revision}, namespace.Policy{})
+	disabled, err := record.ApplyLegacy(&disabling, disableAt/1_000, record.Op{Kind: "activate-recovery-policy",
+		Name: "alice", ExpectedGeneration: 1, ExpectedRevision: disabling.Revision}, record.Policy{})
 	if err != nil || disabled.RecoveryPolicy != ([32]byte{}) || disabled.RecoveryPolicyRev != newPolicy.Revision+1 {
 		t.Fatalf("disabled=%+v err=%v", disabled, err)
 	}
 }
 
-func lifecycleRecoveryFixture() (namespace.RecoveryPolicy, []ed25519.PrivateKey, ed25519.PrivateKey, [32]byte) {
+func lifecycleRecoveryFixture() (recovery.RecoveryPolicy, []ed25519.PrivateKey, ed25519.PrivateKey, [32]byte) {
 	currentSeed := sha256.Sum256([]byte("current"))
 	current := ed25519.NewKeyFromSeed(currentSeed[:])
-	policy := namespace.RecoveryPolicy{Network: [32]byte{7}, Name: "alice", Generation: 1,
+	policy := recovery.RecoveryPolicy{Network: [32]byte{7}, Name: "alice", Generation: 1,
 		Revision: 1, Threshold: 2, Delay: 72 * time.Hour}
 	copy(policy.CurrentAuthority[:], current.Public().(ed25519.PublicKey))
 	var signers []ed25519.PrivateKey
@@ -201,16 +202,16 @@ func lifecycleRecoveryFixture() (namespace.RecoveryPolicy, []ed25519.PrivateKey,
 	return policy, signers, current, successor
 }
 
-func lifecycleProof(policy namespace.RecoveryPolicy, signers []ed25519.PrivateKey,
+func lifecycleProof(policy recovery.RecoveryPolicy, signers []ed25519.PrivateKey,
 	operation string, started int64, successor [32]byte,
-) namespace.RecoveryProof {
-	proof := namespace.RecoveryProof{Operation: operation, PolicyDigest: policy.Digest(),
+) recovery.RecoveryProof {
+	proof := recovery.RecoveryProof{Operation: operation, PolicyDigest: policy.Digest(),
 		OperationID: sha256.Sum256([]byte("operation")), Successor: successor,
 		StartedAt: started, CompletesAt: started + policy.Delay.Milliseconds()}
 	for _, private := range signers[:2] {
 		var signer [32]byte
 		copy(signer[:], private.Public().(ed25519.PublicKey))
-		proof.Signatures = append(proof.Signatures, namespace.Signature{Signer: signer,
+		proof.Signatures = append(proof.Signatures, recovery.Signature{Signer: signer,
 			Bytes: ed25519.Sign(private, policy.Transcript(proof))})
 	}
 	return proof
