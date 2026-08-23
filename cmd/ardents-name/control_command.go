@@ -19,7 +19,7 @@ type controlReceipt struct {
 }
 
 func runControl(inputPath, operationPath string, isolation [32]byte, output io.Writer,
-	transport *http.Transport, load snapshotLoader) error {
+	transport *http.Transport, load resolutionViewLoader) error {
 	input, config, selection, err := readNetworkInput(inputPath, controlInputSchema)
 	if err != nil || selection.ConnectionRendezvousNodeID != [32]byte{} {
 		return errors.New("private naming control input is invalid")

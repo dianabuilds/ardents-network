@@ -78,7 +78,7 @@ func executeControlOperations(fixture resolutionFixture, gate *namespace.Admissi
 		selection := nameresolution.Selection{At: now, Deadline: fixture.selection.Deadline,
 			RelayNodeID: fixture.selection.RelayNodeID, GatewayNodeID: fixture.selection.GatewayNodeID,
 			AdmissionChallenge: challenge}
-		client, err := nameresolution.OpenControl(fixture.view, selection, fixture.profile(), isolations[index],
+		client, err := nameresolution.OpenControlEvidence(fixture.view, selection, fixture.profile(), isolations[index],
 			fixture.relay.Client().Transport.(*http.Transport))
 		if err != nil {
 			return nil, nil, err

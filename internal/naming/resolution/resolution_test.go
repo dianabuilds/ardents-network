@@ -31,7 +31,7 @@ func TestResolveSeparatesRelayAndGatewayViews(t *testing.T) {
 	contexts := [][32]byte{{1}, {2}}
 	for index, isolation := range contexts {
 		selection := fixture.admitted(t, fixture.selection, "alice", isolation, byte(index+1))
-		resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), isolation,
+		resolver, err := nameresolution.OpenEvidence(fixture.view, selection, fixture.gatewayProfile(), isolation,
 			relayTransport(fixture.relayServer))
 		if err != nil {
 			t.Fatal(err)
@@ -92,14 +92,14 @@ func TestResolveFailsClosedOnRoleConflictAndTampering(t *testing.T) {
 	fixture := newResolutionFixture(t)
 	conflict := fixture.selection
 	conflict.ConnectionRendezvousNodeID = conflict.GatewayNodeID
-	if _, err := nameresolution.Open(fixture.view, conflict, fixture.gatewayProfile(), [32]byte{3},
+	if _, err := nameresolution.OpenEvidence(fixture.view, conflict, fixture.gatewayProfile(), [32]byte{3},
 		relayTransport(fixture.relayServer)); err == nil {
 		t.Fatal("Gateway was also accepted as the connection Rendezvous")
 	}
 
 	fixture.setTamper(true)
 	selection := fixture.admitted(t, fixture.selection, "alice", [32]byte{3}, 3)
-	resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), [32]byte{3},
+	resolver, err := nameresolution.OpenEvidence(fixture.view, selection, fixture.gatewayProfile(), [32]byte{3},
 		relayTransport(fixture.relayServer))
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestSelectRejectsEveryInvalidRoleBinding(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			view, selection := fixture.view, fixture.selection
 			test.mutate(&view, &selection)
-			if _, err := nameresolution.Open(view, selection, fixture.gatewayProfile(), [32]byte{8},
+			if _, err := nameresolution.OpenEvidence(view, selection, fixture.gatewayProfile(), [32]byte{8},
 				relayTransport(fixture.relayServer)); err == nil {
 				t.Fatal("invalid role binding was accepted")
 			}
@@ -151,7 +151,7 @@ func TestSelectRejectsEveryInvalidRoleBinding(t *testing.T) {
 	profile.KeyConfig = append([]byte(nil), profile.KeyConfig...)
 	profile.KeyConfig[len(profile.KeyConfig)-1] ^= 1
 	profile.KeyConfigDigest = sha256.Sum256(profile.KeyConfig)
-	if _, err := nameresolution.Open(fixture.view, fixture.selection, profile, [32]byte{8},
+	if _, err := nameresolution.OpenEvidence(fixture.view, fixture.selection, profile, [32]byte{8},
 		relayTransport(fixture.relayServer)); err == nil {
 		t.Fatal("forged Gateway key configuration was accepted")
 	}
@@ -169,7 +169,7 @@ func TestResolveContactsOnlyTheSelectedRelayAndReturnsABoundedError(t *testing.T
 		return nil, errors.New("dial included secret peer 192.0.2.1")
 	}}
 	selection := fixture.admitted(t, fixture.selection, "alice", [32]byte{5}, 5)
-	resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), [32]byte{5}, transport)
+	resolver, err := nameresolution.OpenEvidence(fixture.view, selection, fixture.gatewayProfile(), [32]byte{5}, transport)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestResolveDoesNotExposeUnboundOrUnknownNames(t *testing.T) {
 	t.Parallel()
 	fixture := newResolutionFixture(t)
 	selection := fixture.admitted(t, fixture.selection, "missing", [32]byte{4}, 4)
-	resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), [32]byte{4},
+	resolver, err := nameresolution.OpenEvidence(fixture.view, selection, fixture.gatewayProfile(), [32]byte{4},
 		relayTransport(fixture.relayServer))
 	if err != nil {
 		t.Fatal(err)
@@ -197,7 +197,7 @@ func TestResolveDoesNotExposeUnboundOrUnknownNames(t *testing.T) {
 	if err == nil || result.Class != "private resolution unavailable" || result.Binding != (namespace.Binding{}) {
 		t.Fatalf("missing name result=%+v err=%v", result, err)
 	}
-	if _, err := nameresolution.Open(fixture.view, fixture.selection, fixture.gatewayProfile(), [32]byte{},
+	if _, err := nameresolution.OpenEvidence(fixture.view, fixture.selection, fixture.gatewayProfile(), [32]byte{},
 		relayTransport(fixture.relayServer)); err == nil {
 		t.Fatal("zero Isolation Context was accepted")
 	}

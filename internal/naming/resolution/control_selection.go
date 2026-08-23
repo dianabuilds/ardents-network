@@ -10,14 +10,10 @@ import (
 
 // OpenControl constructs one single-use control client over the selected
 // authenticated Relay/Gateway boundary.
-func OpenControl(view state.Snapshot, selection Selection, profile GatewayProfile,
+func OpenControl(view state.ResolutionView, selection Selection, profile GatewayProfile,
 	isolation [32]byte, base *http.Transport,
 ) (*controlClient, error) {
-	resolutionView, viewErr := view.Resolution()
-	if viewErr != nil {
-		return nil, errors.New("private naming control Network State view is invalid")
-	}
-	plan, err := selectControlPlan(resolutionView, selection, profile)
+	plan, err := selectControlPlan(view, selection, profile)
 	if err != nil || base == nil || isolation == [32]byte{} ||
 		!selection.AdmissionChallenge.BindsIsolation(isolation) {
 		return nil, errors.New("private naming control configuration is invalid")
@@ -32,6 +28,18 @@ func OpenControl(view state.Snapshot, selection Selection, profile GatewayProfil
 		return nil, err
 	}
 	return &controlClient{plan: plan, client: client, transport: transport}, nil
+}
+
+// OpenControlEvidence converts a caller-built Snapshot only for retained
+// evidence and fixture journeys. Runtime callers must use OpenControl.
+func OpenControlEvidence(snapshot state.Snapshot, selection Selection, profile GatewayProfile,
+	isolation [32]byte, base *http.Transport,
+) (*controlClient, error) {
+	view, err := snapshot.Resolution()
+	if err != nil {
+		return nil, errors.New("private naming control evidence State view is invalid")
+	}
+	return OpenControl(view, selection, profile, isolation, base)
 }
 
 func selectControlPlan(view state.ResolutionView, input Selection, profile GatewayProfile) (controlPlan, error) {

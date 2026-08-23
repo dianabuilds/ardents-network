@@ -244,13 +244,12 @@ paired opaque State view when `internal/nameresolution` moves to
 **In progress, 2026-08-23.** The first M6 seam is now real: Network State
 owns `ResolutionView`, which admits only a fresh bounded selection window and
 returns one immutable Epoch trust fact or one authenticated candidate valid
-throughout that window. Target `internal/naming/resolution` converts its
-legacy `Snapshot` input immediately and performs no direct broad-Snapshot
-read while selecting either resolution or control roles. The old
-`internal/nameresolution` directory and every Go import are deleted; the
-temporary input adapter avoids two simultaneous role-selection
-implementations. Command/lab caller surface consolidation and remaining M6
-process evidence remain M6 work.
+throughout that window. Target `internal/naming/resolution` accepts only that
+view for runtime `Open` and `OpenControl`; `cmd/ardents-name` acquires it
+through `CurrentResolution`. Explicit `OpenEvidence` adapters are retained
+only for Stage-6 evidence and test fixtures. The old
+`internal/nameresolution` directory and every Go import are deleted.
+Remaining M6 process evidence remains M6 work.
 
 ## Dependency and retirement rules
 

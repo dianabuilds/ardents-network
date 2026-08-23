@@ -101,7 +101,7 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	}
 	contextHex := hex.EncodeToString(append([]byte{1}, make([]byte, 31)...))
 	var output bytes.Buffer
-	load := func(state.Config) (state.Snapshot, error) { return view, nil }
+	load := func(state.Config) (state.ResolutionView, error) { return view.Resolution() }
 	transport := relayServer.Client().Transport.(*http.Transport)
 	if err := runWithRuntime([]string{"resolve", planPath, "alice", contextHex}, &output, transport, load); err != nil {
 		t.Fatalf("resolve command: %v", err)

@@ -19,13 +19,9 @@ const ohttpRequestType = ohttp.RequestMediaType
 // Open selects authenticated roles, binds one local Isolation Context, and
 // constructs a single-use OHTTP Adapter atomically. A retry must call Open
 // again and therefore receives a fresh Adapter and transport.
-func Open(view state.Snapshot, selection Selection, profile GatewayProfile, isolation [32]byte,
+func Open(view state.ResolutionView, selection Selection, profile GatewayProfile, isolation [32]byte,
 	base *http.Transport) (*resolver, error) {
-	resolutionView, viewErr := view.Resolution()
-	if viewErr != nil {
-		return nil, errors.New("private resolution Network State view is invalid")
-	}
-	plan, err := selectPlan(resolutionView, selection, profile)
+	plan, err := selectPlan(view, selection, profile)
 	if err != nil || isolation == [32]byte{} || base == nil {
 		return nil, errors.New("private resolution client configuration is invalid")
 	}
@@ -46,6 +42,18 @@ func Open(view state.Snapshot, selection Selection, profile GatewayProfile, isol
 		Relay: plan.Relay.NodeID, Gateway: plan.Gateway.NodeID,
 		Rendezvous: plan.ConnectionRendezvous.NodeID, Deadline: plan.Deadline}
 	return &resolver{plan: clonePlan(plan), client: client, transport: transport, roleEvidence: role}, nil
+}
+
+// OpenEvidence converts a caller-built Snapshot only for retained evidence
+// and fixture journeys. Runtime callers must obtain a ResolutionView from
+// Network State and call Open.
+func OpenEvidence(snapshot state.Snapshot, selection Selection, profile GatewayProfile, isolation [32]byte,
+	base *http.Transport) (*resolver, error) {
+	view, err := snapshot.Resolution()
+	if err != nil {
+		return nil, errors.New("private resolution evidence State view is invalid")
+	}
+	return Open(view, selection, profile, isolation, base)
 }
 
 // Resolve performs one fresh, fixed-size private lookup and independently

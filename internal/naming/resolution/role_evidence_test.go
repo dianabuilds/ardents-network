@@ -30,7 +30,7 @@ func TestResolutionRolesExposeOnlyTheirObservedFields(t *testing.T) {
 	var resolverNonces [][32]byte
 	for index, isolation := range contexts {
 		selection := fixture.admitted(t, fixture.selection, "alice", isolation, byte(index+1))
-		resolver, err := nameresolution.Open(fixture.view, selection, fixture.gatewayProfile(), isolation,
+		resolver, err := nameresolution.OpenEvidence(fixture.view, selection, fixture.gatewayProfile(), isolation,
 			relayTransport(fixture.relayServer))
 		if err != nil {
 			t.Fatal(err)

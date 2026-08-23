@@ -60,7 +60,7 @@ func TestControlUsesTheResolutionOHTTPBoundaryAndExposesOnlyTheAuthorityView(t *
 	selection := nameresolution.Selection{At: fixture.now, Deadline: fixture.selection.Deadline,
 		RelayNodeID: fixture.selection.RelayNodeID, GatewayNodeID: fixture.selection.GatewayNodeID,
 		AdmissionChallenge: challenge}
-	client, err := nameresolution.OpenControl(fixture.view, selection, fixture.gatewayProfile(), isolation,
+	client, err := nameresolution.OpenControlEvidence(fixture.view, selection, fixture.gatewayProfile(), isolation,
 		relayTransport(fixture.relayServer))
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestControlRejectsFieldsForbiddenForTheSelectedOperation(t *testing.T) {
 		selection := nameresolution.Selection{At: fixture.now, Deadline: fixture.selection.Deadline,
 			RelayNodeID: fixture.selection.RelayNodeID, GatewayNodeID: fixture.selection.GatewayNodeID,
 			AdmissionChallenge: challenge}
-		client, err := nameresolution.OpenControl(fixture.view, selection, fixture.gatewayProfile(), isolation,
+		client, err := nameresolution.OpenControlEvidence(fixture.view, selection, fixture.gatewayProfile(), isolation,
 			relayTransport(fixture.relayServer))
 		if err != nil {
 			t.Fatal(err)
@@ -158,7 +158,7 @@ func TestControlCarriesEveryFrozenOperationShape(t *testing.T) {
 		selection := nameresolution.Selection{At: fixture.now, Deadline: fixture.selection.Deadline,
 			RelayNodeID: fixture.selection.RelayNodeID, GatewayNodeID: fixture.selection.GatewayNodeID,
 			AdmissionChallenge: challenge}
-		client, err := nameresolution.OpenControl(fixture.view, selection, fixture.gatewayProfile(), isolation,
+		client, err := nameresolution.OpenControlEvidence(fixture.view, selection, fixture.gatewayProfile(), isolation,
 			relayTransport(fixture.relayServer))
 		if err != nil {
 			t.Fatalf("%s OpenControl: %v", operation.Kind, err)
@@ -198,7 +198,7 @@ func TestControlSubmitsOnlyAnExactSignedDurableSuccessor(t *testing.T) {
 		AuthorityProof: proof, SuccessorRecord: successor}
 	control.OperationDigest = testControlDigest(t, control)
 	selection := fixture.controlSelection(t, control.OperationDigest, [32]byte{71})
-	client, err := nameresolution.OpenControl(fixture.view, selection, fixture.gatewayProfile(), [32]byte{71},
+	client, err := nameresolution.OpenControlEvidence(fixture.view, selection, fixture.gatewayProfile(), [32]byte{71},
 		relayTransport(fixture.relayServer))
 	if err != nil {
 		t.Fatal(err)
@@ -213,7 +213,7 @@ func TestControlSubmitsOnlyAnExactSignedDurableSuccessor(t *testing.T) {
 	}
 
 	selection = fixture.controlSelection(t, control.OperationDigest, [32]byte{72})
-	client, err = nameresolution.OpenControl(fixture.view, selection, fixture.gatewayProfile(), [32]byte{72},
+	client, err = nameresolution.OpenControlEvidence(fixture.view, selection, fixture.gatewayProfile(), [32]byte{72},
 		relayTransport(fixture.relayServer))
 	if err != nil {
 		t.Fatal(err)

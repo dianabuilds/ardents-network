@@ -22,10 +22,10 @@ func run(arguments []string, output io.Writer) error {
 }
 
 func runWithTransport(arguments []string, output io.Writer, transport *http.Transport) error {
-	return runWithRuntime(arguments, output, transport, currentSnapshot)
+	return runWithRuntime(arguments, output, transport, currentResolution)
 }
 
-func runWithRuntime(arguments []string, output io.Writer, transport *http.Transport, load snapshotLoader) error {
+func runWithRuntime(arguments []string, output io.Writer, transport *http.Transport, load resolutionViewLoader) error {
 	if len(arguments) == 0 {
 		return usageError()
 	}

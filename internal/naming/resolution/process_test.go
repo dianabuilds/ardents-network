@@ -106,7 +106,7 @@ func TestResolutionRolesRunInSeparateProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver, err := nameresolution.Open(view, selection, gateway.ready.Profile, [32]byte{1},
+	resolver, err := nameresolution.OpenEvidence(view, selection, gateway.ready.Profile, [32]byte{1},
 		roleTLSTransport(t, relay.ready.Certificate))
 	if err != nil {
 		t.Fatal(err)

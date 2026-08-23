@@ -38,7 +38,7 @@ type resolutionInput struct {
 	AdmissionChallenge         namespace.Challenge           `json:"admission_challenge"`
 }
 
-type snapshotLoader func(state.Config) (state.Snapshot, error)
+type resolutionViewLoader func(state.Config) (state.ResolutionView, error)
 
 type resolutionReceipt struct {
 	Schema           string `json:"schema"`
@@ -55,7 +55,7 @@ type resolutionReceipt struct {
 	Warning          string `json:"warning"`
 }
 
-func runResolution(path, name string, isolation [32]byte, output io.Writer, transport *http.Transport, load snapshotLoader) error {
+func runResolution(path, name string, isolation [32]byte, output io.Writer, transport *http.Transport, load resolutionViewLoader) error {
 	input, config, selection, err := readResolutionInput(path)
 	if err != nil {
 		return err
@@ -83,13 +83,13 @@ func runResolution(path, name string, isolation [32]byte, output io.Writer, tran
 	return encoder.Encode(receipt)
 }
 
-func currentSnapshot(config state.Config) (state.Snapshot, error) {
+func currentResolution(config state.Config) (state.ResolutionView, error) {
 	store, err := state.Open(config)
 	if err != nil {
-		return state.Snapshot{}, err
+		return state.ResolutionView{}, err
 	}
 	defer store.Close()
-	return store.Current()
+	return store.CurrentResolution()
 }
 
 func readResolutionInput(path string) (resolutionInput, state.Config, nameresolution.Selection, error) {

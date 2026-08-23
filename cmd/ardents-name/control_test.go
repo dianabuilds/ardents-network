@@ -98,7 +98,7 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 	view := commandResolutionView(t, network, now, relayServer.URL, gatewayServer.URL, gatewayPublic)
 	bindCommandMaterialization(&view, materialization)
 	transport := relayServer.Client().Transport.(*http.Transport)
-	load := func(state.Config) (state.Snapshot, error) { return view, nil }
+	load := func(state.Config) (state.ResolutionView, error) { return view.Resolution() }
 	for index, operation := range commandControlOperations(now) {
 		t.Run(operation.Kind, func(t *testing.T) {
 			digest := commandControlDigest(t, operation)

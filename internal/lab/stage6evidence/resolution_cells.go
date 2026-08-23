@@ -100,7 +100,7 @@ func runResolutionCell(trace *traceRecord) error {
 		if selectionErr != nil {
 			return selectionErr
 		}
-		resolver, openErr := nameresolution.Open(fixture.view, selection, fixture.profile(), isolation,
+		resolver, openErr := nameresolution.OpenEvidence(fixture.view, selection, fixture.profile(), isolation,
 			fixture.relay.Client().Transport.(*http.Transport))
 		if openErr != nil {
 			return openErr
@@ -189,7 +189,7 @@ func runUnavailableResolution(trace *traceRecord, fixture resolutionFixture, evi
 		}
 		return nil, errors.New("selected private path unavailable")
 	}}
-	resolver, err := nameresolution.Open(fixture.view, selection, fixture.profile(), [32]byte{53}, transport)
+	resolver, err := nameresolution.OpenEvidence(fixture.view, selection, fixture.profile(), [32]byte{53}, transport)
 	if err != nil {
 		return err
 	}
