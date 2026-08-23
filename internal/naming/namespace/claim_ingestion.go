@@ -74,3 +74,37 @@ func (input EpochClaimInput) Commitment() [32]byte { return input.commitment }
 func (input EpochClaimInput) InputLeaf(ordinal uint32) [32]byte {
 	return epochClaimInputLeaf(ordinal, input.raw)
 }
+
+// VerifyClose returns the winner only when the authenticated close includes
+// this exact locally admitted input at ordinal. It binds local R-045 admission
+// to the threshold proof without making Namespace own the Network Epoch log.
+func (input EpochClaimInput) VerifyClose(order ClaimOrder, ordinal uint32,
+	proof ClaimProof,
+) (*ClaimWinner, error) {
+	if !input.valid() {
+		return nil, errors.New("claim Epoch input is invalid")
+	}
+	winner, err := OpenClaimWinner(order, proof)
+	if err != nil || winner.value == nil || winner.value.ordinal != ordinal {
+		return nil, errors.New("claim Epoch close does not select admitted input")
+	}
+	for _, claim := range proof.Claims {
+		if claim.Ordinal == ordinal {
+			if input.InputLeaf(ordinal) == claimInputLeaf(claim) {
+				return winner, nil
+			}
+			break
+		}
+	}
+	return nil, errors.New("claim Epoch close does not include admitted input")
+}
+
+func (input EpochClaimInput) valid() bool {
+	if input.commitment == [32]byte{} || input.raw == [64]byte{} {
+		return false
+	}
+	var commitment, admission [32]byte
+	copy(commitment[:], input.raw[:32])
+	copy(admission[:], input.raw[32:])
+	return commitment == input.commitment && admission != [32]byte{}
+}

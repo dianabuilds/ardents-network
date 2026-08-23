@@ -48,7 +48,10 @@ func TestClaimCommitmentAdmissionIsSpentAndRevealDerivesItsDigest(t *testing.T) 
 		CutoffOffset: 1_000, InputRoot: input.InputLeaf(0), InputLength: 1,
 		MaterializationRoot: orderedMaterializationLeaf(reveal), MaterializationLength: 1,
 		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{reveal}}
-	if _, err := namespace.OpenClaimWinner(signedClaimClose(&close), close); err != nil {
+	if _, err := (namespace.EpochClaimInput{}).VerifyClose(namespace.ClaimOrder{}, 0, close); err == nil {
+		t.Fatal("caller-built zero Epoch input verified a close")
+	}
+	if _, err := input.VerifyClose(signedClaimClose(&close), 0, close); err != nil {
 		t.Fatalf("admitted input did not yield verified winner: %v", err)
 	}
 	substituted := reveal
@@ -57,7 +60,7 @@ func TestClaimCommitmentAdmissionIsSpentAndRevealDerivesItsDigest(t *testing.T) 
 		CutoffOffset: 1_000, InputRoot: input.InputLeaf(0), InputLength: 1,
 		MaterializationRoot: orderedMaterializationLeaf(substituted), MaterializationLength: 1,
 		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []namespace.Claim{substituted}}
-	if _, err := namespace.OpenClaimWinner(signedClaimClose(&forged), forged); err == nil {
+	if _, err := input.VerifyClose(signedClaimClose(&forged), 0, forged); err == nil {
 		t.Fatal("close accepted a reveal whose admission digest did not match its committed input")
 	}
 }

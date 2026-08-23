@@ -53,7 +53,9 @@ digest. The input leaf also binds the Epoch-assigned ordinal. Network/Epoch
 code can order and commit only those opaque bytes; it receives no Name,
 Authority, secret, or local proof state. A threshold-signed close must still
 prove that the revealed claim opens that exact input leaf before
-`OpenClaimWinner` can yield a materializable fact. This boundary does not
+`EpochClaimInput.VerifyClose` can yield a materializable fact for that local
+submission. `OpenClaimWinner` remains the proof-only verifier for other
+observers. This boundary does not
 select a Network log, transport, or shared persistence foundation. An
 incomplete or forked close must not mutate a Lease.
 
