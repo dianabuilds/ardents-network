@@ -33,7 +33,7 @@ func TestDrainRecovery(t *testing.T) {
 			if err != nil || result.Outcome != test.wantOutcome || result.State != test.wantState ||
 				result.Generation != 1 || result.CurrentDigest != recoveryOracleDecodeHex(recoveryOraclePreviousDigestHex) ||
 				result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != test.wantNotice ||
-				result.CustodyNotice != recoveryOracleCustodyNotice {
+				result.EvidenceNotice != recoveryOracleEvidenceNotice {
 				t.Fatalf("Recover = %+v, %v", result, err)
 			}
 			for _, path := range []string{filepath.Join(root, "staging", "1"), filepath.Join(root, "transactions", "1")} {

@@ -14,7 +14,7 @@ import (
 const (
 	recoveryOraclePreviousDigestHex  = "8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af"
 	recoveryOracleCandidateDigestHex = "a52b68413e0cd723547790c7ac161ece935d6459377442644b18031c3dc27d0a"
-	recoveryOracleCustodyNotice      = "H3 threshold identities and both rebuild records are project-controlled; no independent custody or builder claim is made"
+	recoveryOracleEvidenceNotice     = "H3 threshold identities and both rebuild records are project-controlled; no independent custody or builder claim is made"
 )
 
 // TestRecoverInterruptionMatrix is the literal independent R00-R14 oracle.
@@ -227,8 +227,8 @@ func recoveryOracleAssertRecovered(t *testing.T, result Result, err error, state
 	if result.SafeNotice != "update interrupted" {
 		t.Fatalf("Recover safe notice=%q, want update interrupted", result.SafeNotice)
 	}
-	if result.CustodyNotice != recoveryOracleCustodyNotice {
-		t.Fatalf("Recover custody=%q, want %q", result.CustodyNotice, recoveryOracleCustodyNotice)
+	if result.EvidenceNotice != recoveryOracleEvidenceNotice {
+		t.Fatalf("Recover custody=%q, want %q", result.EvidenceNotice, recoveryOracleEvidenceNotice)
 	}
 	_ = custodyFromSuccessor
 }
@@ -259,8 +259,8 @@ func recoveryOracleAssertCommitted(t *testing.T, result Result, err error,
 	if result.SafeNotice != "update committed" {
 		t.Fatalf("Recover R14 safe notice=%q, want update committed", result.SafeNotice)
 	}
-	if result.CustodyNotice != recoveryOracleCustodyNotice {
-		t.Fatalf("Recover R14 custody=%q, want %q", result.CustodyNotice, recoveryOracleCustodyNotice)
+	if result.EvidenceNotice != recoveryOracleEvidenceNotice {
+		t.Fatalf("Recover R14 custody=%q, want %q", result.EvidenceNotice, recoveryOracleEvidenceNotice)
 	}
 }
 

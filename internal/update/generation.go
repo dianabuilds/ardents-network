@@ -10,11 +10,11 @@ import (
 )
 
 type manifestView struct {
-	Generation                            uint64
-	TargetPath, SafeNotice, CustodyNotice string
-	SchemaPlan                            string
-	Length                                uint64
-	Artifact                              [32]byte
+	Generation                             uint64
+	TargetPath, SafeNotice, EvidenceNotice string
+	SchemaPlan                             string
+	Length                                 uint64
+	Artifact                               [32]byte
 }
 type currentSelection struct {
 	Transaction uint64
@@ -26,12 +26,12 @@ type bodyWriter struct {
 	err  error
 }
 type rootInspection struct {
-	selection      currentSelection
-	predecessor    predecessorInspection
-	currentCustody string
-	currentRaw     []byte
-	schemaCurrent  *schemaCurrent
-	schemaRaw      []byte
+	selection       currentSelection
+	predecessor     predecessorInspection
+	currentEvidence string
+	currentRaw      []byte
+	schemaCurrent   *schemaCurrent
+	schemaRaw       []byte
 }
 
 func canonicalUnixSeconds(value time.Time) uint64 {
@@ -103,7 +103,7 @@ func encodeManifestWithNotice(request Request, artifact [32]byte, safeNotice str
 	writer.number(canonicalUnixSeconds(decision.ProtocolTransitionDeadline))
 	writer.text(request.schemaPlan, maximumIdentityBytes)
 	writer.text(safeNotice, maximumNoticeBytes)
-	writer.text(decision.CustodyNotice, maximumNoticeBytes)
+	writer.text(decision.EvidenceNotice, maximumNoticeBytes)
 	for _, value := range []string{string(decision.Outcome), decision.Platform,
 		decision.Architecture, decision.Environment, decision.Network} {
 		writer.text(value, maximumIdentityBytes)
@@ -205,7 +205,7 @@ func decodeManifest(raw []byte) (manifestView, error) {
 		reader.err = errRecordInvalid
 	}
 	view.SafeNotice = reader.text(maximumNoticeBytes)
-	view.CustodyNotice = reader.text(maximumNoticeBytes)
+	view.EvidenceNotice = reader.text(maximumNoticeBytes)
 	authorization := make([]string, 5)
 	for index := range authorization {
 		authorization[index] = reader.text(maximumIdentityBytes)

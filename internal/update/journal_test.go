@@ -80,7 +80,7 @@ type v0OracleManifest struct {
 	ProtocolTransitionDeadline *string        `json:"protocol_transition_deadline"`
 	SchemaPlan                 string         `json:"schema_plan"`
 	SafeNotice                 string         `json:"safe_notice"`
-	CustodyNotice              string         `json:"custody_notice"`
+	EvidenceNotice             string         `json:"custody_notice"`
 	ReleaseFloors              v0OracleFloors `json:"release_floors"`
 }
 
@@ -130,7 +130,7 @@ type v0OracleResult struct {
 	RollbackSHA256        string `json:"rollback_sha256"`
 	StagingPresent        bool   `json:"staging_present"`
 	SafeNotice            string `json:"safe_notice"`
-	CustodyNotice         string `json:"custody_notice"`
+	EvidenceNotice        string `json:"custody_notice"`
 }
 
 type oracleCurrentTuple struct {
@@ -210,7 +210,7 @@ func TestV0JournalHasExactIndependentChain(t *testing.T) {
 		BuildSafetyNoNewWorkAfter:  decision.BuildSafetyNoNewWorkAfter.Format(time.RFC3339),
 		BuildSafetyTerminateAfter:  decision.BuildSafetyTerminateAfter.Format(time.RFC3339),
 		ProtocolTransitionDeadline: nil, SchemaPlan: "no-op-v1", SafeNotice: "update committed",
-		CustodyNotice: decision.CustodyNotice, ReleaseFloors: vector.Expected.ReleaseFloors,
+		EvidenceNotice: decision.EvidenceNotice, ReleaseFloors: vector.Expected.ReleaseFloors,
 	}
 	authorization := v0OracleStoredAuthorization{Classification: "release-accepted",
 		Platform: decision.Platform, Architecture: decision.Architecture, Environment: decision.Environment,
@@ -407,7 +407,7 @@ func oracleManifest(t *testing.T, manifest v0OracleManifest,
 	}
 	body = oracleAppendString(t, body, manifest.SchemaPlan, 256)
 	body = oracleAppendString(t, body, manifest.SafeNotice, 512)
-	body = oracleAppendString(t, body, manifest.CustodyNotice, 512)
+	body = oracleAppendString(t, body, manifest.EvidenceNotice, 512)
 	for _, value := range []string{authorization.Classification,
 		authorization.Platform, authorization.Architecture,
 		authorization.Environment, authorization.Network} {

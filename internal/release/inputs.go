@@ -146,9 +146,9 @@ type Decision struct {
 	Floors FloorSet
 	// Notice is a short, stable reason string; it carries no secret.
 	Notice string
-	// CustodyNotice is always rendered with the decision. H3 threshold
+	// EvidenceNotice is always rendered with the decision. H3 threshold
 	// identities and both rebuild records remain project-controlled.
-	CustodyNotice string
+	EvidenceNotice string
 }
 
 // Authorization is an immutable, opaque proof that release verified one

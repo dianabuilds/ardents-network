@@ -38,7 +38,7 @@ func TestApplyRejectsCandidateMismatchBeforeRootInspection(t *testing.T) {
 		t.Fatalf("Apply mismatch outcome/state = %s/%s, want staging-failed/release-accepted", result.Outcome, result.State)
 	}
 	if result.Generation != vector.Request.TransactionGeneration || result.CurrentDigest != [32]byte{} ||
-		result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != "update staging failed" || result.CustodyNotice != "" {
+		result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != "update staging failed" || result.EvidenceNotice != "" {
 		t.Fatalf("Apply mismatch result = %+v, want zero physical fields and fixed refusal notice", result)
 	}
 	if work.stopCalls != 0 || work.drainCalls != 0 {
@@ -69,7 +69,7 @@ func TestApplyRejectsCandidateLengthMismatchBeforeRootInspection(t *testing.T) {
 		t.Fatal("Apply length mismatch error = nil")
 	}
 	if result.Outcome != "staging-failed" || result.State != "release-accepted" ||
-		result.SafeNotice != "update staging failed" || result.CustodyNotice != "" {
+		result.SafeNotice != "update staging failed" || result.EvidenceNotice != "" {
 		t.Fatalf("Apply length mismatch result = %+v, want staging-failed/release-accepted without custody", result)
 	}
 	if result.CurrentDigest != [32]byte{} || result.RollbackDigest != [32]byte{} || result.StagingPresent ||
@@ -105,7 +105,7 @@ func TestApplyRejectsFirstArtifactByteAboveCeiling(t *testing.T) {
 		t.Fatalf("Apply oversized outcome/state = %s/%s, want resource-denied/release-accepted", result.Outcome, result.State)
 	}
 	if result.Generation != vector.Request.TransactionGeneration || result.CurrentDigest != [32]byte{} ||
-		result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != "update resources unavailable" || result.CustodyNotice != "" {
+		result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != "update resources unavailable" || result.EvidenceNotice != "" {
 		t.Fatalf("Apply oversized result = %+v, want zero physical fields and fixed resource notice", result)
 	}
 	if work.stopCalls != 0 || work.drainCalls != 0 {
@@ -132,7 +132,7 @@ func TestApplyRefusesOneByteBelowObservedEnvelope(t *testing.T) {
 	if result.Outcome != "resource-denied" || result.State != "release-accepted" ||
 		result.Generation != request.generation || result.CurrentDigest != [32]byte{} ||
 		result.RollbackDigest != [32]byte{} || result.StagingPresent ||
-		result.SafeNotice != "update resources unavailable" || result.CustodyNotice != "" {
+		result.SafeNotice != "update resources unavailable" || result.EvidenceNotice != "" {
 		t.Fatalf("Apply insufficient envelope result = %+v, want public resource refusal", result)
 	}
 	if work.stopCalls != 0 || work.drainCalls != 0 {
@@ -164,7 +164,7 @@ func TestApplyReportsAndCleansStageWriteFailure(t *testing.T) {
 	if result.Outcome != "staging-failed" || result.State != "artifact-verified" ||
 		result.Generation != request.generation || result.CurrentDigest != recoveryOracleDecodeHex(recoveryOraclePreviousDigestHex) ||
 		result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != "update staging failed" ||
-		result.CustodyNotice != recoveryOracleCustodyNotice {
+		result.EvidenceNotice != recoveryOracleEvidenceNotice {
 		t.Fatalf("Apply stage write result = %+v, want staging-failed/artifact-verified with predecessor evidence", result)
 	}
 	if work, ok := request.Work.(*oracleWorkControl); !ok || work.stopCalls != 0 || work.drainCalls != 0 {
@@ -200,7 +200,7 @@ func TestApplyRefusesCoherentOccupiedStaging(t *testing.T) {
 	}
 	if result.Outcome != "resource-denied" || result.State != "staged" || result.Generation != request.generation ||
 		result.CurrentDigest != recoveryOracleDecodeHex(recoveryOraclePreviousDigestHex) || result.RollbackDigest != [32]byte{} ||
-		!result.StagingPresent || result.SafeNotice != "update recovery required" || result.CustodyNotice != recoveryOracleCustodyNotice {
+		!result.StagingPresent || result.SafeNotice != "update recovery required" || result.EvidenceNotice != recoveryOracleEvidenceNotice {
 		t.Fatalf("Apply occupied staging result = %+v", result)
 	}
 	if work := request.Work.(*oracleWorkControl); work.stopCalls != 0 || work.drainCalls != 0 {
@@ -291,7 +291,7 @@ func TestApplyCleansEveryStageOperationFailure(t *testing.T) {
 			}
 			if result.Outcome != "staging-failed" || result.State != "artifact-verified" || result.Generation != request.generation ||
 				result.CurrentDigest != recoveryOracleDecodeHex(recoveryOraclePreviousDigestHex) || result.RollbackDigest != [32]byte{} ||
-				result.StagingPresent || result.SafeNotice != "update staging failed" || result.CustodyNotice != recoveryOracleCustodyNotice {
+				result.StagingPresent || result.SafeNotice != "update staging failed" || result.EvidenceNotice != recoveryOracleEvidenceNotice {
 				t.Fatalf("Apply %s result = %+v", row.name, result)
 			}
 			if work := request.Work.(*oracleWorkControl); work.stopCalls != 0 || work.drainCalls != 0 {
@@ -317,7 +317,7 @@ func TestApplyCleansStageParentAcknowledgementFailure(t *testing.T) {
 	}
 	if result.Outcome != "staging-failed" || result.State != "artifact-verified" || result.Generation != request.generation ||
 		result.CurrentDigest != recoveryOracleDecodeHex(recoveryOraclePreviousDigestHex) || result.RollbackDigest != [32]byte{} ||
-		result.StagingPresent || result.SafeNotice != "update staging failed" || result.CustodyNotice != recoveryOracleCustodyNotice {
+		result.StagingPresent || result.SafeNotice != "update staging failed" || result.EvidenceNotice != recoveryOracleEvidenceNotice {
 		t.Fatalf("Apply acknowledgement result = %+v", result)
 	}
 	if work := request.Work.(*oracleWorkControl); work.stopCalls != 0 || work.drainCalls != 0 {

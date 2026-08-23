@@ -44,9 +44,18 @@ cannot sign.
   composition work.
 - Update has no Vault/root input and its D0 test proves it does not mutate
   Vault or floor bytes.
+- The retained `custody_notice` key is not live custody state. It is the exact
+  H3 evidence text in the frozen `ardents-release-decision-v1`,
+  `ardents-update-result-v1`, and update-manifest V0 formats. Go projections
+  call it `EvidenceNotice`; the old byte name remains only as the C2 R-064
+  tracer writer/reader through M13. M13 must remove that writer and field
+  together, or retain the vector as C4 provenance; it must not add a v2
+  compatibility writer or treat the text as Vault status.
 - Windows/Ubuntu crash, permissions, and power-loss qualification remain open.
-- Revocation, full foreign-format disposition, and supported lifecycle/installer
-  work remain open.
+- Custody does not yet have an accepted Authority-lifecycle revocation source;
+  the present Broker Grant revocation is a distinct local-admission rule.
+  Inventing a root-revocation operation here would conflate those authorities.
+  Authority revocation and supported lifecycle/installer work remain open.
 
 ## Evidence
 

@@ -11,7 +11,7 @@ import (
 // planRollbackRetirement completes the one marker-bound retention transition.
 // It is deliberately independent of ordinary transaction planning: no new
 // candidate exists yet and a marker is never accepted beside a new journal.
-func planRollbackRetirement(facts inventoryResult, custody string) (recoveryPlan, error) {
+func planRollbackRetirement(facts inventoryResult, evidence string) (recoveryPlan, error) {
 	retirement, err := decodeRollbackRetirement(facts.RollbackRetirement.Bytes)
 	if err != nil {
 		return recoveryPlan{}, fmt.Errorf("%w: rollback retirement: %v", errPlanInvalid, err)
@@ -49,7 +49,7 @@ func planRollbackRetirement(facts inventoryResult, custody string) (recoveryPlan
 		return recoveryPlan{}, fmt.Errorf("%w: retirement transaction mismatch", errPlanInvalid)
 	}
 	plan := recoveryPlan{Row: "R-retire", Outcome: "recovered", State: "idle", Generation: previous.Transaction,
-		CurrentDigest: previous.Current.Artifact, SafeNotice: "update interrupted", CustodyNotice: custody}
+		CurrentDigest: previous.Current.Artifact, SafeNotice: "update interrupted", EvidenceNotice: evidence}
 	if len(facts.CurrentTemps) == 1 {
 		plan.Operations = append(plan.Operations, planOperation{Kind: opRemoveFile, Path: facts.CurrentTemps[0].Name})
 	}

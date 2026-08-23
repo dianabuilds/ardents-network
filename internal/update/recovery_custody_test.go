@@ -23,7 +23,7 @@ func TestRecoverR10UsesRestoredPredecessorCustody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Recover R10: %v", err)
 	}
-	if result.CustodyNotice != recoveryOracleCustodyNotice {
-		t.Fatalf("Recover R10 custody=%q, want restored predecessor custody %q", result.CustodyNotice, recoveryOracleCustodyNotice)
+	if result.EvidenceNotice != recoveryOracleEvidenceNotice {
+		t.Fatalf("Recover R10 custody=%q, want restored predecessor custody %q", result.EvidenceNotice, recoveryOracleEvidenceNotice)
 	}
 }

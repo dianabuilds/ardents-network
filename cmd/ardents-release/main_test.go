@@ -103,7 +103,7 @@ func TestRenderedUpdateResultIsExact(t *testing.T) {
 	rendered, err := renderUpdateResult(update.Result{
 		Outcome: "committed", State: "committed", Generation: 1,
 		CurrentDigest: current, RollbackDigest: rollback,
-		SafeNotice: "update committed", CustodyNotice: "bounded custody notice",
+		SafeNotice: "update committed", EvidenceNotice: "bounded custody notice",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -330,6 +330,6 @@ func synthesizedDecision() release.Decision {
 		AttestationPolicy: "two-builder", Qualification: "qualified", BuildState: "current", ProtocolPhase: "required",
 		BuildSafety: release.Outcome("release-accepted"), Protocol: release.Outcome("release-accepted"),
 		RootVersion: 1, Notice: "release is accepted by every state machine",
-		CustodyNotice: "H3 project-controlled custody limitation",
+		EvidenceNotice: "H3 project-controlled custody limitation",
 	}
 }

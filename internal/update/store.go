@@ -147,7 +147,7 @@ func (store *ownedStore) inspect(generation uint64, allowSuccessor bool) (rootIn
 	}
 	inspection.selection = selection
 	inspection.currentRaw = append([]byte(nil), currentRaw...)
-	inspection.currentCustody = currentView.CustodyNotice
+	inspection.currentEvidence = currentView.EvidenceNotice
 	inspection.predecessor = predecessorInspection{CurrentRecordDigest: sha256.Sum256(currentRaw),
 		Current: selection.Current, Rollback: selection.Rollback,
 		ArtifactObservation: currentArtifact, ManifestObservation: currentManifest}

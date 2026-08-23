@@ -105,7 +105,7 @@ func TestRecoverAcceptsArtifactAboveOneMiB(t *testing.T) {
 		BuildSafety: "release-accepted", Protocol: "release-accepted", ReferenceTime: "2030-01-02T03:04:05Z",
 		BuildSafetyNoNewWorkAfter: "2030-02-01T03:04:05Z", BuildSafetyTerminateAfter: "2030-07-01T03:04:05Z",
 		SchemaPlan: "no-op-v1", SafeNotice: "update committed",
-		CustodyNotice: vector.Expected.CommandResult.CustodyNotice, ReleaseFloors: vector.Expected.ReleaseFloors,
+		EvidenceNotice: vector.Expected.CommandResult.EvidenceNotice, ReleaseFloors: vector.Expected.ReleaseFloors,
 	}, v0OracleStoredAuthorization{Classification: "release-accepted", Platform: "windows-amd64", Architecture: "amd64",
 		Environment: "h3-test", Network: "ardents-h3-test-1", SchemaCompatible: true, AboveLocalFloors: true}, artifact)
 	staging := filepath.Join(root, "staging", "1")

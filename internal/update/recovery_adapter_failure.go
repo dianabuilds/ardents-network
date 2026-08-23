@@ -11,7 +11,7 @@ import (
 // immediate abort. A success-coded prefix remains interrupted because recovery
 // cannot infer the external work-control state.
 func planFailedAdapterAbort(facts inventoryResult, transaction uint64, state transactionState,
-	predecessorDigest [32]byte, custodyNotice string) (recoveryPlan, error) {
+	predecessorDigest [32]byte, evidenceNotice string) (recoveryPlan, error) {
 	resultState := ""
 	switch state {
 	case stateStopNewWork:
@@ -27,7 +27,7 @@ func planFailedAdapterAbort(facts inventoryResult, transaction uint64, state tra
 	}
 	plan := recoveryPlan{Row: "S7.2-04-adapter-failure", Outcome: "drain-expired", State: resultState,
 		Generation: transaction, CurrentDigest: predecessorDigest, StagingPresent: false,
-		SafeNotice: "update drain expired", CustodyNotice: custodyNotice}
+		SafeNotice: "update drain expired", EvidenceNotice: evidenceNotice}
 	plan.Operations = append(plan.Operations, stagingRemovalOperations(staging)...)
 	transactionName := strconv.FormatUint(transaction, 10)
 	for entryState := stateReleaseAccepted; entryState <= state; entryState++ {
@@ -50,14 +50,14 @@ func planFailedAdapterAbort(facts inventoryResult, transaction uint64, state tra
 }
 
 func planActivationUnavailableAbort(facts inventoryResult, transaction uint64,
-	predecessorDigest [32]byte, custodyNotice string) (recoveryPlan, error) {
+	predecessorDigest [32]byte, evidenceNotice string) (recoveryPlan, error) {
 	staging := stagingFacts(facts.StagingDirs, transaction, false)
 	if staging == nil {
 		return recoveryPlan{}, fmt.Errorf("%w: unavailable activation staging absent", errPlanInvalid)
 	}
 	plan := recoveryPlan{Row: "S7.2-04-activation-unavailable", Outcome: "activation-unsupported", State: "draining",
 		Generation: transaction, CurrentDigest: predecessorDigest, StagingPresent: false,
-		SafeNotice: "update storage unsupported", CustodyNotice: custodyNotice}
+		SafeNotice: "update storage unsupported", EvidenceNotice: evidenceNotice}
 	plan.Operations = append(plan.Operations, stagingRemovalOperations(staging)...)
 	transactionName := strconv.FormatUint(transaction, 10)
 	for entryState := stateReleaseAccepted; entryState <= stateActivated; entryState++ {

@@ -73,8 +73,8 @@ func TestRecoverBusyDoesNotMutate(t *testing.T) {
 	if result.StagingPresent {
 		t.Fatal("Recover busy staging must be false")
 	}
-	if result.CustodyNotice != "" {
-		t.Fatalf("Recover busy custody=%q, want empty", result.CustodyNotice)
+	if result.EvidenceNotice != "" {
+		t.Fatalf("Recover busy custody=%q, want empty", result.EvidenceNotice)
 	}
 	if result.SafeNotice != "update transaction busy" {
 		t.Fatalf("Recover busy safe notice=%q, want update transaction busy", result.SafeNotice)

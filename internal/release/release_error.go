@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const h3CustodyNotice = "H3 threshold identities and both rebuild records are project-controlled; no independent custody or builder claim is made"
+const h3EvidenceNotice = "H3 threshold identities and both rebuild records are project-controlled; no independent custody or builder claim is made"
 
 func detailInvalidMessage(err error) string {
 	if err == nil {
@@ -36,5 +36,5 @@ func reject(outcome Outcome, notice string, cause error) Decision {
 	if cause != nil {
 		notice = fmt.Sprintf("%s: %v", notice, cause)
 	}
-	return Decision{Outcome: outcome, Notice: notice, CustodyNotice: h3CustodyNotice}
+	return Decision{Outcome: outcome, Notice: notice, EvidenceNotice: h3EvidenceNotice}
 }

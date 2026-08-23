@@ -98,5 +98,5 @@ type Result struct {
 	RollbackDigest [32]byte
 	StagingPresent bool
 	SafeNotice     string
-	CustodyNotice  string
+	EvidenceNotice string
 }

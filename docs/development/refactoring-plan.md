@@ -435,8 +435,7 @@ wrong-Authority witnesses leave the record locked and export-only. An active
 Name record can sign one exact sealed Namespace transition request after
 checking its local floor, the hash commitment of its Ed25519 public key, and
 the request's exact predecessor generation/revision; the callback cannot return
-an unrelated or stale proof, and root material never leaves custody. The
-complete derived-successor control caller remains pending.
+an unrelated or stale proof, and root material never leaves custody.
 The same owner now writes a canonical non-decreasing local floor only after a
 new encrypted active record is published, reopened byte-for-byte, and admitted
 again as a canonical envelope; equal/lower records fail before secret input and
@@ -444,13 +443,11 @@ a superseded record fails active verification. The missing piece is
 the real authenticated Network/Namespace successor source, not a caller-supplied
 claim of freshness.
 
-Namespace transition signing now has the same sealed-request shape as Record
+Namespace transition signing has the same sealed-request shape as Record
 signing: `TransitionSigningRequest` contains only Namespace's exact canonical
 predecessor generation/revision, operation transcript, and expected Authority
 key, and refuses a substituted signature or a request for an older active
-record. The production control still lacks the complete
-derived-successor-to-custody caller; this deliberately prepares that path
-without adding a raw-key or generic-signing escape hatch.
+record.
 
 The durable Authority now has that inner caller: `Prepare` accepts only a
 canonical unsigned existing-Name Intent, derives its exact transition and
@@ -485,6 +482,16 @@ bytes on any ordinary publication or final test-restore failure. A failed
 rollback leaves the encrypted backup for explicit repair rather than reporting
 a false success. Crash/interruption recovery and platform durability
 qualification remain separate M12 obligations.
+
+The old `custody_notice` bytes now have an explicit C2 disposition. They are
+the fixed H3 evidence limitation in the retained V0 release-result,
+update-result, and update-manifest formats, not a Custody status channel.
+`release.Decision` and `update.Result` project them as `EvidenceNotice`; only
+the R-064 `cmd/ardents-release` tracer renders the old key. M13 removes the
+writer and field together when the named C2 observer expires, or preserves the
+frozen vector as C4 provenance. No second compatibility writer is introduced.
+Authority-lifecycle revocation still requires an accepted source; Broker Grant
+revocation is intentionally a separate local-admission transition.
 
 ## Dependency and retirement rules
 

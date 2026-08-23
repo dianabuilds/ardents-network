@@ -105,7 +105,7 @@ func evaluate(ctx context.Context, in Inputs, store floorPersistence) Decision {
 		targetDecision.Floors = successor
 		targetDecision.RootVersion = successor.RootVersion
 		targetDecision.Notice = notice
-		targetDecision.CustodyNotice = h3CustodyNotice
+		targetDecision.EvidenceNotice = h3EvidenceNotice
 		if combined == outcomeReleaseAccepted || combined == outcomeNoUpdate {
 			targetDecision = authorize(targetDecision)
 		}
@@ -116,7 +116,7 @@ func evaluate(ctx context.Context, in Inputs, store floorPersistence) Decision {
 		targetDecision.Protocol = protocol.classification
 		targetDecision.Floors = existing
 		targetDecision.Notice = formatProtocolError(combined, notice)
-		targetDecision.CustodyNotice = h3CustodyNotice
+		targetDecision.EvidenceNotice = h3EvidenceNotice
 		return targetDecision
 	}
 }

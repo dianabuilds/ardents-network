@@ -54,14 +54,14 @@ func recoverWithOperations(ctx context.Context, root string, ops cleanupOps) (Re
 	if recordErr != nil {
 		return invalidRecoverResult(0), errors.Join(recordErr, releaseError(lock))
 	}
-	custody, custodyErr := recoveryCustodyFor(&inventory)
-	if custodyErr != nil {
-		return invalidRecoverResult(0), errors.Join(custodyErr, releaseError(lock))
+	evidence, evidenceErr := recoveryEvidenceFor(&inventory)
+	if evidenceErr != nil {
+		return invalidRecoverResult(0), errors.Join(evidenceErr, releaseError(lock))
 	}
 	var plan recoveryPlan
 	var planErr error
 	if inventory.InterruptedSelection == 0 {
-		plan, planErr = planRecovery(inventory, journalValidation{}, records, custody)
+		plan, planErr = planRecovery(inventory, journalValidation{}, records, evidence)
 	} else {
 		raws := inventory.journalLookup(inventory.InterruptedSelection)
 		candidateArtifact, candidateManifest := candidateCommitments(inventory, inventory.InterruptedSelection)
@@ -69,7 +69,7 @@ func recoverWithOperations(ctx context.Context, root string, ops cleanupOps) (Re
 		if jErr != nil {
 			return invalidRecoverResult(0), errors.Join(jErr, releaseError(lock))
 		}
-		plan, planErr = planRecovery(inventory, journal, records, custody)
+		plan, planErr = planRecovery(inventory, journal, records, evidence)
 	}
 	if planErr != nil {
 		return invalidRecoverResult(0), errors.Join(planErr, releaseError(lock))
@@ -156,9 +156,9 @@ func Recover(ctx context.Context, root string) (Result, error) {
 	return recoverWithOperations(ctx, root, nativeCleanupOps())
 }
 
-// recoveryCustodyFor decodes the bounded current selection and returns
-// the custody notice from the manifest of the selected generation.
-func recoveryCustodyFor(facts *inventoryResult) (string, error) {
+// recoveryEvidenceFor decodes the bounded current selection and returns
+// the evidence notice from the manifest of the selected generation.
+func recoveryEvidenceFor(facts *inventoryResult) (string, error) {
 	if facts == nil || len(facts.Current.Bytes) == 0 {
 		return "", errInventoryInvalid
 	}
@@ -166,7 +166,7 @@ func recoveryCustodyFor(facts *inventoryResult) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return custodyNoticeForTuple(*facts, selection.Current)
+	return evidenceNoticeForTuple(*facts, selection.Current)
 }
 
 func candidateCommitments(facts inventoryResult, generation uint64) ([32]byte, [32]byte) {
@@ -193,7 +193,7 @@ func planToResult(plan recoveryPlan) Result {
 		RollbackDigest: plan.RollbackDigest,
 		StagingPresent: plan.StagingPresent,
 		SafeNotice:     plan.SafeNotice,
-		CustodyNotice:  plan.CustodyNotice,
+		EvidenceNotice: plan.EvidenceNotice,
 	}
 }
 

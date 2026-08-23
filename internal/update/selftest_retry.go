@@ -53,7 +53,7 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 		return request.SelfTest.Check(callCtx, identity)
 	}); callErr != nil {
 		if selfTestUnavailableOnly(callErr) {
-			return networkingUnverifiedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
+			return networkingUnverifiedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentEvidence), true,
 				errors.Join(callErr, store.release())
 		}
 		result, applyErr := applyFailure(store, request, "self-testing", false, callErr)
@@ -62,7 +62,7 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 	if rejoinErr := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
 		return rejoinRuntimeWork(callCtx, request.Work)
 	}); rejoinErr != nil {
-		return networkingUnverifiedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
+		return networkingUnverifiedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentEvidence), true,
 			errors.Join(rejoinErr, store.release())
 	}
 	if err := confirmAndCommitSchema(ctx, store, request, inspection); err != nil {
@@ -73,7 +73,7 @@ func resumeUnavailableSelfTest(ctx context.Context, store *ownedStore, inspectio
 		result, applyErr := applyFailure(store, request, "committed", false, err)
 		return result, true, applyErr
 	}
-	result := committedResult(request.generation, artifact, selection.Rollback.Artifact, "update committed", inspection.currentCustody)
+	result := committedResult(request.generation, artifact, selection.Rollback.Artifact, "update committed", inspection.currentEvidence)
 	return result, true, store.release()
 }
 
@@ -115,20 +115,20 @@ func resumeSuccessfulSelfTest(ctx context.Context, store *ownedStore, inspection
 		result, applyErr := applyFailure(store, request, "committed", false, err)
 		return result, true, applyErr
 	}
-	return committedResult(request.generation, artifact, selection.Rollback.Artifact, "update committed", inspection.currentCustody), true,
+	return committedResult(request.generation, artifact, selection.Rollback.Artifact, "update committed", inspection.currentEvidence), true,
 		store.release()
 }
 
-func networkingUnverifiedResult(generation uint64, current, rollback [32]byte, custody string) Result {
+func networkingUnverifiedResult(generation uint64, current, rollback [32]byte, evidence string) Result {
 	return Result{Outcome: "application-networking-unverified", State: "self-testing", Generation: generation,
 		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
-		SafeNotice: "update networking unverified", CustodyNotice: custody}
+		SafeNotice: "update networking unverified", EvidenceNotice: evidence}
 }
 
-func selfTestFailedResult(generation uint64, current, rollback [32]byte, custody string) Result {
+func selfTestFailedResult(generation uint64, current, rollback [32]byte, evidence string) Result {
 	return Result{Outcome: "self-test-failed", State: "rollback-pending", Generation: generation,
 		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
-		SafeNotice: "update self-test failed", CustodyNotice: custody}
+		SafeNotice: "update self-test failed", EvidenceNotice: evidence}
 }
 
 // resumeRollbackPending recognizes the durable pre-rollback state and never
@@ -165,7 +165,7 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 			if recordErr := trace.record(context.Background(), "12-repair-required", stateRepairRequired, adapterNotCalled); recordErr != nil {
 				return transactionInvalidResult(request.generation), true, errors.Join(rollbackErr, recordErr, store.release())
 			}
-			return rollbackRefusedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
+			return rollbackRefusedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentEvidence), true,
 				errors.Join(rollbackErr, errRollbackRefused, store.release())
 		}
 		trace := &tracer{store: store, request: request, start: time.Now(), artifact: artifact, manifest: manifest,
@@ -178,7 +178,7 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 			if recordErr != nil {
 				return transactionInvalidResult(request.generation), true, errors.Join(schemaErr, recordErr, store.release())
 			}
-			return repairRequiredResult(request.generation, selection.Rollback.Artifact, inspection.currentCustody), true,
+			return repairRequiredResult(request.generation, selection.Rollback.Artifact, inspection.currentEvidence), true,
 				errors.Join(schemaErr, errRepairRequired, store.release())
 		}
 		callErr := callBounded(context.Background(), trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
@@ -189,16 +189,16 @@ func resumeRollbackPending(store *ownedStore, inspection rootInspection, request
 			if recordErr != nil {
 				return transactionInvalidResult(request.generation), true, errors.Join(callErr, recordErr, store.release())
 			}
-			return repairRequiredResult(request.generation, selection.Rollback.Artifact, inspection.currentCustody), true,
+			return repairRequiredResult(request.generation, selection.Rollback.Artifact, inspection.currentEvidence), true,
 				errors.Join(callErr, errRepairRequired, store.release())
 		}
 		if recordErr := trace.record(context.Background(), "11-rolled-back", stateRolledBack, adapterSuccess); recordErr != nil {
 			return transactionInvalidResult(request.generation), true, errors.Join(recordErr, store.release())
 		}
-		return rolledBackResult(request.generation, selection.Rollback.Artifact, inspection.currentCustody), true,
+		return rolledBackResult(request.generation, selection.Rollback.Artifact, inspection.currentEvidence), true,
 			errors.Join(errRolledBack, store.release())
 	}
-	return selfTestFailedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentCustody), true,
+	return selfTestFailedResult(request.generation, artifact, selection.Rollback.Artifact, inspection.currentEvidence), true,
 		errors.Join(errRollbackPending, store.release())
 }
 
@@ -238,21 +238,21 @@ func validateRollbackDecision(store *ownedStore, request Request, selection curr
 	return nil
 }
 
-func rollbackRefusedResult(generation uint64, current, rollback [32]byte, custody string) Result {
+func rollbackRefusedResult(generation uint64, current, rollback [32]byte, evidence string) Result {
 	return Result{Outcome: "rollback-refused", State: "repair-required", Generation: generation,
 		CurrentDigest: current, RollbackDigest: rollback, StagingPresent: false,
-		SafeNotice: "update rollback refused", CustodyNotice: custody}
+		SafeNotice: "update rollback refused", EvidenceNotice: evidence}
 }
 
 var errRolledBack = errors.New("update rolled back")
 var errRepairRequired = errors.New("update repair required")
 
-func rolledBackResult(generation uint64, current [32]byte, custody string) Result {
+func rolledBackResult(generation uint64, current [32]byte, evidence string) Result {
 	return Result{Outcome: "rolled-back", State: "rolled-back", Generation: generation, CurrentDigest: current,
-		StagingPresent: false, SafeNotice: "update rolled back", CustodyNotice: custody}
+		StagingPresent: false, SafeNotice: "update rolled back", EvidenceNotice: evidence}
 }
 
-func repairRequiredResult(generation uint64, current [32]byte, custody string) Result {
+func repairRequiredResult(generation uint64, current [32]byte, evidence string) Result {
 	return Result{Outcome: "repair-required", State: "repair-required", Generation: generation, CurrentDigest: current,
-		StagingPresent: false, SafeNotice: "update repair required", CustodyNotice: custody}
+		StagingPresent: false, SafeNotice: "update repair required", EvidenceNotice: evidence}
 }

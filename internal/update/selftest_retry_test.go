@@ -38,7 +38,7 @@ func oracleRollbackDecision(t *testing.T, vector v0OracleVector) release.Decisio
 			TimestampVersion: floors.TimestampVersion, TimestampDigest: oracleDecodeDigest(t, floors.TimestampSHA256)[:],
 			SnapshotVersion: floors.SnapshotVersion, SnapshotDigest: oracleDecodeDigest(t, floors.SnapshotSHA256)[:],
 			TargetsVersion: floors.TargetsVersion, TargetsDigest: oracleDecodeDigest(t, floors.TargetsSHA256)[:]},
-		CustodyNotice: manifest.CustodyNotice}
+		EvidenceNotice: manifest.EvidenceNotice}
 }
 
 func (test *retrySelfTest) Check(context.Context, CandidateIdentity) error {
@@ -163,7 +163,7 @@ func TestSelfTestUnavailableRetry(t *testing.T) {
 	if !errors.Is(firstErr, ErrSelfTestUnavailable) || first.Outcome != "application-networking-unverified" ||
 		first.State != "self-testing" || first.Generation != 1 || first.CurrentDigest != *oracleDecodeDigest(t, vector.Candidate.SHA256) ||
 		first.RollbackDigest != *oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256) || first.StagingPresent ||
-		first.SafeNotice != "update networking unverified" || first.CustodyNotice != vector.Expected.CommandResult.CustodyNotice {
+		first.SafeNotice != "update networking unverified" || first.EvidenceNotice != vector.Expected.CommandResult.EvidenceNotice {
 		t.Fatalf("first Apply = %+v, %v", first, firstErr)
 	}
 	if work.stopCalls != 1 || work.drainCalls != 1 || selfTest.calls != 1 {

@@ -16,6 +16,6 @@ func rejoinFailure(ctx context.Context, trace *tracer, store *ownedStore, reques
 	if pendingErr != nil {
 		return applyFailure(store, request, "self-testing", false, errors.Join(cause, pendingErr))
 	}
-	result := selfTestFailedResult(request.generation, artifact, inspection.selection.Current.Artifact, inspection.currentCustody)
+	result := selfTestFailedResult(request.generation, artifact, inspection.selection.Current.Artifact, inspection.currentEvidence)
 	return result, errors.Join(cause, store.release())
 }

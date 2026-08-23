@@ -32,7 +32,7 @@ func renderDecision(decision release.Decision) ([]byte, error) {
 		floors.TimestampVersion, quoter.value(hex.EncodeToString(floors.TimestampDigest)),
 		floors.SnapshotVersion, quoter.value(hex.EncodeToString(floors.SnapshotDigest)),
 		floors.TargetsVersion, quoter.value(hex.EncodeToString(floors.TargetsDigest)),
-		quoter.value(decision.Notice), quoter.value(decision.CustodyNotice))
+		quoter.value(decision.Notice), quoter.value(decision.EvidenceNotice))
 	return []byte(rendered), quoter.err
 }
 func renderUpdateResult(result update.Result) ([]byte, error) {
@@ -40,6 +40,6 @@ func renderUpdateResult(result update.Result) ([]byte, error) {
 	format := `{"schema":"ardents-update-result-v1","outcome":%s,"state":%s,"transaction_generation":%d,"current_sha256":%s,"rollback_sha256":%s,"staging_present":%t,"safe_notice":%s,"custody_notice":%s}` + "\n"
 	rendered := fmt.Sprintf(format, quoter.value(result.Outcome), quoter.value(result.State), result.Generation,
 		quoter.value(hex.EncodeToString(result.CurrentDigest[:])), quoter.value(hex.EncodeToString(result.RollbackDigest[:])),
-		result.StagingPresent, quoter.value(result.SafeNotice), quoter.value(result.CustodyNotice))
+		result.StagingPresent, quoter.value(result.SafeNotice), quoter.value(result.EvidenceNotice))
 	return []byte(rendered), quoter.err
 }
