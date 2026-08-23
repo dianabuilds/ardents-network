@@ -3,13 +3,17 @@ package custody
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 )
 
 // Execute performs exactly one bounded custody operation. It never retains a
@@ -32,6 +36,8 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return vault.exportBundle(ctx, operation, secrets)
 	case OperationRestoreRecoveryBundle:
 		return vault.restoreBundle(ctx, operation, secrets)
+	case OperationSignNamespaceTransition:
+		return vault.signNamespaceTransition(ctx, operation, secrets)
 	case OperationInspectEnvelope:
 		return vault.inspect(operation)
 	default:
@@ -40,7 +46,7 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 }
 
 func (vault *Vault) createRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.RecordID != "" || operation.Path != "" || operation.Expected != (AuthorityBinding{}) {
+	if secrets == nil || operation.RecordID != "" || operation.Path != "" || operation.Expected != (AuthorityBinding{}) || operation.Transition != nil {
 		return Receipt{}, ErrInvalid
 	}
 	if err := vault.prepareFloor(operation.Authority); err != nil {
@@ -87,7 +93,7 @@ func (vault *Vault) createRecord(ctx context.Context, operation Operation, secre
 }
 
 func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.Path != "" || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
+	if secrets == nil || operation.Path != "" || operation.Transition != nil || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
 		return Receipt{}, ErrInvalid
 	}
 	raw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
@@ -121,8 +127,91 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	return Receipt{Operation: OperationVerifyVaultRecord, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state), State: RecordActive}, nil
 }
 
+func (vault *Vault) signNamespaceTransition(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
+	if secrets == nil || operation.Transition == nil || operation.Path != "" ||
+		!isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
+		return Receipt{}, ErrInvalid
+	}
+	raw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
+	if err != nil {
+		return Receipt{}, fmt.Errorf("read vault record: %w", err)
+	}
+	password, err := readPassword(ctx, secrets, SecretPromptVaultUnlock)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(password)
+	purpose, plaintext, info, err := openEnvelope(raw, password)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(plaintext)
+	if purpose != PurposeVault {
+		return Receipt{}, ErrInvalid
+	}
+	state, err := decodeAuthorityState(plaintext, PurposeVault)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer zero(state.RootMaterial)
+	if state.Binding != operation.Expected || state.Binding.Kind != AuthorityName {
+		return Receipt{}, ErrInvalid
+	}
+	if err := vault.matchesFloor(state); err != nil {
+		return Receipt{}, err
+	}
+	private := ed25519.PrivateKey(append([]byte(nil), state.RootMaterial...))
+	defer zero(private)
+	if len(private) != ed25519.PrivateKeySize {
+		return Receipt{}, ErrInvalid
+	}
+	public, ok := private.Public().(ed25519.PublicKey)
+	if !ok || sha256.Sum256(public) != state.Binding.IDCommitment {
+		return Receipt{}, ErrInvalid
+	}
+	signer := custodyTransitionSigner{private: private}
+	proof, err := operation.Transition(&signer)
+	defer signer.erase()
+	if err != nil {
+		return Receipt{}, err
+	}
+	if !signer.used || subtle.ConstantTimeCompare(proof, signer.signature) != 1 {
+		return Receipt{}, ErrInvalid
+	}
+	return Receipt{Operation: OperationSignNamespaceTransition, RecordID: operation.RecordID,
+		Envelope: info, Authority: authorityReceipt(state), State: RecordActive, Proof: append([]byte(nil), proof...)}, nil
+}
+
+type custodyTransitionSigner struct {
+	private   ed25519.PrivateKey
+	signature []byte
+	used      bool
+}
+
+func (signer *custodyTransitionSigner) Sign(request authority.TransitionSigningRequest) ([]byte, error) {
+	if signer == nil || signer.used || len(signer.private) != ed25519.PrivateKeySize {
+		return nil, ErrInvalid
+	}
+	signer.used = true
+	public, ok := signer.private.Public().(ed25519.PublicKey)
+	if !ok || request.Authority() != [ed25519.PublicKeySize]byte(public) {
+		return nil, ErrInvalid
+	}
+	signer.signature = ed25519.Sign(signer.private, request.Transcript())
+	return append([]byte(nil), signer.signature...), nil
+}
+
+func (signer *custodyTransitionSigner) erase() {
+	if signer == nil {
+		return
+	}
+	zero(signer.private)
+	zero(signer.signature)
+	signer.private, signer.signature = nil, nil
+}
+
 func (vault *Vault) inspect(operation Operation) (Receipt, error) {
-	if operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Expected != (AuthorityBinding{}) || operation.Path == "" {
+	if operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Expected != (AuthorityBinding{}) || operation.Path == "" || operation.Transition != nil {
 		return Receipt{}, ErrInvalid
 	}
 	raw, err := readEnvelopeFile(operation.Path)

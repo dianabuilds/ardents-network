@@ -425,7 +425,11 @@ qualification remain required before Release and Update can lose their custody
 compatibility text. A restored Bundle now enters a separately encrypted
 `authority-locked` quarantine record in a previously empty Vault and is
 export-only; it cannot pass the active-record verification path. Strictly
-higher authenticated reconciliation and any signing activation remain absent.
+higher authenticated reconciliation and activation remain absent. An active
+Name record can sign one exact sealed Namespace transition request after
+checking its local floor and the hash commitment of its Ed25519 public key;
+the callback cannot return an unrelated or stale proof, and root material never
+leaves custody. The complete derived-successor control caller remains pending.
 The same owner now writes a canonical non-decreasing local floor only after a
 new encrypted active record is published, reopened byte-for-byte, and admitted
 again as a canonical envelope; equal/lower records fail before secret input and

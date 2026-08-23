@@ -7,7 +7,7 @@ import (
 )
 
 func (vault *Vault) restoreBundle(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Path == "" {
+	if secrets == nil || operation.Transition != nil || operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Path == "" {
 		return Receipt{}, ErrInvalid
 	}
 	empty, err := vault.isEmpty()

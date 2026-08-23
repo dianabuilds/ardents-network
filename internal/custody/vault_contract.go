@@ -3,6 +3,8 @@ package custody
 import (
 	"context"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 )
 
 const (
@@ -14,6 +16,9 @@ const (
 	OperationExportRecoveryBundle OperationKind = "export-recovery-bundle"
 	// OperationRestoreRecoveryBundle imports a Bundle only as an authority-locked record.
 	OperationRestoreRecoveryBundle OperationKind = "restore-recovery-bundle"
+	// OperationSignNamespaceTransition signs one sealed Namespace transition with
+	// an active Name Authority record without releasing its root material.
+	OperationSignNamespaceTransition OperationKind = "sign-namespace-transition"
 	// OperationInspectEnvelope validates only an envelope's public canonical header.
 	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
@@ -44,12 +49,18 @@ type OperationKind string
 // for export. Fields unrelated to the selected operation must retain their zero
 // value.
 type Operation struct {
-	Kind      OperationKind
-	Authority AuthorityState
-	RecordID  string
-	Expected  AuthorityBinding
-	Path      string
+	Kind       OperationKind
+	Authority  AuthorityState
+	RecordID   string
+	Expected   AuthorityBinding
+	Path       string
+	Transition NamespaceTransition
 }
+
+// NamespaceTransition invokes one sealed Namespace signer and returns its
+// public transition proof. It may not manufacture a signing request: Namespace
+// owns the exact request construction.
+type NamespaceTransition func(authority.TransitionSigner) ([]byte, error)
 
 // SecretInput obtains one explicit password entry for the custody boundary.
 // Implementations must not source it from argv, environment, configuration, or
@@ -87,6 +98,7 @@ type Receipt struct {
 	Authority    AuthorityReceipt
 	TestRestored bool
 	State        RecordState
+	Proof        []byte
 }
 
 // RecordState is the non-secret local lifecycle classification of a protected
