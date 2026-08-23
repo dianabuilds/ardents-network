@@ -1,6 +1,7 @@
 package custody
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -188,6 +189,28 @@ func (vault *Vault) writeRecordIn(directory, recordID string, body []byte) error
 	}
 	if err := os.Rename(temporary, path); err != nil {
 		return fmt.Errorf("publish vault record: %w", err)
+	}
+	if err := verifyPersistedEnvelope(path, body); err != nil {
+		_ = os.Remove(path)
+		return err
+	}
+	return nil
+}
+
+// verifyPersistedEnvelope confirms that the completed encrypted bytes were
+// published unchanged and still meet the canonical envelope profile. It does
+// not run another KDF: one custody operation has one explicit password attempt.
+func verifyPersistedEnvelope(path string, expected []byte) error {
+	persisted, err := readEnvelopeFile(path)
+	if err != nil {
+		return fmt.Errorf("reopen encrypted vault record: %w", err)
+	}
+	defer zero(persisted)
+	if !bytes.Equal(persisted, expected) {
+		return ErrInvalid
+	}
+	if _, err := inspectEnvelope(persisted); err != nil {
+		return err
 	}
 	return nil
 }

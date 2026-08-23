@@ -294,6 +294,21 @@ func TestVaultReopenRejectsActiveRecordWhenAuthorityFloorIsCorrupt(t *testing.T)
 	}
 }
 
+func TestVaultRejectsUnverifiablePersistedRecordAndRemovesIt(t *testing.T) {
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	recordID := "00112233445566778899aabbccddeeff"
+	if err := vault.writeRecord(recordID, []byte("not a canonical envelope")); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("write invalid persisted record = %v, want invalid", err)
+	}
+	if _, err := os.Stat(filepath.Join(vault.records, "record-"+recordID+".json")); !os.IsNotExist(err) {
+		t.Fatalf("invalid persisted record remains after verification failure: %v", err)
+	}
+}
+
 type sequenceSecrets struct {
 	values        [][]byte
 	confirmations []bool
