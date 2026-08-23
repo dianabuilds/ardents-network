@@ -108,7 +108,17 @@ func (vault *Vault) writeFloors(floors []authorityFloor) error {
 		return err
 	}
 	defer zero(raw)
-	return writeAtomicPrivate(vault.floors, raw)
+	if err := writeAtomicPrivate(vault.floors, raw); err != nil {
+		return err
+	}
+	persisted, err := vault.readFloors()
+	if err != nil {
+		return err
+	}
+	if !equalFloors(persisted, floors) {
+		return ErrInvalid
+	}
+	return nil
 }
 
 func floorFromState(state AuthorityState) authorityFloor {
@@ -184,6 +194,21 @@ func equalWatermarks(left, right []Watermark) bool {
 	}
 	for index := range left {
 		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalFloors(left, right []authorityFloor) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index].Environment != right[index].Environment || left[index].Network != right[index].Network ||
+			left[index].Root != right[index].Root || left[index].Kind != right[index].Kind ||
+			left[index].IDCommitment != right[index].IDCommitment || left[index].Generation != right[index].Generation ||
+			left[index].Revision != right[index].Revision || !equalWatermarks(left[index].Watermarks, right[index].Watermarks) {
 			return false
 		}
 	}

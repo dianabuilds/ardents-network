@@ -309,6 +309,25 @@ func TestVaultRejectsUnverifiablePersistedRecordAndRemovesIt(t *testing.T) {
 	}
 }
 
+func TestVaultReopensExactAuthorityFloorAfterAtomicPublication(t *testing.T) {
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	expected := []authorityFloor{floorFromState(testAuthorityState())}
+	if err := vault.writeFloors(expected); err != nil {
+		t.Fatalf("write floors: %v", err)
+	}
+	actual, err := vault.readFloors()
+	if err != nil {
+		t.Fatalf("reopen floors: %v", err)
+	}
+	if !equalFloors(actual, expected) {
+		t.Fatalf("persisted floors = %#v, want %#v", actual, expected)
+	}
+}
+
 type sequenceSecrets struct {
 	values        [][]byte
 	confirmations []bool
