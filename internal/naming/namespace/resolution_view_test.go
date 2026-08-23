@@ -4,13 +4,15 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 )
 
 func TestResolutionViewsBindGatewayAdmissionAndHideLifecycleRecord(t *testing.T) {
 	t.Parallel()
 	network := [32]byte{15}
 	policy, signers := materializationPolicy("resolution-views", network)
-	store, err := namespace.Open(t.TempDir(), policy)
+	store, err := epoch.Open(t.TempDir(), policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,14 +22,14 @@ func TestResolutionViewsBindGatewayAdmissionAndHideLifecycleRecord(t *testing.T)
 		thresholdAttester(signers[:2])); err != nil {
 		t.Fatal(err)
 	}
-	admission, err := namespace.NewAdmission([32]byte{2}, network, epoch.Number, [32]byte{3})
+	gate, err := admission.NewAdmission([32]byte{2}, network, epoch.Number, [32]byte{3})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := namespace.OpenResolutionGateway(store, epoch.Number+1, epoch.Digest, admission); err == nil {
+	if _, err := namespace.OpenResolutionGateway(store, epoch.Number+1, epoch.Digest, gate); err == nil {
 		t.Fatal("Gateway view accepted an admission gate from another Epoch")
 	}
-	gateway, err := namespace.OpenResolutionGateway(store, epoch.Number, epoch.Digest, admission)
+	gateway, err := namespace.OpenResolutionGateway(store, epoch.Number, epoch.Digest, gate)
 	if err != nil || !gateway.AcceptsGateway([32]byte{2}) || gateway.AcceptsGateway([32]byte{4}) {
 		t.Fatalf("Gateway view=%v accepted configured Node=%v foreign Node=%v", err,
 			gateway != nil && gateway.AcceptsGateway([32]byte{2}), gateway != nil && gateway.AcceptsGateway([32]byte{4}))
