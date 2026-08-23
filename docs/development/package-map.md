@@ -6,9 +6,8 @@ change: name the responsibility first, add the real Implementation and tests,
 then update this table in the same change. The normative growth and dependency
 rules are in [repository-layout.md](repository-layout.md).
 
-R-091 retired the closed laboratory namespace. Historical laboratory receipts
-remain in their research records; no current package may import or start a lab
-Module.
+R-091 retired the closed laboratory namespace. Its provenance is retained in
+Git history; no current package may import or start a lab Module.
 
 | Directory | Go declaration | Responsibility | May import |
 |---|---|---|---|

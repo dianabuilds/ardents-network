@@ -38,6 +38,7 @@ specification.
 - [Release update and authority custody](../technical/release-update-custody.md)
 - [Endpoint and Service runtime](../technical/endpoint-service-runtime.md)
 - [Network State, Entry, Route, and Node](../technical/network-route-node.md)
+- [Current command reference](../reference/commands.md)
 
 ## Historical provenance
 

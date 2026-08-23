@@ -72,7 +72,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		ViewLength     uint32 `json:"view_length"`
 		RejectedLength uint32 `json:"rejected_length"`
 	}{
-		"ardents-h3-state-event-v1", 1, "generation-accepted",
+		"ardents-state-event-v1", 1, "generation-accepted",
 		snapshot.Generation, snapshot.Epoch, snapshot.ViewLength, snapshot.RejectedLength,
 	})
 }

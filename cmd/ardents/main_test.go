@@ -41,6 +41,7 @@ func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
 		t.Fatalf("run accept-offline: %v", err)
 	}
 	var result struct {
+		Schema     string `json:"schema"`
 		Generation string `json:"generation"`
 		Epoch      uint64 `json:"epoch"`
 		ViewLength uint32 `json:"view_length"`
@@ -48,7 +49,7 @@ func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatalf("decode output: %v", err)
 	}
-	if result.Generation != "243fba444fe71948f6cd4a253552301192857a156c7eb6359eed604c2d2cda4b" || result.Epoch != 1 || result.ViewLength != 2 {
+	if result.Schema != "ardents-state-event-v1" || result.Generation != "243fba444fe71948f6cd4a253552301192857a156c7eb6359eed604c2d2cda4b" || result.Epoch != 1 || result.ViewLength != 2 {
 		t.Fatalf("unexpected command result: %+v", result)
 	}
 	wantEvent, err := os.ReadFile(filepath.Join(base, "event.jsonl"))

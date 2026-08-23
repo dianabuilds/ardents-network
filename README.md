@@ -43,6 +43,7 @@ generic local Broker does not provide a qualified isolation claim.
 - [Development documentation](docs/development/README.md) and the factual
   [package map](docs/development/package-map.md)
 - [Architecture decisions](docs/adr/README.md)
+- [Current command reference](docs/reference/commands.md)
 - [Active research queue](docs/research/questions.md)
 - [Contributor workflow](CONTRIBUTING.md)
 
