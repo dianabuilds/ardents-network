@@ -75,8 +75,8 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	resources("control-file", 1)
 	_, err = administrator.Write([]byte("published\n"))
 	return RuntimeResult{Class: publicationResult.Class, Reason: publicationResult.Reason,
-		Publication: publicationResult.Record, AuthenticatedTarget: publicationResult.AuthenticatedTarget,
-		Generation: publicationResult.Generation, IntroductionReceipt: publicationResult.IntroductionReceipt,
+		AuthenticatedTarget: publicationResult.AuthenticatedTarget,
+		Generation:          publicationResult.Generation, IntroductionReceipt: publicationResult.IntroductionReceipt,
 		IntroductionAcknowledgement: publicationResult.IntroductionAcknowledgement}, err
 }
 func publicationInputs(plan endpointPlan) (publication.Credential, ed25519.PrivateKey, error) {

@@ -81,7 +81,11 @@ Interface: Endpoint directly acquires a Publication lease, performs the
 role-local TLS carrier and exact-Instance exchange, and supplies the resulting
 opaque Attachment plus Application stream to `service/connection`. Broker
 remains only the Local Grant/receipt owner; Publication retains private
-Instance material and `service/connection` retains stream/recovery state.
+Instance material and `service/connection` retains stream/recovery state. The
+remaining connection result now retains only evidence with a current caller
+(terminal outcome, stream/recovery facts, broker receipt, and process-bound
+IPC/attachment counters); dead publication/session and sampled process-metric
+projection is deleted.
 
 **M11 progress, 2026-08-23.** `internal/node/probe` is deleted. Its
 authenticated role-probe TLS, framing, replay, listener capacity, pressure,

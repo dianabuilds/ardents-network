@@ -132,8 +132,6 @@ type InboundConnectionRequest struct {
 type RuntimeResult struct {
 	Class                       string   `json:"class"`
 	Reason                      string   `json:"reason"`
-	Session                     [32]byte `json:"session"`
-	Publication                 []byte   `json:"publication"`
 	AuthenticatedTarget         [32]byte `json:"authenticated_target"`
 	Generation                  uint64   `json:"generation"`
 	RouteGeneration             uint64   `json:"route_generation"`
@@ -147,22 +145,13 @@ type RuntimeResult struct {
 	IntroductionAcknowledgement []byte   `json:"introduction_acknowledgement,omitempty"`
 	PrincipalCommitment         [32]byte `json:"principal_commitment"`
 	SessionCommitment           [32]byte `json:"session_commitment"`
-	GrantSurface                string   `json:"grant_surface"`
 	SessionConsumed             bool     `json:"session_consumed"`
 	BrokerCommitment            [32]byte `json:"broker_commitment"`
 	GrantCommitment             [32]byte `json:"grant_commitment"`
 	SessionIssuedAt             int64    `json:"session_issued_at"`
 	SessionExpiresAt            int64    `json:"session_expires_at"`
-	MemoryHighWater             uint64   `json:"memory_high_water"`
-	CPUSeconds                  float64  `json:"cpu_seconds"`
-	OpenFilesHighWater          uint32   `json:"open_files_high_water"`
-	GoroutinesHighWater         uint32   `json:"goroutines_high_water"`
-	ActiveSessions              uint32   `json:"active_sessions"`
-	TimerHighWater              uint32   `json:"timer_high_water"`
 	QueueHighWater              uint32   `json:"queue_high_water"`
 	AcceptedIPCHighWater        uint32   `json:"accepted_ipc_high_water"`
-	ServiceConnectionsHighWater uint32   `json:"service_connections_high_water"`
-	ControlFilesHighWater       uint32   `json:"control_files_high_water"`
 	ApplicationIPCAccepts       uint32   `json:"application_ipc_accepts"`
 	RouteAttachmentsAccepted    uint32   `json:"route_attachments_accepted"`
 }
@@ -287,9 +276,8 @@ func (endpoint *endpoint) runOutbound(ctx context.Context, input connectionInput
 	if err := ctx.Err(); err != nil {
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
-	monitor := startResourceMonitor(endpoint.resources)
 	result, err := endpoint.connect(ctx, input)
-	endpoint.observe(&result, monitor.stop())
+	endpoint.observe(&result)
 	return result, err
 }
 
@@ -300,9 +288,8 @@ func (endpoint *endpoint) runInbound(ctx context.Context, input connectionInput)
 	if err := ctx.Err(); err != nil {
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
-	monitor := startResourceMonitor(endpoint.resources)
 	result, err := endpoint.accept(ctx, input)
-	endpoint.observe(&result, monitor.stop())
+	endpoint.observe(&result)
 	return result, err
 }
 

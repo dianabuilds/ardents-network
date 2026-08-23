@@ -22,7 +22,6 @@ func (endpoint *endpoint) consume(capability, principal [32]byte, surface string
 func projectReceipt(result *RuntimeResult, receipt broker.Receipt) {
 	result.PrincipalCommitment = receipt.Principal
 	result.SessionCommitment = receipt.Session
-	result.GrantSurface = string(receipt.Surface)
 	result.SessionConsumed = true
 	result.BrokerCommitment = receipt.Broker
 	result.GrantCommitment = receipt.Grant
