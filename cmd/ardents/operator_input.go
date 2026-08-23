@@ -81,19 +81,6 @@ func decodeOperatorAuthorities(encoded []string, maximum int) (map[[32]byte]ed25
 	return values, nil
 }
 
-func decodeOperatorDigests(encoded []string, maximum int) ([][32]byte, error) {
-	if len(encoded) == 0 || len(encoded) > maximum {
-		return nil, errors.New("digest count is invalid")
-	}
-	values := make([][32]byte, len(encoded))
-	for index, value := range encoded {
-		if err := decodeOperatorFixedHex(value, values[index][:]); err != nil {
-			return nil, err
-		}
-	}
-	return values, nil
-}
-
 func readOperatorKeyPair(certificatePath, keyPath string) (tls.Certificate, error) {
 	certificate, err := readOperatorInput(certificatePath, 64<<10)
 	if err != nil {

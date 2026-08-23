@@ -87,7 +87,7 @@ func TestNameRouteRejectsIncompleteCommand(t *testing.T) {
 func TestRootUsageListsRetainedRoutes(t *testing.T) {
 	t.Parallel()
 	err := run(t.Context(), nil, &bytes.Buffer{})
-	if err == nil || err.Error() != "usage: ardents <accept-offline|refresh-sources|endpoint|entry|name> ..." {
+	if err == nil || err.Error() != "usage: ardents <accept-offline|refresh-sources|endpoint|entry|name> arguments" {
 		t.Fatalf("root usage error = %v", err)
 	}
 }

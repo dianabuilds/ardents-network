@@ -3,14 +3,10 @@ package architecture
 import (
 	"bytes"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strings"
 	"testing"
 )
 
@@ -69,61 +65,6 @@ func readProjectFile(t *testing.T, root, relative string) []byte {
 
 func isBuildIgnored(data []byte) bool {
 	return bytes.HasPrefix(data, []byte("//go:build ignore\n"))
-}
-
-func assertPackageExports(t *testing.T, relativeDirectory string, wanted ...string) {
-	t.Helper()
-	directory := filepath.Join(repositoryRoot(t), filepath.FromSlash(relativeDirectory))
-	entries, err := os.ReadDir(directory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := make(map[string]bool)
-	files := token.NewFileSet()
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		file, err := parser.ParseFile(files, filepath.Join(directory, entry.Name()), nil, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, declaration := range file.Decls {
-			switch value := declaration.(type) {
-			case *ast.FuncDecl:
-				if ast.IsExported(value.Name.Name) {
-					got[value.Name.Name] = true
-				}
-			case *ast.GenDecl:
-				for _, specification := range value.Specs {
-					switch item := specification.(type) {
-					case *ast.TypeSpec:
-						if ast.IsExported(item.Name.Name) {
-							got[item.Name.Name] = true
-						}
-					case *ast.ValueSpec:
-						for _, name := range item.Names {
-							if ast.IsExported(name.Name) {
-								got[name.Name] = true
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	want := make(map[string]bool, len(wanted))
-	for _, name := range wanted {
-		want[name] = true
-	}
-	if len(got) != len(want) {
-		t.Fatalf("%s exported surface = %v, want exactly %v", relativeDirectory, got, want)
-	}
-	for name := range want {
-		if !got[name] {
-			t.Errorf("%s Interface is missing %s", relativeDirectory, name)
-		}
-	}
 }
 
 type fileInfoEntry struct{ os.FileInfo }
