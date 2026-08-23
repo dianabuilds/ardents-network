@@ -1,37 +1,15 @@
-# Stage 8 decision-authority register
+# Stage 8 remaining decision authorities
 
-Status: **S8.1 decision route, accepted with the preservation ledger.** This
-temporary register turns every S8.1 `Decide first` item that can constrain
-S8.3 into a named question, authority path, and stop condition. It does not
-select an algorithm, format, package, or dependency. The Product Owner's
-2026-08-22 `continue` disposition remains the product-scope authority.
+Status: **active temporary control.** All earlier Stage 8 decision routes have
+either been implemented within their accepted scope or promoted to their
+current ADR and technical owner. This register retains only decisions that can
+still authorize new Stage 8 work. It is deleted with the refactoring plan.
 
-For a consequential or hard-to-reverse outcome, the route is: a question in
-`docs/research/questions.md` (or a newly added one), a source-bound research
-record with alternatives and falsification criteria, then a Product Owner
-acceptance and a superseding ADR where the outcome creates technology, protocol,
-format, platform, or security lock-in. No Code/format mutation is the evidence
-that makes such a decision.
+| ID | Open decision | Required authority before implementation | Stop condition |
+|---|---|---|---|
+| DA-08 | Is a qualified Application isolation or supported operating profile in scope? | Product Owner scope, platform threat/Adapter design, representative evidence, and an ADR. | The `generic/unqualified` Broker is not a sandbox, process-host, Windows activation, or supported-host claim. |
+| DA-09 | Is a supported release/update/Custody lifecycle in scope beyond the technical tracer? | Product Owner scope and lifecycle design, with ADR-0015/ADR-0021 compatibility analysis. | Do not turn tracer behavior or current command receipts into installation, activation, repair, or supported Custody behavior. |
+| DA-11 | Does a newly discovered evidence or laboratory artifact have a reproduction or Qualification duty? | A named claim/source identity, retention condition, and Product Owner disposition. | Do not retain an unowned runner or delete an artifact that an accepted current claim still names. |
 
-| ID | Question that must be decided | Current source conflict/constraint | Required authority before S8.3 design freezes it | Stop condition |
-|---|---|---|---|---|
-| DA-01 | Does verified release-root preservation occur before or only after executable metadata is accepted? | **Closed:** the accepted DA-01 recovery boundary preserves the exact verified consecutive root archive before later metadata verification, preserves prior complete metadata floors on later rejection, and advances new metadata floors only with accepted metadata. | ADR-0015 supersession is unnecessary because DA-01 reconciles existing lifecycle semantics without selecting a format or technology. | M1 may design D06 against this recovery oracle; a later format/lifecycle change needs its own ADR analysis. |
-| DA-02 | What is the single Network State missing-current recovery rule? | F014 contradicted the accepted R-027/R-029 recovery interpretation; D01/W01 repairs had no safe meaning until reconciled. | **Closed:** DA-02 selects fail-closed recovery-required without automatic pointer reconstruction. ADR is unnecessary because it confirms the historical interpretation. | M3 may alter the recovery oracle, but not the pointer format or unrelated representation without DA-05. |
-| DA-03 | What signed-time/freshness boundary governs naming policy and recovery? | **Closed:** DA-03 selects one Gateway decision time with explicit Lease seconds and signed Policy/Recovery milliseconds. It rejects impossible exact Gateway equality without changing current bytes. | Any transcript, field-unit, or wire change reopens DA-07 and needs the applicable authority. | Do not change Name/Recovery transcript, state, or wire bytes outside DA-03's retained interpretation. |
-| DA-04 | What Namespace scale and update/query resource envelope is actually supported? | **Closed for M5 tracer only:** DA-04 retains a measured 127-record, one-writer local envelope with a 4,096-byte proof limit and eight concurrent local readers; it expressly makes no product capacity claim. | Any widening needs a new record with representative platform, adversarial, and restart evidence. | Do not carry forward the arbitrary 4,096-record cap or choose an index/cache as a refactor. |
-| DA-05 | Which Network/Namespace persistence and commitment representation is shared, if any? | F020/F021 expose cross-domain Store import and `network/epoch/merkle` placement without a selected shared foundation. | **Closed:** DA-05 selects domain-owned representations and Namespace-first prerequisite transfer. No ADR is required because no shared foundation, engine, or format is selected. | Before M3 deletion, remove Namespace's Network imports through the DA-05 prerequisite; do not introduce a generic shared package. |
-| DA-06 | Which H3 Route protocol/topology and transport representation survives? | **Closed:** R-076/ADR-0024 select native `ardents-interactive-route-v1`: split C-5/C-2 logical paths over mutually authenticated TCP/TLS 1.3, Ardents State/publication authority, endpoint-owned Route selection, and Service Connection-owned recovery. R-078/ADR-0026 select its exact v1 wire, amended by R-079/ADR-0027 for the User-to-Initiator EntryBinding. H3 W02/W04 bytes and WebTunnel are C0 retired. | M7--M9 use the selected Profile; M8 must deliver the R-078/R-079 codecs, vectors, and mixed-generation/downgrade tests before any peer-facing announcement. | Do not restore H3 bytes, a legacy reader, direct Service fallback, foreign directory/identity root, a synthetic User State identity, or a Node-supplied downgrade. |
-| DA-07 | Which naming wire/profile choices remain authoritative? | **Closed for M5 profile retention:** DA-07 retains canonical Name V1, signed Record/Recovery semantics, fixed private-resolution envelopes, and threshold materialization; unobserved internal tracer encodings are C0 candidates. | Any change to retained signed, private-resolution, or materialization profile needs a new record and applicable Product Owner/ADR route. | Do not change retained profile bytes by package migration; do not retain an unbounded legacy reader. |
-| DA-08 | What qualified Application isolation and platform operating profile, if any, is in scope? | **Closed for generic M10 only:** R-085 permits a Broker and explicit `generic/unqualified` observation without selecting a sandbox or supported host. S04/L05 remain unclaimed. | A qualified Linux/Windows confinement profile still needs platform threat/Adapter design, evidence, and an ADR. | Do not claim isolation, Windows activation, install, or supported host behavior. |
-| DA-09 | What real release/update/custody product lifecycle, if any, is in scope beyond H3 technical inputs? | **Closed for M2 only:** DA-09 retains one bounded offline Update tracer but declines a supported lifecycle and Custody surface. D07 remains a technical-tracer root, not product activation. | A future supported lifecycle still needs Product Owner scope promotion, lifecycle/custody design, and ADR-0015/0021 compatibility analysis. | Do not turn tracer command results into installer, update, or Custody product behavior. |
-| DA-10 | Which external compatibility observers require bounded support? | A01--A06/L02 have no established public window, but possible Application/operator/evidence consumers cannot be guessed away. | S8.3 caller inventory and Product Owner approval of each support/break/export rule. | Do not break a discovered external caller or retain an unbounded legacy reader. |
-| DA-11 | Which lab/evidence artifacts retain a named reproduction or Qualification duty? | **Closed for the M7 Stage-5 runtime subset:** R-080 retains source-bound records and independent evidence readers as C4 provenance, while deleting Bridge/WebTunnel runtime and active runners. The remaining laboratory corpus is audited in M14. | A remaining record needs its own named claim/source/expiry disposition in M14. | Do not remove a linked reproducer or make it a product-runtime dependency. |
-
-## S8.3 admission rule
-
-A proposed S8.3 target row may proceed only when it either has no matching
-`DA-*` row or names the accepted decision identity that closes that row. A
-target architecture must keep an unresolved row visible as a stop condition;
-it cannot select a convenient current implementation as a default. This rule
-applies equally to package additions, imports, formats, adapters, commands,
-tests, and documentation that would otherwise encode the undecided outcome.
+An open decision blocks only its dependent change. It does not authorize a
+placeholder package, an unbounded compatibility adapter, or a weaker fallback.

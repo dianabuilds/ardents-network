@@ -1,175 +1,67 @@
-# Stage 8 target architecture
+# Stage 8 remaining architecture boundaries
 
-Status: **S8.3 accepted by the Product Owner on 2026-08-22.** This is the target
-ownership and migration-design authority derived from the accepted
-[decision-authority register](stage-8-decision-authority-register.md) and
-source-bound S8.0 inventories recoverable from Git. It is not a current package map, a promise
-that every target Module will be implemented, or authority to create a package
-before its wave has a real caller, behavior, tests, and package-map row.
+Status: **active temporary control.** The current package graph is owned by the
+[package map](package-map.md); behavior and limitations are owned by the
+technical documents. This file keeps only the architectural constraints that
+remain relevant while Stage 8 has active M12/M14 work. It is deleted with the
+refactoring plan when those controls are no longer needed.
 
-## Design constraints
+## Maintained shape
 
-- Preserve the Product Core and its honest H3 limitations exactly as S8.1
-  records them. Product behavior, authority, persistence, wire, configuration,
-  command, IPC, and evidence compatibility change only through a wave-owned
-  observer and format decision.
-- One Module owns each state transition, physical writer, process lifetime, and
-  terminal cleanup. A caller may own an input port but never a second writer or
-  lifecycle authority.
-- `cmd` packages remain thin composition/adaptation roots. `endpoint` is the
-  primary local Endpoint composition root; `node` is the separately runnable
-  Contributor composition owner. Neither gains authority over foreign durable
-  roots.
-- A target interface appears only with real behavior. The factual current
-  `package-map.md` remains the import authority until its owning migration wave
-  cuts callers to a new Module.
-- An unresolved decision-authority item blocks only the dependent Module or
-  format wave; it does not authorize a speculative abstraction or a weaker
-  fallback.
+- Thin commands in `cmd/` adapt owner-scoped input to deep `internal/` modules.
+  They do not own a durable domain root, protocol selection, or broad plan
+  abstraction.
+- `internal/naming/namespace` is a composition root only for opaque Resolution
+  Gateway/verifier views. `admission`, `record`, `claim`, `recovery`, `epoch`,
+  and `authority` own their concrete state and transitions; lower modules do
+  not import the Authority orchestrator or Epoch.
+- `internal/naming/resolution` receives the root opaque views but concrete
+  Namespace facts from the smallest nested module that owns them.
+- `internal/network/state` is the accepted current/pending View writer;
+  `network/source` is its acquisition port, and `network/duty` is the separate
+  durable role-domain owner.
+- `internal/endpoint` composes Broker, Publication, Service Connection, and
+  opaque Route Attachment inputs. Publication owns Instance material;
+  Service Connection owns stream/recovery state; Route owns neither State nor
+  Service Connection recovery.
+- `internal/custody` is the only Authority-root holder. Release, Update,
+  Endpoint, and diagnostics never receive a root, password, or generic signing
+  capability.
 
-## Target ownership map
+The checked [package map](package-map.md) is authoritative for exact imports.
+The layout has no generic compatibility façade, `planfile`, `serviceconn`,
+`applicationipc`, `serviceendpoint`, `routeplan`, `node/probe`, Bridge,
+Camouflage, or laboratory runtime package.
 
-| Target Module | Owns | Migration source and boundary | Entry condition |
-|---|---|---|---|
-| `internal/endpoint` | Local process composition, readiness, signal/drain order, terminal cleanup, and one terminal result. | Replace command/`serviceendpoint` choreography; owns no domain state. | M10 selects the Broker/Isolation process boundary. |
-| `internal/application/broker` | Volatile Application/Admin Principal, Grant, one-use capability, revocation, and drain tree; its only current isolation result is explicit `generic/unqualified`. | Replaces split `applicationipc`/`serviceconn` admission logic. | R-085 generic/unqualified profile; qualified principal adapters remain future work. |
-| Future qualified platform adapter | A selected platform Adapter may supply a qualified isolation observation; no package exists merely to name that future claim. | Replaces the generic Broker observation only through a new qualified profile decision. | Platform threat evidence and ADR remain required. |
-| `service/connection` | One live authenticated byte stream, replay/cutover state, bounded buffers, and terminal outcome. | Deepen `serviceconn`; remove operation/evidence unions and static plan authority. | R-076/ADR-0024 bind it to `ardents-interactive-route-v1`; it owns recovery, not Route selection. |
-| `service/publication` | Instance generation, private material, admissions, unpublish/drain/erase, and crash-atomic publication. | Extract from connection/endpoint choreography. | Publication observer and format rule from DA-10. |
-| `naming/namespace` | Authority, Lease, Claim, Recovery, admission, durable generation, and bounded materialization. | Consolidate six Namespace-state owners beneath the cohesive canonical `naming` vocabulary package as nested modules with explicit one-way imports; no shared generic store is presumed. | DA-03, DA-04, DA-05, and DA-07 as applicable. |
-| `naming/resolution` | Private resolution/control exchange, gateway binding, replay state, and observer-safe counters. | Deepen `nameresolution` over opaque Namespace/State views; no plaintext fallback. | DA-03, DA-04, and DA-07. |
-| `network/state` | Authenticated current/pending View, time floor, source distribution, durable publication, and source-server lifetime. | Absorb epoch/framing/store orchestration and remove concrete Source reversal. | DA-02 and DA-05. |
-| `network/source` | State-owned acquisition port and bounded transport observations, never accepted state. | Retain one direct-origin Adapter only while selected. | Source protocol/compatibility decision under DA-05/DA-10. |
-| `network/duty` | Durable local role-domain generations, watermark, expiry, and conflicts. | Replace `localroles`; State/Node/Route/Entry consume opaque duty facts. | D02 cutover and restart rule. |
-| `resource` | Linux cgroup-v2/rlimit process profile, measurements, reservations, hysteresis, pressure state, and finite releases; explicit unsupported-platform refusal elsewhere. | Retain/deepen current resource owner; native metrics are concrete platform Adapters. | R-062 H1: Linux only until a native Adapter has measured acceptance. |
-| `entry` | Durable Invite/replay/contact history, replacement, and finite acquisition attempts. | Replace `bridge` state/callback ownership. | R-076/ADR-0024 select adjacent TCP/TLS; R-077/ADR-0025 select its State-referenced Invite. Entry never selects a complete Route. |
-| `route` | One Route selection and volatile role/attachment lifetime, capacity, cutover, and cleanup. | Absorb `routeplan`; consumes opaque View/Duty/Resource/Entry facts. | R-076/ADR-0024 selects the native Profile. |
-| `node` | One Contributor duty admission, quarantine, listener/probe, protect/drain/withdraw, and joined cleanup. | Fold `node/probe`; no State-root or assignment authority. | D02 and selected Resource/platform contract. |
-| `release` | Verified metadata result, roots/floors/archive, lease, and opaque update authorization. | Own the release verifier and keep floor persistence private. | DA-01 before D06 mutation. |
-| `update` | Staging, predecessor/rollback, technical-tracer activation/self-test, journal, recovery, and cleanup. | Deepen `updatetransaction`; consumes unforgeable Release authorization and owns no Custody state. | R-064 limits M2 to one offline H3 tracer; a supported lifecycle reopens DA-09. |
-| `internal/custody` | Vault/Recovery Bundle, unlock/export/restore/reconcile, revocation, and signing watermark. | New Module; secrets never enter Release/Update/diagnostics. The M12 slice owns canonical envelope admission, independent encrypted Vault-record create/verify, distinct-password Bundle export/test restore to a new destination, encrypted authority-locked quarantine restore into an empty Vault, an exact local Authority floor that advances only after encrypted record publication, and one sealed Namespace transition signature from an active Name record; it returns no root material. | ADR-0021; DA-08 and DA-09 remain required for platform and full lifecycle qualification. |
+## Completed boundaries and honest limits
 
-## Intended dependency and trust direction
+State, Duty, Namespace, Resolution, Entry, Route, Publication, Service
+Connection, Broker/Endpoint, Node, Release, Update, and command-consolidation
+ownership transfers are complete for Stage 8. Their current contracts are in:
 
-The following arrows describe allowed target knowledge, not packages to create
-early. A Module may depend only on the smallest consumer-owned port needed for
-the stated responsibility.
+- [Private naming and Namespace](../technical/naming.md)
+- [Endpoint and Service runtime](../technical/endpoint-service-runtime.md)
+- [Network State, Entry, Route, and Node](../technical/network-route-node.md)
+- [Release, Update, and Authority Custody](../technical/release-update-custody.md)
+- [Current command reference](../reference/commands.md)
 
-```text
-cmd/ardents -> internal/endpoint
-cmd/ardents-custody -> internal/custody
-cmd/ardents-node -> node, internal/endpoint composition inputs
-internal/endpoint -> internal/application/broker, service/publication, service/connection, route
-service/connection -> route
-route -> entry, network/duty, resource, network/state views
-entry -> selected adjacent TCP/TLS carrier
-node -> network/duty, resource, network/state views, route views
-network/state -> network/source (caller-owned acquisition port)
-naming/resolution -> naming/namespace views, network/state views
-release -> update authorization consumer
-custody -> future Application/Broker isolation ports; never release or update state
-```
+The selected native Route and its mixed closed-network run are functional
+closed-test-network evidence only. They do not establish a peer-facing Route
+runtime, public deployment, privacy, independent operation, State/Entry
+integration, Service Connection qualification, or a supported Node profile.
+R-092 is the open future Node-profile measurement; it is not a Stage 8
+capacity blocker.
 
-Forbidden target direction includes product Modules to `internal/lab`, test
-harnesses, `experiments`, or `scripts`; an Entry Carrier to Route policy;
-`network/source` to accepted State; `service/connection` to Namespace; and
-Custody to Endpoint/Release/Update state. Platform and external dependencies
-remain concrete Adapters at their consumer boundary.
+## Active stop conditions
 
-## Commands and evidence
+M12 may not select a supported Windows/Ubuntu storage, permissions, crash,
+power-loss, isolation, install, or complete Custody operator profile without a
+new accepted product/platform decision and ADR analysis. It also may not add
+a local Vault-demotion transition without a selected Name-scoped
+predecessor-to-successor proof. The decision route is DA-08/DA-09 in the
+[decision-authority register](stage-8-decision-authority-register.md).
 
-The retained end state has thin `ardents` and `ardents-node` commands. A third
-bootstrap/update command exists only if DA-09 accepts a supported lifecycle;
-R-064 does not do so.
-Current name, bridge, route, service, release, publish-app, stream-app, and
-laboratory commands are not compatibility promises. M13 classifies actual
-automation observers before removing or replacing them.
-
-Laboratory packages, historical verifier commands, and their Docker/tool inputs
-never enter the product graph. M14 retains only a named historical-reproduction
-or accepted claim-Qualification obligation with an owner, source identity, and
-retirement condition; all other runners and fixtures are deleted.
-
-## Format and compatibility authority
-
-| Surface | Target treatment | Required decision before writer/reader mutation |
-|---|---|---|
-| A01-A03 local Application/Admin bytes and terminal result | Preserve semantic authority separation and one classified terminal result; replace socket/frame syntax only with an observer rule. | Endpoint/Broker/Publication design and DA-10 caller inventory. |
-| A04-A07 commands, plans, machine results, and stream modes | Retain only real operator/Application observers; plans never become authority and direct stream modes leave shipped product. | M13 command/configuration inventory and DA-10. |
-| D01 Network State and D02 duty roots | One writer, atomic cutover/restart semantics, and no reset or dual authority. | DA-02/D02 and DA-05. |
-| D03 Entry and D04 naming roots | Migrate only with replay, monotonicity, recovery, tamper, and proof rules preserved. | DA-03 through DA-07 as applicable. |
-| D05 publication/Instance hand-off | One generation/publisher owner with explicit drain/cutover. | Publication observer inventory and DA-10. |
-| D06 Release floors | Security-forward-only: never decrease trusted roots or floors. | DA-01. |
-| D07 update transaction and D08 custody envelope | D07 may retain only the R-064 bounded offline technical tracer; no supported activation/recovery mutation. D08 has no mutation until a custody lifecycle is selected. | R-064 for M2; DA-09 (and DA-08 for platform custody) reopens for any product lifecycle. |
-| W01-W04 peer-visible, cryptographic, Route, naming, and WebTunnel bytes | Retain semantic contract only; choose `read/migrate`, `break`, or `delete` per observer. | DA-05 through DA-07 and DA-10. |
-| Q01-Q03 evidence/test/document records | Keep provenance separately from current product truth; only accepted claim evidence becomes Qualification. | S8.2 profile policy and M14 retirement ledger. |
-
-No target wave may add a forwarding writer, indefinite legacy decoder, or
-unbounded compatibility mode. The S8.4 plan records a concrete mode, observer,
-cutover, rollback/forward-repair behavior, and deletion condition for every row
-it mutates.
-
-The completed DA-10 caller search found no source-controlled external support
-promise. Its absence-of-evidence result is not a license to break an
-unrecorded external consumer.
-
-## Complete current-code disposition
-
-The following groups cover every current Go package under `cmd/`, `internal/`,
-and `tests/e2e/`. A grouping is only a shared ownership outcome;
-S8.4 still records per-wave paths and deletions. Empty directory placeholders
-are not Go packages and do not represent a retained test surface.
-
-| Current source | Target disposition | Wave and condition |
-|---|---|---|
-| `cmd/ardents` | **Complete for Stage 8, 2026-08-24:** thin current adapter for Endpoint, State, Entry, and naming routes. | M10/M13; command inputs remain owner-scoped and bounded. |
-| `cmd/ardents-custody` | **Complete for Stage 8, 2026-08-24:** separate custody-process adapter for public envelope inspection and active-record verification through a no-echo terminal secret boundary. Bundle, restore, reconciliation, and signing routes remain unexposed pending any complete future M12 operator lifecycle. | M12/M13 under ADR-0021 and DA-08/DA-09. |
-| `cmd/ardents-node` | **Complete for Stage 8, 2026-08-24:** thin Node and Direct-Origin Source adapter. | M11/M13. |
-| `cmd/ardents-name` | **C0 completed, 2026-08-23:** standalone shape removed; selected naming/resolution routes are `ardents name`. | M5/M6/M13, subject to DA-03/04/07/10. |
-| `cmd/ardents-bridge`, `cmd/ardents-route` | **C0 completed, 2026-08-23:** tracer shapes removed. | M7/M8/M13, subject to DA-06/10. |
-| `cmd/ardents-service`, `cmd/ardents-publish-app`, `cmd/ardents-stream-app` | **C0 completed, 2026-08-23:** tracer commands removed; the named e2e fixtures are not an operator surface. | M9/M10/M13. |
-| `cmd/ardents-release` | **C0 completed, 2026-08-23:** retired as an H3 product command with the V2 Update fixture cutover. Exact V0 command/result/manifest evidence remains only in the independent C4 verifier; no C2 operator observer remains. | M1/M2/M13 under DA-01/R-064/R-088 and DA-10. |
-| `tests/e2e/service/fixturecommand/publish-app`, `tests/e2e/service/fixturecommand/stream-app` | Retain only as explicit non-shipped process-profile fixtures for the separately granted publication socket and opaque Application stream. They are built by the Endpoint recovery process test, never installed or promoted as operator UI. | M13 C0 completed; delete with the named e2e evidence when a replacement test owns those boundaries. |
-| `cmd/blocked-entry-verify-lab` | **C0 completed, 2026-08-23:** R-090 deletes the unbound H3 verifier. Stage 5 records and frozen preparation inputs remain C4 provenance; they are not a native-v1 Qualification suite. | M14 under DA-11/R-080/R-090. |
-| `cmd/carrier-lab`, `cmd/named-site-lab` | **C0 completed, 2026-08-23:** R-091 deletes closed H3 laboratory runners. R-013/R-017 source-bound receipts remain C4 provenance; any future native claim needs its own suite. | M14 under DA-11/R-091. |
-| `cmd/stage6-evidence-lab`, `cmd/stage6-verify-lab` | **C0 completed, 2026-08-23:** R-089 deletes the failed self-referential S6E1 runner and verifier; R-055 and Stage 6 documents remain C4 provenance. | M14 under DA-11/R-089. |
-| `internal/endpoint` | **Complete for Stage 8, 2026-08-24:** owns Application/admin process composition, raw opaque Application bytes, exactly one classified terminal result, readiness, and cleanup. The former `internal/applicationipc` and `internal/serviceendpoint` paths are deleted. | M10 under R-085; old raw-tail and timing-selected result delivery are C0 retired in favour of Endpoint's one explicit v1 local contract. |
-| `internal/custody` | Retain the M12 owner for canonical envelope admission, encrypted Vault records, explicit bounded secret use, and public header inspection. It neither releases root material nor allows Release/Update/Endpoint to mutate custody state. | M12 has Bundle export/test restore, quarantine/reconciliation, custody-derived Name control signing, and R-044 effective Authority replacement. R-086 accepts Namespace-level effective revocation and deliberately adds no local Vault demotion. Its old V0 `custody_notice` is an explicitly bounded C2 tracer field; platform qualification remains open. |
-| `internal/service/publication` | Retain the M9 target owner for one exclusive C1 Instance publication generation, floor, volatile signer, and drain lifecycle. It has no local admission, IPC, connection/recovery, or legacy H3 reader authority. | M9 under R-084; Endpoint is its direct role-local composition caller. |
-| `internal/service/connection` | Retain the M9 target owner for closed ADR-0028 endpoint records, immutable context, logical stream/recovery lifecycle, and native terminal outcome. It accepts only opaque already-authenticated Attachments; no H3 record reader may be added. | M9 under R-083/ADR-0028. |
-| `internal/bridge` | Deleted after transferring the required durable Invite/replay/replacement responsibility to `entry`. | M7 complete under R-076/R-080. |
-| `internal/entry` | **Complete, 2026-08-24:** owns signed State-referenced Invite v1, bounded durable Entry/replay state, adjacent candidate lookup, and candidate-opener lifecycle. | M7 under R-076/R-077/R-079; no carrier or public-network claim. |
-| `internal/camouflage` | Deleted: R-076/ADR-0024 retire the H3 WebTunnel adapter from the maintained Profile. | M7 complete under R-080. |
-| `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
-| `internal/network/duty` | Own the retained durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth. | M4 D02 C1 cutover; preserve the existing root format and one writer. |
-| `internal/naming` | Retain the cohesive canonical Service Name V1 parser and encoder as the parent Namespace vocabulary package. | M5 retains it with its exact R-041 responsibility; no generic naming utility surface. |
-| `internal/naming/namespace` | Compose Namespace admission, Authority, Record/Lease, Claim, Recovery, and Epoch modules under one canonical vocabulary root; retain only opaque Resolution views at the root. | M5, subject to DA-03/04/05/07; delete each former source package as its ownership moves into its nested Namespace module. |
-| `internal/naming/namespace/admission` | Own bounded anonymous-work challenge/proof, replay, expiry, capacity, and in-flight refusal facts. | M5 under the root composition; no lower Namespace package imports Authority or Epoch. |
-| `internal/naming/namespace/record` | Own canonical Record/Lease lifecycle, signatures, lineage, and destination binding as one state machine. | M5 under the root composition; Lease is not a separate package. |
-| `internal/naming/namespace/claim` | Own root-claim commitment/reveal and authenticated winning-claim materialization. | M5; may consume Admission and Record, never Authority or Epoch. |
-| `internal/naming/namespace/recovery` | Own Recovery Policy, quorum proof verification, and sealed authorization facts. | M5; may consume only canonical vocabulary. |
-| `internal/naming/namespace/epoch` | Own durable current/pending Namespace materialization, its exact-successor pending journal/cursor, attestation, and proof verification. | M5; consumes Record and Claim, never Authority. |
-| `internal/naming/namespace/authority` | Own canonical private control submission and authorized transition orchestration; writes only validated successors through Epoch's pending port. | M5; the sole upper Namespace orchestrator over Admission, Record, Claim, Recovery, and Epoch. |
-| `internal/naming/resolution` | Own private resolution/control over opaque Namespace/State views. | M6, subject to DA-03/04/07. |
-| `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, `internal/network/framing`, `internal/network/store`, `internal/network/state` | Consolidate authenticated acceptance, current/pending state, and durable publication under `network/state`. | M3, subject to DA-02/05. |
-| `internal/network/source` | Retain as State-owned acquisition port and selected direct-origin Adapter only. | M3, subject to DA-05/10. |
-| `internal/node`, `internal/node/probe` | **Complete for Stage 8, 2026-08-24:** Node owns lifecycle and private probe; the separate probe package is deleted. | M11 scoped closure; R-092 is future capacity/profile research, not a supported-host claim. |
-| `internal/resource` | Retain/deepen as the sole shared resource coordinator; Linux profiles only and fail closed elsewhere. | M4, R-062 H1 accepted. |
-| `internal/route`, `internal/routeplan` | **Complete for Stage 8, 2026-08-24:** `route` owns selection, attachment lifetime, cleanup, and the R-078 closed v1 wire; no legacy reader survives cutover. | M8 scoped closure under DA-06; a peer-facing runtime remains future work. |
-| `internal/release` | Own release trust/root/floor verification behind `Open`, `Evaluate`, and `Close`. | M1, subject to DA-01. |
-| `internal/update` | Own the bounded offline transaction/recovery tracer; do not add a supported activator, installer, or Custody writer. Its C0 V2 fixture cutover removes the V0 EvidenceNotice from runtime while preserving only C4 vectors. | M2/M13, subject to DA-01/R-064/R-088. |
-| `internal/planfile` | **C0 completed, 2026-08-23:** deleted. Each retained command or owner now owns its own bounded input decoder; no generic plan abstraction or import remains. | M3/M8/M9/M11/M13 cutover complete. |
-| `internal/streamworkload` | **C0 completed, 2026-08-23:** deleted. Its deterministic opaque-stream and direct-baseline workload is owned only by the named `tests/e2e/service/fixturecommand/stream-app` process fixture; no product Module imports or exposes it. | M9/M14 cutover complete. |
-| `internal/architecture` | Retain factual graph/policy gate; remove historical receipts as their truth moves to current owners. | M0/M14. |
-| `internal/lab/blockedverify` | **C0 completed, 2026-08-23:** R-090 deletes the unbound H3 verifier. No immutable bundle or accepted native-v1 claim names it; records and frozen inputs remain C4 provenance. | M14 under DA-11/R-080/R-090. |
-| remaining `internal/lab/*` Modules | **C0 completed, 2026-08-23:** R-091 deletes the closed Carrier/Gate C execution corpus and its shared helpers. Their source-bound records remain C4, never product-runtime dependencies. | M14 under DA-11/R-091. |
-| `internal/lab/stage6evidence`, `internal/lab/stage6verify` | **C0 completed, 2026-08-23:** deleted by R-089; their executable corpus had no recorded immutable campaign or caller. R-055 and Stage 6 documents remain C4 provenance. | M14 under DA-11/R-089. |
-| `tests/e2e/network-source`, `tests/e2e/node`, `tests/e2e/service` | Replace tests through the target Module/process seam, retaining only independently observable process facts. | M3/M9/M11. |
-| native live Route suite | Not current. Register only after a future scope selects a peer-facing Route runtime and measured Node operating profile; it is not Qualification evidence today. | Future work under DA-06/08 and claim acceptance. |
-
-## Acceptance and stop rules
-
-This accepted map is the S8.3 design authority. DA-01 through DA-10 remain
-explicit stop conditions for their dependent waves. S8.4 may instantiate the
-M0-M14 migration and retirement ledger; code moves begin only in an accepted
-S8.5 wave.
+M14 may remove only Stage material whose unique current fact is already owned
+by a technical/reference/ADR document or whose provenance is recoverable from
+Git. A newly discovered laboratory or evidence artifact with a reproduction or
+Qualification duty needs the DA-11 disposition first.
