@@ -36,9 +36,8 @@ func writeCommandError(output io.Writer, err error) error {
 }
 
 func run(ctx context.Context, arguments []string, output io.Writer) (runErr error) {
-	if len(arguments) != 2 && len(arguments) != 4 || arguments[0] != "run" || arguments[1] == "" ||
-		len(arguments) == 4 && (arguments[2] != "--entry-plan" || arguments[3] == "") {
-		return errors.New("usage: ardents-route run <role-plan.json> [--entry-plan <bridge-entry-plan.json>]")
+	if len(arguments) != 2 || arguments[0] != "run" || arguments[1] == "" {
+		return errors.New("usage: ardents-route run <role-plan.json>")
 	}
 	sequence, err := routeplan.Load(arguments[1])
 	if err != nil {
@@ -46,16 +45,5 @@ func run(ctx context.Context, arguments []string, output io.Writer) (runErr erro
 	}
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
-	var entry *entryRuntime
-	if len(arguments) == 4 {
-		entry, err = loadEntryPlan(arguments[3])
-		if err != nil {
-			return fmt.Errorf("load bridge entry plan: %w", err)
-		}
-		defer func() { runErr = errors.Join(runErr, entry.close()) }()
-	}
-	if entry == nil {
-		return routeplan.Run(ctx, sequence, encoder.Encode, [32]byte{}, nil)
-	}
-	return routeplan.Run(ctx, sequence, encoder.Encode, entry.manifest, entry.open)
+	return routeplan.Run(ctx, sequence, encoder.Encode, [32]byte{}, nil)
 }
