@@ -1,6 +1,10 @@
 package namespace
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+)
 
 // ResolutionGateway is the Namespace-owned server view for one private
 // resolution Gateway. It keeps the durable state, epoch trust root, and
@@ -20,11 +24,11 @@ type ResolutionGateway struct {
 func OpenResolutionGateway(store *Store, minimumEpoch uint64, epochDigest [32]byte,
 	admission *Admission,
 ) (*ResolutionGateway, error) {
-	if store == nil || store.root == nil || admission == nil || minimumEpoch == 0 || epochDigest == [32]byte{} ||
-		admission.network != store.policy.Network || admission.epoch != minimumEpoch {
+	if store == nil || !store.Valid() || admission == nil || minimumEpoch == 0 || epochDigest == [32]byte{} ||
+		!admission.Matches(store.Policy().Network, minimumEpoch) {
 		return nil, errors.New("naming resolution Gateway is invalid")
 	}
-	policy, err := validMaterializationPolicy(store.policy)
+	policy, err := epoch.ValidMaterializationPolicy(store.Policy())
 	if err != nil {
 		return nil, errors.New("naming resolution Gateway policy is invalid")
 	}
@@ -44,7 +48,7 @@ func (gateway *ResolutionGateway) Network() [32]byte {
 // configured Gateway Node. It prevents a role from consuming another Node's
 // boot-scoped proof state.
 func (gateway *ResolutionGateway) AcceptsGateway(node [32]byte) bool {
-	return gateway != nil && gateway.admission != nil && node != [32]byte{} && gateway.admission.node == node
+	return gateway != nil && gateway.admission != nil && gateway.admission.AcceptsNode(node)
 }
 
 // AdmitResolution consumes one proof only when it is bound to this Gateway,
@@ -90,7 +94,7 @@ type ResolutionVerifier struct {
 func OpenResolutionVerifier(input MaterializationPolicy, minimumEpoch uint64,
 	epochDigest [32]byte,
 ) (*ResolutionVerifier, error) {
-	policy, err := validMaterializationPolicy(input)
+	policy, err := epoch.ValidMaterializationPolicy(input)
 	if err != nil || minimumEpoch == 0 || epochDigest == [32]byte{} {
 		return nil, errors.New("naming resolution verifier is invalid")
 	}

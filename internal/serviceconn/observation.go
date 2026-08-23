@@ -1,7 +1,6 @@
 package serviceconn
 
 import (
-	"crypto/sha256"
 	"os"
 	"runtime"
 	"runtime/metrics"
@@ -51,20 +50,7 @@ func (monitor resourceMonitor) stop() resourceSample {
 }
 
 func (endpoint *endpoint) observe(result *Result, input Request, resources resourceSample) {
-	endpoint.mu.Lock()
-	session, consumed := endpoint.consumed[input.Session]
-	delete(endpoint.consumed, input.Session)
-	activeSessions := uint32(len(endpoint.sessions))
-	endpoint.mu.Unlock()
-	if consumed {
-		result.PrincipalCommitment = commitment("principal", session.principal)
-		result.SessionCommitment = commitment("session", input.Session)
-		result.BrokerCommitment = commitment("broker", session.broker)
-		result.GrantCommitment = grantCommitment(session.broker, session.principal, session.surface)
-		result.GrantSurface = session.surface
-		result.SessionConsumed = true
-		result.SessionIssuedAt, result.SessionExpiresAt = session.issued, session.expires
-	}
+	activeSessions := endpoint.admission.Active()
 	switch input.Action {
 	case "connect", "accept":
 		result.GrantSurface = "connection"
@@ -115,17 +101,6 @@ func higherResources(left, right resourceSample) resourceSample {
 		left.queuedBytes = right.queuedBytes
 	}
 	return left
-}
-
-func commitment(kind string, value [32]byte) [32]byte {
-	return sha256.Sum256(append([]byte("ardents-service-"+kind+"-v1\x00"), value[:]...))
-}
-
-func grantCommitment(broker, principal [32]byte, surface string) [32]byte {
-	value := append([]byte("ardents-service-grant-v1\x00"), broker[:]...)
-	value = append(value, principal[:]...)
-	value = append(value, surface...)
-	return sha256.Sum256(value)
 }
 
 func processCPUSeconds() float64 {

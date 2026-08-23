@@ -33,11 +33,11 @@ before its wave has a real caller, behavior, tests, and package-map row.
 | Target Module | Owns | Migration source and boundary | Entry condition |
 |---|---|---|---|
 | `endpoint` | Local process composition, readiness, signal/drain order, terminal cleanup, and one terminal result. | Replace command/`serviceendpoint` choreography; owns no domain state. | M10 selects the Broker/Isolation process boundary. |
-| `application/broker` | Volatile Application/Admin/Custody Principal, Grant, session, revocation, and drain tree. | Replaces split `applicationipc`/`serviceconn` admission logic. | DA-08 platform/process profile. |
-| `application/isolation` | One admitted native sandbox/process lifetime and its terminal observation; no product truth. | New concrete platform Adapter, never a boolean capability bag. | DA-08 and platform evidence. |
+| `internal/application/broker` | Volatile Application/Admin Principal, Grant, one-use capability, revocation, and drain tree; its only current isolation result is explicit `generic/unqualified`. | Replaces split `applicationipc`/`serviceconn` admission logic. | R-085 generic/unqualified profile; qualified principal adapters remain future work. |
+| Future qualified platform adapter | A selected platform Adapter may supply a qualified isolation observation; no package exists merely to name that future claim. | Replaces the generic Broker observation only through a new qualified profile decision. | Platform threat evidence and ADR remain required. |
 | `service/connection` | One live authenticated byte stream, replay/cutover state, bounded buffers, and terminal outcome. | Deepen `serviceconn`; remove operation/evidence unions and static plan authority. | R-076/ADR-0024 bind it to `ardents-interactive-route-v1`; it owns recovery, not Route selection. |
 | `service/publication` | Instance generation, private material, admissions, unpublish/drain/erase, and crash-atomic publication. | Extract from connection/endpoint choreography. | Publication observer and format rule from DA-10. |
-| `naming/namespace` | Authority, Lease, Claim, Recovery, admission, durable generation, and bounded materialization. | Consolidate six Namespace-state packages beneath the cohesive canonical `naming` vocabulary package; no shared generic store is presumed. | DA-03, DA-04, DA-05, and DA-07 as applicable. |
+| `naming/namespace` | Authority, Lease, Claim, Recovery, admission, durable generation, and bounded materialization. | Consolidate six Namespace-state owners beneath the cohesive canonical `naming` vocabulary package as nested modules with explicit one-way imports; no shared generic store is presumed. | DA-03, DA-04, DA-05, and DA-07 as applicable. |
 | `naming/resolution` | Private resolution/control exchange, gateway binding, replay state, and observer-safe counters. | Deepen `nameresolution` over opaque Namespace/State views; no plaintext fallback. | DA-03, DA-04, and DA-07. |
 | `network/state` | Authenticated current/pending View, time floor, source distribution, durable publication, and source-server lifetime. | Absorb epoch/framing/store orchestration and remove concrete Source reversal. | DA-02 and DA-05. |
 | `network/source` | State-owned acquisition port and bounded transport observations, never accepted state. | Retain one direct-origin Adapter only while selected. | Source protocol/compatibility decision under DA-05/DA-10. |
@@ -59,8 +59,7 @@ the stated responsibility.
 ```text
 cmd/ardents -> endpoint
 cmd/ardents-node -> node, endpoint composition inputs
-endpoint -> application/broker, service/publication, service/connection, route
-application/broker -> application/isolation (platform adapter only)
+endpoint -> internal/application/broker, service/publication, service/connection, route
 service/connection -> route
 route -> entry, network/duty, resource, network/state views
 entry -> selected adjacent TCP/TLS carrier
@@ -68,7 +67,7 @@ node -> network/duty, resource, network/state views, route views
 network/state -> network/source (caller-owned acquisition port)
 naming/resolution -> naming/namespace views, network/state views
 release -> update authorization consumer
-custody -> application/broker/isolation ports; never release or update state
+custody -> future Application/Broker isolation ports; never release or update state
 ```
 
 Forbidden target direction includes product Modules to `internal/lab`, test
@@ -141,7 +140,13 @@ are not Go packages and do not represent a retained test surface.
 | `internal/localroles` | Transfer durable duty state to `network/duty` without generation reset. | M4. |
 | `internal/network/duty` | Own the retained durable Endpoint-local Role Domain duty generations, watermark, expiry, and conflict truth. | M4 D02 C1 cutover; preserve the existing root format and one writer. |
 | `internal/naming` | Retain the cohesive canonical Service Name V1 parser and encoder as the parent Namespace vocabulary package. | M5 retains it with its exact R-041 responsibility; no generic naming utility surface. |
-| `internal/naming/namespace` | Own Namespace admission, Authority, Lease, Claim, Recovery, durable generation, and bounded materialization. The M5 admission cutover is its first transferred responsibility. | M5, subject to DA-03/04/05/07; delete each former source package as its ownership moves here. |
+| `internal/naming/namespace` | Compose Namespace admission, Authority, Record/Lease, Claim, Recovery, and Epoch modules under one canonical vocabulary root; retain only opaque views and C4 compatibility at the root. | M5, subject to DA-03/04/05/07; delete each former source package as its ownership moves into its nested Namespace module. |
+| `internal/naming/namespace/admission` | Own bounded anonymous-work challenge/proof, replay, expiry, capacity, and in-flight refusal facts. | M5 under the root composition; no lower Namespace package imports Authority or Epoch. |
+| `internal/naming/namespace/record` | Own canonical Record/Lease lifecycle, signatures, lineage, and destination binding as one state machine. | M5 under the root composition; Lease is not a separate package. |
+| `internal/naming/namespace/claim` | Own root-claim commitment/reveal and authenticated winning-claim materialization. | M5; may consume Admission and Record, never Authority or Epoch. |
+| `internal/naming/namespace/recovery` | Own Recovery Policy, quorum proof verification, and sealed authorization facts. | M5; may consume only canonical vocabulary. |
+| `internal/naming/namespace/epoch` | Own durable current/pending Namespace materialization, attestation, and proof verification. | M5; consumes Record and Claim, never Authority. |
+| `internal/naming/namespace/authority` | Own canonical private control submission and authorized transition orchestration. | M5; the sole upper Namespace orchestrator over Admission, Record, Claim, Recovery, and Epoch. |
 | `internal/naming/resolution` | Own private resolution/control over opaque Namespace/State views. | M6, subject to DA-03/04/07. |
 | `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, `internal/network/framing`, `internal/network/store`, `internal/network/state` | Consolidate authenticated acceptance, current/pending state, and durable publication under `network/state`. | M3, subject to DA-02/05. |
 | `internal/network/source` | Retain as State-owned acquisition port and selected direct-origin Adapter only. | M3, subject to DA-05/10. |

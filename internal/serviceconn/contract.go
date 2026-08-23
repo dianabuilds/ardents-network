@@ -6,9 +6,9 @@ import (
 	"errors"
 	"io"
 	"net"
-	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
@@ -16,7 +16,6 @@ import (
 const (
 	publishCapability  = uint32(1)
 	connectCapability  = uint32(2)
-	maximumSessions    = 6
 	maximumStreamBytes = uint32(768 << 20)
 )
 
@@ -101,17 +100,12 @@ type Result struct {
 
 // endpoint owns one broker generation's sessions and current publication.
 type endpoint struct {
-	mu                  sync.Mutex
-	network, broker     [32]byte
-	authority           [32]byte
-	introduction        [32]byte
-	connectionPrincipal [32]byte
-	adminPrincipal      [32]byte
-	sessions            map[[32]byte]localSession
-	consumed            map[[32]byte]localSession
-	publications        *publication.Publication
-	clock               func() time.Time
-	resources           func(string, int) uint32
+	network, broker [32]byte
+	authority       [32]byte
+	introduction    [32]byte
+	admission       *broker.Broker
+	publications    *publication.Publication
+	resources       func(string, int) uint32
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -133,11 +127,17 @@ func New(input Setup) (*endpoint, error) {
 	if resources == nil {
 		resources = newResourceObserver()
 	}
+	grants := []broker.Grant{{Principal: input.ConnectionPrincipal, Surface: broker.Connection}}
+	if input.AdministrationPrincipal != [32]byte{} {
+		grants = append(grants, broker.Grant{Principal: input.AdministrationPrincipal, Surface: broker.Administration})
+	}
+	admission, err := broker.New(broker.Config{ID: input.BrokerID, Grants: grants, Clock: clock})
+	if err != nil {
+		return nil, err
+	}
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
-		introduction:        introduction,
-		connectionPrincipal: input.ConnectionPrincipal, adminPrincipal: input.AdministrationPrincipal,
-		sessions: make(map[[32]byte]localSession, maximumSessions),
-		consumed: make(map[[32]byte]localSession, maximumSessions), clock: clock, resources: resources}
+		introduction: introduction,
+		admission:    admission, resources: resources}
 	if input.AdministrationPrincipal != [32]byte{} {
 		if input.PublicationRoot == "" {
 			return nil, errors.New("publisher setup lacks a publication root")
@@ -156,7 +156,11 @@ func New(input Setup) (*endpoint, error) {
 // Close withdraws the publisher's live Instance and releases its publication
 // root. Client-only endpoints have no publication owner to close.
 func (endpoint *endpoint) Close() error {
-	if endpoint == nil || endpoint.publications == nil {
+	if endpoint == nil {
+		return nil
+	}
+	endpoint.admission.Drain()
+	if endpoint.publications == nil {
 		return nil
 	}
 	return endpoint.publications.Close()

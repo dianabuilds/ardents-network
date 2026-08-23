@@ -1,0 +1,258 @@
+package epoch
+
+import (
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+)
+
+// Open claims a naming-state root for exactly one Network Epoch policy.
+func Open(path string, input MaterializationPolicy) (*Store, error) {
+	policy, err := validMaterializationPolicy(input)
+	if err != nil {
+		return nil, err
+	}
+	root, err := openNamespaceRoot(path)
+	if err != nil {
+		return nil, err
+	}
+	return &Store{root: root, policy: policy}, nil
+}
+
+// Valid reports whether Store has an opened durable root.
+func (store *Store) Valid() bool { return store != nil && store.root != nil }
+
+// Network returns the fixed Network identity of this Store's policy.
+func (store *Store) Network() [32]byte {
+	if store == nil {
+		return [32]byte{}
+	}
+	return store.policy.Network
+}
+
+// Policy returns the validated copied materialization trust root.
+func (store *Store) Policy() MaterializationPolicy {
+	if store == nil {
+		return MaterializationPolicy{}
+	}
+	return store.policy
+}
+
+// Path returns the owned durable root path.
+func (store *Store) Path() string {
+	if store == nil || store.root == nil {
+		return ""
+	}
+	return store.root.path
+}
+
+// CurrentRecords returns the verified current records and committed pending cursor.
+func (store *Store) CurrentRecords() (map[string]Record, uint64, error) {
+	if store == nil || store.root == nil {
+		return nil, 0, errors.New("naming state store is unavailable")
+	}
+	current, _, err := store.root.load()
+	if err != nil {
+		return nil, 0, err
+	}
+	records := make(map[string]Record)
+	if current == "" {
+		return records, 0, nil
+	}
+	snapshot, err := store.load(0)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, signed := range snapshot.records {
+		value, err := VerifyRecord(store.policy.Network, signed)
+		if err != nil || records[value.Name].Name != "" {
+			return nil, 0, errors.New("naming current record is invalid")
+		}
+		records[value.Name] = value
+	}
+	return records, snapshot.pending, nil
+}
+
+// CommitLegacy threshold-attests a caller-built corpus and atomically publishes
+// it as current. It exists only for retained evidence and fixture construction;
+// runtime materialization must use EpochInstallation.Commit.
+func (store *Store) CommitLegacy(epoch Epoch, signed [][]byte,
+	attest func([]byte) ([][32]byte, [][]byte, error),
+) error {
+	if store == nil || store.root == nil || attest == nil || !validEpoch(epoch) {
+		return errors.New("naming materialization input is invalid")
+	}
+	pending, err := store.pendingCursorFor(signed)
+	if err != nil {
+		return err
+	}
+	return store.commitAtPending(epoch, signed, pending, attest)
+}
+
+// commitInstallation publishes a Store-owned installation candidate. Unlike the
+// CommitLegacy compatibility method, it may include a verified ClaimWinner in
+// addition to the selected durable pending prefix. The candidate's private
+// construction and captured current generation prevent an arbitrary corpus
+// from using this route.
+func (store *Store) commitInstallation(installation *EpochInstallation, signed [][]byte,
+	attest func([]byte) ([][32]byte, [][]byte, error),
+) error {
+	if store == nil || installation == nil || installation.store != store || attest == nil ||
+		!validEpoch(installation.epoch) {
+		return errors.New("naming Epoch installation is invalid")
+	}
+	current, _, rootErr := store.root.load()
+	if rootErr != nil || current != installation.base {
+		return errors.New("naming Epoch installation is stale")
+	}
+	pending, err := store.installationPendingCursor(installation.cursor, current)
+	if err != nil {
+		return err
+	}
+	return store.commitAtCurrent(installation.epoch, signed, pending, &installation.base, attest)
+}
+
+func (store *Store) installationPendingCursor(cursor uint64, current string) (uint64, error) {
+	installed := uint64(0)
+	if current != "" {
+		snapshot, err := store.load(0)
+		if err != nil {
+			return 0, err
+		}
+		installed = snapshot.pending
+	}
+	entries, err := store.pending()
+	if err != nil || cursor < installed || cursor > uint64(len(entries)) {
+		return 0, errors.New("naming Epoch pending selection is unavailable")
+	}
+	return cursor, nil
+}
+
+func (store *Store) commitAtPending(epoch Epoch, signed [][]byte, pending uint64,
+	attest func([]byte) ([][32]byte, [][]byte, error),
+) error {
+	return store.commitAtCurrent(epoch, signed, pending, nil, attest)
+}
+
+func (store *Store) commitAtCurrent(epoch Epoch, signed [][]byte, pending uint64, expected *string,
+	attest func([]byte) ([][32]byte, [][]byte, error),
+) error {
+	records, leaves, err := materializeRecords(store.policy.Network, signed)
+	if err != nil {
+		return err
+	}
+	value := statement{network: store.policy.Network, epoch: epoch.Number, epochDigest: epoch.Digest, rule: store.policy.Rule,
+		cutoff: epoch.CutoffOffset, recordRoot: recordRoot(leaves), recordLength: uint32(len(leaves)),
+		transitionRoot: epoch.TransitionRoot, transitionLength: epoch.TransitionLength,
+		rejectionRoot: epoch.RejectionRoot, rejectionLength: epoch.RejectionLength}
+	transcript := statementTranscript(value)
+	ids, signatures, err := attest(append([]byte(nil), transcript...))
+	attested := attestedStatement{statement: value, signerIDs: ids, signatures: signatures}
+	if err != nil || !verifyAttestation(store.policy, attested) {
+		return errors.New("naming materialization threshold is invalid")
+	}
+	current, _, loadErr := store.root.load()
+	if loadErr != nil {
+		return errors.New("naming state is tampered")
+	}
+	if current != "" {
+		previous, currentErr := store.load(0)
+		if currentErr != nil {
+			return currentErr
+		}
+		if value.epoch <= previous.attested.statement.epoch {
+			return errors.New("naming state epoch is not monotonic")
+		}
+	}
+	metadata := encodeAttested(attested)
+	chunks, err := encodeRecordChunks(records)
+	if err != nil {
+		return err
+	}
+	name := snapshotGenerationDigest(metadata, chunks, pending)
+	generation := namespaceGeneration{Name: hex.EncodeToString(name[:]), Epoch: metadata,
+		Inputs: chunks, Pending: pending, Activate: true}
+	if expected != nil {
+		return store.root.commitFrom(*expected, generation)
+	}
+	return store.root.commit(generation)
+}
+
+// Close releases the exclusive root lease.
+func (store *Store) Close() error {
+	if store == nil || store.root == nil {
+		return nil
+	}
+	return store.root.close()
+}
+
+func (store *Store) load(minimumEpoch uint64) (snapshot, error) {
+	if store == nil || store.root == nil {
+		return snapshot{}, errors.New("naming state store is unavailable")
+	}
+	current, generations, err := store.root.load()
+	if err != nil || current == "" {
+		return snapshot{}, errors.New("naming state is tampered")
+	}
+	for _, generation := range generations {
+		if generation.Name != current {
+			continue
+		}
+		digest := snapshotGenerationDigest(generation.Epoch, generation.Inputs, generation.Pending)
+		attested, decodeErr := decodeAttested(generation.Epoch)
+		persistedRecords, persistenceErr := decodeRecordChunks(generation.Inputs)
+		records, leaves, materialErr := materializeRecords(store.policy.Network, persistedRecords)
+		canonicalChunks, canonicalErr := encodeRecordChunks(records)
+		if decodeErr != nil || materialErr != nil || hex.EncodeToString(digest[:]) != current ||
+			!verifyAttestation(store.policy, attested) || attested.statement.recordRoot != recordRoot(leaves) ||
+			attested.statement.recordLength != uint32(len(leaves)) || persistenceErr != nil || canonicalErr != nil ||
+			!sameInputs(canonicalChunks, generation.Inputs) {
+			return snapshot{}, errors.New("naming state is tampered")
+		}
+		if attested.statement.epoch < minimumEpoch {
+			return snapshot{}, errors.New("naming state is stale")
+		}
+		return snapshot{attested: attested, records: records, leaves: leaves, pending: generation.Pending}, nil
+	}
+	return snapshot{}, errors.New("naming state is tampered")
+}
+
+func validMaterializationPolicy(input MaterializationPolicy) (MaterializationPolicy, error) {
+	if input.Network == [32]byte{} || input.Rule != materializationRule || input.Threshold < 2 ||
+		input.Threshold > len(input.Authorities) || len(input.Authorities) > 16 {
+		return MaterializationPolicy{}, errors.New("naming materialization policy is invalid")
+	}
+	policy := MaterializationPolicy{Network: input.Network, Rule: input.Rule,
+		Authorities: make(map[[32]byte]ed25519.PublicKey, len(input.Authorities)), Threshold: input.Threshold}
+	for id, public := range input.Authorities {
+		if len(public) != ed25519.PublicKeySize || sha256.Sum256(public) != id {
+			return MaterializationPolicy{}, errors.New("naming materialization authority is invalid")
+		}
+		policy.Authorities[id] = append(ed25519.PublicKey(nil), public...)
+	}
+	return policy, nil
+}
+
+// ValidMaterializationPolicy validates and copies one materialization trust root.
+func ValidMaterializationPolicy(input MaterializationPolicy) (MaterializationPolicy, error) {
+	return validMaterializationPolicy(input)
+}
+
+func validEpoch(value Epoch) bool {
+	return value.Number > 0 && value.Digest != [32]byte{} && value.CutoffOffset >= 0 && value.TransitionRoot != [32]byte{} &&
+		value.RejectionRoot != [32]byte{}
+}
+
+func snapshotGenerationDigest(metadata []byte, inputs [][]byte, pending uint64) [32]byte {
+	out := append([]byte("ardents-naming-state-snapshot-v2\x00"), metadata...)
+	for _, input := range inputs {
+		out = appendUint32(out, uint32(len(input)))
+		out = append(out, input...)
+	}
+	if pending != 0 {
+		out = append(out, "pending-v1\x00"...)
+		out = appendUint64(out, pending)
+	}
+	return sha256.Sum256(out)
+}
