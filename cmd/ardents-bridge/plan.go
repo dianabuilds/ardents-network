@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/bridge"
+	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
@@ -19,12 +19,11 @@ type importPlan struct {
 	NetworkAuthorities []string `json:"network_authorities"`
 	NetworkThreshold   int      `json:"network_threshold"`
 	NetworkProfile     string   `json:"network_profile"`
-	RouteProfile       string   `json:"route_profile"`
 	LocalRoleStateRoot string   `json:"local_role_state_root"`
 	TimeConfidenceFile string   `json:"time_confidence_file"`
 }
 type importRuntime struct {
-	config                    bridge.Config
+	config                    entry.Config
 	inviteFile, localRoleRoot string
 	close                     func() error
 }
@@ -34,8 +33,7 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 	if err := planfile.Decode(path, 16<<10, &raw); err != nil {
 		return importRuntime{}, err
 	}
-	if raw.StateRoot == "" || raw.NetworkStateRoot == "" || raw.InviteFile == "" ||
-		raw.RouteProfile == "" || raw.NetworkProfile == "" || raw.LocalRoleStateRoot == "" ||
+	if raw.StateRoot == "" || raw.NetworkStateRoot == "" || raw.InviteFile == "" || raw.NetworkProfile == "" || raw.LocalRoleStateRoot == "" ||
 		raw.TimeConfidenceFile == "" {
 		return importRuntime{}, errors.New("import plan is incomplete")
 	}
@@ -58,13 +56,32 @@ func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) 
 		_ = network.Close()
 		return importRuntime{}, fmt.Errorf("read authenticated Network State: %w", currentErr)
 	}
-	config := bridge.Config{
-		Root: raw.StateRoot, RouteProfile: raw.RouteProfile, CurrentNetwork: network.Current, Clock: clock,
-		TimeConfidence: planfile.FreshRegular(raw.TimeConfidenceFile, clock, 2*time.Second),
-		RoleConflict: func(identity, family [32]byte) (bool, error) {
+	config := entry.Config{
+		Root: raw.StateRoot, Current: func() (entry.View, error) {
+			current, currentErr := network.Current()
+			if currentErr != nil {
+				return entry.View{}, currentErr
+			}
+			return entryView(current), nil
+		}, Clock: clock,
+		TimeConfident: planfile.FreshRegular(raw.TimeConfidenceFile, clock, 2*time.Second),
+		Conflict: func(identity, family [32]byte) (bool, error) {
 			return duty.ReadConflict(raw.LocalRoleStateRoot, clock, identity, family)
 		},
 	}
 	return importRuntime{config: config, inviteFile: raw.InviteFile, localRoleRoot: raw.LocalRoleStateRoot,
 		close: network.Close}, nil
+}
+
+func entryView(current state.Snapshot) entry.View {
+	view := entry.View{NetworkID: current.NetworkID, Epoch: current.Epoch, Digest: current.Digest,
+		Profile: current.Profile, Fresh: current.Freshness == "fresh"}
+	for _, candidate := range current.Candidates[:current.CandidateCount] {
+		view.Candidates = append(view.Candidates, entry.Candidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
+			KeyID: candidate.KeyID, FamilyID: candidate.FamilyID, RecordDigest: candidate.RecordDigest,
+			DomainProofDigest: candidate.DomainProofDigest, Endpoint: candidate.Endpoint, Capacity: candidate.Capacity,
+			Domain: candidate.Domain, ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil,
+			AssignmentNotAfter: candidate.AssignmentNotAfter})
+	}
+	return view
 }

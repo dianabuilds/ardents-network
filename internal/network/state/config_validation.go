@@ -73,7 +73,7 @@ func validateConfig(input Config) (config, error) {
 	if acceptedProfile == "" {
 		acceptedProfile = "h3-role-probe-v1"
 	}
-	if acceptedProfile != "h3-role-probe-v1" && acceptedProfile != "h3-route-tracer-v1" {
+	if !knownProfile(acceptedProfile) {
 		return config{}, errors.New("accepted Network State profile is unsupported")
 	}
 	resolved := config{

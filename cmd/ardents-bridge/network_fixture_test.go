@@ -20,20 +20,20 @@ type commandNetwork struct {
 	domainProof     []byte
 }
 
-func prepareCommandNetwork(t *testing.T, directory string, now time.Time) commandNetwork {
+func prepareCommandNetwork(t *testing.T, directory string, now time.Time, profile string) commandNetwork {
 	t.Helper()
 	networkID := sha256.Sum256([]byte("stage-5-command-network"))
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0xa9}, ed25519.SeedSize))
 	node := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x11}, ed25519.SeedSize))
 	record := commandRecord(networkID, node, now)
-	epoch, digest := commandEpoch(networkID, authority, record, now)
+	epoch, digest := commandEpoch(networkID, authority, record, now, profile)
 	material := commandMaterialization(digest, record)
 	root := filepath.Join(directory, "network-state")
 	public := authority.Public().(ed25519.PublicKey)
 	authorityID := sha256.Sum256(public)
 	owner, err := state.Open(state.Config{
 		Root: root, NetworkID: networkID, Authorities: map[[32]byte]ed25519.PublicKey{authorityID: public},
-		Threshold: 1, Now: now,
+		Threshold: 1, Now: now, AcceptedProfile: profile,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func commandRecord(network [32]byte, private ed25519.PrivateKey, now time.Time) 
 	writeCommandI64(&raw, now.Add(-time.Hour).Unix())
 	writeCommandI64(&raw, now.Add(time.Hour).Unix())
 	writeCommandText(&raw, "stage-5-family")
-	raw.WriteByte(1)
+	raw.WriteByte(2)
 	writeCommandText(&raw, "127.0.0.1:4101")
 	writeCommandU16(&raw, 4)
 	raw.Write(private.Public().(ed25519.PublicKey))
@@ -68,7 +68,7 @@ func commandRecord(network [32]byte, private ed25519.PrivateKey, now time.Time) 
 	return raw.Bytes()
 }
 
-func commandEpoch(network [32]byte, authority ed25519.PrivateKey, record []byte, now time.Time) ([]byte, [32]byte) {
+func commandEpoch(network [32]byte, authority ed25519.PrivateKey, record []byte, now time.Time, profile string) ([]byte, [32]byte) {
 	var raw bytes.Buffer
 	raw.WriteString("AREP")
 	raw.WriteByte(1)
@@ -78,7 +78,7 @@ func commandEpoch(network [32]byte, authority ed25519.PrivateKey, record []byte,
 	writeCommandI64(&raw, now.Add(-time.Minute).Unix())
 	writeCommandI64(&raw, now.Add(time.Hour).Unix())
 	writeCommandU32(&raw, 1)
-	writeCommandText(&raw, "h3-role-probe-v1")
+	writeCommandText(&raw, profile)
 	inputRoot := commandMerkleLeaf(record)
 	viewRoot := inputRoot
 	raw.Write(inputRoot[:])

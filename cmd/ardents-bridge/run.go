@@ -8,19 +8,16 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/bridge"
+	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer) (runErr error) {
-	if len(arguments) != 2 || arguments[0] != "import" && arguments[0] != "serve" {
-		return errors.New("usage: ardents-bridge import|serve <plan>")
+	if len(arguments) != 2 || arguments[0] != "import" {
+		return errors.New("usage: ardents-bridge import <plan>")
 	}
 	if err := ctx.Err(); err != nil {
 		return err
-	}
-	if arguments[0] == "serve" {
-		return runServe(ctx, arguments[1], output)
 	}
 	runtime, err := loadImportPlan(arguments[1], time.Now)
 	if err != nil {
@@ -31,15 +28,14 @@ func run(ctx context.Context, arguments []string, output io.Writer) (runErr erro
 	if err != nil && !errors.Is(err, planfile.ErrTooLarge) {
 		return fmt.Errorf("read Bridge Invite: %w", err)
 	}
-	runtime.config.ValidateCandidate = candidateCommitment
-	owner, err := bridge.Open(runtime.config)
+	owner, err := entry.Open(runtime.config)
 	if err != nil {
-		return fmt.Errorf("open Bridge state: %w", err)
+		return fmt.Errorf("open Entry state: %w", err)
 	}
 	result, importErr := owner.Import(invite)
 	closeErr := owner.Close()
 	if importErr != nil {
-		return errors.Join(fmt.Errorf("import Bridge Invite: %w", importErr), closeErr)
+		return errors.Join(fmt.Errorf("import Entry Invite: %w", importErr), closeErr)
 	}
 	if closeErr != nil {
 		return fmt.Errorf("close Bridge state: %w", closeErr)

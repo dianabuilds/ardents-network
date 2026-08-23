@@ -17,8 +17,8 @@ type Config struct {
 	NetworkID   [32]byte
 	Authorities map[[32]byte]ed25519.PublicKey
 	Threshold   int
-	// AcceptedProfile is empty for the role probe or explicitly names
-	// the replaceable H3 Route tracer profile.
+	// AcceptedProfile is empty for the role probe or explicitly names one
+	// selected Route profile.
 	AcceptedProfile string
 	Now             time.Time
 	Clock           func() time.Time

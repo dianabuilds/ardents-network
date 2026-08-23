@@ -1,2 +1,2 @@
-// Command ardents-bridge owns the thin local Bridge Invite import adapter.
+// Command ardents-bridge owns the thin local Entry Invite import adapter.
 package main
