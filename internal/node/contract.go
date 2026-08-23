@@ -10,8 +10,33 @@ import (
 
 const eventSchema = "ardents-h3-node-event-v1"
 
-// Facts are the authenticated inputs required to decide one Node duty. They do
-// not expose Network State persistence, source, retry, or pending metadata.
+// DutyView is the narrow authenticated input required to decide one Node duty.
+// It does not expose Network State persistence, source, retry, or pending
+// metadata.
+type DutyView interface {
+	DutyGeneration() string
+	DutyNetworkID() [32]byte
+	DutyEpoch() uint64
+	DutyDigest() [32]byte
+	DutyEpochValidFrom() time.Time
+	DutyValidUntil() time.Time
+	DutyProfile() string
+	DutyFresh() bool
+	DutyConflicting() bool
+	DutyRecordPresent() bool
+	DutyNodeID() [32]byte
+	DutyNodePublicKey() [32]byte
+	DutyRecordValidFrom() time.Time
+	DutyRecordValidUntil() time.Time
+	DutyDeclaredFamily() string
+	DutyProbeEndpoint() string
+	DutyProbeCapacity() uint16
+	DutyAssignment() string
+	DutyAssignmentDigest() [32]byte
+}
+
+// Facts is the Node-owned immutable copy of one DutyView. It is also useful to
+// behavior-test the lifecycle without a Network State runtime.
 type Facts struct {
 	Generation       string
 	NetworkID        [32]byte
@@ -39,7 +64,7 @@ type Config struct {
 	NetworkID          [32]byte
 	NodeID             [32]byte
 	IdentityKey        ed25519.PrivateKey
-	Current            func() (Facts, error)
+	Current            func() (DutyView, error)
 	Probe              ProbeConfig
 	PollInterval       time.Duration
 	Quarantine         time.Duration
@@ -53,6 +78,26 @@ type Config struct {
 	// Emit must honor ctx cancellation and return before its deadline.
 	Emit func(context.Context, Event) error
 }
+
+func (facts Facts) DutyGeneration() string          { return facts.Generation }
+func (facts Facts) DutyNetworkID() [32]byte         { return facts.NetworkID }
+func (facts Facts) DutyEpoch() uint64               { return facts.Epoch }
+func (facts Facts) DutyDigest() [32]byte            { return facts.Digest }
+func (facts Facts) DutyEpochValidFrom() time.Time   { return facts.EpochValidFrom }
+func (facts Facts) DutyValidUntil() time.Time       { return facts.ValidUntil }
+func (facts Facts) DutyProfile() string             { return facts.Profile }
+func (facts Facts) DutyFresh() bool                 { return facts.Fresh }
+func (facts Facts) DutyConflicting() bool           { return facts.Conflicting }
+func (facts Facts) DutyRecordPresent() bool         { return facts.RecordPresent }
+func (facts Facts) DutyNodeID() [32]byte            { return facts.NodeID }
+func (facts Facts) DutyNodePublicKey() [32]byte     { return facts.NodePublicKey }
+func (facts Facts) DutyRecordValidFrom() time.Time  { return facts.RecordValidFrom }
+func (facts Facts) DutyRecordValidUntil() time.Time { return facts.RecordValidUntil }
+func (facts Facts) DutyDeclaredFamily() string      { return facts.DeclaredFamily }
+func (facts Facts) DutyProbeEndpoint() string       { return facts.ProbeEndpoint }
+func (facts Facts) DutyProbeCapacity() uint16       { return facts.ProbeCapacity }
+func (facts Facts) DutyAssignment() string          { return facts.Assignment }
+func (facts Facts) DutyAssignmentDigest() [32]byte  { return facts.AssignmentDigest }
 
 // Event is one bounded external observation of Node lifecycle state.
 type Event struct {

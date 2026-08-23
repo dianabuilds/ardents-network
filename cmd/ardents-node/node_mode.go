@@ -23,22 +23,12 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	runtime.node.Current = func() (node.Facts, error) {
-		snapshot, currentErr := store.Current()
+	runtime.node.Current = func() (node.DutyView, error) {
+		view, currentErr := store.CurrentNodeDuty()
 		if currentErr != nil {
-			return node.Facts{}, currentErr
+			return nil, currentErr
 		}
-		return node.Facts{
-			Generation: snapshot.Generation, NetworkID: snapshot.NetworkID,
-			Epoch: snapshot.Epoch, Digest: snapshot.Digest,
-			EpochValidFrom: snapshot.EpochValidFrom, ValidUntil: snapshot.ValidUntil,
-			Profile: snapshot.Profile, Fresh: snapshot.Freshness == "fresh", Conflicting: snapshot.Conflicting,
-			RecordPresent: snapshot.RecordPresent, NodeID: snapshot.NodeID,
-			NodePublicKey: snapshot.NodePublicKey, RecordValidFrom: snapshot.RecordValidFrom,
-			RecordValidUntil: snapshot.RecordValidUntil, DeclaredFamily: snapshot.DeclaredFamily, ProbeEndpoint: snapshot.ProbeEndpoint,
-			ProbeCapacity: snapshot.ProbeCapacity, Assignment: snapshot.Assignment,
-			AssignmentDigest: snapshot.AssignmentDigest,
-		}, nil
+		return view, nil
 	}
 	runtime.node.Emit = node.EventEmitter(boundedOutput)
 	_, runErr := node.Run(ctx, runtime.node)

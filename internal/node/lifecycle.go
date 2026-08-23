@@ -27,7 +27,7 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	ticker := time.NewTicker(config.PollInterval)
 	defer ticker.Stop()
 	for {
-		snapshot, currentErr := config.Current()
+		snapshot, currentErr := currentFacts(config)
 		if currentErr != nil {
 			return fail(config, &machine, nil, "persistent Network State is unavailable", currentErr)
 		}
@@ -82,7 +82,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 		case <-timer.C:
 		}
 	}
-	current, err := config.Current()
+	current, err := currentFacts(config)
 	if err != nil {
 		return fail(config, machine, nil, "persistent Network State is unavailable", err)
 	}
@@ -147,7 +147,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 					return fail(config, machine, server, "external evidence channel failed", err)
 				}
 			}
-			updated, readErr := config.Current()
+			updated, readErr := currentFacts(config)
 			if readErr != nil {
 				return fail(config, machine, server, "persistent Network State is unavailable", readErr)
 			}
@@ -217,6 +217,24 @@ func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot F
 func sameDuty(first, second Facts) bool {
 	return first.Digest == second.Digest && first.NodeID == second.NodeID &&
 		first.AssignmentDigest == second.AssignmentDigest
+}
+
+func currentFacts(config runtimeConfig) (Facts, error) {
+	view, err := config.Current()
+	if err != nil {
+		return Facts{}, err
+	}
+	if view == nil {
+		return Facts{}, errors.New("Node duty view is unavailable")
+	}
+	return Facts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
+		Digest: view.DutyDigest(), EpochValidFrom: view.DutyEpochValidFrom(), ValidUntil: view.DutyValidUntil(),
+		Profile: view.DutyProfile(), Fresh: view.DutyFresh(), Conflicting: view.DutyConflicting(),
+		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(),
+		RecordValidFrom: view.DutyRecordValidFrom(), RecordValidUntil: view.DutyRecordValidUntil(),
+		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(),
+		ProbeCapacity: view.DutyProbeCapacity(), Assignment: view.DutyAssignment(),
+		AssignmentDigest: view.DutyAssignmentDigest()}, nil
 }
 
 func newProbeDuty(snapshot Facts) probeDuty {

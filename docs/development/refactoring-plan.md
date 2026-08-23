@@ -89,7 +89,9 @@ and joined-drain implementation now remains private to the single `node`
 Module that owns its full duty lifecycle. `cmd/ardents-node` configures
 `node.ProbeConfig` only as part of `node.Config`; it has no separate probe
 runtime to compose or import. The Node process and lifecycle behavior tests
-continue to exercise the same public Node seam.
+continue to exercise the same public Node seam. State now supplies a narrow
+opaque Node-duty view, so the command no longer copies a broad `Snapshot` into
+Node facts.
 
 ## Completed wave records
 

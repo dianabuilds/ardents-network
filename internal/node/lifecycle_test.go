@@ -50,7 +50,7 @@ type issuedCertificate struct {
 func TestRunServesBoundProbeThenWithdrawsOnRecordRemoval(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 16)
-	fixture.config.Current = func() (Facts, error) {
+	fixture.config.Current = func() (DutyView, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -140,7 +140,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.config.Probe.DrainTimeout = 30 * time.Millisecond
 	events := make(chan Event, 16)
-	fixture.config.Current = func() (Facts, error) {
+	fixture.config.Current = func() (DutyView, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -174,7 +174,7 @@ func TestDrainCancelsEstablishedProbeAtDeadline(t *testing.T) {
 func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	events := make(chan Event, 32)
-	fixture.config.Current = func() (Facts, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	fixture.config.ResourceProfile = "h3-np1-v1"
 	var protect atomic.Bool
@@ -218,7 +218,7 @@ func TestProtectPreservesEstablishedWorkAndRejectsNewAdmission(t *testing.T) {
 func TestRunFailsBeforeReadinessOnKeyMismatch(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.NodePublicKey[0]++
-	fixture.config.Current = func() (Facts, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(context.Context, Event) error { return nil }
 	result, err := Run(context.Background(), fixture.config)
 	if err == nil || result.State != "FAILED" {
@@ -234,7 +234,7 @@ func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.ProbeCapacity = 0
 	events := make(chan Event, 8)
-	fixture.config.Current = func() (Facts, error) {
+	fixture.config.Current = func() (DutyView, error) {
 		fixture.mu.RLock()
 		defer fixture.mu.RUnlock()
 		return fixture.snapshot, nil
@@ -258,7 +258,7 @@ func TestPreparedNodeFailsWhenRecordDisappears(t *testing.T) {
 
 func TestResolveRejectsInvalidOrUnboundedClientTrust(t *testing.T) {
 	fixture := newLifecycleFixture(t)
-	fixture.config.Current = func() (Facts, error) { return fixture.snapshot, nil }
+	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(context.Context, Event) error { return nil }
 	for _, roots := range [][]byte{[]byte("not PEM"), make([]byte, (64<<10)+1)} {
 		config := fixture.config
