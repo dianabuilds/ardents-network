@@ -13,7 +13,7 @@ import (
 
 func TestServiceProcessesKeepConnectionWhenReplacementFails(t *testing.T) {
 	fixture := newRecoveryProcessFixture(t)
-	serviceBinary := buildProductCommand(t, "ardents-service")
+	serviceBinary := buildProductCommand(t, "ardents")
 	publishBinary := buildProductCommand(t, "ardents-publish-app")
 	streamBinary := buildProductCommand(t, "ardents-stream-app")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

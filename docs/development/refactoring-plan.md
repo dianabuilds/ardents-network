@@ -62,6 +62,15 @@ one of those conditions.
 | **M11 — Node** | Input: `internal/node`, Node command/e2e. Owner: `node`. | Depends on M3/M4 target view/duty/resource ports and selected M8 Route facts. D02 reader is target-owned only. | Duty→quarantine→ready→pressure/drain/withdraw, listener/handler join, signal/restart, and selected platform process tests. The private probe is implementation, not a package; delete Snapshot translation glue. |
 | **M12 — Custody** | Input: ADR-0021, D08, remaining foreign custody limitation fields. Owner: `custody`. | DA-08 and DA-09 are mandatory. D08 format/secret storage is C1/C3 only after accepted custody/platform design; no foreign secret writer. | Unlock/export/restore/reconcile/revocation/corruption/non-mutation tests; accepted platform storage/restore evidence. Delete foreign custody fields and limitation-string substitutes only after target behavior exists. |
 | **M13 — command and operator consolidation** | Input: all retained product commands, plans/config/results, README/current operator routes. Owners: thin `cmd/ardents`, `cmd/ardents-node`, conditional bootstrap. | DA-10 governs every observed command/config/result. Each gets C0, C1, or C2 with a named observer and expiry; plans never become authority. | Command descriptor/process tests, migration/error/redaction checks, documentation route review. Delete `cmd/ardents-name`, `cmd/ardents-bridge`, `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-release`, `cmd/ardents-publish-app`, and `cmd/ardents-stream-app` unless an accepted bounded adapter remains. |
+
+**M13 progress, 2026-08-23.** The sole repository-visible observer for
+`cmd/ardents-service` was the unversioned root README statement. Under the
+Product Owner's standing delegation it is a C0 command break: its exact
+Endpoint route is now `ardents endpoint run <endpoint-plan.json>`, exercised by
+the existing process readiness/cleanup and recovery journey. The plan remains
+an explicitly temporary Endpoint-owned input, not a new general command
+configuration contract. The former executable, its deterministic profile
+entry, and its package-map row are deleted together.
 | **M14 — retirement and current truth** | Input: every remaining lab, verifier, e2e/live matrix, stage document, fixture, and this plan. Owner: Codex under Product Owner final disposition. | DA-11 chooses C4 provenance/reproduction or C0 deletion; Qualification requires an accepted claim and active profile, never a historical receipt. | Full profile/reader-route audit, claim/evidence identity check, package-map/import graph, artifact/residue scan. Delete obsolete `internal/lab/`, six lab commands, obsolete e2e/live suites, stage materials whose current facts are promoted, target/disposition ledgers, and this plan. |
 
 **M10 progress, 2026-08-23.** `internal/applicationipc` and

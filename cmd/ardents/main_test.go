@@ -60,6 +60,14 @@ func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
 	}
 }
 
+func TestEndpointRouteRejectsIncompleteCommand(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	if err := run(t.Context(), []string{"endpoint", "run"}, &output); err == nil || output.Len() != 0 {
+		t.Fatalf("incomplete endpoint command err=%v output=%q", err, output.String())
+	}
+}
+
 func writeCommandGolden(t *testing.T, directory, name, source string) string {
 	t.Helper()
 	encoded, err := os.ReadFile(source)

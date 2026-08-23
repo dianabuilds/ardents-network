@@ -23,7 +23,7 @@ type serviceProcess struct {
 
 func startServiceProcess(t *testing.T, ctx context.Context, binary, root, plan string) *serviceProcess {
 	t.Helper()
-	process := &serviceProcess{command: exec.CommandContext(ctx, binary, "run", plan)}
+	process := &serviceProcess{command: exec.CommandContext(ctx, binary, "endpoint", "run", plan)}
 	process.command.Dir = root
 	stdout, err := process.command.StdoutPipe()
 	if err != nil {

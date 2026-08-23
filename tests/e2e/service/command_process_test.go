@@ -13,7 +13,7 @@ import (
 )
 
 func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
-	binary := buildServiceBinary(t)
+	binary := buildArdentsBinary(t)
 	root := t.TempDir()
 	applicationSocket := "application.sock"
 	routeSocket := "route.sock"
@@ -33,7 +33,7 @@ func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
 	if err := os.WriteFile(planPath, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(binary, "run", planPath)
+	command := exec.Command(binary, "endpoint", "run", planPath)
 	command.Dir = root
 	output, err := command.CombinedOutput()
 	if err == nil {
@@ -57,22 +57,22 @@ func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
 	}
 }
 
-func buildServiceBinary(t *testing.T) string {
+func buildArdentsBinary(t *testing.T) string {
 	t.Helper()
 	_, current, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate repository root")
 	}
 	root := filepath.Clean(filepath.Join(filepath.Dir(current), "..", "..", ".."))
-	name := "ardents-service"
+	name := "ardents"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
 	path := filepath.Join(t.TempDir(), name)
-	command := exec.Command("go", "build", "-trimpath", "-o", path, "./cmd/ardents-service")
+	command := exec.Command("go", "build", "-trimpath", "-o", path, "./cmd/ardents")
 	command.Dir = root
 	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build Service command: %v\n%s", err, output)
+		t.Fatalf("build ardents command: %v\n%s", err, output)
 	}
 	return path
 }

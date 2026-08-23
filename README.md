@@ -134,19 +134,18 @@ cannot qualify the native profile. The Product Owner authorized
 Stage 6 on 2026-08-20 after accepting R-042/R-044/R-045/R-055 and ADR-0017
 through ADR-0019. Maintained S6.1-S6.6 implementation, journey trace, and
 mutation coverage are complete; the bounded independent S6E1 command verdict is
-`pass`, and the Product Owner recorded Stage 6 `complete` on 2026-08-20. The current
-maintained product commands are `cmd/ardents`, `cmd/ardents-node`,
-`cmd/ardents-service`, `cmd/ardents-bridge`,
-`cmd/ardents-stream-app`, `cmd/ardents-publish-app`, and the bounded Stage 6
-`cmd/ardents-name` canonical-name/private resolver/control adapter. Cohesive product
-modules live under `internal/network`, `internal/node`, `internal/route`,
-`internal/serviceconn`, `internal/serviceendpoint`, `internal/resource`,
-`internal/applicationipc`, `internal/streamworkload`, `internal/planfile`,
-`internal/entry`, `internal/localroles`,
-`internal/naming`, `internal/namelease`, `internal/nameauthority`,
-`internal/nameclaim`, `internal/nameadmission`, `internal/namerecovery`,
-`internal/naming/resolution`, and `internal/namestore`. Product work never grows inside or imports the frozen
-`internal/lab` quarantine.
+`pass`, and the Product Owner recorded Stage 6 `complete` on 2026-08-20. Stage
+8 is replacing the old one-command-per-tracer layout. `cmd/ardents` now owns
+the retained offline State route and the Endpoint route
+`ardents endpoint run <endpoint-plan.json>`; `cmd/ardents-node` and the
+separate `cmd/ardents-custody` adapter retain their distinct current roles.
+The remaining stage-era commands have no support promise and are being given
+explicit C0/C2/C4 dispositions in the
+[Stage 8 target architecture](docs/development/stage-8-target-architecture.md)
+and [compatibility observer inventory](docs/development/stage-8-compatibility-observer-inventory.md).
+Current maintained Module ownership is recorded in the
+[package map](docs/development/package-map.md). Product work never grows inside
+or imports the frozen `internal/lab` quarantine.
 
 The first completed maintained vertical slice was an Ubuntu-to-Ubuntu
 **Carrier Lab**. It
