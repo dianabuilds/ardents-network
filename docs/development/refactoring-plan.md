@@ -177,6 +177,33 @@ observation fails protected and drained. The caller audit finds State, Node,
 and Route using this one owner and no displaced production resource guard or
 non-test resource-adapter override.
 
+### M5 — Namespace
+
+**In progress, 2026-08-23.** The R-061 prerequisite is complete: Namespace
+owns its compatible current/pending root and proof mechanics without a Network
+State persistence or commitment import. R-065 through R-073 now bound the
+retained tracer's decision time, 127-record envelope, byte profiles, record
+proof envelope, `submitted` semantics, durable exact-successor journal, typed
+claim winner, and typed Epoch installation. `OpenControl` reconstructs only
+verified current plus signed pending successors; `EpochInstallation` alone
+selects a durable prefix or materializes an opaque `ClaimWinner` into an exact
+signed successor before the existing threshold statement publishes current
+state. A locally consumed R-045 root-claim proof now produces an opaque,
+canonical 64-byte Epoch input; its threshold leaf binds the epoch-assigned
+ordinal, commitment, and admission digest. The winner is restricted to the
+same Network and Epoch installation that authenticated its close.
+
+The focused Namespace, Resolution, and independent Stage-6 evidence suites
+pass, as does the full `make check` profile (format, architecture, build, vet,
+module, staticcheck, vuln, unit, e2e, and race) after this slice. This is not a
+wave-complete claim: the remaining global-close owner must still commit the
+opaque inputs and issue the complete threshold close; the public `Record`,
+`Op`, `Apply`, raw `Store.Commit`, historical Stage-6 fixtures, and interim
+Record signing callback remain compatibility surfaces. Production Resolution
+already consumes `Binding` rather than lifecycle `Record`, but only the later
+sealed Namespace interface plus the M14 C4 disposition can remove the old
+field bags and historical verifier seam without losing required provenance.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before
