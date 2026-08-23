@@ -48,16 +48,14 @@ func (control *oracleWorkControl) observeActive() error {
 }
 
 type oracleCustodyProbe struct {
-	wantIdentity        CandidateIdentity
-	selfTestCalls       uint64
-	secretReads         uint64
-	authorityMutations  uint64
-	vaultPath           string
-	watermarkPath       string
-	vaultCommitment     [32]byte
-	watermarkCommitment [32]byte
-	currentPath         string
-	expectedActive      [32]byte
+	wantIdentity       CandidateIdentity
+	selfTestCalls      uint64
+	secretReads        uint64
+	authorityMutations uint64
+	vaultRoot          string
+	vaultCommitment    [32]byte
+	currentPath        string
+	expectedActive     [32]byte
 }
 
 func (probe *oracleCustodyProbe) Check(_ context.Context, identity CandidateIdentity) error {
@@ -68,8 +66,7 @@ func (probe *oracleCustodyProbe) Check(_ context.Context, identity CandidateIden
 	if probe.secretReads != 0 || probe.authorityMutations != 0 {
 		return &oracleTestError{"forbidden custody operation observed"}
 	}
-	if oracleFileSum(probe.vaultPath) != probe.vaultCommitment ||
-		oracleFileSum(probe.watermarkPath) != probe.watermarkCommitment {
+	if oracleTreeSum(probe.vaultRoot) != probe.vaultCommitment {
 		return &oracleTestError{"custody commitment changed"}
 	}
 	if oracleSelectedArtifact(probe.currentPath) != probe.expectedActive {
@@ -97,14 +94,8 @@ func TestApplyV0CommitsAndPreservesD0(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	vaultPath := filepath.Join(parent, "authority-vault.bin")
-	watermarkPath := filepath.Join(parent, "authority-watermark.bin")
-	if err := os.WriteFile(vaultPath, []byte("sealed-vault-v1"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(watermarkPath, []byte("authority-watermark-v1"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	vaultRoot := filepath.Join(parent, "authority-vault")
+	oracleCreateCustodyVault(t, vaultRoot)
 	wantIdentity := CandidateIdentity{
 		Generation:   vector.Request.TransactionGeneration,
 		TargetPath:   vector.Candidate.Path,
@@ -118,13 +109,11 @@ func TestApplyV0CommitsAndPreservesD0(t *testing.T) {
 	work := &oracleWorkControl{currentPath: filepath.Join(updateRoot, "current"),
 		expectedActive: *oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256)}
 	selfTest := &oracleCustodyProbe{
-		wantIdentity:        wantIdentity,
-		vaultPath:           vaultPath,
-		watermarkPath:       watermarkPath,
-		vaultCommitment:     oracleFileSum(vaultPath),
-		watermarkCommitment: oracleFileSum(watermarkPath),
-		currentPath:         filepath.Join(updateRoot, "current"),
-		expectedActive:      wantIdentity.Digest,
+		wantIdentity:    wantIdentity,
+		vaultRoot:       vaultRoot,
+		vaultCommitment: oracleTreeSum(vaultRoot),
+		currentPath:     filepath.Join(updateRoot, "current"),
+		expectedActive:  wantIdentity.Digest,
 	}
 
 	request := Request{
@@ -163,8 +152,7 @@ func TestApplyV0CommitsAndPreservesD0(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(floorsBefore, floorsAfter) ||
-		oracleFileSum(vaultPath) != selfTest.vaultCommitment ||
-		oracleFileSum(watermarkPath) != selfTest.watermarkCommitment {
+		oracleTreeSum(vaultRoot) != selfTest.vaultCommitment {
 		t.Fatal("D0 custody or release-floor commitment changed")
 	}
 

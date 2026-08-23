@@ -431,6 +431,12 @@ input and a superseded record fails active verification. The missing piece is
 the real authenticated Network/Namespace successor source, not a caller-supplied
 claim of freshness.
 
+M12's D0 Update behavior test now creates a real encrypted custody Vault and
+floor through the test fixture, commits its whole-root digest, then runs the
+black-box Update transaction. The production Update Module never receives that
+root or a custody input; the test fails if any Vault/floor bytes or paths
+change.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before
