@@ -238,6 +238,34 @@ func TestVaultFloorRejectsNonAdvancingRecordAndLocksSupersededRecord(t *testing.
 	}
 }
 
+func TestVaultReopenRejectsActiveRecordWhenAuthorityFloorIsCorrupt(t *testing.T) {
+	root := t.TempDir()
+	vault, err := Open(VaultConfig{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := testAuthorityState()
+	password := []byte("correct horse battery staple")
+	created, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: state}, &sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatalf("create record: %v", err)
+	}
+	if err := vault.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "authority-floors.json"), []byte("corrupt"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(VaultConfig{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	if _, err := reopened.Execute(t.Context(), Operation{Kind: OperationVerifyVaultRecord, RecordID: created.RecordID, Expected: state.Binding}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("verify with corrupt floor = %v, want invalid", err)
+	}
+}
+
 type sequenceSecrets struct {
 	values        [][]byte
 	confirmations []bool
