@@ -1,10 +1,10 @@
-# Stage 8 current test portfolio
+# Stage 8 source-entry test portfolio (historical)
 
-Status: **S8.0 factual inventory at source entry
+Status: **historical S8.0 factual inventory at source entry
 `1cf7100da3ada32ba53abb51201aaf7b6183a3da`.** This temporary record reports
-the entry test tree and observed execution conditions. It is neither a test
-policy nor a Qualification receipt. It is deleted at S8.6 after each retained
-test/evidence fact has a current canonical owner.
+the entry test tree and observed execution conditions. It is neither a current
+test policy nor a Qualification receipt. It is deleted at S8.6 after each
+retained test/evidence fact has a current canonical owner.
 
 ## Inventory and roles
 

@@ -1,10 +1,12 @@
-# Stage 8 current journey and claim trace
+# Stage 8 source-entry journey and claim trace (historical)
 
-Status: **S8.0 in progress; factual trace at source entry
+Status: **historical S8.0 source-entry trace, frozen at
 `1cf7100da3ada32ba53abb51201aaf7b6183a3da`.** This temporary companion to the
-[current-system report](stage-8-current-system-report.md) records current
-caller and observable-test paths, including absent evidence. A path is not a
-product-support or Qualification claim.
+[source-entry system report](stage-8-current-system-report.md) records the
+then-current caller and observable-test paths, including absent evidence. It
+does not describe the maintained architecture after Stage 8 cutovers; use the
+[refactoring plan](refactoring-plan.md) and package map for current ownership.
+A path is not a product-support or Qualification claim.
 
 ## H3 journey trace
 

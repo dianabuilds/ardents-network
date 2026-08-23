@@ -1,10 +1,12 @@
-# Stage 8 current-system report
+# Stage 8 source-entry system report (historical)
 
-Status: **S8.0 in progress; this is the first factual diagnostic record.** It
-is a temporary Stage 8 control document, not a target architecture, product
-disposition, or a Qualification result. Its facts are frozen against the Stage 8 source entry
-`1cf7100da3ada32ba53abb51201aaf7b6183a3da` on 2026-08-22. It is deleted at
-S8.6 after each fact has a current canonical owner.
+Status: **historical S8.0 source-entry diagnostic record.** It is a temporary
+Stage 8 control document, not a target architecture, product disposition, or a
+Qualification result. Its facts are frozen against the Stage 8 source entry
+`1cf7100da3ada32ba53abb51201aaf7b6183a3da` on 2026-08-22. It does not
+describe the maintained system after Stage 8 cutovers; use the
+[refactoring plan](refactoring-plan.md) and package map for current ownership.
+It is deleted at S8.6 after each fact has a current canonical owner.
 
 ## Scope and reproducibility
 

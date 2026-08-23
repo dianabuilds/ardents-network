@@ -604,3 +604,11 @@ product caller: the only consumers were the named Endpoint recovery process
 test and its `stream-app` fixture command. The bounded opaque workload and
 direct baseline therefore move to that sole evidence owner and the internal
 package, package-map row, and deterministic-package entry are C0 deleted.
+
+**M14 progress, 2026-08-23.** The four frozen S8.0 source-entry diagnostics
+(`stage-8-current-system-report`, `stage-8-current-system-trace`,
+`stage-8-current-system-surface-inventory`, and
+`stage-8-current-test-portfolio`) are now explicitly marked historical. They
+record the pre-cutover tree at `1cf7100`, not current ownership; the package map
+and this plan remain current. They are C4 provenance until their retained facts
+have canonical owners, after which the planned S8.6 deletion remains required.

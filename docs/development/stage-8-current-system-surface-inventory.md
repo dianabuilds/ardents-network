@@ -1,10 +1,11 @@
-# Stage 8 current-system surface inventory
+# Stage 8 source-entry system surface inventory (historical)
 
-Status: **S8.0 factual inventory at source entry
-`1cf7100da3ada32ba53abb51201aaf7b6183a3da`.** This temporary inventory makes
-the G0 prepared matrix current by binding it to the clean entry, the S8.0 delta
-reviews, and current package-map/architecture evidence. A class is an inventory
-fact, not the S8.1 Product Owner disposition.
+Status: **historical S8.0 factual inventory at source entry
+`1cf7100da3ada32ba53abb51201aaf7b6183a3da`.** This temporary inventory bound
+the G0 prepared matrix to the clean entry, its delta reviews, and then-current
+package-map/architecture evidence. It is not a current-system description after
+Stage 8 cutovers; a class is an inventory fact, not the S8.1 Product Owner
+disposition.
 
 ## Application, operator, and process surfaces
 
