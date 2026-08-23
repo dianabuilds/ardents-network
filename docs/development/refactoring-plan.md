@@ -168,8 +168,7 @@ reopen the completed Node lifecycle, process, or ownership cutover.
 
 ### M0 — governance
 
-**Complete, 2026-08-22.** The frozen source/toolchain identity is the accepted
-[Stage 8 start record](stage-8-start-record.md):
+**Complete, 2026-08-22.** The frozen source/toolchain identity is
 `1cf7100da3ada32ba53abb51201aaf7b6183a3da`, Go `go1.26.6 windows/amd64`,
 and the recorded module, sum, and Makefile digests. M0 has no `DA-*`
 prerequisite, no runtime writer mutation, and no new platform or Qualification
@@ -185,10 +184,10 @@ ownership facts rather than a package-export count or historical shape receipt;
 its retained 500-line limit is the
 explicit interim safety rule; cohesion is reviewed by responsibility and
 invariant locality, not a soft line-count threshold. The factual
-[package map](package-map.md), [preservation ledger](stage-8-preservation-ledger.md),
-target architecture, and this plan are the respective package, disposition,
-ownership, and retirement authorities. Historical Stage 7 material remains only the
-enumerated provenance/transitional material subject to M14's named outcome.
+[package map](package-map.md), target architecture, and this plan are the
+respective package, ownership, and retirement authorities. Historical Stage 7
+material is recoverable from Git and has no current-owner or Qualification
+role unless a current ADR or technical document names it.
 
 ### M1 — Release trust
 

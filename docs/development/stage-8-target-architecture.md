@@ -1,10 +1,9 @@
 # Stage 8 target architecture
 
 Status: **S8.3 accepted by the Product Owner on 2026-08-22.** This is the target
-ownership and migration-design authority derived from the accepted S8.1
-[preservation ledger](stage-8-preservation-ledger.md), the S8.1
-[decision-authority register](stage-8-decision-authority-register.md), and
-the source-bound S8.0 inventories. It is not a current package map, a promise
+ownership and migration-design authority derived from the accepted
+[decision-authority register](stage-8-decision-authority-register.md) and
+source-bound S8.0 inventories recoverable from Git. It is not a current package map, a promise
 that every target Module will be implemented, or authority to create a package
 before its wave has a real caller, behavior, tests, and package-map row.
 
@@ -110,10 +109,9 @@ unbounded compatibility mode. The S8.4 plan records a concrete mode, observer,
 cutover, rollback/forward-repair behavior, and deletion condition for every row
 it mutates.
 
-The source-controlled limits of the DA-10 caller search are recorded in the
-[compatibility-observer inventory](stage-8-compatibility-observer-inventory.md).
-Its absence-of-evidence result is not a license to break an unrecorded external
-consumer.
+The completed DA-10 caller search found no source-controlled external support
+promise. Its absence-of-evidence result is not a license to break an
+unrecorded external consumer.
 
 ## Complete current-code disposition
 

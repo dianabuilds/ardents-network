@@ -28,9 +28,6 @@ specification.
   control while Stage 8 is in progress.
 - [Current package map](package-map.md) is the factual register of maintained
   Go packages and their permitted imports.
-- [Compatibility observer inventory](stage-8-compatibility-observer-inventory.md)
-  and [preservation ledger](stage-8-preservation-ledger.md) record the bounded
-  compatibility work that remains during the migration.
 
 ## Current technical references
 
