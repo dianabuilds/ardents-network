@@ -65,7 +65,7 @@ func EntryAdmitterPort(value *entry.Admitter) EntryBindingAdmitter {
 func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryAttachmentRequest) (net.Conn, func() error, error) {
 	if source == nil || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.AttachmentID == [32]byte{} ||
 		input.Epoch == 0 || input.Deadline.IsZero() || !time.Now().Before(input.Deadline) {
-		return nil, nil, errors.New("Entry attachment request is invalid")
+		return nil, nil, errors.New("entry attachment request is invalid")
 	}
 	return source.Acquire(ctx, entry.Attempt{ID: input.AttachmentID, Deadline: input.Deadline},
 		func(contactCtx context.Context, candidate entry.Candidate, presentation entry.Presentation, deadline time.Time) (net.Conn, func() error, bool, error) {
@@ -102,7 +102,7 @@ func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input Entry
 	if connection == nil || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.InitiatorNodeID == [32]byte{} ||
 		input.Epoch == 0 || input.Deadline.IsZero() || input.Certificate.PrivateKey == nil || input.Admit == nil ||
 		!time.Now().Before(input.Deadline) {
-		return nil, errors.New("Entry attachment acceptance is invalid")
+		return nil, errors.New("entry attachment acceptance is invalid")
 	}
 	secured := tls.Server(connection, nativeInitiatorTLS(input.Certificate))
 	if err := secured.SetDeadline(input.Deadline); err != nil {
@@ -115,7 +115,7 @@ func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input Entry
 	}
 	if secured.ConnectionState().NegotiatedProtocol != routeProfile {
 		_ = connection.Close()
-		return nil, errors.New("Entry TLS ALPN is invalid")
+		return nil, errors.New("entry TLS ALPN is invalid")
 	}
 	binding, err := readEntryBinding(secured)
 	if err != nil {
@@ -125,12 +125,12 @@ func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input Entry
 	if binding.NetworkID != input.NetworkID || binding.Digest != input.Digest || binding.Epoch != input.Epoch ||
 		binding.InitiatorNodeID != input.InitiatorNodeID || binding.NotAfter.After(input.Deadline) {
 		_ = connection.Close()
-		return nil, errors.New("Entry binding does not match Initiator duty")
+		return nil, errors.New("entry binding does not match Initiator duty")
 	}
 	peer := secured.ConnectionState().PeerCertificates
 	if len(peer) != 1 {
 		_ = connection.Close()
-		return nil, errors.New("Entry TLS client certificate is unavailable")
+		return nil, errors.New("entry TLS client certificate is unavailable")
 	}
 	if err := AdmitEntryBinding(binding, peer[0], time.Now().UTC(), input.Admit); err != nil {
 		_ = connection.Close()
@@ -150,7 +150,7 @@ func closedEntryOpener(connection net.Conn, cause error) (net.Conn, func() error
 
 func dialNativeEntryTLS(ctx context.Context, candidate entry.Candidate, certificate tls.Certificate, deadline time.Time) (*tls.Conn, error) {
 	if candidate.Endpoint == "" || candidate.PublicKey == [32]byte{} || deadline.IsZero() || !time.Now().Before(deadline) {
-		return nil, errors.New("Entry candidate is invalid")
+		return nil, errors.New("entry candidate is invalid")
 	}
 	connection, err := (&net.Dialer{}).DialContext(ctx, "tcp", candidate.Endpoint)
 	if err != nil {
@@ -167,7 +167,7 @@ func dialNativeEntryTLS(ctx context.Context, candidate entry.Candidate, certific
 	}
 	if secured.ConnectionState().NegotiatedProtocol != routeProfile {
 		_ = connection.Close()
-		return nil, errors.New("Entry TLS ALPN is invalid")
+		return nil, errors.New("entry TLS ALPN is invalid")
 	}
 	return secured, nil
 }
@@ -208,7 +208,7 @@ func readEntryBinding(reader io.Reader) (EntryBinding, error) {
 	}
 	length := int(header[len(routeWireMagic)])<<8 | int(header[len(routeWireMagic)+1])
 	if length == 0 || length > maximumWireBody {
-		return EntryBinding{}, errors.New("Entry binding wire length is invalid")
+		return EntryBinding{}, errors.New("entry binding wire length is invalid")
 	}
 	raw := append([]byte(nil), header...)
 	body := make([]byte, length)

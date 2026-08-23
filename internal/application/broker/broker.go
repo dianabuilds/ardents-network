@@ -64,7 +64,7 @@ func (broker *Broker) Admit(principal [32]byte, surface Surface) ([32]byte, erro
 	}
 	grant, ok := broker.grants[surface]
 	if !ok || broker.draining[surface] || grant.Principal != principal {
-		return [32]byte{}, errors.New("Application Principal does not match Local Grant")
+		return [32]byte{}, errors.New("application Principal does not match Local Grant")
 	}
 	if len(broker.sessions) >= maximumSessions {
 		return [32]byte{}, errors.New("session budget exhausted")
@@ -103,7 +103,7 @@ func (broker *Broker) Revoke(principal [32]byte, surface Surface) error {
 	defer broker.mu.Unlock()
 	grant, ok := broker.grants[surface]
 	if !ok || grant.Principal != principal {
-		return errors.New("Application Principal does not match Local Grant")
+		return errors.New("application Principal does not match Local Grant")
 	}
 	delete(broker.grants, surface)
 	for capability, session := range broker.sessions {
@@ -128,7 +128,7 @@ func (broker *Broker) Drain(surface Surface) error {
 	defer broker.mu.Unlock()
 	grant, ok := broker.grants[surface]
 	if !ok || !grant.PermitDrain {
-		return errors.New("Local Grant does not permit finite drain")
+		return errors.New("local Grant does not permit finite drain")
 	}
 	broker.draining[surface] = true
 	for capability, session := range broker.sessions {

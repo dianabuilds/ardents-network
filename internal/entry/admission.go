@@ -41,7 +41,7 @@ func OpenAdmitter(input AdmitterConfig) (*Admitter, error) {
 // returns only the non-secret authorization required by Route.
 func (value *Admitter) Admit(raw []byte) (Authorization, error) {
 	if value == nil || value.owner == nil {
-		return Authorization{}, errors.New("Entry Admitter is unavailable")
+		return Authorization{}, errors.New("entry Admitter is unavailable")
 	}
 	authorization, _, class, err := Verify(raw, Verification{Current: value.owner.config.Current, Conflict: value.owner.config.Conflict,
 		Clock: value.owner.config.Clock, TimeConfident: value.owner.config.TimeConfident})
@@ -49,7 +49,7 @@ func (value *Admitter) Admit(raw []byte) (Authorization, error) {
 		return Authorization{}, err
 	}
 	if class != Accepted {
-		return Authorization{}, errors.New("Entry Invite is not admitted")
+		return Authorization{}, errors.New("entry Invite is not admitted")
 	}
 	return authorization, nil
 }
@@ -59,12 +59,12 @@ func (value *Admitter) Admit(raw []byte) (Authorization, error) {
 // verified authorization waiting to be committed by this Admitter.
 func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byte, notAfter time.Time) (Authorization, error) {
 	if value == nil || value.owner == nil {
-		return Authorization{}, errors.New("Entry Admitter is unavailable")
+		return Authorization{}, errors.New("entry Admitter is unavailable")
 	}
 	value.owner.mu.Lock()
 	defer value.owner.mu.Unlock()
 	if value.owner.closed || value.owner.failed != nil {
-		return Authorization{}, errors.New("Entry Admitter is unavailable")
+		return Authorization{}, errors.New("entry Admitter is unavailable")
 	}
 	decoded, _, class, err := validateInvite(raw, Verification{Current: value.owner.config.Current, Conflict: value.owner.config.Conflict,
 		Clock: value.owner.config.Clock, TimeConfident: value.owner.config.TimeConfident})
@@ -72,7 +72,7 @@ func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byt
 		return Authorization{}, err
 	}
 	if class != Accepted {
-		return Authorization{}, errors.New("Entry Invite is not admitted")
+		return Authorization{}, errors.New("entry Invite is not admitted")
 	}
 	authorization := Authorization{InviteID: decoded.id, NetworkID: decoded.networkID, Digest: decoded.epochDigest,
 		Epoch: decoded.epoch, InitiatorNodeID: decoded.nodeID, NotAfter: time.Unix(decoded.notAfter, 0).UTC()}
@@ -87,7 +87,7 @@ func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byt
 // until its own bounded expiry.
 func (value *Admitter) Consume(authorization Authorization, attachment, clientKey [32]byte, notAfter time.Time) error {
 	if value == nil || value.owner == nil {
-		return errors.New("Entry Admitter is unavailable")
+		return errors.New("entry Admitter is unavailable")
 	}
 	value.owner.mu.Lock()
 	defer value.owner.mu.Unlock()
@@ -97,11 +97,11 @@ func (value *Admitter) Consume(authorization Authorization, attachment, clientKe
 func (value *Admitter) consumeLocked(authorization Authorization, attachment, clientKey [32]byte, notAfter time.Time) error {
 	if value.owner.closed || value.owner.failed != nil || authorization.InviteID == [32]byte{} || attachment == [32]byte{} || clientKey == [32]byte{} ||
 		notAfter.IsZero() || authorization.NotAfter.IsZero() || notAfter.After(authorization.NotAfter) {
-		return errors.New("Entry admission tuple is invalid")
+		return errors.New("entry admission tuple is invalid")
 	}
 	now := value.owner.config.Clock().UTC()
 	if !value.owner.config.TimeConfident() || !now.Before(notAfter) {
-		return errors.New("Entry admission tuple is expired")
+		return errors.New("entry admission tuple is expired")
 	}
 	next := value.owner.state.clone()
 	next.Admissions = next.Admissions[:0]
@@ -112,11 +112,11 @@ func (value *Admitter) consumeLocked(authorization Authorization, attachment, cl
 	}
 	for _, record := range next.Admissions {
 		if record.InviteID == authorization.InviteID && record.AttachmentID == attachment && record.ClientKeyDigest == clientKey {
-			return errors.New("Entry admission tuple was replayed")
+			return errors.New("entry admission tuple was replayed")
 		}
 	}
 	if len(next.Admissions) >= maximumAdmissions {
-		return errors.New("Entry admission capacity is full")
+		return errors.New("entry admission capacity is full")
 	}
 	next.Admissions = append(next.Admissions, admissionRecord{InviteID: authorization.InviteID, AttachmentID: attachment,
 		ClientKeyDigest: clientKey, NotAfter: notAfter.UTC().Unix()})

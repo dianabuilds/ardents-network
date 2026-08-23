@@ -24,7 +24,7 @@ func validateInvite(raw []byte, input Verification) (invite, Candidate, Class, e
 		return invite{}, Candidate{}, class, nil
 	}
 	if input.Current == nil || input.Conflict == nil || input.Clock == nil || input.TimeConfident == nil {
-		return decoded, Candidate{}, Invalid, errors.New("Entry verification is incomplete")
+		return decoded, Candidate{}, Invalid, errors.New("entry verification is incomplete")
 	}
 	view, err := input.Current()
 	if err != nil {

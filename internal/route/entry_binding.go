@@ -73,7 +73,7 @@ func DecodeEntryBinding(raw []byte) (EntryBinding, error) {
 	}
 	notAfter := reader.uint64()
 	if notAfter > uint64(^uint64(0)>>1) {
-		return EntryBinding{}, errors.New("Entry binding expiry is invalid")
+		return EntryBinding{}, errors.New("entry binding expiry is invalid")
 	}
 	result.NotAfter = time.Unix(int64(notAfter), 0).UTC()
 	if result.ClientKeyDigest, err = wireIdentifier(reader, "client TLS key digest"); err != nil {
@@ -82,7 +82,7 @@ func DecodeEntryBinding(raw []byte) (EntryBinding, error) {
 	inviteLength := int(reader.uint16())
 	result.Invite = append([]byte(nil), reader.take(inviteLength)...)
 	if reader.off != len(reader.raw) {
-		return EntryBinding{}, errors.New("Entry binding has surplus bytes")
+		return EntryBinding{}, errors.New("entry binding has surplus bytes")
 	}
 	if err := validEntryBinding(result); err != nil {
 		return EntryBinding{}, err
@@ -96,10 +96,10 @@ func DecodeEntryBinding(raw []byte) (EntryBinding, error) {
 // identity.
 func ClientTLSKeyDigest(certificate *x509.Certificate) ([32]byte, error) {
 	if certificate == nil || certificate.PublicKeyAlgorithm != x509.Ed25519 || len(certificate.RawSubjectPublicKeyInfo) == 0 {
-		return [32]byte{}, errors.New("Entry client certificate is not Ed25519")
+		return [32]byte{}, errors.New("entry client certificate is not Ed25519")
 	}
 	if _, ok := certificate.PublicKey.(ed25519.PublicKey); !ok {
-		return [32]byte{}, errors.New("Entry client certificate public key is invalid")
+		return [32]byte{}, errors.New("entry client certificate public key is invalid")
 	}
 	return sha256.Sum256(certificate.RawSubjectPublicKeyInfo), nil
 }
@@ -113,17 +113,17 @@ func AdmitEntryBinding(input EntryBinding, peer *x509.Certificate, now time.Time
 		return err
 	}
 	if now.IsZero() || !now.UTC().Before(input.NotAfter) {
-		return errors.New("Entry binding is expired")
+		return errors.New("entry binding is expired")
 	}
 	if admit == nil {
-		return errors.New("Entry binding admission port is incomplete")
+		return errors.New("entry binding admission port is incomplete")
 	}
 	digest, err := ClientTLSKeyDigest(peer)
 	if err != nil {
 		return err
 	}
 	if digest != input.ClientKeyDigest {
-		return errors.New("Entry binding does not match the TLS client key")
+		return errors.New("entry binding does not match the TLS client key")
 	}
 	admission, err := admit(append([]byte(nil), input.Invite...), input.AttachmentID, input.ClientKeyDigest, input.NotAfter)
 	if err != nil {
@@ -132,7 +132,7 @@ func AdmitEntryBinding(input EntryBinding, peer *x509.Certificate, now time.Time
 	if admission.InviteID == [32]byte{} || admission.NetworkID != input.NetworkID || admission.Digest != input.Digest ||
 		admission.Epoch != input.Epoch || admission.InitiatorNodeID != input.InitiatorNodeID || admission.NotAfter.IsZero() ||
 		input.NotAfter.After(admission.NotAfter) {
-		return errors.New("Entry binding does not match current Invite authorization")
+		return errors.New("entry binding does not match current Invite authorization")
 	}
 	return nil
 }
@@ -155,7 +155,7 @@ func validEntryBinding(input EntryBinding) error {
 	if input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.AttachmentID == [32]byte{} ||
 		input.InitiatorNodeID == [32]byte{} || input.ClientKeyDigest == [32]byte{} || input.Epoch == 0 ||
 		input.NotAfter.IsZero() || input.NotAfter.Unix() <= 0 || len(input.Invite) == 0 || len(input.Invite) > maximumEntryInvite {
-		return errors.New("Entry binding is invalid")
+		return errors.New("entry binding is invalid")
 	}
 	return nil
 }

@@ -252,7 +252,7 @@ func proveInstance(connection io.ReadWriter, credential Credential, connectionCo
 	}
 	signature, err := signer.Sign(nil, digest[:], crypto.Hash(0))
 	if err != nil || len(signature) != ed25519.SignatureSize {
-		return canary, errors.New("Instance signer cannot prove this connection")
+		return canary, errors.New("instance signer cannot prove this connection")
 	}
 	var proof [64]byte
 	copy(proof[:], signature)
