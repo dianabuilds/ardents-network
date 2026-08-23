@@ -1,4 +1,4 @@
-package nameresolution_test
+package resolution_test
 
 import (
 	"bytes"

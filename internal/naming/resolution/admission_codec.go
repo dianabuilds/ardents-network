@@ -1,4 +1,4 @@
-package nameresolution
+package resolution
 
 import (
 	"crypto/sha256"

@@ -8,7 +8,7 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 The maintained product-shaped Modules use the Go standard library, the
 Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
-OHTTP closure owned by `internal/nameresolution`. Gate C uses the same closure
+OHTTP closure owned by `internal/naming/resolution`. Gate C uses the same closure
 in `internal/lab/namedsite`. The product promotion is selected by
 [R-047](../research/records/r-047-stage-6-query-hiding.md) and ADR-0014; the
 original experiment selection is recorded by
@@ -33,7 +33,7 @@ by `openpcc/ohttp v0.0.80`.
 | `golang.org/x/text` | `v0.39.0` | BSD-3-Clause | BHTTP normalization; raised from vulnerable `v0.32.0` |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/nameresolution` owns the maintained product OHTTP/CIRCL Adapter;
+shape. `internal/naming/resolution` owns the maintained product OHTTP/CIRCL Adapter;
 `internal/lab/namedsite` independently owns the Gate C Adapter. No other product
 Module imports the OHTTP/CIRCL portion of this closure. Both owners pin the same
 reviewed version and raised dependency graph; a change repeats R-047/R-026

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )

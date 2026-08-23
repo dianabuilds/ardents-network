@@ -1,11 +1,11 @@
-package nameresolution_test
+package resolution_test
 
 import (
 	"context"
 	"crypto/sha256"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 )
 
 type gatewayRoleView struct {

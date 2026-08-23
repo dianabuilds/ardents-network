@@ -1,4 +1,4 @@
-package nameresolution_test
+package resolution_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/openpcc/ohttp"
 )
 

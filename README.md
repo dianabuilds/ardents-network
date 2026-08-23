@@ -144,7 +144,7 @@ modules live under `internal/network`, `internal/node`, `internal/route`,
 `internal/bridge`, `internal/camouflage`, `internal/localroles`,
 `internal/naming`, `internal/namelease`, `internal/nameauthority`,
 `internal/nameclaim`, `internal/nameadmission`, `internal/namerecovery`,
-`internal/nameresolution`, and `internal/namestore`. Product work never grows inside or imports the frozen
+`internal/naming/resolution`, and `internal/namestore`. Product work never grows inside or imports the frozen
 `internal/lab` quarantine.
 
 The first completed maintained vertical slice was an Ubuntu-to-Ubuntu

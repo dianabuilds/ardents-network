@@ -1,4 +1,4 @@
-package nameresolution
+package resolution
 
 type resolverRoleEvidence struct {
 	Operation                         string

@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/dianabuilds/ardents-network/internal/nameresolution"
+	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 )
 

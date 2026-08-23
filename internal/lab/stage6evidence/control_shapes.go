@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/nameresolution"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	nameresolution "github.com/dianabuilds/ardents-network/internal/naming/resolution"
 )
 
 type controlExchangeEvidence struct {
