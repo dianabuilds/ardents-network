@@ -14,7 +14,7 @@ func (gateway *gateway) control(writer http.ResponseWriter, request *http.Reques
 	fixed, err := io.ReadAll(io.LimitReader(request.Body, fixedMessageSize+1))
 	control, decodeErr := decodeControlRequest(fixed)
 	now := gateway.config.Clock()
-	if err != nil || decodeErr != nil || control.binding.network != gateway.records.network ||
+	if err != nil || decodeErr != nil || control.binding.network != gateway.state.namespace.Network() ||
 		control.binding.deadline <= now.UnixNano() || control.binding.deadline > now.Add(15*time.Second).UnixNano() ||
 		control.admission.Challenge.Node != gateway.config.NodeID || control.admission.Challenge.Network != control.binding.network ||
 		control.admission.Challenge.OperationDigest != control.submission.Digest() ||

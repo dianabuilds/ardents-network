@@ -71,8 +71,11 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gatewayState, err := nameresolution.BindGatewayState(store, materialization, 1, [32]byte{1}, admission,
-		commandControlAuthority{})
+	namespaceView, err := namespace.OpenResolutionGateway(store, 1, [32]byte{1}, admission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gatewayState, err := nameresolution.BindGatewayState(namespaceView, commandControlAuthority{})
 	if err != nil {
 		t.Fatal(err)
 	}

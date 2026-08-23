@@ -190,8 +190,11 @@ func TestResolutionRoleProcess(t *testing.T) {
 			t.Fatal(storeErr)
 		}
 		defer recordStore.Close()
-		gatewayState, stateErr := nameresolution.BindGatewayState(recordStore, materializationPolicy, 1,
-			[32]byte{1}, admission, nil)
+		namespaceView, viewErr := namespace.OpenResolutionGateway(recordStore, 1, [32]byte{1}, admission)
+		if viewErr != nil {
+			t.Fatal(viewErr)
+		}
+		gatewayState, stateErr := nameresolution.BindGatewayState(namespaceView, nil)
 		if stateErr != nil {
 			t.Fatal(stateErr)
 		}

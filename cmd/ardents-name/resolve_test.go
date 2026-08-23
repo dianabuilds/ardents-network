@@ -49,7 +49,11 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 		t.Fatal(err)
 	}
 	recordStore, materialization := commandRecordStore(t, network, signed)
-	gatewayState, err := nameresolution.BindGatewayState(recordStore, materialization, 1, [32]byte{1}, admission, nil)
+	namespaceView, err := namespace.OpenResolutionGateway(recordStore, 1, [32]byte{1}, admission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gatewayState, err := nameresolution.BindGatewayState(namespaceView, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

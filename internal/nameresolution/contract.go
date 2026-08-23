@@ -38,13 +38,8 @@ type controlAuthority interface {
 }
 
 type gatewayState struct {
-	network     [32]byte
-	recordStore *namespace.Store
-	policy      namespace.MaterializationPolicy
-	minimum     uint64
-	epochDigest [32]byte
-	admission   *namespace.Admission
-	authority   controlAuthority
+	namespace *namespace.ResolutionGateway
+	authority controlAuthority
 }
 
 // Selection identifies the three authenticated roles needed by one private
@@ -103,7 +98,7 @@ type plan struct {
 	ExcludedIdentities     [][32]byte
 	ExcludedFamilies       []string
 	AdmissionChallenge     namespace.Challenge
-	MaterializationPolicy  namespace.MaterializationPolicy
+	NamespaceVerifier      *namespace.ResolutionVerifier
 }
 
 type result struct {
@@ -133,16 +128,9 @@ type gatewayObservation struct {
 	ControlDenied   uint32
 }
 
-type recordSet struct {
-	network      [32]byte
-	store        *namespace.Store
-	minimumEpoch uint64
-}
-
 type gateway struct {
 	config       GatewayConfig
 	state        gatewayState
-	records      recordSet
 	profile      GatewayProfile
 	handler      http.Handler
 	mu           sync.Mutex

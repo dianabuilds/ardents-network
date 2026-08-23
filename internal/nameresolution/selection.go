@@ -26,13 +26,17 @@ func selectPlan(view state.Snapshot, input Selection, profile GatewayProfile) (p
 		collides(relay, gateway, rendezvous) || excluded(input, relay) || excluded(input, gateway) || excluded(input, rendezvous) {
 		return plan{}, errors.New("private resolution roles conflict or are unavailable")
 	}
+	verifier, err := namespace.OpenResolutionVerifier(namespacePolicy(view), view.Epoch, view.Digest)
+	if err != nil {
+		return plan{}, errors.New("private resolution Namespace trust root is invalid")
+	}
 	result := plan{NetworkID: view.NetworkID, Generation: view.Generation, Epoch: view.Epoch, EpochDigest: view.Digest,
 		ViewRoot: view.ViewRoot, SelectionAt: input.At.UnixNano(), Deadline: input.Deadline.UnixNano(),
 		Relay: relay, Gateway: gateway, ConnectionRendezvous: rendezvous,
 		GatewayKeyConfig: append([]byte(nil), profile.KeyConfig...), GatewayKeyConfigDigest: profile.KeyConfigDigest,
 		ExcludedIdentities: appendDistinctIdentities(input.ExcludedIdentities, relay.NodeID, gateway.NodeID),
 		ExcludedFamilies:   appendDistinctFamilies(input.ExcludedFamilies, relay.Family, gateway.Family),
-		AdmissionChallenge: input.AdmissionChallenge, MaterializationPolicy: namespacePolicy(view)}
+		AdmissionChallenge: input.AdmissionChallenge, NamespaceVerifier: verifier}
 	if err := validatePlan(result); err != nil {
 		return plan{}, err
 	}
@@ -84,8 +88,7 @@ func validatePlan(plan plan) error {
 		len(plan.GatewayKeyConfig) == 0 || sha256.Sum256(plan.GatewayKeyConfig) != plan.GatewayKeyConfigDigest ||
 		plan.Relay.Domain != initiatorDomain || plan.Gateway.Domain != rendezvousDomain ||
 		plan.ConnectionRendezvous.Domain != rendezvousDomain || collides(plan.Relay, plan.Gateway, plan.ConnectionRendezvous) ||
-		plan.MaterializationPolicy.Network != plan.NetworkID || plan.MaterializationPolicy.Threshold < 2 ||
-		plan.MaterializationPolicy.Threshold > len(plan.MaterializationPolicy.Authorities) {
+		plan.NamespaceVerifier == nil {
 		return errors.New("private resolution Plan is invalid")
 	}
 	challenge := plan.AdmissionChallenge

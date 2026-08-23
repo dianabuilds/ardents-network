@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/openpcc/ohttp"
 )
@@ -112,9 +111,8 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 	if response.result != resultResolved {
 		return resolver.failure(resolutionUnavailableClass, errors.New("name is unavailable"))
 	}
-	binding, warning, epoch, err := namespace.VerifyBinding(resolver.plan.MaterializationPolicy,
-		response.proof, resolver.plan.Epoch, resolver.plan.EpochDigest, at.UnixMilli())
-	if err != nil || binding.Name != serviceName || epoch != resolver.plan.Epoch {
+	binding, warning, err := resolver.plan.NamespaceVerifier.Verify(response.proof, at.UnixMilli())
+	if err != nil || binding.Name != serviceName {
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution returned the wrong name"))
 	}
 	if binding.Generation != response.generation || binding.Revision != response.revision {
@@ -186,6 +184,5 @@ func clonePlan(plan plan) plan {
 	plan.GatewayKeyConfig = append([]byte(nil), plan.GatewayKeyConfig...)
 	plan.ExcludedIdentities = append([][32]byte(nil), plan.ExcludedIdentities...)
 	plan.ExcludedFamilies = append([]string(nil), plan.ExcludedFamilies...)
-	plan.MaterializationPolicy = cloneMaterializationPolicy(plan.MaterializationPolicy)
 	return plan
 }

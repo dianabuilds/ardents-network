@@ -96,8 +96,12 @@ func newResolutionFixture(control ...interface {
 	if len(control) == 1 {
 		controlAuthority = control[0]
 	}
-	gatewayState, err := nameresolution.BindGatewayState(value.store, materialization.policy, 1, [32]byte{1},
-		value.gate, controlAuthority)
+	namespaceView, viewErr := namespace.OpenResolutionGateway(value.store, 1, [32]byte{1}, value.gate)
+	if viewErr != nil {
+		value.close()
+		return value, viewErr
+	}
+	gatewayState, err := nameresolution.BindGatewayState(namespaceView, controlAuthority)
 	if err != nil {
 		value.close()
 		return value, err

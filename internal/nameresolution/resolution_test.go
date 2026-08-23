@@ -271,7 +271,11 @@ func newResolutionFixtureWithAuthority(t *testing.T, build testControlAuthorityF
 	if err != nil {
 		t.Fatal(err)
 	}
-	gatewayState, err := nameresolution.BindGatewayState(store, materialization.policy, 1, [32]byte{1}, admission, authority)
+	namespaceView, err := namespace.OpenResolutionGateway(store, 1, [32]byte{1}, admission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gatewayState, err := nameresolution.BindGatewayState(namespaceView, authority)
 	if err != nil {
 		t.Fatal(err)
 	}

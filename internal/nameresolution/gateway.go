@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/cloudflare/circl/hpke"
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/openpcc/ohttp"
 )
 
@@ -18,13 +17,9 @@ import (
 func NewGateway(config GatewayConfig) (*gateway, error) {
 	if config.NodeID == [32]byte{} || config.Family == "" || config.Domain != rendezvousDomain ||
 		config.AssignmentNotAfter.IsZero() || config.MaximumPending == 0 || config.Clock == nil ||
-		len(config.IdentityKey) != ed25519.PrivateKeySize || config.State.recordStore == nil ||
-		config.State.admission == nil || config.State.epochDigest == [32]byte{} {
+		len(config.IdentityKey) != ed25519.PrivateKeySize || config.State.namespace == nil ||
+		config.State.namespace.Network() == [32]byte{} || !config.State.namespace.AcceptsGateway(config.NodeID) {
 		return nil, errors.New("naming Gateway role is invalid")
-	}
-	records, err := newRecordSet(config.State.recordStore, config.State.network, config.State.minimum)
-	if err != nil {
-		return nil, err
 	}
 	kem := hpke.KEM_P256_HKDF_SHA256
 	public, secret, err := kem.Scheme().GenerateKeyPair()
@@ -41,14 +36,14 @@ func NewGateway(config GatewayConfig) (*gateway, error) {
 	if err != nil {
 		return nil, err
 	}
-	profile := GatewayProfile{NetworkID: records.network, NodeID: config.NodeID,
+	profile := GatewayProfile{NetworkID: config.State.namespace.Network(), NodeID: config.NodeID,
 		KeyConfig: configBytes, KeyConfigDigest: sha256.Sum256(configBytes),
 		AssignmentNotAfter: config.AssignmentNotAfter}
 	profile.Signature = signGatewayProfile(profile, config.IdentityKey)
 	config.IdentityKey = nil
 	state := config.State
 	config.State = gatewayState{}
-	gateway := &gateway{config: config, state: state, records: records, seen: make(map[[32]byte]int64), profile: profile}
+	gateway := &gateway{config: config, state: state, seen: make(map[[32]byte]int64), profile: profile}
 	application := http.HandlerFunc(gateway.serve)
 	middleware := ohttp.Middleware(adapter, application)
 	gateway.handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -105,28 +100,19 @@ func (gateway *gateway) resolve(writer http.ResponseWriter, request *http.Reques
 	query, err := decodeRequest(payload)
 	now := gateway.config.Clock()
 	operationDigest, digestErr := resolutionAdmissionDigest(query.network, query.name, query.deadline)
-	admitted := false
-	if err == nil && digestErr == nil && query.admission.Challenge.OperationDigest == operationDigest &&
-		query.admission.Challenge.Node == gateway.config.NodeID {
-		admitted, _ = gateway.state.admission.Verify(now.UnixMilli(), query.admission)
-	}
-	if err != nil || query.network != gateway.records.network || query.deadline <= now.UnixNano() ||
+	admitted := digestErr == nil && gateway.state.namespace.AdmitResolution(now.UnixMilli(), gateway.config.NodeID,
+		operationDigest, query.admission)
+	if err != nil || query.network != gateway.state.namespace.Network() || query.deadline <= now.UnixNano() ||
 		query.deadline > now.Add(15*time.Second).UnixNano() || !admitted ||
 		!gateway.acceptNonce(query.nonce, query.deadline, now) {
 		gateway.reject(writer)
 		return
 	}
-	proof, found := gateway.records.lookup(query.name)
+	proof, binding, found := gateway.state.namespace.LookupBinding(query.name, now.UnixMilli())
 	result := byte(resultUnavailable)
 	generation, revision := uint64(0), uint64(0)
 	target := [32]byte{}
 	if found {
-		binding, _, _, verifyErr := namespace.VerifyBinding(gateway.state.policy, proof,
-			gateway.state.minimum, gateway.state.epochDigest, now.UnixMilli())
-		if verifyErr != nil {
-			gateway.reject(writer)
-			return
-		}
 		result = resultResolved
 		generation, revision = binding.Generation, binding.Revision
 		target = binding.Target

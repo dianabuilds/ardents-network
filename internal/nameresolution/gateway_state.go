@@ -6,16 +6,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
-// BindGatewayState validates and hides the durable Namespace, anonymous-cost,
-// and Name Authority infrastructure behind one Gateway-owned state value.
-func BindGatewayState(store *namespace.Store, policy namespace.MaterializationPolicy, minimumEpoch uint64,
-	epochDigest [32]byte, admission *namespace.Admission, authority controlAuthority,
-) (gatewayState, error) {
-	if store == nil || admission == nil || epochDigest == [32]byte{} ||
-		!validMaterializationPolicy(policy, policy.Network) {
+// BindGatewayState accepts the already-bound Namespace Gateway view and hides
+// it together with the Name Authority control port behind one Gateway value.
+func BindGatewayState(view *namespace.ResolutionGateway, authority controlAuthority) (gatewayState, error) {
+	if view == nil || view.Network() == [32]byte{} {
 		return gatewayState{}, errors.New("naming Gateway state is invalid")
 	}
-	return gatewayState{network: policy.Network, recordStore: store,
-		policy: cloneMaterializationPolicy(policy), minimum: minimumEpoch,
-		epochDigest: epochDigest, admission: admission, authority: authority}, nil
+	return gatewayState{namespace: view, authority: authority}, nil
 }

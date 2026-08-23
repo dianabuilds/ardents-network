@@ -227,6 +227,16 @@ containing the exact Record transcript and Authority public key, then verifies
 the returned signature and builds the container itself; no callback receives a
 caller-mutable lifecycle Record.
 
+Private Resolution now reaches the durable Store, threshold policy, epoch
+digest, and one-use admission gate only through Namespace-owned
+`ResolutionGateway` and `ResolutionVerifier` views. The server view admits
+only the exact `resolution` proof for its configured Gateway Node and returns
+only a verified immutable Binding with its compact proof; the client view
+re-verifies that proof without exposing a lifecycle Record. The temporary
+`state.Snapshot`-to-verifier construction remains M6 work: it will become the
+paired opaque State view when `internal/nameresolution` moves to
+`internal/naming/resolution`.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before
