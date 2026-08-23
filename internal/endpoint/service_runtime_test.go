@@ -54,8 +54,8 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 		t.Fatal("public publication exported private authority or Instance material")
 	}
 
-	if result, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "unpublish", Principal: fixture.administrationPrincipal, Session: administration, At: fixture.now,
+	if result, err := publisher.Withdraw(context.Background(), serviceconn.WithdrawalRequest{
+		Principal: fixture.administrationPrincipal, Capability: administration, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("one-use administration session replayed: result=%+v err=%v", result, err)
 	}

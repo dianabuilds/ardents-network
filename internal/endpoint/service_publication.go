@@ -50,27 +50,28 @@ func (endpoint *endpoint) publish(ctx context.Context, input PublicationRequest)
 		AuthenticatedTarget:         current.Credential.Target, Generation: current.Credential.Generation}, nil
 }
 
-func (endpoint *endpoint) unpublish(ctx context.Context, input Request) (result RuntimeResult, err error) {
-	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "administration")
+func (endpoint *endpoint) unpublish(ctx context.Context, input WithdrawalRequest) (result WithdrawalResult, err error) {
+	receipt, consumeErr := endpoint.consume(input.Capability, input.Principal, "administration")
 	if consumeErr != nil {
-		return denied(consumeErr.Error())
+		return withdrawalDenied(consumeErr.Error())
 	}
-	defer projectReceipt(&result, receipt)
+	result.Receipt = receipt
 	if endpoint.publications == nil {
-		return failed("service unavailable", "publisher has no publication owner", errors.New("publication root is unavailable"))
+		return withdrawalFailed("service unavailable", "publisher has no publication owner", errors.New("publication root is unavailable"))
 	}
 	lease, err := endpoint.publications.AcquireAt(ctx, input.At)
 	if err != nil {
-		return failed("service unavailable", "Service is not currently published", err)
+		return withdrawalFailed("service unavailable", "Service is not currently published", err)
 	}
 	current := lease.Current()
 	if err := lease.Close(); err != nil {
-		return failed("service unavailable", "current publication could not be released", err)
+		return withdrawalFailed("service unavailable", "current publication could not be released", err)
 	}
 	if err := endpoint.publications.Unpublish(ctx); err != nil {
-		return failed("service unavailable", "Service publication could not be withdrawn", err)
+		return withdrawalFailed("service unavailable", "Service publication could not be withdrawn", err)
 	}
-	return RuntimeResult{Class: "unpublished", AuthenticatedTarget: current.Credential.Target, Generation: current.Credential.Generation}, nil
+	return WithdrawalResult{Class: "unpublished", AuthenticatedTarget: current.Credential.Target,
+		Generation: current.Credential.Generation, Receipt: receipt}, nil
 }
 
 func decodePublication(encoded []byte, authority, network [32]byte, at time.Time) (Credential, error) {

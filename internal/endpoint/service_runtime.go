@@ -81,6 +81,23 @@ type PublicationResult struct {
 	Receipt                     broker.Receipt
 }
 
+// WithdrawalRequest contains only the Administration capability needed to
+// release the current publication.
+type WithdrawalRequest struct {
+	Principal, Capability [32]byte
+	At                    time.Time
+}
+
+// WithdrawalResult reports the released public generation and its exact
+// admission receipt. It contains no connection facts.
+type WithdrawalResult struct {
+	Class               string
+	Reason              string
+	AuthenticatedTarget [32]byte
+	Generation          uint64
+	Receipt             broker.Receipt
+}
+
 // RuntimeResult is a bounded endpoint-runtime outcome with no Route internals.
 // It is transitional while Endpoint replaces the former action/result union
 // with role-specific internal operations.
@@ -206,6 +223,18 @@ func (endpoint *endpoint) Publish(ctx context.Context, input PublicationRequest)
 	return endpoint.publish(ctx, input)
 }
 
+// Withdraw consumes one Administration capability before withdrawing the
+// current Instance publication.
+func (endpoint *endpoint) Withdraw(ctx context.Context, input WithdrawalRequest) (WithdrawalResult, error) {
+	if endpoint == nil || input.At.IsZero() {
+		return withdrawalDenied("local withdrawal is incomplete")
+	}
+	if err := ctx.Err(); err != nil {
+		return withdrawalFailed("local timeout or cancellation", "local withdrawal was cancelled", err)
+	}
+	return endpoint.unpublish(ctx, input)
+}
+
 // Do executes one admitted operation and returns only an R-002 product class.
 func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult, error) {
 	if endpoint == nil || input.At.IsZero() {
@@ -215,7 +244,7 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult,
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
 	switch input.Action {
-	case "unpublish", "connect", "accept":
+	case "connect", "accept":
 	default:
 		return denied("local operation is not permitted")
 	}
@@ -223,8 +252,6 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult,
 	var result RuntimeResult
 	var err error
 	switch input.Action {
-	case "unpublish":
-		result, err = endpoint.unpublish(ctx, input)
 	case "connect":
 		result, err = endpoint.connect(ctx, input)
 	case "accept":
@@ -240,6 +267,14 @@ func publicationDenied(reason string) (PublicationResult, error) {
 
 func publicationFailed(class, reason string, err error) (PublicationResult, error) {
 	return PublicationResult{Class: class, Reason: reason}, err
+}
+
+func withdrawalDenied(reason string) (WithdrawalResult, error) {
+	return withdrawalFailed("local authorization or policy denial", reason, errors.New(reason))
+}
+
+func withdrawalFailed(class, reason string, err error) (WithdrawalResult, error) {
+	return WithdrawalResult{Class: class, Reason: reason}, err
 }
 
 func denied(reason string) (RuntimeResult, error) {
