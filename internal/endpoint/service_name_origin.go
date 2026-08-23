@@ -2,7 +2,7 @@ package endpoint
 
 import nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 
-func validateNameOrigin(input Request, credential Credential) error {
+func validateNameOrigin(input connectionInput, credential Credential) error {
 	return nativeconnection.ValidateNameOrigin(input.NameBinding, input.NameUpdates, credential.Target,
 		input.OpenAttachment != nil, input.RecoveryBinding.DestinationBinding)
 }

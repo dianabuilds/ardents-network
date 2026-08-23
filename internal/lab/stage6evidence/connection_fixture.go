@@ -13,7 +13,6 @@ import (
 )
 
 type evidenceEndpoint interface {
-	Do(context.Context, serviceconn.Request) (serviceconn.RuntimeResult, error)
 	Admit([32]byte, broker.Surface) ([32]byte, error)
 	Publish(context.Context, serviceconn.PublicationRequest) (serviceconn.PublicationResult, error)
 	Connect(context.Context, serviceconn.OutboundConnectionRequest) (serviceconn.RuntimeResult, error)

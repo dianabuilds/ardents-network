@@ -72,10 +72,11 @@ frame, plan decoding, socket cleanup, and Route Attachment acceptance moved as
 one composition boundary. The sole Endpoint v1 Application handshake declares
 its sideband result channel before opaque bytes; raw-tail and timing-based
 fallback are C0 retired, with delayed, mismatch, and partial-handshake tests.
-It does not create an isolation claim. The temporary `serviceconn` package is
-deleted; its runtime now lives with Endpoint. M10 is not complete until that
-remaining internal action union is replaced with role-specific operations.
-The remaining deepening cutover has no new forwarding
+It does not create an isolation claim. The temporary `serviceconn` package,
+its public `Do(Request)` action union, and its test callers are deleted;
+Endpoint now exposes role-specific `Admit`, `Publish`, `Withdraw`, `Connect`,
+and `Accept` operations. M10 still needs to reduce the remaining endpoint
+runtime-report projection. The remaining deepening cutover has no new forwarding
 Interface: Endpoint directly acquires a Publication lease, performs the
 role-local TLS carrier and exact-Instance exchange, and supplies the resulting
 opaque Attachment plus Application stream to `service/connection`. Broker
@@ -362,12 +363,11 @@ replacement. `TestPublishAcquireDrainAndUnpublish`,
 draining, restart, floor, surplus, and tamper paths; the retained Service
 Connection and endpoint process tests exercise the caller cutover.
 
-`serviceconn` is only a temporary caller while `service/connection` is built:
-it delegates publication persistence, generation, acquisition and Instance
-signing to the opaque Publication lease, so it cannot copy or persist the
-private key. Its old action union, Introduction acknowledgement tracer, H3
-connection records, and result/evidence bag remain explicit M9 deletion
-inputs. ADR-0028's native connection grammar, vectors and its
+The former `serviceconn` caller delegated publication persistence, generation,
+acquisition and Instance signing to the opaque Publication lease, so it could
+not copy or persist the private key. Its action union is now deleted;
+Introduction acknowledgement tracer, H3 connection records, and result/evidence
+bag remain explicit M9 deletion inputs. ADR-0028's native connection grammar, vectors and its
 new focused caller replace them in the next M9 slice; this partial cutover
 does not claim that R-083 is implemented or that M9 is complete.
 

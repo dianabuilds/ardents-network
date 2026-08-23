@@ -16,7 +16,6 @@ import (
 )
 
 type connectionEndpoint interface {
-	Do(context.Context, Request) (RuntimeResult, error)
 	Admit([32]byte, broker.Surface) ([32]byte, error)
 	Publish(context.Context, PublicationRequest) (PublicationResult, error)
 	Connect(context.Context, OutboundConnectionRequest) (RuntimeResult, error)

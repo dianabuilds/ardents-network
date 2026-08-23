@@ -41,19 +41,19 @@ func TestForgedReplacementTerminatesInsteadOfTryingAnotherProposal(t *testing.T)
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "connect", Principal: fixture.clientPrincipal,
-			Session: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
+		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 96<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := client.Do(ctx, request)
+		result, err := client.Connect(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "accept", Principal: fixture.publisherPrincipal,
-			Session: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
+		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: publisherAttachments, Application: publisherEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := publisher.Do(ctx, request)
+		result, err := publisher.Accept(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() { _, _ = clientApplication.Write(seededBytes(256<<10, 17)) }()
@@ -93,24 +93,24 @@ func TestCarrierFailureRecoversSameApplicationStreams(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	go func() {
-		request := recoveryRequest(serviceconn.Request{
-			Action: "connect", Principal: fixture.clientPrincipal,
-			Session: session(client, fixture.clientPrincipal, fixture.now),
-			Target:  fixture.first.Target, Publication: publication,
+		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{
+			Principal:  fixture.clientPrincipal,
+			Capability: session(client, fixture.clientPrincipal, fixture.now),
+			Target:     fixture.first.Target, Publication: publication,
 			Route: failAfter(initialClient, 768<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, BytesEachDirection: transferSize, At: fixture.now,
 		}, binding)
-		result, err := client.Do(ctx, request)
+		result, err := client.Connect(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryRequest(serviceconn.Request{
-			Action: "accept", Principal: fixture.publisherPrincipal,
-			Session: session(publisher, fixture.publisherPrincipal, fixture.now),
-			Route:   initialPublisher, OpenAttachment: publisherAttachments,
+		request := recoveryInbound(serviceconn.InboundConnectionRequest{
+			Principal:  fixture.publisherPrincipal,
+			Capability: session(publisher, fixture.publisherPrincipal, fixture.now),
+			Route:      initialPublisher, OpenAttachment: publisherAttachments,
 			Application: publisherEndpoint, BytesEachDirection: transferSize, At: fixture.now,
 		}, binding)
-		result, err := publisher.Do(ctx, request)
+		result, err := publisher.Accept(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 
@@ -160,19 +160,19 @@ func TestDirectionalCarrierFailureDoesNotRequireReverseApplicationBytes(t *testi
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "connect", Principal: fixture.clientPrincipal,
-			Session: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
+		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 300<<10), OpenAttachment: attachmentQueue(replacementClient),
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
-		result, err := client.Do(ctx, request)
+		result, err := client.Connect(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "accept", Principal: fixture.publisherPrincipal,
-			Session: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
+		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: attachmentQueue(replacementPublisher), Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)
-		result, err := publisher.Do(ctx, request)
+		result, err := publisher.Accept(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	expected := seededBytes(transferSize, 37)
@@ -213,18 +213,18 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "connect", Principal: fixture.clientPrincipal,
-			Session: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
+		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfterWait(initialClient, 96<<10, 1100*time.Millisecond), OpenAttachment: opener,
 			Application: clientEndpoint, BytesEachDirection: 256 << 10, At: authorizedAt}, binding)
-		result, err := client.Do(ctx, request)
+		result, err := client.Connect(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "accept", Principal: fixture.publisherPrincipal,
-			Session: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
+		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: opener, Application: publisherEndpoint, BytesEachDirection: 256 << 10, At: authorizedAt}, binding)
-		result, err := publisher.Do(ctx, request)
+		result, err := publisher.Accept(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() { _, _ = clientApplication.Write(seededBytes(256<<10, 17)) }()
@@ -263,20 +263,20 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "connect", Principal: fixture.clientPrincipal,
-			Session: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
+		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 96<<10),
 			OpenAttachment: unavailableAttachments, Application: clientEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := client.Do(ctx, request)
+		result, err := client.Connect(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryRequest(serviceconn.Request{Action: "accept", Principal: fixture.publisherPrincipal,
-			Session: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
+		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: unavailableAttachments, Application: publisherEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := publisher.Do(ctx, request)
+		result, err := publisher.Accept(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() { _, _ = clientApplication.Write(seededBytes(256<<10, 17)) }()
@@ -308,11 +308,6 @@ func recoveryOutbound(request serviceconn.OutboundConnectionRequest, binding ser
 }
 
 func recoveryInbound(request serviceconn.InboundConnectionRequest, binding serviceconn.Recovery) serviceconn.InboundConnectionRequest {
-	request.RecoveryBinding = binding
-	return request
-}
-
-func recoveryRequest(request serviceconn.Request, binding serviceconn.Recovery) serviceconn.Request {
 	request.RecoveryBinding = binding
 	return request
 }

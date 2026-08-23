@@ -49,14 +49,9 @@ func (monitor resourceMonitor) stop() resourceSample {
 	return <-monitor.done
 }
 
-func (endpoint *endpoint) observe(result *RuntimeResult, input Request, resources resourceSample) {
+func (endpoint *endpoint) observe(result *RuntimeResult, resources resourceSample) {
 	activeSessions := endpoint.admission.Active()
-	switch input.Action {
-	case "connect", "accept":
-		result.GrantSurface = "connection"
-	case "publish", "unpublish":
-		result.GrantSurface = "administration"
-	}
+	result.GrantSurface = "connection"
 	result.MemoryHighWater = uint64(resources.memory)
 	result.GoroutinesHighWater = resources.goroutines
 	result.OpenFilesHighWater = resources.files

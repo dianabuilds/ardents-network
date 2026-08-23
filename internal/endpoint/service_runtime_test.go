@@ -59,15 +59,15 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("one-use administration session replayed: result=%+v err=%v", result, err)
 	}
-	if result, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "accept", Principal: fixture.hostilePrincipal, Session: connection, At: fixture.now,
+	if result, err := publisher.Accept(context.Background(), serviceconn.InboundConnectionRequest{
+		Principal: fixture.hostilePrincipal, Capability: connection, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("stolen session accepted for sibling: result=%+v err=%v", result, err)
 	}
 
 	restarted := newPublisher(t, fixture)
-	if result, err := restarted.Do(context.Background(), serviceconn.Request{
-		Action: "accept", Principal: fixture.publisherPrincipal, Session: connection, At: fixture.now,
+	if result, err := restarted.Accept(context.Background(), serviceconn.InboundConnectionRequest{
+		Principal: fixture.publisherPrincipal, Capability: connection, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("session survived broker restart: result=%+v err=%v", result, err)
 	}
@@ -134,8 +134,8 @@ func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	defer publisher.Close()
 	session := admit(t, publisher, "connection", fixture.publisherPrincipal, fixture.now)
 	clock = clock.Add(16 * time.Second)
-	result, err := publisher.Do(context.Background(), serviceconn.Request{Action: "accept",
-		Principal: fixture.publisherPrincipal, Session: session, At: fixture.now})
+	result, err := publisher.Accept(context.Background(), serviceconn.InboundConnectionRequest{
+		Principal: fixture.publisherPrincipal, Capability: session, At: fixture.now})
 	if err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("expired session remained usable: result=%+v err=%v", result, err)
 	}
@@ -198,15 +198,15 @@ func TestExactTargetServiceConnectionCarriesOpaqueBytesBothDirections(t *testing
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	go func() {
-		result, runErr := publisher.Do(ctx, serviceconn.Request{
-			Action: "accept", Principal: fixture.publisherPrincipal, Session: publisherSession,
+		result, runErr := publisher.Accept(ctx, serviceconn.InboundConnectionRequest{
+			Principal: fixture.publisherPrincipal, Capability: publisherSession,
 			Route: publisherRoute, Application: publisherEndpoint, BytesEachDirection: 64 << 10, At: fixture.now,
 		})
 		outcomes <- outcome{result, runErr}
 	}()
 	go func() {
-		result, runErr := client.Do(ctx, serviceconn.Request{
-			Action: "connect", Principal: fixture.clientPrincipal, Session: clientSession,
+		result, runErr := client.Connect(ctx, serviceconn.OutboundConnectionRequest{
+			Principal: fixture.clientPrincipal, Capability: clientSession,
 			Target: fixture.first.Target, Publication: publication, Route: clientRoute,
 			Application: clientEndpoint, BytesEachDirection: 64 << 10, At: fixture.now,
 		})
@@ -235,8 +235,8 @@ func TestExactTargetServiceConnectionCarriesOpaqueBytesBothDirections(t *testing
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.clientPrincipal})
 	wrongSession := admit(t, wrongClient, "connection", fixture.clientPrincipal, fixture.now)
-	result, err := wrongClient.Do(context.Background(), serviceconn.Request{
-		Action: "connect", Principal: fixture.clientPrincipal, Session: wrongSession,
+	result, err := wrongClient.Connect(context.Background(), serviceconn.OutboundConnectionRequest{
+		Principal: fixture.clientPrincipal, Capability: wrongSession,
 		Target: [32]byte{99}, Publication: publication, At: fixture.now,
 	})
 	if err == nil || result.Class != "service target authentication failure" || strings.Contains(result.Reason, "route") {

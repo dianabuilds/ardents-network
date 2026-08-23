@@ -40,10 +40,9 @@ type Setup struct {
 	Admission               *broker.Broker
 }
 
-// Request is the remaining native Connection or withdrawal operation input.
-// Publication material is intentionally carried only by PublicationRequest.
-type Request struct {
-	Action                     string
+// connectionInput is the private common carrier input derived only from one
+// typed inbound or outbound request.
+type connectionInput struct {
 	Principal, Session, Target [32]byte
 	Publication                []byte
 	Route                      net.Conn
@@ -128,8 +127,8 @@ type InboundConnectionRequest struct {
 }
 
 // RuntimeResult is a bounded endpoint-runtime outcome with no Route internals.
-// It is transitional while Endpoint replaces the former action/result union
-// with role-specific internal operations.
+// Its remaining evidence projection is reduced independently of the
+// role-specific operation inputs.
 type RuntimeResult struct {
 	Class                       string   `json:"class"`
 	Reason                      string   `json:"reason"`
@@ -266,7 +265,7 @@ func (endpoint *endpoint) Withdraw(ctx context.Context, input WithdrawalRequest)
 
 // Connect runs one client-side native Connection with only outbound facts.
 func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionRequest) (RuntimeResult, error) {
-	return endpoint.runConnection(ctx, Request{Action: "connect", Principal: input.Principal, Session: input.Capability,
+	return endpoint.runOutbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
 		Target: input.Target, Publication: input.Publication, Route: input.Route, Application: input.Application,
 		OpenAttachment: input.OpenAttachment, RecoveryBinding: input.RecoveryBinding, NameBinding: input.NameBinding,
 		NameUpdates: input.NameUpdates, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
@@ -275,39 +274,35 @@ func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionR
 
 // Accept runs one publisher-side native Connection with only inbound facts.
 func (endpoint *endpoint) Accept(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
-	return endpoint.runConnection(ctx, Request{Action: "accept", Principal: input.Principal, Session: input.Capability,
+	return endpoint.runInbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
 		Route: input.Route, Application: input.Application, OpenAttachment: input.OpenAttachment,
 		RecoveryBinding: input.RecoveryBinding, BytesEachDirection: input.BytesEachDirection,
 		SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes, At: input.At})
 }
 
-// Do executes one admitted operation and returns only an R-002 product class.
-func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult, error) {
-	return endpoint.runConnection(ctx, input)
-}
-
-func (endpoint *endpoint) runConnection(ctx context.Context, input Request) (RuntimeResult, error) {
+func (endpoint *endpoint) runOutbound(ctx context.Context, input connectionInput) (RuntimeResult, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return denied("local operation is incomplete")
 	}
 	if err := ctx.Err(); err != nil {
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
-	switch input.Action {
-	case "connect", "accept":
-	default:
-		return denied("local operation is not permitted")
+	monitor := startResourceMonitor(endpoint.resources)
+	result, err := endpoint.connect(ctx, input)
+	endpoint.observe(&result, monitor.stop())
+	return result, err
+}
+
+func (endpoint *endpoint) runInbound(ctx context.Context, input connectionInput) (RuntimeResult, error) {
+	if endpoint == nil || input.At.IsZero() {
+		return denied("local operation is incomplete")
+	}
+	if err := ctx.Err(); err != nil {
+		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
 	monitor := startResourceMonitor(endpoint.resources)
-	var result RuntimeResult
-	var err error
-	switch input.Action {
-	case "connect":
-		result, err = endpoint.connect(ctx, input)
-	case "accept":
-		result, err = endpoint.accept(ctx, input)
-	}
-	endpoint.observe(&result, input, monitor.stop())
+	result, err := endpoint.accept(ctx, input)
+	endpoint.observe(&result, monitor.stop())
 	return result, err
 }
 

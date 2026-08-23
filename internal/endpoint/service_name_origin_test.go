@@ -48,7 +48,7 @@ func TestNameOriginRecoveryRequiresExactDestinationCommitment(t *testing.T) {
 		RecordDigest: [32]byte{2}, Commitment: [32]byte{3},
 	}
 	updates := make(chan DestinationBinding)
-	request := Request{NameBinding: binding, NameUpdates: updates,
+	request := connectionInput{NameBinding: binding, NameUpdates: updates,
 		OpenAttachment: func(context.Context, Recovery) (net.Conn, error) { return nil, nil }}
 	if err := validateNameOrigin(request, Credential{Target: binding.Target}); err == nil {
 		t.Fatal("recovery accepted a destination commitment unrelated to the resolved Name")

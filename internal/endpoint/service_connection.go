@@ -12,7 +12,7 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (endpoint *endpoint) connect(ctx context.Context, input Request) (result RuntimeResult, err error) {
+func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (result RuntimeResult, err error) {
 	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
 	if consumeErr != nil {
 		return denied(consumeErr.Error())
@@ -74,7 +74,7 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (result Ru
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
-func (endpoint *endpoint) accept(ctx context.Context, input Request) (result RuntimeResult, err error) {
+func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (result RuntimeResult, err error) {
 	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
 	if consumeErr != nil {
 		return denied(consumeErr.Error())
@@ -145,7 +145,7 @@ func applyRecoveryOutcome(result *RuntimeResult, outcome nativeconnection.Outcom
 	result.ContinuityCommitment = outcome.ContinuityCommitment
 }
 
-func newNativeStream(ctx context.Context, input Request, credential Credential, recovery Recovery,
+func newNativeStream(ctx context.Context, input connectionInput, credential Credential, recovery Recovery,
 	private crypto.Signer, client bool, initial *securedAttachment, continuity, connectionContext [32]byte,
 	resources func(string, int) uint32) (*nativeconnection.Stream, error) {
 	first, err := nativeAttachment(initial)
@@ -191,7 +191,7 @@ func nativeAttachment(attachment *securedAttachment) (*nativeconnection.Attachme
 		attachment.exporterCommitment, attachment.close)
 }
 
-func validateStreams(input Request) error {
+func validateStreams(input connectionInput) error {
 	sendBytes, receiveBytes := streamBounds(input)
 	if input.Route == nil || input.Application == nil || sendBytes > maximumStreamBytes || receiveBytes > maximumStreamBytes ||
 		(sendBytes == 0 && receiveBytes == 0) {
@@ -200,14 +200,14 @@ func validateStreams(input Request) error {
 	return nil
 }
 
-func streamBounds(input Request) (uint32, uint32) {
+func streamBounds(input connectionInput) (uint32, uint32) {
 	if input.SendBytes == 0 && input.ReceiveBytes == 0 {
 		return input.BytesEachDirection, input.BytesEachDirection
 	}
 	return input.SendBytes, input.ReceiveBytes
 }
 
-func validateRecoveryBinding(input Request, credential Credential) error {
+func validateRecoveryBinding(input connectionInput, credential Credential) error {
 	return nativeconnection.ValidateRecovery(input.OpenAttachment != nil, input.RecoveryBinding,
 		input.At.Unix(), credential.NotAfter)
 }
