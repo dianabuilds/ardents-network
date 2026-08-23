@@ -155,9 +155,9 @@ are not Go packages and do not represent a retained test surface.
 | `internal/naming/resolution` | Own private resolution/control over opaque Namespace/State views. | M6, subject to DA-03/04/07. |
 | `internal/network/epoch`, `internal/network/epoch/assignment`, `internal/network/epoch/merkle`, `internal/network/framing`, `internal/network/store`, `internal/network/state` | Consolidate authenticated acceptance, current/pending state, and durable publication under `network/state`. | M3, subject to DA-02/05. |
 | `internal/network/source` | Retain as State-owned acquisition port and selected direct-origin Adapter only. | M3, subject to DA-05/10. |
-| `internal/node`, `internal/node/probe` | Transfer Node lifecycle and private probe to `node`. | M11. |
+| `internal/node`, `internal/node/probe` | **Complete for Stage 8, 2026-08-24:** Node owns lifecycle and private probe; the separate probe package is deleted. | M11 scoped closure; R-092 is future capacity/profile research, not a supported-host claim. |
 | `internal/resource` | Retain/deepen as the sole shared resource coordinator; Linux profiles only and fail closed elsewhere. | M4, R-062 H1 accepted. |
-| `internal/route`, `internal/routeplan` | Consolidate route selection, attachment lifetime, process cleanup, and the R-078 closed v1 wire under `route`; no legacy reader survives cutover. | M8, subject to DA-06. |
+| `internal/route`, `internal/routeplan` | **Complete for Stage 8, 2026-08-24:** `route` owns selection, attachment lifetime, cleanup, and the R-078 closed v1 wire; no legacy reader survives cutover. | M8 scoped closure under DA-06; a peer-facing runtime remains future work. |
 | `internal/release` | Own release trust/root/floor verification behind `Open`, `Evaluate`, and `Close`. | M1, subject to DA-01. |
 | `internal/update` | Own the bounded offline transaction/recovery tracer; do not add a supported activator, installer, or Custody writer. Its C0 V2 fixture cutover removes the V0 EvidenceNotice from runtime while preserving only C4 vectors. | M2/M13, subject to DA-01/R-064/R-088. |
 | `internal/planfile` | **C0 completed, 2026-08-23:** deleted. Each retained command or owner now owns its own bounded input decoder; no generic plan abstraction or import remains. | M3/M8/M9/M11/M13 cutover complete. |
@@ -167,7 +167,7 @@ are not Go packages and do not represent a retained test surface.
 | remaining `internal/lab/*` Modules | **C0 completed, 2026-08-23:** R-091 deletes the closed Carrier/Gate C execution corpus and its shared helpers. Their source-bound records remain C4, never product-runtime dependencies. | M14 under DA-11/R-091. |
 | `internal/lab/stage6evidence`, `internal/lab/stage6verify` | **C0 completed, 2026-08-23:** deleted by R-089; their executable corpus had no recorded immutable campaign or caller. R-055 and Stage 6 documents remain C4 provenance. | M14 under DA-11/R-089. |
 | `tests/e2e/network-source`, `tests/e2e/node`, `tests/e2e/service` | Replace tests through the target Module/process seam, retaining only independently observable process facts. | M3/M9/M11. |
-| native live Route suite | Register only after M8/M11 select the peer-facing Route and measured Node operating profile; it is not current Qualification. | R-081, M8-M11/M14, subject to DA-06/08 and claim acceptance. |
+| native live Route suite | Not current. Register only after a future scope selects a peer-facing Route runtime and measured Node operating profile; it is not Qualification evidence today. | Future work under DA-06/08 and claim acceptance. |
 
 ## Acceptance and stop rules
 

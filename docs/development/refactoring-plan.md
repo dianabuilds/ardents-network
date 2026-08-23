@@ -55,11 +55,11 @@ one of those conditions.
 | **M5 — Namespace** | Input: `internal/{nameadmission,nameauthority,nameclaim,namelease,namerecovery,namestore,naming}`, including the R-061-owned local persistence/proof mechanics, name command, Stage 6 fixtures. Owner: `naming/namespace`. | DA-03/DA-04/DA-07 are closed for this wave by R-065/R-066/R-067; DA-05 is closed by R-060/R-061. Retain only R-067 profile facts. The target is the R-066 127-record technical tracer, not a product scale selection; D04/W03 internal tracer bytes are C0 unless a later observer decision says otherwise. | Authenticated create/renew/control/recovery/claim/materialization, durable reopen, tamper, and codec/property tests. Delete the six former state-package directories; retain `internal/naming` only as the cohesive R-041 canonical vocabulary package. Delete duplicate validators/field bags, stage fixtures, and command-only control wiring after cutover. |
 | **M6 — private Resolution** | Input: retained private-resolution behavior, current name command and e2e role fixtures. Owner: `naming/resolution`. | DA-03, DA-04, and DA-07 are mandatory. C3 applies to retained OHTTP/wire behavior; no plaintext fallback or shared implementation view. | Opaque Namespace/State port tests, replay/admission/failure/scale tests, and selected real resolution process coverage. Delete `internal/nameresolution/` and old plan/command imports. |
 | **M7 — Entry and Carrier** | Input: `internal/bridge`, `internal/camouflage`, bridge/route commands. Owner: `entry`. | DA-06 is closed by R-076/ADR-0024; R-077/ADR-0025 select the sole Entry Invite reader/writer, and R-079/ADR-0027 bind each Invite to a fresh TLS attempt key without creating a User identity. R-080 closes DA-11 for this Stage-5 runtime subset: records/readers are C4 provenance, but live runners and runtime are retired. D03 is C1 only with revision-safe replay/attempt recovery. W04/WebTunnel is C0 retired; no `route/webtunnel` package is created. | Invite/replay/replacement/durable-fault tests; EntryBinding key/substitution/replay tests; TCP/TLS adjacent-entry failure and cleanup tests. Delete `internal/bridge/` and `internal/camouflage/`. |
-| **M8 — Route** | Input: `internal/route`, `internal/routeplan`, route command/e2e/live tests. Owner: `route`. | R-076/ADR-0024 select the native Profile and R-078/ADR-0026 plus R-079/ADR-0027 select its closed wire. R-081 permits native preannouncement behavior only behind an explicit resource-admission port; M11 selects any real Node profile. W02 is C0 retirement of H3 bytes; before any v1 peer announcement, M8 must deliver canonical codecs/vectors and mixed-generation/downgrade/retirement tests. Route consumes opaque View/Duty/Resource/Entry ports. | Select/open/carry/recover/close, role-local knowledge, attachment capacity, cancellation, pressure, cleanup, and selected impairment tests. Delete `internal/routeplan/`, actor/evidence unions, stage workload orchestration, and obsolete route tracer command path. |
+| **M8 — Route** | Input: `internal/route`, `internal/routeplan`, route command/e2e/live tests. Owner: `route`. | R-076/ADR-0024 select the native Profile and R-078/ADR-0026 plus R-079/ADR-0027 select its closed wire. W02 is C0 retirement of H3 bytes; no v1 peer announcement is selected. Route consumes opaque View/Duty/Resource/Entry ports. | **Complete for Stage 8, 2026-08-24.** The native lifecycle, closed codecs/vectors, cancellation/capacity/cleanup behavior, and one cross-host carrier-leg evidence replace the retired Route plan/runtime. A peer-facing Route runtime and impairment/capacity Qualification require a future scope decision. |
 | **M9 — Publication and Connection** | Input: `internal/serviceconn`, Service endpoint composition, service command/e2e and stream workload. Owners: `service/publication`, `service/connection`. | R-076/ADR-0024 and R-083/ADR-0028 provide native Profile and endpoint wire; R-082 closes DA-10 only for the unobserved M9 H3 local/connection bytes as C0. R-084 selects D05 C1 immutable publication/floor migration and drain. A newly found external observer reopens its own support rule. | Publish/acquire/unpublish/supersede/drain/crash tests; stream/replay/cutover/terminal property and fuzz tests; one real Broker/Route process journey. Delete `internal/serviceconn/`, action unions, static authority bags, fixed batch/byte semantics, and unowned workload code. |
 | **M10 — Isolation, Broker, Endpoint** | Input: `internal/applicationipc`, `internal/serviceendpoint`, app tracer commands, local sockets/plans. Owners: `application/isolation`, `application/broker`, `endpoint`. | R-085 closes DA-08 only for a generic/unqualified Broker; DA-10 remains mandatory. A01-A03 are C0 unless a named observer requires bounded C2. No generic adapter earns an isolation claim. | Principal/Grant/revocation/drain race tests; real platform IPC/process/escape/substitution tests only for a later selected profile; Endpoint readiness/signal/join/residue process tests. Delete `internal/applicationipc/`, `internal/serviceendpoint/`, old sockets/plans, and tracer commands after cutover. |
 
-| **M11 — Node** | Input: `internal/node`, Node command/e2e. Owner: `node`. | Depends on M3/M4 target view/duty/resource ports and selected M8 Route facts. D02 reader is target-owned only. | Duty→quarantine→ready→pressure/drain/withdraw, listener/handler join, signal/restart, and selected platform process tests. The private probe is implementation, not a package; delete Snapshot translation glue. |
+| **M11 — Node** | Input: `internal/node`, Node command/e2e. Owner: `node`. | Depends on M3/M4 target view/duty/resource ports and selected M8 Route facts. D02 reader is target-owned only. | **Complete for Stage 8, 2026-08-24.** The target-owned duty lifecycle, listener/handler join, signal/restart, pressure/drain/withdraw process evidence, and private probe consolidation are complete. R-092 remains future operating-profile research; no VPS capacity measurement is a Stage 8 stop condition or a supported-host claim. |
 | **M12 — Custody** | Input: ADR-0021, D08, remaining foreign custody limitation fields. Owner: `custody`. | DA-08 and DA-09 are mandatory. D08 format/secret storage is C1/C3 only after accepted custody/platform design; no foreign secret writer. | Unlock/export/restore/reconcile/revocation/corruption/non-mutation tests; accepted platform storage/restore evidence. Delete foreign custody fields and limitation-string substitutes only after target behavior exists. |
 | **M13 — command and operator consolidation** | Input: all retained product commands, plans/config/results, README/current operator routes. Owners: thin `cmd/ardents`, `cmd/ardents-node`, conditional bootstrap. | DA-10 governs every observed command/config/result. Each gets C0, C1, or C2 with a named observer and expiry; plans never become authority. | Command descriptor/process tests, migration/error/redaction checks, documentation route review. Delete `cmd/ardents-name`, `cmd/ardents-bridge`, `cmd/ardents-route`, `cmd/ardents-service`, `cmd/ardents-release`, `cmd/ardents-publish-app`, and `cmd/ardents-stream-app` unless an accepted bounded adapter remains. |
 
@@ -148,7 +148,7 @@ socket paths before returning; it does not wait for the ordinary deadline or
 leave a listener owned by a cancelled process. The direct lifecycle test covers
 readiness, cancellation, join, and residue with a real local socket set.
 
-**M11 progress, 2026-08-23.** `internal/node/probe` is deleted. Its
+**M11 complete for Stage 8, 2026-08-24.** `internal/node/probe` is deleted. Its
 authenticated role-probe TLS, framing, replay, listener capacity, pressure,
 and joined-drain implementation now remains private to the single `node`
 Module that owns its full duty lifecycle. `cmd/ardents-node` configures
@@ -158,6 +158,11 @@ continue to exercise the same public Node seam. State now supplies a narrow
 opaque Node-duty view, so the command no longer copies a broad `Snapshot` into
 Node facts. The resulting immutable facts are private Node implementation;
 the only cross-Module contract is the consumer-owned `DutyView`.
+
+The Product Owner explicitly accepts this scoped closure without treating the
+current VPS capacity as a selected Node operating profile. R-092 remains an
+open future measurement for any supported-host or capacity claim; it does not
+reopen the completed Node lifecycle, process, or ownership cutover.
 
 ## Completed wave records
 
@@ -390,7 +395,7 @@ its 20-run reproduction passes rather than depending on close scheduling.
 
 ### M8 — Route
 
-**In progress, 2026-08-23.** `route` now exposes the deep native lifecycle
+**Complete for Stage 8, 2026-08-24.** `route` exposes the deep native lifecycle
 `Open`, `Attach`, and `Close`, rather than a caller-visible complete Route
 plan or stage actor. `Attach` reads one atomic authenticated View, creates an
 unexposed selection and attachment identifier, reserves disjoint live
@@ -410,8 +415,11 @@ EntryBinding, Node LegBinding, and Sealed Introduction vectors; the latter now
 includes a fixed HPKE known-answer and each visible/AAD/HPKE substitution
 fails closed. M8 intentionally does not announce or run a peer-facing Node
 profile: R-081 assigns measured Node admission, pressure, drain, and listener
-integration to M11. The remaining M8 work is the selected native role-carriage
-and impairment path that can be integrated only with that later Node work.
+integration to M11. The Product Owner accepts this as the Stage 8 boundary: a
+Windows-to-Linux carrier-leg integration run confirms exact TLS/ALPN, opaque
+byte carriage, reciprocal binding refusal, and finite cleanup across hosts.
+It is functional evidence only, not a Route topology, impairment, capacity, or
+Qualification claim; any peer-facing runtime remains future work.
 
 ### M9 — Publication and Connection
 
