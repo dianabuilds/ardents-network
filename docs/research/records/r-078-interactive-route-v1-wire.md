@@ -99,6 +99,14 @@ consumption tests. No peer-facing announcement occurs before those tests exist.
 
 ## Selected v1 format
 
+**Amendment (2026-08-23):** before peer-facing use, R-079/ADR-0027 correct
+the User-to-Initiator case that this record originally folded incorrectly into
+LegBinding. `kind = 1` is now the R-079 EntryBinding; the Node-to-Node
+LegBinding and SealedIntroduction bodies below use kinds `2` and `3`
+respectively. This record remains authoritative for the common envelope, TLS,
+Node-to-Node LegBinding body, and HPKE Introduction body; R-079 is
+authoritative for EntryBinding.
+
 All v1 Route application records are sent only after mutually authenticated TLS
 1.3 with `MinVersion == MaxVersion == TLS1.3`, session tickets disabled, an
 exact State public-key pin, and ALPN exactly `ardents-interactive-route-v1`.
@@ -117,10 +125,10 @@ record. Integers are unsigned big-endian. A decoder rejects zero required
 identifiers, non-ASCII Profile bytes, any unknown kind/version/role, surplus
 bytes, and all alternate field orderings.
 
-`kind = 1` is the fixed-size **LegBinding** body:
+`kind = 2` is the fixed-size **Node-to-Node LegBinding** body:
 
 ```text
-uint16(version=1) || uint8(kind=1) || profile(short ASCII, exact v1)
+uint16(version=1) || uint8(kind=2) || profile(short ASCII, exact v1)
 network-id[32] || epoch[8] || epoch-digest[32] || attachment-id[32]
 sender-role[1] || sender-node-id[32]
 peer-role[1] || peer-node-id[32]
@@ -137,10 +145,10 @@ Role Domain before allocating a forward attachment. The record reveals only
 the two adjacent identities and roles; it contains neither a complete Route nor
 Service material.
 
-`kind = 2` is a **SealedIntroduction** body:
+`kind = 3` is a **SealedIntroduction** body:
 
 ```text
-uint16(version=1) || uint8(kind=2) || profile(short ASCII, exact v1)
+uint16(version=1) || uint8(kind=3) || profile(short ASCII, exact v1)
 network-id[32] || epoch[8] || epoch-digest[32]
 introduction-node-id[32] || rendezvous-node-id[32]
 rendezvous-reachability-digest[32] || not-after-unix[8]
@@ -167,9 +175,10 @@ fresh endpoint-generated 32-byte values, never caller-selected command fields.
 
 ## Conformance and transition
 
-M8 owns public synthetic vectors for the exact LegBinding bytes, every
-SealedIntroduction visible prefix, fixed HPKE known-answer envelope, and each
-rejection listed above. The corpus must be runnable by an independent Go
+M8 owns public synthetic vectors for the exact R-079 EntryBinding and
+Node-to-Node LegBinding bytes, every SealedIntroduction visible prefix, fixed
+HPKE known-answer envelope, and each rejection listed above. The corpus must
+be runnable by an independent Go
 implementation without State roots or private credentials. State/publication
 is the only source of supported Profile generations. v1 begins `required` for
 its own local target with no predecessor reader: a peer advertising H3, an
@@ -187,7 +196,8 @@ v1 code must not add a generic version fallback now.
 
 ## Recommendation
 
-Choose H1 with medium confidence and record the wire in ADR-0026. The strongest
+Choose H1 with medium confidence and record the wire in ADR-0026, as amended by
+ADR-0027. The strongest
 argument against it is that a first native format is hard to change. That is
 why it is narrow, synthetic-vector-bound, unannounced, and has no legacy
 reader; future public overlap remains governed by ADR-0006 rather than an
@@ -196,6 +206,7 @@ imagined compatibility surface.
 ## Disposition
 
 **Accepted 2026-08-23 under the Product Owner's standing Stage 8 delegation.**
-ADR-0026 records the format. R-015 is decided for the maintained v1 wire and
+ADR-0026 records the original format selection and ADR-0027 records the
+EntryBinding correction. R-015 is decided for the maintained v1 wire and
 conformance strategy. M8 must implement the codec/vectors and replace H3
 readers before peer-facing use; no experiment code is retained.

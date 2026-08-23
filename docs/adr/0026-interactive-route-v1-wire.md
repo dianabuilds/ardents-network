@@ -36,6 +36,11 @@ never appears in the Introduction-visible header or a C-5 binding.
 - a future overlapping generation needs its own accepted record/ADR under
   ADR-0006; no public compatibility or Qualification claim is made here.
 
+ADR-0027 supersedes this ADR's original kind assignments only: `EntryBinding`
+is kind `1`, the Node-to-Node LegBinding is kind `2`, and
+SealedIntroduction is kind `3`. All other selected transport, envelope, and
+cryptographic facts remain unchanged.
+
 ## Compliance
 
 [R-078](../research/records/r-078-interactive-route-v1-wire.md) contains the

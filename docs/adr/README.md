@@ -35,6 +35,7 @@ Current decisions:
 - [0024 — Select the native Interactive Route foundation](0024-native-interactive-route-foundation.md)
 - [0025 — Use State-referenced Entry Invites](0025-state-referenced-entry-invites.md)
 - [0026 — Use the closed Interactive Route v1 wire](0026-interactive-route-v1-wire.md)
+- [0027 — Bind each Entry Invite to a fresh TLS attempt key](0027-entry-binding-v1.md)
 
 Withdrawn decisions retained for history:
 
