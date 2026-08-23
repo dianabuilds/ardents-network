@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 // OpenClaimWinner verifies one authenticated R-042 close and returns only its
@@ -33,30 +35,30 @@ func OpenClaimWinner(order ClaimOrder, proof ClaimProof) (*ClaimWinner, error) {
 // Callers cannot substitute a raw proof, claim ordinal, Name, Authority, or
 // lease deadline at this boundary. A successful use consumes the local fact;
 // signing and threshold Store.Commit remain separate current-state steps.
-func (winner *ClaimWinner) Materialize(current *Record, materializedAt time.Time,
-	policy Policy,
-) (Record, error) {
-	record, err := winner.prepare(current, materializedAt, policy)
+func (winner *ClaimWinner) Materialize(current *record.Record, materializedAt time.Time,
+	policy record.Policy,
+) (record.Record, error) {
+	materialized, err := winner.prepare(current, materializedAt, policy)
 	if err != nil {
-		return Record{}, err
+		return record.Record{}, err
 	}
 	if !winner.consume() {
-		return Record{}, errors.New("root claim winner was already materialized")
+		return record.Record{}, errors.New("root claim winner was already materialized")
 	}
-	return record, nil
+	return materialized, nil
 }
 
-func (winner *ClaimWinner) prepare(current *Record, materializedAt time.Time, policy Policy) (Record, error) {
+func (winner *ClaimWinner) prepare(current *record.Record, materializedAt time.Time, policy record.Policy) (record.Record, error) {
 	if winner == nil || winner.value == nil || materializedAt.IsZero() || materializedAt.Unix() <= 0 {
-		return Record{}, errors.New("root claim materialization input is invalid")
+		return record.Record{}, errors.New("root claim materialization input is invalid")
 	}
 	winner.value.mu.Lock()
 	defer winner.value.mu.Unlock()
 	if winner.value.consumed {
-		return Record{}, errors.New("root claim winner was already materialized")
+		return record.Record{}, errors.New("root claim winner was already materialized")
 	}
 	if current != nil && current.Name != winner.value.name {
-		return Record{}, errors.New("root claim predecessor does not match the authenticated winner")
+		return record.Record{}, errors.New("root claim predecessor does not match the authenticated winner")
 	}
 	generation := uint64(1)
 	expectedGeneration, expectedRevision := uint64(0), uint64(0)
@@ -64,10 +66,10 @@ func (winner *ClaimWinner) prepare(current *Record, materializedAt time.Time, po
 		generation = current.Generation + 1
 		expectedGeneration, expectedRevision = current.Generation, current.Revision
 	}
-	op := Op{Kind: "claim", Name: winner.value.name, Generation: generation,
+	op := record.Op{Kind: "claim", Name: winner.value.name, Generation: generation,
 		ExpectedGeneration: expectedGeneration, ExpectedRevision: expectedRevision,
 		Authority: hex.EncodeToString(winner.value.authority[:])}
-	return ApplyAtLegacy(current, materializedAt, op, policy)
+	return record.ApplyAtLegacy(current, materializedAt, op, policy)
 }
 
 func (winner *ClaimWinner) consume() bool {
@@ -98,22 +100,22 @@ func (winner *ClaimWinner) BelongsTo(network [32]byte, epoch uint64) bool {
 
 // MaterializeSigned derives and seals the winner's sole Record for its own
 // Network and Epoch. The winner is consumed only after signing succeeds.
-func (winner *ClaimWinner) MaterializeSigned(current *Record, materializedAt time.Time,
-	policy Policy, signer RecordSigner,
-) (Record, []byte, error) {
+func (winner *ClaimWinner) MaterializeSigned(current *record.Record, materializedAt time.Time,
+	policy record.Policy, signer record.RecordSigner,
+) (record.Record, []byte, error) {
 	if winner == nil || winner.value == nil {
-		return Record{}, nil, errors.New("root claim winner is unavailable")
+		return record.Record{}, nil, errors.New("root claim winner is unavailable")
 	}
-	record, err := winner.prepare(current, materializedAt, policy)
+	materialized, err := winner.prepare(current, materializedAt, policy)
 	if err != nil {
-		return Record{}, nil, err
+		return record.Record{}, nil, err
 	}
-	signed, err := SignWith(winner.value.network, record, signer)
+	signed, err := record.SignWith(winner.value.network, materialized, signer)
 	if err != nil {
-		return Record{}, nil, err
+		return record.Record{}, nil, err
 	}
 	if !winner.consume() {
-		return Record{}, nil, errors.New("root claim winner was already materialized")
+		return record.Record{}, nil, errors.New("root claim winner was already materialized")
 	}
-	return record, signed, nil
+	return materialized, signed, nil
 }

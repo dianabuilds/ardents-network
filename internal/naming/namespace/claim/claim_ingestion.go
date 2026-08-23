@@ -5,23 +5,24 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/naming"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
 )
 
 // AdmitClaimCommitment verifies and spends exactly one R-045 root-claim proof
 // bound to the hidden R-042 commitment. It is the only local source of the
 // AdmissionDigest later carried into an Epoch input.
-func AdmitClaimCommitment(admission *Admission, now int64, commitment [32]byte,
-	proof Proof,
+func AdmitClaimCommitment(gate *admission.Admission, now int64, commitment [32]byte,
+	proof admission.Proof,
 ) (*ClaimCommitment, error) {
-	if admission == nil || commitment == [32]byte{} || proof.Challenge.Network != admission.Network() ||
-		proof.Challenge.Epoch != admission.Epoch() || proof.Challenge.Surface != "root-claim" ||
+	if gate == nil || commitment == [32]byte{} || proof.Challenge.Network != gate.Network() ||
+		proof.Challenge.Epoch != gate.Epoch() || proof.Challenge.Surface != "root-claim" ||
 		proof.Challenge.OperationDigest != commitment {
 		return nil, errors.New("claim commitment admission is invalid")
 	}
-	if accepted, _ := admission.Verify(now, proof); !accepted {
+	if accepted, _ := gate.Verify(now, proof); !accepted {
 		return nil, errors.New("claim commitment admission is denied")
 	}
-	return &ClaimCommitment{network: admission.Network(), epoch: admission.Epoch(), commitment: commitment,
+	return &ClaimCommitment{network: gate.Network(), epoch: gate.Epoch(), commitment: commitment,
 		admission: proof.Digest()}, nil
 }
 
