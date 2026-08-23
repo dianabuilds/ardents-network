@@ -61,7 +61,7 @@ func TestDeepestLegalNameResolvesThroughSeparateRoles(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := resolver.Resolve(context.Background(), name, now)
-	if err != nil || result.Record.Name != name || result.Binding.Target != ([32]byte{1}) {
+	if err != nil || result.Binding.Name != name || result.Binding.Target != ([32]byte{1}) {
 		t.Fatalf("deep resolution=%+v err=%v", result, err)
 	}
 }

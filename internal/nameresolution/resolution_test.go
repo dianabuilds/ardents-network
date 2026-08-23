@@ -49,8 +49,8 @@ func TestResolveSeparatesRelayAndGatewayViews(t *testing.T) {
 		if resolveErr != nil {
 			t.Fatalf("Resolve: %v", resolveErr)
 		}
-		if result.Class != "resolved" || result.Record.Target != ([32]byte{1}) ||
-			result.Binding.Target != result.Record.Target || result.Binding.Commitment == ([32]byte{}) {
+		if result.Class != "resolved" || result.Binding.Target != ([32]byte{1}) ||
+			result.Binding.Commitment == ([32]byte{}) {
 			t.Fatalf("result = %+v", result)
 		}
 		again, againErr := resolver.Resolve(context.Background(), "alice", fixture.now)
@@ -105,7 +105,7 @@ func TestResolveFailsClosedOnRoleConflictAndTampering(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := resolver.Resolve(context.Background(), "alice", fixture.now)
-	if err == nil || result.Class != "invalid naming evidence" || result.Record != (namespace.Record{}) {
+	if err == nil || result.Class != "invalid naming evidence" || result.Binding != (namespace.Binding{}) {
 		t.Fatalf("tampered response result=%+v err=%v", result, err)
 	}
 }
@@ -194,7 +194,7 @@ func TestResolveDoesNotExposeUnboundOrUnknownNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := resolver.Resolve(context.Background(), "missing", fixture.now)
-	if err == nil || result.Class != "private resolution unavailable" || result.Record != (namespace.Record{}) {
+	if err == nil || result.Class != "private resolution unavailable" || result.Binding != (namespace.Binding{}) {
 		t.Fatalf("missing name result=%+v err=%v", result, err)
 	}
 	if _, err := nameresolution.Open(fixture.view, fixture.selection, fixture.gatewayProfile(), [32]byte{},

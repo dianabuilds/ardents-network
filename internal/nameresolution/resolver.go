@@ -127,7 +127,7 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 	resolver.roleEvidence.Generation = record.Generation
 	resolver.roleEvidence.Revision = record.Revision
 	resolver.mu.Unlock()
-	return result{Class: resolvedClass, Warning: warning, Record: record, Binding: binding}, nil
+	return result{Class: resolvedClass, Warning: warning, Binding: binding}, nil
 }
 
 func isolatedHTTPClient(base *http.Transport) *http.Client {

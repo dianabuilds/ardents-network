@@ -112,7 +112,7 @@ func TestResolutionRolesRunInSeparateProcesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := resolver.Resolve(context.Background(), "alice", now)
-	if err != nil || result.Record.Target != ([32]byte{1}) {
+	if err != nil || result.Binding.Target != ([32]byte{1}) {
 		t.Fatalf("process resolution=%+v err=%v", result, err)
 	}
 }

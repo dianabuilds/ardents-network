@@ -109,7 +109,6 @@ type plan struct {
 type result struct {
 	Class   string
 	Warning string
-	Record  namespace.Record
 	Binding namespace.Binding
 }
 
