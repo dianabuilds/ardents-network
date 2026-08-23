@@ -12,8 +12,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func selectPlan(view state.Snapshot, input Selection, profile GatewayProfile) (plan, error) {
-	if invalidView(view, input) || profile.NetworkID != view.NetworkID || profile.NodeID != input.GatewayNodeID ||
+func selectPlan(view state.ResolutionView, input Selection, profile GatewayProfile) (plan, error) {
+	epoch, available := view.Epoch(input.At, input.Deadline)
+	if !available || input.ConnectionRendezvousNodeID == [32]byte{} || profile.NetworkID != epoch.NetworkID || profile.NodeID != input.GatewayNodeID ||
 		profile.AssignmentNotAfter.Before(input.Deadline) {
 		return plan{}, errors.New("private resolution selection is invalid")
 	}
@@ -26,12 +27,12 @@ func selectPlan(view state.Snapshot, input Selection, profile GatewayProfile) (p
 		collides(relay, gateway, rendezvous) || excluded(input, relay) || excluded(input, gateway) || excluded(input, rendezvous) {
 		return plan{}, errors.New("private resolution roles conflict or are unavailable")
 	}
-	verifier, err := namespace.OpenResolutionVerifier(namespacePolicy(view), view.Epoch, view.Digest)
+	verifier, err := namespace.OpenResolutionVerifier(namespacePolicy(epoch), epoch.Number, epoch.Digest)
 	if err != nil {
 		return plan{}, errors.New("private resolution Namespace trust root is invalid")
 	}
-	result := plan{NetworkID: view.NetworkID, Generation: view.Generation, Epoch: view.Epoch, EpochDigest: view.Digest,
-		ViewRoot: view.ViewRoot, SelectionAt: input.At.UnixNano(), Deadline: input.Deadline.UnixNano(),
+	result := plan{NetworkID: epoch.NetworkID, Generation: epoch.Generation, Epoch: epoch.Number, EpochDigest: epoch.Digest,
+		ViewRoot: epoch.ViewRoot, SelectionAt: input.At.UnixNano(), Deadline: input.Deadline.UnixNano(),
 		Relay: relay, Gateway: gateway, ConnectionRendezvous: rendezvous,
 		GatewayKeyConfig: append([]byte(nil), profile.KeyConfig...), GatewayKeyConfigDigest: profile.KeyConfigDigest,
 		ExcludedIdentities: appendDistinctIdentities(input.ExcludedIdentities, relay.NodeID, gateway.NodeID),
@@ -43,12 +44,12 @@ func selectPlan(view state.Snapshot, input Selection, profile GatewayProfile) (p
 	return result, nil
 }
 
-func namespacePolicy(view state.Snapshot) namespace.MaterializationPolicy {
-	policy := namespace.MaterializationPolicy{Network: view.NetworkID, Rule: "ardents-namespace-materialization-v1",
-		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: int(view.EpochThreshold)}
-	for index := 0; index < int(view.EpochAuthorityCount); index++ {
-		key := append(ed25519.PublicKey(nil), view.EpochAuthorityKeys[index][:]...)
-		policy.Authorities[view.EpochAuthorityIDs[index]] = key
+func namespacePolicy(epoch state.ResolutionEpoch) namespace.MaterializationPolicy {
+	policy := namespace.MaterializationPolicy{Network: epoch.NetworkID, Rule: "ardents-namespace-materialization-v1",
+		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: int(epoch.Threshold)}
+	for _, authority := range epoch.Authorities {
+		key := append(ed25519.PublicKey(nil), authority.PublicKey[:]...)
+		policy.Authorities[authority.ID] = key
 	}
 	return policy
 }
@@ -105,26 +106,13 @@ func validatePlan(plan plan) error {
 	return nil
 }
 
-func invalidView(view state.Snapshot, input Selection) bool {
-	return view.Generation == "" || view.NetworkID == [32]byte{} || view.Digest == [32]byte{} ||
-		view.ViewRoot == [32]byte{} || view.Freshness != "fresh" || view.Conflicting || view.CandidateCount < 3 ||
-		input.At.IsZero() || !input.At.Before(input.Deadline) || input.Deadline.After(input.At.Add(15*time.Second)) ||
-		input.Deadline.After(view.ValidUntil) ||
-		input.RelayNodeID == [32]byte{} || input.GatewayNodeID == [32]byte{} || input.ConnectionRendezvousNodeID == [32]byte{}
-}
-
-func findPosition(view state.Snapshot, nodeID [32]byte, at, deadline time.Time) (position, bool) {
-	for _, candidate := range view.Candidates[:view.CandidateCount] {
-		if candidate.NodeID != nodeID {
-			continue
-		}
-		valid := candidate.Capacity > 0 && candidate.Family != "" && literalEndpoint(candidate.Endpoint) &&
-			!at.Before(candidate.ValidFrom) && deadline.Before(candidate.ValidUntil) &&
-			!candidate.AssignmentNotAfter.Before(deadline)
-		return position{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: candidate.Family, Endpoint: candidate.Endpoint,
-			Domain: candidate.Domain, AssignmentNotAfter: candidate.AssignmentNotAfter}, valid
+func findPosition(view state.ResolutionView, nodeID [32]byte, at, deadline time.Time) (position, bool) {
+	candidate, valid := view.Candidate(nodeID, at, deadline)
+	if !valid || !literalEndpoint(candidate.Endpoint) {
+		return position{}, false
 	}
-	return position{}, false
+	return position{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: candidate.Family, Endpoint: candidate.Endpoint,
+		Domain: candidate.Domain, AssignmentNotAfter: candidate.AssignmentNotAfter}, true
 }
 
 func collides(values ...position) bool {

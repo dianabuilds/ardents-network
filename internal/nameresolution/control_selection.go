@@ -3,7 +3,6 @@ package nameresolution
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/openpcc/ohttp"
@@ -14,7 +13,11 @@ import (
 func OpenControl(view state.Snapshot, selection Selection, profile GatewayProfile,
 	isolation [32]byte, base *http.Transport,
 ) (*controlClient, error) {
-	plan, err := selectControlPlan(view, selection, profile)
+	resolutionView, viewErr := view.Resolution()
+	if viewErr != nil {
+		return nil, errors.New("private naming control Network State view is invalid")
+	}
+	plan, err := selectControlPlan(resolutionView, selection, profile)
 	if err != nil || base == nil || isolation == [32]byte{} ||
 		!selection.AdmissionChallenge.BindsIsolation(isolation) {
 		return nil, errors.New("private naming control configuration is invalid")
@@ -31,12 +34,10 @@ func OpenControl(view state.Snapshot, selection Selection, profile GatewayProfil
 	return &controlClient{plan: plan, client: client, transport: transport}, nil
 }
 
-func selectControlPlan(view state.Snapshot, input Selection, profile GatewayProfile) (controlPlan, error) {
-	if view.Generation == "" || view.NetworkID == [32]byte{} || view.Digest == [32]byte{} ||
-		view.ViewRoot == [32]byte{} || view.Freshness != "fresh" || view.Conflicting || view.CandidateCount < 2 ||
-		input.At.IsZero() || !input.At.Before(input.Deadline) || input.Deadline.After(input.At.Add(15*time.Second)) ||
-		input.Deadline.After(view.ValidUntil) || input.ConnectionRendezvousNodeID != [32]byte{} ||
-		profile.NetworkID != view.NetworkID || profile.NodeID != input.GatewayNodeID ||
+func selectControlPlan(view state.ResolutionView, input Selection, profile GatewayProfile) (controlPlan, error) {
+	epoch, available := view.Epoch(input.At, input.Deadline)
+	if !available || input.ConnectionRendezvousNodeID != [32]byte{} ||
+		profile.NetworkID != epoch.NetworkID || profile.NodeID != input.GatewayNodeID ||
 		profile.AssignmentNotAfter.Before(input.Deadline) {
 		return controlPlan{}, errors.New("private naming control selection is invalid")
 	}
@@ -49,12 +50,12 @@ func selectControlPlan(view state.Snapshot, input Selection, profile GatewayProf
 		return controlPlan{}, errors.New("private naming control roles conflict or are unavailable")
 	}
 	challenge := input.AdmissionChallenge
-	if challenge.Node != gateway.NodeID || challenge.Network != view.NetworkID ||
+	if challenge.Node != gateway.NodeID || challenge.Network != epoch.NetworkID ||
 		(challenge.Surface != "renewal-update" && challenge.Surface != "policy-recovery" && challenge.Surface != "root-claim") ||
 		challenge.IssuedAt > input.At.UnixMilli() || challenge.ExpiresAt < input.Deadline.UnixMilli() {
 		return controlPlan{}, errors.New("private naming control admission is invalid")
 	}
-	return controlPlan{NetworkID: view.NetworkID, SelectionAt: input.At.UnixNano(), Deadline: input.Deadline.UnixNano(),
+	return controlPlan{NetworkID: epoch.NetworkID, SelectionAt: input.At.UnixNano(), Deadline: input.Deadline.UnixNano(),
 		Relay: relay, Gateway: gateway, GatewayKeyConfig: append([]byte(nil), profile.KeyConfig...),
 		AdmissionChallenge: challenge}, nil
 }

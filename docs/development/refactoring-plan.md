@@ -239,6 +239,17 @@ re-verifies that proof without exposing a lifecycle Record. The temporary
 paired opaque State view when `internal/nameresolution` moves to
 `internal/naming/resolution`.
 
+### M6 — private Resolution
+
+**In progress, 2026-08-23.** The first M6 seam is now real: Network State
+owns `ResolutionView`, which admits only a fresh bounded selection window and
+returns one immutable Epoch trust fact or one authenticated candidate valid
+throughout that window. `internal/nameresolution` converts its legacy
+`Snapshot` input immediately and performs no direct broad-Snapshot read while
+selecting either resolution or control roles. The target package move and the
+command/lab caller cutover remain M6 work; the temporary input adapter avoids
+two simultaneous role-selection implementations.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

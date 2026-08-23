@@ -21,7 +21,11 @@ const ohttpRequestType = ohttp.RequestMediaType
 // again and therefore receives a fresh Adapter and transport.
 func Open(view state.Snapshot, selection Selection, profile GatewayProfile, isolation [32]byte,
 	base *http.Transport) (*resolver, error) {
-	plan, err := selectPlan(view, selection, profile)
+	resolutionView, viewErr := view.Resolution()
+	if viewErr != nil {
+		return nil, errors.New("private resolution Network State view is invalid")
+	}
+	plan, err := selectPlan(resolutionView, selection, profile)
 	if err != nil || isolation == [32]byte{} || base == nil {
 		return nil, errors.New("private resolution client configuration is invalid")
 	}
