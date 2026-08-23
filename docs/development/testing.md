@@ -23,16 +23,16 @@ process tests with `make e2e`.
 
 The retained process suites cover authenticated Network Source refresh, Node
 lifecycle and pressure, plus Service command readiness, bounded failure,
-cleanup, and same-connection recovery. The H3 Route process suite is retired
-in M8; a native Route process suite is registered only after its peer-facing
-runtime exists.
+cleanup, and same-connection recovery. The retired pre-native Route process
+suite has no replacement yet; a native Route process suite is registered only
+after its peer-facing runtime exists.
 
 ## Live
 
-The live profile is inactive. R-076 retires the H3 container Route; R-081
-forbids inventing a native Node resource profile to replace it. M8/M11 must
-first provide a native peer-facing Route and measured Node operating profile,
-then register a new bounded live suite and its explicit entrypoint.
+The live profile is inactive. A native peer-facing Route and the measured
+R-092 Node operating profile must exist before a new bounded live suite and
+its explicit entrypoint are registered. Docker or a development VPS can test a
+selected implementation path, but cannot select the missing operating profile.
 
 ## Commands
 
@@ -59,13 +59,13 @@ Active profiles have a checked Make entrypoint; an inactive profile has no
 current accepted suite and names the decision that must activate it. Inactive
 does not mean passed, waived, or unavailable evidence.
 
-- developer, deterministic Module, process, race, and fuzz are active at S8.2;
-- affected-platform remains inactive until S8.3 selects a supported platform
-  contract and eligible host;
+- developer, deterministic Module, process, race, and fuzz are active;
+- affected-platform remains inactive until a supported platform contract and
+  eligible host are selected;
 - soak remains inactive until a bounded duration/load/observer contract is
   accepted; and
-- Qualification remains inactive because S8.1 accepted no Stage 8
-  claim-bearing suite. A later accepted claim creates
+- Qualification remains inactive because no claim-bearing suite is accepted. A
+  later accepted claim creates
   `tests/qualification/<claim>` with its matrix and entrypoint.
 
 ## Profile ownership and validity
