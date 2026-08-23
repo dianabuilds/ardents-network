@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/planfile"
 	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
@@ -151,6 +152,15 @@ func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Durati
 		return setup, time.Time{}, 0, err
 	}
 	setup.PublicationRoot, setup.LegacyGenerationFloor = plan.PublicationRoot, plan.LegacyGenerationFloor
+	grants := []broker.Grant{{Principal: setup.ConnectionPrincipal, Surface: broker.Connection}}
+	if setup.AdministrationPrincipal != [32]byte{} {
+		grants = append(grants, broker.Grant{Principal: setup.AdministrationPrincipal, Surface: broker.Administration})
+	}
+	admission, err := broker.New(broker.Config{ID: setup.BrokerID, Grants: grants})
+	if err != nil {
+		return setup, time.Time{}, 0, err
+	}
+	setup.Admission = admission
 	setup.Resources = resourceObserver()
 	at, err := time.Parse(time.RFC3339, plan.At)
 	if err != nil {

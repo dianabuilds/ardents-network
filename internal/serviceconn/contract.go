@@ -37,6 +37,7 @@ type Setup struct {
 	LegacyGenerationFloor   string
 	Clock                   func() time.Time
 	Resources               func(string, int) uint32
+	Admission               *broker.Broker
 }
 
 // Request is one role-scoped operation at the Service Connection seam.
@@ -127,13 +128,17 @@ func New(input Setup) (*endpoint, error) {
 	if resources == nil {
 		resources = newResourceObserver()
 	}
-	grants := []broker.Grant{{Principal: input.ConnectionPrincipal, Surface: broker.Connection}}
-	if input.AdministrationPrincipal != [32]byte{} {
-		grants = append(grants, broker.Grant{Principal: input.AdministrationPrincipal, Surface: broker.Administration})
-	}
-	admission, err := broker.New(broker.Config{ID: input.BrokerID, Grants: grants, Clock: clock})
-	if err != nil {
-		return nil, err
+	admission := input.Admission
+	if admission == nil {
+		grants := []broker.Grant{{Principal: input.ConnectionPrincipal, Surface: broker.Connection}}
+		if input.AdministrationPrincipal != [32]byte{} {
+			grants = append(grants, broker.Grant{Principal: input.AdministrationPrincipal, Surface: broker.Administration})
+		}
+		openedAdmission, err := broker.New(broker.Config{ID: input.BrokerID, Grants: grants, Clock: clock})
+		if err != nil {
+			return nil, err
+		}
+		admission = openedAdmission
 	}
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,

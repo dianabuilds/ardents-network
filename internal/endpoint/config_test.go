@@ -82,3 +82,15 @@ func TestEndpointPlanBoundsConcurrentConnectionsForStage5Capacity(t *testing.T) 
 		t.Fatal("connection capacity above sixteen was accepted")
 	}
 }
+
+func TestEndpointSetupCreatesOneBrokerGeneration(t *testing.T) {
+	plan := endpointPlan{Role: "client", NetworkID: strings.Repeat("01", 32), BrokerID: strings.Repeat("02", 32),
+		AuthorityPublic: strings.Repeat("03", 32), ConnectionPrincipal: strings.Repeat("04", 32),
+		IntroductionPublic: strings.Repeat("05", 32), Target: strings.Repeat("06", 32),
+		ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication", At: "2033-05-18T03:33:20Z",
+		Deadline: "5s", BytesEachDirection: 4096}
+	setup, _, _, err := endpointSetup(plan)
+	if err != nil || setup.Admission == nil || setup.Admission.Isolation().State() != "generic/unqualified" {
+		t.Fatalf("Endpoint did not create its Broker generation: admission=%v error=%v", setup.Admission, err)
+	}
+}
