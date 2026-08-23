@@ -116,7 +116,7 @@ made historical plans an implicit cross-command Interface. `ardents`,
 input boundary; no maintained package imports a generic plan abstraction.
 | **M14 — retirement and current truth** | Input: every remaining lab, verifier, e2e/live matrix, stage document, fixture, and this plan. Owner: Codex under Product Owner final disposition. | DA-11 chooses C4 provenance/reproduction or C0 deletion; Qualification requires an accepted claim and active profile, never a historical receipt. | Full profile/reader-route audit, claim/evidence identity check, package-map/import graph, artifact/residue scan. Delete obsolete `internal/lab/`, six lab commands, obsolete e2e/live suites, stage materials whose current facts are promoted, target/disposition ledgers, and this plan. |
 
-**M10 progress, 2026-08-23.** `internal/applicationipc` and
+**M10 complete for Stage 8, 2026-08-24.** `internal/applicationipc` and
 `internal/serviceendpoint` now have one target owner at `internal/endpoint`;
 the old package paths are deleted and both service and stream tracer callers
 import that owner. The raw byte stream, single bounded terminal result, control
@@ -141,7 +141,7 @@ IPC/attachment counters); dead publication/session and sampled process-metric
 projection is deleted. The result no longer carries transient TLS canaries,
 Introduction bytes, or unobserved IPC high-water state.
 
-**M10 progress, 2026-08-23.** `ardents` converts `os.Interrupt` into Endpoint
+`ardents` converts `os.Interrupt` into Endpoint
 context cancellation. Endpoint then closes only its owned application, result,
 and Route listeners, joins the blocked accept loop, and removes all three
 socket paths before returning; it does not wait for the ordinary deadline or
