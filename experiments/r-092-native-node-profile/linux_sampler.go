@@ -4,7 +4,10 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 	"runtime"
 	"strconv"
@@ -14,17 +17,36 @@ import (
 )
 
 type hostIdentity struct {
-	OperatingSystem string `json:"operating_system"`
-	Architecture    string `json:"architecture"`
-	GoVersion       string `json:"go_version"`
-	KernelRelease   string `json:"kernel_release,omitempty"`
-	LogicalCPUs     int    `json:"logical_cpus"`
-	MemoryBytes     int64  `json:"memory_bytes,omitempty"`
+	OperatingSystem  string `json:"operating_system"`
+	Architecture     string `json:"architecture"`
+	GoVersion        string `json:"go_version"`
+	KernelRelease    string `json:"kernel_release,omitempty"`
+	LogicalCPUs      int    `json:"logical_cpus"`
+	MemoryBytes      int64  `json:"memory_bytes,omitempty"`
+	ExecutableSHA256 string `json:"executable_sha256"`
 }
 
 func currentHostIdentity() (hostIdentity, error) {
 	result := hostIdentity{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, GoVersion: runtime.Version(),
 		LogicalCPUs: runtime.NumCPU()}
+	path, err := os.Executable()
+	if err != nil {
+		return hostIdentity{}, err
+	}
+	executable, err := os.Open(path)
+	if err != nil {
+		return hostIdentity{}, err
+	}
+	digest := sha256.New()
+	_, copyErr := io.Copy(digest, executable)
+	closeErr := executable.Close()
+	if copyErr != nil {
+		return hostIdentity{}, copyErr
+	}
+	if closeErr != nil {
+		return hostIdentity{}, closeErr
+	}
+	result.ExecutableSHA256 = hex.EncodeToString(digest.Sum(nil))
 	if runtime.GOOS != "linux" {
 		return result, nil
 	}

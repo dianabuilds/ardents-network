@@ -29,6 +29,7 @@ an external evidence directory. For example, on the declared Ubuntu host:
 
 ```sh
 evidence_dir="$(mktemp -d)"
+git rev-parse HEAD | tee "$evidence_dir/source-commit.txt"
 go version | tee "$evidence_dir/go-version.txt"
 uname -srmo | tee "$evidence_dir/uname.txt"
 go build -trimpath -o "$evidence_dir/r092-role-carriage" \
@@ -45,11 +46,12 @@ The program generates ephemeral synthetic Ed25519 certificates and loopback
 addresses; it writes no state, credentials, captures, or generated artifacts to
 the repository. Its JSON output records elapsed time plus Go allocation and
 goroutine deltas. `role-carriage` also records runtime/OS/architecture/kernel/
-CPU/RAM host identity and raw per-interval Linux process RSS, file descriptor,
-socket, and CPU-tick samples. Those still are not the full-profile observations
-required for selection. A selection run must execute on the R-092 Ubuntu
-reference host and retain raw OS CPU/RSS/FD/socket, pressure, drain, withdrawal,
-and cleanup evidence outside Git.
+CPU/RAM host identity, its own executable SHA-256, and raw per-interval Linux
+process RSS, file descriptor, socket, and CPU-tick samples. The executable
+digest in JSON must equal the external `sha256sum` record. Those still are not
+the full-profile observations required for selection. A selection run must
+execute on the R-092 Ubuntu reference host and retain raw OS CPU/RSS/FD/socket,
+pressure, drain, withdrawal, and cleanup evidence outside Git.
 
 `role-carriage` is a synthetic, bounded pressure injection: it carries exactly
 `capacity` simultaneous reciprocal TLS/LegBinding legs, withdraws the synthetic
