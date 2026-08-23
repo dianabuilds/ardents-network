@@ -1,8 +1,13 @@
-# Carrier Lab preflight
+# Historical Carrier Lab preflight
 
-The preflight is the first maintained vertical project slice. It prepares and
-verifies the controlled environment required by R-013 before any routing
-experiment can run. It does not implement routing or a network protocol.
+Status: **C4 provenance. R-091 retired the command, Modules, source tree, and
+workflows on 2026-08-23.**
+
+This is the recorded preflight for the first maintained vertical project slice.
+It prepared and verified the controlled R-013 environment before a routing
+experiment could run; it did not implement routing or a network protocol. The
+commands, paths, and inputs below describe the accepted historical run only.
+They are not a current runnable interface or a template for a new experiment.
 
 It answers the environment-readiness part of
 [R-004](../research/records/r-004-routing-rendezvous-families.md) using the

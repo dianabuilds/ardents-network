@@ -65,8 +65,9 @@ same claim and evidence contract without weakening the Application Interface.
 ## Horizon 1 — Completed Research Slice: Carrier Lab
 
 The **Carrier Lab** was the first authorized implementation slice and completed
-Gate B with `advance`. It remains maintained in the root project for regression
-evidence, but is not a release or production network.
+Gate B with `advance`. R-091 retains its accepted records as C4 provenance and
+retires its execution corpus; it is not a current regression interface, release,
+or production network.
 
 It contains only:
 

@@ -273,7 +273,7 @@ DNS, ambient proxy configuration, and runtime download remain forbidden.
 R-080 removed Stage 5 Camouflage's binary owner and live runners without
 changing Route, Service Connection, or Application interfaces.
 
-The native Carrier Lab candidate uses the Go 1.26 standard-library
+The historical native Carrier Lab candidate used the Go 1.26 standard-library
 `crypto/hpke`, `crypto/tls`, `crypto/x509`, and `crypto/ecdh` implementations.
 They add no module dependency. First-party cryptographic primitives, cgo, and
 `unsafe` remain forbidden; replacing a standard implementation requires the
@@ -283,7 +283,7 @@ normal dependency review before `go.mod` changes.
 
 | Tool | Version | Purpose |
 |---|---:|---|
-| Go | 1.26.x; CI and Carrier Lab pin 1.26.5 | compiler, formatter, tests, vet |
+| Go | 1.26.x; CI pins 1.26.5 | compiler, formatter, tests, vet |
 | Staticcheck | 2025.1.1 | additional correctness analysis |
 | govulncheck | v1.1.4 | reachable Go vulnerability analysis |
 
@@ -295,9 +295,9 @@ and quick-check targets never install or upgrade tools implicitly.
 R-091 retired these inputs and their executable consumer. The details below are
 C4 provenance for R-013/R-025, not current dependencies or build inputs.
 
-These tools are not product runtime dependencies and do not enter `go.mod` or
-the `application` image target. They exist only in the disposable `tooling`
-target of `lab/carrier/Dockerfile`.
+These tools were not product runtime dependencies and did not enter `go.mod` or
+the historical `application` image target. R-091 deleted their disposable
+`tooling` target together with `lab/carrier/Dockerfile`.
 
 | Tool | Version | Supplied by | License summary | Purpose |
 |---|---:|---|---|---|
@@ -306,10 +306,10 @@ target of `lab/carrier/Dockerfile`.
 | libpcap | 1.10.6 | Ubuntu `libpcap0.8t64` 1.10.6-1ubuntu1 | BSD-family and other permissive notices | packet socket/filter runtime |
 
 The exact 12-file runtime closure, official URLs, versions, SHA-256 values,
-license summaries, installed paths, and executable hashes are normative in
-[`lab/carrier/tools.lock`](../../lab/carrier/tools.lock). R-025 records the
-source and security review. The external `.deb` bundle is an explicitly
-prepared input outside Git. Normal build and run use no package repository,
+license summaries, installed paths, and executable hashes remain in the
+accepted [R-025 record](../research/records/r-025-carrier-lab-tool-supply.md).
+The external `.deb` bundle was an explicitly prepared input outside Git. The
+former build and run used no package repository,
 installer, maintainer script, or download fallback; a missing, extra, or
 mismatched artifact fails closed.
 
@@ -327,9 +327,9 @@ Lab image, or selected as a product runtime foundation.
 | tomli-w | 1.2.0 | MIT | Chutney configuration writer |
 | typing-extensions | 4.15.0 | PSF-2.0 | Python compatibility for Chutney/typeguard |
 
-[`lab/carrier/reference.lock`](../../lab/carrier/reference.lock) is normative
-for the exact Tor 13-package closure, Chutney archive, wheels, source locations,
-and SHA-256 identities. The selected Chutney revision predates its optional SSH
+[R-025](../research/records/r-025-carrier-lab-tool-supply.md) retains the exact
+Tor 13-package closure, Chutney archive, wheels, source locations, and SHA-256
+identities. The selected Chutney revision predates its optional SSH
 launcher and restricted-discovery dependencies, so Paramiko, rpyc, and Python
 `cryptography` are deliberately absent. Online preparation is explicit; the
 experiment verifies and consumes the prepared directory without downloading.

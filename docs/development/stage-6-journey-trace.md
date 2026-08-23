@@ -1,13 +1,15 @@
-# Stage 6 maintained journey trace
+# Historical Stage 6 journey trace
 
-Status: **implemented at maintained command and Module seams. The bounded S6E1
-campaign received independent `pass`; the Product Owner accepted the result and
-recorded Stage 6 `complete` on 2026-08-20.**
+Status: **C4 provenance. The bounded S6E1 campaign received independent `pass`;
+the Product Owner accepted the result and recorded Stage 6 `complete` on
+2026-08-20. R-091 subsequently retired the Carrier and Gate C execution
+corpus.**
 
-This trace links the cross-horizon J02, J03, and J05 journeys to the exact Stage
-6 naming state, maintained command boundary, behavioral evidence, and honest
-limitation. It does not claim that Stage 6 implements the whole Route,
-distribution, platform, or qualification portions of those journeys.
+This trace records the then-current Stage 6 naming state, command boundary,
+behavioral evidence, and honest limitation for the cross-horizon J02, J03, and
+J05 journeys. It is not a current command, package, or evidence contract, and
+does not claim that Stage 6 implemented the whole Route, distribution, platform,
+or qualification portions of those journeys.
 
 ## J02 — Open an Unlisted Service
 
@@ -64,20 +66,18 @@ recovery behavior suites, and the S6E1 verifier predicates for the cells above.
 
 ## J05 — Use the Named Unlisted Site tracer
 
-`named-site-lab run` remains the maintained conditional Gate C entrypoint and
-owns its nonce-bound HTTP exchange, offline failure, migration episodes,
-terminal bundle, and cleanup. Stage 6 does not rewrite or relabel that historical
-Route experiment. The current naming side of the trace is supplied by the J02
-resolution receipt and J03 same-Target migration/control receipt above; C0, D0,
-and D4 independently retain the matching migration, private-resolution, and
-offline/no-fallback predicates.
+At the time of the Stage 6 run, `named-site-lab run` was the conditional Gate C
+entrypoint and owned its nonce-bound HTTP exchange, offline failure, migration
+episodes, terminal bundle, and cleanup. R-091 deleted that command and its
+source-bound execution corpus. The J02 and J03 material above remains only the
+recorded naming side of the trace; C0, D0, and D4 retain the historical
+migration, private-resolution, and offline/no-fallback predicates.
 
-Maintained evidence: `TestReferenceTopologyCarriesOneAuthenticatedWorkload` and
-`TestReferenceTopologyRejectsSupersededPublicationDuringMigration` when the
-declared immutable Gate C images are supplied, plus the ordinary unit/process
-tests named above. This is a layered maintained trace, not a claim that the old
-Gate C fixture is itself the current public Namespace or that its conditional
-Docker run is part of S6E1.
+Historical evidence: the recorded Gate C result and the then-existing
+`TestReferenceTopologyCarriesOneAuthenticatedWorkload` and
+`TestReferenceTopologyRejectsSupersededPublicationDuringMigration` checks. This
+is not a claim that the old Gate C fixture is the current public Namespace or
+that its conditional Docker run remains part of S6E1.
 
 ## Completion interpretation
 
