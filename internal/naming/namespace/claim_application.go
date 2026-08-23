@@ -67,7 +67,7 @@ func (winner *ClaimWinner) prepare(current *Record, materializedAt time.Time, po
 	op := Op{Kind: opClaim, Name: winner.value.name, Generation: generation,
 		ExpectedGeneration: expectedGeneration, ExpectedRevision: expectedRevision,
 		Authority: hex.EncodeToString(winner.value.authority[:])}
-	return ApplyAt(current, materializedAt, op, policy)
+	return applyAt(current, materializedAt, op, policy)
 }
 
 func (winner *ClaimWinner) consume() bool {

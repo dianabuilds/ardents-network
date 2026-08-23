@@ -243,7 +243,7 @@ func (control *control) existing(operation controlOperation, current Record,
 		return Record{}, err
 	}
 	if threshold {
-		return ApplyAt(&current, now, op, control.policy)
+		return applyAt(&current, now, op, control.policy)
 	}
 	return applyTransition(control.network, current, op, operation.AuthorityProof, now.Unix(), control.policy)
 }

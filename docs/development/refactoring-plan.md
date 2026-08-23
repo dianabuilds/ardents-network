@@ -198,7 +198,7 @@ pass, as does the full `make check` profile (format, architecture, build, vet,
 module, staticcheck, vuln, unit, e2e, and race) after this slice. This is not a
 wave-complete claim: the remaining global-close owner must still commit the
 opaque inputs and issue the complete threshold close; the public `Record`,
-`Op`, `Apply`, raw `Store.CommitLegacy`, historical Stage-6 fixtures, and interim
+`Op`, `ApplyLegacy`/`ApplyAtLegacy`, raw `Store.CommitLegacy`, historical Stage-6 fixtures, and interim
 Record signing callback remain compatibility surfaces. Production Resolution
 already consumes `Binding` rather than lifecycle `Record`, but only the later
 sealed Namespace interface plus the M14 C4 disposition can remove the old
@@ -216,6 +216,9 @@ runner, while the durable Gateway path remains `OpenControl`/`Submit`.
 Likewise, raw caller-built corpus publication is explicitly `Store.CommitLegacy`;
 only fixtures and the Stage 6 evidence runner call it, while runtime publication
 is `EpochInstallation.Commit`.
+Raw caller-built lifecycle transitions are likewise explicitly
+`ApplyLegacy`/`ApplyAtLegacy`; authorized Namespace paths call their private
+transition core only after validating the owned proof and decision time.
 
 ## Dependency and retirement rules
 

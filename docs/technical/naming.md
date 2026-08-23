@@ -111,7 +111,8 @@ tracer can grow.
 
 ## Remaining M5 work
 
-The public `Record`, `Op`, `Apply`, raw `Store.CommitLegacy`, historical Stage 6
+The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, raw
+`Store.CommitLegacy`, historical Stage 6
 fixtures, and interim Record signing callback remain compatibility surface.
 They must be replaced by sealed Namespace constructors and one final
 installation Interface. The remaining global-close owner must accept the

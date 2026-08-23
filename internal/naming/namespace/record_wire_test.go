@@ -66,7 +66,7 @@ func TestRecordDecoderRejectsMutationAndTrailingBytes(t *testing.T) {
 func TestApplyRejectsNonCanonicalNames(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{" Site.Example", "Site.Example", "site.example ", "site..example"} {
-		if _, err := Apply(nil, 100, Op{Kind: "claim", Name: name, Generation: 1,
+		if _, err := ApplyLegacy(nil, 100, Op{Kind: "claim", Name: name, Generation: 1,
 			Authority: "alice"}, testPolicy); err == nil {
 			t.Fatalf("Apply accepted non-canonical name %q", name)
 		}

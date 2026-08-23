@@ -106,18 +106,21 @@ const (
 	opResumeRecovery         = "resume-recovery"
 )
 
-// Apply applies one transition without authenticating its caller. Authority
-// authentication and ordering proofs belong to later, explicitly authorized
-// Stage 6 slices.
-func Apply(current *Record, now int64, op Op, policy Policy) (Record, error) {
+// ApplyLegacy applies one caller-built transition without authenticating its
+// caller. It is retained only for compatibility fixtures and evidence; runtime
+// Namespace paths use the private transition core after authorization.
+func ApplyLegacy(current *Record, now int64, op Op, policy Policy) (Record, error) {
 	return apply(current, now, now*1_000, op, policy)
 }
 
-// ApplyAt applies one transition against a single Gateway-owned decision time.
-// Lease state retains epoch seconds, while signed Recovery and Policy boundaries
-// retain epoch milliseconds. Callers must not reconstruct one unit from the
-// other before passing this Module the original decision time.
-func ApplyAt(current *Record, now time.Time, op Op, policy Policy) (Record, error) {
+// ApplyAtLegacy applies one caller-built transition at a precise decision time.
+// It is retained only for compatibility fixtures and evidence; durable Gateway
+// control uses the private applyAt path after it validates the submission.
+func ApplyAtLegacy(current *Record, now time.Time, op Op, policy Policy) (Record, error) {
+	return applyAt(current, now, op, policy)
+}
+
+func applyAt(current *Record, now time.Time, op Op, policy Policy) (Record, error) {
 	return apply(current, now.Unix(), now.UnixMilli(), op, policy)
 }
 

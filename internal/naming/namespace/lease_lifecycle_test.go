@@ -22,7 +22,7 @@ func TestLeaseLifecycleRequiresExactGenerationAndRevision(t *testing.T) {
 		{Kind: "renew", Name: claimed.Name, Authority: "alice", ExpectedGeneration: 1, ExpectedRevision: 0},
 		{Kind: "release", Name: claimed.Name, Authority: "alice", ExpectedGeneration: 0, ExpectedRevision: 0},
 	} {
-		if _, err := Apply(&claimed, 101, op, testPolicy); err == nil {
+		if _, err := ApplyLegacy(&claimed, 101, op, testPolicy); err == nil {
 			t.Fatalf("accepted stale operation: %+v", op)
 		}
 	}
@@ -50,7 +50,7 @@ func TestReclaimCreatesExactNextGeneration(t *testing.T) {
 
 	stale := Op{Kind: "claim", Name: released.Name, Generation: 1, Authority: "bob",
 		ExpectedGeneration: released.Generation, ExpectedRevision: released.Revision}
-	if _, err := Apply(&released, 102, stale, testPolicy); err == nil {
+	if _, err := ApplyLegacy(&released, 102, stale, testPolicy); err == nil {
 		t.Fatal("reclaim accepted an old generation")
 	}
 	stale.Generation = 2
@@ -75,7 +75,7 @@ func TestConflictIsOrthogonalToLease(t *testing.T) {
 	if ok, _ := canResolve(conflicted, 101, nil); ok {
 		t.Fatal("conflicted record resolved")
 	}
-	if _, err := Apply(&conflicted, 102, Op{Kind: "release", Name: conflicted.Name,
+	if _, err := ApplyLegacy(&conflicted, 102, Op{Kind: "release", Name: conflicted.Name,
 		Authority: "alice", ExpectedGeneration: 1, ExpectedRevision: 2}, testPolicy); err == nil {
 		t.Fatal("conflict forced a release")
 	}
@@ -86,7 +86,7 @@ func TestUndecidedOperationsAreUnavailable(t *testing.T) {
 	claimed := claimRoot(t, "site", "alice", 100)
 	for _, kind := range []string{"transfer", "start-recovery", "install-successor", "resolve-conflict"} {
 		op := exactOp(kind, claimed)
-		if _, err := Apply(&claimed, 101, op, testPolicy); err == nil {
+		if _, err := ApplyLegacy(&claimed, 101, op, testPolicy); err == nil {
 			t.Fatalf("S6.1 accepted undecided operation %q", kind)
 		}
 	}
@@ -105,7 +105,7 @@ func exactOp(kind string, record Record) Op {
 
 func applyOK(t *testing.T, current *Record, now int64, op Op) Record {
 	t.Helper()
-	record, err := Apply(current, now, op, testPolicy)
+	record, err := ApplyLegacy(current, now, op, testPolicy)
 	if err != nil {
 		t.Fatalf("Apply(%s): %v", op.Kind, err)
 	}

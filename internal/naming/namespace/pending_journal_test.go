@@ -233,7 +233,7 @@ func durableRenew(t *testing.T, network [32]byte, current Record, key ed25519.Pr
 	now time.Time, policy Policy,
 ) Record {
 	t.Helper()
-	updated, err := Apply(&current, now.Unix(), Op{Kind: "renew", Name: current.Name, Authority: current.Authority,
+	updated, err := ApplyLegacy(&current, now.Unix(), Op{Kind: "renew", Name: current.Name, Authority: current.Authority,
 		ExpectedGeneration: current.Generation, ExpectedRevision: current.Revision, LeaseDuration: policy.DefaultLeaseDuration}, policy)
 	if err != nil {
 		t.Fatal(err)

@@ -16,7 +16,7 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		published, err := namespace.Apply(&claimed, 101, namespace.Op{Kind: "publish", Name: "alice",
+		published, err := namespace.ApplyLegacy(&claimed, 101, namespace.Op{Kind: "publish", Name: "alice",
 			Authority: claimed.Authority, Target: [32]byte{1}, RecordNotAfter: 900_000,
 			ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		return setRecordTrace(trace, nil, []namespace.Record{claimed, published}, []int64{100, 101}, err)
@@ -26,17 +26,17 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		active, err := namespace.Apply(&initial, 150, namespace.Op{Kind: "renew", Name: "alice",
+		active, err := namespace.ApplyLegacy(&initial, 150, namespace.Op{Kind: "renew", Name: "alice",
 			Authority: initial.Authority, ExpectedGeneration: 1, ExpectedRevision: 1}, short)
 		if err != nil {
 			return err
 		}
-		grace, err := namespace.Apply(&initial, 201, namespace.Op{Kind: "advance", Name: "alice",
+		grace, err := namespace.ApplyLegacy(&initial, 201, namespace.Op{Kind: "advance", Name: "alice",
 			ExpectedGeneration: 1, ExpectedRevision: 1}, short)
 		if err != nil {
 			return err
 		}
-		graceRenewed, err := namespace.Apply(&grace, 202, namespace.Op{Kind: "renew", Name: "alice",
+		graceRenewed, err := namespace.ApplyLegacy(&grace, 202, namespace.Op{Kind: "renew", Name: "alice",
 			Authority: grace.Authority, ExpectedGeneration: 1, ExpectedRevision: grace.Revision}, short)
 		return setRecordTrace(trace, []namespace.Record{initial},
 			[]namespace.Record{active, grace, graceRenewed}, []int64{150, 201, 202}, err)
@@ -46,17 +46,17 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		grace, err := namespace.Apply(&initial, 111, namespace.Op{Kind: "advance", Name: "alice",
+		grace, err := namespace.ApplyLegacy(&initial, 111, namespace.Op{Kind: "advance", Name: "alice",
 			ExpectedGeneration: 1, ExpectedRevision: 1}, short)
 		if err != nil {
 			return err
 		}
-		released, err := namespace.Apply(&grace, 121, namespace.Op{Kind: "advance", Name: "alice",
+		released, err := namespace.ApplyLegacy(&grace, 121, namespace.Op{Kind: "advance", Name: "alice",
 			ExpectedGeneration: 1, ExpectedRevision: grace.Revision}, short)
 		if err != nil {
 			return err
 		}
-		reclaimed, err := namespace.Apply(&released, 122, namespace.Op{Kind: "claim", Name: "alice",
+		reclaimed, err := namespace.ApplyLegacy(&released, 122, namespace.Op{Kind: "claim", Name: "alice",
 			Generation: 2, ExpectedGeneration: 1, ExpectedRevision: released.Revision, Authority: "authority-b"}, short)
 		return setRecordTrace(trace, []namespace.Record{initial},
 			[]namespace.Record{grace, released, reclaimed}, []int64{111, 121, 122}, err)
@@ -69,7 +69,7 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		released, err := namespace.Apply(&parent, 102, namespace.Op{Kind: "release", Name: parent.Name,
+		released, err := namespace.ApplyLegacy(&parent, 102, namespace.Op{Kind: "release", Name: parent.Name,
 			Authority: parent.Authority, ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		return setRecordTrace(trace, []namespace.Record{parent}, []namespace.Record{child, released}, []int64{101, 102}, err)
 	case "B2":
@@ -79,13 +79,13 @@ func runLifecycleCell(trace *traceRecord) error {
 		}
 		delay := 72 * time.Hour
 		activation := int64(101_000) + delay.Milliseconds()
-		scheduled, err := namespace.Apply(&initial, 101, namespace.Op{Kind: "schedule-recovery-policy", Name: "alice",
+		scheduled, err := namespace.ApplyLegacy(&initial, 101, namespace.Op{Kind: "schedule-recovery-policy", Name: "alice",
 			Authority: initial.Authority, ExpectedGeneration: 1, ExpectedRevision: 1,
 			PolicyDigest: [32]byte{2}, PolicyRevision: 1, PolicyDelay: delay, PolicyActivatesAt: activation}, policy)
 		if err != nil {
 			return err
 		}
-		active, err := namespace.Apply(&scheduled, activation/1_000, namespace.Op{Kind: "activate-recovery-policy",
+		active, err := namespace.ApplyLegacy(&scheduled, activation/1_000, namespace.Op{Kind: "activate-recovery-policy",
 			Name: "alice", ExpectedGeneration: 1, ExpectedRevision: scheduled.Revision}, policy)
 		return setRecordTrace(trace, []namespace.Record{initial}, []namespace.Record{scheduled, active},
 			[]int64{101, activation}, err)
@@ -94,7 +94,7 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		_, denied := namespace.Apply(&initial, 101, namespace.Op{Kind: "start-recovery", Name: "alice",
+		_, denied := namespace.ApplyLegacy(&initial, 101, namespace.Op{Kind: "start-recovery", Name: "alice",
 			ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		if denied == nil {
 			return errors.New("recovery without a policy was accepted")
@@ -106,7 +106,7 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		bound, err := namespace.Apply(&initial, 101, namespace.Op{Kind: "publish", Name: "alice",
+		bound, err := namespace.ApplyLegacy(&initial, 101, namespace.Op{Kind: "publish", Name: "alice",
 			Authority: initial.Authority, Target: [32]byte{1}, RecordNotAfter: 900_000,
 			ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		return setRecordTrace(trace, []namespace.Record{bound}, []namespace.Record{bound}, []int64{102}, err)
@@ -115,13 +115,13 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		first, err := namespace.Apply(&initial, 101, namespace.Op{Kind: "publish", Name: "alice",
+		first, err := namespace.ApplyLegacy(&initial, 101, namespace.Op{Kind: "publish", Name: "alice",
 			Authority: initial.Authority, Target: [32]byte{1}, RecordNotAfter: 900_000,
 			ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		if err != nil {
 			return err
 		}
-		second, err := namespace.Apply(&first, 102, namespace.Op{Kind: "publish", Name: "alice",
+		second, err := namespace.ApplyLegacy(&first, 102, namespace.Op{Kind: "publish", Name: "alice",
 			Authority: first.Authority, Target: [32]byte{2}, RecordNotAfter: 900_000,
 			ExpectedGeneration: 1, ExpectedRevision: first.Revision}, policy)
 		return setRecordTrace(trace, []namespace.Record{first}, []namespace.Record{second}, []int64{102}, err)
@@ -130,12 +130,12 @@ func runLifecycleCell(trace *traceRecord) error {
 		if err != nil {
 			return err
 		}
-		current, err := namespace.Apply(&initial, 101, namespace.Op{Kind: "renew", Name: "alice",
+		current, err := namespace.ApplyLegacy(&initial, 101, namespace.Op{Kind: "renew", Name: "alice",
 			Authority: initial.Authority, ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		if err != nil {
 			return err
 		}
-		_, stale := namespace.Apply(&current, 102, namespace.Op{Kind: "renew", Name: "alice",
+		_, stale := namespace.ApplyLegacy(&current, 102, namespace.Op{Kind: "renew", Name: "alice",
 			Authority: current.Authority, ExpectedGeneration: 1, ExpectedRevision: 1}, policy)
 		if stale == nil {
 			return errors.New("stale revision was accepted")
@@ -147,7 +147,7 @@ func runLifecycleCell(trace *traceRecord) error {
 }
 
 func claimRecord(name, authority string, now int64, policy namespace.Policy, parents []namespace.Record) (namespace.Record, error) {
-	return namespace.Apply(nil, now, namespace.Op{Kind: "claim", Name: name, Generation: 1,
+	return namespace.ApplyLegacy(nil, now, namespace.Op{Kind: "claim", Name: name, Generation: 1,
 		Authority: authority, Parents: parents}, policy)
 }
 

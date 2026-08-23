@@ -47,7 +47,7 @@ func TestChildRejectsMissingOrWrongLineage(t *testing.T) {
 		{Kind: "claim", Name: "blog.alice", Generation: 1, Authority: "alice-key"},
 		{Kind: "claim", Name: "blog.bob", Generation: 1, Authority: "alice-key", Parents: []Record{parent}},
 	} {
-		_, err := Apply(nil, 101, op, testPolicy)
+		_, err := ApplyLegacy(nil, 101, op, testPolicy)
 		if err == nil {
 			t.Fatalf("accepted invalid lineage: %+v", op)
 		}

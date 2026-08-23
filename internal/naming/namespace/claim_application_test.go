@@ -59,12 +59,12 @@ func TestClaimWinnerDerivesReclaimInsteadOfAcceptingCallerOperation(t *testing.T
 		t.Fatal(err)
 	}
 	previousKey := deterministicAuthority("reclaim-previous")
-	previous, err := namespace.Apply(nil, 90, namespace.Op{Kind: "claim", Name: "alice", Generation: 1,
+	previous, err := namespace.ApplyLegacy(nil, 90, namespace.Op{Kind: "claim", Name: "alice", Generation: 1,
 		Authority: hex.EncodeToString(previousKey.Public().(ed25519.PublicKey))}, namespace.Policy{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	released, err := namespace.Apply(&previous, 91, namespace.Op{Kind: "release", Name: "alice",
+	released, err := namespace.ApplyLegacy(&previous, 91, namespace.Op{Kind: "release", Name: "alice",
 		Authority: previous.Authority, ExpectedGeneration: previous.Generation, ExpectedRevision: previous.Revision}, namespace.Policy{})
 	if err != nil {
 		t.Fatal(err)

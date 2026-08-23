@@ -57,7 +57,7 @@ func ApplyAdmittedTransition(admission *Admission, admissionProof Proof,
 		if len(proof) != 0 || op.Authority != "" {
 			return Record{}, errors.New("recovery transition contains an authority bypass")
 		}
-		return Apply(&current, now, op, policy)
+		return apply(&current, now, now*1_000, op, policy)
 	}
 	return applyTransition(network, current, op, proof, now, policy)
 }
@@ -74,9 +74,9 @@ func applyTransition(network [32]byte, current Record, op Op,
 		return Record{}, errors.New("invalid Name Authority transition signature")
 	}
 	if op.Kind == "claim" {
-		return Apply(nil, now, op, policy)
+		return apply(nil, now, now*1_000, op, policy)
 	}
-	return Apply(&current, now, op, policy)
+	return apply(&current, now, now*1_000, op, policy)
 }
 
 func supportedTransition(current Record, op Op) bool {

@@ -185,7 +185,7 @@ func TestControlSubmitsOnlyAnExactSignedDurableSuccessor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated, err := namespace.ApplyAt(&fixture.current, fixture.now, operation, policy)
+	updated, err := namespace.ApplyAtLegacy(&fixture.current, fixture.now, operation, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
