@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
+	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
@@ -26,7 +26,7 @@ func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: clientRoutes[0], OpenAttachment: attachmentQueue(clientRoutes[1:]...),
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
@@ -34,7 +34,7 @@ func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: publisherRoutes[0],
 			OpenAttachment: attachmentQueue(publisherRoutes[1:]...), Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)

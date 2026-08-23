@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
+	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
@@ -24,7 +24,7 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	updates := make(chan serviceconn.DestinationBinding, 1)
+	updates := make(chan endpointapi.DestinationBinding, 1)
 	clientRoute, publisherRoute := net.Pipe()
 	clientEndpoint, clientApplication := net.Pipe()
 	publisherEndpoint, publisherApplication := net.Pipe()
@@ -34,20 +34,20 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	})
 
 	type outcome struct {
-		result serviceconn.RuntimeResult
+		result endpointapi.RuntimeResult
 		err    error
 	}
 	results := make(chan outcome, 2)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	go func() {
-		result, runErr := publisher.Accept(ctx, serviceconn.InboundConnectionRequest{
+		result, runErr := publisher.Accept(ctx, endpointapi.InboundConnectionRequest{
 			Principal: fixture.publisherPrincipal, Capability: session(publisher, fixture.publisherPrincipal, fixture.now),
 			Route: publisherRoute, Application: publisherEndpoint, BytesEachDirection: 1, At: fixture.now})
 		results <- outcome{result, runErr}
 	}()
 	go func() {
-		result, runErr := client.Connect(ctx, serviceconn.OutboundConnectionRequest{
+		result, runErr := client.Connect(ctx, endpointapi.OutboundConnectionRequest{
 			Principal: fixture.clientPrincipal, Capability: session(client, fixture.clientPrincipal, fixture.now),
 			Target: fixture.first.Target, Publication: publication, Route: clientRoute,
 			Application: clientEndpoint, BytesEachDirection: 1, At: fixture.now,
@@ -73,8 +73,8 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	}
 }
 
-func serviceBinding(value namespace.Binding) serviceconn.DestinationBinding {
-	return serviceconn.DestinationBinding{Name: value.Name, Generation: value.Generation, Revision: value.Revision,
+func serviceBinding(value namespace.Binding) endpointapi.DestinationBinding {
+	return endpointapi.DestinationBinding{Name: value.Name, Generation: value.Generation, Revision: value.Revision,
 		Authority: value.Authority, Target: value.Target, ParentName: value.ParentName,
 		ParentGeneration: value.ParentGeneration, RecordDigest: value.RecordDigest, Commitment: value.Commitment}
 }

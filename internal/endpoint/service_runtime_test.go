@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
+	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T) {
@@ -25,7 +25,7 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	if err != nil || connection == [32]byte{} {
 		t.Fatalf("admit connection: session=%x err=%v", connection, err)
 	}
-	if result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+	if result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.publisherPrincipal, Capability: connection,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
@@ -34,7 +34,7 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	}
 
 	administration := admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
-	if result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+	if result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: administration,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate, At: fixture.now,
 	}); err == nil || result.Class != "service unavailable" {
@@ -42,7 +42,7 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	}
 
 	administration = admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
-	published, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+	published, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: administration,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
@@ -54,19 +54,19 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 		t.Fatal("public publication exported private authority or Instance material")
 	}
 
-	if result, err := publisher.Withdraw(context.Background(), serviceconn.WithdrawalRequest{
+	if result, err := publisher.Withdraw(context.Background(), endpointapi.WithdrawalRequest{
 		Principal: fixture.administrationPrincipal, Capability: administration, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("one-use administration session replayed: result=%+v err=%v", result, err)
 	}
-	if result, err := publisher.Accept(context.Background(), serviceconn.InboundConnectionRequest{
+	if result, err := publisher.Accept(context.Background(), endpointapi.InboundConnectionRequest{
 		Principal: fixture.hostilePrincipal, Capability: connection, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("stolen session accepted for sibling: result=%+v err=%v", result, err)
 	}
 
 	restarted := newPublisher(t, fixture)
-	if result, err := restarted.Accept(context.Background(), serviceconn.InboundConnectionRequest{
+	if result, err := restarted.Accept(context.Background(), endpointapi.InboundConnectionRequest{
 		Principal: fixture.publisherPrincipal, Capability: connection, At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("session survived broker restart: result=%+v err=%v", result, err)
@@ -80,21 +80,21 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 
 	cases := []struct {
 		name       string
-		credential serviceconn.Credential
+		credential endpointapi.Credential
 		private    ed25519.PrivateKey
 		at         time.Time
 	}{
 		{"wrong Instance key", fixture.first, fixture.secondPrivate, fixture.now},
 		{"not yet valid", fixture.first, fixture.firstPrivate, fixture.now.Add(-time.Hour)},
 		{"expired", fixture.first, fixture.firstPrivate, fixture.now.Add(time.Hour)},
-		{"wrong network", alterCredential(t, fixture, func(value *serviceconn.Credential) { value.NetworkID[0]++ }), fixture.firstPrivate, fixture.now},
-		{"wrong capability", alteredUnsigned(fixture.first, func(value *serviceconn.Credential) { value.Capabilities = 0 }), fixture.firstPrivate, fixture.now},
+		{"wrong network", alterCredential(t, fixture, func(value *endpointapi.Credential) { value.NetworkID[0]++ }), fixture.firstPrivate, fixture.now},
+		{"wrong capability", alteredUnsigned(fixture.first, func(value *endpointapi.Credential) { value.Capabilities = 0 }), fixture.firstPrivate, fixture.now},
 	}
 	for _, test := range cases {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			session := admit(t, publisher, "administration", fixture.administrationPrincipal, test.at)
-			result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+			result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 				Principal: fixture.administrationPrincipal, Capability: session,
 				Credential: test.credential, InstancePrivate: test.private,
 				IntroductionAcknowledgement: acknowledgement(fixture, test.credential), At: test.at,
@@ -112,7 +112,7 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 	}
 
 	staleSession := admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
-	if result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+	if result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: staleSession,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
@@ -124,7 +124,7 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	fixture := newFixture(t)
 	clock := fixture.now
-	publisher, err := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
+	publisher, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.publisherPrincipal, AdministrationPrincipal: fixture.administrationPrincipal,
 		PublicationRoot: t.TempDir(), Clock: func() time.Time { return clock }})
@@ -134,18 +134,18 @@ func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	defer publisher.Close()
 	session := admit(t, publisher, "connection", fixture.publisherPrincipal, fixture.now)
 	clock = clock.Add(16 * time.Second)
-	result, err := publisher.Accept(context.Background(), serviceconn.InboundConnectionRequest{
+	result, err := publisher.Accept(context.Background(), endpointapi.InboundConnectionRequest{
 		Principal: fixture.publisherPrincipal, Capability: session, At: fixture.now})
 	if err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("expired session remained usable: result=%+v err=%v", result, err)
 	}
 
 	state := t.TempDir() + "/generation"
-	setup := serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
+	setup := endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.publisherPrincipal, AdministrationPrincipal: fixture.administrationPrincipal,
 		PublicationRoot: state + "-publication", LegacyGenerationFloor: state}
-	first, err := serviceconn.New(setup)
+	first, err := endpointapi.New(setup)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,13 +153,13 @@ func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	if err := first.Close(); err != nil {
 		t.Fatal(err)
 	}
-	restarted, err := serviceconn.New(setup)
+	restarted, err := endpointapi.New(setup)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer restarted.Close()
 	stale := admit(t, restarted, "administration", fixture.administrationPrincipal, fixture.now)
-	publishedResult, err := restarted.Publish(context.Background(), serviceconn.PublicationRequest{
+	publishedResult, err := restarted.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: stale, Credential: fixture.first,
 		InstancePrivate: fixture.firstPrivate, IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now})
 	if err == nil || publishedResult.Class != "service target authentication failure" {
@@ -173,7 +173,7 @@ func TestExactTargetServiceConnectionCarriesOpaqueBytesBothDirections(t *testing
 	fixture := newFixture(t)
 	publisher := newPublisher(t, fixture)
 	publication := publish(t, publisher, fixture, fixture.first, fixture.firstPrivate)
-	client, err := serviceconn.New(serviceconn.Setup{
+	client, err := endpointapi.New(endpointapi.Setup{
 		NetworkID: fixture.networkID, BrokerID: [32]byte{8}, AuthorityPublic: fixture.authorityPublic,
 		IntroductionPublic:  fixture.introductionPublic,
 		ConnectionPrincipal: fixture.clientPrincipal,
@@ -191,21 +191,21 @@ func TestExactTargetServiceConnectionCarriesOpaqueBytesBothDirections(t *testing
 	defer publisherApplication.Close()
 
 	type outcome struct {
-		result serviceconn.RuntimeResult
+		result endpointapi.RuntimeResult
 		err    error
 	}
 	outcomes := make(chan outcome, 2)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	go func() {
-		result, runErr := publisher.Accept(ctx, serviceconn.InboundConnectionRequest{
+		result, runErr := publisher.Accept(ctx, endpointapi.InboundConnectionRequest{
 			Principal: fixture.publisherPrincipal, Capability: publisherSession,
 			Route: publisherRoute, Application: publisherEndpoint, BytesEachDirection: 64 << 10, At: fixture.now,
 		})
 		outcomes <- outcome{result, runErr}
 	}()
 	go func() {
-		result, runErr := client.Connect(ctx, serviceconn.OutboundConnectionRequest{
+		result, runErr := client.Connect(ctx, endpointapi.OutboundConnectionRequest{
 			Principal: fixture.clientPrincipal, Capability: clientSession,
 			Target: fixture.first.Target, Publication: publication, Route: clientRoute,
 			Application: clientEndpoint, BytesEachDirection: 64 << 10, At: fixture.now,
@@ -230,11 +230,11 @@ func TestExactTargetServiceConnectionCarriesOpaqueBytesBothDirections(t *testing
 		}
 	}
 
-	wrongClient, _ := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{9},
+	wrongClient, _ := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{9},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.clientPrincipal})
 	wrongSession := admit(t, wrongClient, "connection", fixture.clientPrincipal, fixture.now)
-	result, err := wrongClient.Connect(context.Background(), serviceconn.OutboundConnectionRequest{
+	result, err := wrongClient.Connect(context.Background(), endpointapi.OutboundConnectionRequest{
 		Principal: fixture.clientPrincipal, Capability: wrongSession,
 		Target: [32]byte{99}, Publication: publication, At: fixture.now,
 	})
@@ -249,7 +249,7 @@ type fixture struct {
 	administrationPrincipal, hostilePrincipal                          [32]byte
 	authorityPublic, introductionPublic, firstPublic, secondPublic     ed25519.PublicKey
 	authorityPrivate, introductionPrivate, firstPrivate, secondPrivate ed25519.PrivateKey
-	first, second                                                      serviceconn.Credential
+	first, second                                                      endpointapi.Credential
 }
 
 func newFixture(t *testing.T) fixture {
@@ -272,12 +272,12 @@ func newFixture(t *testing.T) fixture {
 	return value
 }
 
-func issue(t *testing.T, fixture fixture, public ed25519.PublicKey, generation uint64, capabilities uint32) serviceconn.Credential {
+func issue(t *testing.T, fixture fixture, public ed25519.PublicKey, generation uint64, capabilities uint32) endpointapi.Credential {
 	t.Helper()
 	var authority, instance [32]byte
 	copy(authority[:], fixture.authorityPublic)
 	copy(instance[:], public)
-	credential, err := (serviceconn.Credential{
+	credential, err := (endpointapi.Credential{
 		AuthorityPublic: authority, InstancePublic: instance, Generation: generation,
 		NotBefore: fixture.now.Add(-time.Minute).Unix(), NotAfter: fixture.now.Add(time.Minute).Unix(),
 		NetworkID: fixture.networkID, Capabilities: capabilities,
@@ -288,7 +288,7 @@ func issue(t *testing.T, fixture fixture, public ed25519.PublicKey, generation u
 	return credential
 }
 
-func alterCredential(t *testing.T, fixture fixture, change func(*serviceconn.Credential)) serviceconn.Credential {
+func alterCredential(t *testing.T, fixture fixture, change func(*endpointapi.Credential)) endpointapi.Credential {
 	t.Helper()
 	value := fixture.first
 	change(&value)
@@ -299,14 +299,14 @@ func alterCredential(t *testing.T, fixture fixture, change func(*serviceconn.Cre
 	return credential
 }
 
-func alteredUnsigned(value serviceconn.Credential, change func(*serviceconn.Credential)) serviceconn.Credential {
+func alteredUnsigned(value endpointapi.Credential, change func(*endpointapi.Credential)) endpointapi.Credential {
 	change(&value)
 	return value
 }
 
 func newPublisher(t *testing.T, fixture fixture) endpointRunner {
 	t.Helper()
-	endpoint, err := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
+	endpoint, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal:     fixture.publisherPrincipal,
 		AdministrationPrincipal: fixture.administrationPrincipal, PublicationRoot: t.TempDir()})
@@ -333,10 +333,10 @@ func admit(t *testing.T, endpoint endpointRunner, surface string, principal [32]
 	return result
 }
 
-func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential serviceconn.Credential, private ed25519.PrivateKey) []byte {
+func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential endpointapi.Credential, private ed25519.PrivateKey) []byte {
 	t.Helper()
 	session := admit(t, endpoint, "administration", fixture.administrationPrincipal, fixture.now)
-	result, err := endpoint.Publish(context.Background(), serviceconn.PublicationRequest{
+	result, err := endpoint.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: session, Credential: credential,
 		InstancePrivate: private, IntroductionAcknowledgement: acknowledgement(fixture, credential), At: fixture.now})
 	if err != nil || result.Class != "published" {
@@ -345,7 +345,7 @@ func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential 
 	return result.Record
 }
 
-func acknowledgement(value fixture, credential serviceconn.Credential) []byte {
+func acknowledgement(value fixture, credential endpointapi.Credential) []byte {
 	body := make([]byte, 149)
 	copy(body[:4], "ARIA")
 	body[4] = 1

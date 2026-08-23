@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
+	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestForgedReplacementTerminatesInsteadOfTryingAnotherProposal(t *testing.T) {
@@ -41,7 +41,7 @@ func TestForgedReplacementTerminatesInsteadOfTryingAnotherProposal(t *testing.T)
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 96<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, BytesEachDirection: 256 << 10, At: fixture.now}, binding)
@@ -49,7 +49,7 @@ func TestForgedReplacementTerminatesInsteadOfTryingAnotherProposal(t *testing.T)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: publisherAttachments, Application: publisherEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
@@ -93,7 +93,7 @@ func TestCarrierFailureRecoversSameApplicationStreams(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	go func() {
-		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{
+		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{
 			Principal:  fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now),
 			Target:     fixture.first.Target, Publication: publication,
@@ -104,7 +104,7 @@ func TestCarrierFailureRecoversSameApplicationStreams(t *testing.T) {
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(serviceconn.InboundConnectionRequest{
+		request := recoveryInbound(endpointapi.InboundConnectionRequest{
 			Principal:  fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now),
 			Route:      initialPublisher, OpenAttachment: publisherAttachments,
@@ -160,7 +160,7 @@ func TestDirectionalCarrierFailureDoesNotRequireReverseApplicationBytes(t *testi
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 300<<10), OpenAttachment: attachmentQueue(replacementClient),
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
@@ -168,7 +168,7 @@ func TestDirectionalCarrierFailureDoesNotRequireReverseApplicationBytes(t *testi
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: attachmentQueue(replacementPublisher), Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)
@@ -204,7 +204,7 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	var proposals atomic.Uint32
-	opener := func(context.Context, serviceconn.Recovery) (net.Conn, error) {
+	opener := func(context.Context, endpointapi.Recovery) (net.Conn, error) {
 		proposals.Add(1)
 		return nil, errors.New("unexpected attachment proposal")
 	}
@@ -213,7 +213,7 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfterWait(initialClient, 96<<10, 1100*time.Millisecond), OpenAttachment: opener,
 			Application: clientEndpoint, BytesEachDirection: 256 << 10, At: authorizedAt}, binding)
@@ -221,7 +221,7 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: opener, Application: publisherEndpoint, BytesEachDirection: 256 << 10, At: authorizedAt}, binding)
 		result, err := publisher.Accept(ctx, request)
@@ -263,7 +263,7 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 96<<10),
 			OpenAttachment: unavailableAttachments, Application: clientEndpoint,
@@ -272,7 +272,7 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: unavailableAttachments, Application: publisherEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
@@ -295,40 +295,40 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 	}
 }
 
-func testRecoveryBinding(fixture fixture) serviceconn.Recovery {
-	return serviceconn.Recovery{CandidateView: [32]byte{41}, IsolationContext: [32]byte{42},
+func testRecoveryBinding(fixture fixture) endpointapi.Recovery {
+	return endpointapi.Recovery{CandidateView: [32]byte{41}, IsolationContext: [32]byte{42},
 		DestinationBinding: [32]byte{43}, RouteProfile: "ardents-interactive-route-v1",
 		WorkSafetyNotAfter: fixture.first.NotAfter, WorkSafetyMaximum: fixture.first.NotAfter,
 		NoNewRecoveryAfter: fixture.first.NotAfter}
 }
 
-func recoveryOutbound(request serviceconn.OutboundConnectionRequest, binding serviceconn.Recovery) serviceconn.OutboundConnectionRequest {
+func recoveryOutbound(request endpointapi.OutboundConnectionRequest, binding endpointapi.Recovery) endpointapi.OutboundConnectionRequest {
 	request.RecoveryBinding = binding
 	return request
 }
 
-func recoveryInbound(request serviceconn.InboundConnectionRequest, binding serviceconn.Recovery) serviceconn.InboundConnectionRequest {
+func recoveryInbound(request endpointapi.InboundConnectionRequest, binding endpointapi.Recovery) endpointapi.InboundConnectionRequest {
 	request.RecoveryBinding = binding
 	return request
 }
 
-func unavailableAttachments(context.Context, serviceconn.Recovery) (net.Conn, error) {
+func unavailableAttachments(context.Context, endpointapi.Recovery) (net.Conn, error) {
 	return nil, errors.New("no safe eligible Route Attachment remains")
 }
 
-func attachmentQueue(connections ...net.Conn) func(context.Context, serviceconn.Recovery) (net.Conn, error) {
+func attachmentQueue(connections ...net.Conn) func(context.Context, endpointapi.Recovery) (net.Conn, error) {
 	return recordingAttachmentQueue(nil, connections...)
 }
 
-type observedAttachmentRequest struct{ serviceconn.Recovery }
+type observedAttachmentRequest struct{ endpointapi.Recovery }
 
 func recordingAttachmentQueue(requests chan<- observedAttachmentRequest,
-	connections ...net.Conn) func(context.Context, serviceconn.Recovery) (net.Conn, error) {
+	connections ...net.Conn) func(context.Context, endpointapi.Recovery) (net.Conn, error) {
 	queue := make(chan net.Conn, len(connections))
 	for _, connection := range connections {
 		queue <- connection
 	}
-	return func(ctx context.Context, request serviceconn.Recovery) (net.Conn, error) {
+	return func(ctx context.Context, request endpointapi.Recovery) (net.Conn, error) {
 		if requests != nil {
 			requests <- observedAttachmentRequest{request}
 		}

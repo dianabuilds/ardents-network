@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	serviceconn "github.com/dianabuilds/ardents-network/internal/endpoint"
+	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
@@ -34,7 +34,7 @@ func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(serviceconn.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 320<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
@@ -42,7 +42,7 @@ func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(serviceconn.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: publisherAttachments, Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)
