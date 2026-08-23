@@ -3,7 +3,9 @@ package namespace
 import (
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/admission"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 // ResolutionGateway is the Namespace-owned server view for one private
@@ -11,18 +13,18 @@ import (
 // one-use admission gate together so the transport owner cannot recombine
 // their fields or bypass a verification step.
 type ResolutionGateway struct {
-	store        *Store
-	policy       MaterializationPolicy
+	store        *epoch.Store
+	policy       epoch.MaterializationPolicy
 	minimumEpoch uint64
 	epochDigest  [32]byte
-	admission    *Admission
+	admission    *admission.Admission
 }
 
 // OpenResolutionGateway binds one current Namespace Store to its trusted
 // epoch and Gateway-local admission gate. Store policy is copied from the
 // already-open Store: a caller cannot pair a Store with another trust root.
-func OpenResolutionGateway(store *Store, minimumEpoch uint64, epochDigest [32]byte,
-	admission *Admission,
+func OpenResolutionGateway(store *epoch.Store, minimumEpoch uint64, epochDigest [32]byte,
+	admission *admission.Admission,
 ) (*ResolutionGateway, error) {
 	if store == nil || !store.Valid() || admission == nil || minimumEpoch == 0 || epochDigest == [32]byte{} ||
 		!admission.Matches(store.Policy().Network, minimumEpoch) {
@@ -53,7 +55,7 @@ func (gateway *ResolutionGateway) AcceptsGateway(node [32]byte) bool {
 
 // AdmitResolution consumes one proof only when it is bound to this Gateway,
 // the exact private-resolution operation, and the accepted surface.
-func (gateway *ResolutionGateway) AdmitResolution(now int64, node, operation [32]byte, proof Proof) bool {
+func (gateway *ResolutionGateway) AdmitResolution(now int64, node, operation [32]byte, proof admission.Proof) bool {
 	if gateway == nil || gateway.admission == nil || node == [32]byte{} || operation == [32]byte{} ||
 		proof.Challenge.Node != node || proof.Challenge.Surface != "resolution" ||
 		proof.Challenge.OperationDigest != operation {
@@ -66,17 +68,17 @@ func (gateway *ResolutionGateway) AdmitResolution(now int64, node, operation [32
 // LookupBinding returns a compact proof and its already-authenticated
 // destination binding. An unavailable, stale, or tampered Store has no
 // binding result and never exposes its lifecycle Record to Resolution.
-func (gateway *ResolutionGateway) LookupBinding(name string, at int64) ([]byte, Binding, bool) {
+func (gateway *ResolutionGateway) LookupBinding(name string, at int64) ([]byte, record.Binding, bool) {
 	if gateway == nil || gateway.store == nil {
-		return nil, Binding{}, false
+		return nil, record.Binding{}, false
 	}
 	proof, err := gateway.store.Lookup(name, gateway.minimumEpoch)
 	if err != nil {
-		return nil, Binding{}, false
+		return nil, record.Binding{}, false
 	}
-	binding, _, _, err := VerifyBinding(gateway.policy, proof, gateway.minimumEpoch, gateway.epochDigest, at)
+	binding, _, _, err := epoch.VerifyBinding(gateway.policy, proof, gateway.minimumEpoch, gateway.epochDigest, at)
 	if err != nil {
-		return nil, Binding{}, false
+		return nil, record.Binding{}, false
 	}
 	return proof, binding, true
 }
@@ -84,14 +86,14 @@ func (gateway *ResolutionGateway) LookupBinding(name string, at int64) ([]byte, 
 // ResolutionVerifier is the Namespace-owned client view for one authenticated
 // Network Epoch. It verifies only immutable destination bindings.
 type ResolutionVerifier struct {
-	policy       MaterializationPolicy
+	policy       epoch.MaterializationPolicy
 	minimumEpoch uint64
 	epochDigest  [32]byte
 }
 
 // OpenResolutionVerifier validates and copies one selected Namespace trust
 // root for a private-resolution client.
-func OpenResolutionVerifier(input MaterializationPolicy, minimumEpoch uint64,
+func OpenResolutionVerifier(input epoch.MaterializationPolicy, minimumEpoch uint64,
 	epochDigest [32]byte,
 ) (*ResolutionVerifier, error) {
 	policy, err := epoch.ValidMaterializationPolicy(input)
@@ -103,11 +105,11 @@ func OpenResolutionVerifier(input MaterializationPolicy, minimumEpoch uint64,
 
 // Verify authenticates one received proof and returns only its immutable
 // destination binding; the signed lifecycle Record remains internal.
-func (verifier *ResolutionVerifier) Verify(proof []byte, at int64) (Binding, string, error) {
+func (verifier *ResolutionVerifier) Verify(proof []byte, at int64) (record.Binding, string, error) {
 	if verifier == nil {
-		return Binding{}, "", errors.New("naming resolution verifier is unavailable")
+		return record.Binding{}, "", errors.New("naming resolution verifier is unavailable")
 	}
-	binding, warning, _, err := VerifyBinding(verifier.policy, proof, verifier.minimumEpoch,
+	binding, warning, _, err := epoch.VerifyBinding(verifier.policy, proof, verifier.minimumEpoch,
 		verifier.epochDigest, at)
 	return binding, warning, err
 }
