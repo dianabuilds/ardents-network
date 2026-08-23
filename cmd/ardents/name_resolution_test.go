@@ -103,7 +103,7 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	var output bytes.Buffer
 	load := func(state.Config) (state.ResolutionView, error) { return view.Resolution() }
 	transport := relayServer.Client().Transport.(*http.Transport)
-	if err := runWithRuntime([]string{"resolve", planPath, "alice", contextHex}, &output, transport, load); err != nil {
+	if err := runNameWithRuntime([]string{"resolve", planPath, "alice", contextHex}, &output, transport, load); err != nil {
 		t.Fatalf("resolve command: %v", err)
 	}
 	var receipt struct {
@@ -131,7 +131,7 @@ func TestResolveCommandRunsPrivateResolution(t *testing.T) {
 	if err := os.WriteFile(planPath, planRaw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runWithTransport([]string{"resolve", planPath, "alice", contextHex}, &bytes.Buffer{}, transport); err == nil {
+	if err := runNameWithTransport([]string{"resolve", planPath, "alice", contextHex}, &bytes.Buffer{}, transport); err == nil {
 		t.Fatal("resolve accepted an input without recovered authenticated Network State")
 	}
 }

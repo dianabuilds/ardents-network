@@ -1,6 +1,5 @@
 github.com/dianabuilds/ardents-network/cmd/ardents
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
-github.com/dianabuilds/ardents-network/cmd/ardents-name
 github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/cmd/ardents-publish-app
 github.com/dianabuilds/ardents-network/cmd/ardents-release

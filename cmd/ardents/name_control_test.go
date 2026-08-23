@@ -118,7 +118,7 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 			inputPath := writeCommandJSON(t, "control-input.json", input)
 			operationPath := writeCommandJSON(t, "control-operation.json", operation)
 			var output bytes.Buffer
-			if runErr := runWithRuntime([]string{"control", inputPath, operationPath, hex.EncodeToString(isolation[:])},
+			if runErr := runNameWithRuntime([]string{"control", inputPath, operationPath, hex.EncodeToString(isolation[:])},
 				&output, transport, load); runErr != nil {
 				t.Fatalf("control command: %v", runErr)
 			}
