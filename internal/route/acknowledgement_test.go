@@ -24,7 +24,10 @@ func TestPartialAcknowledgementFrameStopsAtRouteDeadline(t *testing.T) {
 	if err := os.WriteFile(keyPath, []byte(hex.EncodeToString(private)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	// The deadline bounds the serving path, not listener construction. Give the
+	// synchronous key/file/socket setup enough scheduler budget under the full
+	// parallel profile before asserting the partial-frame deadline behavior.
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
 	stop, completed, err := startAcknowledgement(ctx, socket, keyPath)
 	if err != nil {
