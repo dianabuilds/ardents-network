@@ -121,15 +121,15 @@ func (gateway *gateway) resolve(writer http.ResponseWriter, request *http.Reques
 	generation, revision := uint64(0), uint64(0)
 	target := [32]byte{}
 	if found {
-		record, _, _, _, verifyErr := namespace.Verify(gateway.state.policy, proof,
+		binding, _, _, verifyErr := namespace.VerifyBinding(gateway.state.policy, proof,
 			gateway.state.minimum, gateway.state.epochDigest, now.UnixMilli())
 		if verifyErr != nil {
 			gateway.reject(writer)
 			return
 		}
 		result = resultResolved
-		generation, revision = record.Generation, record.Revision
-		target = record.Target
+		generation, revision = binding.Generation, binding.Revision
+		target = binding.Target
 	}
 	response, err := encodeResponse(resolutionResponse{network: query.network, nonce: query.nonce,
 		deadline: query.deadline, name: query.name, generation: generation, revision: revision,

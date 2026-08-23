@@ -46,8 +46,8 @@ func (store *Store) Lookup(rawName string, minimumEpoch uint64) ([]byte, error) 
 }
 
 // Verify authenticates one current Namespace proof at epoch milliseconds and
-// returns the exact immutable binding asserted by its threshold-signed
-// materialization.
+// returns the signed Record plus its immutable binding. It remains a
+// compatibility decoder while callers move to VerifyBinding.
 func Verify(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expectedEpochDigest [32]byte, at int64) (
 	Record, Binding, string, uint64, error,
 ) {
@@ -84,6 +84,16 @@ func Verify(input MaterializationPolicy, proof []byte, minimumEpoch uint64, expe
 		warning = "name lineage is in grace and should be treated as volatile"
 	}
 	return record, binding, warning, statement.epoch, nil
+}
+
+// VerifyBinding authenticates one current Namespace proof and returns only the
+// immutable destination binding that Resolution may consume. It intentionally
+// hides the lifecycle Record from production callers.
+func VerifyBinding(input MaterializationPolicy, proof []byte, minimumEpoch uint64,
+	expectedEpochDigest [32]byte, at int64,
+) (Binding, string, uint64, error) {
+	_, binding, warning, epoch, err := Verify(input, proof, minimumEpoch, expectedEpochDigest, at)
+	return binding, warning, epoch, err
 }
 
 func encodeProof(attested attestedStatement, ordinal uint32, leaf []byte, siblings [][32]byte) []byte {

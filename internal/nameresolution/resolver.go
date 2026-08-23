@@ -112,20 +112,20 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 	if response.result != resultResolved {
 		return resolver.failure(resolutionUnavailableClass, errors.New("name is unavailable"))
 	}
-	record, binding, warning, epoch, err := namespace.Verify(resolver.plan.MaterializationPolicy,
+	binding, warning, epoch, err := namespace.VerifyBinding(resolver.plan.MaterializationPolicy,
 		response.proof, resolver.plan.Epoch, resolver.plan.EpochDigest, at.UnixMilli())
-	if err != nil || record.Name != serviceName || epoch != resolver.plan.Epoch {
+	if err != nil || binding.Name != serviceName || epoch != resolver.plan.Epoch {
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution returned the wrong name"))
 	}
-	if record.Generation != response.generation || record.Revision != response.revision {
+	if binding.Generation != response.generation || binding.Revision != response.revision {
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution response Record version is inconsistent"))
 	}
 	resolver.mu.Lock()
 	resolver.observation.Resolved++
 	resolver.roleEvidence.Result = resolvedClass
 	resolver.roleEvidence.Target = binding.Target
-	resolver.roleEvidence.Generation = record.Generation
-	resolver.roleEvidence.Revision = record.Revision
+	resolver.roleEvidence.Generation = binding.Generation
+	resolver.roleEvidence.Revision = binding.Revision
 	resolver.mu.Unlock()
 	return result{Class: resolvedClass, Warning: warning, Binding: binding}, nil
 }

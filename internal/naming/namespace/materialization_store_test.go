@@ -33,9 +33,9 @@ func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
 	proof, proofErr := reopened.Lookup("alice", 11)
-	record, _, _, _, verifyErr := namespace.Verify(policy, proof, 11, [32]byte{11}, 900_000)
-	if proofErr != nil || verifyErr != nil || record.Name != "alice" {
-		t.Fatalf("record=%+v err=%v/%v", record, proofErr, verifyErr)
+	binding, _, _, verifyErr := namespace.VerifyBinding(policy, proof, 11, [32]byte{11}, 900_000)
+	if proofErr != nil || verifyErr != nil || binding.Name != "alice" {
+		t.Fatalf("binding=%+v err=%v/%v", binding, proofErr, verifyErr)
 	}
 	if _, err := reopened.Lookup("alice", 12); err == nil || err.Error() != "naming state is stale" {
 		t.Fatalf("stale epoch err=%v", err)
