@@ -49,17 +49,35 @@ type linuxMeasurement struct {
 type linuxSample struct {
 	UnixNano, RSSBytes, UserTicks, SystemTicks int64
 	FileDescriptors                            int
+	Sockets                                    int
 }
 
 func main() {
+	scenario := flag.String("scenario", "baseline", "baseline or role-carriage")
 	connections := flag.Int("connections", 1, "synthetic sequential mTLS legs (1..32)")
 	payloadSize := flag.Int("payload", 64<<10, "opaque bytes per leg (1..1048576)")
 	timeout := flag.Duration("timeout", 10*time.Second, "complete baseline deadline")
+	capacity := flag.Int("capacity", 2, "simultaneously carried synthetic legs (1..32)")
+	hold := flag.Duration("hold", 2*time.Second, "synthetic capacity-pressure hold before drain")
+	sampleInterval := flag.Duration("sample-interval", time.Second, "Linux sample interval during role-carriage")
 	flag.Parse()
-	if *connections < 1 || *connections > 32 || *payloadSize < 1 || *payloadSize > 1<<20 || *timeout <= 0 {
-		fail(errors.New("baseline flags are outside their bound"))
+	var result any
+	var err error
+	switch *scenario {
+	case "baseline":
+		if *connections < 1 || *connections > 32 || *payloadSize < 1 || *payloadSize > 1<<20 || *timeout <= 0 {
+			fail(errors.New("baseline flags are outside their bound"))
+		}
+		result, err = run(*connections, *payloadSize, *timeout)
+	case "role-carriage":
+		if *capacity < 1 || *capacity > 32 || *payloadSize < 1 || *payloadSize > 1<<20 || *hold < time.Second ||
+			*sampleInterval <= 0 || *timeout <= *hold {
+			fail(errors.New("role-carriage flags are outside their bound"))
+		}
+		result, err = runRoleCarriage(*capacity, *payloadSize, *hold, *sampleInterval, *timeout)
+	default:
+		fail(errors.New("scenario is not supported"))
 	}
-	result, err := run(*connections, *payloadSize, *timeout)
 	if err != nil {
 		fail(err)
 	}
@@ -171,8 +189,21 @@ func sampleLinux() (*linuxSample, error) {
 	if err != nil {
 		return nil, err
 	}
+	sockets := 0
+	for _, fd := range fds {
+		target, readErr := os.Readlink("/proc/self/fd/" + fd.Name())
+		if readErr != nil {
+			if errors.Is(readErr, os.ErrNotExist) {
+				continue
+			}
+			return nil, readErr
+		}
+		if strings.HasPrefix(target, "socket:[") {
+			sockets++
+		}
+	}
 	return &linuxSample{UnixNano: time.Now().UnixNano(), RSSBytes: rss, UserTicks: user,
-		SystemTicks: system, FileDescriptors: len(fds)}, nil
+		SystemTicks: system, FileDescriptors: len(fds), Sockets: sockets}, nil
 }
 
 func serve(ctx context.Context, listener net.Listener, certificate tls.Certificate, client ed25519.PublicKey,

@@ -61,10 +61,13 @@ native Node profile.
 ### Experiment
 
 [`experiments/r-092-native-node-profile/`](../../../experiments/r-092-native-node-profile/)
-contains a disposable, synthetic mTLS plus reciprocal-LegBinding baseline. It
-has no Node listener, State root, H3 reader, or capacity decision. A follow-up
-run must add the complete isolated role-carriage/pressure harness and retain
-its raw Linux observations outside Git.
+contains disposable synthetic mTLS plus reciprocal-LegBinding baseline and
+role-carriage scenarios. The latter carries a bounded set of synthetic legs,
+withdraws its test listener, holds them, drains them, joins its workers, and
+samples the Linux process. It has no product Node listener, State root, H3
+reader, or capacity decision. A reference-host follow-up must inject and
+measure the complete selected resource-pressure rule and retain its raw Linux
+observations outside Git.
 
 ### Failure scenarios
 
@@ -100,6 +103,18 @@ its raw Linux observations outside Git.
   reciprocal-binding, echo, and basic FD-cleanup path; it has no pressure,
   listener, concurrent workload, per-second sampling, socket count, or network
   shape evidence.
+- **Measurement (2026-08-23, preliminary Linux role-carriage):** the expanded
+  harness was cross-compiled to Linux/amd64 (binary SHA-256
+  `6f55a1fdca9e2704fd8863cd29a3b92ddee2bf5dafc6f0ba1501e1dc6435bb68`)
+  and executed in the same non-reference WSL guest. Two simultaneous 4,096-byte
+  legs completed reciprocal binding and became active; the synthetic listener
+  withdrew, one subsequent dial was refused, and a two-second hold then drained
+  and joined both legs in 2,002,981,579 ns. Four begin/one-second/end process
+  samples saw RSS from 5,636,096 to 7,471,104 bytes, FDs/sockets at 10/3 then
+  11/4 while active and 7/0 after cleanup; Go goroutines fell from 2 to 1.
+  This verifies only synthetic capacity-triggered withdrawal and cleanup in
+  WSL. It is not pre-kernel admission refusal, a real resource-pressure test,
+  a NET-01A measurement, or a selected profile.
 - **Measurement:** no Linux *reference-host* result has yet been captured.
 
 ## Recommendation
