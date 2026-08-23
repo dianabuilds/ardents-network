@@ -46,7 +46,7 @@ accepted current claim names its duty.
 
 - R-076, ADR-0024, R-080, DA-11, and the Stage 8 target architecture,
   inspected 2026-08-23.
-- `docs/development/stage-5-blocked-entry-evidence.md` and
+- the retired Stage 5 harness document at the frozen source entry and
   `tests/live/stage5-final/README.md`, inspected 2026-08-23.
 - The package map, historical-reproduction profile, and source caller graph,
   inspected 2026-08-23.
@@ -68,9 +68,9 @@ is deleted; or the laboratory reader becomes a product dependency.
 - **Inspection:** `tests/live/stage5-final` contains configuration, supply
   lock, and builder inputs only. Its README expressly says it is not evidence
   and cannot satisfy S9.6 by itself.
-- **Inspection:** `stage-5-blocked-entry-evidence.md` records no completed
-  qualifying run. It requires a separately created external bundle and keeps
-  stand identities pending; it is a historical development contract.
+- **Inspection:** the retired Stage 5 harness document records no completed
+  qualifying run. It required a separately created external bundle and kept
+  stand identities pending; it was a historical development contract.
 - **Inspection:** the only Go caller of `blockedverify` is its thin command;
   the only retained execution-profile references are that command and Module.
 - **Inference:** H2 would preserve a generator-less H3 verifier for a claim
