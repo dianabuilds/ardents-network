@@ -39,9 +39,5 @@ rejection corpora.
 
 ## Compliance
 
-- [R-042](../research/records/r-042-claim-ordering.md) freezes fields, bounds,
-  measurements, and the eight-scenario map.
 - [ADR-0004](0004-authenticated-epochs-and-separated-control-roots.md) owns the
   Network Epoch trust root and captured-threshold limitation.
-- [R-055](../research/records/r-055-stage-6-evidence-serialization.md) owns
-  canonical development-artifact encoding.

@@ -36,7 +36,6 @@ verified resolution. It must be replaced with a V4 Authority-signed Record.
 
 ## Compliance
 
-[R-068](../research/records/r-068-name-record-validity-migration.md) contains
-the decision evidence and required failure/restart coverage. This decision does
-not alter OHTTP, Recovery authorization cryptography, claim ordering, or the
+Implementation tests cover the required failure/restart behavior. This decision
+does not alter OHTTP, Recovery authorization cryptography, claim ordering, or the
 threshold materialization authority.

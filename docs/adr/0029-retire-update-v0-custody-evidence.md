@@ -33,6 +33,5 @@ cutover.
 
 ## Compliance
 
-[R-087](../research/records/r-087-update-v0-provenance-retirement.md)
-contains alternatives, failure cases, and required evidence. This ADR selects
+This ADR records alternatives, failure cases, and required evidence. It selects
 no platform activation, storage engine, or cryptographic primitive.

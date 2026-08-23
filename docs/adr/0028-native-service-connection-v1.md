@@ -35,7 +35,7 @@ negotiation, direct fallback, or Node-selected profile exists.
 
 ## Compliance
 
-[R-083](../research/records/r-083-native-service-connection-framing.md)
-contains the complete record rules, alternatives, failure cases, and evidence
-plan. This decision introduces no first-party cryptographic primitive or
+This ADR contains the complete record rules, alternatives, failure cases, and
+evidence plan. This decision introduces no first-party cryptographic primitive
+or
 public-network/Qualification claim.

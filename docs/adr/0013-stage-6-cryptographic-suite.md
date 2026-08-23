@@ -64,10 +64,7 @@ research, but it does not select the complete Stage 6 suite by inertia.
 
 ## Compliance
 
-- [R-044](../research/records/r-044-cryptographic-suite.md) is the open research
-  record for the replacement.
-- [R-003](../research/records/r-003-service-name-contract.md) and
-  [CONTEXT.md](../../CONTEXT.md) remain authoritative for Recovery Policy and
+- [CONTEXT.md](../../CONTEXT.md) remains authoritative for Recovery Policy and
   Recovery Authority semantics.
 - Runtime dependencies must be reviewed in
   [dependencies.md](../development/dependencies.md) before `go.mod` changes.

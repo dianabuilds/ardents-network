@@ -26,5 +26,4 @@ fallback, or compatibility promise is introduced.
 
 ## Compliance
 
-[R-079](../research/records/r-079-entry-binding-v1.md) contains the format,
-failure cases, and required test evidence.
+This ADR contains the format, failure cases, and required test evidence.

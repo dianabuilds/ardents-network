@@ -84,5 +84,5 @@ binding.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md) selects the
   native Route foundation; [ADR-0028](../adr/0028-native-service-connection-v1.md)
   selects the closed Service Connection grammar.
-- [R-085](../research/records/r-085-m10-generic-broker-scope.md) limits the
-  Broker to its explicit generic/unqualified contract.
+- The Broker is limited to its explicit generic/unqualified contract; it makes
+  no platform-isolation or Application Location Privacy claim.

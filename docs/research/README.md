@@ -49,7 +49,11 @@ resources.
 6. Write the result even when the hypothesis fails.
 7. Mark the recommendation, confidence, unresolved risks, and exact product
    decision it unlocks.
-8. Create an ADR only if an actual hard-to-reverse decision is accepted.
+8. Promote a decided contract to its current owner: an ADR for a consequential
+   irreversible choice, technical/product/security documentation for the
+   maintained contract, or both.
+9. Delete the closed record, experiment, and stage material once promotion is
+   complete. Git history is provenance; it is not a second live specification.
 
 ## Evidence labels
 
@@ -66,7 +70,8 @@ resources.
 - `open` — question and decision criteria exist;
 - `active` — evidence collection or experiment is in progress;
 - `review` — recommendation is ready for adversarial review;
-- `decided` — a decision was accepted and, when appropriate, captured in an ADR;
+- `decided` — a decision was accepted and must be promoted before the temporary
+  record is deleted;
 - `blocked` — a named missing input prevents useful progress;
 - `rejected` — the question or approach no longer serves the product direction.
 

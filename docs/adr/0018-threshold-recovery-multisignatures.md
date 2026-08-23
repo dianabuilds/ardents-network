@@ -38,8 +38,5 @@ new runtime dependency is selected.
 
 ## Compliance
 
-- [R-044](../research/records/r-044-cryptographic-suite.md) freezes transcripts,
-  bounds, hostile vectors, and measurements.
-- [R-003](../research/records/r-003-service-name-contract.md) and the glossary
-  own the Recovery Policy trust model.
+- The glossary owns the Recovery Policy trust model.
 - No `go.mod` or dependency-register change is authorized by this decision.

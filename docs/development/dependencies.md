@@ -8,11 +8,8 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 The maintained product-shaped Modules use the Go standard library, the
 Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
-OHTTP closure owned by `internal/naming/resolution`. The product promotion is selected by
-[R-047](../research/records/r-047-stage-6-query-hiding.md) and ADR-0014; the
-original experiment selection is recorded by
-[R-026](../research/records/r-026-private-resolution-adapter.md), while the bounded
-external socket fault use is selected by [R-032](../research/records/r-032-h3-same-connection-recovery.md); the set must enter
+OHTTP closure owned by `internal/naming/resolution`. ADR-0014 selects the
+maintained private-resolution profile; the set must enter
 `go.mod` as this reviewed set rather than as the vulnerable versions declared
 by `openpcc/ohttp v0.0.80`.
 
@@ -121,8 +118,8 @@ atomically publishes the candidate-verified consecutive root chain and floor
 successors. No go-tuf cache or updater is constructed, so candidate cache remains
 absent and can never become a watermark.
 
-**Review evidence:** [R-049](../research/records/r-049-stage-7-release-verifier.md)
-records exact source identities, `108/108` TUF conformance, Windows/Linux
+**Review evidence:** the completed selection measured exact source identities,
+`108/108` TUF conformance, Windows/Linux
 upstream tests, ten-run no-cgo resource tests, permissive-license inventory,
 and the reachable scan. The raised three-module set preserved upstream and
 profile tests. `govulncheck` reported no symbol or imported-package
@@ -134,7 +131,8 @@ module scan and stops on any reachable unpatched high/critical advisory.
 maintenance/conformance criterion; first-party TUF or cryptographic primitives,
 distributor authority, and a hand-built threshold workflow are rejected. The
 closure is removed with the one Release Decision Module. A version, module,
-surface, role, delegation, cache, or multi-repository change reopens R-049.
+surface, role, delegation, cache, or multi-repository change requires a new
+dependency review and applicable ADR analysis.
 
 **Offline supply:** S7.1 must add checksums only after acceptance, prepare the
 module cache outside Git, verify it online, and prove an offline no-cgo build.
@@ -143,20 +141,18 @@ the repository.
 
 ## Current Authority Custody dependency
 
-Status: **current maintained dependency under ADR-0021.** R-053 selects
+Status: **current maintained dependency under ADR-0021.** ADR-0021 selects
 `golang.org/x/crypto/argon2` from module
 `golang.org/x/crypto v0.55.0` (BSD-3-Clause) as the sole non-standard-library
-cryptographic dependency for password-derived Authority Custody. R-049 already
-selects the same module version in its release-verifier closure; integration
+cryptographic dependency for password-derived Authority Custody. The
+release-verifier closure selects the same module version; integration
 must produce one shared exact root-module version, never parallel copies.
 
 The Authority Custody Module is the sole caller. It uses only
 `argon2.IDKey` with the fixed v1 profile and passes the derived 32-byte key to Go
 1.26 standard-library `crypto/aes` and `cipher.NewGCMWithRandomNonce`. No other
 Argon2 variant, dynamic parameter negotiation, signing primitive, password
-store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The
-[R-053 record](../research/records/r-053-stage-7-authority-recovery.md) is
-decision provenance. The current
+store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The current
 [release, update, and Authority Custody reference](../technical/release-update-custody.md)
 owns the maintained envelope and lifecycle boundary.
 
@@ -173,10 +169,10 @@ temporary module with exact `v0.52.0` at commit
 `h1:RMs7fP2rXdep0CftQlK8Uf+kibLm7qkCcradZWYz988=`. Both passed, but scheduled
 development-host integration must still run official exact-version Argon2id
 vectors, the fixed 256 MiB resource profile, license/source identity, and
-reachable-advisory checks before the S7.2 handoff. Weakest-native-host
-performance remains a separate qualification gate. Removing password-derived custody removes this caller; if
-R-049 is also rejected/removed, the module can return to the independently
-justified root version. A version/profile/surface change reopens R-053.
+reachable-advisory checks before a supported custody handoff. Weakest-native-host
+performance remains a separate qualification gate. Removing password-derived
+custody removes this caller. A version/profile/surface change requires a new
+dependency review and applicable ADR analysis.
 
 ## Historical Stage 5 external process record
 
@@ -264,47 +260,3 @@ normal dependency review before `go.mod` changes.
 
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
-
-## Historical Carrier Lab tool inputs
-
-R-091 retired these inputs and their executable consumer. The details below are
-C4 provenance for R-013/R-025, not current dependencies or build inputs.
-
-These tools were not product runtime dependencies and did not enter `go.mod` or
-the historical `application` image target. R-091 deleted their disposable
-`tooling` target together with `lab/carrier/Dockerfile`.
-
-| Tool | Version | Supplied by | License summary | Purpose |
-|---|---:|---|---|---|
-| iproute2 `tc` | 6.19.0 | Ubuntu `iproute2` 6.19.0-1ubuntu1.1 | GPL-2.0-only | fixed endpoint `netem` shaping |
-| tcpdump | 4.99.6 | Ubuntu `tcpdump` 4.99.6-1 | BSD-3-Clause with historical notices | bounded link capture and readback |
-| libpcap | 1.10.6 | Ubuntu `libpcap0.8t64` 1.10.6-1ubuntu1 | BSD-family and other permissive notices | packet socket/filter runtime |
-
-The exact 12-file runtime closure, official URLs, versions, SHA-256 values,
-license summaries, installed paths, and executable hashes remain in the
-accepted [R-025 record](../research/records/r-025-carrier-lab-tool-supply.md).
-The external `.deb` bundle was an explicitly prepared input outside Git. The
-former build and run used no package repository,
-installer, maintainer script, or download fallback; a missing, extra, or
-mismatched artifact fails closed.
-
-## Historical Carrier Lab external reference inputs
-
-The R-013 comparison uses Tor and Chutney only as a black-box laboratory
-reference. They are not linked into the Go binary, included in either Carrier
-Lab image, or selected as a product runtime foundation.
-
-| Input | Reviewed version | License | Purpose |
-|---|---:|---|---|
-| Tor | Ubuntu 0.4.9.6-1 package closure; upstream 0.4.9.11 recorded | BSD-3-Clause | private onion-service reference |
-| Chutney | revision `988fc372cc418fbecc60558fe27e75d07d76b996` | BSD-3-Clause | isolated local Tor network |
-| typeguard | 4.3.0 | MIT | Chutney runtime validation |
-| tomli-w | 1.2.0 | MIT | Chutney configuration writer |
-| typing-extensions | 4.15.0 | PSF-2.0 | Python compatibility for Chutney/typeguard |
-
-[R-025](../research/records/r-025-carrier-lab-tool-supply.md) retains the exact
-Tor 13-package closure, Chutney archive, wheels, source locations, and SHA-256
-identities. The selected Chutney revision predates its optional SSH
-launcher and restricted-discovery dependencies, so Paramiko, rpyc, and Python
-`cryptography` are deliberately absent. Online preparation is explicit; the
-experiment verifies and consumes the prepared directory without downloading.

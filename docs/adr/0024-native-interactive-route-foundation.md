@@ -49,8 +49,7 @@ Node-supplied value may select a lower generation.
 
 ## Compliance
 
-[R-076](../research/records/r-076-native-interactive-route-foundation.md)
-contains the alternatives, failure cases, selected authority boundary, and
-required test/Qualification work. This ADR does not select a directory, DHT,
+This ADR records the selected authority boundary and required
+test/Qualification work. It does not select a directory, DHT,
 foreign overlay, public bootstrap, transport fallback, or a new cryptographic
 primitive.

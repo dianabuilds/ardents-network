@@ -177,50 +177,17 @@ Each slice has its own stop condition. Passing the Named tracer does not
 authorize building all of them in parallel, and a project-operated test network
 is not evidence of independent operation.
 
-No H3 implementation starts merely because this horizon is open. A research
-record must first freeze the exact vertical slice, protected claim, finite
-resources, evidence, falsification conditions, and exclusions, and the Product
-Owner must explicitly mark that record `decided`. The
-[Horizon 3 technical design](../development/horizon-3-technical-design.md) maps
-the complete horizon and its sequential outcomes.
-  [R-029](../research/records/r-029-h3-authenticated-node-lifecycle.md) is the
-decided and authorized Stage 1: authenticated Network State must control a real
-Node lifecycle. R-027 and R-028 are accepted only as its detailed bootstrap and
-resource/evidence appendices, not standalone implementation slices. This
-  original Stage 1 authorization. The Product Owner's later
-  [R-030](../research/records/r-030-h3-real-multi-node-route.md) decision
-  authorizes only the bounded Stage 2 tracer after local development readiness.
-  It does not complete official Stage 1 qualification: Ubuntu `short`, current
-  `churn-2h`, and independent `unattended-24h` remain required before the final
-  integrated H3 verdict or any stronger external/release claim. The later
-  [R-031](../research/records/r-031-h3-service-connection-application-interface.md)
-  decision accepts the clean committed `95/95` local Stage 2 Docker development
-  campaign only as readiness for the bounded Stage 3 Service Connection and
-  Application Interface tracer. The resulting Stage 3 local campaign at commit
-  `6c8faf9` passed one retained `27/27` bundle; independent verification replayed
-  that same bundle rather than creating a second campaign. Proposed
-  [R-032](../research/records/r-032-h3-same-connection-recovery.md) was accepted
-  on 2026-08-13 and authorizes bounded S4.1–S4.3 recovery development.
-  [R-038](../research/records/r-038-h3-stage-4-role-capacity.md) was accepted
-  on 2026-08-15 as the P3-D3b4 decision and freezes role-specific useful-work
-  units and capacity floors for the four Stage 4 infrastructure roles
-  (Initiator, Introduction, Rendezvous, Responder); S4.4 is now authorized and
-  its local Docker development evidence is complete. The Product Owner accepted
-  [R-037](../research/records/r-037-h3-blocked-entry-evidence.md) and the
-  [Stage 5 implementation brief](../development/horizon-3-stage-5-brief.md) on 2026-08-16,
-  and advanced maintained Stage 5 development on 2026-08-19 while moving the
-  complete `564`-cell candidate campaign plus six evidence-integrity campaigns
-  to S9.6. The Stage 6 product contract
-  ([R-039](../research/records/r-039-h3-private-naming-lifecycle.md)) is accepted,
-  but R-042, R-044, R-045 and the general coding authorization remain open.
-  R-046 and R-047 are decided, and only the bounded S6.1/S6.2 slices are
-  authorized. These
-  local results do not change the official gates; Ubuntu Stage 1
-  `short`, current `churn-2h`, independent `unattended-24h`, applicable R-023
-  qualification, and the deferred S9.6 final campaign remain prerequisites for
-  the integrated H3 verdict or any stronger external, privacy, security, or
-  release claim. All later H3 stages remain sequential research and Product
-  Owner decision gates.
+Horizon 3 is closed as a source of maintained behavior. Its laboratory results
+are neither a product contract nor Route Qualification. Current Network State,
+Entry, Route, and Node constraints are owned by
+[Network Route and Node](../technical/network-route-node.md); endpoint and
+Service behavior is owned by
+[Endpoint and Service runtime](../technical/endpoint-service-runtime.md).
+
+Any future work starts from the current product, security, technical, and ADR
+owners. It must define a new bounded claim and evidence plan; it cannot revive
+H3 stage plans, wire bytes, capacity figures, or a previous campaign as an
+implicit compatibility requirement.
 
 ## Horizon 4 — Public Beta
 
@@ -310,8 +277,8 @@ proofing” of the carrier.
 | [Functional map](functional-map.md) | Requirements registry across all horizons, not one backlog. `fixed` means decision maturity, not “build now.” |
 | [Operating model](operating-model.md) | Target lifecycle for a public product; only explicitly promoted parts apply to Carrier Lab. |
 | [Threat model](../security/threat-model.md) | Conditions required before making each claim; an unclaimed condition need not become a current feature. |
-| [R-013](../research/records/r-013-carrier-lab-technology-candidates.md) | Frozen Carrier Lab experiment contract and current component candidates; not a production-stack decision. |
-| [R-014](../research/records/r-014-language-runtime-candidates.md) | Evidence and rationale for the Go project foundation recorded by ADR-0009. |
-| [R-023](../research/records/r-023-interactive-route-performance-budget.md) | Future qualification contract and hypothesis set; Carrier Lab uses only its coarse decision metrics. |
-| [R-024](../research/records/r-024-operational-product-closure.md) | Completeness audit of the eventual public lifecycle, not authorization to implement every mechanism now. |
+| [Network Route and Node](../technical/network-route-node.md) | Current route, Node, State, and Entry contract, including the limits on Route claims. |
+| [Go project foundation](../adr/0009-go-project-foundation.md) | Maintained language and runtime decision. |
+| [Threat model](../security/threat-model.md) | Conditions and evidence required for each security or privacy claim. |
+| [Operating model](operating-model.md) | Product lifecycle and future qualification boundaries. |
 | [Development gates](../development/entry-gates.md) | The only promotion path between horizons. |

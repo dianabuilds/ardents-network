@@ -52,9 +52,5 @@ replacement is stopped, authenticated, and rechecked before execution.
 
 ## Compliance
 
-- [R-049](../research/records/r-049-stage-7-release-verifier.md) selects the
-  bounded release-verification client profile.
-- [R-050](../research/records/r-050-stage-7-install-update-adapters.md) records
-  the platform and Portable evidence and explicit qualification deferrals.
 - The [release, update, and Authority Custody reference](../technical/release-update-custody.md)
   owns the maintained state boundary and its current limitations.

@@ -37,9 +37,5 @@ mutated, below-threshold, or forked evidence fails closed.
 
 ## Compliance
 
-- [R-057](../research/records/r-057-current-namespace-materialization.md)
-  freezes the statement, proof, corpus, and limitation contract.
 - [ADR-0004](0004-authenticated-epochs-and-separated-control-roots.md) owns the
   Network Epoch trust root and captured-threshold limitation.
-- [R-055](../research/records/r-055-stage-6-evidence-serialization.md) owns the
-  independent development-evidence encoding and mutation requirements.

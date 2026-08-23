@@ -144,21 +144,14 @@ The maintained local gate is `make quick-check`; `make check` is required
 before integration. Focused Namespace/Resolution behavior is covered by
 `go test ./internal/naming/namespace ./internal/nameresolution -count=1`.
 
-## Decision records
+## Governing decisions
 
-- [R-041](../research/records/r-041-canonical-name-limits.md)
-- [R-042](../research/records/r-042-claim-ordering.md) and
-  [ADR-0017](../adr/0017-authenticated-name-claim-ordering.md)
-- [R-045](../research/records/r-045-anonymous-cost.md)
-- [R-057](../research/records/r-057-current-namespace-materialization.md) and
-  [ADR-0020](../adr/0020-authenticate-current-namespace-materialization.md)
-- [R-065](../research/records/r-065-naming-decision-time.md)
-- [R-066](../research/records/r-066-namespace-tracer-envelope.md)
-- [R-067](../research/records/r-067-naming-profile-retention.md)
-- [R-068](../research/records/r-068-name-record-validity-migration.md)
-- [R-069](../research/records/r-069-namespace-submission-result.md)
-- [R-070](../research/records/r-070-namespace-pending-successor-record.md) and
-  [ADR-0023](../adr/0023-pending-signed-namespace-successors.md)
-- [R-071](../research/records/r-071-typed-epoch-claim-winner.md)
-- [R-072](../research/records/r-072-namespace-epoch-installation.md)
-- [R-073](../research/records/r-073-record-proof-envelope.md)
+The maintained contract above is authoritative. Consequential choices are
+recorded by [ADR-0017](../adr/0017-authenticated-name-claim-ordering.md),
+[ADR-0018](../adr/0018-threshold-recovery-multisignatures.md),
+[ADR-0019](../adr/0019-bounded-anonymous-name-admission.md),
+[ADR-0020](../adr/0020-authenticate-current-namespace-materialization.md),
+[ADR-0022](../adr/0022-bind-name-record-validity.md), and
+[ADR-0023](../adr/0023-pending-signed-namespace-successors.md). Historical
+research dossiers were retired after their decisions and behavior were
+promoted here, into ADRs, and into tests.

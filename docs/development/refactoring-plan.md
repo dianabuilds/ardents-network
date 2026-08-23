@@ -173,8 +173,7 @@ enumerated provenance/transitional material subject to M14's named outcome.
 ### M1 — Release trust
 
 **Complete, 2026-08-23.** Starting from `7c1c991469d7fef0f47e6d2cf86596c347ad6b35`
-on Go `go1.26.6 windows/amd64`, M1 used the closed DA-01 semantics of accepted
-[R-063](../research/records/r-063-release-root-transaction-boundary.md).
+on Go `go1.26.6 windows/amd64`, M1 used the closed DA-01 recovery boundary.
 `internal/release` now owns the D06 root, lease, archive, floors, and private
 persistence seam behind `Open`, `Verifier.Evaluate`, and `Close`; the former
 `internal/releasedecision` path, public `Store`, and public store-open entry
@@ -216,8 +215,7 @@ passes. The integrating commit records this checked profile.
 ### M2 — Update lifecycle
 
 **Complete, 2026-08-23.** With DA-01
-closed by R-063 and the bounded H3 technical-tracer scope accepted by
-[R-064](../research/records/r-064-h3-update-tracer-scope.md), M2 moved the
+closed by DA-01 and the bounded H3 technical-tracer scope, M2 moved the
 complete transaction/recovery owner from
 `internal/updatetransaction` to `internal/update`; the old package path and
 all deterministic-profile references are gone. `update.Request` now accepts
@@ -226,8 +224,8 @@ Adapters only. It derives the successor or exact idempotent-replay generation
 from its owned root, chooses schema transition mode internally, and exposes no
 caller-controlled generation, active-work count, schema-plan string, or raw
 Release Decision. The external boundary test covers those omissions. The
-former V0 command/result is not a C2 observer. [R-088](../research/records/r-088-update-test-root-format-cutover.md)
-and ADR-0030 completed the C0 V2 fixture cutover, independent C4 verifier,
+former V0 command/result is not a C2 observer. ADR-0030 completed the C0 V2
+fixture cutover, independent C4 verifier,
 and command deletion without adding a root selector or lifecycle surface.
 
 The `Apply` orchestrator remains cohesive at the interim 500-line maximum: it

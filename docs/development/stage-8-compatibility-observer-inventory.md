@@ -1,7 +1,7 @@
 # Stage 8 compatibility-observer inventory
 
 Status: **S8.3 factual input for DA-10; not a compatibility decision.**
-Question authority is accepted [R-058](../research/records/r-058-h3-reassessment-and-closure.md);
+The accepted Stage 8 reassessment closes question authority;
 the decision route and stop condition are DA-10 in the
 [decision-authority register](stage-8-decision-authority-register.md). This
 inventory is limited to repository-visible observers at `5d764ee`; it cannot

@@ -38,7 +38,6 @@ C0 tracer formats under R-067.
 
 ## Compliance
 
-[R-070](../research/records/r-070-namespace-pending-successor-record.md)
-contains the decision evidence and required failure/restart tests. This does
-not change the selected Ed25519 algorithm, OHTTP privacy boundary, Recovery
+Implementation tests cover required failure/restart behavior. This does not
+change the selected Ed25519 algorithm, OHTTP privacy boundary, Recovery
 threshold authorization, or threshold materialization authority.

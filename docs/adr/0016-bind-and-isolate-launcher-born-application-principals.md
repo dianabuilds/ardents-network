@@ -6,8 +6,8 @@ superseded_by: R-085 generic Broker scope
 
 # ADR-0016 — Bind and isolate launcher-born Application Principals
 
-> Superseded by [R-085](../research/records/r-085-m10-generic-broker-scope.md)
-> for the maintained Stage 8 path. The selected platform profiles were never
+> Superseded for the maintained Stage 8 path by the generic/unqualified Broker
+> contract. The selected platform profiles were never
 > promoted; current code exposes only explicit generic/unqualified Broker
 > admission. This record remains historical evidence for any future qualified
 > isolation decision.
@@ -64,9 +64,5 @@ no isolation claim; Stage 7 isolated-browser requests return
 
 ## Compliance
 
-- [R-051](../research/records/r-051-stage-7-application-principal.md) freezes
-  joint principal identity and hostile binding cases.
-- [R-052](../research/records/r-052-stage-7-application-isolation.md) selects
-  the two native isolation profiles and their claim ceiling.
 - [ADR-0007](0007-separate-carrier-privacy-from-application-egress.md) remains
   authoritative for Application-level location claims.

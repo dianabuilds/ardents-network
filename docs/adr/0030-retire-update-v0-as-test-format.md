@@ -30,5 +30,4 @@ selected bootstrap owns any real root migration under a new decision.
 
 ## Compliance
 
-[R-088](../research/records/r-088-update-test-root-format-cutover.md)
-records the source audit, alternatives, and required V2/C4 evidence.
+This ADR records the source audit, alternatives, and required V2/C4 evidence.

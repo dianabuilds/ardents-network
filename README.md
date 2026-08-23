@@ -160,8 +160,8 @@ test keys, a preconfigured Target/reachability fixture, and a fixed synthetic
 topology to falsify the current five-position Route candidate. It implements no
 Service Name, public Node discovery, Bridge, installer, updater, SDK, browser,
 or public-network governance, and it makes no anonymity or decentralization
-claim. Its exact disposable technology and evidence contract is
-[R-013](docs/research/records/r-013-carrier-lab-technology-candidates.md).
+claim. Its exact disposable technology and evidence contract is retired
+provenance, not a current product foundation.
 
 Carrier Lab and Gate C are not product runtime or a future top-level
 architecture. R-091 removed their commands, Modules, Docker inputs, and manual

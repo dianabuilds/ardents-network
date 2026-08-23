@@ -14,10 +14,10 @@ Status: **accepted; Stage 8 started and S8.0 current-system truth authorized on
 - First working branch: `codex/s8-0-current-system-truth`.
 - Working tree at entry: clean.
 
-The retained Stage 7 source is evidence about the current system, not the
+The retained Stage 7 source was evidence about the current system, not the
 target architecture and not a commitment to complete cancelled Stage 7 work.
-The accepted [Stage 8 brief](horizon-3-stage-8-brief.md), accepted ADRs, Product
-Core, threat model, completed research, and Stage 7 disposition govern S8.0.
+The current Stage 8 controls, accepted ADRs, Product Core, threat model, and
+technical documentation govern the migration.
 
 ## Reproducible toolchain inputs
 

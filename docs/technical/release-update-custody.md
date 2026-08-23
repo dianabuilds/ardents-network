@@ -48,8 +48,7 @@ cannot sign.
   H3 evidence text in the frozen `ardents-release-decision-v1`,
   `ardents-update-result-v1`, and update-manifest V0 formats. Go projections
   call it `EvidenceNotice`; the old byte name remains only in the unobserved
-  V0 provenance fixtures. [R-088](../research/records/r-088-update-test-root-format-cutover.md)
-  completed a C0 V2 fixture cutover: V2 omits the field, an independent C4
+  V0 provenance fixtures. The V2 fixture cutover omits the field; an independent C4
   verifier retains the exact V0 vectors, and no V2 compatibility writer or
   Vault-status interpretation is permitted.
 - Windows/Ubuntu crash, permissions, and power-loss qualification remain open.
@@ -58,15 +57,14 @@ cannot sign.
   However, an active Vault has only opaque environment/network/root/authority
   commitments, not the Name needed to discover that replacement. It therefore
   cannot safely demote itself merely from a generic current-state view.
-  [R-086](../research/records/r-086-custody-authority-revocation.md) owns a
-  possible opaque replacement proof and any D08 migration. Broker Grant
+  A future opaque replacement proof needs its own format decision before any
+  D08 migration. Broker Grant
   revocation remains a separate local-admission transition.
 - Supported lifecycle/installer work remains open.
 
 ## Evidence
 
 - [ADR-0021](../adr/0021-use-password-derived-authority-custody.md)
-- [R-053](../research/records/r-053-stage-7-authority-recovery.md)
 - `internal/custody/vault_operation_test.go`
 - `internal/custody/vault_namespace_signing_test.go`
 

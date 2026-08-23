@@ -51,7 +51,5 @@ Authority Custody.
 
 ## Compliance
 
-- [R-053](../research/records/r-053-stage-7-authority-recovery.md) records the
-  exact dependency, format, resource, restore, and reconciliation evidence.
 - The [release, update, and Authority Custody reference](../technical/release-update-custody.md)
   owns the maintained envelope and lifecycle boundary.

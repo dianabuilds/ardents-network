@@ -43,7 +43,7 @@ cryptographic facts remain unchanged.
 
 ## Compliance
 
-[R-078](../research/records/r-078-interactive-route-v1-wire.md) contains the
-exact bytes, source evidence, alternatives, and required M8 proof. This ADR
+This ADR contains the exact bytes, source evidence, alternatives, and required
+M8 proof. It
 selects no public directory, service fallback, deployment profile, or
 first-party cryptographic primitive.

@@ -43,8 +43,6 @@ mutation. Restart creates a new boot secret and invalidates old challenges.
 
 ## Compliance
 
-- [R-045](../research/records/r-045-anonymous-cost.md) freezes the failed O1
-  result, accepted O1b profile, hostile corpus, and measurements.
 - Anonymous Cost retains the limitations stated in the product contract and
   threat model.
 - S6E1 may disclose only synthetic test boot secrets after worker termination;

@@ -58,11 +58,6 @@ withdrawn and R-044 remains open.
 
 ## Compliance
 
-- [R-047](../research/records/r-047-stage-6-query-hiding.md) contains the
-  production-selection evidence and recommendation.
-- [R-046](../research/records/r-046-role-matrix.md) defines the role matrix.
-- [R-026](../research/records/r-026-private-resolution-adapter.md) records the
-  exact implementation and Gate C measurements.
 - [RFC 9458](https://www.rfc-editor.org/rfc/rfc9458.html) defines OHTTP and its
   security/privacy limitations.
 - `docs/development/dependencies.md` remains authoritative for the exact module

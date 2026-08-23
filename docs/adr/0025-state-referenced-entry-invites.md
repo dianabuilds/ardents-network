@@ -37,7 +37,7 @@ transition, and WebTunnel bytes have no reader or migration path.
 
 ## Compliance
 
-[R-077](../research/records/r-077-entry-invite-v1.md) specifies the canonical
-format, validation, failure cases, and required M7 tests. This selection adds
+This ADR specifies the canonical format, validation, failure cases, and
+required M7 tests. This selection adds
 no public Entry distribution, camouflage, independent-operation, or Route
 Qualification claim.
