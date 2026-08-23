@@ -21,9 +21,9 @@ type control struct {
 	network   [32]byte
 	admission *admission.Admission
 	order     claim.ClaimOrder
-	records   map[string]Record
+	records   map[string]record.Record
 	clock     func() time.Time
-	policy    Policy
+	policy    record.Policy
 	store     *epoch.Store
 }
 
@@ -36,7 +36,7 @@ func NewEvidenceControl(network [32]byte, gate *admission.Admission, order claim
 	if network == [32]byte{} || gate == nil || clock == nil {
 		return nil, errors.New("name Authority control configuration is invalid")
 	}
-	values := make(map[string]Record, len(records))
+	values := make(map[string]record.Record, len(records))
 	for _, value := range records {
 		if _, exists := values[value.Name]; exists {
 			return nil, errors.New("name Authority control state is duplicated")
@@ -86,7 +86,7 @@ func OpenControl(store *epoch.Store, gate *admission.Admission, order claim.Clai
 		return nil, errors.New("name Authority control configuration is invalid")
 	}
 	control := &control{network: store.Policy().Network, admission: gate, order: order,
-		records: make(map[string]Record), clock: clock, policy: policy, store: store}
+		records: make(map[string]record.Record), clock: clock, policy: policy, store: store}
 	if err := control.restore(); err != nil {
 		return nil, err
 	}
@@ -154,21 +154,21 @@ func (control *control) restore() error {
 	return nil
 }
 
-func (control *control) exactSignedSuccessor(updated Record, signed []byte) bool {
-	record, err := VerifyRecord(control.network, signed)
+func (control *control) exactSignedSuccessor(updated record.Record, signed []byte) bool {
+	decoded, err := record.VerifyRecord(control.network, signed)
 	if err != nil {
 		return false
 	}
-	updatedWire, updatedErr := EncodeRecord(updated)
-	recordWire, recordErr := EncodeRecord(record)
+	updatedWire, updatedErr := record.EncodeRecord(updated)
+	recordWire, recordErr := record.EncodeRecord(decoded)
 	return updatedErr == nil && recordErr == nil && bytes.Equal(updatedWire, recordWire)
 }
 
-func (control *control) transition(operation controlOperation) (Record, error) {
+func (control *control) transition(operation controlOperation) (record.Record, error) {
 	return control.transitionAt(operation, control.clock())
 }
 
-func (control *control) transitionAt(operation controlOperation, now time.Time) (Record, error) {
+func (control *control) transitionAt(operation controlOperation, now time.Time) (record.Record, error) {
 	current, exists := control.records[operation.Name]
 	switch operation.Kind {
 	case "claim":
@@ -177,66 +177,66 @@ func (control *control) transitionAt(operation controlOperation, now time.Time) 
 		return control.delegate(operation, now)
 	case "renew", "record", "release", "transfer", "policy", "recovery":
 		if !exists {
-			return Record{}, errors.New("name Authority predecessor is unavailable")
+			return record.Record{}, errors.New("name Authority predecessor is unavailable")
 		}
 		return control.existing(operation, current, now)
 	default:
-		return Record{}, errors.New("name Authority operation is unavailable")
+		return record.Record{}, errors.New("name Authority operation is unavailable")
 	}
 }
 
-func (control *control) claim(operation controlOperation, current Record, exists bool,
+func (control *control) claim(operation controlOperation, current record.Record, exists bool,
 	now time.Time,
-) (Record, error) {
-	var proof ClaimProof
-	_, decodeErr := CanonicalProof(operation.OrderingProof, &proof)
+) (record.Record, error) {
+	var proof claim.ClaimProof
+	_, decodeErr := claim.CanonicalProof(operation.OrderingProof, &proof)
 	if decodeErr != nil {
-		return Record{}, errors.New("root claim proof is invalid")
+		return record.Record{}, errors.New("root claim proof is invalid")
 	}
-	winner, err := OpenClaimWinner(control.order, proof)
+	winner, err := claim.OpenClaimWinner(control.order, proof)
 	if err != nil {
-		return Record{}, errors.New("root claim ordering is unavailable")
+		return record.Record{}, errors.New("root claim ordering is unavailable")
 	}
-	var predecessor *Record
+	var predecessor *record.Record
 	if exists {
 		predecessor = &current
 	}
 	updated, err := winner.Materialize(predecessor, now, control.policy)
 	if err != nil || updated.Name != operation.Name || updated.Authority != hex.EncodeToString(operation.Authority[:]) {
-		return Record{}, errors.New("root claim materialization is unavailable")
+		return record.Record{}, errors.New("root claim materialization is unavailable")
 	}
 	return updated, nil
 }
 
-func (control *control) delegate(operation controlOperation, now time.Time) (Record, error) {
+func (control *control) delegate(operation controlOperation, now time.Time) (record.Record, error) {
 	parent, exists := control.records[operation.ParentName]
 	if !exists || parent.Generation != operation.ParentGeneration || parent.Revision != operation.ParentRevision {
-		return Record{}, errors.New("parent authority predecessor is unavailable")
+		return record.Record{}, errors.New("parent authority predecessor is unavailable")
 	}
 	parents, err := control.lineage(parent, now)
 	if err != nil {
-		return Record{}, err
+		return record.Record{}, err
 	}
-	parents = append([]Record{parent}, parents...)
-	op := Op{Kind: "claim", Name: operation.Name, Generation: operation.ChildGeneration,
+	parents = append([]record.Record{parent}, parents...)
+	op := record.Op{Kind: "claim", Name: operation.Name, Generation: operation.ChildGeneration,
 		Authority: hex.EncodeToString(operation.Authority[:]), Parents: parents,
 		LeaseDuration: durationUntil(now, operation.LeaseNotAfter)}
 	return applyTransition(control.network, parent, op, operation.AuthorityProof, now.Unix(), control.policy)
 }
 
-func (control *control) existing(operation controlOperation, current Record,
+func (control *control) existing(operation controlOperation, current record.Record,
 	now time.Time,
-) (Record, error) {
+) (record.Record, error) {
 	op, threshold, err := operation.lifecycle(control.network, current, now)
 	if err != nil {
-		return Record{}, err
+		return record.Record{}, err
 	}
 	op.Parents, err = control.lineage(current, now)
 	if err != nil {
-		return Record{}, err
+		return record.Record{}, err
 	}
 	if threshold {
-		return ApplyAtLegacy(&current, now, op, control.policy)
+		return record.ApplyAtLegacy(&current, now, op, control.policy)
 	}
 	return applyTransition(control.network, current, op, operation.AuthorityProof, now.Unix(), control.policy)
 }
@@ -245,10 +245,10 @@ func (control *control) existing(operation controlOperation, current Record,
 // The control holds its lock while resolving it, so callers cannot provide a
 // stale or substituted Record graph between predecessor verification and
 // transition application.
-func (control *control) lineage(record Record, now time.Time) ([]Record, error) {
-	parents := make([]Record, 0, 4)
-	seen := map[string]bool{record.Name: true}
-	for current := record; current.ParentName != ""; {
+func (control *control) lineage(currentRecord record.Record, now time.Time) ([]record.Record, error) {
+	parents := make([]record.Record, 0, 4)
+	seen := map[string]bool{currentRecord.Name: true}
+	for current := currentRecord; current.ParentName != ""; {
 		if len(parents) >= 126 || seen[current.ParentName] {
 			return nil, errors.New("name Authority parent lineage is invalid")
 		}
@@ -256,13 +256,13 @@ func (control *control) lineage(record Record, now time.Time) ([]Record, error) 
 		if !exists || parent.Generation != current.ParentGeneration {
 			return nil, errors.New("name Authority parent lineage is unavailable")
 		}
-		if err := Validate(parent); err != nil {
+		if err := record.Validate(parent); err != nil {
 			return nil, errors.New("name Authority parent lineage is invalid")
 		}
 		parents, seen[parent.Name] = append(parents, parent), true
 		current = parent
 	}
-	if err := ValidateParents(record.Name, parents, now.Unix()); err != nil {
+	if err := record.ValidateParents(currentRecord.Name, parents, now.Unix()); err != nil {
 		return nil, errors.New("name Authority parent lineage is not resolvable")
 	}
 	return parents, nil
