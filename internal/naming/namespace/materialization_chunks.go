@@ -4,7 +4,7 @@ import "errors"
 
 const (
 	recordChunkSchema uint16 = 1
-	maximumRecords           = 4096
+	maximumRecords           = 127
 	maximumChunks            = 64
 	maximumChunkBytes        = 32 << 10
 )

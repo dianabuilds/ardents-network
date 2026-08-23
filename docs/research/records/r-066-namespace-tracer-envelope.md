@@ -80,6 +80,13 @@ temporary root on exit. Its JSON output is the measured artifact.
   reopen-plus-lookup samples measured `24,244 us` p50 and `26,367 us` p95.
   Eight simultaneous lookups all returned a non-empty proof for the requested
   Name. The post-run process heap observation was `1,180,944` bytes.
+- **Verification (2026-08-23):** after the implementation cap was reduced to
+  the accepted 127 records, the same disposable scenario completed with 127
+  records, an 1,675-byte proof, eight successful concurrent lookups, and no
+  retained root. Its p50/p95 lookup sample was `17,100/19,826 us`; reopen plus
+  lookup was `24,594/27,548 us`; heap observation was `2,793,192` bytes.
+  These host/load-sensitive samples remain local tracer evidence, not a
+  performance or capacity claim.
 - **Measurement:** `go run -race ./experiments/r-066-namespace-envelope` is an
   invalid local environment: the Windows linker inherits the repository's
   native dependency closure and cannot resolve `-ldl`. This is recorded as an

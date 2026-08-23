@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -115,6 +116,27 @@ func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 	record, binding, _, number, err := namespace.Verify(policy, proof, 12, epoch.Digest, 900_000)
 	if err != nil || number != 12 || record.Name != name || binding.Target != [32]byte{1} {
 		t.Fatalf("record=%+v binding=%+v epoch=%d err=%v", record, binding, number, err)
+	}
+}
+
+func TestNamespaceTracerRejectsCorpusBeyondAcceptedEnvelope(t *testing.T) {
+	t.Parallel()
+	network := [32]byte{9}
+	policy, signers := materializationPolicy("tracer-envelope", network)
+	store, err := namespace.Open(t.TempDir(), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	records := make([][]byte, 128)
+	for index := range records {
+		records[index] = signedRecord(t, network, fmt.Sprintf("tracer-%d", index), "tracer-authority")
+	}
+	epoch := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+		TransitionRoot: sha256.Sum256([]byte("tracer-transitions")), TransitionLength: uint32(len(records)),
+		RejectionRoot: sha256.Sum256([]byte("tracer-rejections"))}
+	if err := store.Commit(epoch, records, thresholdAttester(signers[:2])); err == nil {
+		t.Fatal("corpus above the accepted 127-record tracer envelope was installed")
 	}
 }
 
