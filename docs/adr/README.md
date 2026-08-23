@@ -33,6 +33,7 @@ Current decisions:
 - [0022 — Bind Target validity in the signed Name Record](0022-bind-name-record-validity.md)
 - [0023 — Persist signed Namespace successors before materialization](0023-pending-signed-namespace-successors.md)
 - [0024 — Select the native Interactive Route foundation](0024-native-interactive-route-foundation.md)
+- [0025 — Use State-referenced Entry Invites](0025-state-referenced-entry-invites.md)
 
 Withdrawn decisions retained for history:
 

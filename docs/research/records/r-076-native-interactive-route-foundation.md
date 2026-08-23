@@ -184,4 +184,4 @@ creating `route/webtunnel`. R-013's Carrier Lab and R-036's WebTunnel record
 remain historical evidence only. M8 must create the v1 canonical codec,
 vectors, and downgrade/mixed-generation tests before any peer-facing profile
 is announced; until then a local target implementation has no compatibility
-promise.
+promise. R-077/ADR-0025 select the required state-referenced Entry Invite v1.
