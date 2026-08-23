@@ -41,13 +41,11 @@ specification.
 
 ## Historical provenance
 
-The Horizon 3 briefs, Stage 5--7 evidence and specifications, completed
-Stage 8 inventories and reviews, stopped campaign material, and completed
-research records explain how current decisions were reached. They are not
-current commands, package contracts, or qualification evidence. Use them only
-when a current owner, ADR, or research record needs provenance; otherwise start
-with the routes above.
+Closed stage material, completed research records, and disposable experiments
+are removed after their retained facts gain a current owner. Git history is the
+provenance route; it is not a current command, package, or Qualification
+contract. Start with the routes above unless a current ADR or active research
+record explicitly needs that history.
 
-The repository preserves their Git history. A completed disposable experiment
-is removed when its result is promoted, rejected, or superseded; only an active
-experiment may remain under [experiments](../../experiments/README.md).
+Only an active experiment may remain under
+[experiments](../../experiments/README.md).

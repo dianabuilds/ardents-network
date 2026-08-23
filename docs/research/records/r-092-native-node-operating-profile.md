@@ -128,6 +128,20 @@ outside Git.
   zero sockets (from 11/3 before work); Go goroutines fell from 2 to 1. This
   confirms only the synthetic cancellation cleanup path in WSL, not an OS
   resource-pressure rule, a NET-01A result, or a selected profile.
+- **Measurement (2026-08-23, non-reference VPS sanity):** source commit
+  `699b5930b3127e4995393b0838f112953a2fafbb`, cross-compiled with
+  `go1.26.6 windows/amd64` to Linux/amd64 binary SHA-256
+  `77aaeb5eb884d07a989f7404d863c3dec8e0ea9e0eaed0c00f6d4091de954608`,
+  ran on Linux `5.15.0-185-generic`, `amd64`, four logical CPUs, and
+  `8,303,755,264` bytes of memory. The external raw transcript records two
+  10-second, two-leg, 65,536-byte runs. In both, two legs completed the
+  synthetic reciprocal TLS/LegBinding path, listener withdrawal refused one
+  later dial, and terminal cleanup left six file descriptors, zero sockets,
+  and one goroutine (from two before work). The VPS is double the declared CPU
+  class and about four times its memory; it is an independent Linux regression
+  sanity check for the refactored synthetic path, not NET-01A reference-host
+  evidence, resource pressure, pre-kernel refusal, a production Node listener,
+  or a selected capacity/profile.
 - **Measurement:** no Linux *reference-host* result has yet been captured.
 
 ## Recommendation

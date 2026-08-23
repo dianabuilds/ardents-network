@@ -33,14 +33,12 @@ shape. `internal/naming/resolution` owns the maintained product OHTTP/CIRCL Adap
 No other product Module imports this closure. A change repeats R-047/R-026
 instead of allowing its cryptographic configuration to drift.
 
-**Stage 5 Windows ACL historical record and remaining owners:** the removed
-`internal/bridge`, Stage-5 evidence generator, and R-090-retired
-`internal/lab/blockedverify` formerly used this Windows ACL path. The retained
-platform-specific owners use `golang.org/x/sys/windows` on Windows to apply a
-protected DACL granting the current process owner full control and nobody else.
-The module is a direct platform-specific product dependency. It avoids a
-child PowerShell process during Invite import and avoids first-party `unsafe`.
-Unix builds retain the standard-library permission implementation.
+**Windows platform use:** current platform-specific owners use
+`golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
+current process owner full control and nobody else. The module is a direct
+platform-specific product dependency. It avoids a child PowerShell process and
+avoids first-party `unsafe`. Unix builds retain the standard-library permission
+implementation.
 `x/sys` is the Go project's maintained, tagged operating-system support module;
 the selected version has the existing checksum/license review, passes the
 repository's offline build/tests and reachable vulnerability scan, and the
@@ -53,7 +51,7 @@ dependency advisories, so the raised versions above are mandatory. On Go
 1.26.6 the exact set passes checksums, upstream and independent role-view tests,
 offline build/test with cgo disabled, and reachable `govulncheck`. The reachable
 Go packages have no cgo files or `unsafe` imports. CIRCL contains optimized
-assembly behind portable Go APIs; Gate C selects no custom cryptographic suite.
+assembly behind portable Go APIs; Ardents selects no custom cryptographic suite.
 
 **Alternatives:** `chris-wood/ohttp-go` at commit `776f22a178b8` has a smaller
 MIT/BSD closure and passes with CIRCL `v1.6.5`, but has no release
@@ -74,8 +72,8 @@ offline-build review.
 to a Docker build with `--network=none`. No vendor tree, module cache, generated
 dependency, or Gateway key is committed.
 
-**Removal plan:** the complete closure leaves only when both the product private
-resolution Adapter and Gate C Adapter are removed. A changed version or
+**Removal plan:** the complete closure leaves only when the product private
+resolution Adapter is removed. A changed version or
 dependency graph repeats R-047 and R-026; an unremediated reachable
 high/critical vulnerability, unacceptable license, offline-build failure, or
 broken role split selects `stop`, not a fork.
@@ -134,10 +132,10 @@ closure is removed with the one Release Decision Module. A version, module,
 surface, role, delegation, cache, or multi-repository change requires a new
 dependency review and applicable ADR analysis.
 
-**Offline supply:** S7.1 must add checksums only after acceptance, prepare the
-module cache outside Git, verify it online, and prove an offline no-cgo build.
-No module cache, vendor tree, generated repository, key, or binary belongs in
-the repository.
+**Offline supply:** integration adds checksums only after review, prepares the
+module cache outside Git, verifies it online, and proves an offline no-cgo
+build. No module cache, vendor tree, generated repository, key, or binary
+belongs in the repository.
 
 ## Current Authority Custody dependency
 
@@ -162,17 +160,12 @@ without echo for active-record verification. The adapter neither accepts a
 password from arguments, environment, configuration, nor a stream shared with
 Application data; it does not expose decrypted Authority material.
 
-The disposable logic prototype first used the current root module's `v0.51.0`
-to test format/state coherence, then repeated the full 64 MiB sequence in a
-temporary module with exact `v0.52.0` at commit
-`a1c0d9929856c8aba2b31f079340f00578eda803` and checksum
-`h1:RMs7fP2rXdep0CftQlK8Uf+kibLm7qkCcradZWYz988=`. Both passed, but scheduled
-development-host integration must still run official exact-version Argon2id
-vectors, the fixed 256 MiB resource profile, license/source identity, and
-reachable-advisory checks before a supported custody handoff. Weakest-native-host
-performance remains a separate qualification gate. Removing password-derived
-custody removes this caller. A version/profile/surface change requires a new
-dependency review and applicable ADR analysis.
+Before a supported custody handoff, integration must run official exact-version
+Argon2id vectors, the fixed 256 MiB resource profile, license/source identity,
+and reachable-advisory checks. Weakest-native-host performance remains a
+separate Qualification gate. Removing password-derived custody removes this
+caller. A version/profile/surface change requires a new dependency review and
+applicable ADR analysis.
 
 ## Development tools
 
