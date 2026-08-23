@@ -3,6 +3,7 @@ package custody
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -131,7 +132,7 @@ func publishAndTestBundle(ctx context.Context, path string, body, password []byt
 		return EnvelopeInfo{}, err
 	}
 	backupPath := ""
-	committed := false
+	removeBackup := false
 	if existing {
 		confirmed, err := input.Confirm(ctx, ConfirmationPromptBundleReplacement)
 		if err != nil {
@@ -144,22 +145,54 @@ func publishAndTestBundle(ctx context.Context, path string, body, password []byt
 		if err != nil {
 			return EnvelopeInfo{}, err
 		}
-		defer os.Remove(backupPath)
+		removeBackup = true
 		defer func() {
-			if !committed {
-				_ = os.Rename(backupPath, destination)
+			if removeBackup {
+				_ = os.Remove(backupPath)
 			}
 		}()
 	}
-	if err := os.Rename(temporaryPath, destination); err != nil {
+	if err := durableRename(temporaryPath, destination); err != nil {
 		return EnvelopeInfo{}, fmt.Errorf("publish bundle: %w", err)
+	}
+	if err := syncDirectory(parent); err != nil {
+		cause, keepBackup := restorePreviousBundle(destination, backupPath, parent, fmt.Errorf("flush bundle directory: %w", err))
+		if keepBackup {
+			removeBackup = false
+		}
+		return EnvelopeInfo{}, cause
 	}
 	info, err := testRestoreBundle(destination, password, expected)
 	if err != nil {
-		return EnvelopeInfo{}, err
+		cause, keepBackup := restorePreviousBundle(destination, backupPath, parent, err)
+		if keepBackup {
+			removeBackup = false
+		}
+		return EnvelopeInfo{}, cause
 	}
-	committed = true
+	if backupPath != "" {
+		if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+			return EnvelopeInfo{}, fmt.Errorf("remove replaced bundle: %w", err)
+		}
+		removeBackup = false
+	}
 	return info, nil
+}
+
+// restorePreviousBundle restores an encrypted backup after a failed
+// publication. If the replacement cannot be restored, it deliberately leaves
+// the backup for repair instead of pretending that the previous Bundle is safe.
+func restorePreviousBundle(destination, backup, parent string, cause error) (error, bool) {
+	if backup == "" {
+		return cause, false
+	}
+	if err := durableRename(backup, destination); err != nil {
+		return errors.Join(cause, fmt.Errorf("restore previous bundle: %w", err)), true
+	}
+	if err := syncDirectory(parent); err != nil {
+		return errors.Join(cause, fmt.Errorf("flush restored bundle directory: %w", err)), false
+	}
+	return cause, false
 }
 
 // copyEncryptedBundle preserves an existing encrypted destination before an

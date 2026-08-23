@@ -352,6 +352,35 @@ func TestCustodyRejectsNonRegularFileInputs(t *testing.T) {
 	}
 }
 
+func TestRestorePreviousBundleRestoresEncryptedBytesAfterFailedPublication(t *testing.T) {
+	parent := t.TempDir()
+	destination := filepath.Join(parent, "owner-chosen-bundle.json")
+	backup := filepath.Join(parent, ".ardents-recovery-bundle-previous-test")
+	previous := []byte(`{"previous":"encrypted-by-its-own-envelope"}`)
+	replacement := []byte(`{"replacement":"encrypted-by-its-own-envelope"}`)
+	if err := os.WriteFile(destination, replacement, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(backup, previous, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("final bundle test restore failed")
+	returned, keepBackup := restorePreviousBundle(destination, backup, parent, cause)
+	if !errors.Is(returned, cause) || keepBackup {
+		t.Fatalf("restore result = (%v, keep=%t), want original failure and no retained backup", returned, keepBackup)
+	}
+	actual, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(actual, previous) {
+		t.Fatal("failed publication did not restore the previous encrypted bundle")
+	}
+	if _, err := os.Stat(backup); !os.IsNotExist(err) {
+		t.Fatalf("restored backup remains at temporary path: %v", err)
+	}
+}
+
 type sequenceSecrets struct {
 	values        [][]byte
 	confirmations []bool
