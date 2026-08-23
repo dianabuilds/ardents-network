@@ -292,8 +292,9 @@ rules](docs/development/repository-layout.md) separate the current factual tree
 from conditional future Modules and delivery zones. The [package
 map](docs/development/package-map.md) lists only Go packages that exist and their
 permitted current imports. Run `make unit` while working, `make e2e` for
-cross-process behavior, `make live` for the real-container network, and
-`make check` before integration.
+retained cross-process behavior, and `make check` before integration. The
+native Route live profile is inactive until M8/M11 select and measure its
+peer-facing runtime.
 
 Carrier Lab preflight is run with:
 

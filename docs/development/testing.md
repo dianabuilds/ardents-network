@@ -21,36 +21,18 @@ output and other public behavior. Each test creates fresh fixtures in its own
 temporary directory and cleans them through `testing.T` ownership. Run all
 process tests with `make e2e`.
 
-The current process suites cover authenticated Network Source refresh, Node
-lifecycle and pressure, Route selection, transfer, reference capacity, and
-fourfold functional scale-up, plus Service command readiness,
-bounded failure, cleanup, and same-connection recovery when the first
-replacement Route Attachment fails. Recovery is exercised through real
-Service and Application commands; only the public Route socket is replaced by
-the scenario-owned fixture.
+The retained process suites cover authenticated Network Source refresh, Node
+lifecycle and pressure, plus Service command readiness, bounded failure,
+cleanup, and same-connection recovery. The H3 Route process suite is retired
+in M8; a native Route process suite is registered only after its peer-facing
+runtime exists.
 
 ## Live
 
-Real-network tests live under `tests/live/` and use the `live` build tag. They
-build current images, start separate containers on an internal network, assert
-public process results, and remove their containers, networks, volumes, images,
-keys, and state before returning. Run them explicitly with `make live` on a
-host with Docker.
-
-Live scenarios are named for behavior such as authenticated Route transfer,
-recovery, impairment, role capacity, or pressure. They never use numerical
-stage/profile selectors. Each scenario is directly runnable and owns all prerequisites.
-The current network suite checks successful authenticated transfer,
-fail-closed behavior with a missing Route position, declared concurrent role
-capacity, checked Route pressure/lifecycle under the declared cgroup profile,
-and sustained Service Connections in both data directions through the
-complete Route under real `tc/netem` delay, jitter, loss, and a finite link cap.
-Each impaired direction uses 60-second direct baselines before and after its
-batch, rejects baseline drift above 10%, samples endpoint CPU, RSS, carrier
-traffic, and per-direction bitrate, and asserts Application-visible identity
-and byte-stream continuity. It requires a locally built locked Carrier
-tooling image, selected by its identity label or `ARDENTS_LIVE_TOOL_IMAGE`; this
-is a live-host tool dependency, not a receipt from another test.
+The live profile is inactive. R-076 retires the H3 container Route; R-081
+forbids inventing a native Node resource profile to replace it. M8/M11 must
+first provide a native peer-facing Route and measured Node operating profile,
+then register a new bounded live suite and its explicit entrypoint.
 
 ## Commands
 
@@ -58,7 +40,6 @@ is a live-host tool dependency, not a receipt from another test.
 - `make e2e`: real product commands in local processes.
 - `make fuzz`: bounded fuzzing of a maintained untrusted parser/encoder pair.
 - `make lab-test`: closed historical laboratory Modules, outside product testing and `make check`.
-- `make live`: real product commands in containers and a real Docker network.
 - `make quick-check`: architecture, vet, unit, build, and module tidiness.
 - `make check`: unit, e2e, race, build, formatting, Staticcheck, and
   vulnerability checks; fast independent checks run concurrently, then the

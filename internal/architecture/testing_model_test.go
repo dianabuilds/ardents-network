@@ -26,7 +26,7 @@ func TestRepositorySeparatesUnitE2EAndLiveTestsWithoutStages(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(makefile)
-	for _, target := range []string{"unit:", "e2e:", "live:"} {
+	for _, target := range []string{"unit:", "e2e:"} {
 		if !strings.Contains(text, target) {
 			t.Errorf("Makefile is missing %s", target)
 		}

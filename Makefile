@@ -1,7 +1,8 @@
 SHELL := /bin/sh
 
-# Fast product checks are container-free. Long live container scenarios remain
-# an explicit independent test surface; historical Carrier Lab is separate.
+# Fast product checks are container-free. Native live Route scenarios are not
+# selected until M8/M11 provide their peer-facing runtime; historical Carrier
+# Lab remains separate.
 
 QUALITY_CACHE_ROOT ?= $(if $(TEMP),$(TEMP),/tmp)/ardents-network-quality
 export GOENV := off
@@ -11,7 +12,7 @@ export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
-.PHONY: architecture build check e2e format format-check fuzz lab-test live mod-check prototype-r053 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture build check e2e format format-check fuzz lab-test mod-check prototype-r053 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -43,9 +44,6 @@ fuzz:
 
 lab-test:
 	go test $(LAB_PACKAGES) -short -shuffle=on -count=1 -timeout=20m
-
-live:
-	go test -tags=live ./tests/live/... -count=1 -timeout=80m
 
 test: unit e2e
 

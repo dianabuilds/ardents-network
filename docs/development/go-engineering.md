@@ -59,8 +59,8 @@ Docker or tool installation.
 
 Run `make check` before integration. It additionally verifies exact tool
 versions, runs cross-process end-to-end tests, the unit race detector,
-Staticcheck, and govulncheck. Run `make live` separately on a Docker-capable
-host when network-container behavior changes. The vulnerability check reads the
+Staticcheck, and govulncheck. The native Route live profile is inactive until
+M8/M11 select its peer-facing runtime and measured Node operating profile. The vulnerability check reads the
 Go vulnerability database, so this full gate requires network access unless the
 database is already cached.
 

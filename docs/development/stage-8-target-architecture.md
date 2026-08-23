@@ -152,8 +152,8 @@ are not Go packages and do not represent a retained test surface.
 | `internal/streamworkload` | Retain only a named test/Qualification workload; otherwise delete. | M9/M14. |
 | `internal/architecture` | Retain factual graph/policy gate; remove historical receipts as their truth moves to current owners. | M0/M14. |
 | `internal/lab/blockedverify`, `internal/lab/carrier`, `internal/lab/directcontrol`, `internal/lab/modulecache`, `internal/lab/namedsite`, `internal/lab/nativecircuit`, `internal/lab/preflight`, `internal/lab/routecomparison`, `internal/lab/runlayout`, `internal/lab/sourceidentity`, `internal/lab/stage6evidence`, `internal/lab/stage6verify`, `internal/lab/tooling` | Never promote into product runtime. Retain only a named reproducer/verifier with source identity and retirement condition, otherwise delete code/assets at closure. R-080 already removed the Stage-5 evidence generator. | M14, subject to DA-11. |
-| `tests/e2e/network-source`, `tests/e2e/node`, `tests/e2e/route`, `tests/e2e/service` | Replace tests through the target Module/process seam, retaining only independently observable process facts. | M3/M8/M9/M11. |
-| `tests/live/network` | Retain only for a selected live-network fact; it is not current Qualification. | M8-M11/M14, subject to DA-06/08 and claim acceptance. |
+| `tests/e2e/network-source`, `tests/e2e/node`, `tests/e2e/service` | Replace tests through the target Module/process seam, retaining only independently observable process facts. | M3/M9/M11. |
+| native live Route suite | Register only after M8/M11 select the peer-facing Route and measured Node operating profile; it is not current Qualification. | R-081, M8-M11/M14, subject to DA-06/08 and claim acceptance. |
 
 ## Acceptance and stop rules
 

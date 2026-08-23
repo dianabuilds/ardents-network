@@ -35,11 +35,12 @@
     },
     {
       "id": "live",
-      "state": "active",
-      "make_target": "live",
+      "state": "inactive",
+      "make_target": "",
       "surface": "live-network",
-      "prerequisites": ["Docker-capable host", "pinned live image/tooling inputs"],
-      "invalid_environment": "Docker host or pinned live input unavailable"
+      "prerequisites": ["selected native Route peer runtime", "pinned eligible host inputs"],
+      "invalid_environment": "no native Route live suite is selected",
+      "activation": "M8/M11 provide a native peer-facing Route and a selected measured Node operating profile"
     },
     {
       "id": "historical-reproduction",
@@ -100,22 +101,10 @@
       "owner": "node adapter process behavior"
     },
     {
-      "id": "e2e-route",
-      "path": "tests/e2e/route",
-      "profile": "process",
-      "owner": "route adapter process behavior"
-    },
-    {
       "id": "e2e-service",
       "path": "tests/e2e/service",
       "profile": "process",
       "owner": "service adapter process behavior"
-    },
-    {
-      "id": "live-network",
-      "path": "tests/live/network",
-      "profile": "live",
-      "owner": "network live scenario"
     }
   ]
 }

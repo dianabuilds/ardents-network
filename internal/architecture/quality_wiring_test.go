@@ -12,7 +12,7 @@ func assertQualityWiring(t *testing.T, root string) {
 	t.Helper()
 	makefile := readProjectFile(t, root, "Makefile")
 	for _, required := range []string{
-		"unit:", "e2e:", "live:",
+		"unit:", "e2e:",
 		"QUICK_CHECK_TARGETS := format-check vet unit build mod-check",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln",
@@ -44,12 +44,6 @@ func assertQualityWiring(t *testing.T, root string) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}
 	}
-	liveWorkflow := readProjectFile(t, root, ".github/workflows/live.yml")
-	for _, required := range []string{"contents: read", "go-version-file: go.mod", "run: make live"} {
-		if !bytes.Contains(liveWorkflow, []byte(required)) {
-			t.Errorf("live workflow is missing mandatory control %q", required)
-		}
-	}
 	carrierWorkflow := readProjectFile(t, root, ".github/workflows/carrier-lab.yml")
 	for _, required := range []string{"workflow_dispatch:", "runs-on: ubuntu-26.04", "route-experiment", "--network=none", "ardents-experiment-session.", "experiment-verdict.json"} {
 		if !bytes.Contains(carrierWorkflow, []byte(required)) {
@@ -57,7 +51,6 @@ func assertQualityWiring(t *testing.T, root string) {
 		}
 	}
 	assertPinnedActions(t, workflow)
-	assertPinnedActions(t, liveWorkflow)
 	assertPinnedActions(t, carrierWorkflow)
 }
 
