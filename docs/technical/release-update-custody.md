@@ -1,8 +1,9 @@
 # Release, Update, and Authority Custody
 
-Status: **current maintained technical contract.** This document records the
-current Module contracts; it does not claim a supported installer, automatic
-unlock, platform qualification, or a complete operator journey.
+Status: **current maintained technical contract.** The Stage 8 technical
+refactor is complete in this bounded scope. This document does not claim a
+supported installer, automatic unlock, platform qualification, or a complete
+operator journey.
 
 ## Custody ownership
 
@@ -37,6 +38,16 @@ closed. Activation advances local watermarks and creates no runtime Instance
 Key or Local Grant. The original quarantine record remains export-only and
 cannot sign.
 
+## Stage 8 Custody disposition
+
+Stage 8 completes the Custody ownership transfer and its bounded encrypted
+Vault/Bundle/signing contract. It deliberately does not select a supported
+Windows or Ubuntu storage profile, crash/power-loss or permissions
+qualification, a qualified Application isolation profile, or a complete
+Custody operator lifecycle. Those are future product/platform work and need a
+new scope decision and the applicable ADR analysis; they are not deferred
+implementation defects in the current Module.
+
 ## Explicit limits
 
 - `ardents name control` consumes the retained complete signed control wire;
@@ -50,7 +61,8 @@ cannot sign.
   V0 provenance fixtures. The V2 fixture cutover omits the field; an independent C4
   verifier retains the exact V0 vectors, and no V2 compatibility writer or
   Vault-status interpretation is permitted.
-- Windows/Ubuntu crash, permissions, and power-loss qualification remain open.
+- Windows/Ubuntu crash, permissions, and power-loss qualification are future
+  product/platform work, not current support claims.
 - R-044 threshold recovery already replaces the effective Name Authority in
   Namespace; its completed Record rejects a signature from the former key.
   However, an active Vault has only opaque environment/network/root/authority
@@ -59,7 +71,7 @@ cannot sign.
   A future opaque replacement proof needs its own format decision before any
   D08 migration. Broker Grant
   revocation remains a separate local-admission transition.
-- Supported lifecycle/installer work remains open.
+- Supported lifecycle/installer work is future product scope.
 
 ## Evidence
 

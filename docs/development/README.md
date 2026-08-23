@@ -19,13 +19,6 @@ specification.
 - [Dependency register](dependencies.md) records reviewed runtime dependencies.
 - [Scoped risk exceptions](scoped-risk-exceptions.md) records any accepted,
   bounded exception to the normal engineering rules.
-
-## Current Stage 8 controls
-
-- [Target architecture](stage-8-target-architecture.md) is the intended
-  maintained shape after the active migration.
-- [Refactoring and retirement plan](refactoring-plan.md) is the active work
-  control while Stage 8 is in progress.
 - [Current package map](package-map.md) is the factual register of maintained
   Go packages and their permitted imports.
 
