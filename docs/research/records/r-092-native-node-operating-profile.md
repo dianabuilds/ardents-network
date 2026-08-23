@@ -83,6 +83,9 @@ its raw Linux observations outside Git.
   result only: that host is not the R-092 Linux reference environment and its
   timing/allocation output is not a capacity measurement.
 - **Measurement:** no Linux reference-host result has yet been captured.
+- **Measurement (2026-08-23):** the local WSL distribution enumeration returned
+  `E_ACCESSDENIED`; it supplies no Linux observation and does not relax the
+  declared reference-host requirement.
 
 ## Recommendation
 
