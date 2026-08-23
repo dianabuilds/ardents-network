@@ -316,6 +316,42 @@ profile: R-081 assigns measured Node admission, pressure, drain, and listener
 integration to M11. The remaining M8 work is the selected native role-carriage
 and impairment path that can be integrated only with that later Node work.
 
+### M9 — Publication and Connection
+
+**In progress, 2026-08-23.** Under R-084, `service/publication` is now the
+single C1 owner of the publication root. It creates an exclusive owned root,
+reads the old numeric floor only when that root is empty, writes only its own
+monotonic floor, stages one immutable public record under its 16-hex
+generation, and atomically publishes `current`. A restarted record is public
+evidence only: without the volatile Instance signer it cannot be acquired.
+`Publish`, `Unpublish`, supersession, and `Close` withdraw before draining,
+then erase the signer and remove the withdrawn generation. The adapter no
+longer writes or reads the former `GenerationStateFile`; its only temporary
+M9 input is the one-time `LegacyGenerationFloor` read by Publication.
+
+`internal/service/publication/publication.go` (408 lines) keeps one cohesive
+publication lifecycle: admission of one already-validated generation,
+immutable-record creation, withdrawal/drain, and the lease that confines the
+volatile Instance signer. Splitting record commit from the state transition
+would either expose a record before its floor/pointer is durable or force the
+drain/erase invariant across coordinating objects. `root.go` (352 lines)
+keeps the separate physical-root invariant: marker/lease identity, strict
+inventory, migration floor, bounded reads, staging cleanup, and pointer/floor
+replacement. `TestPublishAcquireDrainAndUnpublish`,
+`TestPersistedPublicationIsNotLiveAfterRestartAndFloorSurvives`, and
+`TestOpenRejectsSurplusOrTamperedPublicationState` cover publication,
+draining, restart, floor, surplus, and tamper paths; the retained Service
+Connection and endpoint process tests exercise the caller cutover.
+
+`serviceconn` is only a temporary caller while `service/connection` is built:
+it delegates publication persistence, generation, acquisition and Instance
+signing to the opaque Publication lease, so it cannot copy or persist the
+private key. Its old action union, Introduction acknowledgement tracer, H3
+connection records, recovery stream, and result/evidence bag remain explicit
+M9 deletion inputs. ADR-0028's native connection grammar, vectors and its
+new focused caller replace them in the next M9 slice; this partial cutover
+does not claim that R-083 is implemented or that M9 is complete.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

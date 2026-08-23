@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/binary"
+	"errors"
+	"os"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/serviceconn"
@@ -11,6 +13,7 @@ import (
 
 type evidenceEndpoint interface {
 	Do(context.Context, serviceconn.Request) (serviceconn.Result, error)
+	Close() error
 }
 
 type connectionFixture struct {
@@ -22,6 +25,7 @@ type connectionFixture struct {
 	credential                    serviceconn.Credential
 	clientEndpoint, publisherNode evidenceEndpoint
 	publication                   []byte
+	publicationRoot               string
 }
 
 func newConnectionFixture() (connectionFixture, error) {
@@ -45,12 +49,17 @@ func newConnectionFixture() (connectionFixture, error) {
 	if err != nil {
 		return value, err
 	}
-	value.publisherNode, err = serviceconn.New(serviceconn.Setup{NetworkID: value.network, BrokerID: [32]byte{46},
-		AuthorityPublic: authority[:], IntroductionPublic: introduction[:], ConnectionPrincipal: value.publisher,
-		AdministrationPrincipal: value.admin})
+	publicationRoot, err := os.MkdirTemp("", "ardents-stage6-publication-")
 	if err != nil {
 		return value, err
 	}
+	value.publisherNode, err = serviceconn.New(serviceconn.Setup{NetworkID: value.network, BrokerID: [32]byte{46},
+		AuthorityPublic: authority[:], IntroductionPublic: introduction[:], ConnectionPrincipal: value.publisher,
+		AdministrationPrincipal: value.admin, PublicationRoot: publicationRoot})
+	if err != nil {
+		return value, err
+	}
+	value.publicationRoot = publicationRoot
 	admin, err := admitConnection(value.publisherNode, "administration", value.admin, value.now)
 	if err != nil {
 		return value, err
@@ -63,6 +72,13 @@ func newConnectionFixture() (connectionFixture, error) {
 	}
 	value.publication = published.Publication
 	return value, nil
+}
+
+func (value connectionFixture) Close() error {
+	clientErr := value.clientEndpoint.Close()
+	publisherErr := value.publisherNode.Close()
+	removeErr := os.RemoveAll(value.publicationRoot)
+	return errors.Join(clientErr, publisherErr, removeErr)
 }
 
 func admitConnection(endpoint evidenceEndpoint, surface string, principal [32]byte, at time.Time) ([32]byte, error) {

@@ -8,6 +8,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
 const (
@@ -46,19 +48,6 @@ type DestinationBinding struct {
 	Commitment       [32]byte
 }
 
-// Credential is one public bounded authorization for an exclusive Instance.
-type Credential struct {
-	AuthorityPublic [32]byte `json:"authority_public"`
-	Target          [32]byte `json:"target"`
-	InstancePublic  [32]byte `json:"instance_public"`
-	Generation      uint64   `json:"generation"`
-	NotBefore       int64    `json:"not_before"`
-	NotAfter        int64    `json:"not_after"`
-	NetworkID       [32]byte `json:"network_id"`
-	Capabilities    uint32   `json:"capabilities"`
-	Signature       [64]byte `json:"signature"`
-}
-
 // Setup fixes one Endpoint broker generation and its two local principals.
 type Setup struct {
 	NetworkID               [32]byte
@@ -67,8 +56,8 @@ type Setup struct {
 	IntroductionPublic      ed25519.PublicKey
 	ConnectionPrincipal     [32]byte
 	AdministrationPrincipal [32]byte
-	LastGeneration          uint64
-	GenerationStateFile     string
+	PublicationRoot         string
+	LegacyGenerationFloor   string
 	Clock                   func() time.Time
 	Resources               func(string, int) uint32
 }
@@ -142,9 +131,7 @@ type endpoint struct {
 	adminPrincipal      [32]byte
 	sessions            map[[32]byte]localSession
 	consumed            map[[32]byte]localSession
-	current             *currentPublication
-	lastGeneration      uint64
-	generationStateFile string
+	publications        *publication.Publication
 	clock               func() time.Time
 	resources           func(string, int) uint32
 }
@@ -160,10 +147,6 @@ func New(input Setup) (*endpoint, error) {
 	copy(authority[:], input.AuthorityPublic)
 	var introduction [32]byte
 	copy(introduction[:], input.IntroductionPublic)
-	lastGeneration, err := readGeneration(input.GenerationStateFile, input.LastGeneration)
-	if err != nil {
-		return nil, err
-	}
 	clock := input.Clock
 	if clock == nil {
 		clock = time.Now
@@ -172,12 +155,33 @@ func New(input Setup) (*endpoint, error) {
 	if resources == nil {
 		resources = newResourceObserver()
 	}
-	return &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
+	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction:        introduction,
 		connectionPrincipal: input.ConnectionPrincipal, adminPrincipal: input.AdministrationPrincipal,
-		sessions: make(map[[32]byte]localSession, maximumSessions), lastGeneration: lastGeneration,
-		consumed: make(map[[32]byte]localSession, maximumSessions), generationStateFile: input.GenerationStateFile,
-		clock: clock, resources: resources}, nil
+		sessions: make(map[[32]byte]localSession, maximumSessions),
+		consumed: make(map[[32]byte]localSession, maximumSessions), clock: clock, resources: resources}
+	if input.AdministrationPrincipal != [32]byte{} {
+		if input.PublicationRoot == "" {
+			return nil, errors.New("publisher setup lacks a publication root")
+		}
+		opened, err := publication.Open(publication.Config{Root: input.PublicationRoot,
+			LegacyFloor: input.LegacyGenerationFloor, NetworkID: input.NetworkID,
+			Authority: input.AuthorityPublic, Clock: clock})
+		if err != nil {
+			return nil, err
+		}
+		endpoint.publications = opened
+	}
+	return endpoint, nil
+}
+
+// Close withdraws the publisher's live Instance and releases its publication
+// root. Client-only endpoints have no publication owner to close.
+func (endpoint *endpoint) Close() error {
+	if endpoint == nil || endpoint.publications == nil {
+		return nil
+	}
+	return endpoint.publications.Close()
 }
 
 // Do executes one admitted operation and returns only an R-002 product class.
@@ -202,7 +206,7 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (Result, error)
 	case "publish":
 		result, err = endpoint.publish(ctx, input)
 	case "unpublish":
-		result, err = endpoint.unpublish(input)
+		result, err = endpoint.unpublish(ctx, input)
 	case "connect":
 		result, err = endpoint.connect(ctx, input)
 	case "accept":

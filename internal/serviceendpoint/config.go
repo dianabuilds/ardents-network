@@ -13,17 +13,18 @@ import (
 const maximumEndpointStreamBytes = uint32(768 << 20)
 
 type endpointPlan struct {
-	Role, NetworkID, BrokerID, AuthorityPublic, ConnectionPrincipal       string
-	AdministrationPrincipal, Target                                       string
-	CandidateView, IsolationContext, DestinationBinding, RouteProfile     string
-	IntroductionSocket, IntroductionPublic                                string
-	ApplicationSocket, RouteSocket, AdministrationSocket                  string
-	PublicationFile, CredentialFile, InstanceKeyFile, GenerationStateFile string
-	At, Deadline, Lifetime                                                string
-	BytesEachDirection                                                    uint32
-	SendBytes, ReceiveBytes                                               uint32
-	MaximumConnections                                                    uint16
-	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter             int64
+	Role, NetworkID, BrokerID, AuthorityPublic, ConnectionPrincipal   string
+	AdministrationPrincipal, Target                                   string
+	CandidateView, IsolationContext, DestinationBinding, RouteProfile string
+	IntroductionSocket, IntroductionPublic                            string
+	ApplicationSocket, RouteSocket, AdministrationSocket              string
+	PublicationFile, CredentialFile, InstanceKeyFile                  string
+	PublicationRoot, LegacyGenerationFloor                            string
+	At, Deadline, Lifetime                                            string
+	BytesEachDirection                                                uint32
+	SendBytes, ReceiveBytes                                           uint32
+	MaximumConnections                                                uint16
+	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter         int64
 }
 
 func readPlan(path string) (endpointPlan, error) {
@@ -49,12 +50,12 @@ func (value endpointPlan) validate() error {
 	}
 	if value.Role == "client" && (value.Target == "" || value.AdministrationSocket != "" ||
 		value.CredentialFile != "" || value.InstanceKeyFile != "" || value.AdministrationPrincipal != "" ||
-		value.IntroductionSocket != "" || value.GenerationStateFile != "") {
+		value.IntroductionSocket != "" || value.PublicationRoot != "" || value.LegacyGenerationFloor != "") {
 		return errors.New("client plan contains publisher administration input")
 	}
 	if value.Role == "publisher" && (value.AdministrationSocket == "" || value.CredentialFile == "" ||
 		value.InstanceKeyFile == "" || value.IntroductionSocket == "" || value.IntroductionPublic == "" ||
-		value.GenerationStateFile == "") {
+		value.PublicationRoot == "") {
 		return errors.New("publisher plan lacks its administration input")
 	}
 	at, err := time.Parse(time.RFC3339, value.At)
@@ -148,7 +149,7 @@ func endpointSetup(plan endpointPlan) (serviceconn.Setup, time.Time, time.Durati
 	if err := planfile.FixedHex(plan.IntroductionPublic, setup.IntroductionPublic); err != nil {
 		return setup, time.Time{}, 0, err
 	}
-	setup.GenerationStateFile = plan.GenerationStateFile
+	setup.PublicationRoot, setup.LegacyGenerationFloor = plan.PublicationRoot, plan.LegacyGenerationFloor
 	setup.Resources = resourceObserver()
 	at, err := time.Parse(time.RFC3339, plan.At)
 	if err != nil {

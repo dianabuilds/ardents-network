@@ -3,6 +3,7 @@ package serviceconn
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rand"
@@ -49,8 +50,8 @@ func secureClient(ctx context.Context, raw net.Conn, credential Credential, bind
 }
 
 func securePublisher(ctx context.Context, raw net.Conn, credential Credential,
-	private ed25519.PrivateKey, binding Recovery, generation uint64) (*securedAttachment, [32]byte, error) {
-	certificate, err := instanceCertificate(credential, private)
+	signer crypto.Signer, binding Recovery, generation uint64) (*securedAttachment, [32]byte, error) {
+	certificate, err := instanceCertificate(credential, signer)
 	if err != nil {
 		raw.Close()
 		return nil, [32]byte{}, err
@@ -92,7 +93,7 @@ func connectionBinding(credential Credential, recovery Recovery) [32]byte {
 	value = append(value, credential.Target[:]...)
 	value = append(value, credential.InstancePublic[:]...)
 	value = append(value, credential.NetworkID[:]...)
-	value = append(value, credentialBody(credential)...)
+	value = append(value, legacyCredentialBody(credential)...)
 	value = append(value, recovery.CandidateView[:]...)
 	value = append(value, recovery.IsolationContext[:]...)
 	value = append(value, recovery.DestinationBinding[:]...)
@@ -119,9 +120,9 @@ func verifyInstance(expected [32]byte) func(tls.ConnectionState) error {
 	}
 }
 
-func instanceCertificate(credential Credential, private ed25519.PrivateKey) (tls.Certificate, error) {
-	public, ok := private.Public().(ed25519.PublicKey)
-	if !ok || len(private) != ed25519.PrivateKeySize || !bytes.Equal(public, credential.InstancePublic[:]) {
+func instanceCertificate(credential Credential, signer crypto.Signer) (tls.Certificate, error) {
+	public, ok := signer.Public().(ed25519.PublicKey)
+	if !ok || len(public) != ed25519.PublicKeySize || !bytes.Equal(public, credential.InstancePublic[:]) {
 		return tls.Certificate{}, errors.New("service Instance key does not match the current Credential")
 	}
 	template := &x509.Certificate{SerialNumber: new(big.Int).SetUint64(credential.Generation),
@@ -129,7 +130,7 @@ func instanceCertificate(credential Credential, private ed25519.PrivateKey) (tls
 		NotBefore: time.Unix(credential.NotBefore, 0), NotAfter: time.Unix(credential.NotAfter, 0),
 		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, public, private)
+	der, err := x509.CreateCertificate(rand.Reader, template, template, public, signer)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -137,5 +138,5 @@ func instanceCertificate(credential Credential, private ed25519.PrivateKey) (tls
 	if err != nil {
 		return tls.Certificate{}, err
 	}
-	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: private, Leaf: parsed}, nil
+	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: signer, Leaf: parsed}, nil
 }

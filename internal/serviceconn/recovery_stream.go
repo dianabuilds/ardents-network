@@ -2,7 +2,7 @@ package serviceconn
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto"
 	"crypto/sha256"
 	"errors"
 	"io"
@@ -25,7 +25,7 @@ type recoveryStream struct {
 	application io.ReadWriteCloser
 	credential  Credential
 	binding     Recovery
-	private     ed25519.PrivateKey
+	private     crypto.Signer
 	client      bool
 	opener      func(context.Context, Recovery) (net.Conn, error)
 	continuity  [32]byte
@@ -75,7 +75,7 @@ type recoveryOutcome struct {
 }
 
 func newRecoveryStream(ctx context.Context, application io.ReadWriteCloser, credential Credential,
-	binding Recovery, private ed25519.PrivateKey, client bool,
+	binding Recovery, private crypto.Signer, client bool,
 	opener func(context.Context, Recovery) (net.Conn, error), initial *securedAttachment,
 	continuity [32]byte, authorized time.Time, nameBinding DestinationBinding,
 	nameUpdates <-chan DestinationBinding,

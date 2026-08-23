@@ -88,7 +88,7 @@ func newRecoveryProcessFixture(t *testing.T) recoveryProcessFixture {
 	publisher["AdministrationPrincipal"], publisher["ApplicationSocket"] = hex32Fixture(administrator), path("publisher-app.sock")
 	publisher["RouteSocket"], publisher["AdministrationSocket"] = path("publisher-route.sock"), path("administration.sock")
 	publisher["IntroductionSocket"], publisher["CredentialFile"] = path("introduction.sock"), credentialPath
-	publisher["InstanceKeyFile"], publisher["GenerationStateFile"] = instancePath, path("generation.state")
+	publisher["InstanceKeyFile"], publisher["PublicationRoot"] = instancePath, path("publication-root")
 	publisher["SendBytes"], publisher["ReceiveBytes"] = 0, 8<<20
 
 	value := recoveryProcessFixture{root: root, clientPlan: path("client.json"), publisherPlan: path("publisher.json"),

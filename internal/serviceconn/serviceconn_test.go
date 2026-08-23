@@ -128,10 +128,11 @@ func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	publisher, err := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.publisherPrincipal, AdministrationPrincipal: fixture.administrationPrincipal,
-		Clock: func() time.Time { return clock }})
+		PublicationRoot: t.TempDir(), Clock: func() time.Time { return clock }})
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer publisher.Close()
 	session := admit(t, publisher, "connection", fixture.publisherPrincipal, fixture.now)
 	clock = clock.Add(16 * time.Second)
 	result, err := publisher.Do(context.Background(), serviceconn.Request{Action: "accept",
@@ -144,16 +145,20 @@ func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	setup := serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.publisherPrincipal, AdministrationPrincipal: fixture.administrationPrincipal,
-		GenerationStateFile: state}
+		PublicationRoot: state + "-publication", LegacyGenerationFloor: state}
 	first, err := serviceconn.New(setup)
 	if err != nil {
 		t.Fatal(err)
 	}
 	publish(t, first, fixture, fixture.first, fixture.firstPrivate)
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
 	restarted, err := serviceconn.New(setup)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer restarted.Close()
 	stale := admit(t, restarted, "administration", fixture.administrationPrincipal, fixture.now)
 	result, err = restarted.Do(context.Background(), serviceconn.Request{Action: "publish",
 		Principal: fixture.administrationPrincipal, Session: stale, Credential: fixture.first,
@@ -300,10 +305,15 @@ func newPublisher(t *testing.T, fixture fixture) endpointRunner {
 	endpoint, err := serviceconn.New(serviceconn.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{7},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal:     fixture.publisherPrincipal,
-		AdministrationPrincipal: fixture.administrationPrincipal})
+		AdministrationPrincipal: fixture.administrationPrincipal, PublicationRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if closeErr := endpoint.Close(); closeErr != nil {
+			t.Errorf("close publisher: %v", closeErr)
+		}
+	})
 	return endpoint
 }
 

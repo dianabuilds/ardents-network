@@ -32,6 +32,7 @@ func runConnectionCell(trace *traceRecord) error {
 	if err != nil {
 		return err
 	}
+	defer fixture.Close()
 	record := namespace.Record{Name: "alice", Generation: 1, Revision: 2, Lease: "active",
 		Consistency: "current", Recovery: "stable", Authority: "authority", Target: fixture.credential.Target,
 		LeaseExpiresAt: fixture.now.Add(time.Hour).Unix(), GraceExpiresAt: fixture.now.Add(2 * time.Hour).Unix(),

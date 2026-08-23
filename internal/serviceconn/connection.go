@@ -2,6 +2,7 @@ package serviceconn
 
 import (
 	"context"
+	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
@@ -73,36 +74,35 @@ func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, er
 	}
 	releaseConnection := acquireResource(endpoint.resources, "service-connection")
 	defer releaseConnection()
-	endpoint.mu.Lock()
-	if endpoint.current == nil || input.At.Unix() < endpoint.current.credential.NotBefore || input.At.Unix() >= endpoint.current.credential.NotAfter {
-		endpoint.mu.Unlock()
+	if endpoint.publications == nil {
 		return failed("service unavailable", "no current published Service Instance is available", errors.New("publication is absent or expired"))
 	}
-	credential := endpoint.current.credential
-	private := append(ed25519.PrivateKey(nil), endpoint.current.private...)
-	endpoint.mu.Unlock()
+	lease, acquireErr := endpoint.publications.AcquireAt(ctx, input.At)
+	if acquireErr != nil {
+		return failed("service unavailable", "no current published Service Instance is available", acquireErr)
+	}
+	defer lease.Close()
+	credential := lease.Current().Credential
 	if err := validateRecoveryBinding(input, credential); err != nil {
 		return failed("local authorization or policy denial", "recovery binding is invalid", err)
 	}
 	binding := input.RecoveryBinding
-	defer erase(private)
-	defer endpoint.retire(credential.Generation)
 	defer input.Route.Close()
 	stop := context.AfterFunc(ctx, func() {
 		_ = input.Route.Close()
 		_ = input.Application.Close()
 	})
 	defer stop()
-	attachment, continuity, err := securePublisher(ctx, input.Route, credential, private, binding, 1)
+	attachment, continuity, err := securePublisher(ctx, input.Route, credential, lease, binding, 1)
 	if err != nil {
 		return failed("service target authentication failure", "incoming Service Instance TLS proof failed", err)
 	}
-	canary, err := proveInstance(attachment.connection, credential, private)
+	canary, err := proveInstance(attachment.connection, credential, lease)
 	if err != nil {
 		return failed("service target authentication failure", "incoming exact Target proof failed", err)
 	}
 	stream := newRecoveryStream(ctx, input.Application, credential, binding,
-		private, false, input.OpenAttachment, attachment, continuity, input.At,
+		lease, false, input.OpenAttachment, attachment, continuity, input.At,
 		DestinationBinding{}, nil, endpoint.resources)
 	sendBytes, receiveBytes := streamBounds(input)
 	outcome, err := stream.run(sendBytes, receiveBytes)
@@ -186,7 +186,7 @@ func authenticateInstance(connection io.ReadWriter, credential Credential) ([32]
 	return canary, nil
 }
 
-func proveInstance(connection io.ReadWriter, credential Credential, private ed25519.PrivateKey) ([32]byte, error) {
+func proveInstance(connection io.ReadWriter, credential Credential, signer crypto.Signer) ([32]byte, error) {
 	var canary [32]byte
 	challenge := make([]byte, challengeSize)
 	if _, err := io.ReadFull(connection, challenge); err != nil {
@@ -200,7 +200,11 @@ func proveInstance(connection io.ReadWriter, credential Credential, private ed25
 	proof := make([]byte, proofSize)
 	copy(proof[:4], "ASPR")
 	proof[4] = 1
-	copy(proof[5:], ed25519.Sign(private, proofMessage(challenge)))
+	signature, err := signer.Sign(nil, proofMessage(challenge), crypto.Hash(0))
+	if err != nil || len(signature) != ed25519.SignatureSize {
+		return canary, errors.New("Instance signer cannot prove this connection")
+	}
+	copy(proof[5:], signature)
 	return canary, writeAll(connection, proof)
 }
 
