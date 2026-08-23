@@ -58,6 +58,9 @@ submission. `OpenClaimWinner` remains the proof-only verifier for other
 observers. This boundary does not
 select a Network log, transport, or shared persistence foundation. An
 incomplete or forked close must not mutate a Lease.
+Accepted R-074 records that no global-close producer is selected in Stage 8;
+root-claim current behavior is unavailable until a future Network Epoch
+protocol supplies that complete close.
 
 An installation captures its current-generation identity. It may publish a
 selected pending prefix together with verified claim materialization, but it

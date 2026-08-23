@@ -196,8 +196,11 @@ same Network and Epoch installation that authenticated its close.
 The focused Namespace, Resolution, and independent Stage-6 evidence suites
 pass, as does the full `make check` profile (format, architecture, build, vet,
 module, staticcheck, vuln, unit, e2e, and race) after this slice. This is not a
-wave-complete claim: the remaining global-close owner must still commit the
-opaque inputs and issue the complete threshold close; the public `Record`,
+wave-complete claim: accepted R-074 records that no global-close owner is
+selected in Stage 8. Namespace must therefore not claim root-claim current
+behavior from its local input verifier; a future selected Network Epoch
+protocol must commit the opaque inputs and issue the complete threshold close.
+The public `Record`,
 `Op`, `ApplyLegacy`/`ApplyAtLegacy`, raw `Store.CommitLegacy`, and historical
 Stage-6 fixtures remain compatibility surfaces. Production Resolution
 already consumes `Binding` rather than lifecycle `Record`, but only the later
