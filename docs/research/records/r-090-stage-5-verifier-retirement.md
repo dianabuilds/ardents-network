@@ -96,7 +96,8 @@ and M14-style retirement condition.
 
 **Accepted 2026-08-23 under the Product Owner's standing Stage 8 delegation.**
 Delete `cmd/blocked-entry-verify-lab`, `internal/lab/blockedverify`, and their
-package-map and historical-profile entries as C0. Retain the Stage 5 records,
-configuration inputs, and R-080 as C4 provenance. R-090 completes the M14
+package-map and historical-profile entries, plus the unbound
+`prepare-stage5-final-inputs.ps1` campaign-input generator, as C0. Retain the
+Stage 5 records, configuration inputs, and R-080 as C4 provenance. R-090 completes the M14
 whole-record audit that R-080 expressly deferred; it does not supersede the
 R-080 retirement of the Stage 5 generator or alter the native-v1 Route profile.

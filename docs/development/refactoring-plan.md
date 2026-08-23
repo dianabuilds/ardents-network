@@ -586,7 +586,8 @@ for `blocked-entry-verify-lab` and `blockedverify`. The tracked Stage 5 files
 are only frozen preparation inputs, not an immutable H3 campaign bundle, and
 the accepted native-v1 Route profile makes an H3 S9.6 result ineligible for a
 future claim. The unbound reader, its command, package-map rows, and active
-historical-profile entries are therefore C0 deleted. R-080, the Stage 5
+historical-profile entries, plus the unbound campaign-input generator, are
+therefore C0 deleted. R-080, the Stage 5
 records, and `tests/live/stage5-final` remain C4 provenance; Carrier and Named
 Site are the remaining M14 laboratory families.
 

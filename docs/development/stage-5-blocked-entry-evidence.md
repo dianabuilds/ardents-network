@@ -55,7 +55,7 @@ covers versus what is explicitly reserved for S9.6.
   memory-limit, and network-namespace attestation, which the S9.6 stand
   collector owns.
 
-**Maintenance gates currently green:**
+**Historical development gates (2026-08-19):**
 
 - `internal/lab/blockedentry` unit and command E2E: `PASS`.
 - `internal/lab/blockedverify` decision tests: `PASS`.
@@ -344,46 +344,17 @@ harness and runner executable hashes and its supply class is
 `unrestricted-schema-fixture`; S9.6 must instead bind the accepted repository
 source and exact registered WebTunnel supply.
 
-Example invocation (all paths are explicit and no command downloads supply):
+No execution or preparation command survives. A future claim must create a
+new source-bound suite and immutable evidence contract; it cannot materialize
+or run a new H3 campaign from these historical inputs.
 
-```text
-scripts/prepare-stage5-final-inputs.ps1 \
-  -ConfigurationRoot <new-external-input-root> \
-  -InviteRoot <private-invites> -RouteCredentialRoot <private-role-credentials>
-
-blocked-entry-lab -workspace-root <repo> \
-  -prepare-final-root <new-external-spec-root> \
-  -configuration-root <external-input-root> \
-  -linux-image <pinned-ubuntu-image> -image-sha256 <image-hash> \
-  -go-builder-image-id <sha256:offline-builder-id> \
-  -tool-image-id <sha256:tool-id> \
-  -kernel <kernel-id> -client <pinned-client> -server <pinned-server>
-
-blocked-entry-lab -workspace-root <repo> -evidence-root <new-external-root> \
-  -run-id <id> -mode pass -registry-root <authoritative-external-registry> \
-  -runner <external-spec-root>/runtime/network-live.test \
-  -verifier <pinned-verifier> \
-  -client <pinned-client> -server <pinned-server>
-
-# The qualifying invocation changes mode to final-campaign and adds:
-# -campaign-spec <external-spec-root>/final-spec.json
-
-blocked-entry-verify-lab -workspace-root <repo> \
-  -manifest <root>/publishable/manifest.json \
-  -evidence <root>/publishable/evidence.json \
-  -closure <root>/publishable/closure.json -secret-root <root>/secret \
-  -registry-root <separate-external-registry> \
-  -canaries <root>/secret/canaries.json \
-  -publishable-root <root>/publishable -output <root>/verdict.json
-```
-
-Maintained command E2E covers `pass`, candidate `fail`, harness `invalid`,
-candidate-versus-pipeline canary attribution, candidate residue, incomplete
-inventory, replay, event/clock/observer mutation, unknown fields, secret
-tampering, missing evidence, canonical result publication, refusal to replace
-an existing verdict, recoverable pending replay publication, trustworthy versus
-unattributed forbidden packets, dedicated collector/blocker-loss invalid runs,
-and cleanup of temporary construction roots. Secret
-artifact paths are resolved inside the committed secret tree and symlink escape
-is rejected. Generated bundles and raw secrets remain outside Git and are
-deleted by their owning test/session lifecycle.
+The historical command E2E covered `pass`, candidate `fail`, harness
+`invalid`, candidate-versus-pipeline canary attribution, candidate residue,
+incomplete inventory, replay, event/clock/observer mutation, unknown fields,
+secret tampering, missing evidence, canonical result publication, refusal to
+replace an existing verdict, recoverable pending replay publication,
+trustworthy versus unattributed forbidden packets, dedicated collector/blocker-
+loss invalid runs, and cleanup of temporary construction roots. The historical
+secret artifact paths were resolved inside the committed secret tree and
+symlink escape was rejected. Generated bundles and raw secrets remained
+outside Git and were deleted by their owning test/session lifecycle.
