@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+type epochInstallationSigningPort func(RecordSigningRequest) ([]byte, error)
+
+func (sign epochInstallationSigningPort) Sign(request RecordSigningRequest) ([]byte, error) {
+	return sign(request)
+}
+
 func TestEpochInstallationCommitsVerifiedClaimWithSelectedPendingPrefix(t *testing.T) {
 	now, network := time.Unix(1_800_000_400, 0).UTC(), [32]byte{5}
 	policy, attesters := pendingTestPolicy(network)
@@ -50,9 +56,9 @@ func TestEpochInstallationCommitsVerifiedClaimWithSelectedPendingPrefix(t *testi
 	if err := installation.IncludePendingThrough(1); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.MaterializeClaim(winner, func(record Record) ([]byte, error) {
-		return SignRecord(network, record, claimKey)
-	}); err != nil {
+	if err := installation.MaterializeClaim(winner, epochInstallationSigningPort(func(request RecordSigningRequest) ([]byte, error) {
+		return ed25519.Sign(claimKey, request.Transcript()), nil
+	})); err != nil {
 		t.Fatal(err)
 	}
 	if err := installation.Commit(pendingTestAttester(attesters)); err != nil {

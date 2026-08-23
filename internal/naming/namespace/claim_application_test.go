@@ -13,6 +13,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 )
 
+type claimSigningPort func(namespace.RecordSigningRequest) ([]byte, error)
+
+func (sign claimSigningPort) Sign(request namespace.RecordSigningRequest) ([]byte, error) {
+	return sign(request)
+}
+
 func TestClaimWinnerMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.T) {
 	t.Parallel()
 	claimKey := deterministicAuthority("ordered-claim")
@@ -113,9 +119,9 @@ func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := wrongInstallation.MaterializeClaim(winner, func(record namespace.Record) ([]byte, error) {
-		return namespace.SignRecord(network, record, claimKey)
-	}); err == nil {
+	if err := wrongInstallation.MaterializeClaim(winner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+		return ed25519.Sign(claimKey, request.Transcript()), nil
+	})); err == nil {
 		t.Fatal("winner from a different Epoch was installed")
 	}
 	foreignNetwork := [32]byte{11}
@@ -130,20 +136,19 @@ func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.MaterializeClaim(foreignWinner, func(record namespace.Record) ([]byte, error) {
-		return namespace.SignRecord(network, record, claimKey)
-	}); err == nil {
+	if err := installation.MaterializeClaim(foreignWinner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+		return ed25519.Sign(claimKey, request.Transcript()), nil
+	})); err == nil {
 		t.Fatal("winner from a different Network was installed")
 	}
-	if err := installation.MaterializeClaim(winner, func(record namespace.Record) ([]byte, error) {
-		record.Continuity++
-		return namespace.SignRecord(network, record, claimKey)
-	}); err == nil {
+	if err := installation.MaterializeClaim(winner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+		return ed25519.Sign(claimKey, append(request.Transcript(), 0)), nil
+	})); err == nil {
 		t.Fatal("substituted signed claim Record was installed")
 	}
-	if err := installation.MaterializeClaim(winner, func(record namespace.Record) ([]byte, error) {
-		return namespace.SignRecord(network, record, claimKey)
-	}); err != nil {
+	if err := installation.MaterializeClaim(winner, claimSigningPort(func(request namespace.RecordSigningRequest) ([]byte, error) {
+		return ed25519.Sign(claimKey, request.Transcript()), nil
+	})); err != nil {
 		t.Fatalf("exact derived signed claim was denied after substitution: %v", err)
 	}
 	if err := installation.Commit(thresholdAttester(attesters[:2])); err != nil {

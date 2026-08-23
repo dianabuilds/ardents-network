@@ -76,12 +76,12 @@ func (installation *EpochInstallation) IncludePendingThrough(sequence uint64) er
 }
 
 // MaterializeClaim derives exactly the verified winner's root Record and asks
-// the claimant's signing port to sign that exact Record. A substituted signed
-// value is denied before it changes this installation or consumes the winner.
+// the claimant's signing port to sign its sealed transcript. A substituted
+// signature is denied before it changes this installation or consumes the winner.
 func (installation *EpochInstallation) MaterializeClaim(winner *ClaimWinner,
-	sign func(Record) ([]byte, error),
+	signer RecordSigner,
 ) error {
-	if installation == nil || installation.store == nil || winner == nil || winner.value == nil || sign == nil {
+	if installation == nil || installation.store == nil || winner == nil || winner.value == nil || signer == nil {
 		return errors.New("naming Epoch claim installation is invalid")
 	}
 	if winner.value.network != installation.store.policy.Network || winner.value.epoch != installation.epoch.Number {
@@ -100,9 +100,17 @@ func (installation *EpochInstallation) MaterializeClaim(winner *ClaimWinner,
 	if err != nil {
 		return err
 	}
-	signed, err := sign(record)
+	request, err := newRecordSigningRequest(installation.store.policy.Network, record)
+	if err != nil {
+		return errors.New("naming Epoch claim signing request is invalid")
+	}
+	signature, err := signer.Sign(request)
 	if err != nil {
 		return errors.New("naming Epoch claim signer denied the derived Record")
+	}
+	signed, err := request.seal(signature)
+	if err != nil {
+		return errors.New("naming Epoch claim signer substituted the derived Record")
 	}
 	verified, err := VerifyRecord(installation.store.policy.Network, signed)
 	if err != nil || !sameRecord(record, verified) {

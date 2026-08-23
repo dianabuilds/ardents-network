@@ -44,8 +44,8 @@ materialization time, and Namespace policy; it does not accept a later raw
 proof, arbitrary ordinal, Name, Authority, or lease deadline.
 
 `EpochInstallation` starts from the verified Store snapshot, can select only
-the next durable pending prefix, accepts a `ClaimWinner` only through a signer
-that returns the exact derived Record, and uses the existing threshold
+the next durable pending prefix, accepts a `ClaimWinner` only through a sealed
+signing request exposing the exact transcript and Authority key, and uses the existing threshold
 materialization statement for publication. `AdmitClaimCommitment` consumes one
 local R-045 `root-claim` proof and yields an opaque `EpochClaimInput`: its
 canonical 64 bytes are the commitment followed by the admitted challenge
@@ -112,8 +112,7 @@ tracer can grow.
 ## Remaining M5 work
 
 The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, raw
-`Store.CommitLegacy`, historical Stage 6
-fixtures, and interim Record signing callback remain compatibility surface.
+`Store.CommitLegacy`, and historical Stage 6 fixtures remain compatibility surface.
 They must be replaced by sealed Namespace constructors and one final
 installation Interface. The remaining global-close owner must accept the
 opaque admitted input, commit its ordinal/root, and issue the complete

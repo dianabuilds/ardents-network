@@ -198,8 +198,8 @@ pass, as does the full `make check` profile (format, architecture, build, vet,
 module, staticcheck, vuln, unit, e2e, and race) after this slice. This is not a
 wave-complete claim: the remaining global-close owner must still commit the
 opaque inputs and issue the complete threshold close; the public `Record`,
-`Op`, `ApplyLegacy`/`ApplyAtLegacy`, raw `Store.CommitLegacy`, historical Stage-6 fixtures, and interim
-Record signing callback remain compatibility surfaces. Production Resolution
+`Op`, `ApplyLegacy`/`ApplyAtLegacy`, raw `Store.CommitLegacy`, and historical
+Stage-6 fixtures remain compatibility surfaces. Production Resolution
 already consumes `Binding` rather than lifecycle `Record`, but only the later
 sealed Namespace interface plus the M14 C4 disposition can remove the old
 field bags and historical verifier seam without losing required provenance.
@@ -219,6 +219,10 @@ is `EpochInstallation.Commit`.
 Raw caller-built lifecycle transitions are likewise explicitly
 `ApplyLegacy`/`ApplyAtLegacy`; authorized Namespace paths call their private
 transition core only after validating the owned proof and decision time.
+`EpochInstallation` now passes its signer only a sealed `RecordSigningRequest`
+containing the exact Record transcript and Authority public key, then verifies
+the returned signature and builds the container itself; no callback receives a
+caller-mutable lifecycle Record.
 
 ## Dependency and retirement rules
 
