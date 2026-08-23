@@ -129,10 +129,6 @@ func validEpoch(value Epoch) bool {
 		value.RejectionRoot != [32]byte{}
 }
 
-func snapshotDigest(metadata []byte, inputs [][]byte) [32]byte {
-	return snapshotGenerationDigest(metadata, inputs, 0)
-}
-
 func snapshotGenerationDigest(metadata []byte, inputs [][]byte, pending uint64) [32]byte {
 	out := append([]byte("ardents-naming-state-snapshot-v2\x00"), metadata...)
 	for _, input := range inputs {
