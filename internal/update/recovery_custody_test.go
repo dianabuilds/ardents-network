@@ -5,14 +5,9 @@ import (
 	"testing"
 )
 
-// TestRecoverR10UsesRestoredPredecessorCustody proves that R10 reports the
-// custody notice of the predecessor that it restores, not of the successor
-// that was selected when recovery started.
-func TestRecoverR10UsesRestoredPredecessorCustody(t *testing.T) {
-	const successorCustody = "candidate custody must not survive restored predecessor selection"
-
+func TestRecoverR10RestoresPredecessorSelection(t *testing.T) {
 	root, predecessor := recoveryOracleBootstrap(t)
-	artifact, manifest := recoveryOracleStageWithCustody(t, root, 1, successorCustody)
+	artifact, manifest := recoveryOracleStage(t, root, 1)
 	recoveryOracleWriteChain(t, root, 1, predecessor, artifact, manifest, byte(stateDraining))
 	recoveryOraclePublish(t, root, 1)
 	recoveryOracleSuccessorCurrent(t, root, 1, artifact, manifest,
@@ -23,7 +18,7 @@ func TestRecoverR10UsesRestoredPredecessorCustody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Recover R10: %v", err)
 	}
-	if result.EvidenceNotice != recoveryOracleEvidenceNotice {
-		t.Fatalf("Recover R10 custody=%q, want restored predecessor custody %q", result.EvidenceNotice, recoveryOracleEvidenceNotice)
+	if result.Outcome != "recovered" || result.State != "draining" || result.CurrentDigest != recoveryOracleDecodeHex(recoveryOraclePreviousDigestHex) {
+		t.Fatalf("Recover R10 = %+v", result)
 	}
 }

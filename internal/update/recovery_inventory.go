@@ -2,7 +2,6 @@ package update
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -70,7 +69,7 @@ func collectInventory(root string) (inventoryResult, error) {
 			}
 			present[name] = true
 			facts.RootDirs = append(facts.RootDirs, name)
-		case lockFileName, ".ardents-update-transaction-v1", "current", "schema-current", rollbackRetireName:
+		case lockFileName, rootMarkerName, "current", "schema-current", rollbackRetireName:
 			if entry.IsDir() {
 				return facts, fmt.Errorf("%w: %s is not a file", errInventoryInvalid, name)
 			}
@@ -83,12 +82,12 @@ func collectInventory(root string) (inventoryResult, error) {
 			facts.RootFiles = append(facts.RootFiles, name)
 		}
 	}
-	for _, name := range []string{"generations", "staging", "transactions", lockFileName, ".ardents-update-transaction-v1", "current"} {
+	for _, name := range []string{"generations", "staging", "transactions", lockFileName, rootMarkerName, "current"} {
 		if !present[name] {
 			return facts, fmt.Errorf("%w: missing root child %q", errInventoryInvalid, name)
 		}
 	}
-	if facts.Marker, err = recoveryReadFile(filepath.Join(root, ".ardents-update-transaction-v1"), int64(len(rootMarker))); err != nil || string(facts.Marker.Bytes) != rootMarker {
+	if facts.Marker, err = recoveryReadFile(filepath.Join(root, rootMarkerName), int64(len(rootMarker))); err != nil || string(facts.Marker.Bytes) != rootMarker {
 		return facts, fmt.Errorf("%w: marker invalid: %v", errInventoryInvalid, err)
 	}
 	if facts.Current, err = recoveryReadFile(filepath.Join(root, "current"), maximumRecordBytes); err != nil {
@@ -243,12 +242,8 @@ func readPayloadFacts(directory string, generation uint64) (generationFacts, err
 	}
 	view, decodeErr := decodeManifest(manifest.Bytes)
 	artifactDigest := sha256.Sum256(artifact.Bytes)
-	manifestDigest := sha256.Sum256(manifest.Bytes)
 	if decodeErr != nil || view.Generation != generation || view.Length != uint64(len(artifact.Bytes)) || view.Artifact != artifactDigest {
 		return generationFacts{}, fmt.Errorf("%w: generation %d manifest mismatch", errInventoryInvalid, generation)
-	}
-	if generation == 0 && hex.EncodeToString(manifestDigest[:]) != v0BootstrapManifestHex {
-		return generationFacts{}, fmt.Errorf("%w: bootstrap manifest mismatch", errInventoryInvalid)
 	}
 	return generationFacts{Generation: generation, HasArtifact: true, HasManifest: true,
 		Artifact: artifact, Manifest: manifest, DecodedManifest: view}, nil

@@ -90,5 +90,6 @@ under a new decision.
 ## Disposition
 
 Accepted under the Product Owner's standing Stage 8 delegation. ADR-0030
-supersedes ADR-0029. M13 replaces the V1 fixtures/results with V2, creates the
-C4 verifier, and deletes `cmd/ardents-release`; it adds no lifecycle surface.
+supersedes ADR-0029. **Completed, 2026-08-23:** M13 replaced the V1
+fixtures/results with V2, added the independent C4 verifier, and deleted
+`cmd/ardents-release`; it added no lifecycle surface.

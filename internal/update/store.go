@@ -58,7 +58,7 @@ func openTransaction(root string, requested uint64, artifact [sha256.Size]byte) 
 
 func (store *ownedStore) inspect(generation uint64, allowSuccessor bool) (rootInspection, error) {
 	var inspection rootInspection
-	rootNames := []string{".ardents-update-transaction-lock", ".ardents-update-transaction-v1", "current", "generations", "staging", "transactions"}
+	rootNames := []string{lockFileName, rootMarkerName, "current", "generations", "staging", "transactions"}
 	schemaPath := filepath.Join(store.root, "schema-current")
 	if _, err := os.Lstat(schemaPath); err == nil {
 		rootNames = append(rootNames, "schema-current")
@@ -68,7 +68,7 @@ func (store *ownedStore) inspect(generation uint64, allowSuccessor bool) (rootIn
 	if err := requireNames(store.root, rootNames); err != nil {
 		return inspection, err
 	}
-	marker, err := readExactFile(filepath.Join(store.root, ".ardents-update-transaction-v1"), len(rootMarker))
+	marker, err := readExactFile(filepath.Join(store.root, rootMarkerName), len(rootMarker))
 	if err != nil || string(marker) != rootMarker {
 		return inspection, errors.Join(errRecordInvalid, err)
 	}
@@ -99,7 +99,7 @@ func (store *ownedStore) inspect(generation uint64, allowSuccessor bool) (rootIn
 		inspection.schemaCurrent = &schema
 		inspection.schemaRaw = schemaRaw
 	}
-	currentView, currentArtifact, currentManifest, err := store.inspectPayload("generations", selection.Current)
+	_, currentArtifact, currentManifest, err := store.inspectPayload("generations", selection.Current)
 	if err != nil {
 		return inspection, err
 	}
@@ -147,7 +147,6 @@ func (store *ownedStore) inspect(generation uint64, allowSuccessor bool) (rootIn
 	}
 	inspection.selection = selection
 	inspection.currentRaw = append([]byte(nil), currentRaw...)
-	inspection.currentEvidence = currentView.EvidenceNotice
 	inspection.predecessor = predecessorInspection{CurrentRecordDigest: sha256.Sum256(currentRaw),
 		Current: selection.Current, Rollback: selection.Rollback,
 		ArtifactObservation: currentArtifact, ManifestObservation: currentManifest}
@@ -175,8 +174,7 @@ func (store *ownedStore) inspectPayload(kind string, tuple inspectedTuple) (mani
 	artifactDigest, manifestDigest = sha256.Sum256(artifact), sha256.Sum256(manifest)
 	view, err = decodeManifest(manifest)
 	if err != nil || artifactDigest != tuple.Artifact || manifestDigest != tuple.Manifest ||
-		view.Generation != tuple.Generation || view.Length != tuple.Length || view.Artifact != tuple.Artifact ||
-		(tuple.Generation == 0 && hex.EncodeToString(manifestDigest[:]) != v0BootstrapManifestHex) {
+		view.Generation != tuple.Generation || view.Length != tuple.Length || view.Artifact != tuple.Artifact {
 		return manifestView{}, artifactDigest, manifestDigest, errors.Join(errRecordInvalid, err)
 	}
 	return view, artifactDigest, manifestDigest, nil

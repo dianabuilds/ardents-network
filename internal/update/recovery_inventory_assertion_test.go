@@ -164,7 +164,7 @@ func recoveryOracleInventoryFor(t *testing.T, rowID string, lastState byte) reco
 	_, _, candidateDigest, candidateManifestDigest := recoveryOracleCandidateManifest(t)
 	successorRaw := inventoryBootstrapSuccessorCurrent(t)
 	rootDirs := []string{"generations", "staging", "transactions"}
-	rootFiles := []string{".ardents-update-transaction-lock", ".ardents-update-transaction-v1", "current"}
+	rootFiles := []string{lockFileName, rootMarkerName, "current"}
 	previousEntry := recoveryOracleInvEntry{
 		generation: 0, artifact: previousDigest, manifest: previousManifest,
 	}

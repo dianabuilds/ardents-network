@@ -79,7 +79,6 @@ func frozenRecoveryCleanupTable() []recoveryOracleCleanupRow {
 				RollbackDigest: recoveryOracleZero,
 				StagingPresent: false,
 				SafeNotice:     "update interrupted",
-				EvidenceNotice: recoveryOracleEvidenceNotice,
 			},
 			lastState: "idle",
 		},
@@ -105,7 +104,6 @@ func frozenRecoveryCleanupTable() []recoveryOracleCleanupRow {
 				RollbackDigest: recoveryOracleZero,
 				StagingPresent: false,
 				SafeNotice:     "update interrupted",
-				EvidenceNotice: recoveryOracleEvidenceNotice,
 			},
 			lastState: "artifact-verified",
 		},
@@ -129,7 +127,6 @@ func frozenRecoveryCleanupTable() []recoveryOracleCleanupRow {
 				RollbackDigest: recoveryOracleZero,
 				StagingPresent: true,
 				SafeNotice:     "update interrupted",
-				EvidenceNotice: recoveryOracleEvidenceNotice,
 			},
 			lastState: "draining",
 		},
@@ -159,7 +156,6 @@ func frozenRecoveryCleanupTable() []recoveryOracleCleanupRow {
 				RollbackDigest: recoveryOracleZero,
 				StagingPresent: true,
 				SafeNotice:     "update interrupted",
-				EvidenceNotice: recoveryOracleEvidenceNotice,
 			},
 			lastState: "draining",
 		},
@@ -188,7 +184,6 @@ func frozenRecoveryCleanupTable() []recoveryOracleCleanupRow {
 				RollbackDigest: recoveryOracleZero,
 				StagingPresent: true,
 				SafeNotice:     "update interrupted",
-				EvidenceNotice: recoveryOracleEvidenceNotice,
 			},
 			lastState: "draining",
 		},
@@ -217,7 +212,6 @@ func frozenRecoveryCleanupTable() []recoveryOracleCleanupRow {
 				RollbackDigest: recoveryOracleZero,
 				StagingPresent: true,
 				SafeNotice:     "update interrupted",
-				EvidenceNotice: recoveryOracleEvidenceNotice,
 			},
 			lastState: "draining",
 		},
@@ -309,9 +303,6 @@ func recoveryOracleAssertCleanupRowResult(t *testing.T, result Result, err error
 		if result.StagingPresent {
 			t.Fatalf("RECOVER: %s staging must be false", id)
 		}
-		if result.EvidenceNotice != "" {
-			t.Fatalf("RECOVER: %s custody=%q, want empty", id, result.EvidenceNotice)
-		}
 		if result.SafeNotice != "update cleanup incomplete" {
 			t.Fatalf("RECOVER: %s safe notice=%q, want update cleanup incomplete", id, result.SafeNotice)
 		}
@@ -337,8 +328,5 @@ func recoveryOracleAssertCleanupRowResult(t *testing.T, result Result, err error
 	}
 	if result.SafeNotice != expected.SafeNotice {
 		t.Fatalf("RECOVER: %s safe notice=%q, want %q", id, result.SafeNotice, expected.SafeNotice)
-	}
-	if result.EvidenceNotice != expected.EvidenceNotice {
-		t.Fatalf("RECOVER: %s custody=%q, want %q", id, result.EvidenceNotice, expected.EvidenceNotice)
 	}
 }

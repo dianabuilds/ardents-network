@@ -78,7 +78,7 @@ func drainFailure(store *ownedStore, request Request, inspection rootInspection,
 	}
 	result := Result{Outcome: "drain-expired", State: state, Generation: request.generation,
 		CurrentDigest: inspection.selection.Current.Artifact, StagingPresent: false,
-		SafeNotice: "update drain expired", EvidenceNotice: inspection.currentEvidence}
+		SafeNotice: "update drain expired"}
 	if inspection.selection.Rollback != nil {
 		result.RollbackDigest = inspection.selection.Rollback.Artifact
 	}
@@ -94,7 +94,7 @@ func activationRefusal(store *ownedStore, request Request, inspection rootInspec
 	}
 	result := Result{Outcome: "activation-unsupported", State: "draining", Generation: request.generation,
 		CurrentDigest: inspection.selection.Current.Artifact, StagingPresent: false,
-		SafeNotice: "update storage unsupported", EvidenceNotice: inspection.currentEvidence}
+		SafeNotice: "update storage unsupported"}
 	if inspection.selection.Rollback != nil {
 		result.RollbackDigest = inspection.selection.Rollback.Artifact
 	}

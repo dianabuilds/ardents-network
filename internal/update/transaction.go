@@ -286,7 +286,7 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		if selfTestUnavailableOnly(err) {
 			recordErr := trace.record(context.Background(), "08-self-testing", stateSelfTesting, adapterUnavailable)
 			if recordErr == nil {
-				result := networkingUnverifiedResult(request.generation, artifact, inspection.selection.Current.Artifact, inspection.currentEvidence)
+				result := networkingUnverifiedResult(request.generation, artifact, inspection.selection.Current.Artifact)
 				return result, errors.Join(err, store.release())
 			}
 			return applyFailure(store, request, "self-testing", false, errors.Join(err, recordErr))
@@ -299,7 +299,7 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 		if pendingErr != nil {
 			return applyFailure(store, request, "self-testing", false, errors.Join(err, pendingErr))
 		}
-		result := selfTestFailedResult(request.generation, artifact, inspection.selection.Current.Artifact, inspection.currentEvidence)
+		result := selfTestFailedResult(request.generation, artifact, inspection.selection.Current.Artifact)
 		return result, errors.Join(err, store.release())
 	}
 	if err := callBounded(ctx, trace.deadline(stateSelfTesting), func(callCtx context.Context) error {
@@ -316,7 +316,7 @@ func applyWithControls(ctx context.Context, request Request, control *applyInter
 	if err := trace.record(ctx, "09-committed", stateCommitted, adapterNotCalled); err != nil {
 		return applyFailure(store, request, "committed", false, err)
 	}
-	result = committedResult(request.generation, artifact, inspection.selection.Current.Artifact, "update committed", request.decision.EvidenceNotice)
+	result = committedResult(request.generation, artifact, inspection.selection.Current.Artifact, "update committed")
 	if err := store.release(); err != nil {
 		return invalidResult(request, "committed"), err
 	}
@@ -378,7 +378,6 @@ func stageApplyFailure(store *ownedStore, request Request, inspection rootInspec
 	if inspection.selection.Rollback != nil {
 		result.RollbackDigest = inspection.selection.Rollback.Artifact
 	}
-	result.EvidenceNotice = inspection.currentEvidence
 	return result, errors.Join(cause, releaseErr)
 }
 
@@ -414,11 +413,7 @@ func occupiedStagingResult(request Request, root string) (Result, bool, error) {
 	if err != nil {
 		return Result{}, false, err
 	}
-	evidence, err := recoveryEvidenceFor(&facts)
-	if err != nil {
-		return Result{}, false, err
-	}
-	plan, err := planRecovery(facts, validation, records, evidence)
+	plan, err := planRecovery(facts, validation, records)
 	if err != nil {
 		return Result{}, false, errors.Join(errRecordInvalid, err)
 	}
@@ -428,7 +423,7 @@ func occupiedStagingResult(request Request, root string) (Result, bool, error) {
 	}
 	result := Result{Outcome: "resource-denied", State: plan.State, Generation: generation,
 		CurrentDigest: selection.Current.Artifact, StagingPresent: true,
-		SafeNotice: "update recovery required", EvidenceNotice: evidence}
+		SafeNotice: "update recovery required"}
 	if selection.Rollback != nil {
 		result.RollbackDigest = selection.Rollback.Artifact
 	}
@@ -459,19 +454,17 @@ func committedRequest(store *ownedStore, inspection rootInspection, request Requ
 	if _, err := inspectJournal(directory, request.generation, artifact, manifest, entry.Predecessor); err != nil {
 		return Result{}, false
 	}
-	return committedResult(request.generation, artifact, selection.Rollback.Artifact,
-		"update committed", request.decision.EvidenceNotice), true
+	return committedResult(request.generation, artifact, selection.Rollback.Artifact, "update committed"), true
 }
 
-func committedResult(generation uint64, current, rollback [32]byte, safe, evidence string) Result {
+func committedResult(generation uint64, current, rollback [32]byte, safe string) Result {
 	return Result{Outcome: "committed", State: "committed", Generation: generation,
-		CurrentDigest: current, RollbackDigest: rollback, SafeNotice: safe, EvidenceNotice: evidence}
+		CurrentDigest: current, RollbackDigest: rollback, SafeNotice: safe}
 }
 
 func invalidResult(request Request, state string) Result {
 	return Result{Outcome: invalidOutcome, State: state, Generation: request.generation,
-		StagingPresent: false, SafeNotice: "update transaction rejected",
-		EvidenceNotice: request.decision.EvidenceNotice}
+		StagingPresent: false, SafeNotice: "update transaction rejected"}
 }
 
 func transactionInvalidResult(generation uint64) Result {

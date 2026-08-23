@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	oracleVectorPath    = "../../docs/development/testdata/s7.2/c0-happy-path-v1.json"
+	oracleVectorPath    = "testdata/transaction-v2.json"
 	oraclePreviousPath  = "../../docs/development/testdata/s7.2/previous-payload-v1.txt"
 	oracleCandidatePath = "../release/testdata/r049-public-vector-v1/artifact.bin"
-	oracleMarker        = "ardents-update-transaction-v1\n"
+	oracleMarker        = "ardents-update-transaction-v2\n"
 )
 
 type v0OracleVector struct {
@@ -80,7 +80,6 @@ type v0OracleManifest struct {
 	ProtocolTransitionDeadline *string        `json:"protocol_transition_deadline"`
 	SchemaPlan                 string         `json:"schema_plan"`
 	SafeNotice                 string         `json:"safe_notice"`
-	EvidenceNotice             string         `json:"custody_notice"`
 	ReleaseFloors              v0OracleFloors `json:"release_floors"`
 }
 
@@ -130,7 +129,6 @@ type v0OracleResult struct {
 	RollbackSHA256        string `json:"rollback_sha256"`
 	StagingPresent        bool   `json:"staging_present"`
 	SafeNotice            string `json:"safe_notice"`
-	EvidenceNotice        string `json:"custody_notice"`
 }
 
 type oracleCurrentTuple struct {
@@ -210,7 +208,7 @@ func TestV0JournalHasExactIndependentChain(t *testing.T) {
 		BuildSafetyNoNewWorkAfter:  decision.BuildSafetyNoNewWorkAfter.Format(time.RFC3339),
 		BuildSafetyTerminateAfter:  decision.BuildSafetyTerminateAfter.Format(time.RFC3339),
 		ProtocolTransitionDeadline: nil, SchemaPlan: "no-op-v1", SafeNotice: "update committed",
-		EvidenceNotice: decision.EvidenceNotice, ReleaseFloors: vector.Expected.ReleaseFloors,
+		ReleaseFloors: vector.Expected.ReleaseFloors,
 	}
 	authorization := v0OracleStoredAuthorization{Classification: "release-accepted",
 		Platform: decision.Platform, Architecture: decision.Architecture, Environment: decision.Environment,
@@ -271,19 +269,19 @@ func oracleLoadV0(t *testing.T) v0OracleVector {
 	if err := json.Unmarshal(raw, &vector); err != nil {
 		t.Fatal(err)
 	}
-	if vector.Schema != "ardents-s72-update-vector-v1" ||
+	if vector.Schema != "ardents-update-fixture-v2" ||
 		vector.ReleaseOutcome != "release-accepted" ||
 		vector.Initial.TransactionGeneration != 0 ||
 		vector.Request.TransactionGeneration != 1 ||
 		vector.Request.SchemaPlan != "no-op-v1" {
-		t.Fatalf("unexpected V0 control fields: %+v", vector)
+		t.Fatalf("unexpected V2 control fields: %+v", vector)
 	}
 	if vector.Initial.ActivePayload.Path !=
 		"docs/development/testdata/s7.2/previous-payload-v1.txt" ||
 		vector.Initial.ActivePayload.Length != 32 ||
 		vector.Initial.ActivePayload.SHA256 !=
 			"8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af" {
-		t.Fatalf("unexpected V0 predecessor: %+v", vector.Initial.ActivePayload)
+		t.Fatalf("unexpected V2 predecessor: %+v", vector.Initial.ActivePayload)
 	}
 	return vector
 }
@@ -407,7 +405,6 @@ func oracleManifest(t *testing.T, manifest v0OracleManifest,
 	}
 	body = oracleAppendString(t, body, manifest.SchemaPlan, 256)
 	body = oracleAppendString(t, body, manifest.SafeNotice, 512)
-	body = oracleAppendString(t, body, manifest.EvidenceNotice, 512)
 	for _, value := range []string{authorization.Classification,
 		authorization.Platform, authorization.Architecture,
 		authorization.Environment, authorization.Network} {
@@ -461,7 +458,7 @@ func oracleBootstrapV0(t *testing.T, root string) v0OracleVector {
 		nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".ardents-update-transaction-v1"),
+	if err := os.WriteFile(filepath.Join(root, rootMarkerName),
 		[]byte(oracleMarker), 0o600); err != nil {
 		t.Fatal(err)
 	}

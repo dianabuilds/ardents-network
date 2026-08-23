@@ -78,8 +78,7 @@ func TestDrainRefusal(t *testing.T) {
 			result, err := Apply(context.Background(), request)
 			if err == nil || result.Outcome != "drain-expired" || result.State != test.wantState ||
 				result.Generation != 1 || result.CurrentDigest != *oracleDecodeDigest(t, vector.Initial.ActivePayload.SHA256) ||
-				result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != "update drain expired" ||
-				result.EvidenceNotice != vector.Expected.CommandResult.EvidenceNotice {
+				result.RollbackDigest != [32]byte{} || result.StagingPresent || result.SafeNotice != "update drain expired" {
 				t.Fatalf("Apply = %+v, %v; work=%#v", result, err, work)
 			}
 			if work.stopCalls != 1 || work.drainCalls != test.wantDrains {

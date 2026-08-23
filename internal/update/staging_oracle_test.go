@@ -26,7 +26,7 @@ func TestRecoverRemovesOnlyDeclaredTemporaryStaging(t *testing.T) {
 	}
 	if result.Outcome != "recovered" || result.State != "artifact-verified" || result.Generation != 1 ||
 		result.CurrentDigest != recoveryOracleDecodeHex(recoveryOraclePreviousDigestHex) || result.RollbackDigest != [32]byte{} ||
-		result.StagingPresent || result.SafeNotice != "update interrupted" || result.EvidenceNotice != recoveryOracleEvidenceNotice {
+		result.StagingPresent || result.SafeNotice != "update interrupted" {
 		t.Fatalf("Recover temporary staging result = %+v", result)
 	}
 	for _, path := range []string{filepath.Join(root, "staging", "1.tmp"), filepath.Join(root, "staging", "1")} {

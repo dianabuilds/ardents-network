@@ -21,6 +21,5 @@ func schemaPreparationFailure(store *ownedStore, request Request, inspection roo
 	if inspection.selection.Rollback != nil {
 		result.RollbackDigest = inspection.selection.Rollback.Artifact
 	}
-	result.EvidenceNotice = inspection.currentEvidence
 	return result, errors.Join(cause, releaseErr)
 }

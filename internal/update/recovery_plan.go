@@ -32,7 +32,6 @@ type recoveryPlan struct {
 	RollbackDigest        [32]byte
 	StagingPresent        bool
 	SafeNotice            string
-	EvidenceNotice        string
 	Operations            []planOperation
 	PredecessorCurrent    []byte
 	NeedPredecessorVerify bool
@@ -46,12 +45,12 @@ var errPlanInvalid = errors.New("update transaction plan is invalid")
 // exact observed bytes already exist in the inventory. The
 // predecessor-current bytes for R10/R11 come from the canonical
 // predecessor the inventory already admitted.
-func planRecovery(facts inventoryResult, validation journalValidation, records recoveryRecords, evidenceNotice string) (recoveryPlan, error) {
+func planRecovery(facts inventoryResult, validation journalValidation, records recoveryRecords) (recoveryPlan, error) {
 	if len(facts.Transactions) > 1 {
 		return recoveryPlan{}, fmt.Errorf("%w: second transaction", errPlanInvalid)
 	}
 	if len(facts.RollbackRetirement.Bytes) != 0 {
-		return planRollbackRetirement(facts, evidenceNotice)
+		return planRollbackRetirement(facts)
 	}
 	if err := validatePhysicalSelection(facts); err != nil {
 		return recoveryPlan{}, err
@@ -61,7 +60,7 @@ func planRecovery(facts inventoryResult, validation journalValidation, records r
 	}
 	interrupted := facts.InterruptedSelection
 	if interrupted == 0 {
-		return planIdle(facts, evidenceNotice), nil
+		return planIdle(facts), nil
 	}
 	raws := facts.journalLookup(interrupted)
 	if len(raws) == 0 {
@@ -70,7 +69,7 @@ func planRecovery(facts inventoryResult, validation journalValidation, records r
 	if err := journalFirstPredecessorConfirmed(validation, records.predecessorCommitment); err != nil {
 		return recoveryPlan{}, err
 	}
-	plan, err := planClassify(facts, validation, records, interrupted, evidenceNotice)
+	plan, err := planClassify(facts, validation, records, interrupted)
 	if err != nil {
 		return recoveryPlan{}, err
 	}
@@ -164,8 +163,8 @@ func tupleMatchesGeneration(tuple inspectedTuple, generation generationFacts) bo
 		tuple.Artifact == sha256.Sum256(generation.Artifact.Bytes) && tuple.Manifest == sha256.Sum256(generation.Manifest.Bytes)
 }
 
-func planIdle(facts inventoryResult, evidenceNotice string) recoveryPlan {
-	plan := recoveryPlan{Row: "R00", Outcome: "recovered", State: "idle", Generation: 0, CurrentDigest: digestOfGeneration(facts, 0), SafeNotice: "update interrupted", EvidenceNotice: evidenceNotice}
+func planIdle(facts inventoryResult) recoveryPlan {
+	plan := recoveryPlan{Row: "R00", Outcome: "recovered", State: "idle", Generation: 0, CurrentDigest: digestOfGeneration(facts, 0), SafeNotice: "update interrupted"}
 	if len(facts.Transactions) == 1 {
 		generation := strconv.FormatUint(facts.Transactions[0].Generation, 10)
 		plan.Operations = []planOperation{
@@ -178,7 +177,7 @@ func planIdle(facts inventoryResult, evidenceNotice string) recoveryPlan {
 	return plan
 }
 
-func planClassify(facts inventoryResult, validation journalValidation, records recoveryRecords, transaction uint64, evidenceNotice string) (recoveryPlan, error) {
+func planClassify(facts inventoryResult, validation journalValidation, records recoveryRecords, transaction uint64) (recoveryPlan, error) {
 	predecessorDigest := digestOfGeneration(facts, 0)
 	lastState := byte(0)
 	for _, e := range validation.Entries {
@@ -195,13 +194,13 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 		if hasGenerations || hasTemporaryStaging || !hasStaging {
 			return recoveryPlan{}, fmt.Errorf("%w: failed adapter physical state is ambiguous", errPlanInvalid)
 		}
-		return planFailedAdapterAbort(facts, transaction, last.State, predecessorDigest, evidenceNotice)
+		return planFailedAdapterAbort(facts, transaction, last.State, predecessorDigest)
 	}
 	if last.State == stateActivated && last.AdapterResult == adapterUnavailable {
 		if hasGenerations || hasTemporaryStaging || !hasStaging {
 			return recoveryPlan{}, fmt.Errorf("%w: unavailable activation physical state is ambiguous", errPlanInvalid)
 		}
-		return planActivationUnavailableAbort(facts, transaction, predecessorDigest, evidenceNotice)
+		return planActivationUnavailableAbort(facts, transaction, predecessorDigest)
 	}
 	if len(facts.Current.Bytes) > 0 {
 		if selection, decodeErr := decodeCurrent(facts.Current.Bytes); decodeErr == nil {
@@ -213,56 +212,56 @@ func planClassify(facts inventoryResult, validation journalValidation, records r
 			}
 		}
 	}
-	if plan, handled, err := planNoCandidateTerminal(facts, transaction, transactionState(lastState), evidenceNotice,
+	if plan, handled, err := planNoCandidateTerminal(facts, transaction, transactionState(lastState),
 		hasGenerations, hasStaging, hasTemporaryStaging); handled {
 		return plan, err
 	}
 	if hasGenerations {
 		if lastState == byte(stateRepairRequired) {
-			return planRollbackRefused(facts, transaction, evidenceNotice)
+			return planRollbackRefused(facts, transaction)
 		}
 		if lastState == byte(stateRollbackPending) {
-			return planRollbackPending(facts, transaction, evidenceNotice)
+			return planRollbackPending(facts, transaction)
 		}
 		if lastState < byte(stateDraining) {
 			return recoveryPlan{}, fmt.Errorf("%w: candidate published before draining", errPlanInvalid)
 		}
 		if lastState >= byte(stateCommitted) {
-			return buildCommittedPlan(facts, transaction, evidenceNotice)
+			return buildCommittedPlan(facts, transaction)
 		}
 		if lastState >= byte(stateActivated) {
-			return planR12R13(facts, transaction, lastState, evidenceNotice)
+			return planR12R13(facts, transaction, lastState)
 		}
-		return planR8ToR11(facts, records, transaction, firstCanonicalTemp(facts.CurrentTemps), predecessorDigest, evidenceNotice)
+		return planR8ToR11(facts, records, transaction, firstCanonicalTemp(facts.CurrentTemps), predecessorDigest)
 	}
-	return planEarlyNonterminal(facts, transaction, lastState, hasStaging, hasTemporaryStaging, predecessorDigest, evidenceNotice)
+	return planEarlyNonterminal(facts, transaction, lastState, hasStaging, hasTemporaryStaging, predecessorDigest)
 }
 
-func planEarlyNonterminal(facts inventoryResult, transaction uint64, lastState byte, hasStaging, hasTemporaryStaging bool, predecessorDigest [32]byte, evidenceNotice string) (recoveryPlan, error) {
+func planEarlyNonterminal(facts inventoryResult, transaction uint64, lastState byte, hasStaging, hasTemporaryStaging bool, predecessorDigest [32]byte) (recoveryPlan, error) {
 	state, ok := stateName(lastState)
 	if !ok {
 		return recoveryPlan{}, fmt.Errorf("%w: invalid state %d", errPlanInvalid, lastState)
 	}
 	if state == "release-accepted" && !hasStaging && !hasTemporaryStaging {
-		return buildRecoveredPlan("R01", state, transaction, predecessorDigest, evidenceNotice, false), nil
+		return buildRecoveredPlan("R01", state, transaction, predecessorDigest, false), nil
 	}
 	if state == "artifact-verified" {
 		if hasTemporaryStaging {
-			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, evidenceNotice, false)
+			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, false)
 			plan.Operations = stagingRemovalOperations(stagingFacts(facts.StagingDirs, transaction, true))
 			return plan, nil
 		}
 		if hasStaging {
-			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, evidenceNotice, false)
+			plan := buildRecoveredPlan("R03", state, transaction, predecessorDigest, false)
 			plan.Operations = stagingRemovalOperations(stagingFacts(facts.StagingDirs, transaction, false))
 			return plan, nil
 		}
-		return buildRecoveredPlan("R02", state, transaction, predecessorDigest, evidenceNotice, false), nil
+		return buildRecoveredPlan("R02", state, transaction, predecessorDigest, false), nil
 	}
 	if !hasStaging {
 		return recoveryPlan{}, fmt.Errorf("%w: missing staging for %s", errPlanInvalid, state)
 	}
-	return buildRecoveredPlan(rowForNonterminal(state), state, transaction, predecessorDigest, evidenceNotice, true), nil
+	return buildRecoveredPlan(rowForNonterminal(state), state, transaction, predecessorDigest, true), nil
 }
 
 func stagingRemovalOperations(staging *generationFacts) []planOperation {
@@ -304,9 +303,9 @@ func stagingFacts(generations []generationFacts, generation uint64, temporary bo
 	return nil
 }
 
-func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uint64, currentTemp rawFile, predecessorDigest [32]byte, evidenceNotice string) (recoveryPlan, error) {
+func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uint64, currentTemp rawFile, predecessorDigest [32]byte) (recoveryPlan, error) {
 	generation := strconv.FormatUint(transaction, 10)
-	plan := buildRecoveredPlan("R08", "draining", transaction, predecessorDigest, evidenceNotice, true)
+	plan := buildRecoveredPlan("R08", "draining", transaction, predecessorDigest, true)
 	if currentTemp.Name != "" {
 		plan.Operations = append(plan.Operations,
 			planOperation{Kind: opRemoveFile, Path: currentTemp.Name},
@@ -317,11 +316,6 @@ func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uin
 	if selection, decodeErr := decodeCurrent(facts.Current.Bytes); decodeErr == nil && selection.Rollback != nil {
 		plan.Row = "R10-R11"
 		plan.NeedPredecessorVerify = true
-		predecessorEvidence, evidenceErr := evidenceNoticeForTuple(facts, *selection.Rollback)
-		if evidenceErr != nil {
-			return recoveryPlan{}, evidenceErr
-		}
-		plan.EvidenceNotice = predecessorEvidence
 		if len(records.predecessorCurrent) == 0 {
 			return recoveryPlan{}, fmt.Errorf("%w: missing predecessor current bytes", errPlanInvalid)
 		}
@@ -339,20 +333,7 @@ func planR8ToR11(facts inventoryResult, records recoveryRecords, transaction uin
 	return plan, nil
 }
 
-// evidenceNoticeForTuple returns the notice bound to one already-admitted
-// payload tuple. The planner uses it when recovery changes the selected
-// current generation, so Result evidence always describes the normalized
-// selection rather than the selection observed at entry.
-func evidenceNoticeForTuple(facts inventoryResult, tuple inspectedTuple) (string, error) {
-	for _, generation := range facts.Generations {
-		if generation.Generation == tuple.Generation && tupleMatchesGeneration(tuple, generation) {
-			return generation.DecodedManifest.EvidenceNotice, nil
-		}
-	}
-	return "", fmt.Errorf("%w: evidence manifest missing", errPlanInvalid)
-}
-
-func planR12R13(facts inventoryResult, transaction uint64, lastState byte, evidenceNotice string) (recoveryPlan, error) {
+func planR12R13(facts inventoryResult, transaction uint64, lastState byte) (recoveryPlan, error) {
 	state := "activated"
 	if lastState == byte(stateSelfTesting) {
 		state = "self-testing"
@@ -364,11 +345,11 @@ func planR12R13(facts inventoryResult, transaction uint64, lastState byte, evide
 	return recoveryPlan{
 		Row: rowForTerminal(state), Outcome: "recovered", State: state, Generation: transaction,
 		CurrentDigest: successor.Current.Artifact, RollbackDigest: predecessorRollbackDigest(successor),
-		StagingPresent: false, SafeNotice: "update interrupted", EvidenceNotice: evidenceNotice,
+		StagingPresent: false, SafeNotice: "update interrupted",
 	}, nil
 }
 
-func buildCommittedPlan(facts inventoryResult, transaction uint64, evidenceNotice string) (recoveryPlan, error) {
+func buildCommittedPlan(facts inventoryResult, transaction uint64) (recoveryPlan, error) {
 	successor, err := decodeCurrent(facts.Current.Bytes)
 	if err != nil {
 		return recoveryPlan{}, err
@@ -376,7 +357,7 @@ func buildCommittedPlan(facts inventoryResult, transaction uint64, evidenceNotic
 	return recoveryPlan{
 		Row: "R14", Outcome: "committed", State: "committed", Generation: transaction,
 		CurrentDigest: successor.Current.Artifact, RollbackDigest: predecessorRollbackDigest(successor),
-		StagingPresent: false, SafeNotice: "update committed", EvidenceNotice: evidenceNotice,
+		StagingPresent: false, SafeNotice: "update committed",
 	}, nil
 }
 
@@ -476,6 +457,6 @@ func rowForTerminal(state string) string {
 	return "R12"
 }
 
-func buildRecoveredPlan(row, state string, generation uint64, predecessorDigest [32]byte, evidenceNotice string, staging bool) recoveryPlan {
-	return recoveryPlan{Row: row, Outcome: "recovered", State: state, Generation: generation, CurrentDigest: predecessorDigest, RollbackDigest: [32]byte{}, StagingPresent: staging, SafeNotice: "update interrupted", EvidenceNotice: evidenceNotice}
+func buildRecoveredPlan(row, state string, generation uint64, predecessorDigest [32]byte, staging bool) recoveryPlan {
+	return recoveryPlan{Row: row, Outcome: "recovered", State: state, Generation: generation, CurrentDigest: predecessorDigest, RollbackDigest: [32]byte{}, StagingPresent: staging, SafeNotice: "update interrupted"}
 }

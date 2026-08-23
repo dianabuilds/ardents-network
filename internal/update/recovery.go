@@ -54,14 +54,10 @@ func recoverWithOperations(ctx context.Context, root string, ops cleanupOps) (Re
 	if recordErr != nil {
 		return invalidRecoverResult(0), errors.Join(recordErr, releaseError(lock))
 	}
-	evidence, evidenceErr := recoveryEvidenceFor(&inventory)
-	if evidenceErr != nil {
-		return invalidRecoverResult(0), errors.Join(evidenceErr, releaseError(lock))
-	}
 	var plan recoveryPlan
 	var planErr error
 	if inventory.InterruptedSelection == 0 {
-		plan, planErr = planRecovery(inventory, journalValidation{}, records, evidence)
+		plan, planErr = planRecovery(inventory, journalValidation{}, records)
 	} else {
 		raws := inventory.journalLookup(inventory.InterruptedSelection)
 		candidateArtifact, candidateManifest := candidateCommitments(inventory, inventory.InterruptedSelection)
@@ -69,7 +65,7 @@ func recoverWithOperations(ctx context.Context, root string, ops cleanupOps) (Re
 		if jErr != nil {
 			return invalidRecoverResult(0), errors.Join(jErr, releaseError(lock))
 		}
-		plan, planErr = planRecovery(inventory, journal, records, evidence)
+		plan, planErr = planRecovery(inventory, journal, records)
 	}
 	if planErr != nil {
 		return invalidRecoverResult(0), errors.Join(planErr, releaseError(lock))
@@ -156,19 +152,6 @@ func Recover(ctx context.Context, root string) (Result, error) {
 	return recoverWithOperations(ctx, root, nativeCleanupOps())
 }
 
-// recoveryEvidenceFor decodes the bounded current selection and returns
-// the evidence notice from the manifest of the selected generation.
-func recoveryEvidenceFor(facts *inventoryResult) (string, error) {
-	if facts == nil || len(facts.Current.Bytes) == 0 {
-		return "", errInventoryInvalid
-	}
-	selection, err := decodeCurrent(facts.Current.Bytes)
-	if err != nil {
-		return "", err
-	}
-	return evidenceNoticeForTuple(*facts, selection.Current)
-}
-
 func candidateCommitments(facts inventoryResult, generation uint64) ([32]byte, [32]byte) {
 	if candidate := generationByID(facts.StagingDirs, generation); candidate != nil {
 		if !candidate.HasArtifact || !candidate.HasManifest {
@@ -193,7 +176,6 @@ func planToResult(plan recoveryPlan) Result {
 		RollbackDigest: plan.RollbackDigest,
 		StagingPresent: plan.StagingPresent,
 		SafeNotice:     plan.SafeNotice,
-		EvidenceNotice: plan.EvidenceNotice,
 	}
 }
 

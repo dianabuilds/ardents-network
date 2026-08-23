@@ -10,15 +10,14 @@ import (
 	"testing"
 )
 
-// frozen V0 digests used as independent expected values
+// Frozen V2 fixture digests used as independent expected values.
 const (
 	recoveryOraclePreviousDigestHex  = "8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af"
 	recoveryOracleCandidateDigestHex = "a52b68413e0cd723547790c7ac161ece935d6459377442644b18031c3dc27d0a"
-	recoveryOracleEvidenceNotice     = "H3 threshold identities and both rebuild records are project-controlled; no independent custody or builder claim is made"
 )
 
 // TestRecoverInterruptionMatrix is the literal independent R00-R14 oracle.
-// Each row constructs the exact physical checkpoint from the V0 fixture and
+// Each row constructs the exact physical checkpoint from the V2 fixture and
 // saved reference facts, then asserts the frozen Result, digests, and
 // normalized tree state. The expected Results, digests, and notices are
 // independently encoded; no production validator, classifier, planner,
@@ -227,9 +226,6 @@ func recoveryOracleAssertRecovered(t *testing.T, result Result, err error, state
 	if result.SafeNotice != "update interrupted" {
 		t.Fatalf("Recover safe notice=%q, want update interrupted", result.SafeNotice)
 	}
-	if result.EvidenceNotice != recoveryOracleEvidenceNotice {
-		t.Fatalf("Recover custody=%q, want %q", result.EvidenceNotice, recoveryOracleEvidenceNotice)
-	}
 	_ = custodyFromSuccessor
 }
 
@@ -258,9 +254,6 @@ func recoveryOracleAssertCommitted(t *testing.T, result Result, err error,
 	}
 	if result.SafeNotice != "update committed" {
 		t.Fatalf("Recover R14 safe notice=%q, want update committed", result.SafeNotice)
-	}
-	if result.EvidenceNotice != recoveryOracleEvidenceNotice {
-		t.Fatalf("Recover R14 custody=%q, want %q", result.EvidenceNotice, recoveryOracleEvidenceNotice)
 	}
 }
 

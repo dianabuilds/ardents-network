@@ -8,7 +8,7 @@ import "errors"
 func activationBusyFailure(store *ownedStore, request Request, inspection rootInspection, cause error) (Result, error) {
 	result := Result{Outcome: "resource-denied", State: "busy", Generation: request.generation,
 		CurrentDigest: inspection.selection.Current.Artifact, StagingPresent: false,
-		SafeNotice: "update activation busy", EvidenceNotice: inspection.currentEvidence}
+		SafeNotice: "update activation busy"}
 	if inspection.selection.Rollback != nil {
 		result.RollbackDigest = inspection.selection.Rollback.Artifact
 	}

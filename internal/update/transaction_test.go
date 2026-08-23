@@ -136,8 +136,7 @@ func TestApplyV0CommitsAndPreservesD0(t *testing.T) {
 		result.CurrentDigest != *oracleDecodeDigest(t, expected.CurrentSHA256) ||
 		result.RollbackDigest != *oracleDecodeDigest(t, expected.RollbackSHA256) ||
 		result.StagingPresent != expected.StagingPresent ||
-		result.SafeNotice != expected.SafeNotice ||
-		result.EvidenceNotice != expected.EvidenceNotice {
+		result.SafeNotice != expected.SafeNotice {
 		t.Fatalf("result mismatch: %+v", result)
 	}
 	if work.stopCalls != vector.Expected.StopNewWorkCalls ||
@@ -433,8 +432,7 @@ func oracleAcceptedDecision(t *testing.T, vector v0OracleVector) release.Decisio
 			SnapshotVersion: floors.SnapshotVersion, SnapshotDigest: oracleDecodeDigest(t, floors.SnapshotSHA256)[:],
 			TargetsVersion: floors.TargetsVersion, TargetsDigest: oracleDecodeDigest(t, floors.TargetsSHA256)[:],
 		},
-		Notice:         "release is accepted by every state machine",
-		EvidenceNotice: vector.Expected.CommandResult.EvidenceNotice,
+		Notice: "release is accepted by every state machine",
 	}
 }
 
