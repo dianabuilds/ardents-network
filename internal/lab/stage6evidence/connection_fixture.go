@@ -15,6 +15,7 @@ import (
 type evidenceEndpoint interface {
 	Do(context.Context, serviceconn.Request) (serviceconn.RuntimeResult, error)
 	Admit([32]byte, broker.Surface) ([32]byte, error)
+	Publish(context.Context, serviceconn.PublicationRequest) (serviceconn.PublicationResult, error)
 	Close() error
 }
 
@@ -66,13 +67,13 @@ func newConnectionFixture() (connectionFixture, error) {
 	if err != nil {
 		return value, err
 	}
-	published, err := value.publisherNode.Do(context.Background(), serviceconn.Request{Action: "publish",
-		Principal: value.admin, Session: admin, Credential: value.credential, InstancePrivate: value.instance,
+	published, err := value.publisherNode.Publish(context.Background(), serviceconn.PublicationRequest{
+		Principal: value.admin, Capability: admin, Credential: value.credential, InstancePrivate: value.instance,
 		IntroductionAcknowledgement: value.acknowledgement(), At: value.now})
 	if err != nil {
 		return value, err
 	}
-	value.publication = published.Publication
+	value.publication = published.Record
 	return value, nil
 }
 

@@ -25,8 +25,8 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	if err != nil || connection == [32]byte{} {
 		t.Fatalf("admit connection: session=%x err=%v", connection, err)
 	}
-	if result, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "publish", Principal: fixture.publisherPrincipal, Session: connection,
+	if result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+		Principal: fixture.publisherPrincipal, Capability: connection,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
@@ -34,23 +34,23 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	}
 
 	administration := admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
-	if result, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "publish", Principal: fixture.administrationPrincipal, Session: administration,
+	if result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+		Principal: fixture.administrationPrincipal, Capability: administration,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate, At: fixture.now,
 	}); err == nil || result.Class != "service unavailable" {
 		t.Fatalf("publication succeeded before Introduction acknowledgement: result=%+v err=%v", result, err)
 	}
 
 	administration = admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
-	published, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "publish", Principal: fixture.administrationPrincipal, Session: administration,
+	published, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+		Principal: fixture.administrationPrincipal, Capability: administration,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
 	})
-	if err != nil || published.Class != "published" || len(published.Publication) == 0 {
+	if err != nil || published.Class != "published" || len(published.Record) == 0 {
 		t.Fatalf("publish current Instance: result=%+v err=%v", published, err)
 	}
-	if bytes.Contains(published.Publication, fixture.firstPrivate) || bytes.Contains(published.Publication, fixture.authorityPrivate) {
+	if bytes.Contains(published.Record, fixture.firstPrivate) || bytes.Contains(published.Record, fixture.authorityPrivate) {
 		t.Fatal("public publication exported private authority or Instance material")
 	}
 
@@ -94,8 +94,8 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			session := admit(t, publisher, "administration", fixture.administrationPrincipal, test.at)
-			result, err := publisher.Do(context.Background(), serviceconn.Request{
-				Action: "publish", Principal: fixture.administrationPrincipal, Session: session,
+			result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+				Principal: fixture.administrationPrincipal, Capability: session,
 				Credential: test.credential, InstancePrivate: test.private,
 				IntroductionAcknowledgement: acknowledgement(fixture, test.credential), At: test.at,
 			})
@@ -112,8 +112,8 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 	}
 
 	staleSession := admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
-	if result, err := publisher.Do(context.Background(), serviceconn.Request{
-		Action: "publish", Principal: fixture.administrationPrincipal, Session: staleSession,
+	if result, err := publisher.Publish(context.Background(), serviceconn.PublicationRequest{
+		Principal: fixture.administrationPrincipal, Capability: staleSession,
 		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
 	}); err == nil || result.Class != "service target authentication failure" {
@@ -159,11 +159,11 @@ func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	}
 	defer restarted.Close()
 	stale := admit(t, restarted, "administration", fixture.administrationPrincipal, fixture.now)
-	result, err = restarted.Do(context.Background(), serviceconn.Request{Action: "publish",
-		Principal: fixture.administrationPrincipal, Session: stale, Credential: fixture.first,
+	publishedResult, err := restarted.Publish(context.Background(), serviceconn.PublicationRequest{
+		Principal: fixture.administrationPrincipal, Capability: stale, Credential: fixture.first,
 		InstancePrivate: fixture.firstPrivate, IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now})
-	if err == nil || result.Class != "service target authentication failure" {
-		t.Fatalf("restart forgot stale generation: result=%+v err=%v", result, err)
+	if err == nil || publishedResult.Class != "service target authentication failure" {
+		t.Fatalf("restart forgot stale generation: result=%+v err=%v", publishedResult, err)
 	}
 	publish(t, restarted, fixture, fixture.second, fixture.secondPrivate)
 }
@@ -337,13 +337,13 @@ func admit(t *testing.T, endpoint endpointRunner, surface string, principal [32]
 func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential serviceconn.Credential, private ed25519.PrivateKey) []byte {
 	t.Helper()
 	session := admit(t, endpoint, "administration", fixture.administrationPrincipal, fixture.now)
-	result, err := endpoint.Do(context.Background(), serviceconn.Request{Action: "publish",
-		Principal: fixture.administrationPrincipal, Session: session, Credential: credential,
+	result, err := endpoint.Publish(context.Background(), serviceconn.PublicationRequest{
+		Principal: fixture.administrationPrincipal, Capability: session, Credential: credential,
 		InstancePrivate: private, IntroductionAcknowledgement: acknowledgement(fixture, credential), At: fixture.now})
 	if err != nil || result.Class != "published" {
 		t.Fatalf("publish generation %d: result=%+v err=%v", credential.Generation, result, err)
 	}
-	return result.Publication
+	return result.Record
 }
 
 func acknowledgement(value fixture, credential serviceconn.Credential) []byte {

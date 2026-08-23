@@ -40,24 +40,45 @@ type Setup struct {
 	Admission               *broker.Broker
 }
 
-// Request is one role-scoped operation at the Service Connection seam.
+// Request is the remaining native Connection or withdrawal operation input.
+// Publication material is intentionally carried only by PublicationRequest.
 type Request struct {
-	Action                      string
-	Principal, Session, Target  [32]byte
+	Action                     string
+	Principal, Session, Target [32]byte
+	Publication                []byte
+	Route                      net.Conn
+	Application                io.ReadWriteCloser
+	OpenAttachment             func(context.Context, Recovery) (net.Conn, error)
+	RecoveryBinding            Recovery
+	NameBinding                DestinationBinding
+	NameUpdates                <-chan DestinationBinding
+	BytesEachDirection         uint32
+	SendBytes, ReceiveBytes    uint32
+	At                         time.Time
+}
+
+// PublicationRequest contains only the Administrator-authorized facts needed
+// to publish one current Instance generation.
+type PublicationRequest struct {
+	Principal, Capability       [32]byte
 	Credential                  Credential
 	InstancePrivate             ed25519.PrivateKey
 	IntroductionAcknowledgement []byte
 	IntroductionSocket          string
-	Publication                 []byte
-	Route                       net.Conn
-	Application                 io.ReadWriteCloser
-	OpenAttachment              func(context.Context, Recovery) (net.Conn, error)
-	RecoveryBinding             Recovery
-	NameBinding                 DestinationBinding
-	NameUpdates                 <-chan DestinationBinding
-	BytesEachDirection          uint32
-	SendBytes, ReceiveBytes     uint32
 	At                          time.Time
+}
+
+// PublicationResult is the bounded public record and its exact admission
+// receipt. It contains no Route, Application, or connection facts.
+type PublicationResult struct {
+	Class                       string
+	Reason                      string
+	Record                      []byte
+	AuthenticatedTarget         [32]byte
+	Generation                  uint64
+	IntroductionReceipt         [32]byte
+	IntroductionAcknowledgement []byte
+	Receipt                     broker.Receipt
 }
 
 // RuntimeResult is a bounded endpoint-runtime outcome with no Route internals.
@@ -173,6 +194,18 @@ func (endpoint *endpoint) Close() error {
 	return endpoint.publications.Close()
 }
 
+// Publish consumes one Administration capability before publishing an exact
+// current Instance generation. It never accepts Route or Application facts.
+func (endpoint *endpoint) Publish(ctx context.Context, input PublicationRequest) (PublicationResult, error) {
+	if endpoint == nil || input.At.IsZero() {
+		return publicationDenied("local publication is incomplete")
+	}
+	if err := ctx.Err(); err != nil {
+		return publicationFailed("local timeout or cancellation", "local publication was cancelled", err)
+	}
+	return endpoint.publish(ctx, input)
+}
+
 // Do executes one admitted operation and returns only an R-002 product class.
 func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult, error) {
 	if endpoint == nil || input.At.IsZero() {
@@ -182,7 +215,7 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult,
 		return failed("local timeout or cancellation", "local operation was cancelled", err)
 	}
 	switch input.Action {
-	case "publish", "unpublish", "connect", "accept":
+	case "unpublish", "connect", "accept":
 	default:
 		return denied("local operation is not permitted")
 	}
@@ -190,8 +223,6 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult,
 	var result RuntimeResult
 	var err error
 	switch input.Action {
-	case "publish":
-		result, err = endpoint.publish(ctx, input)
 	case "unpublish":
 		result, err = endpoint.unpublish(ctx, input)
 	case "connect":
@@ -201,6 +232,14 @@ func (endpoint *endpoint) Do(ctx context.Context, input Request) (RuntimeResult,
 	}
 	endpoint.observe(&result, input, monitor.stop())
 	return result, err
+}
+
+func publicationDenied(reason string) (PublicationResult, error) {
+	return publicationFailed("local authorization or policy denial", reason, errors.New(reason))
+}
+
+func publicationFailed(class, reason string, err error) (PublicationResult, error) {
+	return PublicationResult{Class: class, Reason: reason}, err
 }
 
 func denied(reason string) (RuntimeResult, error) {

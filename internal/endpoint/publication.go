@@ -18,6 +18,7 @@ import (
 type connectionEndpoint interface {
 	Do(context.Context, Request) (RuntimeResult, error)
 	Admit([32]byte, broker.Surface) ([32]byte, error)
+	Publish(context.Context, PublicationRequest) (PublicationResult, error)
 }
 
 func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
@@ -61,18 +62,21 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	if err != nil {
 		return RuntimeResult{}, err
 	}
-	result, err := endpoint.Do(operation, Request{Action: "publish",
-		Principal: principal, Session: session, Credential: credential,
+	publicationResult, err := endpoint.Publish(operation, PublicationRequest{
+		Principal: principal, Capability: session, Credential: credential,
 		InstancePrivate: private, IntroductionSocket: plan.IntroductionSocket, At: at})
 	if err != nil {
 		return RuntimeResult{}, err
 	}
-	if err := os.WriteFile(plan.PublicationFile, result.Publication, 0o600); err != nil {
+	if err := os.WriteFile(plan.PublicationFile, publicationResult.Record, 0o600); err != nil {
 		return RuntimeResult{}, err
 	}
 	resources("control-file", 1)
 	_, err = administrator.Write([]byte("published\n"))
-	return result, err
+	return RuntimeResult{Class: publicationResult.Class, Reason: publicationResult.Reason,
+		Publication: publicationResult.Record, AuthenticatedTarget: publicationResult.AuthenticatedTarget,
+		Generation: publicationResult.Generation, IntroductionReceipt: publicationResult.IntroductionReceipt,
+		IntroductionAcknowledgement: publicationResult.IntroductionAcknowledgement}, err
 }
 func publicationInputs(plan endpointPlan) (publication.Credential, ed25519.PrivateKey, error) {
 	var credential publication.Credential
