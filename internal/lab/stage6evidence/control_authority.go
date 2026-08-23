@@ -19,15 +19,19 @@ type evidenceControlAuthority struct {
 	err       error
 }
 
-func (authority *evidenceControlAuthority) Apply(raw []byte,
+// Submit is the historical C4 bridge into the current Gateway boundary. Only
+// the Stage 6 evidence package retains the old detailed Apply result for its
+// archived observations; the runtime Gateway cannot observe that result.
+func (authority *evidenceControlAuthority) Submit(submission namespace.Submission,
 	admission namespace.Proof,
-) (string, uint64, uint64, []byte) {
+) string {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
 	var operation controlOperation
+	raw := submission.Canonical()
 	if err := json.Unmarshal(raw, &operation); err != nil {
 		authority.err = err
-		return "denied", 0, 0, nil
+		return "denied"
 	}
 	authority.observed = append(authority.observed, operation)
 	authority.admission = append(authority.admission, admission)
@@ -37,7 +41,10 @@ func (authority *evidenceControlAuthority) Apply(raw []byte,
 	if class != "accepted" {
 		authority.err = errors.New("real Name Authority control transition was denied")
 	}
-	return class, generation, revision, state
+	if class == "accepted" {
+		return "submitted"
+	}
+	return "denied"
 }
 
 func (authority *evidenceControlAuthority) observation() ([]controlOperation,

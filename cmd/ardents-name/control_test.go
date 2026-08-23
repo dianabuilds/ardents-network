@@ -136,12 +136,12 @@ func TestControlCommandExecutesEveryPrivateControlShape(t *testing.T) {
 
 type commandControlAuthority struct{}
 
-func (commandControlAuthority) Apply(raw []byte, _ namespace.Proof) (string, uint64, uint64, []byte) {
+func (commandControlAuthority) Submit(submission namespace.Submission, _ namespace.Proof) string {
 	var operation commandControlOperation
-	if json.Unmarshal(raw, &operation) != nil {
-		return "denied", 0, 0, nil
+	if json.Unmarshal(submission.Canonical(), &operation) != nil {
+		return "denied"
 	}
-	return "accepted", 1, 2, []byte("accepted-" + operation.Kind)
+	return "submitted"
 }
 
 func commandControlDigest(t *testing.T, operation commandControlOperation) [32]byte {

@@ -41,7 +41,7 @@ type resolutionFixture struct {
 }
 
 func newResolutionFixture(control ...interface {
-	Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
+	Submit(namespace.Submission, namespace.Proof) string
 },
 ) (resolutionFixture, error) {
 	value := resolutionFixture{now: time.Unix(1_800_000_000, 0).UTC()}
@@ -91,7 +91,7 @@ func newResolutionFixture(control ...interface {
 		return value, err
 	}
 	var controlAuthority interface {
-		Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
+		Submit(namespace.Submission, namespace.Proof) string
 	}
 	if len(control) == 1 {
 		controlAuthority = control[0]

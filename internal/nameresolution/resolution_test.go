@@ -223,7 +223,7 @@ func newResolutionFixture(t *testing.T) resolutionFixture {
 }
 
 func newResolutionFixtureWithControl(t *testing.T, control interface {
-	Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
+	Submit(namespace.Submission, namespace.Proof) string
 },
 ) resolutionFixture {
 	t.Helper()

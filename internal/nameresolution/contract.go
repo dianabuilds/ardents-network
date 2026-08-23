@@ -34,7 +34,7 @@ type GatewayConfig struct {
 }
 
 type controlAuthority interface {
-	Apply([]byte, namespace.Proof) (string, uint64, uint64, []byte)
+	Submit(namespace.Submission, namespace.Proof) string
 }
 
 type gatewayState struct {

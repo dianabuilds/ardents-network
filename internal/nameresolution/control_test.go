@@ -42,8 +42,7 @@ type testControlOperation struct {
 
 func TestControlUsesTheResolutionOHTTPBoundaryAndExposesOnlyTheAuthorityView(t *testing.T) {
 	t.Parallel()
-	authority := &capturingControlAuthority{class: "accepted", generation: 4, revision: 9,
-		state: []byte("accepted-state")}
+	authority := &capturingControlAuthority{class: "submitted"}
 	fixture := newResolutionFixtureWithControl(t, authority)
 	isolation := [32]byte{41}
 	operation := testControlOperation{Kind: "renew", Name: "alice", Generation: 4,
@@ -84,8 +83,7 @@ func TestControlUsesTheResolutionOHTTPBoundaryAndExposesOnlyTheAuthorityView(t *
 
 func TestControlRejectsFieldsForbiddenForTheSelectedOperation(t *testing.T) {
 	t.Parallel()
-	authority := &capturingControlAuthority{class: "accepted", generation: 1, revision: 1,
-		state: []byte("accepted-state")}
+	authority := &capturingControlAuthority{class: "submitted"}
 	fixture := newResolutionFixtureWithControl(t, authority)
 	base := testControlOperation{Kind: "renew", Name: "alice", Generation: 1,
 		ExpectedRevision: 2, LeaseNotAfter: 3, AuthorityProof: []byte{1}}
@@ -124,8 +122,7 @@ func TestControlRejectsFieldsForbiddenForTheSelectedOperation(t *testing.T) {
 
 func TestControlCarriesEveryFrozenOperationShape(t *testing.T) {
 	t.Parallel()
-	authority := &capturingControlAuthority{class: "accepted", generation: 1, revision: 1,
-		state: []byte("accepted-state")}
+	authority := &capturingControlAuthority{class: "submitted"}
 	fixture := newResolutionFixtureWithControl(t, authority)
 	operations := []testControlOperation{
 		{Kind: "claim", Name: "alice", Generation: 1, Authority: [32]byte{1}, LeaseNotAfter: 1, OrderingProof: []byte{1}},
@@ -183,24 +180,21 @@ func testControlDigest(t *testing.T, operation testControlOperation) [32]byte {
 }
 
 type capturingControlAuthority struct {
-	mu                   sync.Mutex
-	operation            testControlOperation
-	proof                namespace.Proof
-	class                string
-	generation, revision uint64
-	state                []byte
+	mu        sync.Mutex
+	operation testControlOperation
+	proof     namespace.Proof
+	class     string
 }
 
-func (authority *capturingControlAuthority) Apply(raw []byte, proof namespace.Proof,
-) (string, uint64, uint64, []byte) {
+func (authority *capturingControlAuthority) Submit(submission namespace.Submission, proof namespace.Proof) string {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
 	var operation testControlOperation
-	if err := json.Unmarshal(raw, &operation); err != nil {
-		return "denied", 0, 0, nil
+	if err := json.Unmarshal(submission.Canonical(), &operation); err != nil {
+		return "denied"
 	}
 	authority.operation, authority.proof = operation, proof
-	return authority.class, authority.generation, authority.revision, append([]byte(nil), authority.state...)
+	return authority.class
 }
 
 func (authority *capturingControlAuthority) observation() (testControlOperation, namespace.Proof) {

@@ -22,9 +22,9 @@ func (gateway *gateway) control(writer http.ResponseWriter, request *http.Reques
 		gateway.reject(writer)
 		return
 	}
-	class, _, _, _ := gateway.state.authority.Apply(control.submission.Canonical(), control.admission)
+	class := gateway.state.authority.Submit(control.submission, control.admission)
 	result := controlResult{Class: "denied"}
-	if class == "accepted" {
+	if class == "submitted" {
 		result.Class = "submitted"
 	}
 	response, err := controlResponse(control.binding, control.submission.Digest(), result)
