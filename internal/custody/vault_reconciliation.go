@@ -19,6 +19,10 @@ func (vault *Vault) activateRecoveredAuthority(ctx context.Context, operation Op
 	if err != nil || len(entries) != 0 {
 		return Receipt{}, ErrInvalid
 	}
+	quarantineEntries, err := os.ReadDir(vault.quarantine)
+	if err != nil || len(quarantineEntries) != 1 || quarantineEntries[0].Name() != "record-"+operation.RecordID+".json" || quarantineEntries[0].IsDir() {
+		return Receipt{}, ErrInvalid
+	}
 	raw, err := readEnvelopeFile(filepath.Join(vault.quarantine, "record-"+operation.RecordID+".json"))
 	if err != nil {
 		return Receipt{}, err

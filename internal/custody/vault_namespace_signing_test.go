@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -198,6 +199,17 @@ func TestRecoveredNameAuthorityActivatesOnlyFromStrictCurrentNamespaceWitness(t 
 		t.Fatalf("stale current Namespace witness = %v, want invalid", err)
 	}
 	witness := currentNameAuthorityWitness(t, network, current, private)
+	extraLockedRecord := filepath.Join(recovered.quarantine, "record-00112233445566778899aabbccddeeff.json")
+	if err := os.WriteFile(extraLockedRecord, []byte("unexpected quarantine record"), 0o600); err != nil {
+		t.Fatalf("write unexpected quarantine record: %v", err)
+	}
+	if _, err := recovered.Execute(t.Context(), Operation{Kind: OperationActivateRecoveredAuthority, RecordID: locked.RecordID,
+		Expected: initial.Binding, Reconciliation: &witness}, &sequenceSecrets{values: [][]byte{recoveredPassword}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("activation with an extra quarantine record = %v, want invalid", err)
+	}
+	if err := os.Remove(extraLockedRecord); err != nil {
+		t.Fatalf("remove unexpected quarantine record: %v", err)
+	}
 	activated, err := recovered.Execute(t.Context(), Operation{Kind: OperationActivateRecoveredAuthority, RecordID: locked.RecordID,
 		Expected: initial.Binding, Reconciliation: &witness}, &sequenceSecrets{values: [][]byte{recoveredPassword}})
 	if err != nil {
