@@ -40,6 +40,8 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return vault.signNamespaceTransition(ctx, operation, secrets)
 	case OperationPrepareNamespaceSubmission:
 		return vault.prepareNamespaceSubmission(ctx, operation, secrets)
+	case OperationActivateRecoveredAuthority:
+		return vault.activateRecoveredAuthority(ctx, operation, secrets)
 	case OperationInspectEnvelope:
 		return vault.inspect(operation)
 	default:
@@ -48,7 +50,7 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 }
 
 func (vault *Vault) createRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.RecordID != "" || operation.Path != "" || operation.Expected != (AuthorityBinding{}) || operation.Transition != nil || operation.Preparation != nil {
+	if secrets == nil || operation.RecordID != "" || operation.Path != "" || operation.Expected != (AuthorityBinding{}) || operation.Transition != nil || operation.Preparation != nil || operation.Reconciliation != nil {
 		return Receipt{}, ErrInvalid
 	}
 	if err := vault.prepareFloor(operation.Authority); err != nil {
@@ -95,7 +97,7 @@ func (vault *Vault) createRecord(ctx context.Context, operation Operation, secre
 }
 
 func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.Path != "" || operation.Transition != nil || operation.Preparation != nil || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
+	if secrets == nil || operation.Path != "" || operation.Transition != nil || operation.Preparation != nil || operation.Reconciliation != nil || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
 		return Receipt{}, ErrInvalid
 	}
 	raw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
@@ -130,7 +132,7 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 }
 
 func (vault *Vault) signNamespaceTransition(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.Transition == nil || operation.Preparation != nil || operation.Path != "" ||
+	if secrets == nil || operation.Transition == nil || operation.Preparation != nil || operation.Reconciliation != nil || operation.Path != "" ||
 		!isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
 		return Receipt{}, ErrInvalid
 	}
@@ -217,7 +219,7 @@ func (signer *custodyTransitionSigner) erase() {
 }
 
 func (vault *Vault) inspect(operation Operation) (Receipt, error) {
-	if operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Expected != (AuthorityBinding{}) || operation.Path == "" || operation.Transition != nil || operation.Preparation != nil {
+	if operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Expected != (AuthorityBinding{}) || operation.Path == "" || operation.Transition != nil || operation.Preparation != nil || operation.Reconciliation != nil {
 		return Receipt{}, ErrInvalid
 	}
 	raw, err := readEnvelopeFile(operation.Path)

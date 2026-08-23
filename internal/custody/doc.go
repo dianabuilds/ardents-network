@@ -16,6 +16,9 @@
 // the prior encrypted bundle is restored on failed final publication or test
 // restore. Active records advance one durable non-decreasing local
 // Authority floor only after their encrypted record is published, and active
-// verification requires an exact matching floor; reconciliation remains a later
-// authenticated-source operation.
+// verification requires an exact matching floor. A locked recovered Name
+// Authority activates only from a fresh opaque witness of one current active
+// Namespace record that is strictly higher than the recovered generation and
+// revision; custody advances its local watermarks, durably writes the active
+// successor and floor, and creates neither a runtime Instance Key nor a Grant.
 package custody

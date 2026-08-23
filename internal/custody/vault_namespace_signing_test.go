@@ -7,11 +7,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
@@ -145,6 +148,124 @@ func TestVaultPreparesOneCompleteCustodyDerivedNamespaceSubmission(t *testing.T)
 		}}, &sequenceSecrets{values: [][]byte{password}}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("prepared submission without sealed pair = %v, want invalid", err)
 	}
+}
+
+func TestRecoveredNameAuthorityActivatesOnlyFromStrictCurrentNamespaceWitness(t *testing.T) {
+	now, network := time.Unix(1_800_001_200, 0).UTC(), [32]byte{21}
+	seed := sha256.Sum256([]byte("custody-reconciliation-name-authority"))
+	private := ed25519.NewKeyFromSeed(seed[:])
+	public := private.Public().(ed25519.PublicKey)
+	initial := testAuthorityState()
+	initial.Binding.Kind, initial.Binding.Network = AuthorityName, network
+	initial.Binding.IDCommitment = sha256.Sum256(public)
+	initial.RootMaterial, initial.Generation, initial.Revision = append([]byte(nil), private...), 1, 1
+	initial.Watermarks = []Watermark{{Domain: "name-transition", Value: 1}}
+	source, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = source.Close() })
+	vaultPassword, bundlePassword := []byte("correct horse battery staple"), []byte("one-time recovery bundle password")
+	created, err := source.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: initial},
+		&sequenceSecrets{values: [][]byte{vaultPassword, vaultPassword}})
+	if err != nil {
+		t.Fatalf("create source vault record: %v", err)
+	}
+	bundlePath := filepath.Join(t.TempDir(), "authority-recovery-bundle.json")
+	if _, err := source.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: created.RecordID,
+		Expected: initial.Binding, Path: bundlePath}, &sequenceSecrets{values: [][]byte{vaultPassword, bundlePassword, bundlePassword}}); err != nil {
+		t.Fatalf("export recovery bundle: %v", err)
+	}
+	recovered, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = recovered.Close() })
+	recoveredPassword := []byte("new recovered vault password")
+	locked, err := recovered.Execute(t.Context(), Operation{Kind: OperationRestoreRecoveryBundle, Path: bundlePath,
+		Expected: initial.Binding}, &sequenceSecrets{values: [][]byte{bundlePassword, recoveredPassword, recoveredPassword}})
+	if err != nil {
+		t.Fatalf("restore recovery bundle: %v", err)
+	}
+	current := record.Record{Name: "alice", Generation: 2, Revision: 2, Lease: "active", Consistency: "current", Recovery: "stable",
+		Authority: hex.EncodeToString(public), Target: [32]byte{1}, LeaseExpiresAt: now.Add(time.Hour).Unix(),
+		GraceExpiresAt: now.Add(2 * time.Hour).Unix(), Continuity: 2}
+	stale := current
+	stale.Generation, stale.Revision, stale.Continuity = initial.Generation, initial.Revision, 1
+	staleWitness := currentNameAuthorityWitness(t, network, stale, private)
+	if _, err := recovered.Execute(t.Context(), Operation{Kind: OperationActivateRecoveredAuthority, RecordID: locked.RecordID,
+		Expected: initial.Binding, Reconciliation: &staleWitness}, &sequenceSecrets{values: [][]byte{recoveredPassword}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("stale current Namespace witness = %v, want invalid", err)
+	}
+	witness := currentNameAuthorityWitness(t, network, current, private)
+	activated, err := recovered.Execute(t.Context(), Operation{Kind: OperationActivateRecoveredAuthority, RecordID: locked.RecordID,
+		Expected: initial.Binding, Reconciliation: &witness}, &sequenceSecrets{values: [][]byte{recoveredPassword}})
+	if err != nil {
+		t.Fatalf("activate recovered Authority: %v", err)
+	}
+	if activated.State != RecordActive || activated.Authority.Generation != current.Generation || activated.Authority.Revision != current.Revision ||
+		len(activated.Authority.Watermarks) != 1 || activated.Authority.Watermarks[0].Value != initial.Watermarks[0].Value+1 {
+		t.Fatalf("activation receipt=%+v", activated)
+	}
+	_, err = recovered.Execute(t.Context(), Operation{Kind: OperationActivateRecoveredAuthority, RecordID: locked.RecordID,
+		Expected: initial.Binding, Reconciliation: &witness}, &sequenceSecrets{values: [][]byte{recoveredPassword}})
+	if !errors.Is(err, ErrInvalid) {
+		t.Fatalf("second activation err=%v, want invalid", err)
+	}
+	if _, err := recovered.Execute(t.Context(), Operation{Kind: OperationSignNamespaceTransition, RecordID: locked.RecordID,
+		Expected: initial.Binding, Transition: func(namespace.TransitionSigner) ([]byte, error) { return nil, nil }},
+		&sequenceSecrets{values: [][]byte{recoveredPassword}}); err == nil {
+		t.Fatal("authority-locked record signed after activation of its successor")
+	}
+}
+
+func currentNameAuthorityWitness(t *testing.T, network [32]byte, current record.Record, private ed25519.PrivateKey) epoch.NameAuthorityReconciliation {
+	t.Helper()
+	keys := make([]ed25519.PrivateKey, 0, 2)
+	policy := namespace.MaterializationPolicy{Network: network, Rule: "ardents-namespace-materialization-v1",
+		Authorities: make(map[[32]byte]ed25519.PublicKey), Threshold: 2}
+	for _, label := range []string{"custody-reconciliation-a", "custody-reconciliation-b"} {
+		seed := sha256.Sum256([]byte(label))
+		key := ed25519.NewKeyFromSeed(seed[:])
+		policy.Authorities[sha256.Sum256(key.Public().(ed25519.PublicKey))] = key.Public().(ed25519.PublicKey)
+		keys = append(keys, key)
+	}
+	store, err := namespace.Open(t.TempDir(), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	signed, err := record.SignRecord(network, current, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installation := namespace.Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+		TransitionRoot: [32]byte{2}, TransitionLength: 1, RejectionRoot: [32]byte{3}}
+	if err := store.CommitLegacy(installation, [][]byte{signed}, func(transcript []byte) ([][32]byte, [][]byte, error) {
+		type signature struct {
+			id  [32]byte
+			sig []byte
+		}
+		signatures := make([]signature, 0, len(keys))
+		for _, key := range keys {
+			signatures = append(signatures, signature{id: sha256.Sum256(key.Public().(ed25519.PublicKey)), sig: ed25519.Sign(key, transcript)})
+		}
+		sort.Slice(signatures, func(i, j int) bool { return bytes.Compare(signatures[i].id[:], signatures[j].id[:]) < 0 })
+		ids, values := make([][32]byte, len(signatures)), make([][]byte, len(signatures))
+		for index := range signatures {
+			ids[index], values[index] = signatures[index].id, signatures[index].sig
+		}
+		return ids, values, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var authorityKey [ed25519.PublicKeySize]byte
+	copy(authorityKey[:], private.Public().(ed25519.PublicKey))
+	witness, err := store.CurrentNameAuthority(authorityKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return witness
 }
 
 type transitionAdapter struct{ signer authority.ControlSigner }

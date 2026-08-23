@@ -11,7 +11,7 @@ import (
 )
 
 func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.Transition != nil || operation.Preparation != nil || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) || operation.Path == "" {
+	if secrets == nil || operation.Transition != nil || operation.Preparation != nil || operation.Reconciliation != nil || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) || operation.Path == "" {
 		return Receipt{}, ErrInvalid
 	}
 	raw, sourceState, err := vault.readExportableRecord(operation.RecordID)

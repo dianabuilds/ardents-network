@@ -13,7 +13,7 @@ import (
 )
 
 func (vault *Vault) prepareNamespaceSubmission(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
-	if secrets == nil || operation.Preparation == nil || operation.Transition != nil || operation.Path != "" ||
+	if secrets == nil || operation.Preparation == nil || operation.Transition != nil || operation.Reconciliation != nil || operation.Path != "" ||
 		!isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) {
 		return Receipt{}, ErrInvalid
 	}

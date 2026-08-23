@@ -424,8 +424,14 @@ quarantine/reconciliation, revocation, foreign-format migration, and platform
 qualification remain required before Release and Update can lose their custody
 compatibility text. A restored Bundle now enters a separately encrypted
 `authority-locked` quarantine record in a previously empty Vault and is
-export-only; it cannot pass the active-record verification path. Strictly
-higher authenticated reconciliation and activation remain absent. An active
+export-only; it cannot pass the active-record verification path. A recovered
+Name Authority now activates only through a fresh opaque witness from an
+already verified current Namespace materialization: the witness identifies one
+active Authority record and must be strictly above the recovered generation and
+revision. Custody advances every local watermark, durably writes the new active
+encrypted record and exact floor before allowing a signature, and creates no
+runtime Instance Key or Local Grant. Ambiguous, stale, equal, inactive, or
+wrong-Authority witnesses leave the record locked and export-only. An active
 Name record can sign one exact sealed Namespace transition request after
 checking its local floor, the hash commitment of its Ed25519 public key, and
 the request's exact predecessor generation/revision; the callback cannot return

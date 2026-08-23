@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
 )
 
 const (
@@ -22,6 +23,10 @@ const (
 	// OperationPrepareNamespaceSubmission derives and signs one complete
 	// existing-Name control submission without releasing its root material.
 	OperationPrepareNamespaceSubmission OperationKind = "prepare-namespace-submission"
+	// OperationActivateRecoveredAuthority accepts a strictly newer authenticated
+	// current Namespace witness and converts one authority-locked record into a
+	// new active Vault successor before any signing operation can run.
+	OperationActivateRecoveredAuthority OperationKind = "activate-recovered-authority"
 	// OperationInspectEnvelope validates only an envelope's public canonical header.
 	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
@@ -52,13 +57,14 @@ type OperationKind string
 // for export. Fields unrelated to the selected operation must retain their zero
 // value.
 type Operation struct {
-	Kind        OperationKind
-	Authority   AuthorityState
-	RecordID    string
-	Expected    AuthorityBinding
-	Path        string
-	Transition  NamespaceTransition
-	Preparation NamespaceSubmission
+	Kind           OperationKind
+	Authority      AuthorityState
+	RecordID       string
+	Expected       AuthorityBinding
+	Path           string
+	Transition     NamespaceTransition
+	Preparation    NamespaceSubmission
+	Reconciliation *epoch.NameAuthorityReconciliation
 }
 
 // NamespaceTransition invokes one sealed Namespace signer and returns its
