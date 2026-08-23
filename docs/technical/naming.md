@@ -1,9 +1,9 @@
 # Naming and private resolution
 
-Status: **Stage 8 M5 technical contract in progress.** This document describes
-the maintained `internal/naming/namespace` and `internal/nameresolution`
-technical tracer. It is not a supported public Namespace, a public resolver,
-or a claim of independent Network Epoch operation.
+Status: **current maintained technical contract.** This document describes
+`internal/naming/namespace` and `internal/naming/resolution`. It is not a
+supported public Namespace, a public resolver, or a claim of independent
+Network Epoch operation.
 
 ## Ownership and trust boundary
 
@@ -15,9 +15,9 @@ Namespace-owned under R-060; it does not import Network State as a foundation.
 
 `naming/resolution` owns one fixed private OHTTP exchange, its role-local
 selection, nonce/replay state, and observer-safe counters. It transports opaque
-`namespace.Submission` control bytes and current proofs. Resolution receives a
-verified immutable `namespace.Binding`; it does not receive or assemble a
-lifecycle `Record` in its production Gateway or Resolver path.
+Authority Submission bytes and current proofs. Resolution receives a verified
+immutable Binding; it does not receive or assemble a lifecycle Record in its
+production Gateway or Resolver path.
 
 The current flow is:
 
@@ -102,15 +102,13 @@ tracer can grow.
 - Namespace's `TransitionSigningRequest` carries the exact predecessor
   generation/revision, operation transcript, and expected Authority key; a
   custody boundary may not receive a raw private key or arbitrary transcript,
-  nor sign a request derived from an older local predecessor. The command and
-  Gateway intake migration into this path remains pending.
+  nor sign a request derived from an older local predecessor.
 - The durable Authority's `Prepare` seam now accepts only a canonical unsigned
   existing-Name Intent, derives the transition and successor Record without
   mutating its chain, and obtains their signatures as one custody pair. Its
   static intent digest remains the anonymous-admission binding; only a later
-  `Submit` appends the prepared canonical submission. The command/Gateway still
-  consumes the retained complete signed wire, so migration of that intake is
-  pending and the retained wire is not a second signing route.
+  `Submit` appends the prepared canonical submission. The command and Gateway
+  consume that retained complete signed wire; it is not a second signing route.
 - Current materialization may advance only from the durable pending prefix
   and/or verified `ClaimWinner` on the new installation path; restart
   reconstructs verified current plus unapplied pending state but never promotes
@@ -127,22 +125,23 @@ tracer can grow.
   privacy guarantee. Private Resolution has the conditions and limitations in
   the threat model; encrypted payloads do not imply anonymity.
 
-## Remaining M5 work
+## Compatibility and excluded work
 
 The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`,
 `ResolveBindingLegacy`, raw
 `Store.CommitLegacy`, and historical Stage 6 fixtures remain compatibility surface.
-They must be replaced by sealed Namespace constructors and one final
-installation Interface. The remaining global-close owner must accept the
-opaque admitted input, commit its ordinal/root, and issue the complete
-threshold-signed close before it yields a `ClaimWinner`. Scale, index/cache,
-product capacity, and supported-platform claims remain outside this tracer.
+Production Resolution consumes the sealed Gateway/verifier views rather than
+those caller-constructed values. The remaining global-close owner is not
+selected: it would have to accept the opaque admitted input, commit its
+ordinal/root, and issue the complete threshold-signed close before it yields a
+`ClaimWinner`. Scale, index/cache, product capacity, and supported-platform
+claims remain outside this technical contract.
 
 ## Verification
 
 The maintained local gate is `make quick-check`; `make check` is required
 before integration. Focused Namespace/Resolution behavior is covered by
-`go test ./internal/naming/namespace ./internal/nameresolution -count=1`.
+`go test ./internal/naming/namespace ./internal/naming/resolution -count=1`.
 
 ## Governing decisions
 

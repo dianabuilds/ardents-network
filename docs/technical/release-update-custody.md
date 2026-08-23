@@ -1,8 +1,8 @@
 # Release, Update, and Authority Custody
 
-Status: **M12 custody tracer in progress.** This document records the current
-Module contracts; it does not claim a supported installer, automatic unlock,
-platform qualification, or a complete operator journey.
+Status: **current maintained technical contract.** This document records the
+current Module contracts; it does not claim a supported installer, automatic
+unlock, platform qualification, or a complete operator journey.
 
 ## Custody ownership
 
@@ -39,9 +39,8 @@ cannot sign.
 
 ## Explicit limits
 
-- `cmd/ardents-name` still consumes the retained complete signed control wire;
-  moving the operator/Gateway intake through custody belongs to later
-  composition work.
+- `ardents name control` consumes the retained complete signed control wire;
+  it is an operator input boundary, not a second Authority signing route.
 - Update has no Vault/root input and its D0 test proves it does not mutate
   Vault or floor bytes.
 - The retained `custody_notice` key is not live custody state. It is the exact
