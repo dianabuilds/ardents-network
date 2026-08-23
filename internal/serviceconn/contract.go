@@ -159,7 +159,7 @@ func (endpoint *endpoint) Close() error {
 	if endpoint == nil {
 		return nil
 	}
-	endpoint.admission.Drain()
+	endpoint.admission.Close()
 	if endpoint.publications == nil {
 		return nil
 	}

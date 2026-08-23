@@ -12,10 +12,12 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
-		return denied(err.Error())
+func (endpoint *endpoint) connect(ctx context.Context, input Request) (result Result, err error) {
+	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
+	if consumeErr != nil {
+		return denied(consumeErr.Error())
 	}
+	defer projectReceipt(&result, receipt)
 	credential, err := decodePublication(input.Publication, endpoint.authority, endpoint.network, input.At)
 	if err != nil || input.Target == [32]byte{} || input.Target != credential.Target {
 		return failed("service target authentication failure", "exact Service Target could not be authenticated", errors.New("target or publication mismatch"))
@@ -72,10 +74,12 @@ func (endpoint *endpoint) connect(ctx context.Context, input Request) (Result, e
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
-func (endpoint *endpoint) accept(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "connection"); err != nil {
-		return denied(err.Error())
+func (endpoint *endpoint) accept(ctx context.Context, input Request) (result Result, err error) {
+	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
+	if consumeErr != nil {
+		return denied(consumeErr.Error())
 	}
+	defer projectReceipt(&result, receipt)
 	if err := validateStreams(input); err != nil {
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
 	}

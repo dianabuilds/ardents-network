@@ -10,10 +10,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-func (endpoint *endpoint) publish(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "administration"); err != nil {
-		return denied(err.Error())
+func (endpoint *endpoint) publish(ctx context.Context, input Request) (result Result, err error) {
+	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "administration")
+	if consumeErr != nil {
+		return denied(consumeErr.Error())
 	}
+	defer projectReceipt(&result, receipt)
 	if endpoint.publications == nil {
 		return failed("service unavailable", "publisher has no publication owner", errors.New("publication root is unavailable"))
 	}
@@ -48,10 +50,12 @@ func (endpoint *endpoint) publish(ctx context.Context, input Request) (Result, e
 		AuthenticatedTarget:         current.Credential.Target, Generation: current.Credential.Generation}, nil
 }
 
-func (endpoint *endpoint) unpublish(ctx context.Context, input Request) (Result, error) {
-	if err := endpoint.consume(input.Session, input.Principal, "administration"); err != nil {
-		return denied(err.Error())
+func (endpoint *endpoint) unpublish(ctx context.Context, input Request) (result Result, err error) {
+	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "administration")
+	if consumeErr != nil {
+		return denied(consumeErr.Error())
 	}
+	defer projectReceipt(&result, receipt)
 	if endpoint.publications == nil {
 		return failed("service unavailable", "publisher has no publication owner", errors.New("publication root is unavailable"))
 	}
