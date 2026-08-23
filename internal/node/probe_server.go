@@ -1,4 +1,4 @@
-package probe
+package node
 
 import (
 	"context"
@@ -12,9 +12,9 @@ import (
 	"time"
 )
 
-type service struct {
-	plan        *Plan
-	duty        Duty
+type probeListener struct {
+	plan        *probePlan
+	duty        probeDuty
 	listener    net.Listener
 	active      chan struct{}
 	open        chan struct{}
@@ -30,8 +30,8 @@ type service struct {
 	work        sync.WaitGroup
 }
 
-// Start binds the plan to one authenticated duty.
-func (p *Plan) Start(duty Duty) (*Server, error) {
+// startProbe binds the plan to one authenticated duty.
+func (p *probePlan) startProbe(duty probeDuty) (*probeServer, error) {
 	if duty.Capacity == 0 {
 		return nil, errors.New("role-probe duty has no capacity")
 	}
@@ -39,16 +39,16 @@ func (p *Plan) Start(duty Duty) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	running := &service{plan: p, duty: duty, listener: tls.NewListener(listener, probeTLSConfig(p.config)),
+	running := &probeListener{plan: p, duty: duty, listener: tls.NewListener(listener, probeTLSConfig(p.config)),
 		active: make(chan struct{}, min(4, int(duty.Capacity))), open: make(chan struct{}, 16), connections: make(map[net.Conn]struct{}),
 		stop: make(chan struct{}), terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
-	return &Server{Done: running.terminal, Protect: running.protect, Usage: running.usage,
+	return &probeServer{Done: running.terminal, Protect: running.protect, Usage: running.usage,
 		Stop: running.stopAdmission, Drain: running.drain}, nil
 }
 
-func probeTLSConfig(config Config) *tls.Config {
+func probeTLSConfig(config ProbeConfig) *tls.Config {
 	roots := x509.NewCertPool()
 	roots.AppendCertsFromPEM(config.ClientRootPEM)
 	pins := make(map[[32]byte]bool, len(config.ClientKeyPins))
@@ -69,7 +69,7 @@ func probeTLSConfig(config Config) *tls.Config {
 		}}
 }
 
-func (s *service) accept() {
+func (s *probeListener) accept() {
 	defer s.work.Done()
 	for {
 		select {
@@ -100,16 +100,16 @@ func (s *service) accept() {
 	}
 }
 
-func (s *service) protect(value bool) { s.protected.Store(value) }
+func (s *probeListener) protect(value bool) { s.protected.Store(value) }
 
-func (s *service) usage() (uint64, uint64, uint64) {
+func (s *probeListener) usage() (uint64, uint64, uint64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	open := uint64(len(s.connections))
 	return open + 1, uint64(len(s.active)), 0
 }
 
-func (s *service) handle(connection net.Conn) {
+func (s *probeListener) handle(connection net.Conn) {
 	defer s.work.Done()
 	defer func() { <-s.open }()
 	defer s.track(connection, false)
@@ -135,7 +135,7 @@ func (s *service) handle(connection net.Conn) {
 	}
 }
 
-func (s *service) acceptNonce(nonce [32]byte) bool {
+func (s *probeListener) acceptNonce(nonce [32]byte) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for index := 0; index < s.nonceCount; index++ {
@@ -151,7 +151,7 @@ func (s *service) acceptNonce(nonce [32]byte) bool {
 	return true
 }
 
-func (s *service) track(connection net.Conn, add bool) {
+func (s *probeListener) track(connection net.Conn, add bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if add {
@@ -161,7 +161,7 @@ func (s *service) track(connection net.Conn, add bool) {
 	}
 }
 
-func (s *service) drain(ctx context.Context) {
+func (s *probeListener) drain(ctx context.Context) {
 	s.stopAdmission()
 	done := make(chan struct{})
 	go func() { s.work.Wait(); close(done) }()
@@ -181,7 +181,7 @@ func (s *service) drain(ctx context.Context) {
 	<-done
 }
 
-func (s *service) stopAdmission() {
+func (s *probeListener) stopAdmission() {
 	s.stopOnce.Do(func() {
 		close(s.stop)
 		_ = s.listener.Close()

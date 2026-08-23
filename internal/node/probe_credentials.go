@@ -1,4 +1,4 @@
-package probe
+package node
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func cloneTLSMaterial(input *Config, identity ed25519.PublicKey, now time.Time) error {
+func cloneProbeTLSMaterial(input *ProbeConfig, identity ed25519.PublicKey, now time.Time) error {
 	certificate := input.Certificate
 	if len(certificate.Certificate) < 2 || len(certificate.Certificate) > 4 || certificate.PrivateKey == nil ||
 		len(certificate.OCSPStaple) != 0 || len(certificate.SignedCertificateTimestamps) != 0 {

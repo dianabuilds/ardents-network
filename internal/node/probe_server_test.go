@@ -1,4 +1,4 @@
-package probe
+package node
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 
 func TestListenerFailureIsTerminal(t *testing.T) {
 	want := errors.New("listener failed")
-	server := &service{listener: failingListener{err: want}, open: make(chan struct{}, 1),
+	server := &probeListener{listener: failingListener{err: want}, open: make(chan struct{}, 1),
 		stop: make(chan struct{}), terminal: make(chan error, 1), connections: make(map[net.Conn]struct{})}
 	server.work.Add(1)
 	go server.accept()

@@ -23,7 +23,6 @@ github.com/dianabuilds/ardents-network/internal/naming
 github.com/dianabuilds/ardents-network/internal/network/source
 github.com/dianabuilds/ardents-network/internal/network/state
 github.com/dianabuilds/ardents-network/internal/node
-github.com/dianabuilds/ardents-network/internal/node/probe
 github.com/dianabuilds/ardents-network/internal/planfile
 github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/resource

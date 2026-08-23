@@ -5,7 +5,6 @@ import (
 	"crypto/ed25519"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -41,7 +40,7 @@ type Config struct {
 	NodeID             [32]byte
 	IdentityKey        ed25519.PrivateKey
 	Current            func() (Facts, error)
-	Probe              probe.Config
+	Probe              ProbeConfig
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
@@ -81,6 +80,6 @@ type Result struct {
 type runtimeConfig struct {
 	Config
 	now      func() time.Time
-	probe    *probe.Plan
+	probe    *probePlan
 	pressure *resource.Guard
 }

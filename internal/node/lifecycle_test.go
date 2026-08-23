@@ -19,7 +19,6 @@ import (
 	"time"
 
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -296,7 +295,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	fixture := &lifecycleFixture{snapshot: snapshot, serverRoots: roots, client: client.certificate, serverName: "node.test"}
 	fixture.config = Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID, IdentityKey: identityPrivate,
 		LocalRoleStateRoot: t.TempDir(),
-		Probe: probe.Config{ListenAddress: address, Certificate: server.certificate, ClientRootPEM: ca.pem,
+		Probe: ProbeConfig{ListenAddress: address, Certificate: server.certificate, ClientRootPEM: ca.pem,
 			ClientKeyPins: [][32]byte{sha256.Sum256(pinBytes)}, MaximumDuty: 2 * time.Second, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond,
 		CheckPlacement: func() error { return nil }}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -90,7 +89,7 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	if assessAdmission(config, current).kind != admissionReady || !sameDuty(snapshot, current) {
 		return fail(config, machine, nil, "assignment changed during quarantine", errors.New("assignment changed during quarantine"))
 	}
-	server, err := config.probe.Start(probeDuty(current))
+	server, err := config.probe.startProbe(newProbeDuty(current))
 	if err != nil {
 		return fail(config, machine, nil, "role-probe listener failed", err)
 	}
@@ -179,7 +178,7 @@ func emitResourceState(config runtimeConfig, snapshot Facts, state, reason strin
 		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
-func withdraw(config runtimeConfig, machine *stateMachine, server *probe.Server, snapshot Facts, reason string) (Result, error) {
+func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot Facts, reason string) (Result, error) {
 	server.Stop()
 	if err := moveAndEmit(config, machine, stateDraining, snapshot, reason); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
@@ -191,7 +190,7 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *probe.Server,
 	return resultFor(machine, snapshot, reason), nil
 }
 
-func fail(config runtimeConfig, machine *stateMachine, server *probe.Server, reason string, cause error) (Result, error) {
+func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reason string, cause error) (Result, error) {
 	if server != nil {
 		server.Stop()
 	}
@@ -220,8 +219,8 @@ func sameDuty(first, second Facts) bool {
 		first.AssignmentDigest == second.AssignmentDigest
 }
 
-func probeDuty(snapshot Facts) probe.Duty {
-	return probe.Duty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
+func newProbeDuty(snapshot Facts) probeDuty {
+	return probeDuty{NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
 		AssignmentDigest: snapshot.AssignmentDigest, EpochValidFrom: snapshot.EpochValidFrom,
 		EpochValidUntil: snapshot.ValidUntil, RecordValidFrom: snapshot.RecordValidFrom,
 		RecordValidUntil: snapshot.RecordValidUntil, Capacity: snapshot.ProbeCapacity}

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -38,7 +37,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	if now == nil {
 		now = time.Now
 	}
-	probePlan, err := probe.New(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
+	probePlan, err := newProbePlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
 	if err != nil {
 		return runtimeConfig{}, err
 	}

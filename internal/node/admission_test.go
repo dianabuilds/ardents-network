@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/node/probe"
 )
 
 func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
@@ -17,7 +15,7 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 	}
 	now := time.Unix(2_000_000_000, 0).UTC()
 	config := runtimeConfig{Config: Config{NetworkID: [32]byte{1}, NodeID: [32]byte{2}, IdentityKey: private,
-		Probe:          probe.Config{ListenAddress: "127.0.0.1:4101", MaximumDuty: time.Second},
+		Probe:          ProbeConfig{ListenAddress: "127.0.0.1:4101", MaximumDuty: time.Second},
 		CheckPlacement: func() error { return nil }}, now: func() time.Time { return now }}
 	snapshot := Facts{NetworkID: config.NetworkID, NodeID: config.NodeID, RecordPresent: true,
 		EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour), RecordValidFrom: now.Add(-time.Hour),

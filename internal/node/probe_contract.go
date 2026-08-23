@@ -1,4 +1,4 @@
-package probe
+package node
 
 import (
 	"context"
@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
-// Config declares one private role-probe listener and its trust material.
-type Config struct {
+// ProbeConfig declares the private role-probe listener and its trust material.
+// It is part of the Node's single duty lifecycle, not a separately callable
+// transport module.
+type ProbeConfig struct {
 	ListenAddress string
 	Certificate   tls.Certificate
 	ClientRootPEM []byte
@@ -20,8 +22,8 @@ type Config struct {
 	DrainTimeout  time.Duration
 }
 
-// Duty is the authenticated assignment served by one listener lifetime.
-type Duty struct {
+// probeDuty is the authenticated assignment served by one listener lifetime.
+type probeDuty struct {
 	NetworkID        [32]byte
 	EpochDigest      [32]byte
 	NodeID           [32]byte
@@ -33,14 +35,14 @@ type Duty struct {
 	Capacity         uint16
 }
 
-// Plan is validated, owned role-probe configuration.
-type Plan struct {
-	config Config
+// probePlan is validated, owned role-probe configuration.
+type probePlan struct {
+	config ProbeConfig
 	now    func() time.Time
 }
 
-// Server is the bounded capability handle for one running listener.
-type Server struct {
+// probeServer is the bounded capability handle for one running listener.
+type probeServer struct {
 	Done    <-chan error
 	Protect func(bool)
 	Usage   func() (uint64, uint64, uint64)
@@ -48,8 +50,8 @@ type Server struct {
 	Drain   func(context.Context)
 }
 
-// New validates and owns the role-probe listener plan.
-func New(input Config, identity ed25519.PublicKey, now func() time.Time) (*Plan, error) {
+// newProbePlan validates and owns the Node's private role-probe listener plan.
+func newProbePlan(input ProbeConfig, identity ed25519.PublicKey, now func() time.Time) (*probePlan, error) {
 	if len(identity) != ed25519.PublicKeySize || input.ListenAddress == "" {
 		return nil, errors.New("role-probe identity and listener are required")
 	}
@@ -76,14 +78,14 @@ func New(input Config, identity ed25519.PublicKey, now func() time.Time) (*Plan,
 	if now == nil {
 		now = time.Now
 	}
-	if err := cloneTLSMaterial(&input, identity, now().UTC()); err != nil {
+	if err := cloneProbeTLSMaterial(&input, identity, now().UTC()); err != nil {
 		return nil, err
 	}
-	return &Plan{config: input, now: func() time.Time { return now().UTC() }}, nil
+	return &probePlan{config: input, now: func() time.Time { return now().UTC() }}, nil
 }
 
 // ListenAddress returns the literal endpoint owned by the plan.
-func (p *Plan) ListenAddress() string { return p.config.ListenAddress }
+func (p *probePlan) ListenAddress() string { return p.config.ListenAddress }
 
 // MaximumDuty returns the longest accepted connection lifetime.
-func (p *Plan) MaximumDuty() time.Duration { return p.config.MaximumDuty }
+func (p *probePlan) MaximumDuty() time.Duration { return p.config.MaximumDuty }

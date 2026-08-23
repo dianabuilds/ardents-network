@@ -1,4 +1,4 @@
-package probe
+package node
 
 import (
 	"bytes"
@@ -50,7 +50,7 @@ func readProbeRequest(reader io.Reader) (probeRequest, error) {
 	return request, nil
 }
 
-func requestMatches(request probeRequest, duty Duty) bool {
+func requestMatches(request probeRequest, duty probeDuty) bool {
 	return request.network == duty.NetworkID && request.profile == probeProfile && request.epoch == duty.EpochDigest &&
 		request.node == duty.NodeID && request.assignment == duty.AssignmentDigest &&
 		!bytes.Equal(request.nonce[:], make([]byte, 32))
