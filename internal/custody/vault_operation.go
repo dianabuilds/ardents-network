@@ -29,6 +29,8 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return vault.verifyRecord(ctx, operation, secrets)
 	case OperationExportRecoveryBundle:
 		return vault.exportBundle(ctx, operation, secrets)
+	case OperationRestoreRecoveryBundle:
+		return vault.restoreBundle(ctx, operation, secrets)
 	case OperationInspectEnvelope:
 		return vault.inspect(operation)
 	default:
@@ -74,7 +76,7 @@ func (vault *Vault) createRecord(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	return Receipt{Operation: OperationCreateVaultRecord, RecordID: recordID, Envelope: info, Authority: authorityReceipt(operation.Authority)}, nil
+	return Receipt{Operation: OperationCreateVaultRecord, RecordID: recordID, Envelope: info, Authority: authorityReceipt(operation.Authority), State: RecordActive}, nil
 }
 
 func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
@@ -106,7 +108,7 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
-	return Receipt{Operation: OperationVerifyVaultRecord, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state)}, nil
+	return Receipt{Operation: OperationVerifyVaultRecord, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state), State: RecordActive}, nil
 }
 
 func (vault *Vault) inspect(operation Operation) (Receipt, error) {
@@ -137,11 +139,19 @@ func readPassword(ctx context.Context, input SecretInput, prompt SecretPrompt) (
 }
 
 func (vault *Vault) writeRecord(recordID string, body []byte) error {
-	path := filepath.Join(vault.records, "record-"+recordID+".json")
+	return vault.writeRecordIn(vault.records, recordID, body)
+}
+
+func (vault *Vault) writeQuarantineRecord(recordID string, body []byte) error {
+	return vault.writeRecordIn(vault.quarantine, recordID, body)
+}
+
+func (vault *Vault) writeRecordIn(directory, recordID string, body []byte) error {
+	path := filepath.Join(directory, "record-"+recordID+".json")
 	if err := vault.reserveRecordSpace(int64(len(body))); err != nil {
 		return err
 	}
-	file, err := os.CreateTemp(vault.records, ".record-")
+	file, err := os.CreateTemp(directory, ".record-")
 	if err != nil {
 		return fmt.Errorf("create encrypted vault temporary: %w", err)
 	}
@@ -174,27 +184,42 @@ func (vault *Vault) writeRecord(recordID string, body []byte) error {
 }
 
 func (vault *Vault) reserveRecordSpace(incoming int64) error {
-	entries, err := os.ReadDir(vault.records)
-	if err != nil {
-		return fmt.Errorf("list vault records: %w", err)
-	}
 	var count int
 	var total int64
-	for _, entry := range entries {
-		if entry.IsDir() || !validRecordFilename(entry.Name()) {
-			return fmt.Errorf("vault record root: %w", ErrInvalid)
-		}
-		info, err := entry.Info()
+	for _, directory := range []string{vault.records, vault.quarantine} {
+		entries, err := os.ReadDir(directory)
 		if err != nil {
-			return fmt.Errorf("inspect vault record: %w", err)
+			return fmt.Errorf("list vault records: %w", err)
 		}
-		count++
-		total += info.Size()
+		for _, entry := range entries {
+			if entry.IsDir() || !validRecordFilename(entry.Name()) {
+				return fmt.Errorf("vault record root: %w", ErrInvalid)
+			}
+			info, err := entry.Info()
+			if err != nil {
+				return fmt.Errorf("inspect vault record: %w", err)
+			}
+			count++
+			total += info.Size()
+		}
 	}
 	if count >= maximumVaultRecords || incoming > maximumVaultBytes || total > maximumVaultBytes-incoming {
 		return ErrInvalid
 	}
 	return nil
+}
+
+func (vault *Vault) isEmpty() (bool, error) {
+	for _, directory := range []string{vault.records, vault.quarantine} {
+		entries, err := os.ReadDir(directory)
+		if err != nil {
+			return false, fmt.Errorf("list vault records: %w", err)
+		}
+		if len(entries) != 0 {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func validRecordFilename(value string) bool {

@@ -421,7 +421,10 @@ password, reopens it, and isolatedly test-restores its expected binding. This
 is intentionally not M12 completion: confirmed replacement, restore
 quarantine/reconciliation, revocation, foreign-format migration, and platform
 qualification remain required before Release and Update can lose their custody
-compatibility text.
+compatibility text. A restored Bundle now enters a separately encrypted
+`authority-locked` quarantine record in a previously empty Vault and is
+export-only; it cannot pass the active-record verification path. Strictly
+higher authenticated reconciliation and any signing activation remain absent.
 
 ## Dependency and retirement rules
 

@@ -9,10 +9,11 @@ import (
 
 // Vault is the exclusive owner of one encrypted record root.
 type Vault struct {
-	root    string
-	records string
-	mu      sync.Mutex
-	closed  bool
+	root       string
+	records    string
+	quarantine string
+	mu         sync.Mutex
+	closed     bool
 }
 
 // Open creates or reopens an encrypted-only Vault root. It does not unlock any
@@ -36,7 +37,11 @@ func Open(config VaultConfig) (*Vault, error) {
 	if err := os.MkdirAll(records, 0o700); err != nil {
 		return nil, fmt.Errorf("create record root: %w", err)
 	}
-	return &Vault{root: root, records: records}, nil
+	quarantine := filepath.Join(root, "quarantine")
+	if err := os.MkdirAll(quarantine, 0o700); err != nil {
+		return nil, fmt.Errorf("create quarantine record root: %w", err)
+	}
+	return &Vault{root: root, records: records, quarantine: quarantine}, nil
 }
 
 // Close rejects future operations. It never leaves a record unlocked because

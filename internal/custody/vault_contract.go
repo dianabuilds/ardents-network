@@ -12,6 +12,8 @@ const (
 	OperationVerifyVaultRecord OperationKind = "verify-vault-record"
 	// OperationExportRecoveryBundle creates and isolatedly test-restores one new Bundle.
 	OperationExportRecoveryBundle OperationKind = "export-recovery-bundle"
+	// OperationRestoreRecoveryBundle imports a Bundle only as an authority-locked record.
+	OperationRestoreRecoveryBundle OperationKind = "restore-recovery-bundle"
 	// OperationInspectEnvelope validates only an envelope's public canonical header.
 	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
@@ -65,6 +67,7 @@ const (
 	SecretPromptVaultUnlock         SecretPrompt = "vault-unlock"
 	SecretPromptBundleExport        SecretPrompt = "bundle-export"
 	SecretPromptBundleExportConfirm SecretPrompt = "bundle-export-confirm"
+	SecretPromptBundleRestore       SecretPrompt = "bundle-restore"
 )
 
 // Receipt contains only bounded public custody facts. In particular it never
@@ -75,7 +78,17 @@ type Receipt struct {
 	Envelope     EnvelopeInfo
 	Authority    AuthorityReceipt
 	TestRestored bool
+	State        RecordState
 }
+
+// RecordState is the non-secret local lifecycle classification of a protected
+// record. A restored Bundle begins locked and export-only, never active.
+type RecordState string
+
+const (
+	RecordActive          RecordState = "active"
+	RecordAuthorityLocked RecordState = "authority-locked"
+)
 
 // EnvelopeInfo is the public header metadata admitted from one canonical
 // envelope. Digest covers the exact canonical envelope bytes.

@@ -10,6 +10,7 @@
 // records, verifies their semantic binding, and inspects unencrypted envelope
 // headers; Bundle export, restore, and reconciliation extend the same custody
 // operation seam. The current vertical slice also exports a Bundle only to a
-// new Owner-selected destination and isolatedly test-restores it; replacement,
-// quarantine restore, and reconciliation remain later custody operations.
+// new Owner-selected destination and isolatedly test-restores it. Restore
+// creates an encrypted authority-locked export-only record in a separate
+// quarantine root; replacement and reconciliation remain later operations.
 package custody

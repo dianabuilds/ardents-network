@@ -152,6 +152,51 @@ func TestVaultDoesNotReplaceExistingBundleDestination(t *testing.T) {
 	}
 }
 
+func TestVaultRestoreKeepsBundleAuthorityLockedAndExportOnly(t *testing.T) {
+	state := testAuthorityState()
+	bundlePassword := []byte("restored bundle password long")
+	plaintext, err := encodeAuthorityState(PurposeBundle, state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zero(plaintext)
+	bundle, err := sealEnvelope(PurposeBundle, plaintext, bundlePassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zero(bundle)
+	bundlePath := filepath.Join(t.TempDir(), "source-bundle.json")
+	if err := os.WriteFile(bundlePath, bundle, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	vaultPassword := []byte("new vault password after restore")
+	restored, err := vault.Execute(t.Context(), Operation{Kind: OperationRestoreRecoveryBundle, Path: bundlePath, Expected: state.Binding}, &sequenceSecrets{values: [][]byte{bundlePassword, vaultPassword, vaultPassword}})
+	if err != nil {
+		t.Fatalf("restore bundle: %v", err)
+	}
+	if restored.State != RecordAuthorityLocked || restored.Authority.Binding != state.Binding {
+		t.Fatalf("unexpected restore receipt: %+v", restored)
+	}
+	if _, err := os.Stat(filepath.Join(vault.quarantine, "record-"+restored.RecordID+".json")); err != nil {
+		t.Fatalf("quarantine record: %v", err)
+	}
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationVerifyVaultRecord, RecordID: restored.RecordID, Expected: state.Binding}, &sequenceSecrets{values: [][]byte{vaultPassword}}); err == nil {
+		t.Fatal("restored record became active through active verification")
+	}
+	exported, err := vault.Execute(t.Context(), Operation{Kind: OperationExportRecoveryBundle, RecordID: restored.RecordID, Expected: state.Binding, Path: filepath.Join(t.TempDir(), "export-only-bundle.json")}, &sequenceSecrets{values: [][]byte{vaultPassword, []byte("exported locked bundle password"), []byte("exported locked bundle password")}})
+	if err != nil {
+		t.Fatalf("export locked record: %v", err)
+	}
+	if exported.State != RecordAuthorityLocked || !exported.TestRestored {
+		t.Fatalf("locked record export receipt: %+v", exported)
+	}
+}
+
 type sequenceSecrets struct {
 	values [][]byte
 }

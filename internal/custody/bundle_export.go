@@ -12,7 +12,7 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if secrets == nil || !isZeroAuthorityState(operation.Authority) || !validRecordID(operation.RecordID) || operation.Path == "" {
 		return Receipt{}, ErrInvalid
 	}
-	raw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
+	raw, sourceState, err := vault.readExportableRecord(operation.RecordID)
 	if err != nil {
 		return Receipt{}, fmt.Errorf("read vault record: %w", err)
 	}
@@ -67,7 +67,26 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	return Receipt{Operation: OperationExportRecoveryBundle, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state), TestRestored: true}, nil
+	return Receipt{Operation: OperationExportRecoveryBundle, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state), TestRestored: true, State: sourceState}, nil
+}
+
+func (vault *Vault) readExportableRecord(recordID string) ([]byte, RecordState, error) {
+	for _, candidate := range []struct {
+		directory string
+		state     RecordState
+	}{
+		{vault.records, RecordActive},
+		{vault.quarantine, RecordAuthorityLocked},
+	} {
+		raw, err := readEnvelopeFile(filepath.Join(candidate.directory, "record-"+recordID+".json"))
+		if err == nil {
+			return raw, candidate.state, nil
+		}
+		if !os.IsNotExist(err) {
+			return nil, "", fmt.Errorf("read vault record: %w", err)
+		}
+	}
+	return nil, "", fmt.Errorf("read vault record: %w", os.ErrNotExist)
 }
 
 func writeNewBundle(path string, body []byte) error {
