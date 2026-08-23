@@ -15,6 +15,7 @@ type EpochInstallation struct {
 	epoch   Epoch
 	at      time.Time
 	policy  Policy
+	base    string
 	records map[string][]byte
 	cursor  uint64
 }
@@ -33,7 +34,7 @@ func (store *Store) BeginEpochInstallation(epoch Epoch, materializedAt time.Time
 		return nil, errors.New("naming state is tampered")
 	}
 	installation := &EpochInstallation{store: store, epoch: epoch, at: materializedAt, policy: policy,
-		records: make(map[string][]byte)}
+		base: current, records: make(map[string][]byte)}
 	if current == "" {
 		return installation, nil
 	}
@@ -131,5 +132,5 @@ func (installation *EpochInstallation) Commit(
 	for _, name := range names {
 		signed = append(signed, append([]byte(nil), installation.records[name]...))
 	}
-	return installation.store.Commit(installation.epoch, signed, attest)
+	return installation.store.commitInstallation(installation, signed, attest)
 }

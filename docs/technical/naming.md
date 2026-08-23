@@ -57,6 +57,11 @@ prove that the revealed claim opens that exact input leaf before
 select a Network log, transport, or shared persistence foundation. An
 incomplete or forked close must not mutate a Lease.
 
+An installation captures its current-generation identity. It may publish a
+selected pending prefix together with verified claim materialization, but it
+fails closed if another current generation has appeared before commit; the
+legacy raw `Store.Commit` is not the typed installation authority.
+
 ## Retained technical limits
 
 | Boundary | Enforced current limit | Status / owner |

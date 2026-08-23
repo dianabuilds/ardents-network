@@ -28,11 +28,56 @@ func (store *Store) Commit(epoch Epoch, signed [][]byte,
 	if store == nil || store.root == nil || attest == nil || !validEpoch(epoch) {
 		return errors.New("naming materialization input is invalid")
 	}
-	records, leaves, err := materializeRecords(store.policy.Network, signed)
+	pending, err := store.pendingCursorFor(signed)
 	if err != nil {
 		return err
 	}
-	pending, err := store.pendingCursorFor(records)
+	return store.commitAtPending(epoch, signed, pending, attest)
+}
+
+// commitInstallation publishes a Store-owned installation candidate. Unlike
+// the compatibility Commit method, it may include a verified ClaimWinner in
+// addition to the selected durable pending prefix. The candidate's private
+// construction and captured current generation prevent an arbitrary corpus
+// from using this route.
+func (store *Store) commitInstallation(installation *EpochInstallation, signed [][]byte,
+	attest func([]byte) ([][32]byte, [][]byte, error),
+) error {
+	if store == nil || installation == nil || installation.store != store || attest == nil ||
+		!validEpoch(installation.epoch) {
+		return errors.New("naming Epoch installation is invalid")
+	}
+	current, _, rootErr := store.root.load()
+	if rootErr != nil || current != installation.base {
+		return errors.New("naming Epoch installation is stale")
+	}
+	pending, err := store.installationPendingCursor(installation.cursor, current)
+	if err != nil {
+		return err
+	}
+	return store.commitAtPending(installation.epoch, signed, pending, attest)
+}
+
+func (store *Store) installationPendingCursor(cursor uint64, current string) (uint64, error) {
+	installed := uint64(0)
+	if current != "" {
+		snapshot, err := store.load(0)
+		if err != nil {
+			return 0, err
+		}
+		installed = snapshot.pending
+	}
+	entries, err := store.pending()
+	if err != nil || cursor < installed || cursor > uint64(len(entries)) {
+		return 0, errors.New("naming Epoch pending selection is unavailable")
+	}
+	return cursor, nil
+}
+
+func (store *Store) commitAtPending(epoch Epoch, signed [][]byte, pending uint64,
+	attest func([]byte) ([][32]byte, [][]byte, error),
+) error {
+	records, leaves, err := materializeRecords(store.policy.Network, signed)
 	if err != nil {
 		return err
 	}
