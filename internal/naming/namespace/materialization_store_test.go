@@ -8,14 +8,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/naming/namespace"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
+	"github.com/dianabuilds/ardents-network/internal/naming/namespace/record"
 )
 
 func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
 	t.Parallel()
 	root, network := t.TempDir(), [32]byte{7}
 	policy, signers := materializationPolicy("restart", network)
-	store, err := namespace.Open(root, policy)
+	store, err := epoch.Open(root, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,13 +28,13 @@ func TestStoreSurvivesRestartAndRejectsStaleEpoch(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := namespace.Open(root, policy)
+	reopened, err := epoch.Open(root, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
 	proof, proofErr := reopened.Lookup("alice", 11)
-	binding, _, _, verifyErr := namespace.VerifyBinding(policy, proof, 11, [32]byte{11}, 900_000)
+	binding, _, _, verifyErr := epoch.VerifyBinding(policy, proof, 11, [32]byte{11}, 900_000)
 	if proofErr != nil || verifyErr != nil || binding.Name != "alice" {
 		t.Fatalf("binding=%+v err=%v/%v", binding, proofErr, verifyErr)
 	}
@@ -46,7 +47,7 @@ func TestStoreRejectsTamperAndPartialBatch(t *testing.T) {
 	t.Parallel()
 	root, network := t.TempDir(), [32]byte{8}
 	policy, signers := materializationPolicy("tamper", network)
-	store, err := namespace.Open(root, policy)
+	store, err := epoch.Open(root, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,8 +79,8 @@ func TestStoreRejectsTamperAndPartialBatch(t *testing.T) {
 	}
 }
 
-func testEpoch(number uint64) namespace.Epoch {
-	return namespace.Epoch{Number: number, CutoffOffset: int64(number),
+func testEpoch(number uint64) epoch.Epoch {
+	return epoch.Epoch{Number: number, CutoffOffset: int64(number),
 		Digest:         [32]byte{byte(number)},
 		TransitionRoot: sha256.Sum256([]byte("transitions")), TransitionLength: 1,
 		RejectionRoot: sha256.Sum256([]byte("rejections"))}
@@ -89,11 +90,11 @@ func signedRecord(t *testing.T, network [32]byte, name, label string) []byte {
 	t.Helper()
 	seed := sha256.Sum256([]byte(label))
 	private := ed25519.NewKeyFromSeed(seed[:])
-	record := namespace.Record{Name: name, Generation: 1, Revision: 1,
+	value := record.Record{Name: name, Generation: 1, Revision: 1,
 		Lease: "active", Consistency: "current", Recovery: "stable",
 		Authority: hex.EncodeToString(private.Public().(ed25519.PublicKey)), Target: [32]byte{1},
 		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, RecordNotAfter: 950_000, Continuity: 1}
-	signed, err := namespace.SignRecord(network, record, private)
+	signed, err := record.SignRecord(network, value, private)
 	if err != nil {
 		t.Fatal(err)
 	}
