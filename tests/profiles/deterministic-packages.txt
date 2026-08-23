@@ -21,6 +21,7 @@ github.com/dianabuilds/ardents-network/internal/planfile
 github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
+github.com/dianabuilds/ardents-network/internal/service/connection
 github.com/dianabuilds/ardents-network/internal/service/publication
 github.com/dianabuilds/ardents-network/internal/serviceconn
 github.com/dianabuilds/ardents-network/internal/serviceendpoint

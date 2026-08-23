@@ -352,6 +352,14 @@ M9 deletion inputs. ADR-0028's native connection grammar, vectors and its
 new focused caller replace them in the next M9 slice; this partial cutover
 does not claim that R-083 is implemented or that M9 is complete.
 
+The first R-083 cutover now places the Data, Acknowledgement, and Terminal
+wire records in `service/connection`: each is an exact
+`ardents-service-connection-v1` envelope with an exact profile, closed kind,
+whole-body parser, and a 16 KiB Data bound. The temporary adapter calls that
+codec, so the old `ASCF` reader/writer is gone. Instance Challenge/Proof and
+Continuity remain explicit next-slice inputs; until they move, M9 must not be
+reported as an ADR-0028-complete connection implementation.
+
 ## Dependency and retirement rules
 
 M1 precedes M2. The accepted R-061 Namespace-first prerequisite occurs before

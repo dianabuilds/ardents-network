@@ -1,17 +1,17 @@
 package serviceconn
 
 import (
-	"encoding/binary"
 	"errors"
 	"io"
+
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 const (
 	dataFrameType     = byte(1)
 	ackFrameType      = byte(2)
 	terminalFrameType = byte(3)
-	maximumFrameData  = 16 << 10
-	frameHeaderSize   = 4 + 1 + 1 + 8 + 8 + 4
+	maximumFrameData  = nativeconnection.MaximumDataBytes
 )
 
 type connectionFrame struct {
@@ -27,35 +27,31 @@ func writeConnectionFrame(writer io.Writer, frame connectionFrame) error {
 		(frame.kind != dataFrameType && len(frame.data) != 0) {
 		return errors.New("service Connection frame is outside its bound")
 	}
-	header := make([]byte, frameHeaderSize)
-	copy(header[:4], "ASCF")
-	header[4], header[5] = 1, frame.kind
-	binary.BigEndian.PutUint64(header[6:14], frame.generation)
-	binary.BigEndian.PutUint64(header[14:22], frame.offset)
-	binary.BigEndian.PutUint32(header[22:26], uint32(len(frame.data)))
-	if err := writeAll(writer, header); err != nil {
-		return err
+	var record nativeconnection.Record
+	switch frame.kind {
+	case dataFrameType:
+		record.Data = &nativeconnection.Data{AttachmentGeneration: frame.generation, Offset: frame.offset, Payload: frame.data}
+	case ackFrameType:
+		record.Acknowledgement = &nativeconnection.Acknowledgement{AttachmentGeneration: frame.generation, Offset: frame.offset}
+	case terminalFrameType:
+		record.Terminal = &nativeconnection.Terminal{AttachmentGeneration: frame.generation, Offset: frame.offset}
 	}
-	return writeAll(writer, frame.data)
+	return nativeconnection.Write(writer, record)
 }
 
 func readConnectionFrame(reader io.Reader) (connectionFrame, error) {
-	header := make([]byte, frameHeaderSize)
-	if _, err := io.ReadFull(reader, header); err != nil {
+	record, err := nativeconnection.Read(reader)
+	if err != nil {
 		return connectionFrame{}, err
 	}
-	length := binary.BigEndian.Uint32(header[22:26])
-	frame := connectionFrame{kind: header[5], generation: binary.BigEndian.Uint64(header[6:14]),
-		offset: binary.BigEndian.Uint64(header[14:22])}
-	if string(header[:4]) != "ASCF" || header[4] != 1 || frame.generation == 0 ||
-		length > maximumFrameData ||
-		(frame.kind != dataFrameType && frame.kind != ackFrameType && frame.kind != terminalFrameType) ||
-		(frame.kind != dataFrameType && length != 0) {
-		return connectionFrame{}, errors.New("service Connection frame is malformed or oversized")
+	switch {
+	case record.Data != nil:
+		return connectionFrame{kind: dataFrameType, generation: record.Data.AttachmentGeneration, offset: record.Data.Offset, data: record.Data.Payload}, nil
+	case record.Acknowledgement != nil:
+		return connectionFrame{kind: ackFrameType, generation: record.Acknowledgement.AttachmentGeneration, offset: record.Acknowledgement.Offset}, nil
+	case record.Terminal != nil:
+		return connectionFrame{kind: terminalFrameType, generation: record.Terminal.AttachmentGeneration, offset: record.Terminal.Offset}, nil
+	default:
+		return connectionFrame{}, errors.New("native connection stream received a non-stream record")
 	}
-	frame.data = make([]byte, length)
-	if _, err := io.ReadFull(reader, frame.data); err != nil {
-		return connectionFrame{}, err
-	}
-	return frame, nil
 }
