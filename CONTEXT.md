@@ -241,9 +241,10 @@ _Avoid_: DNS URL, public domain, implicit hostname
 **Target Link**:
 The explicit shareable Ardents form of a machine-verifiable Service Target. It
 bypasses naming but never target authentication, routing, or Application
-authorization. Its tagged versioned form is unambiguously distinct from a
-Service Link and binds the Ardents network plus target algorithm; it contains no
-origin or mutable reachability. Exact text and binary encoding are protocol work.
+authorization. Its v1 form is `ardents-target:v1:<base64url>` over exactly a
+fixed Target algorithm identifier, 32-byte Ardents network identifier, and
+32-byte opaque Target; it is unambiguously distinct from a Service Link and
+contains no origin or mutable reachability.
 _Avoid_: Service Name, origin address, naming fallback
 
 **Destination Binding**:
