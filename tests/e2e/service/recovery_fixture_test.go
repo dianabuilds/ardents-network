@@ -51,9 +51,10 @@ func newRecoveryProcessFixture(t *testing.T) recoveryProcessFixture {
 		t.Fatal(err)
 	}
 	network := sha256.Sum256([]byte("service-recovery-e2e-network"))
+	introductionHPKE := sha256.Sum256([]byte("service-recovery-e2e-introduction-hpke"))
 	var instance [32]byte
 	copy(instance[:], instancePublic)
-	credential, err := (serviceconn.Credential{InstancePublic: instance, Generation: 1,
+	credential, err := (serviceconn.Credential{InstancePublic: instance, IntroductionHPKEPublic: introductionHPKE, Generation: 1,
 		NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(10 * time.Minute).Unix(),
 		NetworkID: network, Capabilities: 3}).Issue(authorityPrivate)
 	if err != nil {
