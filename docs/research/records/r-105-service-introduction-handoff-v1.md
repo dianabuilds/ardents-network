@@ -43,6 +43,11 @@ target-resolution, or route-selection authority.
   no Reachability registration, sealed-request reader, remote delivery, or
   attachment lifecycle. Reusing it as a C-2 channel would silently change its
   narrow publication-control authority.
+- The only maintained Endpoint-to-transit admission record is `EntryBinding`
+  v1. Its fixed `InitiatorNodeID` and `AcceptEntryAttachment` receiver bind a
+  User-to-Initiator TLS attempt. It does not authorize Publisher-to-Responder
+  admission. Renaming or reusing it would alter the accepted wire without a
+  versioned record and explicit authorization semantics.
 - Existing Endpoint `Accept` already consumes an opaque authenticated Route
   byte carrier through its local Route attachment socket; it must not acquire
   Route State or learn node topology.
@@ -124,6 +129,9 @@ Rendezvous-to-Publisher path occurs.
 - **Sourced fact:** `requestIntroductionAcknowledgement` dials a local Unix
   socket, sends only Target/generation/expiry/network/broker plus a nonce, and
   receives one signature. It is not a Service reachability or delivery API.
+- **Sourced fact:** `route.EntryBinding` and `AcceptEntryAttachment` are
+  Initiator-specific. The State-assigned Responder cannot use them as its
+  publisher-side first-hop authorization without a new closed record.
 - **Measurement:** the maintained Initiator → Rendezvous path requires the
   opposite leg to present the identical attachment ID before useful bytes can
   pass. A test-only manually opened Responder leg proves the pairing mechanics,
@@ -141,6 +149,12 @@ This resolves the recipient-key gap only; it does not decide the C-2
 plaintext, delivery, replay ledger, Responder admission, or Publisher local
 handoff.
 
+On the same date, the Product Owner accepted C-2 as a live Publisher-originated
+Introduction slot. ADR-0035 selects that topology and the separate closed
+`EndpointTransitBinding` v1 first-hop record for Introduction and Responder.
+The remaining runtime/control grammar must still be tested before it is
+retained.
+
 ## Options
 
 1. **State-assigned Introduction delivery with a Service-encrypted one-use
@@ -149,8 +163,9 @@ handoff.
    reaches a Publisher-side local delivery owner. That owner opens the selected
    Responder-to-Rendezvous leg and hands its carrier to the existing Publisher
    Endpoint socket. This appears aligned but needs a closed plaintext and
-   delivery protocol. Its recipient key is the dedicated X25519 HPKE public
-   key in Credential v2 (ADR-0034).
+   delivery protocol plus an exact Publisher-to-Responder admission record.
+   Its recipient key is the dedicated X25519 HPKE public key in Credential v2
+   (ADR-0034).
 2. **Rendezvous-derived Publisher pairing.** Reject unless a future contract
    explicitly delegates service lookup and publisher notification to
    Rendezvous. It violates current endpoint-local selection and role knowledge
@@ -164,11 +179,11 @@ handoff.
 
 ## Recommendation
 
-The X25519 recipient binding is selected. Choose no C-2 wire/runtime option
-yet. First derive a candidate plaintext and delivery transcript from option 1,
-including exactly who knows and spends the JoinHandle, which existing Service
-publication fact authorizes the recipient, and how the Publisher-side local
-socket is authenticated. Then run the named tracer before accepting a new ADR.
+Choose option 1: State-assigned live Introduction delivery. Credential v2 and
+ADR-0035 select the recipient binding, topology, and two additional first-hop
+roles. First derive and test the closed plaintext/control transcript, including
+exact JoinHandle spending, Service-publication binding, local socket
+authentication, and terminal resource ownership.
 
 **Confidence:** high that a separate Introduction delivery is required; low
 that the current record alone specifies a safe maintained protocol. The
@@ -178,8 +193,8 @@ where unauthorized ingress and topology leakage would otherwise enter.
 
 ## Disposition
 
-Open and implementation-blocking for the complete H4-2/H4-3 service path.
-ADR-0034 and Credential v2 select the signed X25519 recipient binding. No C-2
-delivery/runtime, dependency, remaining public wire, or product claim is
-selected by this record. The previous test-only Responder leg remains evidence
-only.
+Open and implementation-linked for the complete H4-2/H4-3 service path.
+ADR-0034 selects the signed X25519 recipient binding; ADR-0035 selects live
+C-2 slots and EndpointTransitBinding v1. The retained delivery/runtime,
+plaintext, and Publisher-side attachment lifecycle remain to be implemented
+and tested. The previous test-only Responder leg remains evidence only.

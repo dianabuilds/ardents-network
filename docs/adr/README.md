@@ -39,6 +39,7 @@ Current decisions:
 - [0032 — Use the canonical Target Link v1 grammar](0032-target-link-v1.md)
 - [0033 — Use the closed Route RelaySetup v1 exchange](0033-route-relay-setup-v1.md)
 - [0034 — Bind a separate Service Introduction HPKE key in Credential v2](0034-service-introduction-hpke-credential-v2.md)
+- [0035 — Use live Introduction slots and EndpointTransitBinding v1](0035-live-introduction-slots-and-transit-binding-v1.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
