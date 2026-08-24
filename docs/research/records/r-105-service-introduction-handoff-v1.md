@@ -34,6 +34,11 @@ target-resolution, or route-selection authority.
   ID. It cannot create or identify a Publisher-side leg by itself. There is no
   maintained Introduction runtime, SealedIntroduction plaintext grammar,
   one-use JoinHandle ledger, Publisher delivery channel, or Responder duty.
+- The current Authority-signed Service Credential contains only an Ed25519
+  `InstancePublic` key. The selected `SealedIntroduction` HPKE construction
+  requires an X25519 recipient public key. No signed Service HPKE key,
+  reviewed key-conversion rule, or independent key-distribution authority is
+  currently selected.
 - Existing Endpoint `Accept` already consumes an opaque authenticated Route
   byte carrier through its local Route attachment socket; it must not acquire
   Route State or learn node topology.
@@ -108,6 +113,10 @@ Rendezvous-to-Publisher path occurs.
 
 - **Sourced fact:** `SealedIntroduction` provides a canonical HPKE envelope,
   but no plaintext grammar or replay/delivery protocol.
+- **Sourced fact:** `internal/service/publication.Credential` supplies an
+  Ed25519 Instance public key, while `SealIntroduction` accepts an HPKE/X25519
+  public key. The current schemas do not bind such an HPKE recipient to the
+  Service Credential.
 - **Measurement:** the maintained Initiator → Rendezvous path requires the
   opposite leg to present the identical attachment ID before useful bytes can
   pass. A test-only manually opened Responder leg proves the pairing mechanics,
@@ -124,7 +133,9 @@ Rendezvous-to-Publisher path occurs.
    reaches a Publisher-side local delivery owner. That owner opens the selected
    Responder-to-Rendezvous leg and hands its carrier to the existing Publisher
    Endpoint socket. This appears aligned but needs a closed plaintext and
-   delivery protocol.
+   delivery protocol, including a dedicated X25519 HPKE public key in the
+   Authority-signed Service Credential (or a separately accepted equivalent
+   binding).
 2. **Rendezvous-derived Publisher pairing.** Reject unless a future contract
    explicitly delegates service lookup and publisher notification to
    Rendezvous. It violates current endpoint-local selection and role knowledge
