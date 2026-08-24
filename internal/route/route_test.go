@@ -99,8 +99,8 @@ func TestRouteAttachUsesCurrentNativeViewAndShortensSafetyDeadline(t *testing.T)
 	called := false
 	route := openRoute(t, view, entryAcquirerFunc(func(_ context.Context, value entry.Attempt, _ entry.CandidateOpener) (net.Conn, func() error, error) {
 		called, attempt = true, value
-		left, right := net.Pipe()
-		return left, right.Close, nil
+		connection, cleanup := relayReadyPipe()
+		return connection, cleanup, nil
 	}), admitted())
 	defer route.Close()
 	attachment, err := route.Attach(context.Background(), Intent{Deadline: now.Add(time.Minute)})
@@ -207,9 +207,20 @@ func (call viewFunc) Current() (state.Snapshot, error) { return call() }
 
 func successfulEntry() EntryAcquirer {
 	return entryAcquirerFunc(func(context.Context, entry.Attempt, entry.CandidateOpener) (net.Conn, func() error, error) {
-		left, right := net.Pipe()
-		return left, right.Close, nil
+		connection, cleanup := relayReadyPipe()
+		return connection, cleanup, nil
 	})
+}
+
+func relayReadyPipe() (net.Conn, func() error) {
+	left, right := net.Pipe()
+	go func() {
+		setup, err := ReadRelaySetup(right)
+		if err == nil {
+			_ = WriteRelayReady(right, RelayReady{Setup: setup})
+		}
+	}()
+	return left, right.Close
 }
 
 func admitted() ResourceAdmission {

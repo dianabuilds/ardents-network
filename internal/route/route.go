@@ -95,8 +95,8 @@ func (route *Route) Attach(ctx context.Context, intent Intent) (*Attachment, err
 	if err != nil {
 		return nil, err
 	}
-	attachment, err := openNativeAttachment(attachmentCtx, route.config.Entry, selected.networkID, selected.digest,
-		selected.epoch, identifier, deadline, route.config.Admit, func() { route.release(identifier) })
+	attachment, err := openNativeAttachment(attachmentCtx, route.config.Entry, selected, identifier, deadline,
+		route.config.Admit, func() { route.release(identifier) })
 	if err != nil {
 		route.release(identifier)
 		return nil, err

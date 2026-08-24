@@ -37,6 +37,7 @@ Current decisions:
 - [0028 — Use the native Service Connection v1 grammar](0028-native-service-connection-v1.md)
 - [0031 — Retire the generic live-test tree](0031-retire-generic-live-test-tree.md)
 - [0032 — Use the canonical Target Link v1 grammar](0032-target-link-v1.md)
+- [0033 — Use the closed Route RelaySetup v1 exchange](0033-route-relay-setup-v1.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
