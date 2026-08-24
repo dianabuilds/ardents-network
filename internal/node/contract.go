@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 const eventSchema = "ardents-node-event-v1"
@@ -85,6 +86,7 @@ type Config struct {
 	Current            func() (DutyView, error)
 	Probe              ProbeConfig
 	Rendezvous         RendezvousProfile
+	Initiator          InitiatorProfile
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
@@ -107,6 +109,17 @@ type RendezvousProfile struct {
 	HandshakeLimit, WaitingLimit, PairLimit uint16
 	PairByteLimit                           uint64
 	DrainTimeout                            time.Duration
+}
+
+// InitiatorProfile contains the local cryptographic material, bounded
+// reservations, and narrow Entry admission port for one Initiator duty. State
+// supplies its endpoint, Rendezvous identity, and expiry.
+type InitiatorProfile struct {
+	Certificate                tls.Certificate
+	Admit                      route.EntryBindingAdmitter
+	HandshakeLimit, RelayLimit uint16
+	RelayByteLimit             uint64
+	DrainTimeout               time.Duration
 }
 
 func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }

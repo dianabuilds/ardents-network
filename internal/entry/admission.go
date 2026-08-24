@@ -22,8 +22,9 @@ type AdmitterConfig struct {
 	Verification Verification
 }
 
-// Admitter owns finite, durable replay outcomes for EntryBinding tuples. It
-// retains no User identity, raw Invite, Route plan, or Service information.
+// Admitter owns finite, durable replay outcomes for EntryBinding attachment
+// identifiers. It retains no User identity, raw Invite, Route plan, or
+// Service information.
 type Admitter struct{ owner *owner }
 
 // OpenAdmitter claims one Initiator-local Entry root and recovers its atomic
@@ -54,9 +55,9 @@ func (value *Admitter) Admit(raw []byte) (Authorization, error) {
 	return authorization, nil
 }
 
-// AdmitAndConsume rechecks the opaque Invite and writes its tuple while the
-// same Entry owner lock is held. A State change cannot leave an independently
-// verified authorization waiting to be committed by this Admitter.
+// AdmitAndConsume rechecks the opaque Invite and writes its attachment use
+// while the same Entry owner lock is held. A State change cannot leave an
+// independently verified authorization waiting to be committed by this Admitter.
 func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byte, notAfter time.Time) (Authorization, error) {
 	if value == nil || value.owner == nil {
 		return Authorization{}, errors.New("entry Admitter is unavailable")
@@ -82,9 +83,9 @@ func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byt
 	return authorization, nil
 }
 
-// Consume atomically records an authenticated EntryBinding replay tuple before
-// Route allocates attachment work. The exact tuple is rejected after restart
-// until its own bounded expiry.
+// Consume atomically records an authenticated EntryBinding attachment before
+// Route allocates work. The attachment is rejected after restart until its own
+// bounded expiry.
 func (value *Admitter) Consume(authorization Authorization, attachment, clientKey [32]byte, notAfter time.Time) error {
 	if value == nil || value.owner == nil {
 		return errors.New("entry Admitter is unavailable")
@@ -111,8 +112,8 @@ func (value *Admitter) consumeLocked(authorization Authorization, attachment, cl
 		}
 	}
 	for _, record := range next.Admissions {
-		if record.InviteID == authorization.InviteID && record.AttachmentID == attachment && record.ClientKeyDigest == clientKey {
-			return errors.New("entry admission tuple was replayed")
+		if record.AttachmentID == attachment {
+			return errors.New("entry attachment was replayed")
 		}
 	}
 	if len(next.Admissions) >= maximumAdmissions {

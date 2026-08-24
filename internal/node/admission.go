@@ -48,7 +48,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 			return runtimeConfig{}, err
 		}
 	}
-	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil {
+	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil && input.Initiator.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	enforcePressure := input.ResourceProfile != ""
@@ -87,7 +87,7 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 	}
 	now := config.now()
 	if snapshot.Profile == route.Profile {
-		if _, err := rendezvousDuty(config.Rendezvous, snapshot); err != nil {
+		if err := validateNativeDutyProfile(config, snapshot); err != nil {
 			return admission{kind: admissionPrepared, reason: err.Error()}
 		}
 		if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) ||

@@ -53,7 +53,7 @@ type rendezvousPlan struct {
 }
 
 func newRendezvousPlan(input RendezvousConfig) (rendezvousPlan, error) {
-	if !literalRendezvousEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} ||
+	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} ||
 		input.EpochDigest == [32]byte{} || input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} ||
 		input.Epoch == 0 || input.NotAfter.IsZero() || input.HandshakeLimit == 0 || input.WaitingLimit == 0 ||
 		input.PairLimit == 0 || input.PairByteLimit == 0 || input.PairByteLimit > uint64(1<<63-1) ||
@@ -67,7 +67,7 @@ func newRendezvousPlan(input RendezvousConfig) (rendezvousPlan, error) {
 	if !input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) {
 		return rendezvousPlan{}, errors.New("Rendezvous duty expiry must use whole UTC seconds")
 	}
-	if err := validateRendezvousCertificate(input.Certificate, input.NodePublicKey); err != nil {
+	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return rendezvousPlan{}, err
 	}
 	result := rendezvousPlan{RendezvousConfig: input, now: now, peersByNode: make(map[[32]byte]RendezvousPeer, len(input.Peers)),
@@ -104,27 +104,27 @@ func (plan rendezvousPlan) peersByNodeForRole(role byte) RendezvousPeer {
 	return RendezvousPeer{}
 }
 
-func literalRendezvousEndpoint(endpoint string) bool {
+func literalNodeEndpoint(endpoint string) bool {
 	host, port, err := net.SplitHostPort(endpoint)
 	number, portErr := strconv.Atoi(port)
 	return err == nil && net.ParseIP(host) != nil && portErr == nil && number >= 1 && number <= 65535
 }
 
-func validateRendezvousCertificate(certificate tls.Certificate, expected [32]byte) error {
+func validateNodeCertificate(certificate tls.Certificate, expected [32]byte) error {
 	if certificate.PrivateKey == nil || len(certificate.Certificate) != 1 {
-		return errors.New("Rendezvous TLS certificate is invalid")
+		return errors.New("node TLS certificate is invalid")
 	}
 	leaf := certificate.Leaf
 	if leaf == nil {
 		var err error
 		leaf, err = x509.ParseCertificate(certificate.Certificate[0])
 		if err != nil {
-			return errors.New("Rendezvous TLS certificate leaf is invalid")
+			return errors.New("node TLS certificate leaf is invalid")
 		}
 	}
 	public, ok := leaf.PublicKey.(ed25519.PublicKey)
 	if !ok || len(public) != ed25519.PublicKeySize || string(public) != string(expected[:]) {
-		return errors.New("Rendezvous TLS certificate does not match Node public key")
+		return errors.New("node TLS certificate does not match Node public key")
 	}
 	return nil
 }

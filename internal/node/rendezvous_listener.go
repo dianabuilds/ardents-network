@@ -228,7 +228,7 @@ func (running *Rendezvous) serverTLS() *tls.Config {
 func (running *Rendezvous) validateIncoming(binding route.LegBinding, state tls.ConnectionState) error {
 	if binding.NetworkID != running.plan.NetworkID || binding.Epoch != running.plan.Epoch || binding.Digest != running.plan.EpochDigest ||
 		binding.PeerRole != route.RendezvousRole || binding.PeerNodeID != running.plan.NodeID ||
-		!binding.NotAfter.Equal(running.plan.NotAfter.UTC()) || !running.plan.now().Before(binding.NotAfter) {
+		binding.NotAfter.After(running.plan.NotAfter.UTC()) || !running.plan.now().Before(binding.NotAfter) {
 		return errors.New("Rendezvous LegBinding context is unauthorized")
 	}
 	peer, found := running.plan.peersByNode[binding.SenderNodeID]

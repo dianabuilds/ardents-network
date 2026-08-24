@@ -21,6 +21,9 @@ func TestAdmitterPersistsExactReplayTupleAcrossReopen(t *testing.T) {
 	if _, err := admitter.AdmitAndConsume(raw, attachment, clientKey, authorization.NotAfter); err == nil {
 		t.Fatal("duplicate Entry binding tuple was accepted")
 	}
+	if _, err := admitter.AdmitAndConsume(raw, attachment, [32]byte{74}, authorization.NotAfter); err == nil {
+		t.Fatal("replayed attachment with a different client key was accepted")
+	}
 	if err := admitter.Close(); err != nil {
 		t.Fatal(err)
 	}
