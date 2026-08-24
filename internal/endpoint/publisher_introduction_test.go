@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testing.T) {
@@ -47,6 +48,18 @@ func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testi
 
 	publisher, current, private := c2PublishedEndpoint(t, network, now)
 	defer publisher.Close()
+	clientIntroduction := c2Identifier(15)
+	client, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: c2Identifier(14),
+		AuthorityPublic: ed25519.PublicKey(current.Credential.AuthorityPublic[:]), IntroductionPublic: ed25519.PublicKey(clientIntroduction[:]),
+		ConnectionPrincipal: c2Identifier(16)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	link, err := targetlink.Encode(targetlink.Link{Network: network, Target: current.Credential.Target})
+	if err != nil {
+		t.Fatal(err)
+	}
 	profile := endpointapi.PublisherIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
 		Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
 		Rendezvous:       endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: c2Identifier(11), Endpoint: "127.0.0.1:24011"},
@@ -70,29 +83,12 @@ func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testi
 			err        error
 		}{connection, waitErr}
 	}()
-	plaintext, err := publication.EncodeIntroductionInstruction(publication.IntroductionInstruction{Target: current.Credential.Target,
-		Generation: current.Credential.Generation, PublicationDigest: current.Digest, AttachmentID: serviceAttachment})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sealed, err := route.SealIntroduction(route.SealedIntroduction{NetworkID: network, Digest: digest, Epoch: 10,
-		IntroductionNodeID: introductionID, RendezvousNodeID: rendezvousID, Reachability: reachability, NotAfter: deadline,
-		JoinHandle: join, EndpointHandshake: c2Identifier(12)}, private.PublicKey(), plaintext)
-	if err != nil {
-		t.Fatal(err)
-	}
-	submission, err := route.OpenEndpointTransitAttachment(context.Background(), route.EndpointTransitAttachmentRequest{NetworkID: network,
-		Digest: digest, AttachmentID: c2Identifier(13), TransitNodeID: introductionID, TransitNodePublicKey: introductionPublic,
-		Epoch: 10, TransitRole: route.IntroductionRole, Endpoint: introductionAddress, Deadline: deadline, Authorization: join[:]})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := route.WriteSealedIntroduction(submission, sealed); err != nil {
-		t.Fatal(err)
-	}
-	delivery, err := route.ReadIntroductionDeliveryResult(submission)
-	_ = submission.Close()
-	if err != nil || delivery.Outcome != route.IntroductionDelivered {
+	delivery, err := client.SubmitIntroductionFromLink(context.Background(), endpointapi.UserIntroductionRequest{TargetLink: link, Publication: current.Record,
+		Profile: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
+			Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
+			RendezvousNodeID: rendezvousID, Reachability: reachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]},
+		AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(12), At: now})
+	if err != nil || delivery.AuthenticatedTarget != current.Credential.Target || delivery.Generation != current.Credential.Generation || delivery.AttachmentID != serviceAttachment {
 		t.Fatalf("delivery = %+v, %v", delivery, err)
 	}
 	result := <-waited
