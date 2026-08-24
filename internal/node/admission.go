@@ -48,7 +48,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 			return runtimeConfig{}, err
 		}
 	}
-	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil && input.Initiator.Certificate.PrivateKey == nil && input.Introduction.Certificate.PrivateKey == nil {
+	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil && input.Initiator.Certificate.PrivateKey == nil && input.Introduction.Certificate.PrivateKey == nil && input.Responder.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	enforcePressure := input.ResourceProfile != ""

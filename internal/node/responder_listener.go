@@ -1,0 +1,274 @@
+package node
+
+import (
+	"context"
+	"errors"
+	"io"
+	"net"
+	"sync"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
+)
+
+// Responder owns the Publisher-side C-2 listener and exactly one State-pinned
+// Rendezvous leg per accepted attachment. It never reads an Introduction
+// plaintext or accepts a client-selected next hop.
+type Responder struct {
+	plan       responderPlan
+	listener   net.Listener
+	handshakes chan struct{}
+	relays     chan struct{}
+
+	mu        sync.Mutex
+	draining  bool
+	protected bool
+	pre       map[net.Conn]struct{}
+	active    map[net.Conn]struct{}
+	usage     ResponderUsage
+	stopOnce  sync.Once
+	work      sync.WaitGroup
+	terminal  chan error
+}
+
+func StartResponder(input ResponderConfig) (*Responder, error) {
+	plan, err := newResponderPlan(input)
+	if err != nil {
+		return nil, err
+	}
+	listener, err := net.Listen("tcp", plan.ListenAddress)
+	if err != nil {
+		return nil, err
+	}
+	running := &Responder{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit), relays: make(chan struct{}, plan.RelayLimit),
+		pre: make(map[net.Conn]struct{}), active: make(map[net.Conn]struct{}), terminal: make(chan error, 1)}
+	running.work.Add(1)
+	go running.accept()
+	return running, nil
+}
+
+func (running *Responder) Done() <-chan error {
+	if running == nil {
+		return nil
+	}
+	return running.terminal
+}
+
+func (running *Responder) Protect(value bool) {
+	if running == nil {
+		return
+	}
+	running.mu.Lock()
+	if running.draining || running.protected == value {
+		running.mu.Unlock()
+		return
+	}
+	running.protected = value
+	connections := []net.Conn(nil)
+	if value {
+		for connection := range running.pre {
+			connections = append(connections, connection)
+		}
+	}
+	running.mu.Unlock()
+	for _, connection := range connections {
+		_ = connection.Close()
+	}
+}
+
+func (running *Responder) Stop() {
+	if running == nil {
+		return
+	}
+	running.stopOnce.Do(func() { running.mu.Lock(); running.draining = true; running.mu.Unlock(); _ = running.listener.Close() })
+}
+
+func (running *Responder) Usage() ResponderUsage {
+	if running == nil {
+		return ResponderUsage{}
+	}
+	running.mu.Lock()
+	defer running.mu.Unlock()
+	result := running.usage
+	result.Handshakes, result.ActiveRelays = uint16(len(running.handshakes)), uint16(len(running.relays))
+	result.Connections = uint16(len(running.pre) + len(running.active))
+	return result
+}
+
+func (running *Responder) accept() {
+	defer running.work.Done()
+	for {
+		raw, err := running.listener.Accept()
+		if err != nil {
+			running.mu.Lock()
+			draining := running.draining
+			running.mu.Unlock()
+			if draining {
+				running.terminal <- nil
+			} else {
+				running.terminal <- err
+			}
+			return
+		}
+		if !running.reserveHandshake(raw) {
+			_ = raw.Close()
+			continue
+		}
+		running.work.Add(1)
+		go running.handle(raw)
+	}
+}
+
+func (running *Responder) reserveHandshake(raw net.Conn) bool {
+	running.mu.Lock()
+	defer running.mu.Unlock()
+	if running.draining || running.protected || len(running.relays) == cap(running.relays) {
+		running.usage.RefusedBeforeTLS++
+		return false
+	}
+	select {
+	case running.handshakes <- struct{}{}:
+		running.pre[raw] = struct{}{}
+		return true
+	default:
+		running.usage.RefusedBeforeTLS++
+		return false
+	}
+}
+
+func (running *Responder) handle(raw net.Conn) {
+	defer running.work.Done()
+	handshakeHeld, owned := true, true
+	defer func() {
+		if handshakeHeld {
+			<-running.handshakes
+		}
+		if owned {
+			running.mu.Lock()
+			delete(running.pre, raw)
+			running.mu.Unlock()
+			_ = raw.Close()
+		}
+	}()
+	ctx, cancel := context.WithDeadline(context.Background(), running.plan.NotAfter)
+	defer cancel()
+	accepted, err := route.AcceptEndpointTransitAttachment(ctx, raw, route.EndpointTransitAttachmentAcceptance{NetworkID: running.plan.NetworkID,
+		Digest: running.plan.EpochDigest, TransitNodeID: running.plan.NodeID, Epoch: running.plan.Epoch, TransitRole: route.ResponderRole,
+		Deadline: running.plan.NotAfter, Certificate: running.plan.Certificate, Admit: running.plan.Admit})
+	if err != nil || !running.reserveRelay(raw) {
+		running.refuseRelay()
+		return
+	}
+	<-running.handshakes
+	handshakeHeld = false
+	owned = false
+	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{Endpoint: running.plan.Rendezvous.Endpoint, Certificate: running.plan.Certificate,
+		ExpectedPeerKey: running.plan.Rendezvous.PublicKey, Deadline: accepted.Binding.NotAfter, Binding: route.LegBinding{NetworkID: accepted.Binding.NetworkID,
+			Epoch: accepted.Binding.Epoch, Digest: accepted.Binding.Digest, AttachmentID: accepted.Binding.AttachmentID, SenderRole: route.ResponderRole,
+			PeerRole: route.RendezvousRole, SenderNodeID: running.plan.NodeID, PeerNodeID: running.plan.Rendezvous.NodeID, NotAfter: accepted.Binding.NotAfter}})
+	if err != nil {
+		running.releaseRelay(raw, nil)
+		return
+	}
+	if err := next.SetDeadline(accepted.Binding.NotAfter); err != nil {
+		_ = next.Close()
+		running.releaseRelay(raw, nil)
+		return
+	}
+	running.mu.Lock()
+	running.active[next] = struct{}{}
+	running.mu.Unlock()
+	running.work.Add(1)
+	go running.relay(raw, accepted.Connection, next)
+}
+
+func (running *Responder) reserveRelay(raw net.Conn) bool {
+	running.mu.Lock()
+	defer running.mu.Unlock()
+	if running.draining || running.protected {
+		return false
+	}
+	select {
+	case running.relays <- struct{}{}:
+		delete(running.pre, raw)
+		running.active[raw] = struct{}{}
+		return true
+	default:
+		return false
+	}
+}
+
+func (running *Responder) refuseRelay() {
+	running.mu.Lock()
+	running.usage.RelayRefused++
+	running.mu.Unlock()
+}
+
+func (running *Responder) relay(raw, endpoint, next net.Conn) {
+	defer running.work.Done()
+	type lane struct{ bytes int64 }
+	results := make(chan lane, 2)
+	copyLane := func(destination, source net.Conn) {
+		limited := &io.LimitedReader{R: source, N: int64(running.plan.RelayByteLimit)}
+		count, _ := io.CopyBuffer(destination, limited, make([]byte, 32<<10))
+		results <- lane{bytes: count}
+	}
+	go copyLane(endpoint, next)
+	go copyLane(next, endpoint)
+	first := <-results
+	_ = raw.Close()
+	_ = next.Close()
+	second := <-results
+	running.mu.Lock()
+	running.usage.RelayedBytes += uint64(first.bytes + second.bytes)
+	running.usage.CompletedRelays++
+	running.mu.Unlock()
+	running.releaseRelay(raw, next)
+}
+
+func (running *Responder) releaseRelay(raw, next net.Conn) {
+	running.mu.Lock()
+	delete(running.active, raw)
+	if next != nil {
+		delete(running.active, next)
+	}
+	<-running.relays
+	running.mu.Unlock()
+	_ = raw.Close()
+	if next != nil {
+		_ = next.Close()
+	}
+}
+
+func (running *Responder) Drain(ctx context.Context) error {
+	if running == nil || ctx == nil {
+		return errors.New("Responder duty is unavailable")
+	}
+	running.Stop()
+	running.mu.Lock()
+	connections := make([]net.Conn, 0, len(running.pre)+len(running.active))
+	for connection := range running.pre {
+		connections = append(connections, connection)
+	}
+	for connection := range running.active {
+		connections = append(connections, connection)
+	}
+	running.mu.Unlock()
+	for _, connection := range connections {
+		_ = connection.Close()
+	}
+	done := make(chan struct{})
+	go func() { running.work.Wait(); close(done) }()
+	timer := time.NewTimer(running.plan.DrainTimeout)
+	defer timer.Stop()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return errors.New("Responder drain exceeded its Work Safety Lease")
+	}
+}
+
+func (running *Responder) Close() error { return running.Drain(context.Background()) }

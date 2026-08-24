@@ -51,6 +51,19 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 			usage := running.Usage()
 			return uint64(usage.Handshakes + usage.Deliveries), uint64(usage.Connections), 0
 		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
+	case "responder":
+		plan, err := responderDuty(config.Responder, snapshot)
+		if err != nil {
+			return nil, err
+		}
+		running, err := StartResponder(plan)
+		if err != nil {
+			return nil, err
+		}
+		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
+			usage := running.Usage()
+			return uint64(usage.Handshakes), uint64(usage.Connections), usage.RelayedBytes
+		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
 	default:
 		return nil, errors.New("native Route assignment is not implemented")
 	}

@@ -131,8 +131,8 @@ the Publisher validated its current synthetic publication, opened the separate
 Responder attachment, and the two State-pinned Node legs paired at maintained
 Rendezvous. The User sent one synthetic HTTP request through the Initiator and
 received the exact static Reference Site response from the Publisher. Each
-role emitted one successful terminal record, and the maintained Initiator and
-Rendezvous processes drained with zero active connections.
+role emitted one successful terminal record, and the maintained Initiator,
+Rendezvous, and Responder processes drained with zero active connections.
 
 This proves one exact full synthetic route, not the entire R-105 matrix. It
 does **not** yet prove stale/withdrawn State, unavailable Publisher local

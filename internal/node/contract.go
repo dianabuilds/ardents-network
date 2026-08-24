@@ -88,6 +88,7 @@ type Config struct {
 	Rendezvous         RendezvousProfile
 	Initiator          InitiatorProfile
 	Introduction       IntroductionProfile
+	Responder          ResponderProfile
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
@@ -131,6 +132,16 @@ type IntroductionProfile struct {
 	Admit                                    route.EndpointTransitBindingAdmitter
 	HandshakeLimit, SlotLimit, DeliveryLimit uint16
 	DrainTimeout                             time.Duration
+}
+
+// ResponderProfile contains finite C-2 first-hop admission and relay bounds.
+// It does not contain Publisher or Service material.
+type ResponderProfile struct {
+	Certificate                tls.Certificate
+	Admit                      route.EndpointTransitBindingAdmitter
+	HandshakeLimit, RelayLimit uint16
+	RelayByteLimit             uint64
+	DrainTimeout               time.Duration
 }
 
 func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }

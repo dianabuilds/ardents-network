@@ -103,39 +103,31 @@ func runFullResponder(ctx context.Context, deadline time.Time) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	listener, err := net.Listen("tcp", endpoint)
-	if err != nil {
-		return result{}, err
-	}
-	defer listener.Close()
-	fmt.Println(`{"event":"ready"}`)
-	raw, err := listener.Accept()
-	if err != nil {
-		return result{}, err
-	}
-	accepted, err := route.AcceptEndpointTransitAttachment(ctx, raw, route.EndpointTransitAttachmentAcceptance{NetworkID: networkID,
-		Digest: epochDigest, TransitNodeID: responderNode, Epoch: epoch, TransitRole: route.ResponderRole, Deadline: deadline, Certificate: material.responder,
+	running, err := node.StartResponder(node.ResponderConfig{ListenAddress: endpoint, Certificate: material.responder, NetworkID: networkID,
+		EpochDigest: epochDigest, NodeID: responderNode, NodePublicKey: material.responderPublic, Epoch: epoch, NotAfter: deadline,
+		Rendezvous: node.ResponderPeer{NodeID: rendezvousNode, PublicKey: material.rendezvousPublic, Endpoint: rendezvousEndpoint},
 		Admit: func(auth []byte, receivedAttachment, key [32]byte, role byte, nodeID [32]byte, notAfter time.Time) (route.EndpointTransitAdmission, error) {
 			if string(auth) != string(responderAuthorization[:]) || receivedAttachment != attachmentID || key == [32]byte{} || role != route.ResponderRole || nodeID != responderNode || !notAfter.Equal(deadline) {
 				return route.EndpointTransitAdmission{}, errors.New("full Responder admission mismatch")
 			}
 			return route.EndpointTransitAdmission{AuthorizationID: identifier("responder-admission"), NetworkID: networkID, Digest: epochDigest, Epoch: epoch, TransitRole: route.ResponderRole, TransitNodeID: responderNode, NotAfter: deadline}, nil
-		}})
+		}, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 4096, DrainTimeout: time.Second})
 	if err != nil {
 		return result{}, err
 	}
-	defer accepted.Connection.Close()
-	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{Endpoint: rendezvousEndpoint, Certificate: material.responder, ExpectedPeerKey: material.rendezvousPublic,
-		Deadline: deadline, Binding: route.LegBinding{NetworkID: networkID, Epoch: epoch, Digest: epochDigest, AttachmentID: attachmentID,
-			SenderRole: route.ResponderRole, PeerRole: route.RendezvousRole, SenderNodeID: responderNode, PeerNodeID: rendezvousNode, NotAfter: deadline}})
-	if err != nil {
+	fmt.Println(`{"event":"ready"}`)
+	for running.Usage().CompletedRelays != 1 {
+		select {
+		case <-ctx.Done():
+			return result{}, ctx.Err()
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	if err := running.Drain(context.Background()); err != nil {
 		return result{}, err
 	}
-	defer next.Close()
-	if err := relayPair(accepted.Connection, next); err != nil {
-		return result{}, err
-	}
-	return result{Schema: "ardents-r105-responder-v1", Role: "responder", Mode: "full", Passed: true, Delivered: 1}, nil
+	usage := running.Usage()
+	return result{Schema: "ardents-r105-responder-v1", Role: "responder", Mode: "full", Passed: usage.Connections == 0 && usage.ActiveRelays == 0, Delivered: int(usage.CompletedRelays)}, nil
 }
 
 func runFullPublisher(ctx context.Context, introductionEndpoint string, deadline time.Time) (result, error) {
