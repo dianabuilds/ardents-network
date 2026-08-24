@@ -231,8 +231,8 @@ func openPublisherSlot(ctx context.Context, endpoint string, deadline time.Time,
 		_ = connection.Close()
 		return nil, err
 	}
-	ack := []byte{0}
-	if _, err := io.ReadFull(connection, ack); err != nil || ack[0] != 1 {
+	ready, err := route.ReadIntroductionSlotReady(connection)
+	if err != nil || ready.Reachability != reachability || ready.JoinHandle != joinHandle || !ready.NotAfter.Equal(deadline) {
 		_ = connection.Close()
 		return nil, errors.New("full Publisher slot was not registered")
 	}

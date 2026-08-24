@@ -138,7 +138,7 @@ func runIntroduction(ctx context.Context, endpoint string, deadline time.Time, m
 				_ = connection.Close()
 				return
 			}
-			_, _ = connection.Write([]byte{1})
+			_ = route.WriteIntroductionSlotReady(connection, route.IntroductionSlotReady{Reachability: reachability, JoinHandle: joinHandle, NotAfter: deadline})
 			go func(registered net.Conn) {
 				probe := []byte{0}
 				_, _ = registered.Read(probe)
@@ -168,9 +168,11 @@ func runIntroduction(ctx context.Context, endpoint string, deadline time.Time, m
 				valid = false
 			}
 		}
+		outcome := route.IntroductionUnavailable
 		if valid {
-			_, _ = connection.Write([]byte{1})
+			outcome = route.IntroductionDelivered
 		}
+		_ = route.WriteIntroductionDeliveryResult(connection, route.IntroductionDeliveryResult{AttachmentID: accepted.Binding.AttachmentID, Outcome: outcome})
 		if submissions >= expectedSubmissions {
 			finish()
 		}
@@ -211,8 +213,8 @@ func runPublisher(ctx context.Context, endpoint string, deadline time.Time, mode
 	if err := route.WriteIntroductionSlotRegistration(connection, registration); err != nil {
 		return result{}, err
 	}
-	ack := []byte{0}
-	if _, err := connection.Read(ack); err != nil || ack[0] != 1 {
+	ready, err := route.ReadIntroductionSlotReady(connection)
+	if err != nil || ready.Reachability != reachability || ready.JoinHandle != joinHandle || !ready.NotAfter.Equal(deadline) {
 		return result{}, errors.New("Publisher slot was not registered")
 	}
 	fmt.Println(`{"event":"slot-ready"}`)
@@ -278,10 +280,9 @@ func runUser(ctx context.Context, endpoint string, deadline time.Time, mode stri
 			continue
 		}
 		writeErr := route.WriteSealedIntroduction(connection, sealed)
-		ack := []byte{0}
-		_, readErr := connection.Read(ack)
+		outcome, readErr := route.ReadIntroductionDeliveryResult(connection)
 		_ = connection.Close()
-		if writeErr != nil || readErr != nil || ack[0] != 1 {
+		if writeErr != nil || readErr != nil || outcome.AttachmentID != identifier(fmt.Sprintf("user-attachment-%d", index)) || outcome.Outcome != route.IntroductionDelivered {
 			refused++
 		}
 	}
