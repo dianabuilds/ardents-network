@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/tls"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
@@ -33,6 +34,13 @@ type DutyView interface {
 	DutyProbeCapacity() uint16
 	DutyAssignment() string
 	DutyAssignmentDigest() [32]byte
+	DutyCandidateCount() uint8
+	DutyCandidateNodeID(uint8) [32]byte
+	DutyCandidatePublicKey(uint8) [32]byte
+	DutyCandidateEndpoint(uint8) string
+	DutyCandidateAssignment(uint8) string
+	DutyCandidateValidFrom(uint8) time.Time
+	DutyCandidateValidUntil(uint8) time.Time
 }
 
 // dutyFacts is the Node-owned immutable copy of one DutyView. It is also useful to
@@ -57,6 +65,16 @@ type dutyFacts struct {
 	Assignment       string
 	AssignmentDigest [32]byte
 	Fresh            bool
+	Candidates       [64]dutyCandidate
+	CandidateCount   uint8
+}
+
+// dutyCandidate is one narrow State-authorized peer fact. It deliberately
+// contains no source, address history, target, or complete route material.
+type dutyCandidate struct {
+	NodeID, PublicKey     [32]byte
+	Endpoint, Assignment  string
+	ValidFrom, ValidUntil time.Time
 }
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
@@ -66,6 +84,7 @@ type Config struct {
 	IdentityKey        ed25519.PrivateKey
 	Current            func() (DutyView, error)
 	Probe              ProbeConfig
+	Rendezvous         RendezvousProfile
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
@@ -77,6 +96,17 @@ type Config struct {
 	CheckPlacement  func() error
 	// Emit must honor ctx cancellation and return before its deadline.
 	Emit func(context.Context, Event) error
+}
+
+// RendezvousProfile contains the local cryptographic material and explicit
+// finite reservations used to materialize one State-assigned Rendezvous duty.
+// State supplies the listener, epoch, peers, identities, and expiry; this
+// profile never discovers or selects them.
+type RendezvousProfile struct {
+	Certificate                             tls.Certificate
+	HandshakeLimit, WaitingLimit, PairLimit uint16
+	PairByteLimit                           uint64
+	DrainTimeout                            time.Duration
 }
 
 func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }
@@ -98,6 +128,43 @@ func (facts dutyFacts) DutyProbeEndpoint() string       { return facts.ProbeEndp
 func (facts dutyFacts) DutyProbeCapacity() uint16       { return facts.ProbeCapacity }
 func (facts dutyFacts) DutyAssignment() string          { return facts.Assignment }
 func (facts dutyFacts) DutyAssignmentDigest() [32]byte  { return facts.AssignmentDigest }
+func (facts dutyFacts) DutyCandidateCount() uint8       { return facts.CandidateCount }
+func (facts dutyFacts) DutyCandidateNodeID(index uint8) [32]byte {
+	if index >= facts.CandidateCount {
+		return [32]byte{}
+	}
+	return facts.Candidates[index].NodeID
+}
+func (facts dutyFacts) DutyCandidatePublicKey(index uint8) [32]byte {
+	if index >= facts.CandidateCount {
+		return [32]byte{}
+	}
+	return facts.Candidates[index].PublicKey
+}
+func (facts dutyFacts) DutyCandidateEndpoint(index uint8) string {
+	if index >= facts.CandidateCount {
+		return ""
+	}
+	return facts.Candidates[index].Endpoint
+}
+func (facts dutyFacts) DutyCandidateAssignment(index uint8) string {
+	if index >= facts.CandidateCount {
+		return ""
+	}
+	return facts.Candidates[index].Assignment
+}
+func (facts dutyFacts) DutyCandidateValidFrom(index uint8) time.Time {
+	if index >= facts.CandidateCount {
+		return time.Time{}
+	}
+	return facts.Candidates[index].ValidFrom
+}
+func (facts dutyFacts) DutyCandidateValidUntil(index uint8) time.Time {
+	if index >= facts.CandidateCount {
+		return time.Time{}
+	}
+	return facts.Candidates[index].ValidUntil
+}
 
 // Event is one bounded external observation of Node lifecycle state.
 type Event struct {

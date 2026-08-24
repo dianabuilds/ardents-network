@@ -111,25 +111,22 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Rendezvous duty is unavailable")
 	}
+	running.Stop()
 	var preAdmission, active []net.Conn
-	running.stopOnce.Do(func() {
-		running.mu.Lock()
-		running.draining = true
-		for connection := range running.pre {
-			preAdmission = append(preAdmission, connection)
-		}
-		for attachment, leg := range running.waiting {
-			delete(running.waiting, attachment)
-			<-running.waitingCap
-			leg.stopDone()
-			preAdmission = append(preAdmission, leg.raw)
-		}
-		for connection := range running.active {
-			active = append(active, connection)
-		}
-		running.mu.Unlock()
-		_ = running.listener.Close()
-	})
+	running.mu.Lock()
+	for connection := range running.pre {
+		preAdmission = append(preAdmission, connection)
+	}
+	for attachment, leg := range running.waiting {
+		delete(running.waiting, attachment)
+		<-running.waitingCap
+		leg.stopDone()
+		preAdmission = append(preAdmission, leg.raw)
+	}
+	for connection := range running.active {
+		active = append(active, connection)
+	}
+	running.mu.Unlock()
 	for _, connection := range append(preAdmission, active...) {
 		_ = connection.Close()
 	}

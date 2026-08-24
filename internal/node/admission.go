@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 type admissionKind byte
@@ -37,9 +38,18 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	if now == nil {
 		now = time.Now
 	}
-	probePlan, err := newProbePlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
-	if err != nil {
-		return runtimeConfig{}, err
+	var (
+		probePlan *probePlan
+		err       error
+	)
+	if input.Probe.ListenAddress != "" {
+		probePlan, err = newProbePlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
+		if err != nil {
+			return runtimeConfig{}, err
+		}
+	}
+	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil {
+		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	enforcePressure := input.ResourceProfile != ""
 	if enforcePressure && input.ResourceProfile != "h3-np1-v1" && input.ResourceProfile != "h3-s-v1" &&
@@ -75,13 +85,26 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 	if !bytes.Equal(public, snapshot.NodePublicKey[:]) || snapshot.NetworkID != config.NetworkID {
 		return admission{kind: admissionFailed, reason: "local Node identity or key does not match verified state"}
 	}
+	now := config.now()
+	if snapshot.Profile == route.Profile {
+		if _, err := rendezvousDuty(config.Rendezvous, snapshot); err != nil {
+			return admission{kind: admissionPrepared, reason: err.Error()}
+		}
+		if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) ||
+			now.Before(snapshot.RecordValidFrom) || !now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
+			return admission{kind: admissionPrepared, reason: "freshness or validity is not satisfied"}
+		}
+		if err := config.CheckPlacement(); err != nil {
+			return admission{kind: admissionPrepared, reason: "resource placement is not ready: " + boundedReason(err)}
+		}
+		return admission{kind: admissionReady}
+	}
 	if snapshot.Profile != "h3-role-probe-v1" || snapshot.Assignment == "" || snapshot.ProbeCapacity == 0 {
 		return admission{kind: admissionPrepared, reason: "profile or deterministic assignment is inactive"}
 	}
 	if snapshot.ProbeEndpoint != config.Probe.ListenAddress {
 		return admission{kind: admissionFailed, reason: "role-probe listener does not match the accepted Node Record"}
 	}
-	now := config.now()
 	terminal := now.Add(config.Probe.MaximumDuty)
 	if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) ||
 		now.Before(snapshot.RecordValidFrom) || !terminal.Before(snapshot.ValidUntil) ||
@@ -89,11 +112,15 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 		return admission{kind: admissionPrepared, reason: "freshness, validity, or terminal duty bound is not satisfied"}
 	}
 	if err := config.CheckPlacement(); err != nil {
-		detail := err.Error()
-		if len(detail) > 160 {
-			detail = detail[:160]
-		}
-		return admission{kind: admissionPrepared, reason: "resource placement is not ready: " + detail}
+		return admission{kind: admissionPrepared, reason: "resource placement is not ready: " + boundedReason(err)}
 	}
 	return admission{kind: admissionReady}
+}
+
+func boundedReason(err error) string {
+	detail := err.Error()
+	if len(detail) > 160 {
+		detail = detail[:160]
+	}
+	return detail
 }

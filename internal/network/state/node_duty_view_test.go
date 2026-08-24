@@ -29,6 +29,16 @@ func TestCurrentNodeDutyExposesOnlyCurrentAuthenticatedDutyFacts(t *testing.T) {
 		!view.DutyRecordPresent() || view.DutyAssignment() == "" || view.DutyProbeCapacity() == 0 {
 		t.Fatalf("Node duty view lacks authenticated duty facts")
 	}
+	if view.DutyCandidateCount() != 2 || view.DutyCandidateNodeID(0) != value.accepted[0].nodeID ||
+		view.DutyCandidatePublicKey(0) == [32]byte{} || view.DutyCandidateEndpoint(0) == "" ||
+		view.DutyCandidateAssignment(0) == "" || view.DutyCandidateValidFrom(0).IsZero() ||
+		view.DutyCandidateValidUntil(0).IsZero() {
+		t.Fatalf("Node duty view lacks authenticated candidate facts")
+	}
+	if view.DutyCandidateNodeID(2) != [32]byte{} || view.DutyCandidateEndpoint(2) != "" ||
+		!view.DutyCandidateValidUntil(2).IsZero() {
+		t.Fatal("Node duty view exposed an out-of-range candidate")
+	}
 	if err := opened.Close(); err != nil {
 		t.Fatal(err)
 	}

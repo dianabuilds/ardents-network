@@ -20,14 +20,16 @@ type Rendezvous struct {
 	waitingCap chan struct{}
 	pairs      chan struct{}
 
-	mu       sync.Mutex
-	draining bool
-	pre      map[net.Conn]struct{}
-	waiting  map[[32]byte]*rendezvousLeg
-	active   map[net.Conn]struct{}
-	usage    RendezvousUsage
-	stopOnce sync.Once
-	work     sync.WaitGroup
+	mu        sync.Mutex
+	draining  bool
+	protected bool
+	pre       map[net.Conn]struct{}
+	waiting   map[[32]byte]*rendezvousLeg
+	active    map[net.Conn]struct{}
+	usage     RendezvousUsage
+	stopOnce  sync.Once
+	work      sync.WaitGroup
+	terminal  chan error
 }
 
 type rendezvousLeg struct {
@@ -55,10 +57,57 @@ func StartRendezvous(input RendezvousConfig) (*Rendezvous, error) {
 func startRendezvous(plan rendezvousPlan, listener net.Listener) *Rendezvous {
 	running := &Rendezvous{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
 		waitingCap: make(chan struct{}, plan.WaitingLimit), pairs: make(chan struct{}, plan.PairLimit),
-		pre: make(map[net.Conn]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[net.Conn]struct{})}
+		pre: make(map[net.Conn]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[net.Conn]struct{}),
+		terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
 	return running
+}
+
+// Done yields the sole terminal listener outcome. A nil value means the duty
+// was stopped deliberately; a non-nil value requires Node withdrawal.
+func (running *Rendezvous) Done() <-chan error {
+	if running == nil {
+		return nil
+	}
+	return running.terminal
+}
+
+// Protect cancels pre-admission work and refuses new work while preserving
+// active paired legs. It is the Node resource-pressure transition, not an
+// alternate duty state or peer-selection mechanism.
+func (running *Rendezvous) Protect(value bool) {
+	if running == nil {
+		return
+	}
+	running.mu.Lock()
+	if running.draining || running.protected == value {
+		running.mu.Unlock()
+		return
+	}
+	running.protected = value
+	var connections []net.Conn
+	if value {
+		connections = running.closePreAdmissionLocked()
+	}
+	running.mu.Unlock()
+	for _, connection := range connections {
+		_ = connection.Close()
+	}
+}
+
+// Stop closes only Rendezvous admission. Call Drain afterwards to join every
+// existing worker inside the duty's declared lease.
+func (running *Rendezvous) Stop() {
+	if running == nil {
+		return
+	}
+	running.stopOnce.Do(func() {
+		running.mu.Lock()
+		running.draining = true
+		running.mu.Unlock()
+		_ = running.listener.Close()
+	})
 }
 
 // Usage returns only aggregate local duty state.
@@ -76,6 +125,14 @@ func (running *Rendezvous) accept() {
 	for {
 		raw, err := running.listener.Accept()
 		if err != nil {
+			running.mu.Lock()
+			draining := running.draining
+			running.mu.Unlock()
+			if draining {
+				running.terminal <- nil
+			} else {
+				running.terminal <- err
+			}
 			return
 		}
 		if !running.admitHandshake(raw) {
@@ -90,7 +147,7 @@ func (running *Rendezvous) accept() {
 func (running *Rendezvous) admitHandshake(raw net.Conn) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
-	if running.draining || len(running.pairs) == cap(running.pairs) {
+	if running.draining || running.protected || len(running.pairs) == cap(running.pairs) {
 		running.usage.RefusedBeforeTLS++
 		return false
 	}

@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
@@ -236,6 +237,34 @@ func TestRendezvousRejectsIncompleteConfiguration(t *testing.T) {
 	}
 }
 
+func TestRendezvousDutyUsesOnlyStateAssignedPeers(t *testing.T) {
+	server, serverPublic := rendezvousCertificate(t, 10, "rendezvous")
+	_, initiatorPublic := rendezvousCertificate(t, 11, "initiator")
+	_, responderPublic := rendezvousCertificate(t, 12, "responder")
+	now := time.Now().UTC().Truncate(time.Second)
+	snapshot := dutyFacts{NetworkID: [32]byte{1}, Epoch: 2, Digest: [32]byte{3}, Profile: route.Profile,
+		Assignment: "rendezvous", NodeID: [32]byte{4}, NodePublicKey: serverPublic, ProbeEndpoint: "127.0.0.1:4400",
+		EpochValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Minute), RecordValidUntil: now.Add(2 * time.Minute),
+		CandidateCount: 2, Candidates: [64]dutyCandidate{
+			{NodeID: [32]byte{5}, PublicKey: initiatorPublic, Assignment: "initiator", ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Minute)},
+			{NodeID: [32]byte{6}, PublicKey: responderPublic, Assignment: "responder", ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Minute)},
+		}}
+	config, err := rendezvousDuty(RendezvousProfile{Certificate: server, HandshakeLimit: 2, WaitingLimit: 2,
+		PairLimit: 1, PairByteLimit: 1024, DrainTimeout: time.Second}, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.ListenAddress != snapshot.ProbeEndpoint || !config.NotAfter.Equal(snapshot.ValidUntil) || len(config.Peers) != 2 ||
+		config.Peers[0].Role != route.InitiatorRole || config.Peers[1].Role != route.ResponderRole {
+		t.Fatalf("Rendezvous State duty = %+v", config)
+	}
+	snapshot.Candidates[1].Assignment = "other"
+	if _, err := rendezvousDuty(RendezvousProfile{Certificate: server, HandshakeLimit: 2, WaitingLimit: 2,
+		PairLimit: 1, PairByteLimit: 1024, DrainTimeout: time.Second}, snapshot); err == nil {
+		t.Fatal("incomplete State-assigned peers were accepted")
+	}
+}
+
 type rendezvousMaterials struct {
 	server, initiator, responder                   tls.Certificate
 	serverPublic, initiatorPublic, responderPublic [32]byte
@@ -343,7 +372,7 @@ func openRendezvousLeg(ctx context.Context, endpoint string, certificate tls.Cer
 	peer, err := route.ReadNodeLegBinding(connection)
 	if err != nil || binding.VerifyReciprocal(peer) != nil {
 		_ = raw.Close()
-		return nil, errors.New("Rendezvous reciprocal LegBinding is invalid")
+		return nil, fmt.Errorf("Rendezvous reciprocal LegBinding is invalid: read=%v verify=%v local=%+v peer=%+v", err, binding.VerifyReciprocal(peer), binding, peer)
 	}
 	if err := connection.SetDeadline(time.Time{}); err != nil {
 		_ = raw.Close()

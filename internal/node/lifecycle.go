@@ -89,9 +89,9 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	if assessAdmission(config, current).kind != admissionReady || !sameDuty(snapshot, current) {
 		return fail(config, machine, nil, "assignment changed during quarantine", errors.New("assignment changed during quarantine"))
 	}
-	server, err := config.probe.startProbe(newProbeDuty(current))
+	server, err := startDuty(config, current)
 	if err != nil {
-		return fail(config, machine, nil, "role-probe listener failed", err)
+		return fail(config, machine, nil, "Node listener failed", err)
 	}
 	if err := retainLocalDuty(config, current, "live"); err != nil {
 		return fail(config, machine, server, "local role state is unavailable", err)
@@ -109,9 +109,9 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 			return withdraw(config, machine, server, current, "explicit shutdown")
 		case terminalErr := <-server.Done:
 			if terminalErr == nil {
-				terminalErr = errors.New("role-probe listener stopped while Node was READY")
+				terminalErr = errors.New("Node listener stopped while Node was READY")
 			}
-			return fail(config, machine, server, "role-probe listener stopped", terminalErr)
+			return fail(config, machine, server, "Node listener stopped", terminalErr)
 		case <-ticker.C:
 			pressure, sample, pressureErr := config.resourcePressure(server)
 			if pressureErr != nil {
@@ -227,14 +227,23 @@ func currentFacts(config runtimeConfig) (dutyFacts, error) {
 	if view == nil {
 		return dutyFacts{}, errors.New("node duty view is unavailable")
 	}
-	return dutyFacts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
+	result := dutyFacts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
 		Digest: view.DutyDigest(), EpochValidFrom: view.DutyEpochValidFrom(), ValidUntil: view.DutyValidUntil(),
 		Profile: view.DutyProfile(), Fresh: view.DutyFresh(), Conflicting: view.DutyConflicting(),
 		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(),
 		RecordValidFrom: view.DutyRecordValidFrom(), RecordValidUntil: view.DutyRecordValidUntil(),
 		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(),
 		ProbeCapacity: view.DutyProbeCapacity(), Assignment: view.DutyAssignment(),
-		AssignmentDigest: view.DutyAssignmentDigest()}, nil
+		AssignmentDigest: view.DutyAssignmentDigest(), CandidateCount: view.DutyCandidateCount()}
+	if result.CandidateCount > uint8(len(result.Candidates)) {
+		return dutyFacts{}, errors.New("node duty view candidate count is outside its bound")
+	}
+	for index := uint8(0); index < result.CandidateCount; index++ {
+		result.Candidates[index] = dutyCandidate{NodeID: view.DutyCandidateNodeID(index), PublicKey: view.DutyCandidatePublicKey(index),
+			Endpoint: view.DutyCandidateEndpoint(index), Assignment: view.DutyCandidateAssignment(index),
+			ValidFrom: view.DutyCandidateValidFrom(index), ValidUntil: view.DutyCandidateValidUntil(index)}
+	}
+	return result, nil
 }
 
 func newProbeDuty(snapshot dutyFacts) probeDuty {

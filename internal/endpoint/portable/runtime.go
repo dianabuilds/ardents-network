@@ -153,6 +153,17 @@ func (runtime *Runtime) Close() error {
 	return runtime.closeErr
 }
 
+// Wait holds the claimed Portable profile until the caller requests a normal
+// stop, then performs its terminal cleanup. It lets a higher composition owner
+// establish release or network prerequisites before it emits readiness.
+func (runtime *Runtime) Wait(ctx context.Context) error {
+	if runtime == nil || ctx == nil {
+		return errors.New("Portable runtime is unavailable")
+	}
+	<-ctx.Done()
+	return runtime.Close()
+}
+
 // Run owns the normal foreground Portable lifecycle. A requested context stop
 // is a clean participant stop and therefore returns nil after cleanup.
 func Run(ctx context.Context, config Config, observe func(Event)) error {
@@ -163,8 +174,7 @@ func Run(ctx context.Context, config Config, observe func(Event)) error {
 		return err
 	}
 	emit(observe, Event{State: StateReady, Attachment: runtime.Attachment()})
-	<-ctx.Done()
-	err = runtime.Close()
+	err = runtime.Wait(ctx)
 	if err != nil {
 		emit(observe, Event{State: StateBlocked, Reason: ReasonLockError})
 		return err

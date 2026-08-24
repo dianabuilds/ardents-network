@@ -36,3 +36,40 @@ func (view NodeDutyView) DutyProbeEndpoint() string       { return view.snapshot
 func (view NodeDutyView) DutyProbeCapacity() uint16       { return view.snapshot.ProbeCapacity }
 func (view NodeDutyView) DutyAssignment() string          { return view.snapshot.Assignment }
 func (view NodeDutyView) DutyAssignmentDigest() [32]byte  { return view.snapshot.AssignmentDigest }
+func (view NodeDutyView) DutyCandidateCount() uint8       { return view.snapshot.CandidateCount }
+func (view NodeDutyView) DutyCandidateNodeID(index uint8) [32]byte {
+	if index >= view.snapshot.CandidateCount {
+		return [32]byte{}
+	}
+	return view.snapshot.Candidates[index].NodeID
+}
+func (view NodeDutyView) DutyCandidatePublicKey(index uint8) [32]byte {
+	if index >= view.snapshot.CandidateCount {
+		return [32]byte{}
+	}
+	return view.snapshot.Candidates[index].PublicKey
+}
+func (view NodeDutyView) DutyCandidateEndpoint(index uint8) string {
+	if index >= view.snapshot.CandidateCount {
+		return ""
+	}
+	return view.snapshot.Candidates[index].Endpoint
+}
+func (view NodeDutyView) DutyCandidateAssignment(index uint8) string {
+	if index >= view.snapshot.CandidateCount {
+		return ""
+	}
+	return view.snapshot.Candidates[index].Domain
+}
+func (view NodeDutyView) DutyCandidateValidFrom(index uint8) time.Time {
+	if index >= view.snapshot.CandidateCount {
+		return time.Time{}
+	}
+	return view.snapshot.Candidates[index].ValidFrom
+}
+func (view NodeDutyView) DutyCandidateValidUntil(index uint8) time.Time {
+	if index >= view.snapshot.CandidateCount {
+		return time.Time{}
+	}
+	return view.snapshot.Candidates[index].ValidUntil
+}
