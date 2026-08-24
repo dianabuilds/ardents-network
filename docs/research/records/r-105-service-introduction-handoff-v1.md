@@ -34,11 +34,10 @@ target-resolution, or route-selection authority.
   ID. It cannot create or identify a Publisher-side leg by itself. There is no
   maintained Introduction runtime, SealedIntroduction plaintext grammar,
   one-use JoinHandle ledger, Publisher delivery channel, or Responder duty.
-- The current Authority-signed Service Credential contains only an Ed25519
-  `InstancePublic` key. The selected `SealedIntroduction` HPKE construction
-  requires an X25519 recipient public key. No signed Service HPKE key,
-  reviewed key-conversion rule, or independent key-distribution authority is
-  currently selected.
+- Credential v2 now binds a distinct `IntroductionHPKEPublic` X25519 recipient
+  under the existing Authority signature (ADR-0034). The Ed25519
+  `InstancePublic` remains a Service Connection key; no key-conversion rule or
+  independent key-distribution authority exists.
 - The Publisher Endpoint's existing `IntroductionSocket` is an owner-local
   Unix IPC used once at publication to obtain a signed acknowledgement. It has
   no Reachability registration, sealed-request reader, remote delivery, or
@@ -133,6 +132,15 @@ Rendezvous-to-Publisher path occurs.
   topology and let a remote party bypass the required Publisher-side
   authorization. It is not a safe implementation shortcut.
 
+## Accepted subdecision
+
+On 2026-08-24 the Product Owner accepted a separate X25519 public recipient
+in the versioned Authority-signed Credential. ADR-0034 closes that binding as
+Credential v2 and deliberately rejects a v1 compatibility reader for alpha.
+This resolves the recipient-key gap only; it does not decide the C-2
+plaintext, delivery, replay ledger, Responder admission, or Publisher local
+handoff.
+
 ## Options
 
 1. **State-assigned Introduction delivery with a Service-encrypted one-use
@@ -141,9 +149,8 @@ Rendezvous-to-Publisher path occurs.
    reaches a Publisher-side local delivery owner. That owner opens the selected
    Responder-to-Rendezvous leg and hands its carrier to the existing Publisher
    Endpoint socket. This appears aligned but needs a closed plaintext and
-   delivery protocol, including a dedicated X25519 HPKE public key in the
-   Authority-signed Service Credential (or a separately accepted equivalent
-   binding).
+   delivery protocol. Its recipient key is the dedicated X25519 HPKE public
+   key in Credential v2 (ADR-0034).
 2. **Rendezvous-derived Publisher pairing.** Reject unless a future contract
    explicitly delegates service lookup and publisher notification to
    Rendezvous. It violates current endpoint-local selection and role knowledge
@@ -157,11 +164,11 @@ Rendezvous-to-Publisher path occurs.
 
 ## Recommendation
 
-Choose no wire/runtime option yet. First derive a candidate plaintext and
-delivery transcript from option 1, including exactly who knows and spends the
-JoinHandle, which existing Service publication fact authorizes the recipient,
-and how the Publisher-side local socket is authenticated. Then run the named
-tracer before accepting a new ADR.
+The X25519 recipient binding is selected. Choose no C-2 wire/runtime option
+yet. First derive a candidate plaintext and delivery transcript from option 1,
+including exactly who knows and spends the JoinHandle, which existing Service
+publication fact authorizes the recipient, and how the Publisher-side local
+socket is authenticated. Then run the named tracer before accepting a new ADR.
 
 **Confidence:** high that a separate Introduction delivery is required; low
 that the current record alone specifies a safe maintained protocol. The
@@ -172,5 +179,7 @@ where unauthorized ingress and topology leakage would otherwise enter.
 ## Disposition
 
 Open and implementation-blocking for the complete H4-2/H4-3 service path.
-No implementation, dependency, public wire, or product claim is selected by
-this record. The previous test-only Responder leg remains evidence only.
+ADR-0034 and Credential v2 select the signed X25519 recipient binding. No C-2
+delivery/runtime, dependency, remaining public wire, or product claim is
+selected by this record. The previous test-only Responder leg remains evidence
+only.

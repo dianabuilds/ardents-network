@@ -278,7 +278,7 @@ func issue(t *testing.T, fixture fixture, public ed25519.PublicKey, generation u
 	copy(authority[:], fixture.authorityPublic)
 	copy(instance[:], public)
 	credential, err := (endpointapi.Credential{
-		AuthorityPublic: authority, InstancePublic: instance, Generation: generation,
+		AuthorityPublic: authority, InstancePublic: instance, IntroductionHPKEPublic: [32]byte{8}, Generation: generation,
 		NotBefore: fixture.now.Add(-time.Minute).Unix(), NotAfter: fixture.now.Add(time.Minute).Unix(),
 		NetworkID: fixture.networkID, Capabilities: capabilities,
 	}).Issue(fixture.authorityPrivate)

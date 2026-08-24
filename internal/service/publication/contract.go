@@ -13,12 +13,15 @@ type Credential struct {
 	AuthorityPublic [32]byte
 	Target          [32]byte
 	InstancePublic  [32]byte
-	Generation      uint64
-	NotBefore       int64
-	NotAfter        int64
-	NetworkID       [32]byte
-	Capabilities    uint32
-	Signature       [64]byte
+	// IntroductionHPKEPublic is the separate X25519 public recipient for
+	// SealedIntroduction. It is not derived from InstancePublic.
+	IntroductionHPKEPublic [32]byte
+	Generation             uint64
+	NotBefore              int64
+	NotAfter               int64
+	NetworkID              [32]byte
+	Capabilities           uint32
+	Signature              [64]byte
 }
 
 // Config owns one publication root. LegacyFloor is read only during the C1

@@ -12,13 +12,15 @@ import (
 const (
 	publishCapability  = uint32(1)
 	connectCapability  = uint32(2)
-	credentialBodySize = 2 + 32 + 32 + 32 + 8 + 8 + 8 + 32 + 4
+	credentialVersion  = uint16(2)
+	credentialBodySize = 2 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 32 + 4
 	credentialSize     = credentialBodySize + ed25519.SignatureSize
 )
 
 // Issue signs a bounded public delegation for one exclusive Service Instance.
 func (value Credential) Issue(authority ed25519.PrivateKey) (Credential, error) {
-	if len(authority) != ed25519.PrivateKeySize || value.InstancePublic == [32]byte{} || value.Generation == 0 ||
+	if len(authority) != ed25519.PrivateKeySize || value.InstancePublic == [32]byte{} ||
+		value.IntroductionHPKEPublic == [32]byte{} || value.Generation == 0 ||
 		value.NotBefore >= value.NotAfter || value.NetworkID == [32]byte{} || value.Capabilities == 0 {
 		return Credential{}, errors.New("publication credential request is invalid")
 	}
@@ -38,7 +40,8 @@ func (value Credential) Issue(authority ed25519.PrivateKey) (Credential, error) 
 
 func validateCredential(value Credential, authority, network [32]byte, at time.Time, capability uint32) error {
 	if value.AuthorityPublic != authority || value.Target != targetFor(authority) || value.NetworkID != network ||
-		value.InstancePublic == [32]byte{} || value.Generation == 0 || value.NotBefore >= value.NotAfter ||
+		value.InstancePublic == [32]byte{} || value.IntroductionHPKEPublic == [32]byte{} || value.Generation == 0 ||
+		value.NotBefore >= value.NotAfter ||
 		at.Unix() < value.NotBefore || at.Unix() >= value.NotAfter || value.Capabilities&capability != capability ||
 		!ed25519.Verify(ed25519.PublicKey(authority[:]), credentialBody(value), value.Signature[:]) {
 		return errors.New("publication Credential is not current for the exact Target")
@@ -61,9 +64,9 @@ func targetFor(authority [32]byte) [32]byte {
 
 func credentialBody(value Credential) []byte {
 	encoded := make([]byte, credentialBodySize)
-	binary.BigEndian.PutUint16(encoded[:2], 1)
+	binary.BigEndian.PutUint16(encoded[:2], credentialVersion)
 	offset := 2
-	for _, field := range [][32]byte{value.AuthorityPublic, value.Target, value.InstancePublic} {
+	for _, field := range [][32]byte{value.AuthorityPublic, value.Target, value.InstancePublic, value.IntroductionHPKEPublic} {
 		copy(encoded[offset:offset+32], field[:])
 		offset += 32
 	}
@@ -87,12 +90,12 @@ func encodeCredential(value Credential) []byte {
 }
 
 func decodeCredential(encoded []byte) (Credential, error) {
-	if len(encoded) != credentialSize || binary.BigEndian.Uint16(encoded[:2]) != 1 {
+	if len(encoded) != credentialSize || binary.BigEndian.Uint16(encoded[:2]) != credentialVersion {
 		return Credential{}, errors.New("publication Credential encoding is malformed")
 	}
 	var value Credential
 	offset := 2
-	for _, field := range []*[32]byte{&value.AuthorityPublic, &value.Target, &value.InstancePublic} {
+	for _, field := range []*[32]byte{&value.AuthorityPublic, &value.Target, &value.InstancePublic, &value.IntroductionHPKEPublic} {
 		copy(field[:], encoded[offset:offset+32])
 		offset += 32
 	}
