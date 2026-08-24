@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"slices"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -77,6 +79,58 @@ func TestHTTPFetcherForwardsOnlyNormalizedStaticRequest(t *testing.T) {
 	if request == nil || request.Method != http.MethodGet || request.URL.Path != "/site.css" || request.Host != "reference" ||
 		request.Header.Get("Cookie") != "" || request.Header.Get("Referer") != "" {
 		t.Fatalf("service request = %#v", request)
+	}
+}
+
+func TestLiveReferenceServerServesRepeatedResourceOverOneServiceConnection(t *testing.T) {
+	client, service := net.Pipe()
+	fetcher, err := NewHTTPFetcher(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fetcher.Close()
+	running, err := OpenLive(LiveConfig{Target: [32]byte{1}, Fetcher: fetcher,
+		Routes: map[string]string{"": "/", "visual.svg": "/visual.svg"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer running.Close()
+	paths := make(chan []string, 1)
+	go func() {
+		reader := bufio.NewReader(service)
+		var received []string
+		for range 3 {
+			request, readErr := http.ReadRequest(reader)
+			if readErr != nil {
+				paths <- nil
+				return
+			}
+			received = append(received, request.URL.Path)
+			body, contentType := "<h1>Reference</h1>", "text/html"
+			if request.URL.Path == "/visual.svg" {
+				body, contentType = "<svg></svg>", "image/svg+xml"
+			}
+			if _, writeErr := io.WriteString(service, "HTTP/1.1 200 OK\r\nContent-Type: "+contentType+"\r\nContent-Length: "+strconv.Itoa(len(body))+"\r\n\r\n"+body); writeErr != nil {
+				paths <- nil
+				return
+			}
+		}
+		paths <- received
+	}()
+	httpClient := &http.Client{Transport: &http.Transport{Proxy: nil}}
+	for _, suffix := range []string{"", "visual.svg", "visual.svg"} {
+		response, requestErr := httpClient.Get(running.URL() + suffix)
+		if requestErr != nil {
+			t.Fatal(requestErr)
+		}
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("Reference resource %q status = %d", suffix, response.StatusCode)
+		}
+	}
+	if got := <-paths; !slices.Equal(got, []string{"/", "/visual.svg", "/visual.svg"}) {
+		t.Fatalf("Service requests = %q", got)
 	}
 }
 
