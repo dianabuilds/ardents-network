@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -92,6 +93,19 @@ func buildProductCommand(t *testing.T, name string) string {
 
 func buildE2EFixtureCommand(t *testing.T, name string) string {
 	t.Helper()
+	// A cross-compiled process test cannot build an in-container fixture unless
+	// the qualification image also carries a Go toolchain. The explicit
+	// test-only override keeps that qualification on the same process scenario.
+	// Ordinary developer and CI runs do not set it and always build from the
+	// current checkout below.
+	prebuilt := os.Getenv("ARDENTS_E2E_FIXTURE_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_")))
+	if prebuilt != "" {
+		info, err := os.Stat(prebuilt)
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("prebuilt e2e fixture %q is not a regular file: %v", name, err)
+		}
+		return prebuilt
+	}
 	_, current, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate repository root")
