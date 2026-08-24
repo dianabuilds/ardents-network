@@ -44,11 +44,16 @@ func TestReferenceConnectionServesDeclaredStaticRouteAfterTargetAuthentication(t
 	requestSeen := make(chan *http.Request, 1)
 	go serveOneStaticReference(publisherApplication, requestSeen)
 	clientSession := admit(t, client, "connection", fixture.clientPrincipal, fixture.now)
+	browserOpened := make(chan endpointapi.ReferenceReady, 1)
 	running, err := client.StartReferenceConnection(ctx, endpointapi.ReferenceConnectionRequest{
 		TargetLink: link,
 		Routes:     map[string]string{"": "/"},
 		Connection: endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal, Capability: clientSession,
 			Target: fixture.first.Target, Publication: publication, Route: clientRoute, BytesEachDirection: 64 << 10, At: fixture.now},
+		Browser: referenceBrowserFunc(func(_ context.Context, opened endpointapi.ReferenceReady) error {
+			browserOpened <- opened
+			return nil
+		}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -56,6 +61,9 @@ func TestReferenceConnectionServesDeclaredStaticRouteAfterTargetAuthentication(t
 	ready, ok := <-running.Ready()
 	if !ok || ready.URL == "" || ready.AuthenticatedTarget != fixture.first.Target {
 		t.Fatalf("Reference origin was not published after exact Target authentication: %+v", ready)
+	}
+	if opened := <-browserOpened; opened != ready {
+		t.Fatalf("browser received a different Reference origin: got=%+v want=%+v", opened, ready)
 	}
 	httpClient := &http.Client{Transport: &http.Transport{Proxy: nil}}
 	response, err := httpClient.Get(ready.URL)
@@ -85,6 +93,33 @@ func TestReferenceConnectionServesDeclaredStaticRouteAfterTargetAuthentication(t
 	case <-time.After(time.Second):
 		t.Fatal("publisher Service Connection did not terminate after client close")
 	}
+}
+
+func TestReferenceConnectionNeverLaunchesBrowserForInvalidTargetLink(t *testing.T) {
+	fixture := newFixture(t)
+	client, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
+		ConnectionPrincipal: fixture.clientPrincipal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened := false
+	_, err = client.StartReferenceConnection(t.Context(), endpointapi.ReferenceConnectionRequest{
+		TargetLink: "not-an-ardents-target-link",
+		Browser: referenceBrowserFunc(func(context.Context, endpointapi.ReferenceReady) error {
+			opened = true
+			return nil
+		}),
+	})
+	if err == nil || opened {
+		t.Fatalf("invalid Target Link browser launch: err=%v opened=%t", err, opened)
+	}
+}
+
+type referenceBrowserFunc func(context.Context, endpointapi.ReferenceReady) error
+
+func (open referenceBrowserFunc) OpenReference(ctx context.Context, ready endpointapi.ReferenceReady) error {
+	return open(ctx, ready)
 }
 
 func serveOneStaticReference(connection net.Conn, seen chan<- *http.Request) {

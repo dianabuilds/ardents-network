@@ -17,6 +17,7 @@ type ReferenceConnectionRequest struct {
 	TargetLink string
 	Routes     map[string]string
 	Connection OutboundConnectionRequest
+	Browser    ReferenceBrowser
 }
 
 // ReferenceReady reports the local browser URL only after Endpoint has
@@ -24,6 +25,14 @@ type ReferenceConnectionRequest struct {
 type ReferenceReady struct {
 	URL                 string
 	AuthenticatedTarget [32]byte
+}
+
+// ReferenceBrowser receives only an already-authenticated, newly-created
+// loopback Reference Site URL. It cannot select a Target, alter the Service
+// Connection, or ask Endpoint to open an arbitrary URL. A platform adapter
+// may use this narrow surface to open the participant's selected browser.
+type ReferenceBrowser interface {
+	OpenReference(context.Context, ReferenceReady) error
 }
 
 // ReferenceOutcome is the classified terminal result of the authenticated
@@ -49,8 +58,10 @@ type ReferenceConnection struct {
 
 // StartReferenceConnection validates the Target Link before spending any
 // local Connection capability, then starts the native Connection in the
-// background. The caller waits on Ready before explicitly opening its URL in
-// a supported existing browser.
+// background. When Browser is supplied, it receives the exact local URL only
+// after target authentication and origin creation succeed. Otherwise the
+// caller waits on Ready before explicitly opening that URL in a supported
+// existing browser.
 func (endpoint *endpoint) StartReferenceConnection(ctx context.Context, input ReferenceConnectionRequest) (*ReferenceConnection, error) {
 	if endpoint == nil || ctx == nil || input.Connection.Application != nil || input.Connection.OnAuthenticated != nil {
 		return nil, errors.New("Reference Connection input is incomplete or attempts to supply an Application path")
@@ -84,7 +95,13 @@ func (endpoint *endpoint) StartReferenceConnection(ctx context.Context, input Re
 		running.mu.Lock()
 		running.server = server
 		running.mu.Unlock()
-		running.publishReady(ReferenceReady{URL: server.URL(), AuthenticatedTarget: authenticated})
+		ready := ReferenceReady{URL: server.URL(), AuthenticatedTarget: authenticated}
+		if input.Browser != nil {
+			if openErr := input.Browser.OpenReference(lifetime, ready); openErr != nil {
+				return errors.Join(errors.New("selected Reference browser did not open the authenticated origin"), openErr)
+			}
+		}
+		running.publishReady(ready)
 		return nil
 	}
 	go func() {
