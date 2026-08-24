@@ -2,9 +2,11 @@
 
 Status: **accepted H4-3A contract; the closed descriptor codec, Endpoint
 composition, Gateway-local durable currentness state, and fixed-size OHTTP
-Relay/Gateway exchange exist, while State-selected runtime composition and live
-qualification are pending.** This is the Target-keyed companion to the Namespace-only private
-resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md).
+Relay/Gateway exchange exist. ADR-0037 selects the closed Entry-to-Initiator
+carrier for runtime composition; its implementation and live qualification are
+pending.** This is the Target-keyed companion to the Namespace-only private
+resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md)
+and [ADR-0037](../adr/0037-private-reachability-entry-carrier.md).
 
 ## Purpose and boundary
 
@@ -16,12 +18,12 @@ a Service Connection nor evidence that the Publisher is online.
 The protocol has three roles:
 
 ```text
-Endpoint -- private lookup Entry --> Relay -- OHTTP --> Destination Resolution Gateway
+Endpoint -- private lookup Entry --> Initiator -- OHTTP --> Destination Resolution Gateway
                                                             ^
 Publisher -- authenticated descriptor publication ----------+
 ```
 
-The Relay can observe Endpoint adjacency but not the Target. The Gateway can
+The Initiator can observe Endpoint adjacency but not the Target. The Gateway can
 observe the Target but not the Endpoint origin. Both are State-selected
 Rendezvous-domain identities and their known families are excluded from the
 later Service Connection's Rendezvous. A lookup uses a separate Isolation
@@ -34,7 +36,10 @@ Gateway configuration profile. The Endpoint binds fresh nonce, Network ID,
 exact Target, deadline, Gateway profile, and selected State generation/digest
 before accepting a response. A Relay/Gateway failure is an explicit private
 reachability failure; ordinary HTTP, DNS, Name resolution, local aliases,
-catalogs, and Publisher origins are not fallbacks.
+catalogs, and Publisher origins are not fallbacks. The Endpoint never connects
+directly to the Gateway or an ordinary HTTP Relay: it sends exactly one opaque
+envelope through a fresh admitted Entry attachment, and the Initiator derives
+the Gateway literal endpoint only from its authenticated State facts.
 
 ## Descriptor authority and currentness
 
