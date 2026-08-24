@@ -75,6 +75,14 @@ state. Route Attachments are already authenticated opaque carriers; Namespace
 and State facts arrive only in the typed inputs required for Connection
 binding.
 
+For the bounded H4-3 Reference Site profile, an asynchronous User Reference
+Session reports only `starting`, authenticated `ready`, `unavailable`, and
+`stopped`. `ready` includes a fresh scoped loopback origin only after the exact
+Target authenticated; unavailable/terminal events retain the bounded Endpoint
+class and reason, never raw Route or peer diagnostics. The session owns no
+destination selection, retry, generic proxy capability, or additional browser
+authority.
+
 ## Verification and related decisions
 
 - Go tests for Broker, Endpoint, Publication, and Service Connection exercise

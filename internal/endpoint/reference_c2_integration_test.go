@@ -113,7 +113,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	running, err := user.OpenUserReferenceSite(ctx, endpointapi.UserReferenceSiteRequest{
+	session := user.StartUserReferenceSite(ctx, endpointapi.UserReferenceSiteRequest{
 		Introduction: endpointapi.UserIntroductionRouteRequest{TargetLink: link, Publication: current.Record,
 			Introduction: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
 				Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
@@ -123,13 +123,14 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 			Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
 			AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now},
 		Routes: map[string]string{"": "/"}, Principal: c2Identifier(73), Capability: userSession, BytesEachDirection: 64 << 10})
-	if err != nil {
-		t.Fatal(err)
+	defer session.Close()
+	if event := <-session.Events(); event.State != endpointapi.UserReferenceStarting {
+		t.Fatalf("first User Reference event = %+v", event)
 	}
-	defer running.Close()
-	readyReference, ok := <-running.Ready()
-	if !ok || readyReference.AuthenticatedTarget != current.Credential.Target {
-		t.Fatalf("Reference Site was not opened after exact C2 target authentication: %+v", readyReference)
+	readyEvent := <-session.Events()
+	readyReference := readyEvent.Ready
+	if readyEvent.State != endpointapi.UserReferenceReady || readyReference.AuthenticatedTarget != current.Credential.Target {
+		t.Fatalf("Reference Site was not opened after exact C2 target authentication: %+v", readyEvent)
 	}
 	httpClient := &http.Client{Transport: &http.Transport{Proxy: nil}}
 	response, err := httpClient.Get(readyReference.URL)
@@ -144,16 +145,19 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if request := <-requestSeen; request == nil || request.URL.Path != "/" || request.Host != "reference" {
 		t.Fatalf("Publisher saw invalid Reference request: %#v", request)
 	}
-	if err := running.Close(); err != nil {
+	if err := session.Close(); err != nil {
 		t.Fatal(err)
 	}
 	select {
-	case outcome := <-running.Done():
-		if outcome.Result.Class == "" {
-			t.Fatalf("User Endpoint produced no classified terminal result: %+v", outcome)
+	case event, open := <-session.Events():
+		if !open || event.State != endpointapi.UserReferenceStopped || event.Class == "" {
+			t.Fatalf("User Endpoint terminal lifecycle event = %+v (open=%t)", event, open)
 		}
 	case <-time.After(time.Second):
 		t.Fatal("User Endpoint did not close its scoped Reference origin")
+	}
+	if _, open := <-session.Events(); open {
+		t.Fatal("User Endpoint lifecycle did not terminate after its terminal event")
 	}
 	select {
 	case outcome := <-publisherDone:
@@ -207,6 +211,28 @@ func TestUserIntroductionRouteRejectsRendezvousSubstitutionBeforeEntry(t *testin
 		AttachmentID: c2Identifier(87), EndpointHandshake: c2Identifier(88), At: fixture.now})
 	if err == nil || entry.calls != 0 {
 		t.Fatalf("Rendezvous substitution opened Entry: calls=%d err=%v", entry.calls, err)
+	}
+}
+
+func TestUserReferenceSessionReportsUnavailableForInvalidInput(t *testing.T) {
+	fixture := newFixture(t)
+	user, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: c2Identifier(101),
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic, ConnectionPrincipal: fixture.clientPrincipal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer user.Close()
+	session := user.StartUserReferenceSite(t.Context(), endpointapi.UserReferenceSiteRequest{})
+	first, open := <-session.Events()
+	if !open || first.State != endpointapi.UserReferenceStarting {
+		t.Fatalf("first invalid-input session event = %+v (open=%t)", first, open)
+	}
+	last, open := <-session.Events()
+	if !open || last.State != endpointapi.UserReferenceUnavailable || last.Class != "service unavailable" || last.Reason == "" {
+		t.Fatalf("invalid-input session event = %+v (open=%t)", last, open)
+	}
+	if _, open := <-session.Events(); open {
+		t.Fatal("invalid-input User Reference session remained open")
 	}
 }
 
