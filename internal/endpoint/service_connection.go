@@ -66,15 +66,15 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 		return failed("service target authentication failure", "native Service Connection stream is invalid", streamErr)
 	}
 	sendBytes, receiveBytes := streamBounds(input)
-	outcome, err := stream.Run(sendBytes, receiveBytes)
+	outcome, err := stream.RunBounded(sendBytes, receiveBytes)
 	if err != nil {
 		result, failure := streamFailure(ctx, outcome.Accepted, outcome.Received, err)
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
 	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
-		Generation: credential.Generation, AcceptedBytes: sendBytes,
-		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
+		Generation: credential.Generation, AcceptedBytes: outcome.Accepted,
+		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: outcome.Received,
 		QueueHighWater:  outcome.QueueHigh,
 		RouteGeneration: outcome.Generation, RecoveryCount: outcome.Recoveries,
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
@@ -129,15 +129,15 @@ func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (re
 		return failed("service target authentication failure", "native Service Connection stream is invalid", streamErr)
 	}
 	sendBytes, receiveBytes := streamBounds(input)
-	outcome, err := stream.Run(sendBytes, receiveBytes)
+	outcome, err := stream.RunBounded(sendBytes, receiveBytes)
 	if err != nil {
 		result, failure := streamFailure(ctx, outcome.Accepted, outcome.Received, err)
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
 	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
-		Generation: credential.Generation, AcceptedBytes: sendBytes,
-		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: receiveBytes,
+		Generation: credential.Generation, AcceptedBytes: outcome.Accepted,
+		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: outcome.Received,
 		QueueHighWater:  outcome.QueueHigh,
 		RouteGeneration: outcome.Generation, RecoveryCount: outcome.Recoveries,
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil

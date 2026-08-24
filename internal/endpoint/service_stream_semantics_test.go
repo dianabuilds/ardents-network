@@ -222,7 +222,7 @@ func TestLogicalQueueBackpressuresAtFrozenDirectionalCap(t *testing.T) {
 	}
 }
 
-func TestAbruptCloseReportsObservedPartialCounts(t *testing.T) {
+func TestOrderlyHalfCloseReportsObservedPartialCounts(t *testing.T) {
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoute, publisherRoute := tcpPair(t)
@@ -239,7 +239,7 @@ func TestAbruptCloseReportsObservedPartialCounts(t *testing.T) {
 	seen := map[uint32]bool{}
 	for range 2 {
 		outcome := <-outcomes
-		if outcome.err == nil || outcome.result.Class != "abrupt connection loss" ||
+		if outcome.err != nil || outcome.result.Class != "clean service connection close" ||
 			outcome.result.AcceptedBytes == 0 || outcome.result.ReceivedBytes == 0 {
 			t.Fatalf("partial close lost its observed counts: %+v err=%v", outcome.result, outcome.err)
 		}

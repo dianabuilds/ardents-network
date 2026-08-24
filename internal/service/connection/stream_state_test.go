@@ -166,6 +166,63 @@ func TestStreamExchangesInitialContinuityBeforeBidirectionalData(t *testing.T) {
 	}
 }
 
+func TestStreamBoundedAcceptsTerminalBeforeDirectionalLimit(t *testing.T) {
+	clientCarrier, publisherCarrier := net.Pipe()
+	clientApplication, clientUser := halfClosePair()
+	publisherApplication, publisherUser := halfClosePair()
+	defer clientUser.Close()
+	defer publisherUser.Close()
+	connectionContext, exporter, key := [32]byte{4}, [32]byte{5}, [32]byte{6}
+	clientAttachment, err := NewAttachment(clientCarrier, 1, connectionContext, exporter, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisherAttachment, err := NewAttachment(publisherCarrier, 1, connectionContext, exporter, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	client, err := NewStream(StreamConfig{Context: ctx, Application: clientApplication, Initial: clientAttachment,
+		ContinuityKey: key, Authorized: time.Now(), Client: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, err := NewStream(StreamConfig{Context: ctx, Application: publisherApplication, Initial: publisherAttachment,
+		ContinuityKey: key, Authorized: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	type result struct {
+		outcome Outcome
+		err     error
+	}
+	results := make(chan result, 2)
+	go func() { outcome, err := client.RunBounded(32, 32); results <- result{outcome, err} }()
+	go func() { outcome, err := publisher.RunBounded(32, 32); results <- result{outcome, err} }()
+	go func() { _, _ = clientUser.Write([]byte("request")); _ = clientUser.CloseWrite() }()
+	go func() { _, _ = publisherUser.Write([]byte("ok")); _ = publisherUser.CloseWrite() }()
+	clientRead, publisherRead := make([]byte, 2), make([]byte, 7)
+	if _, err := io.ReadFull(clientUser, clientRead); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.ReadFull(publisherUser, publisherRead); err != nil {
+		t.Fatal(err)
+	}
+	if string(clientRead) != "ok" || string(publisherRead) != "request" {
+		t.Fatalf("unexpected bounded exchange: client=%q publisher=%q", clientRead, publisherRead)
+	}
+	for range 2 {
+		result := <-results
+		if result.err != nil {
+			t.Fatalf("bounded native stream failed: %v", result.err)
+		}
+		if result.outcome.Accepted >= 32 || result.outcome.Received >= 32 {
+			t.Fatalf("terminal was not accepted before bounds: %+v", result.outcome)
+		}
+	}
+}
+
 func TestRecoveryDeadlineStartsAtLastConnectionProgress(t *testing.T) {
 	t.Parallel()
 	detected := time.Now()
@@ -185,3 +242,30 @@ func TestRecoveryDeadlineStartsAtLastConnectionProgress(t *testing.T) {
 type bufferApplication struct{ bytes.Buffer }
 
 func (*bufferApplication) Close() error { return nil }
+
+type halfCloseApplication struct {
+	reader *io.PipeReader
+	writer *io.PipeWriter
+}
+
+func halfClosePair() (*halfCloseApplication, *halfCloseApplication) {
+	leftRead, rightWrite := io.Pipe()
+	rightRead, leftWrite := io.Pipe()
+	return &halfCloseApplication{reader: leftRead, writer: leftWrite}, &halfCloseApplication{reader: rightRead, writer: rightWrite}
+}
+
+func (application *halfCloseApplication) Read(value []byte) (int, error) {
+	return application.reader.Read(value)
+}
+
+func (application *halfCloseApplication) Write(value []byte) (int, error) {
+	return application.writer.Write(value)
+}
+
+func (application *halfCloseApplication) CloseWrite() error {
+	return application.writer.Close()
+}
+
+func (application *halfCloseApplication) Close() error {
+	return errors.Join(application.reader.Close(), application.writer.Close())
+}
