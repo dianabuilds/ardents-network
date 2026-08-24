@@ -42,13 +42,20 @@ uses a separately admitted Responder first hop to open exactly one
 State-pinned Responder-to-Rendezvous leg. Rendezvous still pairs only those
 two outbound Node legs and never plans or looks up a Service.
 
+The HPKE plaintext is `ServiceIntroductionInstruction` v1. It binds the
+Service Target, Credential generation, current publication digest, and the
+one attachment ID. Its codec and comparison live in `service/publication`:
+only the decrypted Publisher compares it against its retained current
+publication. It carries no Node endpoint, candidate, retry, route plan, or
+Application Data.
+
 ## Consequences
 
 - C-2 has explicit finite slot, submit, forward, replay, deadline, drain, and
   withdrawal ownership; unavailable slot/delivery is an explicit failure.
-- A later closed plaintext and control grammar must bind the current Service
-  publication, attachment, and visible header before a Publisher can use a
-  Responder attachment.
+- Publisher runtime must compare the decrypted instruction with the current
+  Service publication and with the authenticated visible header before it can
+  use a Responder attachment.
 - The current codec adds no live Node duty, descriptor, service connection,
   direct Publisher ingress, retention, browser proxy, or privacy claim.
 

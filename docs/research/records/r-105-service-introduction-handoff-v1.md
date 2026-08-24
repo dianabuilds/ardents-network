@@ -52,6 +52,13 @@ target-resolution, or route-selection authority.
   byte carrier through its local Route attachment socket; it must not acquire
   Route State or learn node topology.
 
+On 2026-08-24 the closed Service-only plaintext is selected as
+`ServiceIntroductionInstruction` v1: Target, Credential generation, current
+publication digest, and attachment ID. Its codec is owned by
+`internal/service/publication`, and only the decrypted Publisher compares it
+with its current live publication. Network/State/slot context remains in the
+authenticated outer header; no Route Node can decode this instruction.
+
 ## Hypotheses
 
 - **H1:** a finite State-authorized Introduction duty can authenticate one
