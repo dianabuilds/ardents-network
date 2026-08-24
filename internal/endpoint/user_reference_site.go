@@ -12,6 +12,7 @@ import (
 // stay bound to the exact Link and State-selected Introduction request.
 type UserReferenceSiteRequest struct {
 	Introduction                                UserIntroductionRouteRequest
+	Reachability                                *UserReachabilityRouteRequest
 	Routes                                      map[string]string
 	Principal                                   [32]byte
 	Capability                                  [32]byte
@@ -31,27 +32,45 @@ type UserReferenceSite struct {
 	closeErr error
 }
 
-// OpenUserReferenceSite composes the exact State-selected C-2 route with one
-// authenticated static Reference Site. It does not resolve a publication,
-// discover peers, retry a route, or expose a raw carrier to its caller.
+// OpenUserReferenceSite composes one exact State-selected C-2 route with one
+// authenticated static Reference Site. A Reachability request is the selected
+// Target Link path and verifies its descriptor before Entry work; the retained
+// Introduction form exists only for direct controlled evidence. It does not
+// perform private lookup, discover peers, retry a route, or expose a raw
+// carrier to its caller.
 func (endpoint *endpoint) OpenUserReferenceSite(ctx context.Context, input UserReferenceSiteRequest) (*UserReferenceSite, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} || input.Capability == [32]byte{} ||
 		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) {
 		return nil, errors.New("User Reference Site input is incomplete")
 	}
-	route, err := endpoint.OpenUserIntroductionRoute(ctx, input.Introduction)
+	if input.Reachability != nil && input.Introduction.TargetLink != "" {
+		return nil, errors.New("User Reference Site received two route authorities")
+	}
+	var (
+		route      *UserIntroductionRoute
+		targetLink string
+		at         = input.Introduction.At
+		err        error
+	)
+	if input.Reachability != nil {
+		route, err = endpoint.OpenUserReachabilityRoute(ctx, *input.Reachability)
+		targetLink, at = input.Reachability.TargetLink, input.Reachability.At
+	} else {
+		route, err = endpoint.OpenUserIntroductionRoute(ctx, input.Introduction)
+		targetLink = input.Introduction.TargetLink
+	}
 	if err != nil {
 		return nil, err
 	}
 	closeRoute := func(cause error) (*UserReferenceSite, error) {
 		return nil, errors.Join(cause, route.Close())
 	}
-	reference, err := endpoint.StartReferenceConnection(ctx, ReferenceConnectionRequest{TargetLink: input.Introduction.TargetLink,
+	reference, err := endpoint.StartReferenceConnection(ctx, ReferenceConnectionRequest{TargetLink: targetLink,
 		Routes: input.Routes, Browser: input.Browser, Connection: OutboundConnectionRequest{
 			Principal: input.Principal, Capability: input.Capability, Target: route.AuthenticatedTarget,
-			Publication: input.Introduction.Publication, Route: route.Connection,
+			AuthorityPublic: route.AuthorityPublic, Publication: route.Publication, Route: route.Connection,
 			BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes,
-			At: input.Introduction.At}})
+			At: at}})
 	if err != nil {
 		return closeRoute(err)
 	}

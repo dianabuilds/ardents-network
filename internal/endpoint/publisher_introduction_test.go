@@ -46,7 +46,7 @@ func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testi
 	responder := c2StartResponder(t, responderAddress, responderCertificate, network, digest, responderID, deadline, serviceAttachment, responderAuthorization)
 	defer responder.listener.Close()
 
-	publisher, current, private := c2PublishedEndpoint(t, network, now)
+	publisher, current, private, _ := c2PublishedEndpoint(t, network, now)
 	defer publisher.Close()
 	clientIntroduction := c2Identifier(15)
 	client, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: c2Identifier(14),
@@ -122,7 +122,7 @@ func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testi
 
 func TestPublisherIntroductionRejectsForeignRecipientBeforeOpeningSlot(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
-	publisher, _, private := c2PublishedEndpoint(t, c2Identifier(21), now)
+	publisher, _, private, _ := c2PublishedEndpoint(t, c2Identifier(21), now)
 	defer publisher.Close()
 	foreign, err := c2HPKEPrivate()
 	if err != nil {
@@ -193,7 +193,7 @@ func c2StartResponder(t *testing.T, address string, certificate tls.Certificate,
 	return c2Responder{listener: listener, done: done}
 }
 
-func c2PublishedEndpoint(t *testing.T, network [32]byte, now time.Time) (c2Publisher, publication.Current, hpke.PrivateKey) {
+func c2PublishedEndpoint(t *testing.T, network [32]byte, now time.Time) (c2Publisher, publication.Current, hpke.PrivateKey, ed25519.PrivateKey) {
 	t.Helper()
 	authorityPublic, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -239,7 +239,7 @@ func c2PublishedEndpoint(t *testing.T, network [32]byte, now time.Time) (c2Publi
 	if err != nil {
 		t.Fatal(err)
 	}
-	return publisher, current, private
+	return publisher, current, private, instancePrivate
 }
 
 func c2Acknowledgement(credential publication.Credential, private ed25519.PrivateKey, brokerID [32]byte) []byte {

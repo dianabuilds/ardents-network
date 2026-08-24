@@ -18,6 +18,7 @@ import (
 type UserIntroductionRouteRequest struct {
 	TargetLink            string
 	Publication           []byte
+	AuthorityPublic       [32]byte
 	Introduction          UserIntroductionProfile
 	Entry                 route.EntryAcquirer
 	Initiator, Rendezvous TransitPeer
@@ -35,6 +36,8 @@ type UserIntroductionRouteRequest struct {
 type UserIntroductionRoute struct {
 	Connection          net.Conn
 	AuthenticatedTarget [32]byte
+	AuthorityPublic     [32]byte
+	Publication         []byte
 	Generation          uint64
 	AttachmentID        [32]byte
 
@@ -85,15 +88,19 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		return closeRoute(errors.Join(errors.New("User Initiator RelayReady is invalid"), err, setup.VerifyRelayReady(ready)))
 	}
 	delivery, err := endpoint.SubmitIntroductionFromLink(ctx, UserIntroductionRequest{TargetLink: input.TargetLink, Publication: input.Publication,
-		Profile: input.Introduction, AttachmentID: input.AttachmentID, EndpointHandshake: input.EndpointHandshake, At: input.At})
+		AuthorityPublic: input.AuthorityPublic, Profile: input.Introduction, AttachmentID: input.AttachmentID, EndpointHandshake: input.EndpointHandshake, At: input.At})
 	if err != nil {
 		return closeRoute(err)
 	}
 	if delivery.AuthenticatedTarget != target {
 		return closeRoute(errors.New("User Introduction Route authenticated a different Target"))
 	}
-	return &UserIntroductionRoute{Connection: connection, AuthenticatedTarget: delivery.AuthenticatedTarget, Generation: delivery.Generation,
-		AttachmentID: input.AttachmentID, cleanup: cleanup}, nil
+	authority := input.AuthorityPublic
+	if authority == [32]byte{} {
+		authority = endpoint.authority
+	}
+	return &UserIntroductionRoute{Connection: connection, AuthenticatedTarget: delivery.AuthenticatedTarget, AuthorityPublic: authority,
+		Publication: append([]byte(nil), input.Publication...), Generation: delivery.Generation, AttachmentID: input.AttachmentID, cleanup: cleanup}, nil
 }
 
 // Close releases the Entry-owned carrier exactly once. It does not withdraw a

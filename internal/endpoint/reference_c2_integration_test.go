@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -29,7 +30,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	initiatorCertificate, initiatorPublic := c2Certificate(t, 64, "initiator")
 	introductionAddress, rendezvousAddress := c2AvailableAddress(t), c2AvailableAddress(t)
 	responderAddress, initiatorAddress := c2AvailableAddress(t), c2AvailableAddress(t)
-	join, reachability := c2Identifier(67), c2Identifier(68)
+	join, slotReachability := c2Identifier(67), c2Identifier(68)
 	slotAttachment, serviceAttachment := c2Identifier(69), c2Identifier(70)
 	slotAuthorization, responderAuthorization := []byte("publisher-slot"), []byte("publisher-responder")
 	presentation := entry.Presentation{InviteID: c2Identifier(71), Invite: []byte("entry-invite")}
@@ -69,7 +70,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	}
 	defer introduction.Close()
 
-	publisher, current, hpkePrivate := c2PublishedEndpoint(t, network, now)
+	publisher, current, hpkePrivate, instancePrivate := c2PublishedEndpoint(t, network, now)
 	defer publisher.Close()
 	link, err := targetlink.Encode(targetlink.Link{Network: network, Target: current.Credential.Target})
 	if err != nil {
@@ -80,12 +81,19 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 			Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
 			Rendezvous:       endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
 			Responder:        endpointapi.TransitPeer{NodeID: responderID, PublicKey: responderPublic, Endpoint: responderAddress},
-			SlotAttachmentID: slotAttachment, Reachability: reachability, JoinHandle: join, NotAfter: deadline,
+			SlotAttachmentID: slotAttachment, Reachability: slotReachability, JoinHandle: join, NotAfter: deadline,
 			SlotAuthorization: slotAuthorization, ResponderAuthorization: responderAuthorization}, HPKEPrivate: hpkePrivate, At: now})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer publisherSlot.Close()
+	descriptor, _, err := reachability.Issue(reachability.IssueInput{Current: current, InstanceSigner: instancePrivate,
+		Introduction: reachability.Introduction{StateDigest: digest, Epoch: 10, IntroductionNodeID: introductionID,
+			RendezvousNodeID: rendezvousID, Reachability: slotReachability, JoinHandle: join, NotAfter: deadline,
+			SubmissionAuthorization: join[:]}})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: c2Identifier(72),
 		AuthorityPublic: current.Credential.AuthorityPublic[:], IntroductionPublic: make([]byte, 32), ConnectionPrincipal: c2Identifier(73)})
@@ -114,10 +122,8 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := user.StartUserReferenceSite(ctx, endpointapi.UserReferenceSiteRequest{
-		Introduction: endpointapi.UserIntroductionRouteRequest{TargetLink: link, Publication: current.Record,
-			Introduction: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
-				Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
-				RendezvousNodeID: rendezvousID, Reachability: reachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]},
+		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: link, Descriptor: descriptor,
+			Introduction: endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
 			Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
 			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
 			Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},

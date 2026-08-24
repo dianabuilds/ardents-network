@@ -18,7 +18,11 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 		return denied(consumeErr.Error())
 	}
 	defer projectReceipt(&result, receipt)
-	credential, err := decodePublication(input.Publication, endpoint.authority, endpoint.network, input.At)
+	authority := endpoint.authority
+	if input.AuthorityPublic != [32]byte{} {
+		authority = input.AuthorityPublic
+	}
+	credential, err := decodePublication(input.Publication, authority, endpoint.network, input.At)
 	if err != nil || input.Target == [32]byte{} || input.Target != credential.Target {
 		return failed("service target authentication failure", "exact Service Target could not be authenticated", errors.New("target or publication mismatch"))
 	}

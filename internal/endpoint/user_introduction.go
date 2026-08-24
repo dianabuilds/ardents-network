@@ -29,8 +29,12 @@ type UserIntroductionProfile struct {
 // publication record, and one C-5 attachment chosen by the Endpoint. Neither
 // the Target Link nor this operation may fall back to another destination.
 type UserIntroductionRequest struct {
-	TargetLink                      string
-	Publication                     []byte
+	TargetLink  string
+	Publication []byte
+	// AuthorityPublic is present only when a verified Private Reachability
+	// Descriptor supplied the exact Target authority. Legacy direct callers
+	// retain the Endpoint's configured authority.
+	AuthorityPublic                 [32]byte
 	Profile                         UserIntroductionProfile
 	AttachmentID, EndpointHandshake [32]byte
 	At                              time.Time
@@ -59,7 +63,11 @@ func (endpoint *endpoint) SubmitIntroductionFromLink(ctx context.Context, input 
 	if err != nil {
 		return UserIntroductionResult{}, err
 	}
-	current, err := publication.Decode(input.Publication, ed25519.PublicKey(endpoint.authority[:]), endpoint.network, input.At)
+	authority := endpoint.authority
+	if input.AuthorityPublic != [32]byte{} {
+		authority = input.AuthorityPublic
+	}
+	current, err := publication.Decode(input.Publication, ed25519.PublicKey(authority[:]), endpoint.network, input.At)
 	if err != nil || current.Credential.Target != target || input.Profile.NotAfter.Unix() > current.Credential.NotAfter {
 		return UserIntroductionResult{}, errors.Join(err, errors.New("Target Link does not authenticate the current publication"))
 	}

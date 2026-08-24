@@ -44,6 +44,7 @@ type Setup struct {
 // typed inbound or outbound request.
 type connectionInput struct {
 	Principal, Session, Target [32]byte
+	AuthorityPublic            [32]byte
 	Publication                []byte
 	Route                      net.Conn
 	Application                io.ReadWriteCloser
@@ -102,6 +103,7 @@ type WithdrawalResult struct {
 // authenticated Connection. It has no publisher publication owner or signer.
 type OutboundConnectionRequest struct {
 	Principal, Capability, Target [32]byte
+	AuthorityPublic               [32]byte
 	Publication                   []byte
 	Route                         net.Conn
 	Application                   io.ReadWriteCloser
@@ -247,7 +249,7 @@ func (endpoint *endpoint) Withdraw(ctx context.Context, input WithdrawalRequest)
 // Connect runs one client-side native Connection with only outbound facts.
 func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionRequest) (RuntimeResult, error) {
 	return endpoint.runOutbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
-		Target: input.Target, Publication: input.Publication, Route: input.Route, Application: input.Application,
+		Target: input.Target, AuthorityPublic: input.AuthorityPublic, Publication: input.Publication, Route: input.Route, Application: input.Application,
 		OpenAttachment: input.OpenAttachment, RecoveryBinding: input.RecoveryBinding, NameBinding: input.NameBinding,
 		NameUpdates: input.NameUpdates, OnAuthenticated: input.OnAuthenticated, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
 		ReceiveBytes: input.ReceiveBytes, At: input.At})
