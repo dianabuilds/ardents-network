@@ -35,18 +35,26 @@ func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error
 	go func() { dataResults <- stream.sendApplicationBounded(uint64(sendLimit)) }()
 	go func() { dataResults <- stream.receiveApplicationBounded(uint64(receiveLimit)) }()
 	go func() { ackResult <- stream.sendBoundedAcknowledgements() }()
-	first, second := <-dataResults, <-dataResults
+	first := <-dataResults
+	if first != nil {
+		stream.fail(first)
+	}
+	second := <-dataResults
 	dataErr := errors.Join(first, second)
 	if dataErr != nil {
 		stream.fail(dataErr)
 	}
 	err := errors.Join(dataErr, <-ackResult)
+	outcome := stream.outcome()
+	if err == nil && outcome.Acknowledged != outcome.Accepted {
+		err = errors.New("bounded Application stream closed before its final bytes were acknowledged")
+	}
 	stream.mu.Lock()
 	if err == nil {
 		err = stream.terminal
 	}
 	stream.mu.Unlock()
-	return stream.outcome(), err
+	return outcome, err
 }
 
 func (stream *Stream) sendApplicationBounded(limit uint64) error {
@@ -114,17 +122,15 @@ func (stream *Stream) finishBoundedSend() error {
 			return err
 		}
 		stream.mu.Lock()
-		if stream.terminal != nil {
-			err := stream.terminal
-			stream.mu.Unlock()
-			return err
+		terminal := stream.terminal
+		sent := stream.current != nil && stream.terminalGeneration == stream.current.generation
+		stream.mu.Unlock()
+		if terminal != nil {
+			return terminal
 		}
-		if stream.sendBase == stream.sendEnd {
-			stream.mu.Unlock()
+		if sent {
 			return nil
 		}
-		stream.cond.Wait()
-		stream.mu.Unlock()
 	}
 }
 

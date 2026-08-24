@@ -93,24 +93,6 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer user.Close()
-	userRoute, cleanup, err := route.OpenEntryAttachment(context.Background(), c2EntryAcquirer{
-		candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
-		route.EntryAttachmentRequest{NetworkID: network, Digest: digest, Epoch: 10, AttachmentID: serviceAttachment, Deadline: deadline})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cleanup()
-	setup := route.RelaySetup{NetworkID: network, Digest: digest, AttachmentID: serviceAttachment, Epoch: 10,
-		TransitRole: route.InitiatorRole, NextRole: route.RendezvousRole, TransitNodeID: initiatorID,
-		NextNodeID: rendezvousID, NextNodePublicKey: rendezvousPublic, NotAfter: deadline}
-	if err := route.WriteRelaySetup(userRoute, setup); err != nil {
-		t.Fatal(err)
-	}
-	ready, err := route.ReadRelayReady(userRoute)
-	if err != nil || setup.VerifyRelayReady(ready) != nil {
-		t.Fatalf("Initiator RelayReady = %+v, %v", ready, err)
-	}
-
 	publisherApplication, serviceApplication := net.Pipe()
 	defer serviceApplication.Close()
 	publisherSession, err := publisher.Admit(c2Identifier(41), broker.Connection)
@@ -125,14 +107,18 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 			Application: publisherApplication, BytesEachDirection: 64 << 10, At: now})
 		publisherDone <- serviceOutcome{result, runErr}
 	}()
-	delivery, err := user.SubmitIntroductionFromLink(ctx, endpointapi.UserIntroductionRequest{TargetLink: link, Publication: current.Record,
-		Profile: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
+	userRoute, err := user.OpenUserIntroductionRoute(ctx, endpointapi.UserIntroductionRouteRequest{TargetLink: link, Publication: current.Record,
+		Introduction: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
 			Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
 			RendezvousNodeID: rendezvousID, Reachability: reachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]},
+		Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
+		Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
+		Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
 		AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now})
-	if err != nil || delivery.AuthenticatedTarget != current.Credential.Target || delivery.AttachmentID != serviceAttachment {
-		t.Fatalf("C2 delivery = %+v, %v", delivery, err)
+	if err != nil || userRoute.AuthenticatedTarget != current.Credential.Target || userRoute.AttachmentID != serviceAttachment {
+		t.Fatalf("C2 User Route = %+v, %v", userRoute, err)
 	}
+	defer userRoute.Close()
 	requestSeen := make(chan *http.Request, 1)
 	go serveOneStaticReference(serviceApplication, requestSeen)
 	userSession, err := user.Admit(c2Identifier(73), broker.Connection)
@@ -141,7 +127,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	}
 	running, err := user.StartReferenceConnection(ctx, endpointapi.ReferenceConnectionRequest{TargetLink: link, Routes: map[string]string{"": "/"},
 		Connection: endpointapi.OutboundConnectionRequest{Principal: c2Identifier(73), Capability: userSession, Target: current.Credential.Target,
-			Publication: current.Record, Route: userRoute, BytesEachDirection: 64 << 10, At: now}})
+			Publication: current.Record, Route: userRoute.Connection, BytesEachDirection: 64 << 10, At: now}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,6 +149,9 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 		t.Fatalf("Publisher saw invalid Reference request: %#v", request)
 	}
 	_ = running.Close()
+	if err := userRoute.Close(); err != nil {
+		t.Fatal(err)
+	}
 	select {
 	case outcome := <-running.Done():
 		if outcome.Result.Class == "" {
@@ -204,6 +193,28 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	}
 }
 
+func TestUserIntroductionRouteRejectsRendezvousSubstitutionBeforeEntry(t *testing.T) {
+	fixture := newFixture(t)
+	user, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: c2Identifier(76),
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic, ConnectionPrincipal: fixture.clientPrincipal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer user.Close()
+	entry := &c2CountingEntry{}
+	_, err = user.OpenUserIntroductionRoute(context.Background(), endpointapi.UserIntroductionRouteRequest{
+		Introduction: endpointapi.UserIntroductionProfile{NetworkID: fixture.networkID, Digest: c2Identifier(77), Epoch: 1,
+			Introduction:     endpointapi.TransitPeer{NodeID: c2Identifier(78), PublicKey: c2Identifier(79), Endpoint: "127.0.0.1:37079"},
+			RendezvousNodeID: c2Identifier(80), Reachability: c2Identifier(81), JoinHandle: c2Identifier(82),
+			NotAfter: fixture.now.Add(time.Minute), SubmissionAuthorization: []byte("introduction")},
+		Entry: entry, Initiator: endpointapi.TransitPeer{NodeID: c2Identifier(83), PublicKey: c2Identifier(84), Endpoint: "127.0.0.1:37084"},
+		Rendezvous:   endpointapi.TransitPeer{NodeID: c2Identifier(85), PublicKey: c2Identifier(86), Endpoint: "127.0.0.1:37086"},
+		AttachmentID: c2Identifier(87), EndpointHandshake: c2Identifier(88), At: fixture.now})
+	if err == nil || entry.calls != 0 {
+		t.Fatalf("Rendezvous substitution opened Entry: calls=%d err=%v", entry.calls, err)
+	}
+}
+
 func c2EntryAdmit(presentation entry.Presentation, attachment, network, digest, initiator [32]byte, deadline time.Time) route.EntryBindingAdmitter {
 	return func(invite []byte, received, key [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
 		if string(invite) != string(presentation.Invite) || received != attachment || key == [32]byte{} || !notAfter.Equal(deadline) {
@@ -227,6 +238,13 @@ func c2ResponderAdmit(authorization []byte, attachment, network, digest, respond
 type c2EntryAcquirer struct {
 	candidate    entry.Candidate
 	presentation entry.Presentation
+}
+
+type c2CountingEntry struct{ calls int }
+
+func (acquirer *c2CountingEntry) Acquire(context.Context, entry.Attempt, entry.CandidateOpener) (net.Conn, func() error, error) {
+	acquirer.calls++
+	return nil, nil, errors.New("Entry must not be opened")
 }
 
 func (input c2EntryAcquirer) Acquire(ctx context.Context, attempt entry.Attempt, opener entry.CandidateOpener) (net.Conn, func() error, error) {
