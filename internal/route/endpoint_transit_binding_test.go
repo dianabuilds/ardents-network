@@ -40,6 +40,14 @@ func TestEndpointTransitBindingV1RejectsWrongRoleAndMalformedBytes(t *testing.T)
 	}
 }
 
+func TestEndpointTransitBindingV1RefusesFractionalExpiry(t *testing.T) {
+	binding := endpointTransitBindingFixture()
+	binding.NotAfter = binding.NotAfter.Add(time.Nanosecond)
+	if _, err := EncodeEndpointTransitBinding(binding); err == nil {
+		t.Fatal("fractional expiry was accepted")
+	}
+}
+
 func TestAdmitEndpointTransitBindingBindsTLSKeyAndConsumesAuthorization(t *testing.T) {
 	binding := endpointTransitBindingFixture()
 	peer := identifier(67)

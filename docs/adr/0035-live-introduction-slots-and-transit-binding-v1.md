@@ -31,6 +31,12 @@ no User identity, Target, Service material, endpoint literal, or fallback.
 `EntryBinding` v1 remains the User-to-Initiator record; no reader reinterprets
 one form as the other.
 
+Kind 7 `IntroductionSlotRegistration` v1 binds only the opaque Reachability,
+JoinHandle, and whole-second slot expiry after Publisher-side TLS admission.
+The separate private slot authorization remains only in that admission binding.
+The registration record is never a descriptor, Service publication, Target
+lookup, or retained message.
+
 After authenticated delivery, the Publisher validates the HPKE material and
 uses a separately admitted Responder first hop to open exactly one
 State-pinned Responder-to-Rendezvous leg. Rendezvous still pairs only those
@@ -49,5 +55,6 @@ two outbound Node legs and never plans or looks up a Service.
 ## Compliance
 
 R-105 records the decision evidence and the Product Owner accepted C-2 on
-2026-08-24. Canonical codec vectors refuse malformed role and framing
-substitution. The required multi-process tracer precedes retained C-2 runtime.
+2026-08-24. Canonical codec vectors refuse malformed role, registration, and
+framing substitution. The required multi-process tracer precedes retained C-2
+runtime.

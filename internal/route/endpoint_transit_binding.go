@@ -132,7 +132,8 @@ func validEndpointTransitBinding(input EndpointTransitBinding) error {
 	if input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.AttachmentID == [32]byte{} ||
 		input.TransitNodeID == [32]byte{} || input.ClientKeyDigest == [32]byte{} || input.Epoch == 0 ||
 		(input.TransitRole != IntroductionRole && input.TransitRole != ResponderRole) || input.NotAfter.IsZero() ||
-		input.NotAfter.Unix() <= 0 || len(input.Authorization) == 0 || len(input.Authorization) > maximumTransitAuthorization {
+		input.NotAfter.Unix() <= 0 || !input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) ||
+		len(input.Authorization) == 0 || len(input.Authorization) > maximumTransitAuthorization {
 		return errors.New("endpoint transit binding is invalid")
 	}
 	return nil
