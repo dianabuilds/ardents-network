@@ -149,7 +149,8 @@ that it is the smallest selected path which preserves the stated H4-3 journey.
 Decided. ADR-0036 and `docs/technical/private-reachability.md` own the selected
 boundary. The closed Descriptor v1 codec and its Endpoint-to-C-2 Reference
 Site composition are implemented and covered by the maintained C-2 Reference
-Site behavior test. The separate-process tracer has not yet adopted the
-descriptor. The next work is durable Gateway state, private lookup, and the
-falsification experiment. R-106 no longer blocks selection; it continues to
-govern that implementation and qualification.
+Site behavior test. Gateway-local durable generation/conflict state has its own
+restart, stale-slot, and same-generation-conflict behavior tests. The
+separate-process tracer has not yet adopted the descriptor. The next work is
+private lookup and the falsification experiment. R-106 no longer blocks
+selection; it continues to govern that implementation and qualification.

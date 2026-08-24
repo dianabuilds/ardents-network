@@ -1,8 +1,8 @@
 # Private Target reachability
 
-Status: **accepted H4-3A contract; the closed descriptor codec and Endpoint
-composition exist, while Gateway/private lookup and live qualification are
-pending.** This is the Target-keyed companion to the Namespace-only private
+Status: **accepted H4-3A contract; the closed descriptor codec, Endpoint
+composition, and Gateway-local durable currentness state exist, while
+OHTTP/Relay lookup and live qualification are pending.** This is the Target-keyed companion to the Namespace-only private
 resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md).
 
 ## Purpose and boundary
@@ -70,6 +70,14 @@ different Target, forged publication, or older overlapping Credential produce
 a Service Connection. A descriptor for an old but still-live slot may at most
 try the same authenticated Service Instance; ordinary C-2 slot replay controls
 then yield unavailable rather than a different destination.
+
+`internal/service/reachability.Store` now implements the Gateway-local part of
+this invariant with an exclusive durable root: it persists one accepted exact
+descriptor plus a conflict bit per Target, reconstructs the signed fact on
+restart, refuses a lower generation, requires non-overlap for a higher
+Credential, accepts a slot refresh only when its expiry increases, and records
+two differing Publications at one generation as persistent `conflicting`.
+It is not yet exposed through a Gateway network handler.
 
 ## Bounded records
 
