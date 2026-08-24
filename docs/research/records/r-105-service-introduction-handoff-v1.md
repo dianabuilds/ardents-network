@@ -112,6 +112,22 @@ duplicate Responder attempts, cancellation, and drained zero-owned-work
 outcomes. The tracer must show that no direct User-to-Publisher or
 Rendezvous-to-Publisher path occurs.
 
+**Control-slice evidence (2026-08-24):**
+`experiments/r-105-live-introduction-tracer/run-local.ps1` built a disposable
+binary outside the repository and ran separate loopback Publisher,
+Introduction, and User processes. All synthetic cells passed on the first
+run: one exact delivery; one spent-JoinHandle refusal; visible
+EndpointHandshake AAD substitution refusal at the Publisher; ciphertext
+substitution refusal at the Publisher; and no delivery after the Publisher
+closed its slot. The Introduction process read/compared only outer opaque
+handles and relayed canonical sealed bytes; it did not import or print a
+Target/plaintext. The runner deleted its binary/log directory afterwards.
+
+This is C-2 control evidence only. It does **not** prove the required
+Initiator, Rendezvous, Responder, Publisher local-handoff, browser, State
+withdrawal, cancellation, or complete two-Endpoint route. Those remain the
+next full tracer and maintained-runtime gates.
+
 ### Failure scenarios
 
 - A malicious Introduction replays, swaps, delays, or replaces one delivery.
@@ -202,6 +218,8 @@ where unauthorized ingress and topology leakage would otherwise enter.
 
 Open and implementation-linked for the complete H4-2/H4-3 service path.
 ADR-0034 selects the signed X25519 recipient binding; ADR-0035 selects live
-C-2 slots and EndpointTransitBinding v1. The retained delivery/runtime,
-plaintext, and Publisher-side attachment lifecycle remain to be implemented
-and tested. The previous test-only Responder leg remains evidence only.
+C-2 slots and EndpointTransitBinding v1. The control-slice tracer now supports
+the selected delivery and HPKE/plaintext binding shape. The retained full
+Initiator/Rendezvous/Responder tracer, delivery/runtime, local-handoff, and
+browser lifecycle remain to be implemented and tested. The previous test-only
+Responder leg remains evidence only.
