@@ -92,6 +92,12 @@
       "owner": "node adapter process behavior"
     },
     {
+      "id": "e2e-endpoint",
+      "path": "tests/e2e/endpoint",
+      "profile": "process",
+      "owner": "endpoint command process behavior"
+    },
+    {
       "id": "e2e-service",
       "path": "tests/e2e/service",
       "profile": "process",
