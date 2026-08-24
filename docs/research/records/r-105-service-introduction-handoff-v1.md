@@ -39,6 +39,11 @@ target-resolution, or route-selection authority.
   requires an X25519 recipient public key. No signed Service HPKE key,
   reviewed key-conversion rule, or independent key-distribution authority is
   currently selected.
+- The Publisher Endpoint's existing `IntroductionSocket` is an owner-local
+  Unix IPC used once at publication to obtain a signed acknowledgement. It has
+  no Reachability registration, sealed-request reader, remote delivery, or
+  attachment lifecycle. Reusing it as a C-2 channel would silently change its
+  narrow publication-control authority.
 - Existing Endpoint `Accept` already consumes an opaque authenticated Route
   byte carrier through its local Route attachment socket; it must not acquire
   Route State or learn node topology.
@@ -117,6 +122,9 @@ Rendezvous-to-Publisher path occurs.
   Ed25519 Instance public key, while `SealIntroduction` accepts an HPKE/X25519
   public key. The current schemas do not bind such an HPKE recipient to the
   Service Credential.
+- **Sourced fact:** `requestIntroductionAcknowledgement` dials a local Unix
+  socket, sends only Target/generation/expiry/network/broker plus a nonce, and
+  receives one signature. It is not a Service reachability or delivery API.
 - **Measurement:** the maintained Initiator → Rendezvous path requires the
   opposite leg to present the identical attachment ID before useful bytes can
   pass. A test-only manually opened Responder leg proves the pairing mechanics,
