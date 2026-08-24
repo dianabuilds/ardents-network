@@ -60,7 +60,7 @@ type PublisherIntroduction struct {
 // the Publisher Endpoint; Close then releases the current publication lease.
 func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input PublisherIntroductionRequest) (*PublisherIntroduction, error) {
 	if endpoint == nil || endpoint.publications == nil || ctx == nil || input.HPKEPrivate == nil || input.At.IsZero() ||
-		!validPublisherIntroductionProfile(input.Profile) {
+		input.Profile.NetworkID != endpoint.network || !validPublisherIntroductionProfile(input.Profile) {
 		return nil, errors.New("Publisher Introduction input is incomplete or outside its bound")
 	}
 	lease, err := endpoint.publications.AcquireAt(ctx, input.At)
@@ -70,7 +70,8 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 	closeLease := func(cause error) (*PublisherIntroduction, error) {
 		return nil, errors.Join(cause, lease.Close())
 	}
-	if !matchesIntroductionRecipient(input.HPKEPrivate, lease.Current().Credential.IntroductionHPKEPublic) {
+	current := lease.Current()
+	if input.Profile.NotAfter.Unix() > current.Credential.NotAfter || !matchesIntroductionRecipient(input.HPKEPrivate, current.Credential.IntroductionHPKEPublic) {
 		return closeLease(errors.New("Publisher Introduction recipient does not match the current Credential"))
 	}
 	connection, err := route.OpenEndpointTransitAttachment(ctx, route.EndpointTransitAttachmentRequest{

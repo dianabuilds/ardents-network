@@ -125,18 +125,19 @@ func TestPublisherIntroductionRejectsForeignRecipientBeforeOpeningSlot(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{HPKEPrivate: foreign, At: now,
-		Profile: endpointapi.PublisherIntroductionProfile{NetworkID: c2Identifier(21), Digest: c2Identifier(22), Epoch: 1,
-			Introduction:     endpointapi.TransitPeer{NodeID: c2Identifier(23), PublicKey: c2Identifier(24), Endpoint: "127.0.0.1:25023"},
-			Rendezvous:       endpointapi.TransitPeer{NodeID: c2Identifier(25), PublicKey: c2Identifier(26), Endpoint: "127.0.0.1:25025"},
-			Responder:        endpointapi.TransitPeer{NodeID: c2Identifier(27), PublicKey: c2Identifier(28), Endpoint: "127.0.0.1:25027"},
-			SlotAttachmentID: c2Identifier(29), Reachability: c2Identifier(30), JoinHandle: c2Identifier(31), NotAfter: now.Add(time.Minute),
-			SlotAuthorization: []byte("slot"), ResponderAuthorization: []byte("responder")}})
+	profile := endpointapi.PublisherIntroductionProfile{NetworkID: c2Identifier(21), Digest: c2Identifier(22), Epoch: 1,
+		Introduction:     endpointapi.TransitPeer{NodeID: c2Identifier(23), PublicKey: c2Identifier(24), Endpoint: "127.0.0.1:25023"},
+		Rendezvous:       endpointapi.TransitPeer{NodeID: c2Identifier(25), PublicKey: c2Identifier(26), Endpoint: "127.0.0.1:25025"},
+		Responder:        endpointapi.TransitPeer{NodeID: c2Identifier(27), PublicKey: c2Identifier(28), Endpoint: "127.0.0.1:25027"},
+		SlotAttachmentID: c2Identifier(29), Reachability: c2Identifier(30), JoinHandle: c2Identifier(31), NotAfter: now.Add(time.Minute),
+		SlotAuthorization: []byte("slot"), ResponderAuthorization: []byte("responder")}
+	_, err = publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{HPKEPrivate: foreign, At: now, Profile: profile})
 	if err == nil {
 		t.Fatal("foreign HPKE recipient opened a Publisher slot")
 	}
-	if private == nil {
-		t.Fatal("test Publisher key is absent")
+	profile.NotAfter = now.Add(2 * time.Minute)
+	if session, err := publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{HPKEPrivate: private, At: now, Profile: profile}); err == nil || session != nil {
+		t.Fatalf("slot outlived its Credential: session=%v err=%v", session, err)
 	}
 }
 
