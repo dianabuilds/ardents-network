@@ -39,6 +39,8 @@ var (
 
 const epoch uint64 = 7
 
+var tracerBasePort int
+
 func runRole(ctx context.Context, role, endpoint string, deadline time.Time, mode string) (result, error) {
 	switch role {
 	case "introduction":
@@ -47,6 +49,16 @@ func runRole(ctx context.Context, role, endpoint string, deadline time.Time, mod
 		return runPublisher(ctx, endpoint, deadline, mode)
 	case "user":
 		return runUser(ctx, endpoint, deadline, mode)
+	case "full-rendezvous":
+		return runFullRendezvous(ctx, deadline)
+	case "full-initiator":
+		return runFullInitiator(ctx, deadline)
+	case "full-responder":
+		return runFullResponder(ctx, deadline)
+	case "full-publisher":
+		return runFullPublisher(ctx, endpoint, deadline)
+	case "full-user":
+		return runFullUser(ctx, endpoint, deadline)
 	default:
 		return result{}, errors.New("unknown tracer role")
 	}

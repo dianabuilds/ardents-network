@@ -68,13 +68,39 @@ function Invoke-Cell {
     [pscustomobject]@{ case = $Mode; passed = $true; delivered = $i.delivered; replay_refused = $i.replay_refused } | ConvertTo-Json -Compress
 }
 
+function Invoke-FullRoute {
+    $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + 15
+    $basePort = 47961
+    $introductionEndpoint = "127.0.0.1:$basePort"
+    $rendezvous = Start-Role 'full-rendezvous' @('full-rendezvous', '-base-port', $basePort, '-deadline-unix', $deadline, '-mode', 'full')
+    Wait-Text $rendezvous.Stdout '"event":"ready"'
+    $initiator = Start-Role 'full-initiator' @('full-initiator', '-base-port', $basePort, '-deadline-unix', $deadline, '-mode', 'full')
+    Wait-Text $initiator.Stdout '"event":"ready"'
+    $responder = Start-Role 'full-responder' @('full-responder', '-base-port', $basePort, '-deadline-unix', $deadline, '-mode', 'full')
+    Wait-Text $responder.Stdout '"event":"ready"'
+    $introduction = Start-Role 'full-introduction' @('introduction', '-endpoint', $introductionEndpoint, '-base-port', $basePort, '-deadline-unix', $deadline, '-mode', 'full')
+    Wait-Text $introduction.Stdout '"event":"ready"'
+    $publisher = Start-Role 'full-publisher' @('full-publisher', '-endpoint', $introductionEndpoint, '-base-port', $basePort, '-deadline-unix', $deadline, '-mode', 'full')
+    Wait-Text $publisher.Stdout '"event":"slot-ready"'
+    $user = Start-Role 'full-user' @('full-user', '-endpoint', $introductionEndpoint, '-base-port', $basePort, '-deadline-unix', $deadline, '-mode', 'full')
+    foreach ($role in @($user, $publisher, $introduction, $responder, $initiator, $rendezvous)) { Wait-Role $role }
+    foreach ($entry in @(@($user, 'ardents-r105-user-v1'), @($publisher, 'ardents-r105-publisher-v1'),
+            @($introduction, 'ardents-r105-introduction-v1'), @($responder, 'ardents-r105-responder-v1'),
+            @($initiator, 'ardents-r105-initiator-v1'), @($rendezvous, 'ardents-r105-rendezvous-v1'))) {
+        $record = Final-Record $entry[0] $entry[1]
+        if ($record.delivered -ne 1) { throw "Full route delivery oracle failed for $($entry[1])" }
+    }
+    [pscustomobject]@{ case = 'full-route'; passed = $true; roles = 6; static_reference_site = $true } | ConvertTo-Json -Compress
+}
+
 try {
     Push-Location $repoRoot
     try {
         & go build -trimpath -o $binary `
             experiments/r-105-live-introduction-tracer/main.go `
             experiments/r-105-live-introduction-tracer/material.go `
-            experiments/r-105-live-introduction-tracer/roles.go
+            experiments/r-105-live-introduction-tracer/roles.go `
+            experiments/r-105-live-introduction-tracer/full_route.go
         if ($LASTEXITCODE -ne 0) { throw 'R-105 tracer build failed' }
     } finally { Pop-Location }
     Invoke-Cell exact 47951
@@ -82,6 +108,7 @@ try {
     Invoke-Cell header-tamper 47953
     Invoke-Cell ciphertext-tamper 47954
     Invoke-Cell withdrawn-slot 47955
+    Invoke-FullRoute
 } finally {
     foreach ($process in $processes) { if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue } }
     if (Test-Path -LiteralPath $labRoot) {

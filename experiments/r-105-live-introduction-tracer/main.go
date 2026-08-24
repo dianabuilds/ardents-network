@@ -26,6 +26,7 @@ func dispatch(arguments []string) error {
 	}
 	set := flag.NewFlagSet(arguments[0], flag.ContinueOnError)
 	endpoint := set.String("endpoint", "", "Introduction loopback endpoint")
+	basePort := set.Int("base-port", 0, "four consecutive full-tracer loopback ports")
 	deadlineUnix := set.Int64("deadline-unix", 0, "shared finite deadline")
 	mode := set.String("mode", "exact", "synthetic experiment cell")
 	if err := set.Parse(arguments[1:]); err != nil {
@@ -33,9 +34,11 @@ func dispatch(arguments []string) error {
 	}
 	deadline := time.Unix(*deadlineUnix, 0).UTC()
 	if *deadlineUnix == 0 || !time.Now().UTC().Before(deadline) || (*mode != "exact" && *mode != "replay" &&
-		*mode != "header-tamper" && *mode != "ciphertext-tamper" && *mode != "withdrawn-slot") {
+		*mode != "header-tamper" && *mode != "ciphertext-tamper" && *mode != "withdrawn-slot" && *mode != "full") ||
+		*basePort < 0 || *basePort > 65531 {
 		return errors.New("experiment arguments are invalid")
 	}
+	tracerBasePort = *basePort
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 	result, err := runRole(ctx, arguments[0], *endpoint, deadline, *mode)

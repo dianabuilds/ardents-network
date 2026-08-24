@@ -119,14 +119,25 @@ Introduction, and User processes. All synthetic cells passed on the first
 run: one exact delivery; one spent-JoinHandle refusal; visible
 EndpointHandshake AAD substitution refusal at the Publisher; ciphertext
 substitution refusal at the Publisher; and no delivery after the Publisher
-closed its slot. The Introduction process read/compared only outer opaque
-handles and relayed canonical sealed bytes; it did not import or print a
-Target/plaintext. The runner deleted its binary/log directory afterwards.
+closed its slot. The Introduction role read/compared only outer opaque handles
+and relayed canonical sealed bytes; its control path neither parsed nor
+printed Service-only plaintext. The runner deleted its binary/log directory
+afterwards.
 
-This is C-2 control evidence only. It does **not** prove the required
-Initiator, Rendezvous, Responder, Publisher local-handoff, browser, State
-withdrawal, cancellation, or complete two-Endpoint route. Those remain the
-next full tracer and maintained-runtime gates.
+**Full exact-path evidence (2026-08-24):** the same disposable runner then
+started six separate processes: User, Initiator, Introduction, Rendezvous,
+Responder, and Publisher. The User first delivered the C-2 sealed instruction;
+the Publisher validated its current synthetic publication, opened the separate
+Responder attachment, and the two State-pinned Node legs paired at maintained
+Rendezvous. The User sent one synthetic HTTP request through the Initiator and
+received the exact static Reference Site response from the Publisher. Each
+role emitted one successful terminal record, and the maintained Initiator and
+Rendezvous processes drained with zero active connections.
+
+This proves one exact full synthetic route, not the entire R-105 matrix. It
+does **not** yet prove stale/withdrawn State, unavailable Publisher local
+handoff, duplicate Responder attempts, cancellation, browser integration, or
+the maintained C-2 duty lifecycle. Those remain retained-runtime gates.
 
 ### Failure scenarios
 
@@ -218,8 +229,8 @@ where unauthorized ingress and topology leakage would otherwise enter.
 
 Open and implementation-linked for the complete H4-2/H4-3 service path.
 ADR-0034 selects the signed X25519 recipient binding; ADR-0035 selects live
-C-2 slots and EndpointTransitBinding v1. The control-slice tracer now supports
-the selected delivery and HPKE/plaintext binding shape. The retained full
-Initiator/Rendezvous/Responder tracer, delivery/runtime, local-handoff, and
+C-2 slots and EndpointTransitBinding v1. The tracer now supports the selected
+delivery/HPKE binding shape and one exact six-process static-reference route.
+The retained C-2 duty lifecycle, State/failure matrix, local handoff, and
 browser lifecycle remain to be implemented and tested. The previous test-only
 Responder leg remains evidence only.

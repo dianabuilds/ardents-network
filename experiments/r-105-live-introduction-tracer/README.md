@@ -3,8 +3,8 @@
 ## Question
 
 Can a finite live Publisher slot deliver exactly one HPKE-sealed C-2
-introduction through a separate Introduction process, with no Service Target
-visible to that process and no replayed JoinHandle delivery?
+introduction through a separate Introduction process, without that role
+parsing Service-only plaintext and without replayed JoinHandle delivery?
 
 ## Hypothesis and falsifiers
 
@@ -26,9 +26,11 @@ This is build-ignored disposable evidence for R-105. It uses deterministic
 synthetic identities, a loopback endpoint, and no real Authority, Network
 State, Service Name, browser, application data, or persistent credential. It
 does not implement a Node duty or claim a complete User-to-Service route.
-The follow-on cell must compose this proven control slice with separate
-Initiator, Rendezvous, and Responder processes before retained C-2 runtime is
-added.
+The `full-route` cell composes this control slice with separate Initiator,
+Rendezvous, and Responder processes and carries one static HTTP response. It
+is exact-path evidence only; it does not yet exercise State withdrawal,
+cancellation, unavailable local handoff, duplicate Responder, or browser
+integration before retained C-2 runtime is added.
 
 ## Run
 
@@ -52,6 +54,7 @@ records no packet capture, private key, or generated binary in Git.
 | `header-tamper` | Introduction forwards the raw record, but Publisher HPKE verification refuses the modified visible header. |
 | `ciphertext-tamper` | Introduction forwards the raw record, but Publisher HPKE verification refuses the modified ciphertext. |
 | `withdrawn-slot` | A User cannot deliver after the Publisher slot has closed. |
+| `full-route` | Six processes carry one static HTTP response through User → Initiator → Rendezvous → Responder → Publisher after C-2 delivery. |
 
 ## Disposition
 
