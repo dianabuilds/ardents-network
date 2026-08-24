@@ -8,7 +8,8 @@ maintenance and security signals, alternatives considered, and removal plan.
 
 The maintained product-shaped Modules use the Go standard library, the
 Windows-only `golang.org/x/sys/windows` surfaces described below, and the exact
-OHTTP closure owned by `internal/naming/resolution`. ADR-0014 selects the
+OHTTP closure owned by `internal/naming/resolution` and
+`internal/service/reachability`. ADR-0014 selects the
 maintained private-resolution profile; the set must enter
 `go.mod` as this reviewed set rather than as the vulnerable versions declared
 by `openpcc/ohttp v0.0.80`.
@@ -29,8 +30,9 @@ by `openpcc/ohttp v0.0.80`.
 | `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
-shape. `internal/naming/resolution` owns the maintained product OHTTP/CIRCL Adapter.
-No other product Module imports this closure. A change repeats R-047/R-026
+shape. `internal/naming/resolution` owns the Namespace OHTTP/CIRCL Adapter and
+`internal/service/reachability` owns the separately authenticated Target
+descriptor adapter; neither is a general HTTP proxy. A change repeats R-047/R-026
 instead of allowing its cryptographic configuration to drift.
 
 **Windows platform use:** current platform-specific owners use
