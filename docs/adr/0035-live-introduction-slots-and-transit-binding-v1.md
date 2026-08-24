@@ -42,6 +42,12 @@ The separate private slot authorization remains only in that admission binding.
 The registration record is never a descriptor, Service publication, Target
 lookup, or retained message.
 
+Kinds 8 and 9 close the C-2 control outcomes: `IntroductionSlotReady` confirms
+the exact retained slot, while `IntroductionDeliveryResult` reports only
+`delivered` or undisclosed `unavailable` for the exact attachment. `delivered`
+means sealed-byte forwarding only; it is not a Publisher, Responder, or Service
+connection success claim.
+
 After authenticated delivery, the Publisher validates the HPKE material and
 uses a separately admitted Responder first hop to open exactly one
 State-pinned Responder-to-Rendezvous leg. Rendezvous still pairs only those
