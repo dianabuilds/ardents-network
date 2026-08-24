@@ -107,30 +107,26 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 			Application: publisherApplication, BytesEachDirection: 64 << 10, At: now})
 		publisherDone <- serviceOutcome{result, runErr}
 	}()
-	userRoute, err := user.OpenUserIntroductionRoute(ctx, endpointapi.UserIntroductionRouteRequest{TargetLink: link, Publication: current.Record,
-		Introduction: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
-			Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
-			RendezvousNodeID: rendezvousID, Reachability: reachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]},
-		Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
-		Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
-		Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
-		AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now})
-	if err != nil || userRoute.AuthenticatedTarget != current.Credential.Target || userRoute.AttachmentID != serviceAttachment {
-		t.Fatalf("C2 User Route = %+v, %v", userRoute, err)
-	}
-	defer userRoute.Close()
 	requestSeen := make(chan *http.Request, 1)
 	go serveOneStaticReference(serviceApplication, requestSeen)
 	userSession, err := user.Admit(c2Identifier(73), broker.Connection)
 	if err != nil {
 		t.Fatal(err)
 	}
-	running, err := user.StartReferenceConnection(ctx, endpointapi.ReferenceConnectionRequest{TargetLink: link, Routes: map[string]string{"": "/"},
-		Connection: endpointapi.OutboundConnectionRequest{Principal: c2Identifier(73), Capability: userSession, Target: current.Credential.Target,
-			Publication: current.Record, Route: userRoute.Connection, BytesEachDirection: 64 << 10, At: now}})
+	running, err := user.OpenUserReferenceSite(ctx, endpointapi.UserReferenceSiteRequest{
+		Introduction: endpointapi.UserIntroductionRouteRequest{TargetLink: link, Publication: current.Record,
+			Introduction: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
+				Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
+				RendezvousNodeID: rendezvousID, Reachability: reachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]},
+			Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
+			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
+			Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
+			AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now},
+		Routes: map[string]string{"": "/"}, Principal: c2Identifier(73), Capability: userSession, BytesEachDirection: 64 << 10})
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer running.Close()
 	readyReference, ok := <-running.Ready()
 	if !ok || readyReference.AuthenticatedTarget != current.Credential.Target {
 		t.Fatalf("Reference Site was not opened after exact C2 target authentication: %+v", readyReference)
@@ -148,8 +144,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if request := <-requestSeen; request == nil || request.URL.Path != "/" || request.Host != "reference" {
 		t.Fatalf("Publisher saw invalid Reference request: %#v", request)
 	}
-	_ = running.Close()
-	if err := userRoute.Close(); err != nil {
+	if err := running.Close(); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -212,6 +207,30 @@ func TestUserIntroductionRouteRejectsRendezvousSubstitutionBeforeEntry(t *testin
 		AttachmentID: c2Identifier(87), EndpointHandshake: c2Identifier(88), At: fixture.now})
 	if err == nil || entry.calls != 0 {
 		t.Fatalf("Rendezvous substitution opened Entry: calls=%d err=%v", entry.calls, err)
+	}
+}
+
+func TestUserIntroductionRouteRejectsInvalidTargetLinkBeforeEntry(t *testing.T) {
+	fixture := newFixture(t)
+	user, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: c2Identifier(89),
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic, ConnectionPrincipal: fixture.clientPrincipal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer user.Close()
+	entry := &c2CountingEntry{}
+	now := time.Now().UTC().Truncate(time.Second)
+	rendezvous := endpointapi.TransitPeer{NodeID: c2Identifier(90), PublicKey: c2Identifier(91), Endpoint: "127.0.0.1:37091"}
+	_, err = user.OpenUserIntroductionRoute(context.Background(), endpointapi.UserIntroductionRouteRequest{
+		TargetLink: "not-an-ardents-target-link",
+		Introduction: endpointapi.UserIntroductionProfile{NetworkID: fixture.networkID, Digest: c2Identifier(92), Epoch: 1,
+			Introduction:     endpointapi.TransitPeer{NodeID: c2Identifier(93), PublicKey: c2Identifier(94), Endpoint: "127.0.0.1:37094"},
+			RendezvousNodeID: rendezvous.NodeID, Reachability: c2Identifier(95), JoinHandle: c2Identifier(96),
+			NotAfter: now.Add(time.Minute), SubmissionAuthorization: []byte("introduction")},
+		Entry: entry, Initiator: endpointapi.TransitPeer{NodeID: c2Identifier(97), PublicKey: c2Identifier(98), Endpoint: "127.0.0.1:37098"},
+		Rendezvous: rendezvous, AttachmentID: c2Identifier(99), EndpointHandshake: c2Identifier(100), At: now})
+	if err == nil || entry.calls != 0 {
+		t.Fatalf("invalid Target Link opened Entry: calls=%d err=%v", entry.calls, err)
 	}
 }
 

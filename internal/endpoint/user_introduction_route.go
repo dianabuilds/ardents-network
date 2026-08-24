@@ -54,6 +54,10 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		!validUserIntroductionProfile(input.Introduction) {
 		return nil, errors.New("User Introduction Route input is incomplete or outside its bound")
 	}
+	target, err := endpoint.TargetFromLink(input.TargetLink)
+	if err != nil {
+		return nil, err
+	}
 	connection, cleanup, err := route.OpenEntryAttachment(ctx, input.Entry, route.EntryAttachmentRequest{
 		NetworkID: input.Introduction.NetworkID, Digest: input.Introduction.Digest, Epoch: input.Introduction.Epoch,
 		AttachmentID: input.AttachmentID, Deadline: input.Introduction.NotAfter})
@@ -84,6 +88,9 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		Profile: input.Introduction, AttachmentID: input.AttachmentID, EndpointHandshake: input.EndpointHandshake, At: input.At})
 	if err != nil {
 		return closeRoute(err)
+	}
+	if delivery.AuthenticatedTarget != target {
+		return closeRoute(errors.New("User Introduction Route authenticated a different Target"))
 	}
 	return &UserIntroductionRoute{Connection: connection, AuthenticatedTarget: delivery.AuthenticatedTarget, Generation: delivery.Generation,
 		AttachmentID: input.AttachmentID, cleanup: cleanup}, nil

@@ -49,6 +49,7 @@ type ReferenceConnection struct {
 	cancel context.CancelFunc
 	ready  chan ReferenceReady
 	done   chan ReferenceOutcome
+	closed chan struct{}
 
 	mu        sync.Mutex
 	server    *reference.Server
@@ -81,7 +82,7 @@ func (endpoint *endpoint) StartReferenceConnection(ctx context.Context, input Re
 		return nil, err
 	}
 	lifetime, cancel := context.WithCancel(ctx)
-	running := &ReferenceConnection{cancel: cancel, ready: make(chan ReferenceReady, 1), done: make(chan ReferenceOutcome, 1)}
+	running := &ReferenceConnection{cancel: cancel, ready: make(chan ReferenceReady, 1), done: make(chan ReferenceOutcome, 1), closed: make(chan struct{})}
 	request := input.Connection
 	request.Application = application
 	request.OnAuthenticated = func(authenticated [32]byte) error {
@@ -111,6 +112,7 @@ func (endpoint *endpoint) StartReferenceConnection(ctx context.Context, input Re
 		running.closeReady()
 		running.done <- ReferenceOutcome{Result: result, Err: runErr}
 		close(running.done)
+		close(running.closed)
 	}()
 	return running, nil
 }
@@ -132,6 +134,15 @@ func (connection *ReferenceConnection) Done() <-chan ReferenceOutcome {
 		return nil
 	}
 	return connection.done
+}
+
+// terminated is an internal broadcast signal for Endpoint-owned cleanup. It
+// intentionally does not consume the caller's classified Done outcome.
+func (connection *ReferenceConnection) terminated() <-chan struct{} {
+	if connection == nil {
+		return nil
+	}
+	return connection.closed
 }
 
 // Close cancels the Service Connection and withdraws its browser origin.
