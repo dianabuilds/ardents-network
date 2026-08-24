@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -66,6 +67,28 @@ func TestEndpointRouteRejectsIncompleteCommand(t *testing.T) {
 	var output bytes.Buffer
 	if err := run(t.Context(), []string{"endpoint", "run"}, &output); err == nil || output.Len() != 0 {
 		t.Fatalf("incomplete endpoint command err=%v output=%q", err, output.String())
+	}
+}
+
+func TestPortableUserUnitEscapesExactAbsoluteInputs(t *testing.T) {
+	t.Parallel()
+	executable := filepath.Join(t.TempDir(), "bin", "ardents")
+	enrollment := filepath.Join(t.TempDir(), "alpha $cohort%.json")
+	unit, err := portableUserUnit(executable, enrollment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	escapedExecutable, _ := unitArgument(executable)
+	escapedEnrollment, _ := unitArgument(enrollment)
+	if !strings.Contains(unit, "ExecStart="+escapedExecutable+" endpoint enroll "+escapedEnrollment) ||
+		!strings.Contains(escapedEnrollment, "$$cohort%%") ||
+		!strings.Contains(unit, "UMask=0077\nRestart=no\n") || strings.Contains(unit, "User=") {
+		t.Fatalf("unexpected Portable user unit:\n%s", unit)
+	}
+	for _, value := range []string{"relative.json", filepath.Join(t.TempDir(), "a\n.json")} {
+		if _, err := unitArgument(value); err == nil {
+			t.Fatalf("unit argument accepted %q", value)
+		}
 	}
 }
 

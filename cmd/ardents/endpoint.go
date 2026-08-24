@@ -31,8 +31,11 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 2 && arguments[1] == "portable" {
 		return runPortableEndpoint(ctx, output)
 	}
+	if len(arguments) == 3 && arguments[1] == "user-unit" {
+		return runEndpointUserUnit(arguments[2], output)
+	}
 	if len(arguments) != 3 || arguments[1] != "run" || arguments[2] == "" {
-		return errors.New("usage: ardents endpoint <portable|enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|run <endpoint-plan.json>>")
+		return errors.New("usage: ardents endpoint <portable|enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|user-unit <alpha-enrollment.json>|run <endpoint-plan.json>>")
 	}
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
