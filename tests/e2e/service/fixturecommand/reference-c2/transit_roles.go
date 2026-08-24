@@ -98,12 +98,20 @@ func openInitiator(input config, deadline time.Time) (*node.Initiator, error) {
 	network, _ := fixed(input.Network)
 	digest, _ := fixed(input.Digest)
 	attachment, _ := fixed(input.ServiceAttachment)
+	resolutionAttachment, _ := fixed(input.ResolutionAttachment)
+	gateway, err := input.Gateway.decode()
+	if err != nil {
+		return nil, err
+	}
 	inviteID, _ := fixed(input.InviteID)
 	return node.StartInitiator(node.InitiatorConfig{ListenAddress: initiator.Endpoint, Certificate: certificate,
 		NetworkID: network, EpochDigest: digest, NodeID: initiator.NodeID, NodePublicKey: initiator.PublicKey, Epoch: input.Epoch, NotAfter: deadline,
-		Rendezvous: node.InitiatorPeer{NodeID: rendezvous.NodeID, PublicKey: rendezvous.PublicKey, Endpoint: rendezvous.Endpoint},
+		Rendezvous:        node.InitiatorPeer{NodeID: rendezvous.NodeID, PublicKey: rendezvous.PublicKey, Endpoint: rendezvous.Endpoint},
+		ResolutionGateway: node.ResolutionGateway{NodeID: gateway.NodeID, PublicKey: gateway.PublicKey, URL: "https://" + gateway.Endpoint},
 		Admit: func(raw []byte, received, key [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
-			if string(raw) != input.Invite || received != attachment || key == [32]byte{} || !notAfter.Equal(deadline) {
+			service := received == attachment && notAfter.Equal(deadline)
+			resolution := received == resolutionAttachment && time.Now().UTC().Before(notAfter) && notAfter.Before(deadline) && !notAfter.After(time.Now().UTC().Add(15*time.Second))
+			if string(raw) != input.Invite || key == [32]byte{} || (!service && !resolution) {
 				return route.EntryAdmission{}, errors.New("unexpected process Entry admission")
 			}
 			return route.EntryAdmission{InviteID: inviteID, NetworkID: network, Digest: digest, Epoch: input.Epoch, InitiatorNodeID: initiator.NodeID, NotAfter: deadline}, nil
@@ -201,7 +209,7 @@ func verifyTransitUsage(role string, running drainingTransit) error {
 	switch value := running.(type) {
 	case *node.Initiator:
 		usage := value.Usage()
-		if role != "initiator" || usage.CompletedRelays != 1 || usage.ActiveRelays != 0 || usage.Connections != 0 {
+		if role != "initiator" || usage.CompletedRelays != 2 || usage.ActiveRelays != 0 || usage.Connections != 0 {
 			return fmt.Errorf("Initiator terminal usage = %+v", usage)
 		}
 	case *node.Introduction:

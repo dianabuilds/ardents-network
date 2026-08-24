@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -27,10 +28,11 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	rendezvousMaterial := referenceC2Certificate(t, 4, "rendezvous")
 	responderMaterial := referenceC2Certificate(t, 5, "responder")
 	initiatorMaterial := referenceC2Certificate(t, 6, "initiator")
+	gatewayMaterial := referenceC2Certificate(t, 7, "gateway")
 	introductionAddress, rendezvousAddress := referenceC2Address(t), referenceC2Address(t)
-	responderAddress, initiatorAddress := referenceC2Address(t), referenceC2Address(t)
+	responderAddress, initiatorAddress, gatewayAddress := referenceC2Address(t), referenceC2Address(t), referenceC2Address(t)
 	join, reachability := referenceC2ID(7), referenceC2ID(8)
-	slotAttachment, serviceAttachment := referenceC2ID(9), referenceC2ID(10)
+	slotAttachment, serviceAttachment, resolutionAttachment := referenceC2ID(9), referenceC2ID(10), referenceC2ID(12)
 	slotAuthorization, responderAuthorization, invite := "publisher-slot", "publisher-responder", "entry-invite"
 	inviteID := referenceC2ID(11)
 
@@ -45,11 +47,13 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	fixture := map[string]any{
 		"Schema": "ardents-e2e-reference-c2-v1", "Network": referenceC2Hex(network), "Digest": referenceC2Hex(digest),
 		"Epoch": 10, "Deadline": deadline.Format(time.RFC3339), "PublicationPath": publicationPath, "PublisherRoot": filepath.Join(root, "publisher-state"),
+		"GatewayRoot": filepath.Join(root, "gateway-state"), "GatewayProfilePath": filepath.Join(root, "gateway-profile.json"),
 		"ReadyRoot": readyRoot, "CompletePath": completePath,
 		"Introduction": referenceC2Peer(introductionID, introductionMaterial, introductionAddress), "Rendezvous": referenceC2Peer(rendezvousID, rendezvousMaterial, rendezvousAddress),
 		"Responder": referenceC2Peer(responderID, responderMaterial, responderAddress), "Initiator": referenceC2Peer(initiatorID, initiatorMaterial, initiatorAddress),
+		"Gateway":    referenceC2Peer(referenceC2ID(13), gatewayMaterial, gatewayAddress),
 		"JoinHandle": referenceC2Hex(join), "Reachability": referenceC2Hex(reachability), "SlotAttachment": referenceC2Hex(slotAttachment),
-		"ServiceAttachment": referenceC2Hex(serviceAttachment), "SlotAuthorization": slotAuthorization, "ResponderAuthorization": responderAuthorization,
+		"ServiceAttachment": referenceC2Hex(serviceAttachment), "ResolutionAttachment": referenceC2Hex(resolutionAttachment), "SlotAuthorization": slotAuthorization, "ResponderAuthorization": responderAuthorization,
 		"InviteID": referenceC2Hex(inviteID), "Invite": invite,
 	}
 	raw, err := json.Marshal(fixture)
@@ -67,10 +71,15 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 			t.Fatalf("C2 transit process %s did not become ready: %v\n%s", role, err, process.output)
 		}
 	}
+	gateway := startCommand(ctx, root, binary, "gateway", configPath)
 	publisher := startCommand(ctx, root, binary, "publisher", configPath)
 	if err := referenceC2WaitForFile(ctx, publicationPath); err != nil {
 		process := <-publisher
 		t.Fatalf("C2 Publisher process did not publish: %v\n%s", err, process.output)
+	}
+	if err := referenceC2WaitForFile(ctx, filepath.Join(readyRoot, "gateway")); err != nil {
+		process := <-gateway
+		t.Fatalf("C2 Gateway process did not become ready: %v\n%s", err, process.output)
 	}
 	user := startCommand(ctx, root, binary, "user", configPath)
 	processes := map[string]commandResult{"user": <-user, "publisher": <-publisher}
@@ -80,6 +89,7 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	for role, process := range transit {
 		processes[role] = <-process
 	}
+	processes["gateway"] = <-gateway
 	for role, process := range processes {
 		if process.err != nil {
 			t.Fatalf("C2 %s Endpoint process failed: %v\n%s", role, process.err, process.output)
@@ -88,10 +98,14 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 			Schema, Role, Class string
 			Passed              bool
 		}
-		if err := json.Unmarshal(process.output, &observed); err != nil || observed.Schema != "ardents-e2e-reference-c2-result-v1" || observed.Role != role || !observed.Passed || observed.Class == "" {
+		line := strings.TrimSpace(string(process.output))
+		if index := strings.LastIndex(line, "\n"); index >= 0 {
+			line = line[index+1:]
+		}
+		if err := json.Unmarshal([]byte(line), &observed); err != nil || observed.Schema != "ardents-e2e-reference-c2-result-v1" || observed.Role != role || !observed.Passed || observed.Class == "" {
 			t.Fatalf("C2 Endpoint process result = %q / %+v / %v", process.output, observed, err)
 		}
-		if role == "rendezvous" || role == "initiator" || role == "introduction" || role == "responder" {
+		if role == "rendezvous" || role == "initiator" || role == "introduction" || role == "responder" || role == "gateway" {
 			if observed.Class != "drained" {
 				t.Fatalf("C2 transit process %s result class = %q, want drained", role, observed.Class)
 			}

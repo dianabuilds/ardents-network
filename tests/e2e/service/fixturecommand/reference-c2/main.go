@@ -25,6 +25,7 @@ import (
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -35,13 +36,14 @@ type peer struct {
 type config struct {
 	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath string
 	Epoch                                                                                      uint64
-	Introduction, Rendezvous, Responder, Initiator                                             peer
-	JoinHandle, Reachability, SlotAttachment, ServiceAttachment                                string
+	Introduction, Rendezvous, Responder, Initiator, Gateway                                    peer
+	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment          string
+	GatewayRoot, GatewayProfilePath                                                            string
 	SlotAuthorization, ResponderAuthorization, InviteID, Invite                                string
 }
 
 type publicationEnvelope struct {
-	AuthorityPublic, Publication, TargetLink string
+	AuthorityPublic, Publication, TargetLink, Descriptor string
 }
 
 type result struct {
@@ -61,6 +63,8 @@ func main() {
 			err = runPublisher(input)
 		case "user":
 			err = runUser(input)
+		case "gateway":
+			err = runGateway(input)
 		case "rendezvous", "initiator", "introduction", "responder":
 			err = runTransitRole(input, os.Args[1])
 		default:
@@ -84,19 +88,19 @@ func readConfig(path string) (config, error) {
 	if err := decoder.Decode(&input); err != nil {
 		return config{}, err
 	}
-	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.ReadyRoot == "" || input.CompletePath == "" ||
+	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.GatewayRoot == "" || input.GatewayProfilePath == "" || input.ReadyRoot == "" || input.CompletePath == "" ||
 		input.SlotAuthorization == "" || input.ResponderAuthorization == "" || input.Invite == "" {
 		return config{}, errors.New("C2 fixture configuration is incomplete")
 	}
 	if _, err := input.deadline(); err != nil {
 		return config{}, err
 	}
-	for _, value := range []string{input.Network, input.Digest, input.JoinHandle, input.Reachability, input.SlotAttachment, input.ServiceAttachment, input.InviteID} {
+	for _, value := range []string{input.Network, input.Digest, input.JoinHandle, input.Reachability, input.SlotAttachment, input.ServiceAttachment, input.ResolutionAttachment, input.InviteID} {
 		if _, err := fixed(value); err != nil {
 			return config{}, err
 		}
 	}
-	for _, value := range []peer{input.Introduction, input.Rendezvous, input.Responder, input.Initiator} {
+	for _, value := range []peer{input.Introduction, input.Rendezvous, input.Responder, input.Initiator, input.Gateway} {
 		if _, err := value.decode(); err != nil {
 			return config{}, err
 		}
@@ -133,7 +137,7 @@ func runPublisher(input config) error {
 	rendezvous, _ := input.Rendezvous.decode()
 	responder, _ := input.Responder.decode()
 	join, _ := fixed(input.JoinHandle)
-	reachability, _ := fixed(input.Reachability)
+	slotReachability, _ := fixed(input.Reachability)
 	slotAttachment, _ := fixed(input.SlotAttachment)
 	authorityPublic, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -180,19 +184,29 @@ func runPublisher(input config) error {
 	if err != nil {
 		return err
 	}
-	if err := writePublication(input.PublicationPath, publicationEnvelope{AuthorityPublic: hex.EncodeToString(authorityPublic),
-		Publication: base64.RawStdEncoding.EncodeToString(published.Record), TargetLink: link}); err != nil {
-		return err
-	}
 	slot, err := publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{
 		Profile: endpointapi.PublisherIntroductionProfile{NetworkID: network, Digest: digest, Epoch: input.Epoch, Introduction: introduction,
-			Rendezvous: rendezvous, Responder: responder, SlotAttachmentID: slotAttachment, Reachability: reachability, JoinHandle: join,
+			Rendezvous: rendezvous, Responder: responder, SlotAttachmentID: slotAttachment, Reachability: slotReachability, JoinHandle: join,
 			NotAfter: deadline, SlotAuthorization: []byte(input.SlotAuthorization), ResponderAuthorization: []byte(input.ResponderAuthorization)},
 		HPKEPrivate: hpkePrivate, At: now})
 	if err != nil {
 		return err
 	}
 	defer slot.Close()
+	current, err := publication.Decode(published.Record, authorityPublic, network, now)
+	if err != nil {
+		return err
+	}
+	descriptor, _, err := reachability.Issue(reachability.IssueInput{Current: current, InstanceSigner: instancePrivate,
+		Introduction: reachability.Introduction{StateDigest: digest, Epoch: input.Epoch, IntroductionNodeID: introduction.NodeID,
+			RendezvousNodeID: rendezvous.NodeID, Reachability: slotReachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]}})
+	if err != nil {
+		return err
+	}
+	if err := writePublication(input.PublicationPath, publicationEnvelope{AuthorityPublic: hex.EncodeToString(authorityPublic),
+		Publication: base64.RawStdEncoding.EncodeToString(published.Record), TargetLink: link, Descriptor: base64.RawStdEncoding.EncodeToString(descriptor)}); err != nil {
+		return err
+	}
 	capability, err := publisher.Admit(principal, broker.Connection)
 	if err != nil {
 		return err
@@ -222,16 +236,19 @@ func runUser(input config) error {
 	if err != nil || len(authority) != ed25519.PublicKeySize {
 		return errors.New("Publisher authority is invalid")
 	}
-	publicationRecord, err := base64.RawStdEncoding.DecodeString(envelope.Publication)
-	if err != nil || len(publicationRecord) == 0 {
-		return errors.New("Publisher publication is invalid")
-	}
 	introduction, _ := input.Introduction.decode()
 	rendezvous, _ := input.Rendezvous.decode()
 	initiator, _ := input.Initiator.decode()
-	join, _ := fixed(input.JoinHandle)
-	reachability, _ := fixed(input.Reachability)
+	gateway, err := input.Gateway.decode()
+	if err != nil {
+		return err
+	}
+	profile, err := readGatewayProfile(input.GatewayProfilePath)
+	if err != nil {
+		return err
+	}
 	serviceAttachment, _ := fixed(input.ServiceAttachment)
+	resolutionAttachment, _ := fixed(input.ResolutionAttachment)
 	inviteID, _ := fixed(input.InviteID)
 	userPrincipal := identifier(42)
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: identifier(44), AuthorityPublic: authority,
@@ -245,11 +262,14 @@ func runUser(input config) error {
 		return err
 	}
 	now := time.Now().UTC().Truncate(time.Second)
+	resolutionDeadline := now.Add(5 * time.Second)
 	site, err := user.OpenUserReferenceSite(context.Background(), endpointapi.UserReferenceSiteRequest{
-		Introduction: endpointapi.UserIntroductionRouteRequest{TargetLink: envelope.TargetLink, Publication: publicationRecord,
-			Introduction: endpointapi.UserIntroductionProfile{NetworkID: network, Digest: digest, Epoch: input.Epoch, Introduction: introduction,
-				RendezvousNodeID: rendezvous.NodeID, Reachability: reachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]},
-			Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
+		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: envelope.TargetLink,
+			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey,
+				GatewayProfile: profile, StateDigest: digest, Epoch: input.Epoch, Initiator: initiator,
+				Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
+					presentation: entry.Presentation{InviteID: inviteID, Invite: []byte(input.Invite)}}, AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
+			Introduction: introduction, Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
 				presentation: entry.Presentation{InviteID: inviteID, Invite: []byte(input.Invite)}}, Initiator: initiator, Rendezvous: rendezvous,
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
 		Routes: map[string]string{"": "/"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10})
@@ -332,7 +352,7 @@ func readPublication(path string) (publicationEnvelope, error) {
 		return publicationEnvelope{}, errors.New("Publisher publication is unavailable")
 	}
 	var value publicationEnvelope
-	if err := json.Unmarshal(raw, &value); err != nil || value.AuthorityPublic == "" || value.Publication == "" || value.TargetLink == "" {
+	if err := json.Unmarshal(raw, &value); err != nil || value.AuthorityPublic == "" || value.Publication == "" || value.TargetLink == "" || value.Descriptor == "" {
 		return publicationEnvelope{}, errors.New("Publisher publication is invalid")
 	}
 	return value, nil

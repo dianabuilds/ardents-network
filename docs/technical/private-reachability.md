@@ -3,9 +3,9 @@
 Status: **accepted H4-3A contract; the closed descriptor codec, Endpoint
 composition, Gateway-local durable currentness state, and fixed-size OHTTP
 Relay/Gateway exchange and ADR-0037's closed Entry-to-Initiator carrier exist;
-one in-process Target Link → lookup → C-2 → Reference Site behavior test
-passes. Separate-process and live qualification remain pending.** This is the
-Target-keyed companion to the Namespace-only private
+both in-process and seven-process Target Link → lookup → C-2 → Reference Site
+tests pass. Live qualification remains pending.** This is the Target-keyed
+companion to the Namespace-only private
 resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md)
 and [ADR-0037](../adr/0037-private-reachability-entry-carrier.md).
 
@@ -143,7 +143,7 @@ unavailable`, and local policy/resource refusal without revealing route
 topology to the browser. Only a verified `resolved` result may create the
 scoped loopback Reference Site; every other result leaves no listener.
 
-Before H4-3 is declared usable, a separate Publisher, User, Relay, Gateway,
+Before H4-3 is declared usable, a separate Publisher, User, Gateway,
 Introduction, Initiator, Rendezvous, and Responder process experiment must
 show: success; a changed Target; old still-time-valid credential; same-
 generation publication conflict; expired/stale introduction slot; substituted
