@@ -130,6 +130,14 @@ func TestSealedIntroductionV1RejectsInvalidLengths(t *testing.T) {
 	}
 }
 
+func TestSealedIntroductionV1RefusesFractionalExpiry(t *testing.T) {
+	input := introductionFixture()
+	input.NotAfter = input.NotAfter.Add(time.Nanosecond)
+	if _, err := EncodeSealedIntroduction(input); err == nil {
+		t.Fatal("fractional expiry was accepted")
+	}
+}
+
 func introductionFixture() SealedIntroduction {
 	return SealedIntroduction{NetworkID: identifier(11), Digest: identifier(12), Epoch: 13,
 		IntroductionNodeID: identifier(14), RendezvousNodeID: identifier(15), Reachability: identifier(16),

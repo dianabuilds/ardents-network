@@ -157,7 +157,7 @@ func validSealedIntroduction(input SealedIntroduction, encrypted bool) error {
 		input.IntroductionNodeID == [32]byte{} || input.RendezvousNodeID == [32]byte{} ||
 		input.IntroductionNodeID == input.RendezvousNodeID || input.Reachability == [32]byte{} ||
 		input.NotAfter.IsZero() || input.NotAfter.Unix() <= 0 || input.JoinHandle == [32]byte{} ||
-		input.EndpointHandshake == [32]byte{} {
+		input.EndpointHandshake == [32]byte{} || !input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) {
 		return errors.New("sealed Introduction header is invalid")
 	}
 	if !encrypted {
