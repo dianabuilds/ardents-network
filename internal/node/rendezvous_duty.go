@@ -32,12 +32,12 @@ func rendezvousDuty(profile RendezvousProfile, snapshot dutyFacts) (RendezvousCo
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) {
-			return RendezvousConfig{}, errors.New("Rendezvous peer is not valid for the complete duty")
+			return RendezvousConfig{}, errors.New("rendezvous peer is not valid for the complete duty")
 		}
 		peers = append(peers, RendezvousPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Role: role})
 	}
 	if len(peers) != 2 || peers[0].Role == peers[1].Role {
-		return RendezvousConfig{}, errors.New("State does not supply one Initiator and one Responder peer")
+		return RendezvousConfig{}, errors.New("state does not supply one Initiator and one Responder peer")
 	}
 	return RendezvousConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate,
 		NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,

@@ -109,9 +109,9 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 			return withdraw(config, machine, server, current, "explicit shutdown")
 		case terminalErr := <-server.Done:
 			if terminalErr == nil {
-				terminalErr = errors.New("Node listener stopped while Node was READY")
+				terminalErr = errors.New("node listener stopped while node was READY")
 			}
-			return fail(config, machine, server, "Node listener stopped", terminalErr)
+			return fail(config, machine, server, "node listener stopped", terminalErr)
 		case <-ticker.C:
 			pressure, sample, pressureErr := config.resourcePressure(server)
 			if pressureErr != nil {

@@ -116,11 +116,11 @@ func (server *Server) serve(writer http.ResponseWriter, request *http.Request) {
 
 func validate(config Config) error {
 	if config.Target == [32]byte{} || !validResource(config.Document) || len(config.Resources) > 32 {
-		return errors.New("Reference Site configuration is incomplete or outside its bound")
+		return errors.New("reference site configuration is incomplete or outside its bound")
 	}
 	for name, resource := range config.Resources {
 		if name == "" || name == "." || name != path.Clean(name) || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "../") || strings.Contains(name, "\\") || !validResource(resource) {
-			return errors.New("Reference Site resource is invalid")
+			return errors.New("reference site resource is invalid")
 		}
 	}
 	return nil

@@ -158,7 +158,7 @@ func (runtime *Runtime) Close() error {
 // establish release or network prerequisites before it emits readiness.
 func (runtime *Runtime) Wait(ctx context.Context) error {
 	if runtime == nil || ctx == nil {
-		return errors.New("Portable runtime is unavailable")
+		return errors.New("portable runtime is unavailable")
 	}
 	<-ctx.Done()
 	return runtime.Close()
