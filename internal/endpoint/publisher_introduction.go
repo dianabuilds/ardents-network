@@ -45,10 +45,11 @@ type PublisherIntroductionRequest struct {
 // publication lease. Wait returns one authenticated Responder carrier only
 // after the sealed instruction matches that exact retained publication.
 type PublisherIntroduction struct {
-	profile PublisherIntroductionProfile
-	private hpke.PrivateKey
-	lease   *publication.Lease
-	slot    net.Conn
+	endpoint *endpoint
+	profile  PublisherIntroductionProfile
+	private  hpke.PrivateKey
+	lease    *publication.Lease
+	slot     net.Conn
 
 	mu   sync.Mutex
 	used bool
@@ -96,7 +97,7 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 		!ready.NotAfter.Equal(registration.NotAfter) {
 		return closeConnection(errors.Join(err, errors.New("Publisher Introduction slot acknowledgement is invalid")))
 	}
-	return &PublisherIntroduction{profile: clonePublisherIntroductionProfile(input.Profile), private: input.HPKEPrivate,
+	return &PublisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(input.Profile), private: input.HPKEPrivate,
 		lease: lease, slot: connection}, nil
 }
 
@@ -154,6 +155,25 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 	}
 	_ = slot.Close()
 	return carrier, nil
+}
+
+// Accept waits for the one C-2-authorized Responder carrier and passes it to
+// the Publisher Endpoint's existing native Connection acceptance path. The
+// caller supplies only the authorized local Application attachment; it cannot
+// substitute a route or install a recovery opener for this one-use handoff.
+func (session *PublisherIntroduction) Accept(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
+	if session == nil || session.endpoint == nil || ctx == nil || input.Route != nil || input.OpenAttachment != nil || input.Application == nil || input.At.IsZero() ||
+		(input.SendBytes == 0 && input.ReceiveBytes == 0 && input.BytesEachDirection == 0) {
+		return failed("local authorization or policy denial", "Publisher Introduction local handoff is incomplete or attempts to select a route", errors.New("Publisher Introduction local handoff is invalid"))
+	}
+	carrier, err := session.Wait(ctx)
+	if err != nil {
+		return failed("service unavailable", "Publisher Introduction delivery or Responder attachment is unavailable", err)
+	}
+	defer carrier.Close()
+	defer session.Close()
+	input.Route = carrier
+	return session.endpoint.Accept(ctx, input)
 }
 
 // Close withdraws this local slot and releases the retained publication. It

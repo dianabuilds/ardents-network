@@ -48,6 +48,7 @@ type connectionInput struct {
 	Route                      net.Conn
 	Application                io.ReadWriteCloser
 	OpenAttachment             func(context.Context, Recovery) (net.Conn, error)
+	OnAuthenticated            func([32]byte) error
 	RecoveryBinding            Recovery
 	NameBinding                DestinationBinding
 	NameUpdates                <-chan DestinationBinding
@@ -105,6 +106,7 @@ type OutboundConnectionRequest struct {
 	Route                         net.Conn
 	Application                   io.ReadWriteCloser
 	OpenAttachment                func(context.Context, Recovery) (net.Conn, error)
+	OnAuthenticated               func([32]byte) error
 	RecoveryBinding               Recovery
 	NameBinding                   DestinationBinding
 	NameUpdates                   <-chan DestinationBinding
@@ -247,7 +249,7 @@ func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionR
 	return endpoint.runOutbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
 		Target: input.Target, Publication: input.Publication, Route: input.Route, Application: input.Application,
 		OpenAttachment: input.OpenAttachment, RecoveryBinding: input.RecoveryBinding, NameBinding: input.NameBinding,
-		NameUpdates: input.NameUpdates, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
+		NameUpdates: input.NameUpdates, OnAuthenticated: input.OnAuthenticated, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
 		ReceiveBytes: input.ReceiveBytes, At: input.At})
 }
 

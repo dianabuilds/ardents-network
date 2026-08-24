@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,9 +38,15 @@ type Server struct {
 	listener   net.Listener
 	basePath   string
 	originHost string
-	config     Config
+	target     [32]byte
+	document   Resource
+	resources  map[string]Resource
+	routes     map[string]string
+	fetcher    Fetcher
 	server     *http.Server
 	work       sync.WaitGroup
+	closeOnce  sync.Once
+	closeErr   error
 }
 
 // Open binds a fresh loopback-only origin for an exact static site. It does
@@ -55,7 +63,9 @@ func Open(config Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	running := &Server{listener: listener, originHost: listener.Addr().String(), basePath: "/site/" + hex.EncodeToString(token) + "/", config: cloneConfig(config)}
+	cloned := cloneConfig(config)
+	running := &Server{listener: listener, originHost: listener.Addr().String(), basePath: "/site/" + hex.EncodeToString(token) + "/",
+		target: cloned.Target, document: cloned.Document, resources: cloned.Resources}
 	running.server = &http.Server{Handler: http.HandlerFunc(running.serve), ReadHeaderTimeout: time.Second, IdleTimeout: 5 * time.Second}
 	running.work.Add(1)
 	go func() { defer running.work.Done(); _ = running.server.Serve(listener) }()
@@ -75,9 +85,14 @@ func (server *Server) Close() error {
 	if server == nil || server.server == nil {
 		return nil
 	}
-	err := server.server.Shutdown(context.Background())
-	server.work.Wait()
-	return err
+	server.closeOnce.Do(func() {
+		if closer, ok := server.fetcher.(io.Closer); ok {
+			server.closeErr = errors.Join(server.closeErr, closer.Close())
+		}
+		server.closeErr = errors.Join(server.closeErr, server.server.Shutdown(context.Background()))
+		server.work.Wait()
+	})
+	return server.closeErr
 }
 
 func (server *Server) serve(writer http.ResponseWriter, request *http.Request) {
@@ -90,19 +105,17 @@ func (server *Server) serve(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	name := strings.TrimPrefix(request.URL.Path, server.basePath)
-	var resource Resource
-	switch name {
-	case "":
-		resource = server.config.Document
-	default:
-		var found bool
-		resource, found = server.config.Resources[name]
-		if !found {
+	resource, err := server.resource(request.Context(), request.Method, name)
+	if err != nil {
+		if errors.Is(err, errUnknownResource) {
 			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
+		writer.WriteHeader(http.StatusBadGateway)
+		return
 	}
 	writer.Header().Set("Content-Type", resource.ContentType)
+	writer.Header().Set("Content-Length", strconv.Itoa(len(resource.Body)))
 	writer.Header().Set("Content-Security-Policy", contentPolicy)
 	writer.Header().Set("Cache-Control", "no-store")
 	writer.Header().Set("Referrer-Policy", "no-referrer")
@@ -112,6 +125,35 @@ func (server *Server) serve(writer http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
 		_, _ = writer.Write(resource.Body)
 	}
+}
+
+func (server *Server) resource(ctx context.Context, method, name string) (Resource, error) {
+	if server.fetcher != nil {
+		remote, found := server.routes[name]
+		if !found {
+			return Resource{}, errUnknownResource
+		}
+		fetchMethod := method
+		if fetchMethod == http.MethodHead {
+			fetchMethod = http.MethodGet
+		}
+		response, err := server.fetcher.Fetch(ctx, Request{Method: fetchMethod, Path: remote})
+		if err != nil {
+			return Resource{}, err
+		}
+		if response.ContentType == "" || len(response.Body) == 0 || len(response.Body) > 1<<20 {
+			return Resource{}, errors.New("Reference Service response is invalid")
+		}
+		return Resource{ContentType: response.ContentType, Body: response.Body}, nil
+	}
+	if name == "" {
+		return server.document, nil
+	}
+	resource, found := server.resources[name]
+	if !found {
+		return Resource{}, errUnknownResource
+	}
+	return resource, nil
 }
 
 func validate(config Config) error {
@@ -125,6 +167,8 @@ func validate(config Config) error {
 	}
 	return nil
 }
+
+var errUnknownResource = errors.New("Reference Site resource is not declared")
 
 func validResource(resource Resource) bool {
 	return resource.ContentType != "" && len(resource.ContentType) <= 128 && len(resource.Body) > 0 && len(resource.Body) <= 1<<20

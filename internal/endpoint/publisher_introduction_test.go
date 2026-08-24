@@ -71,6 +71,13 @@ func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testi
 		t.Fatal(err)
 	}
 	defer session.Close()
+	forbiddenRoute, forbiddenPeer := net.Pipe()
+	defer forbiddenRoute.Close()
+	defer forbiddenPeer.Close()
+	if result, acceptErr := session.Accept(context.Background(), endpointapi.InboundConnectionRequest{Route: forbiddenRoute, At: now}); acceptErr == nil ||
+		result.Class != "local authorization or policy denial" {
+		t.Fatalf("Publisher C2 accepted a caller-selected route: result=%+v error=%v", result, acceptErr)
+	}
 
 	waited := make(chan struct {
 		connection net.Conn

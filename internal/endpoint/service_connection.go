@@ -53,6 +53,12 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance proof failed", err)
 	}
+	if input.OnAuthenticated != nil {
+		if err := input.OnAuthenticated(credential.Target); err != nil {
+			attachment.close()
+			return failed("local authorization or policy denial", "local Reference presentation could not be opened", err)
+		}
+	}
 	stream, streamErr := newNativeStream(ctx, input, credential, binding, nil, true, attachment, continuity,
 		connectionContext, endpoint.resources)
 	if streamErr != nil {
