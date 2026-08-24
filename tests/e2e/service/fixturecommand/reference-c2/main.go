@@ -29,15 +29,15 @@ import (
 )
 
 type peer struct {
-	NodeID, PublicKey, Endpoint string
+	NodeID, PublicKey, Endpoint, Certificate, PrivateKey string
 }
 
 type config struct {
-	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot string
-	Epoch                                                             uint64
-	Introduction, Rendezvous, Responder, Initiator                    peer
-	JoinHandle, Reachability, SlotAttachment, ServiceAttachment       string
-	SlotAuthorization, ResponderAuthorization, InviteID, Invite       string
+	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath string
+	Epoch                                                                                      uint64
+	Introduction, Rendezvous, Responder, Initiator                                             peer
+	JoinHandle, Reachability, SlotAttachment, ServiceAttachment                                string
+	SlotAuthorization, ResponderAuthorization, InviteID, Invite                                string
 }
 
 type publicationEnvelope struct {
@@ -50,15 +50,22 @@ type result struct {
 }
 
 func main() {
-	if len(os.Args) != 3 || (os.Args[1] != "publisher" && os.Args[1] != "user") {
-		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|user) CONFIG")
+	if len(os.Args) != 3 {
+		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|user|rendezvous|initiator|introduction|responder) CONFIG")
 		os.Exit(2)
 	}
 	input, err := readConfig(os.Args[2])
-	if err == nil && os.Args[1] == "publisher" {
-		err = runPublisher(input)
-	} else if err == nil {
-		err = runUser(input)
+	if err == nil {
+		switch os.Args[1] {
+		case "publisher":
+			err = runPublisher(input)
+		case "user":
+			err = runUser(input)
+		case "rendezvous", "initiator", "introduction", "responder":
+			err = runTransitRole(input, os.Args[1])
+		default:
+			err = errors.New("C2 fixture role is unsupported")
+		}
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -77,7 +84,7 @@ func readConfig(path string) (config, error) {
 	if err := decoder.Decode(&input); err != nil {
 		return config{}, err
 	}
-	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" ||
+	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.ReadyRoot == "" || input.CompletePath == "" ||
 		input.SlotAuthorization == "" || input.ResponderAuthorization == "" || input.Invite == "" {
 		return config{}, errors.New("C2 fixture configuration is incomplete")
 	}
