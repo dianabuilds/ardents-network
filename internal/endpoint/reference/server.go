@@ -33,11 +33,12 @@ type Config struct {
 // Server owns one loopback listener and its single opaque presentation path.
 // Closing it withdraws the origin rather than retargeting requests elsewhere.
 type Server struct {
-	listener net.Listener
-	basePath string
-	config   Config
-	server   *http.Server
-	work     sync.WaitGroup
+	listener   net.Listener
+	basePath   string
+	originHost string
+	config     Config
+	server     *http.Server
+	work       sync.WaitGroup
 }
 
 // Open binds a fresh loopback-only origin for an exact static site. It does
@@ -54,7 +55,7 @@ func Open(config Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	running := &Server{listener: listener, basePath: "/site/" + hex.EncodeToString(token) + "/", config: cloneConfig(config)}
+	running := &Server{listener: listener, originHost: listener.Addr().String(), basePath: "/site/" + hex.EncodeToString(token) + "/", config: cloneConfig(config)}
 	running.server = &http.Server{Handler: http.HandlerFunc(running.serve), ReadHeaderTimeout: time.Second, IdleTimeout: 5 * time.Second}
 	running.work.Add(1)
 	go func() { defer running.work.Done(); _ = running.server.Serve(listener) }()
@@ -66,7 +67,7 @@ func (server *Server) URL() string {
 	if server == nil || server.listener == nil {
 		return ""
 	}
-	return "http://" + server.listener.Addr().String() + server.basePath
+	return "http://" + server.originHost + server.basePath
 }
 
 // Close withdraws the local origin and joins its HTTP server.
@@ -84,7 +85,7 @@ func (server *Server) serve(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if request.URL.IsAbs() || request.URL.RawQuery != "" || request.URL.Fragment != "" || !strings.HasPrefix(request.URL.Path, server.basePath) {
+	if request.Host != server.originHost || request.URL.IsAbs() || request.URL.RawQuery != "" || request.URL.Fragment != "" || !strings.HasPrefix(request.URL.Path, server.basePath) {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}

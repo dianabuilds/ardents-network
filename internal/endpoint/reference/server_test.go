@@ -63,6 +63,22 @@ func TestReferenceServerServesOnlyScopedStaticSite(t *testing.T) {
 	if response.StatusCode != http.StatusNotFound {
 		t.Fatalf("proxy-form request status = %d", response.StatusCode)
 	}
+	connection, err = net.Dial("tcp", running.originHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(connection, "GET "+running.basePath+" HTTP/1.1\r\nHost: example.com\r\n\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	response, err = http.ReadResponse(bufio.NewReader(connection), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	connection.Close()
+	if response.StatusCode != http.StatusNotFound {
+		t.Fatalf("foreign Host request status = %d", response.StatusCode)
+	}
 }
 
 func TestReferenceServerOriginIsFreshAndCloseWithdrawsIt(t *testing.T) {
