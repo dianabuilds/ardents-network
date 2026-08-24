@@ -6,11 +6,15 @@ import (
 )
 
 const (
-	legBindingKind   = 2
-	InitiatorRole    = 1
+	legBindingKind = 2
+	// InitiatorRole is the fixed v1 Initiator adjacent-leg role.
+	InitiatorRole = 1
+	// IntroductionRole is the fixed v1 Introduction adjacent-leg role.
 	IntroductionRole = 2
-	RendezvousRole   = 3
-	ResponderRole    = 4
+	// RendezvousRole is the fixed v1 Rendezvous adjacent-leg role.
+	RendezvousRole = 3
+	// ResponderRole is the fixed v1 Responder adjacent-leg role.
+	ResponderRole = 4
 )
 
 // LegBinding is the complete non-secret context that one adjacent C-5 peer

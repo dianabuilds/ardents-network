@@ -60,7 +60,7 @@ func (running *Rendezvous) register(leg *rendezvousLeg) bool {
 
 func (running *Rendezvous) expire(leg *rendezvousLeg) {
 	defer running.work.Done()
-	timer := time.NewTimer(time.Until(leg.binding.NotAfter))
+	timer := time.NewTimer(leg.binding.NotAfter.Sub(running.plan.now()))
 	defer timer.Stop()
 	select {
 	case <-leg.done:
@@ -85,19 +85,22 @@ func (running *Rendezvous) pump(first, second *rendezvousLeg) {
 	type result struct{ bytes int64 }
 	results := make(chan result, 2)
 	copyLane := func(destination, source net.Conn) {
-		count, _ := io.CopyBuffer(destination, source, make([]byte, 32<<10))
+		limited := &io.LimitedReader{R: source, N: int64(running.plan.PairByteLimit)}
+		count, _ := io.CopyBuffer(destination, limited, make([]byte, 32<<10))
 		results <- result{bytes: count}
 	}
 	go copyLane(first.connection, second.connection)
 	go copyLane(second.connection, first.connection)
-	<-results
+	firstResult := <-results
 	_ = first.raw.Close()
 	_ = second.raw.Close()
-	<-results
+	secondResult := <-results
 	running.mu.Lock()
 	delete(running.active, first.raw)
 	delete(running.active, second.raw)
 	<-running.pairs
+	running.usage.RelayedBytes += uint64(firstResult.bytes)
+	running.usage.RelayedBytes += uint64(secondResult.bytes)
 	running.usage.CompletedPairs++
 	running.mu.Unlock()
 }

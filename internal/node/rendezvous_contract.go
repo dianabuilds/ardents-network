@@ -31,9 +31,8 @@ type RendezvousConfig struct {
 	NotAfter                                time.Time
 	Peers                                   []RendezvousPeer
 	HandshakeLimit, WaitingLimit, PairLimit uint16
+	PairByteLimit                           uint64
 	DrainTimeout                            time.Duration
-	// Now is a behavior-test seam. A maintained caller leaves it nil.
-	Now func() time.Time
 }
 
 // RendezvousUsage contains aggregate, non-secret local reservation and
@@ -43,6 +42,7 @@ type RendezvousUsage struct {
 	Handshakes, WaitingLegs, ActivePairs, Connections uint16
 	CompletedPairs, RefusedBeforeTLS                  uint64
 	DuplicateSideRejected, WaitingRefused, Expired    uint64
+	RelayedBytes                                      uint64
 }
 
 type rendezvousPlan struct {
@@ -56,14 +56,11 @@ func newRendezvousPlan(input RendezvousConfig) (rendezvousPlan, error) {
 	if !literalRendezvousEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} ||
 		input.EpochDigest == [32]byte{} || input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} ||
 		input.Epoch == 0 || input.NotAfter.IsZero() || input.HandshakeLimit == 0 || input.WaitingLimit == 0 ||
-		input.PairLimit == 0 || input.HandshakeLimit > 64 || input.WaitingLimit > 64 || input.PairLimit > 64 ||
+		input.PairLimit == 0 || input.PairByteLimit == 0 || input.PairByteLimit > uint64(1<<63-1) ||
 		input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
 		return rendezvousPlan{}, errors.New("Rendezvous duty configuration is incomplete or outside its implementation bound")
 	}
-	if input.Now == nil {
-		input.Now = time.Now
-	}
-	now := func() time.Time { return input.Now().UTC() }
+	now := func() time.Time { return time.Now().UTC() }
 	if !now().Before(input.NotAfter.UTC()) {
 		return rendezvousPlan{}, errors.New("Rendezvous duty has expired")
 	}

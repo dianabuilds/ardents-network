@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"net"
 	"sync"
@@ -60,15 +59,6 @@ func startRendezvous(plan rendezvousPlan, listener net.Listener) *Rendezvous {
 	running.work.Add(1)
 	go running.accept()
 	return running
-}
-
-// Address returns the listener's bound literal endpoint while the duty is
-// live. It is useful for the local operating-profile harness only.
-func (running *Rendezvous) Address() string {
-	if running == nil || running.listener == nil {
-		return ""
-	}
-	return running.listener.Addr().String()
 }
 
 // Usage returns only aggregate local duty state.
@@ -141,11 +131,6 @@ func (running *Rendezvous) handle(raw net.Conn) {
 	if err != nil || running.validateIncoming(binding, connection.ConnectionState()) != nil {
 		return
 	}
-	if err := route.WriteNodeLegBinding(connection, running.reciprocal(binding)); err != nil {
-		return
-	}
-	<-running.handshakes
-	handshakeHeld = false
 	select {
 	case running.waitingCap <- struct{}{}:
 	default:
@@ -154,6 +139,12 @@ func (running *Rendezvous) handle(raw net.Conn) {
 		running.mu.Unlock()
 		return
 	}
+	if err := route.WriteNodeLegBinding(connection, running.reciprocal(binding)); err != nil {
+		<-running.waitingCap
+		return
+	}
+	<-running.handshakes
+	handshakeHeld = false
 	leg := &rendezvousLeg{raw: raw, connection: connection, binding: binding, done: make(chan struct{})}
 	if !running.register(leg) {
 		<-running.waitingCap
@@ -172,11 +163,6 @@ func (running *Rendezvous) serverTLS() *tls.Config {
 			public, ok := state.PeerCertificates[0].PublicKey.(ed25519.PublicKey)
 			if !ok || len(public) != ed25519.PublicKeySize {
 				return errors.New("Rendezvous TLS client key is invalid")
-			}
-			var identifier [32]byte
-			copy(identifier[:], public)
-			if _, found := running.plan.peersByPublic[identifier]; !found {
-				return errors.New("Rendezvous TLS client is unauthorized")
 			}
 			return nil
 		}}
@@ -213,14 +199,4 @@ func (running *Rendezvous) snapshotLocked() RendezvousUsage {
 	result.Handshakes, result.WaitingLegs, result.ActivePairs = uint16(len(running.handshakes)), uint16(len(running.waitingCap)), uint16(len(running.pairs))
 	result.Connections = uint16(len(running.pre) + len(running.waiting) + len(running.active))
 	return result
-}
-
-func rendezvousLeaf(certificate tls.Certificate) (*x509.Certificate, error) {
-	if certificate.Leaf != nil {
-		return certificate.Leaf, nil
-	}
-	if len(certificate.Certificate) != 1 {
-		return nil, errors.New("Rendezvous client certificate is invalid")
-	}
-	return x509.ParseCertificate(certificate.Certificate[0])
 }

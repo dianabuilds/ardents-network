@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	routeWireMagic  = "ardents-interactive-route-v1\x00"
+	routeWireMagic = "ardents-interactive-route-v1\x00"
+	// Profile is the exact native Interactive Route v1 ALPN and wire profile.
 	Profile         = "ardents-interactive-route-v1"
 	maximumWireBody = 4096
 )
