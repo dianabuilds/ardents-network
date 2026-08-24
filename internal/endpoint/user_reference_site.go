@@ -80,7 +80,9 @@ func (site *UserReferenceSite) Done() <-chan ReferenceOutcome {
 	return site.reference.Done()
 }
 
-// Close withdraws the browser origin and releases the Entry-owned C-2 route.
+// Close withdraws the browser origin. Its Entry-owned C-2 route remains live
+// until the native Service Connection has reported its terminal outcome, so a
+// local presentation close cannot race its final authenticated stream records.
 func (site *UserReferenceSite) Close() error {
 	if site == nil {
 		return nil
@@ -88,6 +90,7 @@ func (site *UserReferenceSite) Close() error {
 	site.once.Do(func() {
 		if site.reference != nil {
 			site.closeErr = errors.Join(site.closeErr, site.reference.Close())
+			return
 		}
 		if site.route != nil {
 			site.closeErr = errors.Join(site.closeErr, site.route.Close())
