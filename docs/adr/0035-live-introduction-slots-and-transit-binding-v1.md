@@ -31,6 +31,11 @@ no User identity, Target, Service material, endpoint literal, or fallback.
 `EntryBinding` v1 remains the User-to-Initiator record; no reader reinterprets
 one form as the other.
 
+After TLS authentication and atomic authorization consumption, the transit
+duty receives the exact decoded binding together with its byte carrier. It
+uses that binding—not an untrusted control record—to classify the finite C-2
+operation.
+
 Kind 7 `IntroductionSlotRegistration` v1 binds only the opaque Reachability,
 JoinHandle, and whole-second slot expiry after Publisher-side TLS admission.
 The separate private slot authorization remains only in that admission binding.

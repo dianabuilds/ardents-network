@@ -29,7 +29,7 @@ func TestEndpointTransitAttachmentVerifiesAndConsumesExactAuthorization(t *testi
 			serverDone <- acceptErr
 			return
 		}
-		secured, acceptErr := AcceptEndpointTransitAttachment(t.Context(), raw, EndpointTransitAttachmentAcceptance{
+		accepted, acceptErr := AcceptEndpointTransitAttachment(t.Context(), raw, EndpointTransitAttachmentAcceptance{
 			NetworkID: request.NetworkID, Digest: request.Digest, TransitNodeID: request.TransitNodeID, Epoch: request.Epoch,
 			TransitRole: request.TransitRole, Deadline: deadline, Certificate: serverCertificate,
 			Admit: func(authorization []byte, attachment, key [32]byte, role byte, node [32]byte, notAfter time.Time) (EndpointTransitAdmission, error) {
@@ -41,8 +41,12 @@ func TestEndpointTransitAttachmentVerifiesAndConsumesExactAuthorization(t *testi
 				return EndpointTransitAdmission{AuthorizationID: identifier(97), NetworkID: request.NetworkID, Digest: request.Digest,
 					Epoch: request.Epoch, TransitRole: request.TransitRole, TransitNodeID: request.TransitNodeID, NotAfter: deadline}, nil
 			}})
-		if secured != nil {
-			_ = secured.Close()
+		if accepted.Connection != nil {
+			if accepted.Binding.AttachmentID != request.AttachmentID || accepted.Binding.Authorization == nil {
+				serverDone <- errors.New("accepted transit binding was not returned")
+				return
+			}
+			_ = accepted.Connection.Close()
 		}
 		serverDone <- acceptErr
 	}()

@@ -32,6 +32,15 @@ type EndpointTransitAttachmentAcceptance struct {
 	Admit                            EndpointTransitBindingAdmitter
 }
 
+// AcceptedEndpointTransitAttachment is the authenticated TLS byte carrier and
+// its exact, already consumed binding. The receiving duty uses the binding to
+// classify the first closed control record; it must not recover identity from
+// untrusted control bytes.
+type AcceptedEndpointTransitAttachment struct {
+	Connection net.Conn
+	Binding    EndpointTransitBinding
+}
+
 // OpenEndpointTransitAttachment creates one fresh mutually authenticated TLS
 // attempt and writes its exact EndpointTransitBinding.
 func OpenEndpointTransitAttachment(ctx context.Context, input EndpointTransitAttachmentRequest) (net.Conn, error) {
@@ -71,42 +80,42 @@ func OpenEndpointTransitAttachment(ctx context.Context, input EndpointTransitAtt
 
 // AcceptEndpointTransitAttachment handshakes, validates the closed binding,
 // and atomically consumes its opaque authorization before returning bytes.
-func AcceptEndpointTransitAttachment(ctx context.Context, connection net.Conn, input EndpointTransitAttachmentAcceptance) (net.Conn, error) {
+func AcceptEndpointTransitAttachment(ctx context.Context, connection net.Conn, input EndpointTransitAttachmentAcceptance) (AcceptedEndpointTransitAttachment, error) {
 	if ctx == nil || connection == nil || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.TransitNodeID == [32]byte{} ||
 		input.Epoch == 0 || (input.TransitRole != IntroductionRole && input.TransitRole != ResponderRole) || input.Deadline.IsZero() ||
 		input.Certificate.PrivateKey == nil || input.Admit == nil || !time.Now().Before(input.Deadline) {
-		return nil, errors.New("endpoint transit attachment acceptance is invalid")
+		return AcceptedEndpointTransitAttachment{}, errors.New("endpoint transit attachment acceptance is invalid")
 	}
 	secured := tls.Server(connection, nativeEndpointTransitTLS(input.Certificate))
 	if err := secured.SetDeadline(input.Deadline); err != nil {
 		_ = connection.Close()
-		return nil, err
+		return AcceptedEndpointTransitAttachment{}, err
 	}
 	if err := secured.HandshakeContext(ctx); err != nil || secured.ConnectionState().NegotiatedProtocol != Profile {
 		_ = connection.Close()
-		return nil, errors.New("endpoint transit TLS handshake is invalid")
+		return AcceptedEndpointTransitAttachment{}, errors.New("endpoint transit TLS handshake is invalid")
 	}
 	binding, err := readEndpointTransitBinding(secured)
 	if err != nil || binding.NetworkID != input.NetworkID || binding.Digest != input.Digest || binding.Epoch != input.Epoch ||
 		binding.TransitRole != input.TransitRole || binding.TransitNodeID != input.TransitNodeID || binding.NotAfter.After(input.Deadline) {
 		_ = connection.Close()
-		return nil, errors.New("endpoint transit binding does not match transit duty")
+		return AcceptedEndpointTransitAttachment{}, errors.New("endpoint transit binding does not match transit duty")
 	}
 	peers := secured.ConnectionState().PeerCertificates
 	if len(peers) != 1 {
 		_ = connection.Close()
-		return nil, errors.New("endpoint transit TLS client certificate is unavailable")
+		return AcceptedEndpointTransitAttachment{}, errors.New("endpoint transit TLS client certificate is unavailable")
 	}
 	digest, err := ClientTLSKeyDigest(peers[0])
 	if err != nil || AdmitEndpointTransitBinding(binding, digest, time.Now().UTC(), input.Admit) != nil {
 		_ = connection.Close()
-		return nil, errors.New("endpoint transit binding was refused")
+		return AcceptedEndpointTransitAttachment{}, errors.New("endpoint transit binding was refused")
 	}
 	if err := secured.SetDeadline(time.Time{}); err != nil {
 		_ = connection.Close()
-		return nil, err
+		return AcceptedEndpointTransitAttachment{}, err
 	}
-	return secured, nil
+	return AcceptedEndpointTransitAttachment{Connection: secured, Binding: binding}, nil
 }
 
 func closeTransitAttachment(connection net.Conn, cause error) (net.Conn, error) {
