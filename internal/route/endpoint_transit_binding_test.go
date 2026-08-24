@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"testing"
 	"time"
 )
@@ -36,6 +37,31 @@ func TestEndpointTransitBindingV1RejectsWrongRoleAndMalformedBytes(t *testing.T)
 		if _, err := DecodeEndpointTransitBinding(value); err == nil {
 			t.Fatalf("mutation %d was accepted", index)
 		}
+	}
+}
+
+func TestAdmitEndpointTransitBindingBindsTLSKeyAndConsumesAuthorization(t *testing.T) {
+	binding := endpointTransitBindingFixture()
+	peer := identifier(67)
+	binding.ClientKeyDigest = peer
+	consumed := false
+	admit := func(authorization []byte, attachment, key [32]byte, role byte, node [32]byte, notAfter time.Time) (EndpointTransitAdmission, error) {
+		if consumed || !bytes.Equal(authorization, binding.Authorization) || attachment != binding.AttachmentID || key != peer ||
+			role != binding.TransitRole || node != binding.TransitNodeID || !notAfter.Equal(binding.NotAfter) {
+			return EndpointTransitAdmission{}, errors.New("transit authorization is not exact or was replayed")
+		}
+		consumed = true
+		return EndpointTransitAdmission{AuthorizationID: identifier(68), NetworkID: binding.NetworkID, Digest: binding.Digest,
+			Epoch: binding.Epoch, TransitRole: binding.TransitRole, TransitNodeID: binding.TransitNodeID, NotAfter: binding.NotAfter}, nil
+	}
+	if err := AdmitEndpointTransitBinding(binding, peer, binding.NotAfter.Add(-time.Second), admit); err != nil {
+		t.Fatal(err)
+	}
+	if err := AdmitEndpointTransitBinding(binding, peer, binding.NotAfter.Add(-time.Second), admit); err == nil {
+		t.Fatal("replayed transit authorization was accepted")
+	}
+	if err := AdmitEndpointTransitBinding(binding, identifier(69), binding.NotAfter.Add(-time.Second), admit); err == nil {
+		t.Fatal("substituted TLS client key was accepted")
 	}
 }
 

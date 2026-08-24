@@ -22,6 +22,20 @@ type EndpointTransitBinding struct {
 	Authorization                                                   []byte
 }
 
+// EndpointTransitAdmission is the non-secret result of one receiving duty's
+// atomic opaque-authorization and replay decision.
+type EndpointTransitAdmission struct {
+	AuthorizationID, NetworkID, Digest, TransitNodeID [32]byte
+	Epoch                                             uint64
+	TransitRole                                       byte
+	NotAfter                                          time.Time
+}
+
+// EndpointTransitBindingAdmitter validates and consumes one opaque
+// authorization for the exact TLS key, attachment, and transit duty. Its
+// owner is the Introduction or Responder runtime, never Route.
+type EndpointTransitBindingAdmitter func([]byte, [32]byte, [32]byte, byte, [32]byte, time.Time) (EndpointTransitAdmission, error)
+
 // EncodeEndpointTransitBinding returns the sole canonical v1 binding for the
 // C-2 Introduction and Publisher-side Responder first hops.
 func EncodeEndpointTransitBinding(input EndpointTransitBinding) ([]byte, error) {
@@ -73,6 +87,30 @@ func DecodeEndpointTransitBinding(raw []byte) (EndpointTransitBinding, error) {
 		return EndpointTransitBinding{}, err
 	}
 	return result, nil
+}
+
+// AdmitEndpointTransitBinding verifies the presenting TLS peer and delegates
+// opaque authorization plus tuple consumption to the receiving duty before it
+// allocates any C-2 or Responder work.
+func AdmitEndpointTransitBinding(input EndpointTransitBinding, peerClientKey [32]byte, now time.Time,
+	admit EndpointTransitBindingAdmitter) error {
+	if err := validEndpointTransitBinding(input); err != nil {
+		return err
+	}
+	if peerClientKey == [32]byte{} || peerClientKey != input.ClientKeyDigest || now.IsZero() || !now.UTC().Before(input.NotAfter) || admit == nil {
+		return errors.New("endpoint transit binding admission is invalid")
+	}
+	admission, err := admit(append([]byte(nil), input.Authorization...), input.AttachmentID, input.ClientKeyDigest,
+		input.TransitRole, input.TransitNodeID, input.NotAfter)
+	if err != nil {
+		return err
+	}
+	if admission.AuthorizationID == [32]byte{} || admission.NetworkID != input.NetworkID || admission.Digest != input.Digest ||
+		admission.Epoch != input.Epoch || admission.TransitRole != input.TransitRole || admission.TransitNodeID != input.TransitNodeID ||
+		admission.NotAfter.IsZero() || input.NotAfter.After(admission.NotAfter) {
+		return errors.New("endpoint transit binding does not match current authorization")
+	}
+	return nil
 }
 
 func endpointTransitBindingPrefix(input EndpointTransitBinding) []byte {

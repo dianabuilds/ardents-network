@@ -69,11 +69,11 @@ func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryA
 	}
 	return source.Acquire(ctx, entry.Attempt{ID: input.AttachmentID, Deadline: input.Deadline},
 		func(contactCtx context.Context, candidate entry.Candidate, presentation entry.Presentation, deadline time.Time) (net.Conn, func() error, bool, error) {
-			certificate, err := freshEntryClientCertificate()
+			certificate, err := freshEndpointClientCertificate()
 			if err != nil {
 				return nil, nil, true, err
 			}
-			secured, err := dialNativeEntryTLS(contactCtx, candidate, certificate, deadline)
+			secured, err := dialNativeEndpointTLS(contactCtx, candidate.Endpoint, candidate.PublicKey, certificate, deadline)
 			if err != nil {
 				return nil, nil, true, err
 			}
@@ -104,7 +104,7 @@ func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input Entry
 		!time.Now().Before(input.Deadline) {
 		return nil, errors.New("entry attachment acceptance is invalid")
 	}
-	secured := tls.Server(connection, nativeInitiatorTLS(input.Certificate))
+	secured := tls.Server(connection, nativeEndpointTransitTLS(input.Certificate))
 	if err := secured.SetDeadline(input.Deadline); err != nil {
 		_ = connection.Close()
 		return nil, err
@@ -148,15 +148,15 @@ func closedEntryOpener(connection net.Conn, cause error) (net.Conn, func() error
 	return nil, nil, closeErr == nil, errors.Join(cause, closeErr)
 }
 
-func dialNativeEntryTLS(ctx context.Context, candidate entry.Candidate, certificate tls.Certificate, deadline time.Time) (*tls.Conn, error) {
-	if candidate.Endpoint == "" || candidate.PublicKey == [32]byte{} || deadline.IsZero() || !time.Now().Before(deadline) {
+func dialNativeEndpointTLS(ctx context.Context, endpoint string, peer [32]byte, certificate tls.Certificate, deadline time.Time) (*tls.Conn, error) {
+	if !literalEndpoint(endpoint) || peer == [32]byte{} || deadline.IsZero() || !time.Now().Before(deadline) {
 		return nil, errors.New("entry candidate is invalid")
 	}
-	connection, err := (&net.Dialer{}).DialContext(ctx, "tcp", candidate.Endpoint)
+	connection, err := (&net.Dialer{}).DialContext(ctx, "tcp", endpoint)
 	if err != nil {
 		return nil, err
 	}
-	secured := tls.Client(connection, nativeEntryTLS(certificate, candidate.PublicKey))
+	secured := tls.Client(connection, nativeEndpointTLS(certificate, peer))
 	if err := secured.SetDeadline(deadline); err != nil {
 		_ = connection.Close()
 		return nil, err
@@ -172,17 +172,17 @@ func dialNativeEntryTLS(ctx context.Context, candidate entry.Candidate, certific
 	return secured, nil
 }
 
-func nativeEntryTLS(certificate tls.Certificate, peer [32]byte) *tls.Config {
+func nativeEndpointTLS(certificate tls.Certificate, peer [32]byte) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
 		InsecureSkipVerify: true, SessionTicketsDisabled: true, NextProtos: []string{Profile}, VerifyConnection: exactPeer(peer)}
 }
 
-func nativeInitiatorTLS(certificate tls.Certificate) *tls.Config {
+func nativeEndpointTransitTLS(certificate tls.Certificate) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
 		ClientAuth: tls.RequireAnyClientCert, SessionTicketsDisabled: true, NextProtos: []string{Profile}}
 }
 
-func freshEntryClientCertificate() (tls.Certificate, error) {
+func freshEndpointClientCertificate() (tls.Certificate, error) {
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return tls.Certificate{}, err
