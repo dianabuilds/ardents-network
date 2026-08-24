@@ -10,20 +10,32 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 type nodePlan struct {
 	sourceServerPlan
-	ClockObservationFile    string       `json:"clock_observation_file"`
-	OrderSeed               string       `json:"order_seed"`
-	SourceClientCertificate string       `json:"source_client_certificate"`
-	SourceClientKey         string       `json:"source_client_key"`
-	Sources                 []nodeSource `json:"sources"`
-	NodeID                  string       `json:"node_id"`
-	IdentityKey             string       `json:"identity_key"`
-	MaximumDutyMS           uint32       `json:"maximum_duty_ms"`
-	DrainTimeoutMS          uint32       `json:"drain_timeout_ms"`
-	NodeResourceProfile     string       `json:"node_resource_profile,omitempty"`
+	ClockObservationFile    string          `json:"clock_observation_file"`
+	OrderSeed               string          `json:"order_seed"`
+	SourceClientCertificate string          `json:"source_client_certificate"`
+	SourceClientKey         string          `json:"source_client_key"`
+	Sources                 []nodeSource    `json:"sources"`
+	NodeID                  string          `json:"node_id"`
+	IdentityKey             string          `json:"identity_key"`
+	MaximumDutyMS           uint32          `json:"maximum_duty_ms"`
+	DrainTimeoutMS          uint32          `json:"drain_timeout_ms"`
+	NodeResourceProfile     string          `json:"node_resource_profile,omitempty"`
+	Rendezvous              *rendezvousPlan `json:"rendezvous,omitempty"`
+}
+
+// rendezvousPlan contains only the local finite work bounds. State still
+// supplies the listener, Node role, peer identities, epoch, and expiry.
+type rendezvousPlan struct {
+	HandshakeLimit uint16 `json:"handshake_limit"`
+	WaitingLimit   uint16 `json:"waiting_limit"`
+	PairLimit      uint16 `json:"pair_limit"`
+	PairByteLimit  uint64 `json:"pair_byte_limit"`
+	DrainTimeoutMS uint32 `json:"drain_timeout_ms"`
 }
 type nodeSource struct {
 	Address        string `json:"address"`
@@ -53,6 +65,9 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, AutomaticRefreshInterval: 5 * time.Second, ClockObservationFile: plan.ClockObservationFile}
 	if err := decodeOperatorFixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err
+	}
+	if plan.Rendezvous != nil {
+		state.AcceptedProfile = route.Profile
 	}
 	for _, encoded := range plan.AuthorityPublic {
 		public := make([]byte, ed25519.PublicKeySize)
