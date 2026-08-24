@@ -43,7 +43,7 @@ type plan struct {
 func selectRoute(view state.Snapshot, input selection) (plan, error) {
 	if input.seed == [32]byte{} || input.at.IsZero() || view.Generation == "" || view.Epoch == 0 ||
 		view.NetworkID == [32]byte{} || view.Digest == [32]byte{} || !input.at.Before(view.ValidUntil) ||
-		view.Profile != routeProfile || view.ViewRoot == [32]byte{} || view.Freshness != "fresh" ||
+		view.Profile != Profile || view.ViewRoot == [32]byte{} || view.Freshness != "fresh" ||
 		view.Conflicting || view.CandidateCount == 0 || view.CandidateCount > 64 {
 		return plan{}, errors.New("route selection input is invalid")
 	}
@@ -128,7 +128,7 @@ func literalEndpoint(endpoint string) bool {
 }
 
 func validatePlan(value plan) error {
-	if value.networkID == [32]byte{} || value.epoch == 0 || value.digest == [32]byte{} || value.profile != routeProfile ||
+	if value.networkID == [32]byte{} || value.epoch == 0 || value.digest == [32]byte{} || value.profile != Profile ||
 		value.validUntil.IsZero() || len(value.positions) != len(routeRoles) {
 		return errors.New("route must contain every fixed position")
 	}

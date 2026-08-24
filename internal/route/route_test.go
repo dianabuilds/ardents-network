@@ -218,7 +218,7 @@ func admitted() ResourceAdmission {
 
 func nativeView(now time.Time, alternatives int) state.Snapshot {
 	view := state.Snapshot{Generation: "generation", NetworkID: [32]byte{1}, Epoch: 1, Digest: [32]byte{2},
-		ValidUntil: now.Add(time.Hour), Profile: routeProfile, ViewRoot: [32]byte{3}, Freshness: "fresh", TrustedTime: now}
+		ValidUntil: now.Add(time.Hour), Profile: Profile, ViewRoot: [32]byte{3}, Freshness: "fresh", TrustedTime: now}
 	for roleIndex, role := range routeRoles {
 		for alternative := range alternatives {
 			index := roleIndex*alternatives + alternative

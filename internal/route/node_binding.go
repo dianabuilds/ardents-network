@@ -12,14 +12,10 @@ func ConfirmNodeLegBinding(connection io.ReadWriter, local LegBinding) error {
 	if connection == nil {
 		return errors.New("native Route leg connection is unavailable")
 	}
-	raw, err := EncodeLegBinding(local)
-	if err != nil {
+	if err := WriteNodeLegBinding(connection, local); err != nil {
 		return err
 	}
-	if err := writeAll(connection, raw); err != nil {
-		return err
-	}
-	peer, err := readNodeLegBinding(connection)
+	peer, err := ReadNodeLegBinding(connection)
 	if err != nil {
 		return err
 	}
@@ -33,21 +29,19 @@ func AcceptNodeLegBinding(connection io.ReadWriter, local LegBinding) error {
 	if connection == nil {
 		return errors.New("native Route leg connection is unavailable")
 	}
-	peer, err := readNodeLegBinding(connection)
+	peer, err := ReadNodeLegBinding(connection)
 	if err != nil {
 		return err
 	}
 	if err := local.VerifyReciprocal(peer); err != nil {
 		return err
 	}
-	raw, err := EncodeLegBinding(local)
-	if err != nil {
-		return err
-	}
-	return writeAll(connection, raw)
+	return WriteNodeLegBinding(connection, local)
 }
 
-func readNodeLegBinding(reader io.Reader) (LegBinding, error) {
+// ReadNodeLegBinding reads one canonical native Node-to-Node LegBinding. The
+// caller still owns adjacent-peer and duty-context authorization.
+func ReadNodeLegBinding(reader io.Reader) (LegBinding, error) {
 	header := make([]byte, len(routeWireMagic)+2)
 	if _, err := io.ReadFull(reader, header); err != nil {
 		return LegBinding{}, err
@@ -64,4 +58,13 @@ func readNodeLegBinding(reader io.Reader) (LegBinding, error) {
 		return LegBinding{}, err
 	}
 	return DecodeLegBinding(append(header, body...))
+}
+
+// WriteNodeLegBinding writes one canonical native Node-to-Node LegBinding.
+func WriteNodeLegBinding(writer io.Writer, binding LegBinding) error {
+	raw, err := EncodeLegBinding(binding)
+	if err != nil {
+		return err
+	}
+	return writeAll(writer, raw)
 }

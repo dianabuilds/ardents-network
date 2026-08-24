@@ -37,7 +37,7 @@ func TestOpenEntryAttachmentUsesStatePinnedTLSAndSendsExactBinding(t *testing.T)
 		}
 		secured := tls.Server(raw, &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
 			Certificates: []tls.Certificate{serverCertificate}, ClientAuth: tls.RequireAnyClientCert,
-			SessionTicketsDisabled: true, NextProtos: []string{routeProfile}})
+			SessionTicketsDisabled: true, NextProtos: []string{Profile}})
 		if handshakeErr := secured.HandshakeContext(context.Background()); handshakeErr != nil {
 			failed <- handshakeErr
 			return
@@ -164,7 +164,7 @@ func TestEntryAdmitterPortUsesOneDurableEntryOperation(t *testing.T) {
 		RecordDigest: identifier(78), DomainProofDigest: identifier(79), Endpoint: "127.0.0.1:7999", Capacity: 1,
 		Domain: "initiator", ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), AssignmentNotAfter: now.Add(time.Hour)}
 	copy(candidate.PublicKey[:], public)
-	view := entry.View{NetworkID: identifier(80), Epoch: 81, Digest: identifier(82), Profile: routeProfile, Fresh: true,
+	view := entry.View{NetworkID: identifier(80), Epoch: 81, Digest: identifier(82), Profile: Profile, Fresh: true,
 		Candidates: []entry.Candidate{candidate}}
 	verification := entry.Verification{Current: func() (entry.View, error) { return view, nil },
 		Conflict: func([32]byte, [32]byte) (bool, error) { return false, nil }, Clock: func() time.Time { return now }, TimeConfident: func() bool { return true }}
@@ -201,8 +201,8 @@ func routeTestInvite(view entry.View, candidate entry.Candidate, private ed25519
 	body = append(body, view.NetworkID[:]...)
 	body = appendUint64(body, view.Epoch)
 	body = append(body, view.Digest[:]...)
-	body = append(body, byte(len(routeProfile)))
-	body = append(body, routeProfile...)
+	body = append(body, byte(len(Profile)))
+	body = append(body, Profile...)
 	body = append(body, candidate.KeyID[:]...)
 	body = append(body, candidate.NodeID[:]...)
 	body = append(body, candidate.FamilyID[:]...)

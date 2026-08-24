@@ -113,7 +113,7 @@ func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input Entry
 		_ = connection.Close()
 		return nil, err
 	}
-	if secured.ConnectionState().NegotiatedProtocol != routeProfile {
+	if secured.ConnectionState().NegotiatedProtocol != Profile {
 		_ = connection.Close()
 		return nil, errors.New("entry TLS ALPN is invalid")
 	}
@@ -165,7 +165,7 @@ func dialNativeEntryTLS(ctx context.Context, candidate entry.Candidate, certific
 		_ = connection.Close()
 		return nil, err
 	}
-	if secured.ConnectionState().NegotiatedProtocol != routeProfile {
+	if secured.ConnectionState().NegotiatedProtocol != Profile {
 		_ = connection.Close()
 		return nil, errors.New("entry TLS ALPN is invalid")
 	}
@@ -174,12 +174,12 @@ func dialNativeEntryTLS(ctx context.Context, candidate entry.Candidate, certific
 
 func nativeEntryTLS(certificate tls.Certificate, peer [32]byte) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
-		InsecureSkipVerify: true, SessionTicketsDisabled: true, NextProtos: []string{routeProfile}, VerifyConnection: exactPeer(peer)}
+		InsecureSkipVerify: true, SessionTicketsDisabled: true, NextProtos: []string{Profile}, VerifyConnection: exactPeer(peer)}
 }
 
 func nativeInitiatorTLS(certificate tls.Certificate) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
-		ClientAuth: tls.RequireAnyClientCert, SessionTicketsDisabled: true, NextProtos: []string{routeProfile}}
+		ClientAuth: tls.RequireAnyClientCert, SessionTicketsDisabled: true, NextProtos: []string{Profile}}
 }
 
 func freshEntryClientCertificate() (tls.Certificate, error) {

@@ -8,7 +8,7 @@ import (
 
 const (
 	routeWireMagic  = "ardents-interactive-route-v1\x00"
-	routeProfile    = "ardents-interactive-route-v1"
+	Profile         = "ardents-interactive-route-v1"
 	maximumWireBody = 4096
 )
 
@@ -101,11 +101,11 @@ func appendUint64(destination []byte, value uint64) []byte {
 }
 
 func appendProfile(destination []byte) []byte {
-	return append(append(destination, byte(len(routeProfile))), routeProfile...)
+	return append(append(destination, byte(len(Profile))), Profile...)
 }
 
 func validRouteProfile(value string) bool {
-	if value != routeProfile || len(value) == 0 || len(value) > 63 {
+	if value != Profile || len(value) == 0 || len(value) > 63 {
 		return false
 	}
 	for _, item := range []byte(value) {

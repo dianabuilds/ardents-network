@@ -128,7 +128,7 @@ func OpenSealedIntroduction(input SealedIntroduction, recipient hpke.PrivateKey)
 }
 
 func introductionPrefix(input SealedIntroduction) []byte {
-	body := make([]byte, 0, 2+1+1+len(routeProfile)+32+8+32+32+32+32+8+32+32)
+	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+32+32+8+32+32)
 	body = appendUint16(body, 1)
 	body = append(body, sealedIntroductionKind)
 	body = appendProfile(body)

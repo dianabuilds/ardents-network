@@ -56,7 +56,7 @@ func TestLegBindingV1RejectsMalformedAndDowngradedBytes(t *testing.T) {
 
 func bindingFixture() LegBinding {
 	return LegBinding{NetworkID: identifier(1), Digest: identifier(2), AttachmentID: identifier(3), Epoch: 7,
-		SenderRole: initiatorRole, PeerRole: rendezvousRole, SenderNodeID: identifier(4), PeerNodeID: identifier(5),
+		SenderRole: InitiatorRole, PeerRole: RendezvousRole, SenderNodeID: identifier(4), PeerNodeID: identifier(5),
 		NotAfter: time.Unix(1_750_000_000, 0).UTC()}
 }
 

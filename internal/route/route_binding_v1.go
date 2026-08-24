@@ -7,10 +7,10 @@ import (
 
 const (
 	legBindingKind   = 2
-	initiatorRole    = 1
-	introductionRole = 2
-	rendezvousRole   = 3
-	responderRole    = 4
+	InitiatorRole    = 1
+	IntroductionRole = 2
+	RendezvousRole   = 3
+	ResponderRole    = 4
 )
 
 // LegBinding is the complete non-secret context that one adjacent C-5 peer
@@ -29,7 +29,7 @@ func EncodeLegBinding(input LegBinding) ([]byte, error) {
 	if err := validLegBinding(input); err != nil {
 		return nil, err
 	}
-	body := make([]byte, 0, 2+1+1+len(routeProfile)+32+8+32+32+1+32+1+32+8)
+	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+1+32+1+32+8)
 	body = appendUint16(body, 1)
 	body = append(body, legBindingKind)
 	body = appendProfile(body)
@@ -115,5 +115,5 @@ func validLegBinding(input LegBinding) error {
 }
 
 func validRouteRole(value byte) bool {
-	return value >= initiatorRole && value <= responderRole
+	return value >= InitiatorRole && value <= ResponderRole
 }
