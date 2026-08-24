@@ -61,7 +61,7 @@ func ReadResolutionRelayEnvelope(reader io.Reader) (ResolutionRelayEnvelope, err
 }
 
 // WriteResolutionRelayResponse writes the sole opaque OHTTP response.
-func WriteResolutionRelayResponse(writer io.Writer, input ResolutionRelayEnvelope) error {
+func WriteResolutionRelayResponse(writer io.Writer, input ResolutionRelayResponse) error {
 	raw, err := EncodeResolutionRelayResponse(input)
 	if err != nil {
 		return err
@@ -70,10 +70,10 @@ func WriteResolutionRelayResponse(writer io.Writer, input ResolutionRelayEnvelop
 }
 
 // ReadResolutionRelayResponse reads the sole opaque OHTTP response.
-func ReadResolutionRelayResponse(reader io.Reader) (ResolutionRelayEnvelope, error) {
+func ReadResolutionRelayResponse(reader io.Reader) (ResolutionRelayResponse, error) {
 	raw, err := readResolutionRouteRecord(reader)
 	if err != nil {
-		return ResolutionRelayEnvelope{}, err
+		return ResolutionRelayResponse{}, err
 	}
 	return DecodeResolutionRelayResponse(raw)
 }

@@ -2,10 +2,17 @@ package endpoint_test
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -21,6 +28,7 @@ import (
 func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(time.Minute)
+	resolutionDeadline := now.Add(5 * time.Second)
 	network, digest := c2Identifier(61), c2Identifier(62)
 	introductionID, rendezvousID := c2Identifier(63), c2Identifier(64)
 	responderID, initiatorID := c2Identifier(65), c2Identifier(66)
@@ -31,9 +39,25 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	introductionAddress, rendezvousAddress := c2AvailableAddress(t), c2AvailableAddress(t)
 	responderAddress, initiatorAddress := c2AvailableAddress(t), c2AvailableAddress(t)
 	join, slotReachability := c2Identifier(67), c2Identifier(68)
-	slotAttachment, serviceAttachment := c2Identifier(69), c2Identifier(70)
+	slotAttachment, serviceAttachment, resolutionAttachment := c2Identifier(69), c2Identifier(70), c2Identifier(108)
 	slotAuthorization, responderAuthorization := []byte("publisher-slot"), []byte("publisher-responder")
 	presentation := entry.Presentation{InviteID: c2Identifier(71), Invite: []byte("entry-invite")}
+	gatewayCertificate, gatewayPublic, gatewayPrivate := c2GatewayCertificate(t)
+	gatewayID := c2Identifier(109)
+	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: network})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: network, NodeID: gatewayID, IdentityKey: gatewayPrivate,
+		AssignmentNotAfter: deadline, Store: store, Clock: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gatewayServer := httptest.NewUnstartedServer(gateway.Handler())
+	gatewayServer.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{gatewayCertificate}}
+	gatewayServer.StartTLS()
+	defer gatewayServer.Close()
 
 	rendezvous, err := node.StartRendezvous(node.RendezvousConfig{ListenAddress: rendezvousAddress, Certificate: rendezvousCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: rendezvousID, NodePublicKey: rendezvousPublic, Epoch: 10, NotAfter: deadline,
@@ -46,8 +70,10 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	defer rendezvous.Close()
 	initiator, err := node.StartInitiator(node.InitiatorConfig{ListenAddress: initiatorAddress, Certificate: initiatorCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: initiatorID, NodePublicKey: initiatorPublic, Epoch: 10, NotAfter: deadline,
-		Rendezvous:     node.InitiatorPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
-		Admit:          c2EntryAdmit(presentation, serviceAttachment, network, digest, initiatorID, deadline),
+		Rendezvous:        node.InitiatorPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
+		ResolutionGateway: node.ResolutionGateway{NodeID: gatewayID, PublicKey: gatewayPublic, URL: gatewayServer.URL},
+		Admit: c2EntryAdmit(presentation, network, digest, initiatorID, map[[32]byte]time.Time{
+			serviceAttachment: deadline, resolutionAttachment: resolutionDeadline}),
 		HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
@@ -94,6 +120,9 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if result, err := store.Publish(descriptor, now); err != nil || result.Class != reachability.StoreAccepted {
+		t.Fatalf("Gateway Store Publish = %+v, %v", result, err)
+	}
 
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: c2Identifier(72),
 		AuthorityPublic: current.Credential.AuthorityPublic[:], IntroductionPublic: make([]byte, 32), ConnectionPrincipal: c2Identifier(73)})
@@ -122,7 +151,12 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := user.StartUserReferenceSite(ctx, endpointapi.UserReferenceSiteRequest{
-		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: link, Descriptor: descriptor,
+		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: link,
+			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gatewayID, GatewayNodePublicKey: gatewayPublic,
+				GatewayProfile: gateway.Profile(), StateDigest: digest, Epoch: 10,
+				Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
+				Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
+				AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
 			Introduction: endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
 			Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
 			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
@@ -187,7 +221,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if err := rendezvous.Drain(drain); err != nil {
 		t.Fatal(err)
 	}
-	if usage := initiator.Usage(); usage.CompletedRelays != 1 || usage.ActiveRelays != 0 || usage.Connections != 0 {
+	if usage := initiator.Usage(); usage.CompletedRelays != 2 || usage.ActiveRelays != 0 || usage.Connections != 0 {
 		t.Fatalf("Initiator terminal usage = %+v", usage)
 	}
 	if usage := responder.Usage(); usage.CompletedRelays != 1 || usage.ActiveRelays != 0 || usage.Connections != 0 {
@@ -266,14 +300,37 @@ func TestUserIntroductionRouteRejectsInvalidTargetLinkBeforeEntry(t *testing.T) 
 	}
 }
 
-func c2EntryAdmit(presentation entry.Presentation, attachment, network, digest, initiator [32]byte, deadline time.Time) route.EntryBindingAdmitter {
+func c2EntryAdmit(presentation entry.Presentation, network, digest, initiator [32]byte, attachments map[[32]byte]time.Time) route.EntryBindingAdmitter {
 	return func(invite []byte, received, key [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
-		if string(invite) != string(presentation.Invite) || received != attachment || key == [32]byte{} || !notAfter.Equal(deadline) {
+		deadline, exists := attachments[received]
+		if string(invite) != string(presentation.Invite) || !exists || key == [32]byte{} || !notAfter.Equal(deadline) {
 			return route.EntryAdmission{}, errors.New("unexpected C2 Entry admission")
 		}
 		return route.EntryAdmission{InviteID: presentation.InviteID, NetworkID: network, Digest: digest, Epoch: 10,
 			InitiatorNodeID: initiator, NotAfter: deadline}, nil
 	}
+}
+
+func c2GatewayCertificate(t *testing.T) (tls.Certificate, [32]byte, ed25519.PrivateKey) {
+	t.Helper()
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{SerialNumber: big.NewInt(113), Subject: pkix.Name{CommonName: "destination-resolution"},
+		NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	raw, err := x509.CreateCertificate(rand.Reader, template, template, public, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaf, err := x509.ParseCertificate(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var identifier [32]byte
+	copy(identifier[:], public)
+	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private, Leaf: leaf}, identifier, private
 }
 
 func c2ResponderAdmit(authorization []byte, attachment, network, digest, responder [32]byte, deadline time.Time) route.EndpointTransitBindingAdmitter {

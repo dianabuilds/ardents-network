@@ -16,6 +16,7 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts) (InitiatorConfi
 		notAfter = snapshot.RecordValidUntil
 	}
 	var peer InitiatorPeer
+	var gateway ResolutionGateway
 	for index := uint8(0); index < snapshot.CandidateCount; index++ {
 		candidate := snapshot.Candidates[index]
 		if candidate.Assignment != "rendezvous" || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} ||
@@ -30,9 +31,23 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts) (InitiatorConfi
 	if peer.NodeID == [32]byte{} {
 		return InitiatorConfig{}, errors.New("Initiator State supplies no Rendezvous peer")
 	}
+	for index := uint8(0); index < snapshot.CandidateCount; index++ {
+		candidate := snapshot.Candidates[index]
+		if candidate.Assignment != "destination-resolution" || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} ||
+			candidate.NodeID == snapshot.NodeID {
+			continue
+		}
+		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || gateway.NodeID != [32]byte{} {
+			return InitiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway is incomplete or not valid for the duty")
+		}
+		if !literalNodeEndpoint(candidate.Endpoint) {
+			return InitiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway endpoint is invalid")
+		}
+		gateway = ResolutionGateway{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, URL: "https://" + candidate.Endpoint}
+	}
 	return InitiatorConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate, NetworkID: snapshot.NetworkID,
 		EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID, NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch,
-		NotAfter: notAfter.UTC(), Rendezvous: peer, Admit: profile.Admit, HandshakeLimit: profile.HandshakeLimit,
+		NotAfter: notAfter.UTC(), Rendezvous: peer, ResolutionGateway: gateway, Admit: profile.Admit, HandshakeLimit: profile.HandshakeLimit,
 		RelayLimit: profile.RelayLimit, RelayByteLimit: profile.RelayByteLimit, DrainTimeout: profile.DrainTimeout}, nil
 }
 

@@ -97,3 +97,43 @@ func TestPrivateLookupReturnsCurrentSignedDescriptor(t *testing.T) {
 		t.Fatalf("Resolve = %x, %q, %v", descriptor, class, err)
 	}
 }
+
+func TestPrivateLookupClientUsesOnlyItsOpaqueExchangePort(t *testing.T) {
+	t.Parallel()
+	fixture := newStoreFixture(t)
+	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: fixture.network})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	raw := fixture.issue(t, fixture.current, fixture.now.Add(30*time.Second), "carrier")
+	if result, err := store.Publish(raw, fixture.now); err != nil || result.Class != reachability.StoreAccepted {
+		t.Fatalf("Store Publish = %+v, %v", result, err)
+	}
+	identityPublic, identityPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gatewayPublic, node [32]byte
+	copy(gatewayPublic[:], identityPublic)
+	node[0] = 47
+	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: fixture.network, NodeID: node,
+		IdentityKey: identityPrivate, AssignmentNotAfter: fixture.now.Add(time.Minute), Store: store, Clock: func() time.Time { return fixture.now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewTLSServer(gateway.Handler())
+	defer server.Close()
+	client, err := reachability.OpenClient(reachability.ClientConfig{NetworkID: fixture.network, GatewayPublic: gatewayPublic,
+		Profile: gateway.Profile(), At: fixture.now, Deadline: fixture.now.Add(5 * time.Second),
+		Exchange: func(ctx context.Context, envelope []byte) (reachability.OHTTPResponse, error) {
+			return reachability.ForwardOHTTP(ctx, server.URL, server.Client(), envelope)
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor, class, err := client.Resolve(context.Background(), fixture.current.Credential.Target)
+	if err != nil || class != reachability.StoreAlreadyCurrent || string(descriptor) != string(raw) {
+		t.Fatalf("opaque Exchange Resolve = %x, %q, %v", descriptor, class, err)
+	}
+}

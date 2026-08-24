@@ -1,14 +1,26 @@
 package node
 
 import (
+	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
+	"io"
+	"math/big"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+	"github.com/openpcc/ohttp"
 )
 
 func TestInitiatorRelaysOnlyAfterExactSetupAndReady(t *testing.T) {
@@ -104,6 +116,130 @@ func TestInitiatorDutyUsesOnlyStateAssignedRendezvous(t *testing.T) {
 	if _, err := initiatorDuty(profile, snapshot); err == nil {
 		t.Fatal("Initiator accepted an ambiguous State Rendezvous peer set")
 	}
+}
+
+func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	runningRendezvous, material, rendezvousConfig := rendezvousFixture(t)
+	defer runningRendezvous.Close()
+	gatewayCertificate, gatewayPublic, gatewayPrivate := resolutionGatewayCertificate(t)
+	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: rendezvousConfig.NetworkID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: rendezvousConfig.NetworkID, NodeID: [32]byte{48},
+		IdentityKey: gatewayPrivate, AssignmentNotAfter: now.Add(time.Minute), Store: store, Clock: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewUnstartedServer(gateway.Handler())
+	server.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{gatewayCertificate}}
+	server.StartTLS()
+	defer server.Close()
+	attachment := [32]byte{49}
+	presentation := entry.Presentation{InviteID: [32]byte{50}, Invite: []byte{5, 0, 5}}
+	initiator, err := StartInitiator(InitiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
+		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4},
+		NodePublicKey: material.initiatorPublic, Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
+		Rendezvous:        InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress},
+		ResolutionGateway: ResolutionGateway{NodeID: [32]byte{48}, PublicKey: gatewayPublic, URL: server.URL},
+		Admit:             initiatorAdmission(presentation, attachment, rendezvousConfig), HandshakeLimit: 2, RelayLimit: 1,
+		RelayByteLimit: 1024, DrainTimeout: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer initiator.Close()
+	candidate := entry.Candidate{NodeID: [32]byte{4}, PublicKey: material.initiatorPublic, Endpoint: initiator.listener.Addr().String()}
+	connection, cleanup, err := route.OpenEntryAttachment(t.Context(), initiatorEntryAcquirer{candidate: candidate, presentation: presentation}, route.EntryAttachmentRequest{
+		NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, Epoch: rendezvousConfig.Epoch,
+		AttachmentID: attachment, Deadline: rendezvousConfig.NotAfter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	profile := gateway.Profile()
+	var key ohttp.KeyConfig
+	if err := key.UnmarshalBinary(profile.KeyConfig); err != nil {
+		t.Fatal(err)
+	}
+	transport, err := ohttp.NewTransport(key, "https://relay.invalid/ohttp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://ohttp.invalid/resolve", bytes.NewReader(make([]byte, 4096)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	encapsulated, decapsulator, err := transport.Encapsulate(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opaque, err := io.ReadAll(encapsulated.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setup := route.ResolutionRelaySetup{NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, AttachmentID: attachment,
+		InitiatorNodeID: [32]byte{4}, GatewayNodeID: [32]byte{48}, GatewayNodePublicKey: gatewayPublic, Epoch: rendezvousConfig.Epoch,
+		NotAfter: rendezvousConfig.NotAfter, EnvelopeCapacity: route.ResolutionEnvelopeCapacity}
+	if err := route.WriteResolutionRelaySetup(connection, setup); err != nil {
+		t.Fatal(err)
+	}
+	ready, err := route.ReadResolutionRelayReady(connection)
+	if err != nil || setup.VerifyResolutionRelayReady(ready) != nil {
+		t.Fatalf("ResolutionRelayReady = %+v, %v", ready, err)
+	}
+	if err := route.WriteResolutionRelayEnvelope(connection, route.ResolutionRelayEnvelope{OHTTP: opaque}); err != nil {
+		t.Fatal(err)
+	}
+	response, err := route.ReadResolutionRelayResponse(connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contentType := ohttp.ResponseMediaType
+	if response.Framing == route.ResolutionOHTTPChunkedResponse {
+		contentType = ohttp.ChunkedResponseMediaType
+	}
+	plain, err := decapsulator.Decapsulate(t.Context(), &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{contentType}},
+		Body: io.NopCloser(bytes.NewReader(response.OHTTP)), Request: encapsulated})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer plain.Body.Close()
+	body, err := io.ReadAll(plain.Body)
+	if err != nil || len(body) != 4096 {
+		t.Fatalf("resolution Gateway response = %d bytes, %v", len(body), err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := initiator.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if usage := initiator.Usage(); usage.CompletedRelays != 1 || usage.RelayedBytes != uint64(len(opaque)) || usage.Connections != 0 {
+		t.Fatalf("resolution Initiator usage = %+v", usage)
+	}
+}
+
+func resolutionGatewayCertificate(t *testing.T) (tls.Certificate, [32]byte, ed25519.PrivateKey) {
+	t.Helper()
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{SerialNumber: big.NewInt(90), Subject: pkix.Name{CommonName: "resolution-gateway"},
+		NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	raw, err := x509.CreateCertificate(rand.Reader, template, template, public, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaf, err := x509.ParseCertificate(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var identifier [32]byte
+	copy(identifier[:], public)
+	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private, Leaf: leaf}, identifier, private
 }
 
 func initiatorAdmission(presentation entry.Presentation, attachment [32]byte, config RendezvousConfig) route.EntryBindingAdmitter {

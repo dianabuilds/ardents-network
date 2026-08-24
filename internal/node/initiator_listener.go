@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
 // Initiator owns one running native Entry listener, its State-pinned next-leg
@@ -168,8 +169,8 @@ func (running *Initiator) handle(raw net.Conn) {
 	if err != nil || entryConnection.SetDeadline(running.plan.NotAfter) != nil {
 		return
 	}
-	setup, err := route.ReadRelaySetup(entryConnection)
-	if err != nil || running.validateSetup(setup) != nil || !running.reserveRelay(raw) {
+	operation, err := route.ReadEntryOperation(entryConnection)
+	if err != nil || !running.validEntryOperation(operation) || !running.reserveRelay(raw) {
 		running.mu.Lock()
 		running.usage.SetupRefused++
 		running.mu.Unlock()
@@ -178,6 +179,24 @@ func (running *Initiator) handle(raw net.Conn) {
 	<-running.handshakes
 	handshakeHeld = false
 	owned = false
+	if operation.Relay != nil {
+		running.openRelay(ctx, raw, entryConnection, *operation.Relay)
+		return
+	}
+	running.openResolutionRelay(ctx, raw, entryConnection, *operation.ResolutionRelay)
+}
+
+func (running *Initiator) validEntryOperation(operation route.EntryOperation) bool {
+	if operation.Relay != nil && operation.ResolutionRelay == nil {
+		return running.validateSetup(*operation.Relay) == nil
+	}
+	if operation.Relay == nil && operation.ResolutionRelay != nil {
+		return running.validateResolutionSetup(*operation.ResolutionRelay) == nil
+	}
+	return false
+}
+
+func (running *Initiator) openRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.RelaySetup) {
 	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{Endpoint: running.plan.Rendezvous.Endpoint,
 		Certificate: running.plan.Certificate, ExpectedPeerKey: running.plan.Rendezvous.PublicKey, Deadline: setup.NotAfter,
 		Binding: route.LegBinding{NetworkID: setup.NetworkID, Epoch: setup.Epoch, Digest: setup.Digest, AttachmentID: setup.AttachmentID,
@@ -199,6 +218,40 @@ func (running *Initiator) handle(raw net.Conn) {
 	go running.relay(raw, entryConnection, next)
 }
 
+func (running *Initiator) openResolutionRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.ResolutionRelaySetup) {
+	if err := entryConnection.SetDeadline(setup.NotAfter); err != nil || route.WriteResolutionRelayReady(entryConnection, route.ResolutionRelayReady{Setup: setup}) != nil {
+		running.releaseRelay(raw, nil)
+		return
+	}
+	envelope, err := route.ReadResolutionRelayEnvelope(entryConnection)
+	if err != nil {
+		running.releaseRelay(raw, nil)
+		return
+	}
+	forwardCtx, cancel := context.WithDeadline(ctx, setup.NotAfter)
+	defer cancel()
+	client, err := reachability.GatewayHTTPClient(setup.GatewayNodePublicKey)
+	if err == nil {
+		response, forwardErr := reachability.ForwardOHTTP(forwardCtx, running.plan.ResolutionGateway.URL, client, envelope.OHTTP)
+		client.CloseIdleConnections()
+		err = forwardErr
+		if err == nil {
+			framing := route.ResolutionOHTTPResponse
+			if response.Chunked {
+				framing = route.ResolutionOHTTPChunkedResponse
+			}
+			err = route.WriteResolutionRelayResponse(entryConnection, route.ResolutionRelayResponse{OHTTP: response.Envelope, Framing: framing})
+		}
+	}
+	running.mu.Lock()
+	if err == nil {
+		running.usage.RelayedBytes += uint64(len(envelope.OHTTP))
+		running.usage.CompletedRelays++
+	}
+	running.mu.Unlock()
+	running.releaseRelay(raw, nil)
+}
+
 func (running *Initiator) validateSetup(setup route.RelaySetup) error {
 	if setup.NetworkID != running.plan.NetworkID || setup.Digest != running.plan.EpochDigest || setup.Epoch != running.plan.Epoch ||
 		setup.TransitRole != route.InitiatorRole || setup.TransitNodeID != running.plan.NodeID ||
@@ -206,6 +259,17 @@ func (running *Initiator) validateSetup(setup route.RelaySetup) error {
 		setup.NextNodePublicKey != running.plan.Rendezvous.PublicKey || setup.NotAfter.After(running.plan.NotAfter) ||
 		!running.plan.now().Before(setup.NotAfter) {
 		return errors.New("RelaySetup is not authorized by the current Initiator duty")
+	}
+	return nil
+}
+
+func (running *Initiator) validateResolutionSetup(setup route.ResolutionRelaySetup) error {
+	gateway := running.plan.ResolutionGateway
+	if gateway.NodeID == [32]byte{} || setup.NetworkID != running.plan.NetworkID || setup.Digest != running.plan.EpochDigest ||
+		setup.Epoch != running.plan.Epoch || setup.InitiatorNodeID != running.plan.NodeID ||
+		setup.GatewayNodeID != gateway.NodeID || setup.GatewayNodePublicKey != gateway.PublicKey ||
+		setup.NotAfter.After(running.plan.NotAfter) || !running.plan.now().Before(setup.NotAfter) {
+		return errors.New("ResolutionRelaySetup is not authorized by the current Initiator duty")
 	}
 	return nil
 }

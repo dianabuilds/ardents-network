@@ -34,10 +34,10 @@ type UserReferenceSite struct {
 
 // OpenUserReferenceSite composes one exact State-selected C-2 route with one
 // authenticated static Reference Site. A Reachability request is the selected
-// Target Link path and verifies its descriptor before Entry work; the retained
+// Target Link path either performs the selected private lookup or verifies its
+// supplied controlled-evidence descriptor before C-2 Entry work; the retained
 // Introduction form exists only for direct controlled evidence. It does not
-// perform private lookup, discover peers, retry a route, or expose a raw
-// carrier to its caller.
+// discover peers, retry a route, or expose a raw carrier to its caller.
 func (endpoint *endpoint) OpenUserReferenceSite(ctx context.Context, input UserReferenceSiteRequest) (*UserReferenceSite, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} || input.Capability == [32]byte{} ||
 		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) {

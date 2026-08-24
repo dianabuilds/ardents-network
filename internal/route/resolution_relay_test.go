@@ -48,6 +48,14 @@ func TestResolutionRelayEnvelopeHasOneBoundedOpaqueCapacity(t *testing.T) {
 	if _, err := DecodeResolutionRelayResponse(raw); err == nil {
 		t.Fatal("resolution response accepted request kind")
 	}
+	responseRaw, err := EncodeResolutionRelayResponse(ResolutionRelayResponse{OHTTP: []byte{7, 8}, Framing: ResolutionOHTTPChunkedResponse})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := DecodeResolutionRelayResponse(responseRaw)
+	if err != nil || response.Framing != ResolutionOHTTPChunkedResponse || !bytes.Equal(response.OHTTP, []byte{7, 8}) {
+		t.Fatalf("ResolutionRelayResponse = %+v, %v", response, err)
+	}
 	for _, value := range []ResolutionRelayEnvelope{{}, {OHTTP: bytes.Repeat([]byte{1}, ResolutionEnvelopeCapacity+1)}} {
 		if _, err := EncodeResolutionRelayEnvelope(value); err == nil {
 			t.Fatal("resolution relay accepted invalid opaque capacity")

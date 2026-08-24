@@ -9,24 +9,27 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-// UserReachabilityRouteRequest combines one verified Target descriptor with
-// independently State-selected User peers. Descriptor owns Publication and
-// live Introduction-slot facts; the caller cannot replace them with plan data.
+// UserReachabilityRouteRequest combines either one opaque private lookup or an
+// already-obtained descriptor with independently State-selected User peers.
+// The descriptor owns Publication and live Introduction-slot facts; callers
+// cannot replace them with plan data.
 type UserReachabilityRouteRequest struct {
 	TargetLink                          string
 	Descriptor                          []byte
+	Private                             *UserPrivateReachabilityRequest
 	Introduction, Initiator, Rendezvous TransitPeer
 	Entry                               route.EntryAcquirer
 	AttachmentID, EndpointHandshake     [32]byte
 	At                                  time.Time
 }
 
-// OpenUserReachabilityRoute verifies one descriptor before spending Entry
-// work, checks its fixed Introduction/Rendezvous identities against the
-// caller's State-selected peers, then invokes the existing bounded C-2 route
-// composition. It performs neither private lookup nor peer discovery.
+// OpenUserReachabilityRoute performs one selected private lookup when present,
+// verifies its descriptor before spending C-2 Entry work, checks its fixed
+// Introduction/Rendezvous identities against State-selected peers, then invokes
+// the existing bounded C-2 route composition. It performs no peer discovery.
 func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input UserReachabilityRouteRequest) (*UserIntroductionRoute, error) {
-	if endpoint == nil || ctx == nil || input.At.IsZero() || !validTransitPeer(input.Introduction) ||
+	if endpoint == nil || ctx == nil || input.At.IsZero() || (len(input.Descriptor) == 0 && input.Private == nil) ||
+		(len(input.Descriptor) != 0 && input.Private != nil) || !validTransitPeer(input.Introduction) ||
 		!validTransitPeer(input.Initiator) || !validTransitPeer(input.Rendezvous) || input.Entry == nil ||
 		input.AttachmentID == [32]byte{} || input.EndpointHandshake == [32]byte{} {
 		return nil, errors.New("User reachability route input is incomplete")
@@ -35,7 +38,14 @@ func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input U
 	if err != nil {
 		return nil, err
 	}
-	verified, err := reachability.Verify(input.Descriptor, target, endpoint.network, input.At)
+	descriptor := input.Descriptor
+	if input.Private != nil {
+		descriptor, err = endpoint.ResolveUserReachability(ctx, input.TargetLink, *input.Private)
+		if err != nil {
+			return nil, err
+		}
+	}
+	verified, err := reachability.Verify(descriptor, target, endpoint.network, input.At)
 	if err != nil {
 		return nil, errors.Join(errors.New("private reachability evidence is invalid"), err)
 	}

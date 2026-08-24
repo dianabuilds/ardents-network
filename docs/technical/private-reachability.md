@@ -2,9 +2,10 @@
 
 Status: **accepted H4-3A contract; the closed descriptor codec, Endpoint
 composition, Gateway-local durable currentness state, and fixed-size OHTTP
-Relay/Gateway exchange exist. ADR-0037 selects the closed Entry-to-Initiator
-carrier for runtime composition; its implementation and live qualification are
-pending.** This is the Target-keyed companion to the Namespace-only private
+Relay/Gateway exchange and ADR-0037's closed Entry-to-Initiator carrier exist;
+one in-process Target Link → lookup → C-2 → Reference Site behavior test
+passes. Separate-process and live qualification remain pending.** This is the
+Target-keyed companion to the Namespace-only private
 resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md)
 and [ADR-0037](../adr/0037-private-reachability-entry-carrier.md).
 
@@ -39,7 +40,9 @@ reachability failure; ordinary HTTP, DNS, Name resolution, local aliases,
 catalogs, and Publisher origins are not fallbacks. The Endpoint never connects
 directly to the Gateway or an ordinary HTTP Relay: it sends exactly one opaque
 envelope through a fresh admitted Entry attachment, and the Initiator derives
-the Gateway literal endpoint only from its authenticated State facts.
+the Gateway literal endpoint only from its authenticated State facts. The
+Gateway HTTPS certificate is pinned to that State-selected Ed25519 Node key;
+ambient roots and HTTP proxy configuration are not used.
 
 ## Descriptor authority and currentness
 

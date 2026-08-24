@@ -2,10 +2,13 @@ package reachability
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/openpcc/ohttp"
 )
 
 const maximumOHTTPEnvelope = 8 << 10
@@ -15,6 +18,14 @@ const maximumOHTTPEnvelope = 8 << 10
 type Relay struct {
 	gateway string
 	client  *http.Client
+}
+
+// OHTTPResponse is the bounded opaque Gateway result. Chunked selects one of
+// the two RFC 9458 response framings; it is not an application-controlled HTTP
+// header.
+type OHTTPResponse struct {
+	Envelope []byte
+	Chunked  bool
 }
 
 // NewRelay creates a header-stripping Relay bound to one HTTPS Gateway URL.
@@ -39,24 +50,44 @@ func (relay *Relay) forward(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "invalid opaque request", http.StatusBadRequest)
 		return
 	}
-	forward, err := http.NewRequestWithContext(request.Context(), http.MethodPost, relay.gateway, bytes.NewReader(body))
+	response, err := ForwardOHTTP(request.Context(), relay.gateway, relay.client, body)
 	if err != nil {
-		http.Error(writer, "Gateway unavailable", http.StatusBadGateway)
-		return
-	}
-	forward.Header.Set("Content-Type", ohttpRequestType)
-	response, err := relay.client.Do(forward)
-	if err != nil {
-		http.Error(writer, "Gateway unavailable", http.StatusBadGateway)
-		return
-	}
-	defer response.Body.Close()
-	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maximumOHTTPEnvelope+1))
-	if err != nil || len(responseBody) == 0 || len(responseBody) > maximumOHTTPEnvelope {
 		http.Error(writer, "Gateway response invalid", http.StatusBadGateway)
 		return
 	}
-	writer.Header().Set("Content-Type", response.Header.Get("Content-Type"))
-	writer.WriteHeader(response.StatusCode)
-	_, _ = writer.Write(responseBody)
+	contentType := ohttp.ResponseMediaType
+	if response.Chunked {
+		contentType = ohttp.ChunkedResponseMediaType
+	}
+	writer.Header().Set("Content-Type", contentType)
+	writer.WriteHeader(http.StatusOK)
+	_, _ = writer.Write(response.Envelope)
+}
+
+// ForwardOHTTP exchanges exactly one opaque OHTTP envelope with one selected
+// Gateway. It accepts no caller headers, method, path, proxy target, or
+// streaming body, so callers cannot turn it into a generic HTTP forwarder.
+func ForwardOHTTP(ctx context.Context, gatewayURL string, client *http.Client, envelope []byte) (OHTTPResponse, error) {
+	parsed, err := url.Parse(gatewayURL)
+	if ctx == nil || err != nil || parsed.Scheme != "https" || parsed.Host == "" || client == nil ||
+		len(envelope) == 0 || len(envelope) > maximumOHTTPEnvelope {
+		return OHTTPResponse{}, errors.New("private reachability OHTTP forward is invalid")
+	}
+	forward, err := http.NewRequestWithContext(ctx, http.MethodPost, gatewayURL, bytes.NewReader(envelope))
+	if err != nil {
+		return OHTTPResponse{}, errors.New("private reachability OHTTP forward is invalid")
+	}
+	forward.Header.Set("Content-Type", ohttpRequestType)
+	response, err := client.Do(forward)
+	if err != nil {
+		return OHTTPResponse{}, errors.New("private reachability Gateway is unavailable")
+	}
+	defer response.Body.Close()
+	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maximumOHTTPEnvelope+1))
+	contentType := response.Header.Get("Content-Type")
+	if err != nil || response.StatusCode != http.StatusOK || (contentType != ohttp.ResponseMediaType && contentType != ohttp.ChunkedResponseMediaType) ||
+		len(responseBody) == 0 || len(responseBody) > maximumOHTTPEnvelope {
+		return OHTTPResponse{}, errors.New("private reachability Gateway response is invalid")
+	}
+	return OHTTPResponse{Envelope: responseBody, Chunked: contentType == ohttp.ChunkedResponseMediaType}, nil
 }
