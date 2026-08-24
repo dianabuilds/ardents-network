@@ -44,6 +44,9 @@ func validateNativeDutyProfile(config runtimeConfig, snapshot dutyFacts) error {
 	case "initiator":
 		_, err := initiatorDuty(config.Initiator, snapshot)
 		return err
+	case "introduction":
+		_, err := introductionDuty(config.Introduction, snapshot)
+		return err
 	default:
 		return errors.New("native Route assignment is not implemented")
 	}

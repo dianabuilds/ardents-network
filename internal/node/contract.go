@@ -87,6 +87,7 @@ type Config struct {
 	Probe              ProbeConfig
 	Rendezvous         RendezvousProfile
 	Initiator          InitiatorProfile
+	Introduction       IntroductionProfile
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
@@ -120,6 +121,16 @@ type InitiatorProfile struct {
 	HandshakeLimit, RelayLimit uint16
 	RelayByteLimit             uint64
 	DrainTimeout               time.Duration
+}
+
+// IntroductionProfile contains only the local certificate, finite resource
+// bounds, and opaque C-2 admission port. State supplies the listener identity
+// and expiry; this profile cannot decrypt Service material.
+type IntroductionProfile struct {
+	Certificate                              tls.Certificate
+	Admit                                    route.EndpointTransitBindingAdmitter
+	HandshakeLimit, SlotLimit, DeliveryLimit uint16
+	DrainTimeout                             time.Duration
 }
 
 func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }

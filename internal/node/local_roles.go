@@ -16,6 +16,9 @@ func retainLocalDuty(config runtimeConfig, snapshot dutyFacts, state string) err
 	if snapshot.Assignment == "initiator" {
 		class = "ordinary-initiator"
 	}
+	if snapshot.Assignment == "introduction" {
+		class = "ordinary-introduction"
+	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {
 		notAfter = snapshot.RecordValidUntil

@@ -99,6 +99,24 @@ func TestIntroductionPlanRejectsZeroCapacity(t *testing.T) {
 	}
 }
 
+func TestIntroductionDutyUsesOnlyItsStateAssignment(t *testing.T) {
+	certificate, public := rendezvousCertificate(t, 53, "introduction-duty")
+	now := time.Now().UTC().Truncate(time.Second)
+	snapshot := dutyFacts{NetworkID: [32]byte{21}, Epoch: 22, Digest: [32]byte{23}, Profile: route.Profile, NodeID: [32]byte{24},
+		NodePublicKey: public, Assignment: "introduction", ProbeEndpoint: "127.0.0.1:30253", EpochValidFrom: now.Add(-time.Second),
+		ValidUntil: now.Add(time.Minute), RecordValidUntil: now.Add(30 * time.Second)}
+	profile := IntroductionProfile{Certificate: certificate, Admit: introductionTestAdmit(snapshot.NetworkID, snapshot.Digest, snapshot.NodeID, snapshot.RecordValidUntil),
+		HandshakeLimit: 2, SlotLimit: 3, DeliveryLimit: 1, DrainTimeout: time.Second}
+	plan, err := introductionDuty(profile, snapshot)
+	if err != nil || plan.ListenAddress != snapshot.ProbeEndpoint || !plan.NotAfter.Equal(snapshot.RecordValidUntil) || plan.SlotLimit != profile.SlotLimit {
+		t.Fatalf("Introduction State duty = %+v, %v", plan, err)
+	}
+	snapshot.Assignment = "initiator"
+	if _, err := introductionDuty(profile, snapshot); err == nil {
+		t.Fatal("Introduction accepted a different State assignment")
+	}
+}
+
 func awaitIntroductionUsage(t *testing.T, running *Introduction, timeout time.Duration, predicate func(IntroductionUsage) bool) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
