@@ -111,6 +111,9 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite), "TransitStateRoots": stateRoots, "TransitStateMaterials": stateMaterials,
 		"TransitStateSources": sourceConfig, "TransitStateClient": map[string]string{"Certificate": string(clientCertificate), "PrivateKey": string(clientPrivateKey)},
 	}
+	if firefox := os.Getenv("ARDENTS_REFERENCE_C2_FIREFOX"); firefox != "" {
+		fixture["FirefoxExecutable"] = firefox
+	}
 	raw, err := json.Marshal(fixture)
 	if err != nil || os.WriteFile(configPath, raw, 0o600) != nil {
 		t.Fatal("write process C2 fixture configuration")

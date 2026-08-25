@@ -62,6 +62,7 @@ type config struct {
 	TransitStateMaterials                                                                      map[string]uint32
 	TransitStateSources                                                                        []stateSource
 	TransitStateClient                                                                         stateClient
+	FirefoxExecutable                                                                          string
 }
 
 type publicationEnvelope struct {
@@ -147,6 +148,9 @@ func readConfig(path string) (config, error) {
 	}
 	if _, err := input.entryInvite(); err != nil {
 		return config{}, err
+	}
+	if input.FirefoxExecutable != "" && !filepath.IsAbs(input.FirefoxExecutable) {
+		return config{}, errors.New("C2 fixture Firefox executable path is invalid")
 	}
 	return input, nil
 }
@@ -318,6 +322,13 @@ func runUser(input config) error {
 		return errors.New("user C2 fixture Introduction grant is unavailable")
 	}
 	userPrincipal := identifier(42)
+	var browser endpointapi.ReferenceBrowser
+	if input.FirefoxExecutable != "" {
+		browser, err = endpointapi.NewFirefoxBrowser(input.FirefoxExecutable)
+		if err != nil {
+			return err
+		}
+	}
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: identifier(44), AuthorityPublic: authority,
 		IntroductionPublic: make([]byte, ed25519.PublicKeySize), ConnectionPrincipal: userPrincipal,
 		TransitClientCertificates: map[[32]byte]tls.Certificate{introductionGrant.GrantID: introductionCertificate}})
@@ -340,7 +351,7 @@ func runUser(input config) error {
 			Introduction: introduction, Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
 				presentation: entry.Presentation{InviteID: inviteID, Invite: invite}}, Initiator: initiator, Rendezvous: rendezvous,
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
-		Routes: map[string]string{"": "/"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10})
+		Routes: map[string]string{"": "/"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10, Browser: browser})
 	if err != nil {
 		return fmt.Errorf("user C2 fixture exact route: %w", err)
 	}
@@ -354,14 +365,16 @@ func runUser(input config) error {
 	case <-time.After(time.Until(deadline)):
 		return errors.New("user C2 fixture timed out before Reference Site readiness")
 	}
-	response, err := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Get(ready.URL)
-	if err != nil {
-		return err
-	}
-	body, readErr := io.ReadAll(response.Body)
-	_ = response.Body.Close()
-	if readErr != nil || response.StatusCode != http.StatusOK || string(body) != "<h1>Reference</h1>" {
-		return errors.New("user C2 fixture did not receive the Reference Site response")
+	if browser == nil {
+		response, requestErr := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Get(ready.URL)
+		if requestErr != nil {
+			return requestErr
+		}
+		body, readErr := io.ReadAll(response.Body)
+		_ = response.Body.Close()
+		if readErr != nil || response.StatusCode != http.StatusOK || string(body) != "<h1>Reference</h1>" {
+			return errors.New("user C2 fixture did not receive the Reference Site response")
+		}
 	}
 	if err := site.Close(); err != nil {
 		return err
