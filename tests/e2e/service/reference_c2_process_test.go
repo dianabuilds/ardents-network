@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -45,7 +46,7 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	slotCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, introductionID, route.IntroductionRole, slotAttachment, deadline, 31)
 	responderCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, responderID, route.ResponderRole, serviceAttachment, deadline, 32)
 	introductionCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, introductionID, route.IntroductionRole, serviceAttachment, deadline, 33)
-	invite := "entry-invite"
+	invite := referenceC2EntryInvite(t, initiatorMaterial, network, digest, 10, initiatorID, deadline, now)
 	inviteID := referenceC2ID(11)
 
 	root := t.TempDir()
@@ -67,7 +68,7 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		"JoinHandle": referenceC2Hex(join), "Reachability": referenceC2Hex(reachability), "SlotAttachment": referenceC2Hex(slotAttachment),
 		"ServiceAttachment": referenceC2Hex(serviceAttachment), "ResolutionAttachment": referenceC2Hex(resolutionAttachment),
 		"TransitAuthority": hex.EncodeToString(transitAuthorityPublic), "SlotCredential": slotCredential, "ResponderCredential": responderCredential,
-		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": invite,
+		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite),
 	}
 	raw, err := json.Marshal(fixture)
 	if err != nil || os.WriteFile(configPath, raw, 0o600) != nil {
@@ -83,6 +84,11 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 			process := <-transit[role]
 			t.Fatalf("C2 transit process %s did not become ready: %v\n%s", role, err, process.output)
 		}
+	}
+	if probe, err := net.DialTimeout("tcp", initiatorAddress, time.Second); err != nil {
+		t.Fatalf("State-run Initiator was not listening after READY: %v", err)
+	} else {
+		_ = probe.Close()
 	}
 	gateway := startCommand(ctx, root, binary, "gateway", configPath)
 	publisher := startCommand(ctx, root, binary, "publisher", configPath)
@@ -103,7 +109,8 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		processes[role] = <-process
 	}
 	processes["gateway"] = <-gateway
-	for role, process := range processes {
+	for _, role := range []string{"user", "publisher", "initiator", "introduction", "rendezvous", "responder", "gateway"} {
+		process := processes[role]
 		if process.err != nil {
 			t.Fatalf("C2 %s Endpoint process failed: %v\n%s", role, process.err, process.output)
 		}
@@ -209,6 +216,34 @@ func referenceC2TransitCredential(t *testing.T, authority ed25519.PrivateKey, ne
 		t.Fatal(err)
 	}
 	return map[string]string{"Grant": base64.RawStdEncoding.EncodeToString(grant), "Certificate": material.certificate, "PrivateKey": material.privateKey}
+}
+
+func referenceC2EntryInvite(t *testing.T, material referenceC2CertificateMaterial, network, digest [32]byte, epoch uint64, initiator [32]byte,
+	deadline, now time.Time) []byte {
+	t.Helper()
+	certificate, err := tls.X509KeyPair([]byte(material.certificate), []byte(material.privateKey))
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer, ok := certificate.PrivateKey.(ed25519.PrivateKey)
+	if !ok {
+		t.Fatal("fixture Initiator private key is invalid")
+	}
+	family := sha256.Sum256(initiator[:])
+	keyID := referenceC2DutyDigest("key", initiator)
+	raw, err := entry.Issue(entry.IssueInput{NetworkID: network, Digest: digest, Epoch: epoch,
+		Candidate: entry.Candidate{NodeID: initiator, PublicKey: material.public, KeyID: keyID, FamilyID: family,
+			RecordDigest: referenceC2DutyDigest("record", initiator), DomainProofDigest: referenceC2DutyDigest("proof", initiator),
+			Endpoint: "127.0.0.1:1", Capacity: 1, Domain: "initiator", ValidFrom: now.Add(-time.Minute), ValidUntil: deadline, AssignmentNotAfter: deadline},
+		NotBefore: now.Add(-time.Second), NotAfter: deadline, Slot: 0, Generation: 1}, signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func referenceC2DutyDigest(prefix string, value [32]byte) [32]byte {
+	return sha256.Sum256(append(append([]byte("reference-c2-"), []byte(prefix)...), value[:]...))
 }
 
 func referenceC2Hex(value [32]byte) string { return hex.EncodeToString(value[:]) }

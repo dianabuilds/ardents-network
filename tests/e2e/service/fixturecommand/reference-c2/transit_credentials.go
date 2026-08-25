@@ -13,6 +13,14 @@ func (value transitCredential) valid() bool {
 	return value.Grant != "" && value.Certificate != "" && value.PrivateKey != ""
 }
 
+func (input config) entryInvite() ([]byte, error) {
+	raw, err := base64.RawStdEncoding.DecodeString(input.Invite)
+	if err != nil || len(raw) == 0 {
+		return nil, errors.New("C2 fixture Entry Invite encoding is invalid")
+	}
+	return raw, nil
+}
+
 // decode returns one fixture-local opaque grant, the corresponding private
 // TLS identity, and the public grant tuple used only to index Endpoint-local
 // provisioning. This package is built only by the process e2e test.

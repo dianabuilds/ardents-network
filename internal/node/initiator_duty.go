@@ -2,6 +2,7 @@ package node
 
 import (
 	"errors"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -57,13 +58,17 @@ func validateNativeDutyProfile(config runtimeConfig, snapshot dutyFacts) error {
 		_, err := rendezvousDuty(config.Rendezvous, snapshot)
 		return err
 	case "initiator":
-		admit, closeAdmitter, err := openStateEntryAdmitter(config.LocalRoleStateRoot, snapshot, config.now)
-		if closeAdmitter != nil {
-			defer closeAdmitter()
+		// This validation runs before startup and on every live State poll.
+		// Opening the durable Entry Admitter here would contend with the one
+		// owned by a live Initiator and withdraw a healthy listener. Entry view
+		// shape is pure State validation; the actual owner is opened exactly
+		// once by startDuty.
+		if _, err := entryView(snapshot); err != nil {
+			return err
 		}
-		if err == nil {
-			_, err = initiatorDuty(config.Initiator, snapshot, admit)
-		}
+		_, err := initiatorDuty(config.Initiator, snapshot, func([]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
+			return route.EntryAdmission{}, nil
+		})
 		return err
 	case "introduction":
 		if snapshot.AuthorityCount == 0 {

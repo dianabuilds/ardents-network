@@ -13,14 +13,15 @@ func retainLocalDuty(config runtimeConfig, snapshot dutyFacts, state string) err
 		return err
 	}
 	class := "node-duty"
-	if snapshot.Assignment == "initiator" {
+	switch snapshot.Assignment {
+	case "initiator":
 		class = "ordinary-initiator"
-	}
-	if snapshot.Assignment == "introduction" {
-		class = "ordinary-introduction"
-	}
-	if snapshot.Assignment == "responder" {
-		class = "ordinary-responder"
+	case "rendezvous":
+		class = "route-rendezvous"
+	case "introduction":
+		class = "route-introduction"
+	case "responder":
+		class = "route-responder"
 	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {

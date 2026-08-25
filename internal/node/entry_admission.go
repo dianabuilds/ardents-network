@@ -30,7 +30,10 @@ func openStateEntryAdmitter(root string, snapshot dutyFacts, now func() time.Tim
 		Clock:         now,
 		TimeConfident: func() bool { return snapshot.Fresh && !snapshot.Conflicting && now().UTC().Before(snapshot.ValidUntil) },
 	}
-	admitter, err := entry.OpenAdmitter(entry.AdmitterConfig{Root: filepath.Join(root, "initiator-entry"), Verification: verification})
+	// Entry owns its own durable grammar and marker. It must therefore be a
+	// sibling of, rather than a child inside, the duty root whose owner-only
+	// inventory intentionally refuses unknown entries.
+	admitter, err := entry.OpenAdmitter(entry.AdmitterConfig{Root: filepath.Join(filepath.Dir(root), filepath.Base(root)+"-initiator-entry"), Verification: verification})
 	if err != nil {
 		return nil, nil, err
 	}

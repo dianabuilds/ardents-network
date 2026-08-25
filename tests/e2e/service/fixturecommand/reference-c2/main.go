@@ -116,6 +116,9 @@ func readConfig(path string) (config, error) {
 			return config{}, err
 		}
 	}
+	if _, err := input.entryInvite(); err != nil {
+		return config{}, err
+	}
 	return input, nil
 }
 
@@ -274,6 +277,10 @@ func runUser(input config) error {
 	serviceAttachment, _ := fixed(input.ServiceAttachment)
 	resolutionAttachment, _ := fixed(input.ResolutionAttachment)
 	inviteID, _ := fixed(input.InviteID)
+	invite, err := input.entryInvite()
+	if err != nil {
+		return err
+	}
 	introductionAuthorization, introductionCertificate, introductionGrant, err := input.IntroductionCredential.decode()
 	if err != nil {
 		return err
@@ -300,9 +307,9 @@ func runUser(input config) error {
 			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey, GatewayFamily: gateway.Family,
 				GatewayProfile: profile, StateDigest: digest, Epoch: input.Epoch, Initiator: initiator,
 				Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
-					presentation: entry.Presentation{InviteID: inviteID, Invite: []byte(input.Invite)}}, AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
+					presentation: entry.Presentation{InviteID: inviteID, Invite: invite}}, AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
 			Introduction: introduction, Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
-				presentation: entry.Presentation{InviteID: inviteID, Invite: []byte(input.Invite)}}, Initiator: initiator, Rendezvous: rendezvous,
+				presentation: entry.Presentation{InviteID: inviteID, Invite: invite}}, Initiator: initiator, Rendezvous: rendezvous,
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
 		Routes: map[string]string{"": "/"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10})
 	if err != nil {

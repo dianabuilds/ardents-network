@@ -15,7 +15,7 @@ import (
 func stateTransitGrantAdmitter(root string, snapshot dutyFacts, now func() time.Time) route.EndpointTransitBindingAdmitter {
 	return func(raw []byte, attachment, clientKey [32]byte, role byte, transitNode [32]byte, notAfter time.Time) (route.EndpointTransitAdmission, error) {
 		if root == "" || now == nil || snapshot.AuthorityCount == 0 || role != snapshotTransitRole(snapshot) || transitNode != snapshot.NodeID {
-			return route.EndpointTransitAdmission{}, errors.New("State transit grant admission is incomplete")
+			return route.EndpointTransitAdmission{}, errors.New("state transit grant admission is incomplete")
 		}
 		unverified, err := route.DecodeTransitGrant(raw)
 		if err != nil {
@@ -33,7 +33,7 @@ func stateTransitGrantAdmitter(root string, snapshot dutyFacts, now func() time.
 		if err != nil || grant.NetworkID != snapshot.NetworkID || grant.Digest != snapshot.Digest || grant.Epoch != snapshot.Epoch ||
 			grant.AttachmentID != attachment || grant.TransitRole != role || grant.TransitNodeID != transitNode ||
 			grant.ClientKeyDigest != clientKey || !grant.NotAfter.Equal(notAfter) || !now().UTC().Before(grant.NotAfter) {
-			return route.EndpointTransitAdmission{}, errors.New("State transit grant does not match current duty")
+			return route.EndpointTransitAdmission{}, errors.New("state transit grant does not match current duty")
 		}
 		ledger, err := duty.Open(duty.Config{Root: root, Clock: now, Create: true})
 		if err != nil {
