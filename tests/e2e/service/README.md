@@ -14,7 +14,9 @@ native-route State, require one valid refresh wave from two mutually
 authenticated State Source processes, and then drain through their maintained
 Node lifecycle. It drives the selected Target Link through the private lookup
 Entry/Initiator/Gateway carrier and then C-2, and verifies the bounded static
-Reference Site response.
+Reference Site document, declared stylesheet, and declared SVG. In its
+explicit-browser mode it waits for the Publisher to observe all three requests;
+opening Firefox alone is not accepted as evidence.
 For an explicitly cross-compiled Linux qualification only, a
 test runner may provide the matching fixture through
 `ARDENTS_E2E_FIXTURE_REFERENCE_C2`; ordinary local and CI runs leave it unset

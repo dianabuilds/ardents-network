@@ -82,6 +82,7 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	completePath := filepath.Join(root, "complete")
+	resourceProofPath := filepath.Join(root, "reference-resources")
 	stateRoots := map[string]string{}
 	stateMaterials := map[string]uint32{}
 	var invite []byte
@@ -101,7 +102,7 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		"Schema": "ardents-e2e-reference-c2-v1", "Network": referenceC2Hex(network), "Digest": referenceC2Hex(digest),
 		"Epoch": epoch, "Deadline": deadline.Format(time.RFC3339), "PublicationPath": publicationPath, "PublisherRoot": filepath.Join(root, "publisher-state"),
 		"GatewayRoot": filepath.Join(root, "gateway-state"), "GatewayProfilePath": filepath.Join(root, "gateway-profile.json"),
-		"ReadyRoot": readyRoot, "CompletePath": completePath,
+		"ReadyRoot": readyRoot, "CompletePath": completePath, "ResourceProofPath": resourceProofPath,
 		"Introduction": referenceC2Peer(introductionID, introductionMaterial, introductionAddress), "Rendezvous": referenceC2Peer(rendezvousID, rendezvousMaterial, rendezvousAddress),
 		"Responder": referenceC2Peer(responderID, responderMaterial, responderAddress), "Initiator": referenceC2Peer(initiatorID, initiatorMaterial, initiatorAddress),
 		"Gateway":    referenceC2Peer(gatewayID, gatewayMaterial, gatewayAddress),

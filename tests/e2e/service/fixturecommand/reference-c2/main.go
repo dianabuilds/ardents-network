@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/ecdh"
@@ -51,18 +50,18 @@ type stateClient struct {
 }
 
 type config struct {
-	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath string
-	Epoch                                                                                      uint64
-	Introduction, Rendezvous, Responder, Initiator, Gateway                                    peer
-	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment          string
-	GatewayRoot, GatewayProfilePath                                                            string
-	TransitAuthority, InviteID, Invite                                                         string
-	SlotCredential, ResponderCredential, IntroductionCredential                                transitCredential
-	TransitStateRoots                                                                          map[string]string
-	TransitStateMaterials                                                                      map[string]uint32
-	TransitStateSources                                                                        []stateSource
-	TransitStateClient                                                                         stateClient
-	FirefoxExecutable                                                                          string
+	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath, ResourceProofPath string
+	Epoch                                                                                                         uint64
+	Introduction, Rendezvous, Responder, Initiator, Gateway                                                       peer
+	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment                             string
+	GatewayRoot, GatewayProfilePath                                                                               string
+	TransitAuthority, InviteID, Invite                                                                            string
+	SlotCredential, ResponderCredential, IntroductionCredential                                                   transitCredential
+	TransitStateRoots                                                                                             map[string]string
+	TransitStateMaterials                                                                                         map[string]uint32
+	TransitStateSources                                                                                           []stateSource
+	TransitStateClient                                                                                            stateClient
+	FirefoxExecutable                                                                                             string
 }
 
 type publicationEnvelope struct {
@@ -111,7 +110,7 @@ func readConfig(path string) (config, error) {
 	if err := decoder.Decode(&input); err != nil {
 		return config{}, err
 	}
-	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.GatewayRoot == "" || input.GatewayProfilePath == "" || input.ReadyRoot == "" || input.CompletePath == "" ||
+	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.GatewayRoot == "" || input.GatewayProfilePath == "" || input.ReadyRoot == "" || input.CompletePath == "" || input.ResourceProofPath == "" ||
 		input.TransitAuthority == "" || input.Invite == "" || !input.SlotCredential.valid() ||
 		!input.ResponderCredential.valid() || !input.IntroductionCredential.valid() || len(input.TransitStateRoots) != 4 || len(input.TransitStateMaterials) != 4 ||
 		len(input.TransitStateSources) != 2 || input.TransitStateClient.Certificate == "" || input.TransitStateClient.PrivateKey == "" {
@@ -273,7 +272,7 @@ func runPublisher(input config) error {
 	}
 	application, service := net.Pipe()
 	defer service.Close()
-	go serveStatic(service)
+	go serveStatic(service, input.ResourceProofPath)
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 	outcome, err := slot.Accept(ctx, endpointapi.InboundConnectionRequest{Principal: principal, Capability: capability,
@@ -351,7 +350,7 @@ func runUser(input config) error {
 			Introduction: introduction, Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
 				presentation: entry.Presentation{InviteID: inviteID, Invite: invite}}, Initiator: initiator, Rendezvous: rendezvous,
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
-		Routes: map[string]string{"": "/"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10, Browser: browser})
+		Routes: map[string]string{"": "/", "site.css": "/site.css", "mark.svg": "/mark.svg"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10, Browser: browser})
 	if err != nil {
 		return fmt.Errorf("user C2 fixture exact route: %w", err)
 	}
@@ -366,15 +365,20 @@ func runUser(input config) error {
 		return errors.New("user C2 fixture timed out before Reference Site readiness")
 	}
 	if browser == nil {
-		response, requestErr := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Get(ready.URL)
-		if requestErr != nil {
-			return requestErr
+		for resource, expected := range map[string]string{"": referenceDocument, "site.css": referenceStylesheet, "mark.svg": referenceMark} {
+			response, requestErr := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Get(ready.URL + resource)
+			if requestErr != nil {
+				return requestErr
+			}
+			body, readErr := io.ReadAll(response.Body)
+			_ = response.Body.Close()
+			if readErr != nil || response.StatusCode != http.StatusOK || string(body) != expected {
+				return errors.New("user C2 fixture did not receive its declared Reference Site resource")
+			}
 		}
-		body, readErr := io.ReadAll(response.Body)
-		_ = response.Body.Close()
-		if readErr != nil || response.StatusCode != http.StatusOK || string(body) != "<h1>Reference</h1>" {
-			return errors.New("user C2 fixture did not receive the Reference Site response")
-		}
+	}
+	if err := waitForResourceProof(deadline, input.ResourceProofPath); err != nil {
+		return err
 	}
 	if err := site.Close(); err != nil {
 		return err
@@ -401,15 +405,6 @@ func (input entryAcquirer) Acquire(ctx context.Context, attempt entry.Attempt, o
 		return nil, cleanup, err
 	}
 	return connection, cleanup, nil
-}
-
-func serveStatic(connection net.Conn) {
-	defer connection.Close()
-	request, err := http.ReadRequest(bufio.NewReader(connection))
-	if err != nil || request.Method != http.MethodGet || request.URL.Path != "/" || request.Host != "reference" {
-		return
-	}
-	_, _ = io.WriteString(connection, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 18\r\nConnection: close\r\n\r\n<h1>Reference</h1>")
 }
 
 func writePublication(path string, value publicationEnvelope) error {
