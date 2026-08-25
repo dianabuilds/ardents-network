@@ -38,7 +38,8 @@ func TestIntroductionForwardsOneSealedRecordThenReportsUnavailable(t *testing.T)
 	sealed := route.SealedIntroduction{NetworkID: network, Digest: digest, Epoch: 6, IntroductionNodeID: nodeID, RendezvousNodeID: [32]byte{8},
 		Reachability: reachability, NotAfter: deadline, JoinHandle: join, EndpointHandshake: [32]byte{9}, Enc: bytes.Repeat([]byte{1}, 32), Ciphertext: bytes.Repeat([]byte{2}, 16)}
 	first := [32]byte{10}
-	if result := submitIntroduction(t, running.listener.Addr().String(), public, network, digest, nodeID, deadline, first, join[:], sealed); result.Outcome != route.IntroductionDelivered {
+	userAuthorization := []byte("State Transit Grant distinct from JoinHandle")
+	if result := submitIntroduction(t, running.listener.Addr().String(), public, network, digest, nodeID, deadline, first, userAuthorization, sealed); result.Outcome != route.IntroductionDelivered {
 		t.Fatalf("first delivery = %+v", result)
 	}
 	received, err := route.ReadIntroductionControlRecord(publisher)
@@ -47,7 +48,7 @@ func TestIntroductionForwardsOneSealedRecordThenReportsUnavailable(t *testing.T)
 		t.Fatalf("Publisher sealed delivery = %+v, %v", received, err)
 	}
 	second := [32]byte{11}
-	if result := submitIntroduction(t, running.listener.Addr().String(), public, network, digest, nodeID, deadline, second, join[:], sealed); result.Outcome != route.IntroductionUnavailable {
+	if result := submitIntroduction(t, running.listener.Addr().String(), public, network, digest, nodeID, deadline, second, userAuthorization, sealed); result.Outcome != route.IntroductionUnavailable {
 		t.Fatalf("spent JoinHandle result = %+v", result)
 	}
 	awaitIntroductionUsage(t, running, time.Second, func(usage IntroductionUsage) bool {

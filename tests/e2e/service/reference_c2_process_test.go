@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -16,6 +19,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
@@ -33,7 +38,14 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	responderAddress, initiatorAddress, gatewayAddress := referenceC2Address(t), referenceC2Address(t), referenceC2Address(t)
 	join, reachability := referenceC2ID(7), referenceC2ID(8)
 	slotAttachment, serviceAttachment, resolutionAttachment := referenceC2ID(9), referenceC2ID(10), referenceC2ID(12)
-	slotAuthorization, responderAuthorization, invite := "publisher-slot", "publisher-responder", "entry-invite"
+	transitAuthorityPublic, transitAuthorityPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slotCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, introductionID, route.IntroductionRole, slotAttachment, deadline, 31)
+	responderCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, responderID, route.ResponderRole, serviceAttachment, deadline, 32)
+	introductionCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, introductionID, route.IntroductionRole, serviceAttachment, deadline, 33)
+	invite := "entry-invite"
 	inviteID := referenceC2ID(11)
 
 	root := t.TempDir()
@@ -53,8 +65,9 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		"Responder": referenceC2Peer(responderID, responderMaterial, responderAddress), "Initiator": referenceC2Peer(initiatorID, initiatorMaterial, initiatorAddress),
 		"Gateway":    referenceC2Peer(referenceC2ID(13), gatewayMaterial, gatewayAddress),
 		"JoinHandle": referenceC2Hex(join), "Reachability": referenceC2Hex(reachability), "SlotAttachment": referenceC2Hex(slotAttachment),
-		"ServiceAttachment": referenceC2Hex(serviceAttachment), "ResolutionAttachment": referenceC2Hex(resolutionAttachment), "SlotAuthorization": slotAuthorization, "ResponderAuthorization": responderAuthorization,
-		"InviteID": referenceC2Hex(inviteID), "Invite": invite,
+		"ServiceAttachment": referenceC2Hex(serviceAttachment), "ResolutionAttachment": referenceC2Hex(resolutionAttachment),
+		"TransitAuthority": hex.EncodeToString(transitAuthorityPublic), "SlotCredential": slotCredential, "ResponderCredential": responderCredential,
+		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": invite,
 	}
 	raw, err := json.Marshal(fixture)
 	if err != nil || os.WriteFile(configPath, raw, 0o600) != nil {
@@ -171,6 +184,31 @@ func referenceC2Address(t *testing.T) string {
 func referenceC2Peer(nodeID [32]byte, material referenceC2CertificateMaterial, endpoint string) map[string]string {
 	return map[string]string{"NodeID": referenceC2Hex(nodeID), "PublicKey": referenceC2Hex(material.public), "Endpoint": endpoint,
 		"Certificate": material.certificate, "PrivateKey": material.privateKey}
+}
+
+func referenceC2TransitCredential(t *testing.T, authority ed25519.PrivateKey, network, digest [32]byte, epoch uint64, transitNode [32]byte,
+	role byte, attachment [32]byte, deadline time.Time, marker byte) map[string]string {
+	t.Helper()
+	material := referenceC2Certificate(t, int64(marker), "transit-client")
+	certificate, err := tls.X509KeyPair([]byte(material.certificate), []byte(material.privateKey))
+	if err != nil || len(certificate.Certificate) != 1 {
+		t.Fatal("create transit client certificate")
+	}
+	certificate.Leaf, err = x509.ParseCertificate(certificate.Certificate[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	digestKey, err := route.ClientTLSKeyDigest(certificate.Leaf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant, err := route.IssueTransitGrant(route.TransitGrant{IssuerID: sha256.Sum256(authority.Public().(ed25519.PublicKey)), GrantID: referenceC2ID(marker),
+		NetworkID: network, Digest: digest, AttachmentID: attachment, TransitNodeID: transitNode, ClientKeyDigest: digestKey,
+		Epoch: epoch, TransitRole: role, NotAfter: deadline}, authority)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return map[string]string{"Grant": base64.RawStdEncoding.EncodeToString(grant), "Certificate": material.certificate, "PrivateKey": material.privateKey}
 }
 
 func referenceC2Hex(value [32]byte) string { return hex.EncodeToString(value[:]) }

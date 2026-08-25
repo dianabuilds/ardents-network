@@ -194,7 +194,7 @@ func (running *Introduction) handle(raw net.Conn) {
 		return
 	}
 	if record.Sealed != nil {
-		running.submit(accepted.Connection, accepted.Binding, *record.Sealed, record.Raw)
+		running.submit(accepted.Connection, accepted.Binding.AttachmentID, *record.Sealed, record.Raw)
 	}
 }
 
@@ -217,11 +217,11 @@ func (running *Introduction) register(raw, connection net.Conn, binding route.En
 	}
 }
 
-func (running *Introduction) submit(connection net.Conn, binding route.EndpointTransitBinding, sealed route.SealedIntroduction, raw []byte) {
+func (running *Introduction) submit(connection net.Conn, attachment [32]byte, sealed route.SealedIntroduction, raw []byte) {
 	available := false
 	running.mu.Lock()
 	if !running.draining && !running.protected && sealed.NetworkID == running.plan.NetworkID && sealed.Digest == running.plan.EpochDigest && sealed.Epoch == running.plan.Epoch &&
-		sealed.IntroductionNodeID == running.plan.NodeID && binding.Authorization != nil && string(binding.Authorization) == string(sealed.JoinHandle[:]) {
+		sealed.IntroductionNodeID == running.plan.NodeID {
 		if slot := running.slots[sealed.Reachability]; slot != nil && !slot.spent && slot.registration.JoinHandle == sealed.JoinHandle && slot.registration.NotAfter.Equal(sealed.NotAfter) && running.plan.now().Before(sealed.NotAfter) {
 			select {
 			case running.deliveries <- struct{}{}:
@@ -241,7 +241,7 @@ func (running *Introduction) submit(connection net.Conn, binding route.EndpointT
 	if available {
 		outcome = route.IntroductionDelivered
 	}
-	_ = route.WriteIntroductionDeliveryResult(connection, route.IntroductionDeliveryResult{AttachmentID: binding.AttachmentID, Outcome: outcome})
+	_ = route.WriteIntroductionDeliveryResult(connection, route.IntroductionDeliveryResult{AttachmentID: attachment, Outcome: outcome})
 }
 
 func (running *Introduction) forward(slot *introductionLiveSlot, reachability [32]byte, raw []byte) {

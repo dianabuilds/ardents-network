@@ -109,6 +109,9 @@ the reachability path.
   possess its matching one-use private TLS client key before opening the
   attachment. The closed-alpha provisioned capability is therefore the pair,
   while only the opaque Introduction grant can enter the public Descriptor.
+- **Implementation finding:** Transit Grant is adjacent-hop admission only.
+  Introduction must not compare it to the separately Publisher-chosen
+  `JoinHandle`; the latter remains in the registered slot and sealed record.
 
 ## Options
 

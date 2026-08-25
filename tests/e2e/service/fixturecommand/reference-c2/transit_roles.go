@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -131,13 +132,8 @@ func openIntroduction(input config, deadline time.Time) (*node.Introduction, err
 	digest, _ := fixed(input.Digest)
 	return node.StartIntroduction(node.IntroductionConfig{ListenAddress: introduction.Endpoint, Certificate: certificate,
 		NetworkID: network, EpochDigest: digest, NodeID: introduction.NodeID, NodePublicKey: introduction.PublicKey, Epoch: input.Epoch, NotAfter: deadline,
-		Admit: func(raw []byte, attachment, key [32]byte, role byte, nodeID [32]byte, notAfter time.Time) (route.EndpointTransitAdmission, error) {
-			if len(raw) == 0 || attachment == [32]byte{} || key == [32]byte{} || role != route.IntroductionRole || nodeID != introduction.NodeID || !notAfter.Equal(deadline) {
-				return route.EndpointTransitAdmission{}, errors.New("unexpected process Introduction admission")
-			}
-			return route.EndpointTransitAdmission{AuthorizationID: identifier(81), NetworkID: network, Digest: digest, Epoch: input.Epoch,
-				TransitRole: route.IntroductionRole, TransitNodeID: introduction.NodeID, NotAfter: deadline}, nil
-		}, HandshakeLimit: 3, SlotLimit: 1, DeliveryLimit: 1, DrainTimeout: time.Second})
+		Admit:          fixtureTransitGrantAdmitter(input, network, digest, introduction.NodeID, route.IntroductionRole),
+		HandshakeLimit: 3, SlotLimit: 1, DeliveryLimit: 1, DrainTimeout: time.Second})
 }
 
 func openResponder(input config, deadline time.Time) (*node.Responder, error) {
@@ -155,17 +151,40 @@ func openResponder(input config, deadline time.Time) (*node.Responder, error) {
 	}
 	network, _ := fixed(input.Network)
 	digest, _ := fixed(input.Digest)
-	attachment, _ := fixed(input.ServiceAttachment)
 	return node.StartResponder(node.ResponderConfig{ListenAddress: responder.Endpoint, Certificate: certificate,
 		NetworkID: network, EpochDigest: digest, NodeID: responder.NodeID, NodePublicKey: responder.PublicKey, Epoch: input.Epoch, NotAfter: deadline,
-		Rendezvous: node.ResponderPeer{NodeID: rendezvous.NodeID, PublicKey: rendezvous.PublicKey, Endpoint: rendezvous.Endpoint},
-		Admit: func(raw []byte, received, key [32]byte, role byte, nodeID [32]byte, notAfter time.Time) (route.EndpointTransitAdmission, error) {
-			if string(raw) != input.ResponderAuthorization || received != attachment || key == [32]byte{} || role != route.ResponderRole || nodeID != responder.NodeID || !notAfter.Equal(deadline) {
-				return route.EndpointTransitAdmission{}, errors.New("unexpected process Responder admission")
-			}
-			return route.EndpointTransitAdmission{AuthorizationID: identifier(82), NetworkID: network, Digest: digest, Epoch: input.Epoch,
-				TransitRole: route.ResponderRole, TransitNodeID: responder.NodeID, NotAfter: deadline}, nil
-		}, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, DrainTimeout: time.Second})
+		Rendezvous:     node.ResponderPeer{NodeID: rendezvous.NodeID, PublicKey: rendezvous.PublicKey, Endpoint: rendezvous.Endpoint},
+		Admit:          fixtureTransitGrantAdmitter(input, network, digest, responder.NodeID, route.ResponderRole),
+		HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, DrainTimeout: time.Second})
+}
+
+// fixtureTransitGrantAdmitter is deliberately narrow process-test evidence:
+// it verifies the shared State authority key and spends a grant only in this
+// role process. Durable State duty spending belongs to internal/node, not this
+// fixture command.
+func fixtureTransitGrantAdmitter(input config, network, digest, transitNode [32]byte, role byte) route.EndpointTransitBindingAdmitter {
+	encoded, err := fixed(input.TransitAuthority)
+	if err != nil {
+		return func([]byte, [32]byte, [32]byte, byte, [32]byte, time.Time) (route.EndpointTransitAdmission, error) {
+			return route.EndpointTransitAdmission{}, err
+		}
+	}
+	authority := ed25519.PublicKey(encoded[:])
+	spent := make(map[[32]byte]struct{})
+	return func(raw []byte, attachment, key [32]byte, gotRole byte, gotNode [32]byte, notAfter time.Time) (route.EndpointTransitAdmission, error) {
+		grant, verifyErr := route.VerifyTransitGrant(raw, authority)
+		if verifyErr != nil || grant.NetworkID != network || grant.Digest != digest || grant.Epoch != input.Epoch ||
+			grant.AttachmentID != attachment || grant.ClientKeyDigest != key || grant.TransitRole != role || gotRole != role ||
+			grant.TransitNodeID != transitNode || gotNode != transitNode || !grant.NotAfter.Equal(notAfter) || !time.Now().UTC().Before(grant.NotAfter) {
+			return route.EndpointTransitAdmission{}, errors.New("C2 fixture State Transit Grant was refused")
+		}
+		if _, exists := spent[grant.GrantID]; exists {
+			return route.EndpointTransitAdmission{}, errors.New("C2 fixture Transit Grant was replayed")
+		}
+		spent[grant.GrantID] = struct{}{}
+		return route.EndpointTransitAdmission{AuthorizationID: grant.GrantID, NetworkID: grant.NetworkID, Digest: grant.Digest,
+			Epoch: grant.Epoch, TransitRole: grant.TransitRole, TransitNodeID: grant.TransitNodeID, NotAfter: grant.NotAfter}, nil
+	}
 }
 
 func (value peer) tlsCertificate() (tls.Certificate, error) {

@@ -50,6 +50,11 @@ finite per-attempt capability, not a stable User identity, shared CA, or
 browser certificate. A future on-demand issuer or different key-binding model
 requires a superseding decision.
 
+The Transit Grant authorizes only the adjacent TLS attachment. It is not the
+Publisher-selected `JoinHandle`: Introduction retains that independently inside
+the registered slot and the sealed C-2 record. Reusing the old opaque field as
+both values would make key-bound grants unable to reach a legitimate slot.
+
 Issuance is a finite project-operated action at publication time for the
 closed alpha. It is not a permissionless resource market, public control
 plane, availability promise, or independent-operator claim.

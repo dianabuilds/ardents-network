@@ -9,6 +9,7 @@ import (
 	"crypto/hpke"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -34,13 +35,21 @@ type peer struct {
 	NodeID, PublicKey, Endpoint, Certificate, PrivateKey string
 }
 
+// transitCredential is test-only closed-alpha provisioning material for one
+// State-authorized Transit Grant and its matching ephemeral TLS key pair.
+// It is never a participant configuration format.
+type transitCredential struct {
+	Grant, Certificate, PrivateKey string
+}
+
 type config struct {
 	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath string
 	Epoch                                                                                      uint64
 	Introduction, Rendezvous, Responder, Initiator, Gateway                                    peer
 	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment          string
 	GatewayRoot, GatewayProfilePath                                                            string
-	SlotAuthorization, ResponderAuthorization, InviteID, Invite                                string
+	TransitAuthority, InviteID, Invite                                                         string
+	SlotCredential, ResponderCredential, IntroductionCredential                                transitCredential
 }
 
 type publicationEnvelope struct {
@@ -90,7 +99,8 @@ func readConfig(path string) (config, error) {
 		return config{}, err
 	}
 	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.GatewayRoot == "" || input.GatewayProfilePath == "" || input.ReadyRoot == "" || input.CompletePath == "" ||
-		input.SlotAuthorization == "" || input.ResponderAuthorization == "" || input.Invite == "" {
+		input.TransitAuthority == "" || input.Invite == "" || !input.SlotCredential.valid() ||
+		!input.ResponderCredential.valid() || !input.IntroductionCredential.valid() {
 		return config{}, errors.New("C2 fixture configuration is incomplete")
 	}
 	if _, err := input.deadline(); err != nil {
@@ -166,8 +176,17 @@ func runPublisher(input config) error {
 		return err
 	}
 	brokerID, principal, administrator := identifier(41), identifier(42), identifier(43)
+	slotAuthorization, slotCertificate, slotGrant, err := input.SlotCredential.decode()
+	if err != nil {
+		return err
+	}
+	responderAuthorization, responderCertificate, responderGrant, err := input.ResponderCredential.decode()
+	if err != nil {
+		return err
+	}
 	publisher, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: brokerID, AuthorityPublic: authorityPublic,
-		IntroductionPublic: introductionPublic, ConnectionPrincipal: principal, AdministrationPrincipal: administrator, PublicationRoot: input.PublisherRoot})
+		IntroductionPublic: introductionPublic, ConnectionPrincipal: principal, AdministrationPrincipal: administrator, PublicationRoot: input.PublisherRoot,
+		TransitClientCertificates: map[[32]byte]tls.Certificate{slotGrant.GrantID: slotCertificate, responderGrant.GrantID: responderCertificate}})
 	if err != nil {
 		return err
 	}
@@ -188,7 +207,7 @@ func runPublisher(input config) error {
 	slot, err := publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{
 		Profile: endpointapi.PublisherIntroductionProfile{NetworkID: network, Digest: digest, Epoch: input.Epoch, Introduction: introduction,
 			Rendezvous: rendezvous, Responder: responder, SlotAttachmentID: slotAttachment, Reachability: slotReachability, JoinHandle: join,
-			NotAfter: deadline, SlotAuthorization: []byte(input.SlotAuthorization), ResponderAuthorization: []byte(input.ResponderAuthorization)},
+			NotAfter: deadline, SlotAuthorization: slotAuthorization, ResponderAuthorization: responderAuthorization},
 		HPKEPrivate: hpkePrivate, At: now})
 	if err != nil {
 		return err
@@ -198,9 +217,13 @@ func runPublisher(input config) error {
 	if err != nil {
 		return err
 	}
+	introductionAuthorization, _, _, err := input.IntroductionCredential.decode()
+	if err != nil {
+		return err
+	}
 	descriptor, _, err := reachability.Issue(reachability.IssueInput{Current: current, InstanceSigner: instancePrivate,
 		Introduction: reachability.Introduction{StateDigest: digest, Epoch: input.Epoch, IntroductionNodeID: introduction.NodeID,
-			RendezvousNodeID: rendezvous.NodeID, Reachability: slotReachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: join[:]}})
+			RendezvousNodeID: rendezvous.NodeID, Reachability: slotReachability, JoinHandle: join, NotAfter: deadline, SubmissionAuthorization: introductionAuthorization}})
 	if err != nil {
 		return err
 	}
@@ -251,9 +274,17 @@ func runUser(input config) error {
 	serviceAttachment, _ := fixed(input.ServiceAttachment)
 	resolutionAttachment, _ := fixed(input.ResolutionAttachment)
 	inviteID, _ := fixed(input.InviteID)
+	introductionAuthorization, introductionCertificate, introductionGrant, err := input.IntroductionCredential.decode()
+	if err != nil {
+		return err
+	}
+	if len(introductionAuthorization) == 0 {
+		return errors.New("user C2 fixture Introduction grant is unavailable")
+	}
 	userPrincipal := identifier(42)
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: identifier(44), AuthorityPublic: authority,
-		IntroductionPublic: make([]byte, ed25519.PublicKeySize), ConnectionPrincipal: userPrincipal})
+		IntroductionPublic: make([]byte, ed25519.PublicKeySize), ConnectionPrincipal: userPrincipal,
+		TransitClientCertificates: map[[32]byte]tls.Certificate{introductionGrant.GrantID: introductionCertificate}})
 	if err != nil {
 		return err
 	}
@@ -275,7 +306,7 @@ func runUser(input config) error {
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
 		Routes: map[string]string{"": "/"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10})
 	if err != nil {
-		return err
+		return fmt.Errorf("user C2 fixture exact route: %w", err)
 	}
 	defer site.Close()
 	var ready endpointapi.ReferenceReady
