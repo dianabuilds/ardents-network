@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -13,14 +14,18 @@ import (
 
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func runTransitRole(input config, role string) error {
-	config, ready, err := nativeFixtureNodeConfig(input, role)
+	config, closeState, ready, err := nativeFixtureNodeConfig(input, role)
 	if err != nil {
 		return err
 	}
+	defer closeState()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	completed := make(chan nativeFixtureResult, 1)
@@ -63,22 +68,39 @@ type nativeFixtureResult struct {
 	err    error
 }
 
-func nativeFixtureNodeConfig(input config, role string) (node.Config, <-chan struct{}, error) {
-	local, certificate, identity, view, err := nativeFixtureRole(input, role)
+func nativeFixtureNodeConfig(input config, role string) (node.Config, func() error, <-chan struct{}, error) {
+	local, certificate, identity, err := nativeFixtureRole(input, role)
 	if err != nil {
-		return node.Config{}, nil, err
+		return node.Config{}, nil, nil, err
+	}
+	authority, err := fixed(input.TransitAuthority)
+	if err != nil {
+		return node.Config{}, nil, nil, err
+	}
+	network, err := fixed(input.Network)
+	if err != nil {
+		return node.Config{}, nil, nil, err
+	}
+	stateRoot := input.TransitStateRoots[role]
+	store, err := state.Open(state.Config{Root: stateRoot, NetworkID: network,
+		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(authority[:]): ed25519.PublicKey(authority[:])}, Threshold: 1,
+		Clock: time.Now, AcceptedProfile: route.Profile, Source: source.Config{MaterialIndex: input.TransitStateMaterials[role]}})
+	if err != nil {
+		return node.Config{}, nil, nil, err
 	}
 	ready := make(chan struct{})
-	localRoot := filepath.Join(input.ReadyRoot, "native-role-"+role)
+	localRoot := filepath.Join(filepath.Dir(stateRoot), filepath.Base(stateRoot)+"-duty")
 	openedRoles, err := duty.Open(duty.Config{Root: localRoot, Clock: time.Now, Create: true})
 	if err != nil {
-		return node.Config{}, nil, err
+		_ = store.Close()
+		return node.Config{}, nil, nil, err
 	}
 	if err := openedRoles.Close(); err != nil {
-		return node.Config{}, nil, err
+		_ = store.Close()
+		return node.Config{}, nil, nil, err
 	}
-	config := node.Config{NetworkID: view.DutyNetworkID(), NodeID: local.NodeID, IdentityKey: identity,
-		Current: func() (node.DutyView, error) { return view, nil }, PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond,
+	config := node.Config{NetworkID: network, NodeID: local.NodeID, IdentityKey: identity,
+		Current: func() (node.DutyView, error) { return store.CurrentNodeDuty() }, PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond,
 		LocalRoleStateRoot: localRoot, CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event node.Event) error {
 			if event.State == "READY" {
@@ -103,57 +125,52 @@ func nativeFixtureNodeConfig(input config, role string) (node.Config, <-chan str
 	case "responder":
 		config.Responder = node.ResponderProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, DrainTimeout: time.Second}
 	default:
-		return node.Config{}, nil, errors.New("C2 fixture transit role is unsupported")
+		_ = store.Close()
+		return node.Config{}, nil, nil, errors.New("C2 fixture transit role is unsupported")
 	}
-	return config, ready, nil
+	return config, store.Close, ready, nil
 }
 
-func nativeFixtureRole(input config, role string) (endpointapi.TransitPeer, tls.Certificate, ed25519.PrivateKey, node.DutyView, error) {
+func nativeFixtureRole(input config, role string) (endpointapi.TransitPeer, tls.Certificate, ed25519.PrivateKey, error) {
 	introduction, err := input.Introduction.decode()
 	if err != nil {
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, err
+		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, err
 	}
 	rendezvous, err := input.Rendezvous.decode()
 	if err != nil {
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, err
+		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, err
 	}
 	responder, err := input.Responder.decode()
 	if err != nil {
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, err
+		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, err
 	}
 	initiator, err := input.Initiator.decode()
 	if err != nil {
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, err
-	}
-	gateway, err := input.Gateway.decode()
-	if err != nil {
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, err
+		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, err
 	}
 	var local endpointapi.TransitPeer
-	var candidates []fixtureDutyCandidate
 	var selected peer
 	switch role {
 	case "rendezvous":
-		local, selected, candidates = rendezvous, input.Rendezvous, []fixtureDutyCandidate{fixtureCandidate(initiator, "initiator"), fixtureCandidate(responder, "responder")}
+		local, selected = rendezvous, input.Rendezvous
 	case "initiator":
-		local, selected, candidates = initiator, input.Initiator, []fixtureDutyCandidate{fixtureCandidate(initiator, "initiator"), fixtureCandidate(rendezvous, "rendezvous"), fixtureCandidate(gateway, "destination-resolution")}
+		local, selected = initiator, input.Initiator
 	case "introduction":
 		local, selected = introduction, input.Introduction
 	case "responder":
-		local, selected, candidates = responder, input.Responder, []fixtureDutyCandidate{fixtureCandidate(rendezvous, "rendezvous")}
+		local, selected = responder, input.Responder
 	default:
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, errors.New("C2 fixture transit role is unsupported")
+		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, errors.New("C2 fixture transit role is unsupported")
 	}
 	certificate, err := selected.tlsCertificate()
 	if err != nil {
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, err
+		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, err
 	}
 	identity, ok := certificate.PrivateKey.(ed25519.PrivateKey)
 	if !ok {
-		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, nil, errors.New("C2 fixture native Node identity is invalid")
+		return endpointapi.TransitPeer{}, tls.Certificate{}, nil, errors.New("C2 fixture native Node identity is invalid")
 	}
-	view, err := newFixtureDutyView(input, local, role, candidates)
-	return local, certificate, identity, view, err
+	return local, certificate, identity, nil
 }
 
 func (value peer) tlsCertificate() (tls.Certificate, error) {

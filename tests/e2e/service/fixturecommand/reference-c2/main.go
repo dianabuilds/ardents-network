@@ -50,6 +50,8 @@ type config struct {
 	GatewayRoot, GatewayProfilePath                                                            string
 	TransitAuthority, InviteID, Invite                                                         string
 	SlotCredential, ResponderCredential, IntroductionCredential                                transitCredential
+	TransitStateRoots                                                                          map[string]string
+	TransitStateMaterials                                                                      map[string]uint32
 }
 
 type publicationEnvelope struct {
@@ -100,7 +102,7 @@ func readConfig(path string) (config, error) {
 	}
 	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.GatewayRoot == "" || input.GatewayProfilePath == "" || input.ReadyRoot == "" || input.CompletePath == "" ||
 		input.TransitAuthority == "" || input.Invite == "" || !input.SlotCredential.valid() ||
-		!input.ResponderCredential.valid() || !input.IntroductionCredential.valid() {
+		!input.ResponderCredential.valid() || !input.IntroductionCredential.valid() || len(input.TransitStateRoots) != 4 || len(input.TransitStateMaterials) != 4 {
 		return config{}, errors.New("C2 fixture configuration is incomplete")
 	}
 	if _, err := input.deadline(); err != nil {
@@ -114,6 +116,11 @@ func readConfig(path string) (config, error) {
 	for _, value := range []peer{input.Introduction, input.Rendezvous, input.Responder, input.Initiator, input.Gateway} {
 		if _, err := value.decode(); err != nil {
 			return config{}, err
+		}
+	}
+	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
+		if input.TransitStateRoots[role] == "" {
+			return config{}, errors.New("C2 fixture transit State root is unavailable")
 		}
 	}
 	if _, err := input.entryInvite(); err != nil {

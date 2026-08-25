@@ -27,9 +27,9 @@ import (
 func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(20 * time.Second)
-	network, digest := referenceC2ID(1), referenceC2ID(2)
 	introductionID, rendezvousID := referenceC2ID(3), referenceC2ID(4)
 	responderID, initiatorID := referenceC2ID(5), referenceC2ID(6)
+	gatewayID := referenceC2ID(13)
 	introductionMaterial := referenceC2Certificate(t, 3, "introduction")
 	rendezvousMaterial := referenceC2Certificate(t, 4, "rendezvous")
 	responderMaterial := referenceC2Certificate(t, 5, "responder")
@@ -43,10 +43,18 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	slotCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, introductionID, route.IntroductionRole, slotAttachment, deadline, 31)
-	responderCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, responderID, route.ResponderRole, serviceAttachment, deadline, 32)
-	introductionCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, 10, introductionID, route.IntroductionRole, serviceAttachment, deadline, 33)
-	invite := referenceC2EntryInvite(t, initiatorMaterial, network, digest, 10, initiatorID, deadline, now)
+	stateFixture := newReferenceC2StateFixture(t, now, deadline, transitAuthorityPrivate, map[string]referenceC2StateRecord{
+		"introduction":           {role: "introduction", nodeID: introductionID, material: introductionMaterial, endpoint: introductionAddress, family: "reference-introduction"},
+		"rendezvous":             {role: "rendezvous", nodeID: rendezvousID, material: rendezvousMaterial, endpoint: rendezvousAddress, family: "reference-rendezvous"},
+		"responder":              {role: "responder", nodeID: responderID, material: responderMaterial, endpoint: responderAddress, family: "reference-responder"},
+		"initiator":              {role: "initiator", nodeID: initiatorID, material: initiatorMaterial, endpoint: initiatorAddress, family: "reference-initiator"},
+		"destination-resolution": {role: "destination-resolution", nodeID: gatewayID, material: gatewayMaterial, endpoint: gatewayAddress, family: "reference-gateway"},
+	})
+	network, digest := stateFixture.network, stateFixture.digest
+	epoch := stateFixture.epoch
+	slotCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, epoch, introductionID, route.IntroductionRole, slotAttachment, deadline, 31)
+	responderCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, epoch, responderID, route.ResponderRole, serviceAttachment, deadline, 32)
+	introductionCredential := referenceC2TransitCredential(t, transitAuthorityPrivate, network, digest, epoch, introductionID, route.IntroductionRole, serviceAttachment, deadline, 33)
 	inviteID := referenceC2ID(11)
 
 	root := t.TempDir()
@@ -57,18 +65,33 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	completePath := filepath.Join(root, "complete")
+	stateRoots := map[string]string{}
+	stateMaterials := map[string]uint32{}
+	var invite []byte
+	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
+		stateRoot := filepath.Join(root, role+"-state")
+		candidate := referenceC2AcceptState(t, stateFixture, stateRoot, role)
+		stateRoots[role] = stateRoot
+		stateMaterials[role] = stateFixture.roles[role].materializationIndex
+		if role == "initiator" {
+			invite = referenceC2EntryInvite(t, initiatorMaterial, network, digest, epoch, candidate, deadline, now)
+		}
+	}
+	if len(invite) == 0 {
+		t.Fatal("reference C2 State fixture did not issue the Initiator Entry Invite")
+	}
 	fixture := map[string]any{
 		"Schema": "ardents-e2e-reference-c2-v1", "Network": referenceC2Hex(network), "Digest": referenceC2Hex(digest),
-		"Epoch": 10, "Deadline": deadline.Format(time.RFC3339), "PublicationPath": publicationPath, "PublisherRoot": filepath.Join(root, "publisher-state"),
+		"Epoch": epoch, "Deadline": deadline.Format(time.RFC3339), "PublicationPath": publicationPath, "PublisherRoot": filepath.Join(root, "publisher-state"),
 		"GatewayRoot": filepath.Join(root, "gateway-state"), "GatewayProfilePath": filepath.Join(root, "gateway-profile.json"),
 		"ReadyRoot": readyRoot, "CompletePath": completePath,
 		"Introduction": referenceC2Peer(introductionID, introductionMaterial, introductionAddress), "Rendezvous": referenceC2Peer(rendezvousID, rendezvousMaterial, rendezvousAddress),
 		"Responder": referenceC2Peer(responderID, responderMaterial, responderAddress), "Initiator": referenceC2Peer(initiatorID, initiatorMaterial, initiatorAddress),
-		"Gateway":    referenceC2Peer(referenceC2ID(13), gatewayMaterial, gatewayAddress),
+		"Gateway":    referenceC2Peer(gatewayID, gatewayMaterial, gatewayAddress),
 		"JoinHandle": referenceC2Hex(join), "Reachability": referenceC2Hex(reachability), "SlotAttachment": referenceC2Hex(slotAttachment),
 		"ServiceAttachment": referenceC2Hex(serviceAttachment), "ResolutionAttachment": referenceC2Hex(resolutionAttachment),
 		"TransitAuthority": hex.EncodeToString(transitAuthorityPublic), "SlotCredential": slotCredential, "ResponderCredential": responderCredential,
-		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite),
+		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite), "TransitStateRoots": stateRoots, "TransitStateMaterials": stateMaterials,
 	}
 	raw, err := json.Marshal(fixture)
 	if err != nil || os.WriteFile(configPath, raw, 0o600) != nil {
@@ -218,7 +241,7 @@ func referenceC2TransitCredential(t *testing.T, authority ed25519.PrivateKey, ne
 	return map[string]string{"Grant": base64.RawStdEncoding.EncodeToString(grant), "Certificate": material.certificate, "PrivateKey": material.privateKey}
 }
 
-func referenceC2EntryInvite(t *testing.T, material referenceC2CertificateMaterial, network, digest [32]byte, epoch uint64, initiator [32]byte,
+func referenceC2EntryInvite(t *testing.T, material referenceC2CertificateMaterial, network, digest [32]byte, epoch uint64, candidate entry.Candidate,
 	deadline, now time.Time) []byte {
 	t.Helper()
 	certificate, err := tls.X509KeyPair([]byte(material.certificate), []byte(material.privateKey))
@@ -229,21 +252,13 @@ func referenceC2EntryInvite(t *testing.T, material referenceC2CertificateMateria
 	if !ok {
 		t.Fatal("fixture Initiator private key is invalid")
 	}
-	family := sha256.Sum256(initiator[:])
-	keyID := referenceC2DutyDigest("key", initiator)
 	raw, err := entry.Issue(entry.IssueInput{NetworkID: network, Digest: digest, Epoch: epoch,
-		Candidate: entry.Candidate{NodeID: initiator, PublicKey: material.public, KeyID: keyID, FamilyID: family,
-			RecordDigest: referenceC2DutyDigest("record", initiator), DomainProofDigest: referenceC2DutyDigest("proof", initiator),
-			Endpoint: "127.0.0.1:1", Capacity: 1, Domain: "initiator", ValidFrom: now.Add(-time.Minute), ValidUntil: deadline, AssignmentNotAfter: deadline},
+		Candidate: candidate,
 		NotBefore: now.Add(-time.Second), NotAfter: deadline, Slot: 0, Generation: 1}, signer)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return raw
-}
-
-func referenceC2DutyDigest(prefix string, value [32]byte) [32]byte {
-	return sha256.Sum256(append(append([]byte("reference-c2-"), []byte(prefix)...), value[:]...))
 }
 
 func referenceC2Hex(value [32]byte) string { return hex.EncodeToString(value[:]) }

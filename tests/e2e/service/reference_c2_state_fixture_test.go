@@ -1,0 +1,170 @@
+package service_test
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"crypto/tls"
+	"encoding/binary"
+	"errors"
+	"sort"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/entry"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/tests/epochfixture/assignment"
+)
+
+// referenceC2StateFixture is a black-box, signed native-route State decision
+// for the separate-process C2 tracer. It builds only test input; State remains
+// the verifier and owner of each process's authenticated duty view.
+type referenceC2StateFixture struct {
+	network, digest [32]byte
+	epoch           uint64
+	now, deadline   time.Time
+	authority       ed25519.PrivateKey
+	inputs          [][]byte
+	raw             []byte
+	materials       map[string][]byte
+	roles           map[string]referenceC2StateRecord
+}
+
+type referenceC2StateRecord struct {
+	role                 string
+	nodeID               [32]byte
+	material             referenceC2CertificateMaterial
+	endpoint             string
+	family               string
+	raw                  []byte
+	capacity             uint16
+	materializationIndex uint32
+}
+
+func newReferenceC2StateFixture(t *testing.T, now, deadline time.Time, authority ed25519.PrivateKey,
+	peers map[string]referenceC2StateRecord) referenceC2StateFixture {
+	t.Helper()
+	if len(peers) != 5 {
+		t.Fatal("reference C2 State fixture requires five role records")
+	}
+	network := referenceC2ID(1)
+	domains := []string{"destination-resolution", "initiator", "introduction", "rendezvous", "responder"}
+	var seed [32]byte
+	for marker := uint64(1); ; marker++ {
+		seed = sha256.Sum256([]byte("reference-c2-native-state-seed-" + string(binary.BigEndian.AppendUint64(nil, marker))))
+		matches := true
+		for role, record := range peers {
+			selected, err := assignment.Select(network, 1, seed, record.family, domains)
+			matches = matches && err == nil && selected == role
+		}
+		if matches {
+			break
+		}
+	}
+	records := make([]referenceC2StateRecord, 0, len(peers))
+	for _, record := range peers {
+		private, err := referenceC2PrivateKey(record.material)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := referenceC2BuildStateRecord(network, record.nodeID, record.family, record.endpoint, now, deadline, private)
+		if err != nil {
+			t.Fatal(err)
+		}
+		record.raw, record.capacity = raw, 4
+		records = append(records, record)
+	}
+	sort.Slice(records, func(left, right int) bool {
+		return bytes.Compare(records[left].nodeID[:], records[right].nodeID[:]) < 0
+	})
+	inputs := make([][]byte, len(records))
+	for index := range records {
+		records[index].materializationIndex = uint32(index)
+		inputs[index] = records[index].raw
+	}
+	raw, digest, materials, err := referenceC2BuildStateEpoch(network, 1, now, deadline, inputs, records, seed, domains, authority)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roles := make(map[string]referenceC2StateRecord, len(records))
+	byRoleMaterials := make(map[string][]byte, len(records))
+	for index, record := range records {
+		roles[record.role] = record
+		byRoleMaterials[record.role] = materials[index]
+	}
+	return referenceC2StateFixture{network: network, digest: digest, epoch: 1, now: now, deadline: deadline, authority: authority,
+		inputs: inputs, raw: raw, materials: byRoleMaterials, roles: roles}
+}
+
+func referenceC2PrivateKey(material referenceC2CertificateMaterial) (ed25519.PrivateKey, error) {
+	certificate, err := tlsCertificate(material)
+	if err != nil {
+		return nil, err
+	}
+	private, ok := certificate.PrivateKey.(ed25519.PrivateKey)
+	if !ok {
+		return nil, errors.New("reference C2 State fixture identity is not Ed25519")
+	}
+	return private, nil
+}
+
+func referenceC2AcceptState(t *testing.T, fixture referenceC2StateFixture, root, role string) entry.Candidate {
+	t.Helper()
+	record, ok := fixture.roles[role]
+	if !ok {
+		t.Fatalf("reference C2 State role %q is unavailable", role)
+	}
+	public := fixture.authority.Public().(ed25519.PublicKey)
+	store, err := state.Open(state.Config{Root: root, NetworkID: fixture.network,
+		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(public): public}, Threshold: 1,
+		Now: fixture.now, AcceptedProfile: route.Profile, Source: source.Config{MaterialIndex: record.materializationIndex}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if _, err := store.Accept(context.Background(), fixture.raw, fixture.inputs, [][]byte{fixture.materials[role]}); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := store.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index := uint8(0); index < snapshot.CandidateCount; index++ {
+		candidate := snapshot.Candidates[index]
+		if candidate.NodeID == record.nodeID {
+			return entry.Candidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, KeyID: candidate.KeyID, FamilyID: candidate.FamilyID,
+				RecordDigest: candidate.RecordDigest, DomainProofDigest: candidate.DomainProofDigest, Endpoint: candidate.Endpoint, Capacity: candidate.Capacity,
+				Domain: candidate.Domain, ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil, AssignmentNotAfter: candidate.AssignmentNotAfter}
+		}
+	}
+	t.Fatalf("reference C2 State did not expose role %q", role)
+	return entry.Candidate{}
+}
+
+func tlsCertificate(material referenceC2CertificateMaterial) (tls.Certificate, error) {
+	return tls.X509KeyPair([]byte(material.certificate), []byte(material.privateKey))
+}
+
+func referenceC2BuildStateRecord(network, nodeID [32]byte, family, endpoint string, now, deadline time.Time, private ed25519.PrivateKey) ([]byte, error) {
+	if family == "" || endpoint == "" || len(private) != ed25519.PrivateKeySize {
+		return nil, errors.New("reference C2 State record input is invalid")
+	}
+	buffer := new(bytes.Buffer)
+	buffer.WriteString("ARNR")
+	buffer.WriteByte(1)
+	buffer.Write(network[:])
+	buffer.Write(nodeID[:])
+	referenceC2U64(buffer, 1)
+	referenceC2I64(buffer, now.Add(-time.Minute).Unix())
+	referenceC2I64(buffer, deadline.Unix())
+	referenceC2Text(buffer, family)
+	buffer.WriteByte(2)
+	referenceC2Text(buffer, endpoint)
+	referenceC2U16(buffer, 4)
+	buffer.Write(private.Public().(ed25519.PublicKey))
+	buffer.Write(ed25519.Sign(private, buffer.Bytes()))
+	return buffer.Bytes(), nil
+}
