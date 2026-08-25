@@ -311,6 +311,10 @@ func runUser(input config) error {
 	case <-time.After(time.Until(deadline)):
 		return errors.New("user C2 fixture timed out before Reference Site readiness")
 	}
+	selected, err := targetlink.Decode(envelope.TargetLink)
+	if err != nil || ready.AuthenticatedTarget != selected.Target {
+		return errors.New("user C2 fixture did not authenticate the selected Target Link")
+	}
 	if browser == nil {
 		for resource, expected := range map[string]string{"": referenceDocument, "site.css": referenceStylesheet, "mark.svg": referenceMark} {
 			response, requestErr := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Get(ready.URL + resource)
@@ -319,7 +323,10 @@ func runUser(input config) error {
 			}
 			body, readErr := io.ReadAll(response.Body)
 			_ = response.Body.Close()
-			if readErr != nil || response.StatusCode != http.StatusOK || string(body) != expected {
+			if readErr != nil || response.StatusCode != http.StatusOK || string(body) != expected ||
+				response.Header.Get("Content-Security-Policy") != "sandbox allow-same-origin; default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'none'" ||
+				response.Header.Get("Cache-Control") != "no-store" || response.Header.Get("Referrer-Policy") != "no-referrer" ||
+				response.Header.Get("X-Content-Type-Options") != "nosniff" {
 				return errors.New("user C2 fixture did not receive its declared Reference Site resource")
 			}
 		}
