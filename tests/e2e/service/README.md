@@ -23,11 +23,11 @@ removes the Publisher's local Introduction slot. The User must report bounded
 For an explicitly cross-compiled Linux qualification only, a
 test runner may provide the matching fixture through
 `ARDENTS_E2E_FIXTURE_REFERENCE_C2`; ordinary local and CI runs leave it unset
-and rebuild the fixture from the current checkout. The same test, including
-its declared document, stylesheet, and SVG, passed from a clean local Linux Go
-container on 2026-08-25. This is process and Linux-runtime evidence, not a
-multi-host qualification claim. On a Windows qualification
-host with an explicitly selected Firefox executable, set
+and rebuild the fixture from the current checkout. Both C-2 scenarios,
+including the declared document, stylesheet, SVG, and offline result, passed
+from a clean local Linux Go container on 2026-08-25. This is process and
+Linux-runtime evidence, not a multi-host qualification claim.
+On a Windows qualification host with an explicitly selected Firefox executable, set
 `ARDENTS_REFERENCE_C2_FIREFOX` to its absolute path. The User then passes only
 the already-authenticated scoped loopback Reference URL to the maintained
 Firefox launcher; the scenario has no browser profile, proxy, DNS, VPN, or
