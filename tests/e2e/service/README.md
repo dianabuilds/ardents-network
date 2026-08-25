@@ -7,11 +7,15 @@ fails and the first replacement also fails. The recovery scenario mocks only
 the external Route socket; Service, publication, Application IPC, continuity,
 and workload processes are real commands.
 
-The Reference C-2 scenario starts seven bounded fixture roles — Publisher, User,
-Destination Resolution Gateway, Introduction, Initiator, Rendezvous, and
-Responder — as separate processes. Its transit duties reopen accepted signed
-native-route State, require one valid refresh wave from two mutually
-authenticated State Source processes, and then drain through their maintained
+The Reference C-2 scenario starts eight bounded fixture roles — Publisher, its
+one-shot local Reference Site Application, User, Destination Resolution Gateway,
+Introduction, Initiator, Rendezvous, and Responder — as separate processes.
+The Publisher admits that local Application only over one token-bound loopback
+stream, then supplies its byte stream to the C-2 `Accept` handoff; the
+Application has no Route, Target, State, or browser-selection authority.
+Its transit duties reopen accepted signed native-route State, require one valid
+refresh wave from two mutually authenticated State Source processes, and then
+drain through their maintained
 Node lifecycle. It drives the selected Target Link through the private lookup
 Entry/Initiator/Gateway carrier and then C-2, and verifies the bounded static
 Reference Site document, declared stylesheet, and declared SVG. In its

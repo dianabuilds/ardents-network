@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/hpke"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
@@ -51,6 +49,7 @@ type stateClient struct {
 
 type config struct {
 	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath, ResourceProofPath string
+	PublisherApplicationAddress, PublisherApplicationToken, PublisherApplicationReady                             string
 	Epoch                                                                                                         uint64
 	Introduction, Rendezvous, Responder, Initiator, Gateway                                                       peer
 	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment                             string
@@ -76,7 +75,7 @@ type result struct {
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|user|rendezvous|initiator|introduction|responder) CONFIG")
+		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|publisher-app|user|gateway|rendezvous|initiator|introduction|responder) CONFIG")
 		os.Exit(2)
 	}
 	input, err := readConfig(os.Args[2])
@@ -84,6 +83,8 @@ func main() {
 		switch os.Args[1] {
 		case "publisher":
 			err = runPublisher(input)
+		case "publisher-app":
+			err = runPublisherApplication(input)
 		case "user":
 			err = runUser(input)
 		case "gateway":
@@ -98,81 +99,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-}
-
-func readConfig(path string) (config, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil || len(raw) == 0 || len(raw) > 16<<10 {
-		return config{}, errors.New("C2 fixture configuration is unavailable")
-	}
-	var input config
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&input); err != nil {
-		return config{}, err
-	}
-	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.GatewayRoot == "" || input.GatewayProfilePath == "" || input.ReadyRoot == "" || input.CompletePath == "" || input.ResourceProofPath == "" ||
-		input.TransitAuthority == "" || input.Invite == "" || !input.SlotCredential.valid() ||
-		!input.ResponderCredential.valid() || !input.IntroductionCredential.valid() || len(input.TransitStateRoots) != 4 || len(input.TransitStateMaterials) != 4 ||
-		len(input.TransitStateSources) != 2 || input.TransitStateClient.Certificate == "" || input.TransitStateClient.PrivateKey == "" {
-		return config{}, errors.New("C2 fixture configuration is incomplete")
-	}
-	if _, err := input.deadline(); err != nil {
-		return config{}, err
-	}
-	for _, value := range []string{input.Network, input.Digest, input.JoinHandle, input.Reachability, input.SlotAttachment, input.ServiceAttachment, input.ResolutionAttachment, input.InviteID} {
-		if _, err := fixed(value); err != nil {
-			return config{}, err
-		}
-	}
-	for _, value := range []peer{input.Introduction, input.Rendezvous, input.Responder, input.Initiator, input.Gateway} {
-		if _, err := value.decode(); err != nil {
-			return config{}, err
-		}
-	}
-	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
-		if input.TransitStateRoots[role] == "" {
-			return config{}, errors.New("C2 fixture transit State root is unavailable")
-		}
-		if _, present := input.TransitStateMaterials[role]; !present {
-			return config{}, errors.New("C2 fixture transit State materialization is unavailable")
-		}
-	}
-	for _, source := range input.TransitStateSources {
-		if source.Address == "" || source.ServerName == "" || source.Root == "" {
-			return config{}, errors.New("C2 fixture transit State source is unavailable")
-		}
-		if _, err := fixed(source.LeafKeyDigest); err != nil {
-			return config{}, err
-		}
-	}
-	if _, err := input.entryInvite(); err != nil {
-		return config{}, err
-	}
-	if input.FirefoxExecutable != "" && !filepath.IsAbs(input.FirefoxExecutable) {
-		return config{}, errors.New("C2 fixture Firefox executable path is invalid")
-	}
-	return input, nil
-}
-
-func (input config) deadline() (time.Time, error) {
-	deadline, err := time.Parse(time.RFC3339, input.Deadline)
-	if err != nil || !time.Now().UTC().Before(deadline) {
-		return time.Time{}, errors.New("C2 fixture deadline is invalid")
-	}
-	return deadline.UTC(), nil
-}
-
-func (value peer) decode() (endpointapi.TransitPeer, error) {
-	nodeID, err := fixed(value.NodeID)
-	if err != nil {
-		return endpointapi.TransitPeer{}, err
-	}
-	public, err := fixed(value.PublicKey)
-	if err != nil || value.Endpoint == "" {
-		return endpointapi.TransitPeer{}, errors.New("C2 fixture peer is invalid")
-	}
-	return endpointapi.TransitPeer{NodeID: nodeID, PublicKey: public, Family: sha256.Sum256(nodeID[:]), Endpoint: value.Endpoint}, nil
 }
 
 func runPublisher(input config) error {
@@ -249,6 +175,14 @@ func runPublisher(input config) error {
 		return err
 	}
 	defer slot.Close()
+	var publisherApplication *publisherApplicationListener
+	if !input.PublisherOffline {
+		publisherApplication, err = openPublisherApplication(input)
+		if err != nil {
+			return err
+		}
+		defer publisherApplication.Close()
+	}
 	current, err := publication.Decode(published.Record, authorityPublic, network, now)
 	if err != nil {
 		return err
@@ -270,15 +204,20 @@ func runPublisher(input config) error {
 	if input.PublisherOffline {
 		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher", Class: "offline", Passed: true})
 	}
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+	application, err := publisherApplication.Accept(ctx)
+	if err != nil {
+		return err
+	}
+	defer application.Close()
+	if err := writePublisherApplicationReady(input.PublisherApplicationReady); err != nil {
+		return err
+	}
 	capability, err := publisher.Admit(principal, broker.Connection)
 	if err != nil {
 		return err
 	}
-	application, service := net.Pipe()
-	defer service.Close()
-	go serveStatic(service, input.ResourceProofPath)
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
-	defer cancel()
 	outcome, err := slot.Accept(ctx, endpointapi.InboundConnectionRequest{Principal: principal, Capability: capability,
 		Application: application, BytesEachDirection: 64 << 10, At: now})
 	if outcome.Class == "" {

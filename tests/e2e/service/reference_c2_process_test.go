@@ -93,6 +93,8 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 	}
 	completePath := filepath.Join(root, "complete")
 	resourceProofPath := filepath.Join(root, "reference-resources")
+	publisherApplicationAddress := referenceC2Address(t)
+	publisherApplicationReady := filepath.Join(root, "publisher-application-ready")
 	stateRoots := map[string]string{}
 	stateMaterials := map[string]uint32{}
 	var invite []byte
@@ -113,6 +115,7 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 		"Epoch": epoch, "Deadline": deadline.Format(time.RFC3339), "PublicationPath": publicationPath, "PublisherRoot": filepath.Join(root, "publisher-state"),
 		"GatewayRoot": filepath.Join(root, "gateway-state"), "GatewayProfilePath": filepath.Join(root, "gateway-profile.json"),
 		"ReadyRoot": readyRoot, "CompletePath": completePath, "ResourceProofPath": resourceProofPath,
+		"PublisherApplicationAddress": publisherApplicationAddress, "PublisherApplicationToken": referenceC2Hex(referenceC2ID(14)), "PublisherApplicationReady": publisherApplicationReady,
 		"Introduction": referenceC2Peer(introductionID, introductionMaterial, introductionAddress), "Rendezvous": referenceC2Peer(rendezvousID, rendezvousMaterial, rendezvousAddress),
 		"Responder": referenceC2Peer(responderID, responderMaterial, responderAddress), "Initiator": referenceC2Peer(initiatorID, initiatorMaterial, initiatorAddress),
 		"Gateway":    referenceC2Peer(gatewayID, gatewayMaterial, gatewayAddress),
@@ -153,8 +156,19 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 		process := <-gateway
 		t.Fatalf("C2 Gateway process did not become ready: %v\n%s", err, process.output)
 	}
+	var publisherApplication <-chan commandResult
+	if !publisherOffline {
+		publisherApplication = startCommand(ctx, root, fixtureBinary, "publisher-app", configPath)
+		if err := referenceC2WaitForFile(ctx, publisherApplicationReady); err != nil {
+			process := <-publisherApplication
+			t.Fatalf("C2 Publisher local Application process did not become ready: %v\n%s", err, process.output)
+		}
+	}
 	user := startCommand(ctx, root, fixtureBinary, "user", configPath)
 	processes := map[string]commandResult{"user": <-user, "publisher": <-publisher}
+	if publisherApplication != nil {
+		processes["publisher-app"] = <-publisherApplication
+	}
 	if err := os.WriteFile(completePath, []byte("complete\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +176,11 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 		processes[role] = <-process
 	}
 	processes["gateway"] = <-gateway
-	for _, role := range []string{"user", "publisher", "initiator", "introduction", "rendezvous", "responder", "gateway"} {
+	roles := []string{"user", "publisher", "initiator", "introduction", "rendezvous", "responder", "gateway"}
+	if !publisherOffline {
+		roles = append(roles, "publisher-app")
+	}
+	for _, role := range roles {
 		process := processes[role]
 		if process.err != nil {
 			t.Fatalf("C2 %s Endpoint process failed: %v\n%s", role, process.err, process.output)
