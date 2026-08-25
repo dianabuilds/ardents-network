@@ -129,7 +129,8 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 	}
 	defer store.Close()
 	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: rendezvousConfig.NetworkID, NodeID: [32]byte{48},
-		IdentityKey: gatewayPrivate, AssignmentNotAfter: now.Add(time.Minute), Store: store, Clock: func() time.Time { return now }})
+		IdentityKey: gatewayPrivate, AssignmentNotAfter: now.Add(time.Minute), Store: store, Clock: func() time.Time { return now },
+		AuthorizeDescriptor: func(reachability.Descriptor, time.Time) bool { return true }})
 	if err != nil {
 		t.Fatal(err)
 	}

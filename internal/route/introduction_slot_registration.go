@@ -41,15 +41,15 @@ func DecodeIntroductionSlotRegistration(raw []byte) (IntroductionSlotRegistratio
 		return IntroductionSlotRegistration{}, err
 	}
 	result := IntroductionSlotRegistration{}
-	if result.Reachability, err = wireIdentifier(reader, "Introduction reachability"); err != nil {
+	if result.Reachability, err = wireIdentifier(reader, "introduction reachability"); err != nil {
 		return IntroductionSlotRegistration{}, err
 	}
-	if result.JoinHandle, err = wireIdentifier(reader, "Introduction join handle"); err != nil {
+	if result.JoinHandle, err = wireIdentifier(reader, "introduction join handle"); err != nil {
 		return IntroductionSlotRegistration{}, err
 	}
 	notAfter := reader.uint64()
 	if reader.off != len(reader.raw) || notAfter > uint64(^uint64(0)>>1) {
-		return IntroductionSlotRegistration{}, errors.New("Introduction slot registration has surplus or invalid expiry")
+		return IntroductionSlotRegistration{}, errors.New("introduction slot registration has surplus or invalid expiry")
 	}
 	result.NotAfter = time.Unix(int64(notAfter), 0).UTC()
 	if err := validIntroductionSlotRegistration(result); err != nil {
@@ -61,7 +61,7 @@ func DecodeIntroductionSlotRegistration(raw []byte) (IntroductionSlotRegistratio
 func validIntroductionSlotRegistration(input IntroductionSlotRegistration) error {
 	if input.Reachability == [32]byte{} || input.JoinHandle == [32]byte{} || input.NotAfter.IsZero() || input.NotAfter.Unix() <= 0 ||
 		!input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) {
-		return errors.New("Introduction slot registration is invalid")
+		return errors.New("introduction slot registration is invalid")
 	}
 	return nil
 }

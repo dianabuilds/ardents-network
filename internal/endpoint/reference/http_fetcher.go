@@ -27,7 +27,7 @@ type HTTPFetcher struct {
 // closes; closing one also closes the other.
 func NewHTTPFetcher(connection io.ReadWriteCloser) (*HTTPFetcher, error) {
 	if connection == nil {
-		return nil, errors.New("Reference Site Service Connection is unavailable")
+		return nil, errors.New("reference Site Service Connection is unavailable")
 	}
 	return &HTTPFetcher{connection: connection, reader: bufio.NewReader(connection), done: make(chan struct{})}, nil
 }
@@ -37,12 +37,12 @@ func NewHTTPFetcher(connection io.ReadWriteCloser) (*HTTPFetcher, error) {
 // closes the Service Connection rather than leaving an ambiguous request.
 func (fetcher *HTTPFetcher) Fetch(ctx context.Context, input Request) (Response, error) {
 	if fetcher == nil || ctx == nil || (input.Method != http.MethodGet && input.Method != http.MethodHead) || !validRemotePath(input.Path) {
-		return Response{}, errors.New("Reference Site request is invalid")
+		return Response{}, errors.New("reference Site request is invalid")
 	}
 	fetcher.mu.Lock()
 	defer fetcher.mu.Unlock()
 	if fetcher.closed {
-		return Response{}, errors.New("Reference Site Service Connection is closed")
+		return Response{}, errors.New("reference Site Service Connection is closed")
 	}
 	stop := context.AfterFunc(ctx, func() { _ = fetcher.connection.Close() })
 	defer stop()
@@ -67,7 +67,7 @@ func (fetcher *HTTPFetcher) Fetch(ctx context.Context, input Request) (Response,
 		len(response.TransferEncoding) != 0 || response.Header.Get("Content-Type") == "" || response.Header.Get("Location") != "" ||
 		len(response.Header.Values("Set-Cookie")) != 0 {
 		_ = fetcher.closeLocked()
-		return Response{}, errors.New("Reference Site response is outside the static profile")
+		return Response{}, errors.New("reference Site response is outside the static profile")
 	}
 	if input.Method == http.MethodHead {
 		return Response{ContentType: response.Header.Get("Content-Type"), Body: []byte{}}, nil
@@ -75,7 +75,7 @@ func (fetcher *HTTPFetcher) Fetch(ctx context.Context, input Request) (Response,
 	body, err := io.ReadAll(io.LimitReader(response.Body, maximumServiceResponse+1))
 	if err != nil || int64(len(body)) != response.ContentLength || len(body) == 0 || len(body) > maximumServiceResponse {
 		_ = fetcher.closeLocked()
-		return Response{}, errors.Join(err, errors.New("Reference Site response body is invalid"))
+		return Response{}, errors.Join(err, errors.New("reference Site response body is invalid"))
 	}
 	return Response{ContentType: response.Header.Get("Content-Type"), Body: body}, nil
 }

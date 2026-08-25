@@ -10,17 +10,15 @@ import (
 	"strings"
 )
 
-const portableUserUnitName = "ardents-endpoint.service"
-
 // runEndpointUserUnit writes the explicit Ubuntu systemd --user unit for one
 // exact Portable artifact and enrollment input. It does not write the unit,
 // reload systemd, enable it, or start the Endpoint.
 func runEndpointUserUnit(input string, output io.Writer) error {
 	if runtime.GOOS != "linux" {
-		return errors.New("Portable Endpoint user unit is available only on Linux")
+		return errors.New("portable Endpoint user unit is available only on Linux")
 	}
 	if input == "" {
-		return errors.New("Portable Endpoint enrollment input is required")
+		return errors.New("portable Endpoint enrollment input is required")
 	}
 	executable, err := os.Executable()
 	if err != nil {
@@ -45,11 +43,11 @@ func runEndpointUserUnit(input string, output io.Writer) error {
 func portableUserUnit(executable, enrollment string) (string, error) {
 	executable, err := unitArgument(executable)
 	if err != nil {
-		return "", fmt.Errorf("Portable Endpoint executable: %w", err)
+		return "", fmt.Errorf("portable Endpoint executable: %w", err)
 	}
 	enrollment, err = unitArgument(enrollment)
 	if err != nil {
-		return "", fmt.Errorf("Portable Endpoint enrollment input: %w", err)
+		return "", fmt.Errorf("portable Endpoint enrollment input: %w", err)
 	}
 	return "[Unit]\n" +
 		"Description=Ardents Portable Endpoint (closed alpha)\n" +

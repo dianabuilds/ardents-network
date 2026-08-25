@@ -53,15 +53,15 @@ func DecodeIntroductionSlotReady(raw []byte) (IntroductionSlotReady, error) {
 		return IntroductionSlotReady{}, err
 	}
 	result := IntroductionSlotReady{}
-	if result.Reachability, err = wireIdentifier(reader, "Introduction ready reachability"); err != nil {
+	if result.Reachability, err = wireIdentifier(reader, "introduction ready reachability"); err != nil {
 		return IntroductionSlotReady{}, err
 	}
-	if result.JoinHandle, err = wireIdentifier(reader, "Introduction ready join handle"); err != nil {
+	if result.JoinHandle, err = wireIdentifier(reader, "introduction ready join handle"); err != nil {
 		return IntroductionSlotReady{}, err
 	}
 	notAfter := reader.uint64()
 	if reader.off != len(reader.raw) || notAfter > uint64(^uint64(0)>>1) {
-		return IntroductionSlotReady{}, errors.New("Introduction slot ready has surplus or invalid expiry")
+		return IntroductionSlotReady{}, errors.New("introduction slot ready has surplus or invalid expiry")
 	}
 	result.NotAfter = time.Unix(int64(notAfter), 0).UTC()
 	if err := validIntroductionSlotReady(result); err != nil {
@@ -72,7 +72,7 @@ func DecodeIntroductionSlotReady(raw []byte) (IntroductionSlotReady, error) {
 
 func EncodeIntroductionDeliveryResult(input IntroductionDeliveryResult) ([]byte, error) {
 	if input.AttachmentID == [32]byte{} || (input.Outcome != IntroductionDelivered && input.Outcome != IntroductionUnavailable) {
-		return nil, errors.New("Introduction delivery result is invalid")
+		return nil, errors.New("introduction delivery result is invalid")
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+1)
 	body = appendUint16(body, 1)
@@ -89,12 +89,12 @@ func DecodeIntroductionDeliveryResult(raw []byte) (IntroductionDeliveryResult, e
 		return IntroductionDeliveryResult{}, err
 	}
 	result := IntroductionDeliveryResult{}
-	if result.AttachmentID, err = wireIdentifier(reader, "Introduction result attachment"); err != nil {
+	if result.AttachmentID, err = wireIdentifier(reader, "introduction result attachment"); err != nil {
 		return IntroductionDeliveryResult{}, err
 	}
 	result.Outcome = reader.uint8()
 	if reader.off != len(reader.raw) || (result.Outcome != IntroductionDelivered && result.Outcome != IntroductionUnavailable) {
-		return IntroductionDeliveryResult{}, errors.New("Introduction delivery result is malformed")
+		return IntroductionDeliveryResult{}, errors.New("introduction delivery result is malformed")
 	}
 	return result, nil
 }
@@ -102,7 +102,7 @@ func DecodeIntroductionDeliveryResult(raw []byte) (IntroductionDeliveryResult, e
 func validIntroductionSlotReady(input IntroductionSlotReady) error {
 	if input.Reachability == [32]byte{} || input.JoinHandle == [32]byte{} || input.NotAfter.IsZero() || input.NotAfter.Unix() <= 0 ||
 		!input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) {
-		return errors.New("Introduction slot ready is invalid")
+		return errors.New("introduction slot ready is invalid")
 	}
 	return nil
 }

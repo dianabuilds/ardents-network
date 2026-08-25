@@ -65,7 +65,7 @@ func Verify(raw []byte, expectedTarget, network [32]byte, at time.Time) (Verifie
 	if err != nil || current.Credential.Target != expectedTarget || current.Credential.AuthorityPublic != descriptor.AuthorityPublic ||
 		current.Digest != descriptor.PublicationDigest || !validIntroduction(descriptor.Introduction, current.Credential.NotAfter) ||
 		!at.Before(descriptor.Introduction.NotAfter) {
-		return Verified{}, errors.New("reachability descriptor Publication or Introduction is invalid")
+		return Verified{}, errors.New("reachability descriptor publication or Introduction is invalid")
 	}
 	commitment := sha256.Sum256(append([]byte(descriptorPrefix), body...))
 	if !ed25519.Verify(ed25519.PublicKey(current.Credential.InstancePublic[:]), commitment[:], descriptor.Signature[:]) {
@@ -76,7 +76,7 @@ func Verify(raw []byte, expectedTarget, network [32]byte, at time.Time) (Verifie
 
 func verifiedCurrent(value publication.Current) (publication.Current, error) {
 	if value.Credential.AuthorityPublic == [32]byte{} || value.Credential.NetworkID == [32]byte{} || len(value.Record) == 0 {
-		return publication.Current{}, errors.New("Publication is incomplete")
+		return publication.Current{}, errors.New("publication is incomplete")
 	}
 	return publication.Decode(value.Record, ed25519.PublicKey(value.Credential.AuthorityPublic[:]), value.Credential.NetworkID,
 		time.Unix(value.Credential.NotBefore, 0).UTC())

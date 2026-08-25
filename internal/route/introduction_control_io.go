@@ -48,5 +48,5 @@ func ReadIntroductionControlRecord(reader io.Reader) (IntroductionControlRecord,
 	if sealed, err := DecodeSealedIntroduction(raw); err == nil {
 		return IntroductionControlRecord{Sealed: &sealed, Raw: raw}, nil
 	}
-	return IntroductionControlRecord{}, errors.New("Introduction control record is not recognized")
+	return IntroductionControlRecord{}, errors.New("introduction control record is not recognized")
 }

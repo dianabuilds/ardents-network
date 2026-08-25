@@ -55,7 +55,7 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		!validTransitPeer(input.Rendezvous) || input.Initiator.NodeID == input.Rendezvous.NodeID ||
 		input.Rendezvous.NodeID != input.Introduction.RendezvousNodeID || input.Introduction.NetworkID != endpoint.network ||
 		!validUserIntroductionProfile(input.Introduction) {
-		return nil, errors.New("User Introduction Route input is incomplete or outside its bound")
+		return nil, errors.New("user Introduction Route input is incomplete or outside its bound")
 	}
 	target, err := endpoint.TargetFromLink(input.TargetLink)
 	if err != nil {
@@ -65,13 +65,13 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		NetworkID: input.Introduction.NetworkID, Digest: input.Introduction.Digest, Epoch: input.Introduction.Epoch,
 		AttachmentID: input.AttachmentID, Deadline: input.Introduction.NotAfter})
 	if err != nil {
-		return nil, errors.Join(errors.New("User Entry attachment is unavailable"), err)
+		return nil, errors.Join(errors.New("user Entry attachment is unavailable"), err)
 	}
 	if connection == nil || cleanup == nil {
 		if connection != nil {
 			_ = connection.Close()
 		}
-		return nil, errors.New("User Entry attachment lacks its owned cleanup")
+		return nil, errors.New("user Entry attachment lacks its owned cleanup")
 	}
 	closeRoute := func(cause error) (*UserIntroductionRoute, error) {
 		return nil, errors.Join(cause, cleanup())
@@ -81,11 +81,11 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		TransitNodeID: input.Initiator.NodeID, NextNodeID: input.Rendezvous.NodeID, NextNodePublicKey: input.Rendezvous.PublicKey,
 		NotAfter: input.Introduction.NotAfter}
 	if err := route.WriteRelaySetup(connection, setup); err != nil {
-		return closeRoute(errors.Join(errors.New("User Initiator setup is unavailable"), err))
+		return closeRoute(errors.Join(errors.New("user Initiator setup is unavailable"), err))
 	}
 	ready, err := route.ReadRelayReady(connection)
 	if err != nil || setup.VerifyRelayReady(ready) != nil {
-		return closeRoute(errors.Join(errors.New("User Initiator RelayReady is invalid"), err, setup.VerifyRelayReady(ready)))
+		return closeRoute(errors.Join(errors.New("user Initiator RelayReady is invalid"), err, setup.VerifyRelayReady(ready)))
 	}
 	delivery, err := endpoint.SubmitIntroductionFromLink(ctx, UserIntroductionRequest{TargetLink: input.TargetLink, Publication: input.Publication,
 		AuthorityPublic: input.AuthorityPublic, Profile: input.Introduction, AttachmentID: input.AttachmentID, EndpointHandshake: input.EndpointHandshake, At: input.At})
@@ -93,7 +93,7 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		return closeRoute(err)
 	}
 	if delivery.AuthenticatedTarget != target {
-		return closeRoute(errors.New("User Introduction Route authenticated a different Target"))
+		return closeRoute(errors.New("user Introduction Route authenticated a different Target"))
 	}
 	authority := input.AuthorityPublic
 	if authority == [32]byte{} {

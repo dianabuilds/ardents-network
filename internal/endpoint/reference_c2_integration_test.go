@@ -50,7 +50,11 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	}
 	defer store.Close()
 	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: network, NodeID: gatewayID, IdentityKey: gatewayPrivate,
-		AssignmentNotAfter: deadline, Store: store, Clock: func() time.Time { return now }})
+		AssignmentNotAfter: deadline, Store: store, Clock: func() time.Time { return now },
+		AuthorizeDescriptor: func(value reachability.Descriptor, at time.Time) bool {
+			return at.Equal(now) && value.Introduction.StateDigest == digest && value.Introduction.Epoch == 10 &&
+				value.Introduction.IntroductionNodeID == introductionID && value.Introduction.RendezvousNodeID == rendezvousID
+		}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,8 +124,8 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result, err := store.Publish(descriptor, now); err != nil || result.Class != reachability.StoreAccepted {
-		t.Fatalf("Gateway Store Publish = %+v, %v", result, err)
+	if result, err := gateway.Publish(descriptor, now); err != nil || result.Class != reachability.StoreAccepted {
+		t.Fatalf("Gateway Publish = %+v, %v", result, err)
 	}
 
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: c2Identifier(72),
@@ -152,15 +156,15 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	}
 	session := user.StartUserReferenceSite(ctx, endpointapi.UserReferenceSiteRequest{
 		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: link,
-			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gatewayID, GatewayNodePublicKey: gatewayPublic,
+			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gatewayID, GatewayNodePublicKey: gatewayPublic, GatewayFamily: c2Identifier(109),
 				GatewayProfile: gateway.Profile(), StateDigest: digest, Epoch: 10,
 				Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
 				Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
 				AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
-			Introduction: endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
+			Introduction: endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Family: c2Identifier(63), Endpoint: introductionAddress},
 			Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
-			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
-			Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
+			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Family: c2Identifier(66), Endpoint: initiatorAddress},
+			Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Family: c2Identifier(64), Endpoint: rendezvousAddress},
 			AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now},
 		Routes: map[string]string{"": "/"}, Principal: c2Identifier(73), Capability: userSession, BytesEachDirection: 64 << 10})
 	defer session.Close()
@@ -251,6 +255,41 @@ func TestUserIntroductionRouteRejectsRendezvousSubstitutionBeforeEntry(t *testin
 		AttachmentID: c2Identifier(87), EndpointHandshake: c2Identifier(88), At: fixture.now})
 	if err == nil || entry.calls != 0 {
 		t.Fatalf("Rendezvous substitution opened Entry: calls=%d err=%v", entry.calls, err)
+	}
+}
+
+func TestUserReachabilityRouteRejectsPrivateLookupC2OverlapBeforeEntry(t *testing.T) {
+	fixture := newFixture(t)
+	user, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: c2Identifier(112),
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic, ConnectionPrincipal: fixture.clientPrincipal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer user.Close()
+	entry := &c2CountingEntry{}
+	peer := func(value byte) endpointapi.TransitPeer {
+		return endpointapi.TransitPeer{NodeID: c2Identifier(value), PublicKey: c2Identifier(value + 1), Family: c2Identifier(value + 2), Endpoint: "127.0.0.1:37112"}
+	}
+	base := endpointapi.UserReachabilityRouteRequest{TargetLink: "not-an-ardents-target-link", Entry: entry,
+		Introduction: peer(113), Initiator: peer(116), Rendezvous: peer(119), AttachmentID: c2Identifier(122), EndpointHandshake: c2Identifier(123), At: fixture.now}
+	for _, test := range []struct {
+		name    string
+		private endpointapi.UserPrivateReachabilityRequest
+	}{
+		{name: "reused attachment", private: endpointapi.UserPrivateReachabilityRequest{AttachmentID: base.AttachmentID}},
+		{name: "gateway identity", private: endpointapi.UserPrivateReachabilityRequest{AttachmentID: c2Identifier(124), GatewayNodeID: base.Introduction.NodeID}},
+		{name: "gateway family", private: endpointapi.UserPrivateReachabilityRequest{AttachmentID: c2Identifier(125), GatewayFamily: base.Rendezvous.Family}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := base
+			input.Private = &test.private
+			if _, routeErr := user.OpenUserReachabilityRoute(context.Background(), input); routeErr == nil {
+				t.Fatal("private lookup/C2 overlap was accepted")
+			}
+			if entry.calls != 0 {
+				t.Fatalf("private lookup/C2 overlap opened Entry: %d", entry.calls)
+			}
+		})
 	}
 }
 

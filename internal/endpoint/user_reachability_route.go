@@ -31,8 +31,13 @@ func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input U
 	if endpoint == nil || ctx == nil || input.At.IsZero() || (len(input.Descriptor) == 0 && input.Private == nil) ||
 		(len(input.Descriptor) != 0 && input.Private != nil) || !validTransitPeer(input.Introduction) ||
 		!validTransitPeer(input.Initiator) || !validTransitPeer(input.Rendezvous) || input.Entry == nil ||
-		input.AttachmentID == [32]byte{} || input.EndpointHandshake == [32]byte{} {
-		return nil, errors.New("User reachability route input is incomplete")
+		input.AttachmentID == [32]byte{} || input.EndpointHandshake == [32]byte{} ||
+		(input.Private != nil && (input.Private.AttachmentID == input.AttachmentID || input.Private.GatewayNodeID == input.Introduction.NodeID ||
+			input.Private.GatewayNodeID == input.Initiator.NodeID || input.Private.GatewayNodeID == input.Rendezvous.NodeID ||
+			input.Private.GatewayFamily == input.Introduction.Family || input.Private.GatewayFamily == input.Initiator.Family ||
+			input.Private.GatewayFamily == input.Rendezvous.Family || input.Introduction.Family == [32]byte{} ||
+			input.Initiator.Family == [32]byte{} || input.Rendezvous.Family == [32]byte{})) {
+		return nil, errors.New("user reachability route input is incomplete")
 	}
 	target, err := endpoint.TargetFromLink(input.TargetLink)
 	if err != nil {

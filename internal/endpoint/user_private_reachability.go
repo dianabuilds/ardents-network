@@ -15,6 +15,7 @@ import (
 // duty. This request is separate from the Entry attachment later spent on C-2.
 type UserPrivateReachabilityRequest struct {
 	GatewayNodeID, GatewayNodePublicKey [32]byte
+	GatewayFamily                       [32]byte
 	GatewayProfile                      reachability.GatewayProfile
 	StateDigest                         [32]byte
 	Epoch                               uint64
@@ -29,11 +30,11 @@ type UserPrivateReachabilityRequest struct {
 // Gateway's opaque descriptor bytes. The caller must pass those bytes to the
 // exact Target verifier before C-2 composition.
 func (endpoint *endpoint) ResolveUserReachability(ctx context.Context, link string, input UserPrivateReachabilityRequest) ([]byte, error) {
-	if endpoint == nil || ctx == nil || input.GatewayNodeID == [32]byte{} || input.GatewayNodePublicKey == [32]byte{} ||
+	if endpoint == nil || ctx == nil || input.GatewayNodeID == [32]byte{} || input.GatewayNodePublicKey == [32]byte{} || input.GatewayFamily == [32]byte{} ||
 		input.GatewayProfile.NodeID != input.GatewayNodeID || input.StateDigest == [32]byte{} || input.Epoch == 0 ||
 		!validTransitPeer(input.Initiator) || input.Entry == nil || input.AttachmentID == [32]byte{} || input.At.IsZero() ||
 		!input.At.Before(input.Deadline) || input.Deadline.After(input.At.Add(15*time.Second)) {
-		return nil, errors.New("User private reachability input is incomplete or outside its bound")
+		return nil, errors.New("user private reachability input is incomplete or outside its bound")
 	}
 	target, err := endpoint.TargetFromLink(link)
 	if err != nil {
@@ -44,11 +45,11 @@ func (endpoint *endpoint) ResolveUserReachability(ctx context.Context, link stri
 			return endpoint.exchangePrivateReachability(exchangeCtx, input, envelope)
 		}})
 	if err != nil {
-		return nil, errors.Join(errors.New("User private reachability is unavailable"), err)
+		return nil, errors.Join(errors.New("user private reachability is unavailable"), err)
 	}
 	descriptor, _, err := client.Resolve(ctx, target)
 	if err != nil {
-		return nil, errors.Join(errors.New("User private reachability is unavailable"), err)
+		return nil, errors.Join(errors.New("user private reachability is unavailable"), err)
 	}
 	return descriptor, nil
 }
@@ -60,25 +61,25 @@ func (endpoint *endpoint) exchangePrivateReachability(ctx context.Context, input
 		if connection != nil {
 			_ = connection.Close()
 		}
-		return reachability.OHTTPResponse{}, errors.New("User private reachability Entry is unavailable")
+		return reachability.OHTTPResponse{}, errors.New("user private reachability Entry is unavailable")
 	}
 	defer cleanup()
 	setup := route.ResolutionRelaySetup{NetworkID: endpoint.network, Digest: input.StateDigest, AttachmentID: input.AttachmentID,
 		InitiatorNodeID: input.Initiator.NodeID, GatewayNodeID: input.GatewayNodeID, GatewayNodePublicKey: input.GatewayNodePublicKey,
 		Epoch: input.Epoch, NotAfter: input.Deadline, EnvelopeCapacity: route.ResolutionEnvelopeCapacity}
 	if err := route.WriteResolutionRelaySetup(connection, setup); err != nil {
-		return reachability.OHTTPResponse{}, errors.New("User private reachability Initiator setup is unavailable")
+		return reachability.OHTTPResponse{}, errors.New("user private reachability Initiator setup is unavailable")
 	}
 	ready, err := route.ReadResolutionRelayReady(connection)
 	if err != nil || setup.VerifyResolutionRelayReady(ready) != nil {
-		return reachability.OHTTPResponse{}, errors.New("User private reachability Initiator confirmation is invalid")
+		return reachability.OHTTPResponse{}, errors.New("user private reachability Initiator confirmation is invalid")
 	}
 	if err := route.WriteResolutionRelayEnvelope(connection, route.ResolutionRelayEnvelope{OHTTP: envelope}); err != nil {
-		return reachability.OHTTPResponse{}, errors.New("User private reachability envelope is unavailable")
+		return reachability.OHTTPResponse{}, errors.New("user private reachability envelope is unavailable")
 	}
 	response, err := route.ReadResolutionRelayResponse(connection)
 	if err != nil {
-		return reachability.OHTTPResponse{}, errors.New("User private reachability response is unavailable")
+		return reachability.OHTTPResponse{}, errors.New("user private reachability response is unavailable")
 	}
 	return reachability.OHTTPResponse{Envelope: response.OHTTP, Chunked: response.Framing == route.ResolutionOHTTPChunkedResponse}, nil
 }

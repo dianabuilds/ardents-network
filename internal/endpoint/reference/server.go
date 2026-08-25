@@ -142,9 +142,9 @@ func (server *Server) resource(ctx context.Context, method, name string) (Resour
 			return Resource{}, err
 		}
 		if response.ContentType == "" || len(response.Body) == 0 || len(response.Body) > 1<<20 {
-			return Resource{}, errors.New("Reference Service response is invalid")
+			return Resource{}, errors.New("reference Service response is invalid")
 		}
-		return Resource{ContentType: response.ContentType, Body: response.Body}, nil
+		return Resource(response), nil
 	}
 	if name == "" {
 		return server.document, nil
@@ -168,7 +168,7 @@ func validate(config Config) error {
 	return nil
 }
 
-var errUnknownResource = errors.New("Reference Site resource is not declared")
+var errUnknownResource = errors.New("reference Site resource is not declared")
 
 func validResource(resource Resource) bool {
 	return resource.ContentType != "" && len(resource.ContentType) <= 128 && len(resource.Body) > 0 && len(resource.Body) <= 1<<20

@@ -80,14 +80,17 @@ a Service Connection. A descriptor for an old but still-live slot may at most
 try the same authenticated Service Instance; ordinary C-2 slot replay controls
 then yield unavailable rather than a different destination.
 
-`internal/service/reachability.Store` now implements the Gateway-local part of
+`internal/service/reachability.Store` implements the Gateway-local part of
 this invariant with an exclusive durable root: it persists one accepted exact
 descriptor plus a conflict bit per Target, reconstructs the signed fact on
 restart, refuses a lower generation, requires non-overlap for a higher
 Credential, accepts a slot refresh only when its expiry increases, and records
 two differing Publications at one generation as persistent `conflicting`.
-It is exposed only through the fixed-size OHTTP Gateway handler; Endpoint State
-role selection and Entry-based private lookup composition remain pending.
+The Gateway's `Publish` boundary requires a current authenticated State-role
+authorization callback before it gives a descriptor to that Store; the Store
+itself remains the lower-level durable currentness owner. Endpoint composition
+requires separate lookup and C-2 attachment identifiers and rejects the
+Gateway's identity or family when it overlaps any C-2 peer.
 
 ## Bounded records
 
@@ -150,6 +153,12 @@ generation publication conflict; expired/stale introduction slot; substituted
 Entry invite; Gateway withholding; Publisher withdrawal/offline; no direct
 Publisher request; and listener removal on close. The two host Ubuntu run must
 retain its exact binary and State/profile evidence.
+
+The current H4-3A implementation has qualified one in-process and one
+seven-process loopback success path, including the closed lookup carrier and
+browser-origin HTTP request. It has not yet qualified a selected real browser,
+the required failure matrix, or the two-host Ubuntu run, and therefore does
+not declare H4-3 usable.
 
 ## Non-claims
 

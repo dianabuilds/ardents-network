@@ -41,10 +41,10 @@ type UserReferenceSite struct {
 func (endpoint *endpoint) OpenUserReferenceSite(ctx context.Context, input UserReferenceSiteRequest) (*UserReferenceSite, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} || input.Capability == [32]byte{} ||
 		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) {
-		return nil, errors.New("User Reference Site input is incomplete")
+		return nil, errors.New("user Reference Site input is incomplete")
 	}
 	if input.Reachability != nil && input.Introduction.TargetLink != "" {
-		return nil, errors.New("User Reference Site received two route authorities")
+		return nil, errors.New("user Reference Site received two route authorities")
 	}
 	var (
 		route      *UserIntroductionRoute

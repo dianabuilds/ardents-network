@@ -44,7 +44,7 @@ func EncodeIntroductionInstruction(input IntroductionInstruction) ([]byte, error
 func DecodeIntroductionInstruction(raw []byte) (IntroductionInstruction, error) {
 	if len(raw) != introductionInstructionSize || string(raw[:len(introductionInstructionPrefix)]) != introductionInstructionPrefix ||
 		binary.BigEndian.Uint16(raw[len(introductionInstructionPrefix):len(introductionInstructionPrefix)+2]) != 1 {
-		return IntroductionInstruction{}, errors.New("Service Introduction instruction encoding is invalid")
+		return IntroductionInstruction{}, errors.New("service Introduction instruction encoding is invalid")
 	}
 	offset := len(introductionInstructionPrefix) + 2
 	result := IntroductionInstruction{Generation: binary.BigEndian.Uint64(raw[offset+32 : offset+40])}
@@ -67,14 +67,14 @@ func (value Current) ValidateIntroductionInstruction(input IntroductionInstructi
 		return err
 	}
 	if value.Credential.Target != input.Target || value.Credential.Generation != input.Generation || value.Digest != input.PublicationDigest {
-		return errors.New("Service Introduction instruction does not match the current publication")
+		return errors.New("service Introduction instruction does not match the current publication")
 	}
 	return nil
 }
 
 func validIntroductionInstruction(input IntroductionInstruction) error {
 	if input.Target == [32]byte{} || input.Generation == 0 || input.PublicationDigest == [32]byte{} || input.AttachmentID == [32]byte{} {
-		return errors.New("Service Introduction instruction is incomplete")
+		return errors.New("service Introduction instruction is incomplete")
 	}
 	return nil
 }

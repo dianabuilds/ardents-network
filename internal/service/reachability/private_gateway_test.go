@@ -28,7 +28,8 @@ func TestPrivateLookupPassesOnlyThroughRelayAndGateway(t *testing.T) {
 	}
 	defer store.Close()
 	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: network, NodeID: node, IdentityKey: identityPrivate,
-		AssignmentNotAfter: now.Add(time.Minute), Store: store, Clock: func() time.Time { return now }})
+		AssignmentNotAfter: now.Add(time.Minute), Store: store, Clock: func() time.Time { return now },
+		AuthorizeDescriptor: func(reachability.Descriptor, time.Time) bool { return true }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +75,8 @@ func TestPrivateLookupReturnsCurrentSignedDescriptor(t *testing.T) {
 	copy(gatewayPublic[:], identityPublic)
 	node[0] = 44
 	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: fixture.network, NodeID: node,
-		IdentityKey: identityPrivate, AssignmentNotAfter: fixture.now.Add(time.Minute), Store: store, Clock: func() time.Time { return fixture.now }})
+		IdentityKey: identityPrivate, AssignmentNotAfter: fixture.now.Add(time.Minute), Store: store, Clock: func() time.Time { return fixture.now },
+		AuthorizeDescriptor: func(reachability.Descriptor, time.Time) bool { return true }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +120,8 @@ func TestPrivateLookupClientUsesOnlyItsOpaqueExchangePort(t *testing.T) {
 	copy(gatewayPublic[:], identityPublic)
 	node[0] = 47
 	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: fixture.network, NodeID: node,
-		IdentityKey: identityPrivate, AssignmentNotAfter: fixture.now.Add(time.Minute), Store: store, Clock: func() time.Time { return fixture.now }})
+		IdentityKey: identityPrivate, AssignmentNotAfter: fixture.now.Add(time.Minute), Store: store, Clock: func() time.Time { return fixture.now },
+		AuthorizeDescriptor: func(reachability.Descriptor, time.Time) bool { return true }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,5 +138,32 @@ func TestPrivateLookupClientUsesOnlyItsOpaqueExchangePort(t *testing.T) {
 	descriptor, class, err := client.Resolve(context.Background(), fixture.current.Credential.Target)
 	if err != nil || class != reachability.StoreAlreadyCurrent || string(descriptor) != string(raw) {
 		t.Fatalf("opaque Exchange Resolve = %x, %q, %v", descriptor, class, err)
+	}
+}
+
+func TestGatewayPublicationRequiresCurrentStateRoleAuthorization(t *testing.T) {
+	t.Parallel()
+	fixture := newStoreFixture(t)
+	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: fixture.network})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	_, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: fixture.network, NodeID: [32]byte{49}, IdentityKey: private,
+		AssignmentNotAfter: fixture.now.Add(time.Minute), Store: store, Clock: func() time.Time { return fixture.now },
+		AuthorizeDescriptor: func(reachability.Descriptor, time.Time) bool { return false }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := fixture.issue(t, fixture.current, fixture.now.Add(30*time.Second), "unauthorized")
+	if result, publishErr := gateway.Publish(raw, fixture.now); publishErr == nil || result.Class != reachability.StoreInvalid {
+		t.Fatalf("Gateway Publish unauthorized descriptor = %+v, %v", result, publishErr)
+	}
+	if _, class, lookupErr := store.Lookup(fixture.current.Credential.Target, fixture.now); lookupErr == nil || class != reachability.StoreStale {
+		t.Fatalf("unauthorized descriptor reached store: %q, %v", class, lookupErr)
 	}
 }

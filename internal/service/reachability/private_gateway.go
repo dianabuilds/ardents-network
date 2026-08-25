@@ -33,11 +33,12 @@ type GatewayProfile struct {
 // GatewayConfig contains only Gateway-local currentness and identity facts.
 // It has no Endpoint address, Route, Service private key, or publisher origin.
 type GatewayConfig struct {
-	NetworkID, NodeID  [32]byte
-	IdentityKey        ed25519.PrivateKey
-	AssignmentNotAfter time.Time
-	Store              *Store
-	Clock              func() time.Time
+	NetworkID, NodeID   [32]byte
+	IdentityKey         ed25519.PrivateKey
+	AssignmentNotAfter  time.Time
+	Store               *Store
+	Clock               func() time.Time
+	AuthorizeDescriptor func(Descriptor, time.Time) bool
 }
 
 // Gateway decapsulates one bounded private lookup and delegates only exact
@@ -55,8 +56,8 @@ type Gateway struct {
 // returned handler. The caller retains Store ownership and closes it separately.
 func NewGateway(config GatewayConfig) (*Gateway, error) {
 	if config.NetworkID == [32]byte{} || config.NodeID == [32]byte{} || len(config.IdentityKey) != ed25519.PrivateKeySize ||
-		config.AssignmentNotAfter.IsZero() || config.Store == nil || config.Clock == nil {
-		return nil, errors.New("private reachability Gateway configuration is invalid")
+		config.AssignmentNotAfter.IsZero() || config.Store == nil || config.Clock == nil || config.AuthorizeDescriptor == nil {
+		return nil, errors.New("private reachability gateway configuration is invalid")
 	}
 	kem := hpke.KEM_P256_HKDF_SHA256
 	public, secret, err := kem.Scheme().GenerateKeyPair()
@@ -87,6 +88,21 @@ func NewGateway(config GatewayConfig) (*Gateway, error) {
 		middleware.ServeHTTP(writer, request)
 	})
 	return gateway, nil
+}
+
+// Publish verifies the descriptor's current State role facts at the Gateway
+// boundary before handing its generation/currentness fact to the local Store.
+// The authorization callback must query the Gateway's current authenticated
+// State view; a Gateway without that callback cannot accept publication.
+func (gateway *Gateway) Publish(raw []byte, at time.Time) (StoreResult, error) {
+	if gateway == nil || at.IsZero() {
+		return StoreResult{Class: StoreInvalid}, errors.New("private reachability gateway publication input is incomplete")
+	}
+	candidate, err := verifyStored(raw, gateway.config.NetworkID, at)
+	if err != nil || !gateway.config.AuthorizeDescriptor(candidate.verified.Descriptor, at) {
+		return StoreResult{Class: StoreInvalid}, errors.New("private reachability gateway rejects descriptor State role facts")
+	}
+	return gateway.config.Store.Publish(raw, at)
 }
 
 // Handler returns the OHTTP-only Gateway adapter.

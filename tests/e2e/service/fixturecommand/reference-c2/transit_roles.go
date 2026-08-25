@@ -199,7 +199,7 @@ func waitForTransitCompletion(ctx context.Context, path string) error {
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("C2 fixture transit completion is unavailable: %w", ctx.Err())
+			return fmt.Errorf("c2 fixture transit completion is unavailable: %w", ctx.Err())
 		case <-ticker.C:
 		}
 	}
@@ -210,25 +210,25 @@ func verifyTransitUsage(role string, running drainingTransit) error {
 	case *node.Initiator:
 		usage := value.Usage()
 		if role != "initiator" || usage.CompletedRelays != 2 || usage.ActiveRelays != 0 || usage.Connections != 0 {
-			return fmt.Errorf("Initiator terminal usage = %+v", usage)
+			return fmt.Errorf("initiator terminal usage = %+v", usage)
 		}
 	case *node.Introduction:
 		usage := value.Usage()
 		if role != "introduction" || usage.Deliveries != 0 || usage.Slots != 0 || usage.Connections != 0 || usage.Registered != 1 || usage.Delivered != 1 {
-			return fmt.Errorf("Introduction terminal usage = %+v", usage)
+			return fmt.Errorf("introduction terminal usage = %+v", usage)
 		}
 	case *node.Responder:
 		usage := value.Usage()
 		if role != "responder" || usage.CompletedRelays != 1 || usage.ActiveRelays != 0 || usage.Connections != 0 {
-			return fmt.Errorf("Responder terminal usage = %+v", usage)
+			return fmt.Errorf("responder terminal usage = %+v", usage)
 		}
 	case *node.Rendezvous:
 		usage := value.Usage()
 		if role != "rendezvous" || usage.CompletedPairs != 1 || usage.ActivePairs != 0 || usage.Connections != 0 {
-			return fmt.Errorf("Rendezvous terminal usage = %+v", usage)
+			return fmt.Errorf("rendezvous terminal usage = %+v", usage)
 		}
 	default:
-		return errors.New("C2 fixture transit usage is unavailable")
+		return errors.New("c2 fixture transit usage is unavailable")
 	}
 	return nil
 }

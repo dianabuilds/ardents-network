@@ -8,6 +8,7 @@ import (
 	"crypto/ed25519"
 	"crypto/hpke"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -125,7 +126,7 @@ func (value peer) decode() (endpointapi.TransitPeer, error) {
 	if err != nil || value.Endpoint == "" {
 		return endpointapi.TransitPeer{}, errors.New("C2 fixture peer is invalid")
 	}
-	return endpointapi.TransitPeer{NodeID: nodeID, PublicKey: public, Endpoint: value.Endpoint}, nil
+	return endpointapi.TransitPeer{NodeID: nodeID, PublicKey: public, Family: sha256.Sum256(nodeID[:]), Endpoint: value.Endpoint}, nil
 }
 
 func runPublisher(input config) error {
@@ -219,7 +220,7 @@ func runPublisher(input config) error {
 	outcome, err := slot.Accept(ctx, endpointapi.InboundConnectionRequest{Principal: principal, Capability: capability,
 		Application: application, BytesEachDirection: 64 << 10, At: now})
 	if outcome.Class == "" {
-		return errors.Join(err, errors.New("Publisher C2 fixture did not complete a classified Service Connection"))
+		return errors.Join(err, errors.New("publisher C2 fixture did not complete a classified Service Connection"))
 	}
 	return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher", Class: outcome.Class, Passed: true})
 }
@@ -234,7 +235,7 @@ func runUser(input config) error {
 	digest, _ := fixed(input.Digest)
 	authority, err := hex.DecodeString(envelope.AuthorityPublic)
 	if err != nil || len(authority) != ed25519.PublicKeySize {
-		return errors.New("Publisher authority is invalid")
+		return errors.New("publisher authority is invalid")
 	}
 	introduction, _ := input.Introduction.decode()
 	rendezvous, _ := input.Rendezvous.decode()
@@ -265,7 +266,7 @@ func runUser(input config) error {
 	resolutionDeadline := now.Add(5 * time.Second)
 	site, err := user.OpenUserReferenceSite(context.Background(), endpointapi.UserReferenceSiteRequest{
 		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: envelope.TargetLink,
-			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey,
+			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey, GatewayFamily: gateway.Family,
 				GatewayProfile: profile, StateDigest: digest, Epoch: input.Epoch, Initiator: initiator,
 				Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
 					presentation: entry.Presentation{InviteID: inviteID, Invite: []byte(input.Invite)}}, AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
@@ -281,10 +282,10 @@ func runUser(input config) error {
 	select {
 	case ready = <-site.Ready():
 		if ready.URL == "" {
-			return errors.New("User C2 fixture did not receive Reference Site readiness")
+			return errors.New("user C2 fixture did not receive Reference Site readiness")
 		}
 	case <-time.After(time.Until(deadline)):
-		return errors.New("User C2 fixture timed out before Reference Site readiness")
+		return errors.New("user C2 fixture timed out before Reference Site readiness")
 	}
 	response, err := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Get(ready.URL)
 	if err != nil {
@@ -293,7 +294,7 @@ func runUser(input config) error {
 	body, readErr := io.ReadAll(response.Body)
 	_ = response.Body.Close()
 	if readErr != nil || response.StatusCode != http.StatusOK || string(body) != "<h1>Reference</h1>" {
-		return errors.New("User C2 fixture did not receive the Reference Site response")
+		return errors.New("user C2 fixture did not receive the Reference Site response")
 	}
 	if err := site.Close(); err != nil {
 		return err
@@ -301,11 +302,11 @@ func runUser(input config) error {
 	select {
 	case outcome := <-site.Done():
 		if outcome.Result.Class == "" {
-			return errors.New("User C2 fixture did not receive a classified Service Connection result")
+			return errors.New("user C2 fixture did not receive a classified Service Connection result")
 		}
 		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "user", Class: outcome.Result.Class, Passed: true})
 	case <-time.After(time.Until(deadline)):
-		return errors.New("User C2 fixture did not receive a terminal result")
+		return errors.New("user C2 fixture did not receive a terminal result")
 	}
 }
 
@@ -333,7 +334,7 @@ func serveStatic(connection net.Conn) {
 
 func writePublication(path string, value publicationEnvelope) error {
 	if filepath.Dir(path) == "." {
-		return errors.New("Publisher publication path is not absolute")
+		return errors.New("publisher publication path is not absolute")
 	}
 	raw, err := json.Marshal(value)
 	if err != nil {
@@ -349,11 +350,11 @@ func writePublication(path string, value publicationEnvelope) error {
 func readPublication(path string) (publicationEnvelope, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil || len(raw) == 0 || len(raw) > 8<<10 {
-		return publicationEnvelope{}, errors.New("Publisher publication is unavailable")
+		return publicationEnvelope{}, errors.New("publisher publication is unavailable")
 	}
 	var value publicationEnvelope
 	if err := json.Unmarshal(raw, &value); err != nil || value.AuthorityPublic == "" || value.Publication == "" || value.TargetLink == "" || value.Descriptor == "" {
-		return publicationEnvelope{}, errors.New("Publisher publication is invalid")
+		return publicationEnvelope{}, errors.New("publisher publication is invalid")
 	}
 	return value, nil
 }

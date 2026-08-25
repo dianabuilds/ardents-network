@@ -65,7 +65,7 @@ type ReferenceConnection struct {
 // existing browser.
 func (endpoint *endpoint) StartReferenceConnection(ctx context.Context, input ReferenceConnectionRequest) (*ReferenceConnection, error) {
 	if endpoint == nil || ctx == nil || input.Connection.Application != nil || input.Connection.OnAuthenticated != nil {
-		return nil, errors.New("Reference Connection input is incomplete or attempts to supply an Application path")
+		return nil, errors.New("reference Connection input is incomplete or attempts to supply an Application path")
 	}
 	target, err := endpoint.TargetFromLink(input.TargetLink)
 	if err != nil {

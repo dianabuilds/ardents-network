@@ -18,6 +18,7 @@ import (
 // select a peer.
 type TransitPeer struct {
 	NodeID, PublicKey [32]byte
+	Family            [32]byte
 	Endpoint          string
 }
 
@@ -62,7 +63,7 @@ type PublisherIntroduction struct {
 func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input PublisherIntroductionRequest) (*PublisherIntroduction, error) {
 	if endpoint == nil || endpoint.publications == nil || ctx == nil || input.HPKEPrivate == nil || input.At.IsZero() ||
 		input.Profile.NetworkID != endpoint.network || !validPublisherIntroductionProfile(input.Profile) {
-		return nil, errors.New("Publisher Introduction input is incomplete or outside its bound")
+		return nil, errors.New("publisher Introduction input is incomplete or outside its bound")
 	}
 	lease, err := endpoint.publications.AcquireAt(ctx, input.At)
 	if err != nil {
@@ -73,7 +74,7 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 	}
 	current := lease.Current()
 	if input.Profile.NotAfter.Unix() > current.Credential.NotAfter || !matchesIntroductionRecipient(input.HPKEPrivate, current.Credential.IntroductionHPKEPublic) {
-		return closeLease(errors.New("Publisher Introduction recipient does not match the current Credential"))
+		return closeLease(errors.New("publisher Introduction recipient does not match the current Credential"))
 	}
 	connection, err := route.OpenEndpointTransitAttachment(ctx, route.EndpointTransitAttachmentRequest{
 		NetworkID: input.Profile.NetworkID, Digest: input.Profile.Digest, AttachmentID: input.Profile.SlotAttachmentID,
@@ -82,7 +83,7 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 		Deadline: input.Profile.NotAfter, Authorization: input.Profile.SlotAuthorization,
 	})
 	if err != nil {
-		return closeLease(errors.Join(errors.New("Publisher Introduction slot is unavailable"), err))
+		return closeLease(errors.Join(errors.New("publisher Introduction slot is unavailable"), err))
 	}
 	closeConnection := func(cause error) (*PublisherIntroduction, error) {
 		return nil, errors.Join(cause, connection.Close(), lease.Close())
@@ -95,7 +96,7 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 	ready, err := route.ReadIntroductionSlotReady(connection)
 	if err != nil || ready.Reachability != registration.Reachability || ready.JoinHandle != registration.JoinHandle ||
 		!ready.NotAfter.Equal(registration.NotAfter) {
-		return closeConnection(errors.Join(err, errors.New("Publisher Introduction slot acknowledgement is invalid")))
+		return closeConnection(errors.Join(err, errors.New("publisher Introduction slot acknowledgement is invalid")))
 	}
 	return &PublisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(input.Profile), private: input.HPKEPrivate,
 		lease: lease, slot: connection}, nil
@@ -107,12 +108,12 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 // releases its lease without creating a Responder attachment.
 func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error) {
 	if session == nil || ctx == nil {
-		return nil, errors.New("Publisher Introduction session is unavailable")
+		return nil, errors.New("publisher Introduction session is unavailable")
 	}
 	session.mu.Lock()
 	if session.used || session.slot == nil || session.lease == nil {
 		session.mu.Unlock()
-		return nil, errors.New("Publisher Introduction session is already closed or consumed")
+		return nil, errors.New("publisher Introduction session is already closed or consumed")
 	}
 	session.used = true
 	slot := session.slot
@@ -130,18 +131,18 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 	stop()
 	if err != nil || record.Sealed == nil || !session.matchesHeader(*record.Sealed) {
 		session.Close()
-		return nil, errors.Join(err, errors.New("Publisher Introduction delivery is unavailable or invalid"))
+		return nil, errors.Join(err, errors.New("publisher Introduction delivery is unavailable or invalid"))
 	}
 	plaintext, err := route.OpenSealedIntroduction(*record.Sealed, session.private)
 	if err != nil {
 		session.Close()
-		return nil, errors.Join(errors.New("Publisher Introduction ciphertext is invalid"), err)
+		return nil, errors.Join(errors.New("publisher Introduction ciphertext is invalid"), err)
 	}
 	instruction, err := publication.DecodeIntroductionInstruction(plaintext)
 	if err != nil || instruction.AttachmentID == session.profile.SlotAttachmentID ||
 		session.lease.Current().ValidateIntroductionInstruction(instruction) != nil {
 		session.Close()
-		return nil, errors.Join(err, errors.New("Publisher Introduction does not match the current publication"))
+		return nil, errors.Join(err, errors.New("publisher Introduction does not match the current publication"))
 	}
 	carrier, err := route.OpenEndpointTransitAttachment(ctx, route.EndpointTransitAttachmentRequest{
 		NetworkID: session.profile.NetworkID, Digest: session.profile.Digest, AttachmentID: instruction.AttachmentID,
@@ -151,7 +152,7 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 	})
 	if err != nil {
 		session.Close()
-		return nil, errors.Join(errors.New("Publisher Responder attachment is unavailable"), err)
+		return nil, errors.Join(errors.New("publisher Responder attachment is unavailable"), err)
 	}
 	_ = slot.Close()
 	return carrier, nil
@@ -164,7 +165,7 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 func (session *PublisherIntroduction) Accept(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
 	if session == nil || session.endpoint == nil || ctx == nil || input.Route != nil || input.OpenAttachment != nil || input.Application == nil || input.At.IsZero() ||
 		(input.SendBytes == 0 && input.ReceiveBytes == 0 && input.BytesEachDirection == 0) {
-		return failed("local authorization or policy denial", "Publisher Introduction local handoff is incomplete or attempts to select a route", errors.New("Publisher Introduction local handoff is invalid"))
+		return failed("local authorization or policy denial", "Publisher Introduction local handoff is incomplete or attempts to select a route", errors.New("publisher Introduction local handoff is invalid"))
 	}
 	carrier, err := session.Wait(ctx)
 	if err != nil {

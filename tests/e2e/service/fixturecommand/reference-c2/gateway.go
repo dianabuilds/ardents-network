@@ -47,13 +47,21 @@ func runGateway(input config) error {
 		return err
 	}
 	defer store.Close()
-	if result, err := store.Publish(raw, time.Now().UTC()); err != nil || result.Class != reachability.StoreAccepted {
-		return errors.Join(err, errors.New("C2 fixture Gateway did not accept descriptor"))
-	}
 	running, err := reachability.NewGateway(reachability.GatewayConfig{NetworkID: network, NodeID: gateway.NodeID, IdentityKey: identity,
-		AssignmentNotAfter: deadline, Store: store, Clock: func() time.Time { return time.Now().UTC() }})
+		AssignmentNotAfter: deadline, Store: store, Clock: func() time.Time { return time.Now().UTC() },
+		AuthorizeDescriptor: func(value reachability.Descriptor, at time.Time) bool {
+			introduction, introductionErr := input.Introduction.decode()
+			rendezvous, rendezvousErr := input.Rendezvous.decode()
+			digest, digestErr := fixed(input.Digest)
+			return introductionErr == nil && rendezvousErr == nil && digestErr == nil && at.Before(deadline) &&
+				value.Introduction.StateDigest == digest && value.Introduction.Epoch == input.Epoch &&
+				value.Introduction.IntroductionNodeID == introduction.NodeID && value.Introduction.RendezvousNodeID == rendezvous.NodeID
+		}})
 	if err != nil {
 		return err
+	}
+	if result, err := running.Publish(raw, time.Now().UTC()); err != nil || result.Class != reachability.StoreAccepted {
+		return errors.Join(err, errors.New("C2 fixture Gateway did not accept descriptor"))
 	}
 	listener, err := net.Listen("tcp", gateway.Endpoint)
 	if err != nil {

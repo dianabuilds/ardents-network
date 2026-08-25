@@ -57,7 +57,7 @@ type UserIntroductionResult struct {
 func (endpoint *endpoint) SubmitIntroductionFromLink(ctx context.Context, input UserIntroductionRequest) (UserIntroductionResult, error) {
 	if endpoint == nil || ctx == nil || input.At.IsZero() || input.AttachmentID == [32]byte{} || input.EndpointHandshake == [32]byte{} ||
 		!validUserIntroductionProfile(input.Profile) {
-		return UserIntroductionResult{}, errors.New("User Introduction input is incomplete or outside its bound")
+		return UserIntroductionResult{}, errors.New("user Introduction input is incomplete or outside its bound")
 	}
 	target, err := endpoint.TargetFromLink(input.TargetLink)
 	if err != nil {
@@ -69,7 +69,7 @@ func (endpoint *endpoint) SubmitIntroductionFromLink(ctx context.Context, input 
 	}
 	current, err := publication.Decode(input.Publication, ed25519.PublicKey(authority[:]), endpoint.network, input.At)
 	if err != nil || current.Credential.Target != target || input.Profile.NotAfter.Unix() > current.Credential.NotAfter {
-		return UserIntroductionResult{}, errors.Join(err, errors.New("Target Link does not authenticate the current publication"))
+		return UserIntroductionResult{}, errors.Join(err, errors.New("target Link does not authenticate the current publication"))
 	}
 	public, err := ecdh.X25519().NewPublicKey(current.Credential.IntroductionHPKEPublic[:])
 	if err != nil {
@@ -96,15 +96,15 @@ func (endpoint *endpoint) SubmitIntroductionFromLink(ctx context.Context, input 
 		TransitNodePublicKey: input.Profile.Introduction.PublicKey, Epoch: input.Profile.Epoch, TransitRole: route.IntroductionRole,
 		Endpoint: input.Profile.Introduction.Endpoint, Deadline: input.Profile.NotAfter, Authorization: input.Profile.SubmissionAuthorization})
 	if err != nil {
-		return UserIntroductionResult{}, errors.Join(errors.New("Introduction submission is unavailable"), err)
+		return UserIntroductionResult{}, errors.Join(errors.New("introduction submission is unavailable"), err)
 	}
 	defer connection.Close()
 	if err := route.WriteSealedIntroduction(connection, sealed); err != nil {
-		return UserIntroductionResult{}, errors.Join(errors.New("Introduction submission is unavailable"), err)
+		return UserIntroductionResult{}, errors.Join(errors.New("introduction submission is unavailable"), err)
 	}
 	delivery, err := route.ReadIntroductionDeliveryResult(connection)
 	if err != nil || delivery.AttachmentID != input.AttachmentID || delivery.Outcome != route.IntroductionDelivered {
-		return UserIntroductionResult{}, errors.Join(err, errors.New("Introduction submission is unavailable"))
+		return UserIntroductionResult{}, errors.Join(err, errors.New("introduction submission is unavailable"))
 	}
 	return UserIntroductionResult{AuthenticatedTarget: target, Generation: current.Credential.Generation,
 		AttachmentID: input.AttachmentID}, nil
