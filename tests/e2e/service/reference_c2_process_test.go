@@ -25,6 +25,8 @@ import (
 )
 
 func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
+	nodeBinary := buildProductCommand(t, "ardents-node")
+	fixtureBinary := buildE2EFixtureCommand(t, "reference-c2")
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(20 * time.Second)
 	introductionID, rendezvousID := referenceC2ID(3), referenceC2ID(4)
@@ -60,7 +62,6 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	root := t.TempDir()
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
-	nodeBinary := buildProductCommand(t, "ardents-node")
 	sourceEndpoints, sourceClient := referenceC2StartStateSources(t, ctx, nodeBinary, stateFixture, root)
 	clientCertificate, err := os.ReadFile(sourceClient.certificate)
 	if err != nil {
@@ -119,10 +120,9 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	if err != nil || os.WriteFile(configPath, raw, 0o600) != nil {
 		t.Fatal("write process C2 fixture configuration")
 	}
-	binary := buildE2EFixtureCommand(t, "reference-c2")
 	transit := make(map[string]<-chan commandResult, 4)
 	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
-		transit[role] = startCommand(ctx, root, binary, role, configPath)
+		transit[role] = startCommand(ctx, root, fixtureBinary, role, configPath)
 		if err := referenceC2WaitForFile(ctx, filepath.Join(readyRoot, role)); err != nil {
 			process := <-transit[role]
 			t.Fatalf("C2 transit process %s did not become ready: %v\n%s", role, err, process.output)
@@ -133,8 +133,8 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	} else {
 		_ = probe.Close()
 	}
-	gateway := startCommand(ctx, root, binary, "gateway", configPath)
-	publisher := startCommand(ctx, root, binary, "publisher", configPath)
+	gateway := startCommand(ctx, root, fixtureBinary, "gateway", configPath)
+	publisher := startCommand(ctx, root, fixtureBinary, "publisher", configPath)
 	if err := referenceC2WaitForFile(ctx, publicationPath); err != nil {
 		process := <-publisher
 		t.Fatalf("C2 Publisher process did not publish: %v\n%s", err, process.output)
@@ -143,7 +143,7 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		process := <-gateway
 		t.Fatalf("C2 Gateway process did not become ready: %v\n%s", err, process.output)
 	}
-	user := startCommand(ctx, root, binary, "user", configPath)
+	user := startCommand(ctx, root, fixtureBinary, "user", configPath)
 	processes := map[string]commandResult{"user": <-user, "publisher": <-publisher}
 	if err := os.WriteFile(completePath, []byte("complete\n"), 0o600); err != nil {
 		t.Fatal(err)
