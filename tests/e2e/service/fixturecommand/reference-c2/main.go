@@ -42,6 +42,14 @@ type transitCredential struct {
 	Grant, Certificate, PrivateKey string
 }
 
+type stateSource struct {
+	Address, ServerName, Root, LeafKeyDigest string
+}
+
+type stateClient struct {
+	Certificate, PrivateKey string
+}
+
 type config struct {
 	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath string
 	Epoch                                                                                      uint64
@@ -52,6 +60,8 @@ type config struct {
 	SlotCredential, ResponderCredential, IntroductionCredential                                transitCredential
 	TransitStateRoots                                                                          map[string]string
 	TransitStateMaterials                                                                      map[string]uint32
+	TransitStateSources                                                                        []stateSource
+	TransitStateClient                                                                         stateClient
 }
 
 type publicationEnvelope struct {
@@ -102,7 +112,8 @@ func readConfig(path string) (config, error) {
 	}
 	if input.Schema != "ardents-e2e-reference-c2-v1" || input.Epoch == 0 || input.PublicationPath == "" || input.PublisherRoot == "" || input.GatewayRoot == "" || input.GatewayProfilePath == "" || input.ReadyRoot == "" || input.CompletePath == "" ||
 		input.TransitAuthority == "" || input.Invite == "" || !input.SlotCredential.valid() ||
-		!input.ResponderCredential.valid() || !input.IntroductionCredential.valid() || len(input.TransitStateRoots) != 4 || len(input.TransitStateMaterials) != 4 {
+		!input.ResponderCredential.valid() || !input.IntroductionCredential.valid() || len(input.TransitStateRoots) != 4 || len(input.TransitStateMaterials) != 4 ||
+		len(input.TransitStateSources) != 2 || input.TransitStateClient.Certificate == "" || input.TransitStateClient.PrivateKey == "" {
 		return config{}, errors.New("C2 fixture configuration is incomplete")
 	}
 	if _, err := input.deadline(); err != nil {
@@ -121,6 +132,17 @@ func readConfig(path string) (config, error) {
 	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
 		if input.TransitStateRoots[role] == "" {
 			return config{}, errors.New("C2 fixture transit State root is unavailable")
+		}
+		if _, present := input.TransitStateMaterials[role]; !present {
+			return config{}, errors.New("C2 fixture transit State materialization is unavailable")
+		}
+	}
+	for _, source := range input.TransitStateSources {
+		if source.Address == "" || source.ServerName == "" || source.Root == "" {
+			return config{}, errors.New("C2 fixture transit State source is unavailable")
+		}
+		if _, err := fixed(source.LeafKeyDigest); err != nil {
+			return config{}, err
 		}
 	}
 	if _, err := input.entryInvite(); err != nil {

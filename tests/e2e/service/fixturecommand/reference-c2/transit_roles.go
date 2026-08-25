@@ -82,14 +82,20 @@ func nativeFixtureNodeConfig(input config, role string) (node.Config, func() err
 		return node.Config{}, nil, nil, err
 	}
 	stateRoot := input.TransitStateRoots[role]
+	localRoot := filepath.Join(filepath.Dir(stateRoot), filepath.Base(stateRoot)+"-duty")
+	stateSourceRoot := filepath.Join(filepath.Dir(stateRoot), filepath.Base(stateRoot)+"-source")
+	sources, err := input.stateSourceConfig(role)
+	if err != nil {
+		return node.Config{}, nil, nil, err
+	}
 	store, err := state.Open(state.Config{Root: stateRoot, NetworkID: network,
 		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(authority[:]): ed25519.PublicKey(authority[:])}, Threshold: 1,
-		Clock: time.Now, AcceptedProfile: route.Profile, Source: source.Config{MaterialIndex: input.TransitStateMaterials[role]}})
+		Clock: time.Now, ObserveClock: time.Now, AcceptedProfile: route.Profile, Source: sources, LocalRoleStateRoot: stateSourceRoot,
+		AutomaticRefreshInterval: 100 * time.Millisecond})
 	if err != nil {
 		return node.Config{}, nil, nil, err
 	}
 	ready := make(chan struct{})
-	localRoot := filepath.Join(filepath.Dir(stateRoot), filepath.Base(stateRoot)+"-duty")
 	openedRoles, err := duty.Open(duty.Config{Root: localRoot, Clock: time.Now, Create: true})
 	if err != nil {
 		_ = store.Close()
@@ -104,6 +110,9 @@ func nativeFixtureNodeConfig(input config, role string) (node.Config, func() err
 		LocalRoleStateRoot: localRoot, CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event node.Event) error {
 			if event.State == "READY" {
+				if err := waitForFixtureStateSources(store, input.Deadline); err != nil {
+					return err
+				}
 				select {
 				case <-ready:
 				default:
@@ -129,6 +138,55 @@ func nativeFixtureNodeConfig(input config, role string) (node.Config, func() err
 		return node.Config{}, nil, nil, errors.New("C2 fixture transit role is unsupported")
 	}
 	return config, store.Close, ready, nil
+}
+
+func (input config) stateSourceConfig(role string) (source.Config, error) {
+	certificate, err := tls.X509KeyPair([]byte(input.TransitStateClient.Certificate), []byte(input.TransitStateClient.PrivateKey))
+	if err != nil {
+		return source.Config{}, errors.New("C2 fixture transit State client credential is invalid")
+	}
+	digest, err := fixed(input.Digest)
+	if err != nil {
+		return source.Config{}, err
+	}
+	var configured source.Config
+	configured.ClientCertificate, configured.MaterialIndex, configured.OrderSeed = certificate, input.TransitStateMaterials[role], digest
+	for index, declared := range input.TransitStateSources {
+		key, decodeErr := fixed(declared.LeafKeyDigest)
+		if decodeErr != nil {
+			return source.Config{}, decodeErr
+		}
+		configured.Sources[index] = source.Source{Address: declared.Address, ServerName: declared.ServerName, RootPEM: []byte(declared.Root),
+			LeafKeyDigest: key, Identity: sha256.Sum256([]byte("reference-c2-state-source-identity-" + declared.Address)),
+			Family: "reference-c2-state-source-" + string(rune('a'+index)), EndpointHandle: "reference-c2-state-source-" + string(rune('a'+index))}
+	}
+	return configured, nil
+}
+
+type fixtureStateReader interface {
+	Current() (state.Snapshot, error)
+}
+
+func waitForFixtureStateSources(store fixtureStateReader, encodedDeadline string) error {
+	deadline, err := time.Parse(time.RFC3339, encodedDeadline)
+	if err != nil {
+		return err
+	}
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		snapshot, currentErr := store.Current()
+		if currentErr != nil {
+			return currentErr
+		}
+		if snapshot.SourceAttempts == 2 && snapshot.SourceOutcomes[0] == "valid" && snapshot.SourceOutcomes[1] == "valid" {
+			return nil
+		}
+		if !time.Now().UTC().Before(deadline) {
+			return errors.New("C2 fixture State sources did not produce one valid wave")
+		}
+		<-ticker.C
+	}
 }
 
 func nativeFixtureRole(input config, role string) (endpointapi.TransitPeer, tls.Certificate, ed25519.PrivateKey, error) {

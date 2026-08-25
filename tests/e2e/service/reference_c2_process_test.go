@@ -58,6 +58,23 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 	inviteID := referenceC2ID(11)
 
 	root := t.TempDir()
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+	nodeBinary := buildProductCommand(t, "ardents-node")
+	sourceEndpoints, sourceClient := referenceC2StartStateSources(t, ctx, nodeBinary, stateFixture, root)
+	clientCertificate, err := os.ReadFile(sourceClient.certificate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientPrivateKey, err := os.ReadFile(sourceClient.privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceConfig := make([]map[string]string, len(sourceEndpoints))
+	for index, source := range sourceEndpoints {
+		sourceConfig[index] = map[string]string{"Address": source.address, "ServerName": source.serverName, "Root": source.root,
+			"LeafKeyDigest": hex.EncodeToString(source.leafDigest[:])}
+	}
 	publicationPath := filepath.Join(root, "publication.json")
 	configPath := filepath.Join(root, "reference-c2.json")
 	readyRoot := filepath.Join(root, "ready")
@@ -92,14 +109,13 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		"ServiceAttachment": referenceC2Hex(serviceAttachment), "ResolutionAttachment": referenceC2Hex(resolutionAttachment),
 		"TransitAuthority": hex.EncodeToString(transitAuthorityPublic), "SlotCredential": slotCredential, "ResponderCredential": responderCredential,
 		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite), "TransitStateRoots": stateRoots, "TransitStateMaterials": stateMaterials,
+		"TransitStateSources": sourceConfig, "TransitStateClient": map[string]string{"Certificate": string(clientCertificate), "PrivateKey": string(clientPrivateKey)},
 	}
 	raw, err := json.Marshal(fixture)
 	if err != nil || os.WriteFile(configPath, raw, 0o600) != nil {
 		t.Fatal("write process C2 fixture configuration")
 	}
 	binary := buildE2EFixtureCommand(t, "reference-c2")
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
-	defer cancel()
 	transit := make(map[string]<-chan commandResult, 4)
 	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
 		transit[role] = startCommand(ctx, root, binary, role, configPath)
