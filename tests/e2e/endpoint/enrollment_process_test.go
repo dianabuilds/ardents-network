@@ -93,19 +93,35 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 		"target_path=" + targetPath,
 		"artifact=" + artifactName,
 		"trusted_root=1.root.json",
+		"control_catalog=catalog.ac1",
+		"disclosure_root=catalog.pub",
+		"control_release=release.ac1",
+		"control_network=network.ac1",
+		"control_compatibility=compatibility.ac1",
+		"control_release_root=release.pub",
+		"control_network_root=network.pub",
+		"control_compatibility_root=compatibility.pub",
 	}, "\n") + "\n"
 	files := map[string][]byte{
-		"1.root.json":    []byte("synthetic trusted root\n"),
-		"RELEASE":        []byte(descriptor),
-		artifactName:     artifact,
-		"timestamp.json": []byte("synthetic metadata\n"),
+		"1.root.json":       []byte("synthetic trusted root\n"),
+		"RELEASE":           []byte(descriptor),
+		"catalog.ac1":       []byte("catalog"),
+		"catalog.pub":       []byte("key"),
+		"release.ac1":       []byte("release control"),
+		"network.ac1":       []byte("network control"),
+		"compatibility.ac1": []byte("compatibility control"),
+		"release.pub":       []byte("release key"),
+		"network.pub":       []byte("network key"),
+		"compatibility.pub": []byte("compatibility key"),
+		artifactName:        artifact,
+		"timestamp.json":    []byte("synthetic metadata\n"),
 	}
 	for name, contents := range files {
 		if name != artifactName {
 			writeEnrollmentFile(t, filepath.Join(bundle, name), contents, 0o600)
 		}
 	}
-	names := []string{"1.root.json", "RELEASE", artifactName, "timestamp.json"}
+	names := []string{"1.root.json", "RELEASE", artifactName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
 	lines := make([]string, 0, len(names))
 	for _, name := range names {
 		digest := sha256.Sum256(files[name])

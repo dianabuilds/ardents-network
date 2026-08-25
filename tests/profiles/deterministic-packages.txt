@@ -1,7 +1,10 @@
 github.com/dianabuilds/ardents-network/cmd/ardents
+github.com/dianabuilds/ardents-network/cmd/ardents-control
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/internal/application/broker
+github.com/dianabuilds/ardents-network/internal/alphacontrol
+github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection
 github.com/dianabuilds/ardents-network/internal/custody
 github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/endpoint/enrollment

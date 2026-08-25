@@ -1,3 +1,3 @@
-// Package endpoint_test exercises the public Endpoint command as an external
-// process at its closed-alpha enrollment boundary.
-package endpoint_test
+// Package endpoint holds E2E-only external-command evidence for the closed
+// alpha enrollment boundary.
+package endpoint

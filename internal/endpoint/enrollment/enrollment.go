@@ -45,6 +45,15 @@ type Request struct {
 // is passed unchanged to Release Decision; it does not grant execution.
 type Verified struct {
 	Inputs release.Inputs
+	// ControlCatalog and DisclosureRoot are enrollment-pinned H4-6A
+	// disclosure companions. They are deliberately not Release metadata.
+	ControlCatalog, DisclosureRoot []byte
+	ControlRelease                 []byte
+	ControlNetwork                 []byte
+	ControlCompatibility           []byte
+	ControlReleaseRoot             []byte
+	ControlNetworkRoot             []byte
+	ControlCompatibilityRoot       []byte
 }
 
 // Verify checks the manifest pin before parsing it, then accepts only a
@@ -101,16 +110,56 @@ func Verify(request Request) (Verified, error) {
 	if !found {
 		return Verified{}, errors.New("alpha descriptor trusted root is absent from the manifest")
 	}
+	controlCatalog, found := files[descriptor.controlCatalog]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor control catalog is absent from the manifest")
+	}
+	disclosureRoot, found := files[descriptor.disclosureRoot]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor disclosure root is absent from the manifest")
+	}
+	controlRelease, found := files[descriptor.controlRelease]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor release control is absent from the manifest")
+	}
+	controlNetwork, found := files[descriptor.controlNetwork]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor network control is absent from the manifest")
+	}
+	controlCompatibility, found := files[descriptor.controlCompatibility]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor compatibility control is absent from the manifest")
+	}
+	controlReleaseRoot, found := files[descriptor.controlReleaseRoot]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor release control root is absent from the manifest")
+	}
+	controlNetworkRoot, found := files[descriptor.controlNetworkRoot]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor network control root is absent from the manifest")
+	}
+	controlCompatibilityRoot, found := files[descriptor.controlCompatibilityRoot]
+	if !found {
+		return Verified{}, errors.New("alpha descriptor compatibility control root is absent from the manifest")
+	}
 	metadata := make(map[string][]byte, len(files))
 	for name, contents := range files {
-		if name == descriptorName || name == descriptor.artifact || name == descriptor.trustedRoot {
+		if name == descriptorName || name == descriptor.artifact || name == descriptor.trustedRoot ||
+			name == descriptor.controlCatalog || name == descriptor.disclosureRoot ||
+			name == descriptor.controlRelease || name == descriptor.controlNetwork || name == descriptor.controlCompatibility ||
+			name == descriptor.controlReleaseRoot || name == descriptor.controlNetworkRoot || name == descriptor.controlCompatibilityRoot {
 			continue
 		}
 		metadata[release.MetadataURL(name)] = contents
 	}
 	return Verified{Inputs: release.Inputs{RootBytes: trustedRoot, Files: metadata, TargetPath: request.TargetPath,
 		Artifact: artifact, Local: release.LocalEnvironment{Environment: request.Environment, Network: request.Network,
-			Platform: request.Pin.Platform, Architecture: request.Architecture, RefTime: request.ReferenceTime.UTC()}}}, nil
+			Platform: request.Pin.Platform, Architecture: request.Architecture, RefTime: request.ReferenceTime.UTC()}},
+		ControlCatalog: append([]byte(nil), controlCatalog...), DisclosureRoot: append([]byte(nil), disclosureRoot...),
+		ControlRelease: append([]byte(nil), controlRelease...), ControlNetwork: append([]byte(nil), controlNetwork...),
+		ControlCompatibility: append([]byte(nil), controlCompatibility...),
+		ControlReleaseRoot:   append([]byte(nil), controlReleaseRoot...), ControlNetworkRoot: append([]byte(nil), controlNetworkRoot...),
+		ControlCompatibilityRoot: append([]byte(nil), controlCompatibilityRoot...)}, nil
 }
 
 func validRequest(request Request) bool {
@@ -181,12 +230,14 @@ func exactInventory(root string, entries map[string][]byte) error {
 }
 
 type descriptor struct {
-	cohort, release, platform, environment, network, targetPath string
-	artifact, trustedRoot                                       string
+	cohort, release, platform, environment, network, targetPath      string
+	artifact, trustedRoot, controlCatalog, disclosureRoot            string
+	controlRelease, controlNetwork, controlCompatibility             string
+	controlReleaseRoot, controlNetworkRoot, controlCompatibilityRoot string
 }
 
 func parseDescriptor(raw []byte) (descriptor, error) {
-	keys := []string{"schema", "cohort", "release", "platform", "environment", "network", "target_path", "artifact", "trusted_root"}
+	keys := []string{"schema", "cohort", "release", "platform", "environment", "network", "target_path", "artifact", "trusted_root", "control_catalog", "disclosure_root", "control_release", "control_network", "control_compatibility", "control_release_root", "control_network_root", "control_compatibility_root"}
 	lines := strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
 	if len(lines) != len(keys) || len(raw) == 0 || raw[len(raw)-1] != '\n' {
 		return descriptor{}, errors.New("alpha descriptor is not canonical")
@@ -199,13 +250,30 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 		}
 		values[parts[0]] = parts[1]
 	}
-	if values["schema"] != "ardents-closed-alpha-enrollment-v1" || !validName(values["artifact"]) || !validName(values["trusted_root"]) ||
-		values["artifact"] == values["trusted_root"] || values["artifact"] == descriptorName || values["trusted_root"] == descriptorName {
+	if values["schema"] != "ardents-closed-alpha-enrollment-v1" || values["control_release"] != "release.ac1" ||
+		values["control_network"] != "network.ac1" || values["control_compatibility"] != "compatibility.ac1" ||
+		values["control_release_root"] != "release.pub" || values["control_network_root"] != "network.pub" ||
+		values["control_compatibility_root"] != "compatibility.pub" {
 		return descriptor{}, errors.New("alpha descriptor is invalid")
+	}
+	names := []string{values["artifact"], values["trusted_root"], values["control_catalog"], values["disclosure_root"],
+		values["control_release"], values["control_network"], values["control_compatibility"], values["control_release_root"],
+		values["control_network_root"], values["control_compatibility_root"]}
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		if !validName(name) || name == descriptorName {
+			return descriptor{}, errors.New("alpha descriptor is invalid")
+		}
+		if _, found := seen[name]; found {
+			return descriptor{}, errors.New("alpha descriptor is invalid")
+		}
+		seen[name] = struct{}{}
 	}
 	return descriptor{cohort: values["cohort"], release: values["release"], platform: values["platform"],
 		environment: values["environment"], network: values["network"], targetPath: values["target_path"],
-		artifact: values["artifact"], trustedRoot: values["trusted_root"]}, nil
+		artifact: values["artifact"], trustedRoot: values["trusted_root"], controlCatalog: values["control_catalog"], disclosureRoot: values["disclosure_root"],
+		controlRelease: values["control_release"], controlNetwork: values["control_network"], controlCompatibility: values["control_compatibility"],
+		controlReleaseRoot: values["control_release_root"], controlNetworkRoot: values["control_network_root"], controlCompatibilityRoot: values["control_compatibility_root"]}, nil
 }
 
 func (descriptor descriptor) matches(request Request) error {

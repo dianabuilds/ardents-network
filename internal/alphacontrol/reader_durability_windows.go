@@ -1,0 +1,21 @@
+//go:build windows
+
+package alphacontrol
+
+import "golang.org/x/sys/windows"
+
+func durableReaderRename(oldPath, newPath string) error {
+	oldPointer, err := windows.UTF16PtrFromString(oldPath)
+	if err != nil {
+		return err
+	}
+	newPointer, err := windows.UTF16PtrFromString(newPath)
+	if err != nil {
+		return err
+	}
+	return windows.MoveFileEx(oldPointer, newPointer, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH)
+}
+
+// Windows has no directory fsync; MOVEFILE_WRITE_THROUGH publishes the
+// already-flushed floor file before returning.
+func syncReaderDirectory(string) error { return nil }

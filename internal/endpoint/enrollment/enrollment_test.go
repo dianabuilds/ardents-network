@@ -24,6 +24,15 @@ func TestVerifyPinsExactBundleBeforeParsingAndBuildsReleaseInputs(t *testing.T) 
 	if got := string(verified.Inputs.Files[release.MetadataURL("timestamp.json")]); got != "timestamp" {
 		t.Fatalf("timestamp metadata = %q", got)
 	}
+	if string(verified.ControlCatalog) != "catalog" || string(verified.DisclosureRoot) != "key" ||
+		string(verified.ControlRelease) != "release control" || string(verified.ControlNetwork) != "network control" ||
+		string(verified.ControlCompatibility) != "compatibility control" || string(verified.ControlReleaseRoot) != "release key" ||
+		string(verified.ControlNetworkRoot) != "network key" || string(verified.ControlCompatibilityRoot) != "compatibility key" || verified.Inputs.Files[release.MetadataURL("catalog.ac1")] != nil ||
+		verified.Inputs.Files[release.MetadataURL("release.ac1")] != nil || verified.Inputs.Files[release.MetadataURL("network.ac1")] != nil ||
+		verified.Inputs.Files[release.MetadataURL("compatibility.ac1")] != nil || verified.Inputs.Files[release.MetadataURL("release.pub")] != nil ||
+		verified.Inputs.Files[release.MetadataURL("network.pub")] != nil || verified.Inputs.Files[release.MetadataURL("compatibility.pub")] != nil {
+		t.Fatalf("alpha control companions crossed the Release boundary: %+v", verified)
+	}
 	if err := os.WriteFile(filepath.Join(root, manifestName), []byte("not a manifest\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -74,8 +83,16 @@ func enrolledFixture(t *testing.T) (string, Request) {
 		"target_path=ardents/linux-amd64/endpoint",
 		"artifact=ardents-linux-amd64",
 		"trusted_root=1.root.json",
+		"control_catalog=catalog.ac1",
+		"disclosure_root=catalog.pub",
+		"control_release=release.ac1",
+		"control_network=network.ac1",
+		"control_compatibility=compatibility.ac1",
+		"control_release_root=release.pub",
+		"control_network_root=network.pub",
+		"control_compatibility_root=compatibility.pub",
 	}, "\n") + "\n"
-	files := map[string][]byte{"RELEASE": []byte(descriptor), "1.root.json": []byte("trusted root"), "timestamp.json": []byte("timestamp")}
+	files := map[string][]byte{"RELEASE": []byte(descriptor), "1.root.json": []byte("trusted root"), "timestamp.json": []byte("timestamp"), "catalog.ac1": []byte("catalog"), "catalog.pub": []byte("key"), "release.ac1": []byte("release control"), "network.ac1": []byte("network control"), "compatibility.ac1": []byte("compatibility control"), "release.pub": []byte("release key"), "network.pub": []byte("network key"), "compatibility.pub": []byte("compatibility key")}
 	for name, contents := range files {
 		if err := os.WriteFile(filepath.Join(root, name), contents, 0o600); err != nil {
 			t.Fatal(err)
@@ -95,7 +112,7 @@ func enrolledFixture(t *testing.T) (string, Request) {
 
 func makeManifest(t *testing.T, files map[string][]byte) []byte {
 	t.Helper()
-	names := []string{"1.root.json", "RELEASE", "ardents-linux-amd64", "timestamp.json"}
+	names := []string{"1.root.json", "RELEASE", "ardents-linux-amd64", "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
 	lines := make([]string, 0, len(names))
 	for _, name := range names {
 		digest := sha256.Sum256(files[name])
