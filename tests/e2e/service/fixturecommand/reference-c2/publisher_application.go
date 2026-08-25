@@ -101,7 +101,9 @@ func runPublisherApplication(input config) error {
 		_ = connection.Close()
 		return err
 	}
-	serveStatic(connection, input.ResourceProofPath)
+	if err := serveStatic(connection, input.ResourceProofPath); err != nil {
+		return err
+	}
 	return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher-app", Class: "served", Passed: true})
 }
 

@@ -18,7 +18,7 @@ const (
 
 // serveStatic is the Publisher fixture's finite Reference Site source. It
 // accepts each declared resource only once, then records exact bounded proof.
-func serveStatic(connection net.Conn, proofPath string) {
+func serveStatic(connection net.Conn, proofPath string) error {
 	defer connection.Close()
 	reader := bufio.NewReader(connection)
 	resources := map[string]struct {
@@ -32,18 +32,21 @@ func serveStatic(connection net.Conn, proofPath string) {
 	for len(served) != len(resources) {
 		request, err := http.ReadRequest(reader)
 		if err != nil || request.Method != http.MethodGet || request.Host != "reference" || request.URL.RawQuery != "" {
-			return
+			return errors.New("publisher fixture static request is invalid or incomplete")
 		}
 		resource, found := resources[request.URL.Path]
 		if !found || served[request.URL.Path] {
-			return
+			return errors.New("publisher fixture static resource is not declared")
 		}
 		if _, err := fmt.Fprintf(connection, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: keep-alive\r\n\r\n%s", resource.contentType, len(resource.body), resource.body); err != nil {
-			return
+			return err
 		}
 		served[request.URL.Path] = true
 	}
-	_ = os.WriteFile(proofPath, []byte("declared-resources\n"), 0o600)
+	if err := os.WriteFile(proofPath, []byte("declared-resources\n"), 0o600); err != nil {
+		return err
+	}
+	return nil
 }
 
 func waitForResourceProof(deadline time.Time, proofPath string) error {

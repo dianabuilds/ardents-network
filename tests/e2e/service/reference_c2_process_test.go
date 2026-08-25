@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
 	"os"
@@ -25,14 +26,22 @@ import (
 )
 
 func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
-	runReferenceC2(t, false)
+	runReferenceC2(t, referenceC2Scenario{})
 }
 
 func TestReferenceC2ReportsUnavailableAfterPublisherGoesOffline(t *testing.T) {
-	runReferenceC2(t, true)
+	runReferenceC2(t, referenceC2Scenario{publisherOffline: true})
 }
 
-func runReferenceC2(t *testing.T, publisherOffline bool) {
+func TestReferenceC2RejectsUntrustedPublisherApplication(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{rejectPublisherApplication: true})
+}
+
+type referenceC2Scenario struct {
+	publisherOffline, rejectPublisherApplication bool
+}
+
+func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	t.Helper()
 	nodeBinary := buildProductCommand(t, "ardents-node")
 	fixtureBinary := buildE2EFixtureCommand(t, "reference-c2")
@@ -124,7 +133,7 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 		"TransitAuthority": hex.EncodeToString(transitAuthorityPublic), "SlotCredential": slotCredential, "ResponderCredential": responderCredential,
 		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite), "TransitStateRoots": stateRoots, "TransitStateMaterials": stateMaterials,
 		"TransitStateSources": sourceConfig, "TransitStateClient": map[string]string{"Certificate": string(clientCertificate), "PrivateKey": string(clientPrivateKey)},
-		"PublisherOffline": publisherOffline,
+		"PublisherOffline": scenario.publisherOffline,
 	}
 	if firefox := os.Getenv("ARDENTS_REFERENCE_C2_FIREFOX"); firefox != "" {
 		fixture["FirefoxExecutable"] = firefox
@@ -132,6 +141,19 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 	raw, err := json.Marshal(fixture)
 	if err != nil || os.WriteFile(configPath, raw, 0o600) != nil {
 		t.Fatal("write process C2 fixture configuration")
+	}
+	publisherApplicationConfigPath := configPath
+	if scenario.rejectPublisherApplication {
+		invalidApplication := make(map[string]any, len(fixture))
+		for key, value := range fixture {
+			invalidApplication[key] = value
+		}
+		invalidApplication["PublisherApplicationToken"] = referenceC2Hex(referenceC2ID(15))
+		publisherApplicationConfigPath = filepath.Join(root, "reference-c2-invalid-application.json")
+		raw, err := json.Marshal(invalidApplication)
+		if err != nil || os.WriteFile(publisherApplicationConfigPath, raw, 0o600) != nil {
+			t.Fatal("write untrusted Publisher Application fixture configuration")
+		}
 	}
 	transit := make(map[string]<-chan commandResult, 4)
 	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
@@ -157,8 +179,16 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 		t.Fatalf("C2 Gateway process did not become ready: %v\n%s", err, process.output)
 	}
 	var publisherApplication <-chan commandResult
-	if !publisherOffline {
-		publisherApplication = startCommand(ctx, root, fixtureBinary, "publisher-app", configPath)
+	if !scenario.publisherOffline {
+		publisherApplication = startCommand(ctx, root, fixtureBinary, "publisher-app", publisherApplicationConfigPath)
+		if scenario.rejectPublisherApplication {
+			assertPublisherApplicationRejection(t, publisher, publisherApplication, publisherApplicationReady)
+			if err := os.WriteFile(completePath, []byte("complete\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			assertC2TransitDrained(t, transit, gateway)
+			return
+		}
 		if err := referenceC2WaitForFile(ctx, publisherApplicationReady); err != nil {
 			process := <-publisherApplication
 			t.Fatalf("C2 Publisher local Application process did not become ready: %v\n%s", err, process.output)
@@ -177,7 +207,7 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 	}
 	processes["gateway"] = <-gateway
 	roles := []string{"user", "publisher", "initiator", "introduction", "rendezvous", "responder", "gateway"}
-	if !publisherOffline {
+	if !scenario.publisherOffline {
 		roles = append(roles, "publisher-app")
 	}
 	for _, role := range roles {
@@ -201,9 +231,50 @@ func runReferenceC2(t *testing.T, publisherOffline bool) {
 				t.Fatalf("C2 transit process %s result class = %q, want drained", role, observed.Class)
 			}
 		}
-		if role == "user" && publisherOffline && observed.Class != "service unavailable" {
+		if role == "user" && scenario.publisherOffline && observed.Class != "service unavailable" {
 			t.Fatalf("offline C2 User result class = %q, want service unavailable", observed.Class)
 		}
+	}
+}
+
+func assertPublisherApplicationRejection(t *testing.T, publisher, application <-chan commandResult, readyPath string) {
+	t.Helper()
+	publisherResult := <-publisher
+	applicationResult := <-application
+	if publisherResult.err == nil || !strings.Contains(string(publisherResult.output), "handoff token is invalid") {
+		t.Fatalf("Publisher accepted untrusted local Application: %v\n%s", publisherResult.err, publisherResult.output)
+	}
+	if applicationResult.err == nil || !strings.Contains(string(applicationResult.output), "static request is invalid or incomplete") {
+		t.Fatalf("untrusted local Application reported success: %v\n%s", applicationResult.err, applicationResult.output)
+	}
+	if _, err := os.Stat(readyPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("untrusted local Application produced Publisher readiness: %v", err)
+	}
+}
+
+func assertC2TransitDrained(t *testing.T, transit map[string]<-chan commandResult, gateway <-chan commandResult) {
+	t.Helper()
+	for role, process := range transit {
+		assertC2DrainedResult(t, role, <-process)
+	}
+	assertC2DrainedResult(t, "gateway", <-gateway)
+}
+
+func assertC2DrainedResult(t *testing.T, role string, process commandResult) {
+	t.Helper()
+	if process.err != nil {
+		t.Fatalf("C2 %s did not drain after local Application refusal: %v\n%s", role, process.err, process.output)
+	}
+	var observed struct {
+		Schema, Role, Class string
+		Passed              bool
+	}
+	line := strings.TrimSpace(string(process.output))
+	if index := strings.LastIndex(line, "\n"); index >= 0 {
+		line = line[index+1:]
+	}
+	if err := json.Unmarshal([]byte(line), &observed); err != nil || observed.Schema != "ardents-e2e-reference-c2-result-v1" || observed.Role != role || !observed.Passed || observed.Class != "drained" {
+		t.Fatalf("C2 %s drain result = %q / %+v / %v", role, process.output, observed, err)
 	}
 }
 

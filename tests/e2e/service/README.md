@@ -24,6 +24,9 @@ opening Firefox alone is not accepted as evidence.
 Its separate offline case first retains an authentic published descriptor, then
 removes the Publisher's local Introduction slot. The User must report bounded
 `service unavailable`, receive no Reference URL, and make no browser request.
+Its local-handoff refusal case supplies a distinct Application token. Publisher
+must reject it before C-2 admission, create no Application-ready signal, and
+leave every started transit/Gateway process drained.
 For an explicitly cross-compiled Linux qualification only, a
 test runner may provide the matching fixture through
 `ARDENTS_E2E_FIXTURE_REFERENCE_C2`; ordinary local and CI runs leave it unset
