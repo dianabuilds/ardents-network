@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
-	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 const eventSchema = "ardents-node-event-v1"
@@ -38,10 +37,19 @@ type DutyView interface {
 	DutyCandidateCount() uint8
 	DutyCandidateNodeID(uint8) [32]byte
 	DutyCandidatePublicKey(uint8) [32]byte
+	DutyCandidateKeyID(uint8) [32]byte
+	DutyCandidateFamilyID(uint8) [32]byte
+	DutyCandidateRecordDigest(uint8) [32]byte
+	DutyCandidateDomainProofDigest(uint8) [32]byte
 	DutyCandidateEndpoint(uint8) string
+	DutyCandidateCapacity(uint8) uint16
 	DutyCandidateAssignment(uint8) string
 	DutyCandidateValidFrom(uint8) time.Time
 	DutyCandidateValidUntil(uint8) time.Time
+	DutyCandidateAssignmentNotAfter(uint8) time.Time
+	DutyAuthorityCount() uint8
+	DutyAuthorityID(uint8) [32]byte
+	DutyAuthorityPublicKey(uint8) [32]byte
 }
 
 // dutyFacts is the Node-owned immutable copy of one DutyView. It is also useful to
@@ -68,15 +76,22 @@ type dutyFacts struct {
 	Fresh            bool
 	Candidates       [64]dutyCandidate
 	CandidateCount   uint8
+	Authorities      [16]dutyAuthority
+	AuthorityCount   uint8
 }
 
 // dutyCandidate is one narrow State-authorized peer fact. It deliberately
 // contains no source, address history, target, or complete route material.
 type dutyCandidate struct {
-	NodeID, PublicKey     [32]byte
-	Endpoint, Assignment  string
-	ValidFrom, ValidUntil time.Time
+	NodeID, PublicKey, KeyID, FamilyID, RecordDigest, DomainProofDigest [32]byte
+	Endpoint, Assignment                                                string
+	Capacity                                                            uint16
+	ValidFrom, ValidUntil, AssignmentNotAfter                           time.Time
 }
+
+// dutyAuthority is one current authenticated Network State verification key.
+// It is copied only for Node-local Transit Grant verification.
+type dutyAuthority struct{ ID, PublicKey [32]byte }
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
 type Config struct {
@@ -118,7 +133,6 @@ type RendezvousProfile struct {
 // supplies its endpoint, Rendezvous identity, and expiry.
 type InitiatorProfile struct {
 	Certificate                tls.Certificate
-	Admit                      route.EntryBindingAdmitter
 	HandshakeLimit, RelayLimit uint16
 	RelayByteLimit             uint64
 	DrainTimeout               time.Duration
@@ -129,7 +143,6 @@ type InitiatorProfile struct {
 // and expiry; this profile cannot decrypt Service material.
 type IntroductionProfile struct {
 	Certificate                              tls.Certificate
-	Admit                                    route.EndpointTransitBindingAdmitter
 	HandshakeLimit, SlotLimit, DeliveryLimit uint16
 	DrainTimeout                             time.Duration
 }
@@ -138,7 +151,6 @@ type IntroductionProfile struct {
 // It does not contain Publisher or Service material.
 type ResponderProfile struct {
 	Certificate                tls.Certificate
-	Admit                      route.EndpointTransitBindingAdmitter
 	HandshakeLimit, RelayLimit uint16
 	RelayByteLimit             uint64
 	DrainTimeout               time.Duration
@@ -176,11 +188,41 @@ func (facts dutyFacts) DutyCandidatePublicKey(index uint8) [32]byte {
 	}
 	return facts.Candidates[index].PublicKey
 }
+func (facts dutyFacts) DutyCandidateKeyID(index uint8) [32]byte {
+	if index >= facts.CandidateCount {
+		return [32]byte{}
+	}
+	return facts.Candidates[index].KeyID
+}
+func (facts dutyFacts) DutyCandidateFamilyID(index uint8) [32]byte {
+	if index >= facts.CandidateCount {
+		return [32]byte{}
+	}
+	return facts.Candidates[index].FamilyID
+}
+func (facts dutyFacts) DutyCandidateRecordDigest(index uint8) [32]byte {
+	if index >= facts.CandidateCount {
+		return [32]byte{}
+	}
+	return facts.Candidates[index].RecordDigest
+}
+func (facts dutyFacts) DutyCandidateDomainProofDigest(index uint8) [32]byte {
+	if index >= facts.CandidateCount {
+		return [32]byte{}
+	}
+	return facts.Candidates[index].DomainProofDigest
+}
 func (facts dutyFacts) DutyCandidateEndpoint(index uint8) string {
 	if index >= facts.CandidateCount {
 		return ""
 	}
 	return facts.Candidates[index].Endpoint
+}
+func (facts dutyFacts) DutyCandidateCapacity(index uint8) uint16 {
+	if index >= facts.CandidateCount {
+		return 0
+	}
+	return facts.Candidates[index].Capacity
 }
 func (facts dutyFacts) DutyCandidateAssignment(index uint8) string {
 	if index >= facts.CandidateCount {
@@ -199,6 +241,25 @@ func (facts dutyFacts) DutyCandidateValidUntil(index uint8) time.Time {
 		return time.Time{}
 	}
 	return facts.Candidates[index].ValidUntil
+}
+func (facts dutyFacts) DutyCandidateAssignmentNotAfter(index uint8) time.Time {
+	if index >= facts.CandidateCount {
+		return time.Time{}
+	}
+	return facts.Candidates[index].AssignmentNotAfter
+}
+func (facts dutyFacts) DutyAuthorityCount() uint8 { return facts.AuthorityCount }
+func (facts dutyFacts) DutyAuthorityID(index uint8) [32]byte {
+	if index >= facts.AuthorityCount {
+		return [32]byte{}
+	}
+	return facts.Authorities[index].ID
+}
+func (facts dutyFacts) DutyAuthorityPublicKey(index uint8) [32]byte {
+	if index >= facts.AuthorityCount {
+		return [32]byte{}
+	}
+	return facts.Authorities[index].PublicKey
 }
 
 // Event is one bounded external observation of Node lifecycle state.

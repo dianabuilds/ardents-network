@@ -35,6 +35,18 @@ func TestCurrentNodeDutyExposesOnlyCurrentAuthenticatedDutyFacts(t *testing.T) {
 		view.DutyCandidateValidUntil(0).IsZero() {
 		t.Fatalf("Node duty view lacks authenticated candidate facts")
 	}
+	if view.DutyCandidateKeyID(0) == [32]byte{} || view.DutyCandidateFamilyID(0) == [32]byte{} ||
+		view.DutyCandidateRecordDigest(0) == [32]byte{} || view.DutyCandidateDomainProofDigest(0) == [32]byte{} ||
+		view.DutyCandidateCapacity(0) == 0 || view.DutyCandidateAssignmentNotAfter(0).IsZero() {
+		t.Fatal("Node duty view lacks the bounded Entry-verification candidate facts")
+	}
+	if view.DutyAuthorityCount() != 1 || view.DutyAuthorityID(0) != value.authorityID ||
+		view.DutyAuthorityPublicKey(0) != [32]byte(value.authorityPublic) {
+		t.Fatal("Node duty view lacks the current State authority verification fact")
+	}
+	if view.DutyAuthorityID(1) != [32]byte{} || view.DutyAuthorityPublicKey(1) != [32]byte{} {
+		t.Fatal("Node duty view exposed an out-of-range State authority")
+	}
 	if view.DutyCandidateNodeID(2) != [32]byte{} || view.DutyCandidateEndpoint(2) != "" ||
 		!view.DutyCandidateValidUntil(2).IsZero() {
 		t.Fatal("Node duty view exposed an out-of-range candidate")

@@ -26,20 +26,26 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 			return uint64(usage.Handshakes + usage.WaitingLegs), uint64(usage.Connections), usage.RelayedBytes
 		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
 	case "initiator":
-		plan, err := initiatorDuty(config.Initiator, snapshot)
+		admitter, closeAdmitter, err := openStateEntryAdmitter(config.LocalRoleStateRoot, snapshot, config.now)
 		if err != nil {
+			return nil, err
+		}
+		plan, err := initiatorDuty(config.Initiator, snapshot, admitter)
+		if err != nil {
+			_ = closeAdmitter()
 			return nil, err
 		}
 		running, err := StartInitiator(plan)
 		if err != nil {
+			_ = closeAdmitter()
 			return nil, err
 		}
 		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
 			usage := running.Usage()
 			return uint64(usage.Handshakes), uint64(usage.Connections), usage.RelayedBytes
-		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
+		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx); _ = closeAdmitter() }}, nil
 	case "introduction":
-		plan, err := introductionDuty(config.Introduction, snapshot)
+		plan, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +58,7 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 			return uint64(usage.Handshakes + usage.Deliveries), uint64(usage.Connections), 0
 		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
 	case "responder":
-		plan, err := responderDuty(config.Responder, snapshot)
+		plan, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
 		if err != nil {
 			return nil, err
 		}

@@ -49,11 +49,41 @@ func (view NodeDutyView) DutyCandidatePublicKey(index uint8) [32]byte {
 	}
 	return view.snapshot.Candidates[index].PublicKey
 }
+func (view NodeDutyView) DutyCandidateKeyID(index uint8) [32]byte {
+	if index >= view.snapshot.CandidateCount {
+		return [32]byte{}
+	}
+	return view.snapshot.Candidates[index].KeyID
+}
+func (view NodeDutyView) DutyCandidateFamilyID(index uint8) [32]byte {
+	if index >= view.snapshot.CandidateCount {
+		return [32]byte{}
+	}
+	return view.snapshot.Candidates[index].FamilyID
+}
+func (view NodeDutyView) DutyCandidateRecordDigest(index uint8) [32]byte {
+	if index >= view.snapshot.CandidateCount {
+		return [32]byte{}
+	}
+	return view.snapshot.Candidates[index].RecordDigest
+}
+func (view NodeDutyView) DutyCandidateDomainProofDigest(index uint8) [32]byte {
+	if index >= view.snapshot.CandidateCount {
+		return [32]byte{}
+	}
+	return view.snapshot.Candidates[index].DomainProofDigest
+}
 func (view NodeDutyView) DutyCandidateEndpoint(index uint8) string {
 	if index >= view.snapshot.CandidateCount {
 		return ""
 	}
 	return view.snapshot.Candidates[index].Endpoint
+}
+func (view NodeDutyView) DutyCandidateCapacity(index uint8) uint16 {
+	if index >= view.snapshot.CandidateCount {
+		return 0
+	}
+	return view.snapshot.Candidates[index].Capacity
 }
 func (view NodeDutyView) DutyCandidateAssignment(index uint8) string {
 	if index >= view.snapshot.CandidateCount {
@@ -72,4 +102,27 @@ func (view NodeDutyView) DutyCandidateValidUntil(index uint8) time.Time {
 		return time.Time{}
 	}
 	return view.snapshot.Candidates[index].ValidUntil
+}
+func (view NodeDutyView) DutyCandidateAssignmentNotAfter(index uint8) time.Time {
+	if index >= view.snapshot.CandidateCount {
+		return time.Time{}
+	}
+	return view.snapshot.Candidates[index].AssignmentNotAfter
+}
+
+// DutyAuthorityCount, DutyAuthorityID, and DutyAuthorityPublicKey expose the
+// finite current State authority verification set required by a Node-only
+// offline Transit Grant check. They do not expose State source or persistence.
+func (view NodeDutyView) DutyAuthorityCount() uint8 { return view.snapshot.EpochAuthorityCount }
+func (view NodeDutyView) DutyAuthorityID(index uint8) [32]byte {
+	if index >= view.snapshot.EpochAuthorityCount {
+		return [32]byte{}
+	}
+	return view.snapshot.EpochAuthorityIDs[index]
+}
+func (view NodeDutyView) DutyAuthorityPublicKey(index uint8) [32]byte {
+	if index >= view.snapshot.EpochAuthorityCount {
+		return [32]byte{}
+	}
+	return view.snapshot.EpochAuthorityKeys[index]
 }

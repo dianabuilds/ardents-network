@@ -69,7 +69,8 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 		return errors.New("local role replacement is invalid")
 	}
 	now := store.clock().UTC()
-	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)+len(duties))}
+	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)+len(duties)),
+		TransitGrantSpends: liveTransitGrantSpends(store.state.TransitGrantSpends, now)}
 	for _, retained := range store.state.Duties {
 		if retained.Producer != producer && now.Unix() < retained.NotAfter {
 			next.Duties = append(next.Duties, retained)
@@ -82,10 +83,56 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 		next.Duties = append(next.Duties, dutyRecord{Producer: producer, Identity: duty.Identity,
 			Family: duty.Family, Class: duty.Class, State: duty.State, NotAfter: duty.NotAfter.Unix()})
 	}
-	if !validRecords(next.Duties) {
+	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) {
 		return errors.New("local role state exceeds its bound")
 	}
 	return store.commit(next)
+}
+
+// SpendTransitGrant durably consumes one exact finite transit grant before a
+// Node allocates route work. The root lease makes the check-and-write atomic
+// across concurrent Node attempts and after process restart.
+func (store *store) SpendTransitGrant(nodeID, grantID [32]byte, notAfter time.Time) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.closed || store.failed != nil || nodeID == [32]byte{} || grantID == [32]byte{} || notAfter.IsZero() ||
+		!notAfter.Equal(notAfter.UTC().Truncate(time.Second)) {
+		return errors.New("transit grant spend is invalid")
+	}
+	now := store.clock().UTC()
+	if !now.Before(notAfter) {
+		return errors.New("transit grant is expired")
+	}
+	spends := liveTransitGrantSpends(store.state.TransitGrantSpends, now)
+	for _, spend := range spends {
+		if spend.GrantID == grantID {
+			return errors.New("transit grant was already spent")
+		}
+	}
+	if len(spends) >= maximumTransitGrantSpends {
+		return errors.New("transit grant spend ledger is full")
+	}
+	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)), TransitGrantSpends: spends}
+	for _, retained := range store.state.Duties {
+		if now.Unix() < retained.NotAfter {
+			next.Duties = append(next.Duties, retained)
+		}
+	}
+	next.TransitGrantSpends = append(next.TransitGrantSpends, transitGrantSpend{NodeID: nodeID, GrantID: grantID, NotAfter: notAfter.Unix()})
+	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) {
+		return errors.New("transit grant spend ledger is invalid")
+	}
+	return store.commit(next)
+}
+
+func liveTransitGrantSpends(spends []transitGrantSpend, now time.Time) []transitGrantSpend {
+	result := make([]transitGrantSpend, 0, len(spends))
+	for _, spend := range spends {
+		if now.Unix() < spend.NotAfter {
+			result = append(result, spend)
+		}
+	}
+	return result
 }
 
 // Remove atomically removes every duty owned by producer.

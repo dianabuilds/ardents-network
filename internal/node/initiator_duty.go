@@ -6,8 +6,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts) (InitiatorConfig, error) {
-	if snapshot.Profile != route.Profile || snapshot.Assignment != "initiator" || snapshot.ProbeEndpoint == "" || profile.Admit == nil ||
+func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.EntryBindingAdmitter) (InitiatorConfig, error) {
+	if snapshot.Profile != route.Profile || snapshot.Assignment != "initiator" || snapshot.ProbeEndpoint == "" || admit == nil ||
 		profile.HandshakeLimit == 0 || profile.RelayLimit == 0 || profile.RelayByteLimit == 0 || profile.DrainTimeout <= 0 {
 		return InitiatorConfig{}, errors.New("Initiator profile or State assignment is incomplete")
 	}
@@ -47,7 +47,7 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts) (InitiatorConfi
 	}
 	return InitiatorConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate, NetworkID: snapshot.NetworkID,
 		EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID, NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch,
-		NotAfter: notAfter.UTC(), Rendezvous: peer, ResolutionGateway: gateway, Admit: profile.Admit, HandshakeLimit: profile.HandshakeLimit,
+		NotAfter: notAfter.UTC(), Rendezvous: peer, ResolutionGateway: gateway, Admit: admit, HandshakeLimit: profile.HandshakeLimit,
 		RelayLimit: profile.RelayLimit, RelayByteLimit: profile.RelayByteLimit, DrainTimeout: profile.DrainTimeout}, nil
 }
 
@@ -57,13 +57,25 @@ func validateNativeDutyProfile(config runtimeConfig, snapshot dutyFacts) error {
 		_, err := rendezvousDuty(config.Rendezvous, snapshot)
 		return err
 	case "initiator":
-		_, err := initiatorDuty(config.Initiator, snapshot)
+		admit, closeAdmitter, err := openStateEntryAdmitter(config.LocalRoleStateRoot, snapshot, config.now)
+		if closeAdmitter != nil {
+			defer closeAdmitter()
+		}
+		if err == nil {
+			_, err = initiatorDuty(config.Initiator, snapshot, admit)
+		}
 		return err
 	case "introduction":
-		_, err := introductionDuty(config.Introduction, snapshot)
+		if snapshot.AuthorityCount == 0 {
+			return errors.New("Introduction State authority verification set is incomplete")
+		}
+		_, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
 		return err
 	case "responder":
-		_, err := responderDuty(config.Responder, snapshot)
+		if snapshot.AuthorityCount == 0 {
+			return errors.New("Responder State authority verification set is incomplete")
+		}
+		_, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
 		return err
 	default:
 		return errors.New("native Route assignment is not implemented")

@@ -238,10 +238,21 @@ func currentFacts(config runtimeConfig) (dutyFacts, error) {
 	if result.CandidateCount > uint8(len(result.Candidates)) {
 		return dutyFacts{}, errors.New("node duty view candidate count is outside its bound")
 	}
+	result.AuthorityCount = view.DutyAuthorityCount()
+	if result.AuthorityCount > uint8(len(result.Authorities)) {
+		return dutyFacts{}, errors.New("node duty view authority count is outside its bound")
+	}
+	for index := uint8(0); index < result.AuthorityCount; index++ {
+		result.Authorities[index] = dutyAuthority{ID: view.DutyAuthorityID(index), PublicKey: view.DutyAuthorityPublicKey(index)}
+		if result.Authorities[index].ID == [32]byte{} || result.Authorities[index].PublicKey == [32]byte{} {
+			return dutyFacts{}, errors.New("node duty view authority is incomplete")
+		}
+	}
 	for index := uint8(0); index < result.CandidateCount; index++ {
 		result.Candidates[index] = dutyCandidate{NodeID: view.DutyCandidateNodeID(index), PublicKey: view.DutyCandidatePublicKey(index),
-			Endpoint: view.DutyCandidateEndpoint(index), Assignment: view.DutyCandidateAssignment(index),
-			ValidFrom: view.DutyCandidateValidFrom(index), ValidUntil: view.DutyCandidateValidUntil(index)}
+			KeyID: view.DutyCandidateKeyID(index), FamilyID: view.DutyCandidateFamilyID(index), RecordDigest: view.DutyCandidateRecordDigest(index),
+			DomainProofDigest: view.DutyCandidateDomainProofDigest(index), Endpoint: view.DutyCandidateEndpoint(index), Capacity: view.DutyCandidateCapacity(index), Assignment: view.DutyCandidateAssignment(index),
+			ValidFrom: view.DutyCandidateValidFrom(index), ValidUntil: view.DutyCandidateValidUntil(index), AssignmentNotAfter: view.DutyCandidateAssignmentNotAfter(index)}
 	}
 	return result, nil
 }

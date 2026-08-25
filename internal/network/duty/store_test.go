@@ -146,6 +146,33 @@ func TestOrdinaryInitiatorDutyDoesNotConflict(t *testing.T) {
 	}
 }
 
+func TestSpendTransitGrantRejectsReplayAfterRestart(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	root := filepath.Join(t.TempDir(), "local-roles")
+	clock := func() time.Time { return now }
+	store, err := localroles.Open(localroles.Config{Root: root, Clock: clock, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodeID, grantID := [32]byte{21}, [32]byte{22}
+	notAfter := now.Add(time.Hour)
+	if err := store.SpendTransitGrant(nodeID, grantID, notAfter); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err = localroles.Open(localroles.Config{Root: root, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.SpendTransitGrant(nodeID, grantID, notAfter); err == nil {
+		t.Fatal("spent transit grant was accepted after restart")
+	}
+}
+
 func TestExpiredDutyIsIgnoredAndPurgedByNextWrite(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(1_800_000_000, 0).UTC()

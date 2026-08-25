@@ -25,7 +25,7 @@ func loadState(root string) (durableState, string, error) {
 	pointer, err := readBounded(filepath.Join(root, "current"), 65)
 	if os.IsNotExist(err) {
 		if !hasWatermark {
-			return durableState{Version: 1, Duties: []dutyRecord{}}, "", nil
+			return durableState{Version: 1, Duties: []dutyRecord{}, TransitGrantSpends: []transitGrantSpend{}}, "", nil
 		}
 		state, loadErr := loadGeneration(root, watermarkName)
 		if loadErr != nil || state.Generation != watermarkGeneration {
@@ -132,7 +132,7 @@ func (store *store) commit(next durableState) error {
 
 func validDurableState(state durableState) bool {
 	return state.Version == 1 && state.Generation > 0 &&
-		(state.Previous == "" || stateName.MatchString(state.Previous)) && validRecords(state.Duties)
+		(state.Previous == "" || stateName.MatchString(state.Previous)) && validRecords(state.Duties) && validTransitGrantSpends(state.TransitGrantSpends)
 }
 
 func validRecords(records []dutyRecord) bool {
@@ -154,6 +154,20 @@ func validRecords(records []dutyRecord) bool {
 		seen[key] = true
 	}
 	return len(producers) <= 16 && conflictFree(records)
+}
+
+func validTransitGrantSpends(spends []transitGrantSpend) bool {
+	if len(spends) > maximumTransitGrantSpends {
+		return false
+	}
+	seen := map[[32]byte]bool{}
+	for _, spend := range spends {
+		if spend.NodeID == [32]byte{} || spend.GrantID == [32]byte{} || spend.NotAfter <= 0 || seen[spend.GrantID] {
+			return false
+		}
+		seen[spend.GrantID] = true
+	}
+	return true
 }
 
 func conflictFree(records []dutyRecord) bool {

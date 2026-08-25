@@ -99,10 +99,11 @@ func TestInitiatorDutyUsesOnlyStateAssignedRendezvous(t *testing.T) {
 		EpochValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute), RecordValidUntil: now.Add(time.Minute),
 		Candidates: [64]dutyCandidate{{NodeID: [32]byte{35}, PublicKey: [32]byte{36}, Endpoint: "127.0.0.1:30235",
 			Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}}, CandidateCount: 1}
-	profile := InitiatorProfile{Certificate: certificate, Admit: func([]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
+	profile := InitiatorProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, DrainTimeout: time.Second}
+	admit := func([]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
 		return route.EntryAdmission{}, nil
-	}, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, DrainTimeout: time.Second}
-	plan, err := initiatorDuty(profile, snapshot)
+	}
+	plan, err := initiatorDuty(profile, snapshot, admit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,8 +114,21 @@ func TestInitiatorDutyUsesOnlyStateAssignedRendezvous(t *testing.T) {
 	snapshot.Candidates[1] = dutyCandidate{NodeID: [32]byte{37}, PublicKey: [32]byte{38}, Endpoint: "127.0.0.1:30236",
 		Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}
 	snapshot.CandidateCount = 2
-	if _, err := initiatorDuty(profile, snapshot); err == nil {
+	if _, err := initiatorDuty(profile, snapshot, admit); err == nil {
 		t.Fatal("Initiator accepted an ambiguous State Rendezvous peer set")
+	}
+}
+
+func TestEntryViewRetainsOnlyAuthenticatedInitiatorVerificationFacts(t *testing.T) {
+	until := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	snapshot := dutyFacts{NetworkID: [32]byte{71}, Epoch: 72, Digest: [32]byte{73}, Profile: route.Profile, Fresh: true,
+		CandidateCount: 1, Candidates: [64]dutyCandidate{{NodeID: [32]byte{74}, PublicKey: [32]byte{75}, KeyID: [32]byte{76},
+			FamilyID: [32]byte{77}, RecordDigest: [32]byte{78}, DomainProofDigest: [32]byte{79}, Endpoint: "127.0.0.1:3074",
+			Capacity: 1, Assignment: "initiator", ValidFrom: until.Add(-time.Minute), ValidUntil: until, AssignmentNotAfter: until}}}
+	view, err := entryView(snapshot)
+	if err != nil || len(view.Candidates) != 1 || view.Candidates[0].NodeID != snapshot.Candidates[0].NodeID ||
+		view.Candidates[0].FamilyID != snapshot.Candidates[0].FamilyID || view.Candidates[0].AssignmentNotAfter != until {
+		t.Fatalf("Entry verification view = %+v, %v", view, err)
 	}
 }
 

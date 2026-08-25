@@ -36,10 +36,11 @@ type store struct {
 }
 
 type durableState struct {
-	Version    uint8        `json:"version"`
-	Generation uint64       `json:"generation"`
-	Previous   string       `json:"previous,omitempty"`
-	Duties     []dutyRecord `json:"duties"`
+	Version            uint8               `json:"version"`
+	Generation         uint64              `json:"generation"`
+	Previous           string              `json:"previous,omitempty"`
+	Duties             []dutyRecord        `json:"duties"`
+	TransitGrantSpends []transitGrantSpend `json:"transit_grant_spends"`
 }
 
 type dutyRecord struct {
@@ -51,4 +52,16 @@ type dutyRecord struct {
 	NotAfter int64    `json:"not_after"`
 }
 
-const maximumStateBytes = 64 << 10
+// transitGrantSpend is one Node-local, finite, irreversible consumption of an
+// already State-authorized transit admission capability. It has no Target,
+// Service, or client material.
+type transitGrantSpend struct {
+	NodeID   [32]byte `json:"node_id"`
+	GrantID  [32]byte `json:"grant_id"`
+	NotAfter int64    `json:"not_after"`
+}
+
+const (
+	maximumStateBytes         = 64 << 10
+	maximumTransitGrantSpends = 64
+)

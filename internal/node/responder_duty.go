@@ -6,8 +6,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func responderDuty(profile ResponderProfile, snapshot dutyFacts) (ResponderConfig, error) {
-	if snapshot.Profile != route.Profile || snapshot.Assignment != "responder" || snapshot.ProbeEndpoint == "" || profile.Admit == nil ||
+func responderDuty(profile ResponderProfile, snapshot dutyFacts, admit route.EndpointTransitBindingAdmitter) (ResponderConfig, error) {
+	if snapshot.Profile != route.Profile || snapshot.Assignment != "responder" || snapshot.ProbeEndpoint == "" || admit == nil ||
 		profile.HandshakeLimit == 0 || profile.RelayLimit == 0 || profile.RelayByteLimit == 0 || profile.DrainTimeout <= 0 {
 		return ResponderConfig{}, errors.New("Responder profile or State assignment is incomplete")
 	}
@@ -31,5 +31,5 @@ func responderDuty(profile ResponderProfile, snapshot dutyFacts) (ResponderConfi
 	}
 	return ResponderConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate, NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest,
 		NodeID: snapshot.NodeID, NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch, NotAfter: notAfter.UTC(), Rendezvous: peer,
-		Admit: profile.Admit, HandshakeLimit: profile.HandshakeLimit, RelayLimit: profile.RelayLimit, RelayByteLimit: profile.RelayByteLimit, DrainTimeout: profile.DrainTimeout}, nil
+		Admit: admit, HandshakeLimit: profile.HandshakeLimit, RelayLimit: profile.RelayLimit, RelayByteLimit: profile.RelayByteLimit, DrainTimeout: profile.DrainTimeout}, nil
 }

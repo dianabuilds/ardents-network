@@ -105,14 +105,15 @@ func TestIntroductionDutyUsesOnlyItsStateAssignment(t *testing.T) {
 	snapshot := dutyFacts{NetworkID: [32]byte{21}, Epoch: 22, Digest: [32]byte{23}, Profile: route.Profile, NodeID: [32]byte{24},
 		NodePublicKey: public, Assignment: "introduction", ProbeEndpoint: "127.0.0.1:30253", EpochValidFrom: now.Add(-time.Second),
 		ValidUntil: now.Add(time.Minute), RecordValidUntil: now.Add(30 * time.Second)}
-	profile := IntroductionProfile{Certificate: certificate, Admit: introductionTestAdmit(snapshot.NetworkID, snapshot.Digest, snapshot.NodeID, snapshot.RecordValidUntil),
+	profile := IntroductionProfile{Certificate: certificate,
 		HandshakeLimit: 2, SlotLimit: 3, DeliveryLimit: 1, DrainTimeout: time.Second}
-	plan, err := introductionDuty(profile, snapshot)
+	admit := introductionTestAdmit(snapshot.NetworkID, snapshot.Digest, snapshot.NodeID, snapshot.RecordValidUntil)
+	plan, err := introductionDuty(profile, snapshot, admit)
 	if err != nil || plan.ListenAddress != snapshot.ProbeEndpoint || !plan.NotAfter.Equal(snapshot.RecordValidUntil) || plan.SlotLimit != profile.SlotLimit {
 		t.Fatalf("Introduction State duty = %+v, %v", plan, err)
 	}
 	snapshot.Assignment = "initiator"
-	if _, err := introductionDuty(profile, snapshot); err == nil {
+	if _, err := introductionDuty(profile, snapshot, admit); err == nil {
 		t.Fatal("Introduction accepted a different State assignment")
 	}
 }
