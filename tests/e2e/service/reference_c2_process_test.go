@@ -25,6 +25,15 @@ import (
 )
 
 func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
+	runReferenceC2(t, false)
+}
+
+func TestReferenceC2ReportsUnavailableAfterPublisherGoesOffline(t *testing.T) {
+	runReferenceC2(t, true)
+}
+
+func runReferenceC2(t *testing.T, publisherOffline bool) {
+	t.Helper()
 	nodeBinary := buildProductCommand(t, "ardents-node")
 	fixtureBinary := buildE2EFixtureCommand(t, "reference-c2")
 	now := time.Now().UTC().Truncate(time.Second)
@@ -112,6 +121,7 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 		"TransitAuthority": hex.EncodeToString(transitAuthorityPublic), "SlotCredential": slotCredential, "ResponderCredential": responderCredential,
 		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite), "TransitStateRoots": stateRoots, "TransitStateMaterials": stateMaterials,
 		"TransitStateSources": sourceConfig, "TransitStateClient": map[string]string{"Certificate": string(clientCertificate), "PrivateKey": string(clientPrivateKey)},
+		"PublisherOffline": publisherOffline,
 	}
 	if firefox := os.Getenv("ARDENTS_REFERENCE_C2_FIREFOX"); firefox != "" {
 		fixture["FirefoxExecutable"] = firefox
@@ -172,6 +182,9 @@ func TestReferenceC2RunsEveryRoleInSeparateProcesses(t *testing.T) {
 			if observed.Class != "drained" {
 				t.Fatalf("C2 transit process %s result class = %q, want drained", role, observed.Class)
 			}
+		}
+		if role == "user" && publisherOffline && observed.Class != "service unavailable" {
+			t.Fatalf("offline C2 User result class = %q, want service unavailable", observed.Class)
 		}
 	}
 }

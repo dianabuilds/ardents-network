@@ -17,6 +17,9 @@ Entry/Initiator/Gateway carrier and then C-2, and verifies the bounded static
 Reference Site document, declared stylesheet, and declared SVG. In its
 explicit-browser mode it waits for the Publisher to observe all three requests;
 opening Firefox alone is not accepted as evidence.
+Its separate offline case first retains an authentic published descriptor, then
+removes the Publisher's local Introduction slot. The User must report bounded
+`service unavailable`, receive no Reference URL, and make no browser request.
 For an explicitly cross-compiled Linux qualification only, a
 test runner may provide the matching fixture through
 `ARDENTS_E2E_FIXTURE_REFERENCE_C2`; ordinary local and CI runs leave it unset

@@ -62,6 +62,7 @@ type config struct {
 	TransitStateSources                                                                                           []stateSource
 	TransitStateClient                                                                                            stateClient
 	FirefoxExecutable                                                                                             string
+	PublisherOffline                                                                                              bool
 }
 
 type publicationEnvelope struct {
@@ -266,6 +267,9 @@ func runPublisher(input config) error {
 		Publication: base64.RawStdEncoding.EncodeToString(published.Record), TargetLink: link, Descriptor: base64.RawStdEncoding.EncodeToString(descriptor)}); err != nil {
 		return err
 	}
+	if input.PublisherOffline {
+		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher", Class: "offline", Passed: true})
+	}
 	capability, err := publisher.Admit(principal, broker.Connection)
 	if err != nil {
 		return err
@@ -341,7 +345,7 @@ func runUser(input config) error {
 	}
 	now := time.Now().UTC().Truncate(time.Second)
 	resolutionDeadline := now.Add(5 * time.Second)
-	site, err := user.OpenUserReferenceSite(context.Background(), endpointapi.UserReferenceSiteRequest{
+	request := endpointapi.UserReferenceSiteRequest{
 		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: envelope.TargetLink,
 			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey, GatewayFamily: gateway.Family,
 				GatewayProfile: profile, StateDigest: digest, Epoch: input.Epoch, Initiator: initiator,
@@ -350,7 +354,11 @@ func runUser(input config) error {
 			Introduction: introduction, Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
 				presentation: entry.Presentation{InviteID: inviteID, Invite: invite}}, Initiator: initiator, Rendezvous: rendezvous,
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
-		Routes: map[string]string{"": "/", "site.css": "/site.css", "mark.svg": "/mark.svg"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10, Browser: browser})
+		Routes: map[string]string{"": "/", "site.css": "/site.css", "mark.svg": "/mark.svg"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10, Browser: browser}
+	if input.PublisherOffline {
+		return runOfflineUser(user, request)
+	}
+	site, err := user.OpenUserReferenceSite(context.Background(), request)
 	if err != nil {
 		return fmt.Errorf("user C2 fixture exact route: %w", err)
 	}
