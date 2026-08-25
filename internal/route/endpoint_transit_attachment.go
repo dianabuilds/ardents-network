@@ -19,6 +19,11 @@ type EndpointTransitAttachmentRequest struct {
 	Endpoint                                                             string
 	Deadline                                                             time.Time
 	Authorization                                                        []byte
+	// ClientCertificate is an optional pre-enrolled, one-use TLS identity
+	// matched to a State-authorized Transit Grant. A zero value requests a
+	// fresh certificate and therefore cannot satisfy a pre-issued key-bound
+	// grant without an online issuer.
+	ClientCertificate tls.Certificate
 }
 
 // EndpointTransitAttachmentAcceptance is the receiving transit duty's narrow
@@ -51,9 +56,16 @@ func OpenEndpointTransitAttachment(ctx context.Context, input EndpointTransitAtt
 		len(input.Authorization) > maximumTransitAuthorization {
 		return nil, errors.New("endpoint transit attachment request is invalid")
 	}
-	certificate, err := freshEndpointClientCertificate()
-	if err != nil {
-		return nil, err
+	certificate := input.ClientCertificate
+	if certificate.PrivateKey == nil {
+		var err error
+		certificate, err = freshEndpointClientCertificate()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if certificate.Leaf == nil {
+		return nil, errors.New("endpoint transit client certificate is incomplete")
 	}
 	secured, err := dialNativeEndpointTLS(ctx, input.Endpoint, input.TransitNodePublicKey, certificate, input.Deadline)
 	if err != nil {

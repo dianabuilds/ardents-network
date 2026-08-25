@@ -5,6 +5,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/hpke"
+	"crypto/tls"
 	"errors"
 	"time"
 
@@ -23,6 +24,10 @@ type UserIntroductionProfile struct {
 	RendezvousNodeID, Reachability, JoinHandle [32]byte
 	NotAfter                                   time.Time
 	SubmissionAuthorization                    []byte
+	// SubmissionClientCertificate is the private one-use TLS key paired with
+	// a pre-issued State Transit Grant. It is local Endpoint material and is
+	// never part of a Reachability Descriptor.
+	SubmissionClientCertificate tls.Certificate
 }
 
 // UserIntroductionRequest binds a shared Target Link, a current public
@@ -91,10 +96,15 @@ func (endpoint *endpoint) SubmitIntroductionFromLink(ctx context.Context, input 
 	if err != nil {
 		return UserIntroductionResult{}, err
 	}
+	certificate, err := endpoint.transitClientCertificate(input.Profile.SubmissionAuthorization, input.Profile.SubmissionClientCertificate)
+	if err != nil {
+		return UserIntroductionResult{}, errors.Join(errors.New("introduction submission lacks its enrolled transit credential"), err)
+	}
 	connection, err := route.OpenEndpointTransitAttachment(ctx, route.EndpointTransitAttachmentRequest{NetworkID: input.Profile.NetworkID,
 		Digest: input.Profile.Digest, AttachmentID: input.AttachmentID, TransitNodeID: input.Profile.Introduction.NodeID,
 		TransitNodePublicKey: input.Profile.Introduction.PublicKey, Epoch: input.Profile.Epoch, TransitRole: route.IntroductionRole,
-		Endpoint: input.Profile.Introduction.Endpoint, Deadline: input.Profile.NotAfter, Authorization: input.Profile.SubmissionAuthorization})
+		Endpoint: input.Profile.Introduction.Endpoint, Deadline: input.Profile.NotAfter, Authorization: input.Profile.SubmissionAuthorization,
+		ClientCertificate: certificate})
 	if err != nil {
 		return UserIntroductionResult{}, errors.Join(errors.New("introduction submission is unavailable"), err)
 	}
@@ -115,5 +125,6 @@ func validUserIntroductionProfile(value UserIntroductionProfile) bool {
 		value.Introduction.NodeID != [32]byte{} && value.Introduction.PublicKey != [32]byte{} && value.Introduction.Endpoint != "" &&
 		value.RendezvousNodeID != [32]byte{} && value.RendezvousNodeID != value.Introduction.NodeID && value.Reachability != [32]byte{} &&
 		value.JoinHandle != [32]byte{} && !value.NotAfter.IsZero() && value.NotAfter.Equal(value.NotAfter.UTC().Truncate(time.Second)) &&
-		time.Now().UTC().Before(value.NotAfter) && len(value.SubmissionAuthorization) > 0 && len(value.SubmissionAuthorization) <= 1024
+		time.Now().UTC().Before(value.NotAfter) && len(value.SubmissionAuthorization) > 0 && len(value.SubmissionAuthorization) <= 1024 &&
+		validOptionalTransitClientCertificate(value.SubmissionClientCertificate)
 }

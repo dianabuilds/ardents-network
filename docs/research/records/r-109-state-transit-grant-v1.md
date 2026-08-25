@@ -104,6 +104,11 @@ the reachability path.
 - **Inference:** a finite Publisher-held batch is compatible with the one
   bounded Reference Site alpha. Its issuance is explicit project control and
   cannot support a permissionless or high-volume claim.
+- **Implementation finding:** because the signed tuple contains the TLS
+  client-key digest, a raw offline grant alone is unusable: the Endpoint must
+  possess its matching one-use private TLS client key before opening the
+  attachment. The closed-alpha provisioned capability is therefore the pair,
+  while only the opaque Introduction grant can enter the public Descriptor.
 
 ## Options
 

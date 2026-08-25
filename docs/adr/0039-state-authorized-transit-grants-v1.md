@@ -40,6 +40,16 @@ only the exact Introduction grant necessary for the User's C-2 first hop.
 Grants contain no Target, publication body, HPKE plaintext, full Route,
 address history, or peer-selection instruction.
 
+Because a grant binds the TLS client-key digest, an offline-issued grant is
+usable only with its matching private, one-use TLS client key. For the closed
+alpha, each finite grant is provisioned with that pair into the intended local
+Endpoint's protected alpha material; the publicly reachable Descriptor carries
+only the opaque Introduction grant, never its matching private key. The
+Publisher keeps both Responder grant and its matching pair locally. This is a
+finite per-attempt capability, not a stable User identity, shared CA, or
+browser certificate. A future on-demand issuer or different key-binding model
+requires a superseding decision.
+
 Issuance is a finite project-operated action at publication time for the
 closed alpha. It is not a permissionless resource market, public control
 plane, availability promise, or independent-operator claim.

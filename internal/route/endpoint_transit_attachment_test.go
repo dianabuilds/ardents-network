@@ -18,9 +18,17 @@ func TestEndpointTransitAttachmentVerifiesAndConsumesExactAuthorization(t *testi
 	var serverPublic [32]byte
 	copy(serverPublic[:], serverCertificate.Leaf.PublicKey.(ed25519.PublicKey))
 	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	clientCertificate, err := freshEndpointClientCertificate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientDigest, err := ClientTLSKeyDigest(clientCertificate.Leaf)
+	if err != nil {
+		t.Fatal(err)
+	}
 	request := EndpointTransitAttachmentRequest{NetworkID: identifier(92), Digest: identifier(93), AttachmentID: identifier(94),
 		TransitNodeID: identifier(95), TransitNodePublicKey: serverPublic, Epoch: 96, TransitRole: IntroductionRole,
-		Endpoint: listener.Addr().String(), Deadline: deadline, Authorization: []byte{4, 5, 6}}
+		Endpoint: listener.Addr().String(), Deadline: deadline, Authorization: []byte{4, 5, 6}, ClientCertificate: clientCertificate}
 	admitted := make(chan struct{}, 1)
 	serverDone := make(chan error, 1)
 	go func() {
@@ -33,7 +41,7 @@ func TestEndpointTransitAttachmentVerifiesAndConsumesExactAuthorization(t *testi
 			NetworkID: request.NetworkID, Digest: request.Digest, TransitNodeID: request.TransitNodeID, Epoch: request.Epoch,
 			TransitRole: request.TransitRole, Deadline: deadline, Certificate: serverCertificate,
 			Admit: func(authorization []byte, attachment, key [32]byte, role byte, node [32]byte, notAfter time.Time) (EndpointTransitAdmission, error) {
-				if string(authorization) != string(request.Authorization) || attachment != request.AttachmentID || key == [32]byte{} ||
+				if string(authorization) != string(request.Authorization) || attachment != request.AttachmentID || key != clientDigest ||
 					role != request.TransitRole || node != request.TransitNodeID || !notAfter.Equal(deadline) {
 					return EndpointTransitAdmission{}, errors.New("unexpected transit authorization")
 				}

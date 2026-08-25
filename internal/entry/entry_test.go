@@ -350,6 +350,21 @@ func (fixture entryFixture) invite(t *testing.T, candidate Candidate, slot, gene
 	return append(invite, signature...)
 }
 
+func TestIssueProducesAStateReferencedInvite(t *testing.T) {
+	fixture := newEntryFixture(t)
+	candidate := fixture.candidates[0]
+	raw, err := Issue(IssueInput{NetworkID: fixture.view.NetworkID, Digest: fixture.view.Digest, Epoch: fixture.view.Epoch,
+		Candidate: candidate, NotBefore: fixture.now.Add(-time.Second), NotAfter: fixture.now.Add(time.Second), Slot: 0, Generation: 1},
+		fixture.private[candidate.KeyID])
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorization, selected, class, err := Verify(raw, fixture.verification())
+	if err != nil || class != Accepted || authorization.InitiatorNodeID != candidate.NodeID || selected.KeyID != candidate.KeyID {
+		t.Fatalf("issued Invite verification = %+v %+v %s %v", authorization, selected, class, err)
+	}
+}
+
 func appendUint16(destination []byte, value uint16) []byte {
 	return append(destination, byte(value>>8), byte(value))
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hpke"
 	"crypto/subtle"
+	"crypto/tls"
 	"errors"
 	"net"
 	"sync"
@@ -26,12 +27,13 @@ type TransitPeer struct {
 // for one Publisher live slot. Its authorizations are opaque capabilities for
 // the receiving transit duties, not Service material or route candidates.
 type PublisherIntroductionProfile struct {
-	NetworkID, Digest                          [32]byte
-	Epoch                                      uint64
-	Introduction, Rendezvous, Responder        TransitPeer
-	SlotAttachmentID, Reachability, JoinHandle [32]byte
-	NotAfter                                   time.Time
-	SlotAuthorization, ResponderAuthorization  []byte
+	NetworkID, Digest                                 [32]byte
+	Epoch                                             uint64
+	Introduction, Rendezvous, Responder               TransitPeer
+	SlotAttachmentID, Reachability, JoinHandle        [32]byte
+	NotAfter                                          time.Time
+	SlotAuthorization, ResponderAuthorization         []byte
+	SlotClientCertificate, ResponderClientCertificate tls.Certificate
 }
 
 // PublisherIntroductionRequest supplies the non-public HPKE recipient for a
@@ -76,11 +78,15 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 	if input.Profile.NotAfter.Unix() > current.Credential.NotAfter || !matchesIntroductionRecipient(input.HPKEPrivate, current.Credential.IntroductionHPKEPublic) {
 		return closeLease(errors.New("publisher Introduction recipient does not match the current Credential"))
 	}
+	slotCertificate, err := endpoint.transitClientCertificate(input.Profile.SlotAuthorization, input.Profile.SlotClientCertificate)
+	if err != nil {
+		return closeLease(errors.Join(errors.New("publisher Introduction slot lacks its enrolled transit credential"), err))
+	}
 	connection, err := route.OpenEndpointTransitAttachment(ctx, route.EndpointTransitAttachmentRequest{
 		NetworkID: input.Profile.NetworkID, Digest: input.Profile.Digest, AttachmentID: input.Profile.SlotAttachmentID,
 		TransitNodeID: input.Profile.Introduction.NodeID, TransitNodePublicKey: input.Profile.Introduction.PublicKey,
 		Epoch: input.Profile.Epoch, TransitRole: route.IntroductionRole, Endpoint: input.Profile.Introduction.Endpoint,
-		Deadline: input.Profile.NotAfter, Authorization: input.Profile.SlotAuthorization,
+		Deadline: input.Profile.NotAfter, Authorization: input.Profile.SlotAuthorization, ClientCertificate: slotCertificate,
 	})
 	if err != nil {
 		return closeLease(errors.Join(errors.New("publisher Introduction slot is unavailable"), err))
@@ -144,11 +150,17 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 		session.Close()
 		return nil, errors.Join(err, errors.New("publisher Introduction does not match the current publication"))
 	}
+	responderCertificate, err := session.endpoint.transitClientCertificate(session.profile.ResponderAuthorization, session.profile.ResponderClientCertificate)
+	if err != nil {
+		session.Close()
+		return nil, errors.Join(errors.New("publisher Responder attachment lacks its enrolled transit credential"), err)
+	}
 	carrier, err := route.OpenEndpointTransitAttachment(ctx, route.EndpointTransitAttachmentRequest{
 		NetworkID: session.profile.NetworkID, Digest: session.profile.Digest, AttachmentID: instruction.AttachmentID,
 		TransitNodeID: session.profile.Responder.NodeID, TransitNodePublicKey: session.profile.Responder.PublicKey,
 		Epoch: session.profile.Epoch, TransitRole: route.ResponderRole, Endpoint: session.profile.Responder.Endpoint,
 		Deadline: session.profile.NotAfter, Authorization: session.profile.ResponderAuthorization,
+		ClientCertificate: responderCertificate,
 	})
 	if err != nil {
 		session.Close()
@@ -211,7 +223,8 @@ func validPublisherIntroductionProfile(value PublisherIntroductionProfile) bool 
 		value.Reachability == [32]byte{} || value.JoinHandle == [32]byte{} || value.NotAfter.IsZero() ||
 		!value.NotAfter.Equal(value.NotAfter.UTC().Truncate(time.Second)) || !time.Now().UTC().Before(value.NotAfter) ||
 		len(value.SlotAuthorization) == 0 || len(value.SlotAuthorization) > 1024 ||
-		len(value.ResponderAuthorization) == 0 || len(value.ResponderAuthorization) > 1024 {
+		len(value.ResponderAuthorization) == 0 || len(value.ResponderAuthorization) > 1024 ||
+		!validOptionalTransitClientCertificate(value.SlotClientCertificate) || !validOptionalTransitClientCertificate(value.ResponderClientCertificate) {
 		return false
 	}
 	peers := []TransitPeer{value.Introduction, value.Rendezvous, value.Responder}

@@ -3,6 +3,7 @@ package endpoint
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
@@ -38,6 +39,11 @@ type Setup struct {
 	Clock                   func() time.Time
 	Resources               func(string, int) uint32
 	Admission               *broker.Broker
+	// TransitClientCertificates holds the private, one-use TLS identities
+	// provisioned with State-authorized Transit Grants. Its keys are opaque
+	// Grant IDs; neither the map nor its private keys are Service Descriptor
+	// material or browser-facing configuration.
+	TransitClientCertificates map[[32]byte]tls.Certificate
 }
 
 // connectionInput is the private common carrier input derived only from one
@@ -158,6 +164,7 @@ type endpoint struct {
 	admission       *broker.Broker
 	publications    *publication.Publication
 	resources       func(string, int) uint32
+	transitClients  map[[32]byte]tls.Certificate
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -191,9 +198,13 @@ func New(input Setup) (*endpoint, error) {
 		}
 		admission = openedAdmission
 	}
+	transitClients, err := cloneTransitClientCertificates(input.TransitClientCertificates)
+	if err != nil {
+		return nil, err
+	}
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,
-		admission:    admission, resources: resources}
+		admission:    admission, resources: resources, transitClients: transitClients}
 	if input.AdministrationPrincipal != [32]byte{} {
 		if input.PublicationRoot == "" {
 			return nil, errors.New("publisher setup lacks a publication root")
