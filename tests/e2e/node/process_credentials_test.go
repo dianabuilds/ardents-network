@@ -54,7 +54,7 @@ func makeLeaf(t *testing.T, authority processCert, name string, server bool) pro
 		t.Fatal(err)
 	}
 	return processCert{certificate: certificatePath,
-		key: writePEM(t, name+"-key.pem", "PRIVATE KEY", keyRaw), root: authority.root,
+		key: writePEM(t, name+"-key.pem", "PRIVATE KEY", keyRaw), root: authority.root, private: private,
 		pin: sha256.Sum256(pinRaw), sourcePin: sha256.Sum256(sourceRaw)}
 }
 

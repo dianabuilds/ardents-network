@@ -60,9 +60,13 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if plan.Schema != "ardents-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
+	if plan.NativeRendezvousProfile && plan.Rendezvous == nil {
+		return nodeRuntime{}, errors.New("native Rendezvous State profile requires local Rendezvous work")
+	}
 	state := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot,
 		Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), Clock: time.Now,
-		Source: source.Config{MaterialIndex: plan.MaterializationIndex}, AutomaticRefreshInterval: 5 * time.Second, ClockObservationFile: plan.ClockObservationFile}
+		Source:                   source.Config{MaterialIndex: plan.MaterializationIndex},
+		AutomaticRefreshInterval: 5 * time.Second, ClockObservationFile: plan.ClockObservationFile}
 	if err := decodeOperatorFixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err
 	}

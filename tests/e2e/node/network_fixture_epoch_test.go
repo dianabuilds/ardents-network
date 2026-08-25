@@ -66,7 +66,7 @@ func validateEpochSpec(spec EpochSpec) error {
 	if spec.Number == 0 || spec.ValidFrom.IsZero() || !spec.ValidUntil.After(spec.ValidFrom) ||
 		len(spec.Inputs) > 64 || len(spec.Accepted) > 64 || len(spec.Rejections) > 64 ||
 		len(spec.Domains) == 0 || len(spec.Domains) > 16 || len(spec.Authorities) == 0 || len(spec.Authorities) > 16 ||
-		profile != "h3-role-probe-v1" && profile != "h3-route-tracer-v1" {
+		profile != "h3-role-probe-v1" && profile != "ardents-interactive-route-v1" {
 		return errors.New("epoch fixture specification is invalid")
 	}
 	for _, domain := range spec.Domains {

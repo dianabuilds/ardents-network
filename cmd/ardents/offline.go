@@ -38,6 +38,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	flags.StringVar(&raw.epoch, "epoch", "", "canonical Epoch file")
 	flags.StringVar(&raw.inputs, "inputs", "", "canonical input directory")
 	flags.StringVar(&raw.material, "materialization", "", "canonical materialization file")
+	flags.StringVar(&raw.profile, "profile", "", "selected Network State profile")
 	if err := flags.Parse(arguments[1:]); err != nil {
 		return err
 	}

@@ -8,23 +8,25 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 type sourceServerPlan struct {
-	Schema               string   `json:"schema"`
-	StateRoot            string   `json:"state_root"`
-	LocalRoleStateRoot   string   `json:"local_role_state_root"`
-	NetworkID            string   `json:"network_id"`
-	AuthorityPublic      []string `json:"authority_public"`
-	Threshold            int      `json:"threshold"`
-	At                   string   `json:"at"`
-	Listen               string   `json:"listen"`
-	ServerCertificate    string   `json:"server_certificate"`
-	ServerKey            string   `json:"server_key"`
-	ClientRoot           string   `json:"client_root"`
-	ClientKeyDigests     []string `json:"client_key_digests"`
-	MaterializationIndex uint32   `json:"materialization_index"`
-	RuntimeProfile       string   `json:"runtime_profile,omitempty"`
+	Schema                  string   `json:"schema"`
+	StateRoot               string   `json:"state_root"`
+	LocalRoleStateRoot      string   `json:"local_role_state_root"`
+	NetworkID               string   `json:"network_id"`
+	AuthorityPublic         []string `json:"authority_public"`
+	Threshold               int      `json:"threshold"`
+	At                      string   `json:"at"`
+	Listen                  string   `json:"listen"`
+	ServerCertificate       string   `json:"server_certificate"`
+	ServerKey               string   `json:"server_key"`
+	ClientRoot              string   `json:"client_root"`
+	ClientKeyDigests        []string `json:"client_key_digests"`
+	MaterializationIndex    uint32   `json:"materialization_index"`
+	NativeRendezvousProfile bool     `json:"native_rendezvous_profile,omitempty"`
+	RuntimeProfile          string   `json:"runtime_profile,omitempty"`
 }
 
 type sourceStore interface {
@@ -46,7 +48,11 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 		return nil, errors.New("source server trust-map count is invalid")
 	}
 	config := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot, Threshold: plan.Threshold,
-		Source: source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex}, RuntimeProfile: plan.RuntimeProfile}
+		Source:         source.Config{ServeAddress: plan.Listen, MaterialIndex: plan.MaterializationIndex},
+		RuntimeProfile: plan.RuntimeProfile}
+	if plan.NativeRendezvousProfile {
+		config.AcceptedProfile = route.Profile
+	}
 	config.ObserveResources = emit
 	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
 		return nil, err

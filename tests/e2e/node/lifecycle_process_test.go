@@ -324,9 +324,6 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 	for {
 		select {
 		case event, open := <-process.events:
-			if event.Schema != "ardents-node-event-v1" {
-				t.Fatalf("Node event schema = %q, want ardents-node-event-v1", event.Schema)
-			}
 			if !open {
 				select {
 				case <-process.done:
@@ -334,6 +331,9 @@ func waitNodeState(t *testing.T, process *nodeProcess, state string, timeout tim
 				case <-timer.C:
 					t.Fatalf("Node output closed before %s; stderr=%s", state, process.stderr)
 				}
+			}
+			if event.Schema != "ardents-node-event-v1" {
+				t.Fatalf("Node event schema = %q, want ardents-node-event-v1", event.Schema)
 			}
 			t.Logf("Node %d event: state=%s epoch=%d assignment=%s", process.command.Process.Pid, event.State, event.Epoch, event.Assignment)
 			if event.State == state {

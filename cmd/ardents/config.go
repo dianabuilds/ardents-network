@@ -12,8 +12,8 @@ import (
 )
 
 type rawConfig struct {
-	root, network, authorities, at, epoch, inputs, material string
-	threshold                                               int
+	root, network, authorities, at, epoch, inputs, material, profile string
+	threshold                                                        int
 }
 
 func (raw rawConfig) networkStateConfig() (state.Config, error) {
@@ -36,5 +36,6 @@ func (raw rawConfig) networkStateConfig() (state.Config, error) {
 	if err != nil {
 		return state.Config{}, fmt.Errorf("at: %w", err)
 	}
-	return state.Config{Root: raw.root, NetworkID: networkID, Authorities: authorities, Threshold: raw.threshold, Now: at}, nil
+	return state.Config{Root: raw.root, NetworkID: networkID, Authorities: authorities, Threshold: raw.threshold,
+		AcceptedProfile: raw.profile, Now: at}, nil
 }
