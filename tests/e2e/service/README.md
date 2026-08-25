@@ -36,6 +36,13 @@ stylesheet, SVG, exact Target authentication, static response-policy headers,
 offline result, and local token-refusal result, passed from a clean local Linux
 Go container on 2026-08-25. This is process and Linux-runtime evidence, not a
 multi-host qualification claim.
+The same three scenarios then passed from archived source commit `ab78f257` in
+one separate constrained Go 1.26.6 Docker container on the project Ubuntu VPS:
+Docker 29.4.1, `2 GiB`, `1 CPU`, and `128` PIDs, no published ports, read-only
+source mount, exit code `0`, and `45.350s` total on 2026-08-25. The temporary
+container and source archive were removed after capture. This qualifies only a
+project-controlled VPS Docker profile; it does not establish host independence,
+public deployment, capacity, or browser privacy.
 On a Windows qualification host with an explicitly selected Firefox executable, set
 `ARDENTS_REFERENCE_C2_FIREFOX` to its absolute path. The User then passes only
 the already-authenticated scoped loopback Reference URL to the maintained
