@@ -192,9 +192,9 @@ func (remote h43RemoteC2) remove(t *testing.T) {
 func (remote h43RemoteC2) upload(t *testing.T, stage string) error {
 	t.Helper()
 	environment := remote.environment
-	command := fmt.Sprintf("set -eu; test ! -e %s; mkdir -m 700 %s; tar -xzf - -C %s; chmod 700 %s/reference-c2 %s/ardents-node %s/run.sh",
+	command := fmt.Sprintf("set -eu; test ! -e %s; mkdir -m 700 %s; tar -xzf - -C %s; mkdir -m 700 %s/ready; chmod 700 %s/reference-c2 %s/ardents-node %s/run.sh",
 		h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory),
-		h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory))
+		h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory))
 	process := remote.command(t, command)
 	stdin, err := process.StdinPipe()
 	if err != nil {
