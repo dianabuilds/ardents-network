@@ -1,10 +1,12 @@
 package enrollment
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -55,6 +57,169 @@ func TestVerifyRejectsUnknownInventoryAndExecutableSubstitution(t *testing.T) {
 	request.ExecutablePath = filepath.Join(root, "1.root.json")
 	if _, err := Verify(request); err == nil || !strings.Contains(err.Error(), "running executable") {
 		t.Fatalf("substituted executable result = %v", err)
+	}
+}
+
+func TestVerifyReturnsV2IndependentlyPinnedCorpusAuthority(t *testing.T) {
+	root, request := enrolledFixture(t)
+	authority := bytes.Repeat([]byte{9}, 32)
+	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	descriptorPath := filepath.Join(root, descriptorName)
+	descriptor, err := os.ReadFile(descriptorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor = bytes.Replace(descriptor, []byte("schema=ardents-closed-alpha-enrollment-v1"), []byte("schema=ardents-closed-alpha-enrollment-v2"), 1)
+	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\n")...)
+	if err := os.WriteFile(descriptorPath, descriptor, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	files := make(map[string][]byte)
+	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
+		contents, readErr := os.ReadFile(filepath.Join(root, name))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		files[name] = contents
+	}
+	manifest := makeManifest(t, files)
+	if err := os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pinned := sha256.Sum256(manifest)
+	request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
+	verified, err := Verify(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(verified.CorpusAuthority, authority) || verified.Inputs.Files[release.MetadataURL("corpus.pub")] != nil {
+		t.Fatalf("v2 corpus authority crossed an incorrect boundary: %+v", verified)
+	}
+}
+
+func TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata(t *testing.T) {
+	root, request := enrolledFixture(t)
+	authority, control := bytes.Repeat([]byte{9}, 32), []byte("separately manifested alpha control command")
+	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	const controlName = "ardents-control-linux-amd64"
+	if err := os.WriteFile(filepath.Join(root, controlName), control, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	descriptorPath := filepath.Join(root, descriptorName)
+	descriptor, err := os.ReadFile(descriptorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor = bytes.Replace(descriptor, []byte("schema=ardents-closed-alpha-enrollment-v1"), []byte("schema=ardents-closed-alpha-enrollment-v3"), 1)
+	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\ncontrol_artifact="+controlName+"\n")...)
+	if err := os.WriteFile(descriptorPath, descriptor, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	files := make(map[string][]byte)
+	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
+		contents, readErr := os.ReadFile(filepath.Join(root, name))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		files[name] = contents
+	}
+	manifest := makeManifest(t, files)
+	if err := os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pinned := sha256.Sum256(manifest)
+	request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
+	verified, err := Verify(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(verified.CorpusAuthority, authority) || verified.ControlArtifactName != controlName ||
+		!bytes.Equal(verified.ControlArtifact, control) || verified.Inputs.Files[release.MetadataURL(controlName)] != nil {
+		t.Fatalf("v3 control artifact crossed an incorrect boundary: %+v", verified)
+	}
+}
+
+func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.T) {
+	root, request := enrolledFixture(t)
+	authority, control := bytes.Repeat([]byte{9}, 32), []byte("separately manifested alpha control command")
+	host, extension := []byte("separately manifested Browser Entry host"), []byte("Mozilla-signed Browser Entry XPI")
+	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	const controlName = "ardents-control-linux-amd64"
+	const hostName = "ardents-browser-entry-linux-amd64"
+	const extensionName = "ardents-alpha-browser-entry.xpi"
+	for name, contents := range map[string][]byte{controlName: control, hostName: host, extensionName: extension} {
+		if err := os.WriteFile(filepath.Join(root, name), contents, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	descriptorPath := filepath.Join(root, descriptorName)
+	descriptor, err := os.ReadFile(descriptorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor = bytes.Replace(descriptor, []byte("schema=ardents-closed-alpha-enrollment-v1"), []byte("schema=ardents-closed-alpha-enrollment-v4"), 1)
+	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\ncontrol_artifact="+controlName+"\nbrowser_entry_artifact="+hostName+"\nbrowser_entry_extension="+extensionName+"\n")...)
+	if err := os.WriteFile(descriptorPath, descriptor, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	files := make(map[string][]byte)
+	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, hostName, extensionName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
+		contents, readErr := os.ReadFile(filepath.Join(root, name))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		files[name] = contents
+	}
+	manifest := makeManifest(t, files)
+	if err := os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pinned := sha256.Sum256(manifest)
+	request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
+	verified, err := Verify(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified.BrowserEntryArtifactName != hostName || !bytes.Equal(verified.BrowserEntryArtifact, host) ||
+		verified.BrowserEntryExtensionName != extensionName || !bytes.Equal(verified.BrowserEntryExtension, extension) ||
+		verified.Inputs.Files[release.MetadataURL(hostName)] != nil || verified.Inputs.Files[release.MetadataURL(extensionName)] != nil {
+		t.Fatalf("v4 Browser Entry companions crossed an incorrect boundary: %+v", verified)
+	}
+}
+
+func TestVerifyBindsPackageOwnedArtifactOutsideStaticEnrollmentDirectory(t *testing.T) {
+	root, request := enrolledFixture(t)
+	artifactName := "ardents-linux-amd64"
+	artifact, err := os.ReadFile(filepath.Join(root, artifactName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed := filepath.Join(t.TempDir(), "usr", "lib", "ardents", "ardents")
+	if err := os.MkdirAll(filepath.Dir(installed), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installed, artifact, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, artifactName)); err != nil {
+		t.Fatal(err)
+	}
+	request.ExecutablePath = installed
+	request.ArtifactPath = installed
+	if _, err := Verify(request); err != nil {
+		t.Fatalf("Verify(package enrollment) = %v", err)
+	}
+	if err := os.WriteFile(installed, []byte("substituted installed program"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Verify(request); err == nil {
+		t.Fatalf("substituted installed program result = %v", err)
 	}
 }
 
@@ -112,7 +277,11 @@ func enrolledFixture(t *testing.T) (string, Request) {
 
 func makeManifest(t *testing.T, files map[string][]byte) []byte {
 	t.Helper()
-	names := []string{"1.root.json", "RELEASE", "ardents-linux-amd64", "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
 	lines := make([]string, 0, len(names))
 	for _, name := range names {
 		digest := sha256.Sum256(files[name])

@@ -100,6 +100,93 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	if _, err := os.Stat(bundle); err != nil {
 		t.Fatal(err)
 	}
+	// The successor-start path is deliberately independent of the now-retired
+	// first bundle: it accepts only the durable selected-program record written
+	// during the first verified enrollment. Moving the exact same bytes out of
+	// the bundle lets the test prove that a routine start does not silently
+	// rerun (or weaken) the first-bundle check.
+	successor := filepath.Join(t.TempDir(), "ardents-successor")
+	if err := os.Rename(enrolledCommand, successor); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(bundle); err != nil {
+		t.Fatal(err)
+	}
+	restarted := exec.CommandContext(ctx, successor, "endpoint", "enroll", input)
+	restarted.Env = append(os.Environ(),
+		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
+		"XDG_STATE_HOME="+filepath.Join(root, "state"),
+		"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
+		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"),
+	)
+	restartedOut, err := restarted.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := restarted.Start(); err != nil {
+		t.Fatal(err)
+	}
+	restartedScanner := bufio.NewScanner(restartedOut)
+	var restartedEvents []struct{ Kind, State string }
+	for len(restartedEvents) < 3 && restartedScanner.Scan() {
+		var event struct{ Kind, State string }
+		if err := json.Unmarshal(restartedScanner.Bytes(), &event); err != nil {
+			t.Fatal(err)
+		}
+		restartedEvents = append(restartedEvents, event)
+	}
+	if len(restartedEvents) != 3 || restartedEvents[0].State != "starting" ||
+		restartedEvents[1].Kind != "endpoint-replacement" || restartedEvents[1].State != "current" ||
+		restartedEvents[2].State != "ready" {
+		t.Fatalf("successor restart events = %+v", restartedEvents)
+	}
+	if err := restarted.Process.Signal(os.Interrupt); err != nil {
+		t.Fatal(err)
+	}
+	if !restartedScanner.Scan() {
+		t.Fatalf("successor restart did not stop: %v", restartedScanner.Err())
+	}
+	if err := restarted.Wait(); err != nil {
+		t.Fatalf("successor restart exit: %v", err)
+	}
+}
+
+func TestEnrolledPortableReportsInvalidPinBeforeReady(t *testing.T) {
+	command := buildArdents(t)
+	bundle, enrolledCommand, input := enrolledRuntimeBundle(t, command)
+	if err := os.WriteFile(filepath.Join(bundle, "SHA256SUMS"), []byte("changed-before-parse\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	running := exec.Command(enrolledCommand, "endpoint", "enroll", input)
+	running.Env = append(os.Environ(),
+		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
+		"XDG_STATE_HOME="+filepath.Join(root, "state"),
+		"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
+		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"),
+	)
+	output, err := running.CombinedOutput()
+	if err == nil {
+		t.Fatalf("changed enrollment pin unexpectedly started: %s", output)
+	}
+	var events []struct {
+		Kind, State, Reason string
+	}
+	for _, line := range bytes.Split(bytes.TrimSpace(output), []byte("\n")) {
+		var event struct {
+			Kind, State, Reason string
+		}
+		if json.Unmarshal(line, &event) == nil && event.Kind == "endpoint-lifecycle" {
+			events = append(events, event)
+		}
+	}
+	if len(events) != 2 || events[0].State != "starting" || events[1].State != "incompatible" ||
+		events[1].Reason != "alpha-enrollment-invalid" {
+		t.Fatalf("changed enrollment lifecycle = %+v; output=%s", events, output)
+	}
+	if bytes.Contains(output, []byte("\"state\":\"ready\"")) {
+		t.Fatalf("changed enrollment reached ready: %s", output)
+	}
 }
 
 type enrolledRuntimeKey struct {
@@ -108,6 +195,11 @@ type enrolledRuntimeKey struct {
 }
 
 func enrolledRuntimeBundle(t *testing.T, command string) (string, string, string) {
+	bundle, enrolled, input, _, _ := enrolledRuntimeBundleWithKeys(t, command)
+	return bundle, enrolled, input
+}
+
+func enrolledRuntimeBundleWithKeys(t *testing.T, command string) (string, string, string, []enrolledRuntimeKey, []byte) {
 	t.Helper()
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	artifactName := "ardents-" + platform
@@ -117,7 +209,7 @@ func enrolledRuntimeBundle(t *testing.T, command string) (string, string, string
 	}
 	targetPath := "ardents/" + platform + "/endpoint"
 	now := time.Now().UTC().Truncate(time.Second)
-	metadataFiles, rootBytes := enrolledRuntimeMetadata(t, artifact, targetPath, platform, now)
+	metadataFiles, rootBytes, keys := enrolledRuntimeMetadataWithKeys(t, artifact, targetPath, platform, now)
 	bundle := filepath.Join(t.TempDir(), "bundle")
 	if err := os.Mkdir(bundle, 0o700); err != nil {
 		t.Fatal(err)
@@ -150,10 +242,15 @@ func enrolledRuntimeBundle(t *testing.T, command string) (string, string, string
 		t.Fatal(err)
 	}
 	writeEnrollmentFile(t, input, raw, 0o600)
-	return bundle, filepath.Join(bundle, artifactName), input
+	return bundle, filepath.Join(bundle, artifactName), input, keys, rootBytes
 }
 
 func enrolledRuntimeMetadata(t *testing.T, artifact []byte, targetPath, platform string, now time.Time) (map[string][]byte, []byte) {
+	metadataFiles, rootBytes, _ := enrolledRuntimeMetadataWithKeys(t, artifact, targetPath, platform, now)
+	return metadataFiles, rootBytes
+}
+
+func enrolledRuntimeMetadataWithKeys(t *testing.T, artifact []byte, targetPath, platform string, now time.Time) (map[string][]byte, []byte, []enrolledRuntimeKey) {
 	t.Helper()
 	keys := enrolledRuntimeKeys(t)
 	expires := now.Add(time.Hour)
@@ -220,7 +317,7 @@ func enrolledRuntimeMetadata(t *testing.T, artifact []byte, targetPath, platform
 	if err != nil {
 		t.Fatal(err)
 	}
-	return map[string][]byte{"timestamp.json": timestampBytes, "1.snapshot.json": snapshotBytes, "1.targets.json": targetsBytes}, rootBytes
+	return map[string][]byte{"timestamp.json": timestampBytes, "1.snapshot.json": snapshotBytes, "1.targets.json": targetsBytes}, rootBytes, keys
 }
 
 func enrolledRuntimeKeys(t *testing.T) []enrolledRuntimeKey {

@@ -91,6 +91,71 @@ func TestVerifyRecordRejectsMissingPublicBindingBeforeSecretInput(t *testing.T) 
 	}
 }
 
+func TestRecoveryBundleCommandsKeepAuthorityLockedOnRestore(t *testing.T) {
+	sourceRoot := t.TempDir()
+	vault, err := custody.Open(custody.VaultConfig{Root: sourceRoot})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	state := commandAuthorityState()
+	vaultPassword := []byte("source vault password")
+	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateVaultRecord, Authority: state}, &sequenceCommandSecrets{values: [][]byte{vaultPassword, vaultPassword}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle := filepath.Join(t.TempDir(), "recovery-bundle.json")
+	bindingArguments := custodyBindingArguments(state.Binding)
+	exportArguments := append([]string{"export-recovery-bundle", "-vault-root", sourceRoot, "-record", created.RecordID, "-bundle", bundle}, bindingArguments...)
+	var exportOutput bytes.Buffer
+	bundlePassword := []byte("separate bundle password")
+	if err := run(t.Context(), exportArguments, &exportOutput, &sequenceCommandSecrets{values: [][]byte{vaultPassword, bundlePassword, bundlePassword}}); err != nil {
+		t.Fatalf("export recovery bundle: %v", err)
+	}
+	if bytes.Contains(exportOutput.Bytes(), state.RootMaterial) || bytes.Contains(exportOutput.Bytes(), bundlePassword) {
+		t.Fatal("export command returned secret material")
+	}
+	restoreArguments := append([]string{"restore-recovery-bundle", "-vault-root", t.TempDir(), "-bundle", bundle}, bindingArguments...)
+	var restoreOutput bytes.Buffer
+	restoredVaultPassword := []byte("restored vault password")
+	if err := run(t.Context(), restoreArguments, &restoreOutput, &sequenceCommandSecrets{values: [][]byte{bundlePassword, restoredVaultPassword, restoredVaultPassword}}); err != nil {
+		t.Fatalf("restore recovery bundle: %v", err)
+	}
+	var restored struct {
+		Operation string `json:"operation"`
+		State     string `json:"state"`
+	}
+	if err := json.Unmarshal(restoreOutput.Bytes(), &restored); err != nil || restored.Operation != "restore-recovery-bundle" || restored.State != "authority-locked" {
+		t.Fatalf("restore receipt = %+v / %v", restored, err)
+	}
+}
+
+func TestPurgeRecordRequiresConfirmedCustodyTransition(t *testing.T) {
+	root := t.TempDir()
+	vault, err := custody.Open(custody.VaultConfig{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	state := commandAuthorityState()
+	password := []byte("purge command password")
+	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateVaultRecord, Authority: state}, &sequenceCommandSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	arguments := append([]string{"purge-record", "-vault-root", root, "-record", created.RecordID}, custodyBindingArguments(state.Binding)...)
+	var output bytes.Buffer
+	if err := run(t.Context(), arguments, &output, &sequenceCommandSecrets{values: [][]byte{password}, confirmations: []bool{true}}); err != nil {
+		t.Fatalf("purge record: %v", err)
+	}
+	if bytes.Contains(output.Bytes(), state.RootMaterial) || bytes.Contains(output.Bytes(), password) {
+		t.Fatal("purge command returned secret material")
+	}
+	if _, err := os.Stat(filepath.Join(root, "records", "record-"+created.RecordID+".json")); !os.IsNotExist(err) {
+		t.Fatalf("purged record remains: %v", err)
+	}
+}
+
 func TestTerminalSecretInputRejectsNonTerminalDescriptor(t *testing.T) {
 	reader, writer, err := os.Pipe()
 	if err != nil {
@@ -117,6 +182,36 @@ func (input commandSecrets) ReadSecret(context.Context, custody.SecretPrompt) ([
 
 func (commandSecrets) Confirm(context.Context, custody.ConfirmationPrompt) (bool, error) {
 	return false, errors.New("unexpected confirmation")
+}
+
+type sequenceCommandSecrets struct {
+	values        [][]byte
+	confirmations []bool
+	index         int
+}
+
+func (input *sequenceCommandSecrets) ReadSecret(context.Context, custody.SecretPrompt) ([]byte, error) {
+	if input.index >= len(input.values) {
+		return nil, errors.New("unexpected secret request")
+	}
+	value := append([]byte(nil), input.values[input.index]...)
+	input.index++
+	return value, nil
+}
+
+func (input *sequenceCommandSecrets) Confirm(context.Context, custody.ConfirmationPrompt) (bool, error) {
+	if len(input.confirmations) == 0 {
+		return false, errors.New("unexpected confirmation")
+	}
+	confirmed := input.confirmations[0]
+	input.confirmations = input.confirmations[1:]
+	return confirmed, nil
+}
+
+func custodyBindingArguments(binding custody.AuthorityBinding) []string {
+	return []string{"-environment-commitment", hex.EncodeToString(binding.Environment[:]),
+		"-network-commitment", hex.EncodeToString(binding.Network[:]), "-root-commitment", hex.EncodeToString(binding.Root[:]),
+		"-kind", string(binding.Kind), "-id-commitment", hex.EncodeToString(binding.IDCommitment[:])}
 }
 
 func commandAuthorityState() custody.AuthorityState {
