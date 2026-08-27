@@ -41,7 +41,7 @@ extension of a passing result.
 ### Candidate H4-alpha-1 — readiness profile under qualification
 
 The current endpoint artifact candidate is source revision
-`70bf425ef427188694232a6ea873ac3c10f4b5fd`; its complete identity and public
+`70bf425eec937edcc22e8f0534db992aa2002a16`; its complete identity and public
 custody companions are recorded in the
 [H4-alpha-1 bounded release profile](08b-alpha-1-release-profile.md). It
 narrows the existing selected directions into one reproducible qualification

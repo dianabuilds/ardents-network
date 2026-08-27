@@ -9,7 +9,7 @@ be bound before a bounded alpha can be accepted.
 | Field | Fixed value |
 |---|---|
 | Profile | `ardents-h4-alpha-1-v1` |
-| Endpoint source revision | `70bf425ef427188694232a6ea873ac3c10f4b5fd` |
+| Endpoint source revision | `70bf425eec937edcc22e8f0534db992aa2002a16` |
 | Endpoint artifact | Ubuntu Portable `linux-amd64`, SHA-256 `33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1` |
 | Control companion | `ardents-control-linux-amd64`, SHA-256 `d69b4c5d5f6fae76cbeacfb6acee8abaec9b6cbb56afd339982ea6d55ef9449c` |
 | Release carrier | State-selected TCP/TLS v1 only; QUIC is not a fallback or alpha claim |
@@ -62,12 +62,11 @@ substitute authority, an online signer, an upload, or participant contact.
 
 ## Qualification coherence
 
-The maintained H4-3B implementation has evidence from Docker, a project VPS,
-a Windows-to-VPS journey, and Windows Firefox observation. Those runs used
-multiple source revisions. They establish behavior of their respective bytes,
-but only a repeat against the exact Endpoint artifact above can make the final
-candidate row green. The readiness matrix keeps the historical observations and
-marks their candidate-repeat requirement explicitly.
+The exact profile bytes now passed A1 source integrity and the constrained VPS
+Docker A5/A6/A7 cells; their retained logs and `0` exit receipts are named in
+the readiness matrix. The separate Windows-to-VPS journey and Windows Firefox
+observation still used other source revisions, so A8/A9 remain historical until
+they are repeated for this exact Endpoint artifact.
 
 ## Claims and limitations
 
