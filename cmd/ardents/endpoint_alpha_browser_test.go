@@ -64,6 +64,12 @@ func TestAlphaBrowserRuntimeRetainsOnlyLocalOwnersUntilStop(t *testing.T) {
 	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// Import and corpus preparation may legitimately exceed the two-second
+	// operator-observation window under a parallel quality run. Record the
+	// fresh observation for the runtime operation itself.
+	if err := os.WriteFile(confidence, []byte("observed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	statePath := filepath.Join(directory, "browser-entry", "alpha-proxy.json")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
