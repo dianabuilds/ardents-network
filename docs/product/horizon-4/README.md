@@ -21,7 +21,7 @@ browser, platform-isolation mechanism, or operator economy.
 | H4-5 | [Contributor viability and admission](05-contributor-viability-admission.md) | An explicit operator role can be evaluated without pretending installations are independent capacity. |
 | H4-6 | [Transparent control and transition](06-transparent-control-transition.md) | Provisional control gives way to auditable release, view, and transition authority. |
 | H4-7 | [Application boundary](07-application-boundary.md) | A supported protected local-application profile can earn its exact claim. |
-| H4-8 | [Qualification and promotion](08-qualification-promotion.md), [H4-alpha-1 readiness matrix](08a-alpha-1-readiness-matrix.md) | Evidence determines whether a live network may make the corresponding beta claim. |
+| H4-8 | [Qualification and promotion](08-qualification-promotion.md), [H4-alpha-1 release profile](08b-alpha-1-release-profile.md), [H4-alpha-1 readiness matrix](08a-alpha-1-readiness-matrix.md) | Evidence determines whether a live network may make the corresponding beta claim. |
 
 ## Current delivery status
 

@@ -40,8 +40,11 @@ extension of a passing result.
 
 ### Candidate H4-alpha-1 — readiness profile under qualification
 
-The current implementation candidate is source revision `d9dd65d2bc13d7c0a5628b58c4e80cf8c0f411d4`.
-It narrows the existing selected directions into one reproducible qualification
+The current endpoint artifact candidate is source revision
+`70bf425ef427188694232a6ea873ac3c10f4b5fd`; its complete identity and public
+custody companions are recorded in the
+[H4-alpha-1 bounded release profile](08b-alpha-1-release-profile.md). It
+narrows the existing selected directions into one reproducible qualification
 target; this records a candidate and its evidence gates, **not** a release
 acceptance or a claim that an immutable participant artifact has been published.
 
