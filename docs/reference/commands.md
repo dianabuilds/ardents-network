@@ -75,13 +75,15 @@ implemented and verified.
 
 `ardents-release-custody` is the Product Owner's separate local alpha
 release-seed custody adapter. It accepts no password through flags,
-environment, configuration, or shared stdin, and it never signs metadata,
-publishes an artifact, starts an Endpoint, or configures a VPS.
+environment, configuration, or shared stdin. It exposes one fixed-profile
+metadata assembly route but no generic signer, upload, artifact publication,
+Endpoint start, or VPS configuration route.
 
 | Route | Required flags | Result |
 |---|---|---|
 | `initialize` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads a new local passphrase and confirmation, then creates the one encrypted fixed-role seed record and prints its public receipt. |
 | `inspect` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads the existing local passphrase, authenticates the fixed encrypted record without altering it, and prints only its public receipt. |
+| `assemble` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY --request ABSOLUTE_FILE --endpoint ABSOLUTE_FILE --control ABSOLUTE_FILE --output ABSENT_ABSOLUTE_DIRECTORY` | Authenticates the selected H4-alpha-1 envelope, accepts only the recorded profile/source/artifact identities, constructs and preflights the fixed TUF/H4-6A static input set, then prints a public receipt. It does not assemble or publish the release bundle. |
 
 ## `ardents-control`
 

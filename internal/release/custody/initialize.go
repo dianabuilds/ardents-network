@@ -8,17 +8,31 @@ import (
 	"fmt"
 )
 
-var roleNames = [...]string{
-	"tuf-top-level-1",
-	"tuf-top-level-2",
-	"tuf-top-level-3",
-	"tuf-top-level-4",
-	"tuf-top-level-5",
-	"alpha-disclosure",
-	"alpha-release-component",
-	"alpha-network-component",
-	"alpha-compatibility-component",
-	"alpha-corpus-authority",
+const (
+	roleTUFTopLevel1 = iota
+	roleTUFTopLevel2
+	roleTUFTopLevel3
+	roleTUFTopLevel4
+	roleTUFTopLevel5
+	roleAlphaDisclosure
+	roleAlphaReleaseComponent
+	roleAlphaNetworkComponent
+	roleAlphaCompatibilityComponent
+	roleAlphaCorpusAuthority
+	roleCount
+)
+
+var roleNames = [roleCount]string{
+	roleTUFTopLevel1:                "tuf-top-level-1",
+	roleTUFTopLevel2:                "tuf-top-level-2",
+	roleTUFTopLevel3:                "tuf-top-level-3",
+	roleTUFTopLevel4:                "tuf-top-level-4",
+	roleTUFTopLevel5:                "tuf-top-level-5",
+	roleAlphaDisclosure:             "alpha-disclosure",
+	roleAlphaReleaseComponent:       "alpha-release-component",
+	roleAlphaNetworkComponent:       "alpha-network-component",
+	roleAlphaCompatibilityComponent: "alpha-compatibility-component",
+	roleAlphaCorpusAuthority:        "alpha-corpus-authority",
 }
 
 // Initialize creates one fixed encrypted local seed record. It refuses to

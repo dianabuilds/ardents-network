@@ -13,8 +13,14 @@ import (
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {
-	if len(arguments) == 0 || (arguments[0] != "initialize" && arguments[0] != "inspect") {
-		return errors.New("usage: ardents-release-custody <initialize|inspect> --root ABSOLUTE_OWNER_ONLY_DIRECTORY")
+	if len(arguments) == 0 {
+		return errors.New("usage: ardents-release-custody <initialize|inspect|assemble> [fixed arguments]")
+	}
+	if arguments[0] == "assemble" {
+		return runAssemble(ctx, arguments[1:], output, input)
+	}
+	if arguments[0] != "initialize" && arguments[0] != "inspect" {
+		return errors.New("usage: ardents-release-custody <initialize|inspect|assemble> [fixed arguments]")
 	}
 	operation := arguments[0]
 	flags := flag.NewFlagSet(operation, flag.ContinueOnError)

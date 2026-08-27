@@ -1,7 +1,8 @@
 # Closed-alpha release ceremony
 
-Status: **prepared H4-1/H4-6A operating procedure; inactive until the Product
-Owner records the release/control-key custody and the exact alpha topology.**
+Status: **active H4-1/H4-6A preparation. The bounded static-input operation is
+maintained; its real invocation remains inactive until the Product Owner records
+the exact public alpha profile and topology.**
 
 This procedure prepares one bounded Ubuntu Portable alpha artifact. It derives
 from H4-1, ADR-0038, the H4-8A matrix, and the closed-alpha enrollment
@@ -46,6 +47,13 @@ When the initialization receipt must be recovered for companion recording, run
 It asks once for the existing passphrase and prints only the encrypted-record
 digest and fixed public keys. It does not alter the record or create a signed
 release input.
+
+The fixed public request is prepared under
+[`closed-alpha-input-request.md`](closed-alpha-input-request.md). After its
+facts and the two exact artifacts are reviewed, the Product Owner invokes
+`ardents-release-custody assemble` locally. That command performs the complete
+Release/Network/H4-6A preflight and publishes one previously absent static
+directory. It does not assemble or upload the bundle.
 
 ## Signed input set
 

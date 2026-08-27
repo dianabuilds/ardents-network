@@ -42,6 +42,13 @@ top-level roles at 3-of-5, fixes ACA1 to the three independently rooted
 Release/Network/Compatibility components, and derives every public companion
 from those same seeds.
 
+The exported operation is bound to the recorded `ardents-h4-alpha-1-v1`
+profile: its selected encrypted-envelope digest, Endpoint/control digests, and
+Endpoint source revision are fixed policy, not caller choices. A recorded
+reference time drives deterministic verifier evidence, while the actual local
+invocation time must still precede metadata expiry and the no-new-work safety
+bound.
+
 Before external publication it validates the request's Network State through
 the maintained State acceptance path, evaluates the constructed TUF set through
 the maintained Release verifier for the exact artifact, and verifies every

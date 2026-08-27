@@ -44,8 +44,9 @@ independent-custody, signing, publication, or enrollment result.
 
 ## Required static inputs before signing
 
-The fixed signer operation remains unimplemented until these public facts are
-recorded and individually validated:
+The fixed signer operation is maintained under ADR-0052, but its first real
+invocation remains gated until these public facts are recorded and individually
+validated:
 
 1. cohort, release identity/version, validity interval, emergency-stop rule,
    `alpha` environment, and selected Network identifier;
@@ -59,6 +60,9 @@ recorded and individually validated:
 ADR-0052 selects the future fixed local `BuildAlphaInputs` operation that may
 consume these facts. No value in this profile permits arbitrary bytes, a
 substitute authority, an online signer, an upload, or participant contact.
+The maintained exported operation enforces this profile's source revision,
+Endpoint/control digests, and selected encrypted-envelope digest as fixed
+policy before it requests the local passphrase.
 
 ## Qualification coherence
 

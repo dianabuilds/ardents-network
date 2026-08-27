@@ -107,7 +107,7 @@ tests, non-test caller, and package-map entry now own it.
 | `github.com/opencontainers/go-digest` | `v1.0.0` | Apache-2.0 | digest conversion closure |
 | `github.com/secure-systems-lab/go-securesystemslib` | `v0.11.0` | MIT | maintained signing-verification support used by go-tuf metadata |
 | `github.com/sigstore/protobuf-specs` | `v0.5.2` | Apache-2.0 | signature verification type closure |
-| `github.com/sigstore/sigstore` | `v1.10.9` | Apache-2.0 | public-key signature verification adapter used by go-tuf |
+| `github.com/sigstore/sigstore` | `v1.10.9` | Apache-2.0 | public-key verification adapter used by go-tuf and the fixed Ed25519 metadata signer adapter used only by release custody |
 | `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
 | `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | raised cryptographic support closure |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
@@ -115,15 +115,18 @@ tests, non-test caller, and package-map entry now own it.
 | `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260819154853-08b0e4226688` | Apache-2.0 | protobuf API type closure |
 | `google.golang.org/protobuf` | `v1.36.12` | BSD-3-Clause | signature protobuf runtime |
 
-**Need and owner:** the Release Decision Module is the sole owner. Its maintained
-path imports only go-tuf `metadata` and `trustedmetadata`; the broader reviewed
+**Need and owner:** the Release Decision Module owns verification; the bounded
+Release Custody Module additionally owns the ADR-0052 initial metadata writer.
+The maintained verification path imports go-tuf `metadata` and
+`trustedmetadata`; release custody imports only `metadata` plus Sigstore's
+reviewed Ed25519 signer adapter. The broader reviewed
 updater closure remains the removal/review boundary but is not imported by
-production code. The Module receives bounded bytes, trusted root, exact target
+other production code. Release Decision receives bounded bytes, trusted root, exact target
 identity, and artifact bytes. It constructs one trusted set, assigns the one
 captured UTC `RefTime` before the first expiry check, then executes the standard
 consecutive root, timestamp, snapshot, and top-level targets update methods.
 The Module owns neither network
-retrieval nor persistent cache, repository/signing administration,
+retrieval nor persistent cache, general repository/signing administration,
 multi-repository maps, delegated targets, installation, or activation.
 Ardents-owned durable `version + digest` floors for root, timestamp, snapshot,
 and top-level targets are mandatory inputs. Before `release-accepted`, the owner
@@ -142,8 +145,10 @@ module scan and stops on any reachable unpatched high/critical advisory.
 
 **Alternatives and removal:** the DataDog legacy fork failed the reproducible
 maintenance/conformance criterion; first-party TUF or cryptographic primitives,
-distributor authority, and a hand-built threshold workflow are rejected. The
-closure is removed with the one Release Decision Module. A version, module,
+distributor authority, and a hand-built generic threshold workflow are rejected.
+The fixed custody writer constructs only the initial closed-alpha metadata and
+preflights it through Release Decision; it is not a repository administrator.
+The closure is removed with the Release Decision and Release Custody Modules. A version, module,
 surface, role, delegation, cache, or multi-repository change requires a new
 dependency review and applicable ADR analysis.
 

@@ -39,6 +39,9 @@ const (
 	// PromptUnlock asks for the existing record passphrase only to derive a
 	// public receipt. It never authorizes arbitrary signing or key export.
 	PromptUnlock Prompt = "release-custody-unlock"
+	// PromptAssemble authorizes only the fixed ADR-0052 alpha-input operation.
+	// It never authorizes an arbitrary message, role, target, or upload.
+	PromptAssemble Prompt = "release-custody-assemble"
 )
 
 // PublicRole identifies one fixed ceremony role and its Ed25519 public key.

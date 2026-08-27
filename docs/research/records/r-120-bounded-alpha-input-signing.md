@@ -153,8 +153,16 @@ qualification.
 
 ## Disposition
 
-Decided on 2026-08-27. ADR-0052 authorizes implementation and behavior tests of
-the one fixed local Module, but not a real invocation. Real key use, metadata,
+Decided on 2026-08-27. The ADR-0052 fixed local Module and terminal adapter are
+now maintained with verifier-accepted, deterministic-output, changed-artifact,
+unknown-field, rejected-Network, and no-overwrite behavior tests. This does not
+authorize a real invocation. Real key use, metadata,
 artifact publication, or participant contact remains forbidden until the
 recorded non-secret profile inputs exist. Retain no real experiment directory
 until then.
+
+The post-implementation review additionally fixed the exported operation to
+the recorded H4-alpha-1 profile/source/artifact/control/envelope identities and
+added an invocation-time expiry/build-safety check. Thus a different
+self-consistent artifact or custody record is rejected rather than becoming an
+accidental reusable signer.

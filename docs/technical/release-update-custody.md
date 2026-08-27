@@ -92,9 +92,12 @@ storage.
 ADR-0050 separately assigns first closed-alpha release seeds to
 `internal/release/custody`. That local Product Owner boundary can initialize
 exactly one password-encrypted fixed-role seed record and return a public
-receipt. It cannot decrypt material for callers, sign metadata, administer a
-TUF repository, publish an artifact, or configure a VPS. A concrete signing
-topology and its evidence remain a later gate.
+receipt. ADR-0052 additionally permits one profile-bound operation to consume
+that selected record internally and create only the fixed H4-alpha-1
+TUF/H4-6A static input directory after maintained verifier preflight. It cannot
+decrypt material for callers, sign arbitrary metadata, administer a TUF
+repository, publish an artifact, or configure a VPS. Real invocation remains
+gated by the recorded Network State and release facts.
 
 A fresh executable cannot use its own Release Decision code to authenticate
 itself before first execution. `RootBytes` and the first executable therefore
