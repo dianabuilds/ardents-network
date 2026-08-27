@@ -78,6 +78,7 @@ func TestH42MultiHostRendezvousQualification(t *testing.T) {
 
 type h42MultiHostEnvironment struct {
 	host, sshKey, sshPath, user, knownHosts string
+	candidate, candidateDigest              string
 	port                                    int
 	remoteDirectory                         string
 	container                               string
@@ -92,6 +93,20 @@ func requireH42MultiHostEnvironment(t *testing.T) h42MultiHostEnvironment {
 	sshKey := os.Getenv("ARDENTS_H4_2_SSH_KEY")
 	if info, err := os.Stat(sshKey); err != nil || !info.Mode().IsRegular() {
 		t.Fatal("ARDENTS_H4_2_SSH_KEY must name an existing private-key file")
+	}
+	candidate := os.Getenv("ARDENTS_H4_2_CANDIDATE")
+	if info, err := os.Stat(candidate); err != nil || !info.Mode().IsRegular() {
+		t.Fatal("ARDENTS_H4_2_CANDIDATE must name the exact Linux amd64 candidate under qualification")
+	}
+	candidateDigest := strings.ToLower(os.Getenv("ARDENTS_H4_2_CANDIDATE_SHA256"))
+	if len(candidateDigest) != sha256.Size*2 {
+		t.Fatal("ARDENTS_H4_2_CANDIDATE_SHA256 must be the expected candidate SHA-256 digest")
+	}
+	if _, err := hex.DecodeString(candidateDigest); err != nil {
+		t.Fatal("ARDENTS_H4_2_CANDIDATE_SHA256 must be the expected candidate SHA-256 digest")
+	}
+	if actual := h42FileDigest(t, candidate); actual != candidateDigest {
+		t.Fatalf("ARDENTS_H4_2_CANDIDATE digest = %s, want %s", actual, candidateDigest)
 	}
 	sshPath := os.Getenv("ARDENTS_H4_2_SSH")
 	if sshPath == "" {
@@ -130,14 +145,18 @@ func requireH42MultiHostEnvironment(t *testing.T) h42MultiHostEnvironment {
 		t.Fatal(err)
 	}
 	suffix := hex.EncodeToString(nonce[:])
-	return h42MultiHostEnvironment{host: host, sshKey: sshKey, sshPath: sshPath, user: user, knownHosts: filepath.Join(t.TempDir(), "known_hosts"), port: port,
+	return h42MultiHostEnvironment{host: host, sshKey: sshKey, sshPath: sshPath, user: user, knownHosts: filepath.Join(t.TempDir(), "known_hosts"),
+		candidate: candidate, candidateDigest: candidateDigest, port: port,
 		remoteDirectory: "/tmp/ardents-h4-2-multihost-" + suffix, container: "ardents-h4-2-multihost-" + suffix}
 }
 
 func stageH42RemoteRendezvous(t *testing.T, fixture rendezvousStateFixture, environment h42MultiHostEnvironment) string {
 	t.Helper()
 	stage := t.TempDir()
-	buildH42LinuxCommand(t, "ardents", filepath.Join(stage, "ardents"))
+	h42CopyInput(t, stage, "ardents", environment.candidate)
+	if actual := h42FileDigest(t, filepath.Join(stage, "ardents")); actual != environment.candidateDigest {
+		t.Fatalf("staged H4-2 candidate digest = %s, want %s", actual, environment.candidateDigest)
+	}
 	buildH42LinuxCommand(t, "ardents-node", filepath.Join(stage, "ardents-node"))
 
 	sources, client := h42SourceCredentials(t)
@@ -287,7 +306,7 @@ wait "$node_pid"
 
 func buildH42LinuxCommand(t *testing.T, name, destination string) {
 	t.Helper()
-	command := exec.Command("go", "build", "-o", destination, "./cmd/"+name)
+	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", destination, "./cmd/"+name)
 	command.Dir = filepath.Join("..", "..", "..")
 	command.Env = append(os.Environ(), "CGO_ENABLED=0", "GOARCH=amd64", "GOOS=linux", "GOTOOLCHAIN=local")
 	if output, err := command.CombinedOutput(); err != nil {

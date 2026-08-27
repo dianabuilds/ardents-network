@@ -1,16 +1,21 @@
 # H4-2 multi-host native Rendezvous qualification
 
 Run `make qualification-h4-2-multihost` from Windows only after explicitly
-setting `ARDENTS_H4_2_VPS` to one VPS IPv4 address and
-`ARDENTS_H4_2_SSH_KEY` to the matching private-key file. The default account is
+setting `ARDENTS_H4_2_VPS` to one VPS IPv4 address,
+`ARDENTS_H4_2_SSH_KEY` to the matching private-key file,
+`ARDENTS_H4_2_CANDIDATE` to the exact Linux amd64 candidate, and
+`ARDENTS_H4_2_CANDIDATE_SHA256` to its expected SHA-256 digest. The runner
+rejects a missing or mismatched candidate rather than rebuilding the release
+input from the current checkout. The default account is
 `root`; set `ARDENTS_H4_2_VPS_USER` to select another account. The default
 public port is `47926`; `ARDENTS_H4_2_VPS_PORT` may choose another unprivileged
 port, provided that it and the following three ports are free on the VPS.
 The Windows runner resolves the system OpenSSH `ssh.exe` itself and passes its
 absolute path to the tagged test.
 
-The qualifier cross-builds the current `ardents` and `ardents-node` commands to
-a temporary local directory. It transfers only those two binaries and
+The qualifier copies the declared exact `ardents` candidate and cross-builds
+the current `ardents-node` command to a temporary local directory. It transfers
+only those two binaries and
 ephemeral signed State, materializations, certificates, keys, plans, and a
 short runner to one exact temporary `/tmp/ardents-h4-2-multihost-*` directory
 on the declared VPS. A detached `golang:1.26.6` container uses host networking
@@ -28,7 +33,8 @@ remote Node to reach `READY`; test cleanup force-removes only its generated
 container and exact temporary directory and verifies their absence. A missing
 key, remote Docker image, free port, reachable VPS, or cleanup is an invalid
 selected environment and fails the target rather than producing a skipped pass.
-The verbose result records the exact SHA-256 of both cross-built command bytes,
+The verbose result records the exact SHA-256 of the copied candidate and the
+cross-built Node command,
 the native Route profile, State epoch/digest, Docker image ID/version, kernel,
 vCPU count, and reported memory. The temporary known-hosts file is test-owned;
 the runner never modifies the operator's persistent SSH trust store.
