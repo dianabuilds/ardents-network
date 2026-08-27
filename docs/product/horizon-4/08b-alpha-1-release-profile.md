@@ -62,11 +62,12 @@ substitute authority, an online signer, an upload, or participant contact.
 
 ## Qualification coherence
 
-The exact profile bytes now passed A1 source integrity and the constrained VPS
-Docker A5/A6/A7 cells; their retained logs and `0` exit receipts are named in
-the readiness matrix. The separate Windows-to-VPS journey and Windows Firefox
-observation still used other source revisions, so A8/A9 remain historical until
-they are repeated for this exact Endpoint artifact.
+The exact profile bytes now passed A1 source integrity; constrained VPS Docker
+A5/A6/A7; the A8 Windows-to-VPS tracer; and A9 Firefox 154.0.1 browser
+observation. Their retained logs and `0` exit receipts are named in the
+readiness matrix. These results remain bounded test/qualification evidence, not
+artifact provenance, enrollment, participant, independent-operation, or
+browser-isolation claims.
 
 ## Claims and limitations
 
