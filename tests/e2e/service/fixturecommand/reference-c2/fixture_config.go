@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
@@ -81,6 +83,9 @@ func readConfig(path string) (config, error) {
 			return config{}, errors.New("C2 fixture alpha private ready path is invalid")
 		}
 	}
+	if input.AlphaRelayListenAddress != "" && !validAlphaRelayListenAddress(input.AlphaRelayListenAddress) {
+		return config{}, errors.New("C2 fixture alpha Relay listen address is invalid")
+	}
 	if _, err := alpha.ParseServiceLink(input.AlphaServiceLink); err != nil {
 		return config{}, err
 	}
@@ -109,6 +114,18 @@ func readConfig(path string) (config, error) {
 		return config{}, errors.New("C2 fixture Publisher Application address path is invalid")
 	}
 	return input, nil
+}
+
+// validAlphaRelayListenAddress admits only an explicit IP listener for the
+// test-only public Relay boundary. The ordinary local fixture leaves this
+// empty and retains its ephemeral loopback listener.
+func validAlphaRelayListenAddress(value string) bool {
+	host, port, err := net.SplitHostPort(value)
+	if err != nil || net.ParseIP(host) == nil {
+		return false
+	}
+	number, err := strconv.Atoi(port)
+	return err == nil && number >= 1024 && number <= 65535
 }
 
 func (input config) deadline() (time.Time, error) {

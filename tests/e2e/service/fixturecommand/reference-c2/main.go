@@ -46,7 +46,7 @@ type stateClient struct {
 type config struct {
 	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath, ResourceProofPath      string
 	HeldRouteReady, HeldRouteUserReady, HeldRouteRelease                                                               string
-	AlphaGatewayReadyPath, AlphaRelayReadyPath                                                                         string
+	AlphaGatewayReadyPath, AlphaRelayReadyPath, AlphaRelayListenAddress                                                string
 	PublisherApplicationAddress, PublisherApplicationAddressPath, PublisherApplicationToken, PublisherApplicationReady string
 	PublisherCrashReadyPath                                                                                            string
 	Epoch                                                                                                              uint64

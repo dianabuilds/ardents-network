@@ -73,7 +73,7 @@ func runAlphaGateway(input config) error {
 	if err != nil {
 		return err
 	}
-	server, serve, address, serverName, root, err := openFixtureAlphaServer(gateway.Handler(), "alpha-gateway.fixture.invalid")
+	server, serve, address, serverName, root, err := openFixtureAlphaServer(gateway.Handler(), "alpha-gateway.fixture.invalid", "")
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func runAlphaRelay(input config) error {
 	if err != nil {
 		return err
 	}
-	server, serve, address, serverName, root, err := openFixtureAlphaServer(relay.Handler(), "alpha-relay.fixture.invalid")
+	server, serve, address, serverName, root, err := openFixtureAlphaServer(relay.Handler(), "alpha-relay.fixture.invalid", input.AlphaRelayListenAddress)
 	if err != nil {
 		return err
 	}
@@ -260,12 +260,15 @@ func alphaClientTransport(encodedRoot, serverName string) (*http.Transport, erro
 	return &http.Transport{Proxy: nil, DisableCompression: true, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: pool, ServerName: serverName}}, nil
 }
 
-func openFixtureAlphaServer(handler http.Handler, name string) (*http.Server, <-chan error, string, string, []byte, error) {
+func openFixtureAlphaServer(handler http.Handler, name, listenAddress string) (*http.Server, <-chan error, string, string, []byte, error) {
 	certificate, root, err := fixtureAlphaCertificate(name)
 	if err != nil {
 		return nil, nil, "", "", nil, err
 	}
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if listenAddress == "" {
+		listenAddress = "127.0.0.1:0"
+	}
+	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
 		return nil, nil, "", "", nil, err
 	}
