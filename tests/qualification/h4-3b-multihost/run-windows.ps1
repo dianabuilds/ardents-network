@@ -25,11 +25,24 @@ if ($User -notmatch '^[A-Za-z0-9_-]+$') {
 if ($GoTestTimeout -notmatch '^-timeout=[1-9][0-9]*[smh]$') {
     throw 'H4-3B multi-host Go test timeout must be a positive Go duration in seconds, minutes, or hours.'
 }
-$sshPath = 'C:\Windows\System32\OpenSSH\ssh.exe'
-if (-not (Test-Path -LiteralPath $sshPath -PathType Leaf) -and -not [string]::IsNullOrWhiteSpace($env:WINDIR)) {
-    $sshPath = Join-Path $env:WINDIR 'System32\OpenSSH\ssh.exe'
+$sshPath = ''
+foreach ($root in @(
+    (Join-Path $env:WINDIR 'System32\OpenSSH'),
+    (Join-Path $env:WINDIR 'Sysnative\OpenSSH')
+)) {
+    $candidate = Join-Path $root 'ssh.exe'
+    if ([System.IO.File]::Exists($candidate)) {
+        $sshPath = $candidate
+        break
+    }
 }
-if (-not (Test-Path -LiteralPath $sshPath -PathType Leaf)) {
+if ([string]::IsNullOrEmpty($sshPath)) {
+    $sshCommand = Get-Command ssh.exe -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -ne $sshCommand) {
+        $sshPath = $sshCommand.Source
+    }
+}
+if ([string]::IsNullOrEmpty($sshPath)) {
     throw 'the Windows OpenSSH ssh command is unavailable'
 }
 
