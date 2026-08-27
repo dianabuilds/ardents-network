@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/release/custody"
 )
@@ -36,10 +37,14 @@ func (input dialogSecretInput) ReadSecret(ctx context.Context, prompt custody.Pr
 }
 
 func readWindowsPassphrase(message string) ([]byte, error) {
-	command := exec.Command("powershell.exe", "-NoLogo", "-NoProfile", "-Command", windowsCredentialScript(message))
-	value, err := command.Output()
+	command := exec.Command("powershell.exe", "-NoLogo", "-NoProfile", "-STA", "-Command", windowsCredentialScript(message))
+	value, err := command.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("read release custody passphrase through local dialog: %w", err)
+		diagnostic := strings.TrimSpace(string(value))
+		if diagnostic == "" {
+			return nil, fmt.Errorf("read release custody passphrase through local dialog: %w", err)
+		}
+		return nil, fmt.Errorf("read release custody passphrase through local dialog: %s", diagnostic)
 	}
 	return value, nil
 }
