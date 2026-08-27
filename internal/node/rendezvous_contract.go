@@ -24,6 +24,7 @@ type RendezvousPeer struct {
 // input; this duty never discovers a peer or selects another profile.
 type RendezvousConfig struct {
 	ListenAddress                           string
+	CarrierProfile                          route.CarrierProfile
 	Certificate                             tls.Certificate
 	NetworkID, EpochDigest, NodeID          [32]byte
 	NodePublicKey                           [32]byte
@@ -32,6 +33,7 @@ type RendezvousConfig struct {
 	Peers                                   []RendezvousPeer
 	HandshakeLimit, WaitingLimit, PairLimit uint16
 	PairByteLimit                           uint64
+	AdmissionTimeout                        time.Duration
 	DrainTimeout                            time.Duration
 }
 
@@ -53,11 +55,11 @@ type rendezvousPlan struct {
 }
 
 func newRendezvousPlan(input RendezvousConfig) (rendezvousPlan, error) {
-	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} ||
+	if !literalNodeEndpoint(input.ListenAddress) || !supportedCarrier(input.CarrierProfile) || input.NetworkID == [32]byte{} ||
 		input.EpochDigest == [32]byte{} || input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} ||
 		input.Epoch == 0 || input.NotAfter.IsZero() || input.HandshakeLimit == 0 || input.WaitingLimit == 0 ||
 		input.PairLimit == 0 || input.PairByteLimit == 0 || input.PairByteLimit > uint64(1<<63-1) ||
-		input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
+		!validAdmissionTimeout(input.AdmissionTimeout) || input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
 		return rendezvousPlan{}, errors.New("Rendezvous duty configuration is incomplete or outside its implementation bound")
 	}
 	now := func() time.Time { return time.Now().UTC() }
@@ -108,6 +110,10 @@ func literalNodeEndpoint(endpoint string) bool {
 	host, port, err := net.SplitHostPort(endpoint)
 	number, portErr := strconv.Atoi(port)
 	return err == nil && net.ParseIP(host) != nil && portErr == nil && number >= 1 && number <= 65535
+}
+
+func supportedCarrier(profile route.CarrierProfile) bool {
+	return profile == route.CarrierTCP || profile == route.CarrierQUIC
 }
 
 func validateNodeCertificate(certificate tls.Certificate, expected [32]byte) error {

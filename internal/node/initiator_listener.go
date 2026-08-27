@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -22,7 +23,7 @@ type Initiator struct {
 	draining  bool
 	protected bool
 	pre       map[net.Conn]struct{}
-	active    map[net.Conn]struct{}
+	active    map[route.Carrier]struct{}
 	usage     InitiatorUsage
 	stopOnce  sync.Once
 	work      sync.WaitGroup
@@ -41,7 +42,7 @@ func StartInitiator(input InitiatorConfig) (*Initiator, error) {
 		return nil, err
 	}
 	running := &Initiator{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
-		relays: make(chan struct{}, plan.RelayLimit), pre: make(map[net.Conn]struct{}), active: make(map[net.Conn]struct{}),
+		relays: make(chan struct{}, plan.RelayLimit), pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{}),
 		terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
@@ -161,14 +162,17 @@ func (running *Initiator) handle(raw net.Conn) {
 			_ = raw.Close()
 		}
 	}()
-	ctx, cancel := context.WithDeadline(context.Background(), running.plan.NotAfter)
-	defer cancel()
-	entryConnection, err := route.AcceptEntryAttachment(ctx, raw, route.EntryAttachmentAcceptance{NetworkID: running.plan.NetworkID,
+	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)
+	admissionCtx, admissionCancel := context.WithDeadline(context.Background(), deadline)
+	entryConnection, err := route.AcceptEntryAttachment(admissionCtx, raw, route.EntryAttachmentAcceptance{NetworkID: running.plan.NetworkID,
 		Digest: running.plan.EpochDigest, InitiatorNodeID: running.plan.NodeID, Epoch: running.plan.Epoch,
-		Deadline: running.plan.NotAfter, Certificate: running.plan.Certificate, Admit: running.plan.Admit})
+		Deadline: running.plan.NotAfter, AdmissionDeadline: deadline, Certificate: running.plan.Certificate, Admit: running.plan.Admit})
+	admissionCancel()
 	if err != nil || entryConnection.SetDeadline(running.plan.NotAfter) != nil {
 		return
 	}
+	workCtx, workCancel := context.WithDeadline(context.Background(), running.plan.NotAfter)
+	defer workCancel()
 	operation, err := route.ReadEntryOperation(entryConnection)
 	if err != nil || !running.validEntryOperation(operation) || !running.reserveRelay(raw) {
 		running.mu.Lock()
@@ -180,24 +184,65 @@ func (running *Initiator) handle(raw net.Conn) {
 	handshakeHeld = false
 	owned = false
 	if operation.Relay != nil {
-		running.openRelay(ctx, raw, entryConnection, *operation.Relay)
+		running.openRelay(workCtx, raw, entryConnection, *operation.Relay)
 		return
 	}
-	running.openResolutionRelay(ctx, raw, entryConnection, *operation.ResolutionRelay)
+	if operation.ResolutionRelay != nil {
+		running.openResolutionRelay(workCtx, raw, entryConnection, *operation.ResolutionRelay)
+		return
+	}
+	running.openCredentialRelay(workCtx, raw, entryConnection, *operation.CredentialRelay)
 }
 
 func (running *Initiator) validEntryOperation(operation route.EntryOperation) bool {
 	if operation.Relay != nil && operation.ResolutionRelay == nil {
 		return running.validateSetup(*operation.Relay) == nil
 	}
-	if operation.Relay == nil && operation.ResolutionRelay != nil {
+	if operation.Relay == nil && operation.ResolutionRelay != nil && operation.CredentialRelay == nil {
 		return running.validateResolutionSetup(*operation.ResolutionRelay) == nil
+	}
+	if operation.Relay == nil && operation.ResolutionRelay == nil && operation.CredentialRelay != nil {
+		return running.validateCredentialSetup(*operation.CredentialRelay) == nil
 	}
 	return false
 }
 
+func (running *Initiator) openCredentialRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.CredentialRelaySetup) {
+	if err := entryConnection.SetDeadline(setup.NotAfter); err != nil || route.WriteCredentialRelayReady(entryConnection, route.CredentialRelayReady{Setup: setup}) != nil {
+		running.releaseRelay(raw, nil)
+		return
+	}
+	envelope, err := route.ReadCredentialRelayEnvelope(entryConnection)
+	if err != nil {
+		running.releaseRelay(raw, nil)
+		return
+	}
+	forwardCtx, cancel := context.WithDeadline(ctx, setup.NotAfter)
+	defer cancel()
+	client, err := credential.HTTPClient(setup.IssuerNodePublicKey, running.plan.Certificate)
+	if err == nil {
+		response, forwardErr := credential.ForwardOHTTP(forwardCtx, running.plan.CredentialIssuer.URL, client, envelope.OHTTP)
+		client.CloseIdleConnections()
+		err = forwardErr
+		if err == nil {
+			err = route.WriteCredentialRelayResponse(entryConnection, route.CredentialRelayResponse{OHTTP: response, Framing: route.CredentialOHTTPResponse})
+		}
+	}
+	running.mu.Lock()
+	if err == nil {
+		running.usage.RelayedBytes += uint64(len(envelope.OHTTP))
+		running.usage.CompletedRelays++
+	}
+	running.mu.Unlock()
+	running.releaseRelay(raw, nil)
+}
+
 func (running *Initiator) openRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.RelaySetup) {
-	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{Endpoint: running.plan.Rendezvous.Endpoint,
+	if err := entryConnection.SetDeadline(setup.NotAfter); err != nil {
+		running.releaseRelay(raw, nil)
+		return
+	}
+	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{CarrierProfile: running.plan.Rendezvous.CarrierProfile, Endpoint: running.plan.Rendezvous.Endpoint,
 		Certificate: running.plan.Certificate, ExpectedPeerKey: running.plan.Rendezvous.PublicKey, Deadline: setup.NotAfter,
 		Binding: route.LegBinding{NetworkID: setup.NetworkID, Epoch: setup.Epoch, Digest: setup.Digest, AttachmentID: setup.AttachmentID,
 			SenderRole: route.InitiatorRole, PeerRole: route.RendezvousRole, SenderNodeID: running.plan.NodeID,
@@ -274,6 +319,17 @@ func (running *Initiator) validateResolutionSetup(setup route.ResolutionRelaySet
 	return nil
 }
 
+func (running *Initiator) validateCredentialSetup(setup route.CredentialRelaySetup) error {
+	issuer := running.plan.CredentialIssuer
+	if issuer.NodeID == [32]byte{} || setup.NetworkID != running.plan.NetworkID || setup.Digest != running.plan.EpochDigest ||
+		setup.Epoch != running.plan.Epoch || setup.InitiatorNodeID != running.plan.NodeID || setup.IssuerNodeID != issuer.NodeID ||
+		setup.IssuerNodePublicKey != issuer.PublicKey || setup.IssuerProfileDigest != issuer.ProfileDigest ||
+		setup.NotAfter.After(running.plan.NotAfter) || !running.plan.now().Before(setup.NotAfter) {
+		return errors.New("CredentialRelaySetup is not authorized by the current Initiator duty")
+	}
+	return nil
+}
+
 func (running *Initiator) reserveRelay(raw net.Conn) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
@@ -290,7 +346,7 @@ func (running *Initiator) reserveRelay(raw net.Conn) bool {
 	}
 }
 
-func (running *Initiator) releaseRelay(raw, next net.Conn) {
+func (running *Initiator) releaseRelay(raw net.Conn, next route.Carrier) {
 	running.mu.Lock()
 	delete(running.active, raw)
 	if next != nil {

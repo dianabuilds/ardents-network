@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func (running *Rendezvous) register(leg *rendezvousLeg) bool {
@@ -16,7 +17,7 @@ func (running *Rendezvous) register(leg *rendezvousLeg) bool {
 	}
 	existing := running.waiting[leg.binding.AttachmentID]
 	if existing == nil {
-		delete(running.pre, leg.raw)
+		delete(running.pre, leg.pending)
 		running.waiting[leg.binding.AttachmentID] = leg
 		running.mu.Unlock()
 		running.work.Add(1)
@@ -39,13 +40,13 @@ func (running *Rendezvous) register(leg *rendezvousLeg) bool {
 		return false
 	}
 	delete(running.waiting, leg.binding.AttachmentID)
-	delete(running.pre, existing.raw)
-	delete(running.pre, leg.raw)
+	delete(running.pre, existing.pending)
+	delete(running.pre, leg.pending)
 	<-running.waitingCap
 	<-running.waitingCap
 	existing.stopDone()
-	running.active[existing.raw], running.active[leg.raw] = struct{}{}, struct{}{}
-	preAdmission := []net.Conn(nil)
+	running.active[existing.connection], running.active[leg.connection] = struct{}{}, struct{}{}
+	preAdmission := []io.Closer(nil)
 	if len(running.pairs) == cap(running.pairs) {
 		preAdmission = running.closePreAdmissionLocked()
 	}
@@ -77,14 +78,14 @@ func (running *Rendezvous) expire(leg *rendezvousLeg) {
 	running.usage.Expired++
 	leg.stopDone()
 	running.mu.Unlock()
-	_ = leg.raw.Close()
+	_ = leg.connection.Close()
 }
 
 func (running *Rendezvous) pump(first, second *rendezvousLeg) {
 	defer running.work.Done()
 	type result struct{ bytes int64 }
 	results := make(chan result, 2)
-	copyLane := func(destination, source net.Conn) {
+	copyLane := func(destination, source route.Carrier) {
 		limited := &io.LimitedReader{R: source, N: int64(running.plan.PairByteLimit)}
 		count, _ := io.CopyBuffer(destination, limited, make([]byte, 32<<10))
 		results <- result{bytes: count}
@@ -92,12 +93,12 @@ func (running *Rendezvous) pump(first, second *rendezvousLeg) {
 	go copyLane(first.connection, second.connection)
 	go copyLane(second.connection, first.connection)
 	firstResult := <-results
-	_ = first.raw.Close()
-	_ = second.raw.Close()
+	_ = first.connection.Close()
+	_ = second.connection.Close()
 	secondResult := <-results
 	running.mu.Lock()
-	delete(running.active, first.raw)
-	delete(running.active, second.raw)
+	delete(running.active, first.connection)
+	delete(running.active, second.connection)
 	<-running.pairs
 	running.usage.RelayedBytes += uint64(firstResult.bytes)
 	running.usage.RelayedBytes += uint64(secondResult.bytes)
@@ -112,7 +113,7 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 		return errors.New("Rendezvous duty is unavailable")
 	}
 	running.Stop()
-	var preAdmission, active []net.Conn
+	var preAdmission, active []io.Closer
 	running.mu.Lock()
 	for connection := range running.pre {
 		preAdmission = append(preAdmission, connection)
@@ -121,7 +122,7 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 		delete(running.waiting, attachment)
 		<-running.waitingCap
 		leg.stopDone()
-		preAdmission = append(preAdmission, leg.raw)
+		preAdmission = append(preAdmission, leg.connection)
 	}
 	for connection := range running.active {
 		active = append(active, connection)
@@ -144,8 +145,8 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 	}
 }
 
-func (running *Rendezvous) closePreAdmissionLocked() []net.Conn {
-	connections := make([]net.Conn, 0, len(running.pre)+len(running.waiting))
+func (running *Rendezvous) closePreAdmissionLocked() []io.Closer {
+	connections := make([]io.Closer, 0, len(running.pre)+len(running.waiting))
 	for connection := range running.pre {
 		connections = append(connections, connection)
 	}
@@ -153,7 +154,7 @@ func (running *Rendezvous) closePreAdmissionLocked() []net.Conn {
 		delete(running.waiting, attachment)
 		<-running.waitingCap
 		leg.stopDone()
-		connections = append(connections, leg.raw)
+		connections = append(connections, leg.connection)
 	}
 	return connections
 }
@@ -162,7 +163,7 @@ func (leg *rendezvousLeg) stopDone() { leg.doneOnce.Do(func() { close(leg.done) 
 
 func (leg *rendezvousLeg) stop() {
 	leg.stopDone()
-	_ = leg.raw.Close()
+	_ = leg.connection.Close()
 }
 
 // Close is the explicit shutdown form for callers that do not need a separate

@@ -2,9 +2,15 @@
 status: accepted
 date: 2026-08-23
 supersedes: none
+partially-superseded-by: ADR-0048 (TCP-only Entry resolution clause)
 ---
 
 # ADR-0025 — Use State-referenced Entry Invites
+
+The State-referenced Invite format and single-authority rule remain current.
+ADR-0048 supersedes only the original statement that TCP/TLS is the sole
+maintained Carrier; State now supplies one exact supported TCP/TLS or QUIC-v1
+Carrier Profile.
 
 ## Context
 

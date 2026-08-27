@@ -39,3 +39,15 @@ func TestNodeOwnedPlansRejectRetiredH3Schemas(t *testing.T) {
 		})
 	}
 }
+
+func TestNodePlanRejectsLegacyResourceProfileForNativeDuty(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "native-legacy-resource.json")
+	raw := `{"schema":"ardents-node-plan-v1","local_role_state_root":"role","authority_public":["00"],"sources":[{},{}],"node_resource_profile":"h3-np1-v1","rendezvous":{}}`
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readNodePlan(path); err == nil || !strings.Contains(err.Error(), "resource profile is unselected") {
+		t.Fatalf("native plan with legacy resource profile error = %v", err)
+	}
+}

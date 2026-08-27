@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/openpcc/ohttp"
 )
@@ -36,9 +38,9 @@ func TestInitiatorRelaysOnlyAfterExactSetupAndReady(t *testing.T) {
 	initiator, err := StartInitiator(InitiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4},
 		NodePublicKey: material.initiatorPublic, Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
-		Rendezvous: InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress},
+		Rendezvous: InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
 		Admit:      initiatorAdmission(presentation, attachment, rendezvousConfig), HandshakeLimit: 2, RelayLimit: 1,
-		RelayByteLimit: 1024, DrainTimeout: time.Second})
+		RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,9 +99,9 @@ func TestInitiatorDutyUsesOnlyStateAssignedRendezvous(t *testing.T) {
 	snapshot := dutyFacts{NetworkID: [32]byte{31}, Epoch: 32, Digest: [32]byte{33}, Profile: route.Profile,
 		NodeID: [32]byte{34}, NodePublicKey: public, Assignment: "initiator", ProbeEndpoint: "127.0.0.1:30234",
 		EpochValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute), RecordValidUntil: now.Add(time.Minute),
-		Candidates: [64]dutyCandidate{{NodeID: [32]byte{35}, PublicKey: [32]byte{36}, Endpoint: "127.0.0.1:30235",
+		Candidates: [64]dutyCandidate{{NodeID: [32]byte{35}, PublicKey: [32]byte{36}, Endpoint: "127.0.0.1:30235", CarrierProfile: string(route.CarrierQUIC),
 			Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}}, CandidateCount: 1}
-	profile := InitiatorProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, DrainTimeout: time.Second}
+	profile := InitiatorProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second}
 	admit := func([]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
 		return route.EntryAdmission{}, nil
 	}
@@ -108,11 +110,11 @@ func TestInitiatorDutyUsesOnlyStateAssignedRendezvous(t *testing.T) {
 		t.Fatal(err)
 	}
 	if plan.Rendezvous.NodeID != snapshot.Candidates[0].NodeID || plan.Rendezvous.PublicKey != snapshot.Candidates[0].PublicKey ||
-		plan.Rendezvous.Endpoint != snapshot.Candidates[0].Endpoint {
+		plan.Rendezvous.Endpoint != snapshot.Candidates[0].Endpoint || plan.Rendezvous.CarrierProfile != route.CarrierQUIC {
 		t.Fatalf("Initiator State duty peer = %+v", plan.Rendezvous)
 	}
 	snapshot.Candidates[1] = dutyCandidate{NodeID: [32]byte{37}, PublicKey: [32]byte{38}, Endpoint: "127.0.0.1:30236",
-		Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}
+		CarrierProfile: string(route.CarrierTCP), Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}
 	snapshot.CandidateCount = 2
 	if _, err := initiatorDuty(profile, snapshot, admit); err == nil {
 		t.Fatal("Initiator accepted an ambiguous State Rendezvous peer set")
@@ -157,10 +159,10 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 	initiator, err := StartInitiator(InitiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4},
 		NodePublicKey: material.initiatorPublic, Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
-		Rendezvous:        InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress},
+		Rendezvous:        InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
 		ResolutionGateway: ResolutionGateway{NodeID: [32]byte{48}, PublicKey: gatewayPublic, URL: server.URL},
 		Admit:             initiatorAdmission(presentation, attachment, rendezvousConfig), HandshakeLimit: 2, RelayLimit: 1,
-		RelayByteLimit: 1024, DrainTimeout: time.Second})
+		RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,6 +234,109 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 	}
 	if usage := initiator.Usage(); usage.CompletedRelays != 1 || usage.RelayedBytes != uint64(len(opaque)) || usage.Connections != 0 {
 		t.Fatalf("resolution Initiator usage = %+v", usage)
+	}
+}
+
+func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T) {
+	_, material, rendezvousConfig := rendezvousFixture(t)
+	issuerCertificate, issuerPublic, issuerPrivate := resolutionGatewayCertificate(t)
+	_, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := credential.Request{NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest,
+		IntroductionNodeID: [32]byte{81}, AttachmentID: [32]byte{82}, ClientKeyDigest: [32]byte{83}, Epoch: rendezvousConfig.Epoch,
+		NotAfter: rendezvousConfig.NotAfter.Add(-time.Second)}
+	issuer, err := credential.NewIssuer(credential.IssuerConfig{NetworkID: request.NetworkID, NodeID: [32]byte{84}, IdentityKey: issuerPrivate,
+		GrantSigner: authorityPrivate, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: material.initiatorPublic,
+		CurrentDuty: func() (credential.StateDuty, bool) {
+			return credential.StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: [32]byte{84},
+				IssuerPublicKey: issuerPublic, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: material.initiatorPublic,
+				GrantAuthorityID: sha256.Sum256(authorityPrivate.Public().(ed25519.PublicKey)), Epoch: request.Epoch,
+				NotAfter: rendezvousConfig.NotAfter}, true
+		}, Clock: func() time.Time { return time.Now().UTC() },
+		Authorize: func(got credential.Request, _ time.Time) bool { return got == request }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewUnstartedServer(issuer.Handler())
+	server.TLS, err = issuer.TLSConfig(issuerCertificate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server.StartTLS()
+	defer server.Close()
+	profile, err := credential.EncodeProfile(issuer.Profile())
+	if err != nil {
+		t.Fatal(err)
+	}
+	carrierAttachment := [32]byte{85}
+	presentation := entry.Presentation{InviteID: [32]byte{86}, Invite: []byte{8, 6, 4, 2}}
+	initiator, err := StartInitiator(InitiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
+		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4}, NodePublicKey: material.initiatorPublic,
+		Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
+		Rendezvous:       InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
+		CredentialIssuer: CredentialIssuer{NodeID: [32]byte{84}, PublicKey: issuerPublic, ProfileDigest: sha256.Sum256(profile), URL: server.URL},
+		Admit:            initiatorAdmission(presentation, carrierAttachment, rendezvousConfig), HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer initiator.Close()
+	wrongSetup := route.CredentialRelaySetup{NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest,
+		AttachmentID: carrierAttachment, InitiatorNodeID: [32]byte{4}, IssuerNodeID: [32]byte{84}, IssuerNodePublicKey: issuerPublic,
+		IssuerProfileDigest: sha256.Sum256([]byte("substituted-profile")), Epoch: rendezvousConfig.Epoch,
+		NotAfter: request.NotAfter, EnvelopeCapacity: route.CredentialEnvelopeCapacity}
+	if err := initiator.validateCredentialSetup(wrongSetup); err == nil {
+		t.Fatal("Initiator accepted a Credential Relay setup with a substituted issuer profile")
+	}
+	candidate := entry.Candidate{NodeID: [32]byte{4}, PublicKey: material.initiatorPublic, Endpoint: initiator.listener.Addr().String()}
+	connection, cleanup, err := route.OpenEntryAttachment(t.Context(), initiatorEntryAcquirer{candidate: candidate, presentation: presentation}, route.EntryAttachmentRequest{
+		NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, Epoch: rendezvousConfig.Epoch, AttachmentID: carrierAttachment, Deadline: rendezvousConfig.NotAfter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	setup := route.CredentialRelaySetup{NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, AttachmentID: carrierAttachment,
+		InitiatorNodeID: [32]byte{4}, IssuerNodeID: [32]byte{84}, IssuerNodePublicKey: issuerPublic, IssuerProfileDigest: sha256.Sum256(profile), Epoch: rendezvousConfig.Epoch,
+		NotAfter: request.NotAfter, EnvelopeCapacity: route.CredentialEnvelopeCapacity}
+	if err := route.WriteCredentialRelaySetup(connection, setup); err != nil {
+		t.Fatal(err)
+	}
+	ready, err := route.ReadCredentialRelayReady(connection)
+	if err != nil || setup.VerifyCredentialRelayReady(ready) != nil {
+		t.Fatalf("CredentialRelayReady = %+v, %v", ready, err)
+	}
+	client, err := credential.OpenClient(credential.ClientConfig{NetworkID: request.NetworkID, IssuerPublic: issuerPublic, Profile: issuer.Profile(),
+		GrantAuthority: authorityPrivate.Public().(ed25519.PublicKey), At: time.Now().UTC(), Deadline: request.NotAfter,
+		Exchange: func(_ context.Context, envelope []byte) ([]byte, error) {
+			if err := route.WriteCredentialRelayEnvelope(connection, route.CredentialRelayEnvelope{OHTTP: envelope}); err != nil {
+				return nil, err
+			}
+			response, readErr := route.ReadCredentialRelayResponse(connection)
+			if readErr != nil || response.Framing != route.CredentialOHTTPResponse {
+				return nil, errors.New("credential relay response is invalid")
+			}
+			return response.OHTTP, nil
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := client.Issue(t.Context(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant, err := route.VerifyTransitGrant(raw, authorityPrivate.Public().(ed25519.PublicKey))
+	if err != nil || grant.AttachmentID != request.AttachmentID || grant.ClientKeyDigest != request.ClientKeyDigest ||
+		grant.TransitNodeID != request.IntroductionNodeID {
+		t.Fatalf("credential Relay Grant = %+v, %v", grant, err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := initiator.Drain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if usage := initiator.Usage(); usage.CompletedRelays != 1 || usage.Connections != 0 || usage.RelayedBytes == 0 {
+		t.Fatalf("credential Initiator usage = %+v", usage)
 	}
 }
 

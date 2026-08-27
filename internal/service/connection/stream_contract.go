@@ -71,7 +71,11 @@ type StreamConfig struct {
 	Client         bool
 	NameBinding    DestinationBinding
 	NameUpdates    <-chan DestinationBinding
-	Resources      func(string, int) uint32
+	// CloseApplicationOnRemoteTerminal makes one local presentation treat a
+	// verified remote EOF as a full local close. It is opt-in: ordinary native
+	// streams retain their bidirectional half-close semantics.
+	CloseApplicationOnRemoteTerminal bool
+	Resources                        func(string, int) uint32
 }
 
 // Outcome is the terminal native logical-stream evidence. Product outcome
@@ -88,19 +92,20 @@ type Outcome struct {
 // the native terminal outcome. It has no local admission or Application IPC
 // authorization authority.
 type Stream struct {
-	ctx         context.Context
-	application io.ReadWriteCloser
-	networkID   [32]byte
-	recovery    Recovery
-	opener      AttachmentOpener
-	continuity  [32]byte
-	client      bool
-	authorized  time.Time
-	started     time.Time
-	resources   func(string, int) uint32
-	nameBinding DestinationBinding
-	nameUpdates <-chan DestinationBinding
-	done        chan struct{}
+	ctx                              context.Context
+	application                      io.ReadWriteCloser
+	networkID                        [32]byte
+	recovery                         Recovery
+	opener                           AttachmentOpener
+	continuity                       [32]byte
+	client                           bool
+	authorized                       time.Time
+	started                          time.Time
+	resources                        func(string, int) uint32
+	nameBinding                      DestinationBinding
+	nameUpdates                      <-chan DestinationBinding
+	closeApplicationOnRemoteTerminal bool
+	done                             chan struct{}
 
 	mu       sync.Mutex
 	cond     *sync.Cond
@@ -147,7 +152,8 @@ func NewStream(input StreamConfig) (*Stream, error) {
 	stream := &Stream{ctx: input.Context, application: input.Application, networkID: input.NetworkID, recovery: input.Recovery,
 		opener: input.OpenAttachment, continuity: input.ContinuityKey, client: input.Client,
 		authorized: input.Authorized, started: now, lastProgress: now, resources: input.Resources,
-		nameBinding: input.NameBinding, nameUpdates: input.NameUpdates, done: make(chan struct{}),
+		nameBinding: input.NameBinding, nameUpdates: input.NameUpdates, closeApplicationOnRemoteTerminal: input.CloseApplicationOnRemoteTerminal,
+		done:    make(chan struct{}),
 		current: input.Initial, ackSignal: make(chan struct{}, 1)}
 	stream.cond = sync.NewCond(&stream.mu)
 	return stream, nil

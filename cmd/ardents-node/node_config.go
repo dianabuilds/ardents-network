@@ -34,38 +34,42 @@ type nodePlan struct {
 // rendezvousPlan contains only the local finite work bounds. State still
 // supplies the listener, Node role, peer identities, epoch, and expiry.
 type rendezvousPlan struct {
-	HandshakeLimit uint16 `json:"handshake_limit"`
-	WaitingLimit   uint16 `json:"waiting_limit"`
-	PairLimit      uint16 `json:"pair_limit"`
-	PairByteLimit  uint64 `json:"pair_byte_limit"`
-	DrainTimeoutMS uint32 `json:"drain_timeout_ms"`
+	HandshakeLimit     uint16 `json:"handshake_limit"`
+	WaitingLimit       uint16 `json:"waiting_limit"`
+	PairLimit          uint16 `json:"pair_limit"`
+	PairByteLimit      uint64 `json:"pair_byte_limit"`
+	AdmissionTimeoutMS uint32 `json:"admission_timeout_ms"`
+	DrainTimeoutMS     uint32 `json:"drain_timeout_ms"`
 }
 
 // initiatorPlan provides only finite local limits. State selects the listener,
 // peers, and time bounds; Entry remains a separately owned future composition.
 type initiatorPlan struct {
-	HandshakeLimit uint16 `json:"handshake_limit"`
-	RelayLimit     uint16 `json:"relay_limit"`
-	RelayByteLimit uint64 `json:"relay_byte_limit"`
-	DrainTimeoutMS uint32 `json:"drain_timeout_ms"`
+	HandshakeLimit     uint16 `json:"handshake_limit"`
+	RelayLimit         uint16 `json:"relay_limit"`
+	RelayByteLimit     uint64 `json:"relay_byte_limit"`
+	AdmissionTimeoutMS uint32 `json:"admission_timeout_ms"`
+	DrainTimeoutMS     uint32 `json:"drain_timeout_ms"`
 }
 
 // introductionPlan supplies finite local reservations only. Its admission
 // verifier is always constructed from current State, never plan bytes.
 type introductionPlan struct {
-	HandshakeLimit uint16 `json:"handshake_limit"`
-	SlotLimit      uint16 `json:"slot_limit"`
-	DeliveryLimit  uint16 `json:"delivery_limit"`
-	DrainTimeoutMS uint32 `json:"drain_timeout_ms"`
+	HandshakeLimit     uint16 `json:"handshake_limit"`
+	SlotLimit          uint16 `json:"slot_limit"`
+	DeliveryLimit      uint16 `json:"delivery_limit"`
+	AdmissionTimeoutMS uint32 `json:"admission_timeout_ms"`
+	DrainTimeoutMS     uint32 `json:"drain_timeout_ms"`
 }
 
 // responderPlan supplies finite local relay reservations only. State selects
 // its exact Rendezvous peer and its grant verifier derives from State.
 type responderPlan struct {
-	HandshakeLimit uint16 `json:"handshake_limit"`
-	RelayLimit     uint16 `json:"relay_limit"`
-	RelayByteLimit uint64 `json:"relay_byte_limit"`
-	DrainTimeoutMS uint32 `json:"drain_timeout_ms"`
+	HandshakeLimit     uint16 `json:"handshake_limit"`
+	RelayLimit         uint16 `json:"relay_limit"`
+	RelayByteLimit     uint64 `json:"relay_byte_limit"`
+	AdmissionTimeoutMS uint32 `json:"admission_timeout_ms"`
+	DrainTimeoutMS     uint32 `json:"drain_timeout_ms"`
 }
 type nodeSource struct {
 	Address        string `json:"address"`
@@ -90,8 +94,15 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if plan.Schema != "ardents-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
-	if plan.NativeRendezvousProfile && plan.Rendezvous == nil && plan.Initiator == nil && plan.Introduction == nil && plan.Responder == nil {
+	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil
+	if plan.NativeRendezvousProfile && !nativeDuty {
 		return nodeRuntime{}, errors.New("native Route State profile requires one local native duty")
+	}
+	// H3 resource profiles were calibrated for retired role-probe duties. A
+	// native Route Node may not borrow their limits: it receives a named profile
+	// only after the separate NET-01A campaign selects one.
+	if nativeDuty && plan.NodeResourceProfile != "" {
+		return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
 	}
 	state := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot,
 		Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), Clock: time.Now,
@@ -100,7 +111,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err := decodeOperatorFixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err
 	}
-	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil {
+	if nativeDuty {
 		state.AcceptedProfile = route.Profile
 	}
 	for _, encoded := range plan.AuthorityPublic {

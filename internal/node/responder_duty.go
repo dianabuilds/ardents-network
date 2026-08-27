@@ -8,7 +8,7 @@ import (
 
 func responderDuty(profile ResponderProfile, snapshot dutyFacts, admit route.EndpointTransitBindingAdmitter) (ResponderConfig, error) {
 	if snapshot.Profile != route.Profile || snapshot.Assignment != "responder" || snapshot.ProbeEndpoint == "" || admit == nil ||
-		profile.HandshakeLimit == 0 || profile.RelayLimit == 0 || profile.RelayByteLimit == 0 || profile.DrainTimeout <= 0 {
+		profile.HandshakeLimit == 0 || profile.RelayLimit == 0 || profile.RelayByteLimit == 0 || !validAdmissionTimeout(profile.AdmissionTimeout) || profile.DrainTimeout <= 0 {
 		return ResponderConfig{}, errors.New("Responder profile or State assignment is incomplete")
 	}
 	notAfter := snapshot.ValidUntil
@@ -24,12 +24,13 @@ func responderDuty(profile ResponderProfile, snapshot dutyFacts, admit route.End
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || peer.NodeID != [32]byte{} {
 			return ResponderConfig{}, errors.New("Responder State Rendezvous peer is incomplete or not valid for the duty")
 		}
-		peer = ResponderPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Endpoint: candidate.Endpoint}
+		peer = ResponderPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Endpoint: candidate.Endpoint,
+			CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
 	}
 	if peer.NodeID == [32]byte{} {
 		return ResponderConfig{}, errors.New("Responder State supplies no Rendezvous peer")
 	}
 	return ResponderConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate, NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest,
 		NodeID: snapshot.NodeID, NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch, NotAfter: notAfter.UTC(), Rendezvous: peer,
-		Admit: admit, HandshakeLimit: profile.HandshakeLimit, RelayLimit: profile.RelayLimit, RelayByteLimit: profile.RelayByteLimit, DrainTimeout: profile.DrainTimeout}, nil
+		Admit: admit, HandshakeLimit: profile.HandshakeLimit, RelayLimit: profile.RelayLimit, RelayByteLimit: profile.RelayByteLimit, AdmissionTimeout: profile.AdmissionTimeout, DrainTimeout: profile.DrainTimeout}, nil
 }

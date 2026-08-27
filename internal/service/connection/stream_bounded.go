@@ -213,12 +213,17 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 		case record.Terminal != nil:
 			stream.mu.Lock()
 			valid := offset == stream.recvNext
+			firstTerminal := valid && !stream.remoteTerminal
+			closeApplication := firstTerminal && stream.closeApplicationOnRemoteTerminal
 			if valid {
 				stream.remoteTerminal = true
 			}
 			stream.mu.Unlock()
 			if !valid {
 				return ErrActiveViolation
+			}
+			if closeApplication {
+				_ = stream.application.Close()
 			}
 			stream.queueAcknowledgement(offset)
 			continue

@@ -4,14 +4,32 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"net"
 	"time"
 )
 
+// CarrierProfile is one exact State-authorized adjacent-leg transport
+// implementation. It is not a retry order or a peer-advertised preference.
+type CarrierProfile string
+
+const (
+	CarrierTCP  CarrierProfile = "ardents-carrier-tcp-tls-v1"
+	CarrierQUIC CarrierProfile = "ardents-carrier-quic-v1"
+)
+
+// Carrier is the complete transport-neutral byte lane returned to Route/Node.
+// Transport addresses, QUIC state, fallback and migration stay private.
+type Carrier interface {
+	Read([]byte) (int, error)
+	Write([]byte) (int, error)
+	SetDeadline(time.Time) error
+	Close() error
+}
+
 // NodeLegRequest is one State-pinned adjacent Node leg. It is usable only by
-// a transit duty that already owns its peer selection and resource admission.
-// It contains no Service, Application, or retry policy.
+// a transit duty that already owns its peer and Carrier Profile selection. It
+// contains no Service, Application, fallback, or retry policy.
 type NodeLegRequest struct {
+	CarrierProfile  CarrierProfile
 	Endpoint        string
 	Certificate     tls.Certificate
 	ExpectedPeerKey [32]byte
@@ -19,43 +37,65 @@ type NodeLegRequest struct {
 	Deadline        time.Time
 }
 
-// OpenNodeLeg dials one literal State-authorized endpoint, completes native
-// mutual TLS, and confirms the reciprocal LegBinding before returning its
-// ordered carrier. It never selects or retries another peer.
-func OpenNodeLeg(ctx context.Context, input NodeLegRequest) (net.Conn, error) {
-	if ctx == nil || !literalEndpoint(input.Endpoint) || input.Certificate.PrivateKey == nil || input.ExpectedPeerKey == [32]byte{} ||
-		input.Deadline.IsZero() || !time.Now().Before(input.Deadline) || validLegBinding(input.Binding) != nil {
-		return nil, errors.New("native Node leg request is invalid")
-	}
-	connection, err := (&net.Dialer{}).DialContext(ctx, "tcp", input.Endpoint)
+type nodeCarrierResult struct {
+	lane  Carrier
+	state tls.ConnectionState
+	abort func() error
+}
+
+type nodeCarrierAdapter func(context.Context, NodeLegRequest) (nodeCarrierResult, error)
+
+// OpenNodeLeg opens exactly the requested Carrier Profile, authenticates the
+// State-pinned peer, and confirms the reciprocal LegBinding. It never selects,
+// races, retries, or downgrades to another profile.
+func OpenNodeLeg(ctx context.Context, input NodeLegRequest) (Carrier, error) {
+	adapter, err := preflightNodeCarrier(ctx, input)
 	if err != nil {
 		return nil, err
 	}
-	secured := tls.Client(connection, nativeNodeTLS(input.Certificate, input.ExpectedPeerKey))
-	if err := secured.SetDeadline(input.Deadline); err != nil {
-		_ = connection.Close()
-		return nil, err
+	attempt, cancel := context.WithDeadline(ctx, input.Deadline)
+	defer cancel()
+	result, err := adapter(attempt, input)
+	if err != nil {
+		return nil, classifyCarrierFailure(err)
 	}
-	if err := secured.HandshakeContext(ctx); err != nil {
-		_ = connection.Close()
-		return nil, err
+	keep := false
+	defer func() {
+		if !keep {
+			_ = result.abort()
+		}
+	}()
+	if result.state.Version != tls.VersionTLS13 || result.state.NegotiatedProtocol != Profile {
+		return nil, carrierFailure(CarrierFailureUnauthorized, errors.New("native Node Carrier TLS state is invalid"))
 	}
-	if secured.ConnectionState().NegotiatedProtocol != Profile {
-		_ = connection.Close()
-		return nil, errors.New("native Node TLS ALPN is invalid")
+	if err := exactPeer(input.ExpectedPeerKey)(result.state); err != nil {
+		return nil, carrierFailure(CarrierFailureUnauthorized, err)
 	}
-	if err := ConfirmNodeLegBinding(secured, input.Binding); err != nil {
-		_ = connection.Close()
-		return nil, err
+	if err := ConfirmNodeLegBinding(result.lane, input.Binding); err != nil {
+		return nil, carrierFailure(CarrierFailureUnauthorized, err)
 	}
-	if err := secured.SetDeadline(time.Time{}); err != nil {
-		_ = connection.Close()
-		return nil, err
+	if err := result.lane.SetDeadline(time.Time{}); err != nil {
+		return nil, classifyCarrierFailure(err)
 	}
-	return secured, nil
+	keep = true
+	return authenticatedCarrier(result.lane), nil
 }
 
-func nativeNodeTLS(certificate tls.Certificate, expected [32]byte) *tls.Config {
-	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
-		InsecureSkipVerify: true, SessionTicketsDisabled: true, NextProtos: []string{Profile}, VerifyConnection: exactPeer(expected)}
+func preflightNodeCarrier(ctx context.Context, input NodeLegRequest) (nodeCarrierAdapter, error) {
+	if ctx == nil || !literalEndpoint(input.Endpoint) || input.Certificate.PrivateKey == nil || input.ExpectedPeerKey == [32]byte{} ||
+		input.Deadline.IsZero() || validLegBinding(input.Binding) != nil ||
+		input.Binding.NotAfter.After(input.Deadline) {
+		return nil, carrierFailure(CarrierFailureIncompatible, errors.New("native Node Carrier request is invalid"))
+	}
+	if !time.Now().Before(input.Deadline) {
+		return nil, carrierFailure(CarrierFailureStale, errors.New("native Node Carrier request is stale"))
+	}
+	switch input.CarrierProfile {
+	case CarrierTCP:
+		return openTCPNodeCarrier, nil
+	case CarrierQUIC:
+		return openQUICNodeCarrier, nil
+	default:
+		return nil, carrierFailure(CarrierFailureIncompatible, errors.New("native Node Carrier Profile is unsupported"))
+	}
 }

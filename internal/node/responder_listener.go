@@ -24,7 +24,7 @@ type Responder struct {
 	draining  bool
 	protected bool
 	pre       map[net.Conn]struct{}
-	active    map[net.Conn]struct{}
+	active    map[route.Carrier]struct{}
 	usage     ResponderUsage
 	stopOnce  sync.Once
 	work      sync.WaitGroup
@@ -41,7 +41,7 @@ func StartResponder(input ResponderConfig) (*Responder, error) {
 		return nil, err
 	}
 	running := &Responder{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit), relays: make(chan struct{}, plan.RelayLimit),
-		pre: make(map[net.Conn]struct{}), active: make(map[net.Conn]struct{}), terminal: make(chan error, 1)}
+		pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{}), terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
 	return running, nil
@@ -150,19 +150,22 @@ func (running *Responder) handle(raw net.Conn) {
 			_ = raw.Close()
 		}
 	}()
-	ctx, cancel := context.WithDeadline(context.Background(), running.plan.NotAfter)
-	defer cancel()
-	accepted, err := route.AcceptEndpointTransitAttachment(ctx, raw, route.EndpointTransitAttachmentAcceptance{NetworkID: running.plan.NetworkID,
+	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)
+	admissionCtx, admissionCancel := context.WithDeadline(context.Background(), deadline)
+	accepted, err := route.AcceptEndpointTransitAttachment(admissionCtx, raw, route.EndpointTransitAttachmentAcceptance{NetworkID: running.plan.NetworkID,
 		Digest: running.plan.EpochDigest, TransitNodeID: running.plan.NodeID, Epoch: running.plan.Epoch, TransitRole: route.ResponderRole,
-		Deadline: running.plan.NotAfter, Certificate: running.plan.Certificate, Admit: running.plan.Admit})
-	if err != nil || !running.reserveRelay(raw) {
+		Deadline: running.plan.NotAfter, AdmissionDeadline: deadline, Certificate: running.plan.Certificate, Admit: running.plan.Admit})
+	admissionCancel()
+	if err != nil || accepted.Connection.SetDeadline(accepted.Binding.NotAfter) != nil || !running.reserveRelay(raw) {
 		running.refuseRelay()
 		return
 	}
+	workCtx, workCancel := context.WithDeadline(context.Background(), running.plan.NotAfter)
+	defer workCancel()
 	<-running.handshakes
 	handshakeHeld = false
 	owned = false
-	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{Endpoint: running.plan.Rendezvous.Endpoint, Certificate: running.plan.Certificate,
+	next, err := route.OpenNodeLeg(workCtx, route.NodeLegRequest{CarrierProfile: running.plan.Rendezvous.CarrierProfile, Endpoint: running.plan.Rendezvous.Endpoint, Certificate: running.plan.Certificate,
 		ExpectedPeerKey: running.plan.Rendezvous.PublicKey, Deadline: accepted.Binding.NotAfter, Binding: route.LegBinding{NetworkID: accepted.Binding.NetworkID,
 			Epoch: accepted.Binding.Epoch, Digest: accepted.Binding.Digest, AttachmentID: accepted.Binding.AttachmentID, SenderRole: route.ResponderRole,
 			PeerRole: route.RendezvousRole, SenderNodeID: running.plan.NodeID, PeerNodeID: running.plan.Rendezvous.NodeID, NotAfter: accepted.Binding.NotAfter}})
@@ -204,11 +207,11 @@ func (running *Responder) refuseRelay() {
 	running.mu.Unlock()
 }
 
-func (running *Responder) relay(raw, endpoint, next net.Conn) {
+func (running *Responder) relay(raw, endpoint net.Conn, next route.Carrier) {
 	defer running.work.Done()
 	type lane struct{ bytes int64 }
 	results := make(chan lane, 2)
-	copyLane := func(destination, source net.Conn) {
+	copyLane := func(destination, source route.Carrier) {
 		limited := &io.LimitedReader{R: source, N: int64(running.plan.RelayByteLimit)}
 		count, _ := io.CopyBuffer(destination, limited, make([]byte, 32<<10))
 		results <- lane{bytes: count}
@@ -226,7 +229,7 @@ func (running *Responder) relay(raw, endpoint, next net.Conn) {
 	running.releaseRelay(raw, next)
 }
 
-func (running *Responder) releaseRelay(raw, next net.Conn) {
+func (running *Responder) releaseRelay(raw net.Conn, next route.Carrier) {
 	running.mu.Lock()
 	delete(running.active, raw)
 	if next != nil {
@@ -246,7 +249,7 @@ func (running *Responder) Drain(ctx context.Context) error {
 	}
 	running.Stop()
 	running.mu.Lock()
-	connections := make([]net.Conn, 0, len(running.pre)+len(running.active))
+	connections := make([]route.Carrier, 0, len(running.pre)+len(running.active))
 	for connection := range running.pre {
 		connections = append(connections, connection)
 	}

@@ -18,7 +18,7 @@ func TestEndpointTransitAttachmentVerifiesAndConsumesExactAuthorization(t *testi
 	var serverPublic [32]byte
 	copy(serverPublic[:], serverCertificate.Leaf.PublicKey.(ed25519.PublicKey))
 	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
-	clientCertificate, err := freshEndpointClientCertificate()
+	clientCertificate, err := NewClientCertificate()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,5 +72,21 @@ func TestEndpointTransitAttachmentVerifiesAndConsumesExactAuthorization(t *testi
 	case <-admitted:
 	default:
 		t.Fatal("transit authorization was not consumed")
+	}
+}
+
+func TestEndpointTransitAttachmentRefusesAdmissionDeadlinePastDutyExpiry(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	_, err := AcceptEndpointTransitAttachment(t.Context(), server, EndpointTransitAttachmentAcceptance{NetworkID: identifier(98),
+		Digest: identifier(99), TransitNodeID: identifier(100), Epoch: 101, TransitRole: IntroductionRole, Deadline: deadline,
+		AdmissionDeadline: deadline.Add(time.Second), Certificate: entryBindingCertificate(t, 102),
+		Admit: func([]byte, [32]byte, [32]byte, byte, [32]byte, time.Time) (EndpointTransitAdmission, error) {
+			return EndpointTransitAdmission{}, nil
+		}})
+	if err == nil {
+		t.Fatal("transit attachment accepted an admission deadline beyond its duty expiry")
 	}
 }

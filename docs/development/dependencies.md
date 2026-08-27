@@ -20,13 +20,13 @@ by `openpcc/ohttp v0.0.80`.
 | `github.com/openpcc/twoway` | `v0.0.80` | Apache-2.0 | request/response HPKE context used by OHTTP |
 | `github.com/openpcc/bhttp` | `v0.0.80` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
 | `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed HPKE implementation |
-| `github.com/quic-go/quic-go` | `v0.61.0` | MIT | QUIC varint implementation required by BHTTP |
+| `github.com/quic-go/quic-go` | `v0.61.0` | MIT | maintained H4-2B QUIC v1 Carrier Adapter and QUIC varint closure required by BHTTP |
 | `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
 | `go.opentelemetry.io/otel` | `v1.45.0` | Apache-2.0 | OHTTP tracing types |
 | `go.opentelemetry.io/otel/trace` | `v1.45.0` | Apache-2.0 | OHTTP tracing Interface |
 | `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.58.0` | BSD-3-Clause | BHTTP HTTP support |
-| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL enforcement and platform atomic replacement support |
+| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL enforcement, platform atomic replacement support, and selected-Firefox ShellExecute handoff |
 | `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
@@ -68,6 +68,19 @@ closed security requirements. Remove the direct use when the Go standard
 library exposes equivalent protected-DACL construction and inspection; a
 version change repeats dependency, license, advisory, Windows behavior, and
 offline-build review.
+
+**H4-2B QUIC use:** `internal/route` directly imports pinned
+`github.com/quic-go/quic-go v0.61.0` for the maintained
+`ardents-carrier-quic-v1` Adapter selected by ADR-0048. The module is pure Go,
+MIT licensed, supports the repository toolchain, publishes security reporting
+and advisories, and passed R-094's exact-version binary vulnerability, TLS peer
+binding, LegBinding, timeout, cleanup, selective blocking, loss/reorder,
+MTU-1280, NAT-rebinding, and separate-host checks. `golang.org/x/net/quic` was
+rejected because upstream still describes it as work in progress; a first-party
+QUIC implementation is forbidden cryptographic/protocol work; TCP-only cannot
+exercise the required second Carrier seam. Remove this direct use if QUIC is
+withdrawn as a maintained profile. Any version change repeats license,
+advisory, MTU, cancellation, resource, and hostile-network qualification.
 
 **Offline supply:** an explicit preparation step runs `go mod download` and
 `go mod verify` outside the repository, then supplies a temporary vendor context

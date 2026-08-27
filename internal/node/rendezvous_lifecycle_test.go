@@ -18,7 +18,7 @@ func TestRunServesStateAssignedRendezvousThenWithdraws(t *testing.T) {
 	snapshot := dutyFacts{Generation: "generation-r", NetworkID: [32]byte{1}, Epoch: 4, Digest: [32]byte{2},
 		EpochValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Minute), Profile: route.Profile, Fresh: true,
 		RecordPresent: true, NodeID: [32]byte{3}, NodePublicKey: serverPublic, RecordValidFrom: now.Add(-time.Minute),
-		RecordValidUntil: now.Add(time.Minute), DeclaredFamily: "rendezvous-family", ProbeEndpoint: reserveAddress(t),
+		RecordValidUntil: now.Add(time.Minute), DeclaredFamily: "rendezvous-family", ProbeEndpoint: reserveAddress(t), CarrierProfile: string(route.CarrierTCP),
 		Assignment: "rendezvous", AssignmentDigest: [32]byte{4}, CandidateCount: 2, Candidates: [64]dutyCandidate{
 			{NodeID: [32]byte{4}, PublicKey: initiatorPublic, Assignment: "initiator", ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Minute)},
 			{NodeID: [32]byte{5}, PublicKey: responderPublic, Assignment: "responder", ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Minute)},
@@ -28,13 +28,16 @@ func TestRunServesStateAssignedRendezvousThenWithdraws(t *testing.T) {
 	config := Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID, IdentityKey: server.PrivateKey.(ed25519.PrivateKey),
 		Current: func() (DutyView, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
 		Rendezvous: RendezvousProfile{Certificate: server, HandshakeLimit: 2, WaitingLimit: 2, PairLimit: 1,
-			PairByteLimit: 1 << 20, DrainTimeout: time.Second}, PollInterval: 10 * time.Millisecond,
+			PairByteLimit: 1 << 20, AdmissionTimeout: time.Second, DrainTimeout: time.Second}, PollInterval: 10 * time.Millisecond,
 		Quarantine: time.Millisecond, LocalRoleStateRoot: t.TempDir(), CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	results := make(chan Result, 1)
 	errors := make(chan error, 1)
 	go func() { result, err := Run(context.Background(), config); results <- result; errors <- err }()
-	waitForState(t, events, "READY")
+	ready := waitForStateEvent(t, events, "READY")
+	if ready.CarrierProfile != string(route.CarrierTCP) {
+		t.Fatalf("Rendezvous READY Carrier Profile = %q", ready.CarrierProfile)
+	}
 	attachment := [32]byte{9}
 	first, err := openRendezvousLeg(t.Context(), snapshot.ProbeEndpoint, initiator, serverPublic,
 		legFor(rendezvousMaterials{serverPublic: serverPublic}, attachment, route.InitiatorRole, snapshot.ValidUntil))
@@ -57,10 +60,13 @@ func TestRunServesStateAssignedRendezvousThenWithdraws(t *testing.T) {
 	lock.Lock()
 	snapshot.Fresh = false
 	lock.Unlock()
-	waitForState(t, events, "DRAINING")
+	draining := waitForStateEvent(t, events, "DRAINING")
+	if draining.CarrierProfile != string(route.CarrierTCP) {
+		t.Fatalf("Rendezvous DRAINING Carrier Profile = %q", draining.CarrierProfile)
+	}
 	select {
 	case result := <-results:
-		if result.State != "WITHDRAWN" {
+		if result.State != "WITHDRAWN" || result.CarrierProfile != string(route.CarrierTCP) {
 			t.Fatalf("Rendezvous terminal result = %+v", result)
 		}
 	case <-time.After(testLifecycleWait):

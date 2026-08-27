@@ -5,17 +5,17 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
-	"net"
+	"io"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// Rendezvous owns one running TCP/TLS listener and every accepted work item.
-// It is a Node duty handle, never a general Carrier or endpoint adapter.
+// Rendezvous owns one running State-selected Carrier listener and every
+// accepted work item. It is a Node duty handle, never a transport selector.
 type Rendezvous struct {
 	plan       rendezvousPlan
-	listener   net.Listener
+	listener   route.CarrierListener
 	handshakes chan struct{}
 	waitingCap chan struct{}
 	pairs      chan struct{}
@@ -23,9 +23,9 @@ type Rendezvous struct {
 	mu        sync.Mutex
 	draining  bool
 	protected bool
-	pre       map[net.Conn]struct{}
+	pre       map[route.PendingCarrier]struct{}
 	waiting   map[[32]byte]*rendezvousLeg
-	active    map[net.Conn]struct{}
+	active    map[route.Carrier]struct{}
 	usage     RendezvousUsage
 	stopOnce  sync.Once
 	work      sync.WaitGroup
@@ -33,31 +33,31 @@ type Rendezvous struct {
 }
 
 type rendezvousLeg struct {
-	raw        net.Conn
-	connection *tls.Conn
+	pending    route.PendingCarrier
+	connection route.Carrier
 	binding    route.LegBinding
 	done       chan struct{}
 	doneOnce   sync.Once
 }
 
-// StartRendezvous binds one exact State-authorized literal TCP endpoint. It
-// does not acquire State, advertise itself, or choose a Node identity.
+// StartRendezvous binds one exact State-authorized Carrier and literal
+// endpoint. It does not negotiate or fall back to another Carrier.
 func StartRendezvous(input RendezvousConfig) (*Rendezvous, error) {
 	plan, err := newRendezvousPlan(input)
 	if err != nil {
 		return nil, err
 	}
-	listener, err := net.Listen("tcp", plan.ListenAddress)
+	listener, err := route.ListenNodeCarrier(plan.CarrierProfile, plan.ListenAddress, plan.Certificate)
 	if err != nil {
 		return nil, err
 	}
 	return startRendezvous(plan, listener), nil
 }
 
-func startRendezvous(plan rendezvousPlan, listener net.Listener) *Rendezvous {
+func startRendezvous(plan rendezvousPlan, listener route.CarrierListener) *Rendezvous {
 	running := &Rendezvous{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
 		waitingCap: make(chan struct{}, plan.WaitingLimit), pairs: make(chan struct{}, plan.PairLimit),
-		pre: make(map[net.Conn]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[net.Conn]struct{}),
+		pre: make(map[route.PendingCarrier]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[route.Carrier]struct{}),
 		terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
@@ -86,7 +86,7 @@ func (running *Rendezvous) Protect(value bool) {
 		return
 	}
 	running.protected = value
-	var connections []net.Conn
+	var connections []io.Closer
 	if value {
 		connections = running.closePreAdmissionLocked()
 	}
@@ -123,7 +123,7 @@ func (running *Rendezvous) Usage() RendezvousUsage {
 func (running *Rendezvous) accept() {
 	defer running.work.Done()
 	for {
-		raw, err := running.listener.Accept()
+		pending, err := running.listener.Accept(context.Background())
 		if err != nil {
 			running.mu.Lock()
 			draining := running.draining
@@ -135,16 +135,16 @@ func (running *Rendezvous) accept() {
 			}
 			return
 		}
-		if !running.admitHandshake(raw) {
-			_ = raw.Close()
+		if !running.admitHandshake(pending) {
+			_ = pending.Close()
 			continue
 		}
 		running.work.Add(1)
-		go running.handle(raw)
+		go running.handle(pending)
 	}
 }
 
-func (running *Rendezvous) admitHandshake(raw net.Conn) bool {
+func (running *Rendezvous) admitHandshake(pending route.PendingCarrier) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected || len(running.pairs) == cap(running.pairs) {
@@ -153,7 +153,7 @@ func (running *Rendezvous) admitHandshake(raw net.Conn) bool {
 	}
 	select {
 	case running.handshakes <- struct{}{}:
-		running.pre[raw] = struct{}{}
+		running.pre[pending] = struct{}{}
 		return true
 	default:
 		running.usage.RefusedBeforeTLS++
@@ -161,7 +161,7 @@ func (running *Rendezvous) admitHandshake(raw net.Conn) bool {
 	}
 }
 
-func (running *Rendezvous) handle(raw net.Conn) {
+func (running *Rendezvous) handle(pending route.PendingCarrier) {
 	defer running.work.Done()
 	handshakeHeld, owned := true, true
 	defer func() {
@@ -170,22 +170,23 @@ func (running *Rendezvous) handle(raw net.Conn) {
 		}
 		if owned {
 			running.mu.Lock()
-			delete(running.pre, raw)
+			delete(running.pre, pending)
 			running.mu.Unlock()
-			_ = raw.Close()
+			_ = pending.Close()
 		}
 	}()
-	connection := tls.Server(raw, running.serverTLS())
-	if err := connection.SetDeadline(running.plan.NotAfter); err != nil {
-		return
-	}
-	ctx, cancel := context.WithDeadline(context.Background(), running.plan.NotAfter)
+	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
-	if err := connection.HandshakeContext(ctx); err != nil || connection.ConnectionState().NegotiatedProtocol != route.Profile {
+	connection, state, err := pending.Authenticate(ctx, deadline)
+	if err != nil || state.NegotiatedProtocol != route.Profile {
 		return
 	}
 	binding, err := route.ReadNodeLegBinding(connection)
-	if err != nil || running.validateIncoming(binding, connection.ConnectionState()) != nil {
+	if err != nil || running.validateIncoming(binding, state) != nil {
+		return
+	}
+	if err := connection.SetDeadline(binding.NotAfter); err != nil {
 		return
 	}
 	select {
@@ -202,27 +203,12 @@ func (running *Rendezvous) handle(raw net.Conn) {
 	}
 	<-running.handshakes
 	handshakeHeld = false
-	leg := &rendezvousLeg{raw: raw, connection: connection, binding: binding, done: make(chan struct{})}
+	leg := &rendezvousLeg{pending: pending, connection: connection, binding: binding, done: make(chan struct{})}
 	if !running.register(leg) {
 		<-running.waitingCap
 		return
 	}
 	owned = false
-}
-
-func (running *Rendezvous) serverTLS() *tls.Config {
-	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{running.plan.Certificate},
-		ClientAuth: tls.RequireAnyClientCert, SessionTicketsDisabled: true, NextProtos: []string{route.Profile},
-		VerifyConnection: func(state tls.ConnectionState) error {
-			if len(state.PeerCertificates) != 1 {
-				return errors.New("Rendezvous TLS client certificate is missing")
-			}
-			public, ok := state.PeerCertificates[0].PublicKey.(ed25519.PublicKey)
-			if !ok || len(public) != ed25519.PublicKeySize {
-				return errors.New("Rendezvous TLS client key is invalid")
-			}
-			return nil
-		}}
 }
 
 func (running *Rendezvous) validateIncoming(binding route.LegBinding, state tls.ConnectionState) error {

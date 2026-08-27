@@ -18,7 +18,7 @@ func TestIntroductionForwardsOneSealedRecordThenReportsUnavailable(t *testing.T)
 	reachability, join := [32]byte{4}, [32]byte{5}
 	running, err := StartIntroduction(IntroductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate,
 		NetworkID: network, EpochDigest: digest, NodeID: nodeID, NodePublicKey: public, Epoch: 6, NotAfter: deadline,
-		Admit: introductionTestAdmit(network, digest, nodeID, deadline), HandshakeLimit: 2, SlotLimit: 1, DeliveryLimit: 1, DrainTimeout: time.Second})
+		Admit: introductionTestAdmit(network, digest, nodeID, deadline), HandshakeLimit: 2, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +54,40 @@ func TestIntroductionForwardsOneSealedRecordThenReportsUnavailable(t *testing.T)
 	awaitIntroductionUsage(t, running, time.Second, func(usage IntroductionUsage) bool {
 		return usage.Slots == 0 && usage.Delivered == 1 && usage.Unavailable >= 1
 	})
+}
+
+func TestIntroductionSlotExpiresAtItsRegistrationDeadline(t *testing.T) {
+	certificate, public := rendezvousCertificate(t, 54, "introduction-slot-expiry")
+	now := time.Now().UTC().Truncate(time.Second)
+	nodeDeadline := now.Add(10 * time.Second)
+	slotDeadline := now.Add(3 * time.Second)
+	network, digest, nodeID := [32]byte{14}, [32]byte{15}, [32]byte{16}
+	reachability, join := [32]byte{17}, [32]byte{18}
+	running, err := StartIntroduction(IntroductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate,
+		NetworkID: network, EpochDigest: digest, NodeID: nodeID, NodePublicKey: public, Epoch: 6, NotAfter: nodeDeadline,
+		Admit: introductionTestAdmit(network, digest, nodeID, slotDeadline), HandshakeLimit: 1, SlotLimit: 1, DeliveryLimit: 1,
+		AdmissionTimeout: time.Second, DrainTimeout: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer running.Close()
+	publisher := openIntroductionAttachment(t, running.listener.Addr().String(), public, network, digest, nodeID, 6, slotDeadline,
+		[32]byte{20}, []byte("publisher-slot-expiry"))
+	defer publisher.Close()
+	if err := route.WriteIntroductionSlotRegistration(publisher, route.IntroductionSlotRegistration{Reachability: reachability, JoinHandle: join, NotAfter: slotDeadline}); err != nil {
+		t.Fatal(err)
+	}
+	if ready, err := route.ReadIntroductionSlotReady(publisher); err != nil || ready.NotAfter != slotDeadline {
+		t.Fatalf("slot ready = %+v, %v", ready, err)
+	}
+	if err := publisher.SetReadDeadline(slotDeadline.Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := publisher.Read(make([]byte, 1)); err == nil {
+		t.Fatal("Introduction slot remained open after its registration deadline")
+	} else if networkError, ok := err.(net.Error); ok && networkError.Timeout() {
+		t.Fatalf("Introduction slot did not close at its registration deadline: %v", err)
+	}
 }
 
 func introductionTestAdmit(network, digest, nodeID [32]byte, deadline time.Time) route.EndpointTransitBindingAdmitter {
@@ -94,7 +128,7 @@ func TestIntroductionPlanRejectsZeroCapacity(t *testing.T) {
 	certificate, public := rendezvousCertificate(t, 52, "introduction-invalid")
 	_, err := StartIntroduction(IntroductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
 		NodeID: [32]byte{3}, NodePublicKey: public, Epoch: 4, NotAfter: time.Now().UTC().Add(time.Minute).Truncate(time.Second), Admit: introductionTestAdmit([32]byte{1}, [32]byte{2}, [32]byte{3}, time.Now().UTC()),
-		HandshakeLimit: 1, SlotLimit: 0, DeliveryLimit: 1, DrainTimeout: time.Second})
+		HandshakeLimit: 1, SlotLimit: 0, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err == nil {
 		t.Fatal("Introduction accepted zero slot capacity")
 	}
@@ -107,7 +141,7 @@ func TestIntroductionDutyUsesOnlyItsStateAssignment(t *testing.T) {
 		NodePublicKey: public, Assignment: "introduction", ProbeEndpoint: "127.0.0.1:30253", EpochValidFrom: now.Add(-time.Second),
 		ValidUntil: now.Add(time.Minute), RecordValidUntil: now.Add(30 * time.Second)}
 	profile := IntroductionProfile{Certificate: certificate,
-		HandshakeLimit: 2, SlotLimit: 3, DeliveryLimit: 1, DrainTimeout: time.Second}
+		HandshakeLimit: 2, SlotLimit: 3, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second}
 	admit := introductionTestAdmit(snapshot.NetworkID, snapshot.Digest, snapshot.NodeID, snapshot.RecordValidUntil)
 	plan, err := introductionDuty(profile, snapshot, admit)
 	if err != nil || plan.ListenAddress != snapshot.ProbeEndpoint || !plan.NotAfter.Equal(snapshot.RecordValidUntil) || plan.SlotLimit != profile.SlotLimit {

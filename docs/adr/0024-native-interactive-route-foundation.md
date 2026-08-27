@@ -2,9 +2,14 @@
 status: accepted
 date: 2026-08-23
 supersedes: ADR-0012 (Route-foundation applicability only)
+partially-superseded-by: ADR-0048 (TCP-only Carrier set)
 ---
 
 # ADR-0024 — Select the native Interactive Route foundation
+
+The Route authority, TLS 1.3 authentication, recovery ownership, and native
+profile remain current. ADR-0048 supersedes only this record's original
+TCP-only Carrier set by adding the State-selected QUIC-v1 Carrier.
 
 ## Context
 
