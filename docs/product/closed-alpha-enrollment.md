@@ -17,8 +17,11 @@ Enrollment Pin:
 The invitation also names the artifact download and the expected bundle
 directory. A digest copied only from a release page is not an Enrollment Pin.
 The Product Owner must name the actual contact class before the first real
-invite. This document does not make GitHub, HTTPS, or the downloaded executable
-a source of first-install trust.
+invite. For the current alpha candidate, the approved class is an
+**authenticated direct message from the Product Owner to the participant**;
+the release page, GitHub, HTTPS, and downloaded executable are not sources of
+first-install trust. This declaration is not evidence that an independent
+participant has received or enacted an invitation.
 
 ## Verify before execution
 
