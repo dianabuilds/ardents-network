@@ -71,6 +71,18 @@ without a Namespace witness, or Namespace signing route. A restored Name
 Authority remains locked until a separate fresh opaque Namespace witness is
 implemented and verified.
 
+## `ardents-release-custody`
+
+`ardents-release-custody` is the Product Owner's separate local alpha
+release-seed custody adapter. It accepts no password through flags,
+environment, configuration, or shared stdin, and it never signs metadata,
+publishes an artifact, starts an Endpoint, or configures a VPS.
+
+| Route | Required flags | Result |
+|---|---|---|
+| `initialize` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads a new local passphrase and confirmation, then creates the one encrypted fixed-role seed record and prints its public receipt. |
+| `inspect` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads the existing local passphrase, authenticates the fixed encrypted record without altering it, and prints only its public receipt. |
+
 ## `ardents-control`
 
 `ardents-control` is a separate alpha-control program. It never starts an

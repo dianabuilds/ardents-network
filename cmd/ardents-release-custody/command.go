@@ -22,7 +22,7 @@ func run(ctx context.Context, arguments []string, output io.Writer, input custod
 	var root string
 	flags.StringVar(&root, "root", "", "owner-only release custody directory")
 	if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 || !filepath.IsAbs(root) {
-		return errors.New("release custody initialization arguments are invalid")
+		return errors.New("release custody arguments are invalid")
 	}
 	var (
 		receipt custody.Receipt

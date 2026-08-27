@@ -16,13 +16,15 @@ record as a generic local signer or exporting its private material.
 
 ## Decision
 
-`internal/release/custody` adds one `Inspect` operation. It accepts only an
-existing owner-only record root and a trusted interactive secret adapter. After
-the record authenticates and its fixed role inventory validates, it returns the
-same public receipt as initialization: ciphertext SHA-256 and the ten fixed
-Ed25519 public keys. It writes nothing and rejects a missing, non-regular, or
-symlinked record, malformed envelope, invalid passphrase, or invalid fixed
-inventory.
+`internal/release/custody` adds one `Inspect` operation. The Product Owner
+supplies an existing root already protected as owner-only by the local
+platform; this Go boundary does not certify Windows ACL ownership. It accepts a
+trusted interactive secret adapter and, after the record authenticates and its
+fixed role inventory validates, returns the same public receipt as
+initialization: ciphertext SHA-256 and the ten fixed Ed25519 public keys. It
+writes nothing and rejects a missing, non-regular, or symlinked record as
+observed before reading, malformed envelope, invalid passphrase, or invalid
+fixed inventory.
 
 `cmd/ardents-release-custody inspect --root ABSOLUTE_OWNER_ONLY_DIRECTORY` is
 the only adapter. It uses the same local password dialog on Windows and no-echo

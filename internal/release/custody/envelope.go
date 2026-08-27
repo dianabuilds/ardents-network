@@ -1,8 +1,10 @@
 package custody
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -91,6 +93,12 @@ func marshalRecord(record seedRecord) ([]byte, error) {
 		if record.Roles[index].Role != role || len(record.Roles[index].Private) != 64 {
 			return nil, ErrInvalid
 		}
+		derived := ed25519.NewKeyFromSeed(record.Roles[index].Private[:ed25519.SeedSize])
+		if !bytes.Equal(derived, record.Roles[index].Private) {
+			zero(derived)
+			return nil, ErrInvalid
+		}
+		zero(derived)
 	}
 	return json.Marshal(record)
 }

@@ -62,7 +62,7 @@ The first real product commands are:
 | `cmd/ardents` | Adapt bounded Network State, Endpoint, Entry, and naming routes. |
 | `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
 | `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
-| `cmd/ardents-release-custody` | Initialize one local encrypted fixed-role release-seed record through a no-echo terminal secret boundary; it cannot sign or publish. |
+| `cmd/ardents-release-custody` | Initialize one local encrypted fixed-role release-seed record or inspect its public receipt through the same local secret boundary; it cannot sign or publish. |
 
 Cross-process tests live under `tests/e2e/<behavior>/`. No live-container test
 tree or active live profile is currently retained. A future selected live

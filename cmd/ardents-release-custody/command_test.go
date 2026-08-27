@@ -17,6 +17,13 @@ func TestRunRejectsInvalidArgumentsBeforeSecretInput(t *testing.T) {
 	}
 }
 
+func TestRunRejectsInvalidInspectArgumentsBeforeSecretInput(t *testing.T) {
+	err := run(context.Background(), []string{"inspect"}, &bytes.Buffer{}, unreadInput{})
+	if err == nil || !strings.Contains(err.Error(), "arguments") {
+		t.Fatalf("run = %v", err)
+	}
+}
+
 func TestRunInitializesRecordAndRendersOnlyReceipt(t *testing.T) {
 	root := t.TempDir()
 	var output bytes.Buffer

@@ -180,6 +180,23 @@ func TestInspectRejectsWrongSecretWithoutChangingRecord(t *testing.T) {
 	}
 }
 
+func TestRecordMarshalRejectsInconsistentPrivateKey(t *testing.T) {
+	var record seedRecord
+	record.Schema = "ardents-release-seed-record-v1"
+	for index, role := range roleNames {
+		_, private, err := ed25519.GenerateKey(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		record.Roles[index] = seedRole{Role: role, Private: private}
+	}
+	record.Roles[0].Private[len(record.Roles[0].Private)-1] ^= 1
+	if _, err := marshalRecord(record); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("marshalRecord = %v, want ErrInvalid", err)
+	}
+	zeroRecord(record)
+}
+
 type fixedSecrets struct {
 	values [][]byte
 	next   int
