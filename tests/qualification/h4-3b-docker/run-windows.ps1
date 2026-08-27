@@ -44,6 +44,10 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw 'build failed for H4-6A alpha-control test binary'
         }
+        & go test -c -trimpath -o (Join-Path $artifacts 'h4-3b-http-limits.test') ./internal/endpoint/reference
+        if ($LASTEXITCODE -ne 0) {
+            throw 'build failed for H4-3B HTTP limit test binary'
+        }
     }
     finally {
         Pop-Location
@@ -74,6 +78,20 @@ try {
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }
+    }
+
+    $limitArguments = @(
+        'run', '--rm', '--read-only', '--network', 'none',
+        '--pids-limit', '128', '--memory', '1g', '--cpus', '1',
+        '--tmpfs', '/tmp:rw,nosuid,nodev,exec,size=768m',
+        '--mount', "type=bind,src=$artifacts,dst=/artifacts,readonly",
+        '-e', 'HOME=/tmp/home', '-e', 'TMPDIR=/tmp',
+        '-w', '/tmp', 'golang:1.26.6', '/artifacts/h4-3b-http-limits.test',
+        '-test.run', '^(TestTransparentAlphaRoute(AcceptsExactKnownBodyLimits|RejectsOversizedKnownRequestBeforeSelectedService|RejectsOversizedKnownResponseBeforeBrowserHeaders|StopsChunkedRequestAtBodyLimit|StopsChunkedResponseAtBodyLimit|RejectsOversizedRequestHeadersBeforeSelectedService|RejectsOversizedResponseHeadersBeforeBrowserHeaders)|TestTransparentServer(AcceptsExactRequestHeadLimit|RejectsRequestHeadAboveExactLimit|AcceptsExactResponseHeadLimit|RejectsResponseHeadAboveExactLimit|StopsIncompleteBrowserRequestAtHeaderTimeout|ClosesIdleBrowserKeepAliveBeforeSecondServiceRequest))$', '-test.count=1', '-test.v', '-test.timeout=45s'
+    )
+    & docker @limitArguments
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
     }
 
     foreach ($name in @(

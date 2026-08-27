@@ -72,6 +72,10 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw 'build failed for H4-6A control test binary'
         }
+        & go test -c -trimpath -o (Join-Path $artifacts 'h4-3b-http-limits.test') ./internal/endpoint/reference
+        if ($LASTEXITCODE -ne 0) {
+            throw 'build failed for H4-3B HTTP limit test binary'
+        }
     }
     finally {
         Pop-Location
@@ -107,6 +111,11 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw "VPS H4-3B Service cell $name failed"
         }
+    }
+    $limitCommand = "docker run --rm --read-only --network none --pids-limit 128 --memory 1g --cpus 1 --tmpfs /tmp:rw,nosuid,nodev,exec,size=768m --mount type=bind,src=$remoteRoot,dst=/artifacts,readonly -e HOME=/tmp/home -e TMPDIR=/tmp -w /tmp golang:1.26.6 /artifacts/h4-3b-http-limits.test -test.run '^(TestTransparentAlphaRoute(AcceptsExactKnownBodyLimits|RejectsOversizedKnownRequestBeforeSelectedService|RejectsOversizedKnownResponseBeforeBrowserHeaders|StopsChunkedRequestAtBodyLimit|StopsChunkedResponseAtBodyLimit|RejectsOversizedRequestHeadersBeforeSelectedService|RejectsOversizedResponseHeadersBeforeBrowserHeaders)|TestTransparentServer(AcceptsExactRequestHeadLimit|RejectsRequestHeadAboveExactLimit|AcceptsExactResponseHeadLimit|RejectsResponseHeadAboveExactLimit|StopsIncompleteBrowserRequestAtHeaderTimeout|ClosesIdleBrowserKeepAliveBeforeSecondServiceRequest))`$' -test.count=1 -test.v -test.timeout=45s"
+    & $sshPath @sshArguments $limitCommand
+    if ($LASTEXITCODE -ne 0) {
+        throw 'VPS H4-3B HTTP limit cell failed'
     }
     foreach ($name in @('TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart', 'TestAlphaControlReaderTwoFreshEnrolledEndpointsAgree')) {
         $remoteCommand = "docker run --rm --read-only --network none --pids-limit 128 --memory 1g --cpus 1 --tmpfs /tmp:rw,nosuid,nodev,exec,size=768m --mount type=bind,src=$remoteRoot,dst=/artifacts,readonly -e HOME=/tmp/home -e TMPDIR=/tmp -e ARDENTS_E2E_COMMAND=/artifacts/ardents-linux-amd64 -e ARDENTS_E2E_CONTROL=/artifacts/ardents-control-linux-amd64 -w /tmp golang:1.26.6 /artifacts/h4-6a-control.test -test.run '^$name`$' -test.count=1 -test.v -test.timeout=45s"

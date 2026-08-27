@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+const (
+	transparentMaximumHeaderBytes       = 16 << 10
+	transparentServerMaxHeaderBytes     = transparentMaximumHeaderBytes - (4 << 10)
+	transparentMaximumBodyBytes         = 1 << 20
+	transparentReadHeaderTimeout        = time.Second
+	transparentIdleTimeout              = 5 * time.Second
+	transparentResponseHeaderLimitError = "transparent Service response exceeds the alpha header limit"
+)
+
 // TransparentConfig binds one exact alpha HTTP name to an already
 // authenticated Service Connection. The connection is the only destination;
 // this local presentation cannot select a Target, dial a host, or interpret
@@ -50,8 +59,11 @@ func OpenTransparent(config TransparentConfig) (*TransparentServer, error) {
 	}
 	running := &TransparentServer{listener: listener, hostname: config.Hostname, connection: config.Connection,
 		reader: bufio.NewReader(config.Connection)}
-	running.server = &http.Server{Handler: http.HandlerFunc(running.serve), ReadHeaderTimeout: time.Second,
-		IdleTimeout: 5 * time.Second, MaxHeaderBytes: 16 << 10}
+	// net/http reserves 4 KiB above MaxHeaderBytes for its bufio reader. Set the
+	// underlying value below the product ceiling so a Browser request head never
+	// exceeds the declared 16 KiB alpha bound.
+	running.server = &http.Server{Handler: http.HandlerFunc(running.serve), ReadHeaderTimeout: transparentReadHeaderTimeout,
+		IdleTimeout: transparentIdleTimeout, MaxHeaderBytes: transparentServerMaxHeaderBytes}
 	running.work.Add(1)
 	go func() {
 		defer running.work.Done()
@@ -107,9 +119,27 @@ func (server *TransparentServer) serve(writer http.ResponseWriter, request *http
 		http.Error(writer, "invalid transparent Service request", http.StatusBadRequest)
 		return
 	}
+	if request.ContentLength > transparentMaximumBodyBytes {
+		http.Error(writer, "transparent Service request exceeds the alpha body limit", http.StatusRequestEntityTooLarge)
+		return
+	}
+	request.Body = http.MaxBytesReader(writer, request.Body, transparentMaximumBodyBytes)
 	if err := server.forward(request, writer); err != nil {
+		if transparentRequestExceedsBodyLimit(err) {
+			_ = server.connection.Close()
+			http.Error(writer, "transparent Service request exceeds the alpha body limit", http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(writer, "alpha service unavailable", http.StatusBadGateway)
 	}
+}
+
+// transparentRequestExceedsBodyLimit also accepts net/http's internal
+// request-body write wrapper: it does not expose Unwrap but preserves the
+// documented MaxBytesError text.
+func transparentRequestExceedsBodyLimit(err error) bool {
+	var tooLarge *http.MaxBytesError
+	return errors.As(err, &tooLarge) || (err != nil && err.Error() == "http: request body too large")
 }
 
 func (server *TransparentServer) forward(request *http.Request, writer http.ResponseWriter) error {
@@ -124,7 +154,8 @@ func (server *TransparentServer) forward(request *http.Request, writer http.Resp
 		_ = server.connection.Close()
 		return err
 	}
-	response, err := http.ReadResponse(server.reader, forward)
+	responseReader := bufio.NewReader(&transparentResponseHeaderReader{source: server.reader, maximum: transparentMaximumHeaderBytes})
+	response, err := http.ReadResponse(responseReader, forward)
 	if err != nil {
 		_ = server.connection.Close()
 		return err
@@ -134,17 +165,82 @@ func (server *TransparentServer) forward(request *http.Request, writer http.Resp
 		_ = server.connection.Close()
 		return errors.New("transparent Service upgrade is unavailable")
 	}
+	if response.ContentLength > transparentMaximumBodyBytes {
+		_ = server.connection.Close()
+		return errors.New("transparent Service response exceeds the alpha body limit")
+	}
 	copyForwardHeaders(writer.Header(), response.Header)
 	writer.WriteHeader(response.StatusCode)
 	if request.Method == http.MethodHead {
 		return nil
 	}
-	if err := copyAndFlush(writer, response.Body); err != nil {
+	if err := copyAndFlushBounded(writer, io.LimitReader(response.Body, transparentMaximumBodyBytes+1), transparentMaximumBodyBytes); err != nil {
 		_ = server.connection.Close()
 	}
 	// Once headers are committed, a stream failure must close this selected
 	// Service Connection rather than write a second, misleading HTTP result.
 	return nil
+}
+
+type transparentResponseHeaderReader struct {
+	source   io.Reader
+	maximum  int
+	seen     int
+	tail     [4]byte
+	tailLen  int
+	complete bool
+}
+
+func (reader *transparentResponseHeaderReader) Read(destination []byte) (int, error) {
+	read, readErr := reader.source.Read(destination)
+	if reader.complete || read == 0 {
+		return read, readErr
+	}
+	for index := 0; index < read; index++ {
+		reader.seen++
+		if reader.tailLen < len(reader.tail) {
+			reader.tail[reader.tailLen] = destination[index]
+			reader.tailLen++
+		} else {
+			copy(reader.tail[:], reader.tail[1:])
+			reader.tail[len(reader.tail)-1] = destination[index]
+		}
+		if reader.tailLen == len(reader.tail) && reader.tail == [4]byte{'\r', '\n', '\r', '\n'} {
+			reader.complete = true
+			return read, readErr
+		}
+		if reader.seen >= reader.maximum {
+			return 0, errors.New(transparentResponseHeaderLimitError)
+		}
+	}
+	return read, readErr
+}
+
+func copyAndFlushBounded(writer http.ResponseWriter, source io.Reader, maximum int64) error {
+	var copied int64
+	buffer := make([]byte, 32<<10)
+	controller := http.NewResponseController(writer)
+	for {
+		read, readErr := source.Read(buffer)
+		if read > 0 {
+			copied += int64(read)
+			if copied > maximum {
+				return errors.New("transparent Service response exceeds the alpha body limit")
+			}
+			if _, err := writer.Write(buffer[:read]); err != nil {
+				return err
+			}
+			if err := controller.Flush(); err != nil {
+				return err
+			}
+		}
+		if readErr == io.EOF {
+			return nil
+		}
+		if readErr != nil {
+			return readErr
+		}
+	}
 }
 
 func copyAndFlush(writer http.ResponseWriter, source io.Reader) error {

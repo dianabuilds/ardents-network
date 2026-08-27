@@ -243,6 +243,107 @@ func TestTransparentAlphaRouteRejectsUpgradeBeforeTheSelectedService(t *testing.
 	}
 }
 
+func TestTransparentAlphaRouteRejectsOversizedKnownRequestBeforeSelectedService(t *testing.T) {
+	bridgeSide, applicationSide := net.Pipe()
+	defer applicationSide.Close()
+	bridge, err := reference.OpenTransparent(reference.TransparentConfig{
+		Target: [32]byte{1}, Hostname: "blog.alice.ard", Connection: bridgeSide,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bridge.Close()
+	proxy, err := reference.OpenAlphaProxy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer proxy.Close()
+	route, err := proxy.RegisterTransparent("blog.alice.ard", bridge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer route.Close()
+
+	requestReachedApplication := make(chan struct{}, 1)
+	go func() {
+		if err := applicationSide.SetReadDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
+			return
+		}
+		defer applicationSide.SetReadDeadline(time.Time{})
+		one := make([]byte, 1)
+		if _, err := applicationSide.Read(one); err == nil {
+			requestReachedApplication <- struct{}{}
+		}
+	}()
+	proxyURL, err := url.Parse(proxy.URL())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := http.NewRequest(http.MethodPost, "http://blog.alice.ard/upload", bytes.NewReader(make([]byte, (1<<20)+1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := (&http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL), DisableCompression: true}}).Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized request status = %d, want %d", response.StatusCode, http.StatusRequestEntityTooLarge)
+	}
+	select {
+	case <-requestReachedApplication:
+		t.Fatal("oversized request reached the selected Publisher Service")
+	case <-time.After(250 * time.Millisecond):
+	}
+}
+
+func TestTransparentAlphaRouteRejectsOversizedKnownResponseBeforeBrowserHeaders(t *testing.T) {
+	bridgeSide, applicationSide := net.Pipe()
+	defer applicationSide.Close()
+	bridge, err := reference.OpenTransparent(reference.TransparentConfig{
+		Target: [32]byte{1}, Hostname: "blog.alice.ard", Connection: bridgeSide,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bridge.Close()
+	proxy, err := reference.OpenAlphaProxy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer proxy.Close()
+	route, err := proxy.RegisterTransparent("blog.alice.ard", bridge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer route.Close()
+
+	applicationDone := make(chan struct{})
+	go func() {
+		defer close(applicationDone)
+		request, err := http.ReadRequest(bufio.NewReader(applicationSide))
+		if err == nil {
+			_ = request.Body.Close()
+			_, _ = io.WriteString(applicationSide, "HTTP/1.1 200 OK\r\nContent-Length: 1048577\r\n\r\n")
+		}
+	}()
+	proxyURL, err := url.Parse(proxy.URL())
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := (&http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL), DisableCompression: true}}).Get("http://blog.alice.ard/download")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusBadGateway {
+		t.Fatalf("oversized response status = %d, want %d", response.StatusCode, http.StatusBadGateway)
+	}
+	<-applicationDone
+	requireSelectedServiceConnectionClosed(t, applicationSide, "oversized response body")
+}
+
 func serveTransparentFixture(connection net.Conn, firstChunkWritten chan<- struct{}, finishStream <-chan struct{}) error {
 	reader := bufio.NewReader(connection)
 	post, err := http.ReadRequest(reader)

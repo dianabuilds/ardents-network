@@ -252,10 +252,23 @@ terminal cases in a read-only, network-isolated Linux Docker cell at `1` vCPU,
 `1 GiB`, and `128` PIDs. That runner also verifies cached and two-fresh-root
 H4-6A control observations before it reports the C-2 results. This is local
 Docker evidence, not yet the full release promotion: the same exact candidate
-still needs the declared VPS repetition, selected platform/browser, actual
-multi-host qualification, and declared HTTP/1.1 limits. The optional H4-4 named
-Browser Entry remains compatibility evidence and is not an H4-3B completion
-dependency.
+still needs the declared VPS repetition, selected platform/browser, and actual
+multi-host qualification. The optional H4-4 named Browser Entry remains
+compatibility evidence and is not an H4-3B completion dependency.
+
+**Alpha HTTP/1.1 limits:** the transparent origin accepts at most `16 KiB` of
+request head and `1 MiB` of request body, with a `1 s` header-read timeout and
+`5 s` idle timeout. A known oversized request receives `413` before it can
+reach the selected Publisher Service; a streaming request that crosses the
+same body boundary closes the selected connection and reports `413` while no
+Browser response headers are committed. Publisher response head is likewise
+limited to `16 KiB`; exceeding it closes the selected connection and produces
+`502` before Browser headers are written. A known response body above `1 MiB`
+does the same. A chunked response is streamed, never buffered as a whole, but
+once it exceeds `1 MiB` the visible response terminates after the accepted
+prefix; it cannot be rewritten with a second status after headers are
+committed. These are alpha availability/compatibility limits, not a general web
+hosting profile or a throughput claim.
 
 **Boundary:** this slice makes no browser-isolation, external-origin,
 anonymity, or zero-latency claim. A page's ordinary external requests remain
