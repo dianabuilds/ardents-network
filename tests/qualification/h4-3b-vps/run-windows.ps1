@@ -98,7 +98,10 @@ try {
     }
 
     Write-ArtifactDigests $artifacts
-    $sshArguments = @('-i', (Resolve-Path -LiteralPath $SSHKey).Path, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new', "$User@$VPS")
+    # No remote qualifier command consumes stdin. Disable forwarding it so the
+    # generated runner cannot remain attached to a parent console after its
+    # remote command has finished.
+    $sshArguments = @('-n', '-i', (Resolve-Path -LiteralPath $SSHKey).Path, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new', "$User@$VPS")
     $remoteRoot = (& $sshPath @sshArguments 'mktemp -d /tmp/ardents-h4-3b-vps-XXXXXX').Trim()
     if ($LASTEXITCODE -ne 0 -or $remoteRoot -notmatch '^/tmp/ardents-h4-3b-vps-[A-Za-z0-9]+$') {
         throw 'VPS did not return a valid H4-3B temporary directory'
@@ -150,7 +153,7 @@ try {
 }
 finally {
     if ($remoteRoot -match '^/tmp/ardents-h4-3b-vps-[A-Za-z0-9]+$') {
-        $cleanupArguments = @('-i', (Resolve-Path -LiteralPath $SSHKey).Path, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new', "$User@$VPS")
+        $cleanupArguments = @('-n', '-i', (Resolve-Path -LiteralPath $SSHKey).Path, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new', "$User@$VPS")
         & $sshPath @cleanupArguments "rm -rf -- $remoteRoot; test ! -e $remoteRoot"
         if ($LASTEXITCODE -ne 0) {
             throw "VPS H4-3B temporary directory cleanup failed: $remoteRoot"
