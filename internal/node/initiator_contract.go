@@ -14,6 +14,7 @@ import (
 type InitiatorPeer struct {
 	NodeID, PublicKey [32]byte
 	Endpoint          string
+	CarrierProfile    route.CarrierProfile
 }
 
 // ResolutionGateway is the separate State-authorized OHTTP Gateway fact for
@@ -22,6 +23,14 @@ type InitiatorPeer struct {
 type ResolutionGateway struct {
 	NodeID, PublicKey [32]byte
 	URL               string
+}
+
+// CredentialIssuer is the separate State-selected OHTTP issuer fact for one
+// membership-level Transit Grant exchange. Its URL is read only by the
+// Initiator from authenticated State, never by Endpoint setup.
+type CredentialIssuer struct {
+	NodeID, PublicKey, ProfileDigest [32]byte
+	URL                              string
 }
 
 // InitiatorConfig supplies one authenticated State snapshot and the narrow
@@ -35,9 +44,11 @@ type InitiatorConfig struct {
 	NotAfter                       time.Time
 	Rendezvous                     InitiatorPeer
 	ResolutionGateway              ResolutionGateway
+	CredentialIssuer               CredentialIssuer
 	Admit                          route.EntryBindingAdmitter
 	HandshakeLimit, RelayLimit     uint16
 	RelayByteLimit                 uint64
+	AdmissionTimeout               time.Duration
 	DrainTimeout                   time.Duration
 }
 
@@ -58,9 +69,11 @@ func newInitiatorPlan(input InitiatorConfig) (initiatorPlan, error) {
 	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} || input.Epoch == 0 || input.NotAfter.IsZero() ||
 		input.Rendezvous.NodeID == [32]byte{} || input.Rendezvous.PublicKey == [32]byte{} ||
-		input.Rendezvous.NodeID == input.NodeID || !literalNodeEndpoint(input.Rendezvous.Endpoint) || !validOptionalInitiatorPeer(input.ResolutionGateway, input.NodeID) || input.Admit == nil ||
+		input.Rendezvous.NodeID == input.NodeID || !literalNodeEndpoint(input.Rendezvous.Endpoint) || !supportedCarrier(input.Rendezvous.CarrierProfile) ||
+		!validOptionalInitiatorPeer(input.ResolutionGateway, input.NodeID) ||
+		!validOptionalCredentialIssuer(input.CredentialIssuer, input.NodeID) || input.Admit == nil ||
 		input.HandshakeLimit == 0 || input.RelayLimit == 0 || input.RelayByteLimit == 0 || input.RelayByteLimit > uint64(1<<63-1) ||
-		input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
+		!validAdmissionTimeout(input.AdmissionTimeout) || input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
 		return initiatorPlan{}, errors.New("Initiator duty configuration is incomplete or outside its implementation bound")
 	}
 	if !input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) || !time.Now().UTC().Before(input.NotAfter) {
@@ -70,6 +83,16 @@ func newInitiatorPlan(input InitiatorConfig) (initiatorPlan, error) {
 		return initiatorPlan{}, err
 	}
 	return initiatorPlan{InitiatorConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
+}
+
+func validOptionalCredentialIssuer(issuer CredentialIssuer, local [32]byte) bool {
+	empty := issuer.NodeID == [32]byte{} && issuer.PublicKey == [32]byte{} && issuer.ProfileDigest == [32]byte{} && issuer.URL == ""
+	if empty {
+		return true
+	}
+	parsed, err := url.Parse(issuer.URL)
+	return err == nil && parsed.Scheme == "https" && parsed.Host != "" && parsed.Path == "" && parsed.User == nil && parsed.RawQuery == "" && parsed.Fragment == "" &&
+		issuer.NodeID != [32]byte{} && issuer.PublicKey != [32]byte{} && issuer.ProfileDigest != [32]byte{} && issuer.NodeID != local
 }
 
 func validOptionalInitiatorPeer(peer ResolutionGateway, local [32]byte) bool {

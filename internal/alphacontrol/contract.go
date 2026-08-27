@@ -11,6 +11,9 @@ const (
 	ComponentNetwork ComponentClass = 2
 	// ComponentCompatibility is the fixed compatibility-evidence component.
 	ComponentCompatibility ComponentClass = 3
+	// ComponentCorpus is the independently signed H4-4A Alpha Name Corpus
+	// component available only in versioned ACA2 control catalogs.
+	ComponentCorpus ComponentClass = 4
 )
 
 // ComponentClass is a closed alpha-control component vocabulary.
@@ -37,6 +40,17 @@ type Catalog struct {
 	NotBefore, NotAfter time.Time
 	PreviousDigest      [32]byte
 	Components          [3]Component
+	Signature           [64]byte
+}
+
+// CatalogV2 is the versioned four-component alpha-control successor. It is
+// intentionally distinct from ACA1's closed three-component Catalog.
+type CatalogV2 struct {
+	Cohort              string
+	Generation          uint64
+	NotBefore, NotAfter time.Time
+	PreviousDigest      [32]byte
+	Components          [4]Component
 	Signature           [64]byte
 }
 

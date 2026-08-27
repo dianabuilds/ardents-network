@@ -19,6 +19,7 @@ const (
 	rejectGeneration      = uint16(9)
 	rejectKeyCollision    = uint16(10)
 	rejectEndpoint        = uint16(11)
+	rejectCarrier         = uint16(12)
 )
 
 type rejection struct {
@@ -79,6 +80,12 @@ func verifyEpochCandidate(config epochPolicy, current *epochVerificationSnapshot
 	if err := attachCandidates(&decision, accepted, epoch); err != nil {
 		return verifiedEpochDecision{}, err
 	}
+	if err := attachDestinationResolutionGateway(&decision); err != nil {
+		return verifiedEpochDecision{}, err
+	}
+	if err := attachTransitIssuanceDuty(&decision); err != nil {
+		return verifiedEpochDecision{}, err
+	}
 	attachMaterializedRecord(config.MaterializationIndex, &decision)
 	return decision, nil
 }
@@ -118,6 +125,8 @@ func evaluateInputs(config epochPolicy, epoch epochEnvelope, inputs [][]byte) ([
 			evaluated[index].code = rejectProfile
 		case record.capacity == 0 || record.capacity > 1024:
 			evaluated[index].code = rejectCapacity
+		case !validCarrierProfile(record.carrier):
+			evaluated[index].code = rejectCarrier
 		case authorityOwnsKey(config, record.keyID):
 			evaluated[index].code = rejectSourceCollision
 		}

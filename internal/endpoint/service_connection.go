@@ -193,7 +193,7 @@ func newNativeStream(ctx context.Context, input connectionInput, credential Cred
 	return nativeconnection.NewStream(nativeconnection.StreamConfig{Context: ctx, Application: input.Application,
 		NetworkID: credential.NetworkID, Recovery: recovery, OpenAttachment: opener, Initial: first,
 		ContinuityKey: continuity, Authorized: input.At, Client: client, NameBinding: nameBinding,
-		NameUpdates: nameUpdates, Resources: resources})
+		NameUpdates: nameUpdates, CloseApplicationOnRemoteTerminal: input.closeApplicationOnRemoteTerminal, Resources: resources})
 }
 
 func nativeAttachment(attachment *securedAttachment) (*nativeconnection.Attachment, error) {

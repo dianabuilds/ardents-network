@@ -42,6 +42,8 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return vault.prepareNamespaceSubmission(ctx, operation, secrets)
 	case OperationActivateRecoveredAuthority:
 		return vault.activateRecoveredAuthority(ctx, operation, secrets)
+	case OperationPurgeVaultRecord:
+		return vault.purgeRecord(ctx, operation, secrets)
 	case OperationInspectEnvelope:
 		return vault.inspect(operation)
 	default:

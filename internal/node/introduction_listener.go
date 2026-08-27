@@ -162,11 +162,12 @@ func (running *Introduction) handle(raw net.Conn) {
 			_ = raw.Close()
 		}
 	}()
-	ctx, cancel := context.WithDeadline(context.Background(), running.plan.NotAfter)
-	defer cancel()
-	accepted, err := route.AcceptEndpointTransitAttachment(ctx, raw, route.EndpointTransitAttachmentAcceptance{NetworkID: running.plan.NetworkID,
+	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)
+	admissionCtx, admissionCancel := context.WithDeadline(context.Background(), deadline)
+	accepted, err := route.AcceptEndpointTransitAttachment(admissionCtx, raw, route.EndpointTransitAttachmentAcceptance{NetworkID: running.plan.NetworkID,
 		Digest: running.plan.EpochDigest, TransitNodeID: running.plan.NodeID, Epoch: running.plan.Epoch, TransitRole: route.IntroductionRole,
-		Deadline: running.plan.NotAfter, Certificate: running.plan.Certificate, Admit: running.plan.Admit})
+		Deadline: running.plan.NotAfter, AdmissionDeadline: deadline, Certificate: running.plan.Certificate, Admit: running.plan.Admit})
+	admissionCancel()
 	if err != nil || accepted.Connection.SetDeadline(running.plan.NotAfter) != nil {
 		return
 	}
@@ -185,7 +186,7 @@ func (running *Introduction) handle(raw net.Conn) {
 			running.releaseSlot(record.Registration.Reachability)
 			return
 		}
-		if err := accepted.Connection.SetDeadline(time.Time{}); err != nil {
+		if err := accepted.Connection.SetDeadline(record.Registration.NotAfter); err != nil {
 			running.releaseSlot(record.Registration.Reachability)
 			return
 		}
@@ -246,7 +247,7 @@ func (running *Introduction) submit(connection net.Conn, attachment [32]byte, se
 
 func (running *Introduction) forward(slot *introductionLiveSlot, reachability [32]byte, raw []byte) {
 	defer running.work.Done()
-	_ = slot.connection.SetWriteDeadline(running.plan.NotAfter)
+	_ = slot.connection.SetWriteDeadline(slot.registration.NotAfter)
 	err := writeRouteBytes(slot.connection, raw)
 	_ = slot.connection.Close()
 	running.mu.Lock()
@@ -264,6 +265,7 @@ func (running *Introduction) watchSlot(reachability [32]byte, raw, connection ne
 	defer running.work.Done()
 	buffer := make([]byte, 1)
 	_, _ = connection.Read(buffer)
+	_ = raw.Close()
 	running.releaseSlot(reachability)
 }
 

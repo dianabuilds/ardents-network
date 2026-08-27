@@ -156,6 +156,21 @@ func TestAcceptEntryAttachmentVerifiesAndConsumesBeforeReturning(t *testing.T) {
 	}
 }
 
+func TestAcceptEntryAttachmentRefusesAdmissionDeadlinePastDutyExpiry(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	_, err := AcceptEntryAttachment(t.Context(), server, EntryAttachmentAcceptance{NetworkID: identifier(68), Digest: identifier(69),
+		InitiatorNodeID: identifier(70), Epoch: 71, Deadline: deadline, AdmissionDeadline: deadline.Add(time.Second),
+		Certificate: entryBindingCertificate(t, 72), Admit: func([]byte, [32]byte, [32]byte, time.Time) (EntryAdmission, error) {
+			return EntryAdmission{}, nil
+		}})
+	if err == nil {
+		t.Fatal("Entry attachment accepted an admission deadline beyond its duty expiry")
+	}
+}
+
 func TestEntryAdmitterPortUsesOneDurableEntryOperation(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{74}, ed25519.SeedSize))

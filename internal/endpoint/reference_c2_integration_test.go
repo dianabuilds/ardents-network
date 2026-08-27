@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -22,10 +23,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
-	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
+	for _, carrier := range []route.CarrierProfile{route.CarrierTCP, route.CarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) { testC2RouteCarriesReferenceSite(t, carrier) })
+	}
+}
+
+func testC2RouteCarriesReferenceSite(t *testing.T, carrier route.CarrierProfile) {
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(time.Minute)
 	resolutionDeadline := now.Add(5 * time.Second)
@@ -36,7 +42,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	rendezvousCertificate, rendezvousPublic := c2Certificate(t, 62, "rendezvous")
 	responderCertificate, responderPublic := c2Certificate(t, 63, "responder")
 	initiatorCertificate, initiatorPublic := c2Certificate(t, 64, "initiator")
-	introductionAddress, rendezvousAddress := c2AvailableAddress(t), c2AvailableAddress(t)
+	introductionAddress, rendezvousAddress := c2AvailableAddress(t), c2CarrierAddress(t, carrier)
 	responderAddress, initiatorAddress := c2AvailableAddress(t), c2AvailableAddress(t)
 	join, slotReachability := c2Identifier(67), c2Identifier(68)
 	slotAttachment, serviceAttachment, resolutionAttachment := c2Identifier(69), c2Identifier(70), c2Identifier(108)
@@ -63,38 +69,38 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	gatewayServer.StartTLS()
 	defer gatewayServer.Close()
 
-	rendezvous, err := node.StartRendezvous(node.RendezvousConfig{ListenAddress: rendezvousAddress, Certificate: rendezvousCertificate,
+	rendezvous, err := node.StartRendezvous(node.RendezvousConfig{ListenAddress: rendezvousAddress, CarrierProfile: carrier, Certificate: rendezvousCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: rendezvousID, NodePublicKey: rendezvousPublic, Epoch: 10, NotAfter: deadline,
 		Peers: []node.RendezvousPeer{{NodeID: initiatorID, PublicKey: initiatorPublic, Role: route.InitiatorRole},
 			{NodeID: responderID, PublicKey: responderPublic, Role: route.ResponderRole}},
-		HandshakeLimit: 2, WaitingLimit: 2, PairLimit: 1, PairByteLimit: 256 << 10, DrainTimeout: time.Second})
+		HandshakeLimit: 2, WaitingLimit: 2, PairLimit: 1, PairByteLimit: 256 << 10, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer rendezvous.Close()
 	initiator, err := node.StartInitiator(node.InitiatorConfig{ListenAddress: initiatorAddress, Certificate: initiatorCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: initiatorID, NodePublicKey: initiatorPublic, Epoch: 10, NotAfter: deadline,
-		Rendezvous:        node.InitiatorPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
+		Rendezvous:        node.InitiatorPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress, CarrierProfile: carrier},
 		ResolutionGateway: node.ResolutionGateway{NodeID: gatewayID, PublicKey: gatewayPublic, URL: gatewayServer.URL},
 		Admit: c2EntryAdmit(presentation, network, digest, initiatorID, map[[32]byte]time.Time{
 			serviceAttachment: deadline, resolutionAttachment: resolutionDeadline}),
-		HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, DrainTimeout: time.Second})
+		HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer initiator.Close()
 	responder, err := node.StartResponder(node.ResponderConfig{ListenAddress: responderAddress, Certificate: responderCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: responderID, NodePublicKey: responderPublic, Epoch: 10, NotAfter: deadline,
-		Rendezvous:     node.ResponderPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress},
+		Rendezvous:     node.ResponderPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Endpoint: rendezvousAddress, CarrierProfile: carrier},
 		Admit:          c2ResponderAdmit(responderAuthorization, serviceAttachment, network, digest, responderID, deadline),
-		HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, DrainTimeout: time.Second})
+		HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer responder.Close()
 	introduction, err := node.StartIntroduction(node.IntroductionConfig{ListenAddress: introductionAddress, Certificate: introductionCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: introductionID, NodePublicKey: introductionPublic, Epoch: 10, NotAfter: deadline,
-		Admit: c2IntroductionAdmit(network, digest, introductionID, deadline), HandshakeLimit: 3, SlotLimit: 1, DeliveryLimit: 1, DrainTimeout: time.Second})
+		Admit: c2IntroductionAdmit(network, digest, introductionID, deadline), HandshakeLimit: 3, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,10 +108,7 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 
 	publisher, current, hpkePrivate, instancePrivate := c2PublishedEndpoint(t, network, now)
 	defer publisher.Close()
-	link, err := targetlink.Encode(targetlink.Link{Network: network, Target: current.Credential.Target})
-	if err != nil {
-		t.Fatal(err)
-	}
+	alphaBinding := c2PrivateAlphaBinding(t, network, current.Credential.Target, now)
 	publisherSlot, err := publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{
 		Profile: endpointapi.PublisherIntroductionProfile{NetworkID: network, Digest: digest, Epoch: 10,
 			Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
@@ -154,8 +157,8 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session := user.StartUserReferenceSite(ctx, endpointapi.UserReferenceSiteRequest{
-		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: link,
+	session := user.StartAlphaUserReferenceSite(ctx, endpointapi.AlphaUserReferenceSiteRequest{Binding: alphaBinding,
+		Route: endpointapi.UserReferenceSiteRequest{Reachability: &endpointapi.UserReachabilityRouteRequest{
 			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gatewayID, GatewayNodePublicKey: gatewayPublic, GatewayFamily: c2Identifier(109),
 				GatewayProfile: gateway.Profile(), StateDigest: digest, Epoch: 10,
 				Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
@@ -166,17 +169,22 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Family: c2Identifier(66), Endpoint: initiatorAddress},
 			Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Family: c2Identifier(64), Endpoint: rendezvousAddress},
 			AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now},
-		Routes: map[string]string{"": "/"}, Principal: c2Identifier(73), Capability: userSession, BytesEachDirection: 64 << 10})
+			Routes: map[string]string{"": "/"}, Principal: c2Identifier(73), Capability: userSession, BytesEachDirection: 64 << 10}})
 	defer session.Close()
 	if event := <-session.Events(); event.State != endpointapi.UserReferenceStarting {
 		t.Fatalf("first User Reference event = %+v", event)
 	}
 	readyEvent := <-session.Events()
 	readyReference := readyEvent.Ready
-	if readyEvent.State != endpointapi.UserReferenceReady || readyReference.AuthenticatedTarget != current.Credential.Target {
+	if readyEvent.State != endpointapi.UserReferenceReady || readyReference.AuthenticatedTarget != current.Credential.Target ||
+		readyReference.URL != "http://reference.ard/" || readyReference.AlphaProxyURL == "" {
 		t.Fatalf("Reference Site was not opened after exact C2 target authentication: %+v", readyEvent)
 	}
-	httpClient := &http.Client{Transport: &http.Transport{Proxy: nil}}
+	proxyURL, parseErr := url.Parse(readyReference.AlphaProxyURL)
+	if parseErr != nil {
+		t.Fatal(parseErr)
+	}
+	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}}
 	response, err := httpClient.Get(readyReference.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -234,6 +242,21 @@ func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
 	if usage := rendezvous.Usage(); usage.CompletedPairs != 1 || usage.ActivePairs != 0 || usage.Connections != 0 {
 		t.Fatalf("Rendezvous terminal usage = %+v", usage)
 	}
+}
+
+func c2CarrierAddress(t *testing.T, carrier route.CarrierProfile) string {
+	if carrier == route.CarrierTCP {
+		return c2AvailableAddress(t)
+	}
+	connection, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := connection.LocalAddr().String()
+	if err := connection.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return address
 }
 
 func TestUserIntroductionRouteRejectsRendezvousSubstitutionBeforeEntry(t *testing.T) {
@@ -312,6 +335,25 @@ func TestUserReferenceSessionReportsUnavailableForInvalidInput(t *testing.T) {
 	}
 	if _, open := <-session.Events(); open {
 		t.Fatal("invalid-input User Reference session remained open")
+	}
+}
+
+func TestAlphaUserReferenceSiteRejectsSuppliedTargetLinkBeforeC2(t *testing.T) {
+	fixture := newFixture(t)
+	user, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: c2Identifier(126),
+		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic, ConnectionPrincipal: fixture.clientPrincipal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer user.Close()
+	entry := &c2CountingEntry{}
+	_, err = user.OpenAlphaUserReferenceSite(t.Context(), endpointapi.AlphaUserReferenceSiteRequest{
+		Binding: c2IssuedAlphaBinding(t, fixture.networkID, c2Identifier(127), fixture.now),
+		Route: endpointapi.UserReferenceSiteRequest{Reachability: &endpointapi.UserReachabilityRouteRequest{
+			TargetLink: "caller-supplied-target", Entry: entry}},
+	})
+	if err == nil || entry.calls != 0 {
+		t.Fatalf("alpha route accepted a caller Target Link or opened Entry: calls=%d err=%v", entry.calls, err)
 	}
 }
 

@@ -223,6 +223,62 @@ func TestStreamBoundedAcceptsTerminalBeforeDirectionalLimit(t *testing.T) {
 	}
 }
 
+func TestStreamBoundedCanCloseItsLocalApplicationAfterRemoteTerminal(t *testing.T) {
+	clientCarrier, publisherCarrier := net.Pipe()
+	clientApplication, clientUser := halfClosePair()
+	publisherApplication, publisherUser := halfClosePair()
+	defer clientUser.Close()
+	defer publisherUser.Close()
+	connectionContext, exporter, key := [32]byte{7}, [32]byte{8}, [32]byte{9}
+	clientAttachment, err := NewAttachment(clientCarrier, 1, connectionContext, exporter, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisherAttachment, err := NewAttachment(publisherCarrier, 1, connectionContext, exporter, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	client, err := NewStream(StreamConfig{Context: ctx, Application: clientApplication, Initial: clientAttachment,
+		ContinuityKey: key, Authorized: time.Now(), Client: true, CloseApplicationOnRemoteTerminal: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, err := NewStream(StreamConfig{Context: ctx, Application: publisherApplication, Initial: publisherAttachment,
+		ContinuityKey: key, Authorized: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := make(chan error, 2)
+	go func() { _, runErr := client.RunBounded(32, 32); results <- runErr }()
+	go func() { _, runErr := publisher.RunBounded(32, 32); results <- runErr }()
+	go func() { _, _ = publisherUser.Write([]byte("done")); _ = publisherUser.CloseWrite() }()
+	response := make([]byte, len("done"))
+	if _, err := io.ReadFull(clientUser, response); err != nil || string(response) != "done" {
+		t.Fatalf("remote response = %q / %v", response, err)
+	}
+	closed := make(chan error, 1)
+	go func() {
+		var value [1]byte
+		_, readErr := clientUser.Read(value[:])
+		closed <- readErr
+	}()
+	select {
+	case readErr := <-closed:
+		if !errors.Is(readErr, io.EOF) {
+			t.Fatalf("client local Application after remote terminal = %v, want EOF", readErr)
+		}
+	case <-ctx.Done():
+		t.Fatal("remote terminal did not close the selected local Application")
+	}
+	for range 2 {
+		if runErr := <-results; runErr != nil {
+			t.Fatalf("bounded stream did not complete after remote terminal: %v", runErr)
+		}
+	}
+}
+
 func TestRecoveryDeadlineStartsAtLastConnectionProgress(t *testing.T) {
 	t.Parallel()
 	detected := time.Now()

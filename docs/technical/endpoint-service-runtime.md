@@ -79,9 +79,52 @@ For the bounded H4-3 Reference Site profile, an asynchronous User Reference
 Session reports only `starting`, authenticated `ready`, `unavailable`, and
 `stopped`. `ready` includes a fresh scoped loopback origin only after the exact
 Target authenticated; unavailable/terminal events retain the bounded Endpoint
-class and reason, never raw Route or peer diagnostics. The session owns no
-destination selection, retry, generic proxy capability, or additional browser
-authority.
+class and reason, never raw Route or peer diagnostics. The retained H4-3A
+presentation is a closed static Reference Site. The active H4-3B tracer adds a
+separate explicit alpha HTTP/1.1 bridge for one selected Service Connection:
+it preserves ordinary request/response semantics and streaming, orders work on
+that Connection, and has no Target, Route, content-profile, or browser-wide
+proxy authority. For that presentation only, an authenticated remote
+Application terminal closes the local bridge so a completed Publisher cannot
+leave the visible name usable. The session owns no destination selection,
+retry, generic proxy capability, or additional browser authority.
+
+Explicit publication withdrawal uses a fresh Service Administration capability
+and returns `unpublished` only for the exact Target/generation after retained
+connections drain; an established connection may therefore finish as `clean
+service connection close` while no later publication acquisition is possible.
+A fresh repeated withdrawal must return `service unavailable`; the publication
+owner rejects acquisition as soon as unpublish begins, before retained leases
+finish draining.
+A non-EOF Publisher Application socket failure and an abrupt Publisher Endpoint
+loss are `abrupt connection loss`, never `service unavailable` or clean close.
+If a Publisher fails after HTTP response headers are committed, the local HTTP
+server may expose only the already received body prefix because it cannot emit
+a second status. `ReferenceConnection.Done` remains the authoritative bounded
+terminal result, and the scoped proxy is withdrawn without a same-name,
+other-Target, or Internet fallback. A distinct registered Target is addressed
+only by an explicit request for its own authenticated name.
+
+An H4 client Endpoint plan may select `BrowserEntryProfile: "firefox-alpha"`.
+The Endpoint then owns the current alpha proxy port, a fresh local liveness
+capability, and a separate one-process proxy credential at the native host's
+fixed per-user state path while an authenticated alpha route is live; it
+removes them before route withdrawal or shutdown. An absolute
+`BrowserEntryStatePath` remains a qualification/local override and cannot be
+combined with the profile. The native host reproves the proxy before it returns
+either the port or the credential for a matching loopback Basic-auth challenge,
+and the proxy strips that authentication header before forwarding to the
+selected Publisher presentation. Endpoint state selection does not itself
+install a native manifest or add-on, start a browser, change DNS, proxy, VPN,
+or trust settings. The separately release-bound per-user manifest lifecycle is
+defined by [ADR-0045](../adr/0045-firefox-first-unlisted-browser-entry-delivery.md).
+
+The current generic `endpoint.Run` plan can select that Browser Entry profile
+but does not yet compose an accepted Alpha Name Corpus floor with the typed
+Private-Reachability and C-2 inputs required to demand-open `name.ard`.
+`AlphaBrowserResolution` is maintained and qualified below this plan boundary;
+promoting it to a normal Endpoint command requires R-106's participant
+acquisition/runtime input, not a caller-supplied Target or fixture descriptor.
 
 ## Verification and related decisions
 

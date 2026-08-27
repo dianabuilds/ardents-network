@@ -33,6 +33,7 @@ type EndpointTransitAttachmentAcceptance struct {
 	Epoch                            uint64
 	TransitRole                      byte
 	Deadline                         time.Time
+	AdmissionDeadline                time.Time
 	Certificate                      tls.Certificate
 	Admit                            EndpointTransitBindingAdmitter
 }
@@ -59,7 +60,7 @@ func OpenEndpointTransitAttachment(ctx context.Context, input EndpointTransitAtt
 	certificate := input.ClientCertificate
 	if certificate.PrivateKey == nil {
 		var err error
-		certificate, err = freshEndpointClientCertificate()
+		certificate, err = NewClientCertificate()
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +99,15 @@ func AcceptEndpointTransitAttachment(ctx context.Context, connection net.Conn, i
 		input.Certificate.PrivateKey == nil || input.Admit == nil || !time.Now().Before(input.Deadline) {
 		return AcceptedEndpointTransitAttachment{}, errors.New("endpoint transit attachment acceptance is invalid")
 	}
+	admissionDeadline := input.AdmissionDeadline
+	if admissionDeadline.IsZero() {
+		admissionDeadline = input.Deadline
+	}
+	if !time.Now().Before(admissionDeadline) || admissionDeadline.After(input.Deadline) {
+		return AcceptedEndpointTransitAttachment{}, errors.New("endpoint transit attachment admission deadline is invalid")
+	}
 	secured := tls.Server(connection, nativeEndpointTransitTLS(input.Certificate))
-	if err := secured.SetDeadline(input.Deadline); err != nil {
+	if err := secured.SetDeadline(admissionDeadline); err != nil {
 		_ = connection.Close()
 		return AcceptedEndpointTransitAttachment{}, err
 	}

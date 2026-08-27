@@ -22,12 +22,16 @@ func TestFirefoxBrowserOpensOnlyScopedReferenceOrigin(t *testing.T) {
 		openedExecutable, openedURL = executable, referenceURL
 		return nil
 	}
-	url := "http://127.0.0.1:42101/site/5d6c4df9a45a6ec7f88a0dc9b95d488d/"
-	if err := browser.OpenReference(context.Background(), ReferenceReady{URL: url}); err != nil {
-		t.Fatal(err)
-	}
-	if openedExecutable != executable || openedURL != url {
-		t.Fatalf("Firefox open = %q %q", openedExecutable, openedURL)
+	for _, url := range []string{
+		"http://127.0.0.1:42101/site/5d6c4df9a45a6ec7f88a0dc9b95d488d/",
+		"http://blog.alice.ard/",
+	} {
+		if err := browser.OpenReference(context.Background(), ReferenceReady{URL: url}); err != nil {
+			t.Fatal(err)
+		}
+		if openedExecutable != executable || openedURL != url {
+			t.Fatalf("Firefox open = %q %q", openedExecutable, openedURL)
+		}
 	}
 }
 
@@ -45,7 +49,9 @@ func TestFirefoxBrowserRejectsAnythingExceptOneScopedReferenceOrigin(t *testing.
 	for _, value := range []string{
 		"https://127.0.0.1:42101/site/opaque/", "http://localhost:42101/site/opaque/", "http://127.0.0.1:42101/",
 		"http://127.0.0.1:42101/site/opaque/?next=https://example.test", "http://127.0.0.1:42101/site/opaque/resource",
-		"http://127.0.0.1:0/site/opaque/", "http://127.0.0.1:42101/site//",
+		"http://127.0.0.1:0/site/opaque/", "http://127.0.0.1:42101/site//", "http://Blog.alice.ard.localhost:42101/site/opaque/",
+		"http://blog.alice.ard.localhost:42101/site/opaque/", "http://blog.alice.ard.localhost:42101/site/opaque/?next=https://example.test",
+		"http://blog.alice.ard:8443/", "http://blog.alice.ard/extra", "http://Blog.alice.ard/",
 	} {
 		if err := browser.OpenReference(context.Background(), ReferenceReady{URL: value}); err == nil {
 			t.Fatalf("Firefox accepted %q", value)

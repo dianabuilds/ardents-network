@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
@@ -12,12 +11,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
 var componentNames = [...]string{"release.ac1", "network.ac1", "compatibility.ac1"}
@@ -31,16 +30,79 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect or inspect-bundle")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 	switch arguments[0] {
 	case "inspect":
 		return inspectStatements(arguments[1:], output)
 	case "inspect-bundle":
 		return inspectBundle(arguments[1:], output)
+	case "inspect-alpha-corpus":
+		return inspectAlphaCorpus(arguments[1:], output)
+	case "accept-alpha-corpus":
+		return acceptAlphaCorpus(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect or inspect-bundle")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
+}
+
+func inspectAlphaCorpus(arguments []string, output io.Writer) error {
+	flags := flag.NewFlagSet("inspect-alpha-corpus", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var catalogPath, corpusPath, stateRoot, disclosureKey, corpusKey, networkText, atText string
+	flags.StringVar(&catalogPath, "catalog", "", "ACA2 catalog file")
+	flags.StringVar(&corpusPath, "corpus", "", "signed alpha corpus file")
+	flags.StringVar(&stateRoot, "state-root", "", "Endpoint-owned corpus floor root")
+	flags.StringVar(&disclosureKey, "disclosure-key", "", "ACA2 disclosure public key in lowercase hex")
+	flags.StringVar(&corpusKey, "corpus-key", "", "alpha corpus authority public key in lowercase hex")
+	flags.StringVar(&networkText, "network", "", "Ardents network ID in lowercase hex")
+	flags.StringVar(&atText, "at", "", "decision time in RFC3339")
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || stateRoot == "" {
+		return errors.New("alpha corpus inspection arguments are invalid")
+	}
+	disclosure, err := decodePublicKey(disclosureKey)
+	if err != nil {
+		return err
+	}
+	corpusAuthority, err := decodePublicKey(corpusKey)
+	if err != nil {
+		return errors.New("alpha corpus authority key is invalid")
+	}
+	network, err := decodeIdentifier(networkText)
+	if err != nil {
+		return errors.New("alpha corpus network is invalid")
+	}
+	at, err := time.Parse(time.RFC3339, atText)
+	if err != nil {
+		return errors.New("alpha corpus inspection time is invalid")
+	}
+	catalog, err := readControlFile(catalogPath, alphacontrol.MaximumCatalogSize)
+	if err != nil {
+		return err
+	}
+	corpusRaw, err := readControlFile(corpusPath, 4096)
+	if err != nil {
+		return err
+	}
+	corpus, outcome := inspection.VerifyACA2Corpus(catalog, disclosure, corpusAuthority, corpusRaw, network, at.UTC())
+	if outcome != alphacontrol.OutcomeAccepted || corpus == nil {
+		return errors.New("alpha corpus control was not accepted")
+	}
+	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: stateRoot, Authority: corpusAuthority, Cohort: corpus.Cohort(), Network: network})
+	if err != nil {
+		return err
+	}
+	defer floor.Close()
+	if err := floor.Observe(corpus); err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(struct {
+		Schema  string `json:"schema"`
+		Cohort  string `json:"cohort"`
+		Corpus  string `json:"corpus"`
+		Network string `json:"network"`
+		Serial  uint64 `json:"serial"`
+	}{Schema: "ardents-alpha-corpus-report-v1", Cohort: corpus.Cohort(), Corpus: string(alphacontrol.OutcomeAccepted), Network: networkText, Serial: corpus.Serial()})
 }
 
 // inspectStatements is a low-level statement-integrity diagnostic. The H4-6A
@@ -113,13 +175,11 @@ func inspectBundle(arguments []string, output io.Writer) error {
 	if err != nil {
 		return errors.New("alpha control inspection time is invalid")
 	}
-	input, err := readEnrollmentInput(enrollmentPath)
+	input, err := enrollment.ReadClosedAlphaInput(enrollmentPath)
 	if err != nil {
 		return err
 	}
-	report, err := inspection.Inspect(context.Background(), inspection.Config{Root: stateRoot, Enrollment: enrollment.Request{BundleRoot: input.BundleRoot, ExecutablePath: artifact,
-		Pin:         enrollment.Pin{Cohort: input.Cohort, Release: input.Release, Platform: input.Platform, ManifestSHA256: input.ManifestSHA256},
-		Environment: input.Environment, Network: input.Network, TargetPath: input.TargetPath, Architecture: runtime.GOARCH, ReferenceTime: at.UTC()}, At: at.UTC()})
+	report, err := inspection.Inspect(context.Background(), inspection.Config{Root: stateRoot, Enrollment: input.Request(artifact, at), At: at.UTC()})
 	encoded := json.NewEncoder(output).Encode(struct {
 		Schema        string                              `json:"schema"`
 		Catalog       alphacontrol.Outcome                `json:"catalog"`
@@ -132,49 +192,33 @@ func inspectBundle(arguments []string, output io.Writer) error {
 	return errors.Join(err, encoded)
 }
 
-type alphaEnrollmentInput struct {
-	Schema         string `json:"schema"`
-	BundleRoot     string `json:"bundle_root"`
-	Cohort         string `json:"cohort"`
-	Release        string `json:"release"`
-	Platform       string `json:"platform"`
-	ManifestSHA256 string `json:"manifest_sha256"`
-	Environment    string `json:"environment"`
-	Network        string `json:"network"`
-	TargetPath     string `json:"target_path"`
-}
-
-func readEnrollmentInput(path string) (alphaEnrollmentInput, error) {
-	if path == "" {
-		return alphaEnrollmentInput{}, errors.New("alpha enrollment input is required")
-	}
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() == 0 || info.Size() > 16<<10 {
-		return alphaEnrollmentInput{}, errors.New("alpha enrollment input is not a bounded regular file")
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return alphaEnrollmentInput{}, err
-	}
-	var input alphaEnrollmentInput
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&input); err != nil || input.Schema != "ardents-alpha-enrollment-input-v1" {
-		return alphaEnrollmentInput{}, errors.New("alpha enrollment input is invalid")
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		return alphaEnrollmentInput{}, errors.New("alpha enrollment input is invalid")
-	}
-	return input, nil
-}
-
 func decodePublicKey(encoded string) (ed25519.PublicKey, error) {
 	raw, err := hex.DecodeString(encoded)
 	if err != nil || len(raw) != ed25519.PublicKeySize || hex.EncodeToString(raw) != encoded {
 		return nil, errors.New("alpha control disclosure key is invalid")
 	}
 	return ed25519.PublicKey(raw), nil
+}
+
+func decodeIdentifier(encoded string) ([32]byte, error) {
+	var result [32]byte
+	raw, err := hex.DecodeString(encoded)
+	if err != nil || len(raw) != len(result) || hex.EncodeToString(raw) != encoded {
+		return result, errors.New("alpha control identifier is invalid")
+	}
+	copy(result[:], raw)
+	return result, nil
+}
+
+func readControlFile(path string, maximum int64) ([]byte, error) {
+	if path == "" {
+		return nil, errors.New("alpha control file is required")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() == 0 || info.Size() > maximum {
+		return nil, errors.New("alpha control file is not a bounded regular file")
+	}
+	return os.ReadFile(path)
 }
 
 func readDirectory(path string) ([]byte, [3][]byte, error) {

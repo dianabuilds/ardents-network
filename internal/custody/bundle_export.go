@@ -70,6 +70,11 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 }
 
 func (vault *Vault) readExportableRecord(recordID string) ([]byte, RecordState, error) {
+	raw, state, _, err := vault.exportableRecord(recordID)
+	return raw, state, err
+}
+
+func (vault *Vault) exportableRecord(recordID string) ([]byte, RecordState, string, error) {
 	for _, candidate := range []struct {
 		directory string
 		state     RecordState
@@ -79,13 +84,13 @@ func (vault *Vault) readExportableRecord(recordID string) ([]byte, RecordState, 
 	} {
 		raw, err := readEnvelopeFile(filepath.Join(candidate.directory, "record-"+recordID+".json"))
 		if err == nil {
-			return raw, candidate.state, nil
+			return raw, candidate.state, filepath.Join(candidate.directory, "record-"+recordID+".json"), nil
 		}
 		if !os.IsNotExist(err) {
-			return nil, "", fmt.Errorf("read vault record: %w", err)
+			return nil, "", "", fmt.Errorf("read vault record: %w", err)
 		}
 	}
-	return nil, "", fmt.Errorf("read vault record: %w", os.ErrNotExist)
+	return nil, "", "", fmt.Errorf("read vault record: %w", os.ErrNotExist)
 }
 
 func publishAndTestBundle(ctx context.Context, path string, body, password []byte, expected AuthorityBinding, input SecretInput) (EnvelopeInfo, error) {

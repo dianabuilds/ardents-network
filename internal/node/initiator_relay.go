@@ -6,13 +6,15 @@ import (
 	"io"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func (running *Initiator) relay(raw, entry, next net.Conn) {
+func (running *Initiator) relay(raw, entry net.Conn, next route.Carrier) {
 	defer running.work.Done()
 	type result struct{ bytes int64 }
 	results := make(chan result, 2)
-	copyLane := func(destination, source net.Conn) {
+	copyLane := func(destination, source route.Carrier) {
 		limited := &io.LimitedReader{R: source, N: int64(running.plan.RelayByteLimit)}
 		count, _ := io.CopyBuffer(destination, limited, make([]byte, 32<<10))
 		results <- result{bytes: count}
@@ -38,7 +40,7 @@ func (running *Initiator) Drain(ctx context.Context) error {
 	}
 	running.Stop()
 	running.mu.Lock()
-	connections := make([]net.Conn, 0, len(running.pre)+len(running.active))
+	connections := make([]route.Carrier, 0, len(running.pre)+len(running.active))
 	for connection := range running.pre {
 		connections = append(connections, connection)
 	}

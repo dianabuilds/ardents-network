@@ -4,7 +4,7 @@ title: Which measured Linux operating profile can admit one native Route Node ro
 status: open
 owner: Product Owner and Codex
 started: 2026-08-23
-reviewed: 2026-08-23
+reviewed: 2026-08-24
 ---
 
 # R-092 — Native Node operating profile
@@ -55,8 +55,20 @@ native Node profile.
 ### Primary sources
 
 - R-076, R-078, R-081, ADR-0024, ADR-0026, R-023, and NET-01A, inspected
-  2026-08-23.
-- Go 1.26 `crypto/tls` documentation, to be rechecked on the measured host.
+  2026-08-24.
+- Linux kernel cgroup v2 documentation, inspected 2026-08-24. In particular,
+  `memory.high` is a reclaim/throttling boundary rather than a hard stop,
+  `memory.max` may invoke the cgroup OOM killer, and the corresponding event and
+  pressure files are evidence inputs rather than application admission limits:
+  <https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html>.
+- Go `crypto/tls` documentation, inspected 2026-08-24. A server must explicitly
+  use `HandshakeContext` or connection deadlines to bound a stalled handshake;
+  wrapping a listener with TLS does not create that bound by itself:
+  <https://pkg.go.dev/crypto/tls#Conn.HandshakeContext>.
+- The maintained `internal/node` and `internal/resource` implementations,
+  inspected 2026-08-24. They prove the lifecycle and pressure-state shape but
+  contain only H3 probe profiles and a probe listener, not a reusable native
+  Rendezvous capacity.
 
 ### Experiment
 
@@ -70,6 +82,14 @@ follow-up must inject and measure the complete selected resource-pressure rule
 and retain its raw Linux observations, host identity, and source/binary digest
 outside Git.
 
+[`tests/qualification/h4-2-net-01a/`](../../../tests/qualification/h4-2-net-01a/)
+owns a deliberately narrow preflight for that follow-up. It creates an external
+evidence directory and fail-closes before measurement unless the declared host
+is native Ubuntu LTS `x86-64`, has two visible CPUs, falls in the documented
+2-GiB raw-memory observation band, exposes cgroup v2, and has a separately
+captured link-evidence file. It is preparation only: it does not run a workload,
+assert pressure, or select capacity.
+
 ### Failure scenarios
 
 - an H3 profile or capacity appears in any native result;
@@ -81,6 +101,13 @@ outside Git.
 
 - **Inspection:** the current Node implementation still owns only the H3
   probe runtime; the native Route Module has no Node listener or profile.
+- **Inspection (2026-08-24):** the current maintained `ardents-node node`
+  command composes authenticated Network State, Node admission/lifecycle,
+  resource observation, and one private role-probe listener. It does not
+  implement the selected two-leg Rendezvous pairing/pump duty. Running two
+  copies in Docker would exercise two independent probe lifecycles, not create
+  a Rendezvous network; that result must not be labelled a multi-Node H4-2
+  tracer.
 - **Measurement:** the disposable harness completed two sequential 4,096-byte
   synthetic loopback legs with TLS 1.3, the exact ALPN, reciprocal v1 bindings,
   and byte-identical echo on the local development host. It is a harness sanity
@@ -143,15 +170,418 @@ outside Git.
   evidence, resource pressure, pre-kernel refusal, a production Node listener,
   or a selected capacity/profile.
 - **Measurement:** no Linux *reference-host* result has yet been captured.
+- **Environment measurement (2026-08-24):** the already available local Docker
+  Desktop host and project-operated Ubuntu 22.04 Docker VPS completed R-094's
+  real separate-host TCP/TLS and QUIC oracle. The remote host has 4 CPUs and
+  about 8 GiB RAM, so it is suitable for isolated functional and link-fault
+  tracers after Rendezvous exists, but it is not the selected 2-vCPU/2-GiB
+  NET-01A reference host. Container CPU/memory limits can test bounded refusal;
+  they do not make the underlying stronger host a reference-host measurement.
+- **Environment/measurement (2026-08-26):** the fixed `golang:1.26.6` image
+  used by the H4-2 two-host runner contains neither `tc` nor `ip`; the shared
+  VPS host has both but also runs unrelated long-lived services. No host qdisc
+  was changed. Instead `TestH42MultiHostRendezvousKernelNetemRelay` cross-built
+  one static qualification-only relay and ran it in three disposable Docker
+  namespaces with only `NET_ADMIN`, 128 MiB, 0.5 CPU, and 64 PIDs. The relay
+  received only its own binary; `/usr/sbin/tc` and matching host libraries were
+  read-only mounts for the child command. A 200-ms qdisc delay retained exact
+  byte carriage, and 100% qdisc loss exposed no authenticated attachment before
+  the caller's two-second deadline while `tc -s` reported nonzero drops. A
+  third sidecar fixed 20 ms ±5 ms delay, 5% loss, and 10% reorder and carried
+  one exact 256 KiB transcript while retaining declared qdisc state and
+  nonzero requeues. A successful random-loss transcript does not establish an
+  observed loss event; the 100%-loss cell is the measured loss outcome. The
+  current full four-case runner passed in 79.505 seconds; its netem case passed
+  in 39.22 seconds. The sidecar/host bridge is
+  still not public-path loss, MTU, NAT, active probing, host loss, recovery,
+  or availability evidence.
+- **Inspection (2026-08-24):** the maintained lifecycle already separates Node
+  readiness (`ABSENT/PREPARED/READY/DRAINING/WITHDRAWN/FAILED`) from resource
+  pressure (`NORMAL/PROTECT/DRAIN`), rechecks assignment freshness, and joins
+  accepted work after listener shutdown. That behavior is reusable. Its
+  `h3-np1-v1`/`h3-s-v1*` limits, probe capacity, fixed 15-second probe bounds,
+  and probe-specific admission are not.
+- **Inspection (2026-08-24):** a Go TCP process cannot make the kernel's listen
+  backlog disappear. The native contract can bound application work only after
+  `Accept`: reserve a finite handshake slot before TLS work or a worker is
+  started, close immediately when no slot exists, and record the kernel backlog
+  separately. Therefore “pre-kernel admission” is not a valid selection
+  criterion for the first implementation.
+- **Prototype (2026-08-24):** a throwaway pure reservation model and interactive
+  terminal shell were driven through healthy pairing, full handshake/waiting/
+  pair budgets, duplicate-side binding, `PROTECT`, graceful `DRAIN`, forced
+  drain, and post-withdrawal admission. Every revised sequence retained its
+  declared bounds, never produced a one-sided active pair, and reached zero
+  reservations after withdrawal. This is state-shape evidence, not a network,
+  concurrency, timeout, or capacity measurement.
+- **Prototype finding:** the first model incorrectly attached attempt/side facts
+  to a pre-TLS socket and retained pre-admission work through `PROTECT`. The
+  corrected contract keeps handshake slots identity-free until authenticated
+  LegBinding, closes all handshake and unmatched-leg work on `PROTECT`, and
+  closes other pre-admission work as soon as the last active-pair slot is taken.
+  Otherwise the model can strand an attempt that has no capacity to complete.
+  The answer is promoted below; the throwaway model and Make target were deleted
+  rather than retained as a second state machine.
+- **Rendezvous tracer result (2026-08-24):** a new build-ignored, disposable
+  process tracer replaced the earlier echo-only shape with the selected three
+  reservations and real pairing/pump path. It uses mutual TLS 1.3, the native
+  ALPN, the maintained canonical `route.LegBinding` encoding, certificate-to-
+  binding identity checks, one Initiator plus one Responder per Attachment ID,
+  fixed connection deadlines, and two 32 KiB-buffered pumps. It creates no
+  Authority, Network State, Entry, Service, maintained package, or capacity.
+- **Local matrix measurement:** five predeclared process cases passed on the
+  Windows development host without retry. The exact pair carried the same
+  262,144-byte transcript in both directions with SHA-256
+  `743cdf7849dc6ffdc775371adb60313afb6ecb74e2a8ef22f63c8d419e0b36ec`.
+  A duplicate side was rejected while the first leg remained until its one
+  expiry; one unmatched leg expired and released its reservation; a held sole
+  pair caused two new sockets to close before TLS without evicting the pair;
+  and an owned drain terminated a held pair and joined all work. Every server
+  result ended with zero handshake, waiting-leg, active-pair, and connection
+  counts. [Tracer evidence](../../../experiments/r-092-rendezvous-tracer/README.md)
+- **Concurrency measurement:** the Windows race build failed before execution
+  because the current MinGW/cgo link requested unavailable `-ldl`; it is not a
+  tracer result. The focused exact-pair cell was then built and executed under
+  Go 1.26.6's Linux race runtime in the already-local Go image. It completed the
+  exact pair with no race report, joined cleanup, and zero final connections.
+- **Separate-host measurement:** the exact Linux binary SHA-256
+  `13343c6562cbf1b33dd6eef811dacd980193f186413dc628dced085c3f9e9f19`
+  and scratch image ID
+  `sha256:710126c98253b554a9fc71a7867af39366561a10603f0a41b23f075fabdbf3ef`
+  ran as one remote Ubuntu server and two local clients in separate Docker
+  networks over public high TCP port 47926. All containers were read-only,
+  unprivileged UID 65532, capability-free, `no-new-privileges`, and limited to
+  128 MiB, 0.5 CPU, and 64 PIDs. Both clients reported the exact transcript,
+  FD `7→7`, goroutines `3→3`, and joined cleanup. The server observed peak
+  handshakes `2`, waiting legs `1`, active pairs `1`, one successful pair, zero
+  final reservations/connections, exit zero, and no OOM. All marked resources
+  and the listener were removed without changing existing workloads or ports
+  80/443.
+- **Maintained command measurement (2026-08-26):**
+  `TestNativeDutyProcessesUseTheirExactStateAssignments` built the product
+  `ardents-node` command and started separate Initiator, Introduction,
+  Rendezvous, and Responder processes. Each process used its own State root,
+  role root, identity, certificate, listener, clock observation, and State
+  materialization from the same signed native-profile Epoch with two configured
+  authenticated Source inputs. Every process reached `READY` only with the
+  exact Epoch, role, and Role Domain assignment digest. This proves the command
+  boundary can materialize all four existing duties; it does not carry a Route,
+  prove a Source refresh, graceful process withdrawal, multi-host operation, or
+  select a resource/capacity profile.
+- **Maintained full-route measurement (2026-08-26):**
+  `TestReferenceC2CarriesOneRouteThroughProductNodeCommands` replaces the
+  C-2 fixture's Initiator, Introduction, Rendezvous, and Responder processes
+  with four separately configured product `ardents-node` commands. One local
+  Publisher-to-User C-2 journey completed through those commands using the
+  same signed State Epoch and authenticated Source inputs. This establishes the
+  present command topology as functional rather than merely ready. It remains
+  a local controlled test: the other C-2 roles are fixtures and the accepted
+  State is established at startup. Its Linux Docker run sends the same
+  `SIGTERM` used by Docker or a service manager after the completed journey and
+  requires every product Node to emit `DRAINING` then `WITHDRAWN` before exit.
+  The Windows compatibility harness has no equivalent child-service signal and
+  retains forced test cleanup.
+- **Maintained State-change measurement (2026-08-26):**
+  `TestReferenceC2RefreshesStateAndWithdrawsProductNodeCommands` first
+  completes that same C-2 journey, then replaces both authenticated Source
+  processes with the same authority's signed, linked Epoch 2. Each of the four
+  product Node commands observes the successor and emits `DRAINING` followed
+  by `WITHDRAWN`. This proves one current-State change triggers terminal
+  withdrawal; it is not a full-C-2 held-work or multi-host result.
+- **Maintained held-work measurement (2026-08-26):**
+  `TestReferenceC2RefreshesStateAndWithdrawsProductNodesWithHeldRoute` holds
+  the established Publisher Application-to-Service connection after all four
+  product Nodes have carried its C-2 setup. It replaces both authenticated
+  State Sources with the same authority's linked successor, requires every
+  Node command to emit `DRAINING` then `WITHDRAWN`, and only then releases the
+  two held fixtures for their classified terminal outcomes. This is local
+  full-C-2 withdrawal-with-active-work evidence; it is not a hostile-failure,
+  multi-host, resource-pressure, or capacity result.
+- **Maintained negative and active-work measurements (2026-08-26):**
+  `TestReferenceC2ProductNodeCommandsReportUnavailableAfterPublisherGoesOffline`
+  retains an authentic descriptor but removes the Publisher-side availability;
+  the User returns `service unavailable`, receives no Reference URL, and makes
+  no browser request while the four transit duties are product commands.
+  `TestRendezvousNodeProcessPairsOnlyStateAuthorizedLegs` rejects an
+  unauthorized native `LegBinding`; the Linux-only
+  `TestRendezvousNodeProcessDrainsActivePairOnSIGTERM` carries an authenticated
+  active pair, sends `SIGTERM`, observes `DRAINING` then `WITHDRAWN`, and sees
+  the pair close. `TestRendezvousNodeProcessBoundsIncompleteTLSHandshakes`
+  sends three deliberately incomplete TLS records to the product command;
+  exactly the configured two handshake reservations remain held, the third is
+  refused, and a normal authenticated pair works after release.
+  `TestRendezvousNodeProcessExpiresIncompleteTLSAdmission` then retains no
+  client close: an explicit `admission_timeout_ms` closes the incomplete TLS
+  reservation and a later authenticated pair works. The required timeout is
+  capped by State expiry and is carried by every native duty's local plan; it
+  has no default and does not alter the State expiry for established work.
+  `TestRendezvousNodeProcessKeepsActivePairPastAdmissionDeadline` holds an
+  authenticated pair beyond the short admission timeout, then carries bytes;
+  this guards the required switch to the authenticated
+  `LegBinding.NotAfter` deadline after admission.
+  `TestIntroductionSlotExpiresAtItsRegistrationDeadline` uses a shorter
+  authenticated transit/registration expiry than the duty State expiry and
+  requires the registered Publisher connection to close at that deadline.
+  This is bounded reservation/recovery evidence, not DoS resilience, a
+  selected release value, inter-host hostile-network evidence, or a capacity
+  result. A fresh one-host Linux Docker execution of the exact product C-2 test
+  exited 0 in 18.11 seconds with a read-only source mount.
+- **Project-VPS product-command measurement (2026-08-26):** the current
+  checkout of `TestReferenceC2CarriesOneRouteThroughProductNodeCommands` ran in
+  one temporary Docker 29.4.1 container on the project Ubuntu VPS. The source
+  mount was read-only, no port was published, the command exited 0, and the
+  test passed in 22.51 seconds. The container and its exact temporary source
+  directory were then removed and their absence checked. This is a
+  project-controlled one-host functional result; it is not an inter-host,
+  resource-pressure, capacity, or independent-operation result.
+- **Maintained inter-host product-Rendezvous measurement (2026-08-26):** the
+  purpose-named `make qualification-h4-2-multihost` target cross-built the
+  current `ardents` and `ardents-node` commands on the Windows development
+  host, transferred only those bytes plus ephemeral signed State/material and
+  test credentials, and started one temporary host-network Docker container on
+  the project VPS. Its public State-authorized TCP 47926 listener was a real
+  product Rendezvous; two mutually authenticated product State Sources stayed
+  on the VPS loopback. Direct native Initiator and Responder TLS legs from the
+  Windows host carried the fixed transcript and a wrong-role LegBinding whose
+  Initiator certificate still matched its declared Node ID was rejected. The
+  verbose run fixed profile `ardents-interactive-route-v1`, State epoch 1,
+  State digest `d22bfef964b59bd327e7d5c53b6a80840ffa2397ba76e0e1b2244b2e31cf3971`,
+  `ardents` SHA-256
+  `8b55bb78de84e16f3a4043e36b22f309b1a4e019d7e9d5d217698db1ca8fa9f7`, and
+  `ardents-node` SHA-256
+  `c9f7f714e1897fe0be3c5a97a7d85e2b8a028bbd091864e4d410829ef62ebd9e`.
+  It passed in 11.58 seconds. A companion loss cell first carried an active
+  transcript, abruptly killed that exact remote Node/container, then required
+  both local TLS legs to return a terminal read error rather than time out; it
+  passed in 15.11 seconds. The remote envelope was Docker 29.4.1,
+  `golang:1.26.6` image ID
+  `sha256:0d1d3a794be25f809dd2cb3160d8c73276c4056a9f8242a138e908ddeee7b6b6`,
+  Linux 5.15.0-185-generic x86_64, 4 vCPU, and 8,109,136 KiB reported memory.
+  Its generated container and exact `/tmp/ardents-h4-2-multihost-*` directory
+  were removed and their absence separately checked. The direct test legs are
+  intentionally not Endpoint/Service duties. This is one controlled two-host
+  product-byte/path result plus a remote Node/container terminal-closure
+  result. `TestH42MultiHostRendezvousTCPFaultRelay` then placed a transparent,
+  test-owned local TCP relay before that real remote Node: with 200 ms delay in
+  each direction it retained exact carriage; local RST produced terminal
+  closure of the active legs and a new pair succeeded through the unchanged
+  Node; a byte blackhole produced only the caller's explicit one-second read
+  timeout. It passed in 13.32 seconds. The relay does not terminate or inspect
+  TLS and is not a maintained Node, Route, carrier, or recovery mechanism.
+  `TestH42MultiHostRendezvousKernelNetemRelay` adds three isolated Docker
+  sidecars in front of that same remote Node. The static relay has only
+  `NET_ADMIN`, mounts only itself plus read-only `tc`/matching libraries, and
+  applies qdisc only to its own `eth0`; it receives no State or credential
+  bytes. Its 200-ms-delay cell retained exact carriage and its 100%-loss cell
+  returned no attachment before the caller's two-second deadline while the
+  qdisc showed nonzero dropped packets. A third sidecar fixed 20 ms ±5 ms
+  delay, 5% loss, and 10% reorder and carried one exact 256 KiB transcript
+  with declared qdisc state and nonzero requeues. A successful random-loss
+  transcript does not establish an observed loss event; the 100%-loss cell is
+  the measured loss outcome. The current full four-case runner passed in 79.505
+  seconds; its netem case passed in 39.22 seconds. This is container-namespace
+  kernel-netem evidence, not a
+  public-path loss, MTU, NAT, active-probe, host-loss, recovery, or
+  availability result.
+  This remains not a full C-2 multi-host workflow, independent operations,
+  true VPS/host-loss recovery or availability evidence, resource pressure,
+  hostile-network evidence, or NET-01A capacity selection. In particular, it
+  does not model public-path packet loss/reordering, MTU, NAT, active probing,
+  or network recovery.
+- **Local full-system fault-emulator measurement (2026-08-26):** the selected
+  `make qualification-h4-2-local-emulator` profile cross-built exact current
+  Linux `ardents`, `ardents-control`, `ardents-node`, and C-2 fixture bytes
+  outside the repository, then mounted only those bytes read-only into one
+  disposable `golang:1.26.6` container with no external network, one CPU, a
+  1-GiB memory ceiling, PID limit 256, and temporary owned test state. The
+  complete held-route C-2 scenario ran as separate processes. It waited for
+  both Publisher Application and User setup acknowledgements, hard-stopped the
+  actual product Rendezvous process, and required the existing endpoint
+  terminal classifications after release. The command passed in 5.14 seconds.
+  This is the selected full-system composition and simulated fault-domain-loss
+  evidence. It does not represent a physical host/provider outage, public-path
+  failure or recovery, capacity, availability, or independent operation.
+- **Configuration-boundary measurement (2026-08-26):** a native
+  `ardents-node` plan now rejects every nonempty `node_resource_profile` before
+  it opens State or a listener. This prevents the retired `h3-np1-v1` and
+  `h3-s-v1*` capacity numbers from being relabelled as native Route limits.
+  The rejection is intentionally not a replacement profile; only NET-01A can
+  select and name one.
+- **Implementation (2026-08-26):** the purpose-named NET-01A preflight is
+  executable now. It records the exact source state, toolchain, host envelope,
+  cgroup v2 facts, and operator-provided raw symmetric-link transcript outside
+  Git. Its fixed host-envelope checks make the known 4-vCPU/8-GiB project VPS
+  ineligible. It is not a reference-host observation until run on a separately
+  declared eligible host, and it neither runs nor weakens the full selection
+  matrix below.
+- **Inference:** the selected pairing/reservation/pump shape is executable in
+  separate processes and one current product Rendezvous can carry State-bound
+  native legs across the available real public path. The remaining R-092
+  uncertainty is no longer whether two bounded legs can be joined, whether a
+  current-State successor withdraws a command, whether it terminates held
+  full-C-2 work, whether the Rendezvous command can start across two hosts,
+  whether an abrupt Rendezvous fault domain gives the held full C-2 route a
+  classified terminal outcome in the selected local emulator, whether a remote
+  Node loss immediately terminates its active legs, or whether incomplete TLS
+  admission expires without a client close. The controlled relay establishes
+  only the named delay/RST/blackhole outcomes; it is not hostile-network
+  qualification. Remaining uncertainty is hostile abuse/error cells, any
+  physical-host/provider-outage claim beyond the selected emulator, selection
+  of an access-path-valid admission duration, resource-pressure placement, and
+  selection of numeric limits on the exact NET-01A host. The tracer and
+  controlled product-command cells cannot supply those claims.
+
+## Options
+
+### First-duty candidates
+
+1. **Rendezvous first.** One temporary two-leg joining duty over the selected
+   authenticated TCP/TLS Carrier. It exercises reciprocal peer binding,
+   reservation, bounded per-connection state, pressure refusal, drain,
+   withdrawal, and joined cleanup without first adding Endpoint-adjacent Entry
+   Set, publication, or Introduction semantics. It does not by itself produce a
+   complete User-to-Service route.
+2. **Entry first.** One endpoint-adjacent Initiator or Responder duty. This is
+   closer to a visible connection journey but immediately adds Entry Invite,
+   long-lived set, ordinary-location exposure, retry, public listener, abuse,
+   and blocked-entry obligations before the common Node lifecycle is measured.
+3. **Introduction first.** One sealed-invitation control duty. It is bounded and
+   carries no Application Data, so it cannot establish the first useful carrier
+   profile or measure transit utility by itself.
+4. **All five logical carrier positions together.** This can create an early
+   end-to-end tracer but makes listener, role, Route, resource, and cleanup
+   failures difficult to attribute. A passing combined run would still not
+   select an individual Node operating profile.
+5. **One combined relay/gateway process.** Fastest byte-forwarding
+   demonstration, but rejected as a Node-profile candidate because it collapses
+   accepted Role Domain and Route Knowledge Separation boundaries into a
+   different product.
+
+**Product decision (2026-08-24):** option 1 is selected. Rendezvous is the first
+native Node duty. It has the smallest useful data-plane boundary and supplies
+reusable Node lifecycle evidence before Entry and Introduction add their
+distinct exposure and state. This selection does not yet implement the duty or
+choose a capacity.
+
+### Candidate Rendezvous operating profile
+
+This is the exact shape to implement and measure, not yet a supported profile
+or a set of selected numeric limits:
+
+- one unprivileged Ubuntu process owns one Node Identity, Rendezvous assignment,
+  state root, cgroup v2 placement, public TCP/TLS listener, and terminal
+  lifecycle;
+- the listener address is the exact State-authorized literal address and port;
+  operator diagnostics remain local and no HTTP administration or metrics
+  listener is exposed to the Internet;
+- admission has three independent finite reservations: identity-free accepted
+  sockets performing bounded TLS/LegBinding, authenticated single legs waiting
+  for their reciprocal leg, and active Rendezvous pairs. Attempt and side become
+  usable only after authenticated LegBinding. One active-pair reservation owns
+  exactly two authenticated legs and both bounded directional pumps;
+- every reservation has a deadline no later than the duty's Work Safety Lease.
+  A stalled TLS peer, unmatched leg, slow reader, or non-reading writer therefore
+  consumes a known finite slot and byte budget, never an unbounded goroutine or
+  queue;
+- capacity exhaustion is an explicit local refusal. It causes no arbitrary
+  eviction, hidden retry, peer-selected alternative, or new source contact; and
+- counters and events contain only aggregate local duty facts: pressure mode,
+  reservation use, accepted/refused/terminal counts, bytes, queues, RSS, Go
+  memory, CPU, FDs, sockets, threads, and drain duration. Peer addresses,
+  Targets, Names, bindings, and complete Route histories are excluded.
+
+The operating contract keeps two state machines distinct:
+
+| Condition | New work | Admitted work | Required transition |
+|---|---|---|---|
+| `NORMAL` pressure while Node is `READY` | Admit only after the relevant reservation succeeds | Continue within deadlines and queue caps | Remain `READY` |
+| Last active-pair reservation is taken while pressure remains `NORMAL` | Refuse newly accepted sockets and close every other handshake/unmatched leg with an explicit capacity result | Preserve active pairs | Advertise new-work readiness only after a pair slot is actually free |
+| `PROTECT` pressure | Refuse new sockets and close every handshake/unmatched leg | Preserve active pairs only | Return to `NORMAL` only after a measured hysteresis interval below every low watermark |
+| Sticky `DRAIN`, assignment change/expiry, listener failure, or explicit shutdown | Close admission and withdraw new-work readiness | Drain only inside the remaining Work Safety Lease, then close | Join every listener, connection, pump, sampler, and worker before `WITHDRAWN` or `FAILED` |
+
+`PROTECT` is not “the Node is healthy and accepting.” It keeps already admitted
+active pairs alive, cancels pre-admission work, and makes new-work unavailability
+observable. Capacity-full is an admission outcome, not a fabricated pressure
+transition. `DRAIN` is terminal for that process/duty generation. An external
+supervisor may start a fresh process only from fresh accepted State; the Node
+Adapter does not restart or select another transport by itself.
+
+### Functional-alpha topology candidates
+
+| Candidate | Useful evidence | Honest limitation |
+|---|---|---|
+| Several isolated role processes/identities on one project-operated VPS | Cheapest complete functional tracer after all required duties exist | One host/operator; no host-loss, independence, availability, or privacy claim |
+| Role-domain processes split across two or three project-operated VPS | Real inter-host paths and selected host/link fault injection | Still correlated project control and not independent operators |
+| One host per logical carrier position | Clean process/host fault attribution | Highest early operating cost; common project ownership still is not independence |
+
+**Product decision (2026-08-24):** the first complete functional-alpha tracer
+may use one project-operated VPS with separate processes, identities, state
+roots, assignments, listeners, resource ceilings, and terminal lifecycles. It
+is a cost-bounded tracer only. It cannot replace per-duty NET-01A measurement or
+later multi-host fault evidence, and a single process performing conflicting
+domains remains rejected.
+
+On a shared alpha VPS, each process still has its own cgroup and fixed ceiling,
+and the declared ceilings plus host reserve must fit the physical host. A
+passing co-hosted tracer does not qualify the smaller NET-01A per-duty profile;
+the latter is measured with one Rendezvous process on its own reference host.
+
+## Reference-host selection campaign
+
+The next experiment first replaces the synthetic echo with the real
+Rendezvous reservation/pairing/pump path. It then uses this predeclared matrix:
+
+1. Freeze one Ubuntu LTS `x86-64`, 2-vCPU, 2-GiB, symmetric-100-Mbit/s host,
+   cgroup v2 placement, kernel/network settings, build/source digests, and the
+   exact candidate limits. A stronger host is ineligible.
+2. Measure idle/readiness, then sweep simultaneous pair capacity geometrically
+   from one pair until the first safe refusal or resource falsifier. Pair count,
+   accepted sockets, authenticated legs, and OS sockets are separate counters.
+3. At the last passing point and the next higher point, run healthy full-duplex,
+   stalled TLS, unmatched-leg, slow-reader/backpressure, reset/half-close,
+   connection-churn, and saturated-new-attempt cells. The workload generator,
+   byte totals, deadlines, and seeds are frozen before the retained run.
+4. Run explicit `PROTECT`, resource `DRAIN`, assignment expiry/change, listener
+   failure, `SIGTERM`, and abrupt-process-loss/restart cells. Abrupt loss may
+   prove recovery behavior only; it cannot be relabelled graceful drain.
+5. Repeat each decision-bearing 10-minute sustained cell five times and retain
+   every attempt, including failures, plus one final post-cleanup observation.
+
+A capacity point passes only when every admitted pair authenticates the exact
+TLS/ALPN/LegBinding contract, healthy pairs keep making useful progress, queues
+and reservations remain within their declared bounds, saturated arrivals do no
+new cryptographic/worker allocation, pair saturation closes other pre-admission
+work, `PROTECT` closes pre-admission work while preserving active pairs, and all
+terminal paths finish inside the Work Safety Lease with zero owned sockets and
+workers. Any cgroup OOM, `memory.max`/PID/FD emergency, unbounded backlog in the
+application, hidden retry, leaked worker, missing observation, or security
+violation fails the point.
+
+The selected capacity is the highest complete passing point below the first
+failing point, with its measured high/low/emergency watermarks and hysteresis;
+it is not inferred from RAM divided by one connection or from an H3 profile. If
+even one pair cannot pass the complete matrix, R-092 selects no native profile.
 
 ## Recommendation
 
-Run the named follow-up experiment on the declared Linux reference host. Do
-not select a capacity, expose a peer runtime, or alter the H3 profile before
-its complete evidence exists.
+Implement and measure the selected Rendezvous duty first, followed by
+Initiator/Responder carrier duties and the separate Introduction control duty.
+Clearly disclosed project-operated co-hosting is permitted for the first
+functional tracer, and the validated local/remote Docker pair can host its first
+inter-host fault cells without new infrastructure. Implement the candidate
+reservations and measurement oracle using the tracer's now-passing contract,
+then run the named Rendezvous campaign on
+the declared Linux reference host before selecting capacity or claiming an
+operating profile. Do not substitute two role-probe processes for this duty,
+expose a peer runtime, or alter the H3 profile before its complete evidence
+exists.
 
 ## Disposition
 
-Open. This record adds no ADR, package, dependency, Node profile, or product
-claim. Keep the disposable baseline only while it answers this question; delete
-or replace it when a source-bound measured suite supersedes it.
+Open and implementation-linked, with Rendezvous, its three-reservation/pairing/pump contract, and the
+project-operated functional-tracer topology selected. The disposable local,
+race, and separate-host matrices close the basic data-plane feasibility gap;
+maintained State/Node integration and reference-host pressure/capacity evidence
+remain. This record adds no ADR, package, dependency, capacity, or supported
+Node profile. Retain the tracer only until a source-bound maintained suite
+supersedes its unique evidence.

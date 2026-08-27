@@ -167,7 +167,7 @@ func emitResourceDiagnostic(config runtimeConfig, snapshot dutyFacts, at time.Ti
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource-sample", State: "OBSERVED", At: at,
 		Epoch: snapshot.Epoch, Generation: snapshot.Generation, Assignment: snapshot.Assignment,
-		AssignmentDigest: snapshot.AssignmentDigest, Resource: &sample})
+		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Resource: &sample})
 }
 
 func emitResourceState(config runtimeConfig, snapshot dutyFacts, state, reason string) error {
@@ -175,7 +175,7 @@ func emitResourceState(config runtimeConfig, snapshot dutyFacts, state, reason s
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource", State: state, At: config.now(),
 		Epoch: snapshot.Epoch, Generation: snapshot.Generation, Assignment: snapshot.Assignment,
-		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
+		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
 func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, snapshot dutyFacts, reason string) (Result, error) {
@@ -232,9 +232,10 @@ func currentFacts(config runtimeConfig) (dutyFacts, error) {
 		Profile: view.DutyProfile(), Fresh: view.DutyFresh(), Conflicting: view.DutyConflicting(),
 		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(),
 		RecordValidFrom: view.DutyRecordValidFrom(), RecordValidUntil: view.DutyRecordValidUntil(),
-		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(),
+		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(), CarrierProfile: view.DutyCarrierProfile(),
 		ProbeCapacity: view.DutyProbeCapacity(), Assignment: view.DutyAssignment(),
-		AssignmentDigest: view.DutyAssignmentDigest(), CandidateCount: view.DutyCandidateCount()}
+		AssignmentDigest: view.DutyAssignmentDigest(), CandidateCount: view.DutyCandidateCount(),
+		TransitIssuerProfileDigest: view.DutyTransitIssuanceProfileDigest()}
 	if result.CandidateCount > uint8(len(result.Candidates)) {
 		return dutyFacts{}, errors.New("node duty view candidate count is outside its bound")
 	}
@@ -251,7 +252,8 @@ func currentFacts(config runtimeConfig) (dutyFacts, error) {
 	for index := uint8(0); index < result.CandidateCount; index++ {
 		result.Candidates[index] = dutyCandidate{NodeID: view.DutyCandidateNodeID(index), PublicKey: view.DutyCandidatePublicKey(index),
 			KeyID: view.DutyCandidateKeyID(index), FamilyID: view.DutyCandidateFamilyID(index), RecordDigest: view.DutyCandidateRecordDigest(index),
-			DomainProofDigest: view.DutyCandidateDomainProofDigest(index), Endpoint: view.DutyCandidateEndpoint(index), Capacity: view.DutyCandidateCapacity(index), Assignment: view.DutyCandidateAssignment(index),
+			DomainProofDigest: view.DutyCandidateDomainProofDigest(index), Endpoint: view.DutyCandidateEndpoint(index), CarrierProfile: view.DutyCandidateCarrierProfile(index),
+			Capacity: view.DutyCandidateCapacity(index), Assignment: view.DutyCandidateAssignment(index),
 			ValidFrom: view.DutyCandidateValidFrom(index), ValidUntil: view.DutyCandidateValidUntil(index), AssignmentNotAfter: view.DutyCandidateAssignmentNotAfter(index)}
 	}
 	return result, nil
@@ -276,10 +278,25 @@ func emitState(config runtimeConfig, machine stateMachine, snapshot dutyFacts, r
 	defer cancel()
 	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "lifecycle", State: machine.name(), At: config.now(),
 		Epoch: snapshot.Epoch, Generation: snapshot.Generation, Assignment: snapshot.Assignment,
-		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
+		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Reason: reason})
 }
 
 func resultFor(machine *stateMachine, snapshot dutyFacts, reason string) Result {
-	return Result{State: machine.name(), Epoch: snapshot.Epoch, Assignment: snapshot.Assignment,
+	return Result{State: machine.name(), Epoch: snapshot.Epoch, Assignment: snapshot.Assignment, CarrierProfile: selectedDutyCarrier(snapshot),
 		AssignmentDigest: snapshot.AssignmentDigest, Reason: reason}
+}
+
+func selectedDutyCarrier(snapshot dutyFacts) string {
+	if snapshot.Assignment == "rendezvous" {
+		return snapshot.CarrierProfile
+	}
+	if snapshot.Assignment != "initiator" && snapshot.Assignment != "responder" {
+		return ""
+	}
+	for index := uint8(0); index < snapshot.CandidateCount; index++ {
+		if snapshot.Candidates[index].Assignment == "rendezvous" {
+			return snapshot.Candidates[index].CarrierProfile
+		}
+	}
+	return ""
 }

@@ -80,11 +80,37 @@ func VerifyLegacy(input MaterializationPolicy, proof []byte, minimumEpoch uint64
 	binding := record.Binding{Name: current.Name, Generation: current.Generation, Revision: current.Revision,
 		Authority: current.Authority, Target: current.Target, ParentName: current.ParentName,
 		ParentGeneration: current.ParentGeneration, RecordDigest: recordDigest, Commitment: commitment}
-	warning := ""
-	if leaf.state == 2 {
-		warning = "name lineage is in grace and should be treated as volatile"
+	warning, warningErr := proofLeaseWarning(leaf, current, at)
+	if warningErr != nil {
+		return record.Record{}, record.Binding{}, "", 0, warningErr
 	}
 	return current, binding, warning, statement.epoch, nil
+}
+
+func proofLeaseWarning(leaf resolutionLeaf, current record.Record, at int64) (string, error) {
+	if leaf.schema != leafSchema {
+		if leaf.state == 2 {
+			return "name lineage is in grace and should be treated as volatile", nil
+		}
+		return "", nil
+	}
+	switch leaf.state {
+	case 1:
+		if current.Lease != "active" {
+			return "", errors.New("naming proof lifecycle state is invalid")
+		}
+		if leaf.graceAt != 0 && at > leaf.graceAt {
+			return "name lineage is in grace and should be treated as volatile", nil
+		}
+		return "", nil
+	case 2:
+		if current.Lease == "released" || leaf.graceAt != 0 {
+			return "", errors.New("naming proof lifecycle state is invalid")
+		}
+		return "name lineage is in grace and should be treated as volatile", nil
+	default:
+		return "", errors.New("naming proof lifecycle state is invalid")
+	}
 }
 
 // VerifyBinding authenticates one current Namespace proof and returns only the

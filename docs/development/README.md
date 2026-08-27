@@ -16,6 +16,9 @@ specification.
 - [Repository layout and growth rules](repository-layout.md) define the factual
   tree and permitted growth.
 - [Testing model](testing.md) defines the selected execution profiles.
+- [Deep audit campaign](deep-audit.md) defines the inactive whole-codebase
+  review, proof, remediation, and requalification process for a future exact
+  H4 release candidate.
 - [Dependency register](dependencies.md) records reviewed runtime dependencies.
 - [Scoped risk exceptions](scoped-risk-exceptions.md) records any accepted,
   bounded exception to the normal engineering rules.

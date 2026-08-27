@@ -38,7 +38,7 @@ func runFullRendezvous(ctx context.Context, deadline time.Time) (result, error) 
 		NetworkID: networkID, EpochDigest: epochDigest, NodeID: rendezvousNode, NodePublicKey: material.rendezvousPublic, Epoch: epoch,
 		NotAfter: deadline, Peers: []node.RendezvousPeer{{NodeID: initiatorNode, PublicKey: material.initiatorPublic, Role: route.InitiatorRole},
 			{NodeID: responderNode, PublicKey: material.responderPublic, Role: route.ResponderRole}}, HandshakeLimit: 2, WaitingLimit: 2,
-		PairLimit: 1, PairByteLimit: 4096, DrainTimeout: time.Second})
+		PairLimit: 1, PairByteLimit: 4096, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		return result{}, err
 	}
@@ -75,7 +75,7 @@ func runFullInitiator(ctx context.Context, deadline time.Time) (result, error) {
 				return route.EntryAdmission{}, errors.New("full Entry admission mismatch")
 			}
 			return route.EntryAdmission{InviteID: identifier("entry-invite"), NetworkID: networkID, Digest: epochDigest, Epoch: epoch, InitiatorNodeID: initiatorNode, NotAfter: deadline}, nil
-		}, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 4096, DrainTimeout: time.Second})
+		}, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 4096, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		return result{}, err
 	}
@@ -111,7 +111,7 @@ func runFullResponder(ctx context.Context, deadline time.Time) (result, error) {
 				return route.EndpointTransitAdmission{}, errors.New("full Responder admission mismatch")
 			}
 			return route.EndpointTransitAdmission{AuthorizationID: identifier("responder-admission"), NetworkID: networkID, Digest: epochDigest, Epoch: epoch, TransitRole: route.ResponderRole, TransitNodeID: responderNode, NotAfter: deadline}, nil
-		}, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 4096, DrainTimeout: time.Second})
+		}, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 4096, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		return result{}, err
 	}

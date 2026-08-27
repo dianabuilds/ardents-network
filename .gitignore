@@ -35,5 +35,6 @@ experiments/**/secret/
 
 # Tool-specific temporary files
 .codex-tmp/
+.codex-remote-attachments/
 *.swp
 *~

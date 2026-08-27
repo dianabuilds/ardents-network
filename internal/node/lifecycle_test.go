@@ -219,14 +219,17 @@ func TestRunFailsBeforeReadinessOnKeyMismatch(t *testing.T) {
 	fixture := newLifecycleFixture(t)
 	fixture.snapshot.NodePublicKey[0]++
 	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
-	fixture.config.Emit = func(context.Context, Event) error { return nil }
+	events := make(chan Event, 4)
+	fixture.config.Emit = func(_ context.Context, event Event) error { events <- event; return nil }
 	result, err := Run(context.Background(), fixture.config)
 	if err == nil || result.State != "FAILED" {
 		t.Fatalf("result = %+v, error = %v", result, err)
 	}
-	if connection, dialErr := net.DialTimeout("tcp", fixture.config.Probe.ListenAddress, 50*time.Millisecond); dialErr == nil {
-		_ = connection.Close()
-		t.Fatal("failed Node opened its listener")
+	states := drainStates(events)
+	for _, state := range states {
+		if state == "READY" {
+			t.Fatalf("key-mismatched Node reached READY: %v", states)
+		}
 	}
 }
 
@@ -392,12 +395,17 @@ func encodeProbeRequest(snapshot dutyFacts, nonce [32]byte, payload []byte) []by
 
 func waitForState(t *testing.T, events <-chan Event, state string) {
 	t.Helper()
+	_ = waitForStateEvent(t, events, state)
+}
+
+func waitForStateEvent(t *testing.T, events <-chan Event, state string) Event {
+	t.Helper()
 	deadline := time.After(testLifecycleWait)
 	for {
 		select {
 		case event := <-events:
 			if event.State == state {
-				return
+				return event
 			}
 		case <-deadline:
 			t.Fatalf("Node did not reach %s", state)

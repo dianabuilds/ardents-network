@@ -9,6 +9,11 @@ import (
 
 const maximumRecordBytes = 32 << 10
 
+const (
+	legacyTCPCarrierProfile = "ardents-carrier-tcp-tls-v1"
+	quicCarrierProfile      = "ardents-carrier-quic-v1"
+)
+
 type nodeRecord struct {
 	raw        []byte
 	networkID  [32]byte
@@ -19,6 +24,7 @@ type nodeRecord struct {
 	family     string
 	capability byte
 	endpoint   string
+	carrier    string
 	capacity   uint16
 	publicKey  ed25519.PublicKey
 	keyID      [32]byte
@@ -35,7 +41,7 @@ func parseRecord(raw []byte) (nodeRecord, error) {
 		return nodeRecord{}, errors.New("record magic is invalid")
 	}
 	version, err := d.byte()
-	if err != nil || version != 1 {
+	if err != nil || (version != 1 && version != 2) {
 		return nodeRecord{}, errors.New("record schema version is invalid")
 	}
 	var record nodeRecord
@@ -71,6 +77,12 @@ func parseRecord(raw []byte) (nodeRecord, error) {
 	if record.endpoint, err = d.text(96); err != nil {
 		return nodeRecord{}, err
 	}
+	record.carrier = legacyTCPCarrierProfile
+	if version == 2 {
+		if record.carrier, err = d.text(48); err != nil {
+			return nodeRecord{}, err
+		}
+	}
 	if record.capacity, err = d.uint16(); err != nil {
 		return nodeRecord{}, err
 	}
@@ -88,6 +100,10 @@ func parseRecord(raw []byte) (nodeRecord, error) {
 		return nodeRecord{}, errors.New("record contains trailing bytes")
 	}
 	return record, nil
+}
+
+func validCarrierProfile(profile string) bool {
+	return profile == legacyTCPCarrierProfile || profile == quicCarrierProfile
 }
 
 func (record nodeRecord) signatureValid() bool {

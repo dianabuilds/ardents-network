@@ -31,6 +31,7 @@ type DutyView interface {
 	DutyRecordValidUntil() time.Time
 	DutyDeclaredFamily() string
 	DutyProbeEndpoint() string
+	DutyCarrierProfile() string
 	DutyProbeCapacity() uint16
 	DutyAssignment() string
 	DutyAssignmentDigest() [32]byte
@@ -42,11 +43,13 @@ type DutyView interface {
 	DutyCandidateRecordDigest(uint8) [32]byte
 	DutyCandidateDomainProofDigest(uint8) [32]byte
 	DutyCandidateEndpoint(uint8) string
+	DutyCandidateCarrierProfile(uint8) string
 	DutyCandidateCapacity(uint8) uint16
 	DutyCandidateAssignment(uint8) string
 	DutyCandidateValidFrom(uint8) time.Time
 	DutyCandidateValidUntil(uint8) time.Time
 	DutyCandidateAssignmentNotAfter(uint8) time.Time
+	DutyTransitIssuanceProfileDigest() [32]byte
 	DutyAuthorityCount() uint8
 	DutyAuthorityID(uint8) [32]byte
 	DutyAuthorityPublicKey(uint8) [32]byte
@@ -55,36 +58,38 @@ type DutyView interface {
 // dutyFacts is the Node-owned immutable copy of one DutyView. It is also useful to
 // behavior-test the lifecycle without a Network State runtime.
 type dutyFacts struct {
-	Generation       string
-	NetworkID        [32]byte
-	Epoch            uint64
-	Digest           [32]byte
-	EpochValidFrom   time.Time
-	ValidUntil       time.Time
-	Profile          string
-	Conflicting      bool
-	RecordPresent    bool
-	NodeID           [32]byte
-	NodePublicKey    [32]byte
-	RecordValidFrom  time.Time
-	RecordValidUntil time.Time
-	DeclaredFamily   string
-	ProbeEndpoint    string
-	ProbeCapacity    uint16
-	Assignment       string
-	AssignmentDigest [32]byte
-	Fresh            bool
-	Candidates       [64]dutyCandidate
-	CandidateCount   uint8
-	Authorities      [16]dutyAuthority
-	AuthorityCount   uint8
+	Generation                 string
+	NetworkID                  [32]byte
+	Epoch                      uint64
+	Digest                     [32]byte
+	EpochValidFrom             time.Time
+	ValidUntil                 time.Time
+	Profile                    string
+	Conflicting                bool
+	RecordPresent              bool
+	NodeID                     [32]byte
+	NodePublicKey              [32]byte
+	RecordValidFrom            time.Time
+	RecordValidUntil           time.Time
+	DeclaredFamily             string
+	ProbeEndpoint              string
+	CarrierProfile             string
+	ProbeCapacity              uint16
+	Assignment                 string
+	AssignmentDigest           [32]byte
+	Fresh                      bool
+	Candidates                 [64]dutyCandidate
+	CandidateCount             uint8
+	Authorities                [16]dutyAuthority
+	AuthorityCount             uint8
+	TransitIssuerProfileDigest [32]byte
 }
 
 // dutyCandidate is one narrow State-authorized peer fact. It deliberately
 // contains no source, address history, target, or complete route material.
 type dutyCandidate struct {
 	NodeID, PublicKey, KeyID, FamilyID, RecordDigest, DomainProofDigest [32]byte
-	Endpoint, Assignment                                                string
+	Endpoint, CarrierProfile, Assignment                                string
 	Capacity                                                            uint16
 	ValidFrom, ValidUntil, AssignmentNotAfter                           time.Time
 }
@@ -125,6 +130,7 @@ type RendezvousProfile struct {
 	Certificate                             tls.Certificate
 	HandshakeLimit, WaitingLimit, PairLimit uint16
 	PairByteLimit                           uint64
+	AdmissionTimeout                        time.Duration
 	DrainTimeout                            time.Duration
 }
 
@@ -135,6 +141,7 @@ type InitiatorProfile struct {
 	Certificate                tls.Certificate
 	HandshakeLimit, RelayLimit uint16
 	RelayByteLimit             uint64
+	AdmissionTimeout           time.Duration
 	DrainTimeout               time.Duration
 }
 
@@ -144,6 +151,7 @@ type InitiatorProfile struct {
 type IntroductionProfile struct {
 	Certificate                              tls.Certificate
 	HandshakeLimit, SlotLimit, DeliveryLimit uint16
+	AdmissionTimeout                         time.Duration
 	DrainTimeout                             time.Duration
 }
 
@@ -153,6 +161,7 @@ type ResponderProfile struct {
 	Certificate                tls.Certificate
 	HandshakeLimit, RelayLimit uint16
 	RelayByteLimit             uint64
+	AdmissionTimeout           time.Duration
 	DrainTimeout               time.Duration
 }
 
@@ -172,6 +181,7 @@ func (facts dutyFacts) DutyRecordValidFrom() time.Time  { return facts.RecordVal
 func (facts dutyFacts) DutyRecordValidUntil() time.Time { return facts.RecordValidUntil }
 func (facts dutyFacts) DutyDeclaredFamily() string      { return facts.DeclaredFamily }
 func (facts dutyFacts) DutyProbeEndpoint() string       { return facts.ProbeEndpoint }
+func (facts dutyFacts) DutyCarrierProfile() string      { return facts.CarrierProfile }
 func (facts dutyFacts) DutyProbeCapacity() uint16       { return facts.ProbeCapacity }
 func (facts dutyFacts) DutyAssignment() string          { return facts.Assignment }
 func (facts dutyFacts) DutyAssignmentDigest() [32]byte  { return facts.AssignmentDigest }
@@ -218,6 +228,12 @@ func (facts dutyFacts) DutyCandidateEndpoint(index uint8) string {
 	}
 	return facts.Candidates[index].Endpoint
 }
+func (facts dutyFacts) DutyCandidateCarrierProfile(index uint8) string {
+	if index >= facts.CandidateCount {
+		return ""
+	}
+	return facts.Candidates[index].CarrierProfile
+}
 func (facts dutyFacts) DutyCandidateCapacity(index uint8) uint16 {
 	if index >= facts.CandidateCount {
 		return 0
@@ -248,6 +264,9 @@ func (facts dutyFacts) DutyCandidateAssignmentNotAfter(index uint8) time.Time {
 	}
 	return facts.Candidates[index].AssignmentNotAfter
 }
+func (facts dutyFacts) DutyTransitIssuanceProfileDigest() [32]byte {
+	return facts.TransitIssuerProfileDigest
+}
 func (facts dutyFacts) DutyAuthorityCount() uint8 { return facts.AuthorityCount }
 func (facts dutyFacts) DutyAuthorityID(index uint8) [32]byte {
 	if index >= facts.AuthorityCount {
@@ -271,6 +290,7 @@ type Event struct {
 	Epoch            uint64           `json:"epoch,omitempty"`
 	Generation       string           `json:"generation,omitempty"`
 	Assignment       string           `json:"assignment,omitempty"`
+	CarrierProfile   string           `json:"carrier_profile,omitempty"`
 	AssignmentDigest [32]byte         `json:"assignment_digest,omitempty"`
 	Reason           string           `json:"reason,omitempty"`
 	Resource         *resource.Sample `json:"resource,omitempty"`
@@ -281,6 +301,7 @@ type Result struct {
 	State            string
 	Epoch            uint64
 	Assignment       string
+	CarrierProfile   string
 	AssignmentDigest [32]byte
 	Reason           string
 }

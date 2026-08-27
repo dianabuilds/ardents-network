@@ -21,6 +21,12 @@ type testEpochSpec struct {
 	assignmentSeed        [32]byte
 	domains               []string
 	authorities           []ed25519.PrivateKey
+	profile               string
+	version               byte
+	destinationGateway    [32]byte
+	destinationProfile    []byte
+	transitIssuer         [32]byte
+	transitIssuerProfile  []byte
 }
 
 type testEpoch struct {
@@ -59,18 +65,36 @@ func buildTestEpoch(t *testing.T, spec testEpochSpec) testEpoch {
 
 func buildTestRecord(t *testing.T, network, nodeID [32]byte, private ed25519.PrivateKey,
 	family, endpoint string, capacity uint16, from, until time.Time) fixtureRecord {
+	return buildTestRecordWithCapability(t, network, nodeID, private, family, endpoint, capacity, 1, from, until)
+}
+
+func buildTestRecordWithCapability(t *testing.T, network, nodeID [32]byte, private ed25519.PrivateKey,
+	family, endpoint string, capacity uint16, capability byte, from, until time.Time) fixtureRecord {
+	return buildTestRecordVersion(t, network, nodeID, private, family, endpoint, "", capacity, capability, 1, from, until)
+}
+
+func buildTestRecordWithCarrier(t *testing.T, network, nodeID [32]byte, private ed25519.PrivateKey,
+	family, endpoint, carrier string, capacity uint16, capability byte, from, until time.Time) fixtureRecord {
+	return buildTestRecordVersion(t, network, nodeID, private, family, endpoint, carrier, capacity, capability, 2, from, until)
+}
+
+func buildTestRecordVersion(t *testing.T, network, nodeID [32]byte, private ed25519.PrivateKey,
+	family, endpoint, carrier string, capacity uint16, capability, version byte, from, until time.Time) fixtureRecord {
 	t.Helper()
 	buffer := new(bytes.Buffer)
 	buffer.WriteString("ARNR")
-	buffer.WriteByte(1)
+	buffer.WriteByte(version)
 	buffer.Write(network[:])
 	buffer.Write(nodeID[:])
 	writeTestU64(buffer, 1)
 	writeTestI64(buffer, from.Unix())
 	writeTestI64(buffer, until.Unix())
 	writeTestText(buffer, family)
-	buffer.WriteByte(1)
+	buffer.WriteByte(capability)
 	writeTestText(buffer, endpoint)
+	if version == 2 {
+		writeTestText(buffer, carrier)
+	}
 	writeTestU16(buffer, capacity)
 	buffer.Write(private.Public().(ed25519.PublicKey))
 	buffer.Write(ed25519.Sign(private, buffer.Bytes()))
@@ -130,15 +154,23 @@ func testSummaries(t *testing.T, spec testEpochSpec, records []fixtureRecord) ([
 func encodeTestEpoch(spec testEpochSpec, view [][]byte, rejected [][32]byte, summaries []testDomainSummary,
 	families uint16, capacity uint32, maxFamilyCount uint16, maxFamilyCapacity uint32) []byte {
 	buffer := new(bytes.Buffer)
+	profile := spec.profile
+	if profile == "" {
+		profile = "h3-role-probe-v1"
+	}
+	version := spec.version
+	if version == 0 {
+		version = 1
+	}
 	buffer.WriteString("AREP")
-	buffer.WriteByte(1)
+	buffer.WriteByte(version)
 	buffer.Write(spec.networkID[:])
 	writeTestU64(buffer, spec.number)
 	buffer.Write(spec.previous[:])
 	writeTestI64(buffer, spec.validFrom.Unix())
 	writeTestI64(buffer, spec.validUntil.Unix())
 	writeTestU32(buffer, uint32(len(spec.inputs)))
-	writeTestText(buffer, "h3-role-probe-v1")
+	writeTestText(buffer, profile)
 	inputRoot, viewRoot := fixtureCommitmentRoot(spec.inputs, 0x10), fixtureCommitmentRoot(view, 0x11)
 	buffer.Write(inputRoot[:])
 	buffer.Write(viewRoot[:])
@@ -158,6 +190,16 @@ func encodeTestEpoch(spec testEpochSpec, view [][]byte, rejected [][32]byte, sum
 		writeTestText(buffer, value.id)
 		writeTestU16(buffer, value.count)
 		writeTestU32(buffer, value.capacity)
+	}
+	if version >= 2 {
+		buffer.Write(spec.destinationGateway[:])
+		writeTestU16(buffer, uint16(len(spec.destinationProfile)))
+		buffer.Write(spec.destinationProfile)
+	}
+	if version >= 3 {
+		buffer.Write(spec.transitIssuer[:])
+		writeTestU16(buffer, uint16(len(spec.transitIssuerProfile)))
+		buffer.Write(spec.transitIssuerProfile)
 	}
 	return buffer.Bytes()
 }

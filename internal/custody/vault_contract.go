@@ -27,6 +27,10 @@ const (
 	// current Namespace witness and converts one authority-locked record into a
 	// new active Vault successor before any signing operation can run.
 	OperationActivateRecoveredAuthority OperationKind = "activate-recovered-authority"
+	// OperationPurgeVaultRecord destroys one exact encrypted active or locked
+	// record only after password verification and an explicit confirmation. It
+	// deliberately retains Authority floors.
+	OperationPurgeVaultRecord OperationKind = "purge-vault-record"
 	// OperationInspectEnvelope validates only an envelope's public canonical header.
 	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
@@ -102,6 +106,7 @@ type ConfirmationPrompt string
 
 const (
 	ConfirmationPromptBundleReplacement ConfirmationPrompt = "bundle-replacement"
+	ConfirmationPromptVaultPurge        ConfirmationPrompt = "vault-purge"
 )
 
 // Receipt contains only bounded public custody facts. In particular it never

@@ -57,7 +57,7 @@ func buildArdents(t *testing.T) string {
 		name += ".exe"
 	}
 	path := filepath.Join(t.TempDir(), name)
-	build := exec.Command("go", "build", "-trimpath", "-o", path, "./cmd/ardents")
+	build := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", path, "./cmd/ardents")
 	build.Dir = filepath.Clean(filepath.Join(filepath.Dir(source), "..", "..", ".."))
 	build.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	if output, err := build.CombinedOutput(); err != nil {

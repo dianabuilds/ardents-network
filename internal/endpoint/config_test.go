@@ -94,3 +94,52 @@ func TestEndpointSetupCreatesOneBrokerGeneration(t *testing.T) {
 		t.Fatalf("Endpoint did not create its Broker generation: admission=%v error=%v", setup.Admission, err)
 	}
 }
+
+func TestEndpointPlanPassesAnExplicitClientBrowserEntryStatePath(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "browser-entry.json")
+	plan := endpointPlan{Role: "client", NetworkID: strings.Repeat("01", 32), BrokerID: strings.Repeat("02", 32),
+		AuthorityPublic: strings.Repeat("03", 32), ConnectionPrincipal: strings.Repeat("04", 32),
+		IntroductionPublic: strings.Repeat("05", 32), Target: strings.Repeat("06", 32),
+		ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication", At: "2033-05-18T03:33:20Z",
+		Deadline: "5s", BytesEachDirection: 4096, BrowserEntryStatePath: statePath}
+	if err := plan.validate(); err != nil {
+		t.Fatal(err)
+	}
+	setup, _, _, err := endpointSetup(plan)
+	if err != nil || setup.BrowserEntryStatePath != statePath {
+		t.Fatalf("Endpoint Browser Entry state path = %q, error = %v", setup.BrowserEntryStatePath, err)
+	}
+	plan.BrowserEntryStatePath = "relative.json"
+	if err := plan.validate(); err == nil || !strings.Contains(err.Error(), "browser entry") {
+		t.Fatalf("relative Browser Entry state path accepted: %v", err)
+	}
+	plan.BrowserEntryStatePath = statePath
+	plan.Role = "publisher"
+	if err := plan.validate(); err == nil || !strings.Contains(err.Error(), "browser entry") {
+		t.Fatalf("publisher Browser Entry state path accepted: %v", err)
+	}
+}
+
+func TestEndpointPlanSelectsTheFixedFirefoxBrowserEntryProfile(t *testing.T) {
+	plan := endpointPlan{Role: "client", NetworkID: strings.Repeat("01", 32), BrokerID: strings.Repeat("02", 32),
+		AuthorityPublic: strings.Repeat("03", 32), ConnectionPrincipal: strings.Repeat("04", 32),
+		IntroductionPublic: strings.Repeat("05", 32), Target: strings.Repeat("06", 32),
+		ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication", At: "2033-05-18T03:33:20Z",
+		Deadline: "5s", BytesEachDirection: 4096, BrowserEntryProfile: "firefox-alpha"}
+	if err := plan.validate(); err != nil {
+		t.Fatal(err)
+	}
+	setup, _, _, err := endpointSetup(plan)
+	if err != nil || setup.BrowserEntryStatePath == "" || !filepath.IsAbs(setup.BrowserEntryStatePath) {
+		t.Fatalf("Firefox Browser Entry profile state path = %q, error = %v", setup.BrowserEntryStatePath, err)
+	}
+	plan.BrowserEntryStatePath = filepath.Join(t.TempDir(), "override.json")
+	if err := plan.validate(); err == nil || !strings.Contains(err.Error(), "browser entry") {
+		t.Fatalf("Firefox Browser Entry profile accepted a state-path override: %v", err)
+	}
+	plan.BrowserEntryStatePath = ""
+	plan.BrowserEntryProfile = "unsupported"
+	if err := plan.validate(); err == nil || !strings.Contains(err.Error(), "browser entry") {
+		t.Fatalf("unsupported Browser Entry profile accepted: %v", err)
+	}
+}

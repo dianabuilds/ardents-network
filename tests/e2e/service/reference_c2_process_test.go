@@ -4,24 +4,17 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
-	"errors"
-	"math/big"
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -37,16 +30,92 @@ func TestReferenceC2RejectsUntrustedPublisherApplication(t *testing.T) {
 	runReferenceC2(t, referenceC2Scenario{rejectPublisherApplication: true})
 }
 
-type referenceC2Scenario struct {
-	publisherOffline, rejectPublisherApplication bool
+func TestReferenceC2CarriesOneDynamicPublisherApplication(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{transparentApplication: true})
 }
+
+func TestReferenceC2ExplicitlyWithdrawsDynamicPublication(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{transparentApplication: true, publisherTerminal: referenceC2PublisherWithdrawal})
+}
+
+func TestReferenceC2ClassifiesPublisherApplicationCrash(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{transparentApplication: true, publisherTerminal: referenceC2PublisherApplicationReset})
+}
+
+func TestReferenceC2ClassifiesAbruptPublisherEndpointLoss(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{transparentApplication: true, publisherTerminal: referenceC2PublisherEndpointStop})
+}
+
+func TestReferenceC2CarriesOneRouteThroughProductNodeCommands(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{productNodeTransit: true})
+}
+
+func TestReferenceC2ProductNodeCommandsReportUnavailableAfterPublisherGoesOffline(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{publisherOffline: true, productNodeTransit: true})
+}
+
+func TestReferenceC2RefreshesStateAndWithdrawsProductNodeCommands(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{productNodeTransit: true, refreshWithdrawsProductNodes: true})
+}
+
+func TestReferenceC2RefreshesStateAndWithdrawsProductNodesWithHeldRoute(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{productNodeTransit: true, refreshWithdrawsHeldProductRoute: true})
+}
+
+func TestReferenceC2HardStopsRendezvousWithHeldRoute(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{productNodeTransit: true, hardStopsHeldRendezvous: true})
+}
+
+type referenceC2Scenario struct {
+	publisherTerminal                                                                                                                                                                                                     referenceC2PublisherTerminal
+	publisherOffline, rejectPublisherApplication, transparentApplication, browserEntryDynamic, signedFirefox, productNodeTransit, refreshWithdrawsProductNodes, refreshWithdrawsHeldProductRoute, hardStopsHeldRendezvous bool
+}
+
+type referenceC2PublisherTerminal string
+
+const (
+	referenceC2PublisherWithdrawal       referenceC2PublisherTerminal = "withdrawal"
+	referenceC2PublisherApplicationReset referenceC2PublisherTerminal = "application-reset"
+	referenceC2PublisherEndpointStop     referenceC2PublisherTerminal = "endpoint-stop"
+)
 
 func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	t.Helper()
 	nodeBinary := buildProductCommand(t, "ardents-node")
 	fixtureBinary := buildE2EFixtureCommand(t, "reference-c2")
+	var browserEntryQualification referenceC2BrowserEntryQualification
+	if scenario.browserEntryDynamic {
+		browserEntryQualification = prepareReferenceC2BrowserEntryQualification(t, scenario.signedFirefox)
+	}
+	var alphaControlEndpoint, alphaControlCommand string
+	if runtime.GOOS == "linux" {
+		alphaControlEndpoint = buildProductCommand(t, "ardents")
+		alphaControlCommand = buildProductCommand(t, "ardents-control")
+	}
 	now := time.Now().UTC().Truncate(time.Second)
-	deadline := now.Add(20 * time.Second)
+	timeBudget := 20 * time.Second
+	if scenario.browserEntryDynamic {
+		timeBudget = 40 * time.Second
+	}
+	if scenario.signedFirefox {
+		if !scenario.browserEntryDynamic {
+			t.Fatal("signed Firefox qualification requires the Browser Entry dynamic flow")
+		}
+		timeBudget = 4 * time.Minute
+	}
+	if scenario.refreshWithdrawsProductNodes || scenario.refreshWithdrawsHeldProductRoute || scenario.hardStopsHeldRendezvous {
+		if !scenario.productNodeTransit {
+			t.Fatal("State refresh withdrawal requires product Node transit")
+		}
+		// The full gate runs process packages concurrently. Keep one bounded
+		// budget large enough for all four product Nodes to report their State
+		// transition before the harness releases an already-held Route.
+		timeBudget = 60 * time.Second
+	}
+	if scenario.refreshWithdrawsHeldProductRoute && scenario.hardStopsHeldRendezvous {
+		t.Fatal("C2 held-route State withdrawal and abrupt Rendezvous loss are mutually exclusive")
+	}
+	deadline := now.Add(timeBudget)
 	introductionID, rendezvousID := referenceC2ID(3), referenceC2ID(4)
 	responderID, initiatorID := referenceC2ID(5), referenceC2ID(6)
 	gatewayID := referenceC2ID(13)
@@ -78,9 +147,13 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	inviteID := referenceC2ID(11)
 
 	root := t.TempDir()
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	// Fixture roles use deadline for their own bounded work. Keep the parent
+	// alive briefly longer so a child can report its classified failure instead
+	// of being killed by the parent at the identical instant.
+	ctx, cancel := context.WithDeadline(context.Background(), deadline.Add(5*time.Second))
 	defer cancel()
-	sourceEndpoints, sourceClient := referenceC2StartStateSources(t, ctx, nodeBinary, stateFixture, root)
+	sources := referenceC2StartStateSources(t, ctx, nodeBinary, stateFixture, root)
+	sourceEndpoints, sourceClient := sources.endpoints, sources.client
 	clientCertificate, err := os.ReadFile(sourceClient.certificate)
 	if err != nil {
 		t.Fatal(err)
@@ -96,13 +169,28 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	}
 	publicationPath := filepath.Join(root, "publication.json")
 	configPath := filepath.Join(root, "reference-c2.json")
+	alphaAuthorityPublic, alphaAuthorityPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alphaCorpusFloorRoot := filepath.Join(root, "alpha-corpus-floor")
+	alphaObserverCorpusFloorRoot := filepath.Join(root, "alpha-observer-corpus-floor")
+	alphaServiceLink := "ardents-alpha://reference"
+	alphaGatewayReadyPath := filepath.Join(root, "alpha-gateway-ready.json")
+	alphaRelayReadyPath := filepath.Join(root, "alpha-relay-ready.json")
 	readyRoot := filepath.Join(root, "ready")
 	if err := os.Mkdir(readyRoot, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	completePath := filepath.Join(root, "complete")
+	heldRouteReadyPath := filepath.Join(root, "held-route-ready")
+	heldRouteUserReadyPath := filepath.Join(root, "held-route-user-ready")
+	heldRouteReleasePath := filepath.Join(root, "held-route-release")
 	resourceProofPath := filepath.Join(root, "reference-resources")
-	publisherApplicationAddress := referenceC2Address(t)
+	publisherCrashReadyPath := filepath.Join(root, "publisher-crash-ready")
+	browserEntryStatePath := filepath.Join(root, "browser-entry.json")
+	publisherApplicationAddress := "127.0.0.1:0"
+	publisherApplicationAddressPath := filepath.Join(root, "publisher-application-address")
 	publisherApplicationReady := filepath.Join(root, "publisher-application-ready")
 	stateRoots := map[string]string{}
 	stateMaterials := map[string]uint32{}
@@ -124,7 +212,8 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		"Epoch": epoch, "Deadline": deadline.Format(time.RFC3339), "PublicationPath": publicationPath, "PublisherRoot": filepath.Join(root, "publisher-state"),
 		"GatewayRoot": filepath.Join(root, "gateway-state"), "GatewayProfilePath": filepath.Join(root, "gateway-profile.json"),
 		"ReadyRoot": readyRoot, "CompletePath": completePath, "ResourceProofPath": resourceProofPath,
-		"PublisherApplicationAddress": publisherApplicationAddress, "PublisherApplicationToken": referenceC2Hex(referenceC2ID(14)), "PublisherApplicationReady": publisherApplicationReady,
+		"PublisherApplicationAddress": publisherApplicationAddress, "PublisherApplicationAddressPath": publisherApplicationAddressPath,
+		"PublisherApplicationToken": referenceC2Hex(referenceC2ID(14)), "PublisherApplicationReady": publisherApplicationReady,
 		"Introduction": referenceC2Peer(introductionID, introductionMaterial, introductionAddress), "Rendezvous": referenceC2Peer(rendezvousID, rendezvousMaterial, rendezvousAddress),
 		"Responder": referenceC2Peer(responderID, responderMaterial, responderAddress), "Initiator": referenceC2Peer(initiatorID, initiatorMaterial, initiatorAddress),
 		"Gateway":    referenceC2Peer(gatewayID, gatewayMaterial, gatewayAddress),
@@ -133,9 +222,21 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		"TransitAuthority": hex.EncodeToString(transitAuthorityPublic), "SlotCredential": slotCredential, "ResponderCredential": responderCredential,
 		"IntroductionCredential": introductionCredential, "InviteID": referenceC2Hex(inviteID), "Invite": base64.RawStdEncoding.EncodeToString(invite), "TransitStateRoots": stateRoots, "TransitStateMaterials": stateMaterials,
 		"TransitStateSources": sourceConfig, "TransitStateClient": map[string]string{"Certificate": string(clientCertificate), "PrivateKey": string(clientPrivateKey)},
-		"PublisherOffline": scenario.publisherOffline,
+		"AlphaCorpusAuthority": hex.EncodeToString(alphaAuthorityPublic), "AlphaCorpusPrivate": base64.RawStdEncoding.EncodeToString(alphaAuthorityPrivate),
+		"AlphaCorpusFloorRoot": alphaCorpusFloorRoot, "AlphaObserverCorpusFloorRoot": alphaObserverCorpusFloorRoot, "AlphaServiceLink": alphaServiceLink,
+		"AlphaGatewayReadyPath": alphaGatewayReadyPath, "AlphaRelayReadyPath": alphaRelayReadyPath,
+		"PublisherOffline": scenario.publisherOffline, "TransparentApplication": scenario.transparentApplication,
+		"PublisherTerminal": scenario.publisherTerminal, "PublisherCrashReadyPath": publisherCrashReadyPath,
 	}
-	if firefox := os.Getenv("ARDENTS_REFERENCE_C2_FIREFOX"); firefox != "" {
+	if scenario.browserEntryDynamic {
+		fixture["BrowserEntryStatePath"] = browserEntryStatePath
+	}
+	if scenario.refreshWithdrawsHeldProductRoute || scenario.hardStopsHeldRendezvous {
+		fixture["HeldRouteReady"] = heldRouteReadyPath
+		fixture["HeldRouteUserReady"] = heldRouteUserReadyPath
+		fixture["HeldRouteRelease"] = heldRouteReleasePath
+	}
+	if firefox := os.Getenv("ARDENTS_REFERENCE_C2_FIREFOX"); firefox != "" && !scenario.transparentApplication {
 		fixture["FirefoxExecutable"] = firefox
 	}
 	raw, err := json.Marshal(fixture)
@@ -156,11 +257,20 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		}
 	}
 	transit := make(map[string]<-chan commandResult, 4)
+	productTransit := make(map[string]*referenceC2ProductNode, 4)
 	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder"} {
-		transit[role] = startCommand(ctx, root, fixtureBinary, role, configPath)
-		if err := referenceC2WaitForFile(ctx, filepath.Join(readyRoot, role)); err != nil {
-			process := <-transit[role]
-			t.Fatalf("C2 transit process %s did not become ready: %v\n%s", role, err, process.output)
+		if scenario.productNodeTransit {
+			productTransit[role] = referenceC2StartProductNode(t, ctx, nodeBinary, root, stateFixture, role, stateRoots[role],
+				sourceEndpoints, sourceClient)
+			if err := referenceC2WaitForProductNodeReady(ctx, productTransit[role]); err != nil {
+				t.Fatalf("C2 product Node %s did not become ready: %v\n%s", role, err, productTransit[role].stderr.String())
+			}
+		} else {
+			transit[role] = startCommand(ctx, root, fixtureBinary, role, configPath)
+			if err := referenceC2WaitForFile(ctx, filepath.Join(readyRoot, role)); err != nil {
+				process := <-transit[role]
+				t.Fatalf("C2 transit process %s did not become ready: %v\n%s", role, err, process.output)
+			}
 		}
 	}
 	if probe, err := net.DialTimeout("tcp", initiatorAddress, time.Second); err != nil {
@@ -169,11 +279,33 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		_ = probe.Close()
 	}
 	gateway := startCommand(ctx, root, fixtureBinary, "gateway", configPath)
-	publisher := startCommand(ctx, root, fixtureBinary, "publisher", configPath)
+	var publisher <-chan commandResult
+	var killablePublisher *killableCommand
+	if scenario.publisherTerminal == referenceC2PublisherEndpointStop {
+		killablePublisher = startKillableCommand(ctx, root, fixtureBinary, "publisher", configPath)
+		publisher = killablePublisher.result
+	} else {
+		publisher = startCommand(ctx, root, fixtureBinary, "publisher", configPath)
+	}
 	if err := referenceC2WaitForFile(ctx, publicationPath); err != nil {
 		process := <-publisher
 		t.Fatalf("C2 Publisher process did not publish: %v\n%s", err, process.output)
 	}
+	stageReferenceC2AlphaCorpus(t, alphaControlEndpoint, alphaControlCommand, publicationPath, alphaAuthorityPublic, alphaAuthorityPrivate, alphaCorpusFloorRoot, network, alphaServiceLink)
+	stageReferenceC2AlphaCorpus(t, alphaControlEndpoint, alphaControlCommand, publicationPath, alphaAuthorityPublic, alphaAuthorityPrivate, alphaObserverCorpusFloorRoot, network, alphaServiceLink)
+	alphaGateway := startCommand(ctx, root, fixtureBinary, "alpha-gateway", configPath)
+	if err := referenceC2WaitForFile(ctx, alphaGatewayReadyPath); err != nil {
+		process := <-alphaGateway
+		t.Fatalf("C2 alpha Gateway process did not become ready: %v\n%s", err, process.output)
+	}
+	alphaRelay := startCommand(ctx, root, fixtureBinary, "alpha-relay", configPath)
+	if err := referenceC2WaitForFile(ctx, alphaRelayReadyPath); err != nil {
+		process := <-alphaRelay
+		t.Fatalf("C2 alpha Relay process did not become ready: %v\n%s", err, process.output)
+	}
+	alphaObserver := startCommand(ctx, root, fixtureBinary, "alpha-observer", configPath)
+	alphaObserverResult := <-alphaObserver
+	assertC2AlphaObserverResolved(t, alphaObserverResult)
 	if err := referenceC2WaitForFile(ctx, filepath.Join(readyRoot, "gateway")); err != nil {
 		process := <-gateway
 		t.Fatalf("C2 Gateway process did not become ready: %v\n%s", err, process.output)
@@ -186,7 +318,13 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 			if err := os.WriteFile(completePath, []byte("complete\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			assertC2TransitDrained(t, transit, gateway)
+			if scenario.productNodeTransit {
+				referenceC2StopProductNodes(t, productTransit)
+			} else {
+				assertC2TransitDrained(t, transit, gateway)
+			}
+			assertC2DrainedResult(t, "alpha-gateway", <-alphaGateway)
+			assertC2DrainedResult(t, "alpha-relay", <-alphaRelay)
 			return
 		}
 		if err := referenceC2WaitForFile(ctx, publisherApplicationReady); err != nil {
@@ -195,19 +333,114 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		}
 	}
 	user := startCommand(ctx, root, fixtureBinary, "user", configPath)
-	processes := map[string]commandResult{"user": <-user, "publisher": <-publisher}
+	if scenario.publisherTerminal == referenceC2PublisherEndpointStop {
+		if err := referenceC2WaitForFile(ctx, publisherCrashReadyPath); err != nil {
+			t.Fatalf("C2 Publisher Endpoint crash point was not reached: %v", err)
+		}
+		if err := killablePublisher.Kill(); err != nil {
+			t.Fatalf("hard-stop C2 Publisher Endpoint: %v", err)
+		}
+	}
+	var browserEntryResult <-chan commandResult
+	if scenario.browserEntryDynamic {
+		if err := referenceC2WaitForFile(ctx, browserEntryStatePath); err != nil {
+			process := <-user
+			t.Fatalf("C2 User did not publish Browser Entry state: %v\n%s", err, process.output)
+		}
+		browserEntryResult = startReferenceC2BrowserEntryQualification(ctx, root, browserEntryQualification, browserEntryStatePath, resourceProofPath)
+	}
+	if scenario.refreshWithdrawsHeldProductRoute || scenario.hardStopsHeldRendezvous {
+		if err := referenceC2WaitForFile(ctx, heldRouteReadyPath); err != nil {
+			t.Fatalf("C2 product route did not become held: %v", err)
+		}
+		if err := referenceC2WaitForFile(ctx, heldRouteUserReadyPath); err != nil {
+			t.Fatalf("C2 User did not complete held-route setup: %v", err)
+		}
+		if scenario.refreshWithdrawsHeldProductRoute {
+			successor := referenceC2SuccessorStateFixture(t, stateFixture)
+			for _, source := range sources.servers {
+				source.replaceState(t, successor)
+			}
+			for role, process := range productTransit {
+				if err := referenceC2WaitForProductNodeState(ctx, process, "DRAINING"); err != nil {
+					t.Fatalf("held C2 product Node %s did not drain after refreshed State: %v\n%s", role, err, process.stderr.String())
+				}
+				if err := referenceC2WaitForProductNodeState(ctx, process, "WITHDRAWN"); err != nil {
+					t.Fatalf("held C2 product Node %s did not withdraw after refreshed State: %v\n%s", role, err, process.stderr.String())
+				}
+			}
+		} else {
+			referenceC2HardStopProductNode(t, productTransit["rendezvous"])
+		}
+		if err := os.WriteFile(heldRouteReleasePath, []byte("release\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	processes := map[string]commandResult{"user": <-user}
+	publisherResult := <-publisher
+	if scenario.publisherTerminal == referenceC2PublisherEndpointStop {
+		if publisherResult.err == nil {
+			t.Fatalf("hard-stopped Publisher Endpoint reported success: %s", publisherResult.output)
+		}
+	} else {
+		processes["publisher"] = publisherResult
+	}
+	if browserEntryResult != nil {
+		process := <-browserEntryResult
+		if process.err != nil {
+			t.Fatalf("C2 dynamic Firefox Browser Entry qualification failed: %v\n%s", process.err, process.output)
+		}
+	}
 	if publisherApplication != nil {
-		processes["publisher-app"] = <-publisherApplication
+		applicationResult := <-publisherApplication
+		if scenario.publisherTerminal == referenceC2PublisherApplicationReset {
+			if applicationResult.err == nil || !strings.Contains(string(applicationResult.output), "simulated Publisher Application crash after partial response") {
+				t.Fatalf("Publisher Application crash result = %v\n%s", applicationResult.err, applicationResult.output)
+			}
+		} else if scenario.publisherTerminal == referenceC2PublisherEndpointStop {
+			if applicationResult.err == nil || !strings.Contains(string(applicationResult.output), "simulated Publisher Endpoint crash closed the local Application handoff") {
+				t.Fatalf("Publisher Endpoint crash Application result = %v\n%s", applicationResult.err, applicationResult.output)
+			}
+		} else {
+			processes["publisher-app"] = applicationResult
+		}
 	}
 	if err := os.WriteFile(completePath, []byte("complete\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for role, process := range transit {
-		processes[role] = <-process
+	if scenario.productNodeTransit {
+		if scenario.refreshWithdrawsProductNodes {
+			successor := referenceC2SuccessorStateFixture(t, stateFixture)
+			for _, source := range sources.servers {
+				source.replaceState(t, successor)
+			}
+			for role, process := range productTransit {
+				if err := referenceC2WaitForProductNodeState(ctx, process, "DRAINING"); err != nil {
+					t.Fatalf("C2 product Node %s did not drain after refreshed State: %v\n%s", role, err, process.stderr.String())
+				}
+				if err := referenceC2WaitForProductNodeState(ctx, process, "WITHDRAWN"); err != nil {
+					t.Fatalf("C2 product Node %s did not withdraw after refreshed State: %v\n%s", role, err, process.stderr.String())
+				}
+			}
+		}
+		referenceC2StopProductNodes(t, productTransit)
+	} else {
+		for role, process := range transit {
+			processes[role] = <-process
+		}
 	}
 	processes["gateway"] = <-gateway
-	roles := []string{"user", "publisher", "initiator", "introduction", "rendezvous", "responder", "gateway"}
-	if !scenario.publisherOffline {
+	processes["alpha-gateway"] = <-alphaGateway
+	processes["alpha-relay"] = <-alphaRelay
+	roles := []string{"user", "gateway"}
+	if scenario.publisherTerminal != referenceC2PublisherEndpointStop {
+		roles = append(roles, "publisher")
+	}
+	if !scenario.productNodeTransit {
+		roles = append(roles, "initiator", "introduction", "rendezvous", "responder")
+	}
+	roles = append(roles, "alpha-gateway", "alpha-relay")
+	if !scenario.publisherOffline && scenario.publisherTerminal != referenceC2PublisherApplicationReset && scenario.publisherTerminal != referenceC2PublisherEndpointStop {
 		roles = append(roles, "publisher-app")
 	}
 	for _, role := range roles {
@@ -234,161 +467,17 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		if role == "user" && scenario.publisherOffline && observed.Class != "service unavailable" {
 			t.Fatalf("offline C2 User result class = %q, want service unavailable", observed.Class)
 		}
-	}
-}
-
-func assertPublisherApplicationRejection(t *testing.T, publisher, application <-chan commandResult, readyPath string) {
-	t.Helper()
-	publisherResult := <-publisher
-	applicationResult := <-application
-	if publisherResult.err == nil || !strings.Contains(string(publisherResult.output), "handoff token is invalid") {
-		t.Fatalf("Publisher accepted untrusted local Application: %v\n%s", publisherResult.err, publisherResult.output)
-	}
-	if applicationResult.err == nil || !strings.Contains(string(applicationResult.output), "static request is invalid or incomplete") {
-		t.Fatalf("untrusted local Application reported success: %v\n%s", applicationResult.err, applicationResult.output)
-	}
-	if _, err := os.Stat(readyPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("untrusted local Application produced Publisher readiness: %v", err)
-	}
-}
-
-func assertC2TransitDrained(t *testing.T, transit map[string]<-chan commandResult, gateway <-chan commandResult) {
-	t.Helper()
-	for role, process := range transit {
-		assertC2DrainedResult(t, role, <-process)
-	}
-	assertC2DrainedResult(t, "gateway", <-gateway)
-}
-
-func assertC2DrainedResult(t *testing.T, role string, process commandResult) {
-	t.Helper()
-	if process.err != nil {
-		t.Fatalf("C2 %s did not drain after local Application refusal: %v\n%s", role, process.err, process.output)
-	}
-	var observed struct {
-		Schema, Role, Class string
-		Passed              bool
-	}
-	line := strings.TrimSpace(string(process.output))
-	if index := strings.LastIndex(line, "\n"); index >= 0 {
-		line = line[index+1:]
-	}
-	if err := json.Unmarshal([]byte(line), &observed); err != nil || observed.Schema != "ardents-e2e-reference-c2-result-v1" || observed.Role != role || !observed.Passed || observed.Class != "drained" {
-		t.Fatalf("C2 %s drain result = %q / %+v / %v", role, process.output, observed, err)
-	}
-}
-
-func referenceC2WaitForFile(ctx context.Context, path string) error {
-	ticker := time.NewTicker(20 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() && info.Size() > 0 {
-			return nil
+		if scenario.publisherTerminal == referenceC2PublisherWithdrawal && role == "publisher" && observed.Class != "unpublished" {
+			t.Fatalf("withdrawn C2 Publisher result class = %q, want unpublished", observed.Class)
 		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
+		if scenario.publisherTerminal == referenceC2PublisherWithdrawal && role == "user" && observed.Class != "clean service connection close" {
+			t.Fatalf("withdrawn C2 User result class = %q, want clean service connection close", observed.Class)
+		}
+		if scenario.publisherTerminal == referenceC2PublisherApplicationReset && (role == "publisher" || role == "user") && observed.Class != "abrupt connection loss" {
+			t.Fatalf("Publisher Application crash C2 %s result class = %q, want abrupt connection loss", role, observed.Class)
+		}
+		if scenario.publisherTerminal == referenceC2PublisherEndpointStop && role == "user" && observed.Class != "abrupt connection loss" {
+			t.Fatalf("Publisher Endpoint crash C2 User result class = %q, want abrupt connection loss", observed.Class)
 		}
 	}
-}
-
-type referenceC2CertificateMaterial struct {
-	public      [32]byte
-	certificate string
-	privateKey  string
-}
-
-func referenceC2Certificate(t *testing.T, serial int64, name string) referenceC2CertificateMaterial {
-	t.Helper()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	template := &x509.Certificate{SerialNumber: big.NewInt(serial), Subject: pkix.Name{CommonName: name}, NotBefore: time.Now().Add(-time.Minute),
-		NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, BasicConstraintsValid: true}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, public, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	privateDER, err := x509.MarshalPKCS8PrivateKey(private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var material referenceC2CertificateMaterial
-	copy(material.public[:], public)
-	material.certificate = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
-	material.privateKey = string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER}))
-	return material
-}
-
-func referenceC2Address(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	address := listener.Addr().String()
-	_ = listener.Close()
-	return address
-}
-
-func referenceC2Peer(nodeID [32]byte, material referenceC2CertificateMaterial, endpoint string) map[string]string {
-	return map[string]string{"NodeID": referenceC2Hex(nodeID), "PublicKey": referenceC2Hex(material.public), "Endpoint": endpoint,
-		"Certificate": material.certificate, "PrivateKey": material.privateKey}
-}
-
-func referenceC2TransitCredential(t *testing.T, authority ed25519.PrivateKey, network, digest [32]byte, epoch uint64, transitNode [32]byte,
-	role byte, attachment [32]byte, deadline time.Time, marker byte) map[string]string {
-	t.Helper()
-	material := referenceC2Certificate(t, int64(marker), "transit-client")
-	certificate, err := tls.X509KeyPair([]byte(material.certificate), []byte(material.privateKey))
-	if err != nil || len(certificate.Certificate) != 1 {
-		t.Fatal("create transit client certificate")
-	}
-	certificate.Leaf, err = x509.ParseCertificate(certificate.Certificate[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	digestKey, err := route.ClientTLSKeyDigest(certificate.Leaf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	grant, err := route.IssueTransitGrant(route.TransitGrant{IssuerID: sha256.Sum256(authority.Public().(ed25519.PublicKey)), GrantID: referenceC2ID(marker),
-		NetworkID: network, Digest: digest, AttachmentID: attachment, TransitNodeID: transitNode, ClientKeyDigest: digestKey,
-		Epoch: epoch, TransitRole: role, NotAfter: deadline}, authority)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return map[string]string{"Grant": base64.RawStdEncoding.EncodeToString(grant), "Certificate": material.certificate, "PrivateKey": material.privateKey}
-}
-
-func referenceC2EntryInvite(t *testing.T, material referenceC2CertificateMaterial, network, digest [32]byte, epoch uint64, candidate entry.Candidate,
-	deadline, now time.Time) []byte {
-	t.Helper()
-	certificate, err := tls.X509KeyPair([]byte(material.certificate), []byte(material.privateKey))
-	if err != nil {
-		t.Fatal(err)
-	}
-	signer, ok := certificate.PrivateKey.(ed25519.PrivateKey)
-	if !ok {
-		t.Fatal("fixture Initiator private key is invalid")
-	}
-	raw, err := entry.Issue(entry.IssueInput{NetworkID: network, Digest: digest, Epoch: epoch,
-		Candidate: candidate,
-		NotBefore: now.Add(-time.Second), NotAfter: deadline, Slot: 0, Generation: 1}, signer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
-}
-
-func referenceC2Hex(value [32]byte) string { return hex.EncodeToString(value[:]) }
-
-func referenceC2ID(value byte) [32]byte {
-	var result [32]byte
-	for index := range result {
-		result[index] = value + byte(index)
-	}
-	return result
 }

@@ -4,7 +4,7 @@ title: Target Link reachability acquisition for closed alpha
 status: decided
 owner: Product Owner and Codex
 started: 2026-08-25
-reviewed: 2026-08-25
+reviewed: 2026-08-26
 ---
 
 # R-106 — How can a User who has only an exact Target Link obtain one current authenticated Service Publication and its C-2/Entry facts for the closed alpha without a direct Publisher origin, a hidden directory, a stale replay path, or a shadow Namespace authority?
@@ -20,8 +20,10 @@ or narrow the alpha claim before any user-facing `open` command is built.
   origin, mutable reachability, Node identity, nor a naming fallback
   ([CONTEXT](../../../CONTEXT.md)).
 - Private Reachability Resolution is required for Target Links as well as
-  name-derived Targets and has no direct public fallback. Its maintained
-  target-descriptor protocol is not implemented yet.
+  name-derived Targets and has no direct public fallback. The maintained
+  Descriptor v1, Gateway floor/conflict state, Entry-to-Initiator private
+  carrier, and C-2 tracer now exercise that selected path; no participant
+  `open` command or normal Endpoint acquisition profile exists yet.
 - `publication.Decode` verifies a bounded Credential and publication against
   the target's Service Authority. `OpenUserReferenceSite` further compares the
   Target Link against that publication before emitting a browser origin.
@@ -111,6 +113,45 @@ Invite, and direct Publisher endpoint before an HTTP request is possible.
   learn the current facts, the invitation is the acquisition authority. It is
   potentially a useful closed-alpha test fixture, but must be explicitly
   described as such and cannot be presented as Target Link reachability.
+- **Measurement (2026-08-26):** the maintained separate-process C-2 tracer
+  starts distinct Publisher, User, Destination Resolution Gateway,
+  Introduction, Initiator, Rendezvous, and Responder duties. It takes the exact
+  Target only through the User's private Entry-to-Initiator OHTTP lookup, then
+  verifies the returned Descriptor before it spends separate C-2 Entry work.
+  The static, unavailable-Publisher, untrusted-Application, and dynamic HTTP/1.1
+  scenarios pass; the User never receives a direct Publisher origin or a plan
+  that embeds the Descriptor. This is bounded tracer evidence, not a normal
+  participant open flow, multi-host operation, public deployment, or a
+  freshness proof for a distribution source.
+- **Implementation audit (2026-08-26):** `AlphaBrowserResolution` proves
+  `name.ard -> accepted alpha floor -> exact C-2 Service` in a maintained
+  Endpoint integration test and Windows Firefox qualification. Its only
+  callers are those tests: no `ardents endpoint` command yet supplies the
+  alpha floor plus typed State/Entry/Private-Reachability/C-2 opener. A command
+  that copied e2e JSON facts would be rejected option 1 in a different form,
+  not a participant acquisition path. The runtime must be built from selected
+  option-2 inputs before H4-4 can call the browser route participant-operable.
+- **Runtime-boundary audit (2026-08-26):** an imported `entry` owner can
+  already revalidate and open a current Initiator candidate. A returned
+  Descriptor already binds Introduction and Rendezvous identities, and the
+  existing State `ResolutionView.Candidate` can verify those identities. The
+  missing signed fact is narrower but consequential: State has no
+  purpose-selected Destination Resolution Gateway record containing the
+  Gateway identity/family and its signed OHTTP `GatewayProfile`. Choosing the
+  first Rendezvous-domain candidate or carrying that profile in an operator
+  plan would create an unselected discovery/authority rule. A participant
+  runtime needs that State projection before it can invoke the existing typed
+  private-reachability and C-2 APIs.
+- **Implementation measurement (2026-08-26):** the accepted State projection
+  is now Epoch v2: it binds one `destination-resolution` candidate to opaque
+  signed GatewayProfile bytes. State rejects a missing, oversized, mismatched,
+  or ambiguous projection and exposes no candidate ordering or alternate
+  profile. `OpenAlphaBrowserRuntime` then proves in one Endpoint integration
+  test that a browser `reference.ard` request obtains its binding solely from
+  the retained alpha floor, its Gateway/C-2 facts solely from State and Entry,
+  performs OHTTP through the selected Initiator, and reaches the Publisher's
+  ordinary HTTP application. The test is a composition proof, not a
+  participant credential-acquisition or installed-process proof.
 
 ## Options
 
@@ -147,10 +188,18 @@ that it is the smallest selected path which preserves the stated H4-3 journey.
 ## Disposition
 
 Decided. ADR-0036 and `docs/technical/private-reachability.md` own the selected
-boundary. The closed Descriptor v1 codec and its Endpoint-to-C-2 Reference
-Site composition are implemented and covered by the maintained C-2 Reference
-Site behavior test. Gateway-local durable generation/conflict state has its own
-restart, stale-slot, and same-generation-conflict behavior tests. The
-separate-process tracer has not yet adopted the descriptor. The next work is
-private lookup and the falsification experiment. R-106 no longer blocks
-selection; it continues to govern that implementation and qualification.
+boundary. Descriptor v1, Gateway-local durable generation/conflict state, the
+private carrier, and its Endpoint-to-C-2 Reference Site composition are
+implemented. The separate-process tracer now adopts the Descriptor and carrier;
+run `go test ./tests/e2e/service -run '^TestReferenceC2' -count=1` for its
+bounded behavior evidence. It does not make the path participant-ready: a
+normal Endpoint still lacks a first-run/acquisition profile and a user-facing
+`open` command. R-106 no longer blocks the selected tracer; it continues to
+govern participant composition, publication-withdrawal/failure qualification,
+and any future production claim. The Product Owner accepted the missing State
+projection on 2026-08-26; ADR-0046 owns its source-of-truth boundary and the
+projection/runtime composition is implemented. The remaining participant
+blocker is not another resolver or route plan: the maintained command has no
+enrolled owner for the current State view, Entry set, and one-use Transit TLS
+credentials. That ownership/distribution boundary must be selected before a
+normal Endpoint command may expose Browser Entry readiness.

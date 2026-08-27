@@ -57,7 +57,7 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 	report.Inspection = result
 	report.Release = string(releaseDecision.Outcome)
 	if networkAccepted {
-		report.NetworkEpoch, report.NetworkDigest = networkSnapshot.Epoch, networkSnapshot.Digest
+		report.NetworkID, report.NetworkEpoch, report.NetworkDigest = networkSnapshot.NetworkID, networkSnapshot.Epoch, networkSnapshot.Digest
 	}
 	if err != nil {
 		return report, fmt.Errorf("inspect alpha control catalog: %w", err)

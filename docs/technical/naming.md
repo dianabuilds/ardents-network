@@ -121,6 +121,12 @@ tracer can grow.
 - Target resolution is valid only while its signed Record validity, own Lease,
   and complete parent lineage remain valid; a V3 target Record is decode-only
   and not resolvable until replaced by V4.
+- A V3 current-proof leaf carries an authenticated active-to-Grace lineage
+  boundary and finite `notAfter`. A verifier derives Grace from signed
+  deadlines after that boundary, while an explicit Grace revision remains
+  valid. It does not synthesize a Released Record or choose a reclaim winner;
+  those shared transitions remain H4-6 control work under
+  [ADR-0043](../adr/0043-derive-grace-from-signed-deadlines.md).
 - A verified Binding is not an identity, a Person, an Endpoint location, or a
   privacy guarantee. Private Resolution has the conditions and limitations in
   the threat model; encrypted payloads do not imply anonymity.

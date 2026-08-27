@@ -14,11 +14,22 @@ import (
 // exact Portable artifact and enrollment input. It does not write the unit,
 // reload systemd, enable it, or start the Endpoint.
 func runEndpointUserUnit(input string, output io.Writer) error {
+	return runEndpointEnrollmentUserUnit(input, "enroll", "Ardents Portable Endpoint (closed alpha)", output)
+}
+
+// runEndpointInstalledUserUnit renders the explicit per-user service for one
+// already-installed Ubuntu package enrollment. It neither invokes dpkg nor
+// enables, starts, lingers, or administers a user service.
+func runEndpointInstalledUserUnit(input string, output io.Writer) error {
+	return runEndpointEnrollmentUserUnit(input, "enroll-installed", "Ardents Installed Endpoint (closed alpha)", output)
+}
+
+func runEndpointEnrollmentUserUnit(input, action, description string, output io.Writer) error {
 	if runtime.GOOS != "linux" {
-		return errors.New("portable Endpoint user unit is available only on Linux")
+		return errors.New("endpoint user unit is available only on Linux")
 	}
 	if input == "" {
-		return errors.New("portable Endpoint enrollment input is required")
+		return errors.New("endpoint enrollment input is required")
 	}
 	executable, err := os.Executable()
 	if err != nil {
@@ -32,7 +43,7 @@ func runEndpointUserUnit(input string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	unit, err := portableUserUnit(executable, enrollment)
+	unit, err := enrollmentUserUnit(executable, enrollment, action, description)
 	if err != nil {
 		return err
 	}
@@ -41,6 +52,13 @@ func runEndpointUserUnit(input string, output io.Writer) error {
 }
 
 func portableUserUnit(executable, enrollment string) (string, error) {
+	return enrollmentUserUnit(executable, enrollment, "enroll", "Ardents Portable Endpoint (closed alpha)")
+}
+
+func enrollmentUserUnit(executable, enrollment, action, description string) (string, error) {
+	if action != "enroll" && action != "enroll-installed" || description == "" {
+		return "", errors.New("endpoint user unit action is invalid")
+	}
 	executable, err := unitArgument(executable)
 	if err != nil {
 		return "", fmt.Errorf("portable Endpoint executable: %w", err)
@@ -50,13 +68,13 @@ func portableUserUnit(executable, enrollment string) (string, error) {
 		return "", fmt.Errorf("portable Endpoint enrollment input: %w", err)
 	}
 	return "[Unit]\n" +
-		"Description=Ardents Portable Endpoint (closed alpha)\n" +
+		"Description=" + description + "\n" +
 		"After=default.target\n\n" +
 		"[Service]\n" +
 		"Type=simple\n" +
 		"UMask=0077\n" +
 		"Restart=no\n" +
-		"ExecStart=" + executable + " endpoint enroll " + enrollment + "\n\n" +
+		"ExecStart=" + executable + " endpoint " + action + " " + enrollment + "\n\n" +
 		"[Install]\n" +
 		"WantedBy=default.target\n", nil
 }

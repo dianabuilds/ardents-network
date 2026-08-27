@@ -47,3 +47,38 @@ func TestResolvedBindingAcceptsOnlyCurrentSameTargetLineage(t *testing.T) {
 		})
 	}
 }
+
+func TestActiveRecordRenewsAndResolvesDuringDerivedGrace(t *testing.T) {
+	t.Parallel()
+	value := record.Record{Name: "alice", Generation: 1, Revision: 1,
+		Lease: "active", Consistency: "current", Recovery: "stable",
+		Authority: "authority-a", Target: [32]byte{1},
+		LeaseExpiresAt: 110, GraceExpiresAt: 120, Continuity: 1}
+	binding, warning, err := record.ResolveBindingLegacy(value, 111, nil)
+	if err != nil || binding.Revision != 1 || warning != "name is in grace and should be treated as volatile" {
+		t.Fatalf("derived grace binding=%+v warning=%q err=%v", binding, warning, err)
+	}
+	updated, err := record.ApplyLegacy(&value, 111, record.Op{Kind: "renew", Name: value.Name,
+		Authority: value.Authority, ExpectedGeneration: value.Generation, ExpectedRevision: value.Revision},
+		record.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour})
+	if err != nil || updated.Revision != 2 || updated.Lease != "active" || updated.LeaseExpiresAt <= 111 {
+		t.Fatalf("renewed from derived grace=%+v err=%v", updated, err)
+	}
+}
+
+func TestLegacyBindingWarnsWhenAnActiveParentHasEnteredGrace(t *testing.T) {
+	t.Parallel()
+	parent := record.Record{Name: "alice", Generation: 1, Revision: 1,
+		Lease: "active", Consistency: "current", Recovery: "stable",
+		Authority: "authority-a", Target: [32]byte{1},
+		LeaseExpiresAt: 110, GraceExpiresAt: 120, Continuity: 1}
+	child := record.Record{Name: "blog.alice", Generation: 1, Revision: 1,
+		Lease: "active", Consistency: "current", Recovery: "stable",
+		Authority: "authority-b", Target: [32]byte{2},
+		ParentName: parent.Name, ParentGeneration: parent.Generation,
+		LeaseExpiresAt: 130, GraceExpiresAt: 140, Continuity: 1}
+	_, warning, err := record.ResolveBindingLegacy(child, 111, []record.Record{parent})
+	if err != nil || warning != "name is in grace and should be treated as volatile" {
+		t.Fatalf("parent-derived grace warning=%q err=%v", warning, err)
+	}
+}

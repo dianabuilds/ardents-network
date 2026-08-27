@@ -138,7 +138,7 @@ func routeCandidates(decision *candidateDecision) ([64]routeCandidate, uint8) {
 	for index := range verified.NodeIDs {
 		result[index] = routeCandidate{NodeID: verified.NodeIDs[index], PublicKey: verified.PublicKeys[index], KeyID: verified.KeyIDs[index],
 			FamilyID: verified.FamilyIDs[index], RecordDigest: verified.RecordDigests[index], DomainProofDigest: sha256.Sum256(verified.DomainProofs[index]),
-			Family: verified.Families[index], Endpoint: verified.Endpoints[index], Capacity: verified.Capacities[index],
+			Family: verified.Families[index], Endpoint: verified.Endpoints[index], CarrierProfile: verified.CarrierProfiles[index], Capacity: verified.Capacities[index],
 			Domain: verified.Domains[index], ValidFrom: verified.ValidFrom[index], ValidUntil: verified.ValidUntil[index],
 			AssignmentNotAfter: verified.AssignmentNotAfter[index]}
 	}

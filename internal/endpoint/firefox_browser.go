@@ -5,15 +5,17 @@ import (
 	"errors"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
 // FirefoxBrowser opens only an Endpoint-created Reference Site origin in the
-// participant-selected Firefox executable. It neither owns Firefox's profile
-// or lifetime nor changes browser, proxy, DNS, VPN, or trust-store settings.
+// participant-selected Firefox executable. An alpha `.ard` URL additionally
+// requires the separately installed Alpha Browser Entry; this adapter neither
+// installs nor changes Firefox's profile, proxy, DNS, VPN, or trust store.
 type FirefoxBrowser struct {
 	executable string
 	start      func(string, string) error
@@ -49,18 +51,15 @@ func (browser *FirefoxBrowser) OpenReference(ctx context.Context, ready Referenc
 	return browser.start(browser.executable, ready.URL)
 }
 
-func startFirefox(executable, referenceURL string) error {
-	command := exec.Command(executable, "-new-window", referenceURL)
-	if err := command.Start(); err != nil {
-		return err
-	}
-	return command.Process.Release()
-}
-
 func validateFirefoxReferenceURL(raw string) error {
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Scheme != "http" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" ||
-		parsed.Hostname() != "127.0.0.1" || parsed.Port() == "" || !strings.HasPrefix(parsed.EscapedPath(), "/site/") {
+	if err != nil || parsed.Scheme != "http" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New("firefox browser received an invalid Reference origin")
+	}
+	if validFirefoxAlphaHost(parsed.Hostname()) && parsed.Port() == "" && parsed.EscapedPath() == "/" {
+		return nil
+	}
+	if !validFirefoxReferenceHost(parsed.Hostname()) || parsed.Port() == "" || !strings.HasPrefix(parsed.EscapedPath(), "/site/") {
 		return errors.New("firefox browser received an invalid Reference origin")
 	}
 	port, portErr := strconv.ParseUint(parsed.Port(), 10, 16)
@@ -72,4 +71,17 @@ func validateFirefoxReferenceURL(raw string) error {
 		return errors.New("firefox browser received an invalid Reference origin")
 	}
 	return nil
+}
+
+func validFirefoxAlphaHost(hostname string) bool {
+	const suffix = ".ard"
+	if !strings.HasSuffix(hostname, suffix) || len(hostname) <= len(suffix) {
+		return false
+	}
+	_, err := alpha.ParseServiceLink("ardents-alpha://" + strings.TrimSuffix(hostname, suffix))
+	return err == nil
+}
+
+func validFirefoxReferenceHost(hostname string) bool {
+	return hostname == "127.0.0.1"
 }

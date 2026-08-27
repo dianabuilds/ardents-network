@@ -28,6 +28,187 @@ import (
 // Rendezvous duty. The two peer legs are deliberately direct TCP/TLS clients:
 // this H4-2A cell owns neither their Endpoint duties nor an H4-3 Route.
 func TestRendezvousNodeProcessPairsOnlyStateAuthorizedLegs(t *testing.T) {
+	running := startRendezvousNodeProcess(t)
+	attachment := [32]byte{0x91}
+	initiator, err := openRendezvousProcessLeg(t.Context(), running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.InitiatorRole))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer initiator.Close()
+	responder, err := openRendezvousProcessLeg(t.Context(), running.endpoint, running.fixture.responder.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.ResponderRole))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer responder.Close()
+	if _, err := initiator.Write([]byte("State-authorized Rendezvous process")); err != nil {
+		t.Fatal(err)
+	}
+	if received := readProcessExact(t, responder, len("State-authorized Rendezvous process")); string(received) != "State-authorized Rendezvous process" {
+		t.Fatalf("Rendezvous process carriage = %q", received)
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := submitRejectedRendezvousProcessLeg(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg([32]byte{0x92}, route.ResponderRole)); err == nil {
+		t.Fatal("Rendezvous process accepted a State-unauthorized LegBinding identity")
+	}
+}
+
+// TestRendezvousNodeProcessBoundsIncompleteTLSHandshakes proves the product
+// command keeps at most its State-selected handshake reservation count while
+// unauthenticated peers deliberately leave TLS records incomplete. It is a
+// narrow resource-bound cell, not a denial-of-service resilience claim.
+func TestRendezvousNodeProcessBoundsIncompleteTLSHandshakes(t *testing.T) {
+	running := startRendezvousNodeProcess(t)
+	connections := make([]net.Conn, 0, 3)
+	for range 3 {
+		connection, err := net.DialTimeout("tcp", running.endpoint, time.Second)
+		if err != nil {
+			t.Fatalf("open incomplete TLS TCP connection: %v", err)
+		}
+		connections = append(connections, connection)
+		if _, err := connection.Write([]byte{0x16, 0x03, 0x03, 0x00, 0x20}); err != nil {
+			t.Fatalf("write incomplete TLS record: %v", err)
+		}
+	}
+	t.Cleanup(func() {
+		for _, connection := range connections {
+			_ = connection.Close()
+		}
+	})
+
+	held, refused := 0, 0
+	for _, connection := range connections {
+		if err := connection.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+			t.Fatalf("set incomplete TLS read deadline: %v", err)
+		}
+		_, err := connection.Read(make([]byte, 1))
+		if err == nil {
+			t.Fatal("incomplete TLS connection unexpectedly returned application data")
+		}
+		if networkError, ok := err.(net.Error); ok && networkError.Timeout() {
+			held++
+			continue
+		}
+		refused++
+	}
+	if held != 2 || refused != 1 {
+		t.Fatalf("incomplete TLS reservations = held %d, refused %d; want 2 and 1", held, refused)
+	}
+	for _, connection := range connections {
+		if err := connection.Close(); err != nil {
+			t.Fatalf("release incomplete TLS connection: %v", err)
+		}
+	}
+
+	attachment := [32]byte{0x94}
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	initiator, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.InitiatorRole))
+	if err != nil {
+		t.Fatalf("open Initiator after incomplete TLS release: %v", err)
+	}
+	defer initiator.Close()
+	responder, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.responder.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.ResponderRole))
+	if err != nil {
+		t.Fatalf("open Responder after incomplete TLS release: %v", err)
+	}
+	defer responder.Close()
+	if _, err := initiator.Write([]byte("released handshake capacity")); err != nil {
+		t.Fatalf("write after incomplete TLS release: %v", err)
+	}
+	if received := readProcessExact(t, responder, len("released handshake capacity")); string(received) != "released handshake capacity" {
+		t.Fatalf("Rendezvous process after incomplete TLS release = %q", received)
+	}
+}
+
+func TestRendezvousNodeProcessExpiresIncompleteTLSAdmission(t *testing.T) {
+	running := startRendezvousNodeProcessWithAdmissionTimeout(t, 100)
+	connection, err := net.DialTimeout("tcp", running.endpoint, time.Second)
+	if err != nil {
+		t.Fatalf("open incomplete TLS TCP connection: %v", err)
+	}
+	defer connection.Close()
+	if _, err := connection.Write([]byte{0x16, 0x03, 0x03, 0x00, 0x20}); err != nil {
+		t.Fatalf("write incomplete TLS record: %v", err)
+	}
+	if err := connection.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("set incomplete TLS expiry read deadline: %v", err)
+	}
+	if _, err := connection.Read(make([]byte, 1)); err == nil {
+		t.Fatal("incomplete TLS admission remained usable after its configured deadline")
+	} else if networkError, ok := err.(net.Error); ok && networkError.Timeout() {
+		t.Fatalf("incomplete TLS admission outlived its configured deadline: %v", err)
+	}
+
+	attachment := [32]byte{0x95}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	initiator, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.InitiatorRole))
+	if err != nil {
+		t.Fatalf("open Initiator after incomplete TLS expiry: %v", err)
+	}
+	defer initiator.Close()
+	responder, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.responder.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.ResponderRole))
+	if err != nil {
+		t.Fatalf("open Responder after incomplete TLS expiry: %v", err)
+	}
+	defer responder.Close()
+	if _, err := initiator.Write([]byte("expired incomplete TLS admission")); err != nil {
+		t.Fatalf("write after incomplete TLS expiry: %v", err)
+	}
+	if received := readProcessExact(t, responder, len("expired incomplete TLS admission")); string(received) != "expired incomplete TLS admission" {
+		t.Fatalf("Rendezvous process after incomplete TLS expiry = %q", received)
+	}
+}
+
+func TestRendezvousNodeProcessKeepsActivePairPastAdmissionDeadline(t *testing.T) {
+	running := startRendezvousNodeProcessWithAdmissionTimeout(t, 500)
+	attachment := [32]byte{0x96}
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	initiator, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.InitiatorRole))
+	if err != nil {
+		t.Fatalf("open Initiator before admission deadline: %v", err)
+	}
+	defer initiator.Close()
+	responder, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.responder.certificate, running.fixture.rendezvous.public,
+		running.fixture.leg(attachment, route.ResponderRole))
+	if err != nil {
+		t.Fatalf("open Responder before admission deadline: %v", err)
+	}
+	defer responder.Close()
+
+	time.Sleep(750 * time.Millisecond)
+	const payload = "active pair past admission deadline"
+	if _, err := initiator.Write([]byte(payload)); err != nil {
+		t.Fatalf("write after admission deadline: %v", err)
+	}
+	if received := readProcessExact(t, responder, len(payload)); string(received) != payload {
+		t.Fatalf("Rendezvous process after admission deadline = %q", received)
+	}
+}
+
+type runningRendezvousNode struct {
+	endpoint string
+	fixture  rendezvousStateFixture
+	process  *nodeProcess
+}
+
+func startRendezvousNodeProcess(t *testing.T) runningRendezvousNode {
+	return startRendezvousNodeProcessWithAdmissionTimeout(t, 1000)
+}
+
+func startRendezvousNodeProcessWithAdmissionTimeout(t *testing.T, admissionTimeoutMS uint32) runningRendezvousNode {
+	t.Helper()
 	endpoint := freeAddress(t)
 	fixture := newRendezvousStateFixture(t, endpoint)
 	ardents := buildCommand(t, "ardents")
@@ -56,45 +237,20 @@ func TestRendezvousNodeProcessPairsOnlyStateAuthorizedLegs(t *testing.T) {
 		acceptRendezvousEpoch(t, ardents, sourceState, fixture, 0)
 		plan := writeJSON(t, fmt.Sprintf("rendezvous-source-%d.json", index), nativeRendezvousSourcePlan(fixture, sourceState, sourceRoles, sourceAddresses[index], sourceServers[index], clientCA.root, sourceClient.sourcePin))
 		stopSources[index] = startSource(t, nodeBinary, plan)
-		defer stopSources[index]()
+		stop := stopSources[index]
+		t.Cleanup(stop)
 	}
 	observation := filepath.Join(t.TempDir(), "clock.observation")
 	stopObserver := startClockObserver(t, observation)
-	defer stopObserver()
-	plan := writeJSON(t, "rendezvous-node.json", rendezvousNodePlan(t, fixture, stateRoot, sourceRoot, sourceAddresses, sourceServers, sourceClient, observation))
+	t.Cleanup(stopObserver)
+	plan := writeJSON(t, "rendezvous-node.json", rendezvousNodePlan(t, fixture, stateRoot, sourceRoot, sourceAddresses, sourceServers, sourceClient, observation, admissionTimeoutMS))
 	process := startNode(t, nodeBinary, plan)
 	t.Cleanup(func() { stopProcess(process) })
 	ready := waitNodeState(t, process, "READY", 5*time.Second)
 	if ready.Epoch != fixture.epoch.number || ready.Assignment != "rendezvous" || ready.AssignmentDigest != fixture.rendezvousAssignment {
 		t.Fatalf("Rendezvous READY event = %+v", ready)
 	}
-
-	attachment := [32]byte{0x91}
-	initiator, err := openRendezvousProcessLeg(t.Context(), endpoint, fixture.initiator.certificate, fixture.rendezvous.public,
-		fixture.leg(attachment, route.InitiatorRole))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer initiator.Close()
-	responder, err := openRendezvousProcessLeg(t.Context(), endpoint, fixture.responder.certificate, fixture.rendezvous.public,
-		fixture.leg(attachment, route.ResponderRole))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer responder.Close()
-	if _, err := initiator.Write([]byte("State-authorized Rendezvous process")); err != nil {
-		t.Fatal(err)
-	}
-	if received := readProcessExact(t, responder, len("State-authorized Rendezvous process")); string(received) != "State-authorized Rendezvous process" {
-		t.Fatalf("Rendezvous process carriage = %q", received)
-	}
-
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-	defer cancel()
-	if err := submitRejectedRendezvousProcessLeg(ctx, endpoint, fixture.initiator.certificate, fixture.rendezvous.public,
-		fixture.leg([32]byte{0x92}, route.ResponderRole)); err == nil {
-		t.Fatal("Rendezvous process accepted a State-unauthorized LegBinding identity")
-	}
+	return runningRendezvousNode{endpoint: endpoint, fixture: fixture, process: process}
 }
 
 type rendezvousStateFixture struct {
@@ -230,7 +386,7 @@ func nativeRendezvousSourcePlan(fixture rendezvousStateFixture, root, roles, add
 		"native_rendezvous_profile": true}
 }
 
-func rendezvousNodePlan(t *testing.T, fixture rendezvousStateFixture, root, sourceRoot string, sourceAddresses [2]string, sourceServers [2]processCert, sourceClient processCert, observation string) map[string]any {
+func rendezvousNodePlan(t *testing.T, fixture rendezvousStateFixture, root, sourceRoot string, sourceAddresses [2]string, sourceServers [2]processCert, sourceClient processCert, observation string, admissionTimeoutMS uint32) map[string]any {
 	t.Helper()
 	identity := writePrivateKey(t, "rendezvous-identity.pem", fixture.rendezvous.private)
 	sources := make([]map[string]any, 2)
@@ -247,7 +403,7 @@ func rendezvousNodePlan(t *testing.T, fixture rendezvousStateFixture, root, sour
 		"client_root": sourceServers[0].root, "client_key_digests": []string{hex.EncodeToString(sourceClient.sourcePin[:])},
 		"materialization_index": fixture.rendezvousIndex, "clock_observation_file": observation, "order_seed": strings.Repeat("39", 32), "source_client_certificate": sourceClient.certificate,
 		"source_client_key": sourceClient.key, "sources": sources, "node_id": hex.EncodeToString(fixture.rendezvous.nodeID[:]), "identity_key": identity,
-		"maximum_duty_ms": 1000, "drain_timeout_ms": 1000, "rendezvous": map[string]any{"handshake_limit": 2, "waiting_limit": 2, "pair_limit": 1, "pair_byte_limit": 1 << 20, "drain_timeout_ms": 1000}}
+		"maximum_duty_ms": 1000, "drain_timeout_ms": 1000, "rendezvous": map[string]any{"handshake_limit": 2, "waiting_limit": 2, "pair_limit": 1, "pair_byte_limit": 1 << 20, "admission_timeout_ms": admissionTimeoutMS, "drain_timeout_ms": 1000}}
 }
 
 func (fixture rendezvousStateFixture) leg(attachment [32]byte, role byte) route.LegBinding {
@@ -255,6 +411,10 @@ func (fixture rendezvousStateFixture) leg(attachment [32]byte, role byte) route.
 	if role == route.ResponderRole {
 		sender = fixture.responder.nodeID
 	}
+	return fixture.legForSender(attachment, role, sender)
+}
+
+func (fixture rendezvousStateFixture) legForSender(attachment [32]byte, role byte, sender [32]byte) route.LegBinding {
 	return route.LegBinding{NetworkID: fixture.network, Epoch: fixture.epoch.number, Digest: fixture.epoch.digest, AttachmentID: attachment,
 		SenderRole: role, PeerRole: route.RendezvousRole, SenderNodeID: sender, PeerNodeID: fixture.rendezvous.nodeID, NotAfter: fixture.now.Add(5 * time.Minute)}
 }

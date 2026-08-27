@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Ardents R-115 zone proxy fixture",
+  "version": "0.0.1",
+  "description": "Disposable R-115 test fixture. It proxies only the synthetic .ard zone.",
+  "permissions": ["proxy", "nativeMessaging"],
+  "host_permissions": ["http://*.ard/*", "https://*.ard/*"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "r115-fixture@ardents.invalid",
+      "data_collection_permissions": {
+        "required": ["none"]
+      },
+      "strict_min_version": "154.0"
+    }
+  }
+}

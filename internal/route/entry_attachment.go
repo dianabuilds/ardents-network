@@ -37,6 +37,7 @@ type EntryAttachmentAcceptance struct {
 	NetworkID, Digest, InitiatorNodeID [32]byte
 	Epoch                              uint64
 	Deadline                           time.Time
+	AdmissionDeadline                  time.Time
 	Certificate                        tls.Certificate
 	Admit                              EntryBindingAdmitter
 }
@@ -69,7 +70,7 @@ func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryA
 	}
 	return source.Acquire(ctx, entry.Attempt{ID: input.AttachmentID, Deadline: input.Deadline},
 		func(contactCtx context.Context, candidate entry.Candidate, presentation entry.Presentation, deadline time.Time) (net.Conn, func() error, bool, error) {
-			certificate, err := freshEndpointClientCertificate()
+			certificate, err := NewClientCertificate()
 			if err != nil {
 				return nil, nil, true, err
 			}
@@ -104,8 +105,15 @@ func AcceptEntryAttachment(ctx context.Context, connection net.Conn, input Entry
 		!time.Now().Before(input.Deadline) {
 		return nil, errors.New("entry attachment acceptance is invalid")
 	}
+	admissionDeadline := input.AdmissionDeadline
+	if admissionDeadline.IsZero() {
+		admissionDeadline = input.Deadline
+	}
+	if !time.Now().Before(admissionDeadline) || admissionDeadline.After(input.Deadline) {
+		return nil, errors.New("entry attachment admission deadline is invalid")
+	}
 	secured := tls.Server(connection, nativeEndpointTransitTLS(input.Certificate))
-	if err := secured.SetDeadline(input.Deadline); err != nil {
+	if err := secured.SetDeadline(admissionDeadline); err != nil {
 		_ = connection.Close()
 		return nil, err
 	}
@@ -182,7 +190,10 @@ func nativeEndpointTransitTLS(certificate tls.Certificate) *tls.Config {
 		ClientAuth: tls.RequireAnyClientCert, SessionTicketsDisabled: true, NextProtos: []string{Profile}}
 }
 
-func freshEndpointClientCertificate() (tls.Certificate, error) {
+// NewClientCertificate creates one short-lived, local TLS client identity for
+// a single native Route attachment. Its caller keeps the private key local and
+// binds its public-key digest through the relevant Entry or Transit record.
+func NewClientCertificate() (tls.Certificate, error) {
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return tls.Certificate{}, err

@@ -5,6 +5,7 @@ go 1.26.6
 require (
 	github.com/cloudflare/circl v1.6.5
 	github.com/openpcc/ohttp v0.0.80
+	github.com/quic-go/quic-go v0.61.0
 	github.com/sigstore/sigstore v1.10.9
 	github.com/theupdateframework/go-tuf/v2 v2.4.2
 	golang.org/x/crypto v0.55.0
@@ -18,7 +19,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/openpcc/bhttp v0.0.80 // indirect
 	github.com/openpcc/twoway v0.0.80 // indirect
-	github.com/quic-go/quic-go v0.61.0 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.11.1 // indirect
 	github.com/sigstore/protobuf-specs v0.5.2 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect

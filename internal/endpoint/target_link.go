@@ -6,8 +6,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-// ErrTargetLinkNetwork reports a link that belongs to another Ardents network.
-var ErrTargetLinkNetwork = errors.New("target link is bound to another network")
+// Network-binding errors prevent a destination supplied for a different
+// Ardents Network from entering this Endpoint's connection flow.
+var (
+	ErrTargetLinkNetwork   = errors.New("target link is bound to another network")
+	ErrAlphaBindingNetwork = errors.New("alpha binding is bound to another network")
+)
 
 // TargetFromLink verifies that text names one Target in this Endpoint's
 // configured network. It does not resolve or connect to that Target.

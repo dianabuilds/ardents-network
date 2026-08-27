@@ -7,7 +7,8 @@ import (
 
 const (
 	legacyLeafSchema uint16 = 1
-	leafSchema       uint16 = 2
+	staticLeafSchema uint16 = 2
+	leafSchema       uint16 = 3
 )
 
 func encodeLeaf(value resolutionLeaf) []byte {
@@ -20,6 +21,9 @@ func encodeLeaf(value resolutionLeaf) []byte {
 	out = append(out, value.signedRecord...)
 	out = append(out, value.lineageRoot[:]...)
 	out = append(out, value.lineageCount, value.state)
+	if schema == leafSchema {
+		out = appendUint64(out, uint64(value.graceAt))
+	}
 	return appendUint64(out, uint64(value.notAfter))
 }
 
@@ -31,14 +35,21 @@ func decodeLeaf(raw []byte) (resolutionLeaf, error) {
 	lineageRoot, rootErr := cursor.array32()
 	lineageCount, countErr := cursor.byte()
 	state, stateErr := cursor.byte()
+	var graceAt uint64
+	var graceErr error
+	if schema == leafSchema {
+		graceAt, graceErr = cursor.uint64()
+	}
 	notAfter, timeErr := cursor.uint64()
 	if schemaErr != nil || sizeErr != nil || signedErr != nil || rootErr != nil || countErr != nil ||
-		stateErr != nil || timeErr != nil || !cursor.done() || (schema != legacyLeafSchema && schema != leafSchema) || size == 0 ||
-		lineageCount > 126 || state > 2 || notAfter > uint64(^uint64(0)>>1) {
+		stateErr != nil || graceErr != nil || timeErr != nil || !cursor.done() ||
+		(schema != legacyLeafSchema && schema != staticLeafSchema && schema != leafSchema) || size == 0 ||
+		lineageCount > 126 || state > 2 || graceAt > uint64(^uint64(0)>>1) || notAfter > uint64(^uint64(0)>>1) ||
+		(graceAt != 0 && graceAt > notAfter) {
 		return resolutionLeaf{}, errors.New("naming materialization leaf is invalid")
 	}
 	value := resolutionLeaf{schema: schema, signedRecord: append([]byte(nil), signed...), lineageRoot: lineageRoot,
-		lineageCount: lineageCount, state: state, notAfter: int64(notAfter)}
+		lineageCount: lineageCount, state: state, graceAt: int64(graceAt), notAfter: int64(notAfter)}
 	if string(encodeLeaf(value)) != string(raw) {
 		return resolutionLeaf{}, errors.New("naming materialization leaf is non-canonical")
 	}

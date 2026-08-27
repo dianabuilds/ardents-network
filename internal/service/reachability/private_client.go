@@ -57,10 +57,11 @@ func OpenClient(config ClientConfig) (*Client, error) {
 	direct := config.Exchange == nil
 	if config.NetworkID == [32]byte{} || config.GatewayPublic == [32]byte{} || config.At.IsZero() ||
 		!config.At.Before(config.Deadline) || config.Deadline.After(config.At.Add(15*time.Second)) ||
-		config.Profile.NetworkID != config.NetworkID || config.Profile.AssignmentNotAfter.Before(config.Deadline) ||
-		!validGatewayProfile(config.Profile, config.GatewayPublic) ||
 		(direct && (err != nil || parsed.Scheme != "https" || parsed.Host == "" || config.BaseTransport == nil)) ||
 		(!direct && (config.RelayURL != "" || config.BaseTransport != nil)) {
+		return nil, errors.New("private reachability client configuration is invalid")
+	}
+	if err := VerifyGatewayProfile(config.Profile, config.NetworkID, config.Profile.NodeID, config.GatewayPublic, config.At, config.Deadline); err != nil {
 		return nil, errors.New("private reachability client configuration is invalid")
 	}
 	var key ohttp.KeyConfig

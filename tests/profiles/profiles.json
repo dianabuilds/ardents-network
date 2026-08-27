@@ -52,12 +52,43 @@
     },
     {
       "id": "affected-platform",
-      "state": "inactive",
-      "make_target": "",
+      "state": "active",
+      "make_target": "qualification-h4-4a-firefox",
       "surface": "affected-platform",
-      "prerequisites": ["accepted platform scope", "selected eligible host"],
-      "invalid_environment": "no accepted platform-specific test or eligible host",
-      "activation": "S8.3 selects a supported platform contract and its required host evidence"
+      "prerequisites": ["interactive Windows desktop host", "explicit installed Firefox executable"],
+      "invalid_environment": "the selected Windows Firefox qualification environment is unavailable"
+    },
+    {
+      "id": "signed-release-input",
+      "state": "active",
+      "make_target": "qualification-h4-4-signed-xpi",
+      "surface": "signed-release-artifact",
+      "prerequisites": ["exact Mozilla-signed H4-4 XPI supplied by the Product Owner"],
+      "invalid_environment": "the selected Mozilla-signed XPI is unavailable or does not match the approved alpha artifact"
+    },
+    {
+      "id": "signed-firefox",
+      "state": "active",
+      "make_target": "qualification-h4-4-signed-firefox",
+      "surface": "clean-profile signed Firefox Browser Entry",
+      "prerequisites": ["interactive Windows desktop host", "explicit installed Firefox executable", "exact Mozilla-signed H4-4 XPI supplied by the Product Owner", "operator explicitly installs the XPI into the temporary Firefox profile"],
+      "invalid_environment": "the selected signed Firefox qualification cannot complete its explicit clean-profile installation"
+    },
+    {
+      "id": "windows-enrollment-v4",
+      "state": "active",
+      "make_target": "qualification-h4-4-windows-enrollment",
+      "surface": "current-user Browser Entry install/remove",
+      "prerequisites": ["Windows host", "exact Mozilla-signed H4-4 XPI supplied by the Product Owner", "no existing Browser Entry native-manifest registration"],
+      "invalid_environment": "the selected Windows enrollment-v4 qualification cannot establish its isolated current-user registration"
+    },
+    {
+      "id": "ubuntu-container-enrollment-v4",
+      "state": "active",
+      "make_target": "qualification-h4-4-ubuntu-enrollment",
+      "surface": "unprivileged Ubuntu container Browser Entry install/remove",
+      "prerequisites": ["available Docker engine", "pre-existing ubuntu:24.04 image", "exact Mozilla-signed H4-4 XPI supplied by the Product Owner"],
+      "invalid_environment": "the selected Ubuntu container enrollment-v4 qualification cannot create its isolated unprivileged environment"
     },
     {
       "id": "soak",
@@ -70,12 +101,30 @@
     },
     {
       "id": "qualification",
-      "state": "inactive",
-      "make_target": "",
+      "state": "active",
+      "make_target": "qualification",
       "surface": "claim-qualification",
-      "prerequisites": ["accepted claim", "claim-specific acceptance matrix", "eligible environment"],
-      "invalid_environment": "no Stage 8 claim-bearing qualification suite is accepted",
-      "activation": "a Product Owner-accepted claim registers its suite under tests/qualification/<claim>"
+      "prerequisites": ["accepted H4-1A or H4-1B Ubuntu claim", "clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
+      "invalid_environment": "the selected Ubuntu user-session qualification environment is unavailable",
+      "timeout": "2m"
+    },
+    {
+      "id": "h4-2-local-emulator",
+      "state": "active",
+      "make_target": "qualification-h4-2-local-emulator",
+      "surface": "local Docker full-C2 TCP/QUIC, signed-profile, no-fallback, and simulated fault-domain qualification",
+      "prerequisites": ["Windows host", "available Docker engine", "pre-existing golang:1.26.6 image"],
+      "invalid_environment": "the selected local Docker H4-2 full-system emulator is unavailable",
+      "timeout": "2m"
+    },
+    {
+      "id": "h4-2-multihost",
+      "state": "active",
+      "make_target": "qualification-h4-2-multihost",
+      "surface": "two-host native Rendezvous qualification",
+      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "free public high port and two remote-loopback Source ports", "remote Docker host networking", "pre-existing golang:1.26.6 image"],
+      "invalid_environment": "the selected Windows-to-VPS native Route qualification environment is unavailable",
+      "timeout": "2m"
     }
   ],
   "suite_roots": [

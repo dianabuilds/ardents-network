@@ -89,6 +89,27 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
+A fresh executable cannot use its own Release Decision code to authenticate
+itself before first execution. `RootBytes` and the first executable therefore
+have caller-owned provenance established by the selected Distribution Profile;
+the Release Module fails closed on their content but does not invent that
+initial provenance. Once one trusted executable has committed the root and
+floors, this external enrollment input authorizes no successor: later
+executable authorization remains exclusively a Release Decision followed by
+the Update boundary.
+
+For the first closed H4 alpha cohort, the selected Distribution Profile is one
+**Alpha Enrollment Pin** sent through an already authenticated Product Owner
+contact independently of GitHub and the download path. It binds one exact
+cohort, release, platform, and manifest SHA-256. The participant compares that
+digest before parsing the manifest and uses its exact inventory to verify the
+executable, descriptor, initial root, complete metadata, and declared static
+companions before execution. On first run the Endpoint must submit those same
+bytes and its own executable to Release Decision and durably establish the
+accepted root/floors before reporting network readiness. The pin is neither a
+Release Module input nor successor authority; it authorizes only this first
+bundle and makes no public or independent release-control claim.
+
 internal/update consumes only that opaque authorization. It owns the bounded
 offline technical transaction: immutable staging, rollback reservation,
 stopped-runtime Adapter calls, atomic activation, self-test, journal,

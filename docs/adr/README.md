@@ -42,6 +42,18 @@ Current decisions:
 - [0035 — Use live Introduction slots and EndpointTransitBinding v1](0035-live-introduction-slots-and-transit-binding-v1.md)
 - [0036 — Resolve Target Links through private, current descriptors](0036-target-private-reachability-v1.md)
 - [0037 — Carry private reachability through a closed Initiator operation](0037-private-reachability-entry-carrier.md)
+- [0038 — Keep alpha disclosure separate from acceptance authority](0038-alpha-control-disclosure-reader-v1.md)
+- [0039 — Use State-authorized opaque Transit Grants for C-2 admission](0039-state-authorized-transit-grants-v1.md)
+- [0040 — Keep named alpha outside the canonical Namespace](0040-bounded-alpha-name-overlay.md)
+- [0041 — Add a separate signed corpus component through alpha-control v2](0041-alpha-control-corpus-component-v2.md)
+- [0042 — Bind the accepting alpha-control command to enrollment v3](0042-bind-alpha-control-command-to-v3-enrollment.md)
+- [0043 — Derive Grace from signed Name deadlines](0043-derive-grace-from-signed-deadlines.md)
+- [0044 — Revalidate Browser Entry proxy authentication](0044-revalidate-browser-entry-proxy-authentication.md)
+- [0045 — Deliver the alpha Browser Entry as a signed unlisted Firefox add-on](0045-firefox-first-unlisted-browser-entry-delivery.md)
+- [0046 — Bind the Destination Resolution Gateway profile in Network State](0046-state-selected-destination-resolution-gateway.md)
+- [0047 — Issue dynamic membership-level Transit Grants through State and Entry](0047-dynamic-membership-transit-grants.md)
+- [0048 — Maintain TCP/TLS and QUIC v1 behind one Carrier contract](0048-maintain-tcp-and-quic-carriers.md)
+- [0049 — Do not select a blocked-entry profile for the functional alpha](0049-defer-blocked-entry-profile.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)

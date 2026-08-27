@@ -31,14 +31,28 @@ type referenceC2SourceEndpoint struct {
 	leafDigest                [32]byte
 }
 
+type referenceC2StateSources struct {
+	endpoints [2]referenceC2SourceEndpoint
+	client    referenceC2SourceCredential
+	servers   [2]*referenceC2StateSource
+}
+
+type referenceC2StateSource struct {
+	binary, plan, stateRoot string
+	context                 context.Context
+	command                 *exec.Cmd
+	done                    chan struct{}
+	stderr                  *bytes.Buffer
+}
+
 func referenceC2StartStateSources(t *testing.T, ctx context.Context, nodeBinary string, fixture referenceC2StateFixture,
-	root string) ([2]referenceC2SourceEndpoint, referenceC2SourceCredential) {
+	root string) referenceC2StateSources {
 	t.Helper()
 	clientAuthority := referenceC2SourceAuthority(t, "reference-c2-source-client-root", 41)
 	client := referenceC2SourceLeaf(t, clientAuthority, "reference-c2-source-client", 42, false)
 	public := fixture.authority.Public().(ed25519.PublicKey)
-	var endpoints [2]referenceC2SourceEndpoint
-	for index := range endpoints {
+	result := referenceC2StateSources{client: client}
+	for index := range result.endpoints {
 		serverAuthority := referenceC2SourceAuthority(t, "reference-c2-source-server-root-"+string(rune('a'+index)), int64(43+index))
 		server := referenceC2SourceLeaf(t, serverAuthority, "reference-c2-source-server-"+string(rune('a'+index)), int64(45+index), true)
 		address := referenceC2Address(t)
@@ -55,31 +69,40 @@ func referenceC2StartStateSources(t *testing.T, ctx context.Context, nodeBinary 
 		if err != nil || os.WriteFile(path, raw, 0o600) != nil {
 			t.Fatal("write reference C2 State source plan")
 		}
-		referenceC2StartStateSource(t, ctx, nodeBinary, path)
-		endpoints[index] = referenceC2SourceEndpoint{address: address, serverName: "reference-c2-source-server-" + string(rune('a'+index)),
+		source := &referenceC2StateSource{binary: nodeBinary, plan: path, stateRoot: stateRoot, context: ctx}
+		source.start(t)
+		t.Cleanup(func() { source.stop(t) })
+		result.servers[index] = source
+		result.endpoints[index] = referenceC2SourceEndpoint{address: address, serverName: "reference-c2-source-server-" + string(rune('a'+index)),
 			root: serverAuthority.root, leafDigest: server.leafDigest}
 	}
-	return endpoints, client
+	return result
 }
 
-func referenceC2StartStateSource(t *testing.T, ctx context.Context, binary, plan string) {
+func (source *referenceC2StateSource) replaceState(t *testing.T, fixture referenceC2StateFixture) {
 	t.Helper()
-	command := exec.CommandContext(ctx, binary, "source", "--config", plan)
+	source.stop(t)
+	referenceC2AcceptState(t, fixture, source.stateRoot, "rendezvous")
+	source.start(t)
+}
+
+func (source *referenceC2StateSource) start(t *testing.T) {
+	t.Helper()
+	command := exec.CommandContext(source.context, source.binary, "source", "--config", source.plan)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var stderr bytes.Buffer
-	command.Stderr = &stderr
+	source.stderr = new(bytes.Buffer)
+	command.Stderr = source.stderr
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if command.ProcessState == nil {
-			_ = command.Process.Kill()
-		}
+	source.command, source.done = command, make(chan struct{})
+	go func() {
 		_ = command.Wait()
-	})
+		close(source.done)
+	}()
 	ready := make(chan bool, 1)
 	go func() {
 		scanner := bufio.NewScanner(stdout)
@@ -88,10 +111,31 @@ func referenceC2StartStateSource(t *testing.T, ctx context.Context, binary, plan
 	select {
 	case ok := <-ready:
 		if !ok {
-			t.Fatalf("reference C2 State source did not become ready: %s", stderr.String())
+			t.Fatalf("reference C2 State source did not become ready: %s", source.stderr.String())
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("reference C2 State source readiness timed out")
+	}
+}
+
+func (source *referenceC2StateSource) stop(t *testing.T) {
+	t.Helper()
+	if source.command == nil || source.done == nil {
+		return
+	}
+	running := true
+	select {
+	case <-source.done:
+		running = false
+	default:
+	}
+	if running && source.command.Process != nil {
+		_ = source.command.Process.Kill()
+	}
+	select {
+	case <-source.done:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("reference C2 State source did not stop: %s", source.stderr.String())
 	}
 }
 

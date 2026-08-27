@@ -33,9 +33,13 @@ it will enable. No role receives a Publisher origin, Service private key,
 complete Route, or authority to select a fallback.
 
 The response must be a fixed-size OHTTP message using the authenticated common
-Gateway configuration profile. The Endpoint binds fresh nonce, Network ID,
-exact Target, deadline, Gateway profile, and selected State generation/digest
-before accepting a response. A Relay/Gateway failure is an explicit private
+Gateway configuration profile. For the interactive profile, State projects one
+assigned Gateway identity/family together with that opaque signed
+`GatewayProfile`; the Endpoint verifies its Reachability-owned signature
+against the same State identity and has no configuration, ordering, URL, or
+profile fallback. The Endpoint binds fresh nonce, Network ID, exact Target,
+deadline, Gateway profile, and selected State generation/digest before
+accepting a response. A Relay/Gateway failure is an explicit private
 reachability failure; ordinary HTTP, DNS, Name resolution, local aliases,
 catalogs, and Publisher origins are not fallbacks. The Endpoint never connects
 directly to the Gateway or an ordinary HTTP Relay: it sends exactly one opaque
@@ -94,15 +98,17 @@ Gateway's identity or family when it overlaps any C-2 peer.
 
 ## Bounded records
 
-`internal/service/reachability` implements Descriptor v1 as one closed binary
-record with a version, Network ID, Target, Authority public key, Publication
-digest, State digest/epoch, Introduction/Rendezvous identities, opaque
-reachability/join values, whole-second expiry, bounded submission
-authorization, complete Publication bytes, and current-Instance Ed25519
-signature. Its `Verify` operation rejects altered, trailing, wrong-version,
-wrong-target, wrong-network, expired, and mismatched Publication evidence
-before an Endpoint can open Entry. No field is implicit or caller-assembled
-from an untrusted configuration.
+`internal/service/reachability` implements a closed versioned Descriptor
+record: v1 contains exactly one bounded fixed Introduction Transit Grant; v2
+declares membership-level dynamic Introduction submission and contains no
+publisher-specific authorization. Both contain Network ID, Target, Authority
+public key, Publication digest, State digest/epoch,
+Introduction/Rendezvous identities, opaque reachability/join values,
+whole-second expiry, complete Publication bytes, and a current-Instance
+Ed25519 signature. Its `Verify` operation rejects altered, trailing,
+unsupported-version, wrong-target, wrong-network, expired, and mismatched
+Publication evidence before an Endpoint can open Entry. No field is implicit
+or caller-assembled from an untrusted configuration.
 
 ### Descriptor publication
 
@@ -114,7 +120,13 @@ The Publisher supplies:
 - a current-Instance signature over a versioned descriptor transcript;
 - one State-bound Introduction profile: State epoch/digest, Introduction Node
   identity, Rendezvous Node identity, opaque reachability and join-handle,
-  attachment ID, opaque submission authorization, and whole-second expiry;
+  either a fixed submission authorization (v1) or an explicit
+  membership-level declaration (v2), and whole-second expiry. A decodable
+  Transit Grant carries its own exact attachment and local TLS-key binding;
+  an Endpoint must not invent or substitute either under that Grant. Under v2
+  it instead obtains one exact target-free Grant through the separate
+  State-selected Credential Relay, and must not reinterpret v1 as that
+  permission;
 - no Node endpoint literal, User identity, Entry Invite, Route, Application
   bytes, Service Authority private material, or Publisher ordinary origin.
 

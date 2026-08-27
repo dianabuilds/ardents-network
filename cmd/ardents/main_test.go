@@ -92,6 +92,26 @@ func TestPortableUserUnitEscapesExactAbsoluteInputs(t *testing.T) {
 	}
 }
 
+func TestInstalledUserUnitUsesOnlyExplicitInstalledEnrollmentAction(t *testing.T) {
+	t.Parallel()
+	executable := filepath.Join(t.TempDir(), "usr", "lib", "ardents", "ardents")
+	enrollment := filepath.Join(t.TempDir(), "package-enrollment.json")
+	unit, err := enrollmentUserUnit(executable, enrollment, "enroll-installed", "Ardents Installed Endpoint (closed alpha)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	escapedExecutable, _ := unitArgument(executable)
+	escapedEnrollment, _ := unitArgument(enrollment)
+	if !strings.Contains(unit, "Description=Ardents Installed Endpoint (closed alpha)\n") ||
+		!strings.Contains(unit, "ExecStart="+escapedExecutable+" endpoint enroll-installed "+escapedEnrollment) ||
+		strings.Contains(unit, "endpoint enroll ") || strings.Contains(unit, "User=") || strings.Contains(unit, "Restart=always") {
+		t.Fatalf("unexpected Installed user unit:\n%s", unit)
+	}
+	if _, err := enrollmentUserUnit(executable, enrollment, "run", "Ardents"); err == nil {
+		t.Fatal("installed unit accepted an arbitrary command action")
+	}
+}
+
 func TestEntryImportRouteRejectsIncompleteCommand(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer

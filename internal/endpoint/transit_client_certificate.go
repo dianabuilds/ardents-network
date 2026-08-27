@@ -37,10 +37,12 @@ func (endpoint *endpoint) transitClientCertificate(authorization []byte, supplie
 	if err != nil {
 		return supplied, nil
 	}
-	if endpoint == nil || endpoint.transitClients == nil {
+	if endpoint == nil {
 		return tls.Certificate{}, errors.New("transit grant has no Endpoint-local credential")
 	}
+	endpoint.transitMu.Lock()
 	certificate, ok := endpoint.transitClients[grant.GrantID]
+	endpoint.transitMu.Unlock()
 	if !ok || !validOptionalTransitClientCertificate(certificate) || certificate.PrivateKey == nil {
 		return tls.Certificate{}, errors.New("transit grant credential is not enrolled")
 	}
@@ -55,4 +57,30 @@ func (endpoint *endpoint) transitClientCertificate(authorization []byte, supplie
 		}
 	}
 	return certificate, nil
+}
+
+func (endpoint *endpoint) enrollTransitClient(authorization []byte, certificate tls.Certificate) (func(), error) {
+	grant, err := route.DecodeTransitGrant(authorization)
+	if err != nil || grant.GrantID == [32]byte{} || !validOptionalTransitClientCertificate(certificate) || certificate.PrivateKey == nil {
+		return nil, errors.New("transit credential enrollment is invalid")
+	}
+	digest, err := route.ClientTLSKeyDigest(certificate.Leaf)
+	if err != nil || digest != grant.ClientKeyDigest {
+		return nil, errors.New("transit credential enrollment does not match its Grant")
+	}
+	endpoint.transitMu.Lock()
+	if endpoint.transitClients == nil {
+		endpoint.transitClients = make(map[[32]byte]tls.Certificate)
+	}
+	if _, exists := endpoint.transitClients[grant.GrantID]; exists {
+		endpoint.transitMu.Unlock()
+		return nil, errors.New("transit credential Grant is already enrolled")
+	}
+	endpoint.transitClients[grant.GrantID] = certificate
+	endpoint.transitMu.Unlock()
+	return func() {
+		endpoint.transitMu.Lock()
+		delete(endpoint.transitClients, grant.GrantID)
+		endpoint.transitMu.Unlock()
+	}, nil
 }

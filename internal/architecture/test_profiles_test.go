@@ -108,15 +108,21 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
-		"affected-platform": false,
-		"developer":         false,
-		"deterministic":     false,
-		"fuzz":              false,
-		"process":           false,
-		"qualification":     false,
-		"race":              false,
-		"soak":              false,
-		"live":              false,
+		"affected-platform":              false,
+		"developer":                      false,
+		"deterministic":                  false,
+		"fuzz":                           false,
+		"h4-2-multihost":                 false,
+		"h4-2-local-emulator":            false,
+		"process":                        false,
+		"qualification":                  false,
+		"race":                           false,
+		"signed-firefox":                 false,
+		"signed-release-input":           false,
+		"soak":                           false,
+		"live":                           false,
+		"ubuntu-container-enrollment-v4": false,
+		"windows-enrollment-v4":          false,
 	}
 	for _, profile := range registry.Profiles {
 		if _, known := required[profile.ID]; !known {

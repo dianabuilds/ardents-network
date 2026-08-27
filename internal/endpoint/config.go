@@ -3,10 +3,12 @@ package endpoint
 import (
 	"crypto/ed25519"
 	"errors"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/browserentry"
 	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -20,6 +22,7 @@ type endpointPlan struct {
 	ApplicationSocket, RouteSocket, AdministrationSocket              string
 	PublicationFile, CredentialFile, InstanceKeyFile                  string
 	PublicationRoot, LegacyGenerationFloor                            string
+	BrowserEntryProfile, BrowserEntryStatePath                        string
 	At, Deadline, Lifetime                                            string
 	BytesEachDirection                                                uint32
 	SendBytes, ReceiveBytes                                           uint32
@@ -44,6 +47,14 @@ func (value endpointPlan) validate() error {
 	if value.ApplicationSocket == "" || value.RouteSocket == "" || value.PublicationFile == "" ||
 		value.At == "" || value.Deadline == "" || !value.validStreamBounds() || value.MaximumConnections > 16 {
 		return errors.New("endpoint plan is incomplete or outside its bound")
+	}
+	if value.BrowserEntryProfile != "" && value.BrowserEntryProfile != "firefox-alpha" {
+		return errors.New("browser entry profile is invalid")
+	}
+	if (value.BrowserEntryProfile != "" && value.Role != "client") ||
+		(value.BrowserEntryStatePath != "" && (value.Role != "client" || !filepath.IsAbs(value.BrowserEntryStatePath))) ||
+		(value.BrowserEntryProfile != "" && value.BrowserEntryStatePath != "") {
+		return errors.New("browser entry state path is invalid")
 	}
 	if value.IntroductionPublic == "" {
 		return errors.New("endpoint plan lacks the Introduction verification key")
@@ -150,6 +161,14 @@ func endpointSetup(plan endpointPlan) (Setup, time.Time, time.Duration, error) {
 		return setup, time.Time{}, 0, err
 	}
 	setup.PublicationRoot, setup.LegacyGenerationFloor = plan.PublicationRoot, plan.LegacyGenerationFloor
+	setup.BrowserEntryStatePath = plan.BrowserEntryStatePath
+	if plan.BrowserEntryProfile == "firefox-alpha" {
+		statePath, stateErr := browserentry.DefaultStatePath()
+		if stateErr != nil {
+			return setup, time.Time{}, 0, stateErr
+		}
+		setup.BrowserEntryStatePath = statePath
+	}
 	grants := []broker.Grant{{Principal: setup.ConnectionPrincipal, Surface: broker.Connection}}
 	if setup.AdministrationPrincipal != [32]byte{} {
 		grants = append(grants, broker.Grant{Principal: setup.AdministrationPrincipal, Surface: broker.Administration})

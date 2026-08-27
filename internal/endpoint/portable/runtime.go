@@ -170,7 +170,7 @@ func Run(ctx context.Context, config Config, observe func(Event)) error {
 	emit(observe, Event{State: StateStarting})
 	runtime, err := Open(config)
 	if err != nil {
-		emit(observe, failureEvent(err))
+		emit(observe, FailureEvent(err))
 		return err
 	}
 	emit(observe, Event{State: StateReady, Attachment: runtime.Attachment()})
@@ -259,7 +259,11 @@ func removeExpectedAttachment(path string) error {
 
 func lifecycleError(reason Reason, cause error) *Error { return &Error{Reason: reason, cause: cause} }
 
-func failureEvent(err error) Event {
+// FailureEvent classifies a Portable startup or shutdown error into the
+// stable lifecycle observation that a higher Endpoint composition can expose.
+// It intentionally does not reveal a filesystem path or operating-system
+// detail.
+func FailureEvent(err error) Event {
 	var lifecycle *Error
 	if errors.As(err, &lifecycle) {
 		switch lifecycle.Reason {

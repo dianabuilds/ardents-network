@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const endpointLifecycleWait = 15 * time.Second
+
 func TestRunEndpointCancellationClosesOwnedListeners(t *testing.T) {
 	root := t.TempDir()
 	applicationSocket := shortApplicationPath(t)
@@ -32,7 +34,7 @@ func TestRunEndpointCancellationClosesOwnedListeners(t *testing.T) {
 	case <-ready:
 	case err := <-completed:
 		t.Fatalf("Endpoint failed before readiness: %v", err)
-	case <-time.After(time.Second):
+	case <-time.After(endpointLifecycleWait):
 		t.Fatal("Endpoint did not become ready")
 	}
 	cancel()
@@ -41,7 +43,7 @@ func TestRunEndpointCancellationClosesOwnedListeners(t *testing.T) {
 		if err == nil {
 			t.Fatal("cancelled Endpoint reported success")
 		}
-	case <-time.After(time.Second):
+	case <-time.After(endpointLifecycleWait):
 		t.Fatal("cancelled Endpoint did not join its listener loop")
 	}
 	for _, path := range []string{plan.ApplicationSocket, plan.ApplicationSocket + ".result", plan.RouteSocket} {

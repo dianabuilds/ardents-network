@@ -17,7 +17,7 @@ type referenceC2DomainSummary struct {
 	capacity uint32
 }
 
-func referenceC2BuildStateEpoch(network [32]byte, epoch uint64, now, deadline time.Time, inputs [][]byte,
+func referenceC2BuildStateEpoch(network [32]byte, epoch uint64, previous [32]byte, now, deadline time.Time, inputs [][]byte,
 	records []referenceC2StateRecord, seed [32]byte, domains []string, authority ed25519.PrivateKey) ([]byte, [32]byte, [][]byte, error) {
 	if epoch == 0 || len(records) == 0 || len(records) > 64 || len(inputs) != len(records) || len(domains) == 0 || len(authority) != ed25519.PrivateKeySize {
 		return nil, [32]byte{}, nil, errors.New("reference C2 State Epoch input is invalid")
@@ -30,7 +30,7 @@ func referenceC2BuildStateEpoch(network [32]byte, epoch uint64, now, deadline ti
 	if err != nil {
 		return nil, [32]byte{}, nil, err
 	}
-	unsigned := referenceC2EncodeStateEpoch(network, epoch, now, deadline, inputs, view, seed, summaries,
+	unsigned := referenceC2EncodeStateEpoch(network, epoch, previous, now, deadline, inputs, view, seed, summaries,
 		familyCount, capacity, maximumFamilyCount, maximumFamilyCapacity)
 	digest := sha256.Sum256(unsigned.Bytes())
 	raw := referenceC2SignStateEpoch(unsigned.Bytes(), digest, authority)
@@ -75,14 +75,14 @@ func referenceC2StateSummaries(network [32]byte, epoch uint64, seed [32]byte, re
 	return summaries, uint16(len(families)), total, uint16(maximumCount), maximumCapacity, nil
 }
 
-func referenceC2EncodeStateEpoch(network [32]byte, epoch uint64, now, deadline time.Time, inputs, view [][]byte, seed [32]byte,
+func referenceC2EncodeStateEpoch(network [32]byte, epoch uint64, previous [32]byte, now, deadline time.Time, inputs, view [][]byte, seed [32]byte,
 	summaries []referenceC2DomainSummary, familyCount uint16, capacity uint32, maximumFamilyCount uint16, maximumFamilyCapacity uint32) *bytes.Buffer {
 	buffer := new(bytes.Buffer)
 	buffer.WriteString("AREP")
 	buffer.WriteByte(1)
 	buffer.Write(network[:])
 	referenceC2U64(buffer, epoch)
-	buffer.Write(make([]byte, 32))
+	buffer.Write(previous[:])
 	referenceC2I64(buffer, now.Add(-time.Minute).Unix())
 	referenceC2I64(buffer, deadline.Unix())
 	referenceC2U32(buffer, uint32(len(inputs)))

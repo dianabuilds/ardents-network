@@ -25,22 +25,26 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 	if plan.Rendezvous != nil {
 		config.Rendezvous = node.RendezvousProfile{Certificate: certificate, HandshakeLimit: plan.Rendezvous.HandshakeLimit,
 			WaitingLimit: plan.Rendezvous.WaitingLimit, PairLimit: plan.Rendezvous.PairLimit,
-			PairByteLimit: plan.Rendezvous.PairByteLimit, DrainTimeout: time.Duration(plan.Rendezvous.DrainTimeoutMS) * time.Millisecond}
+			PairByteLimit: plan.Rendezvous.PairByteLimit, AdmissionTimeout: time.Duration(plan.Rendezvous.AdmissionTimeoutMS) * time.Millisecond,
+			DrainTimeout: time.Duration(plan.Rendezvous.DrainTimeoutMS) * time.Millisecond}
 	}
 	if plan.Initiator != nil {
 		config.Initiator = node.InitiatorProfile{Certificate: certificate, HandshakeLimit: plan.Initiator.HandshakeLimit,
 			RelayLimit: plan.Initiator.RelayLimit, RelayByteLimit: plan.Initiator.RelayByteLimit,
-			DrainTimeout: time.Duration(plan.Initiator.DrainTimeoutMS) * time.Millisecond}
+			AdmissionTimeout: time.Duration(plan.Initiator.AdmissionTimeoutMS) * time.Millisecond,
+			DrainTimeout:     time.Duration(plan.Initiator.DrainTimeoutMS) * time.Millisecond}
 	}
 	if plan.Introduction != nil {
 		config.Introduction = node.IntroductionProfile{Certificate: certificate, HandshakeLimit: plan.Introduction.HandshakeLimit,
 			SlotLimit: plan.Introduction.SlotLimit, DeliveryLimit: plan.Introduction.DeliveryLimit,
-			DrainTimeout: time.Duration(plan.Introduction.DrainTimeoutMS) * time.Millisecond}
+			AdmissionTimeout: time.Duration(plan.Introduction.AdmissionTimeoutMS) * time.Millisecond,
+			DrainTimeout:     time.Duration(plan.Introduction.DrainTimeoutMS) * time.Millisecond}
 	}
 	if plan.Responder != nil {
 		config.Responder = node.ResponderProfile{Certificate: certificate, HandshakeLimit: plan.Responder.HandshakeLimit,
 			RelayLimit: plan.Responder.RelayLimit, RelayByteLimit: plan.Responder.RelayByteLimit,
-			DrainTimeout: time.Duration(plan.Responder.DrainTimeoutMS) * time.Millisecond}
+			AdmissionTimeout: time.Duration(plan.Responder.AdmissionTimeoutMS) * time.Millisecond,
+			DrainTimeout:     time.Duration(plan.Responder.DrainTimeoutMS) * time.Millisecond}
 	}
 	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil {
 		return config, nil

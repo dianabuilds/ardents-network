@@ -53,7 +53,7 @@ func materializeRecords(network [32]byte, signed [][]byte) ([][]byte, [][]byte, 
 func materializeLeaf(index int, entries []recordEntry, byName map[string]int) (resolutionLeaf, error) {
 	head := entries[index]
 	lineage, current := [][]byte{}, head.record
-	state, notAfter, available := effectiveLease(current)
+	summary := effectiveLease(current)
 	seen := map[string]bool{current.Name: true}
 	for depth := 0; current.ParentName != ""; depth++ {
 		if depth >= 126 {
@@ -66,43 +66,61 @@ func materializeLeaf(index int, entries []recordEntry, byName map[string]int) (r
 		seen[current.ParentName] = true
 		parent := entries[parentIndex]
 		lineage = append(lineage, parent.signed)
-		parentState, parentNotAfter, parentAvailable := effectiveLease(parent.record)
-		available = available && parentAvailable
-		if parentState == 2 {
-			state = 2
+		parentSummary := effectiveLease(parent.record)
+		summary.available = summary.available && parentSummary.available
+		if parentSummary.state == 2 {
+			summary.state, summary.graceAt = 2, 0
+		} else if summary.state != 2 && parentSummary.graceAt != 0 &&
+			(summary.graceAt == 0 || parentSummary.graceAt < summary.graceAt) {
+			summary.graceAt = parentSummary.graceAt
 		}
-		if notAfter == 0 || parentNotAfter < notAfter {
-			notAfter = parentNotAfter
+		if summary.notAfter == 0 || parentSummary.notAfter < summary.notAfter {
+			summary.notAfter = parentSummary.notAfter
 		}
 		current = parent.record
 	}
 	if current.ParentName != "" || head.record.Target == [32]byte{} {
-		available = false
+		summary.available = false
 	}
-	if !available {
-		state, notAfter = 0, 0
+	if !summary.available {
+		summary.state, summary.graceAt, summary.notAfter = 0, 0, 0
+	} else if summary.state == 1 && summary.graceAt >= summary.notAfter {
+		summary.graceAt = 0
 	}
 	return resolutionLeaf{schema: leafSchema, signedRecord: head.signed, lineageRoot: namespaceCommitmentRoot(lineage, emptyLineageTag),
-		lineageCount: uint8(len(lineage)), state: state, notAfter: notAfter}, nil
+		lineageCount: uint8(len(lineage)), state: summary.state, graceAt: summary.graceAt, notAfter: summary.notAfter}, nil
 }
 
-func effectiveLease(record record.Record) (byte, int64, bool) {
+type effectiveLeaseSummary struct {
+	state     byte
+	graceAt   int64
+	notAfter  int64
+	available bool
+}
+
+func effectiveLease(record record.Record) effectiveLeaseSummary {
 	if record.Consistency != "current" || record.Recovery != "stable" {
-		return 0, 0, false
+		return effectiveLeaseSummary{}
 	}
 	switch record.Lease {
 	case "active":
-		if record.LeaseExpiresAt <= 0 {
-			return 0, 0, false
+		if record.LeaseExpiresAt <= 0 || record.GraceExpiresAt < record.LeaseExpiresAt {
+			return effectiveLeaseSummary{}
 		}
-		return effectiveRecordNotAfter(record, 1, record.LeaseExpiresAt*1_000)
+		state, notAfter, available := effectiveRecordNotAfter(record, 1, record.GraceExpiresAt*1_000)
+		graceAt := record.LeaseExpiresAt * 1_000
+		if !available || graceAt >= notAfter {
+			graceAt = 0
+		}
+		return effectiveLeaseSummary{state: state, graceAt: graceAt, notAfter: notAfter, available: available}
 	case "grace":
 		if record.GraceExpiresAt <= 0 {
-			return 0, 0, false
+			return effectiveLeaseSummary{}
 		}
-		return effectiveRecordNotAfter(record, 2, record.GraceExpiresAt*1_000)
+		state, notAfter, available := effectiveRecordNotAfter(record, 2, record.GraceExpiresAt*1_000)
+		return effectiveLeaseSummary{state: state, notAfter: notAfter, available: available}
 	default:
-		return 0, 0, false
+		return effectiveLeaseSummary{}
 	}
 }
 

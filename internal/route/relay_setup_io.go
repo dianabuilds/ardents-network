@@ -11,11 +11,12 @@ import (
 type EntryOperation struct {
 	Relay           *RelaySetup
 	ResolutionRelay *ResolutionRelaySetup
+	CredentialRelay *CredentialRelaySetup
 }
 
-// ReadEntryOperation reads one closed post-Entry operation. A C-2 relay and a
-// private resolution relay remain distinct authorizations despite sharing the
-// preceding Entry admission.
+// ReadEntryOperation reads one closed post-Entry operation. A C-2 relay,
+// private resolution relay, and membership Credential Relay remain distinct
+// authorizations despite sharing the preceding Entry admission.
 func ReadEntryOperation(reader io.Reader) (EntryOperation, error) {
 	raw, err := readRouteRecord(reader)
 	if err != nil {
@@ -32,6 +33,9 @@ func ReadEntryOperation(reader io.Reader) (EntryOperation, error) {
 	case resolutionRelaySetupKind:
 		setup, err := DecodeResolutionRelaySetup(raw)
 		return EntryOperation{ResolutionRelay: &setup}, err
+	case credentialRelaySetupKind:
+		setup, err := DecodeCredentialRelaySetup(raw)
+		return EntryOperation{CredentialRelay: &setup}, err
 	default:
 		return EntryOperation{}, errors.New("route entry operation is not supported")
 	}

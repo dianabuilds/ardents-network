@@ -9,7 +9,7 @@ import (
 func rendezvousDuty(profile RendezvousProfile, snapshot dutyFacts) (RendezvousConfig, error) {
 	if snapshot.Profile != route.Profile || snapshot.Assignment != "rendezvous" || snapshot.ProbeEndpoint == "" ||
 		profile.HandshakeLimit == 0 || profile.WaitingLimit == 0 || profile.PairLimit == 0 || profile.PairByteLimit == 0 ||
-		profile.DrainTimeout <= 0 {
+		!validAdmissionTimeout(profile.AdmissionTimeout) || profile.DrainTimeout <= 0 {
 		return RendezvousConfig{}, errors.New("Rendezvous profile or State assignment is incomplete")
 	}
 	notAfter := snapshot.ValidUntil
@@ -39,9 +39,9 @@ func rendezvousDuty(profile RendezvousProfile, snapshot dutyFacts) (RendezvousCo
 	if len(peers) != 2 || peers[0].Role == peers[1].Role {
 		return RendezvousConfig{}, errors.New("state does not supply one Initiator and one Responder peer")
 	}
-	return RendezvousConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate,
+	return RendezvousConfig{ListenAddress: snapshot.ProbeEndpoint, CarrierProfile: route.CarrierProfile(snapshot.CarrierProfile), Certificate: profile.Certificate,
 		NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
 		NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch, NotAfter: notAfter.UTC(), Peers: peers,
 		HandshakeLimit: profile.HandshakeLimit, WaitingLimit: profile.WaitingLimit, PairLimit: profile.PairLimit,
-		PairByteLimit: profile.PairByteLimit, DrainTimeout: profile.DrainTimeout}, nil
+		PairByteLimit: profile.PairByteLimit, AdmissionTimeout: profile.AdmissionTimeout, DrainTimeout: profile.DrainTimeout}, nil
 }
