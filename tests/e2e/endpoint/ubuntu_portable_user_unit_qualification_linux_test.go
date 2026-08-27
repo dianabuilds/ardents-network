@@ -158,11 +158,16 @@ func removeQualificationRoot(t *testing.T, path string) {
 
 func cleanupQualificationUnit(t *testing.T, unitName, unitPath string) {
 	t.Helper()
-	if output, err := userSystemctl(t, "stop", unitName); err != nil {
-		t.Errorf("cleanup stop %s: %v\\n%s", unitName, err, output)
-	}
-	if output, err := userSystemctl(t, "disable", unitName); err != nil {
-		t.Errorf("cleanup disable %s: %v\\n%s", unitName, err, output)
+	_, statErr := os.Lstat(unitPath)
+	if statErr == nil {
+		if output, err := userSystemctl(t, "stop", unitName); err != nil {
+			t.Errorf("cleanup stop %s: %v\\n%s", unitName, err, output)
+		}
+		if output, err := userSystemctl(t, "disable", unitName); err != nil {
+			t.Errorf("cleanup disable %s: %v\\n%s", unitName, err, output)
+		}
+	} else if !os.IsNotExist(statErr) {
+		t.Errorf("inspect qualification unit %s: %v", unitPath, statErr)
 	}
 	if err := os.Remove(unitPath); err != nil && !os.IsNotExist(err) {
 		t.Errorf("cleanup remove unit %s: %v", unitPath, err)
