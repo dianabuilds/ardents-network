@@ -2,6 +2,7 @@ github.com/dianabuilds/ardents-network/cmd/ardents
 github.com/dianabuilds/ardents-network/cmd/ardents-browser-entry
 github.com/dianabuilds/ardents-network/cmd/ardents-control
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
+github.com/dianabuilds/ardents-network/cmd/ardents-release-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/internal/application/broker
 github.com/dianabuilds/ardents-network/internal/browserentry
@@ -32,6 +33,7 @@ github.com/dianabuilds/ardents-network/internal/network/source
 github.com/dianabuilds/ardents-network/internal/network/state
 github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/release
+github.com/dianabuilds/ardents-network/internal/release/custody
 github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
 github.com/dianabuilds/ardents-network/internal/route/credential

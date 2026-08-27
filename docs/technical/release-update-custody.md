@@ -89,6 +89,13 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
+ADR-0050 separately assigns first closed-alpha release seeds to
+`internal/release/custody`. That local Product Owner boundary can initialize
+exactly one password-encrypted fixed-role seed record and return a public
+receipt. It cannot decrypt material for callers, sign metadata, administer a
+TUF repository, publish an artifact, or configure a VPS. A concrete signing
+topology and its evidence remain a later gate.
+
 A fresh executable cannot use its own Release Decision code to authenticate
 itself before first execution. `RootBytes` and the first executable therefore
 have caller-owned provenance established by the selected Distribution Profile;

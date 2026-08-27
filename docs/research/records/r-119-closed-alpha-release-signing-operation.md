@@ -1,7 +1,7 @@
 ---
 id: R-119
 title: Closed-alpha release signing operation
-status: open
+status: decided
 owner: Product Owner and Codex
 started: 2026-08-27
 reviewed: 2026-08-27
@@ -156,8 +156,9 @@ claim stays bounded and provisional.
 
 ## Disposition
 
-Open, implementation-blocking for H4-8A A4. It adds the missing operation
-decision to the research queue and links to the existing closed-alpha release
-ceremony. When the Product Owner makes the custody declaration, run the named
-disposable ceremony and promote its concrete operational decision only if it
-creates a durable new project responsibility.
+Decided on 2026-08-27 after the Product Owner selected the local Windows
+workspace and themself as custodian. ADR-0050 owns the separate encrypted seed
+record and its one interactive initializer. The next release-signing operation
+must consume that record only through a new exact bounded interface; it may not
+become a generic signer. Real signed inputs, alpha topology, publication, and
+independent participant evidence remain implementation gates.

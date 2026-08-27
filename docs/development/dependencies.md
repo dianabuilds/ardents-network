@@ -111,7 +111,7 @@ tests, non-test caller, and package-map entry now own it.
 | `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
 | `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | raised cryptographic support closure |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
-| `golang.org/x/term` | `v0.45.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
+| `golang.org/x/term` | `v0.45.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody` and `cmd/ardents-release-custody`; also present in the reviewed sigstore closure |
 | `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260819154853-08b0e4226688` | Apache-2.0 | protobuf API type closure |
 | `google.golang.org/protobuf` | `v1.36.12` | BSD-3-Clause | signature protobuf runtime |
 
@@ -152,35 +152,37 @@ module cache outside Git, verifies it online, and proves an offline no-cgo
 build. No module cache, vendor tree, generated repository, key, or binary
 belongs in the repository.
 
-## Current Authority Custody dependency
+## Current Authority and release-seed custody dependencies
 
-Status: **current maintained dependency under ADR-0021.** ADR-0021 selects
-`golang.org/x/crypto/argon2` from module
-`golang.org/x/crypto v0.55.0` (BSD-3-Clause) as the sole non-standard-library
-cryptographic dependency for password-derived Authority Custody. The
-release-verifier closure selects the same module version; integration
-must produce one shared exact root-module version, never parallel copies.
+Status: **current maintained dependencies under ADR-0021 and ADR-0050.** Both
+password-derived Authority Custody and the separately scoped local release-seed
+record use `golang.org/x/crypto/argon2` from module
+`golang.org/x/crypto v0.55.0` (BSD-3-Clause). The release-verifier closure
+selects the same module version; integration must produce one shared exact
+root-module version, never parallel copies.
 
-The Authority Custody Module is the sole caller. It uses only
-`argon2.IDKey` with the fixed v1 profile and passes the derived 32-byte key to Go
-1.26 standard-library `crypto/aes` and `cipher.NewGCMWithRandomNonce`. No other
+`internal/custody` and `internal/release/custody` are the only Argon2 callers.
+Each uses only `argon2.IDKey` with the fixed v1 profile and passes the derived
+32-byte key to Go 1.26 standard-library `crypto/aes` and
+`cipher.NewGCMWithRandomNonce`. The records have distinct schemas and must
+never share, import, or expose one another's authority material. No other
 Argon2 variant, dynamic parameter negotiation, signing primitive, password
 store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The current
 [release, update, and Authority Custody reference](../technical/release-update-custody.md)
-owns the maintained envelope and lifecycle boundary.
+owns the maintained boundary.
 
-`cmd/ardents-custody` is the separate interactive adapter and imports only
-`golang.org/x/term` to reject a non-terminal descriptor and read one password
-without echo for active-record verification. The adapter neither accepts a
+`cmd/ardents-custody` and `cmd/ardents-release-custody` are separate
+interactive adapters. They import only `golang.org/x/term` to reject a
+non-terminal descriptor and read a password without echo. Neither accepts a
 password from arguments, environment, configuration, nor a stream shared with
-Application data; it does not expose decrypted Authority material.
+Application data; neither exposes decrypted material.
 
-Before a supported custody handoff, integration must run official exact-version
-Argon2id vectors, the fixed 256 MiB resource profile, license/source identity,
-and reachable-advisory checks. Weakest-native-host performance remains a
-separate Qualification gate. Removing password-derived custody removes this
-caller. A version/profile/surface change requires a new dependency review and
-applicable ADR analysis.
+Before a supported custody handoff or any real release-signing operation,
+integration must run official exact-version Argon2id vectors, the fixed 256 MiB
+resource profile, license/source identity, and reachable-advisory checks.
+Weakest-native-host performance remains a separate Qualification gate. Removing
+password-derived custody removes these callers. A version/profile/surface change
+requires a new dependency review and applicable ADR analysis.
 
 ## Development tools
 

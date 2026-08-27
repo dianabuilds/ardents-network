@@ -31,6 +31,14 @@ The Product Owner records, outside the public bundle:
 One project-operated key holder is visible provisional alpha control. It is not
 threshold custody, independent control, or a Public Beta gate.
 
+The Product Owner initializes the local seed record once with
+`ardents-release-custody initialize --root C:\Users\vitek\Ardents-Release\keys`.
+The command reads a new passphrase and confirmation only through its local
+no-echo terminal. Neither passphrase nor private material belongs in a command
+line, environment, repository, chat, shell history, bundle, CI log, release
+asset, or VPS. Initialization returns a public receipt only; it does not yet
+sign metadata or publish a release.
+
 ## Signed input set
 
 The release workspace produces and independently verifies one static set before
