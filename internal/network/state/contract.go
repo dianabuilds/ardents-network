@@ -44,46 +44,53 @@ type Config struct {
 // single atomic value rather than assembling security-relevant identity,
 // validity, assignment, and freshness fields from separate reads.
 type Snapshot struct {
-	Generation          string
-	NetworkID           [32]byte
-	Epoch               uint64
-	Digest              [32]byte
-	EpochValidFrom      time.Time
-	ValidUntil          time.Time
-	Profile             string
-	ViewRoot            [32]byte
-	ViewLength          uint32
-	RejectedRoot        [32]byte
-	RejectedLength      uint32
-	Freshness           string
-	Conflicting         bool
-	SourceAttempts      uint16
-	SourceOutcomes      [4]string
-	LatestCompleteness  string
-	ObservedEpochs      [4]uint64
-	ObservedDigests     [4][32]byte
-	TrustedTime         time.Time
-	NextAutomatic       time.Time
-	PendingEpoch        uint64
-	PendingDigest       [32]byte
-	PendingAt           time.Time
-	EpochAuthorityIDs   [16][32]byte
-	EpochAuthorityKeys  [16][32]byte
-	EpochAuthorityCount uint8
-	EpochThreshold      uint8
-	RecordPresent       bool
-	NodeID              [32]byte
-	NodePublicKey       [32]byte
-	RecordGeneration    uint64
-	RecordValidFrom     time.Time
-	RecordValidUntil    time.Time
-	DeclaredFamily      string
-	ProbeEndpoint       string
-	ProbeCapacity       uint16
-	Assignment          string
-	AssignmentDigest    [32]byte
-	CandidateCount      uint8
-	Candidates          [64]routeCandidate
+	Generation                       string
+	NetworkID                        [32]byte
+	Epoch                            uint64
+	Digest                           [32]byte
+	EpochValidFrom                   time.Time
+	ValidUntil                       time.Time
+	Profile                          string
+	ViewRoot                         [32]byte
+	ViewLength                       uint32
+	RejectedRoot                     [32]byte
+	RejectedLength                   uint32
+	Freshness                        string
+	Conflicting                      bool
+	SourceAttempts                   uint16
+	SourceOutcomes                   [4]string
+	LatestCompleteness               string
+	ObservedEpochs                   [4]uint64
+	ObservedDigests                  [4][32]byte
+	TrustedTime                      time.Time
+	NextAutomatic                    time.Time
+	PendingEpoch                     uint64
+	PendingDigest                    [32]byte
+	PendingAt                        time.Time
+	EpochAuthorityIDs                [16][32]byte
+	EpochAuthorityKeys               [16][32]byte
+	EpochAuthorityCount              uint8
+	EpochThreshold                   uint8
+	RecordPresent                    bool
+	NodeID                           [32]byte
+	NodePublicKey                    [32]byte
+	RecordGeneration                 uint64
+	RecordValidFrom                  time.Time
+	RecordValidUntil                 time.Time
+	DeclaredFamily                   string
+	ProbeEndpoint                    string
+	CarrierProfile                   string
+	ProbeCapacity                    uint16
+	Assignment                       string
+	AssignmentDigest                 [32]byte
+	DestinationResolutionNodeID      [32]byte
+	DestinationResolutionProfile     [maximumDestinationResolutionProfileBytes]byte
+	DestinationResolutionProfileSize uint16
+	TransitIssuanceNodeID            [32]byte
+	TransitIssuanceProfile           [maximumTransitIssuanceProfileBytes]byte
+	TransitIssuanceProfileSize       uint16
+	CandidateCount                   uint8
+	Candidates                       [64]routeCandidate
 }
 
 // BridgeCandidate is the bounded authenticated projection needed to verify a
@@ -110,6 +117,7 @@ type routeCandidate struct {
 	DomainProofDigest  [32]byte
 	Family             string
 	Endpoint           string
+	CarrierProfile     string
 	Capacity           uint16
 	Domain             string
 	ValidFrom          time.Time

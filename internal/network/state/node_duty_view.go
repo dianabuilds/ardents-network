@@ -1,6 +1,9 @@
 package state
 
-import "time"
+import (
+	"crypto/sha256"
+	"time"
+)
 
 // NodeDutyView is the narrow authenticated current-generation view consumed by
 // Node. It preserves State ownership of freshness and record facts without
@@ -33,6 +36,7 @@ func (view NodeDutyView) DutyRecordValidFrom() time.Time  { return view.snapshot
 func (view NodeDutyView) DutyRecordValidUntil() time.Time { return view.snapshot.RecordValidUntil }
 func (view NodeDutyView) DutyDeclaredFamily() string      { return view.snapshot.DeclaredFamily }
 func (view NodeDutyView) DutyProbeEndpoint() string       { return view.snapshot.ProbeEndpoint }
+func (view NodeDutyView) DutyCarrierProfile() string      { return view.snapshot.CarrierProfile }
 func (view NodeDutyView) DutyProbeCapacity() uint16       { return view.snapshot.ProbeCapacity }
 func (view NodeDutyView) DutyAssignment() string          { return view.snapshot.Assignment }
 func (view NodeDutyView) DutyAssignmentDigest() [32]byte  { return view.snapshot.AssignmentDigest }
@@ -79,6 +83,12 @@ func (view NodeDutyView) DutyCandidateEndpoint(index uint8) string {
 	}
 	return view.snapshot.Candidates[index].Endpoint
 }
+func (view NodeDutyView) DutyCandidateCarrierProfile(index uint8) string {
+	if index >= view.snapshot.CandidateCount {
+		return ""
+	}
+	return view.snapshot.Candidates[index].CarrierProfile
+}
 func (view NodeDutyView) DutyCandidateCapacity(index uint8) uint16 {
 	if index >= view.snapshot.CandidateCount {
 		return 0
@@ -108,6 +118,16 @@ func (view NodeDutyView) DutyCandidateAssignmentNotAfter(index uint8) time.Time 
 		return time.Time{}
 	}
 	return view.snapshot.Candidates[index].AssignmentNotAfter
+}
+
+// DutyTransitIssuanceProfileDigest returns the exact authenticated issuer
+// profile commitment for an Initiator's Credential Relay duty. It exposes no
+// profile bytes or alternate issuer to the Node runtime.
+func (view NodeDutyView) DutyTransitIssuanceProfileDigest() [32]byte {
+	if view.snapshot.TransitIssuanceProfileSize == 0 || int(view.snapshot.TransitIssuanceProfileSize) > len(view.snapshot.TransitIssuanceProfile) {
+		return [32]byte{}
+	}
+	return sha256.Sum256(view.snapshot.TransitIssuanceProfile[:view.snapshot.TransitIssuanceProfileSize])
 }
 
 // DutyAuthorityCount, DutyAuthorityID, and DutyAuthorityPublicKey expose the

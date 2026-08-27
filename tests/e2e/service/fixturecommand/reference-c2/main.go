@@ -2,13 +2,10 @@ package main
 
 import (
 	"context"
-	"crypto/ecdh"
 	"crypto/ed25519"
-	"crypto/hpke"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -17,15 +14,14 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/entry"
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
-	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 type peer struct {
@@ -48,24 +44,32 @@ type stateClient struct {
 }
 
 type config struct {
-	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath, ResourceProofPath string
-	PublisherApplicationAddress, PublisherApplicationToken, PublisherApplicationReady                             string
-	Epoch                                                                                                         uint64
-	Introduction, Rendezvous, Responder, Initiator, Gateway                                                       peer
-	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment                             string
-	GatewayRoot, GatewayProfilePath                                                                               string
-	TransitAuthority, InviteID, Invite                                                                            string
-	SlotCredential, ResponderCredential, IntroductionCredential                                                   transitCredential
-	TransitStateRoots                                                                                             map[string]string
-	TransitStateMaterials                                                                                         map[string]uint32
-	TransitStateSources                                                                                           []stateSource
-	TransitStateClient                                                                                            stateClient
-	FirefoxExecutable                                                                                             string
-	PublisherOffline                                                                                              bool
+	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath, ResourceProofPath      string
+	HeldRouteReady, HeldRouteUserReady, HeldRouteRelease                                                               string
+	AlphaGatewayReadyPath, AlphaRelayReadyPath                                                                         string
+	PublisherApplicationAddress, PublisherApplicationAddressPath, PublisherApplicationToken, PublisherApplicationReady string
+	PublisherCrashReadyPath                                                                                            string
+	Epoch                                                                                                              uint64
+	Introduction, Rendezvous, Responder, Initiator, Gateway                                                            peer
+	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment                                  string
+	GatewayRoot, GatewayProfilePath                                                                                    string
+	TransitAuthority, InviteID, Invite                                                                                 string
+	SlotCredential, ResponderCredential, IntroductionCredential                                                        transitCredential
+	TransitStateRoots                                                                                                  map[string]string
+	TransitStateMaterials                                                                                              map[string]uint32
+	TransitStateSources                                                                                                []stateSource
+	TransitStateClient                                                                                                 stateClient
+	// AlphaCorpusPrivate exists only because this separate-process fixture
+	// manufactures a signed corpus. A real participant receives only the
+	// independently enrolled public authority through alpha control.
+	AlphaCorpusAuthority, AlphaCorpusPrivate, AlphaCorpusFloorRoot, AlphaObserverCorpusFloorRoot, AlphaServiceLink string
+	FirefoxExecutable, BrowserEntryStatePath                                                                       string
+	PublisherTerminal                                                                                              publisherTerminal
+	PublisherOffline, TransparentApplication                                                                       bool
 }
 
 type publicationEnvelope struct {
-	AuthorityPublic, Publication, TargetLink, Descriptor string
+	AuthorityPublic, Publication, Descriptor, AlphaAuthorityPublic, AlphaCorpus, AlphaLink string
 }
 
 type result struct {
@@ -73,9 +77,17 @@ type result struct {
 	Passed              bool
 }
 
+type publisherTerminal string
+
+const (
+	publisherTerminalWithdrawal       publisherTerminal = "withdrawal"
+	publisherTerminalApplicationReset publisherTerminal = "application-reset"
+	publisherTerminalEndpointStop     publisherTerminal = "endpoint-stop"
+)
+
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|publisher-app|user|gateway|rendezvous|initiator|introduction|responder) CONFIG")
+		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|publisher-app|user|alpha-observer|gateway|alpha-gateway|alpha-relay|rendezvous|initiator|introduction|responder) CONFIG")
 		os.Exit(2)
 	}
 	input, err := readConfig(os.Args[2])
@@ -87,8 +99,14 @@ func main() {
 			err = runPublisherApplication(input)
 		case "user":
 			err = runUser(input)
+		case "alpha-observer":
+			err = runAlphaObserver(input)
 		case "gateway":
 			err = runGateway(input)
+		case "alpha-gateway":
+			err = runAlphaGateway(input)
+		case "alpha-relay":
+			err = runAlphaRelay(input)
 		case "rendezvous", "initiator", "introduction", "responder":
 			err = runTransitRole(input, os.Args[1])
 		default:
@@ -162,7 +180,16 @@ func runPublisher(input config) error {
 	if err != nil {
 		return err
 	}
-	link, err := targetlink.Encode(targetlink.Link{Network: network, Target: credential.Target})
+	alphaAuthorityPublic, alphaAuthorityPrivate, err := input.alphaCorpusSigner()
+	if err != nil {
+		return err
+	}
+	alphaLink, err := alpha.ParseServiceLink("ardents-alpha://reference")
+	if err != nil {
+		return err
+	}
+	alphaCorpus, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "reference-c2", Network: network, Serial: 1,
+		NotBefore: now.Add(-time.Second), NotAfter: deadline, Bindings: []alpha.BindingInput{{Link: alphaLink, Target: credential.Target}}}, alphaAuthorityPrivate)
 	if err != nil {
 		return err
 	}
@@ -182,6 +209,9 @@ func runPublisher(input config) error {
 			return err
 		}
 		defer publisherApplication.Close()
+		if err := writePublisherApplicationAddress(input.PublisherApplicationAddressPath, publisherApplication.Address()); err != nil {
+			return err
+		}
 	}
 	current, err := publication.Decode(published.Record, authorityPublic, network, now)
 	if err != nil {
@@ -198,7 +228,8 @@ func runPublisher(input config) error {
 		return err
 	}
 	if err := writePublication(input.PublicationPath, publicationEnvelope{AuthorityPublic: hex.EncodeToString(authorityPublic),
-		Publication: base64.RawStdEncoding.EncodeToString(published.Record), TargetLink: link, Descriptor: base64.RawStdEncoding.EncodeToString(descriptor)}); err != nil {
+		Publication: base64.RawStdEncoding.EncodeToString(published.Record), Descriptor: base64.RawStdEncoding.EncodeToString(descriptor),
+		AlphaAuthorityPublic: hex.EncodeToString(alphaAuthorityPublic), AlphaCorpus: base64.RawStdEncoding.EncodeToString(alphaCorpus), AlphaLink: alphaLink.String()}); err != nil {
 		return err
 	}
 	if input.PublisherOffline {
@@ -222,6 +253,30 @@ func runPublisher(input config) error {
 		Application: application, BytesEachDirection: 64 << 10, At: now})
 	if outcome.Class == "" {
 		return errors.Join(err, errors.New("publisher C2 fixture did not complete a classified Service Connection"))
+	}
+	if input.PublisherTerminal == publisherTerminalWithdrawal {
+		withdrawalCapability, admitErr := publisher.Admit(administrator, broker.Administration)
+		if admitErr != nil {
+			return admitErr
+		}
+		withdrawn, withdrawErr := publisher.Withdraw(ctx, endpointapi.WithdrawalRequest{
+			Principal: administrator, Capability: withdrawalCapability, At: time.Now().UTC().Truncate(time.Second),
+		})
+		if withdrawErr != nil || withdrawn.Class != "unpublished" || withdrawn.AuthenticatedTarget != published.AuthenticatedTarget ||
+			withdrawn.Generation != published.Generation {
+			return errors.Join(withdrawErr, errors.New("publisher C2 fixture publication withdrawal was not classified or exact"))
+		}
+		verificationCapability, admitErr := publisher.Admit(administrator, broker.Administration)
+		if admitErr != nil {
+			return admitErr
+		}
+		stillPublished, verificationErr := publisher.Withdraw(ctx, endpointapi.WithdrawalRequest{
+			Principal: administrator, Capability: verificationCapability, At: time.Now().UTC().Truncate(time.Second),
+		})
+		if verificationErr == nil || stillPublished.Class != "service unavailable" {
+			return errors.New("publisher C2 fixture withdrawn publication remained live")
+		}
+		outcome.Class = withdrawn.Class
 	}
 	return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher", Class: outcome.Class, Passed: true})
 }
@@ -271,9 +326,13 @@ func runUser(input config) error {
 			return err
 		}
 	}
-	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: identifier(44), AuthorityPublic: authority,
+	userSetup := endpointapi.Setup{NetworkID: network, BrokerID: identifier(44), AuthorityPublic: authority,
 		IntroductionPublic: make([]byte, ed25519.PublicKeySize), ConnectionPrincipal: userPrincipal,
-		TransitClientCertificates: map[[32]byte]tls.Certificate{introductionGrant.GrantID: introductionCertificate}})
+		TransitClientCertificates: map[[32]byte]tls.Certificate{introductionGrant.GrantID: introductionCertificate}}
+	if input.BrowserEntryStatePath != "" {
+		userSetup.BrowserEntryStatePath = input.BrowserEntryStatePath
+	}
+	user, err := endpointapi.New(userSetup)
 	if err != nil {
 		return err
 	}
@@ -284,8 +343,26 @@ func runUser(input config) error {
 	}
 	now := time.Now().UTC().Truncate(time.Second)
 	resolutionDeadline := now.Add(5 * time.Second)
+	alphaFloor, err := input.openAlphaCorpusFloor(network)
+	if err != nil {
+		return err
+	}
+	defer alphaFloor.Close()
+	alphaResolver, err := input.openPrivateAlpha(alphaFloor, network, now)
+	if err != nil {
+		return err
+	}
+	alphaBinding, err := user.ResolveAlpha(context.Background(), alphaResolver, input.AlphaServiceLink, now)
+	if err != nil {
+		return err
+	}
+	acceptedAlphaBinding, err := user.ResolveAcceptedAlpha(alphaFloor, input.AlphaServiceLink, now)
+	if err != nil || alphaBinding.Link() != acceptedAlphaBinding.Link() || alphaBinding.Network() != acceptedAlphaBinding.Network() ||
+		alphaBinding.Target() != acceptedAlphaBinding.Target() || alphaBinding.Serial() != acceptedAlphaBinding.Serial() {
+		return errors.New("user C2 fixture exact private binding disagrees with its accepted floor")
+	}
 	request := endpointapi.UserReferenceSiteRequest{
-		Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: envelope.TargetLink,
+		Reachability: &endpointapi.UserReachabilityRouteRequest{
 			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey, GatewayFamily: gateway.Family,
 				GatewayProfile: profile, StateDigest: digest, Epoch: input.Epoch, Initiator: initiator,
 				Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
@@ -295,9 +372,15 @@ func runUser(input config) error {
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
 		Routes: map[string]string{"": "/", "site.css": "/site.css", "mark.svg": "/mark.svg"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10, Browser: browser}
 	if input.PublisherOffline {
-		return runOfflineUser(user, request)
+		return runOfflineAlphaUser(user, endpointapi.AlphaUserReferenceSiteRequest{Binding: alphaBinding, Route: request})
 	}
-	site, err := user.OpenUserReferenceSite(context.Background(), request)
+	var site *endpointapi.UserReferenceSite
+	var referenceClient *http.Client
+	if input.TransparentApplication {
+		site, err = user.OpenAlphaTransparentUserReferenceSite(context.Background(), endpointapi.AlphaTransparentUserReferenceSiteRequest{Binding: alphaBinding, Route: request})
+	} else {
+		site, err = user.OpenAlphaUserReferenceSite(context.Background(), endpointapi.AlphaUserReferenceSiteRequest{Binding: alphaBinding, Route: request})
+	}
 	if err != nil {
 		return fmt.Errorf("user C2 fixture exact route: %w", err)
 	}
@@ -311,41 +394,74 @@ func runUser(input config) error {
 	case <-time.After(time.Until(deadline)):
 		return errors.New("user C2 fixture timed out before Reference Site readiness")
 	}
-	selected, err := targetlink.Decode(envelope.TargetLink)
-	if err != nil || ready.AuthenticatedTarget != selected.Target {
-		return errors.New("user C2 fixture did not authenticate the selected Target Link")
+	if ready.AuthenticatedTarget != alphaBinding.Target() {
+		return errors.New("user C2 fixture did not authenticate the selected alpha binding")
 	}
-	if browser == nil {
-		for resource, expected := range map[string]string{"": referenceDocument, "site.css": referenceStylesheet, "mark.svg": referenceMark} {
-			response, requestErr := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Get(ready.URL + resource)
-			if requestErr != nil {
-				return requestErr
+	if input.HeldRouteReady != "" || input.HeldRouteRelease != "" {
+		return finishHeldUserRoute(input, deadline, site)
+	}
+	externalBrowserEntry := input.BrowserEntryStatePath != ""
+	if browser == nil && !externalBrowserEntry {
+		var clientErr error
+		referenceClient, clientErr = alphaReferenceClient(ready.URL, ready.AlphaProxyURL)
+		if clientErr != nil {
+			return clientErr
+		}
+		defer referenceClient.CloseIdleConnections()
+		if input.TransparentApplication {
+			var exerciseErr error
+			switch input.PublisherTerminal {
+			case publisherTerminalEndpointStop:
+				exerciseErr = exerciseDynamicPublisherEndpointCrash(referenceClient, ready.URL)
+			case publisherTerminalApplicationReset:
+				exerciseErr = exerciseDynamicApplicationCrash(referenceClient, ready.URL)
+			default:
+				exerciseErr = exerciseDynamicReference(referenceClient, ready.URL)
 			}
-			body, readErr := io.ReadAll(response.Body)
-			_ = response.Body.Close()
-			if readErr != nil || response.StatusCode != http.StatusOK || string(body) != expected ||
-				response.Header.Get("Content-Security-Policy") != "sandbox allow-same-origin; default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'none'" ||
-				response.Header.Get("Cache-Control") != "no-store" || response.Header.Get("Referrer-Policy") != "no-referrer" ||
-				response.Header.Get("X-Content-Type-Options") != "nosniff" {
-				return errors.New("user C2 fixture did not receive its declared Reference Site resource")
+			if exerciseErr != nil {
+				return exerciseErr
+			}
+		} else {
+			for resource, expected := range map[string]string{"": referenceDocument, "site.css": referenceStylesheet, "mark.svg": referenceMark} {
+				response, requestErr := referenceClient.Get(ready.URL + resource)
+				if requestErr != nil {
+					return requestErr
+				}
+				body, readErr := io.ReadAll(response.Body)
+				_ = response.Body.Close()
+				if readErr != nil || response.StatusCode != http.StatusOK || string(body) != expected ||
+					response.Header.Get("Content-Security-Policy") != "sandbox allow-same-origin; default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; worker-src 'none'" ||
+					response.Header.Get("Cache-Control") != "no-store" || response.Header.Get("Referrer-Policy") != "no-referrer" ||
+					response.Header.Get("X-Content-Type-Options") != "nosniff" {
+					return errors.New("user C2 fixture did not receive its declared Reference Site resource")
+				}
 			}
 		}
 	}
-	if err := waitForResourceProof(deadline, input.ResourceProofPath); err != nil {
-		return err
+	if input.TransparentApplication {
+		expectedProof := dynamicProofForPublisherTerminal(input.PublisherTerminal)
+		if externalBrowserEntry {
+			expectedProof = "browser-dynamic-http\n"
+		}
+		if err := waitForDynamicProof(deadline, input.ResourceProofPath, expectedProof); err != nil {
+			return fmt.Errorf("user C2 fixture dynamic Service %s: %w", ready.URL, err)
+		}
+		class, waitErr := waitForDynamicPublisherWithdrawal(deadline, site, referenceClient, ready.URL, input.BrowserEntryStatePath)
+		if waitErr != nil {
+			return fmt.Errorf("user C2 fixture dynamic Publisher withdrawal: %w", waitErr)
+		}
+		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "user", Class: class, Passed: true})
+	} else if err := waitForResourceProof(deadline, input.ResourceProofPath); err != nil {
+		return fmt.Errorf("user C2 fixture Reference Site %s: %w", ready.URL, err)
 	}
 	if err := site.Close(); err != nil {
 		return err
 	}
-	select {
-	case outcome := <-site.Done():
-		if outcome.Result.Class == "" {
-			return errors.New("user C2 fixture did not receive a classified Service Connection result")
-		}
-		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "user", Class: outcome.Result.Class, Passed: true})
-	case <-time.After(time.Until(deadline)):
-		return errors.New("user C2 fixture did not receive a terminal result")
+	class, err := waitForUserReferenceOutcome(deadline, site)
+	if err != nil {
+		return err
 	}
+	return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "user", Class: class, Passed: true})
 }
 
 type entryAcquirer struct {
@@ -359,71 +475,4 @@ func (input entryAcquirer) Acquire(ctx context.Context, attempt entry.Attempt, o
 		return nil, cleanup, err
 	}
 	return connection, cleanup, nil
-}
-
-func writePublication(path string, value publicationEnvelope) error {
-	if filepath.Dir(path) == "." {
-		return errors.New("publisher publication path is not absolute")
-	}
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-	temporary := path + ".tmp"
-	if err := os.WriteFile(temporary, raw, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(temporary, path)
-}
-
-func readPublication(path string) (publicationEnvelope, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil || len(raw) == 0 || len(raw) > 8<<10 {
-		return publicationEnvelope{}, errors.New("publisher publication is unavailable")
-	}
-	var value publicationEnvelope
-	if err := json.Unmarshal(raw, &value); err != nil || value.AuthorityPublic == "" || value.Publication == "" || value.TargetLink == "" || value.Descriptor == "" {
-		return publicationEnvelope{}, errors.New("publisher publication is invalid")
-	}
-	return value, nil
-}
-
-func acknowledgement(credential publication.Credential, private ed25519.PrivateKey, brokerID [32]byte) []byte {
-	body := make([]byte, 149)
-	copy(body[:4], "ARIA")
-	body[4] = 1
-	copy(body[5:37], credential.Target[:])
-	binary.BigEndian.PutUint64(body[37:45], credential.Generation)
-	binary.BigEndian.PutUint64(body[45:53], uint64(credential.NotAfter))
-	copy(body[53:85], credential.NetworkID[:])
-	copy(body[85:117], brokerID[:])
-	body[117] = 1
-	signature := ed25519.Sign(private, append([]byte("ardents-service-introduction-ack-v1\x00"), body...))
-	return append(body, signature...)
-}
-
-func hpkePrivateKey() (hpke.PrivateKey, error) {
-	private, err := ecdh.X25519().GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	return hpke.NewDHKEMPrivateKey(private)
-}
-
-func fixed(encoded string) ([32]byte, error) {
-	var value [32]byte
-	raw, err := hex.DecodeString(encoded)
-	if err != nil || len(raw) != len(value) {
-		return value, errors.New("C2 fixture fixed value is invalid")
-	}
-	copy(value[:], raw)
-	return value, nil
-}
-
-func identifier(value byte) [32]byte {
-	var result [32]byte
-	for index := range result {
-		result[index] = value + byte(index)
-	}
-	return result
 }

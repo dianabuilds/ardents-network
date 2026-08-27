@@ -39,6 +39,24 @@ type ResolutionCandidate struct {
 	AssignmentNotAfter time.Time
 }
 
+// DestinationResolutionGateway is the one State-selected Gateway fact for a
+// private Target lookup. Its Profile bytes are authenticated by the Epoch but
+// remain Reachability-owned until the Endpoint verifies their self-signature.
+type DestinationResolutionGateway struct {
+	NodeID, PublicKey, Family [32]byte
+	Profile                   []byte
+	AssignmentNotAfter        time.Time
+}
+
+// TransitIssuer is the one State-selected membership Transit Grant issuer
+// fact. Its Profile remains opaque until the credential owner verifies its
+// Node self-signature and State-authority signer declaration.
+type TransitIssuer struct {
+	NodeID, PublicKey, Family [32]byte
+	Profile                   []byte
+	AssignmentNotAfter        time.Time
+}
+
 // Resolution returns the current Snapshot as a private-Resolution view. It
 // rejects malformed Epoch trust state before a consumer can derive a policy.
 func (snapshot Snapshot) Resolution() (ResolutionView, error) {
@@ -92,4 +110,62 @@ func (view ResolutionView) Candidate(nodeID [32]byte, at, deadline time.Time) (R
 			Endpoint: candidate.Endpoint, Domain: candidate.Domain, AssignmentNotAfter: candidate.AssignmentNotAfter}, valid
 	}
 	return ResolutionCandidate{}, false
+}
+
+// Gateway returns the exact Destination Resolution Gateway only when State is
+// fresh and that candidate remains valid throughout the complete lookup
+// window. It contains no candidate ordering, alternate Gateway, or URL.
+func (view ResolutionView) Gateway(at, deadline time.Time) (DestinationResolutionGateway, bool) {
+	if _, available := view.Epoch(at, deadline); !available {
+		return DestinationResolutionGateway{}, false
+	}
+	snapshot := view.snapshot
+	if snapshot.Profile != interactiveRouteProfile || snapshot.DestinationResolutionNodeID == [32]byte{} ||
+		snapshot.DestinationResolutionProfileSize == 0 || int(snapshot.DestinationResolutionProfileSize) > len(snapshot.DestinationResolutionProfile) {
+		return DestinationResolutionGateway{}, false
+	}
+	for _, candidate := range snapshot.Candidates[:snapshot.CandidateCount] {
+		if candidate.NodeID != snapshot.DestinationResolutionNodeID || candidate.Domain != destinationResolutionDomain {
+			continue
+		}
+		valid := candidate.Capacity > 0 && candidate.PublicKey != [32]byte{} && candidate.FamilyID != [32]byte{} &&
+			!at.Before(candidate.ValidFrom) && deadline.Before(candidate.ValidUntil) && !candidate.AssignmentNotAfter.Before(deadline)
+		if !valid {
+			return DestinationResolutionGateway{}, false
+		}
+		profile := make([]byte, snapshot.DestinationResolutionProfileSize)
+		copy(profile, snapshot.DestinationResolutionProfile[:snapshot.DestinationResolutionProfileSize])
+		return DestinationResolutionGateway{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: candidate.FamilyID,
+			Profile: profile, AssignmentNotAfter: candidate.AssignmentNotAfter}, true
+	}
+	return DestinationResolutionGateway{}, false
+}
+
+// CredentialIssuer returns the sole current State-selected issuer for the
+// closed membership-level Transit Grant operation. There is no candidate list,
+// endpoint literal, caller override, or fallback.
+func (view ResolutionView) CredentialIssuer(at, deadline time.Time) (TransitIssuer, bool) {
+	if _, available := view.Epoch(at, deadline); !available {
+		return TransitIssuer{}, false
+	}
+	snapshot := view.snapshot
+	if snapshot.Profile != interactiveRouteProfile || snapshot.TransitIssuanceNodeID == [32]byte{} ||
+		snapshot.TransitIssuanceProfileSize == 0 || int(snapshot.TransitIssuanceProfileSize) > len(snapshot.TransitIssuanceProfile) {
+		return TransitIssuer{}, false
+	}
+	for _, candidate := range snapshot.Candidates[:snapshot.CandidateCount] {
+		if candidate.NodeID != snapshot.TransitIssuanceNodeID || candidate.Domain != transitIssuanceDomain {
+			continue
+		}
+		valid := candidate.Capacity > 0 && candidate.PublicKey != [32]byte{} && candidate.FamilyID != [32]byte{} &&
+			!at.Before(candidate.ValidFrom) && deadline.Before(candidate.ValidUntil) && !candidate.AssignmentNotAfter.Before(deadline)
+		if !valid {
+			return TransitIssuer{}, false
+		}
+		profile := make([]byte, snapshot.TransitIssuanceProfileSize)
+		copy(profile, snapshot.TransitIssuanceProfile[:snapshot.TransitIssuanceProfileSize])
+		return TransitIssuer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: candidate.FamilyID,
+			Profile: profile, AssignmentNotAfter: candidate.AssignmentNotAfter}, true
+	}
+	return TransitIssuer{}, false
 }

@@ -23,29 +23,36 @@ type epochPolicy struct {
 // Network State. The broad value keeps the authenticated identity, validity,
 // commitments, record, and assignment from being observed out of generation.
 type epochVerificationSnapshot struct {
-	Generation       string
-	NetworkID        [32]byte
-	Epoch            uint64
-	Digest           [32]byte
-	PreviousDigest   [32]byte
-	EpochValidFrom   time.Time
-	ValidUntil       time.Time
-	Profile          string
-	ViewRoot         [32]byte
-	ViewLength       uint32
-	RejectedRoot     [32]byte
-	RejectedLength   uint32
-	RecordPresent    bool
-	NodeID           [32]byte
-	NodePublicKey    [32]byte
-	RecordGeneration uint64
-	RecordValidFrom  time.Time
-	RecordValidUntil time.Time
-	DeclaredFamily   string
-	ProbeEndpoint    string
-	ProbeCapacity    uint16
-	Assignment       string
-	AssignmentDigest [32]byte
+	Generation                       string
+	NetworkID                        [32]byte
+	Epoch                            uint64
+	Digest                           [32]byte
+	PreviousDigest                   [32]byte
+	EpochValidFrom                   time.Time
+	ValidUntil                       time.Time
+	Profile                          string
+	ViewRoot                         [32]byte
+	ViewLength                       uint32
+	RejectedRoot                     [32]byte
+	RejectedLength                   uint32
+	RecordPresent                    bool
+	NodeID                           [32]byte
+	NodePublicKey                    [32]byte
+	RecordGeneration                 uint64
+	RecordValidFrom                  time.Time
+	RecordValidUntil                 time.Time
+	DeclaredFamily                   string
+	ProbeEndpoint                    string
+	CarrierProfile                   string
+	ProbeCapacity                    uint16
+	Assignment                       string
+	AssignmentDigest                 [32]byte
+	DestinationResolutionNodeID      [32]byte
+	DestinationResolutionProfile     [maximumDestinationResolutionProfileBytes]byte
+	DestinationResolutionProfileSize uint16
+	TransitIssuanceNodeID            [32]byte
+	TransitIssuanceProfile           [maximumTransitIssuanceProfileBytes]byte
+	TransitIssuanceProfileSize       uint16
 }
 
 // Decision retains the canonical bytes needed to persist and redistribute one
@@ -63,6 +70,7 @@ type verifiedEpochDecision struct {
 	RecordDigests      [][32]byte
 	DomainProofs       [][]byte
 	Endpoints          []string
+	CarrierProfiles    []string
 	Capacities         []uint16
 	Domains            []string
 	ValidFrom          []time.Time

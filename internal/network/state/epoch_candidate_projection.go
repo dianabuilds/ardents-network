@@ -22,6 +22,7 @@ func attachCandidates(decision *verifiedEpochDecision, accepted []nodeRecord, ep
 		}
 		decision.DomainProofs = append(decision.DomainProofs, proof)
 		decision.Endpoints = append(decision.Endpoints, record.endpoint)
+		decision.CarrierProfiles = append(decision.CarrierProfiles, record.carrier)
 		decision.Capacities = append(decision.Capacities, record.capacity)
 		decision.Domains = append(decision.Domains, domain)
 		decision.ValidFrom = append(decision.ValidFrom, record.notBefore)

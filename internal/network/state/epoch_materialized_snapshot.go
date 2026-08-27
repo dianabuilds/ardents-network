@@ -17,6 +17,7 @@ func attachMaterializedRecord(index uint32, decision *verifiedEpochDecision) {
 	decision.Snapshot.RecordValidUntil = record.notAfter
 	decision.Snapshot.DeclaredFamily = record.family
 	decision.Snapshot.ProbeEndpoint = record.endpoint
+	decision.Snapshot.CarrierProfile = record.carrier
 	decision.Snapshot.ProbeCapacity = record.capacity
 	decision.Snapshot.Assignment = domain
 	decision.Snapshot.AssignmentDigest = epochAssignmentDigest(decision.epoch.networkID, decision.epoch.number,

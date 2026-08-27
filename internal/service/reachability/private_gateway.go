@@ -3,7 +3,6 @@ package reachability
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"io"
 	"net/http"
@@ -178,21 +177,4 @@ func (gateway *Gateway) acceptNonce(nonce [32]byte, deadline int64, now time.Tim
 func (gateway *Gateway) reject(writer http.ResponseWriter) {
 	writer.Header().Set("Content-Type", "application/octet-stream")
 	_, _ = writer.Write(make([]byte, privateMessageSize))
-}
-
-func validGatewayProfile(profile GatewayProfile, public [32]byte) bool {
-	return len(profile.Signature) == ed25519.SignatureSize && len(profile.KeyConfig) > 0 &&
-		profile.KeyConfigDigest == sha256.Sum256(profile.KeyConfig) && !profile.AssignmentNotAfter.IsZero() &&
-		ed25519.Verify(ed25519.PublicKey(public[:]), gatewayProfileTranscript(profile), profile.Signature)
-}
-
-func gatewayProfileTranscript(profile GatewayProfile) []byte {
-	out := make([]byte, 0, 2+len(privateGatewayProfileDomain)+32+32+8+4+len(profile.KeyConfig))
-	out = binary.BigEndian.AppendUint16(out, uint16(len(privateGatewayProfileDomain)))
-	out = append(out, privateGatewayProfileDomain...)
-	out = append(out, profile.NetworkID[:]...)
-	out = append(out, profile.NodeID[:]...)
-	out = binary.BigEndian.AppendUint64(out, uint64(profile.AssignmentNotAfter.UnixNano()))
-	out = binary.BigEndian.AppendUint32(out, uint32(len(profile.KeyConfig)))
-	return append(out, profile.KeyConfig...)
 }

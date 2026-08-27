@@ -9,14 +9,17 @@ import (
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
-type userReferenceStarter interface {
-	StartUserReferenceSite(context.Context, endpointapi.UserReferenceSiteRequest) *endpointapi.UserReferenceSession
+type alphaUserReferenceStarter interface {
+	StartAlphaUserReferenceSite(context.Context, endpointapi.AlphaUserReferenceSiteRequest) *endpointapi.UserReferenceSession
 }
 
-// runOfflineUser proves that a stale-but-authentic reachability descriptor does
-// not turn a missing Publisher slot into a browser origin or apparent delivery.
-func runOfflineUser(user userReferenceStarter, request endpointapi.UserReferenceSiteRequest) error {
-	session := user.StartUserReferenceSite(context.Background(), request)
+// runOfflineAlphaUser proves that the verified alpha route does not make a
+// missing Publisher slot appear as a browser-ready service.
+func runOfflineAlphaUser(user alphaUserReferenceStarter, request endpointapi.AlphaUserReferenceSiteRequest) error {
+	return runOfflineSession(user.StartAlphaUserReferenceSite(context.Background(), request))
+}
+
+func runOfflineSession(session *endpointapi.UserReferenceSession) error {
 	first, open := <-session.Events()
 	if !open || first.State != endpointapi.UserReferenceStarting {
 		return errors.New("offline User fixture did not begin its Reference lifecycle")

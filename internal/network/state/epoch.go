@@ -46,8 +46,15 @@ func snapshotFromEpoch(value epochVerificationSnapshot) Snapshot {
 		NodePublicKey: value.NodePublicKey, RecordGeneration: value.RecordGeneration,
 		RecordValidFrom: value.RecordValidFrom, RecordValidUntil: value.RecordValidUntil,
 		DeclaredFamily: value.DeclaredFamily, ProbeEndpoint: value.ProbeEndpoint,
-		ProbeCapacity: value.ProbeCapacity, Assignment: value.Assignment,
-		AssignmentDigest: value.AssignmentDigest,
+		CarrierProfile: value.CarrierProfile,
+		ProbeCapacity:  value.ProbeCapacity, Assignment: value.Assignment,
+		AssignmentDigest:                 value.AssignmentDigest,
+		DestinationResolutionNodeID:      value.DestinationResolutionNodeID,
+		DestinationResolutionProfile:     value.DestinationResolutionProfile,
+		DestinationResolutionProfileSize: value.DestinationResolutionProfileSize,
+		TransitIssuanceNodeID:            value.TransitIssuanceNodeID,
+		TransitIssuanceProfile:           value.TransitIssuanceProfile,
+		TransitIssuanceProfileSize:       value.TransitIssuanceProfileSize,
 	}
 }
 

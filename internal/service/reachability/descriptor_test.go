@@ -28,6 +28,7 @@ func TestDescriptorBindsPublicationTargetAndLiveIntroduction(t *testing.T) {
 		verified.Descriptor.Introduction.RendezvousNodeID != issued.Introduction.RendezvousNodeID ||
 		verified.Descriptor.Introduction.Reachability != issued.Introduction.Reachability ||
 		verified.Descriptor.Introduction.JoinHandle != issued.Introduction.JoinHandle ||
+		verified.Descriptor.Version != 1 || verified.Descriptor.Introduction.SubmissionMode != reachability.SubmissionFixedGrant ||
 		!verified.Descriptor.Introduction.NotAfter.Equal(issued.Introduction.NotAfter) ||
 		!bytes.Equal(verified.Descriptor.Introduction.SubmissionAuthorization, issued.Introduction.SubmissionAuthorization) ||
 		string(verified.Descriptor.Publication) != string(fixture.current.Record) {
@@ -44,6 +45,28 @@ func TestDescriptorBindsPublicationTargetAndLiveIntroduction(t *testing.T) {
 	}
 	if _, err := reachability.Verify(raw, fixture.current.Credential.Target, fixture.network, fixture.now.Add(31*time.Second)); err == nil {
 		t.Fatal("Descriptor accepted an expired live Introduction slot")
+	}
+}
+
+func TestDescriptorV2DeclaresMembershipSubmissionWithoutServiceTicket(t *testing.T) {
+	t.Parallel()
+	fixture := newDescriptorFixture(t)
+	slot := fixture.introduction()
+	slot.SubmissionAuthorization = nil
+	slot.SubmissionMode = reachability.SubmissionMembershipGrant
+	raw, issued, err := reachability.Issue(reachability.IssueInput{Current: fixture.current, InstanceSigner: fixture.instancePrivate, Introduction: slot})
+	if err != nil {
+		t.Fatal(err)
+	}
+	verified, err := reachability.Verify(raw, fixture.current.Credential.Target, fixture.network, fixture.now)
+	if err != nil || issued.Version != 2 || verified.Descriptor.Version != 2 ||
+		verified.Descriptor.Introduction.SubmissionMode != reachability.SubmissionMembershipGrant ||
+		len(verified.Descriptor.Introduction.SubmissionAuthorization) != 0 {
+		t.Fatalf("membership Descriptor = %+v, issued version %d, %v", verified.Descriptor.Introduction, issued.Version, err)
+	}
+	slot.SubmissionAuthorization = []byte("publisher-specific-ticket")
+	if _, _, err := reachability.Issue(reachability.IssueInput{Current: fixture.current, InstanceSigner: fixture.instancePrivate, Introduction: slot}); err == nil {
+		t.Fatal("Descriptor v2 accepted a publisher-specific membership ticket")
 	}
 }
 

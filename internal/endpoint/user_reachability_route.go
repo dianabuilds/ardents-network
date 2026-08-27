@@ -2,6 +2,7 @@ package endpoint
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"time"
 
@@ -20,7 +21,12 @@ type UserReachabilityRouteRequest struct {
 	Introduction, Initiator, Rendezvous TransitPeer
 	Entry                               route.EntryAcquirer
 	AttachmentID, EndpointHandshake     [32]byte
-	At                                  time.Time
+	// SubmissionAuthorization and SubmissionClientCertificate are produced
+	// only by the membership credential owner for Descriptor v2. Descriptor v1
+	// continues to use its embedded fixed Grant.
+	SubmissionAuthorization     []byte
+	SubmissionClientCertificate tls.Certificate
+	At                          time.Time
 }
 
 // OpenUserReachabilityRoute performs one selected private lookup when present,
@@ -55,6 +61,15 @@ func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input U
 		return nil, errors.Join(errors.New("private reachability evidence is invalid"), err)
 	}
 	slot := verified.Descriptor.Introduction
+	submissionAuthorization := slot.SubmissionAuthorization
+	if slot.SubmissionMode == reachability.SubmissionMembershipGrant {
+		if len(input.SubmissionAuthorization) == 0 {
+			return nil, errors.New("membership reachability descriptor has no issued transit credential")
+		}
+		submissionAuthorization = append([]byte(nil), input.SubmissionAuthorization...)
+	} else if slot.SubmissionMode != reachability.SubmissionFixedGrant || len(input.SubmissionAuthorization) != 0 {
+		return nil, errors.New("reachability submission authorization mode is invalid")
+	}
 	if input.Introduction.NodeID != slot.IntroductionNodeID || input.Rendezvous.NodeID != slot.RendezvousNodeID ||
 		input.Introduction.NodeID == input.Initiator.NodeID || input.Introduction.NodeID == input.Rendezvous.NodeID ||
 		input.Initiator.NodeID == input.Rendezvous.NodeID {
@@ -64,7 +79,8 @@ func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input U
 		Publication: verified.Current.Record, AuthorityPublic: verified.Descriptor.AuthorityPublic,
 		Introduction: UserIntroductionProfile{NetworkID: endpoint.network, Digest: slot.StateDigest, Epoch: slot.Epoch,
 			Introduction: input.Introduction, RendezvousNodeID: slot.RendezvousNodeID, Reachability: slot.Reachability,
-			JoinHandle: slot.JoinHandle, NotAfter: slot.NotAfter, SubmissionAuthorization: slot.SubmissionAuthorization},
+			JoinHandle: slot.JoinHandle, NotAfter: slot.NotAfter, SubmissionAuthorization: submissionAuthorization,
+			SubmissionClientCertificate: input.SubmissionClientCertificate},
 		Entry: input.Entry, Initiator: input.Initiator, Rendezvous: input.Rendezvous, AttachmentID: input.AttachmentID,
 		EndpointHandshake: input.EndpointHandshake, At: input.At})
 }

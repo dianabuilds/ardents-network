@@ -18,27 +18,32 @@ const (
 )
 
 type epochEnvelope struct {
-	digest            [32]byte
-	networkID         [32]byte
-	number            uint64
-	previous          [32]byte
-	validFrom         time.Time
-	validUntil        time.Time
-	profile           string
-	cutoff            uint32
-	inputRoot         [32]byte
-	viewRoot          [32]byte
-	viewLength        uint32
-	rejectedRoot      [32]byte
-	rejectedLength    uint32
-	assignmentSeed    [32]byte
-	eligibleCount     uint32
-	eligibleCapacity  uint32
-	familyCount       uint16
-	maxFamilyCount    uint16
-	maxFamilyCapacity uint32
-	domains           []roleDomain
-	signatures        []epochSignature
+	digest                       [32]byte
+	networkID                    [32]byte
+	number                       uint64
+	previous                     [32]byte
+	validFrom                    time.Time
+	validUntil                   time.Time
+	profile                      string
+	cutoff                       uint32
+	inputRoot                    [32]byte
+	viewRoot                     [32]byte
+	viewLength                   uint32
+	rejectedRoot                 [32]byte
+	rejectedLength               uint32
+	assignmentSeed               [32]byte
+	eligibleCount                uint32
+	eligibleCapacity             uint32
+	familyCount                  uint16
+	maxFamilyCount               uint16
+	maxFamilyCapacity            uint32
+	domains                      []roleDomain
+	version                      byte
+	destinationResolutionNodeID  [32]byte
+	destinationResolutionProfile []byte
+	transitIssuanceNodeID        [32]byte
+	transitIssuanceProfile       []byte
+	signatures                   []epochSignature
 }
 
 type epochSignature struct {
@@ -62,12 +67,23 @@ func parseEpoch(raw []byte) (epochEnvelope, error) {
 		return epochEnvelope{}, errors.New("epoch magic is invalid")
 	}
 	version, err := d.byte()
-	if err != nil || version != 1 {
+	if err != nil || (version != 1 && version != 2 && version != 3) {
 		return epochEnvelope{}, errors.New("epoch schema version is invalid")
 	}
 	var epoch epochEnvelope
+	epoch.version = version
 	if err := decodeEpochCommitment(&d, &epoch); err != nil {
 		return epochEnvelope{}, err
+	}
+	if epoch.version >= 2 {
+		if err := decodeDestinationResolutionGateway(&d, &epoch); err != nil {
+			return epochEnvelope{}, err
+		}
+	}
+	if epoch.version >= 3 {
+		if err := decodeTransitIssuanceDuty(&d, &epoch); err != nil {
+			return epochEnvelope{}, err
+		}
 	}
 	unsignedEnd := d.Consumed()
 	signerCount, err := d.byte()
@@ -95,6 +111,48 @@ func parseEpoch(raw []byte) (epochEnvelope, error) {
 	}
 	epoch.digest = sha256.Sum256(raw[:unsignedEnd])
 	return epoch, nil
+}
+
+func decodeTransitIssuanceDuty(d *decoder, epoch *epochEnvelope) error {
+	node, err := d.bytes(32)
+	if err != nil {
+		return err
+	}
+	copy(epoch.transitIssuanceNodeID[:], node)
+	length, err := d.uint16()
+	if err != nil || int(length) > maximumTransitIssuanceProfileBytes {
+		return errors.New("transit issuance profile length is invalid")
+	}
+	profile, err := d.bytes(int(length))
+	if err != nil {
+		return err
+	}
+	if (epoch.transitIssuanceNodeID == [32]byte{}) != (len(profile) == 0) {
+		return errors.New("transit issuance projection is incomplete")
+	}
+	epoch.transitIssuanceProfile = append([]byte(nil), profile...)
+	return nil
+}
+
+func decodeDestinationResolutionGateway(d *decoder, epoch *epochEnvelope) error {
+	node, err := d.bytes(32)
+	if err != nil {
+		return err
+	}
+	copy(epoch.destinationResolutionNodeID[:], node)
+	length, err := d.uint16()
+	if err != nil || int(length) > maximumDestinationResolutionProfileBytes {
+		return errors.New("destination resolution gateway profile length is invalid")
+	}
+	profile, err := d.bytes(int(length))
+	if err != nil {
+		return err
+	}
+	if (epoch.destinationResolutionNodeID == [32]byte{}) != (len(profile) == 0) {
+		return errors.New("destination resolution gateway projection is incomplete")
+	}
+	epoch.destinationResolutionProfile = append([]byte(nil), profile...)
+	return nil
 }
 
 func decodeEpochCommitment(d *decoder, epoch *epochEnvelope) error {
