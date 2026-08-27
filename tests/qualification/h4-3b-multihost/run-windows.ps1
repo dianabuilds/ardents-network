@@ -50,6 +50,12 @@ $env:ARDENTS_H4_3B_VPS = $VPS
 $env:ARDENTS_H4_3B_SSH_KEY = (Resolve-Path -LiteralPath $SSHKey).Path
 $env:ARDENTS_H4_3B_VPS_PORT = [string]$Port
 $env:ARDENTS_H4_3B_VPS_USER = $User
+# Sysnative is a 32-bit process alias, not a filesystem path visible to the
+# 64-bit Go qualification process. It locates OpenSSH for this runner; pass
+# the corresponding real System32 path to the Go child.
+if ($sshPath -like "$env:WINDIR\Sysnative\*") {
+    $sshPath = Join-Path $env:WINDIR 'System32\OpenSSH\ssh.exe'
+}
 $env:ARDENTS_H4_3B_SSH = $sshPath
 go test -v -tags=h4_3b_multihost ./tests/e2e/service -run '^TestH43MultiHost(DynamicPublisherApplication|PublisherWithdrawal|PublisherApplicationCrash|PublisherEndpointLoss)$' -count=1 $GoTestTimeout
 exit $LASTEXITCODE
