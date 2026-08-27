@@ -98,18 +98,18 @@ type AlphaInputsReceipt struct {
 // set, then publishes the complete direct directory atomically. Decrypted key
 // material is retained only for this call and is never returned.
 func BuildAlphaInputs(ctx context.Context, config BuildAlphaInputsConfig, secrets SecretInput) (AlphaInputsReceipt, error) {
-	return buildAlphaInputs(ctx, config, secrets, fixedAlphaInputPolicy, time.Now().UTC())
+	return buildAlphaInputs(ctx, config, secrets, fixedAlphaInputPolicy, time.Now)
 }
 
 func buildAlphaInputs(ctx context.Context, config BuildAlphaInputsConfig, secrets SecretInput, policy alphaInputPolicy,
-	invokedAt time.Time) (AlphaInputsReceipt, error) {
-	if ctx == nil || secrets == nil {
+	clock func() time.Time) (AlphaInputsReceipt, error) {
+	if ctx == nil || secrets == nil || clock == nil {
 		return AlphaInputsReceipt{}, ErrInvalid
 	}
 	if err := ctx.Err(); err != nil {
 		return AlphaInputsReceipt{}, err
 	}
-	request, err := parseAlphaInputsRequest(config.Request, config.Endpoint, config.Control, policy, invokedAt)
+	request, err := parseAlphaInputsRequest(config.Request, config.Endpoint, config.Control, policy, clock().UTC())
 	if err != nil {
 		return AlphaInputsReceipt{}, err
 	}
@@ -150,7 +150,7 @@ func buildAlphaInputs(ctx context.Context, config BuildAlphaInputsConfig, secret
 	if err := ctx.Err(); err != nil {
 		return AlphaInputsReceipt{}, err
 	}
-	fileReceipt, outputDigest, err := publishAlphaInputFiles(ctx, output, request, files, config.Endpoint, config.Control)
+	fileReceipt, outputDigest, err := publishAlphaInputFiles(ctx, output, request, files, config.Endpoint, config.Control, clock)
 	if err != nil {
 		return AlphaInputsReceipt{}, err
 	}

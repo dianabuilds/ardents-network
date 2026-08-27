@@ -165,4 +165,6 @@ The post-implementation review additionally fixed the exported operation to
 the recorded H4-alpha-1 profile/source/artifact/control/envelope identities and
 added an invocation-time expiry/build-safety check. Thus a different
 self-consistent artifact or custody record is rejected rather than becoming an
-accidental reusable signer.
+accidental reusable signer. Freshness is rechecked immediately before the
+atomic rename so a request that crosses a bound during local construction
+leaves no visible output.

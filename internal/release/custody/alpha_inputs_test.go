@@ -29,7 +29,7 @@ func TestBuildAlphaInputsRejectsChangedArtifactAndUnknownRequestFieldBeforeSecre
 	policy := alphaInputsTestPolicy(t, "", endpoint, control)
 	config := BuildAlphaInputsConfig{Root: t.TempDir(), Request: request, Endpoint: []byte("changed-endpoint"),
 		Control: control, Output: filepath.Join(t.TempDir(), "static")}
-	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, referenceTime); !errors.Is(err, ErrInvalid) {
+	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, fixedAlphaClock(referenceTime)); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("changed artifact error = %v", err)
 	}
 	var value map[string]any
@@ -39,7 +39,7 @@ func TestBuildAlphaInputsRejectsChangedArtifactAndUnknownRequestFieldBeforeSecre
 	value["signer"] = "caller-selected"
 	config.Endpoint = endpoint
 	config.Request, _ = json.Marshal(value)
-	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, referenceTime); !errors.Is(err, ErrInvalid) {
+	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, fixedAlphaClock(referenceTime)); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("unknown signer error = %v", err)
 	}
 }
@@ -59,13 +59,13 @@ func TestBuildAlphaInputsRejectsAnotherProfileAndExpiredRequestBeforeSecret(t *t
 	}
 	value["profile"] = "another-alpha-profile"
 	config.Request, _ = json.Marshal(value)
-	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, referenceTime); !errors.Is(err, ErrInvalid) {
+	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, fixedAlphaClock(referenceTime)); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("substitute profile error = %v", err)
 	}
 
 	config.Request = request
 	invokedAfterExpiry := referenceTime.Add(25 * time.Hour)
-	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, invokedAfterExpiry); !errors.Is(err, ErrInvalid) {
+	if _, err := buildAlphaInputs(context.Background(), config, unreadSecrets{}, policy, fixedAlphaClock(invokedAfterExpiry)); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("expired request error = %v", err)
 	}
 }
@@ -83,9 +83,39 @@ func TestBuildAlphaInputsRejectsAnotherEnvelopeBeforeSecret(t *testing.T) {
 	policy.EnvelopeSHA256 = strings.Repeat("c", 64)
 	_, err := buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{Root: root,
 		Request: alphaInputsTestRequest(t, endpoint, control, referenceTime), Endpoint: endpoint, Control: control,
-		Output: filepath.Join(t.TempDir(), "static")}, unreadSecrets{}, policy, referenceTime)
+		Output: filepath.Join(t.TempDir(), "static")}, unreadSecrets{}, policy, fixedAlphaClock(referenceTime))
 	if !errors.Is(err, ErrInvalid) {
 		t.Fatalf("substitute envelope error = %v", err)
+	}
+}
+
+func TestBuildAlphaInputsLeavesNoOutputWhenExpiryPassesDuringConstruction(t *testing.T) {
+	root := t.TempDir()
+	password := []byte("release-custody-password")
+	if _, err := Initialize(context.Background(), InitializeConfig{Root: root}, &fixedSecrets{values: [][]byte{password, password}}); err != nil {
+		t.Fatal(err)
+	}
+	endpoint := []byte("exact-linux-endpoint-artifact")
+	control := []byte("exact-linux-control-artifact")
+	referenceTime := time.Unix(1_800_000_100, 0).UTC()
+	policy := alphaInputsTestPolicy(t, root, endpoint, control)
+	clockCalls := 0
+	clock := func() time.Time {
+		clockCalls++
+		if clockCalls == 1 {
+			return referenceTime
+		}
+		return referenceTime.Add(25 * time.Hour)
+	}
+	output := filepath.Join(t.TempDir(), "static")
+	_, err := buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{Root: root,
+		Request: alphaInputsTestRequest(t, endpoint, control, referenceTime), Endpoint: endpoint, Control: control,
+		Output: output}, &fixedSecrets{values: [][]byte{password}}, policy, clock)
+	if !errors.Is(err, ErrPreflight) || clockCalls < 2 {
+		t.Fatalf("expiry during construction error = %v, clock calls = %d", err, clockCalls)
+	}
+	if _, statErr := os.Lstat(output); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("expired output exists: %v", statErr)
 	}
 }
 
@@ -103,13 +133,13 @@ func TestBuildAlphaInputsIsDeterministicAndNeverOverwrites(t *testing.T) {
 	firstOutput, secondOutput := filepath.Join(parent, "first"), filepath.Join(parent, "second")
 	first, err := buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{Root: root, Request: request,
 		Endpoint: endpoint, Control: control, Output: firstOutput}, &fixedSecrets{values: [][]byte{password}}, policy,
-		time.Unix(1_800_000_100, 0).UTC())
+		fixedAlphaClock(time.Unix(1_800_000_100, 0).UTC()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	second, err := buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{Root: root, Request: request,
 		Endpoint: endpoint, Control: control, Output: secondOutput}, &fixedSecrets{values: [][]byte{password}}, policy,
-		time.Unix(1_800_000_100, 0).UTC())
+		fixedAlphaClock(time.Unix(1_800_000_100, 0).UTC()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +155,7 @@ func TestBuildAlphaInputsIsDeterministicAndNeverOverwrites(t *testing.T) {
 	}
 	if _, err := buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{Root: root, Request: request,
 		Endpoint: endpoint, Control: control, Output: firstOutput}, unreadSecrets{}, policy,
-		time.Unix(1_800_000_100, 0).UTC()); !errors.Is(err, ErrOutputExists) {
+		fixedAlphaClock(time.Unix(1_800_000_100, 0).UTC())); !errors.Is(err, ErrOutputExists) {
 		t.Fatalf("existing output error = %v", err)
 	}
 }
@@ -152,7 +182,7 @@ func TestBuildAlphaInputsLeavesNoOutputWhenNetworkPreflightRejects(t *testing.T)
 	output := filepath.Join(t.TempDir(), "static")
 	_, err = buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{Root: root, Request: request,
 		Endpoint: endpoint, Control: control, Output: output}, &fixedSecrets{values: [][]byte{password}}, policy,
-		time.Unix(1_800_000_100, 0).UTC())
+		fixedAlphaClock(time.Unix(1_800_000_100, 0).UTC()))
 	if !errors.Is(err, ErrPreflight) {
 		t.Fatalf("network preflight error = %v", err)
 	}
@@ -176,7 +206,7 @@ func TestBuildAlphaInputsPublishesOneVerifierAcceptedStaticDirectory(t *testing.
 
 	receipt, err := buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{
 		Root: root, Request: request, Endpoint: endpoint, Control: control, Output: output,
-	}, &fixedSecrets{values: [][]byte{password}}, policy, referenceTime)
+	}, &fixedSecrets{values: [][]byte{password}}, policy, fixedAlphaClock(referenceTime))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,6 +315,10 @@ func alphaInputsTestPolicy(t *testing.T, root string, endpoint, control []byte) 
 		policy.EnvelopeSHA256 = hex.EncodeToString(envelopeDigest[:])
 	}
 	return policy
+}
+
+func fixedAlphaClock(at time.Time) func() time.Time {
+	return func() time.Time { return at }
 }
 
 func alphaInputsTestBundle(t *testing.T, static string, endpoint, control []byte) (string, []byte) {

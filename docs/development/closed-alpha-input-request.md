@@ -86,7 +86,9 @@ profile. A different self-consistent artifact, control companion, custody
 record, or source revision fails before the passphrase is requested. The
 recorded `reference_time` keeps verifier evidence reproducible; the adapter's
 actual invocation time separately must still precede both `not_after` and
-`build_safety_no_new_work_after` (and an emergency expiry when present).
+`build_safety_no_new_work_after` (and an emergency expiry when present). That
+freshness is checked both before secret use and immediately before the atomic
+output rename.
 
 The two builder names disclose two distinct project-controlled build
 observations. They do not claim independent builders. Their target digest and

@@ -144,10 +144,9 @@ func parseAlphaInputsRequest(raw, endpoint, control []byte, policy alphaInputPol
 		!validAlphaTime(parsed.BuildSafetyNoNewWorkAfter) || !validAlphaTime(parsed.BuildSafetyTerminateAfter) ||
 		parsed.ReferenceTime.Before(parsed.NotBefore) || !parsed.ReferenceTime.Before(parsed.NotAfter) ||
 		!parsed.ReferenceTime.Before(parsed.BuildSafetyNoNewWorkAfter) || !parsed.BuildSafetyNoNewWorkAfter.Before(parsed.BuildSafetyTerminateAfter) ||
-		!invokedAt.Before(parsed.NotAfter) || !invokedAt.Before(parsed.BuildSafetyNoNewWorkAfter) ||
+		!validAlphaFreshness(invokedAt, parsed.NotAfter, parsed.BuildSafetyNoNewWorkAfter, parsed.EmergencyReason, parsed.EmergencyExpiry) ||
 		!validQualification(parsed.Qualification) || !validBuildState(parsed.BuildState) || !validProtocolPhase(parsed.ProtocolPhase) ||
 		!validOptionalAlphaTime(parsed.ProtocolOverlappedSince) || !validEmergency(parsed.EmergencyReason, parsed.EmergencyExpiry) ||
-		(parsed.EmergencyReason != "" && !invokedAt.Before(parsed.EmergencyExpiry)) ||
 		!validAlphaText(parsed.NetworkState.Profile, 64) || len(authorities) == 0 || len(authorities) > 16 ||
 		parsed.NetworkState.Threshold == 0 || int(parsed.NetworkState.Threshold) > len(authorities) ||
 		len(parsed.NetworkState.Epoch) == 0 || len(parsed.NetworkState.Epoch) > 1<<20 || len(parsed.NetworkState.Inputs) > 64 || len(parsed.NetworkState.Materials) > 64 {
@@ -246,6 +245,15 @@ func validEmergency(reason string, expiry time.Time) bool {
 		return expiry.IsZero()
 	}
 	return validAlphaTime(expiry) && (reason == "credible-exploitable-flaw" || reason == "compromised-primitive-or-key" || reason == "demonstrated-safety-incompatibility")
+}
+
+func alphaInputsFresh(request alphaInputsRequest, at time.Time) bool {
+	return validAlphaFreshness(at, request.NotAfter, request.BuildSafetyNoNewWorkAfter, request.EmergencyReason, request.EmergencyExpiry)
+}
+
+func validAlphaFreshness(at, notAfter, noNewWorkAfter time.Time, emergencyReason string, emergencyExpiry time.Time) bool {
+	return !at.IsZero() && at.Before(notAfter) && at.Before(noNewWorkAfter) &&
+		(emergencyReason == "" || at.Before(emergencyExpiry))
 }
 
 func cloneAlphaBytes(value []byte) []byte { return append([]byte(nil), value...) }

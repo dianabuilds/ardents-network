@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
@@ -35,7 +36,7 @@ func checkedAlphaOutput(path string) (string, error) {
 }
 
 func publishAlphaInputFiles(ctx context.Context, output string, request alphaInputsRequest, files map[string][]byte,
-	endpoint, control []byte) ([]AlphaInputFile, [32]byte, error) {
+	endpoint, control []byte, clock func() time.Time) ([]AlphaInputFile, [32]byte, error) {
 	var zeroDigest [32]byte
 	stage, err := os.MkdirTemp(filepath.Dir(output), ".ardents-alpha-inputs-")
 	if err != nil {
@@ -81,6 +82,9 @@ func publishAlphaInputFiles(ctx context.Context, output string, request alphaInp
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, zeroDigest, err
+	}
+	if !alphaInputsFresh(request, clock().UTC()) {
+		return nil, zeroDigest, fmt.Errorf("%w: request expired during construction", ErrPreflight)
 	}
 	if _, err := os.Lstat(output); err == nil {
 		return nil, zeroDigest, ErrOutputExists

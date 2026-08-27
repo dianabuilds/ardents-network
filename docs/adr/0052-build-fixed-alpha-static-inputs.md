@@ -47,7 +47,7 @@ profile: its selected encrypted-envelope digest, Endpoint/control digests, and
 Endpoint source revision are fixed policy, not caller choices. A recorded
 reference time drives deterministic verifier evidence, while the actual local
 invocation time must still precede metadata expiry and the no-new-work safety
-bound.
+bound both before secret use and immediately before atomic publication.
 
 Before external publication it validates the request's Network State through
 the maintained State acceptance path, evaluates the constructed TUF set through
