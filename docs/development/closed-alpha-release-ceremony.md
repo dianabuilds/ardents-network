@@ -33,13 +33,13 @@ threshold custody, independent control, or a Public Beta gate.
 
 The Product Owner initializes the local seed record once with
 `ardents-release-custody initialize --root C:\Users\vitek\Ardents-Release\keys`.
-The command reads a new passphrase and confirmation only through its local
-no-echo terminal. The passphrase contains 16 to 1024 bytes; the command reports
-only a length-policy failure or a nonmatching confirmation, never the secret.
-Neither passphrase nor private material belongs in a command line, environment,
-repository, chat, shell history, bundle, CI log, release asset, or VPS.
-Initialization returns a public receipt only; it does not yet sign metadata or
-publish a release.
+On Windows the command presents two local password dialogs, which support paste;
+on other platforms it uses a local no-echo terminal. The passphrase contains 16
+to 1024 bytes; the command reports only a length-policy failure or a
+nonmatching confirmation, never the secret. Neither passphrase nor private
+material belongs in a command line, environment, repository, chat, shell
+history, bundle, CI log, release asset, or VPS. Initialization returns a public
+receipt only; it does not yet sign metadata or publish a release.
 
 ## Signed input set
 
