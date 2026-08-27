@@ -36,6 +36,9 @@ type Prompt string
 const (
 	PromptCreate  Prompt = "release-custody-create"
 	PromptConfirm Prompt = "release-custody-confirm"
+	// PromptUnlock asks for the existing record passphrase only to derive a
+	// public receipt. It never authorizes arbitrary signing or key export.
+	PromptUnlock Prompt = "release-custody-unlock"
 )
 
 // PublicRole identifies one fixed ceremony role and its Ed25519 public key.
@@ -49,4 +52,11 @@ type PublicRole struct {
 type Receipt struct {
 	EnvelopeDigest [32]byte
 	Roles          [10]PublicRole
+}
+
+// InspectConfig identifies an existing owner-only directory containing the
+// encrypted record. Inspect returns its public receipt only after the supplied
+// local secret successfully opens the record.
+type InspectConfig struct {
+	Root string
 }

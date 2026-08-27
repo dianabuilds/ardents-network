@@ -29,7 +29,9 @@ Network State/topology bytes and a verifier preflight before bundle assembly.
 
 The active team is the Product Owner and Codex. The Windows workspace is local
 custody; the project VPS, GitHub, CI, bundle, and repository are not secret
-stores or signing authorities. The first release remains one-person provisional
+stores or signing authorities. ADR-0051 additionally permits only a
+passphrase-authenticated public receipt recovery for that record; it is not a
+signing or export operation. The first release remains one-person provisional
 control, not a threshold or independent-control claim.
 
 ## Hypotheses

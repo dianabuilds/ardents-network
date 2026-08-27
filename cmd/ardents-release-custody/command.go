@@ -13,17 +13,26 @@ import (
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {
-	if len(arguments) == 0 || arguments[0] != "initialize" {
-		return errors.New("usage: ardents-release-custody initialize --root ABSOLUTE_OWNER_ONLY_DIRECTORY")
+	if len(arguments) == 0 || (arguments[0] != "initialize" && arguments[0] != "inspect") {
+		return errors.New("usage: ardents-release-custody <initialize|inspect> --root ABSOLUTE_OWNER_ONLY_DIRECTORY")
 	}
-	flags := flag.NewFlagSet("initialize", flag.ContinueOnError)
+	operation := arguments[0]
+	flags := flag.NewFlagSet(operation, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var root string
 	flags.StringVar(&root, "root", "", "owner-only release custody directory")
 	if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 || !filepath.IsAbs(root) {
 		return errors.New("release custody initialization arguments are invalid")
 	}
-	receipt, err := custody.Initialize(ctx, custody.InitializeConfig{Root: root}, input)
+	var (
+		receipt custody.Receipt
+		err     error
+	)
+	if operation == "initialize" {
+		receipt, err = custody.Initialize(ctx, custody.InitializeConfig{Root: root}, input)
+	} else {
+		receipt, err = custody.Inspect(ctx, custody.InspectConfig{Root: root}, input)
+	}
 	if err != nil {
 		return err
 	}

@@ -30,6 +30,21 @@ func TestRunInitializesRecordAndRendersOnlyReceipt(t *testing.T) {
 	}
 }
 
+func TestRunInspectsExistingRecordWithOneSecret(t *testing.T) {
+	root := t.TempDir()
+	password := []byte("release-custody-password")
+	if err := run(context.Background(), []string{"initialize", "--root", root}, &bytes.Buffer{}, &fixedInput{values: [][]byte{password, password}}); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := run(context.Background(), []string{"inspect", "--root", root}, &output, &fixedInput{values: [][]byte{password}}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), string(password)) || !strings.Contains(output.String(), "ardents-release-custody-receipt-v1") {
+		t.Fatalf("receipt = %q", output.String())
+	}
+}
+
 type unreadInput struct{}
 
 func (unreadInput) ReadSecret(context.Context, custody.Prompt) ([]byte, error) {

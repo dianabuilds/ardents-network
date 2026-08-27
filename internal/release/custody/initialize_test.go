@@ -141,6 +141,45 @@ func TestInitializeRejectsTamperedCiphertext(t *testing.T) {
 	}
 }
 
+func TestInspectReturnsOnlyPublicReceiptForExistingRecord(t *testing.T) {
+	root := t.TempDir()
+	password := []byte("release-custody-password")
+	created, err := Initialize(context.Background(), InitializeConfig{Root: root}, &fixedSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inspected, err := Inspect(context.Background(), InspectConfig{Root: root}, &fixedSecrets{values: [][]byte{password}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inspected != created {
+		t.Fatalf("Inspect receipt = %+v, want %+v", inspected, created)
+	}
+}
+
+func TestInspectRejectsWrongSecretWithoutChangingRecord(t *testing.T) {
+	root := t.TempDir()
+	password := []byte("release-custody-password")
+	if _, err := Initialize(context.Background(), InitializeConfig{Root: root}, &fixedSecrets{values: [][]byte{password, password}}); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(seedPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Inspect(context.Background(), InspectConfig{Root: root}, &fixedSecrets{values: [][]byte{[]byte("wrong-release-custody-password")}})
+	if !errors.Is(err, ErrSecret) {
+		t.Fatalf("Inspect = %v, want ErrSecret", err)
+	}
+	after, err := os.ReadFile(seedPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("Inspect changed the encrypted record")
+	}
+}
+
 type fixedSecrets struct {
 	values [][]byte
 	next   int

@@ -95,6 +95,53 @@ func marshalRecord(record seedRecord) ([]byte, error) {
 	return json.Marshal(record)
 }
 
+func openRecord(raw, password []byte) (seedRecord, error) {
+	var parsed envelope
+	if err := json.Unmarshal(raw, &parsed); err != nil || parsed.Profile != "ardents-release-seed-envelope-v1" ||
+		parsed.Schema != 1 || parsed.AEAD != "aes-256-gcm-random-nonce" || parsed.KDF.Name != "argon2id" ||
+		parsed.KDF.Version != 19 || parsed.KDF.MemoryKiB != kdfMemoryKiB || parsed.KDF.Passes != kdfPasses || parsed.KDF.Lanes != kdfLanes {
+		return seedRecord{}, ErrInvalid
+	}
+	salt, err := base64.RawURLEncoding.DecodeString(parsed.KDF.Salt)
+	if err != nil || len(salt) != kdfSaltBytes {
+		return seedRecord{}, ErrInvalid
+	}
+	defer zero(salt)
+	ciphertext, err := base64.RawURLEncoding.DecodeString(parsed.Ciphertext)
+	if err != nil || len(ciphertext) == 0 {
+		return seedRecord{}, ErrInvalid
+	}
+	defer zero(ciphertext)
+	header, err := json.Marshal(envelopeHeader{Profile: parsed.Profile, Schema: parsed.Schema, KDF: parsed.KDF, AEAD: parsed.AEAD})
+	if err != nil {
+		return seedRecord{}, err
+	}
+	key := argon2.IDKey(password, salt, kdfPasses, kdfMemoryKiB, kdfLanes, 32)
+	defer zero(key)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return seedRecord{}, err
+	}
+	aead, err := cipher.NewGCMWithRandomNonce(block)
+	if err != nil {
+		return seedRecord{}, err
+	}
+	plaintext, err := aead.Open(nil, nil, ciphertext, header)
+	if err != nil {
+		return seedRecord{}, ErrSecret
+	}
+	defer zero(plaintext)
+	var record seedRecord
+	if err := json.Unmarshal(plaintext, &record); err != nil {
+		return seedRecord{}, ErrInvalid
+	}
+	if _, err := marshalRecord(record); err != nil {
+		zeroRecord(record)
+		return seedRecord{}, err
+	}
+	return record, nil
+}
+
 func fixedKDF(salt []byte) kdfProfile {
 	return kdfProfile{Name: "argon2id", Version: 19, MemoryKiB: kdfMemoryKiB, Passes: kdfPasses, Lanes: kdfLanes, Salt: base64.RawURLEncoding.EncodeToString(salt)}
 }

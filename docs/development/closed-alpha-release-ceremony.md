@@ -41,6 +41,12 @@ material belongs in a command line, environment, repository, chat, shell
 history, bundle, CI log, release asset, or VPS. Initialization returns a public
 receipt only; it does not yet sign metadata or publish a release.
 
+When the initialization receipt must be recovered for companion recording, run
+`ardents-release-custody inspect --root C:\Users\vitek\Ardents-Release\keys`.
+It asks once for the existing passphrase and prints only the encrypted-record
+digest and fixed public keys. It does not alter the record or create a signed
+release input.
+
 ## Signed input set
 
 The release workspace produces and independently verifies one static set before
