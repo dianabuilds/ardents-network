@@ -12,7 +12,7 @@ export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
-.PHONY: architecture build check e2e format format-check fuzz mod-check quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture build check e2e format format-check fuzz mod-check package-ubuntu-deb prepare-h4-2-net-01a qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -37,6 +37,41 @@ unit:
 
 e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
+
+qualification-h4-1a:
+	sh ./tests/qualification/h4-1a-ubuntu-portable/run-ubuntu.sh -timeout=2m
+
+qualification-h4-1b:
+	sh ./tests/qualification/h4-1b-ubuntu-replacement/run-ubuntu.sh -timeout=2m
+
+qualification-h4-2-multihost:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-2-multihost/run-windows.ps1
+
+qualification-h4-2-local-emulator:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-2-local-emulator/run-windows.ps1
+
+prepare-h4-2-net-01a:
+	sh ./tests/qualification/h4-2-net-01a/run-ubuntu.sh
+
+qualification-h4-4a-firefox:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4a-firefox/run-windows.ps1
+
+qualification-h4-4-signed-xpi:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-signed-xpi/run-windows.ps1 -SignedXPI "$(ARDENTS_H4_4_SIGNED_XPI)"
+
+qualification-h4-4-signed-firefox:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-signed-firefox/run-windows.ps1 -Firefox "$(ARDENTS_REFERENCE_C2_FIREFOX)" -SignedXPI "$(ARDENTS_H4_4_SIGNED_XPI)"
+
+qualification-h4-4-windows-enrollment:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-windows-enrollment/run-windows.ps1 -SignedXPI "$(ARDENTS_H4_4_SIGNED_XPI)"
+
+qualification-h4-4-ubuntu-enrollment:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-ubuntu-enrollment/run-windows-docker.ps1 -SignedXPI "$(ARDENTS_H4_4_SIGNED_XPI)"
+
+qualification: qualification-h4-1a qualification-h4-1b
+
+package-ubuntu-deb:
+	sh ./packaging/ubuntu-deb/build.sh
 
 fuzz:
 	go test ./internal/network/state -run '^$$' -fuzz '^FuzzCanonicalParsers$$' -fuzztime=1m

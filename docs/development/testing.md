@@ -63,13 +63,83 @@ current accepted suite and names the decision that must activate it. Inactive
 does not mean passed, waived, or unavailable evidence.
 
 - developer, deterministic Module, process, race, and fuzz are active;
-- affected-platform remains inactive until a supported platform contract and
-  eligible host are selected;
+- affected-platform is active for H4-4A's purpose-named Windows Firefox
+  compatibility qualification, `make qualification-h4-4a-firefox`, owned by
+  `tests/qualification/h4-4a-firefox/`. It requires an interactive Windows
+  desktop and an explicit installed Firefox executable; absence is an invalid
+  selected environment, not a skip;
+- the signed-release-input qualifier, `make qualification-h4-4-signed-xpi
+  ARDENTS_H4_4_SIGNED_XPI='C:/absolute/path/to/signed.xpi'`, owns the exact
+  Mozilla-signed H4-4 alpha XPI check in
+  `tests/qualification/h4-4-signed-xpi/`. It requires the exact downloaded
+  signed XPI; missing or changed bytes are an invalid selected environment,
+  not a skip;
+- the signed-Firefox qualifier, `make qualification-h4-4-signed-firefox
+  ARDENTS_REFERENCE_C2_FIREFOX='C:/Program Files/Mozilla Firefox/firefox.exe'
+  ARDENTS_H4_4_SIGNED_XPI='C:/absolute/path/to/signed.xpi'`, owns the
+  clean-profile Firefox Release installation proof in
+  `tests/qualification/h4-4-signed-firefox/`. The operator explicitly installs
+  the exact signed XPI only into its disposable profile, then opens
+  `http://reference.ard/`; lack of that explicit operation or any failure is
+  an invalid selected environment, not a skip;
+- the Windows enrollment-v4 qualifier, `make
+  qualification-h4-4-windows-enrollment
+  ARDENTS_H4_4_SIGNED_XPI='C:/absolute/path/to/signed.xpi'`, owns one
+  temporary current-user native-manifest install/remove run using that exact
+  XPI. It refuses an existing registration and requires a Windows host; an
+  unavailable or changed artifact is an invalid selected environment, not a
+  skip;
+- the Ubuntu container enrollment-v4 qualifier, `make
+  qualification-h4-4-ubuntu-enrollment
+  ARDENTS_H4_4_SIGNED_XPI='C:/absolute/path/to/signed.xpi'`, runs the exact
+  signed XPI and current Linux command bytes as UID 1000 in the pre-existing
+  `ubuntu:24.04` Docker image. It proves only native-manifest mechanics, not a
+  desktop Firefox or participant release; unavailable Docker or artifact input
+  is an invalid selected environment, not a skip;
 - soak remains inactive until a bounded duration/load/observer contract is
   accepted; and
-- Qualification remains inactive because no claim-bearing suite is accepted. A
-  later accepted claim creates
-  `tests/qualification/<claim>` with its matrix and entrypoint.
+- Qualification is active for H4-1A Ubuntu Portable and H4-1B Ubuntu
+  replacement. Their purpose-named entrypoints are `make qualification-h4-1a`
+  and `make qualification-h4-1b`, owned respectively by
+  `tests/qualification/h4-1a-ubuntu-portable/` and
+  `tests/qualification/h4-1b-ubuntu-replacement/`. Each qualifier uses a
+  build-tagged command test because it must build and exercise the same exact
+  `ardents` artifact as the ordinary command process suite; ordinary `make e2e`
+  never selects it. A host without the declared Linux user-session prerequisites
+  is an invalid environment and fails the selected target.
+- the H4-2 multi-host native Rendezvous qualifier, `make
+  qualification-h4-2-multihost`, is owned by
+  `tests/qualification/h4-2-multihost/`. It requires a declared VPS literal IP,
+  matching SSH key, free public high port plus two remote-loopback State Source
+  ports, Docker 29-compatible host networking, and the pre-existing
+  `golang:1.26.6` image. It cross-builds the current command bytes and runs the
+  exact two-host native TCP/TLS leg and abrupt-remote-Node-loss oracles through
+  a temporary remote container; absence or failure of any prerequisite is an
+  invalid selected environment, never a skipped pass. The loss oracle proves
+  terminal closure only, not VPS-loss recovery or availability.
+- the H4-2 local full-system emulator, `make
+  qualification-h4-2-local-emulator`, is owned by
+  `tests/qualification/h4-2-local-emulator/`. It requires Windows Docker and
+  the pre-existing `golang:1.26.6` image. The runner cross-builds exact current
+  test, product, and fixture bytes outside the repository, mounts only those
+  bytes read-only in one resource-bounded Linux container with no external
+  network, 1 vCPU, 1 GiB memory, and 256 PIDs. It executes the complete
+  held-route C-2 test: every fixture and product Node is a separate process;
+  the product Rendezvous is hard-stopped only after both endpoint sides report
+  setup readiness. The same campaign carries the in-process product C-2 over
+  TCP/TLS and QUIC, checks signed v1/v2 Carrier projection and unknown-profile
+  rejection, verifies pending QUIC admission before authentication, exact
+  TLS/LegBinding on both adapters, and proves no fallback in either direction.
+  The resulting outcomes establish the selected functional full-system
+  emulation, not a physical host outage, public-path failure, throughput,
+  capacity, or availability claim.
+- `make prepare-h4-2-net-01a` is not a qualification result or an execution
+  profile. It owns only the exact-host preflight and external evidence-directory
+  initialization for R-092's future decision-bearing campaign. It rejects a
+  non-Ubuntu-LTS/`x86-64` host, anything other than two visible CPUs, a clearly
+  non-2-GiB memory class, absent cgroup v2, or missing separately captured
+  symmetric-link evidence. It deliberately does not substitute container limits
+  for the physical host, run a capacity cell, or select a native profile.
 
 ## Profile ownership and validity
 
@@ -96,7 +166,11 @@ Make-target wiring.
 
 The deterministic and process package memberships are positive and explicit in
 the adjacent `*-packages.txt` manifests. A package changes profile only with
-its source, test, and product/evidence disposition.
+its source, test, and product/evidence disposition. A claim qualifier may
+select an existing command suite through an explicit build tag when that is the
+only way to exercise the exact distributable command; its purpose-named
+`tests/qualification/<claim>/` owner and Make entrypoint remain outside ordinary
+process execution.
 
 An environment-dependent selected profile has four outcomes: product assertion
 failure, test/harness defect, invalid environment, or nondeterministic/unowned
