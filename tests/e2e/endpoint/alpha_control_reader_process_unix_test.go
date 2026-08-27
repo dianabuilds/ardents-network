@@ -59,6 +59,30 @@ func TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart(t *testing.T) {
 	}
 }
 
+func TestAlphaControlReaderTwoFreshEnrolledEndpointsAgree(t *testing.T) {
+	endpoint := buildArdents(t)
+	control := buildControl(t)
+	fixture := alphaControlBundle(t, endpoint, control)
+	arguments := []string{"inspect-bundle", "--enrollment", fixture.input, "--artifact", fixture.artifact,
+		"--at", fixture.now.Format(time.RFC3339)}
+	for endpointIndex := 0; endpointIndex < 2; endpointIndex++ {
+		state := filepath.Join(t.TempDir(), "control-floor")
+		output, err := exec.Command(control, append(arguments, "--state-root", state)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("fresh enrolled Endpoint %d alpha control inspection: %v\n%s", endpointIndex, err, output)
+		}
+		var report struct {
+			Catalog      string `json:"catalog"`
+			Release      string `json:"release"`
+			NetworkEpoch uint64 `json:"network_epoch"`
+		}
+		if err := json.Unmarshal(output, &report); err != nil || report.Catalog != "accepted" ||
+			(report.Release != "release-accepted" && report.Release != "no-update") || report.NetworkEpoch != 1 {
+			t.Fatalf("fresh enrolled Endpoint %d alpha control report = %s / %+v / %v", endpointIndex, output, report, err)
+		}
+	}
+}
+
 func TestAlphaCorpusAcceptanceUsesV3EnrolledControlCompanion(t *testing.T) {
 	endpoint := buildArdents(t)
 	control := buildControl(t)
@@ -155,6 +179,13 @@ func alphaCorpusCatalog(t *testing.T, fixture alphaControlBundleFixture, serial 
 
 func buildControl(t *testing.T) string {
 	t.Helper()
+	if prebuilt := os.Getenv("ARDENTS_E2E_CONTROL"); prebuilt != "" {
+		info, err := os.Stat(prebuilt)
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("prebuilt alpha-control command is not a regular file: %v", err)
+		}
+		return prebuilt
+	}
 	_, source, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("locate E2E source")

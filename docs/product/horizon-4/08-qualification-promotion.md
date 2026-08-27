@@ -38,6 +38,26 @@ update safely. A more ambitious transport, browser, Contributor, Namespace, or
 protected-application profile is another qualification target, not an implicit
 extension of a passing result.
 
+### Candidate H4-alpha-1 — readiness profile under qualification
+
+The current implementation candidate is source revision `2eafb1101990837a8f4d6f5aeeb13e13793eadc5`.
+It narrows the existing selected directions into one reproducible qualification
+target; this records a candidate and its evidence gates, **not** a release
+acceptance or a claim that an immutable participant artifact has been published.
+
+| Boundary | Candidate selection | Evidence gate |
+|---|---|---|
+| Endpoint | Ubuntu LTS `x86-64` unprivileged Portable with explicit Alpha Enrollment Pin, local replacement, and custody boundaries | H4-1A/B native user-session qualification plus a concrete immutable artifact and independent first-contact handoff |
+| Carrier | State-selected TCP/TLS v1 is release-gating. QUIC v1 remains a maintained separately qualified compatible profile, never a fallback or an implicit part of this candidate's release claim. | H4-2 local and two-host TCP/TLS evidence; any QUIC participant claim requires its own selected matrix row |
+| Service | One exact Target Link, loopback Browser Adapter, and the dynamic H4-3B HTTP/1.1 workload: POST body/header preservation, cookie/redirect follow-up, chunked response, explicit withdrawal, Publisher Application reset, and Publisher Endpoint loss | local process, constrained Docker, VPS Docker, actual two-host C-2, and selected browser/platform cells; every failure must retain the exact no-fallback oracle |
+| Naming | Target Link is the release path. The retained `ardents-alpha://` corpus may support controlled fixture evidence but H4-4 Browser Entry is not release-gating. | no participant `.ard`/DNS/DoH/HTTPS claim |
+| Control | enrollment-pinned H4-6A catalog and independently verified Release, Network, Compatibility, and corpus components | two fresh enrolled Endpoints accept or reject the same concrete component identities for the documented reason |
+
+The remaining first-alpha selection is the concrete Ubuntu artifact/contact,
+the exact two-host topology, and one browser/version on the Endpoint platform.
+Until those inputs exist, their cells are active gates rather than passing
+substitutes.
+
 ## Delivery slices
 
 ### H4-8A — release-readiness matrix

@@ -12,7 +12,7 @@ export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 
-.PHONY: architecture build check e2e format format-check fuzz mod-check package-ubuntu-deb prepare-h4-2-net-01a qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture build check e2e format format-check fuzz mod-check package-ubuntu-deb prepare-h4-2-net-01a qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-3b-docker qualification-h4-3b-vps qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -49,6 +49,12 @@ qualification-h4-2-multihost:
 
 qualification-h4-2-local-emulator:
 	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-2-local-emulator/run-windows.ps1
+
+qualification-h4-3b-docker:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-3b-docker/run-windows.ps1
+
+qualification-h4-3b-vps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-3b-vps/run-windows.ps1
 
 prepare-h4-2-net-01a:
 	sh ./tests/qualification/h4-2-net-01a/run-ubuntu.sh

@@ -125,6 +125,23 @@
       "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "free public high port and two remote-loopback Source ports", "remote Docker host networking", "pre-existing golang:1.26.6 image"],
       "invalid_environment": "the selected Windows-to-VPS native Route qualification environment is unavailable",
       "timeout": "2m"
+    },
+    {
+      "id": "h4-3b-docker",
+      "state": "active",
+      "make_target": "qualification-h4-3b-docker",
+      "surface": "resource-bounded Linux Docker application-transparent C-2 qualification",
+      "prerequisites": ["Windows host", "available Docker engine", "pre-existing golang:1.26.6 image"],
+      "invalid_environment": "the selected local Docker H4-3B qualification environment is unavailable",
+      "timeout": "2m"
+    },
+    {
+      "id": "h4-3b-vps",
+      "state": "active",
+      "make_target": "qualification-h4-3b-vps",
+      "surface": "project-VPS Docker application-transparent C-2 qualification",
+      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "remote Docker engine", "pre-existing golang:1.26.6 image"],
+      "invalid_environment": "the selected Windows-to-VPS H4-3B Docker qualification environment is unavailable"
     }
   ],
   "suite_roots": [

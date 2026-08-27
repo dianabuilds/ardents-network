@@ -247,11 +247,15 @@ reject an unregistered alpha name and an Internet destination. After response he
 committed, the local HTTP server may expose a truncated body rather than a
 second HTTP status; the classified Endpoint terminal remains authoritative.
 
-This is a locally qualified H4-3B implementation result, not yet the full
-release promotion: the same exact candidate still needs Docker/VPS, selected
-platform/browser, and actual multi-host qualification plus declared HTTP/1.1
-limits. The optional H4-4 named Browser Entry remains compatibility evidence
-and is not an H4-3B completion dependency.
+The exact cross-built H4-3B command and fixture bytes now pass all four dynamic
+terminal cases in a read-only, network-isolated Linux Docker cell at `1` vCPU,
+`1 GiB`, and `128` PIDs. That runner also verifies cached and two-fresh-root
+H4-6A control observations before it reports the C-2 results. This is local
+Docker evidence, not yet the full release promotion: the same exact candidate
+still needs the declared VPS repetition, selected platform/browser, actual
+multi-host qualification, and declared HTTP/1.1 limits. The optional H4-4 named
+Browser Entry remains compatibility evidence and is not an H4-3B completion
+dependency.
 
 **Boundary:** this slice makes no browser-isolation, external-origin,
 anonymity, or zero-latency claim. A page's ordinary external requests remain

@@ -133,6 +133,26 @@ does not mean passed, waived, or unavailable evidence.
   The resulting outcomes establish the selected functional full-system
   emulation, not a physical host outage, public-path failure, throughput,
   capacity, or availability claim.
+- the H4-3B Docker qualifier, `make qualification-h4-3b-docker`, is owned by
+  `tests/qualification/h4-3b-docker/`. It cross-builds the exact Endpoint,
+  alpha-control, Node, Reference C-2 fixture, and service-test bytes, then runs
+  the four application-transparent HTTP/1.1 terminal cases independently in a
+  read-only, network-isolated Linux container at 1 vCPU, 1 GiB, and 128 PIDs.
+  Each cell proves the selected Target's POST/cookie/redirect/chunked behavior,
+  explicit withdrawal, Publisher Application reset, or Publisher Endpoint loss
+  without a fallback destination. The Linux fixture also accepts its separately
+  manifested alpha-control corpus before resolution. This is exact current-byte
+  Docker evidence, not a second host, participant artifact, selected desktop
+  browser, capacity, availability, or public-release claim.
+- the H4-3B VPS Docker qualifier, `make qualification-h4-3b-vps`, is owned by
+  `tests/qualification/h4-3b-vps/`. It requires a literal VPS IPv4 address and
+  matching SSH key through `ARDENTS_H4_3B_VPS` and `ARDENTS_H4_3B_SSH_KEY`.
+  The runner uploads only cross-built command/test bytes to an exact temporary
+  VPS directory, records their SHA-256 values and the remote Docker/kernel
+  envelope, runs the same H4-3B/H4-6A Docker cells without published ports,
+  then removes that exact directory. It is a project-operated second-host Docker
+  result, not a distributed Publisher/User C-2, participant browser, capacity,
+  or availability claim.
 - `make prepare-h4-2-net-01a` is not a qualification result or an execution
   profile. It owns only the exact-host preflight and external evidence-directory
   initialization for R-092's future decision-bearing campaign. It rejects a
