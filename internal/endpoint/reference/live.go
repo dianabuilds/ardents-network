@@ -54,7 +54,12 @@ func OpenLive(config LiveConfig) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	running := &Server{listener: listener, originHost: listener.Addr().String(), basePath: "/site/" + hex.EncodeToString(token) + "/",
+	originHost, originErr := originHostFor(listener, "")
+	if originErr != nil {
+		_ = listener.Close()
+		return nil, originErr
+	}
+	running := &Server{listener: listener, originHost: originHost, basePath: "/site/" + hex.EncodeToString(token) + "/",
 		target: config.Target, routes: cloneRoutes(config.Routes), fetcher: config.Fetcher}
 	running.server = &http.Server{Handler: http.HandlerFunc(running.serve), ReadHeaderTimeout: time.Second, IdleTimeout: 5 * time.Second}
 	running.work.Add(1)

@@ -52,6 +52,10 @@ type Server struct {
 // Open binds a fresh loopback-only origin for an exact static site. It does
 // not open a browser; the Endpoint's explicit browser action remains separate.
 func Open(config Config) (*Server, error) {
+	return open(config, "")
+}
+
+func open(config Config, hostname string) (*Server, error) {
 	if err := validate(config); err != nil {
 		return nil, err
 	}
@@ -64,7 +68,12 @@ func Open(config Config) (*Server, error) {
 		return nil, err
 	}
 	cloned := cloneConfig(config)
-	running := &Server{listener: listener, originHost: listener.Addr().String(), basePath: "/site/" + hex.EncodeToString(token) + "/",
+	originHost, originErr := originHostFor(listener, hostname)
+	if originErr != nil {
+		_ = listener.Close()
+		return nil, originErr
+	}
+	running := &Server{listener: listener, originHost: originHost, basePath: "/site/" + hex.EncodeToString(token) + "/",
 		target: cloned.Target, document: cloned.Document, resources: cloned.Resources}
 	running.server = &http.Server{Handler: http.HandlerFunc(running.serve), ReadHeaderTimeout: time.Second, IdleTimeout: 5 * time.Second}
 	running.work.Add(1)
@@ -172,6 +181,18 @@ var errUnknownResource = errors.New("reference Site resource is not declared")
 
 func validResource(resource Resource) bool {
 	return resource.ContentType != "" && len(resource.ContentType) <= 128 && len(resource.Body) > 0 && len(resource.Body) <= 1<<20
+}
+
+func originHostFor(listener net.Listener, hostname string) (string, error) {
+	originHost := listener.Addr().String()
+	if hostname == "" {
+		return originHost, nil
+	}
+	_, port, err := net.SplitHostPort(originHost)
+	if err != nil {
+		return "", err
+	}
+	return net.JoinHostPort(hostname, port), nil
 }
 
 func cloneConfig(config Config) Config {

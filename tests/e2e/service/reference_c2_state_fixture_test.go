@@ -46,8 +46,13 @@ type referenceC2StateRecord struct {
 
 func newReferenceC2StateFixture(t *testing.T, now, deadline time.Time, authority ed25519.PrivateKey,
 	peers map[string]referenceC2StateRecord) referenceC2StateFixture {
+	return newReferenceC2StateFixtureAtEpoch(t, now, deadline, authority, 1, [32]byte{}, peers)
+}
+
+func newReferenceC2StateFixtureAtEpoch(t *testing.T, now, deadline time.Time, authority ed25519.PrivateKey, epoch uint64,
+	previous [32]byte, peers map[string]referenceC2StateRecord) referenceC2StateFixture {
 	t.Helper()
-	if len(peers) != 5 {
+	if epoch == 0 || len(peers) != 5 {
 		t.Fatal("reference C2 State fixture requires five role records")
 	}
 	network := referenceC2ID(1)
@@ -85,7 +90,7 @@ func newReferenceC2StateFixture(t *testing.T, now, deadline time.Time, authority
 		records[index].materializationIndex = uint32(index)
 		inputs[index] = records[index].raw
 	}
-	raw, digest, materials, err := referenceC2BuildStateEpoch(network, 1, now, deadline, inputs, records, seed, domains, authority)
+	raw, digest, materials, err := referenceC2BuildStateEpoch(network, epoch, previous, now, deadline, inputs, records, seed, domains, authority)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,8 +100,17 @@ func newReferenceC2StateFixture(t *testing.T, now, deadline time.Time, authority
 		roles[record.role] = record
 		byRoleMaterials[record.role] = materials[index]
 	}
-	return referenceC2StateFixture{network: network, digest: digest, epoch: 1, now: now, deadline: deadline, authority: authority,
+	return referenceC2StateFixture{network: network, digest: digest, epoch: epoch, now: now, deadline: deadline, authority: authority,
 		inputs: inputs, raw: raw, materials: byRoleMaterials, roles: roles}
+}
+
+func referenceC2SuccessorStateFixture(t *testing.T, current referenceC2StateFixture) referenceC2StateFixture {
+	t.Helper()
+	peers := make(map[string]referenceC2StateRecord, len(current.roles))
+	for role, record := range current.roles {
+		peers[role] = record
+	}
+	return newReferenceC2StateFixtureAtEpoch(t, current.now, current.deadline.Add(20*time.Second), current.authority, current.epoch+1, current.digest, peers)
 }
 
 func referenceC2PrivateKey(material referenceC2CertificateMaterial) (ed25519.PrivateKey, error) {

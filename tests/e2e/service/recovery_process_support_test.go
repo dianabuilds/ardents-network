@@ -73,6 +73,14 @@ func runCommand(t *testing.T, ctx context.Context, root, binary string, argument
 
 func buildProductCommand(t *testing.T, name string) string {
 	t.Helper()
+	prebuilt := os.Getenv("ARDENTS_E2E_PRODUCT_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_")))
+	if prebuilt != "" {
+		info, err := os.Stat(prebuilt)
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("prebuilt product command %q is not a regular file: %v", name, err)
+		}
+		return prebuilt
+	}
 	_, current, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate repository root")
@@ -83,7 +91,7 @@ func buildProductCommand(t *testing.T, name string) string {
 		filename += ".exe"
 	}
 	path := filepath.Join(t.TempDir(), filename)
-	command := exec.Command("go", "build", "-trimpath", "-o", path, "./cmd/"+name)
+	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", path, "./cmd/"+name)
 	command.Dir = root
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build %s: %v\n%s", name, err, output)
@@ -116,7 +124,7 @@ func buildE2EFixtureCommand(t *testing.T, name string) string {
 		filename += ".exe"
 	}
 	path := filepath.Join(t.TempDir(), filename)
-	command := exec.Command("go", "build", "-trimpath", "-o", path, "./tests/e2e/service/fixturecommand/"+name)
+	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", path, "./tests/e2e/service/fixturecommand/"+name)
 	command.Dir = root
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build e2e fixture %s: %v\n%s", name, err, output)
@@ -242,6 +250,11 @@ type commandResult struct {
 	err    error
 }
 
+type killableCommand struct {
+	command *exec.Cmd
+	result  <-chan commandResult
+}
+
 func startCommand(ctx context.Context, root, binary string, arguments ...string) <-chan commandResult {
 	result := make(chan commandResult, 1)
 	go func() {
@@ -251,6 +264,32 @@ func startCommand(ctx context.Context, root, binary string, arguments ...string)
 		result <- commandResult{output: output, err: err}
 	}()
 	return result
+}
+
+func startKillableCommand(ctx context.Context, root, binary string, arguments ...string) *killableCommand {
+	result := make(chan commandResult, 1)
+	command := exec.CommandContext(ctx, binary, arguments...)
+	command.Dir = root
+	var output bytes.Buffer
+	command.Stdout, command.Stderr = &output, &output
+	if err := command.Start(); err != nil {
+		result <- commandResult{output: output.Bytes(), err: err}
+		close(result)
+		return &killableCommand{command: command, result: result}
+	}
+	go func() {
+		err := command.Wait()
+		result <- commandResult{output: append([]byte(nil), output.Bytes()...), err: err}
+		close(result)
+	}()
+	return &killableCommand{command: command, result: result}
+}
+
+func (running *killableCommand) Kill() error {
+	if running == nil || running.command == nil || running.command.Process == nil {
+		return errors.New("killable command is unavailable")
+	}
+	return running.command.Process.Kill()
 }
 
 func pathExists(path string) bool {

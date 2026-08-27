@@ -38,7 +38,7 @@ func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testi
 	slotAuthorization, responderAuthorization := []byte("publisher-slot"), []byte("publisher-responder")
 	introduction, err := node.StartIntroduction(node.IntroductionConfig{ListenAddress: introductionAddress, Certificate: introductionCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: introductionID, NodePublicKey: introductionPublic, Epoch: 10, NotAfter: deadline,
-		Admit: c2IntroductionAdmit(network, digest, introductionID, deadline), HandshakeLimit: 3, SlotLimit: 1, DeliveryLimit: 1, DrainTimeout: time.Second})
+		Admit: c2IntroductionAdmit(network, digest, introductionID, deadline), HandshakeLimit: 3, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}

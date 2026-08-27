@@ -47,6 +47,22 @@ type UserReferenceSession struct {
 // initial Starting event is always first. Events closes after an Unavailable or
 // Stopped event; callers must not infer success from a closed channel.
 func (endpoint *endpoint) StartUserReferenceSite(ctx context.Context, input UserReferenceSiteRequest) *UserReferenceSession {
+	return endpoint.startUserReferenceSite(ctx, func(ctx context.Context) (*UserReferenceSite, error) {
+		return endpoint.OpenUserReferenceSite(ctx, input)
+	})
+}
+
+// StartAlphaUserReferenceSite starts one already-resolved alpha destination
+// through the same bounded C-2 lifecycle as StartUserReferenceSite. Its
+// Ready event carries the exact alpha `.ard` HTTP origin and its local Browser
+// Entry proxy input, never an internal Target Link.
+func (endpoint *endpoint) StartAlphaUserReferenceSite(ctx context.Context, input AlphaUserReferenceSiteRequest) *UserReferenceSession {
+	return endpoint.startUserReferenceSite(ctx, func(ctx context.Context) (*UserReferenceSite, error) {
+		return endpoint.OpenAlphaUserReferenceSite(ctx, input)
+	})
+}
+
+func (endpoint *endpoint) startUserReferenceSite(ctx context.Context, open func(context.Context) (*UserReferenceSite, error)) *UserReferenceSession {
 	session := &UserReferenceSession{endpoint: endpoint, events: make(chan UserReferenceEvent, 3)}
 	session.emit(UserReferenceEvent{State: UserReferenceStarting})
 	if ctx == nil {
@@ -56,17 +72,17 @@ func (endpoint *endpoint) StartUserReferenceSite(ctx context.Context, input User
 	}
 	lifetime, cancel := context.WithCancel(ctx)
 	session.cancel = cancel
-	go session.run(lifetime, input)
+	go session.run(lifetime, open)
 	return session
 }
 
-func (session *UserReferenceSession) run(ctx context.Context, input UserReferenceSiteRequest) {
+func (session *UserReferenceSession) run(ctx context.Context, opener func(context.Context) (*UserReferenceSite, error)) {
 	defer close(session.events)
-	if session.endpoint == nil {
+	if session.endpoint == nil || opener == nil {
 		session.emitUnavailable()
 		return
 	}
-	site, err := session.endpoint.OpenUserReferenceSite(ctx, input)
+	site, err := opener(ctx)
 	if err != nil {
 		if session.isClosing() {
 			session.emitStopped(RuntimeResult{Class: "local timeout or cancellation", Reason: "Target connection was stopped locally"})

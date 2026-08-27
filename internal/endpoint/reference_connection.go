@@ -3,10 +3,12 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
 // ReferenceConnectionRequest binds one exact Target Link and its already
@@ -20,17 +22,41 @@ type ReferenceConnectionRequest struct {
 	Browser    ReferenceBrowser
 }
 
-// ReferenceReady reports the local browser URL only after Endpoint has
-// authenticated the exact Target and created the scoped loopback origin.
+// AlphaReferenceConnectionRequest carries one already-verified bounded alpha
+// binding into the same authenticated Service Connection flow as a Target Link.
+// It does not resolve an alpha Service Link, choose a fallback Target, or turn
+// the alpha name into a canonical Namespace claim.
+type AlphaReferenceConnectionRequest struct {
+	Binding    alpha.Binding
+	Routes     map[string]string
+	Connection OutboundConnectionRequest
+	Browser    ReferenceBrowser
+}
+
+// AlphaTransparentConnectionRequest carries an already verified alpha binding
+// into one payload-neutral HTTP/1.1 Service bridge. It deliberately has no
+// content, CMS, route-map, or alternate-destination input.
+type AlphaTransparentConnectionRequest struct {
+	Binding    alpha.Binding
+	Connection OutboundConnectionRequest
+	Browser    ReferenceBrowser
+}
+
+// ReferenceReady reports the participant-visible browser URL only after
+// Endpoint authenticated the exact Target and created the scoped local origin.
+// AlphaProxyURL is an Endpoint-local Browser Entry input, never a visible
+// Service address; it is empty for ordinary Target-Link presentation.
 type ReferenceReady struct {
 	URL                 string
+	AlphaProxyURL       string
 	AuthenticatedTarget [32]byte
 }
 
 // ReferenceBrowser receives only an already-authenticated, newly-created
-// loopback Reference Site URL. It cannot select a Target, alter the Service
-// Connection, or ask Endpoint to open an arbitrary URL. A platform adapter
-// may use this narrow surface to open the participant's selected browser.
+// Reference Site URL. It cannot select a Target, alter the Service Connection,
+// or ask Endpoint to open an arbitrary URL. A provisional alpha URL requires a
+// separately installed local Browser Entry to use AlphaProxyURL; a platform
+// adapter may then open the participant's selected browser.
 type ReferenceBrowser interface {
 	OpenReference(context.Context, ReferenceReady) error
 }
@@ -51,10 +77,11 @@ type ReferenceConnection struct {
 	done   chan ReferenceOutcome
 	closed chan struct{}
 
-	mu        sync.Mutex
-	server    *reference.Server
-	once      sync.Once
-	readyOnce sync.Once
+	mu           sync.Mutex
+	presentation io.Closer
+	release      func()
+	once         sync.Once
+	readyOnce    sync.Once
 }
 
 // StartReferenceConnection validates the Target Link before spending any
@@ -64,12 +91,93 @@ type ReferenceConnection struct {
 // caller waits on Ready before explicitly opening that URL in a supported
 // existing browser.
 func (endpoint *endpoint) StartReferenceConnection(ctx context.Context, input ReferenceConnectionRequest) (*ReferenceConnection, error) {
-	if endpoint == nil || ctx == nil || input.Connection.Application != nil || input.Connection.OnAuthenticated != nil {
+	if endpoint == nil || ctx == nil {
 		return nil, errors.New("reference Connection input is incomplete or attempts to supply an Application path")
 	}
 	target, err := endpoint.TargetFromLink(input.TargetLink)
 	if err != nil {
 		return nil, err
+	}
+	return endpoint.startReferenceConnection(ctx, input, target, "")
+}
+
+// StartAlphaReferenceConnection starts a Reference Site only after the caller
+// has obtained a Binding from a verified active alpha Corpus. Its browser
+// presentation is one provisional HTTP-only `.ard` browser name, carried only
+// through Endpoint's loopback alpha proxy. It is neither HTTPS, public DNS,
+// nor a canonical Namespace name.
+func (endpoint *endpoint) StartAlphaReferenceConnection(ctx context.Context, input AlphaReferenceConnectionRequest) (*ReferenceConnection, error) {
+	if endpoint == nil || input.Binding.Network() != endpoint.network {
+		return nil, ErrAlphaBindingNetwork
+	}
+	return endpoint.startReferenceConnection(ctx, ReferenceConnectionRequest{Routes: input.Routes,
+		Connection: input.Connection, Browser: input.Browser}, input.Binding.Target(), alphaBrowserHostname(input.Binding))
+}
+
+// StartAlphaTransparentConnection starts one alpha HTTP origin only after its
+// exact alpha binding and Service Target have been authenticated. It carries
+// ordinary HTTP request/response semantics over the selected Service
+// Connection; it does not make the Endpoint an Internet proxy or a CMS
+// adapter.
+func (endpoint *endpoint) StartAlphaTransparentConnection(ctx context.Context, input AlphaTransparentConnectionRequest) (*ReferenceConnection, error) {
+	if endpoint == nil || ctx == nil || input.Binding.Network() != endpoint.network || input.Connection.Application != nil || input.Connection.OnAuthenticated != nil {
+		return nil, errors.New("transparent alpha Service input is incomplete or attempts to supply an Application path")
+	}
+	target := input.Binding.Target()
+	if target == [32]byte{} || input.Connection.Target != target {
+		return nil, ErrReferenceTargetMismatch
+	}
+	application, browser := net.Pipe()
+	lifetime, cancel := context.WithCancel(ctx)
+	running := &ReferenceConnection{cancel: cancel, ready: make(chan ReferenceReady, 1), done: make(chan ReferenceOutcome, 1), closed: make(chan struct{})}
+	request := input.Connection
+	request.Application = application
+	// HTTP/1.1 uses a Publisher application's EOF as the end of this selected
+	// persistent origin. The native stream otherwise preserves ordinary
+	// bidirectional half-close behavior for non-browser applications.
+	request.closeApplicationOnRemoteTerminal = true
+	request.OnAuthenticated = func(authenticated [32]byte) error {
+		if authenticated != target {
+			return ErrReferenceTargetMismatch
+		}
+		hostname := alphaBrowserHostname(input.Binding)
+		presentation, err := reference.OpenTransparent(reference.TransparentConfig{Target: authenticated, Hostname: hostname, Connection: browser})
+		if err != nil {
+			return err
+		}
+		proxyURL, release, err := endpoint.openAlphaTransparentBrowserRoute(hostname, presentation)
+		if err != nil {
+			_ = presentation.Close()
+			return err
+		}
+		running.mu.Lock()
+		running.presentation = presentation
+		running.release = release
+		running.mu.Unlock()
+		ready := ReferenceReady{URL: "http://" + hostname + "/", AlphaProxyURL: proxyURL, AuthenticatedTarget: authenticated}
+		if input.Browser != nil {
+			if err := input.Browser.OpenReference(lifetime, ready); err != nil {
+				return errors.Join(errors.New("selected Reference browser did not open the authenticated origin"), err)
+			}
+		}
+		running.publishReady(ready)
+		return nil
+	}
+	go func() {
+		result, runErr := endpoint.Connect(lifetime, request)
+		_ = application.Close()
+		running.closePresentation()
+		running.closeReady()
+		running.done <- ReferenceOutcome{Result: result, Err: runErr}
+		close(running.done)
+		close(running.closed)
+	}()
+	return running, nil
+}
+
+func (endpoint *endpoint) startReferenceConnection(ctx context.Context, input ReferenceConnectionRequest, target [32]byte, alphaHostname string) (*ReferenceConnection, error) {
+	if endpoint == nil || ctx == nil || target == [32]byte{} || input.Connection.Application != nil || input.Connection.OnAuthenticated != nil {
+		return nil, errors.New("reference Connection input is incomplete or attempts to supply an Application path")
 	}
 	if input.Connection.Target != target {
 		return nil, ErrReferenceTargetMismatch
@@ -93,10 +201,21 @@ func (endpoint *endpoint) StartReferenceConnection(ctx context.Context, input Re
 		if openErr != nil {
 			return openErr
 		}
+		readyURL, proxyURL := server.URL(), ""
+		var release func()
+		if alphaHostname != "" {
+			proxyURL, release, openErr = endpoint.openAlphaBrowserRoute(alphaHostname, server)
+			if openErr != nil {
+				_ = server.Close()
+				return openErr
+			}
+			readyURL = "http://" + alphaHostname + "/"
+		}
 		running.mu.Lock()
-		running.server = server
+		running.presentation = server
+		running.release = release
 		running.mu.Unlock()
-		ready := ReferenceReady{URL: server.URL(), AuthenticatedTarget: authenticated}
+		ready := ReferenceReady{URL: readyURL, AlphaProxyURL: proxyURL, AuthenticatedTarget: authenticated}
 		if input.Browser != nil {
 			if openErr := input.Browser.OpenReference(lifetime, ready); openErr != nil {
 				return errors.Join(errors.New("selected Reference browser did not open the authenticated origin"), openErr)
@@ -159,12 +278,21 @@ func (connection *ReferenceConnection) Close() error {
 
 func (connection *ReferenceConnection) closePresentation() {
 	connection.mu.Lock()
-	server := connection.server
-	connection.server = nil
+	presentation := connection.presentation
+	release := connection.release
+	connection.presentation = nil
+	connection.release = nil
 	connection.mu.Unlock()
-	if server != nil {
-		_ = server.Close()
+	if release != nil {
+		release()
 	}
+	if presentation != nil {
+		_ = presentation.Close()
+	}
+}
+
+func alphaBrowserHostname(binding alpha.Binding) string {
+	return string(binding.Link().Name()) + ".ard"
 }
 
 func (connection *ReferenceConnection) publishReady(value ReferenceReady) {

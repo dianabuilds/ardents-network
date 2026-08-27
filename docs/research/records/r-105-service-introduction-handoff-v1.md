@@ -31,9 +31,10 @@ target-resolution, or route-selection authority.
   authorization after admitted Entry TLS. The maintained Initiator now proves
   that path to Rendezvous.
 - The maintained Rendezvous duty pairs two *outbound* Node legs by attachment
-  ID. It cannot create or identify a Publisher-side leg by itself. There is no
-  maintained Introduction runtime, SealedIntroduction plaintext grammar,
-  one-use JoinHandle ledger, Publisher delivery channel, or Responder duty.
+  ID. It cannot create or identify a Publisher-side leg by itself. Maintained
+  Introduction and Responder duties now own their respective finite transit
+  admission, live-slot/relay, deadline, and drain work; neither receives the
+  Service-only plaintext or selects a route.
 - Credential v2 now binds a distinct `IntroductionHPKEPublic` X25519 recipient
   under the existing Authority signature (ADR-0034). The Ed25519
   `InstancePublic` remains a Service Connection key; no key-conversion rule or
@@ -51,6 +52,12 @@ target-resolution, or route-selection authority.
 - Existing Endpoint `Accept` already consumes an opaque authenticated Route
   byte carrier through its local Route attachment socket; it must not acquire
   Route State or learn node topology.
+- Maintained Endpoint C-2 composition now verifies a Target Link against the
+  signed current publication before User submission; the Publisher keeps the
+  current publication leased while it validates the Credential-matching HPKE
+  recipient and instruction, then opens one State-selected Responder carrier.
+  This is still a narrow handoff primitive: the process-plan/local Application
+  wiring that feeds that carrier into one `Accept` operation remains open.
 
 On 2026-08-24 the closed Service-only plaintext is selected as
 `ServiceIntroductionInstruction` v1: Target, Credential generation, current
@@ -137,7 +144,12 @@ Rendezvous, and Responder processes drained with zero active connections.
 This proves one exact full synthetic route, not the entire R-105 matrix. It
 does **not** yet prove stale/withdrawn State, unavailable Publisher local
 handoff, duplicate Responder attempts, cancellation, browser integration, or
-the maintained C-2 duty lifecycle. Those remain retained-runtime gates.
+the process-plan lifecycle through the maintained C-2 composition. Those
+remain retained-runtime gates. A direct rerun on 2026-08-24 reproduced the
+`exact` roles successfully, but the disposable PowerShell launcher observed an
+empty child exit-code despite the User's successful final JSON; do not treat
+that launcher invocation as qualification evidence until its harness behavior
+is repaired.
 
 ### Failure scenarios
 
@@ -229,8 +241,10 @@ where unauthorized ingress and topology leakage would otherwise enter.
 
 Open and implementation-linked for the complete H4-2/H4-3 service path.
 ADR-0034 selects the signed X25519 recipient binding; ADR-0035 selects live
-C-2 slots and EndpointTransitBinding v1. The tracer now supports the selected
-delivery/HPKE binding shape and one exact six-process static-reference route.
-The retained C-2 duty lifecycle, State/failure matrix, local handoff, and
-browser lifecycle remain to be implemented and tested. The previous test-only
-Responder leg remains evidence only.
+C-2 slots and EndpointTransitBinding v1. Maintained C-2 duties and Endpoint
+User/Publisher composition now cover the selected delivery/HPKE gate, and a
+live behavior test carries an exact Target Link through Introduction to the
+Publisher's separately admitted Responder carrier. The State/failure matrix,
+process-plan local `Accept` handoff, browser lifecycle, and repaired
+multi-process harness remain before the two-Endpoint alpha scenario. The
+previous test-only Responder leg remains evidence only.

@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
+	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 // UserReferenceSiteRequest contains the User-local authority needed for one
@@ -18,6 +21,24 @@ type UserReferenceSiteRequest struct {
 	Capability                                  [32]byte
 	BytesEachDirection, SendBytes, ReceiveBytes uint32
 	Browser                                     ReferenceBrowser
+}
+
+// AlphaUserReferenceSiteRequest carries a single resolved alpha binding into
+// the existing selected C-2 route. Route must not carry a caller-supplied
+// Target Link: Endpoint derives the private-lookup target internally from the
+// verified binding and presents only its provisional exact alpha `.ard` HTTP
+// origin through the Endpoint-owned Browser Entry proxy.
+type AlphaUserReferenceSiteRequest struct {
+	Binding alpha.Binding
+	Route   UserReferenceSiteRequest
+}
+
+// AlphaTransparentUserReferenceSiteRequest carries one verified alpha binding
+// into the selected C-2 route for the payload-neutral HTTP bridge. It does not
+// add a different route, Target, or content-specific Publisher integration.
+type AlphaTransparentUserReferenceSiteRequest struct {
+	Binding alpha.Binding
+	Route   UserReferenceSiteRequest
 }
 
 // UserReferenceSite owns one User Introduction route and the Reference Site
@@ -39,6 +60,40 @@ type UserReferenceSite struct {
 // Introduction form exists only for direct controlled evidence. It does not
 // discover peers, retry a route, or expose a raw carrier to its caller.
 func (endpoint *endpoint) OpenUserReferenceSite(ctx context.Context, input UserReferenceSiteRequest) (*UserReferenceSite, error) {
+	return endpoint.openUserReferenceSite(ctx, input, nil, false)
+}
+
+// OpenAlphaUserReferenceSite composes one verified alpha binding with the
+// existing exact C-2 delivery. It does not accept an alpha string, resolve a
+// name, or allow a caller to substitute a Target Link. The internal Target
+// Link exists only to drive the already-bounded private reachability protocol;
+// it is never returned as an alpha resolution result or browser address.
+func (endpoint *endpoint) OpenAlphaUserReferenceSite(ctx context.Context, input AlphaUserReferenceSiteRequest) (*UserReferenceSite, error) {
+	return endpoint.openAlphaUserReferenceSite(ctx, input.Binding, input.Route, false)
+}
+
+// OpenAlphaTransparentUserReferenceSite composes one verified alpha binding
+// with the selected C-2 delivery and its generic HTTP bridge.
+func (endpoint *endpoint) OpenAlphaTransparentUserReferenceSite(ctx context.Context, input AlphaTransparentUserReferenceSiteRequest) (*UserReferenceSite, error) {
+	return endpoint.openAlphaUserReferenceSite(ctx, input.Binding, input.Route, true)
+}
+
+func (endpoint *endpoint) openAlphaUserReferenceSite(ctx context.Context, binding alpha.Binding, input UserReferenceSiteRequest, transparent bool) (*UserReferenceSite, error) {
+	if endpoint == nil || binding.Network() != endpoint.network {
+		return nil, ErrAlphaBindingNetwork
+	}
+	targetLink, err := targetlink.Encode(targetlink.Link{Network: endpoint.network, Target: binding.Target()})
+	if err != nil {
+		return nil, err
+	}
+	route, err := alphaRouteRequest(input, targetLink)
+	if err != nil {
+		return nil, err
+	}
+	return endpoint.openUserReferenceSite(ctx, route, &binding, transparent)
+}
+
+func (endpoint *endpoint) openUserReferenceSite(ctx context.Context, input UserReferenceSiteRequest, alphaBinding *alpha.Binding, transparent bool) (*UserReferenceSite, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} || input.Capability == [32]byte{} ||
 		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) {
 		return nil, errors.New("user Reference Site input is incomplete")
@@ -65,12 +120,22 @@ func (endpoint *endpoint) OpenUserReferenceSite(ctx context.Context, input UserR
 	closeRoute := func(cause error) (*UserReferenceSite, error) {
 		return nil, errors.Join(cause, route.Close())
 	}
-	reference, err := endpoint.StartReferenceConnection(ctx, ReferenceConnectionRequest{TargetLink: targetLink,
-		Routes: input.Routes, Browser: input.Browser, Connection: OutboundConnectionRequest{
-			Principal: input.Principal, Capability: input.Capability, Target: route.AuthenticatedTarget,
-			AuthorityPublic: route.AuthorityPublic, Publication: route.Publication, Route: route.Connection,
-			BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes,
-			At: at}})
+	connection := OutboundConnectionRequest{
+		Principal: input.Principal, Capability: input.Capability, Target: route.AuthenticatedTarget,
+		AuthorityPublic: route.AuthorityPublic, Publication: route.Publication, Route: route.Connection,
+		BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes,
+		At: at}
+	var reference *ReferenceConnection
+	if alphaBinding == nil {
+		reference, err = endpoint.StartReferenceConnection(ctx, ReferenceConnectionRequest{TargetLink: targetLink,
+			Routes: input.Routes, Browser: input.Browser, Connection: connection})
+	} else if transparent {
+		reference, err = endpoint.StartAlphaTransparentConnection(ctx, AlphaTransparentConnectionRequest{Binding: *alphaBinding,
+			Browser: input.Browser, Connection: connection})
+	} else {
+		reference, err = endpoint.StartAlphaReferenceConnection(ctx, AlphaReferenceConnectionRequest{Binding: *alphaBinding,
+			Routes: input.Routes, Browser: input.Browser, Connection: connection})
+	}
 	if err != nil {
 		return closeRoute(err)
 	}
@@ -80,6 +145,23 @@ func (endpoint *endpoint) OpenUserReferenceSite(ctx context.Context, input UserR
 		_ = route.Close()
 	}()
 	return running, nil
+}
+
+func alphaRouteRequest(input UserReferenceSiteRequest, targetLink string) (UserReferenceSiteRequest, error) {
+	if input.Reachability != nil {
+		if input.Reachability.TargetLink != "" || input.Introduction.TargetLink != "" {
+			return UserReferenceSiteRequest{}, errors.New("alpha Reference Site route must not supply a Target Link")
+		}
+		reachability := *input.Reachability
+		reachability.TargetLink = targetLink
+		input.Reachability = &reachability
+		return input, nil
+	}
+	if input.Introduction.TargetLink != "" {
+		return UserReferenceSiteRequest{}, errors.New("alpha Reference Site route must not supply a Target Link")
+	}
+	input.Introduction.TargetLink = targetLink
+	return input, nil
 }
 
 // Ready reports the exact local origin only after C-2 delivery and Target

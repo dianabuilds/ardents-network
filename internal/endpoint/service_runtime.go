@@ -7,9 +7,12 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/browserentry"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
@@ -38,7 +41,11 @@ type Setup struct {
 	LegacyGenerationFloor   string
 	Clock                   func() time.Time
 	Resources               func(string, int) uint32
-	Admission               *broker.Broker
+	// BrowserEntryStatePath is an optional absolute per-user file used only by
+	// the selected Firefox native host to learn an active alpha proxy port.
+	// It supplies no Name, Target, Route, or browser-wide proxy authority.
+	BrowserEntryStatePath string
+	Admission             *broker.Broker
 	// TransitClientCertificates holds the private, one-use TLS identities
 	// provisioned with State-authorized Transit Grants. Its keys are opaque
 	// Grant IDs; neither the map nor its private keys are Service Descriptor
@@ -49,19 +56,20 @@ type Setup struct {
 // connectionInput is the private common carrier input derived only from one
 // typed inbound or outbound request.
 type connectionInput struct {
-	Principal, Session, Target [32]byte
-	AuthorityPublic            [32]byte
-	Publication                []byte
-	Route                      net.Conn
-	Application                io.ReadWriteCloser
-	OpenAttachment             func(context.Context, Recovery) (net.Conn, error)
-	OnAuthenticated            func([32]byte) error
-	RecoveryBinding            Recovery
-	NameBinding                DestinationBinding
-	NameUpdates                <-chan DestinationBinding
-	BytesEachDirection         uint32
-	SendBytes, ReceiveBytes    uint32
-	At                         time.Time
+	Principal, Session, Target       [32]byte
+	AuthorityPublic                  [32]byte
+	Publication                      []byte
+	Route                            net.Conn
+	Application                      io.ReadWriteCloser
+	OpenAttachment                   func(context.Context, Recovery) (net.Conn, error)
+	OnAuthenticated                  func([32]byte) error
+	RecoveryBinding                  Recovery
+	NameBinding                      DestinationBinding
+	NameUpdates                      <-chan DestinationBinding
+	closeApplicationOnRemoteTerminal bool
+	BytesEachDirection               uint32
+	SendBytes, ReceiveBytes          uint32
+	At                               time.Time
 }
 
 // PublicationRequest contains only the Administrator-authorized facts needed
@@ -108,19 +116,20 @@ type WithdrawalResult struct {
 // OutboundConnectionRequest contains exactly the client-side facts for one
 // authenticated Connection. It has no publisher publication owner or signer.
 type OutboundConnectionRequest struct {
-	Principal, Capability, Target [32]byte
-	AuthorityPublic               [32]byte
-	Publication                   []byte
-	Route                         net.Conn
-	Application                   io.ReadWriteCloser
-	OpenAttachment                func(context.Context, Recovery) (net.Conn, error)
-	OnAuthenticated               func([32]byte) error
-	RecoveryBinding               Recovery
-	NameBinding                   DestinationBinding
-	NameUpdates                   <-chan DestinationBinding
-	BytesEachDirection            uint32
-	SendBytes, ReceiveBytes       uint32
-	At                            time.Time
+	Principal, Capability, Target    [32]byte
+	AuthorityPublic                  [32]byte
+	Publication                      []byte
+	Route                            net.Conn
+	Application                      io.ReadWriteCloser
+	OpenAttachment                   func(context.Context, Recovery) (net.Conn, error)
+	OnAuthenticated                  func([32]byte) error
+	RecoveryBinding                  Recovery
+	NameBinding                      DestinationBinding
+	NameUpdates                      <-chan DestinationBinding
+	closeApplicationOnRemoteTerminal bool
+	BytesEachDirection               uint32
+	SendBytes, ReceiveBytes          uint32
+	At                               time.Time
 }
 
 // InboundConnectionRequest contains exactly the publisher-side facts for one
@@ -165,6 +174,13 @@ type endpoint struct {
 	publications    *publication.Publication
 	resources       func(string, int) uint32
 	transitClients  map[[32]byte]tls.Certificate
+	transitMu       sync.Mutex
+
+	alphaBrowserMu     sync.Mutex
+	alphaBrowserProxy  *reference.AlphaProxy
+	alphaBrowserRoutes uint32
+	alphaBrowserOwners uint32
+	browserEntry       *browserentry.Publisher
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -202,17 +218,30 @@ func New(input Setup) (*endpoint, error) {
 	if err != nil {
 		return nil, err
 	}
+	var entryState *browserentry.Publisher
+	if input.BrowserEntryStatePath != "" {
+		entryState, err = browserentry.OpenPublisher(input.BrowserEntryStatePath)
+		if err != nil {
+			return nil, err
+		}
+	}
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,
-		admission:    admission, resources: resources, transitClients: transitClients}
+		admission:    admission, resources: resources, transitClients: transitClients, browserEntry: entryState}
 	if input.AdministrationPrincipal != [32]byte{} {
 		if input.PublicationRoot == "" {
+			if entryState != nil {
+				_ = entryState.Close()
+			}
 			return nil, errors.New("publisher setup lacks a publication root")
 		}
 		opened, err := publication.Open(publication.Config{Root: input.PublicationRoot,
 			LegacyFloor: input.LegacyGenerationFloor, NetworkID: input.NetworkID,
 			Authority: input.AuthorityPublic, Clock: clock})
 		if err != nil {
+			if entryState != nil {
+				_ = entryState.Close()
+			}
 			return nil, err
 		}
 		endpoint.publications = opened
@@ -227,6 +256,10 @@ func (endpoint *endpoint) Close() error {
 		return nil
 	}
 	endpoint.admission.Close()
+	endpoint.closeAlphaBrowserProxy()
+	if endpoint.browserEntry != nil {
+		_ = endpoint.browserEntry.Close()
+	}
 	if endpoint.publications == nil {
 		return nil
 	}
@@ -262,7 +295,7 @@ func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionR
 	return endpoint.runOutbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
 		Target: input.Target, AuthorityPublic: input.AuthorityPublic, Publication: input.Publication, Route: input.Route, Application: input.Application,
 		OpenAttachment: input.OpenAttachment, RecoveryBinding: input.RecoveryBinding, NameBinding: input.NameBinding,
-		NameUpdates: input.NameUpdates, OnAuthenticated: input.OnAuthenticated, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
+		NameUpdates: input.NameUpdates, closeApplicationOnRemoteTerminal: input.closeApplicationOnRemoteTerminal, OnAuthenticated: input.OnAuthenticated, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
 		ReceiveBytes: input.ReceiveBytes, At: input.At})
 }
 
