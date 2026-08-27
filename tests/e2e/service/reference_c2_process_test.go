@@ -124,8 +124,9 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	responderMaterial := referenceC2Certificate(t, 5, "responder")
 	initiatorMaterial := referenceC2Certificate(t, 6, "initiator")
 	gatewayMaterial := referenceC2Certificate(t, 7, "gateway")
-	introductionAddress, rendezvousAddress := referenceC2Address(t), referenceC2Address(t)
-	responderAddress, initiatorAddress, gatewayAddress := referenceC2Address(t), referenceC2Address(t), referenceC2Address(t)
+	addresses := referenceC2Addresses(t, 5)
+	introductionAddress, rendezvousAddress := addresses[0], addresses[1]
+	responderAddress, initiatorAddress, gatewayAddress := addresses[2], addresses[3], addresses[4]
 	join, reachability := referenceC2ID(7), referenceC2ID(8)
 	slotAttachment, serviceAttachment, resolutionAttachment := referenceC2ID(9), referenceC2ID(10), referenceC2ID(12)
 	transitAuthorityPublic, transitAuthorityPrivate, err := ed25519.GenerateKey(rand.Reader)

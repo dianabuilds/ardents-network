@@ -21,13 +21,29 @@ if ($User -notmatch '^[A-Za-z0-9_-]+$') {
 
 $repository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
 $artifacts = Join-Path ([System.IO.Path]::GetTempPath()) ("ardents-h4-3b-vps-" + [Guid]::NewGuid())
-$sshPath = 'C:\Windows\System32\OpenSSH\ssh.exe'
-$scpPath = 'C:\Windows\System32\OpenSSH\scp.exe'
-if ((-not (Test-Path -LiteralPath $sshPath -PathType Leaf) -or -not (Test-Path -LiteralPath $scpPath -PathType Leaf)) -and -not [string]::IsNullOrWhiteSpace($env:WINDIR)) {
-    $sshPath = Join-Path $env:WINDIR 'System32\OpenSSH\ssh.exe'
-    $scpPath = Join-Path $env:WINDIR 'System32\OpenSSH\scp.exe'
+$sshPath = ''
+$scpPath = ''
+foreach ($root in @(
+    (Join-Path $env:WINDIR 'System32\OpenSSH'),
+    (Join-Path $env:WINDIR 'Sysnative\OpenSSH')
+)) {
+    $candidateSSH = Join-Path $root 'ssh.exe'
+    $candidateSCP = Join-Path $root 'scp.exe'
+    if ([System.IO.File]::Exists($candidateSSH) -and [System.IO.File]::Exists($candidateSCP)) {
+        $sshPath = $candidateSSH
+        $scpPath = $candidateSCP
+        break
+    }
 }
-if (-not (Test-Path -LiteralPath $sshPath -PathType Leaf) -or -not (Test-Path -LiteralPath $scpPath -PathType Leaf)) {
+if ([string]::IsNullOrEmpty($sshPath)) {
+    $sshCommand = Get-Command ssh.exe -CommandType Application -ErrorAction SilentlyContinue
+    $scpCommand = Get-Command scp.exe -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -ne $sshCommand -and $null -ne $scpCommand) {
+        $sshPath = $sshCommand.Source
+        $scpPath = $scpCommand.Source
+    }
+}
+if ([string]::IsNullOrEmpty($sshPath)) {
     throw 'the Windows OpenSSH ssh/scp commands are unavailable'
 }
 
@@ -93,6 +109,13 @@ try {
     & $scpPath @copyArguments
     if ($LASTEXITCODE -ne 0) {
         throw 'copying H4-3B qualification bytes to the VPS failed'
+    }
+    # Windows scp does not preserve the executable mode needed by the Linux
+    # Docker cells. The generated directory and names above are exact and
+    # disposable, so apply the required owner-only executable mode remotely.
+    & $sshPath @sshArguments "chmod 700 -- $remoteRoot/*"
+    if ($LASTEXITCODE -ne 0) {
+        throw 'making transferred H4-3B qualification bytes executable failed'
     }
 
     & $sshPath @sshArguments "uname -m; uname -r; nproc; awk '/MemAvailable/ {print `$2 " kB"}' /proc/meminfo; docker version --format '{{.Server.Version}}'; docker image inspect golang:1.26.6 --format '{{.Id}}'"

@@ -50,14 +50,42 @@ func referenceC2Certificate(t *testing.T, serial int64, name string) referenceC2
 }
 
 func referenceC2Address(t *testing.T) string {
+	return referenceC2Addresses(t, 1)[0]
+}
+
+// referenceC2Addresses reserves the complete batch before returning it. Asking
+// the kernel for one address at a time can hand the just-closed port back to a
+// later role, causing two fixture roles to receive the same endpoint.
+func referenceC2Addresses(t *testing.T, count int) []string {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	listeners := make([]net.Listener, 0, count)
+	addresses := make([]string, 0, count)
+	for index := 0; index < count; index++ {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			for _, held := range listeners {
+				_ = held.Close()
+			}
+			t.Fatal(err)
+		}
+		listeners = append(listeners, listener)
+		addresses = append(addresses, listener.Addr().String())
 	}
-	address := listener.Addr().String()
-	_ = listener.Close()
-	return address
+	for _, listener := range listeners {
+		_ = listener.Close()
+	}
+	return addresses
+}
+
+func TestReferenceC2AddressesAreDistinctWithinOneFixture(t *testing.T) {
+	addresses := referenceC2Addresses(t, 5)
+	seen := make(map[string]struct{}, len(addresses))
+	for _, address := range addresses {
+		if _, duplicate := seen[address]; duplicate {
+			t.Fatalf("reference C2 fixture reused endpoint address %q", address)
+		}
+		seen[address] = struct{}{}
+	}
 }
 
 func referenceC2Peer(nodeID [32]byte, material referenceC2CertificateMaterial, endpoint string) map[string]string {
