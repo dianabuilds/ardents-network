@@ -60,8 +60,7 @@ func applyRenew(current *Record, now int64, op Op, leaseDuration, graceDuration 
 	if current.Lease != leaseActive && current.Lease != leaseGrace {
 		return Record{}, transitionError{Action: opRenew, Reason: "lease cannot be renewed"}
 	}
-	if (current.Lease == leaseActive && now > current.LeaseExpiresAt) ||
-		(current.Lease == leaseGrace && now > current.GraceExpiresAt) {
+	if now > current.GraceExpiresAt {
 		return Record{}, transitionError{Action: opRenew, Reason: "lease lifetime has elapsed"}
 	}
 	if current.Consistency != consistencyCurrent || current.Recovery != recoveryStable {

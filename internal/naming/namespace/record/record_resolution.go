@@ -23,7 +23,10 @@ func liveLease(current Record, now int64) (bool, string) {
 		if now <= current.LeaseExpiresAt {
 			return true, ""
 		}
-		return false, "lease has expired"
+		if now <= current.GraceExpiresAt {
+			return true, ""
+		}
+		return false, "grace period has expired"
 	case leaseGrace:
 		if now <= current.GraceExpiresAt {
 			return true, ""
@@ -36,8 +39,8 @@ func liveLease(current Record, now int64) (bool, string) {
 	}
 }
 
-func leaseWarning(current Record) string {
-	if current.Lease == leaseGrace {
+func leaseWarning(current Record, now int64) string {
+	if current.Lease == leaseGrace || (current.Lease == leaseActive && now > current.LeaseExpiresAt && now <= current.GraceExpiresAt) {
 		return "name is in grace and should be treated as volatile"
 	}
 	return ""

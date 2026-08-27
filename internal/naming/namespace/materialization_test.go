@@ -70,6 +70,121 @@ func TestCurrentNamespaceRequiresThresholdEpochAndMerkleMembership(t *testing.T)
 	}
 }
 
+func TestCurrentNamespaceProofDerivesGraceFromSignedDeadline(t *testing.T) {
+	t.Parallel()
+	network := [32]byte{10}
+	policy, signers := materializationPolicy("grace-materialization", network)
+	store, err := epoch.Open(t.TempDir(), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	seed := sha256.Sum256([]byte("grace-materialization-authority"))
+	private := ed25519.NewKeyFromSeed(seed[:])
+	active := record.Record{Name: "alice", Generation: 1, Revision: 1, Lease: "active",
+		Consistency: "current", Recovery: "stable",
+		Authority:      hex.EncodeToString(private.Public().(ed25519.PublicKey)),
+		Target:         [32]byte{1},
+		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, RecordNotAfter: 2_000_000, Continuity: 1}
+	signedActive, err := record.SignRecord(network, active, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CommitLegacy(testEpoch(11), [][]byte{signedActive}, thresholdAttester(signers[:2])); err != nil {
+		t.Fatal(err)
+	}
+	activeProof, err := store.Lookup("alice", 11)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, warning, number, err := epoch.VerifyBinding(policy, activeProof, 11, [32]byte{11}, 1_001_000)
+	if err != nil || number != 11 || binding.Revision != 1 ||
+		warning != "name lineage is in grace and should be treated as volatile" {
+		t.Fatalf("derived grace binding=%+v warning=%q epoch=%d err=%v", binding, warning, number, err)
+	}
+
+	grace := active
+	grace.Revision, grace.Lease = 2, "grace"
+	signedGrace, err := record.SignRecord(network, grace, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CommitLegacy(testEpoch(12), [][]byte{signedGrace}, thresholdAttester(signers[:2])); err != nil {
+		t.Fatal(err)
+	}
+	graceProof, err := store.Lookup("alice", 12)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, warning, number, err = epoch.VerifyBinding(policy, graceProof, 12, [32]byte{12}, 1_001_000)
+	if err != nil || number != 12 || binding.Revision != 2 ||
+		warning != "name lineage is in grace and should be treated as volatile" {
+		t.Fatalf("grace binding=%+v warning=%q epoch=%d err=%v", binding, warning, number, err)
+	}
+	if _, _, _, err := epoch.VerifyBinding(policy, graceProof, 12, [32]byte{12}, 2_000_001); err == nil {
+		t.Fatal("grace proof resolved after its signed Grace boundary")
+	}
+
+	released := grace
+	released.Revision, released.Lease = 3, "released"
+	released.LeaseExpiresAt, released.GraceExpiresAt = 0, 0
+	signedReleased, err := record.SignRecord(network, released, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CommitLegacy(testEpoch(13), [][]byte{signedReleased}, thresholdAttester(signers[:2])); err != nil {
+		t.Fatal(err)
+	}
+	releasedProof, err := store.Lookup("alice", 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := epoch.VerifyBinding(policy, releasedProof, 13, [32]byte{13}, 1_500_000); err == nil {
+		t.Fatal("released Name proof resolved")
+	}
+}
+
+func TestCurrentNamespaceProofDerivesGraceFromParentDeadline(t *testing.T) {
+	t.Parallel()
+	network := [32]byte{14}
+	policy, signers := materializationPolicy("parent-grace-materialization", network)
+	store, err := epoch.Open(t.TempDir(), policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	seed := sha256.Sum256([]byte("parent-grace-materialization-authority"))
+	private := ed25519.NewKeyFromSeed(seed[:])
+	authority := hex.EncodeToString(private.Public().(ed25519.PublicKey))
+	parent := record.Record{Name: "root", Generation: 1, Revision: 1, Lease: "active",
+		Consistency: "current", Recovery: "stable", Authority: authority,
+		LeaseExpiresAt: 1_000, GraceExpiresAt: 2_000, Continuity: 1}
+	child := record.Record{Name: "site.root", Generation: 1, Revision: 1, Lease: "active",
+		Consistency: "current", Recovery: "stable", Authority: authority, Target: [32]byte{1},
+		ParentName: "root", ParentGeneration: 1,
+		LeaseExpiresAt: 3_000, GraceExpiresAt: 4_000, RecordNotAfter: 3_000_000, Continuity: 1}
+	signedParent, err := record.SignRecord(network, parent, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signedChild, err := record.SignRecord(network, child, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CommitLegacy(testEpoch(14), [][]byte{signedParent, signedChild}, thresholdAttester(signers[:2])); err != nil {
+		t.Fatal(err)
+	}
+	proof, err := store.Lookup("site.root", 14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, warning, number, err := epoch.VerifyBinding(policy, proof, 14, [32]byte{14}, 1_001_000)
+	if err != nil || number != 14 || binding.Name != "site.root" ||
+		warning != "name lineage is in grace and should be treated as volatile" {
+		t.Fatalf("parent grace binding=%+v warning=%q epoch=%d err=%v", binding, warning, number, err)
+	}
+}
+
 func TestDeepestLegalNameHasCompactCurrentNamespaceProof(t *testing.T) {
 	t.Parallel()
 	network := [32]byte{8}

@@ -45,12 +45,20 @@ func resolveBinding(current Record, now int64, parents []Record) (Binding, strin
 		return Binding{}, "", err
 	}
 	commitmentInput := append([]byte("ardents-h3-name-destination-binding-v1\x00"), digest[:]...)
+	warning := leaseWarning(current, now)
+	if warning == "" {
+		for _, lineageRecord := range parents {
+			if warning = leaseWarning(lineageRecord, now); warning != "" {
+				break
+			}
+		}
+	}
 	return Binding{
 		Name: current.Name, Generation: current.Generation, Revision: current.Revision,
 		Authority: current.Authority, Target: current.Target,
 		ParentName: current.ParentName, ParentGeneration: current.ParentGeneration,
 		RecordDigest: digest, Commitment: sha256.Sum256(commitmentInput),
-	}, leaseWarning(current), nil
+	}, warning, nil
 }
 
 func recordDigest(record Record) ([32]byte, error) {

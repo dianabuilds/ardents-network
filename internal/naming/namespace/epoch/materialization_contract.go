@@ -57,6 +57,7 @@ type resolutionLeaf struct {
 	lineageRoot  [32]byte
 	lineageCount uint8
 	state        byte
+	graceAt      int64
 	notAfter     int64
 }
 
