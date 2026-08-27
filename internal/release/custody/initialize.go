@@ -47,8 +47,11 @@ func Initialize(ctx context.Context, config InitializeConfig, secrets SecretInpu
 		return Receipt{}, err
 	}
 	defer zero(confirmation)
-	if !validPassword(password) || subtle.ConstantTimeCompare(password, confirmation) != 1 {
-		return Receipt{}, ErrSecret
+	if !validPassword(password) {
+		return Receipt{}, ErrPasswordLength
+	}
+	if subtle.ConstantTimeCompare(password, confirmation) != 1 {
+		return Receipt{}, ErrConfirmation
 	}
 
 	var record seedRecord

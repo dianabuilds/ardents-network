@@ -10,8 +10,12 @@ var (
 	ErrInvalid = errors.New("release custody input invalid")
 	// ErrExists reports an existing seed record. Initialization never replaces it.
 	ErrExists = errors.New("release custody seed record already exists")
-	// ErrSecret reports a rejected password or mismatched confirmation.
+	// ErrSecret reports a rejected secret while opening encrypted test material.
 	ErrSecret = errors.New("release custody secret rejected")
+	// ErrPasswordLength reports a passphrase outside the fixed accepted length.
+	ErrPasswordLength = errors.New("release custody passphrase must contain 16 to 1024 bytes")
+	// ErrConfirmation reports two distinct local passphrase entries.
+	ErrConfirmation = errors.New("release custody passphrase confirmation does not match")
 )
 
 // InitializeConfig identifies an existing owner-only directory outside the

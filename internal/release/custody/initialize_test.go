@@ -89,14 +89,26 @@ func decodeEnvelopeForTest(raw, password []byte) (seedRecord, error) {
 	return record, nil
 }
 
-func TestInitializeRejectsBadSecretsWithoutWriting(t *testing.T) {
+func TestInitializeRejectsMismatchedConfirmationWithoutWriting(t *testing.T) {
 	root := t.TempDir()
 	_, err := Initialize(context.Background(), InitializeConfig{Root: root}, &fixedSecrets{values: [][]byte{[]byte("release-custody-password"), []byte("different-release-password")}})
-	if !errors.Is(err, ErrSecret) {
-		t.Fatalf("Initialize = %v, want ErrSecret", err)
+	if !errors.Is(err, ErrConfirmation) {
+		t.Fatalf("Initialize = %v, want ErrConfirmation", err)
 	}
 	if _, statErr := os.Lstat(filepath.Join(root, "release-seeds.json")); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("seed record after rejected secrets = %v", statErr)
+	}
+}
+
+func TestInitializeRejectsShortPassphraseWithoutWriting(t *testing.T) {
+	root := t.TempDir()
+	password := []byte("elevenchars")
+	_, err := Initialize(context.Background(), InitializeConfig{Root: root}, &fixedSecrets{values: [][]byte{password, password}})
+	if !errors.Is(err, ErrPasswordLength) {
+		t.Fatalf("Initialize = %v, want ErrPasswordLength", err)
+	}
+	if _, statErr := os.Lstat(filepath.Join(root, "release-seeds.json")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("seed record after rejected short passphrase = %v", statErr)
 	}
 }
 
