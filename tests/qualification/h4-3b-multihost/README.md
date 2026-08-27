@@ -1,7 +1,7 @@
 # H4-3B two-host qualification design
 
-Status: **planned A8 oracle; it is not yet a passing qualification or a
-release claim.**
+Status: **active A8 runner; it is not yet a passing qualification or a release
+claim.**
 
 This runner must prove one H4-3B journey with the Publisher Endpoint and the
 User Endpoint on different hosts. It is purpose-named rather than an extension
@@ -53,17 +53,22 @@ copies only these fixture outputs back to the local User workspace:
 3. alpha Relay readiness profile; and
 4. the Publisher-side dynamic-workload proof.
 
-The local process accepts the signed alpha corpus into its own floor through
-the H4-6A control command before starting User resolution. The local User then
-performs the HTTP/1.1 POST, cookie/redirect follow-up, chunked response, and
-terminal close against the exact alpha Target. The remote proof is an
-independent assertion that the unmodified Publisher Application saw those
-normal HTTP facts.
+The local Windows process accepts the signed alpha corpus into its own retained
+floor through the same persistent-floor boundary before starting User
+resolution. The H4-6A participant-command and enrollment evidence remains the
+separate Linux Docker A5 cell; this Windows-to-VPS C-2 runner neither replaces
+nor broadens that claim. The local User then performs the HTTP/1.1 POST,
+cookie/redirect follow-up, chunked response, and terminal close against the
+exact alpha Target. The remote proof is an independent assertion that the
+unmodified Publisher Application saw those normal HTTP facts.
 
-The runner must explicitly signal remote completion, collect each remote
-role's classified result, and remove its generated container and exactly
-validated `/tmp/ardents-h4-3b-multihost-*` directory. A failed cleanup is a
-failed qualification.
+The runner must explicitly signal remote completion, collect each normally
+completed remote role's classified result, and remove its generated container
+and exactly validated `/tmp/ardents-h4-3b-multihost-*` directory. A failed
+cleanup is a failed qualification. The intentional hard-stop Publisher has no
+result record; its preceding `publisher-crash-ready` control is retained. The
+intentional Publisher Application failures must instead retain their exact
+fixture error output.
 
 ## Required cells
 
@@ -82,11 +87,14 @@ ports, exact scenario name, and cleanup outcome.
 
 ## Preconditions and limits
 
-The eventual Windows-to-VPS runner requires a literal VPS IP, its matching SSH
-key, five free high TCP ports, Docker with host networking, and the selected
-pre-existing Go image. Sending this temporary test bundle to the VPS is an
-external transfer and needs the Product Owner's explicit approval before a
-live run.
+The Windows-to-VPS runner is `make qualification-h4-3b-multihost`. It requires
+a literal VPS IP, its matching SSH key, five free public high TCP ports plus
+three remote-loopback ports, host-network Docker, and the selected
+pre-existing Go image. It also requires local Docker with that image to syntax
+check the exact remote shell runner before transfer. The runner refuses a dirty
+Git worktree and records a digest of the complete staged bundle. Sending this
+temporary test bundle to the VPS is an external transfer and needs the Product
+Owner's explicit approval before a live run.
 
 This oracle does not substitute for A4 immutable artifact provenance, A9
 participant browser/platform qualification, HTTP Upgrade/WebSocket behavior,

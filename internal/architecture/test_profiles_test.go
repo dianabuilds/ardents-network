@@ -115,6 +115,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"h4-2-multihost":                 false,
 		"h4-2-local-emulator":            false,
 		"h4-3b-docker":                   false,
+		"h4-3b-multihost":                false,
 		"h4-3b-vps":                      false,
 		"process":                        false,
 		"qualification":                  false,

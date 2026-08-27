@@ -153,6 +153,25 @@ does not mean passed, waived, or unavailable evidence.
   then removes that exact directory. It is a project-operated second-host Docker
   result, not a distributed Publisher/User C-2, participant browser, capacity,
   or availability claim.
+- the H4-3B multi-host qualifier, `make qualification-h4-3b-multihost`, is
+  owned by `tests/qualification/h4-3b-multihost/`. It requires a Windows
+  qualification host, local and VPS Docker with the pre-existing
+  `golang:1.26.6` image, literal VPS IP and matching SSH key, five free public
+  high ports plus three remote-loopback ports, and VPS host-network Docker. It stages synthetic, short-lived C-2
+  credentials and current Linux fixture/Node bytes into one exact temporary
+  VPS directory, then places the Publisher, its loopback Application, State
+  Sources, transit roles, resolution Gateway, and alpha Relay/Gateway there.
+  The User runs locally with its own retained alpha floor. Four independent
+  cells prove normal dynamic HTTP/1.1, withdrawal, Publisher Application reset,
+  and Publisher Endpoint loss. Each requires a clean worktree, logs source
+  revision, scenario, port range, complete bundle plus binary/config/runner
+  digests, local and VPS envelopes, asserts every normally completed remote
+  role's classified result, records expected crash controls/errors, and removes
+  the exact generated Docker container and remote directory. The Windows C-2 floor setup does not
+  replace A5's Linux alpha-control command evidence. This proves only the
+  bounded Publisher-to-User two-host tracer; it does not prove independent
+  operators, availability, capacity, hostile-network resilience, artifact
+  provenance, or a selected participant browser.
 - `make prepare-h4-2-net-01a` is not a qualification result or an execution
   profile. It owns only the exact-host preflight and external evidence-directory
   initialization for R-092's future decision-bearing campaign. It rejects a

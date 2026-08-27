@@ -136,6 +136,15 @@
       "timeout": "2m"
     },
     {
+      "id": "h4-3b-multihost",
+      "state": "active",
+      "make_target": "qualification-h4-3b-multihost",
+      "surface": "two-host application-transparent C-2 qualification",
+      "prerequisites": ["Windows host", "available local Docker engine and pre-existing golang:1.26.6 image for runner-syntax validation", "literal project VPS IP", "matching SSH key", "five free public high ports and three remote-loopback ports", "remote Docker host networking and pre-existing golang:1.26.6 image"],
+      "invalid_environment": "the selected Windows-to-VPS H4-3B multi-host qualification environment is unavailable",
+      "timeout": "8m"
+    },
+    {
       "id": "h4-3b-vps",
       "state": "active",
       "make_target": "qualification-h4-3b-vps",
