@@ -3,6 +3,14 @@
 Status: **maintained ADR-0052 request contract. No synthetic value or example
 below is release material.**
 
+For H4-alpha-1, the real `network_state` object is copied from the public
+`alpha-network-state.json` emitted by the separate ADR-0053 State-custody
+operation. Its `schema`, `topology`, validity, and encrypted-envelope digest
+are provenance fields outside the nested request object; the eight fields
+accepted below are copied exactly. The current fragment declares an empty
+persistent candidate view and therefore carries empty `inputs` and
+`materials` arrays.
+
 `ardents-release-custody assemble` consumes one strict JSON request outside the
 repository. The request is public and contains no password, private key,
 Authority material, source URL, upload target, shell command, signer choice, or

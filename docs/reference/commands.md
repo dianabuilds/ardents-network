@@ -85,6 +85,23 @@ Endpoint start, or VPS configuration route.
 | `inspect` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads the existing local passphrase, authenticates the fixed encrypted record without altering it, and prints only its public receipt. |
 | `assemble` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY --request ABSOLUTE_FILE --endpoint ABSOLUTE_FILE --control ABSOLUTE_FILE --output ABSENT_ABSOLUTE_DIRECTORY` | Authenticates the selected H4-alpha-1 envelope, accepts only the recorded profile/source/artifact identities, constructs and preflights the fixed TUF/H4-6A static input set, then prints a public receipt. It does not assemble or publish the release bundle. |
 
+## `ardents-state-custody`
+
+`ardents-state-custody` is the separate Product Owner Adapter for the one
+ADR-0053 functional-alpha Network State genesis. It accepts only
+`initialize-alpha-genesis --root ABSOLUTE_OWNER_ONLY_DIRECTORY`. The Module
+generates the Network identifier, 1-of-1 Epoch key, assignment seed, fixed
+30-day validity, and empty candidate view internally. It asks for a new local
+passphrase and confirmation, atomically creates `functional-alpha-state` below
+the supplied root, and prints a non-secret receipt.
+
+The child contains the encrypted `state-seeds.json` and public
+`alpha-network-state.json` request fragment. The latter declares
+`empty-no-persistent-node`: it is valid H4-6A control input, but never evidence
+of route readiness, operator capacity, availability, independent control, or
+Public Beta governance. The command exposes no generic signer, successor,
+Node-key, upload, or publication route.
+
 ## `ardents-control`
 
 `ardents-control` is a separate alpha-control program. It never starts an
@@ -138,7 +155,7 @@ source or a GitHub download alone is not an installed Browser Entry profile.
 
 ## Process and support limits
 
-All three commands return a non-zero process status when their bounded input or
+All maintained commands return a non-zero process status when their bounded input or
 owned lifecycle fails. The repository's current process tests cover retained
 source and Node lifecycles; they do not qualify public deployment, platform
 durability, privacy, or Node capacity. See the current technical contracts for

@@ -63,6 +63,7 @@ The first real product commands are:
 | `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
 | `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
 | `cmd/ardents-release-custody` | Initialize or inspect one local encrypted fixed-role release-seed record, or assemble the one profile-bound ADR-0052 TUF/H4-6A static input set through the same local secret boundary; it has no generic signer or publication route. |
+| `cmd/ardents-state-custody` | Create the one ADR-0053 encrypted functional-alpha Epoch seed and verifier-accepted empty-topology genesis through a local secret boundary; it has no generic signer, successor, Node-key, or publication route. |
 
 Cross-process tests live under `tests/e2e/<behavior>/`. No live-container test
 tree or active live profile is currently retained. A future selected live

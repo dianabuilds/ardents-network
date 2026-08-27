@@ -42,6 +42,26 @@ independent-custody, signing, publication, or enrollment result.
 | `alpha-compatibility-component` | `ce64bedf7b14d461b09edfaf6009b9ef153cccc0c2cbc1a3d17f73ccca944eee` |
 | `alpha-corpus-authority` | `2c4a74d89d24661be7fe77e249d69055d5d41d4e5e8e136caae20ecdc3df447e` |
 
+## Network State custody companion
+
+The Product Owner created the separate ADR-0053 functional-alpha State genesis
+locally on 2026-08-27. Its encrypted record SHA-256 is
+`f37a6f066dc813159fbfc58c98ffe38ec7378c81f5e104af3b7679c85869487c`.
+The Network identifier is
+`7dedac753091495fb6cbf69ed229a0ee1756b285ee0ae68bf257200ce6585ea2`;
+the sole Epoch authority public key is
+`959dd386634dc2d62c4b84f6d027a0f55faee5d3f8fa3d949580b6e8db6d96f0`;
+and genesis digest is
+`86852e7cef6fc3db842e4415721e2d9de8bb926a700900252dace11fb3ca634e`.
+It uses threshold `1`, profile `ardents-interactive-route-v1`, and is valid
+from `2026-08-27T20:57:39Z` until `2026-09-26T20:57:39Z`.
+
+Its committed candidate view is deliberately empty and discloses
+`empty-no-persistent-node`. This is the actual initial topology, not a
+capacity or availability failure hidden behind test identities. H4-2's
+temporary two-host State remains separately labelled qualification evidence;
+it is not a persistent participant network or a release authority.
+
 ## Required static inputs before signing
 
 The fixed signer operation is maintained under ADR-0052, but its first real
@@ -51,11 +71,27 @@ validated:
 1. cohort, release identity/version, validity interval, emergency-stop rule,
    `alpha` environment, and selected Network identifier;
 2. the complete accepted offline Network State epoch, authority public keys,
-   threshold, profile, materialization inputs, and topology disclosure;
+   threshold, profile, materialization inputs, and topology disclosure
+   (**recorded above; verifier-accepted empty topology under ADR-0053**);
 3. the exact H3 TUF target descriptor for the Endpoint artifact, including two
    distinct builder attestations, source/build/dependency/SBOM identities,
    qualification/build/protocol state, and safety dates; and
 4. an all-or-nothing external output root and verifier preflight receipt.
+
+The two exact project-controlled build observations are labelled
+`product-owner-windows-build-a` and `product-owner-windows-build-b`; they
+produced byte-identical Endpoint and control artifacts and make no independent
+builder claim. The retained canonical build-input evidence has SHA-256
+`845e27cc24dc06617911c69ded532a0d8d07804b41502c9112f8553c7748b074`.
+The linked-module/build-setting inventory produced by `go version -m` for both
+artifact classes has SHA-256
+`8d41ba4dafee520540d8b6208e57291acc8d6c5571c88f1b7b3f4ce7d66fd0be`.
+The source `go.mod` and `go.sum` digests are respectively
+`af58c2883fa27ceebe8e0efb1c88fc6f59f49fd8848b46d471b1fb481b023fe5`
+and
+`1dbf939c239e7ebec2d4b6f15d60cef05f0176c8e8a15f085388c003a8bf0850`.
+Both observations used Go `1.26.6`, `linux/amd64`, `GOAMD64=v1`,
+`CGO_ENABLED=0`, and `-trimpath`.
 
 ADR-0052 selects the future fixed local `BuildAlphaInputs` operation that may
 consume these facts. No value in this profile permits arbitrary bytes, a

@@ -166,8 +166,9 @@ record use `golang.org/x/crypto/argon2` from module
 selects the same module version; integration must produce one shared exact
 root-module version, never parallel copies.
 
-`internal/custody` and `internal/release/custody` are the only Argon2 callers.
-Each uses only `argon2.IDKey` with the fixed v1 profile and passes the derived
+`internal/custody`, `internal/release/custody`, and the ADR-0053 fixed
+functional-alpha initialization path in `internal/network/state` are the only
+Argon2 callers. Each uses only `argon2.IDKey` with the fixed v1 profile and passes the derived
 32-byte key to Go 1.26 standard-library `crypto/aes` and
 `cipher.NewGCMWithRandomNonce`. The records have distinct schemas and must
 never share, import, or expose one another's authority material. No other
@@ -176,7 +177,8 @@ store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The current
 [release, update, and Authority Custody reference](../technical/release-update-custody.md)
 owns the maintained boundary.
 
-`cmd/ardents-custody` and `cmd/ardents-release-custody` are separate
+`cmd/ardents-custody`, `cmd/ardents-release-custody`, and
+`cmd/ardents-state-custody` are separate
 interactive adapters. They import only `golang.org/x/term` to reject a
 non-terminal descriptor and read a password without echo. Neither accepts a
 password from arguments, environment, configuration, nor a stream shared with

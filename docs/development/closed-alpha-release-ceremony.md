@@ -1,8 +1,8 @@
 # Closed-alpha release ceremony
 
-Status: **active H4-1/H4-6A preparation. The bounded static-input operation is
-maintained; its real invocation remains inactive until the Product Owner records
-the exact public alpha profile and topology.**
+Status: **active H4-1/H4-6A preparation. The bounded static-input operation and
+separate verifier-accepted empty-topology State genesis are maintained; real
+release signing remains pending final qualification and public request review.**
 
 This procedure prepares one bounded Ubuntu Portable alpha artifact. It derives
 from H4-1, ADR-0038, the H4-8A matrix, and the closed-alpha enrollment
@@ -24,13 +24,22 @@ The Product Owner records, outside the public bundle:
 - the approved release identity, cohort, version, expiry and emergency-stop
   times;
 - the exact Ubuntu Portable platform and source revision;
-- the actual alpha Network State, Node/operator topology, and corpus authority
-  that the bundle will disclose; and
+- the actual alpha Network State and Node/operator topology that the bundle
+  will disclose (the first profile records an empty persistent candidate view),
+  plus its corpus authority; and
 - the authenticated direct-message recipient class for the independently sent
   Alpha Enrollment Pin.
 
 One project-operated key holder is visible provisional alpha control. It is not
 threshold custody, independent control, or a Public Beta gate.
+
+The first State input is created separately with
+`ardents-state-custody initialize-alpha-genesis --root
+C:\Users\vitek\Ardents-Release\keys\state`. It asks for a new local
+passphrase and confirmation and atomically publishes only an encrypted Epoch
+seed plus a public `alpha-network-state.json` fragment. The fixed empty view is
+an explicit no-persistent-Node topology; the temporary H4-2 qualification Node
+does not become a release input.
 
 The Product Owner initializes the local seed record once with
 `ardents-release-custody initialize --root C:\Users\vitek\Ardents-Release\keys`.

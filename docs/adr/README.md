@@ -54,6 +54,10 @@ Current decisions:
 - [0047 — Issue dynamic membership-level Transit Grants through State and Entry](0047-dynamic-membership-transit-grants.md)
 - [0048 — Maintain TCP/TLS and QUIC v1 behind one Carrier contract](0048-maintain-tcp-and-quic-carriers.md)
 - [0049 — Do not select a blocked-entry profile for the functional alpha](0049-defer-blocked-entry-profile.md)
+- [0050 — Keep closed-alpha release seeds in separate local custody](0050-separate-local-release-seed-custody.md)
+- [0051 — Confirm the local release-seed public receipt without exporting secrets](0051-confirm-local-release-seed-public-receipt.md)
+- [0052 — Build only fixed closed-alpha static inputs from local custody](0052-build-fixed-alpha-static-inputs.md)
+- [0053 — Bootstrap functional-alpha Network State with a separate 1-of-1 authority](0053-bootstrap-functional-alpha-network-state.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
