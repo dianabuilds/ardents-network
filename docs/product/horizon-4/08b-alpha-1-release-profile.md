@@ -105,11 +105,15 @@ policy before it requests the local passphrase.
 The exact profile bytes now passed A1 source integrity; the A2 Portable and A3
 replacement/rollback Ubuntu user-session qualifications; constrained VPS Docker
 A5/A6/A7; the A8 Windows-to-VPS tracer; A9 Firefox 154.0.1 browser observation;
-and partial A10 local plus Windows-to-Ubuntu Carrier evidence. The A10
-multihost runner now requires the exact candidate path and expected SHA-256
-instead of silently rebuilding the Endpoint from the checkout, but that exact
-byte currently performs offline State acceptance rather than a Carrier leg;
-A10 remains active pending the exact product-process journey. Their retained logs and
+and the completed A10 local plus Windows-to-Ubuntu Carrier evidence. The A10 multihost runner
+requires the exact candidate path and expected SHA-256 instead of silently
+rebuilding the Endpoint from the checkout. Its product-Route cell ran two
+instances of that exact byte while State-run product Initiator and Responder
+processes opened their authenticated TCP/TLS v1 legs to the product Rendezvous.
+The matching 8 MiB Application bytes, clean Endpoint terminal results, one
+Route generation, zero recovery, and TCP/TLS-only READY events close the
+functional-alpha Carrier gate without adding Browser Entry or public naming.
+The retained logs and
 available exit receipts are named in the readiness matrix. These results remain
 bounded test/qualification evidence, not artifact provenance, enrollment,
 participant, capacity, availability, independent-operation, or

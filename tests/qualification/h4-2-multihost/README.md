@@ -13,6 +13,17 @@ port, provided that it and the following three ports are free on the VPS.
 The Windows runner resolves the system OpenSSH `ssh.exe` itself and passes its
 absolute path to the tagged test.
 
+After the Node and fault cells pass, the same target cross-builds one bounded
+service test plus its two Application fixtures. It uploads those files with the
+same exact candidate and a digest-checked product Node command. In a constrained,
+read-only container, signed State v2 supplies one explicit
+`ardents-carrier-tcp-tls-v1` Rendezvous and no alternate Carrier. Product
+Initiator and Responder processes open both authenticated Carrier legs to the
+product Rendezvous; the test adapter only binds those product edge attachments
+to the two exact-candidate local Route sockets. The gate requires matching
+8 MiB Application bytes and digests, clean Endpoint terminal results, one Route
+generation, zero recovery, and TCP/TLS in every Carrier-owning Node READY event.
+
 The qualifier copies the declared exact `ardents` candidate and cross-builds
 the current `ardents-node` command to a temporary local directory. It transfers
 only those two binaries and
@@ -38,6 +49,11 @@ cross-built Node command,
 the native Route profile, State epoch/digest, Docker image ID/version, kernel,
 vCPU count, and reported memory. The temporary known-hosts file is test-owned;
 the runner never modifies the operator's persistent SSH trust store.
+The exact product-Route cell additionally records the service-test and
+Application fixture digests, signed State digest, selected TCP/TLS profile,
+product Node digest, and exact Endpoint digest. Its temporary container and
+remote directory are removed and their absence is verified before the target
+can pass.
 
 The same target also places a transparent **test-owned local TCP relay** in
 front of a real remote Rendezvous. The relay neither terminates nor interprets
@@ -63,9 +79,11 @@ facts. The VPS host qdisc, its existing containers, and persistent files are
 not changed. This is container-namespace netem evidence only, not public-path
 packet loss, host loss, MTU, NAT, probing, recovery, or availability evidence.
 
-This is one controlled two-host TCP/TLS functionality result. It does not
+This is one controlled two-host TCP/TLS Node result plus one exact-candidate
+product-Route result on the declared Ubuntu host. It does not
 qualify public deployment, independent operators, true host-loss availability
 or recovery, hostile-network resilience, a full C-2 workload, capacity, or the
-2 vCPU / 2 GiB NET-01A profile. Abrupt container loss is evidence only for the
+2 vCPU / 2 GiB NET-01A profile. It also does not claim participant Browser Entry
+or public naming. Abrupt container loss is evidence only for the
 remote Node's immediate terminal-closure behavior; it is not a VPS loss or a
 fallback test.

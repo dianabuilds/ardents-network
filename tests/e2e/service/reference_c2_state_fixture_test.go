@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -39,9 +41,34 @@ type referenceC2StateRecord struct {
 	material             referenceC2CertificateMaterial
 	endpoint             string
 	family               string
+	carrier              string
 	raw                  []byte
 	capacity             uint16
 	materializationIndex uint32
+}
+
+func TestReferenceC2StateFixtureRetainsExplicitTCPCarrier(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	_, authority, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roles := []string{"destination-resolution", "initiator", "introduction", "rendezvous", "responder"}
+	peers := make(map[string]referenceC2StateRecord, len(roles))
+	for index, role := range roles {
+		marker := byte(index + 1)
+		record := referenceC2StateRecord{role: role, nodeID: referenceC2ID(marker),
+			material: referenceC2Certificate(t, int64(marker), "explicit-carrier-"+role), endpoint: referenceC2Address(t),
+			family: "h42-" + role}
+		if role == "rendezvous" {
+			record.carrier = string(route.CarrierTCP)
+		}
+		peers[role] = record
+	}
+	fixture := newReferenceC2StateFixture(t, now, now.Add(time.Minute), authority, peers)
+	for _, role := range []string{"initiator", "rendezvous", "responder"} {
+		referenceC2AcceptState(t, fixture, filepath.Join(t.TempDir(), role), role)
+	}
 }
 
 func newReferenceC2StateFixture(t *testing.T, now, deadline time.Time, authority ed25519.PrivateKey,
@@ -75,7 +102,13 @@ func newReferenceC2StateFixtureAtEpoch(t *testing.T, now, deadline time.Time, au
 		if err != nil {
 			t.Fatal(err)
 		}
-		raw, err := referenceC2BuildStateRecord(network, record.nodeID, record.family, record.endpoint, now, deadline, private)
+		var raw []byte
+		if record.carrier == "" {
+			raw, err = referenceC2BuildStateRecord(network, record.nodeID, record.family, record.endpoint, now, deadline, private)
+		} else {
+			raw, err = referenceC2BuildStateRecordWithCarrier(network, record.nodeID, record.family, record.endpoint,
+				record.carrier, now, deadline, private)
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -163,12 +196,22 @@ func tlsCertificate(material referenceC2CertificateMaterial) (tls.Certificate, e
 }
 
 func referenceC2BuildStateRecord(network, nodeID [32]byte, family, endpoint string, now, deadline time.Time, private ed25519.PrivateKey) ([]byte, error) {
+	return referenceC2BuildStateRecordVersion(network, nodeID, family, endpoint, "", now, deadline, private, 1)
+}
+
+func referenceC2BuildStateRecordWithCarrier(network, nodeID [32]byte, family, endpoint, carrier string, now, deadline time.Time,
+	private ed25519.PrivateKey) ([]byte, error) {
+	return referenceC2BuildStateRecordVersion(network, nodeID, family, endpoint, carrier, now, deadline, private, 2)
+}
+
+func referenceC2BuildStateRecordVersion(network, nodeID [32]byte, family, endpoint, carrier string, now, deadline time.Time,
+	private ed25519.PrivateKey, version byte) ([]byte, error) {
 	if family == "" || endpoint == "" || len(private) != ed25519.PrivateKeySize {
 		return nil, errors.New("reference C2 State record input is invalid")
 	}
 	buffer := new(bytes.Buffer)
 	buffer.WriteString("ARNR")
-	buffer.WriteByte(1)
+	buffer.WriteByte(version)
 	buffer.Write(network[:])
 	buffer.Write(nodeID[:])
 	referenceC2U64(buffer, 1)
@@ -177,6 +220,9 @@ func referenceC2BuildStateRecord(network, nodeID [32]byte, family, endpoint stri
 	referenceC2Text(buffer, family)
 	buffer.WriteByte(2)
 	referenceC2Text(buffer, endpoint)
+	if version >= 2 {
+		referenceC2Text(buffer, carrier)
+	}
 	referenceC2U16(buffer, 4)
 	buffer.Write(private.Public().(ed25519.PublicKey))
 	buffer.Write(ed25519.Sign(private, buffer.Bytes()))

@@ -29,15 +29,25 @@ type referenceC2ProductNode struct {
 	stop    func()
 	eventMu sync.Mutex
 	states  []string
+	ready   referenceC2ProductNodeEvent
 }
 
 type referenceC2ProductNodeEvent struct {
-	Schema, State, Assignment string
-	Epoch                     uint64
+	Schema         string `json:"schema"`
+	State          string `json:"state"`
+	Assignment     string `json:"assignment"`
+	CarrierProfile string `json:"carrier_profile"`
+	Epoch          uint64 `json:"epoch"`
 }
 
 func referenceC2StartProductNode(t *testing.T, ctx context.Context, binary, root string, fixture referenceC2StateFixture, role, stateRoot string,
 	sources [2]referenceC2SourceEndpoint, client referenceC2SourceCredential,
+) *referenceC2ProductNode {
+	return referenceC2StartProductNodeWithLimits(t, ctx, binary, root, fixture, role, stateRoot, sources, client, time.Second, 0)
+}
+
+func referenceC2StartProductNodeWithLimits(t *testing.T, ctx context.Context, binary, root string, fixture referenceC2StateFixture, role, stateRoot string,
+	sources [2]referenceC2SourceEndpoint, client referenceC2SourceCredential, maximumDuty time.Duration, trafficByteLimit uint64,
 ) *referenceC2ProductNode {
 	t.Helper()
 	record, present := fixture.roles[role]
@@ -49,6 +59,19 @@ func referenceC2StartProductNode(t *testing.T, ctx context.Context, binary, root
 	clockPath := filepath.Join(root, role+"-node-clock.observation")
 	stopClock := referenceC2StartProductNodeClock(t, clockPath)
 	plan := referenceC2ProductNodePlan(t, root, fixture, role, stateRoot, certificatePath, keyPath, clockPath, sources, client)
+	plan["maximum_duty_ms"] = maximumDuty.Milliseconds()
+	if trafficByteLimit != 0 {
+		section, ok := plan[role].(map[string]any)
+		if !ok || (role != "initiator" && role != "responder" && role != "rendezvous") {
+			stopClock()
+			t.Fatalf("product Node %q does not own a configurable traffic byte limit", role)
+		}
+		field := "relay_byte_limit"
+		if role == "rendezvous" {
+			field = "pair_byte_limit"
+		}
+		section[field] = trafficByteLimit
+	}
 	planPath := filepath.Join(root, role+"-product-node.json")
 	raw, err := json.Marshal(plan)
 	if err != nil || os.WriteFile(planPath, raw, 0o600) != nil {
@@ -250,6 +273,9 @@ func (process *referenceC2ProductNode) record(event referenceC2ProductNodeEvent)
 	process.eventMu.Lock()
 	defer process.eventMu.Unlock()
 	process.states = append(process.states, event.State)
+	if event.State == "READY" {
+		process.ready = event
+	}
 }
 
 func (process *referenceC2ProductNode) withdrew() bool {

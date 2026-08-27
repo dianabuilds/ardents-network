@@ -47,4 +47,9 @@ $env:ARDENTS_H4_2_VPS_PORT = [string]$Port
 $env:ARDENTS_H4_2_VPS_USER = $User
 $env:ARDENTS_H4_2_SSH = $sshPath
 go test -v -tags=h4_2_multihost ./tests/e2e/node -run '^TestH42MultiHostRendezvous(Qualification|AbruptRemoteNodeLoss|TCPFaultRelay|KernelNetemRelay)$' -count=1 -timeout=3m
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+& (Join-Path $PSScriptRoot 'run-exact-candidate-windows.ps1') -VPS $VPS -SSHKey $env:ARDENTS_H4_2_SSH_KEY `
+    -Candidate $resolvedCandidate -CandidateSHA256 $env:ARDENTS_H4_2_CANDIDATE_SHA256 -SSHPath $sshPath -User $User
 exit $LASTEXITCODE

@@ -304,6 +304,30 @@ It is not a full C-2 multi-host workflow, true VPS/host-loss recovery or
 availability result, independent-operator result, hostile-network result, or a
 2-vCPU/2-GiB capacity qualification.
 
+On 2026-08-28 the same qualification target closed the exact Endpoint
+product-Route boundary. Two instances of candidate SHA-256
+`33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1`
+ran on the declared Ubuntu host. Signed State digest
+`4e0368f80a3d1542ca6f8fdc932b15089da8ef75e3d8f6bd7094c494e5b91f0e`
+contained one explicit `ardents-carrier-tcp-tls-v1` Rendezvous and no alternate
+Carrier. Product Initiator, Responder, and Rendezvous processes from
+`ardents-node` SHA-256
+`3e1120a2dffb32b12d90fd3f6be9bc3ce040f9f1a237179107c8eaec86696711`
+each reported that profile at READY; the Initiator and Responder then opened
+their authenticated legs to the product Rendezvous. A test adapter bound only
+the product edge attachments to the two candidate-local Route sockets. The
+8 MiB Application transcript and both clean Endpoint terminal results matched;
+each Endpoint accepted one Route generation with zero recovery. The constrained
+Ubuntu `24.04.3`, Linux `6.8.0-134-generic`, x86-64, 1-vCPU/1-GiB container used
+Go image ID
+`sha256:5292399bf6a38fc193b48db61ae1e5672e504d784e1faedb8d2869d99e372e96`.
+The retained external log is
+`C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a10-exact-product-route-70bf425e.stdout.log`;
+its SHA-256 is
+`08bc3796d99d4c318e21ba4aa82f8d8aa4343e3f1ffded31184ac37611757df1`,
+the exit receipt is `0`, and remote cleanup was verified. Browser Entry and
+public naming were not configured or invoked.
+
 ### H4-2A active evidence matrix
 
 The current TCP/TLS baseline has deliberately narrow, reproducible cells. A
@@ -313,6 +337,7 @@ unmet column to a product property.
 | Condition | Current evidence | Established outcome | Still required / excluded claim |
 |---|---|---|---|
 | State-bound peer authentication | local and two-host `TestH42MultiHostRendezvousQualification` | exact authorized Initiator/Responder legs carry bytes; wrong-role identity is refused | full multi-host C-2 workflow, operator independence |
+| Exact Endpoint product Route over selected Carrier | Ubuntu `TestH42ExactCandidateProductNodesOwnTCPCarrier` plus the separate two-host product-Node fault cells | two declared candidate processes retain an 8 MiB Application stream while State-run product Initiator/Responder processes open both TCP/TLS v1 legs to the product Rendezvous; all Carrier-owning READY events select the sole signed profile, and Endpoint observes one Route generation with zero recovery | no Browser Entry, public naming, independent-operation, capacity, availability, or hostile-network claim |
 | Incomplete TLS at admission | local `TestRendezvousNodeProcessBoundsIncompleteTLSHandshakes` and `TestRendezvousNodeProcessExpiresIncompleteTLSAdmission` | the configured two reservations are held, one excess connection is refused, and a finite explicit timeout releases a held slot before normal work resumes | a release value for every access path, DoS resilience, capacity |
 | Planned process withdrawal | local Linux `TestRendezvousNodeProcessDrainsActivePairOnSIGTERM` and full-C-2 State-successor tests | active work reaches terminal closure through `DRAINING → WITHDRAWN` | hostile failure, remote recovery, availability |
 | Abrupt remote Node/container loss | two-host `TestH42MultiHostRendezvousAbruptRemoteNodeLoss` | an active pair's TLS legs terminally close rather than silently timing out | VPS/host loss, reconnect/fallback, service availability |
