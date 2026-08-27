@@ -1,7 +1,7 @@
 ---
 id: R-120
 title: Bounded alpha input signing
-status: open
+status: decided
 owner: Product Owner and Codex
 started: 2026-08-27
 reviewed: 2026-08-27
@@ -140,18 +140,21 @@ this experiment.
 
 ## Recommendation
 
-Run the named fixed-Module design and behavior experiment, but do not generate
-real metadata yet. First record the actual Network State/topology, release
-identity, validity/emergency times, and two-builder descriptor for the
-candidate. Then decide whether option 1's exact Interface can satisfy all
-criteria; otherwise choose option 3. **Confidence:** high that generic tools
-are insufficient for the declared operation; medium that the fixed Module can
-remain small enough. The strongest argument against option 1 is that any
-in-repository signer expands the trusted local surface and needs a separate ADR
-and native qualification.
+Choose option 1 with the single `BuildAlphaInputs` interface specified by
+ADR-0052. It keeps the large construction, binding, verifier-preflight, and
+atomicity work behind one fixed local Module interface rather than exposing
+generic signing. Do not generate real metadata yet: first record the actual
+Network State/topology, release identity, validity/emergency times, and
+two-builder descriptor for the candidate. **Confidence:** high that generic
+tools are insufficient for the declared operation; medium that the fixed Module
+will remain small enough. The strongest argument against option 1 is that any
+in-repository signer expands the trusted local surface and needs native
+qualification.
 
 ## Disposition
 
-Open. R-120 is the next H4-8A A4 decision gate. No signing code, real key,
-metadata, artifact publication, or participant contact is authorized by this
-record. Retain no experiment directory until real non-secret inputs exist.
+Decided on 2026-08-27. ADR-0052 authorizes implementation and behavior tests of
+the one fixed local Module, but not a real invocation. Real key use, metadata,
+artifact publication, or participant contact remains forbidden until the
+recorded non-secret profile inputs exist. Retain no real experiment directory
+until then.

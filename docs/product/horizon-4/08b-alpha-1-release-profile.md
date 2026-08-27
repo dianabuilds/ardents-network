@@ -56,8 +56,9 @@ recorded and individually validated:
    qualification/build/protocol state, and safety dates; and
 4. an all-or-nothing external output root and verifier preflight receipt.
 
-No value in this profile permits arbitrary bytes, a substitute authority, an
-online signer, an upload, or participant contact.
+ADR-0052 selects the future fixed local `BuildAlphaInputs` operation that may
+consume these facts. No value in this profile permits arbitrary bytes, a
+substitute authority, an online signer, an upload, or participant contact.
 
 ## Qualification coherence
 
