@@ -37,7 +37,7 @@ func TestDialogSecretInputRejectsMissingReader(t *testing.T) {
 
 func TestWindowsCredentialScriptUsesPasswordForm(t *testing.T) {
 	script := windowsCredentialScript("Create the local Ardents release passphrase.")
-	if !strings.Contains(script, "UseSystemPasswordChar=$true") || strings.Contains(script, "Get-Credential") {
+	if !strings.Contains(script, "UseSystemPasswordChar=$true") || !strings.Contains(script, "$stream.Write($bytes,0,$bytes.Length)") || strings.Contains(script, "Get-Credential") {
 		t.Fatalf("script does not use the local password form")
 	}
 }
