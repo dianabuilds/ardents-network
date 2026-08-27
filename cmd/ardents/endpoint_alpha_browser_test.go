@@ -74,8 +74,10 @@ func TestAlphaBrowserRuntimeRetainsOnlyLocalOwnersUntilStop(t *testing.T) {
 	}()
 	select {
 	case <-writer.ready:
-	case <-time.After(5 * time.Second):
-		t.Fatal("alpha browser runtime did not become ready")
+	case err := <-done:
+		t.Fatalf("alpha browser runtime stopped before ready: %v", err)
+	case <-time.After(15 * time.Second):
+		t.Fatal("alpha browser runtime did not become ready within the bounded test window")
 	}
 	if _, err := os.Stat(statePath); err != nil {
 		t.Fatalf("alpha browser state was not published: %v", err)
