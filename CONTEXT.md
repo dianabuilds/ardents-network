@@ -72,6 +72,15 @@ optional SDKs may wrap it but do not define it. Authority Custody is a stronger
 separate local boundary and is never implied by this interface.
 _Avoid_: Mandatory SDK, application runtime, network wire protocol
 
+**Browser Adapter**:
+A compatibility helper that presents one already selected and authenticated
+Service Connection to an existing browser through a fresh, connection-scoped
+local origin. It cannot select an arbitrary Target, proxy ordinary URLs, expose
+Endpoint administration, define remote Service identity, or earn an
+Application-level privacy claim. Closing the connection withdraws its origin
+without public-network fallback.
+_Avoid_: Browser proxy, Ardents browser, HTTPS identity, privacy boundary
+
 **Application Principal**:
 An operating-system-enforced or launcher-brokered identity for one local
 Application/helper process tree and session to which Local Grants are bound. A
@@ -213,10 +222,11 @@ _Avoid_: Service Authority, public credential, permanent server key
 
 **Service Instance Credential**:
 A public, bounded, monotonic Service-Authority signature binding one Service
-Target, Instance public key, exclusive generation, validity bounds, network, and
-allowed capabilities. The matching Service Instance Key permits publication and
+Target, Ed25519 Instance public key, separate X25519 Introduction recipient
+public key, exclusive generation, validity bounds, network, and allowed
+capabilities. The matching Service Instance Key permits publication and
 target-authenticated handshakes but not export or replacement of Service
-Authority.
+Authority. The Introduction recipient key is not derived from the Instance Key.
 _Avoid_: Private key, Service Authority, hosting account
 
 **Authority Recovery Bundle**:
@@ -237,6 +247,20 @@ _Avoid_: Onion address, IP address, search keyword
 The explicitly Ardents-scoped shareable form of a Service Name, such as
 `ardents://blog.alice`. It is not an ordinary web or DNS address.
 _Avoid_: DNS URL, public domain, implicit hostname
+
+**Alpha Service Link**:
+An explicitly bounded, non-Namespace shareable alpha reference, such as
+`ardents-alpha://blog.alice`. It can select only a pre-provisioned Alpha Name
+Corpus and never asserts that its Service Name is current in the canonical
+Namespace or publicly registrable.
+_Avoid_: Service Link, public name claim, DNS URL
+
+**Alpha Name Corpus**:
+One finite, signed, expiring, and explicitly withdrawable set of Alpha Service
+Link-to-Service-Target bindings for a declared alpha cohort. It is a disclosed
+test input, not a registrar, a partial Namespace, or proof that a name remains
+valid after its signed interval.
+_Avoid_: Namespace, public directory, hidden registry
 
 **Target Link**:
 The explicit shareable Ardents form of a machine-verifiable Service Target. It
@@ -608,6 +632,13 @@ recognized and not revoked, independently of where those same bytes were
 obtained. A still-valid cached state permits restart during distributor outage;
 expired or conflicting state blocks new network work explicitly.
 _Avoid_: Vendor ping, auto-install permission, package-store opinion
+
+**Alpha Enrollment Pin**:
+A one-cohort, one-release commitment delivered to an invited participant
+independently of distribution, used only to authenticate the first Portable
+bundle before local Release Safety State exists. It authorizes no successor and
+provides no public or independent release-control claim.
+_Avoid_: GitHub checksum, bootstrap certificate, permanent release key
 
 **Work Safety Lease**:
 The finite authenticated interval during which an existing Route, Service

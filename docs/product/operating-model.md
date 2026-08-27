@@ -69,7 +69,10 @@ flowchart LR
   instead requires the Owner or an already trusted verifier to authenticate the
   exact digest before first execution and after copying/replacement. Untrusted
   raw bytes cannot authenticate themselves after they have already executed;
-  running them is outside Ardents security/privacy claims.
+  running them is outside Ardents security/privacy claims. The selected H4
+  closed-alpha profile uses an Alpha Enrollment Pin delivered independently of the
+  distributor for exactly one cohort/release; it is not a public release
+  identity and authorizes no successor.
 - Executable portability is not state portability. Vault, Grants, roots,
   watermarks, Endpoint identity, and network state remain in an explicitly owned
   protected state root and never move, merge, or become removable-media state
@@ -117,7 +120,8 @@ flowchart LR
 - A malicious first installer or Portable artifact can compromise its own
   deployment and roots.
   Ardents cannot make that fact self-detecting; independent signature and
-  reproducible-build verification is the external trust boundary.
+  reproducible-build verification, or another explicitly authenticated exact
+  first-artifact commitment, is the external trust boundary.
 
 ### State separation
 
@@ -606,6 +610,10 @@ suite remain R-013 work, but Forward Secrecy is not optional library behavior.
 - A Node publishes a signed, expiring Node Record containing its key, supported
   role capabilities and transports, declared operator family, and finite
   capacity. Publication makes it discoverable, not eligible or trusted.
+- The maintained alpha Node Record v1 canonically selects TCP/TLS. Node Record
+  v2 signs one explicit supported Carrier Profile; current releases accept only
+  the maintained TCP/TLS and QUIC-v1 identifiers. An unknown value is a
+  deterministic State rejection, never negotiation or permission to fall back.
 - Publication before a fixed cutoff yields an inclusion receipt in the
   transparency input log. Deterministic eligibility either includes the record
   in the epoch View or emits a public rejection/revocation reason; silent signer

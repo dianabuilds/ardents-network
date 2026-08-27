@@ -4,6 +4,8 @@ Status: **accepted scope control**
 
 Accepted: 2026-08-08
 
+Amended: 2026-08-24
+
 This document is authoritative for **what may be built now**. The vision,
 functional map, threat model, operating model, research records, and ADRs may
 describe later public-network obligations; they are not an undifferentiated
@@ -189,29 +191,173 @@ owners. It must define a new bounded claim and evidence plan; it cannot revive
 H3 stage plans, wire bytes, capacity figures, or a previous campaign as an
 implicit compatibility requirement.
 
-## Horizon 4 — Public Beta
+## Horizon 4 — Usable Network Alpha and Public Beta
 
-The following are **promotion gates**, not current implementation tasks:
+Horizon 4 turns the retained Product Core and current technical contracts into a
+network that a person can actually use. Its first product proof is deliberately
+concrete: a User installs Ardents, starts a local Endpoint, obtains an explicit
+Target Link or Service Name, and opens a Service published by another Endpoint
+over a live multi-host network. A web Service may be the first Reference
+Application: a Developer publishes a local HTTP Service and a User opens it in
+an existing browser through a local Ardents Adapter. Ardents is not thereby a
+browser, public DNS, clearnet exit, or generic anonymous-Internet proxy.
 
-- signed unprivileged Windows 11 and Ubuntu LTS packages, repair, safe update,
-  uninstall, authority backup, and rollback protection;
-- permissionless public Contributor admission, hostile bootstrap, direct-source
-  separation, Bridge entry, transport replacement, and bounded abuse controls;
-- the canonical permissionless Namespace, lease/recovery/governance rules, and
-  qualified Private Resolution;
-- real threshold custody, transparent Candidate View construction, independent
-  auditors/builders, reproducible packages, and protocol/build transition;
-- OS-enforced or brokered per-Application principals and a qualified Network-
-  Isolated Application Boundary for any Application-level location claim;
-- the applicable R-023 cross-platform performance, recovery, overload, evidence,
-  and requalification cells;
-- measured independent operator/source capacity and external security review.
+An externally usable alpha is a product milestone, not a Public Beta claim. It
+may use an explicitly bounded participant set and measured, known operational
+conditions. It cannot claim independent public operation, browser-level
+location privacy, censorship resistance, or a public permissionless Namespace
+merely because the User journey works. A Product Owner walkthrough can accept a
+bounded product tracer, but is not evidence that new users understand it or
+that independent operators exist.
 
-Public Beta uses beta thresholds. **Stable Network** is a later promotion of a
-running beta, not Horizon 5: its larger effective family counts, mature
-operational drills, and extended external evidence are evaluated only after beta
-operation produces real data. Missing people or independent operators block the
-claim; they do not create work for the current one-to-one team.
+The following are ordered **H4 epics**. They are not authorization to build all
+work in parallel. Before an epic enters implementation, it needs a named
+bounded claim, evidence plan, stop condition, and current Product Owner
+selection. An epic may supply an alpha capability before every later Public
+Beta gate is met; it may not silently inherit a stronger claim.
+
+### [H4-1 — Endpoint lifecycle and distributable profiles](horizon-4/01-endpoint-lifecycle.md)
+
+Deliver an unprivileged Endpoint lifecycle, beginning with an authenticated
+Ubuntu LTS Portable profile that is a real alpha product rather than a
+developer checkout. A Windows 11 build is a best-effort experimental companion
+until its real execution/provenance path is evidenced; it does not block the
+Ubuntu-first alpha. The first Windows artifact is explicitly unsigned; the
+project does not purchase OV, EV, or a hosted commercial signing service for an
+alpha without users. A free OSS signing path may be evaluated later but is not
+a release prerequisite. Installed profiles remain optional, one platform at a
+time, when observed user needs justify them. Every profile must keep immutable
+executable bytes, release/update state, disposable cache, runtime state, and
+Authority Vault materially separate.
+
+The completed public-product epic includes signed packages, repair, safe
+update, rollback protection, uninstall, and explicit Authority backup/recovery.
+Repair and uninstall must never silently erase Authority material; a rejected
+or interrupted update must never activate an unverified or older build. The
+existing Release, Update, and Custody modules are technical inputs, not proof
+that the supported platform lifecycle exists.
+
+### [H4-2 — Reachable live network and transport operation](horizon-4/02-live-network-transport.md)
+
+Turn current Route, Entry, Node, and state contracts into a repeatable live
+multi-host operating profile. It includes authenticated bootstrap, finite
+direct-source handling and separation, explicit blocked/degraded outcomes,
+an explicit decision whether any blocked-entry profile is justified, transport
+replacement, and bounded recovery. Each selected
+transport and Entry profile requires its own evidence; a former H3 wire or
+campaign is not retained by default.
+
+The functional alpha maintains State-selected TCP/TLS and QUIC-v1 Carriers
+without implicit fallback. It selects no Bridge/camouflage profile and makes no
+censorship-resistance claim; a future profile requires a new bounded decision.
+
+The alpha outcome is a User and Publisher on separate endpoints that can become
+ready, connect, recover or fail explicitly through remote Node roles. It does
+not imply public censorship resistance or that a project-operated topology is
+independent capacity.
+
+### [H4-3 — User, Service, and web-access path](horizon-4/03-user-service-web-access.md)
+
+Make the Network usable without requiring an Application developer to know
+Route internals. A User can run the supported Ardents binary, receive named
+capability readiness and bounded failures, share an explicit Target Link, and
+connect to a Service. A Developer can publish one local Service Instance with
+separate Service Administration authority.
+
+The first web-access slice uses an explicit Endpoint-to-loopback Adapter. After
+the User gives one exact Target Link to the Endpoint and it authenticates one
+Service Connection, the Endpoint opens a fresh one-connection
+`127.0.0.1:<ephemeral-port>` origin in the selected existing browser. The
+Adapter maps only the bounded H4-3A method/resource set and accepts no ordinary
+URL, proxy-form target, arbitrary Ardents destination, or administration
+operation. Closing the connection removes the origin; it never falls back to
+DNS, search, public HTTP, or another Service.
+
+The first controlled Reference Site is a static, exact-resource profile. Its
+browser response uses a header-delivered CSP sandbox in addition to restrictive
+fetch directives; it does not pass Publisher redirects or cookies. This does
+not qualify arbitrary Publisher HTML, scripts, or external navigation.
+
+Ordinary Internet browsing remains outside Ardents and continues by the
+browser's ordinary path. A browser extension, custom URI scheme, custom CA,
+certificate purchase, browser configuration, system proxy/DNS/VPN change, and
+bundled browser are not dependencies of this slice. The loopback address is
+presentation plumbing rather than remote Web PKI identity, and it carries no
+automatic privacy claim. Optional later browser integration remains explicit,
+reversible, scoped, and separately inventoried.
+
+The generic Adapter is a compatibility surface only. Until the complete
+browser/Application process tree passes a supported Network-Isolated
+Application Boundary profile, it receives no Application-level Endpoint
+Location Privacy claim. An exact external-resource, DNS, WebRTC, callback, and
+fallback policy is a prerequisite for any later protected browser mode.
+
+### [H4-4 — Canonical names and private resolution](horizon-4/04-namespace-private-resolution.md)
+
+Promote from explicit Target Links to the canonical permissionless Namespace
+only when the name product is ready to carry public expectations. This epic
+owns lease, delegation where selected, recovery, governance, bounded abuse,
+and qualified Private Resolution. A failed Name never rewrites into another
+destination or silently falls back to DNS, HTTP, a local alias, or a Target
+Link.
+
+Target Links remain a complete alpha destination path while this work is
+incomplete. Public human-readable names do not become a directory, search
+service, registrar discretion, or application identity system.
+
+### [H4-5 — Contributor viability and permissionless admission](horizon-4/05-contributor-viability-admission.md)
+
+Build an operator product before asserting that a permissionless network will
+operate. A Contributor has an explicit role, resource envelope, health state,
+update/drain/withdrawal path, and abuse limits. Permissionless public admission
+must preserve direct-source separation, role-domain restrictions, finite
+probation, and the ability to reject unsafe or exhausted work explicitly.
+
+Voluntary operator participation is a product and research question, not an
+assumption. A small alpha may measure known participants, but their machines,
+addresses, or nominal Node identities do not count as independent public
+capacity. The current dedicated-host qualified Contributor rule remains in
+force unless a later accepted research result changes it; see
+[R-093](../research/records/r-093-voluntary-endpoint-contribution.md).
+Token, staking, payment, and incentive-market systems remain outside the
+network core.
+
+### [H4-6 — Transparent control, release, and transition](horizon-4/06-transparent-control-transition.md)
+
+Replace provisional project control with real threshold custody, transparent
+Candidate View construction, independent auditors and builders, reproducible
+packages, and explicit protocol/build transition. A control-plane component may
+not turn its own output into proof of independence. Release/update safety,
+Network Epoch state, and protocol compatibility remain distinct transitions
+with their own roots, floors, and failure outcomes.
+
+### [H4-7 — Qualified local Application boundary](horizon-4/07-application-boundary.md)
+
+Where Ardents makes an Application-level location claim, provide
+OS-enforced or brokered per-Application principals and a qualified
+Network-Isolated Application Boundary on the supported platforms. This epic
+adds a protected mode above the generic Application Interface; it does not
+retroactively make every local socket, browser extension, or same-user process
+isolated. Unsupported platforms or attachment modes fail explicitly and remain
+generic/unqualified.
+
+### [H4-8 — Qualification, independent evidence, and promotion](horizon-4/08-qualification-promotion.md)
+
+Run the applicable R-023 cross-platform performance, recovery, overload,
+evidence, and requalification cells against the selected live profile. Measure
+effective independent operator and authenticated source capacity after every
+mandatory exclusion, not merely raw Node counts. Obtain the external security
+review and public control evidence required for the exact claim.
+
+Only after these epic-specific conditions and the applicable beta thresholds
+pass may Ardents call the running network **Public Beta**. Missing people,
+independent operators, auditors, builders, or external reviewers block the
+corresponding claim; they do not create fictional work for the current
+one-to-one team.
+
+**Stable Network** is a later promotion of a running beta, not Horizon 5: its
+larger effective family counts, mature operational drills, and extended
+external evidence are evaluated only after beta operation produces real data.
 
 The first public product contract retains only the qualified Interactive Route
 claim. Ardents does not reopen the complete security/privacy model or add a
@@ -219,7 +365,7 @@ Shielded Route Profile before Horizon 4 is complete. The existing Route Profile
 seam remains; it creates no H3 or H4 implementation work and permits no stronger
 claim in advance.
 
-## Horizon 5 — Security and Privacy Model Review
+## [Horizon 5 — Security and Privacy Model Review](horizon-5/README.md)
 
 Horizon 5 opens only after Horizon 4 has produced the first public product and
 Public Beta operational and Qualification evidence. It reassesses the security
@@ -274,6 +420,8 @@ proofing” of the carrier.
 | Document | Meaning after this scope decision |
 |---|---|
 | [Vision](vision.md) | Long-term Product Core and public product intent. |
+| [Horizon 4 delivery briefs](horizon-4/README.md) | Ordered working briefs for usable alpha and Public Beta epics. H4-1A and full functional-alpha H4-2 are selected; every broader or later claim retains its own explicit selection and evidence. |
+| [Horizon 5 review intent](horizon-5/README.md) | Future security and privacy model review: purpose, entry conditions, questions, evidence, possible outcomes, and explicit non-goals. It authorizes no current work. |
 | [Functional map](functional-map.md) | Requirements registry across all horizons, not one backlog. `fixed` means decision maturity, not “build now.” |
 | [Operating model](operating-model.md) | Target lifecycle for a public product; only explicitly promoted parts apply to Carrier Lab. |
 | [Threat model](../security/threat-model.md) | Conditions required before making each claim; an unclaimed condition need not become a current feature. |
