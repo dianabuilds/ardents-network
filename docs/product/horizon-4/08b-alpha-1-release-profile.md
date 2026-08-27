@@ -62,9 +62,10 @@ substitute authority, an online signer, an upload, or participant contact.
 
 ## Qualification coherence
 
-The exact profile bytes now passed A1 source integrity; constrained VPS Docker
+The exact profile bytes now passed A1 source integrity; the A2 Portable and A3
+replacement/rollback Ubuntu user-session qualifications; constrained VPS Docker
 A5/A6/A7; the A8 Windows-to-VPS tracer; and A9 Firefox 154.0.1 browser
-observation. Their retained logs and `0` exit receipts are named in the
+observation. Their retained logs and available exit receipts are named in the
 readiness matrix. These results remain bounded test/qualification evidence, not
 artifact provenance, enrollment, participant, independent-operation, or
 browser-isolation claims.
