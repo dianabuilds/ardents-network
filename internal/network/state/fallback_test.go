@@ -25,7 +25,8 @@ func TestIncompleteLatestUsesExactSameIndexFallback(t *testing.T) {
 	secondAuthority := makeTestAuthority(t, 0x84, "complete-source-root")
 	firstServer := makeTestLeaf(t, firstAuthority, 0x85, "truncated-source.test", true)
 	secondServer := makeTestLeaf(t, secondAuthority, 0x86, "complete-source.test", true)
-	addresses := [2]string{availableAddress(t), availableAddress(t)}
+	reserved := availableAddresses(t, 2)
+	addresses := [2]string{reserved[0], reserved[1]}
 	stopFirst := startTruncatedSource(t, addresses[0], firstServer, clientAuthority.rootPEM, successor.epochDigest)
 	defer stopFirst()
 	second := openTestSourceAtIndex(t, successor, addresses[1], secondServer, clientAuthority.rootPEM, client.pin, 1)

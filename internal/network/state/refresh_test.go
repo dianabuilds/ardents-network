@@ -38,7 +38,8 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 	secondAuthority := makeTestAuthority(t, 0x72, "source-two-root")
 	firstServer := makeTestLeaf(t, firstAuthority, 0x73, "source-one.test", true)
 	secondServer := makeTestLeaf(t, secondAuthority, 0x74, "source-two.test", true)
-	addresses := [2]string{availableAddress(t), availableAddress(t)}
+	reserved := availableAddresses(t, 2)
+	addresses := [2]string{reserved[0], reserved[1]}
 
 	first := openTestSource(t, successor, addresses[0], firstServer, clientAuthority.rootPEM, client.pin)
 	second := openTestSource(t, successor, addresses[1], secondServer, clientAuthority.rootPEM, client.pin)
@@ -283,10 +284,11 @@ func sourceEnvironment(t *testing.T, genesis, firstValue, secondValue fixture) (
 	secondAuthority := makeTestAuthority(t, 0x54, "second-source-root")
 	firstServer := makeTestLeaf(t, firstAuthority, 0x55, "first-source.test", true)
 	secondServer := makeTestLeaf(t, secondAuthority, 0x56, "second-source.test", true)
+	reserved := availableAddresses(t, 2)
 	var addresses [2]string
-	addresses[0] = availableAddress(t)
+	addresses[0] = reserved[0]
 	first := openTestSource(t, firstValue, addresses[0], firstServer, clientAuthority.rootPEM, client.pin)
-	addresses[1] = availableAddress(t)
+	addresses[1] = reserved[1]
 	second := openTestSource(t, secondValue, addresses[1], secondServer, clientAuthority.rootPEM, client.pin)
 	config := fixtureConfig(genesis, t.TempDir(), now)
 	installed, err := state.Open(config)
@@ -356,17 +358,37 @@ func openTestSourceAtIndex(t *testing.T, value fixture, address string, server t
 	return served
 }
 
-func availableAddress(t *testing.T) string {
+// availableAddresses reserves a batch before releasing it. Allocating and
+// closing one ephemeral listener at a time can return the same port to the
+// second State-source role before either source begins listening.
+func availableAddresses(t *testing.T, count int) []string {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	listeners := make([]net.Listener, 0, count)
+	addresses := make([]string, 0, count)
+	for index := 0; index < count; index++ {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			for _, held := range listeners {
+				_ = held.Close()
+			}
+			t.Fatal(err)
+		}
+		listeners = append(listeners, listener)
+		addresses = append(addresses, listener.Addr().String())
 	}
-	address := listener.Addr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
+	for _, listener := range listeners {
+		if err := listener.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
-	return address
+	return addresses
+}
+
+func TestAvailableAddressesAreDistinctWithinOneFixture(t *testing.T) {
+	addresses := availableAddresses(t, 2)
+	if addresses[0] == addresses[1] {
+		t.Fatalf("State fixture reused endpoint address %q", addresses[0])
+	}
 }
 
 func makeTestAuthority(t *testing.T, marker byte, commonName string) testCertificate {
