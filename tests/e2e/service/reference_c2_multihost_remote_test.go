@@ -170,7 +170,8 @@ func (remote h43RemoteC2) hostEnvelope(t *testing.T) string {
 
 func (remote h43RemoteC2) logs(t *testing.T) string {
 	t.Helper()
-	output, err := remote.run(t, "set -eu; docker logs "+h43ShellQuote(remote.environment.container)+" 2>&1 || true; for file in *.log *.err; do if [ -f "+h43ShellQuote(remote.environment.remoteDirectory)+"/$file ]; then echo ===$file===; cat "+h43ShellQuote(remote.environment.remoteDirectory)+"/$file; fi; done")
+	directory := h43ShellQuote(remote.environment.remoteDirectory)
+	output, err := remote.run(t, "set -eu; docker logs "+h43ShellQuote(remote.environment.container)+" 2>&1 || true; for file in "+directory+"/*.log "+directory+"/*.err; do if [ -f \"$file\" ]; then echo ===$(basename \"$file\")===; cat \"$file\"; fi; done")
 	if err != nil {
 		return fmt.Sprintf("remote H4-3B logs unavailable: %v\n%s", err, output)
 	}
