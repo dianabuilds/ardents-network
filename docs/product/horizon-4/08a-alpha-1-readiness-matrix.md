@@ -8,7 +8,7 @@ currently authorizes a public release claim.**
 
 | Field | Value |
 |---|---|
-| Source revision | `cc471416384f00ba44daa14c05cf49bbb6577bf6` |
+| Source revision | `d9dd65d2bc13d7c0a5628b58c4e80cf8c0f411d4` |
 | Endpoint profile | Ubuntu LTS `x86-64`, unprivileged Portable, explicit Alpha Enrollment Pin |
 | Release-gating Carrier | State-selected TCP/TLS v1; QUIC v1 is maintained separately and cannot be used as a fallback |
 | Service workload | H4-3B application-transparent HTTP/1.1: POST body/header preservation, cookie/redirect follow-up, chunked response, withdrawal, Publisher Application reset, and Publisher Endpoint loss |

@@ -40,7 +40,7 @@ extension of a passing result.
 
 ### Candidate H4-alpha-1 — readiness profile under qualification
 
-The current implementation candidate is source revision `cc471416384f00ba44daa14c05cf49bbb6577bf6`.
+The current implementation candidate is source revision `d9dd65d2bc13d7c0a5628b58c4e80cf8c0f411d4`.
 It narrows the existing selected directions into one reproducible qualification
 target; this records a candidate and its evidence gates, **not** a release
 acceptance or a claim that an immutable participant artifact has been published.
