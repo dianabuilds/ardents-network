@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/release/custody"
@@ -31,5 +32,12 @@ func TestDialogSecretInputRejectsMissingReader(t *testing.T) {
 	_, err := (dialogSecretInput{}).ReadSecret(context.Background(), custody.PromptCreate)
 	if err == nil || !errors.Is(err, errDialogUnavailable) {
 		t.Fatalf("ReadSecret = %v", err)
+	}
+}
+
+func TestWindowsCredentialScriptUsesPasswordForm(t *testing.T) {
+	script := windowsCredentialScript("Create the local Ardents release passphrase.")
+	if !strings.Contains(script, "UseSystemPasswordChar=$true") || strings.Contains(script, "Get-Credential") {
+		t.Fatalf("script does not use the local password form")
 	}
 }
