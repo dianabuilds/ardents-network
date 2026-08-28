@@ -28,14 +28,14 @@ trap {
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $harnessRepository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
 $repository = $harnessRepository
-$candidateRepository = $harnessRepository
+$candidateSourceRepository = $harnessRepository
 if ($PSCmdlet.ParameterSetName -eq 'Campaign') {
     if (-not [IO.Path]::IsPathRooted($CandidateRepository) -or -not (Test-Path -LiteralPath $CandidateRepository -PathType Container)) {
         throw 'CandidateRepository must be one existing absolute committed worktree.'
     }
-    $candidateRepository = (Resolve-Path -LiteralPath $CandidateRepository).Path
+    $candidateSourceRepository = (Resolve-Path -LiteralPath $CandidateRepository).Path
 }
-$script:candidateRepository = $candidateRepository
+$script:candidateRepository = $candidateSourceRepository
 $script:SourceRevision = $SourceRevision
 $remoteImage = 'golang:1.26.6'
 $remoteMemoryLimit = 1073741824L
@@ -735,6 +735,10 @@ function Invoke-SelfTests {
         }
     }
     $runnerFileSource = [IO.File]::ReadAllText($PSCommandPath)
+    if ($runnerFileSource.IndexOf('$candidateSourceRepository = $harnessRepository', [StringComparison]::Ordinal) -lt 0 -or
+        $runnerFileSource.IndexOf('$script:candidateRepository = $candidateSourceRepository', [StringComparison]::Ordinal) -lt 0) {
+        $assertions.Add('candidate worktree variable collides with the case-insensitive CandidateRepository parameter.')
+    }
     $attemptStart = $runnerFileSource.LastIndexOf('function Invoke-A11Attempt(', [StringComparison]::Ordinal)
     $attemptEnd = $runnerFileSource.IndexOf('if ($PSCmdlet.ParameterSetName', $attemptStart, [StringComparison]::Ordinal)
     $runnerSource = $runnerFileSource.Substring($attemptStart, $attemptEnd - $attemptStart)
@@ -2097,24 +2101,24 @@ $evidencePath = [IO.Path]::GetFullPath($EvidenceOutput)
 if (Test-Path -LiteralPath $evidencePath) { throw 'EvidenceOutput must be previously absent; attempts are never overwritten.' }
 $evidenceParent = Split-Path -Parent $evidencePath
 if (-not (Test-Path -LiteralPath $evidenceParent -PathType Container)) { throw 'EvidenceOutput parent directory is unavailable.' }
-if ((Test-PathWithin $candidatePath $candidateRepository) -or (Test-PathWithin $evidencePath $candidateRepository) -or
+if ((Test-PathWithin $candidatePath $candidateSourceRepository) -or (Test-PathWithin $evidencePath $candidateSourceRepository) -or
     (Test-PathWithin $candidatePath $harnessRepository) -or (Test-PathWithin $evidencePath $harnessRepository)) {
     throw 'CandidateArchive and EvidenceOutput must remain outside the repository.'
 }
 
-$dirty = @(& git -C $candidateRepository status --porcelain=v1 --untracked-files=all)
+$dirty = @(& git -C $candidateSourceRepository status --porcelain=v1 --untracked-files=all)
 if ($LASTEXITCODE -ne 0) { throw 'Git worktree status is unavailable.' }
 if ($dirty.Count -ne 0) { throw 'A11 requires a clean committed candidate source worktree.' }
-$head = (& git -C $candidateRepository rev-parse --verify HEAD).Trim()
+$head = (& git -C $candidateSourceRepository rev-parse --verify HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $head -cne $SourceRevision) {
     throw "HEAD does not equal the exact SourceRevision input (head=$head; source=$SourceRevision)."
 }
 $tagReference = "refs/tags/$ReleaseTag"
-& git -C $candidateRepository show-ref --verify --quiet $tagReference
+& git -C $candidateSourceRepository show-ref --verify --quiet $tagReference
 if ($LASTEXITCODE -ne 0) { throw 'the exact local immutable release tag is absent.' }
-$tagCommit = (& git -C $candidateRepository rev-parse --verify "$tagReference^{commit}").Trim()
+$tagCommit = (& git -C $candidateSourceRepository rev-parse --verify "$tagReference^{commit}").Trim()
 if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $SourceRevision) { throw 'release tag does not resolve to the exact SourceRevision input.' }
-$tagObject = (& git -C $candidateRepository rev-parse --verify $tagReference).Trim()
+$tagObject = (& git -C $candidateSourceRepository rev-parse --verify $tagReference).Trim()
 if ($LASTEXITCODE -ne 0 -or $tagObject -cnotmatch '^[0-9a-f]{40}$') { throw 'release tag object identity is unavailable.' }
 $harnessDirty = @(& git -C $harnessRepository status --porcelain=v1 --untracked-files=all)
 if ($LASTEXITCODE -ne 0 -or $harnessDirty.Count -ne 0) { throw 'A11 requires a clean committed runner worktree.' }
@@ -2139,7 +2143,7 @@ Write-Json (Join-Path $evidencePath 'inputs.json') ([ordered]@{
     schema = 'ardents-h4-8-a11-campaign-inputs-v1'
     campaign_started_at_utc = $campaignStarted
     source_revision = $SourceRevision
-    candidate_repository = $candidateRepository
+    candidate_repository = $candidateSourceRepository
     harness_revision = $harnessRevision
     release_tag = $ReleaseTag
     release_tag_object = $tagObject
@@ -2213,7 +2217,7 @@ try {
         [ordered]@{ path = [IO.Path]::GetFileName($path); sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
     }
     Write-Json (Join-Path $evidencePath 'harness-sha256.json') ([ordered]@{ schema = 'ardents-h4-8-a11-harness-digests-v1'; files = @($harnessDigests) })
-    $treeExit = Invoke-NativeCaptured 'git.exe' @('-C', $candidateRepository, 'ls-tree', '-r', '--full-tree', $SourceRevision) `
+    $treeExit = Invoke-NativeCaptured 'git.exe' @('-C', $candidateSourceRepository, 'ls-tree', '-r', '--full-tree', $SourceRevision) `
         (Join-Path $evidencePath 'source-tree.txt') (Join-Path $evidencePath 'source-tree.stderr.log')
     Write-Utf8 (Join-Path $evidencePath 'source-tree.exitcode') "$treeExit`n"
     if ($treeExit -ne 0) { throw 'exact committed source-tree inventory is unavailable.' }
