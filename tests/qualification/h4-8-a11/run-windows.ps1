@@ -784,6 +784,19 @@ function Invoke-SelfTests {
             $stopClock.ElapsedMilliseconds -gt 10000 -or $null -ne (Get-Process -Id $stopFixture.Id -ErrorAction SilentlyContinue)) {
             $assertions.Add("owned process tree was not stopped, retained, and waited within the exact bounded deadline (stop=$($stopResult.Passed), wait=$($stopWait.Exited), elapsed=$($stopClock.ElapsedMilliseconds), receipt=$((Test-ProcessStopReceipt $retainedStop).Passed), facts=$($stopResult.Receipt | ConvertTo-Json -Depth 4 -Compress))")
         }
+        $exitFixture = Start-Process -FilePath $env:ComSpec -ArgumentList '/d /s /c exit 17' -WindowStyle Hidden -PassThru
+        $exitFixture.WaitForExit()
+        $exitWait = Wait-ProcessBounded $exitFixture $stopClock 10000
+        if (-not $exitWait.Exited -or $exitWait.ExitCode -ne 17) {
+            $assertions.Add("bounded wait did not retain an already-exited process exit code (exited=$($exitWait.Exited), exit=$($exitWait.ExitCode), error=$($exitWait.Error))")
+        }
+        $cleanupEvidence = Join-Path $temporary 'process-cleanup.json'
+        $cleanupResources = Join-Path $temporary 'process-cleanup.jsonl'
+        Add-JsonLine $cleanupResources ([ordered]@{ timestamp_ms = 1; monotonic_ms = 0; root_pid = 2147483647; processes = @([ordered]@{ pid = 2147483647; role = 'go-test-root'; creation_time_utc_ticks = 1 }); error = $null })
+        $cleanupResult = Test-WindowsProcessCleanup $cleanupResources $cleanupEvidence
+        if (-not $cleanupResult.Passed -or -not (Test-Path -LiteralPath $cleanupEvidence -PathType Leaf)) {
+            $assertions.Add("Windows post-process cleanup rejected a prior identity with no surviving process: $($cleanupResult.Failures -join '; ')")
+        }
         $image = 'sha256:' + ('a' * 64)
         $containerID = 'b' * 64
         $header = $script:ubuntuHeader -join "`t"
@@ -1213,12 +1226,12 @@ function Test-WindowsProcessCleanup([string]$ResourcePath, [string]$EvidencePath
             }
         }
         $residue = New-Object System.Collections.Generic.List[object]
-        foreach ($process in @(Get-CimInstance Win32_Process -ErrorAction Stop)) {
-            $processID = [int]$process.ProcessId
-            if (-not $observed.ContainsKey($processID)) { continue }
-            $created = $(if ($null -ne $process.CreationDate) { ([datetime]$process.CreationDate).ToUniversalTime().Ticks } else { 0L })
+        foreach ($processID in @($observed.Keys | ForEach-Object { [int]$_ } | Sort-Object)) {
+            $process = Get-Process -Id $processID -ErrorAction SilentlyContinue
+            if ($null -eq $process) { continue }
+            $created = $process.StartTime.ToUniversalTime().Ticks
             if ($created -eq $observed[$processID]) {
-                $residue.Add([ordered]@{ pid = $processID; parent_pid = [int]$process.ParentProcessId; name = [string]$process.Name; creation_time_utc_ticks = $created })
+                $residue.Add([ordered]@{ pid = $processID; parent_pid = $null; name = [string]$process.ProcessName; creation_time_utc_ticks = $created })
             }
         }
         if ($residue.Count -ne 0) {
@@ -1228,14 +1241,14 @@ function Test-WindowsProcessCleanup([string]$ResourcePath, [string]$EvidencePath
         Write-Json $EvidencePath ([ordered]@{
             schema = 'ardents-h4-8-a11-windows-process-cleanup-v1'
             observed_process_identities = $observed.Count
-            residue = @($residue)
+            residue = $residue.ToArray()
             emergency_stop_attempted = $residue.Count -ne 0
-            failures = @($failures)
+            failures = $failures.ToArray()
         })
     }
     catch {
         $failures.Add("Windows process residue inventory failed: $($_.Exception.Message)")
-        Write-Json $EvidencePath ([ordered]@{ schema = 'ardents-h4-8-a11-windows-process-cleanup-v1'; residue = @(); failures = @($failures) })
+        Write-Json $EvidencePath ([ordered]@{ schema = 'ardents-h4-8-a11-windows-process-cleanup-v1'; residue = @(); failures = $failures.ToArray() })
     }
     return [pscustomobject]@{ Passed = $failures.Count -eq 0; Failures = @($failures) }
 }
@@ -1248,8 +1261,7 @@ function Wait-ProcessBounded(
     try {
         $Process.Refresh()
         if ($Process.HasExited) {
-            $exited = $Process.WaitForExit(0)
-            return [pscustomobject]@{ Exited = $exited; ExitCode = $(if ($exited) { $Process.ExitCode } else { $null }); Error = $null }
+            return [pscustomobject]@{ Exited = $true; ExitCode = [int]$Process.ExitCode; Error = $null }
         }
         $remainingMilliseconds = $DeadlineMilliseconds - $CampaignClock.ElapsedMilliseconds
         if ($remainingMilliseconds -le 0) {
