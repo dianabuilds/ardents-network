@@ -36,6 +36,7 @@ if ($PSCmdlet.ParameterSetName -eq 'Campaign') {
     $candidateRepository = (Resolve-Path -LiteralPath $CandidateRepository).Path
 }
 $script:candidateRepository = $candidateRepository
+$script:SourceRevision = $SourceRevision
 $remoteImage = 'golang:1.26.6'
 $remoteMemoryLimit = 1073741824L
 $remotePIDLimit = 128L
@@ -2105,7 +2106,9 @@ $dirty = @(& git -C $candidateRepository status --porcelain=v1 --untracked-files
 if ($LASTEXITCODE -ne 0) { throw 'Git worktree status is unavailable.' }
 if ($dirty.Count -ne 0) { throw 'A11 requires a clean committed candidate source worktree.' }
 $head = (& git -C $candidateRepository rev-parse --verify HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $head -cne $SourceRevision) { throw 'HEAD does not equal the exact SourceRevision input.' }
+if ($LASTEXITCODE -ne 0 -or $head -cne $SourceRevision) {
+    throw "HEAD does not equal the exact SourceRevision input (head=$head; source=$SourceRevision)."
+}
 $tagReference = "refs/tags/$ReleaseTag"
 & git -C $candidateRepository show-ref --verify --quiet $tagReference
 if ($LASTEXITCODE -ne 0) { throw 'the exact local immutable release tag is absent.' }
