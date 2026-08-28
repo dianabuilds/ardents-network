@@ -970,7 +970,7 @@ function Invoke-SelfTests {
         foreach ($name in @('ardents-node', 'reference-c2', 'reference-c2.json', 'run.sh', 'topology.json', 'rendezvous-node.pid', 'carrier-relay.pid', 'publisher.pid', 'publisher-app.pid', 'carrier-relay-ready.json')) {
             $capture += ('c' * 64) + "`t1`t$name`n"
         }
-        $capture += "[role-output]`n"
+        $capture += "[role-exit-statuses]`n{}`n[role-output]`n"
         foreach ($role in @('source-a', 'source-b', 'rendezvous-node', 'carrier-relay', 'initiator', 'introduction', 'responder', 'gateway', 'publisher', 'alpha-gateway', 'alpha-relay', 'publisher-app')) {
             $capture += "===$role.log===`n===$role.err===`n"
         }
@@ -1584,11 +1584,13 @@ function Test-A11Status(
                 if ($captureInfo.Length -lt 1 -or $captureInfo.Length -gt 1048576 -or
                     -not $capture.StartsWith("schema=ardents-h4-8-a11-remote-evidence-v1`n[container-state]`n", [StringComparison]::Ordinal) -or
                     $capture.IndexOf("`n[staged-inventory-sha256]`n", [StringComparison]::Ordinal) -lt 0 -or
+                    $capture.IndexOf("`n[role-exit-statuses]`n", [StringComparison]::Ordinal) -lt 0 -or
                     $capture.IndexOf("`n[role-output]`n", [StringComparison]::Ordinal) -lt 0) {
                     $failures.Add('service harness remote-evidence capture is malformed or outside its 1 MiB bound.')
                 }
                 else {
                     $inventoryMarker = "`n[staged-inventory-sha256]`n"
+                    $roleExitMarker = "`n[role-exit-statuses]`n"
                     $roleMarker = "`n[role-output]`n"
                     $statePrefix = "schema=ardents-h4-8-a11-remote-evidence-v1`n[container-state]`n"
                     $stateEnd = $capture.IndexOf($inventoryMarker, [StringComparison]::Ordinal)
@@ -1599,7 +1601,7 @@ function Test-A11Status(
                         $failures.Add('remote retained Docker terminal state is not a clean non-OOM exit.')
                     }
                     $inventoryStart = $stateEnd + $inventoryMarker.Length
-                    $inventoryEnd = $capture.IndexOf($roleMarker, $inventoryStart, [StringComparison]::Ordinal)
+                    $inventoryEnd = $capture.IndexOf($roleExitMarker, $inventoryStart, [StringComparison]::Ordinal)
                     $inventoryNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
                     $inventorySizes = @{}
                     foreach ($line in $capture.Substring($inventoryStart, $inventoryEnd - $inventoryStart).Split("`n", [StringSplitOptions]::RemoveEmptyEntries)) {
