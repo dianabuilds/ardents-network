@@ -79,6 +79,16 @@ wait_fault_file() {
   done
   return 1
 }
+wait_completion_file() {
+  path=$1
+  tries=0
+  while [ "$tries" -lt 20000 ]; do
+    if [ -s "$path" ]; then return 0; fi
+    tries=$((tries + 1))
+    sleep 0.1
+  done
+  return 1
+}
 wait_source() {
   log=$1
   tries=0
@@ -220,7 +230,7 @@ elif [ "$fault" = product-node-loss ]; then
 else
   fault_pid=""
 fi
-wait_file "$work/complete"
+wait_completion_file "$work/complete"
 if [ -n "$fault_pid" ]; then wait "$fault_pid"; fi
 publisher_waited=false
 if [ "$product_transit" = true ] && [ "$terminal" = endpoint-stop ]; then
@@ -301,6 +311,7 @@ func TestH48A11RemoteRunnerRetainsExactProductTransitAndFaultReceipts(t *testing
 		`kill -KILL "$publisher"`, `kill -KILL "$rendezvous_node"`,
 		`[ "$publisher_status" -eq 137 ]`, `[ "$rendezvous_status" -eq 137 ]`,
 		`remote-role-exit-statuses.jsonl`, `wait_role source-a "$source_a" 0 cleanup`, `wait_role source-b "$source_b" 0 cleanup`,
+		`wait_completion_file "$work/complete"`,
 		`wait_role "$name" "$pid" "$expected" "$phase"`,
 		`awk '/"state":"DRAINING"/{draining=1} /"state":"WITHDRAWN"/{if(draining) withdrawn=1}`,
 	} {
