@@ -9,6 +9,10 @@ import (
 const (
 	maximumDynamicWorkloadCycles = uint32(1800)
 	maximumDynamicWorkloadBytes  = uint32(64 << 20)
+	// The Publisher Application becomes connected before the local Endpoint
+	// exposes the Browser origin. This bounded window covers that assembly;
+	// it is deliberately distinct from the per-HTTP-cycle deadline.
+	dynamicWorkloadInitialRequestGrace = 15 * time.Second
 )
 
 // dynamicWorkloadConfig is the bounded A11 HTTP workload carried by one
@@ -23,10 +27,11 @@ type dynamicWorkloadConfig struct {
 }
 
 type dynamicWorkloadPlan struct {
-	cycles          uint32
-	interval        time.Duration
-	cycleDeadline   time.Duration
-	noFallbackEvery uint32
+	cycles              uint32
+	interval            time.Duration
+	cycleDeadline       time.Duration
+	initialRequestGrace time.Duration
+	noFallbackEvery     uint32
 }
 
 type dynamicWorkloadControls struct {
@@ -79,7 +84,7 @@ func (workload dynamicWorkloadConfig) validate(input config) error {
 	}
 	deadline, err := input.deadline()
 	minimumRuntime := time.Duration(workload.Cycles)*time.Duration(workload.IntervalMilliseconds)*time.Millisecond +
-		time.Duration(workload.CycleDeadlineMilliseconds)*time.Millisecond + 5*time.Second
+		time.Duration(workload.CycleDeadlineMilliseconds)*time.Millisecond + dynamicWorkloadInitialRequestGrace
 	if err != nil || time.Until(deadline) < minimumRuntime {
 		return errors.New("C2 configured dynamic workload does not fit its fixture deadline")
 	}
@@ -88,7 +93,15 @@ func (workload dynamicWorkloadConfig) validate(input config) error {
 
 func (workload dynamicWorkloadConfig) plan() dynamicWorkloadPlan {
 	return dynamicWorkloadPlan{cycles: workload.Cycles, interval: time.Duration(workload.IntervalMilliseconds) * time.Millisecond,
-		cycleDeadline: time.Duration(workload.CycleDeadlineMilliseconds) * time.Millisecond, noFallbackEvery: workload.NoFallbackEvery}
+		cycleDeadline:       time.Duration(workload.CycleDeadlineMilliseconds) * time.Millisecond,
+		initialRequestGrace: dynamicWorkloadInitialRequestGrace, noFallbackEvery: workload.NoFallbackEvery}
+}
+
+func (plan dynamicWorkloadPlan) initialRequestDeadline() time.Duration {
+	if plan.initialRequestGrace > 0 {
+		return plan.initialRequestGrace
+	}
+	return plan.cycleDeadline
 }
 
 func (input config) streamBytesEachDirection() uint32 {

@@ -25,7 +25,11 @@ func serveConfiguredDynamic(connection net.Conn, proofPath string, controls dyna
 	reader := bufio.NewReader(connection)
 	for cycle := uint32(1); cycle <= plan.cycles; cycle++ {
 		started := time.Now()
-		if err := connection.SetDeadline(started.Add(plan.cycleDeadline)); err != nil {
+		deadline := plan.cycleDeadline
+		if cycle == 1 {
+			deadline = plan.initialRequestDeadline()
+		}
+		if err := connection.SetDeadline(started.Add(deadline)); err != nil {
 			return result, err
 		}
 		if err := acceptDynamicPublishAndTimelineCycle(connection, reader, cycle); err != nil {

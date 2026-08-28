@@ -61,6 +61,34 @@ func TestConfiguredDynamicWorkloadUsesOneConnectionAndClosesAfterEveryCycle(t *t
 	}
 }
 
+func TestConfiguredDynamicWorkloadAllowsBoundedInitialBrowserAssembly(t *testing.T) {
+	proof := filepath.Join(t.TempDir(), "proof")
+	plan := dynamicWorkloadPlan{cycles: 1, interval: 10 * time.Millisecond, cycleDeadline: 75 * time.Millisecond,
+		initialRequestGrace: 250 * time.Millisecond}
+	client, accept := dynamicWorkloadTestClient(t)
+	server := make(chan dynamicWorkloadServerResult, 1)
+	go func() {
+		connection, err := accept()
+		if err != nil {
+			server <- dynamicWorkloadServerResult{err: err}
+			return
+		}
+		workload, serveErr := serveConfiguredDynamic(connection, proof, dynamicWorkloadControls{}, plan, "", "")
+		server <- dynamicWorkloadServerResult{workload: workload, err: serveErr}
+	}()
+
+	// The remote Application is connected before the local browser origin is
+	// ready. Its initial wait may exceed one cycle, but must remain bounded.
+	time.Sleep(125 * time.Millisecond)
+	workload, err := exerciseConfiguredDynamic(client, "http://reference.ard/", plan, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := <-server; result.err != nil || workload.CompletedCycles != 1 || result.workload.CompletedCycles != 1 {
+		t.Fatalf("bounded initial browser assembly = user %+v / server %+v / %v", workload, result.workload, result.err)
+	}
+}
+
 func TestConfiguredDynamicApplicationLossFollowsWarmupWithoutReplay(t *testing.T) {
 	proof := filepath.Join(t.TempDir(), "proof")
 	plan := dynamicWorkloadPlan{cycles: 2, interval: 50 * time.Millisecond, cycleDeadline: time.Second}
