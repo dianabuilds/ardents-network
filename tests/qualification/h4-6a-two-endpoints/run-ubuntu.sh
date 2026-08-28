@@ -203,7 +203,7 @@ printf '%s  %s\n' "$actual_archive_sha256" "$archive_name" >"$evidence/archive-s
 mkdir -m 700 "$work"
 tar -tzf "$archive" >"$evidence/archive-inventory.txt" || die 'archive inventory cannot be read'
 [ -s "$evidence/archive-inventory.txt" ] || die 'archive inventory is empty'
-normalized=$work/archive-inventory.normalized
+normalized=$evidence/archive-inventory.normalized
 while IFS= read -r entry || [ -n "$entry" ]; do
     case "$entry" in
         ./*) entry=${entry#./} ;;
