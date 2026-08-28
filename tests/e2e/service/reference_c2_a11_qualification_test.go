@@ -26,26 +26,12 @@ func TestH48A11MultiHostTenCycleCanary(t *testing.T) {
 		Cycles: 10, IntervalMilliseconds: 1_000, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 10, BytesEachDirection: 4 << 20}})
 }
 
-// TestH48A11DiagnosticCycleCountProbe is excluded from the A11 denominator.
-// It distinguishes a cycle/byte threshold from a wall-clock lifetime boundary
-// using the same full multi-host topology before another soak is authorized.
-func TestH48A11DiagnosticCycleCountProbe(t *testing.T) {
+// TestH48A11MultiHostSustainedCycleRegression is excluded from the A11
+// denominator. It prevents the fixture transit byte floor from truncating the
+// selected path before the full soak can begin to measure its contract.
+func TestH48A11MultiHostSustainedCycleRegression(t *testing.T) {
 	runReferenceC2MultiHost(t, referenceC2Scenario{transparentApplication: true, productRendezvousRelay: true, dynamicWorkload: referenceC2DynamicWorkload{
 		Cycles: 240, IntervalMilliseconds: 250, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 60, BytesEachDirection: 4 << 20}})
-}
-
-// TestH48A11DiagnosticByteVolumeProbe keeps the cycle count below the observed
-// failure range while preserving the cycle probe's total per-direction bytes.
-func TestH48A11DiagnosticByteVolumeProbe(t *testing.T) {
-	runReferenceC2MultiHost(t, referenceC2Scenario{transparentApplication: true, productRendezvousRelay: true, dynamicWorkload: referenceC2DynamicWorkload{
-		Cycles: 60, IntervalMilliseconds: 1_000, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 15, BytesEachDirection: 16 << 20}})
-}
-
-// TestH48A11DiagnosticRateProbe holds the cycle probe's cadence and payload
-// while staying below its observed count range.
-func TestH48A11DiagnosticRateProbe(t *testing.T) {
-	runReferenceC2MultiHost(t, referenceC2Scenario{transparentApplication: true, productRendezvousRelay: true, dynamicWorkload: referenceC2DynamicWorkload{
-		Cycles: 60, IntervalMilliseconds: 250, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 15, BytesEachDirection: 4 << 20}})
 }
 
 func TestH48A11MultiHostCarrierLossAfterWarmup(t *testing.T) {
