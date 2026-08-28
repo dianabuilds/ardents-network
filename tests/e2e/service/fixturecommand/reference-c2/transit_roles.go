@@ -126,18 +126,25 @@ func nativeFixtureNodeConfig(input config, role string) (node.Config, func() err
 		}}
 	switch role {
 	case "rendezvous":
-		config.Rendezvous = node.RendezvousProfile{Certificate: certificate, HandshakeLimit: 2, WaitingLimit: 2, PairLimit: 1, PairByteLimit: 256 << 10, AdmissionTimeout: 3 * time.Second, DrainTimeout: time.Second}
+		config.Rendezvous = node.RendezvousProfile{Certificate: certificate, HandshakeLimit: 2, WaitingLimit: 2, PairLimit: 1, PairByteLimit: input.transitRelayByteLimit(), AdmissionTimeout: 3 * time.Second, DrainTimeout: time.Second}
 	case "initiator":
-		config.Initiator = node.InitiatorProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 2, RelayByteLimit: 256 << 10, AdmissionTimeout: 3 * time.Second, DrainTimeout: time.Second}
+		config.Initiator = node.InitiatorProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 2, RelayByteLimit: input.transitRelayByteLimit(), AdmissionTimeout: 3 * time.Second, DrainTimeout: time.Second}
 	case "introduction":
 		config.Introduction = node.IntroductionProfile{Certificate: certificate, HandshakeLimit: 3, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: 3 * time.Second, DrainTimeout: time.Second}
 	case "responder":
-		config.Responder = node.ResponderProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 256 << 10, AdmissionTimeout: 3 * time.Second, DrainTimeout: time.Second}
+		config.Responder = node.ResponderProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: input.transitRelayByteLimit(), AdmissionTimeout: 3 * time.Second, DrainTimeout: time.Second}
 	default:
 		_ = store.Close()
 		return node.Config{}, nil, nil, errors.New("C2 fixture transit role is unsupported")
 	}
 	return config, store.Close, ready, nil
+}
+
+func (input config) transitRelayByteLimit() uint64 {
+	if !input.DynamicWorkload.configured() {
+		return 256 << 10
+	}
+	return max(uint64(16<<20), uint64(input.DynamicWorkload.BytesEachDirection)*2)
 }
 
 func (input config) stateSourceConfig(role string) (source.Config, error) {
