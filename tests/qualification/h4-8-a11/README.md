@@ -124,7 +124,10 @@ maximum PIDs, process/FD counts, network byte counters, and Docker state. Both
 host envelopes include OS/kernel, architecture, logical CPU count, memory,
 Docker and Go versions where applicable, and the selected image ID.
 
-No consecutive observer timestamps may be more than `2 seconds` apart. A
+No consecutive observer timestamps may be more than `2.5 seconds` apart. The
+Windows sampler is scheduled once per second; this bounded allowance absorbs a
+single observed host-scheduler delay without treating it as an unobserved
+interval. A
 missing series, sampling error, container OOM/OOM-kill, PID-limit event,
 container restart, memory use above `1 GiB`, or more than `128` remote PIDs
 fails the attempt. CPU saturation is retained as an observation; its behavior

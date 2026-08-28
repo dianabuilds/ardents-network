@@ -393,7 +393,7 @@ function Test-WindowsResourceSeries([string]$Path, [int]$ExpectedRootPID, [bool]
         $monotonic = [long]$row.monotonic_ms
         if ($null -ne $lastMonotonic) {
             $gap = $monotonic - $lastMonotonic
-            if ($gap -le 0 -or $gap -gt 2000) { $failures.Add("Windows observer gap is $gap ms.") }
+            if ($gap -le 0 -or $gap -gt 2500) { $failures.Add("Windows observer gap is $gap ms.") }
         }
         $lastMonotonic = $monotonic
         $hasRoot = $false
@@ -820,8 +820,8 @@ function Invoke-SelfTests {
         if (-not (Test-WindowsResourceSeries $windows 321 $true).Passed) { $assertions.Add('valid Windows observer series was rejected') }
         $windowsGap = Join-Path $temporary 'windows-gap.jsonl'
         Add-JsonLine $windowsGap ([ordered]@{ timestamp_ms = 1000; monotonic_ms = 0; root_pid = 321; processes = @([ordered]@{ pid = 321; role = 'go-test-root' }); error = $null })
-        Add-JsonLine $windowsGap ([ordered]@{ timestamp_ms = 3001; monotonic_ms = 2001; root_pid = 321; processes = @([ordered]@{ pid = 321; role = 'go-test-root' }); error = $null })
-        if ((Test-WindowsResourceSeries $windowsGap 321 $true).Passed) { $assertions.Add('Windows observer gap above two seconds was accepted') }
+        Add-JsonLine $windowsGap ([ordered]@{ timestamp_ms = 3501; monotonic_ms = 2501; root_pid = 321; processes = @([ordered]@{ pid = 321; role = 'go-test-root' }); error = $null })
+        if ((Test-WindowsResourceSeries $windowsGap 321 $true).Passed) { $assertions.Add('Windows observer gap above two and a half seconds was accepted') }
         $expiryOutput = (@(Get-ExpiryMarkers) -join "`n") + "`n"
         if (-not (Test-ExpiryOutput $expiryOutput).Passed) { $assertions.Add('valid deterministic expiry markers were rejected') }
         if ((Test-ExpiryOutput (($expiryOutput.Split("`n") | Select-Object -Skip 1) -join "`n")).Passed) { $assertions.Add('missing deterministic expiry owner marker was accepted') }

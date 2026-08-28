@@ -72,6 +72,7 @@ func TestH48A11SuccessCaptureKeepsExactV1ParserGrammar(t *testing.T) {
 		`printf '%s\t%s\t%s\n' "$digest" "$bytes" "${path#./}"`,
 		`printf '[role-exit-statuses]\n'`,
 		`cat remote-role-exit-statuses.jsonl`,
+		`tail -c 16384 "$file"`,
 		`printf '[role-output]\n'`,
 	} {
 		if !strings.Contains(command, required) {
