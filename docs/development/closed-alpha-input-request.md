@@ -17,6 +17,13 @@ Authority material, source URL, upload target, shell command, signer choice, or
 arbitrary message. Its exact bytes are committed by the public assembly
 receipt.
 
+The separately constrained `assemble-successor` operation exists only for the
+recorded RC1-to-RC2 correction. It receives the same public request and exact
+program bytes plus the complete direct RC1 static directory; it validates that
+fixed predecessor before prompting for the local passphrase. It cannot select
+another predecessor, root, generation, source, role, release, or output
+inventory.
+
 ## Invocation
 
 ```powershell
@@ -33,6 +40,20 @@ direct regular files or directories; the output parent already exists and the
 output itself is absent. The password is requested only through the trusted
 local adapter. It never belongs in the request, command line, environment,
 repository, log, receipt, bundle, or chat.
+
+The RC2 successor invocation has the additional `--predecessor` argument for
+the exact direct RC1 static directory and otherwise follows the same path and
+secret rules:
+
+```powershell
+ardents-release-custody assemble-successor `
+  --root C:\Users\vitek\Ardents-Release\keys `
+  --request C:\absolute\external\h4-alpha-1-rc-2-input-request.json `
+  --endpoint C:\absolute\external\ardents-linux-amd64 `
+  --control C:\absolute\external\ardents-control-linux-amd64 `
+  --predecessor C:\absolute\external\h4-alpha-1-rc-1-static `
+  --output C:\absolute\external\h4-alpha-1-rc-2-static
+```
 
 ## Request shape
 
@@ -105,10 +126,15 @@ request and exact Endpoint bytes; they cannot disagree silently.
 
 ## Fixed output and preflight
 
-The operation constructs exactly the fourteen files named by
+The initial operation constructs exactly the fourteen files named by
 [the alpha-bundle assembler](../../packaging/alpha-bundle/README.md): initial
 TUF Root/Targets/Snapshot/Timestamp, `RELEASE`, ACA1 catalog, three ACS1
 components, four corresponding public roots, and `corpus.pub`.
+
+The fixed successor retains `1.root.json` and replaces the initial matching
+metadata pair with `2.snapshot.json` and `2.targets.json`; its catalog and
+three component statements are generation 2 and bind the RC1 catalog digest as
+their predecessor. It still emits exactly fourteen direct static files.
 
 Before the directory becomes visible at `--output`, the operation:
 
