@@ -20,11 +20,34 @@ type Config struct {
 
 // Report is the bounded, non-authorizing H4-6A inspection projection.
 type Report struct {
-	Inspection    alphacontrol.Inspection
-	Release       string
-	NetworkID     [32]byte
-	NetworkEpoch  uint64
-	NetworkDigest [32]byte
+	Inspection                  alphacontrol.Inspection
+	CatalogCohort               string
+	CatalogGeneration           uint64
+	CatalogNotBefore            time.Time
+	CatalogNotAfter             time.Time
+	ComponentDetails            [3]ComponentDetails
+	Release                     string
+	ReleaseIdentity             string
+	BuildIdentity               string
+	ArtifactDigest              [32]byte
+	ProtocolPhase               string
+	BuildSafetyNoNewWorkAfter   time.Time
+	BuildSafetyTerminateAfter   time.Time
+	ReleaseAuthorizationPresent bool
+	NetworkID                   [32]byte
+	NetworkEpoch                uint64
+	NetworkDigest               [32]byte
+	NetworkProfile              string
+	NetworkValidUntil           time.Time
+}
+
+// ComponentDetails is the exact verified catalog and statement identity for
+// one fixed component. It remains diagnostic and grants no Endpoint authority.
+type ComponentDetails struct {
+	RootID              [32]byte
+	Generation          uint64
+	Digest              [32]byte
+	NotBefore, NotAfter time.Time
 }
 
 // CorpusConfig combines a verified ACA1 bundle inspection with explicitly

@@ -62,7 +62,8 @@ type ReferenceBrowser interface {
 }
 
 // ReferenceOutcome is the classified terminal result of the authenticated
-// Service Connection that owned one local browser origin.
+// Service Connection that owned one local browser origin. Err joins any
+// Connection failure with failure to withdraw that origin.
 type ReferenceOutcome struct {
 	Result RuntimeResult
 	Err    error
@@ -77,11 +78,15 @@ type ReferenceConnection struct {
 	done   chan ReferenceOutcome
 	closed chan struct{}
 
-	mu           sync.Mutex
-	presentation io.Closer
-	release      func()
-	once         sync.Once
-	readyOnce    sync.Once
+	mu                 sync.Mutex
+	presentation       io.Closer
+	release            func()
+	presentationErr    error
+	presentationClosed bool
+	presentationDone   chan struct{}
+	presentationSetup  chan struct{}
+	once               sync.Once
+	readyOnce          sync.Once
 }
 
 // StartReferenceConnection validates the Target Link before spending any
@@ -140,20 +145,25 @@ func (endpoint *endpoint) StartAlphaTransparentConnection(ctx context.Context, i
 		if authenticated != target {
 			return ErrReferenceTargetMismatch
 		}
+		setup, accepted := running.beginPresentation()
+		if !accepted {
+			return errors.New("reference Connection presentation is unavailable")
+		}
 		hostname := alphaBrowserHostname(input.Binding)
 		presentation, err := reference.OpenTransparent(reference.TransparentConfig{Target: authenticated, Hostname: hostname, Connection: browser})
 		if err != nil {
+			running.abandonPresentation(setup)
 			return err
 		}
 		proxyURL, release, err := endpoint.openAlphaTransparentBrowserRoute(hostname, presentation)
 		if err != nil {
 			_ = presentation.Close()
+			running.abandonPresentation(setup)
 			return err
 		}
-		running.mu.Lock()
-		running.presentation = presentation
-		running.release = release
-		running.mu.Unlock()
+		if !running.installPresentation(setup, presentation, release) {
+			return errors.New("reference Connection presentation is unavailable")
+		}
 		ready := ReferenceReady{URL: "http://" + hostname + "/", AlphaProxyURL: proxyURL, AuthenticatedTarget: authenticated}
 		if input.Browser != nil {
 			if err := input.Browser.OpenReference(lifetime, ready); err != nil {
@@ -166,11 +176,7 @@ func (endpoint *endpoint) StartAlphaTransparentConnection(ctx context.Context, i
 	go func() {
 		result, runErr := endpoint.Connect(lifetime, request)
 		_ = application.Close()
-		running.closePresentation()
-		running.closeReady()
-		running.done <- ReferenceOutcome{Result: result, Err: runErr}
-		close(running.done)
-		close(running.closed)
+		running.completeReferenceConnection(result, runErr)
 	}()
 	return running, nil
 }
@@ -197,8 +203,13 @@ func (endpoint *endpoint) startReferenceConnection(ctx context.Context, input Re
 		if authenticated != target {
 			return ErrReferenceTargetMismatch
 		}
+		setup, accepted := running.beginPresentation()
+		if !accepted {
+			return errors.New("reference Connection presentation is unavailable")
+		}
 		server, openErr := reference.OpenLive(reference.LiveConfig{Target: authenticated, Routes: input.Routes, Fetcher: fetcher})
 		if openErr != nil {
+			running.abandonPresentation(setup)
 			return openErr
 		}
 		readyURL, proxyURL := server.URL(), ""
@@ -207,14 +218,14 @@ func (endpoint *endpoint) startReferenceConnection(ctx context.Context, input Re
 			proxyURL, release, openErr = endpoint.openAlphaBrowserRoute(alphaHostname, server)
 			if openErr != nil {
 				_ = server.Close()
+				running.abandonPresentation(setup)
 				return openErr
 			}
 			readyURL = "http://" + alphaHostname + "/"
 		}
-		running.mu.Lock()
-		running.presentation = server
-		running.release = release
-		running.mu.Unlock()
+		if !running.installPresentation(setup, server, release) {
+			return errors.New("reference Connection presentation is unavailable")
+		}
 		ready := ReferenceReady{URL: readyURL, AlphaProxyURL: proxyURL, AuthenticatedTarget: authenticated}
 		if input.Browser != nil {
 			if openErr := input.Browser.OpenReference(lifetime, ready); openErr != nil {
@@ -227,11 +238,7 @@ func (endpoint *endpoint) startReferenceConnection(ctx context.Context, input Re
 	go func() {
 		result, runErr := endpoint.Connect(lifetime, request)
 		_ = application.Close()
-		running.closePresentation()
-		running.closeReady()
-		running.done <- ReferenceOutcome{Result: result, Err: runErr}
-		close(running.done)
-		close(running.closed)
+		running.completeReferenceConnection(result, runErr)
 	}()
 	return running, nil
 }
@@ -264,31 +271,136 @@ func (connection *ReferenceConnection) terminated() <-chan struct{} {
 	return connection.closed
 }
 
-// Close cancels the Service Connection and withdraws its browser origin.
+// Close cancels the Service Connection, waits for browser-origin withdrawal,
+// and reports any withdrawal failure.
 func (connection *ReferenceConnection) Close() error {
 	if connection == nil {
 		return nil
 	}
 	connection.once.Do(func() {
 		connection.cancel()
-		connection.closePresentation()
 	})
-	return nil
+	return connection.closePresentation()
 }
 
-func (connection *ReferenceConnection) closePresentation() {
+func (connection *ReferenceConnection) beginPresentation() (chan struct{}, bool) {
+	connection.mu.Lock()
+	defer connection.mu.Unlock()
+	if connection.presentationClosed || connection.presentationSetup != nil || connection.presentation != nil {
+		return nil, false
+	}
+	setup := make(chan struct{})
+	connection.presentationSetup = setup
+	return setup, true
+}
+
+func (connection *ReferenceConnection) abandonPresentation(setup chan struct{}) {
+	if setup == nil {
+		return
+	}
+	connection.mu.Lock()
+	if connection.presentationSetup != setup {
+		connection.mu.Unlock()
+		return
+	}
+	connection.presentationSetup = nil
+	connection.mu.Unlock()
+	close(setup)
+}
+
+func (connection *ReferenceConnection) installPresentation(setup chan struct{}, presentation io.Closer, release func()) bool {
+	if setup == nil {
+		connection.recordPresentationError(closeReferencePresentation(presentation, release))
+		return false
+	}
+	connection.mu.Lock()
+	if connection.presentationSetup != setup {
+		connection.mu.Unlock()
+		connection.recordPresentationError(closeReferencePresentation(presentation, release))
+		return false
+	}
+	installed := !connection.presentationClosed && presentation != nil
+	if installed {
+		connection.presentation = presentation
+		connection.release = release
+		connection.presentationSetup = nil
+		connection.mu.Unlock()
+		close(setup)
+		return true
+	}
+	connection.mu.Unlock()
+	connection.recordPresentationError(closeReferencePresentation(presentation, release))
+	connection.mu.Lock()
+	if connection.presentationSetup != setup {
+		connection.mu.Unlock()
+		return false
+	}
+	connection.presentationSetup = nil
+	connection.mu.Unlock()
+	close(setup)
+	return false
+}
+
+func (connection *ReferenceConnection) recordPresentationError(err error) {
+	if err == nil {
+		return
+	}
+	connection.mu.Lock()
+	connection.presentationErr = errors.Join(connection.presentationErr, err)
+	connection.mu.Unlock()
+}
+
+func (connection *ReferenceConnection) closePresentation() error {
+	connection.mu.Lock()
+	if connection.presentationDone == nil {
+		connection.presentationDone = make(chan struct{})
+	}
+	done := connection.presentationDone
+	if connection.presentationClosed {
+		connection.mu.Unlock()
+		<-done
+		connection.mu.Lock()
+		err := connection.presentationErr
+		connection.mu.Unlock()
+		return err
+	}
+	connection.presentationClosed = true
+	setup := connection.presentationSetup
+	connection.mu.Unlock()
+	if setup != nil {
+		<-setup
+	}
 	connection.mu.Lock()
 	presentation := connection.presentation
 	release := connection.release
 	connection.presentation = nil
 	connection.release = nil
 	connection.mu.Unlock()
+	err := closeReferencePresentation(presentation, release)
+	connection.mu.Lock()
+	connection.presentationErr = errors.Join(connection.presentationErr, err)
+	err = connection.presentationErr
+	connection.mu.Unlock()
+	close(done)
+	return err
+}
+
+func (connection *ReferenceConnection) completeReferenceConnection(result RuntimeResult, runErr error) {
+	presentationErr := connection.closePresentation()
+	connection.closeReady()
+	connection.done <- ReferenceOutcome{Result: result, Err: errors.Join(runErr, presentationErr)}
+	close(connection.done)
+	close(connection.closed)
+}
+
+func closeReferencePresentation(presentation io.Closer, release func()) error {
 	if release != nil {
 		release()
 	}
 	if presentation != nil {
-		_ = presentation.Close()
+		return presentation.Close()
 	}
+	return nil
 }
 
 func alphaBrowserHostname(binding alpha.Binding) string {

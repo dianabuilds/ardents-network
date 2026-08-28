@@ -247,6 +247,13 @@ func TestBuildAlphaInputsPublishesOneVerifierAcceptedStaticDirectory(t *testing.
 	if report.Release != "release-accepted" || report.Inspection.Catalog != alphacontrol.OutcomeAccepted {
 		t.Fatalf("preflight report = %+v", report)
 	}
+	if !report.BuildSafetyNoNewWorkAfter.Equal(referenceTime.Add(12*time.Hour)) ||
+		!report.BuildSafetyTerminateAfter.Equal(referenceTime.Add(48*time.Hour)) || !report.ReleaseAuthorizationPresent {
+		t.Fatalf("preflight report omitted authenticated release-safety facts: %+v", report)
+	}
+	if !report.NetworkValidUntil.Equal(referenceTime.Add(30 * time.Minute)) {
+		t.Fatalf("preflight network valid until = %s, want %s", report.NetworkValidUntil, referenceTime.Add(30*time.Minute))
+	}
 	for _, component := range report.Inspection.Components {
 		if component.Outcome != alphacontrol.OutcomeAccepted {
 			t.Fatalf("component %d = %s", component.Class, component.Outcome)

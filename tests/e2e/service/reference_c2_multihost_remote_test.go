@@ -1,4 +1,4 @@
-//go:build h4_3b_multihost
+//go:build h4_3b_multihost || h4_8_a11
 
 package service_test
 
@@ -71,14 +71,21 @@ func requireH43MultiHostEnvironment(t *testing.T) h43MultiHostEnvironment {
 	if strings.Trim(user, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != "" {
 		t.Fatal("ARDENTS_H4_3B_VPS_USER contains unsupported characters")
 	}
-	var nonce [6]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
-		t.Fatal(err)
+	suffix := os.Getenv("ARDENTS_H4_8_A11_SUFFIX")
+	prefix := "ardents-h4-8-a11-"
+	if suffix == "" {
+		var nonce [6]byte
+		if _, err := rand.Read(nonce[:]); err != nil {
+			t.Fatal(err)
+		}
+		suffix = hex.EncodeToString(nonce[:])
+		prefix = "ardents-h4-3b-multihost-"
+	} else if len(suffix) < 12 || len(suffix) > 32 || strings.Trim(suffix, "0123456789abcdef") != "" {
+		t.Fatal("ARDENTS_H4_8_A11_SUFFIX must contain 12-32 lower-hex characters")
 	}
-	suffix := hex.EncodeToString(nonce[:])
 	return h43MultiHostEnvironment{host: host, sshKey: sshKey, sshPath: sshPath, user: user,
 		knownHosts: filepath.Join(t.TempDir(), "known_hosts"), port: port,
-		remoteDirectory: "/tmp/ardents-h4-3b-multihost-" + suffix, container: "ardents-h4-3b-multihost-" + suffix}
+		remoteDirectory: "/tmp/" + prefix + suffix, container: prefix + suffix}
 }
 
 type h43RemoteC2 struct{ environment h43MultiHostEnvironment }
@@ -128,6 +135,15 @@ func (remote h43RemoteC2) readFileContext(ctx context.Context, path string) ([]b
 		return nil, errors.New("remote H4-3B output path escaped its generated directory")
 	}
 	output, err := remote.commandContext(ctx, "set -eu; test -s "+h43ShellQuote(path)+"; cat "+h43ShellQuote(path)).CombinedOutput()
+	return []byte(output), err
+}
+
+func (remote h43RemoteC2) readFileWhenAvailableContext(ctx context.Context, path string) ([]byte, error) {
+	if !strings.HasPrefix(path, remote.environment.remoteDirectory+"/") {
+		return nil, errors.New("remote H4-3B output path escaped its generated directory")
+	}
+	command := "set -eu; while [ ! -s " + h43ShellQuote(path) + " ]; do sleep 1; done; cat " + h43ShellQuote(path)
+	output, err := remote.commandContext(ctx, command).CombinedOutput()
 	return []byte(output), err
 }
 
@@ -295,112 +311,6 @@ func h43WriteArchive(root string, writer io.Writer) error {
 
 func h43ShellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
-}
-
-func h43RemoteRunner() string {
-	return `#!/bin/sh
-set -eu
-work=/work
-pids=""
-transit_pids=""
-started_pid=""
-terminal=$(cat "$work/expected-terminal")
-cleanup() {
-  status=$?
-  trap - EXIT INT TERM
-  for pid in $pids; do kill "$pid" 2>/dev/null || true; done
-  for pid in $pids; do wait "$pid" 2>/dev/null || true; done
-  exit "$status"
-}
-trap cleanup EXIT INT TERM
-start() {
-  name=$1
-  shift
-  "$@" >"$work/$name.log" 2>"$work/$name.err" &
-  pid=$!
-  pids="$pids $pid"
-  started_pid=$pid
-}
-wait_file() {
-  path=$1
-  tries=0
-  while [ "$tries" -lt 400 ]; do
-    if [ -s "$path" ]; then return 0; fi
-    tries=$((tries + 1))
-    sleep 0.1
-  done
-  return 1
-}
-wait_source() {
-  log=$1
-  tries=0
-  while [ "$tries" -lt 200 ]; do
-    if grep -F '"kind":"source-ready"' "$log" >/dev/null 2>&1; then return 0; fi
-    tries=$((tries + 1))
-    sleep 0.1
-  done
-  return 1
-}
-start source-a "$work/ardents-node" source --config "$work/source-a-plan.json"
-start source-b "$work/ardents-node" source --config "$work/source-b-plan.json"
-wait_source "$work/source-a.log"
-wait_source "$work/source-b.log"
-for role in rendezvous initiator introduction responder; do
-  start "$role" "$work/reference-c2" "$role" "$work/reference-c2.json"
-  transit_pids="$transit_pids $started_pid"
-done
-for role in rendezvous initiator introduction responder; do wait_file "$work/ready/$role"; done
-start gateway "$work/reference-c2" gateway "$work/reference-c2.json"
-gateway=$started_pid
-start publisher "$work/reference-c2" publisher "$work/reference-c2.json"
-publisher=$started_pid
-wait_file "$work/publication.json"
-start alpha-gateway "$work/reference-c2" alpha-gateway "$work/reference-c2.json"
-alpha_gateway=$started_pid
-wait_file "$work/alpha-gateway-ready.json"
-start alpha-relay "$work/reference-c2" alpha-relay "$work/reference-c2.json"
-alpha_relay=$started_pid
-wait_file "$work/alpha-relay-ready.json"
-wait_file "$work/ready/gateway"
-start publisher-app "$work/reference-c2" publisher-app "$work/reference-c2.json"
-publisher_app=$started_pid
-if [ "$terminal" = endpoint-stop ]; then
-  (wait_file "$work/publisher-crash-ready"; kill "$publisher" 2>/dev/null || true) &
-  fault_pid=$!
-  pids="$pids $fault_pid"
-else
-  fault_pid=""
-fi
-wait_file "$work/complete"
-wait_expected() {
-  name=$1
-  pid=$2
-  if wait "$pid"; then return 0; fi
-  case "$terminal:$name" in
-    application-reset:publisher-app|endpoint-stop:publisher|endpoint-stop:publisher-app) return 0 ;;
-  esac
-  return 1
-}
-for item in "publisher:$publisher" "publisher-app:$publisher_app" "gateway:$gateway" "alpha-gateway:$alpha_gateway" "alpha-relay:$alpha_relay"; do
-  name=${item%%:*}
-  pid=${item#*:}
-  wait_expected "$name" "$pid"
-done
-if [ -n "$fault_pid" ]; then wait "$fault_pid"; fi
-for pid in $transit_pids; do wait "$pid"; done
-`
-}
-
-func TestH43RemoteRunnerHasPOSIXShellSyntax(t *testing.T) {
-	docker, err := exec.LookPath("docker")
-	if err != nil {
-		t.Fatal("Docker is unavailable for H4-3B remote-runner syntax validation")
-	}
-	command := exec.Command(docker, "run", "--rm", "-i", h43RemoteImage, "/bin/sh", "-n")
-	command.Stdin = strings.NewReader(h43RemoteRunner())
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("H4-3B remote runner shell syntax: %v\n%s", err, output)
-	}
 }
 
 func TestH43WriteArchiveCarriesOnlyRelativeRegularInputs(t *testing.T) {

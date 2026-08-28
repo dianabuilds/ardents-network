@@ -86,7 +86,7 @@ func lstatPath(path string) (lockIdentity, error) {
 }
 
 func validateLockIdentity(identity lockIdentity) error {
-	if identity.mode&syscall.S_IFLNK != 0 || identity.mode&syscall.S_IFREG == 0 {
+	if identity.mode&syscall.S_IFMT != syscall.S_IFREG {
 		return errors.New("not a direct regular file")
 	}
 	if identity.size != 0 {

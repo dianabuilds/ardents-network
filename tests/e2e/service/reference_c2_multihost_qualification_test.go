@@ -1,4 +1,4 @@
-//go:build h4_3b_multihost
+//go:build h4_3b_multihost || h4_8_a11
 
 package service_test
 
@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -55,16 +56,23 @@ func runReferenceC2MultiHost(t *testing.T, scenario referenceC2Scenario) {
 		t.Fatal("H4-3B multi-host runner supports one transparent dynamic scenario")
 	}
 	environment := requireH43MultiHostEnvironment(t)
-	deadline := time.Now().UTC().Truncate(time.Second).Add(90 * time.Second)
-	stage := stageH43RemoteC2(t, environment, deadline, scenario)
+	status := openH48A11Status(t, scenario, environment)
+	deadline := time.Now().UTC().Truncate(time.Second).Add(scenario.dynamicWorkload.timeBudget(90 * time.Second))
+	if workload := scenario.dynamicWorkload; workload.configured() {
+		t.Logf("A11 workload: cycles=%d interval_ms=%d cycle_deadline_ms=%d no_fallback_every=%d bytes_each_direction=%d",
+			workload.Cycles, workload.IntervalMilliseconds, workload.CycleDeadlineMilliseconds, workload.NoFallbackEvery, workload.BytesEachDirection)
+	}
 	remote := h43RemoteC2{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
+	t.Cleanup(func() { status.retainRemoteFailure(t, remote) })
+	stage := stageH43RemoteC2(t, environment, deadline, scenario)
 	t.Logf("H4-3B multi-host inputs: revision=%s scenario=%s ports=%d-%d stage_sha256=%s fixture_sha256=%s node_sha256=%s config_sha256=%s runner_sha256=%s",
 		h43Revision(t), h43ScenarioName(scenario.publisherTerminal), environment.port, environment.port+7, h43StageDigest(t, stage.root), h43Digest(t, filepath.Join(stage.root, "reference-c2")),
 		h43Digest(t, filepath.Join(stage.root, "ardents-node")), h43Digest(t, filepath.Join(stage.root, "reference-c2.json")), h43Digest(t, filepath.Join(stage.root, "run.sh")))
 	t.Logf("H4-3B multi-host local host envelope: goos=%s goarch=%s go=%s logical_cpus=%d", runtime.GOOS, runtime.GOARCH, runtime.Version(), runtime.NumCPU())
 	t.Logf("H4-3B multi-host remote host envelope: %s", remote.hostEnvelope(t))
 	remote.start(t, stage.root)
+	status.remoteReady(t, environment)
 	remote.copyFile(t, remote.environment.remoteDirectory+"/publication.json", stage.publication, deadline)
 	remote.copyFile(t, remote.environment.remoteDirectory+"/gateway-profile.json", stage.gatewayProfile, deadline)
 	remote.copyFile(t, remote.environment.remoteDirectory+"/alpha-relay-ready.json", stage.relayReady, deadline)
@@ -73,15 +81,27 @@ func runReferenceC2MultiHost(t *testing.T, scenario referenceC2Scenario) {
 
 	ctx, cancel := context.WithDeadline(t.Context(), deadline)
 	defer cancel()
-	proofDone := make(chan struct{})
-	go h43MirrorRemoteProof(ctx, remote, remote.environment.remoteDirectory+"/reference-resources", stage.proof, proofDone)
-	user := startCommand(ctx, stage.localRoot, stage.fixture, "user", stage.localConfig)
-	result := <-user
-	<-proofDone
+	proofResult := make(chan error, 1)
+	go func() {
+		proofResult <- h43MirrorRemoteProof(ctx, remote, remote.environment.remoteDirectory+"/reference-resources", stage.proof)
+	}()
+	user := startKillableCommand(ctx, stage.localRoot, stage.fixture, "user", stage.localConfig)
+	status.userReady(t, user)
+	result := <-user.result
+	status.retainUser(t, result)
+	if err := <-proofResult; err != nil {
+		t.Fatalf("mirror remote H4-3B resource proof: %v", err)
+	}
 	remote.complete(t)
 	remote.wait(t)
-	h43AssertUserResult(t, result, scenario.publisherTerminal)
-	h43AssertRemoteResults(t, remote, scenario.publisherTerminal)
+	status.retainRemote(t, remote)
+	h43AssertUserResult(t, result, scenario)
+	assertReferenceC2DynamicWorkloadResult(t, scenario, result)
+	h43AssertRemoteResults(t, remote, scenario)
+	if scenario.productRendezvousRelay {
+		h48A11AssertProductTransitEvidence(t, remote, scenario, result)
+	}
+	status.complete(t)
 }
 
 func stageH43RemoteC2(t *testing.T, environment h43MultiHostEnvironment, deadline time.Time, scenario referenceC2Scenario) h43RemoteStage {
@@ -182,6 +202,8 @@ func stageH43RemoteC2(t *testing.T, environment h43MultiHostEnvironment, deadlin
 		"AlphaObserverCorpusFloorRoot": "/work/alpha-observer-floor", "AlphaServiceLink": "ardents-alpha://reference", "AlphaGatewayReadyPath": "/work/alpha-gateway-ready.json",
 		"AlphaRelayReadyPath": "/work/alpha-relay-ready.json", "AlphaRelayListenAddress": net.JoinHostPort(environment.host, fmt.Sprint(environment.port+4)),
 		"PublisherOffline": false, "TransparentApplication": true, "PublisherTerminal": scenario.publisherTerminal, "PublisherCrashReadyPath": "/work/publisher-crash-ready"}
+	stageH48A11ProductTransit(t, root, fixture, stateFixture, rendezvousMaterial, client, sources, scenario)
+	scenario.dynamicWorkload.addTo(fixture)
 	h43WriteJSON(t, filepath.Join(root, "reference-c2.json"), fixture)
 	h43WriteFile(t, filepath.Join(root, "expected-terminal"), []byte(scenario.publisherTerminal+"\n"), 0o600)
 	h43WriteFile(t, filepath.Join(root, "run.sh"), []byte(h43RemoteRunner()), 0o700)
@@ -199,6 +221,18 @@ func stageH43RemoteC2(t *testing.T, environment h43MultiHostEnvironment, deadlin
 	local["PublisherApplicationAddressPath"] = filepath.Join(localRoot, "publisher-application-address")
 	local["PublisherApplicationReady"] = filepath.Join(localRoot, "publisher-application-ready")
 	local["PublisherCrashReadyPath"] = filepath.Join(localRoot, "publisher-crash-ready")
+	if scenario.productRendezvousRelay {
+		local["CarrierRelayReadyPath"] = filepath.Join(localRoot, "carrier-relay-ready.json")
+		local["CarrierRelayResetPath"] = filepath.Join(localRoot, "carrier-relay-reset")
+		local["CarrierRelayResetResultPath"] = filepath.Join(localRoot, "carrier-relay-reset.json")
+		if scenario.publisherTerminal == referenceC2PublisherApplicationReset {
+			local["PublisherApplicationFaultReadyPath"] = filepath.Join(localRoot, "publisher-application-fault-ready")
+			local["PublisherApplicationFaultReleasePath"] = filepath.Join(localRoot, "publisher-application-fault-release")
+		}
+		if scenario.transitFault != "" {
+			local["TransitFaultReadyPath"] = filepath.Join(localRoot, "transit-fault-ready")
+		}
+	}
 	local["AlphaCorpusFloorRoot"] = filepath.Join(localRoot, "alpha-floor")
 	local["AlphaObserverCorpusFloorRoot"] = filepath.Join(localRoot, "alpha-observer-floor")
 	localRoots := map[string]string{}
@@ -213,25 +247,22 @@ func stageH43RemoteC2(t *testing.T, environment h43MultiHostEnvironment, deadlin
 		proof: filepath.Join(localRoot, "reference-resources"), alphaAuthority: alphaPublic, alphaPrivate: alphaPrivate, network: stateFixture.network, alphaLink: "ardents-alpha://reference"}
 }
 
-func h43MirrorRemoteProof(ctx context.Context, remote h43RemoteC2, source, destination string, done chan<- struct{}) {
-	defer close(done)
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		contents, err := remote.readFileContext(ctx, source)
-		if err == nil && len(contents) > 0 {
-			_ = os.WriteFile(destination, contents, 0o600)
-			return
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
+func h43MirrorRemoteProof(ctx context.Context, remote h43RemoteC2, source, destination string) error {
+	return h43TransferRemoteProof(ctx, source, destination, remote.readFileWhenAvailableContext, os.WriteFile)
 }
 
-func h43AssertUserResult(t *testing.T, process commandResult, terminal referenceC2PublisherTerminal) {
+func h43TransferRemoteProof(ctx context.Context, source, destination string, read func(context.Context, string) ([]byte, error), write func(string, []byte, os.FileMode) error) error {
+	contents, err := read(ctx, source)
+	if err != nil {
+		return fmt.Errorf("read remote proof %q: %w", source, err)
+	}
+	if err := write(destination, contents, 0o600); err != nil {
+		return fmt.Errorf("write local proof %q: %w", destination, err)
+	}
+	return nil
+}
+
+func h43AssertUserResult(t *testing.T, process commandResult, scenario referenceC2Scenario) {
 	t.Helper()
 	if process.err != nil {
 		t.Fatalf("local H4-3B User failed: %v\n%s", process.err, process.output)
@@ -247,7 +278,8 @@ func h43AssertUserResult(t *testing.T, process commandResult, terminal reference
 	if err := json.Unmarshal([]byte(line), &observed); err != nil || observed.Schema != "ardents-e2e-reference-c2-result-v1" || observed.Role != "user" || !observed.Passed || observed.Class == "" {
 		t.Fatalf("local H4-3B User result = %q / %+v / %v", process.output, observed, err)
 	}
-	if (terminal == referenceC2PublisherApplicationReset || terminal == referenceC2PublisherEndpointStop) && observed.Class != "abrupt connection loss" {
+	terminal := scenario.publisherTerminal
+	if (terminal == referenceC2PublisherApplicationReset || terminal == referenceC2PublisherEndpointStop || scenario.transitFault != "") && observed.Class != "abrupt connection loss" {
 		t.Fatalf("local H4-3B User terminal class = %q, want abrupt connection loss", observed.Class)
 	}
 	if terminal == referenceC2PublisherWithdrawal && observed.Class != "clean service connection close" {
@@ -255,9 +287,15 @@ func h43AssertUserResult(t *testing.T, process commandResult, terminal reference
 	}
 }
 
-func h43AssertRemoteResults(t *testing.T, remote h43RemoteC2, terminal referenceC2PublisherTerminal) {
+func h43AssertRemoteResults(t *testing.T, remote h43RemoteC2, scenario referenceC2Scenario) {
 	t.Helper()
-	for _, role := range []string{"rendezvous", "initiator", "introduction", "responder", "gateway", "alpha-gateway", "alpha-relay"} {
+	h48A11AssertRemoteRoleExitStatuses(t, remote, scenario)
+	terminal := scenario.publisherTerminal
+	roles := []string{"rendezvous", "initiator", "introduction", "responder", "gateway", "alpha-gateway", "alpha-relay"}
+	if scenario.productRendezvousRelay {
+		roles = []string{"initiator", "introduction", "responder", "gateway", "alpha-gateway", "alpha-relay"}
+	}
+	for _, role := range roles {
 		result := h43RemoteResult(t, remote, role)
 		if result.Class != "drained" {
 			t.Fatalf("remote H4-3B %s result class = %q, want drained", role, result.Class)
@@ -265,21 +303,35 @@ func h43AssertRemoteResults(t *testing.T, remote h43RemoteC2, terminal reference
 	}
 	if terminal != referenceC2PublisherEndpointStop {
 		publisher := h43RemoteResult(t, remote, "publisher")
+		if scenario.dynamicWorkload.configured() {
+			assertReferenceC2EndpointRuntime(t, scenario, "publisher", publisher.Runtime)
+		}
 		if terminal == referenceC2PublisherWithdrawal && publisher.Class != "unpublished" {
 			t.Fatalf("remote H4-3B Publisher withdrawal class = %q, want unpublished", publisher.Class)
 		}
 	}
-	if terminal != referenceC2PublisherApplicationReset && terminal != referenceC2PublisherEndpointStop {
+	if terminal != referenceC2PublisherApplicationReset && terminal != referenceC2PublisherEndpointStop && scenario.transitFault == "" {
 		if application := h43RemoteResult(t, remote, "publisher-app"); application.Class != "served" {
 			t.Fatalf("remote H4-3B Publisher Application class = %q, want served", application.Class)
 		}
 	}
 	if terminal == referenceC2PublisherApplicationReset {
-		h43AssertRemoteExpectedFailure(t, remote, "publisher-app", "simulated Publisher Application crash after partial response")
+		expected := "simulated Publisher Application crash after partial response"
+		if scenario.dynamicWorkload.configured() {
+			expected = "simulated Publisher Application crash after configured warmup"
+		}
+		h43AssertRemoteExpectedFailure(t, remote, "publisher-app", expected)
 	}
 	if terminal == referenceC2PublisherEndpointStop {
 		remote.waitFile(t, remote.environment.remoteDirectory+"/publisher-crash-ready", time.Now().Add(time.Second))
 		h43AssertRemoteExpectedFailure(t, remote, "publisher-app", "simulated Publisher Endpoint crash closed the local Application handoff")
+	}
+	if scenario.transitFault != "" {
+		expected := "simulated Carrier loss closed the local Application handoff"
+		if scenario.transitFault == referenceC2TransitFaultProductNodeLoss {
+			expected = "simulated product Node loss closed the local Application handoff"
+		}
+		h43AssertRemoteExpectedFailure(t, remote, "publisher-app", expected)
 	}
 }
 
@@ -291,10 +343,14 @@ func h43AssertRemoteExpectedFailure(t *testing.T, remote h43RemoteC2, role, expe
 	}
 }
 
-func h43RemoteResult(t *testing.T, remote h43RemoteC2, role string) struct {
+type h43RoleResult struct {
 	Schema, Role, Class string
 	Passed              bool
-} {
+	Runtime             *endpointapi.RuntimeResult
+	CarrierRelay        *h48A11CarrierRelaySnapshot
+}
+
+func h43RemoteResult(t *testing.T, remote h43RemoteC2, role string) h43RoleResult {
 	t.Helper()
 	output, err := remote.readFile(t, remote.environment.remoteDirectory+"/"+role+".log")
 	if err != nil {
@@ -304,10 +360,7 @@ func h43RemoteResult(t *testing.T, remote h43RemoteC2, role string) struct {
 	if index := strings.LastIndex(line, "\n"); index >= 0 {
 		line = line[index+1:]
 	}
-	var result struct {
-		Schema, Role, Class string
-		Passed              bool
-	}
+	var result h43RoleResult
 	if err := json.Unmarshal([]byte(line), &result); err != nil || result.Schema != "ardents-e2e-reference-c2-result-v1" || result.Role != role || !result.Passed || result.Class == "" {
 		t.Fatalf("remote H4-3B %s result = %q / %+v / %v", role, output, result, err)
 	}

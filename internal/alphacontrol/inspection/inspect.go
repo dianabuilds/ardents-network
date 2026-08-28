@@ -38,10 +38,23 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 	}
 	defer reader.Close()
 	report := Report{}
+	if catalog, _, catalogErr := alphacontrol.Verify(verified.ControlCatalog, disclosure, config.At.UTC()); catalogErr == nil {
+		report.CatalogCohort, report.CatalogGeneration = catalog.Cohort, catalog.Generation
+		report.CatalogNotBefore, report.CatalogNotAfter = catalog.NotBefore, catalog.NotAfter
+		for index, component := range catalog.Components {
+			report.ComponentDetails[index] = ComponentDetails{RootID: component.RootID, Generation: component.Generation,
+				Digest: component.Digest, NotAfter: component.NotAfter}
+		}
+	}
 	var releaseDecision release.Decision
 	var networkSnapshot state.Snapshot
 	var releaseAccepted, networkAccepted bool
 	componentVerify := func(component alphacontrol.Component, statement alphacontrol.ComponentStatement, at time.Time) alphacontrol.Outcome {
+		index := int(component.Class) - int(alphacontrol.ComponentRelease)
+		if index >= 0 && index < len(report.ComponentDetails) {
+			report.ComponentDetails[index] = ComponentDetails{RootID: component.RootID, Generation: component.Generation,
+				Digest: component.Digest, NotBefore: statement.NotBefore, NotAfter: statement.NotAfter}
+		}
 		switch component.Class {
 		case alphacontrol.ComponentRelease:
 			return verifyRelease(ctx, releaseRoot, verified.Inputs, statement.Body, &releaseDecision, &releaseAccepted)
@@ -56,8 +69,17 @@ func inspect(ctx context.Context, config Config) (Report, error) {
 	result, err := reader.Inspect(verified.ControlCatalog, [3][]byte{verified.ControlRelease, verified.ControlNetwork, verified.ControlCompatibility}, componentVerify)
 	report.Inspection = result
 	report.Release = string(releaseDecision.Outcome)
+	report.ReleaseIdentity, report.BuildIdentity, report.ProtocolPhase = releaseDecision.ReleaseIdentity, releaseDecision.BuildIdentity, releaseDecision.ProtocolPhase
+	report.BuildSafetyNoNewWorkAfter = releaseDecision.BuildSafetyNoNewWorkAfter
+	report.BuildSafetyTerminateAfter = releaseDecision.BuildSafetyTerminateAfter
+	_, report.ReleaseAuthorizationPresent = releaseDecision.Authorization()
+	if len(releaseDecision.Digest) == len(report.ArtifactDigest) {
+		copy(report.ArtifactDigest[:], releaseDecision.Digest)
+	}
 	if networkAccepted {
 		report.NetworkID, report.NetworkEpoch, report.NetworkDigest = networkSnapshot.NetworkID, networkSnapshot.Epoch, networkSnapshot.Digest
+		report.NetworkProfile = networkSnapshot.Profile
+		report.NetworkValidUntil = networkSnapshot.ValidUntil
 	}
 	if err != nil {
 		return report, fmt.Errorf("inspect alpha control catalog: %w", err)

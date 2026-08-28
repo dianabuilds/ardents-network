@@ -128,10 +128,10 @@ func classifyBuildSafety(policy targetIdentityDescriptor, refTime time.Time) bui
 	if buildState == buildRevoked {
 		return buildSafetyState{classification: outcomeReleaseRevoked, notice: "build is revoked"}
 	}
-	if refTime.After(policy.BuildSafetyTermAfter) {
+	if !refTime.Before(policy.BuildSafetyTermAfter) {
 		return buildSafetyState{classification: outcomeReleaseRevoked, notice: "build safety terminal bound has elapsed; recovery is new security work"}
 	}
-	if refTime.After(policy.BuildSafetyNoNewAfter) {
+	if !refTime.Before(policy.BuildSafetyNoNewAfter) {
 		return buildSafetyState{classification: outcomeUpdateRequired, notice: "build safety no-new-work bound has elapsed"}
 	}
 	switch buildState {

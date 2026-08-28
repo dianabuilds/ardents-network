@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -155,15 +154,11 @@ func TestRunReportsStartingReadyAndStopped(t *testing.T) {
 
 func testConfig(t *testing.T) Config {
 	t.Helper()
-	root := t.TempDir()
-	if runtime.GOOS == "windows" {
-		var err error
-		root, err = os.MkdirTemp(os.TempDir(), "an-")
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = os.RemoveAll(root) })
+	root, err := os.MkdirTemp(os.TempDir(), "an-")
+	if err != nil {
+		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
 	return Config{
 		ConfigHome:  filepath.Join(root, "config"),
 		StateHome:   filepath.Join(root, "state"),

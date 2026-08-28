@@ -180,15 +180,7 @@ func inspectBundle(arguments []string, output io.Writer) error {
 		return err
 	}
 	report, err := inspection.Inspect(context.Background(), inspection.Config{Root: stateRoot, Enrollment: input.Request(artifact, at), At: at.UTC()})
-	encoded := json.NewEncoder(output).Encode(struct {
-		Schema        string                              `json:"schema"`
-		Catalog       alphacontrol.Outcome                `json:"catalog"`
-		Components    [3]alphacontrol.ComponentInspection `json:"components"`
-		Release       string                              `json:"release"`
-		NetworkEpoch  uint64                              `json:"network_epoch"`
-		NetworkDigest string                              `json:"network_digest"`
-	}{Schema: "ardents-alpha-control-report-v1", Catalog: report.Inspection.Catalog, Components: report.Inspection.Components,
-		Release: report.Release, NetworkEpoch: report.NetworkEpoch, NetworkDigest: hex.EncodeToString(report.NetworkDigest[:])})
+	encoded := writeBundleInspectionReport(output, report)
 	return errors.Join(err, encoded)
 }
 

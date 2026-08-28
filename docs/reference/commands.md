@@ -52,6 +52,15 @@ native-duty stanza must set its finite `admission_timeout_ms`: it bounds TLS
 and binding admission only, is capped by the current State expiry, and has no
 implicit default or retry/fallback behavior.
 
+The Rendezvous stanza may additionally set `listen_loopback_override` only to
+a literal loopback IP with the same numeric port as the authenticated
+State-advertised Rendezvous candidate. This is an operational bind adapter for
+a host-owned byte-transparent Carrier relay: State remains the sole owner of
+the advertised endpoint, identity, digest, Epoch, and Carrier profile. A
+hostname, unspecified or non-loopback address, zero/out-of-range port, or port
+mismatch is rejected. Omitting the field retains the State endpoint as the
+listener and does not change existing plan behavior.
+
 ## `ardents-custody`
 
 `ardents-custody` is separate from Endpoint, Release, and Update. It accepts no

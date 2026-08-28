@@ -23,8 +23,9 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 		return config, err
 	}
 	if plan.Rendezvous != nil {
-		config.Rendezvous = node.RendezvousProfile{Certificate: certificate, HandshakeLimit: plan.Rendezvous.HandshakeLimit,
-			WaitingLimit: plan.Rendezvous.WaitingLimit, PairLimit: plan.Rendezvous.PairLimit,
+		config.Rendezvous = node.RendezvousProfile{Certificate: certificate, LoopbackListenOverride: plan.Rendezvous.LoopbackListenOverride,
+			HandshakeLimit: plan.Rendezvous.HandshakeLimit,
+			WaitingLimit:   plan.Rendezvous.WaitingLimit, PairLimit: plan.Rendezvous.PairLimit,
 			PairByteLimit: plan.Rendezvous.PairByteLimit, AdmissionTimeout: time.Duration(plan.Rendezvous.AdmissionTimeoutMS) * time.Millisecond,
 			DrainTimeout: time.Duration(plan.Rendezvous.DrainTimeoutMS) * time.Millisecond}
 	}

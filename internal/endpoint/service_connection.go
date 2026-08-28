@@ -73,6 +73,7 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 	outcome, err := stream.RunBounded(sendBytes, receiveBytes)
 	if err != nil {
 		result, failure := streamFailure(ctx, outcome.Accepted, outcome.Received, err)
+		result.AuthenticatedTarget, result.Generation = credential.Target, credential.Generation
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
@@ -136,6 +137,7 @@ func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (re
 	outcome, err := stream.RunBounded(sendBytes, receiveBytes)
 	if err != nil {
 		result, failure := streamFailure(ctx, outcome.Accepted, outcome.Received, err)
+		result.AuthenticatedTarget, result.Generation = credential.Target, credential.Generation
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}

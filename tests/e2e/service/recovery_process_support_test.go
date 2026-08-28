@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -246,8 +247,37 @@ func benignBridgeError(values ...error) error {
 }
 
 type commandResult struct {
-	output []byte
-	err    error
+	output, stdout, stderr []byte
+	err                    error
+}
+
+type commandCapture struct {
+	mu                     sync.Mutex
+	output, stdout, stderr bytes.Buffer
+}
+
+type commandStreamCapture struct {
+	capture *commandCapture
+	stderr  bool
+}
+
+func (stream commandStreamCapture) Write(value []byte) (int, error) {
+	stream.capture.mu.Lock()
+	defer stream.capture.mu.Unlock()
+	if stream.stderr {
+		_, _ = stream.capture.stderr.Write(value)
+	} else {
+		_, _ = stream.capture.stdout.Write(value)
+	}
+	_, _ = stream.capture.output.Write(value)
+	return len(value), nil
+}
+
+func (capture *commandCapture) result(err error) commandResult {
+	capture.mu.Lock()
+	defer capture.mu.Unlock()
+	return commandResult{output: append([]byte(nil), capture.output.Bytes()...),
+		stdout: append([]byte(nil), capture.stdout.Bytes()...), stderr: append([]byte(nil), capture.stderr.Bytes()...), err: err}
 }
 
 type killableCommand struct {
@@ -260,8 +290,10 @@ func startCommand(ctx context.Context, root, binary string, arguments ...string)
 	go func() {
 		command := exec.CommandContext(ctx, binary, arguments...)
 		command.Dir = root
-		output, err := command.CombinedOutput()
-		result <- commandResult{output: output, err: err}
+		capture := new(commandCapture)
+		command.Stdout = commandStreamCapture{capture: capture}
+		command.Stderr = commandStreamCapture{capture: capture, stderr: true}
+		result <- capture.result(command.Run())
 	}()
 	return result
 }
@@ -270,16 +302,16 @@ func startKillableCommand(ctx context.Context, root, binary string, arguments ..
 	result := make(chan commandResult, 1)
 	command := exec.CommandContext(ctx, binary, arguments...)
 	command.Dir = root
-	var output bytes.Buffer
-	command.Stdout, command.Stderr = &output, &output
+	capture := new(commandCapture)
+	command.Stdout = commandStreamCapture{capture: capture}
+	command.Stderr = commandStreamCapture{capture: capture, stderr: true}
 	if err := command.Start(); err != nil {
-		result <- commandResult{output: output.Bytes(), err: err}
+		result <- capture.result(err)
 		close(result)
 		return &killableCommand{command: command, result: result}
 	}
 	go func() {
-		err := command.Wait()
-		result <- commandResult{output: append([]byte(nil), output.Bytes()...), err: err}
+		result <- capture.result(command.Wait())
 		close(result)
 	}()
 	return &killableCommand{command: command, result: result}

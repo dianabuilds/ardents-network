@@ -39,7 +39,11 @@ func rendezvousDuty(profile RendezvousProfile, snapshot dutyFacts) (RendezvousCo
 	if len(peers) != 2 || peers[0].Role == peers[1].Role {
 		return RendezvousConfig{}, errors.New("state does not supply one Initiator and one Responder peer")
 	}
-	return RendezvousConfig{ListenAddress: snapshot.ProbeEndpoint, CarrierProfile: route.CarrierProfile(snapshot.CarrierProfile), Certificate: profile.Certificate,
+	listen, err := rendezvousListenAddress(snapshot.ProbeEndpoint, profile.LoopbackListenOverride)
+	if err != nil {
+		return RendezvousConfig{}, err
+	}
+	return RendezvousConfig{ListenAddress: listen, CarrierProfile: route.CarrierProfile(snapshot.CarrierProfile), Certificate: profile.Certificate,
 		NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID,
 		NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch, NotAfter: notAfter.UTC(), Peers: peers,
 		HandshakeLimit: profile.HandshakeLimit, WaitingLimit: profile.WaitingLimit, PairLimit: profile.PairLimit,

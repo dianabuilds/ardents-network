@@ -7,10 +7,19 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
+	"runtime"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
+)
+
+const (
+	referenceC2PublicationReadAttempts = 50
+	referenceC2PublicationReadDelay    = 20 * time.Millisecond
 )
 
 // The complete command-to-C2 composition is qualified on Linux, the selected
@@ -27,7 +36,7 @@ func stageReferenceC2AlphaCorpus(t *testing.T, _, _ string, publicationPath stri
 // of this qualification profile.
 func stageReferenceC2AlphaCorpusDirect(t *testing.T, publicationPath string, authority ed25519.PublicKey, _ ed25519.PrivateKey, floorRoot string, network [32]byte, linkText string) {
 	t.Helper()
-	raw, err := os.ReadFile(publicationPath)
+	raw, err := readReferenceC2Publication(publicationPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,4 +62,25 @@ func stageReferenceC2AlphaCorpusDirect(t *testing.T, publicationPath string, aut
 	if err := floor.Observe(corpus); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func readReferenceC2Publication(path string) ([]byte, error) {
+	return readReferenceC2PublicationWith(path, os.ReadFile, time.Sleep)
+}
+
+func readReferenceC2PublicationWith(path string, readFile func(string) ([]byte, error), wait func(time.Duration)) ([]byte, error) {
+	for attempt := 0; attempt < referenceC2PublicationReadAttempts; attempt++ {
+		raw, err := readFile(path)
+		if err == nil {
+			return raw, nil
+		}
+		if runtime.GOOS != "windows" || !errors.Is(err, syscall.Errno(32)) {
+			return nil, err
+		}
+		if attempt+1 == referenceC2PublicationReadAttempts {
+			return nil, err
+		}
+		wait(referenceC2PublicationReadDelay)
+	}
+	return nil, errors.New("publication read attempts are invalid")
 }

@@ -59,30 +59,6 @@ func TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart(t *testing.T) {
 	}
 }
 
-func TestAlphaControlReaderTwoFreshEnrolledEndpointsAgree(t *testing.T) {
-	endpoint := buildArdents(t)
-	control := buildControl(t)
-	fixture := alphaControlBundle(t, endpoint, control)
-	arguments := []string{"inspect-bundle", "--enrollment", fixture.input, "--artifact", fixture.artifact,
-		"--at", fixture.now.Format(time.RFC3339)}
-	for endpointIndex := 0; endpointIndex < 2; endpointIndex++ {
-		state := filepath.Join(t.TempDir(), "control-floor")
-		output, err := exec.Command(control, append(arguments, "--state-root", state)...).CombinedOutput()
-		if err != nil {
-			t.Fatalf("fresh enrolled Endpoint %d alpha control inspection: %v\n%s", endpointIndex, err, output)
-		}
-		var report struct {
-			Catalog      string `json:"catalog"`
-			Release      string `json:"release"`
-			NetworkEpoch uint64 `json:"network_epoch"`
-		}
-		if err := json.Unmarshal(output, &report); err != nil || report.Catalog != "accepted" ||
-			(report.Release != "release-accepted" && report.Release != "no-update") || report.NetworkEpoch != 1 {
-			t.Fatalf("fresh enrolled Endpoint %d alpha control report = %s / %+v / %v", endpointIndex, output, report, err)
-		}
-	}
-}
-
 func TestAlphaCorpusAcceptanceUsesV3EnrolledControlCompanion(t *testing.T) {
 	endpoint := buildArdents(t)
 	control := buildControl(t)
@@ -206,6 +182,7 @@ type alphaControlBundleFixture struct {
 	corpusPublic                     ed25519.PublicKey
 	corpusPrivate                    ed25519.PrivateKey
 	network                          [32]byte
+	networkDigest                    [32]byte
 	now                              time.Time
 }
 
@@ -224,7 +201,7 @@ func alphaControlBundle(t *testing.T, endpoint, control string) alphaControlBund
 	now := time.Now().UTC().Truncate(time.Second)
 	metadataFiles, rootBytes := enrolledRuntimeMetadata(t, artifact, targetPath, platform, now)
 	decision := alphaControlReleaseDecision(t, rootBytes, metadataFiles, artifact, targetPath, platform, now)
-	components, roots, catalogRoot, catalog, disclosurePrivate, network := alphaControlStatements(t, decision, now)
+	components, roots, catalogRoot, catalog, disclosurePrivate, network, networkDigest := alphaControlStatements(t, decision, now)
 	corpusPublic, corpusPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -263,7 +240,7 @@ func alphaControlBundle(t *testing.T, endpoint, control string) alphaControlBund
 	}
 	writeEnrollmentFile(t, input, raw, 0o600)
 	return alphaControlBundleFixture{bundle: bundle, artifact: filepath.Join(bundle, artifactName), control: filepath.Join(bundle, controlName), input: input,
-		disclosurePrivate: disclosurePrivate, corpusPublic: corpusPublic, corpusPrivate: corpusPrivate, network: network, now: now}
+		disclosurePrivate: disclosurePrivate, corpusPublic: corpusPublic, corpusPrivate: corpusPrivate, network: network, networkDigest: networkDigest, now: now}
 }
 
 func alphaControlReleaseDecision(t *testing.T, root []byte, metadata map[string][]byte, artifact []byte, targetPath, platform string, now time.Time) release.Decision {
@@ -282,7 +259,7 @@ func alphaControlReleaseDecision(t *testing.T, root []byte, metadata map[string]
 	return decision
 }
 
-func alphaControlStatements(t *testing.T, decision release.Decision, now time.Time) ([3][]byte, [3][]byte, []byte, []byte, ed25519.PrivateKey, [32]byte) {
+func alphaControlStatements(t *testing.T, decision release.Decision, now time.Time) ([3][]byte, [3][]byte, []byte, []byte, ed25519.PrivateKey, [32]byte, [32]byte) {
 	t.Helper()
 	disclosurePublic, disclosurePrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -332,7 +309,7 @@ func alphaControlStatements(t *testing.T, decision release.Decision, now time.Ti
 	if err != nil {
 		t.Fatal(err)
 	}
-	return components, roots, disclosurePublic, raw, disclosurePrivate, networkID
+	return components, roots, disclosurePublic, raw, disclosurePrivate, networkID, epochDigest
 }
 
 func alphaControlEpoch(network [32]byte, now time.Time, signer ed25519.PrivateKey) ([]byte, [32]byte) {

@@ -67,8 +67,10 @@ func TestReferenceC2HardStopsRendezvousWithHeldRoute(t *testing.T) {
 }
 
 type referenceC2Scenario struct {
-	publisherTerminal                                                                                                                                                                                                     referenceC2PublisherTerminal
-	publisherOffline, rejectPublisherApplication, transparentApplication, browserEntryDynamic, signedFirefox, productNodeTransit, refreshWithdrawsProductNodes, refreshWithdrawsHeldProductRoute, hardStopsHeldRendezvous bool
+	publisherTerminal                                                                                                                                                                                                                             referenceC2PublisherTerminal
+	transitFault                                                                                                                                                                                                                                  referenceC2TransitFault
+	dynamicWorkload                                                                                                                                                                                                                               referenceC2DynamicWorkload
+	publisherOffline, rejectPublisherApplication, transparentApplication, browserEntryDynamic, signedFirefox, productNodeTransit, productRendezvousRelay, refreshWithdrawsProductNodes, refreshWithdrawsHeldProductRoute, hardStopsHeldRendezvous bool
 }
 
 type referenceC2PublisherTerminal string
@@ -81,6 +83,16 @@ const (
 
 func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	t.Helper()
+	if scenario.productRendezvousRelay {
+		t.Fatal("product Rendezvous relay requires the multihost runner")
+	}
+	switch scenario.transitFault {
+	case "":
+	case referenceC2TransitFaultCarrierLoss, referenceC2TransitFaultProductNodeLoss:
+		t.Fatal("product transit fault requires the multihost runner")
+	default:
+		t.Fatalf("unknown product transit fault %q", scenario.transitFault)
+	}
 	nodeBinary := buildProductCommand(t, "ardents-node")
 	fixtureBinary := buildE2EFixtureCommand(t, "reference-c2")
 	var browserEntryQualification referenceC2BrowserEntryQualification
@@ -94,6 +106,7 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	}
 	now := time.Now().UTC().Truncate(time.Second)
 	timeBudget := 20 * time.Second
+	timeBudget = scenario.dynamicWorkload.timeBudget(timeBudget)
 	if scenario.browserEntryDynamic {
 		timeBudget = 40 * time.Second
 	}
@@ -229,6 +242,7 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		"PublisherOffline": scenario.publisherOffline, "TransparentApplication": scenario.transparentApplication,
 		"PublisherTerminal": scenario.publisherTerminal, "PublisherCrashReadyPath": publisherCrashReadyPath,
 	}
+	scenario.dynamicWorkload.addTo(fixture)
 	if scenario.browserEntryDynamic {
 		fixture["BrowserEntryStatePath"] = browserEntryStatePath
 	}
@@ -394,17 +408,7 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	}
 	if publisherApplication != nil {
 		applicationResult := <-publisherApplication
-		if scenario.publisherTerminal == referenceC2PublisherApplicationReset {
-			if applicationResult.err == nil || !strings.Contains(string(applicationResult.output), "simulated Publisher Application crash after partial response") {
-				t.Fatalf("Publisher Application crash result = %v\n%s", applicationResult.err, applicationResult.output)
-			}
-		} else if scenario.publisherTerminal == referenceC2PublisherEndpointStop {
-			if applicationResult.err == nil || !strings.Contains(string(applicationResult.output), "simulated Publisher Endpoint crash closed the local Application handoff") {
-				t.Fatalf("Publisher Endpoint crash Application result = %v\n%s", applicationResult.err, applicationResult.output)
-			}
-		} else {
-			processes["publisher-app"] = applicationResult
-		}
+		assertReferenceC2PublisherApplicationCompletion(t, scenario, applicationResult, processes)
 	}
 	if err := os.WriteFile(completePath, []byte("complete\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -480,5 +484,9 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		if scenario.publisherTerminal == referenceC2PublisherEndpointStop && role == "user" && observed.Class != "abrupt connection loss" {
 			t.Fatalf("Publisher Endpoint crash C2 User result class = %q, want abrupt connection loss", observed.Class)
 		}
+	}
+	assertReferenceC2DynamicWorkloadResult(t, scenario, processes["user"])
+	if publisherProcess, present := processes["publisher"]; present {
+		assertReferenceC2PublisherDynamicRuntime(t, scenario, publisherProcess)
 	}
 }

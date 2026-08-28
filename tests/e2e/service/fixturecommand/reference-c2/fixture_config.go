@@ -86,6 +86,15 @@ func readConfig(path string) (config, error) {
 	if input.AlphaRelayListenAddress != "" && !validAlphaRelayListenAddress(input.AlphaRelayListenAddress) {
 		return config{}, errors.New("C2 fixture alpha Relay listen address is invalid")
 	}
+	if err := validateCarrierRelayConfig(input); err != nil {
+		return config{}, err
+	}
+	if err := validateTransitFaultConfig(input); err != nil {
+		return config{}, err
+	}
+	if err := validatePublisherApplicationFaultControl(input); err != nil {
+		return config{}, err
+	}
 	if _, err := alpha.ParseServiceLink(input.AlphaServiceLink); err != nil {
 		return config{}, err
 	}
@@ -107,6 +116,9 @@ func readConfig(path string) (config, error) {
 	default:
 		return config{}, errors.New("C2 fixture Publisher terminal scenario is invalid")
 	}
+	if err := input.DynamicWorkload.validate(input); err != nil {
+		return config{}, err
+	}
 	if !validPublisherApplicationAddress(input.PublisherApplicationAddress) {
 		return config{}, errors.New("C2 fixture Publisher Application address is invalid")
 	}
@@ -114,6 +126,33 @@ func readConfig(path string) (config, error) {
 		return config{}, errors.New("C2 fixture Publisher Application address path is invalid")
 	}
 	return input, nil
+}
+
+func validatePublisherApplicationFaultControl(input config) error {
+	ready, release := input.PublisherApplicationFaultReadyPath, input.PublisherApplicationFaultReleasePath
+	if ready == "" && release == "" {
+		return nil
+	}
+	if !validPublisherApplicationPath(ready) || !validPublisherApplicationPath(release) || ready == release ||
+		!input.TransparentApplication || input.PublisherTerminal != publisherTerminalApplicationReset || !input.DynamicWorkload.configured() {
+		return errors.New("C2 fixture Publisher Application fault control is invalid")
+	}
+	return nil
+}
+
+func validateTransitFaultConfig(input config) error {
+	if input.TransitFault == "" {
+		if input.TransitFaultReadyPath != "" {
+			return errors.New("C2 fixture transit fault ready path has no fault")
+		}
+		return nil
+	}
+	if !validTransitFault(input.TransitFault) || !input.TransparentApplication || !input.DynamicWorkload.configured() ||
+		input.PublisherTerminal != "" || !validPublisherApplicationPath(input.TransitFaultReadyPath) ||
+		input.CarrierRelayListenAddress == "" {
+		return errors.New("C2 fixture transit fault configuration is invalid")
+	}
+	return nil
 }
 
 // validAlphaRelayListenAddress admits only an explicit IP listener for the

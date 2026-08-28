@@ -92,12 +92,12 @@
     },
     {
       "id": "soak",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "sustained-operation",
-      "prerequisites": ["accepted duration, load, and observation contract"],
-      "invalid_environment": "no accepted sustained-operation campaign",
-      "activation": "S8.3 or a claim-bearing wave defines a bounded sustained-operation contract"
+      "state": "active",
+      "make_target": "qualification-h4-8-a11",
+      "surface": "bounded Windows-to-Ubuntu Publisher-to-User soak, four fault domains, fresh-topology canaries, and deterministic expiry boundaries",
+      "prerequisites": ["clean committed Windows 11 x86_64 source checkout at the exact immutable release tag", "exact Linux amd64 release archive, archive SHA-256, Enrollment Pin, Endpoint SHA-256, control-companion SHA-256, cohort, and UTC RFC3339 candidate reference instant", "literal project VPS IPv4 address and matching root SSH key/user", "Ubuntu 22.04 x86_64 with Docker 29, cgroup v2, host networking, and the exact pre-existing golang:1.26.6 image ID", "nine free non-overlapping eight-port high-port ranges beginning at the selected base port", "previously absent external evidence directory"],
+      "invalid_environment": "the selected H4-8 A11 Windows-to-Ubuntu campaign identity, topology, observer, or exact test seam is unavailable",
+      "timeout": "125m"
     },
     {
       "id": "qualification",
@@ -151,6 +151,14 @@
       "surface": "project-VPS Docker application-transparent C-2 qualification",
       "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "remote Docker engine", "pre-existing golang:1.26.6 image"],
       "invalid_environment": "the selected Windows-to-VPS H4-3B Docker qualification environment is unavailable"
+    },
+    {
+      "id": "h4-6a-two-endpoints",
+      "state": "active",
+      "make_target": "qualification-h4-6a-two-endpoints",
+      "surface": "two fresh unprivileged Ubuntu Endpoints observing one exact immutable alpha-control bundle",
+      "prerequisites": ["clean Windows qualification checkout", "exact immutable Linux amd64 release archive and all independently fixed archive, enrollment, artifact, cohort, release, and time inputs", "previously absent external evidence directory", "literal project VPS IPv4 address and matching root-capable SSH account", "Ubuntu 22.04 x86_64 host with preinstalled POSIX shell, coreutils, tar, and setpriv"],
+      "invalid_environment": "the selected Windows-to-Ubuntu H4-6A two-fresh-Endpoint qualification environment is unavailable"
     }
   ],
   "suite_roots": [

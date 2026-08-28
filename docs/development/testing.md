@@ -29,23 +29,31 @@ after its peer-facing runtime exists.
 
 ## Live
 
-The live profile is inactive. A native peer-facing Route and the measured
+The generic live-network profile remains inactive. A native peer-facing Route and the measured
 R-092 Node operating profile must exist before a new bounded live suite and
 its explicit entrypoint are registered. Docker or a development VPS can test a
 selected implementation path, but cannot select the missing operating profile.
 There is no generic `tests/live/` directory or implicit build tag; ADR-0031
 requires a selected scenario to own its purpose-named source boundary and
-complete lifecycle.
+complete lifecycle. The active purpose-named A11 soak profile below is a
+project-operated functional-alpha qualification; it does not activate or
+substitute for that missing native live-network profile.
 
 ## Commands
 
 - `make unit`: deterministic Module tests; no Docker or long campaigns.
 - `make e2e`: real product commands in local processes.
 - `make fuzz`: bounded fuzzing of a maintained untrusted parser/encoder pair.
+- `make qualification-h4-8-a11 ...`: the exact six-cell A11 campaign; all
+  immutable release, topology, image, port, and external-evidence inputs are
+  mandatory.
 - `make quick-check`: architecture, vet, unit, build, and module tidiness.
 - `make check`: unit, e2e, race, build, formatting, Staticcheck, and
   vulnerability checks; fast independent checks run concurrently, then the
-  wall-clock e2e suite and race suite run separately.
+  wall-clock e2e suite and race suite run separately. The checked race recipe
+  fixes the Unix process umask at `077`, so test-owned roots passed to the
+  product's owner-only storage boundaries have the same permissions as the
+  selected participant profile.
 
 `make check` does not run the wall-clock cross-process e2e suite concurrently
 with the CPU-intensive race suite. That scheduling would make finite Route
@@ -96,8 +104,9 @@ does not mean passed, waived, or unavailable evidence.
   `ubuntu:24.04` Docker image. It proves only native-manifest mechanics, not a
   desktop Firefox or participant release; unavailable Docker or artifact input
   is an invalid selected environment, not a skip;
-- soak remains inactive until a bounded duration/load/observer contract is
-  accepted; and
+- soak is active only through `make qualification-h4-8-a11`, whose frozen
+  purpose-named contract and checked runner are owned by
+  `tests/qualification/h4-8-a11/`; and
 - Qualification is active for H4-1A Ubuntu Portable and H4-1B Ubuntu
   replacement. Their purpose-named entrypoints are `make qualification-h4-1a`
   and `make qualification-h4-1b`, owned respectively by
@@ -158,6 +167,101 @@ does not mean passed, waived, or unavailable evidence.
   then removes that exact directory. It is a project-operated second-host Docker
   result, not a distributed Publisher/User C-2, participant browser, capacity,
   or availability claim.
+- the H4-6A two-fresh-Endpoint qualifier, `make
+  qualification-h4-6a-two-endpoints`, is owned by
+  `tests/qualification/h4-6a-two-endpoints/`. Its Windows orchestrator requires
+  an exact immutable Linux archive, archive digest, Enrollment Pin, Endpoint
+  and control-companion digests, cohort, release, one UTC RFC3339 decision time,
+  literal VPS IPv4 address, matching root-capable SSH account, and a previously
+  absent external evidence directory. It verifies every archive byte locally
+  before upload, repeats the verification on Ubuntu 22.04 `x86_64`, and runs
+  two Endpoint processes as UID/GID 65534 with distinct fresh XDG roots and
+  byte-identical bundle copies. Both must reach ready, commit separate Release
+  floors, report the same valid Release outcome, and stop cleanly. The exact
+  manifested control companion then uses two distinct fresh inspection roots;
+  its catalog, component-root, component-envelope, artifact, and Release
+  identities must match the exact manifested bytes and selected release. Both
+  complete accepted reports must equal the matching Endpoint outcome and each
+  other byte for byte. Failed attempts remain in the denominator and an
+  exact remote-root cleanup failure fails the profile. This is project-operated
+  equality and lifecycle evidence, not executable self-binding, independent
+  control/custody, Windows Endpoint support, capacity, availability, or Public
+  Beta readiness.
+- the H4-8 A11 Publisher-to-User campaign, `make
+  qualification-h4-8-a11`, is owned by
+  `tests/qualification/h4-8-a11/`. Its Windows 11 orchestrator refuses a dirty
+  or mismatched source/tag pair, independently verifies the exact immutable
+  Linux archive, Enrollment Pin, Endpoint and control-companion bytes, and
+  requires one exact UTC candidate reference instant and a previously absent
+  evidence directory outside Git. Nine fresh
+  remote sub-attempts use caller-fixed non-overlapping ports and distinct
+  predictable `/tmp`/container names on Ubuntu 22.04 `x86_64`; each actual
+  container is checked at host networking, 1 vCPU, 1 GiB, 128 PIDs, no restart
+  policy, cgroup v2, and the exact pre-existing Docker image ID. The normal
+  soak, four fault primaries, four immediately following fresh-topology
+  canaries, and one deterministic local expiry companion are ten exact,
+  no-retry Go invocations combined into the frozen 6/6 denominator. A checked
+  125-minute campaign clock bounds every process wait by both its cell limit
+  and the remaining profile time; an elapsed deadline forces exact cleanup and
+  cannot produce an accepted receipt. The checked Make target invokes the thin
+  `invoke-windows.ps1` capture entrypoint, which retains the child runner's
+  complete separate stdout, stderr, exit status, and its own digest before
+  refreshing the evidence inventory; a zero process status without an accepted
+  campaign receipt is still a failed entrypoint. Every
+  remote capture must inventory the product `rendezvous-node`, transparent
+  `carrier-relay`, their topology/readiness receipts, and their complete role
+  streams; the Carrier and product-Node primaries additionally retain their
+  exact fault plus relay-reset or Node-kill receipts, while Endpoint loss
+  retains its crash-ready, fault-injection, and exact Endpoint-kill receipts.
+  Windows
+  process trees and remote Docker/cgroup state are sampled once per second;
+  a gap above two seconds, missing series, OOM/limit event, restart, ceiling
+  breach, incomplete retained role output, or residue fails its original
+  attempt. The expiry cell explicitly records remote observation and cleanup
+  as not applicable because it owns no remote topology. The runner extracts
+  the already-validated exact candidate under that retained attempt, supplies
+  its strict manifest/release/platform/environment/network/target/architecture
+  identities and caller-fixed reference instant, and binds the reported
+  catalog and three component identities back to those exact files. Its
+  runner-owned `status.json` requires the candidate report, the three
+  deterministic owner markers, and final v1 result. The candidate report must
+  accept the supplied reference instant and the instant one second before the
+  authenticated Release no-new-work boundary. At that exact boundary and at
+  terminal minus one second, the catalog and Network remain current while
+  Release is `update-required` and authorizes no work. At the shared catalog,
+  component, Network, Release-terminal, and TUF expiry instant, both persisted
+  and fresh inspection are refused and direct Release inspection is revoked;
+  one second later direct TUF evaluation is expired. The deterministic owner
+  companion continues to use the fixed `2030-01-02T03:04:05Z` before /
+  `03:04:06Z` at-boundary instants.
+  A successful 6/6
+  receipt establishes only the frozen project-operated low-resource
+  functional envelope in the A11 contract, not capacity, availability,
+  recovery, hostile-network, independent-operator, Windows Endpoint, browser
+  isolation, or Public Beta readiness.
+
+  The checked Make entrypoint accepts no discovered identity defaults. Invoke
+  it from the selected clean checkout with every input fixed explicitly (the
+  evidence path must not exist):
+
+  ```powershell
+  make qualification-h4-8-a11 `
+    H4_8_A11_SOURCE_REVISION='<40-lower-hex>' `
+    H4_8_A11_RELEASE_TAG='<exact-tag>' `
+    H4_8_A11_ARCHIVE='C:/absolute/outside-git/candidate.tar.gz' `
+    H4_8_A11_ARCHIVE_SHA256='<64-lower-hex>' `
+    H4_8_A11_MANIFEST_PIN='<64-lower-hex>' `
+    H4_8_A11_ENDPOINT_SHA256='<64-lower-hex>' `
+    H4_8_A11_CONTROL_SHA256='<64-lower-hex>' `
+    H4_8_A11_COHORT='<exact-cohort>' `
+    H4_8_A11_AT='<exact-UTC-RFC3339-second>' `
+    H4_8_A11_VPS='<literal-ipv4>' `
+    H4_8_A11_SSH_KEY='C:/absolute/private-key' `
+    H4_8_A11_VPS_USER='<exact-user>' `
+    H4_8_A11_BASE_PORT='<first-high-port>' `
+    H4_8_A11_IMAGE_ID='sha256:<64-lower-hex>' `
+    H4_8_A11_EVIDENCE='C:/absolute/previously-absent-attempt'
+  ```
 - the H4-3B multi-host qualifier, `make qualification-h4-3b-multihost`, is
   owned by `tests/qualification/h4-3b-multihost/`. It requires a Windows
   qualification host, local and VPS Docker with the pre-existing

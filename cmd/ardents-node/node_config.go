@@ -34,12 +34,13 @@ type nodePlan struct {
 // rendezvousPlan contains only the local finite work bounds. State still
 // supplies the listener, Node role, peer identities, epoch, and expiry.
 type rendezvousPlan struct {
-	HandshakeLimit     uint16 `json:"handshake_limit"`
-	WaitingLimit       uint16 `json:"waiting_limit"`
-	PairLimit          uint16 `json:"pair_limit"`
-	PairByteLimit      uint64 `json:"pair_byte_limit"`
-	AdmissionTimeoutMS uint32 `json:"admission_timeout_ms"`
-	DrainTimeoutMS     uint32 `json:"drain_timeout_ms"`
+	LoopbackListenOverride string `json:"listen_loopback_override,omitempty"`
+	HandshakeLimit         uint16 `json:"handshake_limit"`
+	WaitingLimit           uint16 `json:"waiting_limit"`
+	PairLimit              uint16 `json:"pair_limit"`
+	PairByteLimit          uint64 `json:"pair_byte_limit"`
+	AdmissionTimeoutMS     uint32 `json:"admission_timeout_ms"`
+	DrainTimeoutMS         uint32 `json:"drain_timeout_ms"`
 }
 
 // initiatorPlan provides only finite local limits. State selects the listener,

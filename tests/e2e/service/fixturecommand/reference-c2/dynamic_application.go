@@ -136,7 +136,10 @@ func waitForDynamicProof(deadline time.Time, proofPath, expected string) error {
 	}
 }
 
-func dynamicProofForPublisherTerminal(terminal publisherTerminal) string {
+func dynamicProofForPublisherTerminal(terminal publisherTerminal, fault transitFault) string {
+	if fault != "" {
+		return "dynamic-" + string(fault) + "\n"
+	}
 	switch terminal {
 	case publisherTerminalApplicationReset:
 		return "dynamic-application-crash\n"

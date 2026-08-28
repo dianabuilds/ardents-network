@@ -51,11 +51,11 @@ func TestInspectRequiresCatalogBindingFloorsAndComponentVerification(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = alphacontrol.Inspect(conflictingRaw, public, roots, components, floor, now, func(alphacontrol.Component, alphacontrol.ComponentStatement, time.Time) alphacontrol.Outcome {
+	result, _, err = alphacontrol.Inspect(conflictingRaw, public, roots, components, floor, now, func(alphacontrol.Component, alphacontrol.ComponentStatement, time.Time) alphacontrol.Outcome {
 		return alphacontrol.OutcomeAccepted
 	})
-	if err == nil {
-		t.Fatal("same-generation catalog component conflict was accepted")
+	if err == nil || result.Catalog != alphacontrol.OutcomeConflict {
+		t.Fatalf("same-generation catalog component conflict = %+v, %v", result, err)
 	}
 }
 

@@ -24,70 +24,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-type peer struct {
-	NodeID, PublicKey, Endpoint, Certificate, PrivateKey string
-}
-
-// transitCredential is test-only closed-alpha provisioning material for one
-// State-authorized Transit Grant and its matching ephemeral TLS key pair.
-// It is never a participant configuration format.
-type transitCredential struct {
-	Grant, Certificate, PrivateKey string
-}
-
-type stateSource struct {
-	Address, ServerName, Root, LeafKeyDigest string
-}
-
-type stateClient struct {
-	Certificate, PrivateKey string
-}
-
-type config struct {
-	Schema, Network, Digest, Deadline, PublicationPath, PublisherRoot, ReadyRoot, CompletePath, ResourceProofPath      string
-	HeldRouteReady, HeldRouteUserReady, HeldRouteRelease                                                               string
-	AlphaGatewayReadyPath, AlphaRelayReadyPath, AlphaRelayListenAddress                                                string
-	PublisherApplicationAddress, PublisherApplicationAddressPath, PublisherApplicationToken, PublisherApplicationReady string
-	PublisherCrashReadyPath                                                                                            string
-	Epoch                                                                                                              uint64
-	Introduction, Rendezvous, Responder, Initiator, Gateway                                                            peer
-	JoinHandle, Reachability, SlotAttachment, ServiceAttachment, ResolutionAttachment                                  string
-	GatewayRoot, GatewayProfilePath                                                                                    string
-	TransitAuthority, InviteID, Invite                                                                                 string
-	SlotCredential, ResponderCredential, IntroductionCredential                                                        transitCredential
-	TransitStateRoots                                                                                                  map[string]string
-	TransitStateMaterials                                                                                              map[string]uint32
-	TransitStateSources                                                                                                []stateSource
-	TransitStateClient                                                                                                 stateClient
-	// AlphaCorpusPrivate exists only because this separate-process fixture
-	// manufactures a signed corpus. A real participant receives only the
-	// independently enrolled public authority through alpha control.
-	AlphaCorpusAuthority, AlphaCorpusPrivate, AlphaCorpusFloorRoot, AlphaObserverCorpusFloorRoot, AlphaServiceLink string
-	FirefoxExecutable, BrowserEntryStatePath                                                                       string
-	PublisherTerminal                                                                                              publisherTerminal
-	PublisherOffline, TransparentApplication                                                                       bool
-}
-
-type publicationEnvelope struct {
-	AuthorityPublic, Publication, Descriptor, AlphaAuthorityPublic, AlphaCorpus, AlphaLink string
-}
-
-type result struct {
-	Schema, Role, Class string
-	Passed              bool
-}
-
-type publisherTerminal string
-
-const (
-	publisherTerminalWithdrawal       publisherTerminal = "withdrawal"
-	publisherTerminalApplicationReset publisherTerminal = "application-reset"
-	publisherTerminalEndpointStop     publisherTerminal = "endpoint-stop"
-)
-
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|publisher-app|user|alpha-observer|gateway|alpha-gateway|alpha-relay|rendezvous|initiator|introduction|responder) CONFIG")
+		fmt.Fprintln(os.Stderr, "usage: reference-c2 (publisher|publisher-app|user|alpha-observer|gateway|alpha-gateway|alpha-relay|carrier-relay|rendezvous|initiator|introduction|responder) CONFIG")
 		os.Exit(2)
 	}
 	input, err := readConfig(os.Args[2])
@@ -107,6 +46,8 @@ func main() {
 			err = runAlphaGateway(input)
 		case "alpha-relay":
 			err = runAlphaRelay(input)
+		case "carrier-relay":
+			err = runCarrierRelay(input)
 		case "rendezvous", "initiator", "introduction", "responder":
 			err = runTransitRole(input, os.Args[1])
 		default:
@@ -250,7 +191,7 @@ func runPublisher(input config) error {
 		return err
 	}
 	outcome, err := slot.Accept(ctx, endpointapi.InboundConnectionRequest{Principal: principal, Capability: capability,
-		Application: application, BytesEachDirection: 64 << 10, At: now})
+		Application: application, BytesEachDirection: input.streamBytesEachDirection(), At: now})
 	if outcome.Class == "" {
 		return errors.Join(err, errors.New("publisher C2 fixture did not complete a classified Service Connection"))
 	}
@@ -278,7 +219,15 @@ func runPublisher(input config) error {
 		}
 		outcome.Class = withdrawn.Class
 	}
-	return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher", Class: outcome.Class, Passed: true})
+	var runtimeResult *endpointapi.RuntimeResult
+	if input.DynamicWorkload.configured() {
+		if outcome.AuthenticatedTarget != published.AuthenticatedTarget || outcome.Generation != published.Generation {
+			return errors.New("publisher C2 configured workload lost its authenticated terminal identity")
+		}
+		runtimeResult = &outcome
+	}
+	return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher", Class: outcome.Class,
+		Passed: true, Runtime: runtimeResult})
 }
 
 func runUser(input config) error {
@@ -370,12 +319,14 @@ func runUser(input config) error {
 			Introduction: introduction, Entry: entryAcquirer{candidate: entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Endpoint: initiator.Endpoint},
 				presentation: entry.Presentation{InviteID: inviteID, Invite: invite}}, Initiator: initiator, Rendezvous: rendezvous,
 			AttachmentID: serviceAttachment, EndpointHandshake: identifier(45), At: now},
-		Routes: map[string]string{"": "/", "site.css": "/site.css", "mark.svg": "/mark.svg"}, Principal: userPrincipal, Capability: capability, BytesEachDirection: 64 << 10, Browser: browser}
+		Routes: map[string]string{"": "/", "site.css": "/site.css", "mark.svg": "/mark.svg"}, Principal: userPrincipal, Capability: capability,
+		BytesEachDirection: input.streamBytesEachDirection(), Browser: browser}
 	if input.PublisherOffline {
 		return runOfflineAlphaUser(user, endpointapi.AlphaUserReferenceSiteRequest{Binding: alphaBinding, Route: request})
 	}
 	var site *endpointapi.UserReferenceSite
 	var referenceClient *http.Client
+	var dynamicWorkload *dynamicWorkloadResult
 	if input.TransparentApplication {
 		site, err = user.OpenAlphaTransparentUserReferenceSite(context.Background(), endpointapi.AlphaTransparentUserReferenceSiteRequest{Binding: alphaBinding, Route: request})
 	} else {
@@ -410,13 +361,9 @@ func runUser(input config) error {
 		defer referenceClient.CloseIdleConnections()
 		if input.TransparentApplication {
 			var exerciseErr error
-			switch input.PublisherTerminal {
-			case publisherTerminalEndpointStop:
-				exerciseErr = exerciseDynamicPublisherEndpointCrash(referenceClient, ready.URL)
-			case publisherTerminalApplicationReset:
-				exerciseErr = exerciseDynamicApplicationCrash(referenceClient, ready.URL)
-			default:
-				exerciseErr = exerciseDynamicReference(referenceClient, ready.URL)
+			dynamicWorkload, exerciseErr = exerciseDynamicInput(input, referenceClient, ready.URL)
+			if dynamicWorkload != nil {
+				dynamicWorkload.ProxyTCPDialCount, dynamicWorkload.RejectedProxyRedials = alphaReferenceProxyDialCounts(referenceClient)
 			}
 			if exerciseErr != nil {
 				return exerciseErr
@@ -439,18 +386,26 @@ func runUser(input config) error {
 		}
 	}
 	if input.TransparentApplication {
-		expectedProof := dynamicProofForPublisherTerminal(input.PublisherTerminal)
+		expectedProof := dynamicProofForPublisherTerminal(input.PublisherTerminal, input.TransitFault)
 		if externalBrowserEntry {
 			expectedProof = "browser-dynamic-http\n"
 		}
 		if err := waitForDynamicProof(deadline, input.ResourceProofPath, expectedProof); err != nil {
 			return fmt.Errorf("user C2 fixture dynamic Service %s: %w", ready.URL, err)
 		}
-		class, waitErr := waitForDynamicPublisherWithdrawal(deadline, site, referenceClient, ready.URL, input.BrowserEntryStatePath)
+		runtimeResult, waitErr := waitForDynamicPublisherWithdrawal(deadline, site, referenceClient, ready.URL, input.BrowserEntryStatePath)
 		if waitErr != nil {
 			return fmt.Errorf("user C2 fixture dynamic Publisher withdrawal: %w", waitErr)
 		}
-		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "user", Class: class, Passed: true})
+		var retainedRuntime *endpointapi.RuntimeResult
+		if input.DynamicWorkload.configured() {
+			if runtimeResult.AuthenticatedTarget != ready.AuthenticatedTarget || runtimeResult.Generation != 1 {
+				return errors.New("user C2 configured workload lost its authenticated terminal identity")
+			}
+			retainedRuntime = &runtimeResult
+		}
+		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "user", Class: runtimeResult.Class,
+			Passed: true, Workload: dynamicWorkload, Runtime: retainedRuntime})
 	} else if err := waitForResourceProof(deadline, input.ResourceProofPath); err != nil {
 		return fmt.Errorf("user C2 fixture Reference Site %s: %w", ready.URL, err)
 	}

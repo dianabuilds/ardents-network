@@ -67,7 +67,8 @@ func recoveryOracleCorruptClone(t *testing.T, src string) string {
 	return dst
 }
 
-// recoveryOracleTreeDigest hashes every file in the tree by relative path.
+// recoveryOracleTreeDigest hashes every direct entry by relative path. It
+// records a symlink's target text without following the invalid alias.
 func recoveryOracleTreeDigest(t *testing.T, root string) []byte {
 	t.Helper()
 	hash := sha256.New()
@@ -83,6 +84,15 @@ func recoveryOracleTreeDigest(t *testing.T, root string) []byte {
 			return relErr
 		}
 		hash.Write([]byte(rel))
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, readErr := os.Readlink(path)
+			if readErr != nil {
+				return readErr
+			}
+			hash.Write([]byte("symlink\x00"))
+			hash.Write([]byte(target))
+			return nil
+		}
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr

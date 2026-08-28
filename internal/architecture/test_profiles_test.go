@@ -117,6 +117,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"h4-3b-docker":                   false,
 		"h4-3b-multihost":                false,
 		"h4-3b-vps":                      false,
+		"h4-6a-two-endpoints":            false,
 		"process":                        false,
 		"qualification":                  false,
 		"race":                           false,

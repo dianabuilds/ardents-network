@@ -11,16 +11,16 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // TestRecoverBusyDoesNotMutate asserts that when one Apply holds the
 // permanent lock via a blocked WorkControl, a concurrent Recover returns the
 // frozen busy Result without mutating any owned tree byte.
 //
-// The current implementation has no OS lock and no busy Result; Recover
-// creates and removes the lock itself, so it either collides with the
-// Apply-created lock file or returns release-invalid. This test must fail
-// until Gate B implements the busy Result.
+// The blocked Apply must retain the permanent OS lock until the WorkControl
+// is released. Recover may observe only the bounded busy Result and must not
+// create, replace, or remove the lock while that owner is live.
 func TestRecoverBusyDoesNotMutate(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "update")
 	if err := os.Mkdir(root, 0o700); err != nil {
@@ -49,7 +49,13 @@ func TestRecoverBusyDoesNotMutate(t *testing.T) {
 		close(done)
 	}()
 	work := request.Work.(*recoveryOracleBlockingWork)
-	<-work.entered
+	select {
+	case <-work.entered:
+	case <-done:
+		t.Fatalf("Apply completed before entering blocked work: result=%+v err=%v", applyResult, applyErr)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Apply did not enter blocked work within the test deadline")
+	}
 	var release sync.Once
 	t.Cleanup(func() {
 		release.Do(func() { close(work.signal) })

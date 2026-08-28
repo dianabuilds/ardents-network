@@ -59,6 +59,15 @@ candidate's profile. `OpenNodeLeg` and `ListenNodeCarrier` accept exactly one
 profile and never race or fall back. A State successor drains and withdraws the
 old duty; it does not rewrite an active attachment.
 
+One optional Rendezvous-only operational seam admits a literal loopback listen
+address on the same numeric port as that signed candidate. It exists so a
+host-owned, byte-transparent Carrier relay can bind the State-advertised
+address while the exact product Rendezvous binds loopback behind it. The seam
+cannot change any advertised candidate, Node identity, State digest or Epoch,
+or Carrier profile; hostname, unspecified, public, and port-divergent overrides
+fail before listener startup. With no override, Rendezvous binds the State
+endpoint exactly as before.
+
 ## Node and Resource lifecycle
 
 Node consumes narrow authenticated State and Duty facts, then moves a local
@@ -104,8 +113,12 @@ Route code may not inherit their resource numbers by configuration.
   those cells from cross-built Linux bytes at 1 vCPU/1 GiB with no external
   network. Its recurring QUIC UDP-buffer warning forbids a throughput or
   capacity conclusion.
-- Process tests cover authenticated source-to-State and Node lifecycles; they
-  do not qualify a public network or native host profile.
+- Process tests cover authenticated source-to-State and Node lifecycles; the
+  A11 multi-host cells additionally put the exact product Rendezvous behind a
+  test-owned raw TCP Carrier relay, retain both PIDs/lifecycles, and inject
+  Carrier-reset and exact product-Node-kill faults without a fixture
+  Rendezvous or transit fallback. They remain bounded functional evidence, not
+  a public network or native host profile.
 - Product-command tests now start separate Initiator, Introduction, Rendezvous,
   and Responder processes from one signed native Route Epoch, verify their
   exact State assignments, and carry one local C-2 journey through those

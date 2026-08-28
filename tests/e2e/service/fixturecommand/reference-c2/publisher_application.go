@@ -132,6 +132,18 @@ func runPublisherApplication(input config) error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher-app", Class: "held", Passed: true})
 	}
+	if input.DynamicWorkload.configured() {
+		controls := dynamicWorkloadControls{endpointCrashReady: input.PublisherCrashReadyPath,
+			applicationFaultReady: input.PublisherApplicationFaultReadyPath, applicationFaultRelease: input.PublisherApplicationFaultReleasePath,
+			transitFaultReady: input.TransitFaultReadyPath}
+		workload, err := serveConfiguredDynamic(connection, input.ResourceProofPath, controls,
+			input.DynamicWorkload.plan(), input.PublisherTerminal, input.TransitFault)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(result{Schema: "ardents-e2e-reference-c2-result-v1", Role: "publisher-app",
+			Class: "served", Passed: true, Workload: &workload})
+	}
 	if input.PublisherTerminal == publisherTerminalEndpointStop {
 		return serveDynamicUntilPublisherEndpointCrash(connection, input.ResourceProofPath, input.PublisherCrashReadyPath)
 	}

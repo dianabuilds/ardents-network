@@ -31,6 +31,7 @@ func exerciseDynamicReference(client *http.Client, origin string) error {
 	if err != nil {
 		return err
 	}
+	_, _ = io.Copy(io.Discard, response.Body)
 	_ = response.Body.Close()
 	if response.StatusCode != http.StatusNotFound {
 		return errors.New("dynamic Browser Entry forwarded an unregistered alpha name")
@@ -39,6 +40,7 @@ func exerciseDynamicReference(client *http.Client, origin string) error {
 	if err != nil {
 		return err
 	}
+	_, _ = io.Copy(io.Discard, response.Body)
 	_ = response.Body.Close()
 	if response.StatusCode != http.StatusBadRequest {
 		return errors.New("dynamic Browser Entry forwarded an ordinary Internet name")

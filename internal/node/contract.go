@@ -127,6 +127,10 @@ type Config struct {
 // State supplies the listener, epoch, peers, identities, and expiry; this
 // profile never discovers or selects them.
 type RendezvousProfile struct {
+	// LoopbackListenOverride is an optional operational bind Adapter. State
+	// remains authoritative for the advertised endpoint; an override may only
+	// replace its host with a literal loopback address at the same port.
+	LoopbackListenOverride                  string
 	Certificate                             tls.Certificate
 	HandshakeLimit, WaitingLimit, PairLimit uint16
 	PairByteLimit                           uint64

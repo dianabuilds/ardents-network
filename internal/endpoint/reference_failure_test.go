@@ -64,11 +64,13 @@ func TestAlphaTransparentConnectionClassifiesPublisherApplicationReset(t *testin
 		t.Fatalf("partial Publisher response = %d %q", response.StatusCode, body)
 	}
 	userOutcome := <-running.Done()
-	if userOutcome.Result.Class != "abrupt connection loss" || userOutcome.Err == nil {
+	if userOutcome.Result.Class != "abrupt connection loss" || userOutcome.Err == nil ||
+		userOutcome.Result.AuthenticatedTarget != fixture.first.Target || userOutcome.Result.Generation != 1 {
 		t.Fatalf("User Publisher-reset outcome = %+v / %v", userOutcome.Result, userOutcome.Err)
 	}
 	publisherOutcome := <-publisherDone
-	if publisherOutcome.result.Class != "abrupt connection loss" || publisherOutcome.err == nil {
+	if publisherOutcome.result.Class != "abrupt connection loss" || publisherOutcome.err == nil ||
+		publisherOutcome.result.AuthenticatedTarget != fixture.first.Target || publisherOutcome.result.Generation != 1 {
 		t.Fatalf("Publisher Application-reset outcome = %+v / %v", publisherOutcome.result, publisherOutcome.err)
 	}
 	for _, candidate := range []string{ready.URL, "http://unregistered.ard/", "http://ordinary.invalid/"} {
@@ -79,6 +81,41 @@ func TestAlphaTransparentConnectionClassifiesPublisherApplicationReset(t *testin
 		_ = response.Body.Close()
 		if response.StatusCode < http.StatusBadRequest {
 			t.Fatalf("Publisher reset selected fallback %q with status %d", candidate, response.StatusCode)
+		}
+	}
+}
+
+func TestPublisherEndpointRouteLossRetainsAuthenticatedServiceIdentity(t *testing.T) {
+	fixture := newFixture(t)
+	client, publisher, publication := connectedEndpoints(t, fixture)
+	clientRoute, publisherRoute := net.Pipe()
+	clientEndpoint, clientApplication := net.Pipe()
+	publisherEndpoint, publisherApplication := net.Pipe()
+	defer clientApplication.Close()
+	defer publisherApplication.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	outcomes := runConnections(ctx, fixture, client, publisher, publication, clientRoute, publisherRoute, clientEndpoint, publisherEndpoint)
+	written := make(chan error, 1)
+	go func() {
+		_, err := clientApplication.Write([]byte("authenticated"))
+		written <- err
+	}()
+	received := make([]byte, len("authenticated"))
+	if _, err := io.ReadFull(publisherApplication, received); err != nil || string(received) != "authenticated" {
+		t.Fatalf("Publisher Endpoint route was not authenticated before loss: %q / %v", received, err)
+	}
+	if err := <-written; err != nil {
+		t.Fatal(err)
+	}
+	_ = clientRoute.Close()
+	_ = publisherRoute.Close()
+	for range 2 {
+		outcome := <-outcomes
+		if outcome.err == nil || outcome.result.Class != "abrupt connection loss" ||
+			outcome.result.AuthenticatedTarget != fixture.first.Target || outcome.result.Generation != 1 ||
+			outcome.result.RouteGeneration != 1 || outcome.result.RecoveryCount != 0 {
+			t.Fatalf("Publisher Endpoint route-loss outcome = %+v / %v", outcome.result, outcome.err)
 		}
 	}
 }

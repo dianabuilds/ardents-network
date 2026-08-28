@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var errCatalogFloorConflict = errors.New("alpha control catalog conflicts with its floor")
+
 // Inspect binds supplied component bytes to one verified catalog, applies the
 // reader-local floor, then invokes each fixed component's own verifier. It
 // never exposes the supplied bytes to an Endpoint or acceptance owner.
@@ -61,7 +63,7 @@ func validateFloor(catalog Catalog, digest [32]byte, prior Floor) error {
 		return errors.New("alpha control catalog is below its floor")
 	}
 	if catalog.Generation == prior.CatalogGeneration && digest != prior.CatalogDigest {
-		return errors.New("alpha control catalog conflicts with its floor")
+		return errCatalogFloorConflict
 	}
 	if catalog.Generation > prior.CatalogGeneration && catalog.PreviousDigest != prior.CatalogDigest {
 		return errors.New("alpha control catalog predecessor does not match its floor")
@@ -82,7 +84,7 @@ func validateFloor(catalog Catalog, digest [32]byte, prior Floor) error {
 }
 
 func floorOutcome(err error) Outcome {
-	if err != nil && len(err.Error()) >= 29 && err.Error()[:29] == "alpha control catalog conflicts" {
+	if errors.Is(err, errCatalogFloorConflict) {
 		return OutcomeConflict
 	}
 	return OutcomeLowerFloor

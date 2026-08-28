@@ -27,11 +27,7 @@ import (
 func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	command := buildArdents(t)
 	bundle, enrolledCommand, input := enrolledRuntimeBundle(t, command)
-	root, err := os.MkdirTemp("/tmp", "ae-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	root := enrolledRuntimeRoot(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	running := exec.CommandContext(ctx, enrolledCommand, "endpoint", "enroll", input)
@@ -157,7 +153,7 @@ func TestEnrolledPortableReportsInvalidPinBeforeReady(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(bundle, "SHA256SUMS"), []byte("changed-before-parse\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	root := t.TempDir()
+	root := enrolledRuntimeRoot(t)
 	running := exec.Command(enrolledCommand, "endpoint", "enroll", input)
 	running.Env = append(os.Environ(),
 		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
@@ -187,6 +183,16 @@ func TestEnrolledPortableReportsInvalidPinBeforeReady(t *testing.T) {
 	if bytes.Contains(output, []byte("\"state\":\"ready\"")) {
 		t.Fatalf("changed enrollment reached ready: %s", output)
 	}
+}
+
+func enrolledRuntimeRoot(t *testing.T) string {
+	t.Helper()
+	root, err := os.MkdirTemp("/tmp", "ae-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	return root
 }
 
 type enrolledRuntimeKey struct {
@@ -246,11 +252,17 @@ func enrolledRuntimeBundleWithKeys(t *testing.T, command string) (string, string
 }
 
 func enrolledRuntimeMetadata(t *testing.T, artifact []byte, targetPath, platform string, now time.Time) (map[string][]byte, []byte) {
-	metadataFiles, rootBytes, _ := enrolledRuntimeMetadataWithKeys(t, artifact, targetPath, platform, now)
+	// The alpha-control fixture selects a completed required-protocol overlap so
+	// its first fresh H4-6A observation is exactly release-accepted.
+	metadataFiles, rootBytes, _ := enrolledRuntimeMetadataWithKeysAt(t, artifact, targetPath, platform, now, now.Add(-100*24*time.Hour))
 	return metadataFiles, rootBytes
 }
 
 func enrolledRuntimeMetadataWithKeys(t *testing.T, artifact []byte, targetPath, platform string, now time.Time) (map[string][]byte, []byte, []enrolledRuntimeKey) {
+	return enrolledRuntimeMetadataWithKeysAt(t, artifact, targetPath, platform, now, now.Add(-48*time.Hour))
+}
+
+func enrolledRuntimeMetadataWithKeysAt(t *testing.T, artifact []byte, targetPath, platform string, now, protocolOverlappedSince time.Time) (map[string][]byte, []byte, []enrolledRuntimeKey) {
 	t.Helper()
 	keys := enrolledRuntimeKeys(t)
 	expires := now.Add(time.Hour)
@@ -284,7 +296,7 @@ func enrolledRuntimeMetadataWithKeys(t *testing.T, artifact []byte, targetPath, 
 		"environment": "alpha", "network": "alpha-network-1", "release_identity": "ardents-alpha-1", "release_version": 1,
 		"source_revision": "test-source", "build_input_commitment": "test-inputs", "build_identity": "test-build",
 		"dependency_identity": "test-dependencies", "sbom_identity": "test-sbom", "attestation_policy": "two-builder",
-		"qualification": "qualified", "build_state": "current", "protocol_phase": "required", "protocol_overlapped_since": now.Add(-48 * time.Hour),
+		"qualification": "qualified", "build_state": "current", "protocol_phase": "required", "protocol_overlapped_since": protocolOverlappedSince,
 		"capacity_ready": true, "drain_ready": true, "build_safety_no_new_work_after": now.Add(20 * time.Minute), "build_safety_terminate_after": now.Add(40 * time.Minute),
 		"builder_attestations": []map[string]string{
 			{"builder_identity": "builder-a", "build_identity": "test-build", "source_revision": "test-source", "build_input_commitment": "test-inputs", "target_sha256": hex.EncodeToString(digest[:])},
