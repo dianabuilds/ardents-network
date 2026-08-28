@@ -51,10 +51,6 @@ type alphaTargetDescriptor struct {
 	EmergencyExpiry       time.Time                 `json:"emergency_expiry,omitempty"`
 }
 
-func buildAlphaTUF(request alphaInputsRequest, record seedRecord, endpoint []byte) (map[string][]byte, error) {
-	return buildAlphaTUFVersion(request, record, endpoint, nil, 1)
-}
-
 func buildAlphaTUFVersion(request alphaInputsRequest, record seedRecord, endpoint, rootBytes []byte, generation uint64) (map[string][]byte, error) {
 	if generation == 0 || generation > uint64(^uint64(0)>>1) {
 		return nil, ErrInvalid
