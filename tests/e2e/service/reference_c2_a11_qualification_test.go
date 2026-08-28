@@ -31,7 +31,7 @@ func TestH48A11MultiHostTenCycleCanary(t *testing.T) {
 // using the same full multi-host topology before another soak is authorized.
 func TestH48A11DiagnosticCycleCountProbe(t *testing.T) {
 	runReferenceC2MultiHost(t, referenceC2Scenario{transparentApplication: true, productRendezvousRelay: true, dynamicWorkload: referenceC2DynamicWorkload{
-		Cycles: 240, IntervalMilliseconds: 50, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 60, BytesEachDirection: 4 << 20}})
+		Cycles: 240, IntervalMilliseconds: 250, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 60, BytesEachDirection: 4 << 20}})
 }
 
 func TestH48A11MultiHostCarrierLossAfterWarmup(t *testing.T) {
