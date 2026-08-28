@@ -49,7 +49,7 @@ func (workload referenceC2DynamicWorkload) timeBudget(minimum time.Duration) tim
 		return minimum
 	}
 	required := time.Duration(workload.Cycles)*time.Duration(workload.IntervalMilliseconds)*time.Millisecond +
-		time.Duration(workload.CycleDeadlineMilliseconds)*time.Millisecond + 30*time.Second
+		time.Duration(workload.CycleDeadlineMilliseconds)*time.Millisecond + 90*time.Second
 	required = ((required + time.Second - 1) / time.Second) * time.Second
 	return max(minimum, required)
 }
