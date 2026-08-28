@@ -366,7 +366,7 @@ func runUser(input config) error {
 				dynamicWorkload.ProxyTCPDialCount, dynamicWorkload.RejectedProxyRedials = alphaReferenceProxyDialCounts(referenceClient)
 			}
 			if exerciseErr != nil {
-				return exerciseErr
+				return fmt.Errorf("%w; local Service Connection outcome: %s", exerciseErr, userReferenceTerminalSnapshot(site))
 			}
 		} else {
 			for resource, expected := range map[string]string{"": referenceDocument, "site.css": referenceStylesheet, "mark.svg": referenceMark} {

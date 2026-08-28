@@ -2,10 +2,23 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
+
+func userReferenceTerminalSnapshot(site *endpointapi.UserReferenceSite) string {
+	if site == nil {
+		return "site-unavailable"
+	}
+	select {
+	case outcome := <-site.Done():
+		return fmt.Sprintf("class=%q reason=%q error=%v", outcome.Result.Class, outcome.Result.Reason, outcome.Err)
+	case <-time.After(250 * time.Millisecond):
+		return "pending-after-250ms"
+	}
+}
 
 // waitForUserReferenceOutcome observes only the classified terminal result of
 // the exact C-2 Service Connection. It does not choose a retry or destination.
