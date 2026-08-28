@@ -22,6 +22,19 @@ param(
 $ErrorActionPreference = 'Stop'
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
+function Import-CanonicalUtilityModule {
+    $manifest = Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1'
+    if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
+        throw 'the Windows PowerShell utility module manifest is unavailable.'
+    }
+    Import-Module -Name $manifest -Force -ErrorAction Stop
+    if ($null -eq (Get-Command Get-FileHash -ErrorAction SilentlyContinue)) {
+        throw 'the canonical Windows PowerShell utility module does not provide Get-FileHash.'
+    }
+}
+
+Import-CanonicalUtilityModule
+
 function Write-Utf8([string]$Path, [string]$Value) {
     [IO.File]::WriteAllText($Path, $Value, $utf8NoBom)
 }

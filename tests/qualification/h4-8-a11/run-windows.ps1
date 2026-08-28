@@ -26,6 +26,20 @@ trap {
     exit 1
 }
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+
+function Import-CanonicalUtilityModule {
+    $manifest = Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1'
+    if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
+        throw 'the Windows PowerShell utility module manifest is unavailable.'
+    }
+    Import-Module -Name $manifest -Force -ErrorAction Stop
+    if ($null -eq (Get-Command Get-FileHash -ErrorAction SilentlyContinue)) {
+        throw 'the canonical Windows PowerShell utility module does not provide Get-FileHash.'
+    }
+}
+
+Import-CanonicalUtilityModule
+
 $harnessRepository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
 $repository = $harnessRepository
 $candidateSourceRepository = $harnessRepository
@@ -272,6 +286,9 @@ function Test-A11EntrypointCaptureSource([string]$Source) {
         "'entrypoint.exitcode'",
         "'entrypoint-status.json'",
         'accepted_campaign_receipt',
+        'Import-CanonicalUtilityModule',
+        "'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1'",
+        'Get-Command Get-FileHash -ErrorAction SilentlyContinue',
         'Assert-CandidateSource $CandidateRepository $SourceRevision $ReleaseTag',
         'CandidateRepository HEAD does not equal SourceRevision.',
         'source_revision = $SourceRevision',
@@ -758,6 +775,9 @@ function Invoke-SelfTests {
     }
     if ((Test-A11EntrypointCaptureSource ($entrypointSource.Replace("'entrypoint.stderr.log'", "'entrypoint.stream.log'"))).Passed) {
         $assertions.Add('A11 entrypoint capture oracle accepted missing stderr retention')
+    }
+    if ((Test-A11EntrypointCaptureSource ($entrypointSource.Replace('Import-CanonicalUtilityModule', 'Import-MissingUtilityModule'))).Passed) {
+        $assertions.Add('A11 entrypoint capture oracle accepted missing canonical utility-module import')
     }
     $temporary = Join-Path ([IO.Path]::GetTempPath()) ('ardents-a11-self-test-' + [Guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($temporary) | Out-Null
