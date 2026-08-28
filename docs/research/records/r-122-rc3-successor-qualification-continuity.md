@@ -115,6 +115,10 @@ unless a release input byte changes.
 
 ## Disposition
 
-Decided. The planned RC3 successor is withdrawn. The next gate is RC2 input
-preflight followed by the single official A11 campaign; H4-3/H4-8 remain open
-until that campaign and A12 closure succeed.
+Concluded on 2026-08-29. The planned RC3 successor remains withdrawn. Official
+RC2 A11 attempt 14 accepted all six cells and ten invocations in 2,462,217 ms:
+`C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-rc-2-h4-8-a11-attempt-14\campaign-receipt.json`.
+The receipt binds RC2 source/tag/archive and separately records harness revision
+`a7147b04`; no release bytes changed and no dependent candidate requalification
+was required. A12 may therefore close the selected H4-3/H4-8 functional-alpha
+profile while retaining all broader limitations.

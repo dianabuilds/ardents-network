@@ -1,12 +1,11 @@
 # H4-3 — User, Service, and web-access path
 
-Status: **the bounded H4-3A Reference fixture and the H4-3B
-application-transparent HTTP/1.1 connection are maintained technical evidence.
-The separate-process H4-3B path now covers explicit publication withdrawal,
-Publisher Application reset, and abrupt Publisher Endpoint loss with exact
-terminal classes and no destination fallback. H4-3 remains open for the
-selected release/platform qualification; H4-4 Browser Entry is not on this
-epic's critical path.**
+Status: **closed for the selected RC2 bounded functional-alpha profile. The
+H4-3B application-transparent HTTP/1.1 path has accepted multi-host soak/fault
+evidence for normal traffic, publication withdrawal, Publisher Application,
+Endpoint, Carrier, and product-Node loss, with exact terminal classes and no
+destination fallback. H4-4 Browser Entry is not on this epic's critical path;
+capacity, availability, public deployment, and H4-7 browser claims remain open.**
 
 ## Decision
 

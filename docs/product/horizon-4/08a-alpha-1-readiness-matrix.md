@@ -1,8 +1,8 @@
 # H4-alpha-1 readiness matrix
 
-Status: **A1-A10 are green as of 2026-08-28 for one exact immutable bounded
-functional-alpha candidate. A11 soak/fault and A12 closure remain inactive;
-no row authorizes a Public Beta claim.**
+Status: **A1-A12 are green as of 2026-08-28 for immutable
+`h4-alpha-1-rc-2`. This closes the selected bounded functional-alpha profile;
+it does not authorize a Public Beta claim.**
 
 ## Candidate identity and claim
 
@@ -38,8 +38,8 @@ input that prevents it from becoming an executable gate.
 | A8 | Full H4-3B two-host journey: Publisher and User endpoints on distinct hosts, with exact Target, dynamic workload, withdrawal and one declared loss case | `make qualification-h4-3b-multihost` and the topology in `tests/qualification/h4-3b-multihost/README.md` | Passed on 2026-08-27 at `70bf425eec937edcc22e8f0534db992aa2002a16`: Windows User side and project Ubuntu VPS Publisher side completed normal dynamic HTTP, withdrawal, Publisher Application reset, and Publisher Endpoint loss. Each cell retained its stage/config digest, local Windows and remote Docker host envelope, and runner-owned cleanup. Retained external evidence: `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a8-70bf425e.stdout.log`; exit receipt `h4-alpha-1-a8-70bf425e.exitcode` is `0`. It remains a project-operated two-host tracer, not independent operation, capacity, or availability evidence. |
 | A9 | Selected browser/platform: browser observes the dynamic workload and failure state at the candidate's loopback origin | Windows + Firefox `154.0.1`, clean-profile runner | Passed on 2026-08-27 at `70bf425eec937edcc22e8f0534db992aa2002a16`: Firefox `154.0.1` in a temporary clean profile performed the dynamic C-2 browser flow; the runner then completed the no-Firefox process leg. Retained external evidence: `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a9-70bf425e.stdout.log`; exit receipt `h4-alpha-1-a9-70bf425e.exitcode` is `0`. This is browser observation only: it does not claim a Windows H4-1 lifecycle, participant Browser Entry, DNS/DoH protection, or general browser isolation. |
 | A10 | Carrier boundary: selected TCP/TLS path retains C-2 behavior and no fallback; separate QUIC evidence remains labelled as a distinct compatible profile | `make qualification-h4-2-local-emulator` and `make qualification-h4-2-multihost` with the exact candidate path and expected digest | Passed. The local emulator passed on 2026-08-27, including TCP/TLS and separately labelled QUIC C-2, both-direction no-fallback, and held-route/Rendezvous-loss behavior. Evidence is `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a10-local-70bf425e.stdout.log`, exit `0`, SHA-256 `309c86073ce29bed4afde0aea0eec5c27fd94b8b846b39c0effc547cc7c7b99e`. On 2026-08-28 the exact Endpoint byte `33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1` and product Node byte `3e1120a2dffb32b12d90fd3f6be9bc3ce040f9f1a237179107c8eaec86696711` ran on project Ubuntu `24.04.3`, Linux `6.8.0-134-generic`, x86-64, 1 vCPU, 1 GiB. Signed State digest `4e0368f80a3d1542ca6f8fdc932b15089da8ef75e3d8f6bd7094c494e5b91f0e` supplied one explicit TCP/TLS v1 Rendezvous and no alternate Carrier. Product Initiator/Responder/Rendezvous processes all reported TCP/TLS at READY and owned both authenticated Carrier legs while two exact-candidate Endpoint processes retained matching 8 MiB Application bytes, clean terminals, one Route generation, and zero recovery. Retained product-Route evidence is `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a10-exact-product-route-70bf425e.stdout.log`, exit `0`, SHA-256 `08bc3796d99d4c318e21ba4aa82f8d8aa4343e3f1ffded31184ac37611757df1`; remote cleanup was verified. The separate Node/fault record remains `h4-alpha-1-a10-multihost-70bf425e-exact-candidate.stdout.log`, exit `0`, SHA-256 `feae309c045b589085afdd3e88944d224808c13e5df4ded26efc0da3149a5a48`. Browser Entry and public naming were not configured. This is project-controlled functional evidence, not capacity, availability, hostile-network, or independent-operator evidence. |
-| A11 | Soak and fault campaign: declared duration, workload, observer, resource ceilings, state/control expiry and crash/loss cases | exact campaign runner and retained observations | Inactive: duration/load/observer contract not yet accepted |
-| A12 | Release closure: owned code/docs, findings, dispositions, retained raw evidence, and participant-visible limitation text | H4-8D closure inventory | Inactive: begins after A1–A11 have an accepted outcome |
+| A11 | Soak and fault campaign: declared duration, workload, observer, resource ceilings, state/control expiry and crash/loss cases | exact campaign runner and retained observations | Accepted on 2026-08-28: `h4-alpha-1-rc-2-h4-8-a11-attempt-14` completed 6/6 cells and all 10 invocations in 2,462,217 ms, under the 125-minute campaign deadline. Windows plus Ubuntu/Docker observers retained each attempt; the remote container limit was 1 vCPU, 1 GiB, and 128 PIDs. Normal soak ran 1,800 paced cycles; Application, Endpoint, Carrier, product Node, and deterministic expiry cells passed. Evidence: `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-rc-2-h4-8-a11-attempt-14\campaign-receipt.json`. |
+| A12 | Release closure: owned code/docs, findings, dispositions, retained raw evidence, and participant-visible limitation text | H4-8D closure inventory | Closed on 2026-08-29: RC2 release identity is unchanged; A11 harness corrections are separately committed and recorded by the accepted receipt. Failed attempt 13 is retained as a parser-defect disposition, not erased. The current product/research briefs name the accepted A11 evidence and retain all non-alpha limitations. |
 
 ## A5 exact enrolled-control entry point
 
@@ -105,9 +105,9 @@ erases an earlier failure.
 The Product Owner can accept only a bounded functional alpha after A1–A10 are
 green for one immutable candidate, every observed failure has a disposition,
 and the candidate's claim text names the surviving limits. That condition is
-met for `h4-alpha-1-rc-1`. It does not close broader H4-8: A11 soak/fault and
-A12 closure remain separate gates. A9 cannot be substituted by a local Go HTTP
-client, and an activated A11 cannot be substituted by unobserved elapsed time.
+met for immutable `h4-alpha-1-rc-2`. A11 and A12 are now separately accepted;
+this closes only the selected functional-alpha profile. A9 cannot be substituted
+by a local Go HTTP client, and no result authorizes a Public Beta claim.
 If a candidate byte, platform, Carrier, control input, topology, or workload
 changes, the affected cells become pending again.
 

@@ -1,10 +1,10 @@
 ---
 id: R-100
 title: Usable-alpha qualification and repository closure
-status: active
+status: concluded
 owner: Product Owner and Codex
 started: 2026-08-24
-reviewed: 2026-08-28
+reviewed: 2026-08-29
 ---
 
 # R-100 — What exact usable-alpha release profile, live/soak matrix, remediation rule, and closure inventory can yield reproducible evidence and a maintainable repository without mislabeling the result Public Beta?
@@ -77,9 +77,15 @@ current tree and inbound references before deletion.
   on the selected TCP/TLS Carrier without fallback. The matrix retains failed
   attempts and their dispositions rather than hiding them behind successful
   reruns.
-- **Inference:** this is sufficient for the bounded functional-alpha H4-1/H4-2
-  claim, but not broad H4-8 closure. A11 has no accepted soak/fault duration,
-  load, and observer contract; A12 consequently cannot yet close the inventory.
+- **Measurement:** official A11 attempt 14 accepted all six cells and ten exact
+  Go invocations in 2,462,217 ms. It bound immutable RC2 source/tag/archive,
+  used the declared Windows/Ubuntu topology and 1 vCPU/1 GiB/128 PID remote
+  envelope, retained every observer stream, and met the fixed 125-minute
+  deadline. Evidence is retained outside Git at
+  `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-rc-2-h4-8-a11-attempt-14`.
+- **Inference:** A11 and the finite A12 inventory now close the selected
+  functional-alpha H4-3/H4-8 profile. They do not constitute capacity,
+  availability, hostile-network, independent-operation, or Public Beta proof.
 
 ## Options
 
@@ -95,7 +101,9 @@ and 3 remain rejected.
 
 ## Disposition
 
-Active with the missing-profile precondition satisfied. H4-8A A1-A10 are green
-for the exact immutable candidate; define and execute A11, then complete A12's
-inventory before claiming broader H4-8 closure. Public Beta remains separately
-gated on real independent evidence.
+Concluded. Immutable `h4-alpha-1-rc-2` has green A1-A12 for the selected
+functional-alpha profile. A12 retains the failed A11 attempt 13 and its two
+harness defects (fixture transit ceiling and remote-evidence section parsing)
+as recorded dispositions; it never overwrites prior evidence. RC2 release bytes
+did not change, so no successor candidate or dependent release-byte gate was
+required. Public Beta remains separately gated on real independent evidence.
