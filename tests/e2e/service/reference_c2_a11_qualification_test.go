@@ -41,6 +41,13 @@ func TestH48A11DiagnosticByteVolumeProbe(t *testing.T) {
 		Cycles: 60, IntervalMilliseconds: 1_000, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 15, BytesEachDirection: 16 << 20}})
 }
 
+// TestH48A11DiagnosticRateProbe holds the cycle probe's cadence and payload
+// while staying below its observed count range.
+func TestH48A11DiagnosticRateProbe(t *testing.T) {
+	runReferenceC2MultiHost(t, referenceC2Scenario{transparentApplication: true, productRendezvousRelay: true, dynamicWorkload: referenceC2DynamicWorkload{
+		Cycles: 60, IntervalMilliseconds: 250, CycleDeadlineMilliseconds: 5_000, NoFallbackEvery: 15, BytesEachDirection: 4 << 20}})
+}
+
 func TestH48A11MultiHostCarrierLossAfterWarmup(t *testing.T) {
 	runReferenceC2MultiHost(t, referenceC2Scenario{transparentApplication: true, productRendezvousRelay: true, transitFault: referenceC2TransitFaultCarrierLoss,
 		dynamicWorkload: referenceC2DynamicWorkload{Cycles: 60, IntervalMilliseconds: 1_000, CycleDeadlineMilliseconds: 5_000,
