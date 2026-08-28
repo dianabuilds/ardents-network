@@ -72,9 +72,10 @@ The Product Owner selected H4-3A on 2026-08-25 as the next maintained
 user-facing objective: the exact two-Endpoint Target-Link-to-existing-browser
 journey. R-096's loopback Adapter direction therefore becomes
 implementation-linked; it still does not select a browser/version until the
-live qualification stage. R-100 remains inactive until this exact H4-1–H4-3
-participant build and topology exists. R-093, R-097, and R-099 require later
-Product Owner choices and create no speculative implementation work.
+live qualification stage. On 2026-08-28 the exact immutable H4-1–H4-3 profile
+existed and activated R-100: H4-8A A1-A10 are green for the bounded
+functional-alpha candidate, while A11/A12 remain open. R-093 and R-099 require
+later Product Owner choices and create no speculative implementation work.
 
 The retained experiments establish feasibility, counterexamples, and exact
 oracles only. In particular, R-094's route-only dual-homed follow-up observed no
@@ -107,19 +108,21 @@ first maintained slice:
 The selected first closed cohort uses R-095's one-release **Alpha Enrollment
 Pin**: an already authenticated Product Owner contact
 delivers the exact manifest SHA-256 plus cohort/release/platform independently
-of GitHub. The actual contact class is required before enrolling the first
-participant, not before writing the Endpoint and Rendezvous implementation.
+of GitHub. The selected contact class is an authenticated direct Product Owner
+message. On 2026-08-28 the Product Owner enacted that handoff in their own
+authenticated walkthrough; this is not independent external-participant
+validation.
 
 With that choice, this *pre-development program* is closed and preserves the
 remaining work as implementation-linked or optional research triggers:
 
-| Trigger | Question to reopen/run | Why it cannot be completed honestly now |
+| Trigger | Question to reopen/run | Current disposition or remaining limit |
 |---|---|---|
 | Maintained Rendezvous and State/Node integration exists | R-092 NET-01A pressure, capacity, cancellation, and cleanup campaign | Numeric limits and supported-host behavior must measure the real implementation. |
-| Maintained Endpoint/Release artifact exists and a participant is invited | R-095 native Ubuntu lifecycle and exact first-enrollment handoff | A fixture cannot prove real artifact provenance, protected floors, or participant contact. |
+| Maintained Endpoint/Release artifact exists and a participant is invited | R-095 native Ubuntu lifecycle and exact first-enrollment handoff | Executed on 2026-08-28 for immutable `h4-alpha-1-rc-1` through the Product Owner's own authenticated walkthrough; an independent external participant remains unclaimed. |
 | Maintained two-Endpoint Target/Service path exists | R-096 supported external-browser and request/DNS/WebRTC observation | The current fixture has no real Target, Grant, Service Connection, or remote Publisher. |
-| Concrete alpha component identities and reader artifact exist | R-098 real disclosure-catalog mapping and parser/resource review | Synthetic keys/components cannot select actual authorities or release provenance. |
-| One exact usable H4-1–H4-3 build/profile exists | R-100 qualification, live/soak, defect, and repository-closure matrix | Duration, workload, denominator, and requalification validity depend on exact code and topology. |
+| Concrete alpha component identities and reader artifact exist | R-098 real disclosure-catalog mapping and parser/resource review | The immutable RC published the concrete catalog plus Release, Network, and Compatibility identities; two fresh enrollment-pinned inspection roots and one cached repeat passed. These are standalone reader roots, not two Endpoint processes. `corpus.pub` is only a manifest-pinned authority companion, not a signed-corpus result. Independent parser/security review remains a later external gate. |
+| One exact usable H4-1–H4-3 build/profile exists | R-100 qualification, live/soak, defect, and repository-closure matrix | Triggered: A1-A10 pass for the exact immutable profile. A11 soak/fault acceptance and A12 closure inventory remain. |
 | Product Owner later selects QUIC as a maintained candidate | R-094 explicit or genuine access-path migration, supported-host UDP resources, and dependency review | The route-only lab observed no alternate-path packets; these facts are irrelevant to a TCP/TLS-only first profile. |
 | Product evidence justifies names, co-resident contribution, or protected mode | R-097, R-093, or R-099 respectively | Each changes the product claim and needs its own newly selected job/profile rather than speculative code. |
 
@@ -138,12 +141,12 @@ gate.
 | R-092 | Rendezvous-first selected; a disposable five-case local matrix, Linux race cell, and separate-host two-client run support bounded pairing, reservation, refusal, pump, and drain behavior | Maintained State/Node integration plus exact NET-01A evidence on the low-resource Ubuntu reference host |
 | R-093 | Volunteer-operation context and a four-input no-offer gate | R-092 duty plus H4-5A/B evidence and an explicit co-resident alpha choice |
 | R-094 | TCP/TLS-only first profile selected; refined QUIC local/separate-namespace oracle, selective refusal, nonzero loss/reorder, MTU 1280, synthetic same-IP NAT-port rebinding, real separate-host public path, cleanup, the Linux UDP-buffer warning, and a route-only dual-homed falsifier whose B-path counter remained zero | Only after a later Product Owner QUIC selection: a new question for genuine access-path or explicit QUIC-path evidence, complete supported-host resources, and dependency review |
-| R-095 | Ubuntu Portable and Alpha Enrollment Pin selected; detached-signature fixture, three-run user-service lifecycle, three-run OpenSSH envelope, three-run no-key exact-manifest enrollment-pin matrix, and unsigned first-stage Windows direction | An actual independent contact class before enrollment; maintained Endpoint/Release integration on a native Ubuntu host; explicit Windows unsigned-artifact verification/failure journey |
+| R-095 | Ubuntu Portable and Alpha Enrollment Pin selected; exact immutable publication plus Product Owner pre-execution verification, Release Decision, non-lingering first start, retained-state restart, and cleanup passed on native Ubuntu | An independent external participant and explicit Windows unsigned-artifact verification/failure journey |
 | R-096 | Endpoint-to-loopback direction selected; fetch-only CSP failed external-navigation probing, then a header CSP sandbox retained rendering and blocked tested refresh/link navigation; exact routing, header stripping, proxy rejection, fresh-path, and post-stop refusal also passed | A supported external-browser, carrier-backed Target/Grant request-and-DNS-observation run; no browser privacy or arbitrary-HTML claim |
 | R-097 | Maintained-verifier test and contract analysis: a static corpus cannot stand in for current Namespace | H4-3 name-value evidence and an explicit choice: full current-proof path or distinct alpha overlay |
-| R-098 | Synthetic separation cases plus a 4 KiB-per-file exact-byte signed reader fixture with duplicate-key rejection | Concrete component identities, reader release, independent parser/resource review, and provenance from R-095 |
+| R-098 | Synthetic separation cases plus concrete immutable RC component identities and one cached/two fresh standalone inspection-root agreement | Independent parser/resource/security review; no independent-control claim |
 | R-099 | Generic-browser boundary confirms no current protected job | Product Owner-selected job/platform, then a platform-specific isolation experiment |
-| R-100 | Qualification gate defined and the first product profile selected, but no exact maintained build/topology exists to qualify | One exact H4-1–H4-3 build/profile and its reproducible release matrix |
+| R-100 | Exact immutable H4-alpha-1 profile selected; H4-8A A1-A10 are green with retained failure dispositions and release evidence | A11 soak/fault contract and A12 closure inventory for broader H4-8 closure |
 | R-101 | Selected shared Unix-socket and XDG/LocalAppData layout; matching startup, crash, substitution, and permission-policy fixtures | Purpose-owned Endpoint integration, actual cross-account denial, and complete platform lifecycle qualification |
 | R-102 | Selected held-lock/guarded-recovery sequence; matching live-contention, crash, unexpected-entry, and substitution fixtures | Maintained integration, bounded delayed-release retry, and complete lifecycle qualification |
 
@@ -158,7 +161,7 @@ participant for its evidence.
 |---|---|---|---|---|
 | Native Node profile | Separate Ubuntu LTS `x86-64` NET-01A host: 2 vCPU, 2 GiB RAM, symmetric 100 Mbit/s | Integrate R-092's exact tracer oracle with the maintained State/Node duty, then run its recorded role-carriage and pressure/cleanup campaign while retaining raw observations outside Git | One measured preannouncement Node profile or a justified refusal to select one | Independent operator capacity, public operation, or an H4-5 contribution profile |
 | Carrier fault profile | A later Product Owner selection of QUIC plus either a genuine changed access path or explicit QUIC path-management topology, and observed host UDP buffers | R-094's existing oracle under the selected path mechanism, cancellation, and resource census | Whether the selected QUIC Adapter retains the Carrier oracle across that changed path with bounded resources | Censorship resistance, a generic fallback, or a maintained QUIC selection by itself; the prior route-only run observed zero B-path packets and is not a migration verdict |
-| Ubuntu first enrollment | An actual invited-participant contact class independent of the GitHub Release plus the selected maintained artifact | R-095's exact Alpha Enrollment Pin manifest/inventory/descriptor verification followed by maintained Release Decision on the same artifact/root/metadata bytes | One bounded first-cohort obtain/verify/run handoff | Public release identity, independent custody, scalable onboarding, or protection from a malicious pinned artifact |
+| Ubuntu first enrollment | Satisfied for the bounded Product Owner walkthrough: authenticated direct-message class plus immutable `h4-alpha-1-rc-1` | Executed on 2026-08-28: exact Pin/inventory/descriptor verification, Release Decision, start/restart/stop, and cleanup on the same artifact/root/metadata bytes | One bounded Product Owner obtain/verify/run handoff | Independent external-participant validation, Public Beta identity, independent custody, scalable onboarding, or protection from a malicious pinned artifact |
 | Windows experimental provenance | A released explicitly unsigned Windows artifact | R-095's exact digest/attestation/status/lifecycle run on the intended Windows profile | What a best-effort Windows participant can verify and which execution policies reject it | SmartScreen reputation, supported Windows qualification, updater support, or a reason to delay Ubuntu alpha |
 | Browser/service alpha | A selected H4-1/H4-2 profile and two declared Endpoints plus one actual supported browser/version and request observer | R-096's bounded Reference Site journey and failure cases | One generic browser handoff with observed request boundaries | Browser privacy, a protected application profile, DNS/CA integration, or ordinary browsing control |
 | Alpha control and names | Product Owner-selected alpha component identities and reader release path, after R-095 provenance | R-098 reader artifact evaluation; only then reconsider the R-097 name decision | An inspectable project-controlled alpha input | Current public Namespace or independent public control |

@@ -59,6 +59,24 @@ bundle="$scratch/ardents-alpha-h4-alpha-test-1-linux-amd64"
   cd "$bundle"
   sha256sum --strict --check SHA256SUMS
 )
+
+# Keep the pre-execution inventory check deterministic even when the
+# participant's locale collates uppercase and lowercase names differently.
+expected_names="$scratch/expected-names"
+actual_names="$scratch/actual-names"
+LC_ALL=C sed -n 's/^[0-9a-f]\{64\}  //p' "$bundle/SHA256SUMS" >"$expected_names"
+printf '%s\n' SHA256SUMS >>"$expected_names"
+LC_ALL=C sort -o "$expected_names" "$expected_names"
+LC_ALL=C find "$bundle" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' |
+  LC_ALL=C sort >"$actual_names"
+cmp -s "$expected_names" "$actual_names"
+
+if ! grep -Fqx 'LC_ALL=C find . -mindepth 1 -maxdepth 1 -type f -printf '\''%f\n'\'' | LC_ALL=C sort >"$actual_names"' \
+  "$repository/docs/product/closed-alpha-enrollment.md"; then
+  echo 'participant inventory instruction lost locale-independent sorting' >&2
+  exit 1
+fi
+
 if [ "$(tar -tzf "$scratch/first.tar.gz")" != "$(printf '%s\n' \
   'ardents-alpha-h4-alpha-test-1-linux-amd64/' \
   'ardents-alpha-h4-alpha-test-1-linux-amd64/1.root.json' \

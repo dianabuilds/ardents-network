@@ -4,7 +4,7 @@ title: Closed-alpha release signing operation
 status: decided
 owner: Product Owner and Codex
 started: 2026-08-27
-reviewed: 2026-08-27
+reviewed: 2026-08-28
 ---
 
 # R-119 — Which minimal Product Owner-operated signing and custody operation can create the first H4-1/H4-6A alpha inputs without turning a test fixture, GitHub, or a project VPS into an undeclared release authority?
@@ -158,7 +158,16 @@ claim stays bounded and provisional.
 
 Decided on 2026-08-27 after the Product Owner selected the local Windows
 workspace and themself as custodian. ADR-0050 owns the separate encrypted seed
-record and its one interactive initializer. The next release-signing operation
-must consume that record only through a new exact bounded interface; it may not
-become a generic signer. Real signed inputs, alpha topology, publication, and
-independent participant evidence remain implementation gates.
+record and its one interactive initializer; ADR-0052 owns the exact bounded
+consumer and never exposes a generic signer.
+
+On 2026-08-28 that operation consumed the recorded H4-alpha-1 profile and
+ADR-0053 empty-topology State in the local custody workspace. Its atomic static
+set passed the maintained Release, Network State, catalog, component, and
+corpus-authority companion preflight; the resulting deterministic archive was
+published as the immutable GitHub prerelease `h4-alpha-1-rc-1`. The Product
+Owner then enacted
+the separately delivered Pin through their own authenticated Ubuntu enrollment
+walkthrough. This executes the bounded decision without changing the finding:
+one-person custody is provisional, and no independent custodian or external
+participant evidence is claimed.

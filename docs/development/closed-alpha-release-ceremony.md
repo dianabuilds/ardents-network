@@ -1,8 +1,10 @@
 # Closed-alpha release ceremony
 
-Status: **active H4-1/H4-6A preparation. The bounded static-input operation and
-separate verifier-accepted empty-topology State genesis are maintained; real
-release signing remains pending final qualification and public request review.**
+Status: **completed for `h4-alpha-1-rc-1` on 2026-08-28.** The bounded
+static-input operation produced verifier-accepted TUF/H4-6A inputs, the archive
+was assembled reproducibly, and the exact Ubuntu candidate was published as an
+immutable GitHub prerelease. This remains a one-person closed-alpha ceremony,
+not independent control or Public Beta release qualification.
 
 This procedure prepares one bounded Ubuntu Portable alpha artifact. It derives
 from H4-1, ADR-0038, the H4-8A matrix, and the closed-alpha enrollment
@@ -96,12 +98,40 @@ assemble a deterministic archive outside the repository. Its generated
 `SHA256SUMS` is the item pinned independently to the participant; the archive
 digest is additional transport/provenance evidence.
 
+When the ceremony runs under WSL, both the `assemble` output root and the bundle
+staging/output must be on the native Linux filesystem. The owner-only verifier
+correctly rejects Windows DrvFS staging because files requested as `0600` are
+reported there as `0777`. This is an invalid release environment, not a reason
+to weaken the verifier or accept broader modes.
+
 Before GitHub publication, record the source revision, toolchain, assembler
 version/digest, exact archive digest, unpacked `SHA256SUMS` digest, static-input
 digests, signing timestamps/expiry, and the H4-8A result. Publish only one
 explicitly labelled closed-alpha prerelease with the archive and this public
 non-secret receipt. GitHub, HTTPS, a release-page checksum, and a project
 signature delivered through the same channel are not first-install trust.
+
+### `h4-alpha-1-rc-1` execution record
+
+The fixed input request, static-input receipt, and public release receipt have
+SHA-256 digests
+`c397544a5d9c8adc811ed5f34b15978b0c315b60ea7692b115fdffdbdbacc36d`,
+`f143400b7c083971995232d887b6760a7711f75ff3b90a32d607bdac92e816e1`,
+and `b9f0940d505ecfd19755ace159ce3a9f47931da4d9098e94b9a9a633a2ccce28`
+respectively. Native Ubuntu staging contained exactly fourteen owner-only
+static files and produced static-set digest
+`078553812ae691fc120bcfbf1d003bcf7096abdbe71796845d2f567b01c472e3`.
+
+Two assemblies with `SOURCE_DATE_EPOCH=1787864259` produced the same
+`16140270`-byte archive, SHA-256
+`e7ff0b26257978fd14bc3583c5de7d36eb7626bac7b43586bcb9442c53f7dba7`.
+The Alpha Enrollment Pin is
+`8ed0fd25c60a6988fcc8938baf86547c7c646744f57fb0c39186f184d13afefd`.
+The immutable release, its attestation, four server-side asset digests, local
+archive, and remote tag targeting
+`70bf425eec937edcc22e8f0534db992aa2002a16` were verified after publication.
+The exact URL and retained evidence hashes are recorded in the
+[H4-8A readiness matrix](../product/horizon-4/08a-alpha-1-readiness-matrix.md).
 
 ## Enrollment evidence
 

@@ -1,8 +1,9 @@
 # H4-alpha-1 bounded release profile
 
-Status: **recorded on 2026-08-27; not a signed release, published artifact, or
-participant enrollment.** This is the one profile to which H4-8A evidence must
-be bound before a bounded alpha can be accepted.
+Status: **accepted bounded functional-alpha profile on 2026-08-28.** Its exact
+Ubuntu artifact is signed, published as an immutable prerelease, and exercised
+through the Product Owner's own authenticated enrollment. It is not an
+independent-participant or Public Beta profile.
 
 ## Identity
 
@@ -26,7 +27,9 @@ The Product Owner authenticated the existing local encrypted seed record on
 2026-08-27. Its public receipt is `ardents-release-custody-receipt-v1`; the
 record ciphertext digest is
 `0d14d5fcf9bc285e23d507a6382e9ff7100b2018acf182f6e65a885e52ec1738`.
-This confirms custody of the selected public roots only. It is not a threshold,
+This receipt confirms custody of the selected public roots. The corresponding
+encrypted record was later consumed by the fixed operation for the exact RC
+described below; the receipt by itself is not a threshold,
 independent-custody, signing, publication, or enrollment result.
 
 | Role | Ed25519 public key (hex) |
@@ -62,11 +65,10 @@ capacity or availability failure hidden behind test identities. H4-2's
 temporary two-host State remains separately labelled qualification evidence;
 it is not a persistent participant network or a release authority.
 
-## Required static inputs before signing
+## Signed static inputs and immutable publication
 
-The fixed signer operation is maintained under ADR-0052, but its first real
-invocation remains gated until these public facts are recorded and individually
-validated:
+The fixed ADR-0052 operation consumed the following recorded public facts on
+2026-08-28 and completed its maintained verifier preflight:
 
 1. cohort, release identity/version, validity interval, emergency-stop rule,
    `alpha` environment, and selected Network identifier;
@@ -77,6 +79,25 @@ validated:
    distinct builder attestations, source/build/dependency/SBOM identities,
    qualification/build/protocol state, and safety dates; and
 4. an all-or-nothing external output root and verifier preflight receipt.
+
+The public request SHA-256 is
+`c397544a5d9c8adc811ed5f34b15978b0c315b60ea7692b115fdffdbdbacc36d`;
+the verifier-accepted alpha-input receipt SHA-256 is
+`f143400b7c083971995232d887b6760a7711f75ff3b90a32d607bdac92e816e1`;
+and the resulting static-set digest is
+`078553812ae691fc120bcfbf1d003bcf7096abdbe71796845d2f567b01c472e3`.
+The archive was assembled twice with `SOURCE_DATE_EPOCH=1787864259` and was
+byte-identical. Its SHA-256 is
+`e7ff0b26257978fd14bc3583c5de7d36eb7626bac7b43586bcb9442c53f7dba7`;
+the unpacked `SHA256SUMS` digest and Alpha Enrollment Pin is
+`8ed0fd25c60a6988fcc8938baf86547c7c646744f57fb0c39186f184d13afefd`.
+
+The immutable prerelease is
+[`h4-alpha-1-rc-1`](https://github.com/dianabuilds/ardents-network/releases/tag/h4-alpha-1-rc-1),
+published at `2026-08-28T00:10:15Z`. Its tag resolves to source revision
+`70bf425eec937edcc22e8f0534db992aa2002a16`; GitHub release attestation and
+local-asset verification both passed. The public release receipt SHA-256 is
+`b9f0940d505ecfd19755ace159ce3a9f47931da4d9098e94b9a9a633a2ccce28`.
 
 The two exact project-controlled build observations are labelled
 `product-owner-windows-build-a` and `product-owner-windows-build-b`; they
@@ -93,12 +114,12 @@ and
 Both observations used Go `1.26.6`, `linux/amd64`, `GOAMD64=v1`,
 `CGO_ENABLED=0`, and `-trimpath`.
 
-ADR-0052 selects the future fixed local `BuildAlphaInputs` operation that may
-consume these facts. No value in this profile permits arbitrary bytes, a
-substitute authority, an online signer, an upload, or participant contact.
-The maintained exported operation enforces this profile's source revision,
-Endpoint/control digests, and selected encrypted-envelope digest as fixed
-policy before it requests the local passphrase.
+ADR-0052's fixed local `BuildAlphaInputs` operation consumed these facts. No
+value in this profile permits arbitrary bytes, a substitute authority, an
+online signer, or an ambient upload/contact capability. The maintained
+operation enforced this profile's source revision, Endpoint/control digests,
+selected encrypted-envelope digest, validity bounds, empty Network topology,
+and verifier preflight before publishing the static output directory.
 
 ## Qualification coherence
 
@@ -113,19 +134,23 @@ processes opened their authenticated TCP/TLS v1 legs to the product Rendezvous.
 The matching 8 MiB Application bytes, clean Endpoint terminal results, one
 Route generation, zero recovery, and TCP/TLS-only READY events close the
 functional-alpha Carrier gate without adding Browser Entry or public naming.
-The retained logs and
-available exit receipts are named in the readiness matrix. These results remain
-bounded test/qualification evidence, not artifact provenance, enrollment,
-participant, capacity, availability, independent-operation, or
-browser-isolation claims.
+The same immutable bundle then passed the external Pin/inventory check,
+Endpoint enrollment check, non-lingering first start, retained-state
+stop/restart, final cleanup, and H4-6A fresh/cached/fresh observation. The
+retained logs, failed diagnostic attempts, and exact digests are named in the
+readiness matrix. These results establish bounded artifact provenance and a
+Product Owner enrollment walkthrough; they do not establish an independent
+participant, capacity, availability, independent operation, or browser
+isolation.
 
 ## Claims and limitations
 
-If every required H4-8A row later passes for this exact profile, the strongest
-claim is a bounded project-operated alpha journey. It remains non-public and
-does not claim independent control or operators, capacity, availability,
-censorship resistance, application-level privacy, public DNS/HTTPS, Namespace,
-or Public Beta readiness.
+A1-A10 now pass for this exact immutable profile. The strongest claim is a
+bounded project-operated functional-alpha journey. It remains a closed
+prerelease and does not claim independent control, external participants or
+operators, capacity, availability, censorship resistance, application-level
+privacy, public DNS/HTTPS, Namespace, or Public Beta readiness. A11 soak/fault
+and A12 closure remain broader H4-8 gates.
 
 ## Ownership
 

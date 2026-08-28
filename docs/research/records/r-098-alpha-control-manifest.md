@@ -4,7 +4,7 @@ title: Verifiable alpha-control manifest
 status: decided
 owner: Product Owner and Codex
 started: 2026-08-24
-reviewed: 2026-08-24
+reviewed: 2026-08-28
 ---
 
 # R-098 — What minimum signed alpha-control manifest and independently runnable reader let a participant inspect accepted release, network, profile, and name-corpus inputs without making project control appear independent?
@@ -186,7 +186,13 @@ roots unresolved.
 
 ## Disposition
 
-Decided for the H4-6A authority shape; implementation-linked for its concrete
-artifact and reader. The next work maps selected alpha component identities and
-evaluates a maintained parser and resource policy. It does not establish
-threshold custody or Public Beta control.
+Decided for the H4-6A authority shape and implemented through ADR-0038's
+maintained reader. On 2026-08-28 the immutable `h4-alpha-1-rc-1` published the
+concrete catalog plus separately rooted Release, Network, and Compatibility
+inputs. One cached repeat and two fresh enrollment-pinned standalone inspection
+roots accepted the same three components and Network epoch. These reader roots
+are physically distinct from Endpoint state. The bundle's `corpus.pub` is only a
+manifest-pinned authority companion; no ACA2 or signed-corpus acceptance is
+claimed. This closes the bounded functional-alpha H4-6A input gate; it does not
+establish independent parser/security review, threshold custody, independent
+control, or Public Beta governance.

@@ -4,7 +4,7 @@ title: Ubuntu-first Portable Endpoint alpha lifecycle and experimental Windows c
 status: decided
 owner: Product Owner and Codex
 started: 2026-08-24
-reviewed: 2026-08-24
+reviewed: 2026-08-28
 ---
 
 # R-095 — Can an Ubuntu-first authenticated Portable Endpoint profile, plus a best-effort Windows companion, give a normal user an explicit obtain, run, stop, restart, and manual-replacement journey without elevation, implicit system integration, or protected-state loss?
@@ -537,8 +537,12 @@ Decided and promoted to H4-1, the operating model, and the Release/Update
 technical boundary. Ubuntu-first, the one-release Alpha Enrollment Pin, and an
 explicitly unsigned non-gating Windows companion are selected. The maintained
 Endpoint/Release handoff and H4-1A/H4-1B native Ubuntu user-session
-qualification now exist, but no supported-platform or public-release claim
-follows. Before any real participant enrolment, the Product Owner must name
-the independent contact channel that conveys the one-release Pin. Windows may
-add an unsigned artifact run without delaying that Ubuntu path. Retain this
-record only until the accepted decision and evidence enter source history.
+qualification now exist. On 2026-08-28 the Product Owner used the selected
+authenticated one-to-one direct-message class, separately from GitHub, and
+enacted the exact immutable RC through pre-execution Pin verification, Release
+Decision, non-lingering start, retained-state restart, stop, and cleanup. This
+is the Product Owner's own functional-alpha walkthrough: no independent
+external participant, supported Windows platform, or Public Beta release claim
+follows. Windows may add an unsigned artifact run without delaying the Ubuntu
+path. Retain this record only until the accepted decision and evidence enter
+source history.

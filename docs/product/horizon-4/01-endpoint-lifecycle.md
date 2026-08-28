@@ -1,9 +1,10 @@
 # H4-1 — Endpoint lifecycle and distributable profiles
 
-Status: **accepted H4-1 alpha direction. Ubuntu Portable and foreground
-replacement have native user-session qualification; custody has behavior
-qualification; the direct Ubuntu `.deb` has Linux `dpkg` process qualification.
-Windows and public-release qualification remain explicitly unclaimed.**
+Status: **H4-1A functional-alpha gate passed on 2026-08-28 for one immutable
+Ubuntu Portable prerelease and the Product Owner's own authenticated
+first-enrollment lifecycle. Foreground replacement, custody, and the direct
+Ubuntu `.deb` retain their existing qualification. Independent-participant,
+Windows, and Public Beta release claims remain explicitly unclaimed.**
 
 ## Decision
 
@@ -273,6 +274,29 @@ observed readiness/failure result. Attempts to run an unverified artifact,
 reuse another profile's protected state, make the Endpoint privileged, or erase
 the Vault by deleting the program must fail or remain visibly outside the
 supported path.
+
+### Functional-alpha execution record — 2026-08-28
+
+The exact source revision
+`70bf425eec937edcc22e8f0534db992aa2002a16` produced Endpoint SHA-256
+`33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1`.
+The deterministic archive
+`ardents-alpha-h4-alpha-1-rc-1-linux-amd64.tar.gz`, SHA-256
+`e7ff0b26257978fd14bc3583c5de7d36eb7626bac7b43586bcb9442c53f7dba7`,
+is the immutable GitHub prerelease
+[`h4-alpha-1-rc-1`](https://github.com/dianabuilds/ardents-network/releases/tag/h4-alpha-1-rc-1).
+Its Alpha Enrollment Pin is
+`8ed0fd25c60a6988fcc8938baf86547c7c646744f57fb0c39186f184d13afefd`.
+
+The Pin was delivered in the authenticated one-to-one Product Owner Codex task,
+separately from GitHub, then enacted by the Product Owner on a clean
+unprivileged Ubuntu `24.04.3 LTS` account. The pre-execution inventory, built-in
+enrollment check, non-lingering user-unit start, retained-state stop/restart,
+and final disabled/inactive cleanup all passed. This is the permitted Product
+Owner walkthrough for a bounded tracer; it is not independent participant,
+novice-usability, external-security, or Public Beta validation. Exact retained
+receipts and their digests are owned by the
+[H4-8A matrix](08a-alpha-1-readiness-matrix.md).
 
 ### Stop conditions
 

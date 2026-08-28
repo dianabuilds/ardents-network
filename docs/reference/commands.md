@@ -110,10 +110,12 @@ alpha name into canonical Namespace state.
 
 | Route | Required flags | Result |
 |---|---|---|
+| `inspect` | `--directory PATH --state-root PATH --disclosure-key HEX --release-key HEX --network-key HEX --compatibility-key HEX --at RFC3339` | Low-level statement-integrity diagnostic for an explicit ACA1 directory and caller-pinned component roots. It advances the catalog child of the named reader root and deliberately does not perform enrollment, artifact, Release Decision, or Network State verification. It is not the participant H4-6A route. |
+| `inspect-bundle` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant H4-6A route. It first verifies the exact enrolled bundle and artifact, then runs the maintained Release Decision, Network State, ACA1 catalog, and Release/Network/Compatibility component verifiers. The named standalone inspection root owns separate `catalog`, `release`, and `network` floor children and is physically distinct from Endpoint state. Repeating the same accepted input against the same inspection root reports the cached/no-update outcome; a second absent inspection root supplies an independent fresh observation. |
 | `inspect-alpha-corpus` | `--catalog PATH --corpus PATH --state-root PATH --disclosure-key HEX --corpus-key HEX --network HEX --at RFC3339` | Verifies one explicit ACA2 catalog and separately signed Alpha Name Corpus under independent keys, then writes only the corpus serial/digest/bytes to its named persistent floor. It reports `ardents-alpha-corpus-report-v1`; stale, conflicting, changed, expired, or wrong-network input fails. |
 | `accept-alpha-corpus` | `--enrollment PATH --artifact PATH --control-state-root PATH --corpus-state-root PATH --catalog PATH --corpus PATH --at RFC3339` | First verifies the exact enrollment-v3-or-later bundle, its enrolled Endpoint executable, and that the running platform-specific `ardents-control` file is the exact separately manifested companion. It then accepts the fixed ACA1 Release/Network/Compatibility evidence and verifies the independently pinned ACA2/corpus component before advancing only the named Endpoint-local corpus floor. An exact repeat is harmless; a higher serial replaces the retained corpus, while a lower or same-serial-different input fails. It reports `ardents-alpha-corpus-acceptance-v1`. |
 
-Neither route launches a browser, opens a Service, chooses a Relay/Gateway, or
+None of these routes launches a browser, opens a Service, chooses a Relay/Gateway, or
 makes an `ardents-alpha://` link a public DNS/HTTPS address. The acceptance
 route retains only supplied bytes after its checks; it does not fetch or
 install an Endpoint.

@@ -1,10 +1,10 @@
 ---
 id: R-100
 title: Usable-alpha qualification and repository closure
-status: open
+status: active
 owner: Product Owner and Codex
 started: 2026-08-24
-reviewed: 2026-08-24
+reviewed: 2026-08-28
 ---
 
 # R-100 — What exact usable-alpha release profile, live/soak matrix, remediation rule, and closure inventory can yield reproducible evidence and a maintainable repository without mislabeling the result Public Beta?
@@ -66,15 +66,20 @@ current tree and inbound references before deletion.
 
 ## Findings
 
-- **Current-contract fact:** the Product Owner selected the Ubuntu Portable,
-  TCP/TLS-only, Target-Link/loopback first-alpha directions, but no exact
-  maintained H4-1–H4-3 build/topology implements that complete profile yet. A
-  live or soak matrix cannot therefore name its candidate artifact, resource
-  ceilings, workload, claim denominator, or valid failure oracle.
-- **Inference:** starting a generic "final testing" suite now would create
-  misleading green checks and stale process documents—the exact H4-8 closure
-  failure this record is meant to prevent. The only present H4-8 work is to
-  retain the matrix and closure-inventory shape as a future gate.
+- **Current-contract fact:** the Product Owner selected and published exact
+  immutable candidate `h4-alpha-1-rc-1`, source revision
+  `70bf425eec937edcc22e8f0534db992aa2002a16`. H4-8A now binds artifact,
+  platform, workload, Carrier, control inputs, topology, retained evidence, and
+  claim limits to that identity.
+- **Measurement:** A1-A10 are green, including immutable publication, the
+  Product Owner's authenticated first-enrollment walkthrough, concrete H4-6A
+  observations, the exact H4-3 workload/browser cells, and the same candidate
+  on the selected TCP/TLS Carrier without fallback. The matrix retains failed
+  attempts and their dispositions rather than hiding them behind successful
+  reruns.
+- **Inference:** this is sufficient for the bounded functional-alpha H4-1/H4-2
+  claim, but not broad H4-8 closure. A11 has no accepted soak/fault duration,
+  load, and observer contract; A12 consequently cannot yet close the inventory.
 
 ## Options
 
@@ -84,12 +89,13 @@ current tree and inbound references before deletion.
 
 ## Recommendation
 
-Preselect option 1 as the only research direction, but defer its exact matrix
-until H4-1–H4-3 identify the first usable release profile. Options 2 and 3
-conflict with current testing/claim discipline.
+Continue option 1 using the exact H4-alpha-1 matrix. Do not convert A1-A10 into
+a generic release label or infer A11 from elapsed wall-clock time. Options 2
+and 3 remain rejected.
 
 ## Disposition
 
-Open, with its missing profile precondition recorded. Promotion may create
-H4-8A/B/D artifacts for one selected alpha profile; Public Beta remains
-separately gated on real independent evidence.
+Active with the missing-profile precondition satisfied. H4-8A A1-A10 are green
+for the exact immutable candidate; define and execute A11, then complete A12's
+inventory before claiming broader H4-8 closure. Public Beta remains separately
+gated on real independent evidence.

@@ -4,7 +4,7 @@ title: Which bounded authority operation may create the first functional-alpha N
 status: decided
 owner: Product Owner and Codex
 started: 2026-08-27
-reviewed: 2026-08-27
+reviewed: 2026-08-28
 ---
 
 # R-121 — Which bounded authority operation may create the first functional-alpha Network State without reusing Release/control keys, fixture identities, or implying independent governance?
@@ -156,7 +156,11 @@ successor needs a new bounded operation and real Node custody/deployment facts.
 
 ## Disposition
 
-Decided on 2026-08-27 and promoted to ADR-0053. Implement the fixed State Module
-interface, terminal Adapter, verifier tests, package/dependency ownership, and
-release-ceremony text. Retain no experiment directory; the maintained tests are
-the reproducible behavior evidence.
+Decided on 2026-08-27 and promoted to ADR-0053. The fixed State Module,
+terminal Adapter, verifier tests, package/dependency ownership, and ceremony
+text are maintained. On 2026-08-27 the Product Owner created the separate
+encrypted functional-alpha genesis record; on 2026-08-28 its public State
+fragment passed the fixed alpha-input preflight and was consumed by
+`h4-alpha-1-rc-1`. The committed candidate view is empty and therefore proves
+no persistent Node, availability, or independent governance. No experiment
+directory or private State material is retained in Git.

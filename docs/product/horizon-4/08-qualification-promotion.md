@@ -38,15 +38,16 @@ update safely. A more ambitious transport, browser, Contributor, Namespace, or
 protected-application profile is another qualification target, not an implicit
 extension of a passing result.
 
-### Candidate H4-alpha-1 — readiness profile under qualification
+### H4-alpha-1 — bounded functional-alpha profile
 
 The current endpoint artifact candidate is source revision
 `70bf425eec937edcc22e8f0534db992aa2002a16`; its complete identity and public
 custody companions are recorded in the
 [H4-alpha-1 bounded release profile](08b-alpha-1-release-profile.md). It
 narrows the existing selected directions into one reproducible qualification
-target; this records a candidate and its evidence gates, **not** a release
-acceptance or a claim that an immutable participant artifact has been published.
+target. On 2026-08-28 its H4-8A A1-A10 functional-alpha cells passed and the
+immutable Ubuntu prerelease was published. This is not broader H4-8 closure:
+A11 soak/fault and A12 closure remain open.
 
 | Boundary | Candidate selection | Evidence gate |
 |---|---|---|
@@ -54,12 +55,12 @@ acceptance or a claim that an immutable participant artifact has been published.
 | Carrier | State-selected TCP/TLS v1 is release-gating. QUIC v1 remains a maintained separately qualified compatible profile, never a fallback or an implicit part of this candidate's release claim. | H4-2 local and two-host TCP/TLS evidence; any QUIC participant claim requires its own selected matrix row |
 | Service | One exact Target Link, loopback Browser Adapter, and the dynamic H4-3B HTTP/1.1 workload: POST body/header preservation, cookie/redirect follow-up, chunked response, explicit withdrawal, Publisher Application reset, and Publisher Endpoint loss | local process, constrained Docker, VPS Docker, actual two-host C-2, and selected browser/platform cells; every failure must retain the exact no-fallback oracle |
 | Naming | Target Link is the release path. The retained `ardents-alpha://` corpus may support controlled fixture evidence but H4-4 Browser Entry is not release-gating. | no participant `.ard`/DNS/DoH/HTTPS claim |
-| Control | enrollment-pinned H4-6A catalog and independently verified Release, Network, Compatibility, and corpus components | two fresh enrolled Endpoints accept or reject the same concrete component identities for the documented reason |
+| Control | Enrollment-pinned ACA1 catalog and independently verified Release, Network, and Compatibility components. ADR-0038 excludes H4-4 corpus from v1; `corpus.pub` is only a manifest-pinned authority companion. | For the H4-1/H4-2 functional-alpha input gate, two fresh enrollment-pinned standalone inspection roots plus one cached repeat accept the same identities. This does not replace H4-6A's broader two-fresh-Endpoint Done condition. |
 
-The remaining first-alpha selection is the concrete Ubuntu artifact/contact,
-the exact two-host topology, and one browser/version on the Endpoint platform.
-Until those inputs exist, their cells are active gates rather than passing
-substitutes.
+The concrete Ubuntu artifact/contact, exact two-host topology, and selected
+browser/version now exist in A1-A10. A11/A12 remain inactive/open, and every
+independent/Public Beta gate remains unmet rather than becoming a passing
+substitute.
 
 ## Delivery slices
 

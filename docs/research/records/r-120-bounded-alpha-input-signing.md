@@ -4,7 +4,7 @@ title: Bounded alpha input signing
 status: decided
 owner: Product Owner and Codex
 started: 2026-08-27
-reviewed: 2026-08-27
+reviewed: 2026-08-28
 ---
 
 # R-120 — Which exact local operation may consume the first-alpha encrypted seed record to create the fixed TUF and H4-6A input set, while refusing arbitrary signing, unrecorded topology, and publication?
@@ -154,12 +154,14 @@ qualification.
 ## Disposition
 
 Decided on 2026-08-27. The ADR-0052 fixed local Module and terminal adapter are
-now maintained with verifier-accepted, deterministic-output, changed-artifact,
-unknown-field, rejected-Network, and no-overwrite behavior tests. This does not
-authorize a real invocation. Real key use, metadata,
-artifact publication, or participant contact remains forbidden until the
-recorded non-secret profile inputs exist. Retain no real experiment directory
-until then.
+maintained with verifier-accepted, deterministic-output, changed-artifact,
+unknown-field, rejected-Network, and no-overwrite behavior tests. The required
+non-secret profile inputs subsequently existed, so the Product Owner authorized
+and completed the exact `h4-alpha-1-rc-1` invocation on 2026-08-28. The atomic
+output passed preflight, the deterministic bundle was assembled twice, and the
+immutable publication plus Product Owner enrollment walkthrough completed.
+The operation remains incapable of generic signing, uploading, or participant
+contact; those were explicit subsequent ceremony actions.
 
 The post-implementation review additionally fixed the exported operation to
 the recorded H4-alpha-1 profile/source/artifact/control/envelope identities and

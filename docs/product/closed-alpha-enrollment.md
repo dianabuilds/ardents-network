@@ -1,7 +1,9 @@
 # Closed-alpha Ubuntu Portable enrollment
 
-Status: **H4-1A participant instruction.** This is a closed-alpha procedure,
-not a public release, platform-support, or anonymous-onboarding claim.
+Status: **H4-1A participant instruction, exercised on 2026-08-28 by the
+Product Owner's own authenticated first-enrollment walkthrough.** This is a
+closed-alpha procedure, not an independent-participant, public-release,
+platform-support, or anonymous-onboarding claim.
 
 ## What must arrive independently
 
@@ -54,7 +56,7 @@ fi
 LC_ALL=C sed -n 's/^[0-9a-f]\{64\}  //p' SHA256SUMS >"$expected"
 printf '%s\n' SHA256SUMS >>"$expected"
 LC_ALL=C sort -o "$expected" "$expected"
-LC_ALL=C find . -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort >"$actual_names"
+LC_ALL=C find . -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort >"$actual_names"
 cmp -s "$expected" "$actual_names"
 
 # Only now parse and check every declared byte.
