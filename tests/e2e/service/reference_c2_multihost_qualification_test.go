@@ -89,6 +89,14 @@ func runReferenceC2MultiHost(t *testing.T, scenario referenceC2Scenario) {
 	status.userReady(t, user)
 	result := <-user.result
 	status.retainUser(t, result)
+	if result.err != nil {
+		// A failed User cannot produce the remote Publisher proof. Cancel its
+		// concurrent mirror before reporting the actual User failure, rather
+		// than retaining a test worker until the complete soak deadline.
+		h43AbortProofAfterUserFailure(cancel, proofResult)
+		h43AssertUserResult(t, result, scenario)
+		return
+	}
 	if err := <-proofResult; err != nil {
 		t.Fatalf("mirror remote H4-3B resource proof: %v", err)
 	}
@@ -102,6 +110,11 @@ func runReferenceC2MultiHost(t *testing.T, scenario referenceC2Scenario) {
 		h48A11AssertProductTransitEvidence(t, remote, scenario, result)
 	}
 	status.complete(t)
+}
+
+func h43AbortProofAfterUserFailure(cancel context.CancelFunc, proofResult <-chan error) {
+	cancel()
+	<-proofResult
 }
 
 func stageH43RemoteC2(t *testing.T, environment h43MultiHostEnvironment, deadline time.Time, scenario referenceC2Scenario) h43RemoteStage {
