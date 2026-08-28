@@ -21,6 +21,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+trap {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 1
+}
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $harnessRepository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
 $repository = $harnessRepository
@@ -267,6 +271,9 @@ function Test-A11EntrypointCaptureSource([string]$Source) {
         "'entrypoint.exitcode'",
         "'entrypoint-status.json'",
         'accepted_campaign_receipt',
+        'Assert-CandidateSource $CandidateRepository $SourceRevision $ReleaseTag',
+        'CandidateRepository HEAD does not equal SourceRevision.',
+        'source_revision = $SourceRevision',
         'Write-EvidenceInventory $evidencePath',
         '$child.WaitForExit(7530000)',
         'exit 1'

@@ -47,7 +47,23 @@ function Write-EvidenceInventory([string]$Root) {
     Write-Utf8 $inventoryPath (($records -join "`n") + "`n")
 }
 
+function Assert-CandidateSource([string]$Repository, [string]$Revision, [string]$Tag) {
+    if ($Revision -cnotmatch '^[0-9a-f]{40}$') { throw 'SourceRevision must be one exact lowercase 40-hex Git commit.' }
+    if (-not [IO.Path]::IsPathRooted($Repository) -or -not (Test-Path -LiteralPath $Repository -PathType Container)) {
+        throw 'CandidateRepository must be one existing absolute committed worktree.'
+    }
+    $resolved = (Resolve-Path -LiteralPath $Repository).Path
+    $dirty = @(& git -C $resolved status --porcelain=v1 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) { throw 'A11 requires a clean committed candidate source worktree.' }
+    $head = (& git -C $resolved rev-parse --verify HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or $head -cne $Revision) { throw 'CandidateRepository HEAD does not equal SourceRevision.' }
+    $tagCommit = (& git -C $resolved rev-parse --verify "refs/tags/$Tag^{commit}").Trim()
+    if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $Revision) { throw 'ReleaseTag does not resolve to SourceRevision.' }
+    return $resolved
+}
+
 if (-not [IO.Path]::IsPathRooted($EvidenceOutput)) { throw 'EvidenceOutput must be an absolute path.' }
+$candidateRepository = Assert-CandidateSource $CandidateRepository $SourceRevision $ReleaseTag
 $evidencePath = [IO.Path]::GetFullPath($EvidenceOutput)
 $evidenceParent = Split-Path -Parent $evidencePath
 if (Test-Path -LiteralPath $evidencePath) { throw 'EvidenceOutput must be previously absent; the entrypoint never overwrites evidence.' }
@@ -131,6 +147,9 @@ finally {
         command = [IO.Path]::GetFileName($runner)
         runner_sha256 = (Get-FileHash -LiteralPath $runner -Algorithm SHA256).Hash.ToLowerInvariant()
         entrypoint_sha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        source_revision = $SourceRevision
+        candidate_repository = $candidateRepository
+        release_tag = $ReleaseTag
         stdout = 'entrypoint.stdout.log'
         stderr = 'entrypoint.stderr.log'
         exit_status = $childExit
