@@ -1219,6 +1219,7 @@ function Get-WindowsProcessSample([int]$RootPID, [Diagnostics.Stopwatch]$Clock) 
                 foreach ($child in $children[$processID]) { $queue.Enqueue([int]$child.ProcessId) }
             }
         }
+        $rootObserved = $qualificationIDs.Contains($RootPID)
         $facts = foreach ($process in $selected | Sort-Object ProcessId) {
             $processID = [int]$process.ProcessId
             [ordered]@{
@@ -1234,10 +1235,10 @@ function Get-WindowsProcessSample([int]$RootPID, [Diagnostics.Stopwatch]$Clock) 
                 threads = [long]$process.ThreadCount
             }
         }
-        return [ordered]@{ timestamp_ms = $captured; monotonic_ms = $Clock.ElapsedMilliseconds; root_pid = $RootPID; processes = @($facts); error = $null }
+        return [ordered]@{ timestamp_ms = $captured; monotonic_ms = $Clock.ElapsedMilliseconds; root_pid = $RootPID; root_observed = $rootObserved; processes = @($facts); error = $null }
     }
     catch {
-        return [ordered]@{ timestamp_ms = $captured; monotonic_ms = $Clock.ElapsedMilliseconds; root_pid = $RootPID; processes = @(); error = $_.Exception.Message }
+        return [ordered]@{ timestamp_ms = $captured; monotonic_ms = $Clock.ElapsedMilliseconds; root_pid = $RootPID; root_observed = $false; processes = @(); error = $_.Exception.Message }
     }
 }
 
@@ -1931,7 +1932,13 @@ function Invoke-A11Attempt(
         while ($true) {
             $goProcess.Refresh()
             if ($goProcess.HasExited) { break }
-            Add-JsonLine $resourcePath (Get-WindowsProcessSample $goProcess.Id $clock)
+            $sample = Get-WindowsProcessSample $goProcess.Id $clock
+            if (-not [bool]$sample.root_observed) {
+                $goProcess.Refresh()
+                if ($goProcess.HasExited) { break }
+                $sample.error = 'Windows observer snapshot omitted the still-running qualification root PID.'
+            }
+            Add-JsonLine $resourcePath $sample
             $nextSample += 1000
             if ($clock.Elapsed.TotalSeconds -gt $effectiveDeadlineSeconds -or $CampaignClock.ElapsedMilliseconds -ge $goNaturalDeadline) {
                 $timedOut = $true

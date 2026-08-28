@@ -69,6 +69,8 @@ func TestH48A11SuccessCaptureKeepsExactV1ParserGrammar(t *testing.T) {
 	for _, required := range []string{
 		`printf '%s\n' "$container_state"`,
 		`printf '[staged-inventory-sha256]\n'`,
+		`if [ -f "$path" ]`,
+		`sha256sum "$path" 2>/dev/null`,
 		`printf '%s\t%s\t%s\n' "$digest" "$bytes" "${path#./}"`,
 		`printf '[role-exit-statuses]\n'`,
 		`cat remote-role-exit-statuses.jsonl`,

@@ -43,7 +43,7 @@ func h48A11RemoteEvidenceCommand(environment h43MultiHostEnvironment) string {
 		"if container_state=$(docker inspect " + container + " --format '{{json .State}}' 2>&1); then " +
 		"printf '%s\\n' \"$container_state\"; else printf '{\"container_available\":false}\\ncontainer_error=%s\\n' \"$container_state\"; fi; " +
 		"printf '[staged-inventory-sha256]\\n'; if [ -d " + directory + " ]; then (cd " + directory + " && " +
-		"find . -type f -print | LC_ALL=C sort | while IFS= read -r path; do bytes=$(wc -c < \"$path\"); digest=$(sha256sum \"$path\" | cut -d' ' -f1); printf '%s\\t%s\\t%s\\n' \"$digest\" \"$bytes\" \"${path#./}\"; done; " +
+		"find . -type f -print | LC_ALL=C sort | while IFS= read -r path; do if [ -f \"$path\" ] && bytes=$(wc -c < \"$path\" 2>/dev/null) && digest=$(sha256sum \"$path\" 2>/dev/null | cut -d' ' -f1); then printf '%s\\t%s\\t%s\\n' \"$digest\" \"$bytes\" \"${path#./}\"; fi; done; " +
 		"printf '[role-exit-statuses]\\n'; if [ -f remote-role-exit-statuses.jsonl ]; then cat remote-role-exit-statuses.jsonl; else printf 'unavailable\\n'; fi; " +
 		"printf '[role-output]\\n'; for file in *.log *.err; do if [ -f \"$file\" ]; then printf '===%s===\\n' \"$file\"; tail -c 16384 \"$file\"; printf '\\n'; fi; done); " +
 		"else printf 'staged_root_available=false\\n[role-exit-statuses]\\nunavailable\\n[role-output]\\n'; fi"
