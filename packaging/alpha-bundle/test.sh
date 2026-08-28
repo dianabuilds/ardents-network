@@ -100,6 +100,16 @@ if [ "$(tar -tzf "$scratch/first.tar.gz")" != "$(printf '%s\n' \
   exit 1
 fi
 
+mv "$static_root/1.snapshot.json" "$static_root/2.snapshot.json"
+mv "$static_root/1.targets.json" "$static_root/2.targets.json"
+build "$scratch/successor.tar.gz"
+if tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-h4-alpha-test-1-linux-amd64/1.snapshot.json' ||
+  ! tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-h4-alpha-test-1-linux-amd64/2.snapshot.json' ||
+  ! tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-h4-alpha-test-1-linux-amd64/2.targets.json'; then
+  echo 'alpha bundle did not retain exactly the selected successor metadata version' >&2
+  exit 1
+fi
+
 printf 'unexpected\n' > "$static_root/unexpected"
 if build "$scratch/rejected.tar.gz" >/dev/null 2>&1; then
   echo 'alpha bundle accepted an unlisted static input' >&2

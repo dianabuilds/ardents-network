@@ -17,8 +17,9 @@ its actual Network State and two-builder release facts remain gates.
 
 ## Decision
 
-`internal/release/custody` will own one additional deep Module interface:
-`BuildAlphaInputs`. It accepts one versioned, non-secret fixed-alpha request,
+`internal/release/custody` will own the initial `BuildAlphaInputs` interface
+and one separately bounded `BuildAlphaSuccessor` interface. The initial
+operation accepts one versioned, non-secret fixed-alpha request,
 the already selected encrypted record root, the exact Endpoint and control
 artifact bytes, and one previously absent external output directory. It may
 write only these fixed direct regular files:
@@ -64,6 +65,16 @@ The sole future terminal adapter is
 existing trusted local adapter. It has no network, upload, shell-command,
 interactive topology, or arbitrary signing route.
 
+The only successor adapter is
+`ardents-release-custody assemble-successor --root ... --request ...
+--endpoint ... --control ... --predecessor ... --output ...`. It is not a
+general TUF update tool: it accepts only the recorded RC1 static directory
+(including pinned root and catalog digests), the fixed RC2 source and program
+digests, and emits only generation-2 `snapshot`, `targets`, ACA1, and catalog
+metadata while retaining `1.root.json`. It reads and validates the complete
+predecessor before asking for the local secret, and it cannot rotate a root,
+choose a generation, modify a predecessor, or emit another release.
+
 ## Consequences
 
 - One small interface contains role ordering, canonical metadata construction,
@@ -78,6 +89,9 @@ interactive topology, or arbitrary signing route.
 - Threshold and independent-control claims remain false: the initial operation
   is one custodian holding five local TUF keys. Rotation, hardware custody,
   multi-device custody, or another release profile requires a later ADR.
+- RC2 remains a distinct immutable candidate. Its successor operation and
+  archive/requalification evidence must complete before any H4-8 status can be
+  promoted; this ADR does not itself accept the candidate.
 
 ## Compliance
 

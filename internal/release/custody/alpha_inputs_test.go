@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -157,6 +158,65 @@ func TestBuildAlphaInputsIsDeterministicAndNeverOverwrites(t *testing.T) {
 		Endpoint: endpoint, Control: control, Output: firstOutput}, unreadSecrets{}, policy,
 		fixedAlphaClock(time.Unix(1_800_000_100, 0).UTC())); !errors.Is(err, ErrOutputExists) {
 		t.Fatalf("existing output error = %v", err)
+	}
+}
+
+func TestBuildAlphaVersionedInputFilesAcceptsGenerationTwoAndBindsCatalogPredecessor(t *testing.T) {
+	root := t.TempDir()
+	password := []byte("release-custody-password")
+	if _, err := Initialize(context.Background(), InitializeConfig{Root: root}, &fixedSecrets{values: [][]byte{password, password}}); err != nil {
+		t.Fatal(err)
+	}
+	endpoint := []byte("exact-linux-endpoint-artifact")
+	control := []byte("exact-linux-control-artifact")
+	at := time.Unix(1_800_000_100, 0).UTC()
+	policy := alphaInputsTestPolicy(t, root, endpoint, control)
+	firstOutput := filepath.Join(t.TempDir(), "first")
+	if _, err := buildAlphaInputs(context.Background(), BuildAlphaInputsConfig{Root: root, Request: alphaInputsTestRequest(t, endpoint, control, at), Endpoint: endpoint, Control: control, Output: firstOutput}, &fixedSecrets{values: [][]byte{password}}, policy, fixedAlphaClock(at)); err != nil {
+		t.Fatal(err)
+	}
+	predecessor, err := readAlphaStaticDirectory(firstOutput)
+	if err != nil || predecessor.Generation != 1 {
+		t.Fatalf("predecessor = %+v, %v", predecessor, err)
+	}
+	var requestJSON map[string]any
+	if err := json.Unmarshal(alphaInputsTestRequest(t, endpoint, control, at), &requestJSON); err != nil {
+		t.Fatal(err)
+	}
+	requestJSON["release"] = "h4-alpha-1-rc-2"
+	requestJSON["release_version"] = int64(2)
+	request, err := json.Marshal(requestJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := parseAlphaInputsRequest(request, endpoint, control, policy, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(seedPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := openRecord(raw, password)
+	zero(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zeroRecord(record)
+	previous := sha256.Sum256(predecessor.Files["catalog.ac1"])
+	files, err := buildAlphaVersionedInputFiles(context.Background(), parsed, record, endpoint, predecessor.Files["1.root.json"], 2, previous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := preflightAlphaRelease(context.Background(), parsed, files, endpoint, 2); err != nil {
+		t.Fatalf("generation 2 release preflight: %v", err)
+	}
+	catalog, digest, err := alphacontrol.Verify(files["catalog.ac1"], alphaRolePublic(record, roleAlphaDisclosure), at)
+	if err != nil || catalog.Generation != 2 || catalog.PreviousDigest != previous || digest == previous {
+		t.Fatalf("successor catalog = %+v, digest=%x, predecessor=%x, err=%v", catalog, digest, previous, err)
+	}
+	if _, found := files["2.snapshot.json"]; !found || files["1.snapshot.json"] != nil || files["2.targets.json"] == nil {
+		t.Fatalf("generation 2 metadata inventory = %v", maps.Keys(files))
 	}
 }
 

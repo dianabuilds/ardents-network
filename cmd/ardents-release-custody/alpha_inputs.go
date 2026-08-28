@@ -51,6 +51,39 @@ func runAssemble(ctx context.Context, arguments []string, output io.Writer, inpu
 	return renderAlphaInputsReceipt(output, receipt)
 }
 
+func runAssembleSuccessor(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {
+	flags := flag.NewFlagSet("assemble-successor", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var root, requestPath, endpointPath, controlPath, predecessorPath, outputPath string
+	flags.StringVar(&root, "root", "", "owner-only release custody directory")
+	flags.StringVar(&requestPath, "request", "", "fixed public RC2 request")
+	flags.StringVar(&endpointPath, "endpoint", "", "exact linux-amd64 RC2 Endpoint artifact")
+	flags.StringVar(&controlPath, "control", "", "exact linux-amd64 RC2 control artifact")
+	flags.StringVar(&predecessorPath, "predecessor", "", "direct RC1 static input directory")
+	flags.StringVar(&outputPath, "output", "", "previously absent RC2 static output directory")
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !allAbsolute(root, requestPath, endpointPath, controlPath, predecessorPath, outputPath) {
+		return errors.New("release custody assemble-successor arguments are invalid")
+	}
+	request, err := readBoundedCommandFile(requestPath, maximumRequestFileBytes)
+	if err != nil {
+		return fmt.Errorf("read RC2 request: %w", err)
+	}
+	endpoint, err := readBoundedCommandFile(endpointPath, maximumArtifactFileBytes)
+	if err != nil {
+		return fmt.Errorf("read RC2 Endpoint artifact: %w", err)
+	}
+	control, err := readBoundedCommandFile(controlPath, maximumArtifactFileBytes)
+	if err != nil {
+		return fmt.Errorf("read RC2 control artifact: %w", err)
+	}
+	receipt, err := custody.BuildAlphaSuccessor(ctx, custody.BuildAlphaSuccessorConfig{Root: root, Request: request, Endpoint: endpoint,
+		Control: control, Predecessor: predecessorPath, Output: outputPath}, input)
+	if err != nil {
+		return err
+	}
+	return renderAlphaInputsReceipt(output, receipt)
+}
+
 func allAbsolute(values ...string) bool {
 	for _, value := range values {
 		if value == "" || !filepath.IsAbs(value) {

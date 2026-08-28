@@ -15,11 +15,19 @@ import (
 )
 
 func buildAlphaInputFiles(ctx context.Context, request alphaInputsRequest, record seedRecord, endpoint []byte) (map[string][]byte, error) {
-	files, err := buildAlphaTUF(request, record, endpoint)
+	return buildAlphaVersionedInputFiles(ctx, request, record, endpoint, nil, 1, [32]byte{})
+}
+
+func buildAlphaVersionedInputFiles(ctx context.Context, request alphaInputsRequest, record seedRecord, endpoint, root []byte,
+	generation uint64, previousDigest [32]byte) (map[string][]byte, error) {
+	if generation == 0 {
+		return nil, ErrInvalid
+	}
+	files, err := buildAlphaTUFVersion(request, record, endpoint, root, generation)
 	if err != nil {
 		return nil, err
 	}
-	releaseDecision, err := preflightAlphaRelease(ctx, request, files, endpoint)
+	releaseDecision, err := preflightAlphaRelease(ctx, request, files, endpoint, generation)
 	if err != nil {
 		return nil, err
 	}
@@ -59,17 +67,17 @@ func buildAlphaInputFiles(ctx context.Context, request alphaInputsRequest, recor
 	var components [3]alphacontrol.Component
 	for index := range bodies {
 		signed, signErr := alphacontrol.SignComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentClass(index + 1),
-			Generation: 1, NotBefore: request.NotBefore, NotAfter: request.NotAfter, Body: bodies[index]}, alphaRolePrivate(record, componentKeys[index]))
+			Generation: generation, NotBefore: request.NotBefore, NotAfter: request.NotAfter, Body: bodies[index]}, alphaRolePrivate(record, componentKeys[index]))
 		if signErr != nil {
 			return nil, fmt.Errorf("sign alpha component %d: %w", index+1, signErr)
 		}
 		public := alphaRolePublic(record, componentKeys[index])
 		files[componentNames[index]], files[rootNames[index]] = signed, append([]byte(nil), public...)
 		components[index] = alphacontrol.Component{Class: alphacontrol.ComponentClass(index + 1), RootID: sha256.Sum256(public),
-			Generation: 1, NotAfter: request.NotAfter, Size: uint32(len(signed)), Digest: sha256.Sum256(signed)}
+			Generation: generation, NotAfter: request.NotAfter, Size: uint32(len(signed)), Digest: sha256.Sum256(signed)}
 	}
-	catalog, err := alphacontrol.Sign(alphacontrol.Catalog{Cohort: request.Cohort, Generation: 1,
-		NotBefore: request.NotBefore, NotAfter: request.NotAfter, Components: components}, alphaRolePrivate(record, roleAlphaDisclosure))
+	catalog, err := alphacontrol.Sign(alphacontrol.Catalog{Cohort: request.Cohort, Generation: generation,
+		NotBefore: request.NotBefore, NotAfter: request.NotAfter, PreviousDigest: previousDigest, Components: components}, alphaRolePrivate(record, roleAlphaDisclosure))
 	if err != nil {
 		return nil, fmt.Errorf("sign alpha catalog: %w", err)
 	}
@@ -77,13 +85,17 @@ func buildAlphaInputFiles(ctx context.Context, request alphaInputsRequest, recor
 	files["catalog.pub"] = append([]byte(nil), alphaRolePublic(record, roleAlphaDisclosure)...)
 	files["corpus.pub"] = append([]byte(nil), alphaRolePublic(record, roleAlphaCorpusAuthority)...)
 	files["RELEASE"] = alphaReleaseDescriptor(request)
-	if len(files) != len(alphaInputFileNames) {
+	if len(files) != len(alphaStaticFileNames(generation)) {
 		return nil, ErrInvalid
 	}
 	return files, nil
 }
 
-func preflightAlphaRelease(ctx context.Context, request alphaInputsRequest, files map[string][]byte, endpoint []byte) (release.Decision, error) {
+func preflightAlphaRelease(ctx context.Context, request alphaInputsRequest, files map[string][]byte, endpoint []byte, generation uint64) (release.Decision, error) {
+	if generation == 0 {
+		return release.Decision{}, ErrInvalid
+	}
+	version := fmt.Sprintf("%d", generation)
 	root, err := os.MkdirTemp("", "ardents-alpha-release-preflight-")
 	if err != nil {
 		return release.Decision{}, fmt.Errorf("create release preflight root: %w", err)
@@ -95,9 +107,9 @@ func preflightAlphaRelease(ctx context.Context, request alphaInputsRequest, file
 	}
 	defer verifier.Close()
 	metadataFiles := map[string][]byte{
-		release.MetadataURL("timestamp.json"):  files["timestamp.json"],
-		release.MetadataURL("1.snapshot.json"): files["1.snapshot.json"],
-		release.MetadataURL("1.targets.json"):  files["1.targets.json"],
+		release.MetadataURL("timestamp.json"):           files["timestamp.json"],
+		release.MetadataURL(version + ".snapshot.json"): files[version+".snapshot.json"],
+		release.MetadataURL(version + ".targets.json"):  files[version+".targets.json"],
 	}
 	decision := verifier.Evaluate(ctx, release.Inputs{RootBytes: files["1.root.json"], Files: metadataFiles,
 		TargetPath: alphaEndpointTargetPath, Artifact: endpoint,

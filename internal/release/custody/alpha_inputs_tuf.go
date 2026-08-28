@@ -52,36 +52,42 @@ type alphaTargetDescriptor struct {
 }
 
 func buildAlphaTUF(request alphaInputsRequest, record seedRecord, endpoint []byte) (map[string][]byte, error) {
-	root := metadata.Root(request.NotAfter)
-	root.Signed.UnrecognizedFields = map[string]any{
-		"ardents_schema_version": 1,
-		"ardents_profile":        "ardents-h3-release-v1",
-		"ardents_environment":    request.Environment,
-		"ardents_network":        request.Network,
+	return buildAlphaTUFVersion(request, record, endpoint, nil, 1)
+}
+
+func buildAlphaTUFVersion(request alphaInputsRequest, record seedRecord, endpoint, rootBytes []byte, generation uint64) (map[string][]byte, error) {
+	if generation == 0 || generation > uint64(^uint64(0)>>1) {
+		return nil, ErrInvalid
 	}
-	keyIDs := make([]string, 0, 5)
-	for index := 0; index < 5; index++ {
-		public := alphaRolePublic(record, index)
-		key, err := metadata.KeyFromPublicKey(public)
-		if err != nil {
-			return nil, fmt.Errorf("construct TUF key: %w", err)
+	metadataVersion := int64(generation)
+	if len(rootBytes) == 0 {
+		root := metadata.Root(request.NotAfter)
+		root.Signed.UnrecognizedFields = map[string]any{"ardents_schema_version": 1, "ardents_profile": "ardents-h3-release-v1", "ardents_environment": request.Environment, "ardents_network": request.Network}
+		keyIDs := make([]string, 0, 5)
+		for index := 0; index < 5; index++ {
+			public := alphaRolePublic(record, index)
+			key, err := metadata.KeyFromPublicKey(public)
+			if err != nil {
+				return nil, fmt.Errorf("construct TUF key: %w", err)
+			}
+			identifier, err := key.ID()
+			if err != nil {
+				return nil, fmt.Errorf("identify TUF key: %w", err)
+			}
+			root.Signed.Keys[identifier] = key
+			keyIDs = append(keyIDs, identifier)
 		}
-		identifier, err := key.ID()
-		if err != nil {
-			return nil, fmt.Errorf("identify TUF key: %w", err)
+		for _, role := range metadata.TOP_LEVEL_ROLE_NAMES {
+			root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), keyIDs...), Threshold: 3}
 		}
-		root.Signed.Keys[identifier] = key
-		keyIDs = append(keyIDs, identifier)
-	}
-	for _, role := range metadata.TOP_LEVEL_ROLE_NAMES {
-		root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), keyIDs...), Threshold: 3}
-	}
-	if err := signAlphaMetadata(root, record, 5); err != nil {
-		return nil, err
-	}
-	rootBytes, err := root.ToBytes(false)
-	if err != nil {
-		return nil, fmt.Errorf("encode TUF root: %w", err)
+		if err := signAlphaMetadata(root, record, 5); err != nil {
+			return nil, err
+		}
+		encoded, err := root.ToBytes(false)
+		if err != nil {
+			return nil, fmt.Errorf("encode TUF root: %w", err)
+		}
+		rootBytes = encoded
 	}
 
 	targetDigest := sha256.Sum256(endpoint)
@@ -108,6 +114,7 @@ func buildAlphaTUF(request alphaInputsRequest, record seedRecord, endpoint []byt
 	}
 	custom := json.RawMessage(customBytes)
 	targets := metadata.Targets(request.NotAfter)
+	targets.Signed.Version = metadataVersion
 	targets.Signed.Targets[alphaEndpointTargetPath] = &metadata.TargetFiles{Length: int64(len(endpoint)),
 		Hashes: metadata.Hashes{"sha256": targetDigest[:]}, Path: alphaEndpointTargetPath, Custom: &custom}
 	targetSignatureCount := 3
@@ -124,7 +131,8 @@ func buildAlphaTUF(request alphaInputsRequest, record seedRecord, endpoint []byt
 	targetsDigest := sha256.Sum256(targetsBytes)
 
 	snapshot := metadata.Snapshot(request.NotAfter)
-	snapshot.Signed.Meta["targets.json"] = &metadata.MetaFiles{Version: 1, Length: int64(len(targetsBytes)), Hashes: metadata.Hashes{"sha256": targetsDigest[:]}}
+	snapshot.Signed.Version = metadataVersion
+	snapshot.Signed.Meta["targets.json"] = &metadata.MetaFiles{Version: metadataVersion, Length: int64(len(targetsBytes)), Hashes: metadata.Hashes{"sha256": targetsDigest[:]}}
 	if err := signAlphaMetadata(snapshot, record, 3); err != nil {
 		return nil, err
 	}
@@ -135,7 +143,8 @@ func buildAlphaTUF(request alphaInputsRequest, record seedRecord, endpoint []byt
 	snapshotDigest := sha256.Sum256(snapshotBytes)
 
 	timestamp := metadata.Timestamp(request.NotAfter)
-	timestamp.Signed.Meta["snapshot.json"] = &metadata.MetaFiles{Version: 1, Length: int64(len(snapshotBytes)), Hashes: metadata.Hashes{"sha256": snapshotDigest[:]}}
+	timestamp.Signed.Version = metadataVersion
+	timestamp.Signed.Meta["snapshot.json"] = &metadata.MetaFiles{Version: metadataVersion, Length: int64(len(snapshotBytes)), Hashes: metadata.Hashes{"sha256": snapshotDigest[:]}}
 	if err := signAlphaMetadata(timestamp, record, 3); err != nil {
 		return nil, err
 	}
@@ -143,7 +152,8 @@ func buildAlphaTUF(request alphaInputsRequest, record seedRecord, endpoint []byt
 	if err != nil {
 		return nil, fmt.Errorf("encode TUF timestamp: %w", err)
 	}
-	return map[string][]byte{"1.root.json": rootBytes, "1.targets.json": targetsBytes, "1.snapshot.json": snapshotBytes, "timestamp.json": timestampBytes}, nil
+	version := fmt.Sprintf("%d", generation)
+	return map[string][]byte{"1.root.json": append([]byte(nil), rootBytes...), version + ".targets.json": targetsBytes, version + ".snapshot.json": snapshotBytes, "timestamp.json": timestampBytes}, nil
 }
 
 func signAlphaMetadata(value interface {

@@ -42,6 +42,9 @@ const (
 	// PromptAssemble authorizes only the fixed ADR-0052 alpha-input operation.
 	// It never authorizes an arbitrary message, role, target, or upload.
 	PromptAssemble Prompt = "release-custody-assemble"
+	// PromptAssembleSuccessor authorizes only the fixed recorded RC1-to-RC2
+	// alpha successor operation.
+	PromptAssembleSuccessor Prompt = "release-custody-assemble-successor"
 )
 
 // PublicRole identifies one fixed ceremony role and its Ed25519 public key.

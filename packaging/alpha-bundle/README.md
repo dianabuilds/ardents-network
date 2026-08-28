@@ -8,7 +8,8 @@ environment, its output, or the repository.
 
 The caller supplies the exact Linux `amd64` Endpoint and control binaries, plus
 one direct static directory already prepared by the applicable Release and
-H4-6A authority operations. That static directory must contain exactly:
+H4-6A authority operations. That directory must contain exactly one matching,
+non-zero decimal TUF metadata pair. For the initial generation it is:
 
 ```text
 1.root.json          1.snapshot.json        1.targets.json
@@ -17,6 +18,11 @@ catalog.pub           release.ac1            release.pub
 network.ac1           network.pub            compatibility.ac1
 compatibility.pub     corpus.pub
 ```
+
+For a fixed approved successor, only the pair changes together (for example,
+`2.snapshot.json` and `2.targets.json`); the trusted root remains
+`1.root.json`. The assembler rejects a mixed, duplicated, or unexpected
+inventory rather than guessing a metadata generation.
 
 The `RELEASE` descriptor must be enrollment-v3, name the supplied cohort,
 release, `linux-amd64`, both fixed executable names, `environment=alpha`, and

@@ -36,6 +36,8 @@ func (input dialogSecretInput) ReadSecret(ctx context.Context, prompt custody.Pr
 		message = "Enter the existing local Ardents release passphrase to inspect its public receipt."
 	} else if prompt == custody.PromptAssemble {
 		message = "Enter the existing local Ardents release passphrase to assemble fixed alpha inputs."
+	} else if prompt == custody.PromptAssembleSuccessor {
+		message = "Enter the existing local Ardents release passphrase to assemble the fixed RC2 alpha successor."
 	}
 	return input.read(message)
 }

@@ -43,9 +43,30 @@ if [ -e "$ARDENTS_ALPHA_BUNDLE_OUTPUT" ]; then
   exit 2
 fi
 
-static_names='1.root.json
-1.snapshot.json
-1.targets.json
+metadata_names=$(for source in "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT"/*.snapshot.json "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT"/*.targets.json; do
+  [ -f "$source" ] || continue
+  basename "$source"
+done | LC_ALL=C sort)
+metadata_count=$(printf '%s\n' "$metadata_names" | sed '/^$/d' | wc -l | tr -d ' ')
+if [ "$metadata_count" -ne 2 ]; then
+  echo 'alpha bundle static root must contain exactly one versioned snapshot/targets pair' >&2
+  exit 2
+fi
+snapshot_name=$(printf '%s\n' "$metadata_names" | sed -n '/\.snapshot\.json$/p')
+targets_name=$(printf '%s\n' "$metadata_names" | sed -n '/\.targets\.json$/p')
+snapshot_version=${snapshot_name%.snapshot.json}
+targets_version=${targets_name%.targets.json}
+case "$snapshot_version" in
+  *[!0-9]* | '' | 0 | 0*) echo 'alpha bundle versioned metadata generation is invalid' >&2; exit 2 ;;
+esac
+if [ -z "$snapshot_name" ] || [ -z "$targets_name" ] || [ "$snapshot_version" != "$targets_version" ]; then
+  echo 'alpha bundle versioned snapshot/targets pair is invalid' >&2
+  exit 2
+fi
+
+static_names="1.root.json
+$snapshot_name
+$targets_name
 RELEASE
 catalog.ac1
 catalog.pub
@@ -56,7 +77,7 @@ network.ac1
 network.pub
 release.ac1
 release.pub
-timestamp.json'
+timestamp.json"
 
 for name in $static_names; do
   source="$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/$name"

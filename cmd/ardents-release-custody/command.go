@@ -14,13 +14,16 @@ import (
 
 func run(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-release-custody <initialize|inspect|assemble> [fixed arguments]")
+		return errors.New("usage: ardents-release-custody <initialize|inspect|assemble|assemble-successor> [fixed arguments]")
 	}
 	if arguments[0] == "assemble" {
 		return runAssemble(ctx, arguments[1:], output, input)
 	}
+	if arguments[0] == "assemble-successor" {
+		return runAssembleSuccessor(ctx, arguments[1:], output, input)
+	}
 	if arguments[0] != "initialize" && arguments[0] != "inspect" {
-		return errors.New("usage: ardents-release-custody <initialize|inspect|assemble> [fixed arguments]")
+		return errors.New("usage: ardents-release-custody <initialize|inspect|assemble|assemble-successor> [fixed arguments]")
 	}
 	operation := arguments[0]
 	flags := flag.NewFlagSet(operation, flag.ContinueOnError)

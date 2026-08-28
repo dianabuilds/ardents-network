@@ -66,6 +66,16 @@ facts and the two exact artifacts are reviewed, the Product Owner invokes
 Release/Network/H4-6A preflight and publishes one previously absent static
 directory. It does not assemble or upload the bundle.
 
+When a verified correction changes candidate bytes, do not overwrite the
+published static set or reuse its release label. Prepare a separate approved
+successor request and invoke the constrained
+`ardents-release-custody assemble-successor` adapter with the complete direct
+RC1 static directory. It admits only the recorded RC1 predecessor and fixed
+RC2 inputs, preserves `1.root.json`, and creates the matching generation-2
+snapshot/targets and H4-6A metadata in a previously absent directory. Repeat
+the archive, enrollment, H4-6A, and dependent-gate evidence for that new
+immutable candidate.
+
 ## Signed input set
 
 The release workspace produces and independently verifies one static set before

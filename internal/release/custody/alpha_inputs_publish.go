@@ -36,7 +36,7 @@ func checkedAlphaOutput(path string) (string, error) {
 }
 
 func publishAlphaInputFiles(ctx context.Context, output string, request alphaInputsRequest, files map[string][]byte,
-	endpoint, control []byte, clock func() time.Time) ([]AlphaInputFile, [32]byte, error) {
+	endpoint, control []byte, names []string, clock func() time.Time) ([]AlphaInputFile, [32]byte, error) {
 	var zeroDigest [32]byte
 	stage, err := os.MkdirTemp(filepath.Dir(output), ".ardents-alpha-inputs-")
 	if err != nil {
@@ -46,7 +46,7 @@ func publishAlphaInputFiles(ctx context.Context, output string, request alphaInp
 	if err := os.Chmod(stage, 0o700); err != nil {
 		return nil, zeroDigest, fmt.Errorf("protect alpha-input staging directory: %w", err)
 	}
-	for _, name := range alphaInputFileNames {
+	for _, name := range names {
 		value, found := files[name]
 		if !found || len(value) == 0 {
 			return nil, zeroDigest, ErrInvalid
@@ -76,7 +76,7 @@ func publishAlphaInputFiles(ctx context.Context, output string, request alphaInp
 			return nil, zeroDigest, fmt.Errorf("remove preflight-only file: %w", err)
 		}
 	}
-	receipt, outputDigest, err := verifyAlphaInputStage(stage, files)
+	receipt, outputDigest, err := verifyAlphaInputStage(stage, files, names)
 	if err != nil {
 		return nil, zeroDigest, err
 	}
@@ -170,14 +170,14 @@ func preflightAlphaBundle(ctx context.Context, bundle string, request alphaInput
 	return nil
 }
 
-func verifyAlphaInputStage(root string, expected map[string][]byte) ([]AlphaInputFile, [32]byte, error) {
+func verifyAlphaInputStage(root string, expected map[string][]byte, names []string) ([]AlphaInputFile, [32]byte, error) {
 	var outputDigest [32]byte
 	entries, err := os.ReadDir(root)
-	if err != nil || len(entries) != len(alphaInputFileNames) {
+	if err != nil || len(entries) != len(names) {
 		return nil, outputDigest, ErrInvalid
 	}
-	allowed := make(map[string]struct{}, len(alphaInputFileNames))
-	for _, name := range alphaInputFileNames {
+	allowed := make(map[string]struct{}, len(names))
+	for _, name := range names {
 		allowed[name] = struct{}{}
 	}
 	receipt := make([]AlphaInputFile, 0, len(entries))

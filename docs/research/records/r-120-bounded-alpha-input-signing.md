@@ -170,3 +170,11 @@ self-consistent artifact or custody record is rejected rather than becoming an
 accidental reusable signer. Freshness is rechecked immediately before the
 atomic rename so a request that crosses a bound during local construction
 leaves no visible output.
+
+On 2026-08-28 an RC2 correction required a new immutable candidate. The
+maintained successor interface remains deliberately narrower than a repository
+administrator: it admits only the exact retained RC1 root/catalog pair before
+secret use, retains root generation 1, and can produce only the fixed RC2
+generation-2 snapshot/targets, ACA1 components, and catalog. Its source and
+program-byte identities are policy pins; approval and publication evidence are
+still pending and no H4 status is implied by the interface change.
