@@ -1,6 +1,7 @@
 [CmdletBinding(DefaultParameterSetName = 'Campaign')]
 param(
     [Parameter(Mandatory = $true, ParameterSetName = 'Campaign')][string]$SourceRevision,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Campaign')][string]$CandidateRepository,
     [Parameter(Mandatory = $true, ParameterSetName = 'Campaign')][string]$ReleaseTag,
     [Parameter(Mandatory = $true, ParameterSetName = 'Campaign')][string]$CandidateArchive,
     [Parameter(Mandatory = $true, ParameterSetName = 'Campaign')][string]$ArchiveSHA256,
@@ -21,7 +22,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-$repository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
+$harnessRepository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
+$repository = $harnessRepository
+if ($PSCmdlet.ParameterSetName -eq 'Campaign') {
+    if (-not [IO.Path]::IsPathRooted($CandidateRepository) -or -not (Test-Path -LiteralPath $CandidateRepository -PathType Container)) {
+        throw 'CandidateRepository must be one existing absolute committed worktree.'
+    }
+    $repository = (Resolve-Path -LiteralPath $CandidateRepository).Path
+}
 $remoteImage = 'golang:1.26.6'
 $remoteMemoryLimit = 1073741824L
 $remotePIDLimit = 128L
@@ -1115,7 +1123,8 @@ function Invoke-SSH([string]$Command, [string]$Stdout, [string]$Stderr) {
     # depends on Windows command-line quoting. Remove -n because stdin is the
     # script channel for this invocation.
     $commandPath = $Stdout + '.command.sh'
-    Write-Utf8 $commandPath ($(if ($Command.EndsWith("`n", [StringComparison]::Ordinal)) { $Command } else { $Command + "`n" }))
+    $normalized = $Command.Replace("`r`n", "`n").Replace("`r", "`n")
+    Write-Utf8 $commandPath ($(if ($normalized.EndsWith("`n", [StringComparison]::Ordinal)) { $normalized } else { $normalized + "`n" }))
     $arguments = (Get-SSHOptions $script:knownHosts | Where-Object { $_ -ne '-n' }) + @($script:remote, 'sh', '-s')
     return Invoke-NativeCaptured $script:sshPath $arguments $Stdout $Stderr $script:repository $commandPath
 }
@@ -2084,6 +2093,10 @@ $tagCommit = (& git -C $repository rev-parse --verify "$tagReference^{commit}").
 if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $SourceRevision) { throw 'release tag does not resolve to the exact SourceRevision input.' }
 $tagObject = (& git -C $repository rev-parse --verify $tagReference).Trim()
 if ($LASTEXITCODE -ne 0 -or $tagObject -cnotmatch '^[0-9a-f]{40}$') { throw 'release tag object identity is unavailable.' }
+$harnessDirty = @(& git -C $harnessRepository status --porcelain=v1 --untracked-files=all)
+if ($LASTEXITCODE -ne 0 -or $harnessDirty.Count -ne 0) { throw 'A11 requires a clean committed runner worktree.' }
+$harnessRevision = (& git -C $harnessRepository rev-parse --verify HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $harnessRevision -cnotmatch '^[0-9a-f]{40}$') { throw 'A11 runner revision is unavailable.' }
 
 [IO.Directory]::CreateDirectory($evidencePath) | Out-Null
 $campaignStarted = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -2103,6 +2116,8 @@ Write-Json (Join-Path $evidencePath 'inputs.json') ([ordered]@{
     schema = 'ardents-h4-8-a11-campaign-inputs-v1'
     campaign_started_at_utc = $campaignStarted
     source_revision = $SourceRevision
+    candidate_repository = $repository
+    harness_revision = $harnessRevision
     release_tag = $ReleaseTag
     release_tag_object = $tagObject
     archive_name = [IO.Path]::GetFileName($candidatePath)

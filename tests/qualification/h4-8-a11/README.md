@@ -17,8 +17,9 @@ Carrier, or product Node fault domain is lost?
 
 The runner requires, rather than discovers, all of these inputs:
 
-- one clean committed source revision and the immutable release tag resolving
-  to it;
+- one clean committed candidate-source worktree, its source revision, and the
+  immutable release tag resolving to it; and a separately clean committed
+  runner worktree whose revision is retained as harness evidence;
 - the exact closed-alpha archive, archive SHA-256, Alpha Enrollment Pin,
   Endpoint SHA-256, and control-companion SHA-256;
 - the literal Ubuntu VPS address, SSH user, SSH key, and base port; and

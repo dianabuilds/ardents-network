@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$SourceRevision,
+    [Parameter(Mandatory = $true)][string]$CandidateRepository,
     [Parameter(Mandatory = $true)][string]$ReleaseTag,
     [Parameter(Mandatory = $true)][string]$CandidateArchive,
     [Parameter(Mandatory = $true)][string]$ArchiveSHA256,
@@ -63,7 +64,7 @@ $runner = Join-Path $PSScriptRoot 'run-windows.ps1'
 $powershell = (Get-Process -Id $PID).Path
 $arguments = @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runner,
-    '-SourceRevision', $SourceRevision, '-ReleaseTag', $ReleaseTag,
+    '-SourceRevision', $SourceRevision, '-CandidateRepository', $CandidateRepository, '-ReleaseTag', $ReleaseTag,
     '-CandidateArchive', $CandidateArchive, '-ArchiveSHA256', $ArchiveSHA256,
     '-ManifestPin', $ManifestPin, '-EndpointSHA256', $EndpointSHA256,
     '-ControlSHA256', $ControlSHA256, '-Cohort', $Cohort, '-At', $At,

@@ -247,6 +247,7 @@ does not mean passed, waived, or unavailable evidence.
   ```powershell
   make qualification-h4-8-a11 `
     H4_8_A11_SOURCE_REVISION='<40-lower-hex>' `
+    H4_8_A11_CANDIDATE_REPOSITORY='C:/absolute/clean-tagged-candidate-worktree' `
     H4_8_A11_RELEASE_TAG='<exact-tag>' `
     H4_8_A11_ARCHIVE='C:/absolute/outside-git/candidate.tar.gz' `
     H4_8_A11_ARCHIVE_SHA256='<64-lower-hex>' `
