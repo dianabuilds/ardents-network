@@ -15,6 +15,7 @@ work=/work
 pids=""
 transit_pids=""
 transit_processes=""
+stream_paths=""
 started_pid=""
 role_exit_statuses="$work/remote-role-exit-statuses.jsonl"
 : >"$role_exit_statuses"
@@ -32,6 +33,7 @@ cleanup() {
   trap - EXIT INT TERM
   for pid in $pids; do kill "$pid" 2>/dev/null || true; done
   for pid in $pids; do wait "$pid" 2>/dev/null || true; done
+  for path in $stream_paths; do rm -f "$path"; done
   exit "$status"
 }
 trap cleanup EXIT INT TERM
@@ -39,6 +41,20 @@ start() {
   name=$1
   shift
   "$@" >"$work/$name.log" 2>"$work/$name.err" &
+  pid=$!
+  pids="$pids $pid"
+  started_pid=$pid
+}
+start_stream() {
+  name=$1
+  shift
+  stream="$work/$name.stdout"
+  mkfifo "$stream"
+  cat "$stream" >"$work/$name.log" &
+  reader=$!
+  pids="$pids $reader"
+  stream_paths="$stream_paths $stream"
+  "$@" >"$stream" 2>"$work/$name.err" &
   pid=$!
   pids="$pids $pid"
   started_pid=$pid
@@ -125,7 +141,7 @@ if [ "$product_transit" = true ]; then
   (while :; do touch "$work/rendezvous-node-clock.observation"; sleep 0.1; done) &
   rendezvous_clock=$!
   pids="$pids $rendezvous_clock"
-  start rendezvous-node "$work/ardents-node" node --config "$work/rendezvous-node-plan.json"
+  start_stream rendezvous-node "$work/ardents-node" node --config "$work/rendezvous-node-plan.json"
   rendezvous_node=$started_pid
   printf '%s\n' "$rendezvous_node" >"$work/rendezvous-node.pid"
   wait_node_ready "$work/rendezvous-node.log"
@@ -276,7 +292,8 @@ func TestH43RemoteRunnerHasPOSIXShellSyntax(t *testing.T) {
 func TestH48A11RemoteRunnerRetainsExactProductTransitAndFaultReceipts(t *testing.T) {
 	runner := h43RemoteRunner()
 	for _, required := range []string{
-		`start rendezvous-node "$work/ardents-node" node --config "$work/rendezvous-node-plan.json"`,
+		`start_stream rendezvous-node "$work/ardents-node" node --config "$work/rendezvous-node-plan.json"`,
+		`mkfifo "$stream"`, `cat "$stream" >"$work/$name.log"`,
 		`start carrier-relay "$work/reference-c2" carrier-relay "$work/reference-c2.json"`,
 		`rendezvous-node.pid`, `carrier-relay.pid`, `publisher.pid`, `publisher-app.pid`, `carrier-relay-ready.json`, `topology.json`,
 		`transit-fault-ready`, `fault-injection.json`, `carrier-relay-reset.json`, `rendezvous-node-kill.json`,

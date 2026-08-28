@@ -24,12 +24,14 @@ $ErrorActionPreference = 'Stop'
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $harnessRepository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
 $repository = $harnessRepository
+$candidateRepository = $harnessRepository
 if ($PSCmdlet.ParameterSetName -eq 'Campaign') {
     if (-not [IO.Path]::IsPathRooted($CandidateRepository) -or -not (Test-Path -LiteralPath $CandidateRepository -PathType Container)) {
         throw 'CandidateRepository must be one existing absolute committed worktree.'
     }
-    $repository = (Resolve-Path -LiteralPath $CandidateRepository).Path
+    $candidateRepository = (Resolve-Path -LiteralPath $CandidateRepository).Path
 }
+$script:candidateRepository = $candidateRepository
 $remoteImage = 'golang:1.26.6'
 $remoteMemoryLimit = 1073741824L
 $remotePIDLimit = 128L
@@ -1776,24 +1778,33 @@ function Invoke-A11Attempt(
             $failures.Add('the fixed 125-minute campaign deadline elapsed before this distinct sub-attempt could start.')
             throw 'A11_CAMPAIGN_DEADLINE'
         }
-        $attemptDirty = @(& git -C $script:repository status --porcelain=v1 --untracked-files=all)
-        $statusExit = $LASTEXITCODE
-        $attemptHead = (& git -C $script:repository rev-parse --verify HEAD).Trim()
-        $headExit = $LASTEXITCODE
-        $attemptTag = (& git -C $script:repository rev-parse --verify "refs/tags/$($script:ReleaseTag)^{commit}").Trim()
+        $attemptCandidateDirty = @(& git -C $script:candidateRepository status --porcelain=v1 --untracked-files=all)
+        $candidateStatusExit = $LASTEXITCODE
+        $attemptCandidateHead = (& git -C $script:candidateRepository rev-parse --verify HEAD).Trim()
+        $candidateHeadExit = $LASTEXITCODE
+        $attemptTag = (& git -C $script:candidateRepository rev-parse --verify "refs/tags/$($script:ReleaseTag)^{commit}").Trim()
         $tagExit = $LASTEXITCODE
+        $attemptHarnessDirty = @(& git -C $script:repository status --porcelain=v1 --untracked-files=all)
+        $harnessStatusExit = $LASTEXITCODE
+        $attemptHarnessHead = (& git -C $script:repository rev-parse --verify HEAD).Trim()
+        $harnessHeadExit = $LASTEXITCODE
         Write-Json (Join-Path $attemptPath 'source-preflight.json') ([ordered]@{
-            status_exit = $statusExit
-            dirty_entries = @($attemptDirty)
-            head_exit = $headExit
-            head = $attemptHead
+            candidate_status_exit = $candidateStatusExit
+            candidate_dirty_entries = @($attemptCandidateDirty)
+            candidate_head_exit = $candidateHeadExit
+            candidate_head = $attemptCandidateHead
             tag_exit = $tagExit
             tag_commit = $attemptTag
-            expected = $script:SourceRevision
+            expected_candidate = $script:SourceRevision
+            harness_status_exit = $harnessStatusExit
+            harness_dirty_entries = @($attemptHarnessDirty)
+            harness_head_exit = $harnessHeadExit
+            harness_head = $attemptHarnessHead
         })
-        if ($statusExit -ne 0 -or $attemptDirty.Count -ne 0 -or $headExit -ne 0 -or $tagExit -ne 0 -or
-            $attemptHead -cne $script:SourceRevision -or $attemptTag -cne $script:SourceRevision) {
-            $failures.Add('exact clean source/tag identity changed before this sub-attempt; no topology was launched.')
+        if ($candidateStatusExit -ne 0 -or $attemptCandidateDirty.Count -ne 0 -or $candidateHeadExit -ne 0 -or $tagExit -ne 0 -or
+            $attemptCandidateHead -cne $script:SourceRevision -or $attemptTag -cne $script:SourceRevision -or
+            $harnessStatusExit -ne 0 -or $attemptHarnessDirty.Count -ne 0 -or $harnessHeadExit -ne 0) {
+            $failures.Add('exact candidate or committed harness identity changed before this sub-attempt; no topology was launched.')
             throw 'A11_ATTEMPT_SOURCE'
         }
         if ($Attempt.Remote) {
@@ -1846,7 +1857,8 @@ function Invoke-A11Attempt(
         Write-Json (Join-Path $attemptPath 'go-invocation.json') ([ordered]@{
             executable = [IO.Path]::GetFileName($script:goPath)
             arguments = $goArguments
-            working_tree_revision = $script:SourceRevision
+            working_tree_revision = $attemptHarnessHead
+            candidate_source_revision = $script:SourceRevision
             environment_names = @($environmentValues.Keys | Sort-Object)
             ssh_key_value_retained = $false
         })
@@ -2077,21 +2089,22 @@ $evidencePath = [IO.Path]::GetFullPath($EvidenceOutput)
 if (Test-Path -LiteralPath $evidencePath) { throw 'EvidenceOutput must be previously absent; attempts are never overwritten.' }
 $evidenceParent = Split-Path -Parent $evidencePath
 if (-not (Test-Path -LiteralPath $evidenceParent -PathType Container)) { throw 'EvidenceOutput parent directory is unavailable.' }
-if ((Test-PathWithin $candidatePath $repository) -or (Test-PathWithin $evidencePath $repository)) {
+if ((Test-PathWithin $candidatePath $candidateRepository) -or (Test-PathWithin $evidencePath $candidateRepository) -or
+    (Test-PathWithin $candidatePath $harnessRepository) -or (Test-PathWithin $evidencePath $harnessRepository)) {
     throw 'CandidateArchive and EvidenceOutput must remain outside the repository.'
 }
 
-$dirty = @(& git -C $repository status --porcelain=v1 --untracked-files=all)
+$dirty = @(& git -C $candidateRepository status --porcelain=v1 --untracked-files=all)
 if ($LASTEXITCODE -ne 0) { throw 'Git worktree status is unavailable.' }
-if ($dirty.Count -ne 0) { throw 'A11 requires a clean committed source and checked campaign contract.' }
-$head = (& git -C $repository rev-parse --verify HEAD).Trim()
+if ($dirty.Count -ne 0) { throw 'A11 requires a clean committed candidate source worktree.' }
+$head = (& git -C $candidateRepository rev-parse --verify HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $head -cne $SourceRevision) { throw 'HEAD does not equal the exact SourceRevision input.' }
 $tagReference = "refs/tags/$ReleaseTag"
-& git -C $repository show-ref --verify --quiet $tagReference
+& git -C $candidateRepository show-ref --verify --quiet $tagReference
 if ($LASTEXITCODE -ne 0) { throw 'the exact local immutable release tag is absent.' }
-$tagCommit = (& git -C $repository rev-parse --verify "$tagReference^{commit}").Trim()
+$tagCommit = (& git -C $candidateRepository rev-parse --verify "$tagReference^{commit}").Trim()
 if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $SourceRevision) { throw 'release tag does not resolve to the exact SourceRevision input.' }
-$tagObject = (& git -C $repository rev-parse --verify $tagReference).Trim()
+$tagObject = (& git -C $candidateRepository rev-parse --verify $tagReference).Trim()
 if ($LASTEXITCODE -ne 0 -or $tagObject -cnotmatch '^[0-9a-f]{40}$') { throw 'release tag object identity is unavailable.' }
 $harnessDirty = @(& git -C $harnessRepository status --porcelain=v1 --untracked-files=all)
 if ($LASTEXITCODE -ne 0 -or $harnessDirty.Count -ne 0) { throw 'A11 requires a clean committed runner worktree.' }
@@ -2116,7 +2129,7 @@ Write-Json (Join-Path $evidencePath 'inputs.json') ([ordered]@{
     schema = 'ardents-h4-8-a11-campaign-inputs-v1'
     campaign_started_at_utc = $campaignStarted
     source_revision = $SourceRevision
-    candidate_repository = $repository
+    candidate_repository = $candidateRepository
     harness_revision = $harnessRevision
     release_tag = $ReleaseTag
     release_tag_object = $tagObject
@@ -2190,7 +2203,7 @@ try {
         [ordered]@{ path = [IO.Path]::GetFileName($path); sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
     }
     Write-Json (Join-Path $evidencePath 'harness-sha256.json') ([ordered]@{ schema = 'ardents-h4-8-a11-harness-digests-v1'; files = @($harnessDigests) })
-    $treeExit = Invoke-NativeCaptured 'git.exe' @('-C', $repository, 'ls-tree', '-r', '--full-tree', $SourceRevision) `
+    $treeExit = Invoke-NativeCaptured 'git.exe' @('-C', $candidateRepository, 'ls-tree', '-r', '--full-tree', $SourceRevision) `
         (Join-Path $evidencePath 'source-tree.txt') (Join-Path $evidencePath 'source-tree.stderr.log')
     Write-Utf8 (Join-Path $evidencePath 'source-tree.exitcode') "$treeExit`n"
     if ($treeExit -ne 0) { throw 'exact committed source-tree inventory is unavailable.' }
@@ -2337,6 +2350,7 @@ finally {
 }
 
 if (-not $accepted) {
-    throw ('H4-8 A11 campaign failed; retained evidence: ' + $evidencePath + $(if ($campaignFailures.Count -ne 0) { ' | ' + ($campaignFailures -join ' | ') } else { '' }))
+    Write-Error ('H4-8 A11 campaign failed; retained evidence: ' + $evidencePath + $(if ($campaignFailures.Count -ne 0) { ' | ' + ($campaignFailures -join ' | ') } else { '' }))
+    exit 1
 }
 Write-Output "H4-8 A11 campaign accepted 6/6 without retry; evidence retained at $evidencePath"

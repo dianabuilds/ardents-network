@@ -135,8 +135,7 @@ while :; do
     printf 'terminal_container_state id=%s running=%s restarting=%s oom_killed=%s restart_count=%s\n' \
       "$container_id" "$running" "$restarting" "$oom_killed" "$restart_count" >&2
     if [ "$restarting" != false ] || [ "$oom_killed" != false ]; then exit 3; fi
-    sleep 1
-    continue
+    exit 0
   fi
   safe_number "$init_pid" init_pid >/dev/null
   if ! cgroup_rel=$(awk -F: '$1 == "0" && $2 == "" { print $3; found=1; exit } END { if (!found) exit 1 }' "/proc/$init_pid/cgroup"); then
