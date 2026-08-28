@@ -779,6 +779,14 @@ function Invoke-SelfTests {
     if ((Test-A11EntrypointCaptureSource ($entrypointSource.Replace('Import-CanonicalUtilityModule', 'Import-MissingUtilityModule'))).Passed) {
         $assertions.Add('A11 entrypoint capture oracle accepted missing canonical utility-module import')
     }
+    $makefileSource = [IO.File]::ReadAllText((Join-Path $repository 'Makefile'))
+    $canonicalPowerShell = 'C:\Windows\Sysnative\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-8-a11/invoke-windows.ps1'
+    if ($makefileSource.IndexOf($canonicalPowerShell, [StringComparison]::Ordinal) -lt 0) {
+        $assertions.Add('A11 Make entrypoint does not force the required 64-bit Windows PowerShell host.')
+    }
+    if ($makefileSource.Replace('C:\Windows\Sysnative\WindowsPowerShell\v1.0\powershell.exe', 'powershell').IndexOf($canonicalPowerShell, [StringComparison]::Ordinal) -ge 0) {
+        $assertions.Add('A11 Make entrypoint oracle accepted the x86 PowerShell fallback mutation.')
+    }
     $temporary = Join-Path ([IO.Path]::GetTempPath()) ('ardents-a11-self-test-' + [Guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($temporary) | Out-Null
     try {

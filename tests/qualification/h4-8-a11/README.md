@@ -158,6 +158,9 @@ It captures the runner's complete independent stdout, stderr, and exit status
 as `entrypoint.*` evidence, records both entrypoint/runner digests, and
 rebuilds the root inventory after adding those files. A zero process exit is
 not accepted unless the runner also retained an accepted A11 campaign receipt.
+The target invokes Windows PowerShell through `Sysnative` so an x86 GNU Make
+process cannot silently launch the x86 host that the Windows 11 `amd64`
+contract rejects.
 
 ## Pass claim and limitations
 
