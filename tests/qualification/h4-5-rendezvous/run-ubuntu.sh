@@ -59,7 +59,7 @@ esac
 [ "$listen_port" -ge 1024 ] && [ "$listen_port" -le 65535 ] || invalid 'listen port must be unprivileged'
 [ "$(id -u)" -eq 0 ] || invalid 'preflight must run as root for the later exact lifecycle'
 
-for command in awk date df findmnt getconf grep id ip journalctl sha256sum ss stat systemctl tr uname; do
+for command in awk cp date df findmnt getconf grep id ip journalctl sha256sum ss stat systemctl tr uname; do
 	require_command "$command"
 done
 if [ -n "$repository_root" ]; then
@@ -148,11 +148,13 @@ fi
 	printf 'running_services:\n'; systemctl list-units --type=service --state=running --no-pager --plain
 } >"$evidence_dir/host-observation.txt"
 
+cp -- "$0" "$evidence_dir/run-ubuntu.sh"
 sha256sum \
 	"$evidence_dir/host.txt" \
-	"$evidence_dir/host-observation.txt" >"$evidence_dir/input.sha256"
+	"$evidence_dir/host-observation.txt" \
+	"$evidence_dir/run-ubuntu.sh" >"$evidence_dir/input.sha256"
 chmod 600 "$evidence_dir/host.txt" "$evidence_dir/host-observation.txt" \
-	"$evidence_dir/input.sha256"
+	"$evidence_dir/run-ubuntu.sh" "$evidence_dir/input.sha256"
 
 printf 'H4-5 host preflight passed: %s\n' "$evidence_dir"
 printf '%s\n' 'This proves host eligibility only; it is not an H4-5 qualification result.'
