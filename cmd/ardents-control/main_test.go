@@ -35,6 +35,45 @@ func TestInspectPublicControlReportsExternalEvidenceGate(t *testing.T) {
 	}
 }
 
+func TestSimulatePublicControlRunsTheCompleteSimulationWithoutQualification(t *testing.T) {
+	var output bytes.Buffer
+	if err := run([]string{"simulate-public-control"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Schema     string   `json:"schema"`
+		Simulation bool     `json:"simulation"`
+		Qualified  bool     `json:"qualified"`
+		Passed     []string `json:"passed"`
+		Rejected   []string `json:"rejected"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatalf("simulation output is not JSON: %s, %v", output.String(), err)
+	}
+	if result.Schema != "ardents-h4-6c-simulation-v1" || !result.Simulation || result.Qualified {
+		t.Fatalf("simulation identity = %+v", result)
+	}
+	for _, expected := range []string{"routine-3-of-5", "emergency-4-of-5-disable-only", "bidirectional-rotation-lifecycle", "two-full-candidate-view-audits", "two-reproducible-builder-attestations", "reader-diagnostic-matrix"} {
+		if !contains(result.Passed, expected) {
+			t.Fatalf("simulation did not pass %q: %+v", expected, result)
+		}
+	}
+	for _, expected := range []string{"routine-under-threshold", "emergency-under-threshold", "rotation-predecessor-mismatch", "candidate-view-disagreement", "builder-artifact-mismatch", "reader-malformed", "reader-forged", "reader-unavailable"} {
+		if !contains(result.Rejected, expected) {
+			t.Fatalf("simulation did not reject %q: %+v", expected, result)
+		}
+	}
+}
+
+func contains(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
+}
+
 func publicControlManifest() string {
 	digest := "sha256:" + strings.Repeat("a", 64)
 	actors := func(role string, count int) string {

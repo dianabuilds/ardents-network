@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/publiccontrol"
+	"github.com/dianabuilds/ardents-network/internal/publiccontrolsimulation"
 )
 
 var componentNames = [...]string{"release.ac1", "network.ac1", "compatibility.ac1"}
@@ -31,7 +32,7 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 	switch arguments[0] {
 	case "inspect":
@@ -42,13 +43,26 @@ func run(arguments []string, output io.Writer) error {
 		return inspectTransitions(arguments[1:], output)
 	case "inspect-public-control":
 		return inspectPublicControl(arguments[1:], output)
+	case "simulate-public-control":
+		return simulatePublicControl(arguments[1:], output)
 	case "inspect-alpha-corpus":
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
 		return acceptAlphaCorpus(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
+}
+
+func simulatePublicControl(arguments []string, output io.Writer) error {
+	if len(arguments) != 0 {
+		return errors.New("public-control simulation arguments are invalid")
+	}
+	report, err := publiccontrolsimulation.Run()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(report)
 }
 
 func inspectPublicControl(arguments []string, output io.Writer) error {

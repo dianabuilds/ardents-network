@@ -12,6 +12,7 @@ github.com/dianabuilds/ardents-network/internal/contributor
 github.com/dianabuilds/ardents-network/internal/alphacontrol
 github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection
 github.com/dianabuilds/ardents-network/internal/publiccontrol
+github.com/dianabuilds/ardents-network/internal/publiccontrolsimulation
 github.com/dianabuilds/ardents-network/internal/custody
 github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/endpoint/enrollment

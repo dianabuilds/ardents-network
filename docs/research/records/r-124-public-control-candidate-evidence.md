@@ -102,7 +102,12 @@ private Epoch limits as a public-network limit without a new capacity decision.
 
 ### Experiment
 
-Do not manufacture a qualifying public-candidate experiment. Once real
+Do not manufacture a qualifying public-candidate experiment. The retained
+`simulate-public-control` mechanics simulation uses freshly generated,
+in-memory project-controlled identities to exercise threshold, rotation, full
+Candidate View reconstruction, package-attestation, and intentional-failure
+paths. It has no independent-operator result and is labelled `qualified:
+false`. Once real
 participants exist, each independent custodian, builder, and auditor produces
 their evidence from their own administration and build environment; the public
 reader is run from at least two non-project auditor environments against the
@@ -145,6 +150,11 @@ control.
 - **Measurement:** as of 2026-08-29 the repository contains Functional Alpha
   H4-6A/B evidence only. No real independent H4-6C custodian, builder, or
   auditor evidence has been supplied.
+- **Measurement:** the H4-6C mechanics simulation covers `3-of-5` routine,
+  `4-of-5` emergency, bidirectional rotation, two full deterministic Candidate
+  View reconstructions, and two matching builder attestations, lifecycle and
+  reader-matrix rejection cells. All identities are local ephemeral simulation
+  identities.
 
 ## Options
 
@@ -169,6 +179,7 @@ create public control on its own.
 
 ## Disposition
 
-R-124 remains active. It authorizes a bounded evidence-reader contract but no
-custody selection, public-control ADR, or Public Beta claim. Selection requires
+R-124 remains active. The reader and mechanics simulation are retained as
+reproducible non-authorizing evidence work, but no custody selection,
+public-control ADR, or Public Beta claim follows from them. Selection requires
 the six criteria above to be independently evidenced by actual participants.

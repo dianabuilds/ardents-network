@@ -96,6 +96,28 @@ signatures, a project VPS, local Docker, CI, or a Product Owner walkthrough.
 Only independently corroborated custody, builder, and auditor evidence closes
 that final outcome.
 
+## Project-controlled mechanics simulation
+
+`ardents-control simulate-public-control` is a deliberately non-qualifying,
+short local simulation of the mechanical contract. Each invocation generates
+fresh in-memory identities for five simulated custodians, two builders, two
+auditors, and a successor custody set. It verifies one routine `3-of-5` action,
+one expiring disable-only emergency `4-of-5` action, loss/compromise/removal/
+replacement/emergency-recovery rotations signed by predecessor and successor
+quorums, two matching complete Candidate View reconstructions with a cutoff,
+summary, materialization revision and indexed proof, and two matching builder
+attestations over retained source/dependency/recipe/SBOM/qualification inputs.
+It requires rejection of threshold, expiry, emergency-escalation, predecessor,
+Candidate View, and builder mismatches, and it drives the maintained reader's
+malformed, forged, stale, replayed, revoked, conflicting, unavailable and
+declared-boundary-collision results.
+
+The simulation has no persistent keys, network authority, participant data, or
+VPS dependency. Its output is explicitly `simulation: true` and
+`qualified: false`. It exercises only the stated mechanics; it is not evidence
+that the simulated identities, Docker instances, VPS instances, or their
+operators are independent.
+
 The current bounded declaration encoding is JSON object
 `ardents-public-control-evidence-v1`, limited to 1 MiB and decoded with no
 unknown fields. It contains a candidate identifier; `transition` generation,
