@@ -307,9 +307,13 @@ summary derives the Grace warning and availability from signed deadlines,
 including an earlier parent boundary; an active Name Authority may renew until
 that signed Grace end. It deliberately does not materialize an explicit
 Released Record, choose a reclaim winner, or supply a global clock/control
-claim. H4-6 therefore still owns Release/reclaim materialization, close/fork
-evidence, and public current-state control. Do not call H4-4B complete from
-the local state-machine tests alone.
+claim. ADR-0057 and R-126 add the H4-4B project-control simulation: a durable
+pending successor is installed only through a threshold-attested Epoch; it
+exercises publication/update, Grace, Released refusal, next-generation reclaim,
+restart, stale replay, forked-successor, and conflicting-current-state refusal.
+This closes H4-4B in the
+same Product Owner-and-Codex simulation scope as H4-6. It does not select
+public Epoch operation, public governance, or a public Namespace claim.
 
 ### H4-4C — permissionless root claims
 

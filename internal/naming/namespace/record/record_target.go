@@ -43,7 +43,7 @@ func lineageNotAfter(record Record, parents []Record) int64 {
 }
 
 func leaseNotAfter(record Record) int64 {
-	if record.Lease == leaseGrace {
+	if record.Lease == leaseActive || record.Lease == leaseGrace {
 		return record.GraceExpiresAt
 	}
 	return record.LeaseExpiresAt

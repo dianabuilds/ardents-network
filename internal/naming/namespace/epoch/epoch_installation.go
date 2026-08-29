@@ -72,10 +72,25 @@ func (installation *EpochInstallation) IncludePendingThrough(sequence uint64) er
 		if verifyErr != nil {
 			return errors.New("naming Epoch pending successor is invalid")
 		}
+		if predecessor := installation.records[current.Name]; predecessor != nil {
+			previous, predecessorErr := record.VerifyRecord(installation.store.policy.Network, predecessor)
+			if predecessorErr != nil || !continuousSuccessor(previous, current) {
+				return errors.New("naming Epoch pending successor forks its predecessor")
+			}
+		} else if current.Generation != 1 || current.Revision != 1 {
+			return errors.New("naming Epoch pending successor has no predecessor")
+		}
 		installation.records[current.Name] = append([]byte(nil), entries[index].successor...)
 	}
 	installation.cursor = sequence
 	return nil
+}
+
+func continuousSuccessor(previous, current record.Record) bool {
+	if current.Generation == previous.Generation {
+		return current.Revision == previous.Revision+1
+	}
+	return previous.Lease == "released" && current.Generation == previous.Generation+1 && current.Revision == 1
 }
 
 // MaterializeClaim derives exactly the verified winner's root Record and asks

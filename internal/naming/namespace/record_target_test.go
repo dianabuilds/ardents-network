@@ -50,7 +50,7 @@ func TestPublishTargetRequiresMonotonicDistinctBinding(t *testing.T) {
 	}
 }
 
-func TestPublishRequiresFutureValidityInsideTheFullLeaseLineage(t *testing.T) {
+func TestPublishRequiresFutureValidityInsideTheFullGraceLineage(t *testing.T) {
 	t.Parallel()
 	policy := record.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: time.Hour}
 	root, err := record.ApplyLegacy(nil, 100, record.Op{Kind: "claim", Name: "root", Generation: 1,
@@ -80,12 +80,12 @@ func TestPublishRequiresFutureValidityInsideTheFullLeaseLineage(t *testing.T) {
 		t.Fatal("publish at its decision boundary was accepted")
 	}
 	afterLineage := base
-	afterLineage.RecordNotAfter = 161_000
+	afterLineage.RecordNotAfter = (root.GraceExpiresAt + 1) * 1_000
 	if _, err := record.ApplyLegacy(&grandchild, 103, afterLineage, policy); err == nil {
-		t.Fatal("publish outlived the root Lease")
+		t.Fatal("publish outlived the root Grace period")
 	}
 	valid := base
-	valid.RecordNotAfter = 160_000
+	valid.RecordNotAfter = root.GraceExpiresAt * 1_000
 	published, err := record.ApplyLegacy(&grandchild, 103, valid, policy)
 	if err != nil || published.RecordNotAfter != valid.RecordNotAfter {
 		t.Fatalf("published=%+v err=%v", published, err)

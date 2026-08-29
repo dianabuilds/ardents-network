@@ -125,6 +125,53 @@ func TestSimulatePublicControlTransitionsExercisesEveryBoundedStop(t *testing.T)
 	}
 }
 
+func TestSimulateNamespaceLifecycleProducesThresholdCurrentStateReceipt(t *testing.T) {
+	const revision = "fedcba9876543210fedcba9876543210fedcba98"
+	var output bytes.Buffer
+	if err := run([]string{"simulate-namespace-lifecycle", "--source-revision", revision}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Schema     string `json:"schema"`
+		Contract   string `json:"contract"`
+		Result     string `json:"simulation_result"`
+		Revision   string `json:"declared_source_revision"`
+		Receipt    string `json:"receipt_digest"`
+		Simulation bool   `json:"simulation"`
+		Qualified  bool   `json:"qualified"`
+		Passed     []struct {
+			Case    string `json:"case"`
+			Outcome string `json:"outcome"`
+		} `json:"passed"`
+		Rejected []string `json:"rejected"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatalf("namespace lifecycle output is not JSON: %s, %v", output.String(), err)
+	}
+	if result.Schema != "ardents-h4-4b-lifecycle-simulation-v1" || result.Contract != "h4-4b-project-control-lifecycle-v1" ||
+		result.Result != "passed" || result.Revision != revision || !strings.HasPrefix(result.Receipt, "sha256:") || !result.Simulation || result.Qualified {
+		t.Fatalf("namespace lifecycle identity = %+v", result)
+	}
+	for _, expected := range []struct{ caseName, outcome string }{
+		{"publication-current", "threshold-current"}, {"update-current", "threshold-current"},
+		{"expiry-grace", "grace-warning"}, {"released-unavailable", "unavailable"},
+		{"reclaim-next-generation", "threshold-current"}, {"restart-preserves-current", "threshold-current"},
+	} {
+		found := false
+		for _, cell := range result.Passed {
+			found = found || (cell.Case == expected.caseName && cell.Outcome == expected.outcome)
+		}
+		if !found {
+			t.Fatalf("namespace lifecycle did not pass %s/%s: %+v", expected.caseName, expected.outcome, result)
+		}
+	}
+	for _, expected := range []string{"stale-replay", "forked-successor", "conflicting-current-state", "old-generation-reclaim"} {
+		if !contains(result.Rejected, expected) {
+			t.Fatalf("namespace lifecycle did not reject %q: %+v", expected, result)
+		}
+	}
+}
+
 func contains(values []string, expected string) bool {
 	for _, value := range values {
 		if value == expected {

@@ -61,6 +61,7 @@ Current decisions:
 - [0054 — Separate Functional Alpha transition contracts](0054-separate-alpha-transition-contracts.md)
 - [0055 — Close H4-6C with project-control simulation](0055-close-h4-6c-with-project-control-simulation.md)
 - [0056 — Simulate H4-6D controlled project-control transitions](0056-simulate-h4-6d-controlled-project-control-transitions.md)
+- [0057 — Simulate H4-4B canonical Name lifecycle](0057-simulate-h4-4b-canonical-name-lifecycle.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
