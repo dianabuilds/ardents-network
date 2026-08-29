@@ -53,8 +53,9 @@ func runH45InstalledRendezvous(t *testing.T, scenario referenceC2Scenario, durat
 		}
 	})
 	stage := stageH43RemoteC2(t, environment, deadline, scenario)
-	deployment, pin := stageH45Bundle(t, stage.root, 1)
-	nextDeployment, nextPin := stageH45Bundle(t, stage.root, 2)
+	pairByteLimit := scenario.dynamicWorkload.transitRelayByteLimit()
+	deployment, pin := stageH45Bundle(t, stage.root, 1, pairByteLimit)
+	nextDeployment, nextPin := stageH45Bundle(t, stage.root, 2, pairByteLimit)
 	if nextDeployment != deployment {
 		t.Fatal("H4-5 successor changed the deployment identity")
 	}
@@ -159,7 +160,7 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 	h45RetainEvidence(t, remote, result, scenario.dynamicWorkload.Cycles == 0)
 }
 
-func stageH45Bundle(t *testing.T, root string, generation uint64) (string, string) {
+func stageH45Bundle(t *testing.T, root string, generation, pairByteLimit uint64) (string, string) {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(root, "reference-c2.json"))
 	if err != nil {
@@ -199,7 +200,7 @@ func stageH45Bundle(t *testing.T, root string, generation uint64) (string, strin
 		"node_id": fixture.Rendezvous.NodeID, "identity_key": "/var/lib/private/ardents-contributor/config/current/rendezvous-identity.pem",
 		"node_resource_profile": "h4-5-rendezvous-alpha-v1", "diagnostic_directory": "/var/lib/private/ardents-contributor/diagnostics",
 		"rendezvous": map[string]any{"handshake_limit": 4, "waiting_limit": 2, "pair_limit": 1,
-			"pair_byte_limit": 16 << 20, "admission_timeout_ms": 5000, "drain_timeout_ms": 5000},
+			"pair_byte_limit": pairByteLimit, "admission_timeout_ms": 5000, "drain_timeout_ms": 5000},
 	}
 	planRaw, err := json.Marshal(plan)
 	if err != nil {

@@ -54,6 +54,24 @@ func (workload referenceC2DynamicWorkload) timeBudget(minimum time.Duration) tim
 	return max(minimum, required)
 }
 
+func (workload referenceC2DynamicWorkload) transitRelayByteLimit() uint64 {
+	if !workload.configured() {
+		return 16 << 20
+	}
+	// Each HTTP cycle crosses the padded carrier more than once. Bound the
+	// complete paced workload, rather than only its logical Application byte
+	// ceiling: a fixed 16 MiB relay budget expires after roughly 250 cycles.
+	return max(uint64(16<<20), uint64(workload.BytesEachDirection)*2,
+		uint64(workload.Cycles)*(128<<10))
+}
+
+func TestReferenceC2TransitRelayBudgetCoversCompletePacedWorkload(t *testing.T) {
+	workload := referenceC2DynamicWorkload{Cycles: 480, BytesEachDirection: 4 << 20}
+	if limit := workload.transitRelayByteLimit(); limit != 60<<20 {
+		t.Fatalf("eight-minute relay byte limit = %d, want %d", limit, 60<<20)
+	}
+}
+
 func assertReferenceC2PublisherApplicationCompletion(t *testing.T, scenario referenceC2Scenario, applicationResult commandResult,
 	processes map[string]commandResult,
 ) {

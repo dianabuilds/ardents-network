@@ -93,7 +93,7 @@ func stageH48A11ProductTransit(t *testing.T, root string, fixture map[string]any
 			"leaf_key_digest": source["LeafKeyDigest"]}
 	}
 	authority := state.authority.Public().(ed25519.PublicKey)
-	pairByteLimit := max(uint64(16<<20), uint64(scenario.dynamicWorkload.BytesEachDirection)*2)
+	pairByteLimit := scenario.dynamicWorkload.transitRelayByteLimit()
 	plan := map[string]any{"schema": "ardents-node-plan-v1", "state_root": "/work/rendezvous-state",
 		"local_role_state_root": "/work/rendezvous-product-node-role", "network_id": referenceC2Hex(state.network),
 		"authority_public": []string{hex.EncodeToString(authority)}, "threshold": 1, "at": state.now.Format(time.RFC3339),

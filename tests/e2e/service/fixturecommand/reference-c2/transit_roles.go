@@ -144,7 +144,8 @@ func (input config) transitRelayByteLimit() uint64 {
 	if !input.DynamicWorkload.configured() {
 		return 256 << 10
 	}
-	return max(uint64(16<<20), uint64(input.DynamicWorkload.BytesEachDirection)*2)
+	return max(uint64(16<<20), uint64(input.DynamicWorkload.BytesEachDirection)*2,
+		uint64(input.DynamicWorkload.Cycles)*(128<<10))
 }
 
 func (input config) stateSourceConfig(role string) (source.Config, error) {

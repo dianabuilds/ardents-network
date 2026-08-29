@@ -13,9 +13,10 @@ set -eu
 root=$1
 port=$2
 output=$root/contributor-runtime-samples.tsv
+stop=$root/contributor-runtime-sampler.stop
 printf 'captured_at\tcpu_usage_usec\tmemory_bytes\trss_kib\tfds\tsockets\tthreads\tpids\n' >"$output"
 samples=0
-while [ "$samples" -lt 900 ]; do
+while [ "$samples" -lt 900 ] && [ ! -e "$stop" ]; do
   cgroup_relative=$(systemctl show ardents-rendezvous-contributor.service -p ControlGroup --value)
   main_pid=$(systemctl show ardents-rendezvous-contributor.service -p MainPID --value)
   cgroup=/sys/fs/cgroup$cgroup_relative
@@ -41,6 +42,7 @@ func h45StartRuntimeSampler(t *testing.T, remote h43RemoteC2) {
 	root := remote.environment.remoteDirectory
 	command := fmt.Sprintf(`set -eu
 test ! -e %[1]s/contributor-runtime-sampler.pid
+rm -f %[1]s/contributor-runtime-sampler.stop
 nohup %[1]s/runtime-sampler.sh %[1]s %d >/dev/null 2>&1 &
 printf '%%s\n' "$!" >%[1]s/contributor-runtime-sampler.pid`, h43ShellQuote(root), remote.environment.port+1)
 	if output, err := remote.run(t, command); err != nil {
@@ -72,7 +74,10 @@ if [ -f "$pid_file" ]; then
     case "$state" in Z*|'') return 1 ;; esac
     return 0
   }
-  kill "$pid" 2>/dev/null || true
+  touch %[1]s/contributor-runtime-sampler.stop
+  tries=0
+  while sampler_running && [ "$tries" -lt 50 ]; do tries=$((tries + 1)); sleep 0.1; done
+  if sampler_running; then kill "$pid" 2>/dev/null || true; fi
   tries=0
   while sampler_running && [ "$tries" -lt 50 ]; do tries=$((tries + 1)); sleep 0.1; done
   if sampler_running; then kill -KILL "$pid" 2>/dev/null || true; fi

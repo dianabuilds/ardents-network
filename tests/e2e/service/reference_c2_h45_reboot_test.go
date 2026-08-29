@@ -24,7 +24,7 @@ func TestH45InstalledRendezvousRecoversFromKillAndHostReboot(t *testing.T) {
 		}
 	})
 	stage := stageH43RemoteC2(t, environment, deadline, referenceC2Scenario{transparentApplication: true})
-	deployment, pin := stageH45Bundle(t, stage.root, 1)
+	deployment, pin := stageH45Bundle(t, stage.root, 1, 16<<20)
 	h43WriteFile(t, filepath.Join(stage.root, "run.sh"), []byte(h45SourcesOnlyRunner()), 0o700)
 	removed := false
 	t.Cleanup(func() {
