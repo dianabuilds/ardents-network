@@ -8,6 +8,7 @@ github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/internal/application/broker
 github.com/dianabuilds/ardents-network/internal/browserentry
 github.com/dianabuilds/ardents-network/internal/browserentry/installer
+github.com/dianabuilds/ardents-network/internal/contributor
 github.com/dianabuilds/ardents-network/internal/alphacontrol
 github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection
 github.com/dianabuilds/ardents-network/internal/custody

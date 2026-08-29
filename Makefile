@@ -13,6 +13,12 @@ export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
 H4_3B_MULTIHOST_TIMEOUT := -timeout=8m
 
+ifeq ($(OS),Windows_NT)
+RACE_TEST_PREFIX :=
+else
+RACE_TEST_PREFIX := umask 077;
+endif
+
 .PHONY: architecture build check e2e format format-check fuzz mod-check package-ubuntu-deb prepare-h4-2-net-01a qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-3b-docker qualification-h4-3b-multihost qualification-h4-3b-vps qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment qualification-h4-6a-two-endpoints qualification-h4-8-a11 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
@@ -95,7 +101,7 @@ fuzz:
 test: unit e2e
 
 test-race:
-	umask 077; go test $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
+	$(RACE_TEST_PREFIX) go test $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
 
 build:
 	go build ./...

@@ -9,6 +9,10 @@ import (
 
 var errUnsupportedPlatform = errors.New("resource guard is unsupported on this platform")
 
+// RendezvousFunctionalAlphaProfile is the sole selected H4-5 dedicated-host
+// resource placement. It is not a general Node-capacity profile.
+const RendezvousFunctionalAlphaProfile = "h4-5-rendezvous-alpha-v1"
+
 // Sample is one bounded process/cgroup observation.
 type Sample struct {
 	CPUUsageUsec      uint64  `json:"cpu_usage_usec"`

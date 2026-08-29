@@ -52,9 +52,17 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	enforcePressure := input.ResourceProfile != ""
-	if enforcePressure && input.ResourceProfile != "h3-np1-v1" && input.ResourceProfile != "h3-s-v1" &&
-		input.ResourceProfile != "h3-s-v1-strong" {
-		return runtimeConfig{}, errors.New("node resource profile is not supported")
+	if enforcePressure {
+		switch input.ResourceProfile {
+		case "h3-np1-v1", "h3-s-v1", "h3-s-v1-strong":
+		case resource.RendezvousFunctionalAlphaProfile:
+			if probePlan != nil || input.Rendezvous.Certificate.PrivateKey == nil || input.Initiator.Certificate.PrivateKey != nil ||
+				input.Introduction.Certificate.PrivateKey != nil || input.Responder.Certificate.PrivateKey != nil {
+				return runtimeConfig{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
+			}
+		default:
+			return runtimeConfig{}, errors.New("node resource profile is not supported")
+		}
 	}
 	var guard *resource.Guard
 	if enforcePressure {

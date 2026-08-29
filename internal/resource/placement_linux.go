@@ -5,13 +5,18 @@ package resource
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
 
 func checkPlacement(profile profile) error {
+	cgroup, err := currentCgroupDirectory()
+	if err != nil {
+		return err
+	}
 	for name, want := range profile.cgroup {
-		raw, err := os.ReadFile("/sys/fs/cgroup/" + name)
+		raw, err := os.ReadFile(filepath.Join(cgroup, name))
 		if err != nil || strings.TrimSpace(string(raw)) != want {
 			return errors.New("resource guard cgroup placement does not match its profile")
 		}

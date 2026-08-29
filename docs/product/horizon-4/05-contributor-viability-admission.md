@@ -1,7 +1,9 @@
 # H4-5 — Contributor viability and permissionless admission
 
-Status: **accepted H4-5 direction; no voluntary co-resident Contributor profile
-or public admission is accepted.**
+Status: **Rendezvous selected for the H4-5A/B dedicated-host functional-alpha
+profile; implementation and fresh-host qualification are active. No supported
+profile, voluntary co-resident contribution, or public admission is accepted
+until the named evidence closes.**
 
 ## Decision
 
@@ -17,6 +19,14 @@ H4-5 turns one of those duties into a supportable operator product, then only
 later considers admission of more operators. A Node is infrastructure; a
 Publisher is a separate Endpoint capability that exposes a Service and remains
 H4-3 work.
+
+The Product Owner selects the already maintained H4-2 **Rendezvous duty** for
+H4-5A/B. R-092 found it to be the smallest useful data-plane role: it joins one
+authenticated Initiator and Responder leg, has explicit handshake/waiting/pair
+reservations, and already participates in the selected Publisher-to-User C-2
+topology. This selection authorizes only one dedicated Ubuntu host profile. It
+does not authorize another duty, co-residence, public admission, capacity or
+availability claims, or independent-operation language.
 
 The default installation still creates an Endpoint, never a Contributor Node.
 Public qualified contribution remains a dedicated host/Endpoint with no User
@@ -67,6 +77,16 @@ exact platform and duty are selected from the evidence of
 [R-092](../../research/records/r-092-native-node-operating-profile.md), not
 assumed from the Client Portable profile.
 
+The candidate resource placement is named
+`h4-5-rendezvous-alpha-v1`: one Ubuntu LTS `x86-64` dedicated host, one
+unprivileged Rendezvous process, `1` CPU of process quota, `256 MiB` cgroup
+memory maximum with a `192 MiB` high boundary, `128 MiB` Go memory limit,
+`64` tasks, and `256` file descriptors. The Node resource governor must enter
+`PROTECT` only after its fixed high observation and terminal `DRAIN` at an
+emergency threshold; systemd/cgroup ceilings are enforcement backstops, not a
+capacity claim. These values remain a candidate until the fresh-host matrix
+accepts or rejects them.
+
 **Done when:** a Product Owner can follow the documented flow on a fresh
 dedicated host, run the duty through ordinary load and injected loss/restart,
 inspect its bounded resource and readiness state, drain it, and verify that it
@@ -102,9 +122,9 @@ and remain excluded from independent-capacity and public privacy claims. The
 research may conclude that no co-resident duty is acceptable.
 
 **Current research outcome:** H4-5C is deferred. It cannot be a shortcut to
-make every Client or Publisher into a Node: no native duty or reference-host
-profile has been selected in R-092, and H4-5A/B must first show that the exact
-duty is operable and useful on a dedicated host. A future H4-5C experiment
+make every Client or Publisher into a Node: Rendezvous is selected only for the
+dedicated-host H4-5A/B profile, whose qualification must first show that the
+exact duty is operable and useful. A future H4-5C experiment
 requires an explicit Product Owner choice after those results; until then the
 Endpoint offers no contribution duty. See
 [R-093](../../research/records/r-093-voluntary-endpoint-contribution.md).
@@ -149,11 +169,7 @@ operators can improve availability without satisfying these requirements.
 
 ## Open Product Owner selections
 
-- Which one H4-2 duty is both necessary for the usable alpha and sufficiently
-  low-risk to be the first H4-5A profile.
-- Whether the alpha needs any operator other than the project-controlled test
-  topology before a dedicated profile has been measured.
-- Which H4-5B utility threshold would justify asking an outside volunteer to
-  operate the selected duty.
+- Whether the measured dedicated Rendezvous utility justifies retaining the
+  profile or selects the explicit negative disposition.
 - Whether R-093 should investigate a particular opt-in duty after H4-5A/B, or
   retain the dedicated-host rule without experiment.

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
@@ -25,6 +26,7 @@ type nodePlan struct {
 	MaximumDutyMS           uint32            `json:"maximum_duty_ms"`
 	DrainTimeoutMS          uint32            `json:"drain_timeout_ms"`
 	NodeResourceProfile     string            `json:"node_resource_profile,omitempty"`
+	DiagnosticDirectory     string            `json:"diagnostic_directory,omitempty"`
 	Rendezvous              *rendezvousPlan   `json:"rendezvous,omitempty"`
 	Initiator               *initiatorPlan    `json:"initiator,omitempty"`
 	Introduction            *introductionPlan `json:"introduction,omitempty"`
@@ -82,8 +84,9 @@ type nodeSource struct {
 	LeafKeyDigest  string `json:"leaf_key_digest"`
 }
 type nodeRuntime struct {
-	state state.Config
-	node  node.Config
+	state               state.Config
+	node                node.Config
+	diagnosticDirectory string
 }
 
 func readNodePlan(path string) (nodeRuntime, error) {
@@ -99,11 +102,18 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if plan.NativeRendezvousProfile && !nativeDuty {
 		return nodeRuntime{}, errors.New("native Route State profile requires one local native duty")
 	}
-	// H3 resource profiles were calibrated for retired role-probe duties. A
-	// native Route Node may not borrow their limits: it receives a named profile
-	// only after the separate NET-01A campaign selects one.
+	// H3 resource profiles were calibrated for retired role-probe duties. The
+	// sole selected native profile is purpose-bound to one Rendezvous process.
 	if nativeDuty && plan.NodeResourceProfile != "" {
-		return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
+		if plan.NodeResourceProfile != node.RendezvousFunctionalAlphaResourceProfile {
+			return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
+		}
+		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil {
+			return nodeRuntime{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
+		}
+	}
+	if plan.DiagnosticDirectory != "" && (!filepath.IsAbs(plan.DiagnosticDirectory) || filepath.Clean(plan.DiagnosticDirectory) != plan.DiagnosticDirectory) {
+		return nodeRuntime{}, errors.New("node diagnostic directory must be one clean absolute path")
 	}
 	state := state.Config{Root: plan.StateRoot, LocalRoleStateRoot: plan.LocalRoleStateRoot,
 		Threshold: plan.Threshold, Authorities: make(map[[32]byte]ed25519.PublicKey), Clock: time.Now,
@@ -146,5 +156,5 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err != nil {
 		return nodeRuntime{}, err
 	}
-	return nodeRuntime{state: state, node: node}, nil
+	return nodeRuntime{state: state, node: node, diagnosticDirectory: plan.DiagnosticDirectory}, nil
 }

@@ -18,6 +18,24 @@ func TestSourceModeRejectsIncompleteInvocation(t *testing.T) {
 	}
 }
 
+func TestContributorModeAcceptsOnlyItsClosedLifecycleGrammar(t *testing.T) {
+	t.Parallel()
+	for _, arguments := range [][]string{
+		{"diagnose"}, {"restart"}, {"drain"}, {"withdraw"},
+		{"remove", "--confirm", strings.Repeat("11", 32)},
+		{"apply", "--bundle", "/bundle", "--manifest-pin", strings.Repeat("12", 32)},
+	} {
+		if _, err := parseContributorRequest(arguments); err != nil {
+			t.Fatalf("arguments %v returned %v", arguments, err)
+		}
+	}
+	for _, arguments := range [][]string{nil, {"start"}, {"remove"}, {"remove", "--confirm", ""}, {"apply", "--manifest-pin", "x", "--bundle", "/bundle"}} {
+		if _, err := parseContributorRequest(arguments); err == nil || !strings.Contains(err.Error(), "usage:") {
+			t.Fatalf("arguments %v returned %v", arguments, err)
+		}
+	}
+}
+
 func TestNodeOwnedPlansRejectRetiredH3Schemas(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -49,5 +67,29 @@ func TestNodePlanRejectsLegacyResourceProfileForNativeDuty(t *testing.T) {
 	}
 	if _, err := readNodePlan(path); err == nil || !strings.Contains(err.Error(), "resource profile is unselected") {
 		t.Fatalf("native plan with legacy resource profile error = %v", err)
+	}
+}
+
+func TestNodePlanAcceptsFunctionalAlphaResourceProfileOnlyForRendezvous(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name       string
+		duty       string
+		wantDetail string
+	}{
+		{name: "Rendezvous", duty: `"rendezvous":{}`, wantDetail: "invalid fixed hexadecimal value"},
+		{name: "Initiator", duty: `"initiator":{}`, wantDetail: "requires only one Rendezvous duty"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "functional-alpha-resource.json")
+			raw := `{"schema":"ardents-node-plan-v1","local_role_state_root":"role","authority_public":["00"],"sources":[{},{}],"node_resource_profile":"h4-5-rendezvous-alpha-v1",` + test.duty + `}`
+			if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err := readNodePlan(path)
+			if err == nil || !strings.Contains(err.Error(), test.wantDetail) {
+				t.Fatalf("%s plan error = %v", test.name, err)
+			}
+		})
 	}
 }

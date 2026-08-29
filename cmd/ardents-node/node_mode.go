@@ -30,7 +30,7 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 		}
 		return view, nil
 	}
-	runtime.node.Emit = node.EventEmitter(boundedOutput)
+	runtime.node.Emit = nodeEventEmitter(boundedOutput, runtime.diagnosticDirectory)
 	_, runErr := node.Run(ctx, runtime.node)
 	if closeErr := store.Close(); runErr == nil {
 		runErr = closeErr

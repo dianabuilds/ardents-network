@@ -1,7 +1,7 @@
 ---
 id: R-092
 title: Which measured Linux operating profile can admit one native Route Node role?
-status: open
+status: open; H4-5 implementation-linked
 owner: Product Owner and Codex
 started: 2026-08-23
 reviewed: 2026-08-24
@@ -428,8 +428,37 @@ assert pressure, or select capacity.
   qualification. Remaining uncertainty is hostile abuse/error cells, any
   physical-host/provider-outage claim beyond the selected emulator, selection
   of an access-path-valid admission duration, resource-pressure placement, and
-  selection of numeric limits on the exact NET-01A host. The tracer and
-  controlled product-command cells cannot supply those claims.
+   selection of numeric limits on the exact NET-01A host. The tracer and
+   controlled product-command cells cannot supply those claims.
+- **Implementation (2026-08-29):** H4-5A/B binds the existing Rendezvous duty
+  to the candidate `h4-5-rendezvous-alpha-v1` resource placement only. Its
+  fixed placement is one CPU, 256 MiB cgroup memory maximum, 192 MiB memory
+  high boundary, 128 MiB exact Go memory limit, 64 tasks, and 256 file
+  descriptors with separate NORMAL/PROTECT/DRAIN thresholds. The Node and
+  command boundaries reject that profile for Initiator, Introduction,
+  Responder, probes, or mixed duties. This is implementation evidence, not a
+  selected supported capacity or host qualification.
+- **Implementation (2026-08-29):** the candidate now has one closed
+  dedicated-host lifecycle behind `ardents-node contributor`: an independent
+  manifest SHA-256 is checked before parsing a fixed executable/key/plan
+  inventory; generation one installs one hardened systemd unit; exact
+  generation successors stop and withdraw before switching; failed and
+  interrupted installs or updates recover only authenticated owned state; and
+  diagnose, restart, drain, withdrawal, and exact-ID removal expose no generic
+  service operation. Last lifecycle and resource events are bounded private
+  files. These are behavior-tested filesystem/supervisor semantics and a
+  cross-compiled Linux command, not a native systemd execution result.
+- **Implementation defect finding (2026-08-29):** pre-qualification review
+  found three container-masked measurement/lifecycle defects. The Rendezvous
+  pressure adapter treated cumulative completed `RelayedBytes` as live queued
+  bytes, which could terminally drain a healthy process after one route; the
+  Linux sampler read the cgroup namespace root rather than resolving the
+  process's systemd cgroup; and its socket count covered the complete network
+  namespace rather than the process's own socket FDs. Narrow regressions now
+  require live reservations only, fail-closed cgroup-v2 path parsing from
+  `/proc/self/cgroup`, and bounded own-FD socket inventory. Fresh-host evidence
+  must demonstrate those corrections under the installed unit before they can
+  support a profile decision.
 
 ## Options
 

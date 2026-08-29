@@ -46,8 +46,8 @@ an `ardents-node-plan-v1` input. It
 owns one admitted native duty, pressure reaction, drain, withdrawal, and joined
 cleanup; lifecycle JSON uses `ardents-node-event-v1`. On Linux, `SIGTERM` and
 the foreground interrupt request that local withdrawal before process exit.
-The command is not a supported Node operating profile. A config file is a
-bounded Node-owned input, not a general Node configuration contract. Every
+An arbitrary Node config is not a supported Node operating profile. A config
+file is a bounded Node-owned input, not a general Node configuration contract. Every
 native-duty stanza must set its finite `admission_timeout_ms`: it bounds TLS
 and binding admission only, is capped by the current State expiry, and has no
 implicit default or retry/fallback behavior.
@@ -60,6 +60,15 @@ the advertised endpoint, identity, digest, Epoch, and Carrier profile. A
 hostname, unspecified or non-loopback address, zero/out-of-range port, or port
 mismatch is rejected. Omitting the field retains the State endpoint as the
 listener and does not change existing plan behavior.
+
+On Linux, `ardents-node contributor` exposes the complete candidate
+`h4-5-rendezvous-alpha-v1` dedicated-host lifecycle: `apply`, `diagnose`,
+`restart`, `drain`, `withdraw`, and confirmed `remove`. It accepts no other
+duty or system-service operation. The exact prerequisites, authenticated
+bundle, commands, limits, diagnostics, update recovery, and residue contract
+are in the [Rendezvous Contributor candidate runbook](rendezvous-contributor.md).
+The surface remains candidate-only until its fresh-host qualification closes
+R-092 and H4-5; it is not a public Contributor offer.
 
 ## `ardents-custody`
 

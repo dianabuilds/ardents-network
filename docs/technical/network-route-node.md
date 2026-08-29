@@ -12,10 +12,11 @@ supported Node hosting, or Route qualification.
 | internal/network/state | Authenticate source input, verify Epoch/View material, publish one immutable current or pending View through its exclusive durable root, and supply narrow read-only views. | Source authority, public wire selection, Node lifecycle, Route selection, or private naming control. |
 | internal/network/source | Obtain one finite selected Direct-Origin source input with its credential, TLS transport, material selector, ordering, and exposure identity. | Accepting State or selecting a peer protocol. |
 | internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, and conflict truth. | Network State publication, assignment creation, Route ownership, or Node process lifecycle. |
-| internal/resource | Measure selected Linux process limits and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
+| internal/resource | Resolve the current process's own cgroup-v2 directory, measure selected Linux process limits, and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
 | internal/entry | Import and admit a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, and open an adjacent contact lifecycle. | Complete Route selection, carrier choice, or User identity. |
 | internal/route | Select and hold one native Interactive Route attachment over authenticated State, Entry, caller-owned resource facts, and one exact caller-selected TCP/TLS or QUIC-v1 Carrier. | Carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty writing. |
 | internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and joined cleanup. | State-root authority, assignment creation, or a separate probe runtime. |
+| internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle candidate for a dedicated H4-5 Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,
 storage, replay, socket, and cleanup details privately. State readers receive
@@ -95,10 +96,21 @@ tracers. Any new source transport, peer announcement, public bootstrap,
 directory, carrier fallback, or supported Node operating profile requires its
 own decision, compatibility rule, and Qualification evidence.
 
-Until NET-01A selects a native profile, an `ardents-node` plan containing a
-native Route duty rejects a nonempty `node_resource_profile`. The retained
-`h3-*` guard profiles may still support their retired-role tests, but native
-Route code may not inherit their resource numbers by configuration.
+The sole candidate native resource profile is
+`h4-5-rendezvous-alpha-v1`. It is accepted only for an exact Rendezvous-only
+Node plan and rejected for Initiator, Introduction, Responder, mixed duties,
+or arbitrary native configurations. Its 1-CPU, 192/256-MiB, 128-MiB Go,
+64-task, and 256-FD placement remains unsupported until the fresh dedicated
+host campaign accepts it. The retained `h3-*` guard profiles may still support
+their retired-role tests, but native Route code cannot inherit them.
+
+The Linux candidate command writes only the bounded last lifecycle and resource
+events into its private diagnostic directory. Its Contributor Module verifies
+an independently pinned closed bundle before parsing, owns fixed host paths and
+one hardened systemd unit, requires exact generation successors, rolls back a
+failed or interrupted update, and exposes only diagnose/restart/drain/withdraw
+and confirmed removal. The operator contract is the
+[Rendezvous Contributor candidate runbook](../reference/rendezvous-contributor.md).
 
 ## Verification and decisions
 
@@ -148,4 +160,6 @@ Route code may not inherit their resource numbers by configuration.
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
   [ADR-0049](../adr/0049-defer-blocked-entry-profile.md) define the selected
   native Route and Carrier facts. R-092 remains the open measurement for a
-  native Node operating profile.
+  native Node operating profile. R-092 now carries the H4-5 candidate
+  implementation and still requires its fresh-host measurements before a
+  supported profile or positive disposition exists.

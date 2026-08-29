@@ -57,6 +57,45 @@ func TestStrongBridgeProfileIsAvailable(t *testing.T) {
 	}
 }
 
+func TestRendezvousFunctionalAlphaProfileProtectsRecoversAndDrains(t *testing.T) {
+	var sample resource.Sample
+	guard, err := resource.New(resource.Config{
+		Profile: "h4-5-rendezvous-alpha-v1", Interval: time.Second,
+		Measure: func() (resource.Sample, error) { return sample, nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if observation, observeErr := guard.Observe(0, 0, 0); observeErr != nil || observation.Protect || observation.Drain {
+		t.Fatalf("idle observation = %+v, %v", observation, observeErr)
+	}
+	sample.MemoryBytes = 192 << 20
+	for index := range 3 {
+		observation, observeErr := guard.Observe(0, 0, 0)
+		if observeErr != nil {
+			t.Fatal(observeErr)
+		}
+		if observation.Protect != (index == 2) || observation.Drain {
+			t.Fatalf("high sample %d = %+v", index, observation)
+		}
+	}
+	sample.MemoryBytes = 0
+	for index := range 120 {
+		observation, observeErr := guard.Observe(0, 0, 0)
+		if observeErr != nil {
+			t.Fatal(observeErr)
+		}
+		if observation.Protect != (index < 119) || observation.Drain {
+			t.Fatalf("recovery sample %d = %+v", index, observation)
+		}
+	}
+	sample.MemoryBytes = 240 << 20
+	observation, err := guard.Observe(0, 0, 0)
+	if err != nil || !observation.Protect || !observation.Drain {
+		t.Fatalf("emergency observation = %+v, %v", observation, err)
+	}
+}
+
 func TestBridgeSocketPressureUsesExactR037Thresholds(t *testing.T) {
 	var sample resource.Sample
 	guard, err := resource.New(resource.Config{Profile: "h3-s-v1", Interval: time.Second,
