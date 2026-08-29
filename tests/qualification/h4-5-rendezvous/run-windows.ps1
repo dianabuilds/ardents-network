@@ -34,6 +34,16 @@ function Invoke-Checked([string]$Executable, [string[]]$Arguments, [string]$Fail
     if ($LASTEXITCODE -ne 0) { throw $Failure }
 }
 
+function Resolve-WindowsOpenSSHCommand([string]$Name) {
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($null -ne $command) { return $command.Source }
+    foreach ($root in @('Sysnative', 'System32')) {
+        $candidate = Join-Path $env:WINDIR "$root\OpenSSH\$Name"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    throw "required Windows OpenSSH command is unavailable: $Name"
+}
+
 function Resolve-RemoteAccess([string]$Key, [string]$PasswordFile, [string]$HostKey, [string]$User, [string]$RemoteHost) {
     $target = "$User@$RemoteHost"
     if ($PasswordFile -ne '') {
@@ -46,8 +56,8 @@ function Resolve-RemoteAccess([string]$Key, [string]$PasswordFile, [string]$Host
         $scp = (Get-Command 'pscp.exe' -ErrorAction Stop).Source
         return @{ SSH=$ssh; SSHBase=@('-batch','-noagent','-hostkey',$HostKey,'-i',$Key,$target); SCP=$scp; SCPBase=@('-batch','-noagent','-hostkey',$HostKey,'-i',$Key) }
     }
-    $ssh = (Get-Command 'ssh.exe' -ErrorAction Stop).Source
-    $scp = (Get-Command 'scp.exe' -ErrorAction Stop).Source
+    $ssh = Resolve-WindowsOpenSSHCommand 'ssh.exe'
+    $scp = Resolve-WindowsOpenSSHCommand 'scp.exe'
     $options = @('-i',$Key,'-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=10','-o','StrictHostKeyChecking=accept-new')
     return @{ SSH=$ssh; SSHBase=($options + @($target)); SCP=$scp; SCPBase=$options }
 }
