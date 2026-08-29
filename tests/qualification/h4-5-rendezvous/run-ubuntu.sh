@@ -101,10 +101,10 @@ for path in \
 	/usr/lib/ardents-contributor \
 	/var/lib/ardents-contributor \
 	/var/lib/private/ardents-contributor \
-	/etc/systemd/system/ardents-contributor.service; do
+	/etc/systemd/system/ardents-rendezvous-contributor.service; do
 	[ ! -e "$path" ] || invalid "candidate host is not fresh; managed path exists: $path"
 done
-if systemctl list-unit-files ardents-contributor.service --no-legend 2>/dev/null | grep . >/dev/null 2>&1; then
+if systemctl list-unit-files ardents-rendezvous-contributor.service --no-legend 2>/dev/null | grep . >/dev/null 2>&1; then
 	invalid 'candidate host already knows the Contributor unit'
 fi
 if ss -H -ltn | awk -v suffix=":$listen_port" '$4 ~ suffix "$" { found=1 } END { exit found ? 0 : 1 }'; then
