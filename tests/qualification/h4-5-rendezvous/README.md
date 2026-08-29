@@ -1,9 +1,10 @@
 # H4-5 dedicated Rendezvous qualification
 
-Status: **frozen preparation contract; no qualification result exists.** This
-directory owns the H4-5A/B declared-host campaign. A passing preflight is only
-host eligibility evidence; H4-5 remains open until the complete workload,
-fault, lifecycle, utility, and removal matrix has been executed and accepted.
+Status: **frozen preparation contract; declared-host preflight passed on
+2026-08-29; no qualification result exists.** This directory owns the H4-5A/B
+declared-host campaign. The passing preflight is only host eligibility
+evidence; H4-5 remains open until the complete workload, fault, lifecycle,
+utility, and removal matrix has been executed and accepted.
 
 ## Decision question
 
@@ -131,6 +132,21 @@ that name before the two-host runner, all matrix oracles, and the complete
 denominator exist would manufacture a promotion gate. The next implementation
 slice must add that exact target and execute this frozen contract without
 weakening it.
+
+The accepted retained preflight used commit
+`bdb9a66523c26558a09c063aa06399b49c8fa4cf` at
+`2026-08-29T07:40:49Z`. The declared existing project VPS reported Ubuntu
+22.04.5 LTS, Linux 5.15.0-185 `x86_64`, four online CPUs, 8,109,136 KiB
+`MemTotal`, running systemd 249, cgroup v2 with `cpu`, `memory`, and `pids`, an
+unused port 49152, and no Contributor unit or managed paths. Its outcome is
+`eligible-for-h4-5-campaign; no qualification result`. Retained external
+evidence is
+`C:\Users\vitek\Ardents-Release\evidence\ardents-h4-5-preflight-bdb9a665`;
+the captured `input.sha256` verifies the host facts, observation, and exact
+runner bytes. The earlier `1b810813` attempt is retained but superseded: review
+found that it checked `ardents-contributor.service` rather than the exact
+`ardents-rendezvous-contributor.service`; the accepted rerun corrected that
+oracle and again found the exact unit absent.
 
 ## Claim boundary
 

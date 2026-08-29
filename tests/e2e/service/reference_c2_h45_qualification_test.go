@@ -1,0 +1,357 @@
+//go:build h4_5_rendezvous
+
+package service_test
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+const h45ContributorCommand = "/usr/lib/ardents-contributor/current/ardents-node"
+
+type h45BundleFixture struct {
+	Network, Digest, TransitAuthority string
+	Rendezvous                        struct {
+		NodeID, Certificate, PrivateKey, Endpoint string
+	}
+	TransitStateMaterials map[string]uint32
+	TransitStateSources   []struct {
+		Address, ServerName, Root, LeafKeyDigest string
+	}
+	TransitStateClient struct{ Certificate, PrivateKey string }
+}
+
+func TestH45InstalledRendezvousPublisherToUserLifecycle(t *testing.T) {
+	environment := requireH43MultiHostEnvironment(t)
+	scenario := referenceC2Scenario{transparentApplication: true}
+	deadline := time.Now().UTC().Truncate(time.Second).Add(4 * time.Minute)
+	remote := h43RemoteC2{environment: environment}
+	t.Cleanup(func() { remote.remove(t) })
+	stage := stageH43RemoteC2(t, environment, deadline, scenario)
+	deployment, pin := stageH45Bundle(t, stage.root, 1)
+	h43WriteFile(t, filepath.Join(stage.root, "run.sh"), []byte(h45RemoteRunner()), 0o700)
+	removed := false
+	t.Cleanup(func() {
+		if removed {
+			return
+		}
+		command := fmt.Sprintf(`set +e
+touch %s/stop-clock 2>/dev/null || true
+if [ -x %s ]; then
+  %s contributor withdraw >/dev/null 2>&1 || true
+  %s contributor remove --confirm %s >/dev/null 2>&1
+  status=$?
+else
+  status=0
+fi
+exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorCommand,
+			h45ContributorCommand, h45ContributorCommand, h43ShellQuote(deployment))
+		if output, err := remote.runCleanup(command); err != nil {
+			t.Errorf("cleanup installed H4-5 Contributor: %v\n%s", err, output)
+		}
+	})
+
+	remote.start(t, stage.root)
+	remote.waitFile(t, environment.remoteDirectory+"/sources-ready", deadline)
+	applyBinary := environment.remoteDirectory + "/bundle-1/ardents-node"
+	h45RunLifecycle(t, remote, "apply", applyBinary, fmt.Sprintf("contributor apply --bundle %s --manifest-pin %s",
+		h43ShellQuote(environment.remoteDirectory+"/bundle-1"), h43ShellQuote(pin)))
+	h45RunLifecycle(t, remote, "diagnose", h45ContributorCommand, "contributor diagnose")
+	clockCommand := fmt.Sprintf(`set -eu
+rm -f %s/stop-clock
+(while [ ! -e %s/stop-clock ]; do touch /var/lib/private/ardents-contributor/config/current/clock.observation; sleep 0.1; done) >/dev/null 2>&1 &
+printf '%%s\n' "$!" >%s/clock.pid`, h43ShellQuote(environment.remoteDirectory),
+		h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory))
+	if output, err := remote.run(t, clockCommand); err != nil {
+		t.Fatalf("start H4-5 clock observation owner: %v\n%s", err, output)
+	}
+	h45RunLifecycle(t, remote, "restart", h45ContributorCommand, "contributor restart")
+	h45CapturePlacement(t, remote)
+	if output, err := remote.run(t, fmt.Sprintf("set -eu; printf 'ready\\n' >%s/contributor-ready",
+		h43ShellQuote(environment.remoteDirectory))); err != nil {
+		t.Fatalf("release H4-5 topology roles: %v\n%s", err, output)
+	}
+
+	remote.copyFile(t, environment.remoteDirectory+"/publication.json", stage.publication, deadline)
+	remote.copyFile(t, environment.remoteDirectory+"/gateway-profile.json", stage.gatewayProfile, deadline)
+	remote.copyFile(t, environment.remoteDirectory+"/alpha-relay-ready.json", stage.relayReady, deadline)
+	stageReferenceC2AlphaCorpus(t, h43LocalProductCommand(t, "ardents"), h43LocalProductCommand(t, "ardents-control"),
+		stage.publication, stage.alphaAuthority, stage.alphaPrivate, filepath.Join(stage.localRoot, "alpha-floor"), stage.network, stage.alphaLink)
+
+	ctx, cancel := context.WithDeadline(t.Context(), deadline)
+	defer cancel()
+	proofResult := make(chan error, 1)
+	go func() {
+		proofResult <- h43MirrorRemoteProof(ctx, remote, environment.remoteDirectory+"/reference-resources", stage.proof)
+	}()
+	user := startKillableCommand(ctx, stage.localRoot, stage.fixture, "user", stage.localConfig)
+	result := <-user.result
+	if result.err != nil {
+		h43AbortProofAfterUserFailure(cancel, proofResult)
+		h43AssertUserResult(t, result, scenario)
+		return
+	}
+	if err := <-proofResult; err != nil {
+		t.Fatalf("mirror H4-5 remote proof: %v", err)
+	}
+	remote.complete(t)
+	remote.wait(t)
+	h43AssertUserResult(t, result, scenario)
+	for _, role := range []string{"initiator", "introduction", "responder", "gateway", "alpha-gateway", "alpha-relay"} {
+		if roleResult := h43RemoteResult(t, remote, role); roleResult.Class != "drained" {
+			t.Fatalf("H4-5 remote %s class = %q, want drained", role, roleResult.Class)
+		}
+	}
+	if application := h43RemoteResult(t, remote, "publisher-app"); application.Class != "served" {
+		t.Fatalf("H4-5 Publisher Application class = %q, want served", application.Class)
+	}
+	if _, err := remote.readFile(t, environment.remoteDirectory+"/rendezvous.log"); err == nil {
+		t.Fatal("H4-5 topology started the fixture Rendezvous")
+	}
+
+	h45RunLifecycle(t, remote, "drain", h45ContributorCommand, "contributor drain")
+	if connection, err := net.DialTimeout("tcp", net.JoinHostPort(environment.host, fmt.Sprint(environment.port+1)), time.Second); err == nil {
+		_ = connection.Close()
+		t.Fatal("H4-5 drained Contributor still accepted a TCP connection")
+	}
+	h45RunLifecycle(t, remote, "withdraw", h45ContributorCommand, "contributor withdraw")
+	h45RunLifecycle(t, remote, "remove", h45ContributorCommand, "contributor remove --confirm "+h43ShellQuote(deployment))
+	removed = true
+	h45RetainEvidence(t, remote, result)
+}
+
+func stageH45Bundle(t *testing.T, root string, generation uint64) (string, string) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(root, "reference-c2.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture h45BundleFixture
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	if len(fixture.TransitStateSources) != 2 || fixture.TransitStateMaterials["rendezvous"] == 0 {
+		t.Fatal("H4-5 fixture lacks exact Rendezvous State or Sources")
+	}
+	bundle := filepath.Join(root, fmt.Sprintf("bundle-%d", generation))
+	if err := os.Mkdir(bundle, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	sources := make([]map[string]any, 2)
+	for index, source := range fixture.TransitStateSources {
+		suffix := string(rune('a' + index))
+		identity := sha256.Sum256([]byte("reference-c2-state-source-identity-" + source.Address))
+		sources[index] = map[string]any{"address": source.Address, "server_name": source.ServerName,
+			"identity": hex.EncodeToString(identity[:]), "family": "reference-c2-state-source-" + suffix,
+			"endpoint_handle": "reference-c2-state-source-" + suffix,
+			"root_ca":         "/var/lib/private/ardents-contributor/config/current/source-" + suffix + "-root.pem",
+			"leaf_key_digest": source.LeafKeyDigest}
+	}
+	plan := map[string]any{
+		"schema": "ardents-node-plan-v1", "state_root": "/var/lib/private/ardents-contributor/network",
+		"local_role_state_root": "/var/lib/private/ardents-contributor/role", "network_id": fixture.Network,
+		"authority_public": []string{fixture.TransitAuthority}, "threshold": 1,
+		"server_certificate":     "/var/lib/private/ardents-contributor/config/current/rendezvous-cert.pem",
+		"server_key":             "/var/lib/private/ardents-contributor/config/current/rendezvous-key.pem",
+		"materialization_index":  fixture.TransitStateMaterials["rendezvous"],
+		"clock_observation_file": "/var/lib/private/ardents-contributor/config/current/clock.observation", "order_seed": fixture.Digest,
+		"source_client_certificate": "/var/lib/private/ardents-contributor/config/current/source-client-cert.pem",
+		"source_client_key":         "/var/lib/private/ardents-contributor/config/current/source-client-key.pem", "sources": sources,
+		"node_id": fixture.Rendezvous.NodeID, "identity_key": "/var/lib/private/ardents-contributor/config/current/rendezvous-identity.pem",
+		"node_resource_profile": "h4-5-rendezvous-alpha-v1", "diagnostic_directory": "/var/lib/private/ardents-contributor/diagnostics",
+		"rendezvous": map[string]any{"handshake_limit": 4, "waiting_limit": 2, "pair_limit": 1,
+			"pair_byte_limit": 16 << 20, "admission_timeout_ms": 5000, "drain_timeout_ms": 5000},
+	}
+	planRaw, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string][]byte{
+		"rendezvous-cert.pem": []byte(fixture.Rendezvous.Certificate), "rendezvous-key.pem": []byte(fixture.Rendezvous.PrivateKey),
+		"rendezvous-identity.pem": []byte(fixture.Rendezvous.PrivateKey), "source-client-cert.pem": []byte(fixture.TransitStateClient.Certificate),
+		"source-client-key.pem": []byte(fixture.TransitStateClient.PrivateKey), "clock.observation": []byte("H4-5 live clock observation\n"),
+		"node.json": planRaw,
+	}
+	for _, suffix := range []string{"a", "b"} {
+		contents, readErr := os.ReadFile(filepath.Join(root, "source-"+suffix+"-root.pem"))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		files["source-"+suffix+"-root.pem"] = contents
+	}
+	executable, err := os.ReadFile(filepath.Join(root, "ardents-node"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files["ardents-node"] = executable
+	digests := make(map[string]string, len(files))
+	for name, contents := range files {
+		mode := os.FileMode(0o600)
+		if name == "ardents-node" {
+			mode = 0o755
+		}
+		h43WriteFile(t, filepath.Join(bundle, name), contents, mode)
+		digest := sha256.Sum256(contents)
+		digests[name] = hex.EncodeToString(digest[:])
+	}
+	deploymentDigest := sha256.Sum256([]byte("h4-5-rendezvous:" + fixture.Network))
+	deployment := hex.EncodeToString(deploymentDigest[:])
+	manifest := map[string]any{"schema": "ardents-contributor-bundle-v1", "profile": "h4-5-rendezvous-alpha-v1",
+		"deployment_id": deployment, "generation": generation, "files": digests}
+	manifestRaw, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h43WriteFile(t, filepath.Join(bundle, "manifest.json"), manifestRaw, 0o600)
+	pin := sha256.Sum256(manifestRaw)
+	return deployment, hex.EncodeToString(pin[:])
+}
+
+func h45RunLifecycle(t *testing.T, remote h43RemoteC2, name, executable, arguments string) {
+	t.Helper()
+	root := remote.environment.remoteDirectory
+	command := fmt.Sprintf(`set +e
+started=$(date +%%s%%N)
+%s %s >%s/contributor-%s.json 2>%s/contributor-%s.err
+status=$?
+finished=$(date +%%s%%N)
+printf 'schema=ardents-h4-5-operator-timing-v1\naction=%s\nstarted_unix_ns=%%s\nfinished_unix_ns=%%s\nexit_status=%%s\n' "$started" "$finished" "$status" >%s/contributor-%s.timing
+exit "$status"`, h43ShellQuote(executable), arguments, h43ShellQuote(root), name, h43ShellQuote(root), name, name, h43ShellQuote(root), name)
+	if output, err := remote.run(t, command); err != nil {
+		report, _ := remote.readFile(t, root+"/contributor-"+name+".err")
+		t.Fatalf("H4-5 Contributor %s: %v\n%s\n%s", name, err, output, report)
+	}
+	report, err := remote.readFile(t, root+"/contributor-"+name+".json")
+	if err != nil || !strings.Contains(string(report), `"profile":"h4-5-rendezvous-alpha-v1"`) {
+		t.Fatalf("H4-5 Contributor %s report = %q / %v", name, report, err)
+	}
+}
+
+func h45CapturePlacement(t *testing.T, remote h43RemoteC2) {
+	t.Helper()
+	root := h43ShellQuote(remote.environment.remoteDirectory)
+	command := fmt.Sprintf(`set -eu
+systemctl show ardents-rendezvous-contributor.service -p ActiveState -p SubState -p MainPID -p CPUQuotaPerSecUSec -p MemoryHigh -p MemoryMax -p TasksMax -p LimitNOFILE >%s/contributor-systemd.txt
+cgroup_relative=$(systemctl show ardents-rendezvous-contributor.service -p ControlGroup --value)
+case "$cgroup_relative" in /system.slice/*) ;; *) exit 1 ;; esac
+cgroup=/sys/fs/cgroup$cgroup_relative
+test -d "$cgroup"
+for name in cpu.max memory.high memory.max pids.max; do printf '%%s=' "$name"; cat "$cgroup/$name"; done >%s/contributor-cgroup.txt`, root, root)
+	if output, err := remote.run(t, command); err != nil {
+		t.Fatalf("capture H4-5 placement: %v\n%s", err, output)
+	}
+}
+
+func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult) {
+	t.Helper()
+	root := os.Getenv("ARDENTS_H4_5_EVIDENCE_DIR")
+	if root == "" {
+		return
+	}
+	if !filepath.IsAbs(root) {
+		t.Fatal("ARDENTS_H4_5_EVIDENCE_DIR must be absolute")
+	}
+	capture := remote.captureEvidence(t)
+	if err := os.WriteFile(filepath.Join(root, "remote-capture.txt"), capture, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "user.stdout.log"), user.stdout, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "user.stderr.log"), user.stderr, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func h45RemoteRunner() string {
+	return `#!/bin/sh
+set -eu
+work=/work
+pids=""
+started_pid=""
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM
+  for pid in $pids; do kill "$pid" 2>/dev/null || true; done
+  for pid in $pids; do wait "$pid" 2>/dev/null || true; done
+  exit "$status"
+}
+trap cleanup EXIT INT TERM
+start() {
+  name=$1
+  shift
+  "$@" >"$work/$name.log" 2>"$work/$name.err" &
+  started_pid=$!
+  pids="$pids $started_pid"
+}
+wait_file() {
+  path=$1
+  tries=0
+  while [ "$tries" -lt 2400 ]; do
+    if [ -s "$path" ]; then return 0; fi
+    tries=$((tries + 1))
+    sleep 0.1
+  done
+  return 1
+}
+wait_source() {
+  log=$1
+  tries=0
+  while [ "$tries" -lt 400 ]; do
+    if grep -F '"kind":"source-ready"' "$log" >/dev/null 2>&1; then return 0; fi
+    tries=$((tries + 1))
+    sleep 0.1
+  done
+  return 1
+}
+start source-a "$work/ardents-node" source --config "$work/source-a-plan.json"
+source_a=$started_pid
+start source-b "$work/ardents-node" source --config "$work/source-b-plan.json"
+source_b=$started_pid
+wait_source "$work/source-a.log"
+wait_source "$work/source-b.log"
+printf 'ready\n' >"$work/sources-ready"
+wait_file "$work/contributor-ready"
+transit_processes=""
+for role in initiator introduction responder; do
+  start "$role" "$work/reference-c2" "$role" "$work/reference-c2.json"
+  transit_processes="$transit_processes $role:$started_pid"
+done
+for role in initiator introduction responder; do wait_file "$work/ready/$role"; done
+start gateway "$work/reference-c2" gateway "$work/reference-c2.json"
+gateway=$started_pid
+start publisher "$work/reference-c2" publisher "$work/reference-c2.json"
+publisher=$started_pid
+wait_file "$work/publication.json"
+start alpha-gateway "$work/reference-c2" alpha-gateway "$work/reference-c2.json"
+alpha_gateway=$started_pid
+wait_file "$work/alpha-gateway-ready.json"
+start alpha-relay "$work/reference-c2" alpha-relay "$work/reference-c2.json"
+alpha_relay=$started_pid
+wait_file "$work/alpha-relay-ready.json"
+wait_file "$work/ready/gateway"
+start publisher-app "$work/reference-c2" publisher-app "$work/reference-c2.json"
+publisher_app=$started_pid
+wait_file "$work/complete"
+for item in "publisher:$publisher" "publisher-app:$publisher_app" "gateway:$gateway" "alpha-gateway:$alpha_gateway" "alpha-relay:$alpha_relay" $transit_processes; do
+  name=${item%%:*}
+  pid=${item#*:}
+  status=0
+  wait "$pid" || status=$?
+  printf '{"schema":"ardents-h4-5-fixture-role-exit-v1","role":"%s","pid":%s,"exit_status":%s}\n' "$name" "$pid" "$status" >>"$work/remote-role-exit-statuses.jsonl"
+  [ "$status" -eq 0 ]
+done
+kill -TERM "$source_a" "$source_b"
+wait "$source_a"
+wait "$source_b"
+`
+}

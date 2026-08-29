@@ -100,6 +100,12 @@ above; temporary qualification fixtures on the same project host do not create
 a supported co-resident Endpoint-plus-Contributor profile or an independence,
 capacity, or availability claim.
 
+The declared-host preflight passed on 2026-08-29 at commit `bdb9a665`: the
+selected existing Ubuntu VPS has the required systemd/cgroup-v2 platform,
+unused selected listener port, and no prior Contributor installation. This is
+host eligibility only; the workload, lifecycle, utility, and fault matrix has
+not yet accepted the profile.
+
 **Done when:** a Product Owner can follow the documented flow on a declared
 eligible host, run the dedicated duty through ordinary load and injected loss/restart,
 inspect its bounded resource and readiness state, drain it, and verify that it

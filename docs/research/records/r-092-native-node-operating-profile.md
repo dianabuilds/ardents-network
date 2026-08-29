@@ -488,6 +488,22 @@ runner and retained result.
   co-location is acceptable evidence for this functional-alpha decision only;
   it does not select a co-resident Endpoint product profile or support
   independence, public capacity, or availability language.
+- **Declared-host preflight measurement (2026-08-29):** the first H4-5
+  preflight passed at commit
+  `bdb9a66523c26558a09c063aa06399b49c8fa4cf`. At
+  `2026-08-29T07:40:49Z` the selected existing VPS reported Ubuntu 22.04.5 LTS,
+  Linux 5.15.0-185 `x86_64`, four online CPUs, 8,109,136 KiB `MemTotal`,
+  running systemd 249, and cgroup v2 with `cpu`, `memory`, and `pids`. Port
+  49152 was unused and the Contributor unit and managed paths were absent. The
+  exact outcome is `eligible-for-h4-5-campaign; no qualification result`.
+  Host observations, runner bytes, and their verified SHA-256 inventory are
+  retained outside Git under
+  `C:\Users\vitek\Ardents-Release\evidence\ardents-h4-5-preflight-bdb9a665`.
+  This changes the next action to the complete lifecycle/C-2 campaign; it does
+  not select capacity or close this record. The earlier `1b810813` attempt is
+  retained but superseded because its absent-unit oracle checked the shortened
+  wrong unit name; the accepted rerun checked the exact
+  `ardents-rendezvous-contributor.service` and again found it absent.
 
 ## Options
 
