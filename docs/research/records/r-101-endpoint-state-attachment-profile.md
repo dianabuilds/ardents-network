@@ -250,5 +250,6 @@ sequence. Purpose-owned Endpoint integration, an actual cross-account access
 cell on each supported platform, and the complete H4-1 lifecycle run are
 implementation-linked qualification tasks. None of those gates reopens the
 rejected same-user isolation claim; H4-7 owns that distinct problem. The
-decision is promoted to H4-1; retain this record only until its evidence enters
-source history.
+disposable harness was retired by the pre-H4-8 baseline after its measured
+outcomes were retained here and its maintained Portable-runtime behavior tests
+were identified.

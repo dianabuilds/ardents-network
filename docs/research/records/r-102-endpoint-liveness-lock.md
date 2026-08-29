@@ -173,5 +173,6 @@ rejection, and permission-policy round-trip. Maintained Endpoint integration,
 bounded delayed-release retry, cross-account tests, and lifecycle qualification
 remain; network-mounted roots and malicious-same-user protection remain outside
 the claim. A consequential dependency or unsupported platform divergence
-requires ADR review. The decision is promoted to H4-1; retain this record only
-until its evidence enters source history.
+requires ADR review. The disposable harness was retired by the pre-H4-8
+baseline after its measured outcomes were retained here and its maintained
+Portable-runtime behavior tests were identified.

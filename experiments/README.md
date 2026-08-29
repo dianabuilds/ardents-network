@@ -10,8 +10,10 @@ All closed Stage 8 spikes were C0 retired on 2026-08-23 after their
 decision-relevant results were recorded. The research records, target-module
 tests, and independent historical evidence retain their facts; a disposable
 implementation is not a second maintained version. R-098 remains open at its
-explicit implementation trigger. R-092/R-094/R-095/R-096/R-101/R-102 are
-decided evidence, not active implementation or a second specification.
+explicit implementation trigger. The pre-H4-8 inventory identifies each
+remaining decided-evidence directory, its direct research-record dependency,
+and its named condition for retirement; R-101/R-102 were retired after their
+facts gained maintained Portable-runtime behavior-test owners.
 
 A new spike must begin with a decision-relevant question, an accepted scope
 decision where the horizon requires one, and a purpose-named directory. Remove
