@@ -67,10 +67,10 @@ func TestReferenceC2HardStopsRendezvousWithHeldRoute(t *testing.T) {
 }
 
 type referenceC2Scenario struct {
-	publisherTerminal                                                                                                                                                                                                                             referenceC2PublisherTerminal
-	transitFault                                                                                                                                                                                                                                  referenceC2TransitFault
-	dynamicWorkload                                                                                                                                                                                                                               referenceC2DynamicWorkload
-	publisherOffline, rejectPublisherApplication, transparentApplication, browserEntryDynamic, signedFirefox, productNodeTransit, productRendezvousRelay, refreshWithdrawsProductNodes, refreshWithdrawsHeldProductRoute, hardStopsHeldRendezvous bool
+	publisherTerminal                                                                                                                                                                                                                                        referenceC2PublisherTerminal
+	transitFault                                                                                                                                                                                                                                             referenceC2TransitFault
+	dynamicWorkload                                                                                                                                                                                                                                          referenceC2DynamicWorkload
+	publisherOffline, rejectPublisherApplication, transparentApplication, browserEntryDynamic, signedFirefox, productNodeTransit, productRendezvousRelay, refreshWithdrawsProductNodes, refreshWithdrawsHeldProductRoute, hardStopsHeldRendezvous, heldRoute bool
 }
 
 type referenceC2PublisherTerminal string
@@ -246,7 +246,7 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 	if scenario.browserEntryDynamic {
 		fixture["BrowserEntryStatePath"] = browserEntryStatePath
 	}
-	if scenario.refreshWithdrawsHeldProductRoute || scenario.hardStopsHeldRendezvous {
+	if scenario.refreshWithdrawsHeldProductRoute || scenario.hardStopsHeldRendezvous || scenario.heldRoute {
 		fixture["HeldRouteReady"] = heldRouteReadyPath
 		fixture["HeldRouteUserReady"] = heldRouteUserReadyPath
 		fixture["HeldRouteRelease"] = heldRouteReleasePath
@@ -364,7 +364,7 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 		}
 		browserEntryResult = startReferenceC2BrowserEntryQualification(ctx, root, browserEntryQualification, browserEntryStatePath, resourceProofPath)
 	}
-	if scenario.refreshWithdrawsHeldProductRoute || scenario.hardStopsHeldRendezvous {
+	if scenario.refreshWithdrawsHeldProductRoute || scenario.hardStopsHeldRendezvous || scenario.heldRoute {
 		if err := referenceC2WaitForFile(ctx, heldRouteReadyPath); err != nil {
 			t.Fatalf("C2 product route did not become held: %v", err)
 		}
@@ -384,7 +384,7 @@ func runReferenceC2(t *testing.T, scenario referenceC2Scenario) {
 					t.Fatalf("held C2 product Node %s did not withdraw after refreshed State: %v\n%s", role, err, process.stderr.String())
 				}
 			}
-		} else {
+		} else if scenario.hardStopsHeldRendezvous {
 			referenceC2HardStopProductNode(t, productTransit["rendezvous"])
 		}
 		if err := os.WriteFile(heldRouteReleasePath, []byte("release\n"), 0o600); err != nil {

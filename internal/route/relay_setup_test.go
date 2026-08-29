@@ -56,6 +56,15 @@ func TestRelaySetupRejectsMalformedAndWrongRoles(t *testing.T) {
 	}
 }
 
+func TestRelayReadyAcceptsTheSameCanonicalSecondAcrossTimeLocations(t *testing.T) {
+	setup := relaySetupFixture()
+	ready := RelayReady{Setup: setup}
+	ready.Setup.NotAfter = setup.NotAfter.In(time.FixedZone("fixture-offset", 3*60*60))
+	if err := setup.VerifyRelayReady(ready); err != nil {
+		t.Fatalf("same canonical RelayReady second was rejected: %v", err)
+	}
+}
+
 func relaySetupFixture() RelaySetup {
 	return RelaySetup{NetworkID: identifier(1), Digest: identifier(2), AttachmentID: identifier(3), Epoch: 7,
 		TransitRole: InitiatorRole, NextRole: RendezvousRole, TransitNodeID: identifier(4), NextNodeID: identifier(5),

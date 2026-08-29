@@ -217,11 +217,13 @@ func stageH43RemoteC2(t *testing.T, environment h43MultiHostEnvironment, deadlin
 		"PublisherOffline": false, "TransparentApplication": true, "PublisherTerminal": scenario.publisherTerminal, "PublisherCrashReadyPath": "/work/publisher-crash-ready"}
 	stageH48A11ProductTransit(t, root, fixture, stateFixture, rendezvousMaterial, client, sources, scenario)
 	scenario.dynamicWorkload.addTo(fixture)
+	referenceC2ConfigureHeldRoute(fixture, "/work", scenario.heldRoute)
 	h43WriteJSON(t, filepath.Join(root, "reference-c2.json"), fixture)
 	h43WriteFile(t, filepath.Join(root, "expected-terminal"), []byte(scenario.publisherTerminal+"\n"), 0o600)
 	h43WriteFile(t, filepath.Join(root, "run.sh"), []byte(h43RemoteRunner()), 0o700)
 
 	local := h43CloneFixture(t, fixture)
+	referenceC2ConfigureHeldRoute(local, localRoot, scenario.heldRoute)
 	local["PublicationPath"] = filepath.Join(localRoot, "publication.json")
 	local["GatewayProfilePath"] = filepath.Join(localRoot, "gateway-profile.json")
 	local["AlphaRelayReadyPath"] = filepath.Join(localRoot, "alpha-relay-ready.json")

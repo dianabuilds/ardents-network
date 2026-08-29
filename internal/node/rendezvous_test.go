@@ -56,6 +56,53 @@ func TestRendezvousPairsExactAuthenticatedLegsAndDrains(t *testing.T) {
 	}
 }
 
+func TestRendezvousDrainPreservesActivePairInsideLease(t *testing.T) {
+	running, material, config := rendezvousFixture(t)
+	attachment := [32]byte{10}
+	initiator, err := openRendezvousLeg(t.Context(), config.ListenAddress, material.initiator, material.serverPublic,
+		legFor(material, attachment, route.InitiatorRole, config.NotAfter))
+	if err != nil {
+		t.Fatal(err)
+	}
+	responder, err := openRendezvousLeg(t.Context(), config.ListenAddress, material.responder, material.serverPublic,
+		legFor(material, attachment, route.ResponderRole, config.NotAfter))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan error, 1)
+	go func() { result <- running.Drain(t.Context()) }()
+	time.Sleep(50 * time.Millisecond)
+	select {
+	case err := <-result:
+		t.Fatalf("Rendezvous drain completed before active work: %v", err)
+	default:
+	}
+	if connection, dialErr := net.DialTimeout("tcp", config.ListenAddress, 100*time.Millisecond); dialErr == nil {
+		_ = connection.Close()
+		t.Fatal("draining Rendezvous accepted a new connection")
+	}
+	if _, err := initiator.Write([]byte("inside lease")); err != nil {
+		t.Fatal(err)
+	}
+	if got := readExact(t, responder, len("inside lease")); string(got) != "inside lease" {
+		t.Fatalf("draining Rendezvous bytes = %q", got)
+	}
+	if err := initiator.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := responder.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Rendezvous did not finish after active work completed")
+	}
+}
+
 func TestRendezvousPairsExactAuthenticatedLegsOverQUIC(t *testing.T) {
 	running, material, config := rendezvousFixtureForCarrier(t, route.CarrierQUIC)
 	attachment := [32]byte{11}

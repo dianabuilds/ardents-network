@@ -87,6 +87,7 @@ type nodeRuntime struct {
 	state               state.Config
 	node                node.Config
 	diagnosticDirectory string
+	clockObservation    string
 }
 
 func readNodePlan(path string) (nodeRuntime, error) {
@@ -152,10 +153,15 @@ func readNodePlan(path string) (nodeRuntime, error) {
 			return nodeRuntime{}, err
 		}
 	}
-	node, err := loadNodeIdentity(plan, state.NetworkID)
+	nodeConfig, err := loadNodeIdentity(plan, state.NetworkID)
 	if err != nil {
 		return nodeRuntime{}, err
 	}
-	node.NetworkStateRoot = plan.StateRoot
-	return nodeRuntime{state: state, node: node, diagnosticDirectory: plan.DiagnosticDirectory}, nil
+	nodeConfig.NetworkStateRoot = plan.StateRoot
+	clockObservation := ""
+	if plan.NodeResourceProfile == node.RendezvousFunctionalAlphaResourceProfile {
+		clockObservation = plan.ClockObservationFile
+	}
+	return nodeRuntime{state: state, node: nodeConfig, diagnosticDirectory: plan.DiagnosticDirectory,
+		clockObservation: clockObservation}, nil
 }

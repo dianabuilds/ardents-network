@@ -19,9 +19,16 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	stopClockObservation := func() error { return nil }
+	if runtime.clockObservation != "" {
+		stopClockObservation, err = startContributorClockObservation(ctx, runtime.clockObservation, contributorClockObservationInterval)
+		if err != nil {
+			return err
+		}
+	}
 	store, err := state.Open(runtime.state)
 	if err != nil {
-		return err
+		return errors.Join(err, stopClockObservation())
 	}
 	if _, currentErr := store.Current(); errors.Is(currentErr, state.ErrNoCurrentGeneration) {
 		if _, refreshErr := store.Refresh(ctx); refreshErr != nil {
@@ -38,8 +45,5 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 	}
 	runtime.node.Emit = nodeEventEmitter(boundedOutput, runtime.diagnosticDirectory)
 	_, runErr := node.Run(ctx, runtime.node)
-	if closeErr := store.Close(); runErr == nil {
-		runErr = closeErr
-	}
-	return runErr
+	return errors.Join(runErr, store.Close(), stopClockObservation())
 }

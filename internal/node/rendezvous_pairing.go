@@ -106,14 +106,15 @@ func (running *Rendezvous) pump(first, second *rendezvousLeg) {
 	running.mu.Unlock()
 }
 
-// Drain closes admission first, signals every pre-admission leg, and joins all
-// listener, handshake, expiry, and pump work within the declared duty bound.
+// Drain closes admission and pre-admission work first, lets accepted pairs
+// finish inside the declared duty bound, then closes any pair still active at
+// that boundary before joining every owned worker.
 func (running *Rendezvous) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Rendezvous duty is unavailable")
 	}
 	running.Stop()
-	var preAdmission, active []io.Closer
+	var preAdmission []io.Closer
 	running.mu.Lock()
 	for connection := range running.pre {
 		preAdmission = append(preAdmission, connection)
@@ -124,11 +125,8 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 		leg.stopDone()
 		preAdmission = append(preAdmission, leg.connection)
 	}
-	for connection := range running.active {
-		active = append(active, connection)
-	}
 	running.mu.Unlock()
-	for _, connection := range append(preAdmission, active...) {
+	for _, connection := range preAdmission {
 		_ = connection.Close()
 	}
 	done := make(chan struct{})
@@ -139,9 +137,25 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 	case <-done:
 		return nil
 	case <-ctx.Done():
+		running.closeActivePairs()
+		<-done
 		return ctx.Err()
 	case <-timer.C:
-		return errors.New("Rendezvous drain exceeded its Work Safety Lease")
+		running.closeActivePairs()
+		<-done
+		return nil
+	}
+}
+
+func (running *Rendezvous) closeActivePairs() {
+	running.mu.Lock()
+	active := make([]io.Closer, 0, len(running.active))
+	for connection := range running.active {
+		active = append(active, connection)
+	}
+	running.mu.Unlock()
+	for _, connection := range active {
+		_ = connection.Close()
 	}
 }
 

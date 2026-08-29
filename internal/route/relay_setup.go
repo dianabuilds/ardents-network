@@ -60,8 +60,20 @@ func (input RelaySetup) VerifyRelayReady(ready RelayReady) error {
 	if err := validRelaySetup(input); err != nil {
 		return err
 	}
-	if ready.Setup != input {
-		return errors.New("relay ready does not match Endpoint-selected setup")
+	if err := validRelaySetup(ready.Setup); err != nil {
+		return errors.Join(errors.New("relay ready setup is invalid"), err)
+	}
+	switch {
+	case ready.Setup.NetworkID != input.NetworkID || ready.Setup.Digest != input.Digest || ready.Setup.Epoch != input.Epoch:
+		return errors.New("relay ready network state does not match Endpoint-selected setup")
+	case ready.Setup.AttachmentID != input.AttachmentID:
+		return errors.New("relay ready attachment does not match Endpoint-selected setup")
+	case ready.Setup.TransitRole != input.TransitRole || ready.Setup.NextRole != input.NextRole:
+		return errors.New("relay ready roles do not match Endpoint-selected setup")
+	case ready.Setup.TransitNodeID != input.TransitNodeID || ready.Setup.NextNodeID != input.NextNodeID || ready.Setup.NextNodePublicKey != input.NextNodePublicKey:
+		return errors.New("relay ready nodes do not match Endpoint-selected setup")
+	case !ready.Setup.NotAfter.Equal(input.NotAfter):
+		return errors.New("relay ready expiry does not match Endpoint-selected setup")
 	}
 	return nil
 }

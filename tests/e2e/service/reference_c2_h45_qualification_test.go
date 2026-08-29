@@ -79,14 +79,6 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 	h45RunLifecycle(t, remote, "apply", applyBinary, fmt.Sprintf("contributor apply --bundle %s --manifest-pin %s",
 		h43ShellQuote(environment.remoteDirectory+"/bundle-1"), h43ShellQuote(pin)))
 	h45RunLifecycle(t, remote, "diagnose", h45ContributorCommand, "contributor diagnose")
-	clockCommand := fmt.Sprintf(`set -eu
-rm -f %s/stop-clock
-(while [ ! -e %s/stop-clock ]; do touch /var/lib/private/ardents-contributor/config/current/clock.observation; sleep 0.1; done) >/dev/null 2>&1 &
-printf '%%s\n' "$!" >%s/clock.pid`, h43ShellQuote(environment.remoteDirectory),
-		h43ShellQuote(environment.remoteDirectory), h43ShellQuote(environment.remoteDirectory))
-	if output, err := remote.run(t, clockCommand); err != nil {
-		t.Fatalf("start H4-5 clock observation owner: %v\n%s", err, output)
-	}
 	h45RunLifecycle(t, remote, "restart", h45ContributorCommand, "contributor restart")
 	updated := h45RunLifecycle(t, remote, "update-idle", h45ContributorCommand, fmt.Sprintf("contributor apply --bundle %s --manifest-pin %s",
 		h43ShellQuote(environment.remoteDirectory+"/bundle-2"), h43ShellQuote(nextPin)))
@@ -237,13 +229,7 @@ func stageH45Bundle(t *testing.T, root string, generation uint64) (string, strin
 func h45RunLifecycle(t *testing.T, remote h43RemoteC2, name, executable, arguments string) []byte {
 	t.Helper()
 	root := remote.environment.remoteDirectory
-	command := fmt.Sprintf(`set +e
-started=$(date +%%s%%N)
-%s %s >%s/contributor-%s.json 2>%s/contributor-%s.err
-status=$?
-finished=$(date +%%s%%N)
-printf 'schema=ardents-h4-5-operator-timing-v1\naction=%s\nstarted_unix_ns=%%s\nfinished_unix_ns=%%s\nexit_status=%%s\n' "$started" "$finished" "$status" >%s/contributor-%s.timing
-exit "$status"`, h43ShellQuote(executable), arguments, h43ShellQuote(root), name, h43ShellQuote(root), name, name, h43ShellQuote(root), name)
+	command := h45LifecycleCommand(root, name, executable, arguments)
 	if output, err := remote.run(t, command); err != nil {
 		diagnosticsCommand := fmt.Sprintf(`set +e
 {
@@ -322,6 +308,7 @@ func h45RetainFailureEvidence(t *testing.T, remote h43RemoteC2) {
 	if root == "" || !filepath.IsAbs(root) {
 		return
 	}
+	h45PrepareEvidenceRoot(t, root)
 	capture, err := remote.captureFailureEvidence()
 	if err != nil && len(capture) == 0 {
 		t.Errorf("capture failed H4-5 attempt: %v", err)
