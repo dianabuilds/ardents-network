@@ -41,3 +41,71 @@ func TestBundleInspectionReportExposesExactVerifiedControlInputs(t *testing.T) {
 		t.Fatalf("bundle inspection report:\n%s\nwant:\n%s", output.String(), want)
 	}
 }
+
+func TestTransitionInspectionClassifiesIndependentControlFailures(t *testing.T) {
+	report := inspection.Report{Inspection: alphacontrol.Inspection{Catalog: alphacontrol.OutcomeAccepted,
+		Components: [3]alphacontrol.ComponentInspection{
+			{Class: alphacontrol.ComponentRelease, Outcome: alphacontrol.OutcomeAccepted},
+			{Class: alphacontrol.ComponentNetwork, Outcome: alphacontrol.OutcomeExpired},
+			{Class: alphacontrol.ComponentCompatibility, Outcome: alphacontrol.OutcomeLowerFloor},
+		}}}
+	result := transitionInspectionReport(report)
+	if result.Schema != "ardents-alpha-transition-report-v1" {
+		t.Fatalf("transition report schema = %q", result.Schema)
+	}
+	want := []struct {
+		domain   alphacontrol.TransitionDomain
+		selected bool
+		outcome  string
+	}{
+		{alphacontrol.DomainReleaseSafety, true, "accepted"},
+		{alphacontrol.DomainNetworkEpoch, true, "stale"},
+		{alphacontrol.DomainCompatibility, true, "replayed"},
+		{alphacontrol.DomainNamespaceMaterialization, false, "not-selected"},
+	}
+	if len(result.Transitions) != len(want) {
+		t.Fatalf("transition count = %d, want %d", len(result.Transitions), len(want))
+	}
+	for index, expected := range want {
+		actual := result.Transitions[index]
+		if actual.Domain != expected.domain || actual.Selected != expected.selected || actual.Outcome != expected.outcome {
+			t.Fatalf("transition %d = %+v, want %+v", index, actual, expected)
+		}
+		if actual.UserFailure == "" || actual.Evidence == "" {
+			t.Fatalf("transition %s lacks user failure or evidence: %+v", actual.Domain, actual)
+		}
+	}
+}
+
+func TestTransitionInspectionClassifiesFailureMatrix(t *testing.T) {
+	for name, test := range map[string]struct {
+		catalog   alphacontrol.Outcome
+		component alphacontrol.Outcome
+		release   string
+		want      string
+	}{
+		"forged":              {component: alphacontrol.OutcomeDigestMismatch, want: "forged"},
+		"stale":               {component: alphacontrol.OutcomeExpired, want: "stale"},
+		"replayed":            {component: alphacontrol.OutcomeLowerFloor, want: "replayed"},
+		"revoked":             {component: alphacontrol.OutcomeInvalid, release: "release-revoked", want: "revoked"},
+		"conflicting":         {component: alphacontrol.OutcomeConflict, want: "conflicting"},
+		"withheld":            {component: alphacontrol.OutcomeUnavailable, want: "unavailable"},
+		"unavailable catalog": {catalog: alphacontrol.OutcomeUnavailable, want: "unavailable"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			catalog := test.catalog
+			if catalog == "" {
+				catalog = alphacontrol.OutcomeAccepted
+			}
+			report := inspection.Report{Release: test.release, Inspection: alphacontrol.Inspection{Catalog: catalog,
+				Components: [3]alphacontrol.ComponentInspection{{Class: alphacontrol.ComponentRelease, Outcome: test.component}}}}
+			result := transitionInspectionReport(report)
+			if actual := result.Transitions[0].Outcome; actual != test.want {
+				t.Fatalf("release transition outcome = %q, want %q", actual, test.want)
+			}
+			if name == "revoked" && result.Transitions[2].Outcome != "revoked" {
+				t.Fatalf("Compatibility outcome after revoked Release = %q, want revoked", result.Transitions[2].Outcome)
+			}
+		})
+	}
+}

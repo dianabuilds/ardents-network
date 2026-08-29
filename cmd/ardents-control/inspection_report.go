@@ -44,7 +44,28 @@ type bundleComponentInspectionOutput struct {
 	NotAfter   string                      `json:"not_after"`
 }
 
+// transitionInspectionOutput makes the four H4-6B contracts visible next to
+// the non-authorizing H4-6A inspection. It is a diagnostic report, never an
+// input to Endpoint readiness or control authority.
+type transitionInspectionOutput struct {
+	Schema      string                      `json:"schema"`
+	Control     bundleInspectionOutput      `json:"control"`
+	Transitions []transitionInspectionEntry `json:"transitions"`
+}
+
+type transitionInspectionEntry struct {
+	Domain      alphacontrol.TransitionDomain `json:"domain"`
+	Selected    bool                          `json:"selected"`
+	Outcome     string                        `json:"outcome"`
+	UserFailure string                        `json:"user_failure"`
+	Evidence    string                        `json:"evidence"`
+}
+
 func writeBundleInspectionReport(output io.Writer, report inspection.Report) error {
+	return json.NewEncoder(output).Encode(bundleInspectionReport(report))
+}
+
+func bundleInspectionReport(report inspection.Report) bundleInspectionOutput {
 	encoded := bundleInspectionOutput{
 		Schema: "ardents-alpha-control-report-v1", Catalog: report.Inspection.Catalog,
 		CatalogIdentity: hex.EncodeToString(report.Inspection.CatalogDigest[:]), CatalogCohort: report.CatalogCohort,
@@ -64,7 +85,62 @@ func writeBundleInspectionReport(output io.Writer, report inspection.Report) err
 			Digest: hex.EncodeToString(component.Digest[:]), NotBefore: reportTime(component.NotBefore), NotAfter: reportTime(component.NotAfter),
 		}
 	}
-	return json.NewEncoder(output).Encode(encoded)
+	return encoded
+}
+
+func transitionInspectionReport(report inspection.Report) transitionInspectionOutput {
+	contracts := alphacontrol.H46BTransitionContracts()
+	result := transitionInspectionOutput{
+		Schema: "ardents-alpha-transition-report-v1", Control: bundleInspectionReport(report),
+		Transitions: make([]transitionInspectionEntry, len(contracts)),
+	}
+	for index, contract := range contracts {
+		outcome := "not-selected"
+		if contract.Selected {
+			outcome = transitionOutcome(report, contract.Domain)
+		}
+		result.Transitions[index] = transitionInspectionEntry{Domain: contract.Domain, Selected: contract.Selected,
+			Outcome: outcome, UserFailure: contract.UserFailure, Evidence: contract.Evidence}
+	}
+	return result
+}
+
+func transitionOutcome(report inspection.Report, domain alphacontrol.TransitionDomain) string {
+	if report.Inspection.Catalog != alphacontrol.OutcomeAccepted {
+		return classifyTransitionOutcome(report.Inspection.Catalog)
+	}
+	if domain == alphacontrol.DomainCompatibility && report.Release == "release-revoked" {
+		return "revoked"
+	}
+	component, selected := alphacontrol.H46BComponent(domain)
+	if !selected {
+		return "forged"
+	}
+	index := int(component) - int(alphacontrol.ComponentRelease)
+	if index < 0 || index >= len(report.Inspection.Components) {
+		return "forged"
+	}
+	if domain == alphacontrol.DomainReleaseSafety && report.Release == "release-revoked" {
+		return "revoked"
+	}
+	return classifyTransitionOutcome(report.Inspection.Components[index].Outcome)
+}
+
+func classifyTransitionOutcome(outcome alphacontrol.Outcome) string {
+	switch outcome {
+	case alphacontrol.OutcomeAccepted:
+		return "accepted"
+	case alphacontrol.OutcomeExpired:
+		return "stale"
+	case alphacontrol.OutcomeLowerFloor:
+		return "replayed"
+	case alphacontrol.OutcomeConflict:
+		return "conflicting"
+	case alphacontrol.OutcomeUnavailable:
+		return "unavailable"
+	default:
+		return "forged"
+	}
 }
 
 func reportTime(value time.Time) string {

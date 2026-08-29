@@ -39,7 +39,8 @@ generic local Broker does not provide a qualified isolation claim.
   [naming](docs/technical/naming.md),
   [network/route/node](docs/technical/network-route-node.md),
   [endpoint/service](docs/technical/endpoint-service-runtime.md), and
-  [release/update/custody](docs/technical/release-update-custody.md)
+  [release/update/custody](docs/technical/release-update-custody.md), and
+  [alpha-control transitions](docs/technical/alpha-control-transition.md)
 - [Development documentation](docs/development/README.md) and the factual
   [package map](docs/development/package-map.md)
 - [Architecture decisions](docs/adr/README.md)

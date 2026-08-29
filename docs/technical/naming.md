@@ -143,6 +143,11 @@ ordinal/root, and issue the complete threshold-signed close before it yields a
 `ClaimWinner`. Scale, index/cache, product capacity, and supported-platform
 claims remain outside this technical contract.
 
+Functional Alpha explicitly selects no substitute: under ADR-0054, alpha
+control cannot materialize, close, release, reclaim, or administratively
+recover a canonical Name. Its user-visible H4-6B outcome is `not-selected`;
+Target Links remain the complete current destination path.
+
 ## Verification
 
 The maintained local gate is `make quick-check`; `make check` is required

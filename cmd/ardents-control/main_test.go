@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,6 +52,14 @@ func TestInspectReportsSeparateComponentResultsWithoutEndpoint(t *testing.T) {
 		if component.Outcome != "accepted" {
 			t.Fatalf("component result = %+v", component)
 		}
+	}
+}
+
+func TestInspectTransitionsNamesItsInvalidArguments(t *testing.T) {
+	var output bytes.Buffer
+	err := run([]string{"inspect-transitions"}, &output)
+	if err == nil || !strings.Contains(err.Error(), "inspect-transitions") {
+		t.Fatalf("inspect-transitions invalid arguments = %v", err)
 	}
 }
 

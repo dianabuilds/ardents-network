@@ -1,7 +1,7 @@
 # H4-6 — Transparent alpha control and public-control transition
 
-Status: **accepted H4-6 direction; alpha control remains project-operated and
-no independent public-control claim is accepted.**
+Status: **H4-6A and H4-6B accepted for Functional Alpha; alpha control remains
+project-operated and no independent public-control claim is accepted.**
 
 ## Decision
 
@@ -148,9 +148,19 @@ Ed25519 roots; fixed Release, Network, and Compatibility statements; and
 separate catalog, Release, and Network floors. The catalog stays an index and
 cannot select a component key, source, or Endpoint authority.
 
+## Selected H4-6B alpha transition contract
+
+ADR-0054 separates the four Functional Alpha transition domains. Release
+Safety, Network Epoch, and Compatibility keep their own authority,
+predecessor/floor, freshness, rotation, revocation, emergency, and evidence
+rules; `ardents-control inspect-transitions` renders their independent result.
+Namespace materialization is explicitly **not selected**: the alpha cannot
+close, release, reclaim, recover, or materialize a canonical Name. Target Links
+remain the complete current destination path. A withheld input is rendered as
+unavailable because an Endpoint cannot distinguish withholding from outage; no
+fallback root, profile, source, or Namespace authority is allowed.
+
 ## Open Product Owner selections
 
-- Exact separation and rotation/revocation policies for alpha release, Epoch,
-  Namespace, and compatibility roots.
 - Threshold and evidence operations for a future H4-6C, when real independent
   participants make that selection actionable.

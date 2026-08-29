@@ -30,19 +30,21 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 	switch arguments[0] {
 	case "inspect":
 		return inspectStatements(arguments[1:], output)
 	case "inspect-bundle":
 		return inspectBundle(arguments[1:], output)
+	case "inspect-transitions":
+		return inspectTransitions(arguments[1:], output)
 	case "inspect-alpha-corpus":
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
 		return acceptAlphaCorpus(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 }
 
@@ -161,7 +163,17 @@ func inspectStatements(arguments []string, output io.Writer) error {
 }
 
 func inspectBundle(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("inspect-bundle", flag.ContinueOnError)
+	report, inspectionErr := inspectBundleReport("inspect-bundle", arguments)
+	return errors.Join(inspectionErr, writeBundleInspectionReport(output, report))
+}
+
+func inspectTransitions(arguments []string, output io.Writer) error {
+	report, inspectionErr := inspectBundleReport("inspect-transitions", arguments)
+	return errors.Join(inspectionErr, json.NewEncoder(output).Encode(transitionInspectionReport(report)))
+}
+
+func inspectBundleReport(command string, arguments []string) (inspection.Report, error) {
+	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var enrollmentPath, artifact, stateRoot, atText string
 	flags.StringVar(&enrollmentPath, "enrollment", "", "alpha enrollment input JSON")
@@ -169,19 +181,17 @@ func inspectBundle(arguments []string, output io.Writer) error {
 	flags.StringVar(&stateRoot, "state-root", "", "reader-owned inspection state root")
 	flags.StringVar(&atText, "at", "", "decision time in RFC3339")
 	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
-		return errors.New("alpha control bundle inspection arguments are invalid")
+		return inspection.Report{}, fmt.Errorf("alpha control %s arguments are invalid", command)
 	}
 	at, err := time.Parse(time.RFC3339, atText)
 	if err != nil {
-		return errors.New("alpha control inspection time is invalid")
+		return inspection.Report{}, fmt.Errorf("alpha control %s time is invalid", command)
 	}
 	input, err := enrollment.ReadClosedAlphaInput(enrollmentPath)
 	if err != nil {
-		return err
+		return inspection.Report{}, err
 	}
-	report, err := inspection.Inspect(context.Background(), inspection.Config{Root: stateRoot, Enrollment: input.Request(artifact, at), At: at.UTC()})
-	encoded := writeBundleInspectionReport(output, report)
-	return errors.Join(err, encoded)
+	return inspection.Inspect(context.Background(), inspection.Config{Root: stateRoot, Enrollment: input.Request(artifact, at), At: at.UTC()})
 }
 
 func decodePublicKey(encoded string) (ed25519.PublicKey, error) {
