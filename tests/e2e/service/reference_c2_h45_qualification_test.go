@@ -296,6 +296,24 @@ func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult) {
 	if err := os.WriteFile(filepath.Join(root, "user.stderr.log"), user.stderr, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	for _, name := range []string{
+		"contributor-apply.json", "contributor-apply.timing",
+		"contributor-diagnose.json", "contributor-diagnose.timing",
+		"contributor-restart.json", "contributor-restart.timing",
+		"contributor-update-idle.json", "contributor-update-idle.timing",
+		"contributor-systemd.txt", "contributor-cgroup.txt",
+		"contributor-drain.json", "contributor-drain.timing",
+		"contributor-withdraw.json", "contributor-withdraw.timing",
+		"contributor-remove.json", "contributor-remove.timing",
+	} {
+		contents, err := remote.readFile(t, remote.environment.remoteDirectory+"/"+name)
+		if err != nil {
+			t.Fatalf("retain H4-5 operator evidence %s: %v", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(root, name), contents, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func h45RetainFailureEvidence(t *testing.T, remote h43RemoteC2) {
