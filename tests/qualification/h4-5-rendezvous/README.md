@@ -148,6 +148,32 @@ found that it checked `ardents-contributor.service` rather than the exact
 `ardents-rendezvous-contributor.service`; the accepted rerun corrected that
 oracle and again found the exact unit absent.
 
+## Installed-product smoke evidence
+
+The first complete installed-product smoke passed on 2026-08-29 at commit
+`174283d5`. On the selected existing VPS it installed generation 1, populated
+an initially empty Network State root from the two pinned authenticated
+Sources, reached `READY`, diagnosed and restarted the exact systemd service,
+carried the maintained Publisher-to-User C-2 path, drained, refused a new TCP
+connection, withdrew, removed the confirmed deployment, and left the unit,
+managed roots, runtime root, and selected ports absent. The test completed in
+43.62 seconds. Its retained external evidence is
+`C:\Users\vitek\Ardents-Release\evidence\h4-5-smoke-174283d5-attempt4-20260829`.
+
+Three earlier attempts remain in the denominator. Attempt 1 found that the
+Windows-to-Linux fixture transfer had removed the staged executable bit.
+Attempt 2 reached the real service and found that an empty State root exited
+before its first Source refresh. Attempt 3 then passed bootstrap, lifecycle,
+C-2 utility, and drain, but found that disabling an already drained service
+treated a non-failed `systemctl reset-failed` result as an error. The retained
+attempt directories respectively identify commits `adef2464`, `0d86d974`, and
+`a8839270`; the product and qualifier corrections are committed separately.
+
+This is smoke evidence only. It does not replace any ten-minute repetition,
+generation-2 update, overload, hostile admission, Source/link, State,
+process-loss, reboot, or restoration cell in the frozen matrix, so the
+qualification status remains open.
+
 ## Claim boundary
 
 A passing complete campaign may accept only one project-qualified dedicated

@@ -504,6 +504,23 @@ runner and retained result.
   retained but superseded because its absent-unit oracle checked the shortened
   wrong unit name; the accepted rerun checked the exact
   `ardents-rendezvous-contributor.service` and again found it absent.
+- **Installed-product smoke measurement (2026-08-29):** four retained attempts
+  on the selected existing VPS produced one complete pass and three classified
+  implementation failures. The failures exposed a transferred executable-mode
+  loss, missing synchronous first-State acquisition from the two authenticated
+  Sources, and a non-idempotent drained-to-withdrawn systemd transition. At
+  commit `174283d5`, the corrected generation-1 run installed the exact unit,
+  bootstrapped an empty Network State root from those Sources, reached
+  `READY`, diagnosed and restarted, carried the maintained Publisher-to-User
+  C-2 route, drained, refused a new TCP connection, withdrew, removed the
+  confirmed deployment, and left no unit, managed root, runtime root, or
+  selected listener. It passed in 43.62 seconds. Evidence is retained outside
+  Git under
+  `C:\Users\vitek\Ardents-Release\evidence\h4-5-smoke-174283d5-attempt4-20260829`;
+  the failed attempts remain under their separately named evidence roots.
+  This establishes an installed-product tracer and operator lifecycle, not the
+  repeated workload/fault matrix, generation-2 update, capacity, availability,
+  or final profile selection.
 
 ## Options
 

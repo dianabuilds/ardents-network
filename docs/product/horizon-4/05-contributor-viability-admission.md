@@ -106,6 +106,13 @@ unused selected listener port, and no prior Contributor installation. This is
 host eligibility only; the workload, lifecycle, utility, and fault matrix has
 not yet accepted the profile.
 
+The first corrected installed-product smoke passed at commit `174283d5`: an
+empty Contributor acquired its first signed State from the two pinned Sources,
+carried the real C-2 Rendezvous position, completed restart/drain/withdrawal and
+exact removal, and left no managed residue. Three preceding classified failures
+remain in the denominator. This advances implementation readiness but does not
+replace the frozen repeated workload/fault matrix or accept the profile.
+
 **Done when:** a Product Owner can follow the documented flow on a declared
 eligible host, run the dedicated duty through ordinary load and injected loss/restart,
 inspect its bounded resource and readiness state, drain it, and verify that it
