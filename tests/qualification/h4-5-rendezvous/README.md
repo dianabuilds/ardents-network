@@ -148,7 +148,9 @@ the exact `h4-5-rendezvous-alpha-v1` cgroup and runtime limits.
 
 The Windows controller is `make qualification-h4-5-rendezvous`. It requires
 two distinct declared VPS literal IPv4 addresses, an existing OpenSSH-compatible
-primary key, and an existing OpenSSH-compatible or PuTTY secondary key,
+primary key, and exactly one existing PuTTY secondary key
+or owner-only secondary password file,
+the independently verified secondary SSH host-key fingerprint,
 the required `H4_5_OPERATOR_HISTORY_BASE64` factual history input,
 root access to the primary systemd host, Docker on all three hosts, the pinned
 `golang:1.26.6` image, an absent absolute evidence directory, and a clean
@@ -178,9 +180,9 @@ The controller's closed 16-cell denominator maps the frozen matrix as follows:
 
 The primary installed-host Go oracle requires an OpenSSH-compatible private key
 and uses the system `ssh` client. The secondary shard may instead receive a
-declared `.ppk` key and then uses installed PuTTY `plink`/`pscp` in
-non-interactive batch mode; it does not convert, copy, print, or retain
-private-key bytes. The final disposition
+declared `.ppk` key or caller-owned password file and then uses installed PuTTY
+`plink`/`pscp` in non-interactive batch mode. The controller does not convert,
+copy, print, or retain private-key or password bytes. The final disposition
 accepts only one unique result per expected name whose schema, exact source
 revision, owning shard, zero exit status, and `passed` outcome all match.
 

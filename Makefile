@@ -79,7 +79,7 @@ prepare-h4-5-rendezvous:
 	sh ./tests/qualification/h4-5-rendezvous/run-ubuntu.sh
 
 qualification-h4-5-rendezvous:
-	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-5-rendezvous/run-windows.ps1 -PrimaryVPS "$(H4_5_PRIMARY_VPS)" -PrimarySSHKey "$(H4_5_PRIMARY_SSH_KEY)" -PrimaryUser "$(H4_5_PRIMARY_USER)" -PrimaryBasePort "$(H4_5_PRIMARY_BASE_PORT)" -SecondaryVPS "$(H4_5_SECONDARY_VPS)" -SecondarySSHKey "$(H4_5_SECONDARY_SSH_KEY)" -SecondaryUser "$(H4_5_SECONDARY_USER)" -EvidenceOutput "$(H4_5_EVIDENCE)" -OperatorHistoryBase64 "$(H4_5_OPERATOR_HISTORY_BASE64)"
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-5-rendezvous/run-windows.ps1 -PrimaryVPS "$(H4_5_PRIMARY_VPS)" -PrimarySSHKey "$(H4_5_PRIMARY_SSH_KEY)" -PrimaryUser "$(H4_5_PRIMARY_USER)" -PrimaryBasePort "$(H4_5_PRIMARY_BASE_PORT)" -SecondaryVPS "$(H4_5_SECONDARY_VPS)" -SecondarySSHKey "$(H4_5_SECONDARY_SSH_KEY)" -SecondaryPasswordFile "$(H4_5_SECONDARY_PASSWORD_FILE)" -SecondaryHostKey "$(H4_5_SECONDARY_HOST_KEY)" -SecondaryUser "$(H4_5_SECONDARY_USER)" -EvidenceOutput "$(H4_5_EVIDENCE)" -OperatorHistoryBase64 "$(H4_5_OPERATOR_HISTORY_BASE64)"
 
 qualification-h4-4a-firefox:
 	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4a-firefox/run-windows.ps1

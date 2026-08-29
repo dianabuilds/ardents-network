@@ -5,7 +5,9 @@ param(
     [Parameter(Mandatory = $true)][string]$PrimaryUser,
     [Parameter(Mandatory = $true)][ValidateRange(1024, 65470)][int]$PrimaryBasePort,
     [Parameter(Mandatory = $true)][string]$SecondaryVPS,
-    [Parameter(Mandatory = $true)][string]$SecondarySSHKey,
+    [AllowEmptyString()][string]$SecondarySSHKey = '',
+    [AllowEmptyString()][string]$SecondaryPasswordFile = '',
+    [Parameter(Mandatory = $true)][string]$SecondaryHostKey,
     [Parameter(Mandatory = $true)][string]$SecondaryUser,
     [Parameter(Mandatory = $true)][string]$EvidenceOutput,
     [Parameter(Mandatory = $true)][string]$OperatorHistoryBase64,
@@ -32,16 +34,21 @@ function Invoke-Checked([string]$Executable, [string[]]$Arguments, [string]$Fail
     if ($LASTEXITCODE -ne 0) { throw $Failure }
 }
 
-function Resolve-RemoteAccess([string]$Key, [string]$User, [string]$RemoteHost) {
+function Resolve-RemoteAccess([string]$Key, [string]$PasswordFile, [string]$HostKey, [string]$User, [string]$RemoteHost) {
     $target = "$User@$RemoteHost"
+    if ($PasswordFile -ne '') {
+        $ssh = (Get-Command 'plink.exe' -ErrorAction Stop).Source
+        $scp = (Get-Command 'pscp.exe' -ErrorAction Stop).Source
+        return @{ SSH=$ssh; SSHBase=@('-batch','-noagent','-hostkey',$HostKey,'-pwfile',$PasswordFile,$target); SCP=$scp; SCPBase=@('-batch','-noagent','-hostkey',$HostKey,'-pwfile',$PasswordFile) }
+    }
     if ([IO.Path]::GetExtension($Key) -ieq '.ppk') {
         $ssh = (Get-Command 'plink.exe' -ErrorAction Stop).Source
         $scp = (Get-Command 'pscp.exe' -ErrorAction Stop).Source
-        return @{ SSH=$ssh; SSHBase=@('-batch','-i',$Key,$target); SCP=$scp; SCPBase=@('-batch','-i',$Key) }
+        return @{ SSH=$ssh; SSHBase=@('-batch','-noagent','-hostkey',$HostKey,'-i',$Key,$target); SCP=$scp; SCPBase=@('-batch','-noagent','-hostkey',$HostKey,'-i',$Key) }
     }
     $ssh = (Get-Command 'ssh.exe' -ErrorAction Stop).Source
     $scp = (Get-Command 'scp.exe' -ErrorAction Stop).Source
-    $options = @('-i',$Key,'-o','BatchMode=yes','-o','ConnectTimeout=10','-o','StrictHostKeyChecking=accept-new')
+    $options = @('-i',$Key,'-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=10','-o','StrictHostKeyChecking=accept-new')
     return @{ SSH=$ssh; SSHBase=($options + @($target)); SCP=$scp; SCPBase=$options }
 }
 
@@ -55,11 +62,49 @@ if ($PrimaryVPS -ceq $SecondaryVPS) { throw 'H4-5 requires two distinct declared
 foreach ($value in @($PrimaryUser, $SecondaryUser)) {
     if ($value -cnotmatch '^[a-z_][a-z0-9_-]{0,31}$') { throw 'H4-5 VPS user is invalid' }
 }
-foreach ($key in @($PrimarySSHKey, $SecondarySSHKey)) {
+foreach ($key in @($PrimarySSHKey)) {
     if (-not [IO.Path]::IsPathRooted($key) -or -not (Test-Path -LiteralPath $key -PathType Leaf)) {
         throw 'H4-5 SSH keys must be existing absolute files'
     }
 }
+if (($SecondarySSHKey -eq '') -eq ($SecondaryPasswordFile -eq '')) {
+    throw 'H4-5 requires exactly one SecondarySSHKey or SecondaryPasswordFile'
+}
+if ($SecondarySSHKey -ne '' -and (-not [IO.Path]::IsPathRooted($SecondarySSHKey) -or -not (Test-Path -LiteralPath $SecondarySSHKey -PathType Leaf))) {
+    throw 'H4-5 secondary SSH key must be one existing absolute file'
+}
+if ($SecondarySSHKey -ne '' -and [IO.Path]::GetExtension($SecondarySSHKey) -ine '.ppk') {
+    throw 'H4-5 secondary SSH key must be one PuTTY PPK so its declared fingerprint is enforced'
+}
+if ($SecondaryPasswordFile -ne '' -and (-not [IO.Path]::IsPathRooted($SecondaryPasswordFile) -or -not (Test-Path -LiteralPath $SecondaryPasswordFile -PathType Leaf))) {
+    throw 'H4-5 secondary password file must be one existing absolute file'
+}
+if ($SecondaryPasswordFile -ne '') {
+    $passwordPath = [IO.Path]::GetFullPath($SecondaryPasswordFile)
+    $repositoryPrefix = $repository.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    if ($passwordPath.StartsWith($repositoryPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'H4-5 secondary password file must remain outside the repository'
+    }
+    $passwordItem = Get-Item -LiteralPath $passwordPath -Force
+    if (($passwordItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw 'H4-5 secondary password file cannot be a reparse point'
+    }
+    $passwordACL = Get-Acl -LiteralPath $passwordPath
+    $currentWindowsIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $currentIdentity = $currentWindowsIdentity.Name
+    $currentSID = $currentWindowsIdentity.User.Value
+    $ownerSID = $passwordACL.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    if ($ownerSID -cne $currentSID) {
+        throw 'H4-5 secondary password file is not owned by the current operator'
+    }
+    foreach ($rule in $passwordACL.Access) {
+        $sid = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+        if ($rule.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and $sid -cne $currentSID) {
+            throw 'H4-5 secondary password file grants another principal access'
+        }
+    }
+}
+if ([string]::IsNullOrWhiteSpace($SecondaryHostKey)) { throw 'H4-5 secondary host-key fingerprint is absent' }
 if ([IO.Path]::GetExtension($PrimarySSHKey) -ieq '.ppk') {
     throw 'PrimarySSHKey must be OpenSSH-compatible because the installed-host Go oracle owns its SSH calls; PPK is supported for SecondarySSHKey'
 }
@@ -97,8 +142,8 @@ try {
     }
 
     Invoke-Checked 'docker' @('image', 'inspect', 'golang:1.26.6', '--format', '{{.Id}}') 'local pinned Docker image is unavailable'
-    $primaryAccess = Resolve-RemoteAccess $PrimarySSHKey $PrimaryUser $PrimaryVPS
-    $secondaryAccess = Resolve-RemoteAccess $SecondarySSHKey $SecondaryUser $SecondaryVPS
+    $primaryAccess = Resolve-RemoteAccess $PrimarySSHKey '' '' $PrimaryUser $PrimaryVPS
+    $secondaryAccess = Resolve-RemoteAccess $SecondarySSHKey $SecondaryPasswordFile $SecondaryHostKey $SecondaryUser $SecondaryVPS
     Invoke-Checked $primaryAccess.SSH ($primaryAccess.SSHBase + @('test "$(id -u)" -eq 0; test "$(ps -p 1 -o comm=)" = systemd; docker image inspect golang:1.26.6 >/dev/null')) 'primary VPS preflight failed'
     Invoke-Checked $secondaryAccess.SSH ($secondaryAccess.SSHBase + @('test "$(id -u)" -eq 0; docker image inspect golang:1.26.6 >/dev/null')) 'secondary VPS preflight failed'
 
