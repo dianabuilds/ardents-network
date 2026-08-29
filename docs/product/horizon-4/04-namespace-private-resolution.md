@@ -1,9 +1,10 @@
 # H4-4 — Service names and private resolution
 
-Status: **current H4-4 alpha slice closed. The signed-corpus/private-resolution
-work and Firefox compatibility evidence are retained; participant Browser
-Entry, public Namespace, and shared control are deferred to later selected
-work.**
+Status: **the signed-corpus/private-resolution alpha slice is closed. H4-4B
+canonical-name lifecycle and H4-4C root-claim simulations retain
+project-control mechanics evidence only; they do not create a public Namespace
+or shared governance claim. Participant Browser Entry and public Namespace
+remain deferred to later selected work.**
 
 ## Decision
 

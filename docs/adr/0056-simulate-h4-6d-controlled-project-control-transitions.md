@@ -16,7 +16,7 @@ fallback or local repair.
 
 H4-6D is a separate local project-control transition simulation. Its accepted
 evidence is the behavior test matrix and one versioned JSON receipt from
-`ardents-control simulate-public-control-transitions --source-revision SHA1`,
+`ardents-control simulate-public-control-transitions --source-revision LOWERCASE_40_HEX_COMMIT`,
 retained outside the repository. The matrix accepts only continuous overlap and
 requires exact stop/unavailable outcomes for expiry, revocation, incompatible
 generation, rollback, distribution outage, and a live disable-only emergency.

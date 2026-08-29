@@ -52,8 +52,16 @@ dependency/distribution profile.
 
 ### Experiment
 
-Follow [the experiment README](../../../experiments/r-126-project-control-canonical-name-lifecycle/README.md).
-It uses a temporary local Store and keys, not an alpha corpus or network input.
+From a clean checkout, run:
+
+```powershell
+$revision = git rev-parse HEAD
+go run ./cmd/ardents-control simulate-namespace-lifecycle --source-revision $revision
+```
+
+Retain its JSON receipt
+outside Git. It uses a temporary local Store and keys, not an alpha corpus or
+network input; any result outside the stated versioned contract falsifies it.
 
 ### Failure scenarios
 
@@ -90,6 +98,6 @@ that it cannot establish public operation or governance.
 ## Disposition
 
 **Decided for H4-4B.** ADR-0057, the H4-4 brief, command reference, package
-map, simulator, tests, and retained runbook own the result. No operations or
+map, simulator, tests, and this retained command/receipt contract own the result. No operations or
 security procedure changes because the run has no deployment, authority,
 network, or VPS action.

@@ -58,10 +58,17 @@ command and non-secret JSON receipt.
 
 ### Experiment
 
-Follow [the experiment README](../../../experiments/r-125-controlled-project-control-transitions/README.md).
-It fixes the command, source-revision input, external receipt location,
-expected matrix, and falsifiers. The simulation has no network or persistent
-authority.
+From a clean checkout, run:
+
+```powershell
+$revision = git rev-parse HEAD
+go run ./cmd/ardents-control simulate-public-control-transitions --source-revision $revision
+```
+
+Retain its JSON
+receipt outside Git. It must identify the revision, versioned outcome matrix,
+and `simulation: true`/`qualified: false`; any other result falsifies the run.
+The simulation has no network or persistent authority.
 
 ### Failure scenarios
 
@@ -100,8 +107,9 @@ independent operation, public availability, or Public Beta readiness.
 ## Disposition
 
 **Decided for H4-6D.** ADR-0056, the H4-6 journey, technical contract,
-command reference, package map, question queue, simulator, tests, and retained
-experiment runbook carry this decision. Security and operations documents need
-no new operational procedure because the simulation has no deployment,
+command reference, package map, question queue, simulator, and tests carry
+this decision; its duplicated experiment runbook was retired by the pre-H4-8
+baseline inventory. Security and operations documents need no new operational
+procedure because the simulation has no deployment,
 authority, network, or VPS action. A public claim needs a new Product Owner
 decision; it is not residual H4-6D work.

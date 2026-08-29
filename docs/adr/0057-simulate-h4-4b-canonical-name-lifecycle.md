@@ -16,7 +16,7 @@ selected simulation.
 ## Decision
 
 H4-4B is completed as a bounded local simulation through `ardents-control
-simulate-namespace-lifecycle --source-revision SHA1`. It creates a fresh
+simulate-namespace-lifecycle --source-revision LOWERCASE_40_HEX_COMMIT`. It creates a fresh
 temporary Store, appends immutable signed successors, and makes each state
 current only through `EpochInstallation.Commit` with a `2-of-3` threshold
 attestation. It proves publication/update, Active-to-Grace warning,

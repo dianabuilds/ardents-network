@@ -121,7 +121,7 @@ outage, and an in-scope emergency disablement each produce their exact stop or
 unavailable result. An overlap without continuity, an emergency that escalates
 its scope, and an expired emergency are rejected. The evidence is the versioned
 JSON receipt from `ardents-control simulate-public-control-transitions
---source-revision SHA1`, retained outside the repository.
+--source-revision LOWERCASE_40_HEX_COMMIT`, retained outside the repository.
 
 This is complete for H4-6D once that receipt and its behavior tests pass. It is
 explicitly a Product Owner-and-Codex simulation: it creates no authority,

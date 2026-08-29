@@ -17,7 +17,7 @@ into an unbounded recruitment task rather than a checkable engineering slice.
 
 H4-6C is a project-controlled shared-control mechanics simulation. Its accepted
 evidence is one versioned JSON receipt from `ardents-control
-simulate-public-control --source-revision SHA1`, retained outside the repository,
+simulate-public-control --source-revision LOWERCASE_40_HEX_COMMIT`, retained outside the repository,
 its test matrix, and the R-124 contract. The receipt records a caller-declared
 source revision, contract version, pass/fail cell lists, and a receipt digest.
 It simulates five custody roles with

@@ -1,7 +1,8 @@
 # H4-3 — User, Service, and web-access path
 
-Status: **closed for the selected RC2 bounded functional-alpha profile. The
-H4-3B application-transparent HTTP/1.1 path has accepted multi-host soak/fault
+Status: **the selected RC2 bounded functional-alpha profile is historical
+evidence, not the post-refactor qualification baseline. Its H4-3B
+application-transparent HTTP/1.1 path has accepted multi-host soak/fault
 evidence for normal traffic, publication withdrawal, Publisher Application,
 Endpoint, Carrier, and product-Node loss, with exact terminal classes and no
 destination fallback. H4-4 Browser Entry is not on this epic's critical path;
@@ -170,7 +171,7 @@ Service Connection. It must not claim browser-level privacy, public naming,
 content replication, offline delivery, a generic Internet proxy, or a global
 HTTPS identity system.
 
-### Current qualification evidence
+### Historical RC2 qualification evidence
 
 - The maintained `reference-c2` process fixture runs Publisher, its token-bound
   local Reference Site Application, User, Gateway, Initiator, Introduction,

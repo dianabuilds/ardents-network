@@ -61,10 +61,17 @@ renewal, reclaim, and operation after Grace remain H4-4B lifecycle concerns.
 
 ### Experiment
 
-Follow [the experiment README](../../../experiments/r-127-project-control-root-claims/README.md).
-It creates two locally admitted commitments in Epoch 8, reveals them in Epoch
-9 only after the commitment is fixed, assigns authenticated input ordinals,
-and uses no alpha corpus or network input.
+From a clean checkout, run:
+
+```powershell
+$revision = git rev-parse HEAD
+go run ./cmd/ardents-control simulate-root-claims --source-revision $revision
+```
+
+Retain its JSON receipt outside Git. It creates two
+locally admitted commitments in Epoch 8, reveals them in Epoch 9 only after the
+commitment is fixed, assigns authenticated input ordinals, and uses no alpha
+corpus or network input.
 
 ### Failure scenarios
 
@@ -104,6 +111,6 @@ authority, governance, operations, and evidence decision.
 ## Disposition
 
 **Decided for H4-4C project-control scope.** ADR-0058, the H4-4 brief,
-command reference, package map, maintained simulator/tests, and the retained
-runbook own the result. No VPS, deployment, public authority, or user action
+command reference, package map, maintained simulator/tests, and this retained
+command/receipt contract own the result. No VPS, deployment, public authority, or user action
 occurs.

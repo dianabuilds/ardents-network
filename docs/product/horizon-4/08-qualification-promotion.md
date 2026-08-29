@@ -1,7 +1,7 @@
 # H4-8 — Integration, qualification, and release closure
 
-Status: **closed for the selected RC2 bounded functional-alpha profile. This
-is not Public Beta qualification.**
+Status: **historical RC2 bounded functional-alpha qualification. It is not
+qualification of the post-refactor baseline or Public Beta.**
 
 ## Decision
 
@@ -38,9 +38,9 @@ update safely. A more ambitious transport, browser, Contributor, Namespace, or
 protected-application profile is another qualification target, not an implicit
 extension of a passing result.
 
-### H4-alpha-1 — bounded functional-alpha profile
+### Historical H4-alpha-1 — bounded functional-alpha profile
 
-The current endpoint artifact candidate is immutable `h4-alpha-1-rc-2` at
+The historical endpoint artifact candidate is immutable `h4-alpha-1-rc-2` at
 source revision `2c18bdf92f11f84075915576f595202f48eb05bc`; its complete identity and public
 custody companions are recorded in the
 [H4-alpha-1 bounded release profile](08b-alpha-1-release-profile.md). It
@@ -58,9 +58,10 @@ the profile. This is not Public Beta or broader independent-operation closure.
 | Control | Enrollment-pinned ACA1 catalog and independently verified Release, Network, and Compatibility components. ADR-0038 excludes H4-4 corpus from v1; `corpus.pub` is only a manifest-pinned authority companion. | For the H4-1/H4-2 functional-alpha input gate, two fresh enrollment-pinned standalone inspection roots plus one cached repeat accept the same identities. This does not replace H4-6A's broader two-fresh-Endpoint Done condition. |
 
 The concrete Ubuntu artifact/contact, exact two-host topology, and selected
-browser/version now exist in A1-A10; A11/A12 are accepted for RC2. Every
-independent/Public Beta gate remains unmet rather than becoming a passing
-substitute.
+browser/version exist in A1-A10; A11/A12 are accepted for RC2. This evidence
+is retained for its immutable candidate only. The post-refactor baseline must
+select a new candidate before H4-8 resumes. Every independent/Public Beta gate
+remains unmet rather than becoming a passing substitute.
 
 ## Delivery slices
 

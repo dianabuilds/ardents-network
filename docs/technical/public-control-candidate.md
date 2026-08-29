@@ -84,7 +84,7 @@ claim; it does not invalidate the completed H4-6C simulation.
 
 ## Project-controlled mechanics simulation
 
-`ardents-control simulate-public-control --source-revision SHA1` emits the
+`ardents-control simulate-public-control --source-revision LOWERCASE_40_HEX_COMMIT` emits the
 accepted H4-6C receipt. Each invocation generates
 fresh in-memory identities for five simulated custodians, two builders, two
 auditors, and a successor custody set. It verifies one routine `3-of-5` action,
@@ -140,7 +140,7 @@ claim needs a new Product Owner decision and must not be inferred here.
 
 ## H4-6D controlled project-control transitions
 
-`ardents-control simulate-public-control-transitions --source-revision SHA1`
+`ardents-control simulate-public-control-transitions --source-revision LOWERCASE_40_HEX_COMMIT`
 is a distinct local, non-authorizing simulation. Its evaluator has no network,
 Endpoint root, retained authority, or fallback source. It reports one versioned
 receipt with `simulation: true` and `qualified: false`.

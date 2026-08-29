@@ -16,7 +16,7 @@ Codex, not an assumed public operator organisation.
 ## Decision
 
 H4-4C is completed as the bounded local command `ardents-control
-simulate-root-claims --source-revision SHA1`. It admits two independent
+simulate-root-claims --source-revision LOWERCASE_40_HEX_COMMIT`. It admits two independent
 commitments in Epoch `E` under ADR-0019's root-claim guard, reveals them in
 `E+1`, fixes authenticated input ordinals, accepts only the lowest ordinal under a
 `2-of-3` Epoch close, and materializes that winner only through

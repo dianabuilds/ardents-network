@@ -1,9 +1,10 @@
 # H4-alpha-1 bounded release profile
 
-Status: **accepted bounded functional-alpha profile on 2026-08-28.** Its exact
-Ubuntu artifact is signed, published as an immutable prerelease, and exercised
-through the Product Owner's own authenticated enrollment. It is not an
-independent-participant or Public Beta profile.
+Status: **historical bounded functional-alpha profile accepted on 2026-08-28.**
+Its exact Ubuntu artifact is signed, published as an immutable prerelease, and
+was exercised through the Product Owner's own authenticated enrollment. It is
+not an independent-participant/Public Beta profile or the post-refactor
+qualification candidate.
 
 ## Identity
 
@@ -149,8 +150,8 @@ A1-A10 now pass for this exact immutable profile. The strongest claim is a
 bounded project-operated functional-alpha journey. It remains a closed
 prerelease and does not claim independent control, external participants or
 operators, capacity, availability, censorship resistance, application-level
-privacy, public DNS/HTTPS, Namespace, or Public Beta readiness. A11 soak/fault
-and A12 closure remain broader H4-8 gates.
+privacy, public DNS/HTTPS, Namespace, or Public Beta readiness. Its historical
+A11 soak/fault and A12 closure do not transfer to a post-refactor candidate.
 
 ## Ownership
 
@@ -158,4 +159,4 @@ This profile is owned by H4-8A. Its artifact/enrollment transition is H4-1;
 dynamic browser transport evidence is H4-3B; the optional corpus remains H4-4;
 and the independently rooted release/network/compatibility statements are
 H4-6A. See the [readiness matrix](08a-alpha-1-readiness-matrix.md) and the
-[closed-alpha ceremony](../../development/closed-alpha-release-ceremony.md).
+historical R-119/R-120/R-121 custody records.

@@ -80,10 +80,18 @@ command and JSON receipt, usable without secrets or privileged setup.
 
 ### Experiment
 
-Follow [the experiment README](../../../experiments/r-124-public-control-simulation/README.md).
-It specifies a local environment, exact input source revision, procedure,
-external receipt location, and falsifiers. The run creates fresh ephemeral
-identities and no persistent authority.
+From a clean checkout, run:
+
+```powershell
+$revision = git rev-parse HEAD
+go run ./cmd/ardents-control simulate-public-control --source-revision $revision
+```
+
+Retain its JSON receipt
+outside Git. It must identify the exact revision, report the versioned matrix,
+and remain `simulation: true` and `qualified: false`; any other result
+falsifies the run. The command creates fresh ephemeral identities and no
+persistent authority.
 
 ### Failure scenarios
 
@@ -132,8 +140,8 @@ is explicit: this decision does not authorize a public claim.
 
 **Decided for H4-6C.** ADR-0055 is the accepted decision; this record changes
 the H4-6 product brief, scope, technical contract, command reference, package
-map, research question/program, simulator and behavior tests. The experiment
-runbook is retained under `experiments/r-124-public-control-simulation/`;
-maintained implementation stays in `internal/publiccontrolsimulation`. There is
-no accepted follow-up. A future public claim needs a new Product Owner decision;
+map, research question/program, simulator and behavior tests. The maintained
+implementation stays in `internal/publiccontrolsimulation`; its duplicated
+experiment runbook was retired by the pre-H4-8 baseline inventory. There is no
+accepted follow-up. A future public claim needs a new Product Owner decision;
 it is not an open H4-6C task.

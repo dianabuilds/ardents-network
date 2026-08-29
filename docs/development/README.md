@@ -19,6 +19,9 @@ specification.
 - [Deep audit campaign](deep-audit.md) defines the inactive whole-codebase
   review, proof, remediation, and requalification process for a future exact
   H4 release candidate.
+- [Pre-H4-8 baseline inventory](pre-h4-8-baseline-inventory.md) records the
+  classified retention, promotion, and retirement work before a new
+  qualification candidate exists.
 - [Dependency register](dependencies.md) records reviewed runtime dependencies.
 - [Scoped risk exceptions](scoped-risk-exceptions.md) records any accepted,
   bounded exception to the normal engineering rules.
@@ -30,8 +33,10 @@ specification.
 - [Private naming and namespace](../technical/naming.md)
 - [Release update and authority custody](../technical/release-update-custody.md)
 - [Endpoint and Service runtime](../technical/endpoint-service-runtime.md)
+- [Closed-alpha enrollment verification](../technical/enrollment-verification.md)
 - [Network State, Entry, Route, and Node](../technical/network-route-node.md)
 - [Current command reference](../reference/commands.md)
+- [Fixed alpha custody assembly reference](../reference/release-custody-assembly.md)
 
 ## Historical provenance
 
