@@ -43,8 +43,12 @@ func h45StartRuntimeSampler(t *testing.T, remote h43RemoteC2) {
 	command := fmt.Sprintf(`set -eu
 test ! -e %[1]s/contributor-runtime-sampler.pid
 rm -f %[1]s/contributor-runtime-sampler.stop
-nohup %[1]s/runtime-sampler.sh %[1]s %d >/dev/null 2>&1 &
-printf '%%s\n' "$!" >%[1]s/contributor-runtime-sampler.pid`, h43ShellQuote(root), remote.environment.port+1)
+chmod 700 %[1]s/runtime-sampler.sh
+nohup %[1]s/runtime-sampler.sh %[1]s %d >%[1]s/contributor-runtime-sampler.log 2>&1 &
+printf '%%s\n' "$!" >%[1]s/contributor-runtime-sampler.pid
+tries=0
+while [ ! -s %[1]s/contributor-runtime-samples.tsv ] && [ "$tries" -lt 50 ]; do tries=$((tries + 1)); sleep 0.1; done
+if [ ! -s %[1]s/contributor-runtime-samples.tsv ]; then cat %[1]s/contributor-runtime-sampler.log >&2; exit 1; fi`, h43ShellQuote(root), remote.environment.port+1)
 	if output, err := remote.run(t, command); err != nil {
 		t.Fatalf("start H4-5 runtime sampler: %v\n%s", err, output)
 	}

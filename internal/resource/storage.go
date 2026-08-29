@@ -15,6 +15,13 @@ func measureManagedStorage(roots []string, maximumBytes uint64, maximumFiles, ma
 		}
 		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
+				// The state writer commits through same-directory temporary
+				// entries. A file may therefore disappear between ReadDir and
+				// Lstat without making the managed root unavailable. A later
+				// observation accounts for every entry that remains present.
+				if errors.Is(walkErr, fs.ErrNotExist) && path != root {
+					return nil
+				}
 				return walkErr
 			}
 			if entry.IsDir() {
@@ -39,6 +46,9 @@ func measureManagedStorage(roots []string, maximumBytes uint64, maximumFiles, ma
 			}
 			info, err := entry.Info()
 			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					return nil
+				}
 				return err
 			}
 			if !info.Mode().IsRegular() || info.Size() < 0 {
