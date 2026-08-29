@@ -37,7 +37,7 @@ func TestH45InstalledRendezvousPublisherToUserLifecycle(t *testing.T) {
 func TestH45InstalledRendezvousEightMinuteMixedSoak(t *testing.T) {
 	scenario := referenceC2Scenario{transparentApplication: true, dynamicWorkload: referenceC2DynamicWorkload{
 		Cycles: 480, IntervalMilliseconds: 1_000, CycleDeadlineMilliseconds: 5_000,
-		NoFallbackEvery: 60, BytesEachDirection: 1 << 20}}
+		NoFallbackEvery: 60, BytesEachDirection: 4 << 20}}
 	runH45InstalledRendezvous(t, scenario, scenario.dynamicWorkload.timeBudget(4*time.Minute))
 }
 

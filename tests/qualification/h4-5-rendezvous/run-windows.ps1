@@ -34,6 +34,17 @@ function Invoke-Checked([string]$Executable, [string[]]$Arguments, [string]$Fail
     if ($LASTEXITCODE -ne 0) { throw $Failure }
 }
 
+function Invoke-NativeCaptured([string]$Executable, [string[]]$Arguments) {
+    $preference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = @(& $Executable @Arguments 2>&1 | ForEach-Object { $_.ToString() })
+        return @{ ExitCode=$LASTEXITCODE; Output=$output }
+    } finally {
+        $ErrorActionPreference = $preference
+    }
+}
+
 function Resolve-WindowsOpenSSHCommand([string]$Name) {
     $command = Get-Command $Name -ErrorAction SilentlyContinue
     if ($null -ne $command) { return $command.Source }
@@ -212,7 +223,7 @@ try {
         Set-Location $Repository
         $failed = 0
         if ($Name -ceq 'primary-installed') {
-            $hostFacts = 'set -eu; printf "boot_id="; cat /proc/sys/kernel/random/boot_id; uname -srmo; printf "vcpus="; nproc; awk ''/MemTotal:/ {printf "memory_kib=%s\n", $2}'' /proc/meminfo; df -Pk / /var /tmp; ip -s link; systemctl --version | head -n 1; docker image inspect golang:1.26.6 --format "image_id={{.Id}}"'
+            $hostFacts = 'set -eu; printf "boot_id="; cat /proc/sys/kernel/random/boot_id; uname -srmo; printf "vcpus="; nproc; head -n 1 /proc/meminfo; df -Pk / /var /tmp; ip -s link; systemctl --version | head -n 1; docker image inspect golang:1.26.6 --format "image_id={{.Id}}"'
             if ((Run-Cell 'primary-host-envelope' $PrimarySSH ($PrimarySSHBase + @($hostFacts))) -ne 0) { $failed++ }
             $common = @{ ARDENTS_H4_3B_VPS=$PrimaryHost; ARDENTS_H4_3B_SSH_KEY=$PrimaryKey; ARDENTS_H4_3B_VPS_USER=$PrimaryLogin; ARDENTS_H4_3B_VPS_PORT="$BasePort"; ARDENTS_H4_8_A11_SUFFIX=$CampaignID }
             $soak = @{} + $common
@@ -236,7 +247,7 @@ try {
         } elseif ($Name -ceq 'secondary-linux') {
             $remoteRoot = "/tmp/ardents-h4-5-$CampaignID"
             $target = "$SecondaryLogin@$SecondaryHost"
-            $hostFacts = 'set -eu; printf "boot_id="; cat /proc/sys/kernel/random/boot_id; uname -srmo; printf "vcpus="; nproc; awk ''/MemTotal:/ {printf "memory_kib=%s\n", $2}'' /proc/meminfo; df -Pk / /var /tmp; ip -s link; docker image inspect golang:1.26.6 --format "image_id={{.Id}}"'
+            $hostFacts = 'set -eu; printf "boot_id="; cat /proc/sys/kernel/random/boot_id; uname -srmo; printf "vcpus="; nproc; head -n 1 /proc/meminfo; df -Pk / /var /tmp; ip -s link; docker image inspect golang:1.26.6 --format "image_id={{.Id}}"'
             if ((Run-Cell 'secondary-host-envelope' $SecondarySSH ($SecondarySSHBase + @($hostFacts))) -ne 0) { $failed++ }
             if ((Run-Cell 'secondary-stage' $SecondarySSH ($SecondarySSHBase + @("set -eu; umask 077; test ! -e '$remoteRoot'; mkdir -m 700 '$remoteRoot'"))) -ne 0) { $failed++ }
             $uploads = $SecondarySCPBase + @((Join-Path $Artifacts 'ardents'),(Join-Path $Artifacts 'ardents-node'),(Join-Path $Artifacts 'e2e-node.test'),"${target}:$remoteRoot/")
@@ -315,14 +326,14 @@ test ! -e /var/lib/private/ardents-contributor
     }
     $localContainer = "ardents-h4-5-local-$campaignID"
     $cleanupOutput.Add('[local]')
-    & docker container inspect $localContainer *> $null
-    if ($LASTEXITCODE -eq 0) {
-        $localOutput = @(& docker rm -f $localContainer 2>&1 | ForEach-Object { $_.ToString() })
-        foreach ($line in $localOutput) { $cleanupOutput.Add($line) }
-        if ($LASTEXITCODE -ne 0) { $cleanupFailures++ }
+    $inspection = Invoke-NativeCaptured 'docker' @('container','inspect',$localContainer)
+    if ($inspection.ExitCode -eq 0) {
+        $removal = Invoke-NativeCaptured 'docker' @('rm','-f',$localContainer)
+        foreach ($line in $removal.Output) { $cleanupOutput.Add($line) }
+        if ($removal.ExitCode -ne 0) { $cleanupFailures++ }
     }
-    & docker container inspect $localContainer *> $null
-    if ($LASTEXITCODE -eq 0) { $cleanupFailures++ } else { $cleanupOutput.Add('container_absent=true') }
+    $inspection = Invoke-NativeCaptured 'docker' @('container','inspect',$localContainer)
+    if ($inspection.ExitCode -eq 0) { $cleanupFailures++ } else { $cleanupOutput.Add('container_absent=true') }
     $cleanupFinished = [DateTimeOffset]::UtcNow
     Write-Utf8NoBom (Join-Path $cleanupRoot 'output.log') (($cleanupOutput -join "`n") + "`n")
     $cleanupRecord = [ordered]@{ schema='ardents-h4-5-cell-v1'; cell='controller-final-cleanup'; shard='controller'; source_revision=$revision;

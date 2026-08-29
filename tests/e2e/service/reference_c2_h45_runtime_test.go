@@ -66,13 +66,19 @@ func h45StopRuntimeSamplerCommand(root string, minimumSamples int) string {
 pid_file=%[1]s/contributor-runtime-sampler.pid
 if [ -f "$pid_file" ]; then
   pid=$(cat "$pid_file")
+  sampler_running() {
+    kill -0 "$pid" 2>/dev/null || return 1
+    state=$(ps -o stat= -p "$pid" 2>/dev/null) || return 1
+    case "$state" in Z*|'') return 1 ;; esac
+    return 0
+  }
   kill "$pid" 2>/dev/null || true
   tries=0
-  while kill -0 "$pid" 2>/dev/null && [ "$tries" -lt 50 ]; do tries=$((tries + 1)); sleep 0.1; done
-  if kill -0 "$pid" 2>/dev/null; then kill -KILL "$pid" 2>/dev/null || true; fi
+  while sampler_running && [ "$tries" -lt 50 ]; do tries=$((tries + 1)); sleep 0.1; done
+  if sampler_running; then kill -KILL "$pid" 2>/dev/null || true; fi
   tries=0
-  while kill -0 "$pid" 2>/dev/null && [ "$tries" -lt 50 ]; do tries=$((tries + 1)); sleep 0.1; done
-  ! kill -0 "$pid" 2>/dev/null
+  while sampler_running && [ "$tries" -lt 50 ]; do tries=$((tries + 1)); sleep 0.1; done
+  ! sampler_running
   rm -f "$pid_file"
 fi
 test -f %[1]s/contributor-runtime-samples.tsv
