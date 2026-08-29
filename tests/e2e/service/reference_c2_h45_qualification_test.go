@@ -44,6 +44,10 @@ func TestH45InstalledRendezvousPublisherToUserLifecycle(t *testing.T) {
 	})
 	stage := stageH43RemoteC2(t, environment, deadline, scenario)
 	deployment, pin := stageH45Bundle(t, stage.root, 1)
+	nextDeployment, nextPin := stageH45Bundle(t, stage.root, 2)
+	if nextDeployment != deployment {
+		t.Fatal("H4-5 successor changed the deployment identity")
+	}
 	h43WriteFile(t, filepath.Join(stage.root, "run.sh"), []byte(h45RemoteRunner()), 0o700)
 	removed := false
 	t.Cleanup(func() {
@@ -84,6 +88,11 @@ printf '%%s\n' "$!" >%s/clock.pid`, h43ShellQuote(environment.remoteDirectory),
 		t.Fatalf("start H4-5 clock observation owner: %v\n%s", err, output)
 	}
 	h45RunLifecycle(t, remote, "restart", h45ContributorCommand, "contributor restart")
+	updated := h45RunLifecycle(t, remote, "update-idle", h45ContributorCommand, fmt.Sprintf("contributor apply --bundle %s --manifest-pin %s",
+		h43ShellQuote(environment.remoteDirectory+"/bundle-2"), h43ShellQuote(nextPin)))
+	if !strings.Contains(string(updated), `"generation":2`) {
+		t.Fatalf("H4-5 idle update report = %q, want generation 2", updated)
+	}
 	h45CapturePlacement(t, remote)
 	if output, err := remote.run(t, fmt.Sprintf("set -eu; printf 'ready\\n' >%s/contributor-ready",
 		h43ShellQuote(environment.remoteDirectory))); err != nil {
@@ -225,7 +234,7 @@ func stageH45Bundle(t *testing.T, root string, generation uint64) (string, strin
 	return deployment, hex.EncodeToString(pin[:])
 }
 
-func h45RunLifecycle(t *testing.T, remote h43RemoteC2, name, executable, arguments string) {
+func h45RunLifecycle(t *testing.T, remote h43RemoteC2, name, executable, arguments string) []byte {
 	t.Helper()
 	root := remote.environment.remoteDirectory
 	command := fmt.Sprintf(`set +e
@@ -250,6 +259,7 @@ exit 0`, h43ShellQuote(root), name)
 	if err != nil || !strings.Contains(string(report), `"profile":"h4-5-rendezvous-alpha-v1"`) {
 		t.Fatalf("H4-5 Contributor %s report = %q / %v", name, report, err)
 	}
+	return report
 }
 
 func h45CapturePlacement(t *testing.T, remote h43RemoteC2) {
