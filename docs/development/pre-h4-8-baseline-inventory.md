@@ -22,6 +22,7 @@ may imply otherwise.
 | `experiments/r-125-controlled-project-control-transitions/` | ADR-0056, R-125, `internal/publiccontrolsimulation`, command tests | Versioned JSON simulation receipt and behavior tests | **Retired on 2026-08-29.** It contained only a duplicated README runbook. |
 | `experiments/r-126-project-control-canonical-name-lifecycle/` | ADR-0057, R-126, `internal/namespacelifecyclesimulation`, command tests | Versioned JSON simulation receipt and behavior tests | **Retired on 2026-08-29.** It contained only a duplicated README runbook. |
 | `experiments/r-127-project-control-root-claims/` | ADR-0058, R-127, `internal/rootclaimsimulation`, command tests | Versioned JSON simulation receipt and behavior tests | **Retired on 2026-08-29.** It contained only a duplicated README runbook. |
+| `experiments/r-110-safe-endpoint-replacement/` | R-110, `internal/endpoint/replacement`, `endpoint replace` command/tests | The maintained interruption/recovery matrix and current H4-1B technical contract | **Retired on 2026-08-30.** Its two-file shell prototype had no unique current behavior or evidence. |
 
 Each named research record retains its exact command and receipt contract, so
 deleting these directories does not remove the reproduction route.
@@ -35,7 +36,7 @@ deleting these directories does not remove the reproduction route.
 | `docs/development/deep-audit.md` | Future candidate review procedure, not current technical contract | Replace its repository facts with the current package/technical maps; retain only a compact candidate-integrity checklist if a future qualification needs it. |
 | `docs/development/closed-alpha-input-request.md` and `closed-alpha-release-ceremony.md` | RC2 process/provenance | **Retired on 2026-08-29.** Current command/schema/output ownership is [release-custody-assembly.md](../reference/release-custody-assembly.md), with command discovery in `commands.md` and broader Module limits in `release-update-custody.md`; historical RC2 execution evidence remains in the matrix and R-119/R-120/R-121. |
 | `docs/product/horizon-4/08a-alpha-1-readiness-matrix.md` and `08b-alpha-1-release-profile.md` | RC2 qualification/provenance | Retain as historical evidence and label it as such; never represent it as qualification of a changed baseline. |
-| Earlier experiment directories | Mixed decided/open research evidence | Classify individually by linked record status, maintained-test replacement, source inputs, and inbound references before deletion. |
+| Earlier experiment directories | Mixed decided/open research evidence | Classify individually by linked record status, maintained-test replacement, source inputs, and inbound references before deletion. R-105 and R-117 remain because their records are open. |
 
 ## Technical documentation target
 
