@@ -1,7 +1,7 @@
 # H4-8 — Integration, qualification, and release closure
 
-Status: **accepted H4-8 direction; no alpha result is Public Beta
-qualification.**
+Status: **closed for the selected RC2 bounded functional-alpha profile. This
+is not Public Beta qualification.**
 
 ## Decision
 
@@ -40,14 +40,14 @@ extension of a passing result.
 
 ### H4-alpha-1 — bounded functional-alpha profile
 
-The current endpoint artifact candidate is source revision
-`70bf425eec937edcc22e8f0534db992aa2002a16`; its complete identity and public
+The current endpoint artifact candidate is immutable `h4-alpha-1-rc-2` at
+source revision `2c18bdf92f11f84075915576f595202f48eb05bc`; its complete identity and public
 custody companions are recorded in the
 [H4-alpha-1 bounded release profile](08b-alpha-1-release-profile.md). It
 narrows the existing selected directions into one reproducible qualification
-target. On 2026-08-28 its H4-8A A1-A10 functional-alpha cells passed and the
-immutable Ubuntu prerelease was published. This is not broader H4-8 closure:
-A11 soak/fault and A12 closure remain open.
+target. On 2026-08-28 A1-A10 passed and the immutable Ubuntu prerelease was
+published. A11 subsequently accepted all six soak/fault cells and A12 closed
+the profile. This is not Public Beta or broader independent-operation closure.
 
 | Boundary | Candidate selection | Evidence gate |
 |---|---|---|
@@ -58,7 +58,7 @@ A11 soak/fault and A12 closure remain open.
 | Control | Enrollment-pinned ACA1 catalog and independently verified Release, Network, and Compatibility components. ADR-0038 excludes H4-4 corpus from v1; `corpus.pub` is only a manifest-pinned authority companion. | For the H4-1/H4-2 functional-alpha input gate, two fresh enrollment-pinned standalone inspection roots plus one cached repeat accept the same identities. This does not replace H4-6A's broader two-fresh-Endpoint Done condition. |
 
 The concrete Ubuntu artifact/contact, exact two-host topology, and selected
-browser/version now exist in A1-A10. A11/A12 remain inactive/open, and every
+browser/version now exist in A1-A10; A11/A12 are accepted for RC2. Every
 independent/Public Beta gate remains unmet rather than becoming a passing
 substitute.
 

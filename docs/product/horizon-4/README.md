@@ -1,10 +1,9 @@
 # Horizon 4 delivery briefs
 
-Status: **accepted Horizon 4 delivery briefs. H4-1A and H4-2 have completed
-their bounded functional-alpha release gates; H4-3A and H4-6A have selected
-maintained slices; the current H4-4 alpha slice is closed with its Firefox
-route retained as compatibility evidence only; later slices retain their own
-gates.**
+Status: **the selected RC2 bounded functional-alpha profile is closed:
+H4-1 through H4-3, H4-6A, and H4-8 have their accepted evidence. H4-4 remains
+closed only as compatibility evidence. H4-5, H4-7, capacity/availability,
+independent operation, and Public Beta retain separate gates.**
 
 These briefs make the H4 epics navigable without turning later work into an
 undifferentiated backlog. [Product scope](../scope.md) remains authoritative:
@@ -37,7 +36,7 @@ project-operated host is never silently promoted into a public-alpha claim.
 | H4-3A / H4-3B | The separate-process Publisher-to-User C-2 journey carries one exact Target Link through private reachability and the bounded loopback Reference Site. H4-3B preserves POST/body/header/cookie, redirect, cookie follow-up, and chunked response semantics; explicitly unpublishes the exact Target/generation after drain; classifies Publisher Application, Endpoint, Carrier, and product Node loss; and refuses fallback to the prior/another alpha name or ordinary Internet. RC2's accepted A11 campaign completed all six cells in 41:02 with retained Windows/Ubuntu resource evidence. | Closed for the selected bounded functional-alpha profile only. H4-4 Browser Entry remains optional compatibility evidence; capacity, public deployment, availability, independent operation, and H4-7 browser claims remain separate. |
 | H4-4 | The Product Owner selected an explicitly non-Namespace `ardents-alpha://` overlay. Signed corpus verification, ACA2-bound durable floors, bounded alpha OHTTP Relay/Gateway exchange, a caller-non-substitutable alpha C-2 journey, and canonical V3 Grace semantics are maintained. The signed Firefox XPI/native-host route has demonstrated a visible `http://reference.ard/` dynamic C-2 compatibility flow with exact `.ard` scoping and ordinary tabs left on their own browser path. A fresh Firefox 154 resolver trace, however, recorded native resolution for `.ard` before the HTTP-proxy route. Therefore the current H4-4 slice closes with that route retained as functional compatibility evidence only, never as a participant Browser Entry or no-DNS/DoH mechanism. | A future named-browser product requires a separately selected system/browser resolution and HTTP/HTTPS trust design. Public Namespace still requires H4-6 Release/reclaim/close control and is not part of the closed alpha slice. |
 | H4-5 / H4-7 | Direction and research boundaries are recorded. | H4-5 requires a Product Owner selection; H4-7 remains unnecessary for the ordinary browser path. |
-| H4-6A | The alpha-control reader and signed component-catalog verification are maintained. The concrete catalog plus Release, Network, and Compatibility identities were published in the immutable RC; one cached repeat and two fresh enrollment-pinned inspection roots accepted the same exact inputs on 2026-08-28. The standalone inspection roots are not Endpoint state or two Endpoint processes. The bundle pins `corpus.pub` only as the authority companion and claims no ACA2/signed-corpus acceptance. | Independent control/custody and later public-governance claims remain separate H4-6 gates. |
+| H4-6A | The alpha-control reader and signed component-catalog verification are maintained. The concrete catalog plus Release, Network, and Compatibility identities were verified with the same control inputs on two fresh Endpoint roots on 2026-08-28; cached repeat evidence is retained separately. The bundle pins `corpus.pub` only as the authority companion and claims no ACA2/signed-corpus acceptance. | Independent control/custody and later public-governance claims remain separate H4-6 gates. |
 | H4-8 | Immutable RC2 has green A1-A12: publication, enrollment, H4-6A, browser observation, TCP/TLS no-fallback, and the accepted A11 6/6 soak/fault campaign. | Closed for the selected functional-alpha profile. Public Beta retains all independent external gates. |
 
 ## Shared alpha boundary
