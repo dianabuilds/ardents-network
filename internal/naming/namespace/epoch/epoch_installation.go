@@ -105,6 +105,9 @@ func (installation *EpochInstallation) MaterializeClaim(winner *claim.ClaimWinne
 	if !winner.BelongsTo(installation.store.policy.Network, installation.epoch.Number) {
 		return errors.New("root claim winner does not belong to this Namespace Epoch")
 	}
+	if installation.epoch.Digest != winner.CloseDigest() {
+		return errors.New("root claim close is not bound to this Namespace Epoch")
+	}
 	var current *record.Record
 	if signed := installation.records[winner.Name()]; signed != nil {
 		decoded, err := record.VerifyRecord(installation.store.policy.Network, signed)

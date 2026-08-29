@@ -21,6 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/publiccontrol"
 	"github.com/dianabuilds/ardents-network/internal/publiccontrolsimulation"
+	"github.com/dianabuilds/ardents-network/internal/rootclaimsimulation"
 )
 
 var componentNames = [...]string{"release.ac1", "network.ac1", "compatibility.ac1"}
@@ -34,7 +35,7 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, simulate-namespace-lifecycle, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, simulate-namespace-lifecycle, simulate-root-claims, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 	switch arguments[0] {
 	case "inspect":
@@ -51,13 +52,30 @@ func run(arguments []string, output io.Writer) error {
 		return simulatePublicControlTransitions(arguments[1:], output)
 	case "simulate-namespace-lifecycle":
 		return simulateNamespaceLifecycle(arguments[1:], output)
+	case "simulate-root-claims":
+		return simulateRootClaims(arguments[1:], output)
 	case "inspect-alpha-corpus":
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
 		return acceptAlphaCorpus(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, simulate-namespace-lifecycle, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, simulate-namespace-lifecycle, simulate-root-claims, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
+}
+
+func simulateRootClaims(arguments []string, output io.Writer) error {
+	flags := flag.NewFlagSet("simulate-root-claims", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var sourceRevision string
+	flags.StringVar(&sourceRevision, "source-revision", "", "exact 40-character lowercase hexadecimal source revision")
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !validSourceRevision(sourceRevision) {
+		return errors.New("root claim simulation arguments are invalid")
+	}
+	report, err := rootclaimsimulation.RunWithSourceRevision(sourceRevision)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(report)
 }
 
 func simulateNamespaceLifecycle(arguments []string, output io.Writer) error {

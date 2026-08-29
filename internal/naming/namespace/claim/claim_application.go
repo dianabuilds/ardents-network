@@ -1,6 +1,7 @@
 package claim
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"time"
@@ -28,7 +29,7 @@ func OpenClaimWinner(order ClaimOrder, proof ClaimProof) (*ClaimWinner, error) {
 		return nil, errors.New("root claim winner is unavailable")
 	}
 	return &ClaimWinner{value: &claimWinner{network: proof.Network, name: winner.Name, authority: winner.Authority,
-		ordinal: result.WinnerOrdinal, epoch: proof.Epoch}}, nil
+		ordinal: result.WinnerOrdinal, epoch: proof.Epoch, close: sha256.Sum256(StatementTranscript(proof))}}, nil
 }
 
 // Materialize derives one root Record from a previously verified Epoch winner.
@@ -96,6 +97,15 @@ func (winner *ClaimWinner) Name() string {
 // BelongsTo reports whether this winner was authenticated for Network and Epoch.
 func (winner *ClaimWinner) BelongsTo(network [32]byte, epoch uint64) bool {
 	return winner != nil && winner.value != nil && winner.value.network == network && winner.value.epoch == epoch
+}
+
+// CloseDigest is the exact authenticated close statement which selected this
+// winner. Epoch materialization must bind it as its authenticated Epoch digest.
+func (winner *ClaimWinner) CloseDigest() [32]byte {
+	if winner == nil || winner.value == nil {
+		return [32]byte{}
+	}
+	return winner.value.close
 }
 
 // MaterializeSigned derives and seals the winner's sole Record for its own

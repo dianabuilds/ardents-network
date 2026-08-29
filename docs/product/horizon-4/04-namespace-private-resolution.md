@@ -332,6 +332,18 @@ operable, authenticated Epoch close/materialization owner plus its operator,
 governance, failure, and capture limitations. No substitute "temporary
 registrar" is silently permissionless.
 
+ADR-0058 and R-127 close the H4-4C mechanics in the same Product Owner-and-
+Codex project-control scope: two ADR-0019-admitted commitments are revealed,
+the authenticated close selects the lowest ordinal, and only its derived
+Record becomes threshold-current through `EpochInstallation`. Withholding,
+incomplete evidence, incompatible rule, and control fork stop before current
+state. The simulation publishes its synthetic `2-of-3` control/materialization
+conditions, one-hour Active plus one-hour Grace lease, governance/capture
+limitation, and abuse limitation. It is not a local corpus fallback and does
+not select public Epoch operation, governance legitimacy, Sybil resistance,
+anti-squatting, public Namespace availability, or permissionless public
+naming.
+
 ### H4-4D — delegation and recovery, if selected
 
 Delegation is optional, not an implied DNS feature. If selected, it must define
@@ -353,8 +365,10 @@ explicit no-fallback behavior.
 Before H4-4C, demonstrate the complete claim-to-current path—not simply a
 signed record—and publish the control authority, claim timing, materialization
 conditions, governance/capture limitation, abuse assumptions, and exact
-failure experience. Permissionless public naming remains blocked until this
-evidence and H4-6's control transition are accepted.
+failure experience. That project-control mechanics gate is closed by R-127.
+Permissionless public naming remains blocked until a separately selected public
+operation/governance/availability evidence programme exists; R-127 does not
+substitute for it.
 
 ## Non-goals
 

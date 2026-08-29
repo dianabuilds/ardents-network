@@ -106,13 +106,24 @@ func TestEpochInstallationAcceptsOnlyTheDerivedSignedClaimWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	currentEpoch := epoch.Epoch{Number: 13, Digest: [32]byte{13}, CutoffOffset: 10_002,
+	currentEpoch := epoch.Epoch{Number: 13, Digest: winner.CloseDigest(), CutoffOffset: 10_002,
 		TransitionRoot: sha256.Sum256([]byte("claim transitions")), TransitionLength: 1,
 		RejectionRoot: sha256.Sum256([]byte("claim rejections")), RejectionLength: 0}
 	installation, err := store.BeginEpochInstallation(currentEpoch, time.Unix(100, 0).UTC(),
 		record.Policy{DefaultLeaseDuration: time.Hour})
 	if err != nil {
 		t.Fatal(err)
+	}
+	unboundEpoch := currentEpoch
+	unboundEpoch.Digest = [32]byte{13}
+	unboundInstallation, err := store.BeginEpochInstallation(unboundEpoch, time.Unix(100, 0).UTC(), record.Policy{DefaultLeaseDuration: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := unboundInstallation.MaterializeClaim(winner, claimSigningPort(func(request record.RecordSigningRequest) ([]byte, error) {
+		return ed25519.Sign(claimKey, request.Transcript()), nil
+	})); err == nil {
+		t.Fatal("winner was materialized into an Epoch that did not bind its close")
 	}
 	otherEpoch := currentEpoch
 	otherEpoch.Number++

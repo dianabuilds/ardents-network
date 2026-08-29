@@ -19,7 +19,7 @@ func TestClaimCommitmentAdmissionIsSpentAndRevealDerivesItsDigest(t *testing.T) 
 	key := deterministicAuthority("claim-ingestion")
 	submission := claim.Claim{Name: "alice", Secret: [32]byte{3}}
 	copy(submission.Authority[:], key.Public().(ed25519.PublicKey))
-	commitment := claim.CommitmentFor(network, 7, submission)
+	commitment := claim.CommitmentFor(network, 8, submission)
 	challenge, err := gate.Issue(100, "root-claim", commitment, [32]byte{4}, 1_000, [16]byte{5})
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestClaimCommitmentAdmissionIsSpentAndRevealDerivesItsDigest(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	copy(submission.Signature[:], ed25519.Sign(key, claim.RevealTranscript(network, 7, claim.Claim{Commitment: commitment})))
+	copy(submission.Signature[:], ed25519.Sign(key, claim.RevealTranscript(network, 8, claim.Claim{Commitment: commitment})))
 	reveal, err := accepted.Reveal(submission.Name, submission.Secret, submission.Authority, submission.Signature)
 	if err != nil || reveal.AdmissionDigest == [32]byte{} {
 		t.Fatalf("reveal=%+v err=%v", reveal, err)
@@ -45,7 +45,7 @@ func TestClaimCommitmentAdmissionIsSpentAndRevealDerivesItsDigest(t *testing.T) 
 		input.InputLeaf(0) != orderedInputLeaf(reveal) {
 		t.Fatalf("Epoch input=%x commitment=%x err=%v", input.Canonical(), input.Commitment(), err)
 	}
-	close := claim.ClaimProof{Network: network, Epoch: 7, Rule: "ardents-name-claim-order-v1",
+	close := claim.ClaimProof{Network: network, Epoch: 8, Rule: "ardents-name-claim-order-v1",
 		CutoffOffset: 1_000, InputRoot: input.InputLeaf(0), InputLength: 1,
 		MaterializationRoot: orderedMaterializationLeaf(reveal), MaterializationLength: 1,
 		RejectionRoot: sha256.Sum256([]byte{2}), Claims: []claim.Claim{reveal}}

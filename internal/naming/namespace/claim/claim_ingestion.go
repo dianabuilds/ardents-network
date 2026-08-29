@@ -22,7 +22,10 @@ func AdmitClaimCommitment(gate *admission.Admission, now int64, commitment [32]b
 	if accepted, _ := gate.Verify(now, proof); !accepted {
 		return nil, errors.New("claim commitment admission is denied")
 	}
-	return &ClaimCommitment{network: gate.Network(), epoch: gate.Epoch(), commitment: commitment,
+	if gate.Epoch() == ^uint64(0) {
+		return nil, errors.New("claim commitment epoch is unavailable")
+	}
+	return &ClaimCommitment{network: gate.Network(), revealEpoch: gate.Epoch() + 1, commitment: commitment,
 		admission: proof.Digest()}, nil
 }
 
@@ -31,7 +34,7 @@ func AdmitClaimCommitment(gate *admission.Admission, now int64, commitment [32]b
 func (commitment *ClaimCommitment) Reveal(name string, secret [32]byte, authority [32]byte,
 	signature [64]byte,
 ) (Claim, error) {
-	if commitment == nil || commitment.network == [32]byte{} || commitment.epoch == 0 ||
+	if commitment == nil || commitment.network == [32]byte{} || commitment.revealEpoch == 0 ||
 		commitment.commitment == [32]byte{} || commitment.admission == [32]byte{} || authority == [32]byte{} || secret == [32]byte{} {
 		return Claim{}, errors.New("claim reveal input is invalid")
 	}
@@ -41,8 +44,8 @@ func (commitment *ClaimCommitment) Reveal(name string, secret [32]byte, authorit
 	}
 	claim := Claim{Name: name, Secret: secret, Authority: authority, Commitment: commitment.commitment,
 		AdmissionDigest: commitment.admission, Signature: signature}
-	if CommitmentFor(commitment.network, commitment.epoch, claim) != commitment.commitment ||
-		!ed25519.Verify(ed25519.PublicKey(authority[:]), RevealTranscript(commitment.network, commitment.epoch, claim), signature[:]) {
+	if CommitmentFor(commitment.network, commitment.revealEpoch, claim) != commitment.commitment ||
+		!ed25519.Verify(ed25519.PublicKey(authority[:]), RevealTranscript(commitment.network, commitment.revealEpoch, claim), signature[:]) {
 		return Claim{}, errors.New("claim reveal does not open admitted commitment")
 	}
 	return claim, nil
@@ -52,7 +55,7 @@ func (commitment *ClaimCommitment) Reveal(name string, secret [32]byte, authorit
 // commitment. Network/Epoch code may order and commit these opaque bytes but
 // cannot inspect the local admission proof or the hidden claim reveal.
 func (commitment *ClaimCommitment) EpochInput() (EpochClaimInput, error) {
-	if commitment == nil || commitment.network == [32]byte{} || commitment.epoch == 0 ||
+	if commitment == nil || commitment.network == [32]byte{} || commitment.revealEpoch == 0 ||
 		commitment.commitment == [32]byte{} || commitment.admission == [32]byte{} {
 		return EpochClaimInput{}, errors.New("claim Epoch input is invalid")
 	}

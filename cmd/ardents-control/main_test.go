@@ -172,6 +172,36 @@ func TestSimulateNamespaceLifecycleProducesThresholdCurrentStateReceipt(t *testi
 	}
 }
 
+func TestSimulateRootClaimsProducesThresholdCurrentStateReceipt(t *testing.T) {
+	const revision = "1234567890abcdef1234567890abcdef12345678"
+	var output bytes.Buffer
+	if err := run([]string{"simulate-root-claims", "--source-revision", revision}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Schema     string   `json:"schema"`
+		Contract   string   `json:"contract"`
+		Result     string   `json:"simulation_result"`
+		Revision   string   `json:"declared_source_revision"`
+		Receipt    string   `json:"receipt_digest"`
+		Simulation bool     `json:"simulation"`
+		Qualified  bool     `json:"qualified"`
+		Rejected   []string `json:"rejected"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatalf("root claim output is not JSON: %s, %v", output.String(), err)
+	}
+	if result.Schema != "ardents-h4-4c-root-claim-simulation-v1" || result.Contract != "h4-4c-project-control-root-claims-v1" ||
+		result.Result != "passed" || result.Revision != revision || !strings.HasPrefix(result.Receipt, "sha256:") || !result.Simulation || result.Qualified {
+		t.Fatalf("root claim identity = %+v", result)
+	}
+	for _, expected := range []string{"withheld-reveal", "incomplete-evidence", "rule-fork", "control-fork"} {
+		if !contains(result.Rejected, expected) {
+			t.Fatalf("root claim simulation did not reject %q: %+v", expected, result)
+		}
+	}
+}
+
 func contains(values []string, expected string) bool {
 	for _, value := range values {
 		if value == expected {

@@ -47,7 +47,7 @@ func TestEpochInstallationCommitsVerifiedClaimWithSelectedPendingPrefix(t *testi
 	}
 	claimKey := deterministicControlKey("epoch-installation-pending-claim")
 	winner := pendingClaimWinner(t, network, 2, "bob", claimKey)
-	epoch := Epoch{Number: 2, Digest: [32]byte{4}, CutoffOffset: 2,
+	epoch := Epoch{Number: 2, Digest: winner.CloseDigest(), CutoffOffset: 2,
 		TransitionRoot: [32]byte{5}, TransitionLength: 1, RejectionRoot: [32]byte{6}}
 	installation, err := store.BeginEpochInstallation(epoch, now, leasePolicy)
 	if err != nil {
