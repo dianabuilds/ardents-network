@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const profileName = "h4-5-rendezvous-alpha-v1"
@@ -50,12 +51,18 @@ type Supervisor interface {
 type Config struct {
 	Root       string
 	Supervisor Supervisor
+	// Now and Wait are behavior-test seams. Maintained callers leave both nil
+	// and use the process monotonic clock and cancellable timer.
+	Now  func() time.Time
+	Wait func(context.Context, time.Duration) error
 }
 
 // Profile owns one exact dedicated-host installation.
 type Profile struct {
 	paths      hostPaths
 	supervisor Supervisor
+	now        func() time.Time
+	wait       func(context.Context, time.Duration) error
 }
 
 // Report contains only non-secret installation and readiness facts.
@@ -79,5 +86,23 @@ func Open(config Config) (*Profile, error) {
 	if err != nil || !info.IsDir() {
 		return nil, errors.New("contributor host root is unavailable")
 	}
-	return &Profile{paths: newHostPaths(filepath.Clean(config.Root)), supervisor: config.Supervisor}, nil
+	now, wait := config.Now, config.Wait
+	if now == nil {
+		now = time.Now
+	}
+	if wait == nil {
+		wait = waitDuration
+	}
+	return &Profile{paths: newHostPaths(filepath.Clean(config.Root)), supervisor: config.Supervisor, now: now, wait: wait}, nil
+}
+
+func waitDuration(ctx context.Context, duration time.Duration) error {
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

@@ -48,7 +48,7 @@ func (profile *Profile) recoverInterruptedUpdate(ctx context.Context, record ins
 		return err
 	}
 	if before.Active {
-		if _, err := awaitLifecycle(ctx, profile.paths.lifecycle, "WITHDRAWN", 15*time.Second); err != nil {
+		if _, err := profile.awaitLifecycle(ctx, profile.paths.lifecycle, "WITHDRAWN", 15*time.Second); err != nil {
 			return err
 		}
 	}
@@ -69,7 +69,7 @@ func (profile *Profile) recoverInterruptedUpdate(ctx context.Context, record ins
 	if err != nil || !state.Active {
 		return errors.Join(err, errors.New("recovered Contributor generation did not become active"))
 	}
-	if _, err := awaitLifecycle(ctx, profile.paths.lifecycle, "READY", 15*time.Second); err != nil {
+	if _, err := profile.awaitLifecycle(ctx, profile.paths.lifecycle, "READY", 15*time.Second); err != nil {
 		return err
 	}
 	return verifyInstalled(profile.paths, record)

@@ -126,6 +126,16 @@ does not mean passed, waived, or unavailable evidence.
   a temporary remote container; absence or failure of any prerequisite is an
   invalid selected environment, never a skipped pass. The loss oracle proves
   terminal closure only, not VPS-loss recovery or availability.
+- H4-5 dedicated Rendezvous preparation is owned by
+  `tests/qualification/h4-5-rendezvous/`. Its purpose-named preflight is
+  `make prepare-h4-5-rendezvous` on the Product Owner-declared existing Ubuntu
+  host. It captures the actual CPU, memory, disk, link, systemd, cgroup,
+  service, and port envelope without treating host size as an eligibility
+  gate; it rejects an existing Contributor installation or occupied selected
+  port. This is preparation only. There is deliberately no
+  `qualification-h4-5-rendezvous` target until the two-host workload, fault,
+  lifecycle, utility, operator-timing, and full-denominator oracles implement
+  the frozen contract.
 - the H4-2 local full-system emulator, `make
   qualification-h4-2-local-emulator`, is owned by
   `tests/qualification/h4-2-local-emulator/`. It requires Windows Docker and

@@ -67,7 +67,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	var guard *resource.Guard
 	if enforcePressure {
 		guard, err = resource.New(resource.Config{Profile: input.ResourceProfile, Interval: input.PollInterval,
-			Measure: input.ResourceMeasure})
+			Measure: input.ResourceMeasure, StorageRoots: []string{input.NetworkStateRoot, input.LocalRoleStateRoot}})
 		if err != nil {
 			return runtimeConfig{}, err
 		}

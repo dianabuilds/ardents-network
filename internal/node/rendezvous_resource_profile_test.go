@@ -20,7 +20,7 @@ func TestFunctionalAlphaResourceProfileAcceptsOnlyRendezvousDuty(t *testing.T) {
 	}
 	stateErr := errors.New("state unavailable for profile acceptance test")
 	base := node.Config{
-		IdentityKey: identity, LocalRoleStateRoot: t.TempDir(), PollInterval: time.Second,
+		IdentityKey: identity, NetworkStateRoot: t.TempDir(), LocalRoleStateRoot: t.TempDir(), PollInterval: time.Second,
 		ResourceProfile: "h4-5-rendezvous-alpha-v1",
 		Current:         func() (node.DutyView, error) { return nil, stateErr },
 		Emit:            func(context.Context, node.Event) error { return nil },

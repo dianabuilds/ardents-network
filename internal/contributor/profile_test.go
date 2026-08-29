@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/contributor"
 )
@@ -39,10 +40,33 @@ func TestPinnedRendezvousBundleInstallsAndBecomesReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"DynamicUser=yes", "CPUQuota=100%", "MemoryHigh=192M", "MemoryMax=256M", "TasksMax=64", "LimitNOFILE=256", "GOMAXPROCS=1", "GOMEMLIMIT=134217728"} {
+	for _, required := range []string{"DynamicUser=yes", "CPUQuota=100%", "MemoryHigh=192M", "MemoryMax=256M", "TasksMax=64", "LimitNOFILE=256", "GOMAXPROCS=1", "GOMEMLIMIT=134217728", "StandardOutput=null", "StandardError=journal"} {
 		if !strings.Contains(string(unit), required) {
 			t.Fatalf("installed unit lacks %q:\n%s", required, unit)
 		}
+	}
+}
+
+func TestLifecycleDeadlineUsesOwnedMonotonicWait(t *testing.T) {
+	hostRoot := t.TempDir()
+	bundle, pin := writeContributorBundle(t, 1, strings.Repeat("39", 32))
+	supervisor := &profileSupervisor{hostRoot: hostRoot, suppressStartLifecycle: true}
+	now := time.Date(2026, 8, 29, 10, 0, 0, 0, time.UTC)
+	waits := 0
+	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor,
+		Now: func() time.Time { return now }, Wait: func(context.Context, time.Duration) error {
+			waits++
+			now = now.Add(5 * time.Second)
+			return nil
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := profile.Apply(t.Context(), bundle, pin); err == nil || !strings.Contains(err.Error(), "did not reach READY") {
+		t.Fatalf("missing READY error = %v", err)
+	}
+	if waits != 3 {
+		t.Fatalf("monotonic waits = %d, want 3", waits)
 	}
 }
 
@@ -135,6 +159,29 @@ func TestFailedSuccessorRestoresPreviousReadyGeneration(t *testing.T) {
 	raw, err := os.ReadFile(program)
 	if err != nil || string(raw) != "functional-alpha-rendezvous-program-v1" {
 		t.Fatalf("rolled-back program = %q, %v", raw, err)
+	}
+}
+
+func TestAmbiguousUpdateStopFailureRestartsPreviousReadyGeneration(t *testing.T) {
+	hostRoot := t.TempDir()
+	deployment := strings.Repeat("38", 32)
+	supervisor := &profileSupervisor{hostRoot: hostRoot}
+	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, firstPin := writeContributorBundle(t, 1, deployment)
+	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
+		t.Fatal(err)
+	}
+	supervisor.failNextStopAfterAction = true
+	second, secondPin := writeContributorBundle(t, 2, deployment)
+	if _, err := profile.Apply(t.Context(), second, secondPin); err == nil {
+		t.Fatal("ambiguous stop failure was reported as an installed successor")
+	}
+	report, err := profile.Control(t.Context(), contributor.Diagnose, "")
+	if err != nil || report.Generation != 1 || !report.Active || report.LifecycleState != "READY" {
+		t.Fatalf("restarted previous report = %+v, %v", report, err)
 	}
 }
 
@@ -261,10 +308,12 @@ func TestRemovalRequiresExactWithdrawnDeploymentAndLeavesBundle(t *testing.T) {
 }
 
 type profileSupervisor struct {
-	hostRoot      string
-	active        bool
-	enabled       bool
-	failNextStart bool
+	hostRoot                string
+	active                  bool
+	enabled                 bool
+	failNextStart           bool
+	failNextStopAfterAction bool
+	suppressStartLifecycle  bool
 }
 
 func (supervisor *profileSupervisor) Do(_ context.Context, action contributor.SupervisorAction) (contributor.SupervisorState, error) {
@@ -278,10 +327,16 @@ func (supervisor *profileSupervisor) Do(_ context.Context, action contributor.Su
 			return contributor.SupervisorState{}, errors.New("injected successor start failure")
 		}
 		supervisor.active = true
-		writeLifecycle(tWriter{root: supervisor.hostRoot}, "READY")
+		if !supervisor.suppressStartLifecycle {
+			writeLifecycle(tWriter{root: supervisor.hostRoot}, "READY")
+		}
 	case contributor.SupervisorStop:
 		supervisor.active = false
 		writeLifecycle(tWriter{root: supervisor.hostRoot}, "WITHDRAWN")
+		if supervisor.failNextStopAfterAction {
+			supervisor.failNextStopAfterAction = false
+			return contributor.SupervisorState{}, errors.New("injected ambiguous stop failure")
+		}
 	case contributor.SupervisorDisable:
 		supervisor.enabled = false
 	}

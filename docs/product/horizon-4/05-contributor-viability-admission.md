@@ -1,7 +1,7 @@
 # H4-5 — Contributor viability and permissionless admission
 
 Status: **Rendezvous selected for the H4-5A/B dedicated-host functional-alpha
-profile; implementation and fresh-host qualification are active. No supported
+profile; implementation and declared-host qualification are active. No supported
 profile, voluntary co-resident contribution, or public admission is accepted
 until the named evidence closes.**
 
@@ -81,14 +81,27 @@ The candidate resource placement is named
 `h4-5-rendezvous-alpha-v1`: one Ubuntu LTS `x86-64` dedicated host, one
 unprivileged Rendezvous process, `1` CPU of process quota, `256 MiB` cgroup
 memory maximum with a `192 MiB` high boundary, `128 MiB` Go memory limit,
-`64` tasks, and `256` file descriptors. The Node resource governor must enter
+`64` tasks, `256` file descriptors, and an aggregate Network-State plus
+local-role-state ceiling of `384 MiB` and 5,000 regular files (`PROTECT` at
+`320 MiB`, recovery below `256 MiB`). Rendezvous owns no application queue:
+its queue item and byte ceilings are exactly zero; finite handshake, waiting,
+and pair reservations are measured separately. The Node resource governor must enter
 `PROTECT` only after its fixed high observation and terminal `DRAIN` at an
 emergency threshold; systemd/cgroup ceilings are enforcement backstops, not a
-capacity claim. These values remain a candidate until the fresh-host matrix
+capacity claim. These values remain a candidate until the declared-host matrix
 accepts or rejects them.
 
-**Done when:** a Product Owner can follow the documented flow on a fresh
-dedicated host, run the duty through ordinary load and injected loss/restart,
+**Product Owner host selection (2026-08-29):** the existing project-operated
+Ubuntu hosts are eligible for this functional-alpha campaign regardless of
+their physical CPU, RAM, disk, or link size. Those facts are captured as the
+host envelope rather than used to reject a run. The supported boundary remains
+one role-exclusive Contributor service with the exact cgroup/runtime limits
+above; temporary qualification fixtures on the same project host do not create
+a supported co-resident Endpoint-plus-Contributor profile or an independence,
+capacity, or availability claim.
+
+**Done when:** a Product Owner can follow the documented flow on a declared
+eligible host, run the dedicated duty through ordinary load and injected loss/restart,
 inspect its bounded resource and readiness state, drain it, and verify that it
 has stopped accepting new work. No hidden always-on operator, private support
 channel, or manual state repair may be necessary.

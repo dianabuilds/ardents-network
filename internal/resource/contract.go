@@ -2,6 +2,7 @@ package resource
 
 import (
 	"errors"
+	"path/filepath"
 	"runtime"
 	"runtime/metrics"
 	"time"
@@ -26,6 +27,8 @@ type Sample struct {
 	Timers            uint64  `json:"timers"`
 	QueueItems        uint64  `json:"queue_items"`
 	QueueBytes        uint64  `json:"queue_bytes"`
+	StorageBytes      uint64  `json:"storage_bytes"`
+	StorageFiles      uint64  `json:"storage_files"`
 	CPUPressure       float64 `json:"cpu_pressure"`
 	MemoryPressure    float64 `json:"memory_pressure"`
 	IOPressure        float64 `json:"io_pressure"`
@@ -65,9 +68,10 @@ func (guard *Guard) Check() error {
 // Config selects one fixed H3 profile. Measure is a behavior-test seam; a
 // maintained runtime leaves it nil and uses the selected platform adapter.
 type Config struct {
-	Profile  string
-	Interval time.Duration
-	Measure  func() (Sample, error)
+	Profile      string
+	Interval     time.Duration
+	Measure      func() (Sample, error)
+	StorageRoots []string
 }
 
 // Observation is the complete externally relevant governor decision.
@@ -81,9 +85,10 @@ type Observation struct {
 
 // Guard owns one process's placement and pressure state.
 type Guard struct {
-	profile profile
-	monitor monitor
-	measure func() (Sample, error)
+	profile      profile
+	monitor      monitor
+	measure      func() (Sample, error)
+	storageRoots []string
 }
 
 // New constructs one fixed-profile resource guard.
@@ -92,11 +97,22 @@ func New(config Config) (*Guard, error) {
 	if !ok || config.Interval <= 0 || config.Interval > time.Second {
 		return nil, errors.New("resource guard profile or interval is invalid")
 	}
+	if selected.maximumStorageBytes > 0 {
+		if len(config.StorageRoots) != 2 || config.StorageRoots[0] == config.StorageRoots[1] {
+			return nil, errors.New("resource guard managed storage roots are invalid")
+		}
+		for _, root := range config.StorageRoots {
+			if !filepath.IsAbs(root) || filepath.Clean(root) != root {
+				return nil, errors.New("resource guard managed storage root is invalid")
+			}
+		}
+	}
 	measure := config.Measure
 	if measure == nil {
 		measure = func() (Sample, error) { return sampleProcess(selected) }
 	}
-	return &Guard{profile: selected, monitor: monitor{interval: config.Interval}, measure: measure}, nil
+	return &Guard{profile: selected, monitor: monitor{interval: config.Interval}, measure: measure,
+		storageRoots: append([]string(nil), config.StorageRoots...)}, nil
 }
 
 // Observe measures current use and advances the finite pressure state.
@@ -104,6 +120,13 @@ func (guard *Guard) Observe(timers, queueItems, queueBytes uint64) (Observation,
 	sample, err := guard.measure()
 	if err != nil {
 		return Observation{Protect: true, Drain: true, Sample: sample}, err
+	}
+	if guard.profile.maximumStorageBytes > 0 {
+		sample.StorageBytes, sample.StorageFiles, err = measureManagedStorage(
+			guard.storageRoots, guard.profile.maximumStorageBytes, guard.profile.maximumStorageFiles)
+		if err != nil {
+			return Observation{Protect: true, Drain: true, Sample: sample}, err
+		}
 	}
 	sample.Timers, sample.QueueItems, sample.QueueBytes = timers, queueItems, queueBytes
 	level := guard.monitor.observe(guard.profile, sample)

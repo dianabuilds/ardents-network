@@ -41,7 +41,7 @@ func (profile *Profile) Control(ctx context.Context, action Action, confirmation
 		if !state.Active {
 			return Report{}, errors.New("restarted Contributor did not become active")
 		}
-		if _, err := awaitLifecycle(ctx, profile.paths.lifecycle, "READY", 15*time.Second); err != nil {
+		if _, err := profile.awaitLifecycle(ctx, profile.paths.lifecycle, "READY", 15*time.Second); err != nil {
 			return Report{}, err
 		}
 		return profile.report(ctx)
@@ -81,7 +81,7 @@ func (profile *Profile) stop(ctx context.Context, disable bool) (Report, error) 
 	if _, err := profile.supervisor.Do(ctx, SupervisorStop); err != nil {
 		return Report{}, err
 	}
-	if _, err := awaitLifecycle(ctx, profile.paths.lifecycle, "WITHDRAWN", 15*time.Second); err != nil {
+	if _, err := profile.awaitLifecycle(ctx, profile.paths.lifecycle, "WITHDRAWN", 15*time.Second); err != nil {
 		return Report{}, err
 	}
 	if disable {

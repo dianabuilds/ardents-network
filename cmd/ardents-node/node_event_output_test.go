@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,6 +34,45 @@ func TestNodeEventEmitterPublishesLatestBoundedDiagnostics(t *testing.T) {
 	}
 	assertDiagnosticState(t, filepath.Join(diagnostics, "lifecycle.json"), "WITHDRAWN", 0)
 	assertDiagnosticState(t, filepath.Join(diagnostics, "resource.json"), "OBSERVED", 17<<20)
+}
+
+func TestNodeEventEmitterSerializesConcurrentDiagnostics(t *testing.T) {
+	output, err := os.Create(filepath.Join(t.TempDir(), "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer output.Close()
+	diagnostics := filepath.Join(t.TempDir(), "diagnostics")
+	if err := os.Mkdir(diagnostics, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	emit := nodeEventEmitter(output, diagnostics)
+	var workers sync.WaitGroup
+	for index := range 32 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			event := node.Event{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: time.Now(),
+				Resource: &resource.Sample{MemoryBytes: uint64(index + 1)}}
+			if err := emit(t.Context(), event); err != nil {
+				t.Errorf("concurrent emit %d: %v", index, err)
+			}
+		}()
+	}
+	workers.Wait()
+	final := node.Event{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "WITHDRAWN", At: time.Now()}
+	if err := emit(t.Context(), final); err != nil {
+		t.Fatal(err)
+	}
+	assertDiagnosticState(t, filepath.Join(diagnostics, "lifecycle.json"), "WITHDRAWN", 0)
+	raw, err := os.ReadFile(filepath.Join(diagnostics, "resource.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var observed node.Event
+	if err := json.Unmarshal(raw, &observed); err != nil || observed.Resource == nil || observed.Resource.MemoryBytes < 1 || observed.Resource.MemoryBytes > 32 {
+		t.Fatalf("concurrent resource diagnostic = %+v, %v", observed, err)
+	}
 }
 
 func assertDiagnosticState(t *testing.T, path, state string, memory uint64) {

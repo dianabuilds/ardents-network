@@ -156,5 +156,6 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err != nil {
 		return nodeRuntime{}, err
 	}
+	node.NetworkStateRoot = plan.StateRoot
 	return nodeRuntime{state: state, node: node, diagnosticDirectory: plan.DiagnosticDirectory}, nil
 }

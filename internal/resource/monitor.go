@@ -12,6 +12,7 @@ const (
 
 type limits struct {
 	cpu, memory, goMemory, socketMemory     uint64
+	storage                                 uint64
 	sockets                                 uint64
 	fds, goroutines, threads, timers        uint64
 	queueItems, queueBytes                  uint64
@@ -27,6 +28,8 @@ type profile struct {
 	exactGoMemory              bool
 	noFile                     uint64
 	placementWait              time.Duration
+	maximumStorageBytes        uint64
+	maximumStorageFiles        int
 	cgroup                     map[string]string
 }
 
@@ -34,15 +37,16 @@ var profiles = map[string]profile{
 	RendezvousFunctionalAlphaProfile: {
 		name: RendezvousFunctionalAlphaProfile, maximumFDs: 256, maximumThreads: 64,
 		goMaxProcs: 1, goMemory: 128 << 20, exactGoMemory: true, noFile: 256, placementWait: 10 * time.Second,
+		maximumStorageBytes: 384 << 20, maximumStorageFiles: 5000,
 		cgroup: map[string]string{"cpu.max": "100000 100000", "memory.high": "201326592", "memory.max": "268435456", "pids.max": "64"},
 		high: limits{cpu: 800_000, memory: 192 << 20, goMemory: 115 << 20, sockets: 16, fds: 205,
-			goroutines: 128, threads: 32, timers: 8, queueItems: 8, queueBytes: 128 << 10, socketMemory: 32 << 20,
+			goroutines: 128, threads: 32, timers: 8, socketMemory: 32 << 20, storage: 320 << 20,
 			cpuPressure: 20, memoryPressure: 5, ioPressure: 1},
 		low: limits{cpu: 600_000, memory: 160 << 20, goMemory: 96 << 20, sockets: 12, fds: 154,
-			goroutines: 96, threads: 24, timers: 6, queueItems: 6, queueBytes: 96 << 10, socketMemory: 16 << 20,
+			goroutines: 96, threads: 24, timers: 6, socketMemory: 16 << 20, storage: 256 << 20,
 			cpuPressure: 10, memoryPressure: 2.5, ioPressure: .5},
 		emergency: limits{memory: 240 << 20, sockets: 24, fds: 231, goroutines: 192, threads: 64,
-			timers: 16, queueItems: 16, queueBytes: 1 << 20, socketMemory: 64 << 20},
+			timers: 16, socketMemory: 64 << 20, storage: 384 << 20},
 	},
 	"h3-np1-v1": {
 		name: "h3-np1-v1", maximumFDs: 512, maximumThreads: 256,
@@ -142,6 +146,7 @@ func (monitor *monitor) observe(profile profile, sample Sample) level {
 
 func crossesMaximum(sample Sample, limit limits) bool {
 	return atLeast(sample.MemoryBytes, limit.memory) || atLeast(sample.SocketMemoryBytes, limit.socketMemory) ||
+		atLeast(sample.StorageBytes, limit.storage) ||
 		atLeast(sample.Sockets, limit.sockets) ||
 		atLeast(sample.FDs, limit.fds) || atLeast(sample.Goroutines, limit.goroutines) || atLeast(sample.Threads, limit.threads) ||
 		atLeast(sample.Timers, limit.timers) || atLeast(sample.QueueItems, limit.queueItems) ||
@@ -153,6 +158,7 @@ func atLeast(value, limit uint64) bool { return limit > 0 && value >= limit }
 func crossesHigh(sample Sample, limit limits) bool {
 	return sample.CPUUsageUsec >= limit.cpu || sample.MemoryBytes >= limit.memory || sample.GoMemoryBytes >= limit.goMemory ||
 		sample.SocketMemoryBytes >= limit.socketMemory || limit.sockets > 0 && sample.Sockets >= limit.sockets ||
+		limit.storage > 0 && sample.StorageBytes >= limit.storage ||
 		sample.FDs >= limit.fds || sample.Goroutines >= limit.goroutines ||
 		sample.Threads >= limit.threads || sample.Timers >= limit.timers || limit.queueItems > 0 && sample.QueueItems >= limit.queueItems ||
 		limit.queueBytes > 0 && sample.QueueBytes >= limit.queueBytes ||
@@ -162,6 +168,7 @@ func crossesHigh(sample Sample, limit limits) bool {
 func crossesLow(sample Sample, limit limits) bool {
 	return sample.CPUUsageUsec < limit.cpu && sample.MemoryBytes <= limit.memory && sample.GoMemoryBytes < limit.goMemory &&
 		sample.SocketMemoryBytes < limit.socketMemory && (limit.sockets == 0 || sample.Sockets < limit.sockets) &&
+		(limit.storage == 0 || sample.StorageBytes < limit.storage) &&
 		sample.FDs < limit.fds && sample.Goroutines < limit.goroutines &&
 		sample.Threads < limit.threads && sample.Timers < limit.timers && (limit.queueItems == 0 || sample.QueueItems < limit.queueItems) &&
 		(limit.queueBytes == 0 || sample.QueueBytes < limit.queueBytes) &&
@@ -171,6 +178,8 @@ func crossesLow(sample Sample, limit limits) bool {
 func mergeMaximum(target *Sample, value Sample) {
 	target.MemoryBytes, target.GoMemoryBytes = max(target.MemoryBytes, value.MemoryBytes), max(target.GoMemoryBytes, value.GoMemoryBytes)
 	target.SocketMemoryBytes, target.FDs = max(target.SocketMemoryBytes, value.SocketMemoryBytes), max(target.FDs, value.FDs)
+	target.StorageBytes = max(target.StorageBytes, value.StorageBytes)
+	target.StorageFiles = max(target.StorageFiles, value.StorageFiles)
 	target.Sockets = max(target.Sockets, value.Sockets)
 	target.Goroutines, target.Threads = max(target.Goroutines, value.Goroutines), max(target.Threads, value.Threads)
 	target.Timers, target.QueueItems = max(target.Timers, value.Timers), max(target.QueueItems, value.QueueItems)

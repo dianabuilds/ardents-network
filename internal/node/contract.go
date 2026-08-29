@@ -116,6 +116,7 @@ type Config struct {
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
+	NetworkStateRoot   string
 	LocalRoleStateRoot string
 	// ResourceMeasure and CheckPlacement are behavior-test seams. Maintained
 	// runtime callers leave them nil and use ResourceProfile's platform adapter.

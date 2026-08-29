@@ -1,0 +1,140 @@
+# H4-5 dedicated Rendezvous qualification
+
+Status: **frozen preparation contract; no qualification result exists.** This
+directory owns the H4-5A/B declared-host campaign. A passing preflight is only
+host eligibility evidence; H4-5 remains open until the complete workload,
+fault, lifecycle, utility, and removal matrix has been executed and accepted.
+
+## Decision question
+
+Can one freshly installed `h4-5-rendezvous-alpha-v1` Contributor perform the
+real Rendezvous position in the maintained Publisher-to-User C-2 topology,
+stay inside its declared dedicated-host limits, fail and recover predictably,
+and be operated and completely withdrawn by the Product Owner without hidden
+repair?
+
+The hypothesis is falsified by any unclassified loss of admitted work,
+acceptance after drain or withdrawal, resource use beyond a declared ceiling,
+unbounded residue, non-reproducible recovery, or an operator step not present
+in the candidate runbook. A negative result rejects or retains the duty as
+project-operated; it must not be softened into a supported Contributor claim.
+
+## Fixed topology
+
+- **Candidate host:** the Product Owner-declared existing native Ubuntu LTS
+  `x86-64` project host, with systemd as PID 1 and cgroup v2 `cpu`, `memory`,
+  and `pids` controllers. Its actual CPU, memory, disk, link, kernel, and
+  co-resident project workload are captured rather than used as eligibility
+  gates. The installed Contributor generation alone owns its managed roots,
+  systemd service, cgroup placement, identity, and one public State-authorized
+  TCP/TLS Rendezvous listener.
+- **Topology fixtures:** available project-operated hosts run the two
+  authenticated Sources and all remaining roles required to create one real
+  Publisher-to-User C-2 path. The Sources have distinct identities, roots,
+  families, keys, and ports. Temporary fixture co-location with the installed
+  Contributor is accepted for this functional-alpha campaign only; it is not
+  a supported Endpoint-plus-Contributor product profile and supplies no host,
+  Source, availability, or operator independence.
+- **Controller:** the Product Owner's workstation builds and hashes the exact
+  repository revision, stages generation 1 and generation 2 bundles, controls
+  both hosts over authenticated SSH, and retains evidence outside the
+  repository. It is not an always-on production operator.
+
+The candidate plan contains exactly those two literal Source addresses and
+their authenticated names, roots, identities, families, and leaf-key digests.
+There is no DNS fallback, discovery, alternate Source, or public admission.
+The topology must prove that the installed systemd process, rather than a
+fixture or co-hosted process, owns the Rendezvous role.
+
+## Frozen workload and fault matrix
+
+Every decision-bearing workload cell runs five independent ten-minute
+repetitions. Each repetition gets fresh fixture state and records its seed,
+UTC interval, exact binary and bundle digests, completed application bytes,
+reservation/admission outcomes, Node lifecycle events, systemd/cgroup samples,
+host link counters, and terminal classification. An earlier failed repetition
+remains a failed denominator even if a retry later passes.
+
+1. Idle `READY`, followed by one healthy full-duplex C-2 connection.
+2. One continuously replaced healthy pair at the fixed one-pair capacity.
+3. A second concurrent pair while the first pair is held; it must receive a
+   bounded capacity refusal without evicting the admitted pair.
+4. Four stalled TLS admissions, two authenticated unmatched legs, one slow
+   reader/backpressured pair, reset, half-close, and bounded connection churn,
+   each as a separately classified cell.
+5. Sustained churn sufficient to cross a declared `PROTECT` boundary without
+   crossing the systemd backstop; new work is refused while admitted work is
+   preserved and recovery requires the complete low-watermark interval.
+6. Terminal `DRAIN` at a declared emergency boundary; no new handshake may be
+   accepted and every worker must join inside the Work Safety Lease.
+7. Source/link loss, stale State, assignment successor, assignment expiry,
+   listener failure, `SIGTERM`, abrupt process `SIGKILL`, host reboot, and
+   network restoration, each injected only after the predeclared readiness
+   marker.
+8. Generation-2 update while idle and while a pair is held; ambiguous
+   pre-switch stop failure must restore generation 1, and a successful update
+   must run only authenticated generation 2.
+9. Explicit drain, restart, withdrawal, attempted post-withdrawal connection,
+   exact-ID removal, and residue inspection. The caller-owned bundles,
+   provider snapshots, and journal policy are recorded as external residues.
+
+The runtime has no application queue. Queue items and bytes must remain zero;
+handshake, waiting-leg, and active-pair reservations are separate evidence.
+Network State plus local role state enter `PROTECT` at 320 MiB, recover only
+below 256 MiB, and enter terminal `DRAIN` at 384 MiB or 5,000 regular files.
+The campaign must distinguish these mutable roots from installed generations,
+the transfer bundle, the system journal, and provider snapshots.
+
+## Operator burden and evidence
+
+The controller records wall and active-human time for provisioning, input
+verification, generation-1 apply, diagnosis, restart, generation-2 update,
+fault recovery, drain, withdrawal, removal, and residue review. Every manual
+command, failed attempt, clarification, and repair is part of the result.
+
+One immutable evidence directory must contain:
+
+- host and link declarations plus captured host/systemd/cgroup/network facts;
+- source revision/status and SHA-256 digests for every staged artifact;
+- the closed bundle manifests and independent pins, with private-key bytes
+  excluded from the retained report;
+- one result record per matrix repetition and the complete denominator;
+- bounded lifecycle/resource diagnostics, systemd state, cgroup samples, host
+  counters, fault receipts, and exact process identities;
+- lifecycle command reports and timings, removal inventory, external-residue
+  declaration, and an overall accepted/rejected disposition.
+
+Evidence stays outside the repository until private material has been removed
+and the bounded, reviewed summary is promoted to R-092. Raw evidence is never
+silently converted into a capacity, availability, anonymity, public-admission,
+or independent-operation claim.
+
+## Host preflight
+
+On the untouched candidate host, from the exact clean source revision:
+
+```sh
+export ARDENTS_H4_5_EVIDENCE_DIR=/var/tmp/ardents-h4-5-preflight-20260829
+export ARDENTS_H4_5_LISTEN_PORT=49152
+sudo --preserve-env=ARDENTS_H4_5_EVIDENCE_DIR,ARDENTS_H4_5_LISTEN_PORT \
+  make prepare-h4-5-rendezvous
+```
+
+The preflight captures the selected host's actual envelope. CPU count, memory,
+and link speed are evidence rather than rejection criteria under the Product
+Owner selection of 2026-08-29. A stronger or differently sized existing host
+therefore does not fail preparation; the installed process must still enforce
+the exact `h4-5-rendezvous-alpha-v1` cgroup and runtime limits.
+
+There is intentionally no `qualification-h4-5-rendezvous` target yet. Adding
+that name before the two-host runner, all matrix oracles, and the complete
+denominator exist would manufacture a promotion gate. The next implementation
+slice must add that exact target and execute this frozen contract without
+weakening it.
+
+## Claim boundary
+
+A passing complete campaign may accept only one project-qualified dedicated
+Rendezvous functional-alpha operating profile. It cannot support co-resident
+Endpoint contribution, permissionless admission, incentives, public capacity
+or availability, Source independence, or independent-operator language.

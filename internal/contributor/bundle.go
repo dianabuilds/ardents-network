@@ -13,9 +13,24 @@ import (
 	"strings"
 )
 
-var bundleFiles = []string{
-	"ardents-node", "node.json", "rendezvous-cert.pem", "rendezvous-key.pem", "rendezvous-identity.pem",
-	"source-client-cert.pem", "source-client-key.pem", "source-a-root.pem", "source-b-root.pem", "clock.observation",
+type bundleFileSpec struct {
+	name       string
+	maximum    int64
+	mode       os.FileMode
+	executable bool
+}
+
+var bundleFileSpecs = []bundleFileSpec{
+	{name: "ardents-node", maximum: 128 << 20, mode: 0o755, executable: true},
+	{name: "node.json", maximum: 64 << 10, mode: 0o600},
+	{name: "rendezvous-cert.pem", maximum: 64 << 10, mode: 0o600},
+	{name: "rendezvous-key.pem", maximum: 64 << 10, mode: 0o600},
+	{name: "rendezvous-identity.pem", maximum: 64 << 10, mode: 0o600},
+	{name: "source-client-cert.pem", maximum: 64 << 10, mode: 0o600},
+	{name: "source-client-key.pem", maximum: 64 << 10, mode: 0o600},
+	{name: "source-a-root.pem", maximum: 64 << 10, mode: 0o600},
+	{name: "source-b-root.pem", maximum: 64 << 10, mode: 0o600},
+	{name: "clock.observation", maximum: 64 << 10, mode: 0o600},
 }
 
 type bundleManifest struct {
@@ -90,28 +105,24 @@ func openBundle(directory, pin string) (verifiedBundle, error) {
 		return verifiedBundle{}, fmt.Errorf("decode Contributor manifest: %w", err)
 	}
 	if manifest.Schema != "ardents-contributor-bundle-v1" || manifest.Profile != profileName || manifest.Generation == 0 ||
-		!fixedHex(manifest.DeploymentID, 32) || len(manifest.Files) != len(bundleFiles) {
+		!fixedHex(manifest.DeploymentID, 32) || len(manifest.Files) != len(bundleFileSpecs) {
 		return verifiedBundle{}, errors.New("contributor bundle manifest is not canonical")
 	}
-	result := verifiedBundle{manifest: manifest, manifestDigest: pin, files: make(map[string][]byte, len(bundleFiles))}
-	for _, name := range bundleFiles {
-		want, ok := manifest.Files[name]
+	result := verifiedBundle{manifest: manifest, manifestDigest: pin, files: make(map[string][]byte, len(bundleFileSpecs))}
+	for _, spec := range bundleFileSpecs {
+		want, ok := manifest.Files[spec.name]
 		if !ok || !fixedHex(want, sha256.Size) {
 			return verifiedBundle{}, errors.New("contributor bundle file inventory is incomplete")
 		}
-		maximum := int64(64 << 10)
-		if name == "ardents-node" {
-			maximum = 128 << 20
-		}
-		raw, readErr := readRegular(filepath.Join(directory, name), maximum)
+		raw, readErr := readRegular(filepath.Join(directory, spec.name), spec.maximum)
 		if readErr != nil {
 			return verifiedBundle{}, readErr
 		}
 		actual := sha256.Sum256(raw)
 		if hex.EncodeToString(actual[:]) != want {
-			return verifiedBundle{}, fmt.Errorf("contributor bundle file %s does not match its digest", name)
+			return verifiedBundle{}, fmt.Errorf("contributor bundle file %s does not match its digest", spec.name)
 		}
-		result.files[name] = raw
+		result.files[spec.name] = raw
 	}
 	if err := validateProfilePlan(result.files["node.json"]); err != nil {
 		return verifiedBundle{}, err

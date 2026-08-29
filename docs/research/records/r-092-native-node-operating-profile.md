@@ -20,9 +20,12 @@ meets the contract.
 R-076/ADR-0024 select mutually authenticated TCP/TLS 1.3 legs and R-078/ADR-
 0026 selects their closed LegBinding record. R-081 expressly leaves native Node
 capacity, host profile, pressure, drain, and listener integration unselected:
-the retained H3 probe capacity cannot be renamed or inherited. NET-01A fixes
-the Linux infrastructure reference environment as Ubuntu LTS `x86-64`, 2 vCPU,
-2 GiB RAM, and symmetric 100 Mbit/s; it is not itself a Node admission result.
+the retained H3 probe capacity cannot be renamed or inherited. NET-01A
+originally proposed Ubuntu LTS `x86-64`, 2 vCPU, 2 GiB RAM, and symmetric
+100 Mbit/s as a reference envelope. The Product Owner superseded host-size
+eligibility for H4-5 on 2026-08-29: existing project Ubuntu hosts are accepted
+and their actual envelope is measured, while the exact process cgroup/runtime
+placement remains invariant. This is not itself a Node admission result.
 
 ## Hypotheses
 
@@ -89,6 +92,14 @@ is native Ubuntu LTS `x86-64`, has two visible CPUs, falls in the documented
 2-GiB raw-memory observation band, exposes cgroup v2, and has a separately
 captured link-evidence file. It is preparation only: it does not run a workload,
 assert pressure, or select capacity.
+
+[`tests/qualification/h4-5-rendezvous/`](../../../tests/qualification/h4-5-rendezvous/)
+owns the superseding H4-5 declared-host contract and preflight. It captures
+the actual existing Ubuntu host envelope without rejecting a stronger or
+differently sized host, while still requiring systemd, cgroup v2, exclusive
+Contributor managed paths, and a free selected listener port. It is also
+preparation only until its frozen two-host matrix has an executable complete
+runner and retained result.
 
 ### Failure scenarios
 
@@ -459,6 +470,24 @@ assert pressure, or select capacity.
   `/proc/self/cgroup`, and bounded own-FD socket inventory. Fresh-host evidence
   must demonstrate those corrections under the installed unit before they can
   support a profile decision.
+- **Implementation boundary finding (2026-08-29):** Rendezvous has no
+  application queue to measure: handshakes, unmatched legs, and active pairs
+  are independent finite reservations, while paired bytes pass through direct
+  bounded pumps. The candidate therefore reports queue items/bytes as exactly
+  zero instead of inventing nonzero queue headroom. Its two mutable roots are
+  now measured as one managed-storage dimension: `PROTECT` at 320 MiB,
+  recovery below 256 MiB, and terminal `DRAIN` at 384 MiB or more; more than
+  5,000 regular files fails closed. Installed generations, the caller-owned
+  bundle, journal retention, and provider snapshots remain separately bounded
+  or external residue and are not hidden inside that runtime-state claim.
+- **Product Owner selection (2026-08-29):** available existing project Ubuntu
+  hosts are eligible for H4-5 regardless of their physical CPU, memory, disk,
+  or link characteristics. The campaign records those characteristics and
+  enforces the candidate's exact service cgroup/runtime limits instead of
+  rejecting a host for being stronger than NET-01A. Temporary project fixture
+  co-location is acceptable evidence for this functional-alpha decision only;
+  it does not select a co-resident Endpoint product profile or support
+  independence, public capacity, or availability language.
 
 ## Options
 
@@ -550,19 +579,22 @@ is a cost-bounded tracer only. It cannot replace per-duty NET-01A measurement or
 later multi-host fault evidence, and a single process performing conflicting
 domains remains rejected.
 
-On a shared alpha VPS, each process still has its own cgroup and fixed ceiling,
-and the declared ceilings plus host reserve must fit the physical host. A
-passing co-hosted tracer does not qualify the smaller NET-01A per-duty profile;
-the latter is measured with one Rendezvous process on its own reference host.
+On the selected existing alpha VPS, the installed Rendezvous still has its own
+systemd cgroup and fixed ceiling, and the declared ceilings plus observed host
+reserve must fit together. A passing co-hosted campaign can qualify only this
+project-operated functional-alpha service profile. It does not qualify a
+general co-resident Endpoint product, host independence, public capacity, or
+availability.
 
 ## Reference-host selection campaign
 
 The next experiment first replaces the synthetic echo with the real
 Rendezvous reservation/pairing/pump path. It then uses this predeclared matrix:
 
-1. Freeze one Ubuntu LTS `x86-64`, 2-vCPU, 2-GiB, symmetric-100-Mbit/s host,
-   cgroup v2 placement, kernel/network settings, build/source digests, and the
-   exact candidate limits. A stronger host is ineligible.
+1. Freeze one Product Owner-declared existing Ubuntu LTS `x86-64` host, its
+   observed CPU/memory/disk/link/kernel/network envelope, cgroup v2 placement,
+   build/source digests, and the exact candidate process limits. Physical host
+   size is evidence, not an eligibility gate.
 2. Measure idle/readiness, then sweep simultaneous pair capacity geometrically
    from one pair until the first safe refusal or resource falsifier. Pair count,
    accepted sockets, authenticated legs, and OS sockets are separate counters.
@@ -600,7 +632,7 @@ functional tracer, and the validated local/remote Docker pair can host its first
 inter-host fault cells without new infrastructure. Implement the candidate
 reservations and measurement oracle using the tracer's now-passing contract,
 then run the named Rendezvous campaign on
-the declared Linux reference host before selecting capacity or claiming an
+the declared existing Linux host before selecting capacity or claiming an
 operating profile. Do not substitute two role-probe processes for this duty,
 expose a peer runtime, or alter the H3 profile before its complete evidence
 exists.

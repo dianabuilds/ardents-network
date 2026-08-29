@@ -1,6 +1,8 @@
 package resource_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -61,7 +63,8 @@ func TestRendezvousFunctionalAlphaProfileProtectsRecoversAndDrains(t *testing.T)
 	var sample resource.Sample
 	guard, err := resource.New(resource.Config{
 		Profile: "h4-5-rendezvous-alpha-v1", Interval: time.Second,
-		Measure: func() (resource.Sample, error) { return sample, nil },
+		Measure:      func() (resource.Sample, error) { return sample, nil },
+		StorageRoots: []string{t.TempDir(), t.TempDir()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -93,6 +96,30 @@ func TestRendezvousFunctionalAlphaProfileProtectsRecoversAndDrains(t *testing.T)
 	observation, err := guard.Observe(0, 0, 0)
 	if err != nil || !observation.Protect || !observation.Drain {
 		t.Fatalf("emergency observation = %+v, %v", observation, err)
+	}
+}
+
+func TestRendezvousFunctionalAlphaStorageCeilingDrains(t *testing.T) {
+	stateRoot, roleRoot := t.TempDir(), t.TempDir()
+	stateFile := filepath.Join(stateRoot, "bounded-state")
+	if err := os.WriteFile(stateFile, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Truncate(stateFile, 384<<20); err != nil {
+		t.Fatal(err)
+	}
+	guard, err := resource.New(resource.Config{
+		Profile: "h4-5-rendezvous-alpha-v1", Interval: time.Second,
+		Measure:      func() (resource.Sample, error) { return resource.Sample{}, nil },
+		StorageRoots: []string{stateRoot, roleRoot},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation, err := guard.Observe(0, 0, 0)
+	if err != nil || !observation.Protect || !observation.Drain ||
+		observation.Sample.StorageBytes != 384<<20 || observation.Sample.StorageFiles != 1 {
+		t.Fatalf("storage ceiling observation = %+v, %v", observation, err)
 	}
 }
 
