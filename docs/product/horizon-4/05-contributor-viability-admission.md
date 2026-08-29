@@ -100,6 +100,19 @@ above; temporary qualification fixtures on the same project host do not create
 a supported co-resident Endpoint-plus-Contributor profile or an independence,
 capacity, or availability claim.
 
+**Product Owner campaign-budget selection (2026-08-29):** H4-5A/B uses one
+no-retry pass of every deterministic cell plus one eight-minute mixed
+sustained soak. Independent supporting shards run concurrently across both
+declared existing Ubuntu VPS hosts and local isolated Docker containers, while
+the selected installed Contributor profile remains bound to one declared VPS.
+The complete campaign has a hard 60-minute ceiling, stops starting work at
+minute 50, and reserves the remainder for evidence and exact cleanup. Five
+ten-minute repetitions of every deterministic lifecycle and fault operation
+were rejected as disproportionate to this narrow project-operated Functional
+Alpha claim. Every failed attempt remains evidence; after a correction only
+the affected cell and one short ordinary smoke are repeated, never the entire
+campaign.
+
 The declared-host preflight passed on 2026-08-29 at commit `bdb9a665`: the
 selected existing Ubuntu VPS has the required systemd/cgroup-v2 platform,
 unused selected listener port, and no prior Contributor installation. This is

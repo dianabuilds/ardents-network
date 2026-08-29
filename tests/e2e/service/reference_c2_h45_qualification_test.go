@@ -32,9 +32,20 @@ type h45BundleFixture struct {
 }
 
 func TestH45InstalledRendezvousPublisherToUserLifecycle(t *testing.T) {
+	runH45InstalledRendezvous(t, referenceC2Scenario{transparentApplication: true}, 4*time.Minute)
+}
+
+func TestH45InstalledRendezvousEightMinuteMixedSoak(t *testing.T) {
+	scenario := referenceC2Scenario{transparentApplication: true, dynamicWorkload: referenceC2DynamicWorkload{
+		Cycles: 480, IntervalMilliseconds: 1_000, CycleDeadlineMilliseconds: 5_000,
+		NoFallbackEvery: 60, BytesEachDirection: 1 << 20}}
+	runH45InstalledRendezvous(t, scenario, scenario.dynamicWorkload.timeBudget(4*time.Minute))
+}
+
+func runH45InstalledRendezvous(t *testing.T, scenario referenceC2Scenario, duration time.Duration) {
+	t.Helper()
 	environment := requireH43MultiHostEnvironment(t)
-	scenario := referenceC2Scenario{transparentApplication: true}
-	deadline := time.Now().UTC().Truncate(time.Second).Add(4 * time.Minute)
+	deadline := time.Now().UTC().Truncate(time.Second).Add(duration)
 	remote := h43RemoteC2{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
 	t.Cleanup(func() {
@@ -86,6 +97,7 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 		t.Fatalf("H4-5 idle update report = %q, want generation 2", updated)
 	}
 	h45CapturePlacement(t, remote)
+	h45CaptureRuntimeSample(t, remote, "before")
 	if output, err := remote.run(t, fmt.Sprintf("set -eu; printf 'ready\\n' >%s/contributor-ready",
 		h43ShellQuote(environment.remoteDirectory))); err != nil {
 		t.Fatalf("release H4-5 topology roles: %v\n%s", err, output)
@@ -115,6 +127,7 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 	}
 	remote.complete(t)
 	remote.wait(t)
+	h45CaptureRuntimeSample(t, remote, "after")
 	h43AssertUserResult(t, result, scenario)
 	for _, role := range []string{"initiator", "introduction", "responder", "gateway", "alpha-gateway", "alpha-relay"} {
 		if roleResult := h43RemoteResult(t, remote, role); roleResult.Class != "drained" {
@@ -263,6 +276,30 @@ for name in cpu.max memory.high memory.max pids.max; do printf '%%s=' "$name"; c
 	}
 }
 
+func h45CaptureRuntimeSample(t *testing.T, remote h43RemoteC2, name string) {
+	t.Helper()
+	if name != "before" && name != "after" {
+		t.Fatal("H4-5 runtime sample name is outside its closed vocabulary")
+	}
+	root := h43ShellQuote(remote.environment.remoteDirectory)
+	command := fmt.Sprintf(`set -eu
+cgroup_relative=$(systemctl show ardents-rendezvous-contributor.service -p ControlGroup --value)
+case "$cgroup_relative" in /system.slice/*) ;; *) exit 1 ;; esac
+cgroup=/sys/fs/cgroup$cgroup_relative
+{
+  printf 'captured_at='; date -u +%%Y-%%m-%%dT%%H:%%M:%%SZ
+  for file in cpu.stat memory.current memory.events pids.current; do
+    printf '[%%s]\n' "$file"
+    cat "$cgroup/$file"
+  done
+  printf '[socket-summary]\n'; ss -s
+  printf '[link-counters]\n'; ip -s link
+} >%s/contributor-runtime-%s.txt`, root, name)
+	if output, err := remote.run(t, command); err != nil {
+		t.Fatalf("capture H4-5 %s runtime sample: %v\n%s", name, err, output)
+	}
+}
+
 func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult) {
 	t.Helper()
 	root := os.Getenv("ARDENTS_H4_5_EVIDENCE_DIR")
@@ -288,6 +325,7 @@ func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult) {
 		"contributor-restart.json", "contributor-restart.timing",
 		"contributor-update-idle.json", "contributor-update-idle.timing",
 		"contributor-systemd.txt", "contributor-cgroup.txt",
+		"contributor-runtime-before.txt", "contributor-runtime-after.txt",
 		"contributor-drain.json", "contributor-drain.timing",
 		"contributor-withdraw.json", "contributor-withdraw.timing",
 		"contributor-remove.json", "contributor-remove.timing",

@@ -49,12 +49,26 @@ fixture or co-hosted process, owns the Rendezvous role.
 
 ## Frozen workload and fault matrix
 
-Every decision-bearing workload cell runs five independent ten-minute
-repetitions. Each repetition gets fresh fixture state and records its seed,
-UTC interval, exact binary and bundle digests, completed application bytes,
-reservation/admission outcomes, Node lifecycle events, systemd/cgroup samples,
-host link counters, and terminal classification. An earlier failed repetition
-remains a failed denominator even if a retry later passes.
+The campaign runs each deterministic decision-bearing cell once from fresh
+fixture state and runs one bounded eight-minute mixed soak for sustained
+healthy replacement, churn, slow/backpressured carriage, and resource
+sampling. The controller executes independent shards concurrently on both
+Product Owner-declared existing Ubuntu VPS hosts and local isolated Docker
+containers. The installed systemd Contributor and its real C-2 path remain on
+one declared VPS; the second VPS and local containers run only supporting
+fixture, link/fault, hostile-admission, and offline-oracle shards and do not
+create another supported host profile.
+
+The complete campaign has a hard 60-minute wall-clock ceiling: no new cell may
+start after minute 50, leaving ten minutes for bounded collection and exact
+cleanup. Each cell also has its own shorter deadline. Every cell records its
+seed, UTC interval, exact binary and bundle digests, completed application
+bytes, reservation/admission outcomes, Node lifecycle events, systemd/cgroup
+samples, host link counters, and terminal classification. A failed attempt
+remains in the denominator. After a product or qualifier correction, only the
+affected cell is repeated, followed by one short ordinary installed-product
+smoke; the complete campaign is not replayed and a later pass never erases the
+earlier failure.
 
 1. Idle `READY`, followed by one healthy full-duplex C-2 connection.
 2. One continuously replaced healthy pair at the fixed one-pair capacity.
@@ -99,7 +113,7 @@ One immutable evidence directory must contain:
 - source revision/status and SHA-256 digests for every staged artifact;
 - the closed bundle manifests and independent pins, with private-key bytes
   excluded from the retained report;
-- one result record per matrix repetition and the complete denominator;
+- one result record per matrix cell and the complete attempt denominator;
 - bounded lifecycle/resource diagnostics, systemd state, cgroup samples, host
   counters, fault receipts, and exact process identities;
 - lifecycle command reports and timings, removal inventory, external-residue
@@ -127,11 +141,33 @@ Owner selection of 2026-08-29. A stronger or differently sized existing host
 therefore does not fail preparation; the installed process must still enforce
 the exact `h4-5-rendezvous-alpha-v1` cgroup and runtime limits.
 
-There is intentionally no `qualification-h4-5-rendezvous` target yet. Adding
-that name before the two-host runner, all matrix oracles, and the complete
-denominator exist would manufacture a promotion gate. The next implementation
-slice must add that exact target and execute this frozen contract without
-weakening it.
+The Windows controller is `make qualification-h4-5-rendezvous`. It requires
+two distinct declared VPS literal IPv4 addresses and existing OpenSSH keys,
+root access to the primary systemd host, Docker on all three hosts, the pinned
+`golang:1.26.6` image, an absent absolute evidence directory, and a clean
+committed worktree. It starts the primary installed soak/smoke, local
+Go/Docker oracles, and second-VPS Linux/Docker oracles concurrently. It stops
+all still-running shards at minute 50, reserves the remaining ten minutes for
+bounded evidence collection and exact cleanup, and rejects any missing cell,
+nonzero exit, missing host, missing Docker engine, timeout, or cleanup failure.
+
+The controller's closed 15-cell denominator maps the frozen matrix as follows:
+
+- primary host envelope; installed eight-minute mixed C-2 soak with cgroup and
+  link samples before and after workload; installed automatic `SIGKILL`
+  recovery plus one real host reboot and changed boot identity; and the final
+  installed C-2 lifecycle/removal smoke;
+- local exact capacity/hostile-admission, `PROTECT`/recovery/terminal `DRAIN`,
+  update/rollback, Source/State failure, stream/backpressure, and isolated
+  Linux listener/process cells; and
+- second-VPS host envelope, exact artifact stage/upload, isolated Linux
+  incomplete-TLS/expiry/`SIGTERM`/successor-reassignment process cell, and
+  exact cleanup.
+
+The earlier passing idle and held-pair generation-2 update attempts remain
+separate installed-product evidence and are not repeated by this campaign.
+Earlier failures remain in their retained attempt directories and in the
+complete denominator even though only their corrected cells were rerun.
 
 The accepted retained preflight used commit
 `bdb9a66523c26558a09c063aa06399b49c8fa4cf` at
@@ -169,10 +205,9 @@ treated a non-failed `systemctl reset-failed` result as an error. The retained
 attempt directories respectively identify commits `adef2464`, `0d86d974`, and
 `a8839270`; the product and qualifier corrections are committed separately.
 
-This is smoke evidence only. It does not replace any ten-minute repetition,
-generation-2 update, overload, hostile admission, Source/link, State,
-process-loss, reboot, or restoration cell in the frozen matrix, so the
-qualification status remains open.
+This is smoke evidence only. It does not replace the bounded campaign above,
+so the qualification status remains open until that campaign executes and all
+15 result records plus cleanup are accepted.
 
 ## Claim boundary
 

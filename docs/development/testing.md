@@ -132,10 +132,14 @@ does not mean passed, waived, or unavailable evidence.
   host. It captures the actual CPU, memory, disk, link, systemd, cgroup,
   service, and port envelope without treating host size as an eligibility
   gate; it rejects an existing Contributor installation or occupied selected
-  port. This is preparation only. There is deliberately no
-  `qualification-h4-5-rendezvous` target until the two-host workload, fault,
-  lifecycle, utility, operator-timing, and full-denominator oracles implement
-  the frozen contract.
+  port. The complete controller entrypoint is
+  `make qualification-h4-5-rendezvous`. It requires both declared existing VPS
+  hosts and local Docker, starts its installed primary, local, and second-VPS
+  Docker shards concurrently, stops execution at minute 50, and reserves the
+  final ten minutes solely for evidence and exact cleanup. Missing cells,
+  hosts, Docker, evidence, changed reboot identity, or cleanup are failures
+  rather than skips. The installed shard performs exactly one bounded reboot
+  between its mixed soak and final C-2 smoke.
 - the H4-2 local full-system emulator, `make
   qualification-h4-2-local-emulator`, is owned by
   `tests/qualification/h4-2-local-emulator/`. It requires Windows Docker and

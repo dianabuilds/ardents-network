@@ -18,7 +18,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -155,22 +154,6 @@ func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {
 	if !changed {
 		t.Fatal("successor did not reassign either Node")
 	}
-}
-
-func buildCommand(t *testing.T, name string) string {
-	t.Helper()
-	suffix := ""
-	if runtime.GOOS == "windows" {
-		suffix = ".exe"
-	}
-	path := filepath.Join(t.TempDir(), name+suffix)
-	command := exec.Command("go", "build", "-o", path, "./cmd/"+name)
-	command.Dir = filepath.Join("..", "..", "..")
-	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build %s: %v\n%s", name, err, output)
-	}
-	return path
 }
 
 func acceptEpoch(t *testing.T, binary, root string, fixture lifecycleStateFixture, epoch lifecycleEpoch) {

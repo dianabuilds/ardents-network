@@ -638,8 +638,15 @@ Rendezvous reservation/pairing/pump path. It then uses this predeclared matrix:
 4. Run explicit `PROTECT`, resource `DRAIN`, assignment expiry/change, listener
    failure, `SIGTERM`, and abrupt-process-loss/restart cells. Abrupt loss may
    prove recovery behavior only; it cannot be relabelled graceful drain.
-5. Repeat each decision-bearing 10-minute sustained cell five times and retain
-   every attempt, including failures, plus one final post-cleanup observation.
+5. Run each deterministic decision-bearing cell once from fresh state, plus
+   one eight-minute mixed sustained soak. Execute independent supporting
+   shards concurrently across both declared existing Ubuntu VPS hosts and
+   local isolated Docker containers. Enforce a 60-minute total wall-clock
+   bound, stop starting cells at minute 50, and reserve the final ten minutes
+   for evidence collection and cleanup. Retain every attempt, including
+   failures. After a correction repeat only the affected cell and one short
+   ordinary installed-product smoke, never the complete campaign; a later pass
+   does not remove the earlier failure from the denominator.
 
 A capacity point passes only when every admitted pair authenticates the exact
 TLS/ALPN/LegBinding contract, healthy pairs keep making useful progress, queues

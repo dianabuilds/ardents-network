@@ -166,6 +166,12 @@ func TestRendezvousRejectsDuplicateSideWithoutDisplacingWaitingLeg(t *testing.T)
 	if got := readExact(t, responder, len("retained")); string(got) != "retained" {
 		t.Fatalf("retained leg bytes = %q", got)
 	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := responder.Close(); err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	if err := running.Drain(ctx); err != nil {
