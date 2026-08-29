@@ -110,6 +110,13 @@ Accordingly H4-6C is a Public Beta promotion gate, not work that can be
 scheduled as already staffed. It becomes actionable only when the necessary
 people or organizations genuinely exist.
 
+R-124 defines the H4-6C evidence threshold: five independently operated
+custodians, `3-of-5` routine authority, `4-of-5` expiring emergency authority,
+two independent reproducible builders, and two independent full Candidate View
+auditors. A bounded reader may inspect the declared artifacts and collisions,
+but it cannot turn a self-authored independence claim into a fact. The current
+status is therefore **no public-control candidate selected**.
+
 ### H4-6D — controlled public transitions
 
 Once H4-6C exists, exercise build, protocol, and state transitions under the
@@ -163,4 +170,5 @@ fallback root, profile, source, or Namespace authority is allowed.
 ## Open Product Owner selections
 
 - Threshold and evidence operations for a future H4-6C, when real independent
-  participants make that selection actionable.
+  participants make that selection actionable. R-124 retains the resulting
+  evidence contract and the unfulfilled external gate.

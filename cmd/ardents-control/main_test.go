@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,44 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
+
+func TestInspectPublicControlReportsExternalEvidenceGate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "public-control.json")
+	if err := os.WriteFile(path, []byte(publicControlManifest()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := run([]string{"inspect-public-control", "--evidence", path, "--at", "2029-01-01T00:00:00Z", "--audit-floor-generation", "1"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), `"external-evidence-required"`) {
+		t.Fatalf("public-control output = %s", output.String())
+	}
+	if strings.Contains(output.String(), `"qualified":true`) {
+		t.Fatalf("public-control output must never self-qualify: %s", output.String())
+	}
+}
+
+func publicControlManifest() string {
+	digest := "sha256:" + strings.Repeat("a", 64)
+	actors := func(role string, count int) string {
+		values := make([]string, count)
+		for index := range count {
+			keyFill := byte('0' + index)
+			if role == "builder" {
+				keyFill = byte('a' + index)
+			}
+			if role == "auditor" {
+				keyFill = byte('c' + index)
+			}
+			values[index] = fmt.Sprintf(`{"id":"%s-%d","public_key":"ed25519:%s","operator":"%s-operator-%d","organization":"%s-organization-%d","administration":"%s-administration-%d","evidence":"%s"}`,
+				role, index+1, strings.Repeat(string(keyFill), 64), role, index+1, role, index+1, role, index+1, digest)
+		}
+		return strings.Join(values, ",")
+	}
+	return fmt.Sprintf(`{"schema":"ardents-public-control-evidence-v1","candidate":"%s","transition":{"generation":1,"predecessor":"%s","not_after":"2030-01-01T00:00:00Z","revoked":false,"conflicting":false},"custody":{"threshold":3,"emergency_threshold":4,"members":[%s]},"candidate_view":{"epoch":"%s","input_log":"%s","materialization_rules":"%s","audits":[{"auditor":"auditor-1","input_log":"%s","output":"%s"},{"auditor":"auditor-2","input_log":"%s","output":"%s"}]},"builders":[%s],"auditors":[%s],"packages":[{"artifact":"%s","source":"%s","dependencies":"%s","recipe":"%s","sbom":"%s","qualification":"%s","builder_attestations":[{"builder":"builder-1","artifact":"%s"},{"builder":"builder-2","artifact":"%s"}]}]}`,
+		digest, digest, actors("custodian", 5), digest, digest, digest, digest, digest, digest, digest, actors("builder", 2), actors("auditor", 2), digest, digest, digest, digest, digest, digest, digest, digest)
+}
 
 func TestInspectReportsSeparateComponentResultsWithoutEndpoint(t *testing.T) {
 	now := time.Unix(2_000_400_000, 0).UTC()

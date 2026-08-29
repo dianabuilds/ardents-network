@@ -620,6 +620,14 @@ independent full auditors cover the global commitment. Withholding retries the
 same index elsewhere or fails explicitly and never causes silent resampling.
 _Avoid_: Personalized Candidate View, distributor-selected route, reputation
 
+**Public-control Candidate**:
+A proposed public Control Plane roster, threshold operation, Candidate View,
+package, and evidence set that can be inspected independently. It is qualified
+only after real independent custodians, builders, and full auditors corroborate
+their control boundaries; project keys, VPS, CI, Docker, and a Product Owner
+walkthrough are not such evidence.
+_Avoid_: Project multi-key, self-certified decentralization, alpha promotion
+
 **Time Confidence**:
 The endpoint's bounded evidence that freshness decisions are safe, derived from
 monotonic elapsed time, a non-decreasing accepted watermark, Network Epoch

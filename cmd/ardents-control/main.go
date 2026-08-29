@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
+	"github.com/dianabuilds/ardents-network/internal/publiccontrol"
 )
 
 var componentNames = [...]string{"release.ac1", "network.ac1", "compatibility.ac1"}
@@ -30,7 +31,7 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 	switch arguments[0] {
 	case "inspect":
@@ -39,13 +40,42 @@ func run(arguments []string, output io.Writer) error {
 		return inspectBundle(arguments[1:], output)
 	case "inspect-transitions":
 		return inspectTransitions(arguments[1:], output)
+	case "inspect-public-control":
+		return inspectPublicControl(arguments[1:], output)
 	case "inspect-alpha-corpus":
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
 		return acceptAlphaCorpus(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
+}
+
+func inspectPublicControl(arguments []string, output io.Writer) error {
+	flags := flag.NewFlagSet("inspect-public-control", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var evidencePath, atText, expectedPredecessor string
+	var auditFloorGeneration uint64
+	flags.StringVar(&evidencePath, "evidence", "", "public-control evidence manifest")
+	flags.StringVar(&atText, "at", "", "inspection time in RFC3339")
+	flags.Uint64Var(&auditFloorGeneration, "audit-floor-generation", 0, "externally retained public-control transition generation floor")
+	flags.StringVar(&expectedPredecessor, "expected-predecessor", "", "exact predecessor candidate digest from external audit evidence")
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
+		return errors.New("public-control inspection arguments are invalid")
+	}
+	at, err := time.Parse(time.RFC3339, atText)
+	if err != nil {
+		return errors.New("public-control inspection time is invalid")
+	}
+	raw, err := readControlFile(evidencePath, publiccontrol.MaximumEvidenceManifestSize)
+	if err != nil {
+		return err
+	}
+	report, err := publiccontrol.InspectAt(raw, publiccontrol.InspectionConfig{At: at.UTC(), AuditFloorGeneration: auditFloorGeneration, ExpectedPredecessor: expectedPredecessor})
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(report)
 }
 
 func inspectAlphaCorpus(arguments []string, output io.Writer) error {
@@ -214,11 +244,11 @@ func decodeIdentifier(encoded string) ([32]byte, error) {
 
 func readControlFile(path string, maximum int64) ([]byte, error) {
 	if path == "" {
-		return nil, errors.New("alpha control file is required")
+		return nil, errors.New("control file is required")
 	}
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() == 0 || info.Size() > maximum {
-		return nil, errors.New("alpha control file is not a bounded regular file")
+		return nil, errors.New("control file is not a bounded regular file")
 	}
 	return os.ReadFile(path)
 }
