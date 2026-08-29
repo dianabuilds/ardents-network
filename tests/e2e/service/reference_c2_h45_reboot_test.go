@@ -136,7 +136,8 @@ func h45WaitForRebootedDuty(t *testing.T, remote h43RemoteC2, deadline time.Time
 	for time.Now().Before(deadline) {
 		command := "set -eu; test \"$(docker inspect -f '{{.State.Running}}' " + container + ")\" = true; " +
 			"systemctl is-active --quiet ardents-rendezvous-contributor.service; " +
-			"test \"$(systemctl show ardents-rendezvous-contributor.service -p MainPID --value)\" -gt 1"
+			"test \"$(systemctl show ardents-rendezvous-contributor.service -p MainPID --value)\" -gt 1; " +
+			h45ContributorCommand + " contributor diagnose | grep -F '\"lifecycle_state\":\"READY\"' >/dev/null"
 		if _, err := remote.run(t, command); err == nil {
 			return
 		}

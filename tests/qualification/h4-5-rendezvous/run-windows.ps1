@@ -31,6 +31,19 @@ function Invoke-Checked([string]$Executable, [string[]]$Arguments, [string]$Fail
     if ($LASTEXITCODE -ne 0) { throw $Failure }
 }
 
+function Resolve-RemoteAccess([string]$Key, [string]$User, [string]$RemoteHost) {
+    $target = "$User@$RemoteHost"
+    if ([IO.Path]::GetExtension($Key) -ieq '.ppk') {
+        $ssh = (Get-Command 'plink.exe' -ErrorAction Stop).Source
+        $scp = (Get-Command 'pscp.exe' -ErrorAction Stop).Source
+        return @{ SSH=$ssh; SSHBase=@('-batch','-i',$Key,$target); SCP=$scp; SCPBase=@('-batch','-i',$Key) }
+    }
+    $ssh = (Get-Command 'ssh.exe' -ErrorAction Stop).Source
+    $scp = (Get-Command 'scp.exe' -ErrorAction Stop).Source
+    $options = @('-i',$Key,'-o','BatchMode=yes','-o','ConnectTimeout=10','-o','StrictHostKeyChecking=accept-new')
+    return @{ SSH=$ssh; SSHBase=($options + @($target)); SCP=$scp; SCPBase=$options }
+}
+
 $repository = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 if ((Resolve-Path $MyInvocation.MyCommand.Path).Path -cne (Join-Path $repository 'tests\qualification\h4-5-rendezvous\run-windows.ps1')) {
     throw 'H4-5 qualification is owned by its repository runner'
@@ -62,9 +75,10 @@ try {
     }
 
     Invoke-Checked 'docker' @('image', 'inspect', 'golang:1.26.6', '--format', '{{.Id}}') 'local pinned Docker image is unavailable'
-    $sshOptions = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'StrictHostKeyChecking=accept-new')
-    Invoke-Checked 'ssh' (@('-i', $PrimarySSHKey) + $sshOptions + @("$PrimaryUser@$PrimaryVPS", 'test "$(id -u)" -eq 0; test "$(ps -p 1 -o comm=)" = systemd; docker image inspect golang:1.26.6 >/dev/null')) 'primary VPS preflight failed'
-    Invoke-Checked 'ssh' (@('-i', $SecondarySSHKey) + $sshOptions + @("$SecondaryUser@$SecondaryVPS", 'test "$(id -u)" -eq 0; docker image inspect golang:1.26.6 >/dev/null')) 'secondary VPS preflight failed'
+    $primaryAccess = Resolve-RemoteAccess $PrimarySSHKey $PrimaryUser $PrimaryVPS
+    $secondaryAccess = Resolve-RemoteAccess $SecondarySSHKey $SecondaryUser $SecondaryVPS
+    Invoke-Checked $primaryAccess.SSH ($primaryAccess.SSHBase + @('test "$(id -u)" -eq 0; test "$(ps -p 1 -o comm=)" = systemd; docker image inspect golang:1.26.6 >/dev/null')) 'primary VPS preflight failed'
+    Invoke-Checked $secondaryAccess.SSH ($secondaryAccess.SSHBase + @('test "$(id -u)" -eq 0; docker image inspect golang:1.26.6 >/dev/null')) 'secondary VPS preflight failed'
 
     [void](New-Item -ItemType Directory -Path $EvidenceOutput -Force)
     $artifactRoot = Join-Path $EvidenceOutput 'artifacts'
@@ -85,7 +99,7 @@ try {
     $campaignID = [Guid]::NewGuid().ToString('N')
     $shard = {
         param($Name, $Repository, $Evidence, $Artifacts, $Revision, $PrimaryHost, $PrimaryKey, $PrimaryLogin, $BasePort,
-            $SecondaryHost, $SecondaryKey, $SecondaryLogin, $CampaignID)
+            $SecondaryHost, $SecondaryLogin, $SecondarySSH, $SecondarySSHBase, $SecondarySCP, $SecondarySCPBase, $CampaignID)
         Set-StrictMode -Version Latest
         $ErrorActionPreference = 'Stop'
         function Write-Text([string]$Path, [string]$Contents) {
@@ -124,7 +138,7 @@ try {
             $ssh = @('-i',$PrimaryKey,'-o','BatchMode=yes','-o','ConnectTimeout=10','-o','StrictHostKeyChecking=accept-new')
             $hostFacts = 'set -eu; printf "boot_id="; cat /proc/sys/kernel/random/boot_id; uname -srmo; printf "vcpus="; nproc; awk ''/MemTotal:/ {printf "memory_kib=%s\n", $2}'' /proc/meminfo; df -Pk / /var /tmp; ip -s link; systemctl --version | head -n 1; docker image inspect golang:1.26.6 --format "image_id={{.Id}}"'
             if ((Run-Cell 'primary-host-envelope' 'ssh' ($ssh + @($target,$hostFacts))) -ne 0) { $failed++ }
-            $common = @{ ARDENTS_H4_3B_VPS=$PrimaryHost; ARDENTS_H4_3B_SSH_KEY=$PrimaryKey; ARDENTS_H4_3B_VPS_USER=$PrimaryLogin; ARDENTS_H4_3B_VPS_PORT="$BasePort" }
+            $common = @{ ARDENTS_H4_3B_VPS=$PrimaryHost; ARDENTS_H4_3B_SSH_KEY=$PrimaryKey; ARDENTS_H4_3B_VPS_USER=$PrimaryLogin; ARDENTS_H4_3B_VPS_PORT="$BasePort"; ARDENTS_H4_8_A11_SUFFIX=$CampaignID }
             $soak = @{} + $common
             $soak.ARDENTS_H4_5_EVIDENCE_DIR = Join-Path $Evidence 'primary-eight-minute-soak'
             if ((Run-Cell 'primary-eight-minute-soak' 'go' @('test','-tags','h4_3b_multihost h4_5_rendezvous','./tests/e2e/service','-run','^TestH45InstalledRendezvousEightMinuteMixedSoak$','-count=1','-timeout=12m') $soak) -ne 0) { $failed++ }
@@ -142,51 +156,137 @@ try {
             if ((Run-Cell 'local-stream-semantics' 'go' @('test','./internal/endpoint','-run','^Test(SlowConsumersApplyBackpressureUntilLocalCancellation|LogicalQueueBackpressuresAtFrozenDirectionalCap|OrderlyHalfCloseReportsObservedPartialCounts)$','-count=1','-timeout=2m')) -ne 0) { $failed++ }
             $mount = ($Artifacts -replace '\\','/') + ':/artifacts:ro'
             $dockerTest = "/artifacts/e2e-node.test -test.run='^Test(NativeDutyProcessesUseTheirExactStateAssignments|RendezvousNodeProcessPairsOnlyStateAuthorizedLegs|RendezvousNodeProcessKeepsActivePairPastAdmissionDeadline)$' -test.count=1 -test.timeout=3m"
-            if ((Run-Cell 'local-docker-listener-pressure' 'docker' @('run','--rm','--network','none','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=256m','--memory','512m','--cpus','1','--pids-limit','128','-e','ARDENTS_E2E_COMMAND_ROOT=/artifacts','-v',$mount,'golang:1.26.6','sh','-c',$dockerTest)) -ne 0) { $failed++ }
+            if ((Run-Cell 'local-docker-listener-pressure' 'docker' @('run','--rm','--name',"ardents-h4-5-local-$CampaignID",'--network','none','--read-only','--tmpfs','/tmp:rw,nosuid,nodev,size=256m','--memory','512m','--cpus','1','--pids-limit','128','-e','ARDENTS_E2E_COMMAND_ROOT=/artifacts','-v',$mount,'golang:1.26.6','sh','-c',$dockerTest)) -ne 0) { $failed++ }
         } elseif ($Name -ceq 'secondary-linux') {
             $remoteRoot = "/tmp/ardents-h4-5-$CampaignID"
             $target = "$SecondaryLogin@$SecondaryHost"
-            $ssh = @('-i',$SecondaryKey,'-o','BatchMode=yes','-o','ConnectTimeout=10','-o','StrictHostKeyChecking=accept-new')
             $hostFacts = 'set -eu; printf "boot_id="; cat /proc/sys/kernel/random/boot_id; uname -srmo; printf "vcpus="; nproc; awk ''/MemTotal:/ {printf "memory_kib=%s\n", $2}'' /proc/meminfo; df -Pk / /var /tmp; ip -s link; docker image inspect golang:1.26.6 --format "image_id={{.Id}}"'
-            if ((Run-Cell 'secondary-host-envelope' 'ssh' ($ssh + @($target,$hostFacts))) -ne 0) { $failed++ }
-            if ((Run-Cell 'secondary-stage' 'ssh' ($ssh + @($target,"set -eu; umask 077; test ! -e '$remoteRoot'; mkdir -m 700 '$remoteRoot'"))) -ne 0) { $failed++ }
-            $uploads = @('-i',$SecondaryKey,'-o','BatchMode=yes','-o','ConnectTimeout=10',(Join-Path $Artifacts 'ardents'),(Join-Path $Artifacts 'ardents-node'),(Join-Path $Artifacts 'e2e-node.test'),"${target}:$remoteRoot/")
-            if ($failed -eq 0 -and (Run-Cell 'secondary-upload' 'scp' $uploads) -ne 0) { $failed++ }
-            $remoteTest = "set -eu; chmod 700 '$remoteRoot/ardents' '$remoteRoot/ardents-node' '$remoteRoot/e2e-node.test'; docker run --rm --network none --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --memory 512m --cpus 1 --pids-limit 128 -e ARDENTS_E2E_COMMAND_ROOT=/artifacts -v '${remoteRoot}:/artifacts:ro' golang:1.26.6 /artifacts/e2e-node.test '-test.run=^Test(RendezvousNodeProcessBoundsIncompleteTLSHandshakes|RendezvousNodeProcessExpiresIncompleteTLSAdmission|RendezvousNodeProcessDrainsActivePairOnSIGTERM|TwoNodeProcessesRefreshWithdrawRestartAndReassign)$' -test.count=1 -test.timeout=3m"
-            if ($failed -eq 0 -and (Run-Cell 'secondary-linux-process' 'ssh' ($ssh + @($target,$remoteTest))) -ne 0) { $failed++ }
-            if ((Run-Cell 'secondary-cleanup' 'ssh' ($ssh + @($target,"set -eu; test -d '$remoteRoot'; rm -f '$remoteRoot/ardents' '$remoteRoot/ardents-node' '$remoteRoot/e2e-node.test'; rmdir '$remoteRoot'; test ! -e '$remoteRoot'"))) -ne 0) { $failed++ }
+            if ((Run-Cell 'secondary-host-envelope' $SecondarySSH ($SecondarySSHBase + @($hostFacts))) -ne 0) { $failed++ }
+            if ((Run-Cell 'secondary-stage' $SecondarySSH ($SecondarySSHBase + @("set -eu; umask 077; test ! -e '$remoteRoot'; mkdir -m 700 '$remoteRoot'"))) -ne 0) { $failed++ }
+            $uploads = $SecondarySCPBase + @((Join-Path $Artifacts 'ardents'),(Join-Path $Artifacts 'ardents-node'),(Join-Path $Artifacts 'e2e-node.test'),"${target}:$remoteRoot/")
+            if ($failed -eq 0 -and (Run-Cell 'secondary-upload' $SecondarySCP $uploads) -ne 0) { $failed++ }
+            $remoteTest = "set -eu; chmod 700 '$remoteRoot/ardents' '$remoteRoot/ardents-node' '$remoteRoot/e2e-node.test'; docker run --rm --name 'ardents-h4-5-secondary-$CampaignID' --network none --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --memory 512m --cpus 1 --pids-limit 128 -e ARDENTS_E2E_COMMAND_ROOT=/artifacts -v '${remoteRoot}:/artifacts:ro' golang:1.26.6 /artifacts/e2e-node.test '-test.run=^Test(RendezvousNodeProcessBoundsIncompleteTLSHandshakes|RendezvousNodeProcessExpiresIncompleteTLSAdmission|RendezvousNodeProcessDrainsActivePairOnSIGTERM|TwoNodeProcessesRefreshWithdrawRestartAndReassign)$' -test.count=1 -test.timeout=3m"
+            if ($failed -eq 0 -and (Run-Cell 'secondary-linux-process' $SecondarySSH ($SecondarySSHBase + @($remoteTest))) -ne 0) { $failed++ }
+            if ((Run-Cell 'secondary-cleanup' $SecondarySSH ($SecondarySSHBase + @("set -eu; test -d '$remoteRoot'; rm -f '$remoteRoot/ardents' '$remoteRoot/ardents-node' '$remoteRoot/e2e-node.test'; rmdir '$remoteRoot'; test ! -e '$remoteRoot'"))) -ne 0) { $failed++ }
         }
         [pscustomobject]@{ shard=$Name; failures=$failed }
     }
 
     $jobs = @(
-        Start-Job -Name 'h45-primary' -ScriptBlock $shard -ArgumentList 'primary-installed',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondarySSHKey,$SecondaryUser,$campaignID
-        Start-Job -Name 'h45-local' -ScriptBlock $shard -ArgumentList 'local',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondarySSHKey,$SecondaryUser,$campaignID
-        Start-Job -Name 'h45-secondary' -ScriptBlock $shard -ArgumentList 'secondary-linux',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondarySSHKey,$SecondaryUser,$campaignID
+        Start-Job -Name 'h45-primary' -ScriptBlock $shard -ArgumentList 'primary-installed',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
+        Start-Job -Name 'h45-local' -ScriptBlock $shard -ArgumentList 'local',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
+        Start-Job -Name 'h45-secondary' -ScriptBlock $shard -ArgumentList 'secondary-linux',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
     )
     [void](Wait-Job -Job $jobs -Timeout 3000)
     $timedOut = @($jobs | Where-Object State -eq 'Running')
     foreach ($job in $timedOut) { Stop-Job -Job $job }
-    [void]@($jobs | Receive-Job -Wait -AutoRemoveJob)
+    [void]@($jobs | Receive-Job -Wait -AutoRemoveJob -ErrorAction SilentlyContinue)
+
+    $cleanupRoot = Join-Path $EvidenceOutput 'controller-final-cleanup'
+    [void](New-Item -ItemType Directory -Path $cleanupRoot -Force)
+    $cleanupStarted = [DateTimeOffset]::UtcNow
+    $cleanupOutput = [Collections.Generic.List[string]]::new()
+    $cleanupFailures = 0
+    $fixtureName = "ardents-h4-8-a11-$campaignID"
+    $primaryCleanup = @'
+set -eu
+fixture='__FIXTURE__'
+for work in "/tmp/$fixture" "/var/tmp/$fixture"; do
+  if [ -x "$work/bundle-1/ardents-node" ] && [ -f "$work/bundle-1/manifest.json" ]; then
+    pin=$(sha256sum "$work/bundle-1/manifest.json" | cut -d' ' -f1)
+    "$work/bundle-1/ardents-node" contributor apply --bundle "$work/bundle-1" --manifest-pin "$pin" >/dev/null 2>&1 || true
+  fi
+done
+program=/usr/lib/ardents-contributor/current/ardents-node
+record=/var/lib/private/ardents-contributor/installation.json
+if [ -x "$program" ] && [ -f "$record" ]; then
+  deployment=$(sed -n 's/.*"deployment_id":"\([^"]*\)".*/\1/p' "$record")
+  case "$deployment" in ''|*[!0-9a-f]*) exit 1 ;; esac
+  [ "${#deployment}" -eq 64 ]
+  "$program" contributor withdraw >/dev/null 2>&1 || true
+  "$program" contributor remove --confirm "$deployment" >/dev/null
+fi
+docker rm -f "$fixture" >/dev/null 2>&1 || true
+for work in "/tmp/$fixture" "/var/tmp/$fixture"; do
+  if [ -e "$work" ]; then rm -rf -- "$work"; fi
+  test ! -e "$work"
+done
+test ! -e /etc/systemd/system/ardents-rendezvous-contributor.service
+test ! -e /usr/lib/ardents-contributor
+test ! -e /var/lib/private/ardents-contributor
+! systemctl is-active --quiet ardents-rendezvous-contributor.service
+! ss -ltnH "sport = :__PORT__" | grep -q .
+'@
+    $primaryCleanup = $primaryCleanup.Replace('__FIXTURE__',$fixtureName).Replace('__PORT__',"$($PrimaryBasePort + 1)")
+    $secondaryRoot = "/tmp/ardents-h4-5-$campaignID"
+    $secondaryContainer = "ardents-h4-5-secondary-$campaignID"
+    $secondaryCleanup = "set -eu; docker rm -f '$secondaryContainer' >/dev/null 2>&1 || true; if [ -d '$secondaryRoot' ]; then rm -f '$secondaryRoot/ardents' '$secondaryRoot/ardents-node' '$secondaryRoot/e2e-node.test'; rmdir '$secondaryRoot'; fi; test ! -e '$secondaryRoot'; ! docker container inspect '$secondaryContainer' >/dev/null 2>&1"
+    $cleanupSteps = @(
+        @{ Label='primary'; Executable=$primaryAccess.SSH; Arguments=($primaryAccess.SSHBase + @($primaryCleanup)) },
+        @{ Label='secondary'; Executable=$secondaryAccess.SSH; Arguments=($secondaryAccess.SSHBase + @($secondaryCleanup)) }
+    )
+    foreach ($step in $cleanupSteps) {
+        $cleanupOutput.Add("[$($step.Label)]")
+        try {
+            $stepArguments = @($step.Arguments)
+            $output = @(& $step.Executable @stepArguments 2>&1 | ForEach-Object { $_.ToString() })
+            foreach ($line in $output) { $cleanupOutput.Add($line) }
+            if ($LASTEXITCODE -ne 0) { $cleanupFailures++ }
+        } catch {
+            $cleanupOutput.Add($_.Exception.Message)
+            $cleanupFailures++
+        }
+    }
+    $localContainer = "ardents-h4-5-local-$campaignID"
+    $cleanupOutput.Add('[local]')
+    & docker container inspect $localContainer *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $localOutput = @(& docker rm -f $localContainer 2>&1 | ForEach-Object { $_.ToString() })
+        foreach ($line in $localOutput) { $cleanupOutput.Add($line) }
+        if ($LASTEXITCODE -ne 0) { $cleanupFailures++ }
+    }
+    & docker container inspect $localContainer *> $null
+    if ($LASTEXITCODE -eq 0) { $cleanupFailures++ } else { $cleanupOutput.Add('container_absent=true') }
+    $cleanupFinished = [DateTimeOffset]::UtcNow
+    Write-Utf8NoBom (Join-Path $cleanupRoot 'output.log') (($cleanupOutput -join "`n") + "`n")
+    $cleanupRecord = [ordered]@{ schema='ardents-h4-5-cell-v1'; cell='controller-final-cleanup'; shard='controller'; source_revision=$revision;
+        started_at=$cleanupStarted.ToString('o'); finished_at=$cleanupFinished.ToString('o'); duration_ms=[int64]($cleanupFinished-$cleanupStarted).TotalMilliseconds;
+        exit_code=$cleanupFailures; outcome=$(if ($cleanupFailures -eq 0) {'passed'} else {'failed'}) }
+    Write-Utf8NoBom (Join-Path $cleanupRoot 'result.json') (($cleanupRecord | ConvertTo-Json) + "`n")
     $finished = [DateTimeOffset]::UtcNow
 
-    $expected = @('primary-host-envelope','primary-eight-minute-soak','primary-kill-reboot-recovery','primary-final-smoke','local-capacity-hostile','local-pressure-storage',
-        'local-update-rollback','local-source-state','local-stream-semantics','local-docker-listener-pressure',
-        'secondary-host-envelope','secondary-stage','secondary-upload','secondary-linux-process','secondary-cleanup')
-    $records = @()
-    foreach ($cell in $expected) {
-        $path = Join-Path $EvidenceOutput "$cell\result.json"
-        if (Test-Path -LiteralPath $path) { $records += Get-Content -LiteralPath $path -Raw | ConvertFrom-Json }
+    $expected = [ordered]@{
+        'primary-host-envelope'='primary-installed'; 'primary-eight-minute-soak'='primary-installed';
+        'primary-kill-reboot-recovery'='primary-installed'; 'primary-final-smoke'='primary-installed';
+        'local-capacity-hostile'='local'; 'local-pressure-storage'='local'; 'local-update-rollback'='local';
+        'local-source-state'='local'; 'local-stream-semantics'='local'; 'local-docker-listener-pressure'='local';
+        'secondary-host-envelope'='secondary-linux'; 'secondary-stage'='secondary-linux'; 'secondary-upload'='secondary-linux';
+        'secondary-linux-process'='secondary-linux'; 'secondary-cleanup'='secondary-linux'; 'controller-final-cleanup'='controller'
     }
-    $passed = @($records | Where-Object outcome -eq 'passed').Count
+    $records = @()
+    $validated = 0
+    foreach ($cell in $expected.Keys) {
+        $path = Join-Path $EvidenceOutput "$cell\result.json"
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
+        try { $record = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json } catch { continue }
+        $records += $record
+        $properties = @($record.PSObject.Properties.Name)
+        $required = @('schema','cell','shard','source_revision','duration_ms','exit_code','outcome')
+        if (@($required | Where-Object { $properties -cnotcontains $_ }).Count -ne 0) { continue }
+        try {
+            if ($record.schema -ceq 'ardents-h4-5-cell-v1' -and $record.cell -ceq $cell -and
+                $record.shard -ceq $expected[$cell] -and $record.source_revision -ceq $revision -and
+                [int64]$record.duration_ms -ge 0 -and [int]$record.exit_code -eq 0 -and $record.outcome -ceq 'passed') { $validated++ }
+        } catch { continue }
+    }
     $summary = [ordered]@{ schema='ardents-h4-5-campaign-v1'; source_revision=$revision; campaign_id=$campaignID;
         primary_vps=$PrimaryVPS; secondary_vps=$SecondaryVPS; started_at=$controllerStarted.ToString('o'); finished_at=$finished.ToString('o');
         duration_seconds=[int64]($finished-$controllerStarted).TotalSeconds; deadline_seconds=3600; expected_cells=$expected.Count;
-        observed_cells=$records.Count; passed_cells=$passed; failed_cells=($records.Count-$passed); timed_out_shards=$timedOut.Count;
-        outcome=$(if ($records.Count -eq $expected.Count -and $passed -eq $expected.Count -and $timedOut.Count -eq 0 -and ($finished-$controllerStarted).TotalMinutes -le 60) {'accepted'} else {'rejected'}) }
+        observed_cells=$records.Count; passed_cells=$validated; failed_cells=($expected.Count-$validated); timed_out_shards=$timedOut.Count;
+        outcome=$(if ($records.Count -eq $expected.Count -and $validated -eq $expected.Count -and $timedOut.Count -eq 0 -and ($finished-$controllerStarted).TotalMinutes -le 60) {'accepted'} else {'rejected'}) }
     Write-Utf8NoBom (Join-Path $EvidenceOutput 'campaign-summary.json') (($summary | ConvertTo-Json -Depth 4) + "`n")
-    if ($summary.outcome -cne 'accepted') { throw "H4-5 campaign rejected: $passed/$($expected.Count) cells passed" }
-    Write-Output "H4-5 campaign accepted: $passed/$($expected.Count) cells in $($summary.duration_seconds)s"
+    if ($summary.outcome -cne 'accepted') { throw "H4-5 campaign rejected: $validated/$($expected.Count) cells passed" }
+    Write-Output "H4-5 campaign accepted: $validated/$($expected.Count) cells in $($summary.duration_seconds)s"
 } finally {
     Pop-Location
 }

@@ -151,7 +151,7 @@ all still-running shards at minute 50, reserves the remaining ten minutes for
 bounded evidence collection and exact cleanup, and rejects any missing cell,
 nonzero exit, missing host, missing Docker engine, timeout, or cleanup failure.
 
-The controller's closed 15-cell denominator maps the frozen matrix as follows:
+The controller's closed 16-cell denominator maps the frozen matrix as follows:
 
 - primary host envelope; installed eight-minute mixed C-2 soak with cgroup and
   link samples before and after workload; installed automatic `SIGKILL`
@@ -162,7 +162,18 @@ The controller's closed 15-cell denominator maps the frozen matrix as follows:
   Linux listener/process cells; and
 - second-VPS host envelope, exact artifact stage/upload, isolated Linux
   incomplete-TLS/expiry/`SIGTERM`/successor-reassignment process cell, and
-  exact cleanup.
+  exact shard cleanup; and
+- one controller-owned final cleanup cell that removes only the exact
+  campaign-ID local/remote containers and staged roots, recovers an interrupted
+  generation-1 installation when possible, withdraws and removes the exact
+  authenticated deployment, and verifies the unit, managed roots, listener,
+  and containers absent even when a shard failed or hit the minute-50 stop.
+
+An OpenSSH private key uses the system `ssh`/`scp` clients. A declared `.ppk`
+key uses installed PuTTY `plink`/`pscp` in non-interactive batch mode; it does
+not convert, copy, print, or retain private-key bytes. The final disposition
+accepts only one unique result per expected name whose schema, exact source
+revision, owning shard, zero exit status, and `passed` outcome all match.
 
 The earlier passing idle and held-pair generation-2 update attempts remain
 separate installed-product evidence and are not repeated by this campaign.
@@ -207,7 +218,7 @@ attempt directories respectively identify commits `adef2464`, `0d86d974`, and
 
 This is smoke evidence only. It does not replace the bounded campaign above,
 so the qualification status remains open until that campaign executes and all
-15 result records plus cleanup are accepted.
+16 exact result records, including controller cleanup, are accepted.
 
 ## Claim boundary
 
