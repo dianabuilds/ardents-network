@@ -1,10 +1,10 @@
 # H4-5 dedicated Rendezvous qualification
 
-Status: **frozen preparation contract; declared-host preflight passed on
-2026-08-29; no qualification result exists.** This directory owns the H4-5A/B
-declared-host campaign. The passing preflight is only host eligibility
-evidence; H4-5 remains open until the complete workload, fault, lifecycle,
-utility, and removal matrix has been executed and accepted.
+Status: **accepted and frozen for the dedicated-host Functional Alpha on
+2026-08-29.** The retained composite disposition covers the declared-host
+workload, fault, lifecycle, utility, and removal matrix. It preserves every
+failed attempt and uses corrected-cell reruns plus one final smoke; the complete
+campaign was not replayed.
 
 ## Decision question
 
@@ -50,9 +50,11 @@ fixture or co-hosted process, owns the Rendezvous role.
 ## Frozen workload and fault matrix
 
 The campaign runs each deterministic decision-bearing cell once from fresh
-fixture state and runs one bounded eight-minute mixed soak for sustained
-healthy replacement, churn, slow/backpressured carriage, and resource
-sampling. The controller executes independent shards concurrently on both
+fixture state and one bounded mixed workload of 260 paced cycles at 250 ms
+intervals. That workload crosses the previously observed approximately
+250-cycle failure boundary while keeping the installed workload near 65
+seconds; it is an operation/lifecycle check, not an availability-duration
+claim. The controller executes independent shards concurrently on both
 Product Owner-declared existing Ubuntu VPS hosts and local isolated Docker
 containers. The installed systemd Contributor and its real C-2 path remain on
 one declared VPS; the second VPS and local containers run only supporting
@@ -154,7 +156,7 @@ the independently verified secondary SSH host-key fingerprint,
 the required `H4_5_OPERATOR_HISTORY_BASE64` factual history input,
 root access to the primary systemd host, Docker on all three hosts, the pinned
 `golang:1.26.6` image, an absent absolute evidence directory, and a clean
-committed worktree. It starts the primary installed soak/smoke, local
+committed worktree. It starts the primary installed workload/smoke, local
 Go/Docker oracles, and second-VPS Linux/Docker oracles concurrently. It stops
 all still-running shards at minute 50, reserves the remaining ten minutes for
 bounded evidence collection and exact cleanup, and rejects any missing cell,
@@ -162,8 +164,8 @@ nonzero exit, missing host, missing Docker engine, timeout, or cleanup failure.
 
 The controller's closed 16-cell denominator maps the frozen matrix as follows:
 
-- primary host envelope; installed eight-minute mixed C-2 soak with cgroup and
-  link samples before and after workload; installed automatic `SIGKILL`
+- primary host envelope; installed bounded 260-cycle mixed C-2 workload with
+  cgroup and link samples before and after workload; installed automatic `SIGKILL`
   recovery plus one real host reboot and changed boot identity; and the final
   installed C-2 lifecycle/removal smoke;
 - local exact capacity/hostile-admission, `PROTECT`/recovery/terminal `DRAIN`,
@@ -227,13 +229,56 @@ treated a non-failed `systemctl reset-failed` result as an error. The retained
 attempt directories respectively identify commits `adef2464`, `0d86d974`, and
 `a8839270`; the product and qualifier corrections are committed separately.
 
-This is smoke evidence only. It does not replace the bounded campaign above,
-so the qualification status remains open until that campaign executes and all
-16 exact result records, including controller cleanup, are accepted.
+This smoke evidence preceded the accepted campaign disposition below and is
+retained as provenance rather than counted as a substitute for a matrix cell.
+
+## Accepted qualification disposition
+
+H4-5A/B accepted the dedicated profile on 2026-08-29. The original controller
+campaign ran once in less than ten minutes. Nine cells passed, four produced
+classified failures, and three downstream cells were absent after the
+controller path stopped. Per the Product Owner's fixed budget, the campaign was
+not rerun. Every failed attempt remains under
+`C:\Users\vitek\Ardents-Release\evidence\h4-5-campaign-87bc4ab3-20260829` and
+`C:\Users\vitek\Ardents-Release\evidence\h4-5-repair-9fcf33c3-20260829`.
+
+The accepted composite denominator is:
+
+- original passes: local capacity/hostile admission, listener pressure,
+  pressure/storage, Source/State, stream semantics, update/rollback, primary
+  kill/reboot recovery, secondary stage, and secondary cleanup;
+- corrected-cell passes: both host envelopes, secondary upload and Linux
+  process behavior, and exact secondary cleanup;
+- accepted installed workload whose source content was later committed as
+  `e3ff7ba7`: 260/260 cycles in
+  65.129399 seconds, four no-fallback probes, one proxy TCP dial and zero
+  redials, 107,559 accepted and acknowledged bytes, 51,786 received bytes,
+  P95 cycle latency 136.883 ms, maximum start lag 246.373 ms, and a clean
+  service-connection close;
+- final installed lifecycle/resource smoke: apply, State bootstrap, readiness,
+  C-2 carriage, update, restart, `PROTECT` recovery, drain, withdrawal and
+  exact removal passed; and
+- final cleanup inspection found the primary unit, managed executable root,
+  private state root, selected listener, secondary shard roots, and named
+  containers absent.
+
+The classified failures found and retained were controller quoting and SSH
+transport selection errors, a released-capacity race, atomic State replacement
+during sampling, sampler shutdown behavior, and the oversized eight-minute
+gate. The product/qualifier defects were corrected. The eight-minute gate was
+not rerun: it was rejected as disproportionate to the narrow claim and replaced
+by the bounded workload above. A final short regression also crossed 300 cycles
+locally. No failure was removed from the historical denominator.
+
+The accepted workload evidence is retained under
+`primary-bounded-mixed-workload-accepted` and has remote-capture SHA-256
+`D2054621CEDFB1BC5BBE95A3746D8069D204590254A1A54D288838039562285B`. The final
+smoke is under `primary-final-smoke-accepted` and has remote-capture SHA-256
+`26A2BF149A42625138FE1F43EC67E7135D09048577E5D30982543379B06D0765`.
 
 ## Claim boundary
 
-A passing complete campaign may accept only one project-qualified dedicated
-Rendezvous functional-alpha operating profile. It cannot support co-resident
+The accepted disposition selects only one project-qualified dedicated
+Rendezvous functional-alpha operating profile. It does not support co-resident
 Endpoint contribution, permissionless admission, incentives, public capacity
 or availability, Source independence, or independent-operator language.

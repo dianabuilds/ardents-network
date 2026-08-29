@@ -29,11 +29,11 @@ func StartContributorClockObservation(parent context.Context, path string, inter
 
 func startClockObservation(parent context.Context, path string, interval time.Duration, config clockObservationConfig) (func() error, error) {
 	if parent == nil || path == "" || interval <= 0 || interval >= 2*time.Second || config.now == nil || config.newTicker == nil {
-		return nil, errors.New("Contributor clock observation owner is invalid")
+		return nil, errors.New("contributor clock observation owner is invalid")
 	}
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() {
-		return nil, errors.New("Contributor clock observation must be one regular file")
+		return nil, errors.New("contributor clock observation must be one regular file")
 	}
 	refresh := func() error {
 		now := config.now()

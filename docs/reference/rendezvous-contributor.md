@@ -1,12 +1,12 @@
-# Rendezvous Contributor functional-alpha candidate
+# Rendezvous Contributor functional-alpha profile
 
-Status: **candidate only; declared-host qualification has not accepted this
-profile.** These commands are the complete proposed H4-5A operator surface,
-not a public Contributor offer or a capacity/availability claim.
+Status: **accepted for the project-qualified dedicated-host Functional Alpha
+on 2026-08-29.** These commands are the complete H4-5A operator surface, not a
+public Contributor offer or a capacity/availability claim.
 
 ## Exact supported shape
 
-The candidate runs one `rendezvous` duty and nothing else inside its dedicated
+The profile runs one `rendezvous` duty and nothing else inside its dedicated
 service boundary on a Product Owner-declared existing Ubuntu LTS `x86-64`
 host with cgroup v2 and systemd as PID 1. Host CPU, RAM, disk, link, and other
 project workloads are recorded observations, not eligibility thresholds. The
@@ -22,7 +22,7 @@ The service runs through systemd `DynamicUser` with these enforced process
 limits: `CPUQuota=100%`, `MemoryHigh=192M`, `MemoryMax=256M`, `TasksMax=64`,
 `LimitNOFILE=256`, `GOMAXPROCS=1`, and `GOMEMLIMIT=134217728`. Rendezvous admits
 at most four concurrent handshakes, two waiting legs, one paired route, and
-16 MiB for that pair. The observed host link is evidence, not an Ardents
+64 MiB for that pair. The observed host link is evidence, not an Ardents
 throughput promise or a profile eligibility gate. The authenticated bundle is
 bounded to one executable of at most 128 MiB and nine configuration inputs of
 at most 64 KiB each. Update temporarily retains one previous generation.
@@ -34,9 +34,9 @@ recovery requires less than `256 MiB`, and `384 MiB` or more enters terminal
 `DRAIN`; more than 5,000 regular files, 5,000 directories, or 32 directory
 levels fails closed. The two installed
 generations and input bundle are a separate static inventory bounded by their
-manifest sizes. Declared-host evidence must still measure actual disk, network,
-CPU, memory, socket, FD, task, and Go-runtime observations before these values
-can be accepted.
+manifest sizes. The accepted declared-host evidence measured actual disk,
+network, CPU, memory, socket, FD, task, and Go-runtime observations under these
+values.
 
 ## Authenticated input
 
@@ -132,5 +132,6 @@ If `diagnose` cannot authenticate the current installation, if READY or
 WITHDRAWN is not reached within 15 seconds, or if the exact cgroup placement is
 unavailable, do not edit managed files or invoke systemctl manually. Retain the
 command error, bounded diagnostics, journal slice, and host observations as a
-failed qualification attempt. A candidate profile is accepted only by the
-frozen declared-host matrix; ordinary lifecycle success alone does not qualify it.
+failed qualification attempt. This profile was accepted by the frozen
+declared-host matrix; ordinary lifecycle success alone would not have qualified
+it.

@@ -1,10 +1,10 @@
 ---
 id: R-093
 title: Voluntary Endpoint contribution without role-collapse claims
-status: open
+status: deferred; no co-resident experiment selected
 owner: Product Owner and Codex
 started: 2026-08-24
-reviewed: 2026-08-24
+reviewed: 2026-08-29
 ---
 
 # R-093 — Under what constraints, if any, can an opt-in Client or Publisher Endpoint contribute Node capacity without weakening Ardents role, location, or independent-capacity claims?
@@ -151,9 +151,9 @@ capacity.
   maintenance. It supplies no evidence that every Ardents Client/Publisher
   should participate automatically or that co-resident installations are
   independent capacity.
-- **Current-contract fact:** R-092 has not selected even one native Node duty
-  or reference-host operating profile. Therefore R-093 cannot yet name a
-  technically meaningful contribution candidate or design a valid experiment.
+- **Current-contract fact (updated 2026-08-29):** R-092 and H4-5A/B selected
+  and qualified one dedicated Rendezvous Functional Alpha profile. That result
+  supplies a possible duty boundary but does not authorize co-residence.
 - **Current-contract fact:** H4-5 deliberately makes the dedicated-host
   operating profile and measured alpha utility (H4-5A/B) predecessors of the
   optional co-resident research slice (H4-5C). It says that a Client and
@@ -164,26 +164,26 @@ capacity.
   new binary switch or a simulated relay: ordinary Endpoint operation has no
   Contributor duty. Any future co-resident experiment must begin *after* one
   dedicated duty has demonstrated its exact resource/exposure/withdrawal
-  behavior; otherwise it would measure willingness to operate an undefined
-  workload rather than a useful network role.
+  behavior. H4-5A/B now meet that prerequisite; the Product Owner has deferred
+  the separate co-resident experiment.
 - **Decision gate:** R-093 may name a candidate only after all four inputs
-  exist: (1) R-092 selects and measures one native duty on NET-01A; (2) H4-5A
-  demonstrates ordinary startup, bounded operation, drain, withdrawal, and
-  recovery of that exact duty on a dedicated host; (3) H4-5B measures its
-  useful completion effect and operator burden; and (4) the Product Owner
-  explicitly decides that an unqualified co-resident alpha result is worth its
-  added endpoint-location and correlation exposure. If any input is absent,
-  the result is `not offered`, not a background retry, a project-operated
-  exception, or an incentive proposal.
+  exist: (1) R-092 selects and measures one native duty on the declared host;
+  (2) H4-5A demonstrates ordinary startup, bounded operation, drain,
+  withdrawal, and recovery of that exact duty on a dedicated host; (3) H4-5B
+  measures its useful completion effect and operator burden; and (4) the
+  Product Owner explicitly decides that an unqualified co-resident alpha result
+  is worth its added endpoint-location and correlation exposure. Inputs 1-3
+  are now satisfied; input 4 is explicitly not selected. The result remains
+  `not offered`, not a background retry, a project-operated exception, or an
+  incentive proposal.
 
 ## Recommendation
 
-Do not choose an implementation yet. The current Endpoint installation remains
-non-contributing. First let R-092/H4-2 select and measure one native Node duty,
-then H4-5A/B prove that a dedicated contributor can run and is worth running.
-Only then distinguish a potentially useful unqualified alpha experiment from a
-qualified public Contributor profile, and evaluate that exact duty rather than
-treating "be a Node" as one operation.
+Do not choose an implementation. The current Endpoint installation remains
+non-contributing. R-092/H4-5A/B now establish the dedicated Rendezvous duty,
+but the Product Owner has not selected the fourth gate: a co-resident alpha
+experiment is not currently worth its added endpoint-location and correlation
+exposure. A future choice must reopen this record explicitly.
 
 **Confidence:** high that automatic participation is not justified by the
 current contract. **Strongest argument against this recommendation:** a
@@ -192,8 +192,8 @@ a narrowly bounded voluntary alpha profile could be worth evaluating.
 
 ## Disposition
 
-Deferred behind the four named decision-gate inputs, with external
-operator-practice context recorded. No implementation, product-contract change,
-or ADR is authorized by this record. The current dedicated-host Contributor
-rule remains authoritative until a recommendation is accepted and promoted
-through the appropriate product, security, technical, and ADR owners.
+Deferred by explicit Product Owner choice after the first three named inputs
+were satisfied. No co-resident experiment, implementation, product-contract
+change, or ADR is authorized by this record. The dedicated-host Contributor
+rule remains authoritative unless a future Product Owner decision reopens the
+question.

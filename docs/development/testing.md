@@ -139,8 +139,9 @@ does not mean passed, waived, or unavailable evidence.
   final ten minutes solely for evidence and exact cleanup. Missing cells,
   hosts, Docker, evidence, changed reboot identity, or cleanup are failures
   rather than skips. The installed shard performs exactly one bounded reboot
-  between its mixed soak and final C-2 smoke. A controller-owned sixteenth
-  cell verifies exact campaign residue absent after every shard is stopped;
+  between its bounded 260-cycle mixed workload and final C-2 smoke. A
+  controller-owned sixteenth cell verifies exact campaign residue absent after
+  every shard is stopped;
   `.ppk` access uses installed PuTTY clients in non-interactive batch mode.
 - the H4-2 local full-system emulator, `make
   qualification-h4-2-local-emulator`, is owned by

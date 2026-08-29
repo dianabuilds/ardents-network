@@ -77,7 +77,7 @@ func (workload referenceC2DynamicWorkload) transitRelayByteLimit() uint64 {
 func TestReferenceC2TransitRelayBudgetCoversCompletePacedWorkload(t *testing.T) {
 	workload := referenceC2DynamicWorkload{Cycles: 480, BytesEachDirection: 4 << 20}
 	if limit := workload.transitRelayByteLimit(); limit != 60<<20 {
-		t.Fatalf("eight-minute relay byte limit = %d, want %d", limit, 60<<20)
+		t.Fatalf("480-cycle relay byte limit = %d, want %d", limit, 60<<20)
 	}
 }
 

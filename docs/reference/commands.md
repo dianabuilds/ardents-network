@@ -61,14 +61,14 @@ hostname, unspecified or non-loopback address, zero/out-of-range port, or port
 mismatch is rejected. Omitting the field retains the State endpoint as the
 listener and does not change existing plan behavior.
 
-On Linux, `ardents-node contributor` exposes the complete candidate
+On Linux, `ardents-node contributor` exposes the complete
 `h4-5-rendezvous-alpha-v1` dedicated-host lifecycle: `apply`, `diagnose`,
 `restart`, `drain`, `withdraw`, and confirmed `remove`. It accepts no other
 duty or system-service operation. The exact prerequisites, authenticated
 bundle, commands, limits, diagnostics, update recovery, and residue contract
-are in the [Rendezvous Contributor candidate runbook](rendezvous-contributor.md).
-The surface remains candidate-only until its fresh-host qualification closes
-R-092 and H4-5; it is not a public Contributor offer.
+are in the [Rendezvous Contributor runbook](rendezvous-contributor.md). The
+surface is accepted only for the project-qualified dedicated-host Functional
+Alpha; it is not a public Contributor offer or a capacity/availability claim.
 
 ## `ardents-custody`
 

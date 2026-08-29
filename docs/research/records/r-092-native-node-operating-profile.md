@@ -1,10 +1,10 @@
 ---
 id: R-092
 title: Which measured Linux operating profile can admit one native Route Node role?
-status: open; H4-5 implementation-linked
+status: decided; dedicated Rendezvous Functional Alpha selected
 owner: Product Owner and Codex
 started: 2026-08-23
-reviewed: 2026-08-24
+reviewed: 2026-08-29
 ---
 
 # R-092 — Native Node operating profile
@@ -25,7 +25,8 @@ originally proposed Ubuntu LTS `x86-64`, 2 vCPU, 2 GiB RAM, and symmetric
 100 Mbit/s as a reference envelope. The Product Owner superseded host-size
 eligibility for H4-5 on 2026-08-29: existing project Ubuntu hosts are accepted
 and their actual envelope is measured, while the exact process cgroup/runtime
-placement remains invariant. This is not itself a Node admission result.
+placement remains invariant. The qualification result below selects that
+placement only for the dedicated-host Functional Alpha.
 
 ## Hypotheses
 
@@ -442,13 +443,13 @@ runner and retained result.
    selection of numeric limits on the exact NET-01A host. The tracer and
    controlled product-command cells cannot supply those claims.
 - **Implementation (2026-08-29):** H4-5A/B binds the existing Rendezvous duty
-  to the candidate `h4-5-rendezvous-alpha-v1` resource placement only. Its
+  to the `h4-5-rendezvous-alpha-v1` resource placement only. Its
   fixed placement is one CPU, 256 MiB cgroup memory maximum, 192 MiB memory
   high boundary, 128 MiB exact Go memory limit, 64 tasks, and 256 file
   descriptors with separate NORMAL/PROTECT/DRAIN thresholds. The Node and
   command boundaries reject that profile for Initiator, Introduction,
-  Responder, probes, or mixed duties. This is implementation evidence, not a
-  selected supported capacity or host qualification.
+  Responder, probes, or mixed duties. This was implementation evidence before
+  the declared-host disposition below selected the narrow profile.
 - **Implementation (2026-08-29):** the candidate now has one closed
   dedicated-host lifecycle behind `ardents-node contributor`: an independent
   manifest SHA-256 is checked before parsing a fixed executable/key/plan
@@ -467,9 +468,9 @@ runner and retained result.
   process's systemd cgroup; and its socket count covered the complete network
   namespace rather than the process's own socket FDs. Narrow regressions now
   require live reservations only, fail-closed cgroup-v2 path parsing from
-  `/proc/self/cgroup`, and bounded own-FD socket inventory. Fresh-host evidence
-  must demonstrate those corrections under the installed unit before they can
-  support a profile decision.
+  `/proc/self/cgroup`, and bounded own-FD socket inventory. The accepted
+  installed workload and final smoke later demonstrated those corrections
+  under the systemd unit.
 - **Implementation boundary finding (2026-08-29):** Rendezvous has no
   application queue to measure: handshakes, unmatched legs, and active pairs
   are independent finite reservations, while paired bytes pass through direct
@@ -499,8 +500,8 @@ runner and retained result.
   Host observations, runner bytes, and their verified SHA-256 inventory are
   retained outside Git under
   `C:\Users\vitek\Ardents-Release\evidence\ardents-h4-5-preflight-bdb9a665`.
-  This changes the next action to the complete lifecycle/C-2 campaign; it does
-  not select capacity or close this record. The earlier `1b810813` attempt is
+  At that point the next action was the complete lifecycle/C-2 campaign; the
+  preflight alone did not select capacity. The earlier `1b810813` attempt is
   retained but superseded because its absent-unit oracle checked the shortened
   wrong unit name; the accepted rerun checked the exact
   `ardents-rendezvous-contributor.service` and again found it absent.
@@ -518,9 +519,46 @@ runner and retained result.
   Git under
   `C:\Users\vitek\Ardents-Release\evidence\h4-5-smoke-174283d5-attempt4-20260829`;
   the failed attempts remain under their separately named evidence roots.
-  This establishes an installed-product tracer and operator lifecycle, not the
-  repeated workload/fault matrix, generation-2 update, capacity, availability,
-  or final profile selection.
+  At that point this established an installed-product tracer and operator
+  lifecycle, not the later workload/fault disposition.
+- **Accepted qualification measurement (2026-08-29):** the original bounded
+  controller campaign ran once in less than ten minutes across both existing
+  VPS hosts and local isolated Docker. Nine cells passed, four failed with
+  classified qualifier/product defects, and three downstream cells were absent
+  after the controller path stopped. The complete campaign was not replayed.
+  Corrected-cell reruns closed the host-envelope quoting, SSH transport,
+  released-capacity, State-sampling, and sampler-stop defects while preserving
+  every failed attempt in the denominator. With source content later committed
+  as `e3ff7ba7`, the replacement installed workload completed 260/260 cycles paced at 250 ms in
+  65.129399 seconds, used one proxy TCP connection with zero redials, completed
+  four no-fallback probes, acknowledged all 107,559 accepted bytes, received
+  51,786 bytes, and closed cleanly. Its P95 cycle latency was 136.883 ms and
+  maximum start lag 246.373 ms. A separate final smoke passed apply, State
+  bootstrap, readiness, C-2 carriage, update, restart, `PROTECT` recovery,
+  drain, withdrawal, removal, and residue checks. The primary unit, managed
+  roots, listener, secondary shard roots, and named containers were absent at
+  final inspection. Raw attempts remain under the external
+  `h4-5-campaign-87bc4ab3-20260829` and
+  `h4-5-repair-9fcf33c3-20260829` evidence roots. The eight-minute gate was
+  rejected as disproportionate and was not rerun; the accepted bounded workload
+  proves the named operation and lifecycle behavior, not availability duration.
+- **Operator-burden and utility measurement (2026-08-29):** the original
+  controller produced 13 retained result records over a 416-second observed
+  span: nine passes and four classified failures. The factual preparation
+  history records one manual command, three earlier failed attempts, four
+  clarifications, three repairs, three provisioning actions, and five input
+  verifications. Preparation active-human seconds were not continuously
+  instrumented and remain `null`; no total human-time value is fabricated. In
+  the two accepted installed runs, apply took 1.871-1.930 seconds, diagnose
+  0.059-0.071 seconds, ordinary restart 1.237-1.296 seconds, idle update
+  1.372-1.444 seconds, drain 0.122-0.141 seconds, withdrawal 0.390-0.400
+  seconds, and exact removal 0.298-0.347 seconds; restart after resource
+  recovery took 1.257 seconds. The with/without-duty comparison used the same
+  declared C-2 topology: with the installed Rendezvous, the 260-cycle workload
+  completed; after drain/withdrawal, a new connection was refused and exact
+  removal left no route listener or managed residue. This demonstrates useful
+  role completion and a closed scripted operator surface, but not a public
+  availability benefit or an independent-capacity increment.
 
 ## Options
 
@@ -551,13 +589,13 @@ runner and retained result.
 **Product decision (2026-08-24):** option 1 is selected. Rendezvous is the first
 native Node duty. It has the smallest useful data-plane boundary and supplies
 reusable Node lifecycle evidence before Entry and Introduction add their
-distinct exposure and state. This selection does not yet implement the duty or
-choose a capacity.
+distinct exposure and state. The duty and exact one-pair profile were
+subsequently implemented and accepted by the qualification measurement above.
 
-### Candidate Rendezvous operating profile
+### Selected Rendezvous operating profile
 
-This is the exact shape to implement and measure, not yet a supported profile
-or a set of selected numeric limits:
+This is the exact shape selected for the project-qualified dedicated-host
+Functional Alpha, not a public capacity or availability profile:
 
 - one unprivileged Ubuntu process owns one Node Identity, Rendezvous assignment,
   state root, cgroup v2 placement, public TCP/TLS listener, and terminal
@@ -619,10 +657,10 @@ project-operated functional-alpha service profile. It does not qualify a
 general co-resident Endpoint product, host independence, public capacity, or
 availability.
 
-## Reference-host selection campaign
+## Executed declared-host selection campaign
 
-The next experiment first replaces the synthetic echo with the real
-Rendezvous reservation/pairing/pump path. It then uses this predeclared matrix:
+The executed experiment replaced the synthetic echo with the real Rendezvous
+reservation/pairing/pump path and used this predeclared matrix:
 
 1. Freeze one Product Owner-declared existing Ubuntu LTS `x86-64` host, its
    observed CPU/memory/disk/link/kernel/network envelope, cgroup v2 placement,
@@ -639,7 +677,7 @@ Rendezvous reservation/pairing/pump path. It then uses this predeclared matrix:
    failure, `SIGTERM`, and abrupt-process-loss/restart cells. Abrupt loss may
    prove recovery behavior only; it cannot be relabelled graceful drain.
 5. Run each deterministic decision-bearing cell once from fresh state, plus
-   one eight-minute mixed sustained soak. Execute independent supporting
+   one bounded 260-cycle mixed workload paced at 250 ms. Execute independent supporting
    shards concurrently across both declared existing Ubuntu VPS hosts and
    local isolated Docker containers. Enforce a 60-minute total wall-clock
    bound, stop starting cells at minute 50, and reserve the final ten minutes
@@ -665,24 +703,21 @@ even one pair cannot pass the complete matrix, R-092 selects no native profile.
 
 ## Recommendation
 
-Implement and measure the selected Rendezvous duty first, followed by
-Initiator/Responder carrier duties and the separate Introduction control duty.
-Clearly disclosed project-operated co-hosting is permitted for the first
-functional tracer, and the validated local/remote Docker pair can host its first
-inter-host fault cells without new infrastructure. Implement the candidate
-reservations and measurement oracle using the tracer's now-passing contract,
-then run the named Rendezvous campaign on
-the declared existing Linux host before selecting capacity or claiming an
-operating profile. Do not substitute two role-probe processes for this duty,
-expose a peer runtime, or alter the H3 profile before its complete evidence
-exists.
+Retain `h4-5-rendezvous-alpha-v1` as the sole project-qualified dedicated-host
+Contributor profile. Keep its exact one-pair reservations, resource placement,
+authenticated State inputs, terminal lifecycle, and operator surface frozen.
+Do not generalize the measurement into public capacity, availability,
+co-resident contribution, Source independence, or independent-operation
+claims. Initiator, Responder, Introduction, R-093, and permissionless admission
+require separate future decisions.
 
 ## Disposition
 
-Open and implementation-linked, with Rendezvous, its three-reservation/pairing/pump contract, and the
-project-operated functional-tracer topology selected. The disposable local,
-race, and separate-host matrices close the basic data-plane feasibility gap;
-maintained State/Node integration and reference-host pressure/capacity evidence
-remain. This record adds no ADR, package, dependency, capacity, or supported
-Node profile. Retain the tracer only until a source-bound maintained suite
-supersedes its unique evidence.
+Decided. H1 is accepted for one project-qualified dedicated-host Rendezvous
+Functional Alpha profile. The maintained State/Node integration, installed
+systemd lifecycle, bounded mixed workload, pressure/fault cells, update,
+withdrawal, exact removal, and two-host/local supporting matrix supply the
+decision evidence. H2 and H0 are not selected for this scope. This record adds
+no public capacity, availability, co-resident, permissionless, incentive,
+Source-independence, or independent-operator claim and requires no new ADR or
+dependency.

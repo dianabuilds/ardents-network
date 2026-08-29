@@ -1,9 +1,9 @@
 # H4-5 — Contributor viability and permissionless admission
 
-Status: **Rendezvous selected for the H4-5A/B dedicated-host functional-alpha
-profile; implementation and declared-host qualification are active. No supported
-profile, voluntary co-resident contribution, or public admission is accepted
-until the named evidence closes.**
+Status: **H4-5A/B complete and frozen: the dedicated-host Rendezvous Functional
+Alpha profile was accepted on 2026-08-29. H4-5C co-resident contribution and
+H4-5D permissionless admission are explicitly deferred and are not part of the
+accepted profile.**
 
 ## Decision
 
@@ -41,11 +41,11 @@ Contributor duty is useful only if, in the declared alpha topology, it:
 - performs one exact required role in live H4-2 connections rather than merely
   registering or relaying synthetic keepalives;
 - admits a declared bounded amount of work and preserves the selected role's
-  route, source-separation, and failure rules under load;
+  route, source-separation, and failure rules under bounded load;
 - can be taken down, restarted, updated, or drained with the documented effect
   on new and existing work; and
-- adds measured available role capacity after the Endpoint's own mandatory
-  family, role, and source exclusions.
+- completes measured role work after the Endpoint's own mandatory family,
+  role, and source exclusions in the declared topology.
 
 This is alpha utility evidence, not proof of decentralization. A project-run
 fleet, nominal identities, addresses, or many copies of a binary do not become
@@ -77,7 +77,7 @@ exact platform and duty are selected from the evidence of
 [R-092](../../research/records/r-092-native-node-operating-profile.md), not
 assumed from the Client Portable profile.
 
-The candidate resource placement is named
+The accepted resource placement is named
 `h4-5-rendezvous-alpha-v1`: one Ubuntu LTS `x86-64` dedicated host, one
 unprivileged Rendezvous process, `1` CPU of process quota, `256 MiB` cgroup
 memory maximum with a `192 MiB` high boundary, `128 MiB` Go memory limit,
@@ -89,8 +89,8 @@ its queue item and byte ceilings are exactly zero; finite handshake, waiting,
 and pair reservations are measured separately. The Node resource governor must enter
 `PROTECT` only after its fixed high observation and terminal `DRAIN` at an
 emergency threshold; systemd/cgroup ceilings are enforcement backstops, not a
-capacity claim. These values remain a candidate until the declared-host matrix
-accepts or rejects them.
+capacity claim. These values are frozen only for the project-qualified
+dedicated-host Functional Alpha.
 
 **Product Owner host selection (2026-08-29):** the existing project-operated
 Ubuntu hosts are eligible for this functional-alpha campaign regardless of
@@ -101,13 +101,13 @@ above; temporary qualification fixtures on the same project host do not create
 a supported co-resident Endpoint-plus-Contributor profile or an independence,
 capacity, or availability claim.
 
-**Product Owner campaign-budget selection (2026-08-29):** H4-5A/B uses one
-no-retry pass of every deterministic cell plus one eight-minute mixed
-sustained soak. Independent supporting shards run concurrently across both
+**Product Owner campaign-budget selection (2026-08-29):** H4-5A/B used one
+no-retry pass of every deterministic cell plus one bounded mixed workload of
+260 cycles paced at 250 ms. Independent supporting shards ran concurrently across both
 declared existing Ubuntu VPS hosts and local isolated Docker containers, while
-the selected installed Contributor profile remains bound to one declared VPS.
-The complete campaign has a hard 60-minute ceiling, stops starting work at
-minute 50, and reserves the remainder for evidence and exact cleanup. Five
+the selected installed Contributor profile remained bound to one declared VPS.
+The complete campaign had a hard 60-minute ceiling, stopped starting work at
+minute 50, and reserved the remainder for evidence and exact cleanup. Five
 ten-minute repetitions of every deterministic lifecycle and fault operation
 were rejected as disproportionate to this narrow project-operated Functional
 Alpha claim. Every failed attempt remains evidence; after a correction only
@@ -116,16 +116,25 @@ campaign.
 
 The declared-host preflight passed on 2026-08-29 at commit `bdb9a665`: the
 selected existing Ubuntu VPS has the required systemd/cgroup-v2 platform,
-unused selected listener port, and no prior Contributor installation. This is
-host eligibility only; the workload, lifecycle, utility, and fault matrix has
-not yet accepted the profile.
+unused selected listener port, and no prior Contributor installation.
 
 The first corrected installed-product smoke passed at commit `174283d5`: an
 empty Contributor acquired its first signed State from the two pinned Sources,
 carried the real C-2 Rendezvous position, completed restart/drain/withdrawal and
 exact removal, and left no managed residue. Three preceding classified failures
-remain in the denominator. This advances implementation readiness but does not
-replace the frozen repeated workload/fault matrix or accept the profile.
+remain in the denominator.
+
+The bounded campaign and corrected-cell disposition then accepted the profile
+at commit `e3ff7ba7`. The installed workload completed 260/260 paced cycles in
+65.129399 seconds with one proxy TCP connection, zero redials, four explicit
+no-fallback probes, and a clean service close. Supporting cells covered exact
+capacity refusal, hostile and incomplete admission, pressure/storage,
+Source/State loss, stream/backpressure, update/rollback, `SIGTERM`, `SIGKILL`,
+host reboot, successor reassignment, cleanup, and removal. The final installed
+smoke repeated lifecycle, resource recovery, C-2 carriage and exact removal.
+All earlier failures remain classified evidence; only affected cells were
+rerun, and both hosts finished without the managed unit, roots, listener, or
+named test containers.
 
 **Done when:** a Product Owner can follow the documented flow on a declared
 eligible host, run the dedicated duty through ordinary load and injected loss/restart,
@@ -148,6 +157,20 @@ A negative result is valid: if a duty creates more operator burden or endpoint
 exposure than useful role capacity, it is rejected or kept project-operated for
 the test network. H4-5 is where we find that out before proposing incentives.
 
+**Measured result (2026-08-29):** with the installed Rendezvous, the declared
+C-2 topology completed all 260 paced cycles; after drain and withdrawal, the
+same topology refused a new connection, and exact removal left no listener or
+managed residue. The original controller's 13 retained records span 416 seconds
+and contain nine passes plus four classified failures. The preparation history
+records one manual command, three earlier failed attempts, four clarifications,
+three repairs, three provisioning actions, and five input verifications.
+Preparation active-human time was not continuously instrumented and remains
+unknown rather than reported as zero. Accepted lifecycle actions each completed
+in 0.059-1.930 seconds, including apply, diagnose, restart, idle update, drain,
+withdrawal, and removal; the resource-recovery restart took 1.257 seconds. The
+result justifies retaining the role for this project-operated Functional Alpha,
+not a public availability or independent-capacity claim.
+
 ### H4-5C — voluntary Endpoint contribution research
 
 [R-093](../../research/records/r-093-voluntary-endpoint-contribution.md)
@@ -163,9 +186,9 @@ research may conclude that no co-resident duty is acceptable.
 
 **Current research outcome:** H4-5C is deferred. It cannot be a shortcut to
 make every Client or Publisher into a Node: Rendezvous is selected only for the
-dedicated-host H4-5A/B profile, whose qualification must first show that the
-exact duty is operable and useful. A future H4-5C experiment
-requires an explicit Product Owner choice after those results; until then the
+dedicated-host H4-5A/B profile. Its acceptance does not select any co-resident
+duty. A future H4-5C experiment requires a new explicit Product Owner choice;
+until then the
 Endpoint offers no contribution duty. See
 [R-093](../../research/records/r-093-voluntary-endpoint-contribution.md).
 
@@ -207,9 +230,10 @@ operators can improve availability without satisfying these requirements.
 - A hidden operations organization, moderation desk, or 24/7 manual repair
   obligation that the actual project team cannot sustain.
 
-## Open Product Owner selections
+## Closure disposition
 
-- Whether the measured dedicated Rendezvous utility justifies retaining the
-  profile or selects the explicit negative disposition.
-- Whether R-093 should investigate a particular opt-in duty after H4-5A/B, or
-  retain the dedicated-host rule without experiment.
+- Retain the measured dedicated Rendezvous profile for the project-qualified
+  Functional Alpha under the exact limits and claim boundary above.
+- Defer R-093 and any co-resident experiment. H4-5 closes without selecting a
+  voluntary Endpoint duty, public admission, incentives, capacity, availability,
+  or independent-operation claims.
