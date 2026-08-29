@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -36,6 +37,11 @@ func TestH45InstalledRendezvousPublisherToUserLifecycle(t *testing.T) {
 	deadline := time.Now().UTC().Truncate(time.Second).Add(4 * time.Minute)
 	remote := h43RemoteC2{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
+	t.Cleanup(func() {
+		if t.Failed() {
+			h45RetainFailureEvidence(t, remote)
+		}
+	})
 	stage := stageH43RemoteC2(t, environment, deadline, scenario)
 	deployment, pin := stageH45Bundle(t, stage.root, 1)
 	h43WriteFile(t, filepath.Join(stage.root, "run.sh"), []byte(h45RemoteRunner()), 0o700)
@@ -63,6 +69,9 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 	remote.start(t, stage.root)
 	remote.waitFile(t, environment.remoteDirectory+"/sources-ready", deadline)
 	applyBinary := environment.remoteDirectory + "/bundle-1/ardents-node"
+	if output, err := remote.run(t, "set -eu; chmod 700 "+h43ShellQuote(applyBinary)); err != nil {
+		t.Fatalf("restore H4-5 staged executable mode: %v\n%s", err, output)
+	}
 	h45RunLifecycle(t, remote, "apply", applyBinary, fmt.Sprintf("contributor apply --bundle %s --manifest-pin %s",
 		h43ShellQuote(environment.remoteDirectory+"/bundle-1"), h43ShellQuote(pin)))
 	h45RunLifecycle(t, remote, "diagnose", h45ContributorCommand, "contributor diagnose")
@@ -269,6 +278,30 @@ func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult) {
 	}
 	if err := os.WriteFile(filepath.Join(root, "user.stderr.log"), user.stderr, 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func h45RetainFailureEvidence(t *testing.T, remote h43RemoteC2) {
+	t.Helper()
+	root := os.Getenv("ARDENTS_H4_5_EVIDENCE_DIR")
+	if root == "" || !filepath.IsAbs(root) {
+		return
+	}
+	capture, err := remote.captureFailureEvidence()
+	if err != nil && len(capture) == 0 {
+		t.Errorf("capture failed H4-5 attempt: %v", err)
+		return
+	}
+	name := "remote-failure-" + remote.environment.container + ".txt"
+	file, openErr := os.OpenFile(filepath.Join(root, name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if openErr != nil {
+		t.Errorf("retain failed H4-5 attempt: %v", openErr)
+		return
+	}
+	_, writeErr := file.Write(capture)
+	closeErr := file.Close()
+	if writeErr != nil || closeErr != nil {
+		t.Errorf("retain failed H4-5 attempt: %v", errors.Join(writeErr, closeErr))
 	}
 }
 
