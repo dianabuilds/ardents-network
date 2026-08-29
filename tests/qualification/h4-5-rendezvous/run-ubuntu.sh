@@ -35,11 +35,20 @@ case ${ARDENTS_H4_5_EVIDENCE_DIR:-} in
 	*) invalid 'ARDENTS_H4_5_EVIDENCE_DIR must be a new absolute path' ;;
 esac
 listen_port=${ARDENTS_H4_5_LISTEN_PORT:-}
+source_commit=${ARDENTS_H4_5_SOURCE_COMMIT:-}
 
-repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
-case $evidence_dir in
-	"$repository_root"|"$repository_root"/*) invalid 'evidence directory must stay outside the repository' ;;
-esac
+repository_root=''
+if [ -z "$source_commit" ]; then
+	repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
+	case $evidence_dir in
+		"$repository_root"|"$repository_root"/*) invalid 'evidence directory must stay outside the repository' ;;
+	esac
+else
+	case $source_commit in
+		*[!0-9a-f]*|'') invalid 'ARDENTS_H4_5_SOURCE_COMMIT must be one lowercase commit digest' ;;
+	esac
+	[ "${#source_commit}" -eq 40 ] || invalid 'ARDENTS_H4_5_SOURCE_COMMIT must be one lowercase commit digest'
+fi
 [ ! -e "$evidence_dir" ] || invalid 'evidence directory already exists'
 umask 077
 mkdir -- "$evidence_dir"
@@ -50,9 +59,12 @@ esac
 [ "$listen_port" -ge 1024 ] && [ "$listen_port" -le 65535 ] || invalid 'listen port must be unprivileged'
 [ "$(id -u)" -eq 0 ] || invalid 'preflight must run as root for the later exact lifecycle'
 
-for command in awk date df findmnt getconf git grep id ip journalctl sha256sum ss stat systemctl tr uname; do
+for command in awk date df findmnt getconf grep id ip journalctl sha256sum ss stat systemctl tr uname; do
 	require_command "$command"
 done
+if [ -n "$repository_root" ]; then
+	require_command git
+fi
 
 [ "$(uname -s)" = Linux ] || invalid 'host is not Linux'
 [ "$(uname -m)" = x86_64 ] || invalid 'host architecture is not x86-64'
@@ -99,14 +111,17 @@ if ss -H -ltn | awk -v suffix=":$listen_port" '$4 ~ suffix "$" { found=1 } END {
 	invalid "candidate listen port is already in use: $listen_port"
 fi
 
-git -C "$repository_root" diff --quiet || invalid 'source worktree has tracked changes'
-git -C "$repository_root" diff --cached --quiet || invalid 'source index has staged changes'
-[ -z "$(git -C "$repository_root" status --short)" ] || invalid 'source worktree is not clean'
+if [ -n "$repository_root" ]; then
+	git -C "$repository_root" diff --quiet || invalid 'source worktree has tracked changes'
+	git -C "$repository_root" diff --cached --quiet || invalid 'source index has staged changes'
+	[ -z "$(git -C "$repository_root" status --short)" ] || invalid 'source worktree is not clean'
+	source_commit=$(git -C "$repository_root" rev-parse HEAD)
+fi
 
 {
 	printf 'schema=ardents-h4-5-host-preflight-v1\n'
 	printf 'captured_at_utc='; date -u +%Y-%m-%dT%H:%M:%SZ
-	printf 'source_commit='; git -C "$repository_root" rev-parse HEAD
+	printf 'source_commit=%s\n' "$source_commit"
 	printf 'source_status=clean\n'
 	printf 'uname='; uname -srmo
 	printf 'online_cpus=%s\n' "$online_cpus"
