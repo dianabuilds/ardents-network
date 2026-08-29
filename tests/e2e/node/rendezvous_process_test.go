@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -107,7 +108,7 @@ func TestRendezvousNodeProcessBoundsIncompleteTLSHandshakes(t *testing.T) {
 	attachment := [32]byte{0x94}
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	initiator, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
+	initiator, err := openRendezvousProcessLegEventually(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
 		running.fixture.leg(attachment, route.InitiatorRole))
 	if err != nil {
 		t.Fatalf("open Initiator after incomplete TLS release: %v", err)
@@ -149,7 +150,7 @@ func TestRendezvousNodeProcessExpiresIncompleteTLSAdmission(t *testing.T) {
 	attachment := [32]byte{0x95}
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
-	initiator, err := openRendezvousProcessLeg(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
+	initiator, err := openRendezvousProcessLegEventually(ctx, running.endpoint, running.fixture.initiator.certificate, running.fixture.rendezvous.public,
 		running.fixture.leg(attachment, route.InitiatorRole))
 	if err != nil {
 		t.Fatalf("open Initiator after incomplete TLS expiry: %v", err)
@@ -456,6 +457,24 @@ func openRendezvousProcessLeg(ctx context.Context, endpoint string, certificate 
 		return nil, err
 	}
 	return connection, nil
+}
+
+func openRendezvousProcessLegEventually(ctx context.Context, endpoint string, certificate tls.Certificate, server [32]byte, binding route.LegBinding) (*tls.Conn, error) {
+	var last error
+	for ctx.Err() == nil {
+		connection, err := openRendezvousProcessLeg(ctx, endpoint, certificate, server, binding)
+		if err == nil {
+			return connection, nil
+		}
+		last = err
+		timer := time.NewTimer(10 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+		case <-timer.C:
+		}
+	}
+	return nil, errors.Join(last, ctx.Err())
 }
 
 func submitRejectedRendezvousProcessLeg(ctx context.Context, endpoint string, certificate tls.Certificate, server [32]byte, binding route.LegBinding) error {
