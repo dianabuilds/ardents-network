@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -50,13 +51,13 @@ func exerciseConfiguredDynamic(client *http.Client, origin string, plan dynamicW
 		}
 		startLag := started.Sub(scheduled)
 		if startLag >= plan.interval {
-			return &result, errors.New("configured dynamic workload missed a pacing slot")
+			return &result, fmt.Errorf("configured dynamic cycle %d missed a pacing slot", cycle)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), plan.cycleDeadline)
 		err := exerciseConfiguredDynamicCycle(ctx, client, origin, cycle)
 		cancel()
 		if err != nil {
-			return &result, err
+			return &result, fmt.Errorf("configured dynamic cycle %d: %w", cycle, err)
 		}
 		result.recordCycle(time.Since(started), startLag)
 		if plan.noFallbackEvery != 0 && cycle%plan.noFallbackEvery == 0 {
@@ -64,7 +65,7 @@ func exerciseConfiguredDynamic(client *http.Client, origin string, plan dynamicW
 			err := probeConfiguredDynamicUnselected(ctx, client)
 			cancel()
 			if err != nil {
-				return &result, err
+				return &result, fmt.Errorf("configured dynamic no-fallback round after cycle %d: %w", cycle, err)
 			}
 			result.PeriodicNoFallbackProbeRounds++
 		}

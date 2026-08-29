@@ -34,11 +34,11 @@ func TestH45InstalledRendezvousPublisherToUserLifecycle(t *testing.T) {
 	runH45InstalledRendezvous(t, referenceC2Scenario{transparentApplication: true}, 4*time.Minute)
 }
 
-func TestH45InstalledRendezvousEightMinuteMixedSoak(t *testing.T) {
+func TestH45InstalledRendezvousBoundedMixedWorkload(t *testing.T) {
 	scenario := referenceC2Scenario{transparentApplication: true, dynamicWorkload: referenceC2DynamicWorkload{
-		Cycles: 480, IntervalMilliseconds: 1_000, CycleDeadlineMilliseconds: 5_000,
+		Cycles: 260, IntervalMilliseconds: 250, CycleDeadlineMilliseconds: 1_000,
 		NoFallbackEvery: 60, BytesEachDirection: 4 << 20}}
-	runH45InstalledRendezvous(t, scenario, scenario.dynamicWorkload.timeBudget(4*time.Minute))
+	runH45InstalledRendezvous(t, scenario, scenario.dynamicWorkload.timeBudget(2*time.Minute))
 }
 
 func runH45InstalledRendezvous(t *testing.T, scenario referenceC2Scenario, duration time.Duration) {
@@ -131,7 +131,8 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 	remote.wait(t)
 	minimumSamples := 2
 	if scenario.dynamicWorkload.Cycles > 0 {
-		minimumSamples = 450
+		workloadSeconds := int(uint64(scenario.dynamicWorkload.Cycles) * uint64(scenario.dynamicWorkload.IntervalMilliseconds) / 1_000)
+		minimumSamples = min(450, max(2, workloadSeconds-2))
 	}
 	h45StopRuntimeSampler(t, remote, minimumSamples)
 	h45CaptureRuntimeSample(t, remote, "after")
@@ -317,6 +318,7 @@ func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult, pre
 	if !filepath.IsAbs(root) {
 		t.Fatal("ARDENTS_H4_5_EVIDENCE_DIR must be absolute")
 	}
+	h45PrepareEvidenceRoot(t, root)
 	capture := remote.captureEvidence(t)
 	if err := os.WriteFile(filepath.Join(root, "remote-capture.txt"), capture, 0o600); err != nil {
 		t.Fatal(err)

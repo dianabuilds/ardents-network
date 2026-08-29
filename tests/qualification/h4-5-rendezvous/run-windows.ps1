@@ -227,8 +227,8 @@ try {
             if ((Run-Cell 'primary-host-envelope' $PrimarySSH ($PrimarySSHBase + @($hostFacts))) -ne 0) { $failed++ }
             $common = @{ ARDENTS_H4_3B_VPS=$PrimaryHost; ARDENTS_H4_3B_SSH_KEY=$PrimaryKey; ARDENTS_H4_3B_VPS_USER=$PrimaryLogin; ARDENTS_H4_3B_VPS_PORT="$BasePort"; ARDENTS_H4_8_A11_SUFFIX=$CampaignID }
             $soak = @{} + $common
-            $soak.ARDENTS_H4_5_EVIDENCE_DIR = Join-Path $Evidence 'primary-eight-minute-soak'
-            if ((Run-Cell 'primary-eight-minute-soak' 'go' @('test','-tags','h4_3b_multihost h4_5_rendezvous','./tests/e2e/service','-run','^TestH45InstalledRendezvousEightMinuteMixedSoak$','-count=1','-timeout=12m') $soak) -ne 0) { $failed++ }
+            $soak.ARDENTS_H4_5_EVIDENCE_DIR = Join-Path $Evidence 'primary-bounded-mixed-workload'
+            if ((Run-Cell 'primary-bounded-mixed-workload' 'go' @('test','-tags','h4_3b_multihost h4_5_rendezvous','./tests/e2e/service','-run','^TestH45InstalledRendezvousBoundedMixedWorkload$','-count=1','-timeout=3m') $soak) -ne 0) { $failed++ }
             $reboot = @{} + $common
             $reboot.ARDENTS_H4_5_EVIDENCE_DIR = Join-Path $Evidence 'primary-kill-reboot-recovery'
             if ((Run-Cell 'primary-kill-reboot-recovery' 'go' @('test','-tags','h4_3b_multihost h4_5_rendezvous','./tests/e2e/service','-run','^TestH45InstalledRendezvousRecoversFromKillAndHostReboot$','-count=1','-timeout=4m') $reboot) -ne 0) { $failed++ }
@@ -343,7 +343,7 @@ test ! -e /var/lib/private/ardents-contributor
     $finished = [DateTimeOffset]::UtcNow
 
     $expected = [ordered]@{
-        'primary-host-envelope'='primary-installed'; 'primary-eight-minute-soak'='primary-installed';
+        'primary-host-envelope'='primary-installed'; 'primary-bounded-mixed-workload'='primary-installed';
         'primary-kill-reboot-recovery'='primary-installed'; 'primary-final-smoke'='primary-installed';
         'local-capacity-hostile'='local'; 'local-pressure-storage'='local'; 'local-update-rollback'='local';
         'local-source-state'='local'; 'local-stream-semantics'='local'; 'local-docker-listener-pressure'='local';

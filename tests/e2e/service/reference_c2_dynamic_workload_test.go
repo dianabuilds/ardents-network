@@ -13,6 +13,15 @@ func TestReferenceC2CarriesConfiguredPacedDynamicWorkload(t *testing.T) {
 	runReferenceC2(t, referenceC2Scenario{transparentApplication: true, dynamicWorkload: shortReferenceC2DynamicWorkload(3)})
 }
 
+// TestReferenceC2CarriesSustainedDynamicWorkload is a short regression for
+// relay lifetime accounting. It crosses the old roughly 250-cycle failure
+// boundary without turning the checked suite into a wall-clock soak.
+func TestReferenceC2CarriesSustainedDynamicWorkload(t *testing.T) {
+	runReferenceC2(t, referenceC2Scenario{transparentApplication: true, dynamicWorkload: referenceC2DynamicWorkload{
+		Cycles: 300, IntervalMilliseconds: 50, CycleDeadlineMilliseconds: 1_000,
+		NoFallbackEvery: 60, BytesEachDirection: 4 << 20}})
+}
+
 func TestReferenceC2LosesPublisherApplicationAfterConfiguredWarmup(t *testing.T) {
 	runReferenceC2(t, referenceC2Scenario{transparentApplication: true, publisherTerminal: referenceC2PublisherApplicationReset,
 		dynamicWorkload: shortReferenceC2DynamicWorkload(2)})
