@@ -40,7 +40,9 @@ func TestPinnedRendezvousBundleInstallsAndBecomesReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"DynamicUser=yes", "CPUQuota=100%", "MemoryHigh=192M", "MemoryMax=256M", "TasksMax=64", "LimitNOFILE=256", "GOMAXPROCS=1", "GOMEMLIMIT=134217728", "StandardOutput=null", "StandardError=journal"} {
+	for _, required := range []string{"DynamicUser=yes", "User=ardents-contributor", "Group=ardents-contributor",
+		"ExecStartPre=+/bin/chown -R -- ardents-contributor:ardents-contributor /var/lib/private/ardents-contributor",
+		"CPUQuota=100%", "MemoryHigh=192M", "MemoryMax=256M", "TasksMax=64", "LimitNOFILE=256", "GOMAXPROCS=1", "GOMEMLIMIT=134217728", "StandardOutput=null", "StandardError=journal"} {
 		if !strings.Contains(string(unit), required) {
 			t.Fatalf("installed unit lacks %q:\n%s", required, unit)
 		}

@@ -8,8 +8,11 @@ Wants=network-online.target
 [Service]
 Type=simple
 DynamicUser=yes
+User=ardents-contributor
+Group=ardents-contributor
 StateDirectory=ardents-contributor
 StateDirectoryMode=0700
+ExecStartPre=+/bin/chown -R -- ardents-contributor:ardents-contributor /var/lib/private/ardents-contributor
 ExecStart=/usr/lib/ardents-contributor/current/ardents-node node --config /var/lib/private/ardents-contributor/config/current/node.json
 StandardOutput=null
 StandardError=journal
