@@ -123,7 +123,8 @@ func (guard *Guard) Observe(timers, queueItems, queueBytes uint64) (Observation,
 	}
 	if guard.profile.maximumStorageBytes > 0 {
 		sample.StorageBytes, sample.StorageFiles, err = measureManagedStorage(
-			guard.storageRoots, guard.profile.maximumStorageBytes, guard.profile.maximumStorageFiles)
+			guard.storageRoots, guard.profile.maximumStorageBytes, guard.profile.maximumStorageFiles,
+			guard.profile.maximumStorageDirectories, guard.profile.maximumStorageDepth)
 		if err != nil {
 			return Observation{Protect: true, Drain: true, Sample: sample}, err
 		}

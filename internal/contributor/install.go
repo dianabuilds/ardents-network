@@ -17,11 +17,12 @@ func (profile *Profile) installAbsent(ctx context.Context, bundle verifiedBundle
 	deployed := true
 	defer func() {
 		if resultErr != nil && deployed {
-			_, _ = profile.supervisor.Do(context.Background(), SupervisorStop)
-			_, _ = profile.supervisor.Do(context.Background(), SupervisorDisable)
-			_ = removeInstallation(profile.paths)
-			_ = removeIfPresent(profile.paths.installing)
-			_, _ = profile.supervisor.Do(context.Background(), SupervisorReload)
+			_, stopErr := profile.supervisor.Do(context.Background(), SupervisorStop)
+			_, disableErr := profile.supervisor.Do(context.Background(), SupervisorDisable)
+			removeErr := removeInstallation(profile.paths)
+			markerErr := removeIfPresent(profile.paths.installing)
+			_, reloadErr := profile.supervisor.Do(context.Background(), SupervisorReload)
+			resultErr = errors.Join(resultErr, stopErr, disableErr, removeErr, markerErr, reloadErr)
 		}
 	}()
 	if err := os.MkdirAll(filepath.Dir(profile.paths.installing), 0o755); err != nil {

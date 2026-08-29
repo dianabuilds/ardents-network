@@ -30,6 +30,8 @@ type profile struct {
 	placementWait              time.Duration
 	maximumStorageBytes        uint64
 	maximumStorageFiles        int
+	maximumStorageDirectories  int
+	maximumStorageDepth        int
 	cgroup                     map[string]string
 }
 
@@ -38,6 +40,7 @@ var profiles = map[string]profile{
 		name: RendezvousFunctionalAlphaProfile, maximumFDs: 256, maximumThreads: 64,
 		goMaxProcs: 1, goMemory: 128 << 20, exactGoMemory: true, noFile: 256, placementWait: 10 * time.Second,
 		maximumStorageBytes: 384 << 20, maximumStorageFiles: 5000,
+		maximumStorageDirectories: 5000, maximumStorageDepth: 32,
 		cgroup: map[string]string{"cpu.max": "100000 100000", "memory.high": "201326592", "memory.max": "268435456", "pids.max": "64"},
 		high: limits{cpu: 800_000, memory: 192 << 20, goMemory: 115 << 20, sockets: 16, fds: 205,
 			goroutines: 128, threads: 32, timers: 8, socketMemory: 32 << 20, storage: 320 << 20,

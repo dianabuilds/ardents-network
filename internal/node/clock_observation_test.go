@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestContributorClockObservationOwnerRefreshesUntilStopped(t *testing.T) {
+func TestContributorClockObservationRefreshesUntilStopped(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "clock.observation")
 	if err := os.WriteFile(path, []byte("owned by the Contributor process\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -17,17 +17,29 @@ func TestContributorClockObservationOwnerRefreshesUntilStopped(t *testing.T) {
 	if err := os.Chtimes(path, old, old); err != nil {
 		t.Fatal(err)
 	}
-	stop, err := startContributorClockObservation(context.Background(), path, 10*time.Millisecond)
+	ticks := make(chan time.Time, 1)
+	stop, err := startClockObservation(context.Background(), path, time.Second, clockObservationConfig{
+		now:       func() time.Time { return time.Now() },
+		newTicker: func(time.Duration) (<-chan time.Time, func()) { return ticks, func() {} },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = stop() })
+	t.Cleanup(func() {
+		if err := stop(); err != nil {
+			t.Errorf("stop Contributor clock observation: %v", err)
+		}
+	})
+	ticks <- time.Now()
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
 		info, statErr := os.Stat(path)
 		if statErr == nil && info.ModTime().After(old.Add(time.Minute)) {
 			if err := stop(); err != nil {
 				t.Fatal(err)
+			}
+			if err := stop(); err != nil {
+				t.Fatal("idempotent stop:", err)
 			}
 			return
 		}
@@ -36,8 +48,8 @@ func TestContributorClockObservationOwnerRefreshesUntilStopped(t *testing.T) {
 	t.Fatal("Contributor clock observation was not refreshed")
 }
 
-func TestContributorClockObservationOwnerRejectsNonRegularInput(t *testing.T) {
-	if _, err := startContributorClockObservation(context.Background(), t.TempDir(), time.Second); err == nil {
+func TestContributorClockObservationRejectsNonRegularInput(t *testing.T) {
+	if _, err := StartContributorClockObservation(context.Background(), t.TempDir(), time.Second); err == nil {
 		t.Fatal("directory clock observation was accepted")
 	}
 }

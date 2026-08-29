@@ -8,6 +8,7 @@ param(
     [Parameter(Mandatory = $true)][string]$SecondarySSHKey,
     [Parameter(Mandatory = $true)][string]$SecondaryUser,
     [Parameter(Mandatory = $true)][string]$EvidenceOutput,
+    [Parameter(Mandatory = $true)][string]$OperatorHistoryBase64,
     [switch]$ValidateOnly
 )
 
@@ -59,8 +60,29 @@ foreach ($key in @($PrimarySSHKey, $SecondarySSHKey)) {
         throw 'H4-5 SSH keys must be existing absolute files'
     }
 }
+if ([IO.Path]::GetExtension($PrimarySSHKey) -ieq '.ppk') {
+    throw 'PrimarySSHKey must be OpenSSH-compatible because the installed-host Go oracle owns its SSH calls; PPK is supported for SecondarySSHKey'
+}
 if (-not [IO.Path]::IsPathRooted($EvidenceOutput)) { throw 'H4-5 evidence output must be absolute' }
 if (Test-Path -LiteralPath $EvidenceOutput) { throw 'H4-5 evidence output must not already exist' }
+try {
+    $operatorHistoryRaw = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($OperatorHistoryBase64))
+    $operatorHistory = $operatorHistoryRaw | ConvertFrom-Json
+} catch {
+    throw 'H4-5 operator history must be one UTF-8 Base64 JSON document'
+}
+$historyProperties = @($operatorHistory.PSObject.Properties.Name)
+$historyRequired = @('schema','manual_commands','failed_attempts','clarifications','repairs','provisioning','input_verification','preparation_active_human_seconds','active_human_limitation')
+if (@($historyRequired | Where-Object { $historyProperties -cnotcontains $_ }).Count -ne 0 -or
+    $operatorHistory.schema -cne 'ardents-h4-5-operator-history-v1') {
+    throw 'H4-5 operator history schema is invalid'
+}
+if ($null -ne $operatorHistory.preparation_active_human_seconds -and [int64]$operatorHistory.preparation_active_human_seconds -lt 0) {
+    throw 'H4-5 preparation active-human time is invalid'
+}
+if ([string]::IsNullOrWhiteSpace([string]$operatorHistory.active_human_limitation)) {
+    throw 'H4-5 active-human measurement limitation is absent'
+}
 
 Push-Location $repository
 try {
@@ -81,6 +103,7 @@ try {
     Invoke-Checked $secondaryAccess.SSH ($secondaryAccess.SSHBase + @('test "$(id -u)" -eq 0; docker image inspect golang:1.26.6 >/dev/null')) 'secondary VPS preflight failed'
 
     [void](New-Item -ItemType Directory -Path $EvidenceOutput -Force)
+    Write-Utf8NoBom (Join-Path $EvidenceOutput 'operator-history.json') ($operatorHistoryRaw.TrimEnd() + "`n")
     $artifactRoot = Join-Path $EvidenceOutput 'artifacts'
     [void](New-Item -ItemType Directory -Path $artifactRoot)
     $oldGOOS, $oldGOARCH, $oldCGO = $env:GOOS, $env:GOARCH, $env:CGO_ENABLED
@@ -98,7 +121,7 @@ try {
 
     $campaignID = [Guid]::NewGuid().ToString('N')
     $shard = {
-        param($Name, $Repository, $Evidence, $Artifacts, $Revision, $PrimaryHost, $PrimaryKey, $PrimaryLogin, $BasePort,
+        param($Name, $Repository, $Evidence, $Artifacts, $Revision, $PrimaryHost, $PrimaryKey, $PrimaryLogin, $PrimarySSH, $PrimarySSHBase, $BasePort,
             $SecondaryHost, $SecondaryLogin, $SecondarySSH, $SecondarySSHBase, $SecondarySCP, $SecondarySCPBase, $CampaignID)
         Set-StrictMode -Version Latest
         $ErrorActionPreference = 'Stop'
@@ -134,10 +157,8 @@ try {
         Set-Location $Repository
         $failed = 0
         if ($Name -ceq 'primary-installed') {
-            $target = "$PrimaryLogin@$PrimaryHost"
-            $ssh = @('-i',$PrimaryKey,'-o','BatchMode=yes','-o','ConnectTimeout=10','-o','StrictHostKeyChecking=accept-new')
             $hostFacts = 'set -eu; printf "boot_id="; cat /proc/sys/kernel/random/boot_id; uname -srmo; printf "vcpus="; nproc; awk ''/MemTotal:/ {printf "memory_kib=%s\n", $2}'' /proc/meminfo; df -Pk / /var /tmp; ip -s link; systemctl --version | head -n 1; docker image inspect golang:1.26.6 --format "image_id={{.Id}}"'
-            if ((Run-Cell 'primary-host-envelope' 'ssh' ($ssh + @($target,$hostFacts))) -ne 0) { $failed++ }
+            if ((Run-Cell 'primary-host-envelope' $PrimarySSH ($PrimarySSHBase + @($hostFacts))) -ne 0) { $failed++ }
             $common = @{ ARDENTS_H4_3B_VPS=$PrimaryHost; ARDENTS_H4_3B_SSH_KEY=$PrimaryKey; ARDENTS_H4_3B_VPS_USER=$PrimaryLogin; ARDENTS_H4_3B_VPS_PORT="$BasePort"; ARDENTS_H4_8_A11_SUFFIX=$CampaignID }
             $soak = @{} + $common
             $soak.ARDENTS_H4_5_EVIDENCE_DIR = Join-Path $Evidence 'primary-eight-minute-soak'
@@ -173,9 +194,9 @@ try {
     }
 
     $jobs = @(
-        Start-Job -Name 'h45-primary' -ScriptBlock $shard -ArgumentList 'primary-installed',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
-        Start-Job -Name 'h45-local' -ScriptBlock $shard -ArgumentList 'local',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
-        Start-Job -Name 'h45-secondary' -ScriptBlock $shard -ArgumentList 'secondary-linux',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
+        Start-Job -Name 'h45-primary' -ScriptBlock $shard -ArgumentList 'primary-installed',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$primaryAccess.SSH,$primaryAccess.SSHBase,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
+        Start-Job -Name 'h45-local' -ScriptBlock $shard -ArgumentList 'local',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$primaryAccess.SSH,$primaryAccess.SSHBase,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
+        Start-Job -Name 'h45-secondary' -ScriptBlock $shard -ArgumentList 'secondary-linux',$repository,$EvidenceOutput,$artifactRoot,$revision,$PrimaryVPS,$PrimarySSHKey,$PrimaryUser,$primaryAccess.SSH,$primaryAccess.SSHBase,$PrimaryBasePort,$SecondaryVPS,$SecondaryUser,$secondaryAccess.SSH,$secondaryAccess.SSHBase,$secondaryAccess.SCP,$secondaryAccess.SCPBase,$campaignID
     )
     [void](Wait-Job -Job $jobs -Timeout 3000)
     $timedOut = @($jobs | Where-Object State -eq 'Running')
@@ -285,6 +306,15 @@ test ! -e /var/lib/private/ardents-contributor
         observed_cells=$records.Count; passed_cells=$validated; failed_cells=($expected.Count-$validated); timed_out_shards=$timedOut.Count;
         outcome=$(if ($records.Count -eq $expected.Count -and $validated -eq $expected.Count -and $timedOut.Count -eq 0 -and ($finished-$controllerStarted).TotalMinutes -le 60) {'accepted'} else {'rejected'}) }
     Write-Utf8NoBom (Join-Path $EvidenceOutput 'campaign-summary.json') (($summary | ConvertTo-Json -Depth 4) + "`n")
+    $burden = [ordered]@{ schema='ardents-h4-5-operator-burden-v1'; source_revision=$revision; campaign_id=$campaignID;
+        measurement='one non-interactive controller invocation; all campaign remote commands and cleanup are runner-owned';
+        wall_seconds=$summary.duration_seconds; campaign_active_human_seconds=0;
+        preparation_active_human_seconds=$operatorHistory.preparation_active_human_seconds;
+        active_human_limitation=$operatorHistory.active_human_limitation; controller_invocations=1;
+        manual_command_count=@($operatorHistory.manual_commands).Count; failed_attempt_count=@($operatorHistory.failed_attempts).Count;
+        clarification_count=@($operatorHistory.clarifications).Count; repair_count=@($operatorHistory.repairs).Count;
+        automated_cells=$expected.Count; failed_cells=$summary.failed_cells; history='operator-history.json' }
+    Write-Utf8NoBom (Join-Path $EvidenceOutput 'operator-burden.json') (($burden | ConvertTo-Json -Depth 4) + "`n")
     if ($summary.outcome -cne 'accepted') { throw "H4-5 campaign rejected: $validated/$($expected.Count) cells passed" }
     Write-Output "H4-5 campaign accepted: $validated/$($expected.Count) cells in $($summary.duration_seconds)s"
 } finally {

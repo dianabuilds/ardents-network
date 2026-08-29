@@ -59,8 +59,7 @@ func (profile *Profile) recoverInterruptedUpdate(ctx context.Context, record ins
 		return err
 	}
 	if err := os.Rename(previousConfig, profile.paths.configCurrent); err != nil {
-		_ = os.Rename(profile.paths.programCurrent, previousProgram)
-		return err
+		return errors.Join(err, os.Rename(profile.paths.programCurrent, previousProgram))
 	}
 	if err := errors.Join(os.RemoveAll(nextProgram), os.RemoveAll(nextConfig), removeIfPresent(profile.paths.lifecycle)); err != nil {
 		return err

@@ -62,15 +62,12 @@ func (profile *Profile) update(ctx context.Context, bundle verifiedBundle, curre
 		return err
 	}
 	if err := writeBundleDirectories(bundle, nextProgram, nextConfig); err != nil {
-		_ = os.RemoveAll(nextProgram)
-		_ = os.RemoveAll(nextConfig)
-		return err
+		return errors.Join(err, os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
 	}
 	switched, stopAttempted := false, false
 	defer func() {
 		if resultErr != nil {
-			_ = os.RemoveAll(nextProgram)
-			_ = os.RemoveAll(nextConfig)
+			resultErr = errors.Join(resultErr, os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
 			if switched {
 				resultErr = errors.Join(resultErr, profile.rollbackUpdate(previousProgram, previousConfig))
 			} else if stopAttempted {
@@ -89,22 +86,23 @@ func (profile *Profile) update(ctx context.Context, bundle verifiedBundle, curre
 		return err
 	}
 	if err := os.Rename(profile.paths.configCurrent, previousConfig); err != nil {
-		_ = os.Rename(previousProgram, profile.paths.programCurrent)
-		return err
+		return errors.Join(err, os.Rename(previousProgram, profile.paths.programCurrent))
 	}
 	if err := os.Rename(nextProgram, profile.paths.programCurrent); err != nil {
-		_ = os.Rename(previousConfig, profile.paths.configCurrent)
-		_ = os.Rename(previousProgram, profile.paths.programCurrent)
-		return err
+		return errors.Join(err,
+			os.Rename(previousConfig, profile.paths.configCurrent),
+			os.Rename(previousProgram, profile.paths.programCurrent))
 	}
 	if err := os.Rename(nextConfig, profile.paths.configCurrent); err != nil {
-		_ = os.RemoveAll(profile.paths.programCurrent)
-		_ = os.Rename(previousConfig, profile.paths.configCurrent)
-		_ = os.Rename(previousProgram, profile.paths.programCurrent)
-		return err
+		return errors.Join(err,
+			os.RemoveAll(profile.paths.programCurrent),
+			os.Rename(previousConfig, profile.paths.configCurrent),
+			os.Rename(previousProgram, profile.paths.programCurrent))
 	}
 	switched = true
-	_ = os.Remove(profile.paths.lifecycle)
+	if err := removeIfPresent(profile.paths.lifecycle); err != nil {
+		return err
+	}
 	state, err := profile.supervisor.Do(ctx, SupervisorStart)
 	if err != nil || !state.Active {
 		return errors.Join(err, errors.New("contributor successor did not become active"))
@@ -124,7 +122,9 @@ func (profile *Profile) update(ctx context.Context, bundle verifiedBundle, curre
 }
 
 func (profile *Profile) restartCurrentGeneration() error {
-	_ = os.Remove(profile.paths.lifecycle)
+	if err := removeIfPresent(profile.paths.lifecycle); err != nil {
+		return err
+	}
 	state, err := profile.supervisor.Do(context.Background(), SupervisorRestart)
 	if err != nil || !state.Active {
 		return errors.Join(err, errors.New("previous Contributor generation did not restart"))
@@ -137,7 +137,7 @@ func (profile *Profile) rollbackUpdate(previousProgram, previousConfig string) e
 	_, stopErr := profile.supervisor.Do(context.Background(), SupervisorStop)
 	removeErr := errors.Join(os.RemoveAll(profile.paths.programCurrent), os.RemoveAll(profile.paths.configCurrent))
 	renameErr := errors.Join(os.Rename(previousProgram, profile.paths.programCurrent), os.Rename(previousConfig, profile.paths.configCurrent))
-	_ = os.Remove(profile.paths.lifecycle)
+	markerErr := removeIfPresent(profile.paths.lifecycle)
 	state, startErr := profile.supervisor.Do(context.Background(), SupervisorStart)
 	if startErr == nil && !state.Active {
 		startErr = errors.New("rolled-back Contributor did not become active")
@@ -145,5 +145,5 @@ func (profile *Profile) rollbackUpdate(previousProgram, previousConfig string) e
 	if startErr == nil {
 		_, startErr = profile.awaitLifecycle(context.Background(), profile.paths.lifecycle, "READY", 15*time.Second)
 	}
-	return errors.Join(stopErr, removeErr, renameErr, startErr)
+	return errors.Join(stopErr, removeErr, renameErr, markerErr, startErr)
 }

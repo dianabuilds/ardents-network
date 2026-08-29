@@ -31,7 +31,8 @@ are exactly zero because a leg is either in a finite handshake/waiting
 reservation or an active direct pump. Network State plus local role state are
 measured together on every resource observation: `320 MiB` enters `PROTECT`,
 recovery requires less than `256 MiB`, and `384 MiB` or more enters terminal
-`DRAIN`; more than 5,000 regular files fails closed. The two installed
+`DRAIN`; more than 5,000 regular files, 5,000 directories, or 32 directory
+levels fails closed. The two installed
 generations and input bundle are a separate static inventory bounded by their
 manifest sizes. Declared-host evidence must still measure actual disk, network,
 CPU, memory, socket, FD, task, and Go-runtime observations before these values

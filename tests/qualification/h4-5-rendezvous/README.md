@@ -97,15 +97,20 @@ The runtime has no application queue. Queue items and bytes must remain zero;
 handshake, waiting-leg, and active-pair reservations are separate evidence.
 Network State plus local role state enter `PROTECT` at 320 MiB, recover only
 below 256 MiB, and enter terminal `DRAIN` at 384 MiB or 5,000 regular files.
+Measurement itself fails closed above 5,000 directories or 32 directory levels.
 The campaign must distinguish these mutable roots from installed generations,
 the transfer bundle, the system journal, and provider snapshots.
 
 ## Operator burden and evidence
 
-The controller records wall and active-human time for provisioning, input
-verification, generation-1 apply, diagnosis, restart, generation-2 update,
-fault recovery, drain, withdrawal, removal, and residue review. Every manual
-command, failed attempt, clarification, and repair is part of the result.
+The controller records wall time and its zero-prompt campaign interval;
+per-action timings cover generation-1 apply, diagnosis, restart, generation-2
+update, fault recovery, drain, withdrawal, removal, and residue review. Its
+required Base64-encoded `ardents-h4-5-operator-history-v1` input lists every
+pre-campaign manual command, failed attempt, clarification, repair,
+provisioning action, and input-verification action. Preparation active-human
+seconds are recorded when they were instrumented; otherwise they are `null`
+with an explicit measurement limitation rather than a fabricated zero.
 
 One immutable evidence directory must contain:
 
@@ -142,7 +147,9 @@ therefore does not fail preparation; the installed process must still enforce
 the exact `h4-5-rendezvous-alpha-v1` cgroup and runtime limits.
 
 The Windows controller is `make qualification-h4-5-rendezvous`. It requires
-two distinct declared VPS literal IPv4 addresses and existing OpenSSH keys,
+two distinct declared VPS literal IPv4 addresses, an existing OpenSSH-compatible
+primary key, and an existing OpenSSH-compatible or PuTTY secondary key,
+the required `H4_5_OPERATOR_HISTORY_BASE64` factual history input,
 root access to the primary systemd host, Docker on all three hosts, the pinned
 `golang:1.26.6` image, an absent absolute evidence directory, and a clean
 committed worktree. It starts the primary installed soak/smoke, local
@@ -169,9 +176,11 @@ The controller's closed 16-cell denominator maps the frozen matrix as follows:
   authenticated deployment, and verifies the unit, managed roots, listener,
   and containers absent even when a shard failed or hit the minute-50 stop.
 
-An OpenSSH private key uses the system `ssh`/`scp` clients. A declared `.ppk`
-key uses installed PuTTY `plink`/`pscp` in non-interactive batch mode; it does
-not convert, copy, print, or retain private-key bytes. The final disposition
+The primary installed-host Go oracle requires an OpenSSH-compatible private key
+and uses the system `ssh` client. The secondary shard may instead receive a
+declared `.ppk` key and then uses installed PuTTY `plink`/`pscp` in
+non-interactive batch mode; it does not convert, copy, print, or retain
+private-key bytes. The final disposition
 accepts only one unique result per expected name whose schema, exact source
 revision, owning shard, zero exit status, and `passed` outcome all match.
 

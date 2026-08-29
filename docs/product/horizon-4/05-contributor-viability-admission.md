@@ -83,7 +83,8 @@ unprivileged Rendezvous process, `1` CPU of process quota, `256 MiB` cgroup
 memory maximum with a `192 MiB` high boundary, `128 MiB` Go memory limit,
 `64` tasks, `256` file descriptors, and an aggregate Network-State plus
 local-role-state ceiling of `384 MiB` and 5,000 regular files (`PROTECT` at
-`320 MiB`, recovery below `256 MiB`). Rendezvous owns no application queue:
+`320 MiB`, recovery below `256 MiB`); measurement fails closed above 5,000
+directories or 32 directory levels. Rendezvous owns no application queue:
 its queue item and byte ceilings are exactly zero; finite handshake, waiting,
 and pair reservations are measured separately. The Node resource governor must enter
 `PROTECT` only after its fixed high observation and terminal `DRAIN` at an

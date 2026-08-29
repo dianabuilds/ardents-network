@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +59,7 @@ func runH45InstalledRendezvous(t *testing.T, scenario referenceC2Scenario, durat
 		t.Fatal("H4-5 successor changed the deployment identity")
 	}
 	h43WriteFile(t, filepath.Join(stage.root, "run.sh"), []byte(h45RemoteRunner()), 0o700)
+	h43WriteFile(t, filepath.Join(stage.root, "runtime-sampler.sh"), []byte(h45RuntimeSampler()), 0o700)
 	removed := false
 	t.Cleanup(func() {
 		if removed {
@@ -98,6 +98,7 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 	}
 	h45CapturePlacement(t, remote)
 	h45CaptureRuntimeSample(t, remote, "before")
+	h45StartRuntimeSampler(t, remote)
 	if output, err := remote.run(t, fmt.Sprintf("set -eu; printf 'ready\\n' >%s/contributor-ready",
 		h43ShellQuote(environment.remoteDirectory))); err != nil {
 		t.Fatalf("release H4-5 topology roles: %v\n%s", err, output)
@@ -127,6 +128,11 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 	}
 	remote.complete(t)
 	remote.wait(t)
+	minimumSamples := 2
+	if scenario.dynamicWorkload.Cycles > 0 {
+		minimumSamples = 450
+	}
+	h45StopRuntimeSampler(t, remote, minimumSamples)
 	h45CaptureRuntimeSample(t, remote, "after")
 	h43AssertUserResult(t, result, scenario)
 	for _, role := range []string{"initiator", "introduction", "responder", "gateway", "alpha-gateway", "alpha-relay"} {
@@ -141,15 +147,16 @@ exit "$status"`, h43ShellQuote(environment.remoteDirectory), h45ContributorComma
 		t.Fatal("H4-5 topology started the fixture Rendezvous")
 	}
 
-	h45RunLifecycle(t, remote, "drain", h45ContributorCommand, "contributor drain")
-	if connection, err := net.DialTimeout("tcp", net.JoinHostPort(environment.host, fmt.Sprint(environment.port+1)), time.Second); err == nil {
-		_ = connection.Close()
-		t.Fatal("H4-5 drained Contributor still accepted a TCP connection")
+	if scenario.dynamicWorkload.Cycles == 0 {
+		h45ExerciseInstalledStoragePressure(t, remote)
 	}
+	h45RunLifecycle(t, remote, "drain", h45ContributorCommand, "contributor drain")
+	h45AssertConnectionRefused(t, remote, "drain")
 	h45RunLifecycle(t, remote, "withdraw", h45ContributorCommand, "contributor withdraw")
+	h45AssertConnectionRefused(t, remote, "withdrawal")
 	h45RunLifecycle(t, remote, "remove", h45ContributorCommand, "contributor remove --confirm "+h43ShellQuote(deployment))
 	removed = true
-	h45RetainEvidence(t, remote, result)
+	h45RetainEvidence(t, remote, result, scenario.dynamicWorkload.Cycles == 0)
 }
 
 func stageH45Bundle(t *testing.T, root string, generation uint64) (string, string) {
@@ -300,7 +307,7 @@ cgroup=/sys/fs/cgroup$cgroup_relative
 	}
 }
 
-func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult) {
+func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult, pressure bool) {
 	t.Helper()
 	root := os.Getenv("ARDENTS_H4_5_EVIDENCE_DIR")
 	if root == "" {
@@ -319,17 +326,23 @@ func h45RetainEvidence(t *testing.T, remote h43RemoteC2, user commandResult) {
 	if err := os.WriteFile(filepath.Join(root, "user.stderr.log"), user.stderr, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{
+	names := []string{
 		"contributor-apply.json", "contributor-apply.timing",
 		"contributor-diagnose.json", "contributor-diagnose.timing",
 		"contributor-restart.json", "contributor-restart.timing",
 		"contributor-update-idle.json", "contributor-update-idle.timing",
 		"contributor-systemd.txt", "contributor-cgroup.txt",
-		"contributor-runtime-before.txt", "contributor-runtime-after.txt",
+		"contributor-runtime-before.txt", "contributor-runtime-after.txt", "contributor-runtime-samples.tsv",
 		"contributor-drain.json", "contributor-drain.timing",
 		"contributor-withdraw.json", "contributor-withdraw.timing",
 		"contributor-remove.json", "contributor-remove.timing",
-	} {
+	}
+	if pressure {
+		names = append(names, "contributor-resource-protect.json", "contributor-resource-normal.json",
+			"contributor-resource-exit.json", "contributor-pressure-withdrawn.json",
+			"contributor-restart-after-pressure.json", "contributor-restart-after-pressure.timing")
+	}
+	for _, name := range names {
 		contents, err := remote.readFile(t, remote.environment.remoteDirectory+"/"+name)
 		if err != nil {
 			t.Fatalf("retain H4-5 operator evidence %s: %v", name, err)

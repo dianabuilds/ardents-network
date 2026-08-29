@@ -153,6 +153,14 @@
       "invalid_environment": "the selected Windows-to-VPS H4-3B Docker qualification environment is unavailable"
     },
     {
+      "id": "h4-5-rendezvous",
+      "state": "active",
+      "make_target": "qualification-h4-5-rendezvous",
+      "surface": "bounded dedicated-Contributor functional-alpha campaign across local Docker and two declared Ubuntu VPS hosts",
+      "prerequisites": ["clean committed Windows source checkout", "available local Docker engine and pre-existing golang:1.26.6 image", "two distinct literal project VPS IPv4 addresses with explicitly authorized root SSH keys", "Ubuntu VPS hosts with Docker, systemd, cgroup v2, and pre-existing golang:1.26.6 image", "previously absent external evidence directory"],
+      "invalid_environment": "the selected H4-5 local-Docker or declared two-VPS qualification environment is unavailable"
+    },
+    {
       "id": "h4-6a-two-endpoints",
       "state": "active",
       "make_target": "qualification-h4-6a-two-endpoints",

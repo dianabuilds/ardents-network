@@ -3,7 +3,6 @@ package contributor
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
 )
 
@@ -33,7 +32,9 @@ func (profile *Profile) Control(ctx context.Context, action Action, confirmation
 		if _, err := profile.report(ctx); err != nil {
 			return Report{}, err
 		}
-		_ = os.Remove(profile.paths.lifecycle)
+		if err := removeIfPresent(profile.paths.lifecycle); err != nil {
+			return Report{}, err
+		}
 		state, err := profile.supervisor.Do(ctx, SupervisorRestart)
 		if err != nil {
 			return Report{}, err

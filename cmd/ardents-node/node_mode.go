@@ -21,7 +21,7 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 	}
 	stopClockObservation := func() error { return nil }
 	if runtime.clockObservation != "" {
-		stopClockObservation, err = startContributorClockObservation(ctx, runtime.clockObservation, contributorClockObservationInterval)
+		stopClockObservation, err = node.StartContributorClockObservation(ctx, runtime.clockObservation, node.ContributorClockObservationInterval)
 		if err != nil {
 			return err
 		}
@@ -32,8 +32,7 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 	}
 	if _, currentErr := store.Current(); errors.Is(currentErr, state.ErrNoCurrentGeneration) {
 		if _, refreshErr := store.Refresh(ctx); refreshErr != nil {
-			_ = store.Close()
-			return refreshErr
+			return errors.Join(refreshErr, store.Close(), stopClockObservation())
 		}
 	}
 	runtime.node.Current = func() (node.DutyView, error) {
