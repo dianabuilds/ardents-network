@@ -10,17 +10,24 @@ import (
 	"time"
 )
 
-const reportSchema = "ardents-h4-6c-simulation-v1"
+const (
+	reportSchema    = "ardents-h4-6c-simulation-v1"
+	contractVersion = "h4-6c-project-control-simulation-v1"
+)
 
 // Report records one project-controlled mechanics simulation. Qualified is
 // always false because simulated identities cannot prove real independence.
 type Report struct {
-	Schema     string   `json:"schema"`
-	Simulation bool     `json:"simulation"`
-	Qualified  bool     `json:"qualified"`
-	Passed     []string `json:"passed"`
-	Rejected   []string `json:"rejected"`
-	Limitation string   `json:"limitation"`
+	Schema                 string   `json:"schema"`
+	Contract               string   `json:"contract"`
+	SimulationResult       string   `json:"simulation_result"`
+	DeclaredSourceRevision string   `json:"declared_source_revision"`
+	ReceiptDigest          string   `json:"receipt_digest"`
+	Simulation             bool     `json:"simulation"`
+	Qualified              bool     `json:"qualified"`
+	Passed                 []string `json:"passed"`
+	Rejected               []string `json:"rejected"`
+	Limitation             string   `json:"limitation"`
 }
 
 type signer struct {
@@ -82,6 +89,15 @@ type buildAttestation struct {
 // constrained emergency, lifecycle rotation, full deterministic Candidate View
 // reconstruction, reproducible build attestation, and reader failure matrix.
 func Run() (Report, error) {
+	return RunWithSourceRevision("unrecorded")
+}
+
+// RunWithSourceRevision emits a self-contained receipt for one exact source
+// revision. The caller owns recording the JSON outside the repository.
+func RunWithSourceRevision(sourceRevision string) (Report, error) {
+	if sourceRevision == "" {
+		return Report{}, errors.New("simulation source revision is required")
+	}
 	custodians, err := newSigners(5)
 	if err != nil {
 		return Report{}, err
@@ -98,7 +114,7 @@ func Run() (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	report := Report{Schema: reportSchema, Simulation: true,
+	report := Report{Schema: reportSchema, Contract: contractVersion, DeclaredSourceRevision: sourceRevision, Simulation: true,
 		Limitation: "project-controlled simulation; not independent custody, audit, build evidence, or Public Beta qualification"}
 	if err := exerciseCustody(&report, custodians, successors); err != nil {
 		return Report{}, err
@@ -115,6 +131,9 @@ func Run() (Report, error) {
 	}
 	report.Passed = append(report.Passed, passed...)
 	report.Rejected = append(report.Rejected, rejected...)
+	report.SimulationResult = "passed"
+	report.ReceiptDigest = digest([]byte(strings.Join([]string{report.Schema, report.Contract, report.SimulationResult, report.DeclaredSourceRevision,
+		strings.Join(report.Passed, ","), strings.Join(report.Rejected, ","), report.Limitation}, "\n")))
 	return report, nil
 }
 

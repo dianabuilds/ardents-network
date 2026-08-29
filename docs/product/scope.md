@@ -324,12 +324,12 @@ network core.
 
 ### [H4-6 — Transparent control, release, and transition](horizon-4/06-transparent-control-transition.md)
 
-Replace provisional project control with real threshold custody, transparent
-Candidate View construction, independent auditors and builders, reproducible
-packages, and explicit protocol/build transition. A control-plane component may
-not turn its own output into proof of independence. Release/update safety,
-Network Epoch state, and protocol compatibility remain distinct transitions
-with their own roots, floors, and failure outcomes.
+Exercise project-controlled shared-control mechanics through transparent
+Candidate View construction, simulated custody/build/audit roles, reproducible
+artifacts, and explicit protocol/build transition. This H4-6C result makes no
+claim of independence. Release/update safety, Network Epoch state, and protocol
+compatibility remain distinct transitions with their own roots, floors, and
+failure outcomes.
 
 ### [H4-7 — Qualified local Application boundary](horizon-4/07-application-boundary.md)
 

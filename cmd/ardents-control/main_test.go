@@ -37,11 +37,16 @@ func TestInspectPublicControlReportsExternalEvidenceGate(t *testing.T) {
 
 func TestSimulatePublicControlRunsTheCompleteSimulationWithoutQualification(t *testing.T) {
 	var output bytes.Buffer
-	if err := run([]string{"simulate-public-control"}, &output); err != nil {
+	const revision = "0123456789abcdef0123456789abcdef01234567"
+	if err := run([]string{"simulate-public-control", "--source-revision", revision}, &output); err != nil {
 		t.Fatal(err)
 	}
 	var result struct {
 		Schema     string   `json:"schema"`
+		Contract   string   `json:"contract"`
+		Result     string   `json:"simulation_result"`
+		Revision   string   `json:"declared_source_revision"`
+		Receipt    string   `json:"receipt_digest"`
 		Simulation bool     `json:"simulation"`
 		Qualified  bool     `json:"qualified"`
 		Passed     []string `json:"passed"`
@@ -50,7 +55,8 @@ func TestSimulatePublicControlRunsTheCompleteSimulationWithoutQualification(t *t
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatalf("simulation output is not JSON: %s, %v", output.String(), err)
 	}
-	if result.Schema != "ardents-h4-6c-simulation-v1" || !result.Simulation || result.Qualified {
+	if result.Schema != "ardents-h4-6c-simulation-v1" || result.Contract != "h4-6c-project-control-simulation-v1" || result.Result != "passed" ||
+		result.Revision != revision || !strings.HasPrefix(result.Receipt, "sha256:") || !result.Simulation || result.Qualified {
 		t.Fatalf("simulation identity = %+v", result)
 	}
 	for _, expected := range []string{"routine-3-of-5", "emergency-4-of-5-disable-only", "bidirectional-rotation-lifecycle", "two-full-candidate-view-audits", "two-reproducible-builder-attestations", "reader-diagnostic-matrix"} {
@@ -62,6 +68,13 @@ func TestSimulatePublicControlRunsTheCompleteSimulationWithoutQualification(t *t
 		if !contains(result.Rejected, expected) {
 			t.Fatalf("simulation did not reject %q: %+v", expected, result)
 		}
+	}
+}
+
+func TestSimulatePublicControlRequiresAnExactSourceRevision(t *testing.T) {
+	var output bytes.Buffer
+	if err := run([]string{"simulate-public-control"}, &output); err == nil {
+		t.Fatal("simulation accepted missing source revision")
 	}
 }
 

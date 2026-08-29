@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
@@ -55,14 +56,30 @@ func run(arguments []string, output io.Writer) error {
 }
 
 func simulatePublicControl(arguments []string, output io.Writer) error {
-	if len(arguments) != 0 {
+	flags := flag.NewFlagSet("simulate-public-control", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var sourceRevision string
+	flags.StringVar(&sourceRevision, "source-revision", "", "exact 40-character lowercase hexadecimal source revision")
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !validSourceRevision(sourceRevision) {
 		return errors.New("public-control simulation arguments are invalid")
 	}
-	report, err := publiccontrolsimulation.Run()
+	report, err := publiccontrolsimulation.RunWithSourceRevision(sourceRevision)
 	if err != nil {
 		return err
 	}
 	return json.NewEncoder(output).Encode(report)
+}
+
+func validSourceRevision(value string) bool {
+	if len(value) != 40 {
+		return false
+	}
+	for _, character := range value {
+		if !strings.ContainsRune("0123456789abcdef", character) {
+			return false
+		}
+	}
+	return true
 }
 
 func inspectPublicControl(arguments []string, output io.Writer) error {

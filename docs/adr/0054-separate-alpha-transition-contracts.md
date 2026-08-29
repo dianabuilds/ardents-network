@@ -48,3 +48,11 @@ downgrade a Route Profile, or force executable installation.
 - ADR-0004, ADR-0006, ADR-0038, ADR-0043, and ADR-0053
 - [R-123](../research/records/r-123-separated-alpha-transition-contracts.md)
 - [Alpha control transition contract](../technical/alpha-control-transition.md)
+
+## Supersession note
+
+On 2026-08-29, [ADR-0055](0055-close-h4-6c-with-project-control-simulation.md)
+superseded only the H4-6C consequence above: the
+Product Owner selected a project-control simulation as H4-6C's completion
+criterion. This retained record continues to describe the decision as accepted
+at the time; its H4-6B transition separation is unchanged.

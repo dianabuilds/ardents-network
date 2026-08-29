@@ -93,37 +93,27 @@ This slice chooses no threshold scheme or custodian organization. It makes the
 eventual choice reviewable and ensures the alpha states do not collapse into
 one all-powerful project key.
 
-### H4-6C — public-control candidate
+### H4-6C — project-control simulation
 
-**Goal:** make shared control independently inspectable rather than merely
-multi-key in project hands.
+**Goal:** make the project's shared-control mechanics reproducible and
+inspectable by the Product Owner and Codex.
 
-This candidate needs selected threshold custody and rotation operations,
-transparent Candidate View input/materialization rules, complete evidence
-readers, reproducible packages, and independent full auditors/builders. A
-partial Candidate View downloaded by one Endpoint is not evidence of global
-completeness; a threshold whose custodians are not independently operated is
-not an independence result.
+ADR-0055 selects five simulated custody roles, `3-of-5` routine authority, an
+expiring disable-only `4-of-5` emergency, predecessor-and-successor lifecycle
+rotation, two full Candidate View reconstructions, two builder/auditor roles,
+and the bounded reader's failure matrix. `simulate-public-control` exercises
+those exact mechanics with fresh in-memory keys and retained in-memory evidence.
 
-The current project has no assumed external custodians, auditors, or builders.
-Accordingly H4-6C is a Public Beta promotion gate, not work that can be
-scheduled as already staffed. It becomes actionable only when the necessary
-people or organizations genuinely exist.
-
-R-124 defines the H4-6C evidence threshold: five independently operated
-custodians, `3-of-5` routine authority, `4-of-5` expiring emergency authority,
-two independent reproducible builders, and two independent full Candidate View
-auditors. A bounded reader may inspect the declared artifacts and collisions,
-but it cannot turn a self-authored independence claim into a fact. The current
-status is therefore **no public-control candidate selected**.
+The result is **complete for H4-6C**. It neither selects a public candidate nor
+asserts independent operation, public availability, or Public Beta. Those are
+not residual H4-6C work; any future public claim needs a new Product Owner
+decision and evidence contract.
 
 ### H4-6D — controlled public transitions
 
-Once H4-6C exists, exercise build, protocol, and state transitions under the
-selected public controls: overlap, expiry, revocation, incompatible generation,
-rollback prevention, distribution outage, and emergency disablement. A change
-is promoted only with an independently reproducible evidence bundle and an
-explicit route for an Endpoint that cannot safely continue.
+Not selected. If the Product Owner later opens a separate public-claim program,
+it must define its own custody, evidence, transition and Endpoint-safe-stop
+contract. H4-6C simulation completion does not select or schedule that work.
 
 ## Evidence and promotion gates
 
@@ -133,10 +123,9 @@ reject/stop behavior. Evidence covers forged, stale, replayed, revoked,
 conflicting, withheld, and unavailable inputs, along with release replacement
 and restart behavior.
 
-Public-control promotion additionally requires real independent custody,
-builder, and auditor evidence; transparent full Candidate View construction;
-and reproducible artifacts. Their absence is an honest block on Public Beta,
-not a reason to make an alpha's project control invisible.
+H4-6C promotion means only acceptance of its project-control simulation. A
+future Public Beta claim has its own scope and must not be inferred from this
+simulation.
 
 ## Non-goals
 
@@ -169,6 +158,5 @@ fallback root, profile, source, or Namespace authority is allowed.
 
 ## Open Product Owner selections
 
-- Threshold and evidence operations for a future H4-6C, when real independent
-  participants make that selection actionable. R-124 retains the resulting
-  evidence contract and the unfulfilled external gate.
+- No H4-6C selection remains open. ADR-0055 and R-124 own the completed
+  project-control simulation.
