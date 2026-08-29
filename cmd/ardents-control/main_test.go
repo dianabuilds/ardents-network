@@ -78,6 +78,53 @@ func TestSimulatePublicControlRequiresAnExactSourceRevision(t *testing.T) {
 	}
 }
 
+func TestSimulatePublicControlTransitionsExercisesEveryBoundedStop(t *testing.T) {
+	const revision = "89abcdef0123456789abcdef0123456789abcdef"
+	var output bytes.Buffer
+	if err := run([]string{"simulate-public-control-transitions", "--source-revision", revision}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Schema     string `json:"schema"`
+		Contract   string `json:"contract"`
+		Result     string `json:"simulation_result"`
+		Revision   string `json:"declared_source_revision"`
+		Receipt    string `json:"receipt_digest"`
+		Simulation bool   `json:"simulation"`
+		Qualified  bool   `json:"qualified"`
+		Passed     []struct {
+			Case    string `json:"case"`
+			Outcome string `json:"outcome"`
+		} `json:"passed"`
+		Rejected []string `json:"rejected"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatalf("transition simulation output is not JSON: %s, %v", output.String(), err)
+	}
+	if result.Schema != "ardents-h4-6d-transition-simulation-v1" || result.Contract != "h4-6d-project-control-transitions-v1" ||
+		result.Result != "passed" || result.Revision != revision || !strings.HasPrefix(result.Receipt, "sha256:") || !result.Simulation || result.Qualified {
+		t.Fatalf("transition simulation identity = %+v", result)
+	}
+	for _, expected := range []struct{ caseName, outcome string }{
+		{"overlap-accepted", "overlap-accepted"}, {"expiry-stops", "stop-expired"}, {"revocation-stops", "stop-revoked"},
+		{"incompatible-generation-stops", "stop-incompatible-generation"}, {"rollback-stops", "stop-rollback"},
+		{"distribution-outage-stops", "unavailable-distribution"}, {"emergency-disablement-stops", "stop-emergency-disabled"},
+	} {
+		found := false
+		for _, cell := range result.Passed {
+			found = found || (cell.Case == expected.caseName && cell.Outcome == expected.outcome)
+		}
+		if !found {
+			t.Fatalf("transition simulation did not pass %s/%s: %+v", expected.caseName, expected.outcome, result)
+		}
+	}
+	for _, expected := range []string{"overlap-without-continuity", "emergency-escalation", "emergency-expired"} {
+		if !contains(result.Rejected, expected) {
+			t.Fatalf("transition simulation did not reject %q: %+v", expected, result)
+		}
+	}
+}
+
 func contains(values []string, expected string) bool {
 	for _, value := range values {
 		if value == expected {

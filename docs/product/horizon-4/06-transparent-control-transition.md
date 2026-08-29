@@ -109,11 +109,24 @@ asserts independent operation, public availability, or Public Beta. Those are
 not residual H4-6C work; any future public claim needs a new Product Owner
 decision and evidence contract.
 
-### H4-6D — controlled public transitions
+### H4-6D — controlled project-control transitions
 
-Not selected. If the Product Owner later opens a separate public-claim program,
-it must define its own custody, evidence, transition and Endpoint-safe-stop
-contract. H4-6C simulation completion does not select or schedule that work.
+**Goal:** prove that the already selected project-control simulation rejects
+unsafe control transitions without using an older generation, alternate source,
+or local repair.
+
+ADR-0056 and R-125 select one bounded local matrix: continuous overlap is
+accepted; expiry, revocation, incompatible generation, rollback, distribution
+outage, and an in-scope emergency disablement each produce their exact stop or
+unavailable result. An overlap without continuity, an emergency that escalates
+its scope, and an expired emergency are rejected. The evidence is the versioned
+JSON receipt from `ardents-control simulate-public-control-transitions
+--source-revision SHA1`, retained outside the repository.
+
+This is complete for H4-6D once that receipt and its behavior tests pass. It is
+explicitly a Product Owner-and-Codex simulation: it creates no authority,
+modifies no Endpoint root, and makes no claim about public operation,
+independent control, availability, or Public Beta.
 
 ## Evidence and promotion gates
 
@@ -158,5 +171,5 @@ fallback root, profile, source, or Namespace authority is allowed.
 
 ## Open Product Owner selections
 
-- No H4-6C selection remains open. ADR-0055 and R-124 own the completed
-  project-control simulation.
+- No H4-6C or H4-6D selection remains open. ADR-0055/R-124 own the completed
+  mechanics simulation; ADR-0056/R-125 own the bounded transition simulation.

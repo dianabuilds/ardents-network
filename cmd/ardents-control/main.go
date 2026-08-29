@@ -33,7 +33,7 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 	switch arguments[0] {
 	case "inspect":
@@ -46,13 +46,30 @@ func run(arguments []string, output io.Writer) error {
 		return inspectPublicControl(arguments[1:], output)
 	case "simulate-public-control":
 		return simulatePublicControl(arguments[1:], output)
+	case "simulate-public-control-transitions":
+		return simulatePublicControlTransitions(arguments[1:], output)
 	case "inspect-alpha-corpus":
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
 		return acceptAlphaCorpus(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
+}
+
+func simulatePublicControlTransitions(arguments []string, output io.Writer) error {
+	flags := flag.NewFlagSet("simulate-public-control-transitions", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var sourceRevision string
+	flags.StringVar(&sourceRevision, "source-revision", "", "exact 40-character lowercase hexadecimal source revision")
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !validSourceRevision(sourceRevision) {
+		return errors.New("public-control transition simulation arguments are invalid")
+	}
+	report, err := publiccontrolsimulation.RunControlledTransitionsWithSourceRevision(sourceRevision)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(report)
 }
 
 func simulatePublicControl(arguments []string, output io.Writer) error {

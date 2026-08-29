@@ -39,7 +39,7 @@ contracts, and completed research remain authoritative over this program.
 | 7 | H4-5 voluntary contribution | [R-093](records/r-093-voluntary-endpoint-contribution.md), after R-092 | a bounded opt-in experiment or an explicit rejection | independent public capacity or an incentive economy |
 | 8 | H4-7 protected application mode | [R-099](records/r-099-protected-application-profile.md) | a disposable isolation experiment or a reason to defer | generic browser privacy |
 | 9 | H4-8 qualification and closure | [R-100](records/r-100-alpha-qualification-closure.md) | H4-8A/B release matrix | Public Beta without its external gates |
-| 10 | Public-control, permissionless admission, and Public Beta | Later only if the Product Owner explicitly opens a public-claim programme | H4-4C, H4-5D, H4-6D, and promotion review | H4-6C project-control simulation |
+| 10 | Public-control, permissionless admission, and Public Beta | Later only if the Product Owner explicitly opens a public-claim programme | H4-4C, H4-5D, and promotion review | H4-6C/H4-6D project-control simulations |
 
 ## Research cadence
 

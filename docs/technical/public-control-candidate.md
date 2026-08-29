@@ -137,3 +137,26 @@ future signed operation format.
 
 R-124 and ADR-0055 own the accepted H4-6C simulation. A future public-operation
 claim needs a new Product Owner decision and must not be inferred here.
+
+## H4-6D controlled project-control transitions
+
+`ardents-control simulate-public-control-transitions --source-revision SHA1`
+is a distinct local, non-authorizing simulation. Its evaluator has no network,
+Endpoint root, retained authority, or fallback source. It reports one versioned
+receipt with `simulation: true` and `qualified: false`.
+
+| Input condition | Required outcome |
+|---|---|
+| continuous one-generation overlap | `overlap-accepted` |
+| expired control | `stop-expired` |
+| revoked control | `stop-revoked` |
+| incompatible generation | `stop-incompatible-generation` |
+| candidate below retained floor | `stop-rollback` |
+| declared distributor unavailable | `unavailable-distribution` |
+| live disable-only emergency | `stop-emergency-disabled` |
+
+The receipt additionally records rejection of overlap without continuity,
+emergency scope escalation, and expired emergency. Neither accepted nor stopped
+simulated result selects an alternate source, lower generation, Route, or
+Endpoint action. R-125 and ADR-0056 own this H4-6D evidence; it is not public
+control or Public Beta qualification.
