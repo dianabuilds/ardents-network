@@ -23,6 +23,12 @@ func runNode(ctx context.Context, path string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if _, currentErr := store.Current(); errors.Is(currentErr, state.ErrNoCurrentGeneration) {
+		if _, refreshErr := store.Refresh(ctx); refreshErr != nil {
+			_ = store.Close()
+			return refreshErr
+		}
+	}
 	runtime.node.Current = func() (node.DutyView, error) {
 		view, currentErr := store.CurrentNodeDuty()
 		if currentErr != nil {

@@ -40,6 +40,11 @@ func (systemdSupervisor) Do(ctx context.Context, action contributor.SupervisorAc
 	if err := exec.CommandContext(ctx, "systemctl", arguments...).Run(); err != nil {
 		return contributor.SupervisorState{}, err
 	}
+	if action == contributor.SupervisorDisable {
+		if err := exec.CommandContext(ctx, "systemctl", "reset-failed", contributorUnit).Run(); err != nil {
+			return contributor.SupervisorState{}, err
+		}
+	}
 	return systemdState(ctx)
 }
 

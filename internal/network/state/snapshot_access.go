@@ -5,6 +5,11 @@ import (
 	"fmt"
 )
 
+// ErrNoCurrentGeneration identifies an owned State root which has not yet
+// accepted its first authenticated generation. Callers with a configured
+// finite Source plan may use this narrow condition to bootstrap synchronously.
+var ErrNoCurrentGeneration = errors.New("network state has no current generation")
+
 // Current returns a copy of the current immutable Snapshot.
 func (s *networkState) Current() (Snapshot, error) {
 	if s.resourceGuard != nil {
@@ -24,7 +29,7 @@ func (s *networkState) Current() (Snapshot, error) {
 		return Snapshot{}, fmt.Errorf("H3-S resource governor failed: %w", s.resourceErr)
 	}
 	if s.current == nil {
-		return Snapshot{}, errors.New("network state has no current generation")
+		return Snapshot{}, ErrNoCurrentGeneration
 	}
 	now, err := trustedNow(s.config, s.distribution)
 	if err != nil && s.config.sourceInfo.Configured {

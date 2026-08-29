@@ -217,7 +217,6 @@ func startRendezvousNodeProcessWithAdmissionTimeout(t *testing.T, admissionTimeo
 	if err := os.Chmod(sourceRoot, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	acceptRendezvousEpoch(t, ardents, stateRoot, fixture, fixture.rendezvousIndex)
 
 	var sourceServers [2]processCert
 	for index := range sourceServers {

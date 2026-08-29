@@ -236,6 +236,13 @@ finished=$(date +%%s%%N)
 printf 'schema=ardents-h4-5-operator-timing-v1\naction=%s\nstarted_unix_ns=%%s\nfinished_unix_ns=%%s\nexit_status=%%s\n' "$started" "$finished" "$status" >%s/contributor-%s.timing
 exit "$status"`, h43ShellQuote(executable), arguments, h43ShellQuote(root), name, h43ShellQuote(root), name, name, h43ShellQuote(root), name)
 	if output, err := remote.run(t, command); err != nil {
+		diagnosticsCommand := fmt.Sprintf(`set +e
+{
+  systemctl status ardents-rendezvous-contributor.service --no-pager --full
+  journalctl -u ardents-rendezvous-contributor.service --since "2 minutes ago" --no-pager
+} >%s/contributor-%s-systemd.log 2>&1
+exit 0`, h43ShellQuote(root), name)
+		_, _ = remote.run(t, diagnosticsCommand)
 		report, _ := remote.readFile(t, root+"/contributor-"+name+".err")
 		t.Fatalf("H4-5 Contributor %s: %v\n%s\n%s", name, err, output, report)
 	}
