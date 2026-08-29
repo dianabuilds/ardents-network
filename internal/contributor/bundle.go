@@ -164,7 +164,7 @@ func validateProfilePlan(raw []byte) error {
 			return errors.New("contributor Node plan Source is invalid")
 		}
 	}
-	if plan.Rendezvous != (profileDuty{HandshakeLimit: 4, WaitingLimit: 2, PairLimit: 1, PairByteLimit: 16 << 20,
+	if plan.Rendezvous != (profileDuty{HandshakeLimit: 4, WaitingLimit: 2, PairLimit: 1, PairByteLimit: 64 << 20,
 		AdmissionTimeoutMS: 5000, DrainTimeoutMS: 5000}) {
 		return errors.New("contributor Rendezvous reservations do not match the functional-alpha profile")
 	}

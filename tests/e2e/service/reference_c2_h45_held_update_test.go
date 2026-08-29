@@ -26,8 +26,8 @@ func TestH45InstalledRendezvousUpdatePreservesHeldPair(t *testing.T) {
 	remote := h43RemoteC2{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
 	stage := stageH43RemoteC2(t, environment, deadline, scenario)
-	deployment, pin := stageH45Bundle(t, stage.root, 1, 16<<20)
-	nextDeployment, nextPin := stageH45Bundle(t, stage.root, 2, 16<<20)
+	deployment, pin := stageH45Bundle(t, stage.root, 1, 64<<20)
+	nextDeployment, nextPin := stageH45Bundle(t, stage.root, 2, 64<<20)
 	if nextDeployment != deployment {
 		t.Fatal("H4-5 held update changed the deployment identity")
 	}

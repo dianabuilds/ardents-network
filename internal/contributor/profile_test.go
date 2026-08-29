@@ -388,7 +388,7 @@ func writeContributorBundle(t *testing.T, generation uint64, deployment string) 
 		},
 		"node_id": strings.Repeat("18", 32), "identity_key": "/var/lib/private/ardents-contributor/config/current/rendezvous-identity.pem",
 		"node_resource_profile": "h4-5-rendezvous-alpha-v1", "diagnostic_directory": "/var/lib/private/ardents-contributor/diagnostics",
-		"rendezvous": map[string]any{"handshake_limit": 4, "waiting_limit": 2, "pair_limit": 1, "pair_byte_limit": 16 << 20, "admission_timeout_ms": 5000, "drain_timeout_ms": 5000},
+		"rendezvous": map[string]any{"handshake_limit": 4, "waiting_limit": 2, "pair_limit": 1, "pair_byte_limit": 64 << 20, "admission_timeout_ms": 5000, "drain_timeout_ms": 5000},
 	}
 	files["node.json"], _ = json.Marshal(plan)
 	digests := make(map[string]string, len(files))

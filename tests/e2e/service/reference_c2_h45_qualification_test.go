@@ -53,7 +53,7 @@ func runH45InstalledRendezvous(t *testing.T, scenario referenceC2Scenario, durat
 		}
 	})
 	stage := stageH43RemoteC2(t, environment, deadline, scenario)
-	pairByteLimit := scenario.dynamicWorkload.transitRelayByteLimit()
+	pairByteLimit := max(uint64(64<<20), scenario.dynamicWorkload.transitRelayByteLimit())
 	deployment, pin := stageH45Bundle(t, stage.root, 1, pairByteLimit)
 	nextDeployment, nextPin := stageH45Bundle(t, stage.root, 2, pairByteLimit)
 	if nextDeployment != deployment {
