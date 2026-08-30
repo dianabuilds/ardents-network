@@ -211,8 +211,13 @@ initialize|serve` ownership. ADR-0064's separate Service Authority Custody,
 host-owned Instance enrollment, and non-exporting runtime binding are also
 implemented and included in the real four-binary enrollment-v3 artifact
 inventory. The unpacked B6 journey remains to be completed and cannot
-substitute a fixture or raw key/profile input. R-132 records the exact open
-publication-readiness decision exposed by B6: the old owner-local `ARIA`
+substitute a fixture or raw key/profile input. As a bounded B6 checkpoint,
+`make headless-check` now drives the exact built Endpoint artifact through
+Instance initialization, separate-process response acceptance, idempotent
+retry, and terminal conflict/restart refusal. Its test-owned public Authority
+response is not the required artifact-native interactive custody ceremony.
+R-132 records the exact open publication-readiness decision exposed by B6: the
+old owner-local `ARIA`
 socket has no maintained headless owner, while the already selected
 State-authenticated `IntroductionSlotReady` transition can provide the local
 readiness commitment only after explicit Product Owner acceptance. The

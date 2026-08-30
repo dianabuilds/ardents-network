@@ -95,7 +95,7 @@ headless-evidence: headless-build
 	go test ./tests/e2e/endpoint -run '^TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest$$' -count=1
 	go test ./tests/e2e/network-source -run '^TestFiniteSourceCommandsAsBlackBoxProcesses$$' -count=1
 	go test ./tests/e2e/node -run '^TestNativeDutyProcessesUseTheirExactStateAssignments$$' -count=1
-	go test ./tests/e2e/service -run '^TestServiceCommandReadinessTimeoutAndCleanup$$' -count=1
+	go test ./tests/e2e/service -run '^(TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses|TestServiceCommandReadinessTimeoutAndCleanup)$$' -count=1
 
 headless-check: headless-evidence
 

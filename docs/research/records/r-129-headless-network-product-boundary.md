@@ -162,16 +162,24 @@ owning implementation slice rather than invented before the Interface exists.
   local interface for `open` and the separate administration socket for
   `publish`/`withdraw`. Deterministic Endpoint/C-2 tests carry bytes and cover
   issuer budget, idempotency, fixed outcomes, and at-most-once restart phases.
-- **Remaining qualification fact (2026-08-30):** ADR-0063 resolves R-130;
+- **Implementation measurement (2026-08-31):** `make headless-check` now runs
+  its exact built Endpoint artifact through host-owned Service Instance
+  initialization and separate-process exact-response acceptance. An exact
+  repeat is idempotent; a different valid Authority response terminally closes
+  the generation, and a later exact retry remains unavailable. The tracer
+  supplies only the public Authority response as test setup: it does not yet
+  exercise the interactive custody artifact, publication readiness, or the
+  complete B6 journey.
+- **Remaining qualification fact (2026-08-31):** ADR-0063 resolves R-130;
   `ardents-node issuer initialize|serve` now owns the stable owner-only root,
   exact State profile/Initiator binding, restart, and successor withdrawal.
   R-131 and ADR-0064 select separate Authority Custody and host-owned Instance
-  enrollment, but their maintained commands do not yet supply the already
-  authorized Service Credential and opened Instance binding required by
-  `publish`. B6 and C0 remain open until unpacked commands exercise the complete
-  participant journey without fixture commands; composing only a module test
-  or generating a Credential inside qualification would not satisfy the
-  criteria.
+  enrollment; their maintained commands create, issue, and accept the public
+  Credential response, and the host opens a non-exporting Instance binding.
+  R-132 must still select publication readiness before that binding can enter
+  maintained `publish`. B6 and C0 remain open until unpacked commands exercise
+  the complete participant journey without fixture commands; generating the
+  Authority response inside qualification does not satisfy the custody step.
 
 ### Planning-label disposition
 
