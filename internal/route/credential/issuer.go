@@ -79,6 +79,7 @@ func NewIssuer(config IssuerConfig) (*Issuer, error) {
 	}
 	profile := Profile{Version: profileVersion, NetworkID: config.NetworkID, NodeID: config.NodeID,
 		GrantSignerID: scope.GrantSignerID, GrantSignerPublicKey: publicKey(config.GrantSigner),
+		InitiatorNodeID: config.InitiatorNodeID, InitiatorPublicKey: config.InitiatorPublicKey,
 		KeyConfig: encoded, KeyConfigDigest: sha256.Sum256(encoded), AssignmentNotAfter: currentDuty.NotAfter.UTC()}
 	profile.Signature = ed25519.Sign(config.IdentityKey, profileTranscript(profile))
 	issuer := &Issuer{config: config, nodePublic: nodePublic, profile: profile, scope: scope,

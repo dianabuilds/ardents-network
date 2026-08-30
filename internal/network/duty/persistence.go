@@ -175,8 +175,13 @@ func validTransitGrantIssuer(issuer *transitGrantIssuer) bool {
 	if issuer == nil {
 		return true
 	}
-	if issuer.NetworkID == [32]byte{} || issuer.Digest == [32]byte{} || issuer.IssuerNodeID == [32]byte{} ||
-		issuer.GrantSignerID == [32]byte{} || issuer.Epoch == 0 || issuer.NotAfter <= 0 || issuer.Budget == 0 ||
+	profileValid := len(issuer.Profile) == 0 && issuer.ProfileDigest == [32]byte{} ||
+		len(issuer.Profile) > 0 && len(issuer.Profile) <= maximumTransitGrantProfileBytes && sha256.Sum256(issuer.Profile) == issuer.ProfileDigest
+	bound := issuer.NetworkID != [32]byte{} && issuer.Digest != [32]byte{} && issuer.IssuerNodeID != [32]byte{} &&
+		issuer.GrantSignerID != [32]byte{} && issuer.Epoch != 0 && issuer.NotAfter > 0
+	unbound := len(issuer.Profile) > 0 && issuer.NetworkID == [32]byte{} && issuer.Digest == [32]byte{} && issuer.IssuerNodeID == [32]byte{} &&
+		issuer.GrantSignerID == [32]byte{} && issuer.Epoch == 0 && issuer.NotAfter == 0
+	if !profileValid || !bound && !unbound || issuer.Budget == 0 ||
 		issuer.Budget > maximumTransitGrantBudget || len(issuer.PrivateMaterial) == 0 || len(issuer.PrivateMaterial) > 256 ||
 		len(issuer.Reservations) > int(issuer.Budget) {
 		return false

@@ -46,9 +46,13 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 		t.Fatal(err)
 	}
 	snapshot := dutyFacts{NetworkID: network, Epoch: 5, Digest: digest, ValidUntil: now.Add(time.Minute),
-		TransitIssuerNodeID: issuerID, TransitIssuerProfile: profile, CandidateCount: 1,
-		Candidates: [64]dutyCandidate{{NodeID: issuerID, PublicKey: [32]byte(issuerPublic), Assignment: "transit-issuance",
-			ValidUntil: now.Add(time.Minute), AssignmentNotAfter: now.Add(time.Minute)}},
+		TransitIssuerNodeID: issuerID, TransitIssuerProfile: profile, CandidateCount: 2,
+		Candidates: [64]dutyCandidate{
+			{NodeID: issuerID, PublicKey: [32]byte(issuerPublic), Assignment: "transit-issuance",
+				ValidUntil: now.Add(time.Minute), AssignmentNotAfter: now.Add(time.Minute)},
+			{NodeID: [32]byte{4}, PublicKey: [32]byte(initiatorPublic), Assignment: "initiator",
+				ValidUntil: now.Add(time.Minute), AssignmentNotAfter: now.Add(time.Minute)},
+		},
 		Authorities: [16]dutyAuthority{{ID: sha256.Sum256(statePublic), PublicKey: [32]byte(statePublic)}}, AuthorityCount: 1}
 	if err := attachTransitGrantSigner(&snapshot, now); err != nil {
 		t.Fatal(err)
@@ -66,5 +70,12 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 	changed.TransitIssuerProfile[len(changed.TransitIssuerProfile)-1] ^= 1
 	if err := attachTransitGrantSigner(&changed, now); err == nil {
 		t.Fatal("Node accepted a substituted State issuer profile")
+	}
+
+	changed = snapshot
+	changed.TransitGrantSignerID, changed.TransitGrantSignerPublicKey = [32]byte{}, [32]byte{}
+	changed.Candidates[1].PublicKey = [32]byte{99}
+	if err := attachTransitGrantSigner(&changed, now); err == nil {
+		t.Fatal("Node accepted an issuer profile whose permitted Initiator did not match State")
 	}
 }

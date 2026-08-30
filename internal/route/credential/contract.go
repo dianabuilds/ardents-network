@@ -19,10 +19,34 @@ type Profile struct {
 	Version                          uint8
 	NetworkID, NodeID, GrantSignerID [32]byte
 	GrantSignerPublicKey             [32]byte
+	InitiatorNodeID                  [32]byte
+	InitiatorPublicKey               [32]byte
 	KeyConfig                        []byte
 	KeyConfigDigest                  [32]byte
 	AssignmentNotAfter               time.Time
 	Signature                        []byte
+}
+
+// IssuerRootConfig identifies one explicit owner-only issuer bootstrap. It
+// carries the Node identity only for this local profile-signing ceremony; the
+// retained root never receives a Network State authority key.
+type IssuerRootConfig struct {
+	Root               string
+	NetworkID          [32]byte
+	NodeID             [32]byte
+	IdentityKey        ed25519.PrivateKey
+	InitiatorNodeID    [32]byte
+	InitiatorPublicKey [32]byte
+	AssignmentNotAfter time.Time
+	Budget             uint16
+	Clock              func() time.Time
+}
+
+// IssuerRootReceipt is the complete non-secret output of issuer
+// initialization. Profile bytes are owned by the caller.
+type IssuerRootReceipt struct {
+	Profile       []byte
+	ProfileDigest [32]byte
 }
 
 // Request is the whole plaintext of one OHTTP issuance exchange. It is the

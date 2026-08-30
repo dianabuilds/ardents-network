@@ -43,10 +43,29 @@ func attachTransitGrantSigner(snapshot *dutyFacts, now time.Time) error {
 	if !now.Before(deadline) || credential.VerifyProfile(profile, snapshot.NetworkID, issuer.NodeID, issuer.PublicKey, now, deadline) != nil {
 		return errors.New("state transit issuance profile is not current")
 	}
+	if profile.Version >= 3 && !stateBindsIssuerInitiator(*snapshot, profile, now, deadline) {
+		return errors.New("state transit issuance Initiator binding is invalid")
+	}
 	if profile.Version == 1 {
 		return nil
 	}
 	snapshot.TransitGrantSignerID = profile.GrantSignerID
 	snapshot.TransitGrantSignerPublicKey = profile.GrantSignerPublicKey
 	return nil
+}
+
+func stateBindsIssuerInitiator(snapshot dutyFacts, profile credential.Profile, now, deadline time.Time) bool {
+	found := false
+	for index := uint8(0); index < snapshot.CandidateCount; index++ {
+		candidate := snapshot.Candidates[index]
+		if candidate.Assignment != "initiator" || candidate.NodeID != profile.InitiatorNodeID {
+			continue
+		}
+		if found || candidate.PublicKey != profile.InitiatorPublicKey || candidate.NodeID == snapshot.TransitIssuerNodeID ||
+			candidate.ValidFrom.After(now) || candidate.ValidUntil.Before(deadline) || candidate.AssignmentNotAfter.Before(deadline) {
+			return false
+		}
+		found = true
+	}
+	return found
 }

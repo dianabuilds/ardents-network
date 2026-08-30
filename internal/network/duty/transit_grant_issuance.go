@@ -1,9 +1,64 @@
 package duty
 
 import (
+	"crypto/sha256"
 	"errors"
 	"time"
 )
+
+// InitializeTransitGrantIssuerRoot atomically retains one opaque private
+// issuer generation and its public profile before Network State can bind the
+// duty. Reopening returns the retained bytes; it never replaces them.
+func (store *store) InitializeTransitGrantIssuerRoot(profileDigest [32]byte, budget uint16, privateMaterial, profile []byte) ([]byte, []byte, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.closed || store.failed != nil || profileDigest == [32]byte{} || budget == 0 || budget > maximumTransitGrantBudget ||
+		len(privateMaterial) == 0 || len(privateMaterial) > 256 || len(profile) == 0 || len(profile) > maximumTransitGrantProfileBytes ||
+		sha256.Sum256(profile) != profileDigest {
+		return nil, nil, errors.New("transit grant issuer root initialization is invalid")
+	}
+	if existing := store.state.TransitGrantIssuer; existing != nil {
+		if len(existing.Profile) == 0 || existing.Budget != budget {
+			return nil, nil, errors.New("transit grant issuer root cannot be replaced")
+		}
+		return append([]byte(nil), existing.PrivateMaterial...), append([]byte(nil), existing.Profile...), nil
+	}
+	next := cloneDurableState(store.state)
+	next.TransitGrantIssuer = &transitGrantIssuer{ProfileDigest: profileDigest, Profile: append([]byte(nil), profile...), Budget: budget,
+		PrivateMaterial: append([]byte(nil), privateMaterial...), Reservations: []transitGrantReservation{}}
+	if err := store.commit(next); err != nil {
+		return nil, nil, err
+	}
+	return append([]byte(nil), privateMaterial...), append([]byte(nil), profile...), nil
+}
+
+// BindTransitGrantIssuer irreversibly binds a bootstrapped root to the first
+// exact authenticated State duty. A successor needs a distinct root.
+func (store *store) BindTransitGrantIssuer(scope TransitGrantIssuerScope) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.closed || store.failed != nil || !validTransitGrantIssuerScope(scope) {
+		return errors.New("transit grant issuer binding is invalid")
+	}
+	issuer := store.state.TransitGrantIssuer
+	if issuer == nil || len(issuer.Profile) == 0 {
+		return errors.New("transit grant issuer root is not initialized")
+	}
+	if issuer.Epoch != 0 {
+		if sameTransitGrantIssuerScope(issuer, scope) {
+			return nil
+		}
+		return errors.New("transit grant issuer root is already bound")
+	}
+	next := cloneDurableState(store.state)
+	next.TransitGrantIssuer.NetworkID = scope.NetworkID
+	next.TransitGrantIssuer.Digest = scope.Digest
+	next.TransitGrantIssuer.IssuerNodeID = scope.IssuerNodeID
+	next.TransitGrantIssuer.GrantSignerID = scope.GrantSignerID
+	next.TransitGrantIssuer.Epoch = scope.Epoch
+	next.TransitGrantIssuer.NotAfter = scope.NotAfter.Unix()
+	return store.commit(next)
+}
 
 // InitializeTransitGrantIssuer fixes one immutable finite budget for this
 // local-role root. Reopening the exact scope and budget is idempotent; changing
@@ -136,6 +191,7 @@ func cloneTransitGrantIssuer(issuer *transitGrantIssuer) *transitGrantIssuer {
 		return nil
 	}
 	result := *issuer
+	result.Profile = append([]byte(nil), issuer.Profile...)
 	result.PrivateMaterial = append([]byte(nil), issuer.PrivateMaterial...)
 	result.Reservations = append([]transitGrantReservation(nil), issuer.Reservations...)
 	return &result

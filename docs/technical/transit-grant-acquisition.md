@@ -1,7 +1,8 @@
 # Transit Grant acquisition
 
-Status: **accepted contract; signer module and Endpoint acquisition lifecycle
-implemented; operational issuer bootstrap remains open under R-130.**
+Status: **accepted contract; signer, owner-only issuer-root bootstrap, and
+Endpoint acquisition lifecycle implemented; supported issuer process and
+artifact-native qualification remain.**
 This document owns the purpose-scoped signer, fixed encrypted outcome, durable
 issuer budget/idempotency, and Endpoint at-most-once acquisition lifecycle
 selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).
@@ -10,7 +11,8 @@ selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).
 
 Authenticated Network State selects one `transit-issuance` Node and binds its
 Node-signed issuer profile. The current profile declares exactly one Transit
-Grant signing public key. Its private key belongs only to that online duty:
+Grant signing public key and one permitted Initiator identity/key. Its private
+key belongs only to that online duty:
 
 ```text
 offline State authority --authenticates--> Epoch / issuer profile
@@ -29,7 +31,9 @@ closed Transit Grant tuple and uses the existing Transit Grant v1 signature
 domain. It has no arbitrary byte-signing interface.
 
 The profile remains opaque to `internal/network/state`; the credential owner
-verifies its Node signature and extracts the one State-bound Grant signer.
+verifies its Node signature and extracts the one State-bound Grant signer and
+exact Initiator binding. Node composition rejects the profile unless that
+Initiator is a matching current `initiator` candidate.
 Endpoint, Initiator, Introduction, and Responder receive only the narrow
 projection required for their own check. No caller supplies an alternate
 signer, issuer URL, candidate ordering, or fallback.
@@ -66,11 +70,14 @@ cleartext transport behavior.
 
 ## Issuer-owned durable lifecycle
 
-The issuer opens one exclusive owner-only root for one exact duty identity:
-Network ID, Epoch/digest, issuer Node, Grant signer, assignment deadline, and
-budget generation. The initialized finite budget is immutable for that duty.
-Opening a missing, corrupt, substituted, rolled-back, or scope-mismatched root
-fails closed.
+Before State publication, one explicit initialization opens a new exclusive
+owner-only root, creates the purpose signer and OHTTP material, and atomically
+retains their Node-signed public profile. Reopening returns byte-identical
+public bytes. State then authenticates those exact opaque bytes. The first
+accepted runtime duty irreversibly binds the root to its Network ID,
+Epoch/digest, issuer Node, Grant signer, assignment deadline, and budget
+generation. Opening a missing, corrupt, substituted, rolled-back, successor-,
+or scope-mismatched root fails closed; replacement uses a distinct empty root.
 
 For a valid request, the issuer serializes this transition:
 
@@ -144,10 +151,11 @@ fallback.
    receiving Node verification.
 4. Endpoint pending/reconcile/present/burn state is implemented; terminal
    Application Interface diagnostics remain part of the headless composition.
-5. Resolve R-130's private-material/profile bootstrap and Initiator-ingress
-   owner, then compose that owner into the headless
-   publish/open/withdraw journey before artifact-native qualification. The
-   maintained test-only issuer construction is not a supported process owner.
+5. ADR-0063's private-material/profile bootstrap and exact Initiator binding
+   are implemented. Compose the root into a supported `ardents-node` issuer
+   lifecycle, then into the headless publish/open/withdraw journey before
+   artifact-native qualification. The retained direct constructor remains a
+   module behavior seam, not a product runtime plan.
 
 Ordinary deterministic/process gates are required during implementation. VPS,
 soak, hostile-load, platform-matrix, Browser, and release qualification remain

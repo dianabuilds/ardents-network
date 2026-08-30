@@ -82,6 +82,8 @@ var (
 )
 
 type transitGrantIssuer struct {
+	ProfileDigest   [32]byte                  `json:"profile_digest,omitempty"`
+	Profile         []byte                    `json:"profile,omitempty"`
 	NetworkID       [32]byte                  `json:"network_id"`
 	Digest          [32]byte                  `json:"digest"`
 	IssuerNodeID    [32]byte                  `json:"issuer_node_id"`
@@ -101,7 +103,8 @@ type transitGrantReservation struct {
 }
 
 const (
-	maximumStateBytes         = 64 << 10
-	maximumTransitGrantSpends = 64
-	maximumTransitGrantBudget = 64
+	maximumStateBytes               = 64 << 10
+	maximumTransitGrantSpends       = 64
+	maximumTransitGrantBudget       = 64
+	maximumTransitGrantProfileBytes = 4096
 )
