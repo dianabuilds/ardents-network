@@ -180,10 +180,16 @@ func (root *durableRoot) restore(config Config) error {
 		return err
 	}
 	if !pointerExists {
-		if len(entries) != 0 {
-			return errors.New("publication root has a generation without its current pointer")
+		if len(entries) == 0 {
+			return nil
 		}
-		return nil
+		if len(entries) == 1 && entries[0].Name() == publicationGeneration(floor) {
+			generation, loadErr := loadGeneration(root.path, entries[0].Name(), config)
+			if loadErr == nil && generation.credential.Generation == floor {
+				return removeGeneration(root.path, floor)
+			}
+		}
+		return errors.New("publication root has a generation without its current pointer")
 	}
 	if len(entries) != 1 || entries[0].Name() != pointer {
 		return errors.New("publication root has surplus or mismatched generations")
