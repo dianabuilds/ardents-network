@@ -206,6 +206,35 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 	}
 }
 
+func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, commandPath := range []string{"./cmd/ardents", "./cmd/ardents-control"} {
+		t.Run(filepath.Base(commandPath), func(t *testing.T) {
+			dependencies := listedDependencies(t, root, commandPath)
+			for _, forbidden := range []string{
+				"github.com/dianabuilds/ardents-network/internal/browseradapter",
+				"github.com/dianabuilds/ardents-network/internal/browserentry",
+				"github.com/dianabuilds/ardents-network/internal/endpoint/reference",
+			} {
+				if dependencies[forbidden] {
+					t.Errorf("%s dependency graph contains Browser-owned package %s", commandPath, forbidden)
+				}
+			}
+		})
+	}
+}
+
+func listedDependencies(t *testing.T, root, packagePath string) map[string]bool {
+	t.Helper()
+	command := exec.Command("go", "list", "-deps", packagePath)
+	command.Dir = root
+	output, err := command.Output()
+	if err != nil {
+		t.Fatalf("list dependencies for %s: %v", packagePath, err)
+	}
+	return packageSet(t, string(output))
+}
+
 func TestSuiteRootsBelongToOneExecutionProfile(t *testing.T) {
 	root := repositoryRoot(t)
 	registry := readTestProfileRegistry(t, root)

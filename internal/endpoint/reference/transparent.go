@@ -25,6 +25,9 @@ const (
 // this local presentation cannot select a Target, dial a host, or interpret
 // Publisher application content.
 type TransparentConfig struct {
+	// Target is retained only for historical compatibility readers. The
+	// Browser Adapter never receives it; presentation security comes from the
+	// already-authenticated local Application Connection.
 	Target     [32]byte
 	Hostname   string
 	Connection io.ReadWriteCloser
@@ -50,7 +53,7 @@ type TransparentServer struct {
 // OpenTransparent starts one loopback-only alpha origin. It does not open a
 // browser, perform Name resolution, or make the visible HTTP name public DNS.
 func OpenTransparent(config TransparentConfig) (*TransparentServer, error) {
-	if config.Target == [32]byte{} || !validAlphaHTTPHost(config.Hostname) || config.Connection == nil {
+	if !validAlphaHTTPHost(config.Hostname) || config.Connection == nil {
 		return nil, errors.New("transparent Service presentation is invalid")
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

@@ -1,3 +1,5 @@
+//go:build browsercompat
+
 package endpoint_test
 
 import (

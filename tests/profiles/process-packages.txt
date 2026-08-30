@@ -4,5 +4,4 @@ github.com/dianabuilds/ardents-network/tests/e2e/node/fixturecommand/netem-relay
 github.com/dianabuilds/ardents-network/tests/e2e/endpoint
 github.com/dianabuilds/ardents-network/tests/e2e/service
 github.com/dianabuilds/ardents-network/tests/e2e/service/fixturecommand/publish-app
-github.com/dianabuilds/ardents-network/tests/e2e/service/fixturecommand/reference-c2
 github.com/dianabuilds/ardents-network/tests/e2e/service/fixturecommand/stream-app

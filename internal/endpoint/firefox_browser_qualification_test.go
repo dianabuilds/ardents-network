@@ -1,4 +1,4 @@
-//go:build h4_4_firefox
+//go:build browsercompat && firefox_qualification
 
 package endpoint
 

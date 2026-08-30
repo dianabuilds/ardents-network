@@ -182,7 +182,10 @@ func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.
 	}
 	pinned := sha256.Sum256(manifest)
 	request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
-	verified, err := Verify(request)
+	if _, err := Verify(request); err == nil || !strings.Contains(err.Error(), "does not accept") {
+		t.Fatalf("Network enrollment accepted the Browser Adapter inventory: %v", err)
+	}
+	verified, err := VerifyBrowser(request)
 	if err != nil {
 		t.Fatal(err)
 	}

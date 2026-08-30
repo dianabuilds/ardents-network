@@ -6,11 +6,46 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
+
+type userRouteRequest struct {
+	Introduction UserIntroductionRouteRequest
+	Reachability *UserReachabilityRouteRequest
+}
+
+func (endpoint *endpoint) openUserRoute(ctx context.Context, input userRouteRequest) (*UserIntroductionRoute, string, time.Time, error) {
+	if input.Reachability != nil && input.Introduction.TargetLink != "" {
+		return nil, "", time.Time{}, errors.New("user Application received two route authorities")
+	}
+	if input.Reachability != nil {
+		route, err := endpoint.OpenUserReachabilityRoute(ctx, *input.Reachability)
+		return route, input.Reachability.TargetLink, input.Reachability.At, err
+	}
+	route, err := endpoint.OpenUserIntroductionRoute(ctx, input.Introduction)
+	return route, input.Introduction.TargetLink, input.Introduction.At, err
+}
+
+func bindAlphaUserRoute(input userRouteRequest, targetLink string) (userRouteRequest, error) {
+	if input.Reachability != nil {
+		if input.Reachability.TargetLink != "" || input.Introduction.TargetLink != "" {
+			return userRouteRequest{}, errors.New("alpha Application route must not supply a Target Link")
+		}
+		reachability := *input.Reachability
+		reachability.TargetLink = targetLink
+		input.Reachability = &reachability
+		return input, nil
+	}
+	if input.Introduction.TargetLink != "" {
+		return userRouteRequest{}, errors.New("alpha Application route must not supply a Target Link")
+	}
+	input.Introduction.TargetLink = targetLink
+	return input, nil
+}
 
 // UserApplicationConnectionRequest contains the Connection-surface input for
 // one explicit headless Application stream. Endpoint retains Target

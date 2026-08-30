@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
@@ -41,11 +39,7 @@ type Setup struct {
 	LegacyGenerationFloor   string
 	Clock                   func() time.Time
 	Resources               func(string, int) uint32
-	// BrowserEntryStatePath is an optional absolute per-user file used only by
-	// the selected Firefox native host to learn an active alpha proxy port.
-	// It supplies no Name, Target, Route, or browser-wide proxy authority.
-	BrowserEntryStatePath string
-	Admission             *broker.Broker
+	Admission               *broker.Broker
 	// TransitClientCertificates holds the private, one-use TLS identities
 	// provisioned with State-authorized Transit Grants. Its keys are opaque
 	// Grant IDs; neither the map nor its private keys are Service Descriptor
@@ -182,12 +176,6 @@ type endpoint struct {
 	transitClients  map[[32]byte]tls.Certificate
 	transitAcquire  *transitAcquisition
 	transitMu       sync.Mutex
-
-	alphaBrowserMu     sync.Mutex
-	alphaBrowserProxy  *reference.AlphaProxy
-	alphaBrowserRoutes uint32
-	alphaBrowserOwners uint32
-	browserEntry       *browserentry.Publisher
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -233,24 +221,11 @@ func New(input Setup) (*endpoint, error) {
 			return nil, err
 		}
 	}
-	var entryState *browserentry.Publisher
-	if input.BrowserEntryStatePath != "" {
-		entryState, err = browserentry.OpenPublisher(input.BrowserEntryStatePath)
-		if err != nil {
-			if transitAcquire != nil {
-				_ = transitAcquire.Close()
-			}
-			return nil, err
-		}
-	}
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,
-		admission:    admission, resources: resources, transitClients: transitClients, transitAcquire: transitAcquire, browserEntry: entryState}
+		admission:    admission, resources: resources, transitClients: transitClients, transitAcquire: transitAcquire}
 	if input.AdministrationPrincipal != [32]byte{} {
 		if input.PublicationRoot == "" {
-			if entryState != nil {
-				_ = entryState.Close()
-			}
 			if transitAcquire != nil {
 				_ = transitAcquire.Close()
 			}
@@ -260,9 +235,6 @@ func New(input Setup) (*endpoint, error) {
 			LegacyFloor: input.LegacyGenerationFloor, NetworkID: input.NetworkID,
 			Authority: input.AuthorityPublic, Clock: clock})
 		if err != nil {
-			if entryState != nil {
-				_ = entryState.Close()
-			}
 			if transitAcquire != nil {
 				_ = transitAcquire.Close()
 			}
@@ -280,10 +252,6 @@ func (endpoint *endpoint) Close() error {
 		return nil
 	}
 	endpoint.admission.Close()
-	endpoint.closeAlphaBrowserProxy()
-	if endpoint.browserEntry != nil {
-		_ = endpoint.browserEntry.Close()
-	}
 	acquisitionErr := endpoint.transitAcquire.Close()
 	if endpoint.publications == nil {
 		return acquisitionErr

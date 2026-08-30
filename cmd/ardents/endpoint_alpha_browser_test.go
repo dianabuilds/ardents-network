@@ -7,7 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -20,7 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func TestAlphaBrowserRuntimeRetainsOnlyLocalOwnersUntilStop(t *testing.T) {
+func TestHeadlessRuntimeRetainsOnlyNetworkOwnersAndApplicationSocketUntilStop(t *testing.T) {
 	directory := t.TempDir()
 	now := time.Now().UTC().Truncate(time.Second)
 	network := prepareCommandNetwork(t, directory, now, "ardents-interactive-route-v1")
@@ -39,12 +39,15 @@ func TestAlphaBrowserRuntimeRetainsOnlyLocalOwnersUntilStop(t *testing.T) {
 	entryRoot := filepath.Join(directory, "entry")
 	importAlphaRuntimeEntry(t, entryRoot, rolesRoot, confidence, network)
 	corpusPublic, corpusRoot := prepareAlphaRuntimeCorpus(t, directory, network.snapshot.NetworkID)
-	planPath := filepath.Join(directory, "alpha-browser-runtime.json")
+	planPath := filepath.Join(directory, "headless-runtime.json")
+	applicationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("ahi-%d.sock", time.Now().UnixNano()))
+	t.Cleanup(func() { _ = os.Remove(applicationSocket) })
 	plan := map[string]any{
-		"schema":                   "ardents-alpha-browser-runtime-v1",
+		"schema":                   "ardents-headless-runtime-v1",
 		"network_state_root":       network.root,
 		"entry_state_root":         entryRoot,
 		"transit_acquisition_root": filepath.Join(directory, "transit-acquisition"),
+		"application_socket":       applicationSocket,
 		"alpha_corpus_state_root":  corpusRoot,
 		"local_role_state_root":    rolesRoot,
 		"time_confidence_file":     confidence,
@@ -71,62 +74,62 @@ func TestAlphaBrowserRuntimeRetainsOnlyLocalOwnersUntilStop(t *testing.T) {
 	if err := os.WriteFile(confidence, []byte("observed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	statePath := filepath.Join(directory, "browser-entry", "alpha-proxy.json")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	writer := &alphaRuntimeWriter{ready: make(chan struct{}, 1)}
 	done := make(chan error, 1)
 	go func() {
-		done <- runAlphaBrowserRuntimeWithStatePath(ctx, planPath, writer, func() (string, error) { return statePath, nil })
+		done <- runHeadlessRuntime(ctx, planPath, writer)
 	}()
 	select {
 	case <-writer.ready:
 	case err := <-done:
-		t.Fatalf("alpha browser runtime stopped before ready: %v", err)
+		t.Fatalf("headless runtime stopped before ready: %v", err)
 	case <-time.After(15 * time.Second):
-		t.Fatal("alpha browser runtime did not become ready within the bounded test window")
+		t.Fatal("headless runtime did not become ready within the bounded test window")
 	}
-	if _, err := os.Stat(statePath); err != nil {
-		t.Fatalf("alpha browser state was not published: %v", err)
+	if _, err := os.Stat(applicationSocket); err != nil {
+		t.Fatalf("headless Application socket was not published: %v", err)
 	}
 	cancel()
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(statePath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("alpha browser state remained after runtime stop: %v", err)
+	if _, err := os.Stat(applicationSocket); !os.IsNotExist(err) {
+		t.Fatalf("headless Application socket remained after runtime stop: %v", err)
 	}
-	var events []alphaBrowserRuntimeEvent
+	var events []headlessRuntimeEvent
 	for _, line := range bytes.Split(bytes.TrimSpace(writer.Bytes()), []byte{'\n'}) {
-		var event alphaBrowserRuntimeEvent
+		var event headlessRuntimeEvent
 		if err := json.Unmarshal(line, &event); err != nil {
 			t.Fatal(err)
 		}
 		events = append(events, event)
 	}
-	if len(events) != 2 || events[0].Kind != "alpha-browser-runtime-ready" || events[1].Kind != "alpha-browser-runtime-stopped" ||
-		events[0].NetworkID != hex32(network.snapshot.NetworkID) || events[1].NetworkID != events[0].NetworkID {
-		t.Fatalf("alpha browser runtime events = %+v", events)
+	if len(events) != 2 || events[0].Kind != "headless-runtime-ready" || events[1].Kind != "headless-runtime-stopped" ||
+		events[0].NetworkID != hex32(network.snapshot.NetworkID) || events[1].NetworkID != events[0].NetworkID ||
+		events[0].ApplicationSocket != applicationSocket || events[1].ApplicationSocket != "" {
+		t.Fatalf("headless runtime events = %+v", events)
 	}
 }
 
-func TestAlphaBrowserRuntimePlanRejectsRouteAuthorityInput(t *testing.T) {
+func TestHeadlessRuntimePlanRejectsRouteAuthorityInput(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "runtime.json")
-	if err := os.WriteFile(path, []byte(`{"schema":"ardents-alpha-browser-runtime-v1","target":"forbidden"}`), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(`{"schema":"ardents-headless-runtime-v1","target":"forbidden"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := loadAlphaBrowserRuntimePlan(path); err == nil {
-		t.Fatal("alpha browser runtime plan accepted a route authority field")
+	if _, err := loadHeadlessRuntimePlan(path); err == nil {
+		t.Fatal("headless runtime plan accepted a route authority field")
 	}
 }
 
-func TestAlphaBrowserRuntimeSourcePlanMustShareItsStateOwners(t *testing.T) {
+func TestHeadlessRuntimeSourcePlanMustShareItsStateOwners(t *testing.T) {
 	directory := t.TempDir()
 	sharedRoles, sharedClock := filepath.Join(directory, "roles"), filepath.Join(directory, "clock")
 	public := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize)).Public().(ed25519.PublicKey)
 	identity := [32]byte{81}
-	plan := decodedAlphaBrowserRuntimePlan{NetworkID: [32]byte{80}, NetworkAuthorities: map[[32]byte]ed25519.PublicKey{identity: public},
-		alphaBrowserRuntimePlan: alphaBrowserRuntimePlan{NetworkThreshold: 1, LocalRoleStateRoot: sharedRoles, TimeConfidenceFile: sharedClock}}
+	plan := decodedHeadlessRuntimePlan{NetworkID: [32]byte{80}, NetworkAuthorities: map[[32]byte]ed25519.PublicKey{identity: public},
+		headlessRuntimePlan: headlessRuntimePlan{NetworkThreshold: 1, LocalRoleStateRoot: sharedRoles, TimeConfidenceFile: sharedClock}}
 	matching := state.Config{NetworkID: plan.NetworkID, Authorities: map[[32]byte]ed25519.PublicKey{identity: public}, Threshold: 1,
 		LocalRoleStateRoot: sharedRoles, ClockObservationFile: sharedClock, AutomaticRefreshInterval: time.Second}
 	if !matchesAlphaBrowserSourcePlan(plan, matching) {
@@ -218,7 +221,7 @@ func (writer *alphaRuntimeWriter) Write(value []byte) (int, error) {
 	writer.mu.Lock()
 	_, err := writer.bytes.Write(value)
 	writer.mu.Unlock()
-	if err == nil && bytes.Contains(value, []byte("alpha-browser-runtime-ready")) {
+	if err == nil && bytes.Contains(value, []byte("headless-runtime-ready")) {
 		select {
 		case writer.ready <- struct{}{}:
 		default:

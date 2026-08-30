@@ -107,7 +107,7 @@ func TestParticipantInstallAuthenticatesARealV4Bundle(t *testing.T) {
 	verifiedCompanion := false
 	var output strings.Builder
 	err = installBrowserEntryWith([]string{"--enrollment", inputPath, "--endpoint-artifact", filepath.Join(bundle, endpointName), "--at", time.Now().UTC().Format(time.RFC3339)}, &output,
-		enrollment.Verify, func(_ enrollment.Request, name string, artifact []byte) error {
+		enrollment.VerifyBrowser, func(_ enrollment.Request, name string, artifact []byte) error {
 			verifiedCompanion = name == hostName
 			actual, readErr := os.ReadFile(filepath.Join(bundle, hostName))
 			if readErr != nil || !bytes.Equal(artifact, actual) {

@@ -19,7 +19,7 @@ import (
 // does not install or open the signed XPI: Firefox must perform that explicit
 // participant action and validate Mozilla's signature itself.
 func installBrowserEntry(arguments []string, output io.Writer) error {
-	return installBrowserEntryWith(arguments, output, enrollment.Verify, enrollment.VerifyRunningCompanion, installer.Install)
+	return installBrowserEntryWith(arguments, output, enrollment.VerifyBrowser, enrollment.VerifyRunningCompanion, installer.Install)
 }
 
 func installBrowserEntryWith(arguments []string, output io.Writer,

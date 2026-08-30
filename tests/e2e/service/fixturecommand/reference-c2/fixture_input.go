@@ -1,3 +1,5 @@
+//go:build browsercompat
+
 package main
 
 type peer struct {

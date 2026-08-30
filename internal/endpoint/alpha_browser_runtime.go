@@ -8,7 +8,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -17,32 +16,32 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-// AlphaBrowserStateView is the narrow current State projection required to
-// open one browser-demanded alpha name. It is implemented by
+// ApplicationStateView is the narrow current State projection required to
+// open one alpha Service Link. It is implemented by
 // state.ResolutionView. It contains no State source, persistence, or candidate
 // ordering operation.
-type AlphaBrowserStateView interface {
+type ApplicationStateView interface {
 	Epoch(time.Time, time.Time) (state.ResolutionEpoch, bool)
 	Gateway(time.Time, time.Time) (state.DestinationResolutionGateway, bool)
 	Candidate([32]byte, time.Time, time.Time) (state.ResolutionCandidate, bool)
 }
 
-// AlphaBrowserEntry is the Endpoint's already-imported User Entry owner. It
+// ApplicationEntry is the Endpoint's already-imported User Entry owner. It
 // exposes one current contact so the Endpoint can bind an Initiator identity
 // before a closed Entry acquisition. Entry retains invite validation, retry,
 // and durable contact state.
-type AlphaBrowserEntry interface {
+type ApplicationEntry interface {
 	route.EntryAcquirer
 	Contact() (entry.Candidate, error)
 }
 
-// AlphaBrowserRuntimeRequest binds the local durable alpha floor to current
+// ConnectionInterfaceConfig binds the local durable alpha floor to current
 // State and an already-imported Entry set. No caller may provide a Target,
 // Gateway URL/profile, C-2 peer, Route, or browser destination.
-type AlphaBrowserRuntimeRequest struct {
+type ConnectionInterfaceConfig struct {
 	Floor   *alpha.PersistentFloor
-	Current func() (AlphaBrowserStateView, error)
-	Entry   AlphaBrowserEntry
+	Current func() (ApplicationStateView, error)
+	Entry   ApplicationEntry
 	// Principal is the preconfigured local connection grant principal. A fresh
 	// capability is minted for each browser-demanded Service Connection.
 	Principal          [32]byte
@@ -50,39 +49,19 @@ type AlphaBrowserRuntimeRequest struct {
 	Clock              func() time.Time
 }
 
-// OpenAlphaBrowserRuntime makes the selected Alpha Browser Entry composition live:
-// name.ard -> accepted alpha floor -> State-selected private lookup -> exact
-// C-2 Service -> local transparent presentation. It leaves ordinary browser
-// traffic untouched and the Endpoint itself has no DNS or direct-origin
-// fallback; browser resolver behavior is a separate integration concern.
-func (endpoint *endpoint) OpenAlphaBrowserRuntime(ctx context.Context, input AlphaBrowserRuntimeRequest) (*AlphaBrowserResolution, error) {
-	if endpoint == nil || ctx == nil || input.Floor == nil || input.Current == nil || input.Entry == nil || input.Principal == [32]byte{} ||
-		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumEndpointStreamBytes {
-		return nil, errors.New("alpha browser runtime input is incomplete")
-	}
-	clock := input.Clock
-	if clock == nil {
-		clock = time.Now
-	}
-	return endpoint.OpenAlphaBrowserResolution(ctx, AlphaBrowserResolutionRequest{Floor: input.Floor, Clock: clock,
-		Open: func(openCtx context.Context, binding alpha.Binding) (AlphaBrowserSite, error) {
-			return endpoint.openAlphaBrowserService(openCtx, binding, input, clock)
-		}})
-}
-
 // ConnectionInterface is the Connection-surface owner shared by headless CLI
 // and optional Adapters. Its Open input is only a Service Link; State, Entry,
 // Target authentication, Route, and one-use transport inputs remain private.
 type ConnectionInterface struct {
 	endpoint *endpoint
-	input    AlphaBrowserRuntimeRequest
+	input    ConnectionInterfaceConfig
 	clock    func() time.Time
 }
 
 // OpenConnectionInterface binds current Endpoint-owned acquisition inputs to a
 // narrow name-to-stream operation. The config is process composition, not an
 // Adapter request or Route plan.
-func (endpoint *endpoint) OpenConnectionInterface(input AlphaBrowserRuntimeRequest) (*ConnectionInterface, error) {
+func (endpoint *endpoint) OpenConnectionInterface(input ConnectionInterfaceConfig) (*ConnectionInterface, error) {
 	if endpoint == nil || input.Floor == nil || input.Current == nil || input.Entry == nil || input.Principal == [32]byte{} ||
 		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumEndpointStreamBytes {
 		return nil, errors.New("Application Connection Interface input is incomplete")
@@ -119,21 +98,7 @@ func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha
 	return owner.endpoint.openAlphaApplicationForBinding(ctx, binding, owner.input, owner.clock)
 }
 
-func (endpoint *endpoint) openAlphaBrowserService(ctx context.Context, binding alpha.Binding, input AlphaBrowserRuntimeRequest,
-	clock func() time.Time) (*UserReferenceSite, error) {
-	owner, err := endpoint.OpenConnectionInterface(input)
-	if err != nil {
-		return nil, err
-	}
-	owner.clock = clock
-	application, err := owner.openBinding(ctx, binding)
-	if err != nil {
-		return nil, err
-	}
-	return endpoint.openAlphaCompatibilityPresentation(binding, application)
-}
-
-func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input AlphaBrowserRuntimeRequest,
+func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input ConnectionInterfaceConfig,
 	clock func() time.Time) (*ApplicationConnection, error) {
 	at := clock().UTC()
 	if at.IsZero() {
@@ -232,36 +197,6 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	return application, err
 }
 
-func (endpoint *endpoint) openAlphaCompatibilityPresentation(binding alpha.Binding, application *ApplicationConnection) (*UserReferenceSite, error) {
-	if endpoint == nil || application == nil {
-		return nil, errors.New("alpha Browser compatibility presentation is unavailable")
-	}
-	hostname := alphaBrowserHostname(binding)
-	presentation, err := reference.OpenTransparent(reference.TransparentConfig{Target: binding.Target(), Hostname: hostname, Connection: application})
-	if err != nil {
-		_ = application.Close()
-		return nil, err
-	}
-	proxyURL, release, err := endpoint.openAlphaTransparentBrowserRoute(hostname, presentation)
-	if err != nil {
-		_ = presentation.Close()
-		return nil, err
-	}
-	running := &ReferenceConnection{cancel: func() { _ = application.Close() }, ready: make(chan ReferenceReady, 1),
-		done: make(chan ReferenceOutcome, 1), closed: make(chan struct{}), presentation: presentation, release: release}
-	running.publishReady(ReferenceReady{URL: "http://" + hostname + "/", AlphaProxyURL: proxyURL,
-		AuthenticatedTarget: binding.Target()})
-	go func() {
-		outcome, open := <-application.Done()
-		result := RuntimeResult{Class: outcome.Class, Reason: outcome.Reason}
-		if !open {
-			result = RuntimeResult{Class: "indeterminate failure", Reason: "Application Connection ended without an outcome"}
-		}
-		running.completeReferenceConnection(result, nil)
-	}()
-	return &UserReferenceSite{reference: running}, nil
-}
-
 // alphaBrowserServiceAttachment preserves the one-use binding of a signed
 // Transit Grant when a descriptor carries one. Legacy opaque authorizations
 // retain a freshly chosen attachment for the lower-level compatibility path;
@@ -291,7 +226,7 @@ func alphaBrowserServiceAttachment(authorization []byte, epoch state.ResolutionE
 	return grant.AttachmentID, nil
 }
 
-func alphaBrowserInitiator(view AlphaBrowserStateView, contact entry.Candidate, at, deadline time.Time) (TransitPeer, error) {
+func alphaBrowserInitiator(view ApplicationStateView, contact entry.Candidate, at, deadline time.Time) (TransitPeer, error) {
 	candidate, available := view.Candidate(contact.NodeID, at, deadline)
 	if !available || candidate.Domain != "initiator" || candidate.PublicKey != contact.PublicKey || candidate.Endpoint != contact.Endpoint ||
 		sha256.Sum256([]byte(candidate.Family)) != contact.FamilyID {
@@ -300,7 +235,7 @@ func alphaBrowserInitiator(view AlphaBrowserStateView, contact entry.Candidate, 
 	return TransitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: contact.FamilyID, Endpoint: candidate.Endpoint}, nil
 }
 
-func alphaBrowserStatePeer(view AlphaBrowserStateView, nodeID [32]byte, domain string, at, deadline time.Time) (TransitPeer, error) {
+func alphaBrowserStatePeer(view ApplicationStateView, nodeID [32]byte, domain string, at, deadline time.Time) (TransitPeer, error) {
 	candidate, available := view.Candidate(nodeID, at, deadline)
 	if !available || candidate.Domain != domain || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} || candidate.Endpoint == "" {
 		return TransitPeer{}, errors.New("current State C-2 peer is unavailable")

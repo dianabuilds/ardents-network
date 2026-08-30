@@ -1,3 +1,5 @@
+//go:build browsercompat
+
 package main
 
 import endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"

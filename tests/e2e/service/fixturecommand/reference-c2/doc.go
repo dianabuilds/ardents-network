@@ -1,2 +1,4 @@
-// Command reference-c2 is an E2E-only separate-process C-2 Reference Site fixture.
+//go:build browsercompat
+
+// Command reference-c2 is retained compatibility evidence for the old Browser-bound C-2 fixture.
 package main

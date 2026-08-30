@@ -312,7 +312,7 @@ func TestUserReachabilityRouteRejectsPrivateLookupC2OverlapBeforeEntry(t *testin
 	}
 }
 
-func TestUserReferenceSessionReportsUnavailableForInvalidInput(t *testing.T) {
+func TestUserApplicationConnectionRejectsInvalidInput(t *testing.T) {
 	fixture := newFixture(t)
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: c2Identifier(101),
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic, ConnectionPrincipal: fixture.clientPrincipal})
@@ -320,36 +320,8 @@ func TestUserReferenceSessionReportsUnavailableForInvalidInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer user.Close()
-	session := user.StartUserReferenceSite(t.Context(), endpointapi.UserReferenceSiteRequest{})
-	first, open := <-session.Events()
-	if !open || first.State != endpointapi.UserReferenceStarting {
-		t.Fatalf("first invalid-input session event = %+v (open=%t)", first, open)
-	}
-	last, open := <-session.Events()
-	if !open || last.State != endpointapi.UserReferenceUnavailable || last.Class != "service unavailable" || last.Reason == "" {
-		t.Fatalf("invalid-input session event = %+v (open=%t)", last, open)
-	}
-	if _, open := <-session.Events(); open {
-		t.Fatal("invalid-input User Reference session remained open")
-	}
-}
-
-func TestAlphaUserReferenceSiteRejectsSuppliedTargetLinkBeforeC2(t *testing.T) {
-	fixture := newFixture(t)
-	user, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: c2Identifier(126),
-		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic, ConnectionPrincipal: fixture.clientPrincipal})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer user.Close()
-	entry := &c2CountingEntry{}
-	_, err = user.OpenAlphaUserReferenceSite(t.Context(), endpointapi.AlphaUserReferenceSiteRequest{
-		Binding: c2IssuedAlphaBinding(t, fixture.networkID, c2Identifier(127), fixture.now),
-		Route: endpointapi.UserReferenceSiteRequest{Reachability: &endpointapi.UserReachabilityRouteRequest{
-			TargetLink: "caller-supplied-target", Entry: entry}},
-	})
-	if err == nil || entry.calls != 0 {
-		t.Fatalf("alpha route accepted a caller Target Link or opened Entry: calls=%d err=%v", entry.calls, err)
+	if _, err := user.OpenUserApplicationConnection(t.Context(), endpointapi.UserApplicationConnectionRequest{}); err == nil {
+		t.Fatal("invalid headless Application Connection input was accepted")
 	}
 }
 
@@ -375,6 +347,17 @@ func TestUserIntroductionRouteRejectsInvalidTargetLinkBeforeEntry(t *testing.T) 
 	if err == nil || entry.calls != 0 {
 		t.Fatalf("invalid Target Link opened Entry: calls=%d err=%v", entry.calls, err)
 	}
+}
+
+func serveOneStaticReference(connection net.Conn, seen chan<- *http.Request) {
+	request, err := http.ReadRequest(bufio.NewReader(connection))
+	if err != nil {
+		seen <- nil
+		return
+	}
+	seen <- request
+	_, _ = io.WriteString(connection, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 18\r\nConnection: close\r\n\r\n<h1>Reference</h1>")
+	_ = connection.Close()
 }
 
 func c2EntryAdmit(presentation entry.Presentation, network, digest, initiator [32]byte, attachments map[[32]byte]time.Time) route.EntryBindingAdmitter {

@@ -3,11 +3,10 @@ package enrollment
 import (
 	"errors"
 	"strings"
-
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
 )
 
 type descriptor struct {
+	schema                                                           string
 	cohort, release, platform, environment, network, targetPath      string
 	artifact, trustedRoot, controlCatalog, disclosureRoot            string
 	controlRelease, controlNetwork, controlCompatibility             string
@@ -46,7 +45,7 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 	if !validDescriptor(values) {
 		return descriptor{}, errors.New("alpha descriptor is invalid")
 	}
-	return descriptor{cohort: values["cohort"], release: values["release"], platform: values["platform"], environment: values["environment"], network: values["network"], targetPath: values["target_path"], artifact: values["artifact"], trustedRoot: values["trusted_root"], controlCatalog: values["control_catalog"], disclosureRoot: values["disclosure_root"], controlRelease: values["control_release"], controlNetwork: values["control_network"], controlCompatibility: values["control_compatibility"], controlReleaseRoot: values["control_release_root"], controlNetworkRoot: values["control_network_root"], controlCompatibilityRoot: values["control_compatibility_root"], corpusAuthority: values["corpus_authority"], controlArtifact: values["control_artifact"], browserEntryArtifact: values["browser_entry_artifact"], browserEntryExtension: values["browser_entry_extension"]}, nil
+	return descriptor{schema: values["schema"], cohort: values["cohort"], release: values["release"], platform: values["platform"], environment: values["environment"], network: values["network"], targetPath: values["target_path"], artifact: values["artifact"], trustedRoot: values["trusted_root"], controlCatalog: values["control_catalog"], disclosureRoot: values["disclosure_root"], controlRelease: values["control_release"], controlNetwork: values["control_network"], controlCompatibility: values["control_compatibility"], controlReleaseRoot: values["control_release_root"], controlNetworkRoot: values["control_network_root"], controlCompatibilityRoot: values["control_compatibility_root"], corpusAuthority: values["corpus_authority"], controlArtifact: values["control_artifact"], browserEntryArtifact: values["browser_entry_artifact"], browserEntryExtension: values["browser_entry_extension"]}, nil
 }
 
 func validDescriptor(values map[string]string) bool {
@@ -60,7 +59,7 @@ func validDescriptor(values map[string]string) bool {
 	if (schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4") && values["control_artifact"] != "ardents-control-"+values["platform"] {
 		return false
 	}
-	if schema == "ardents-closed-alpha-enrollment-v4" && (values["browser_entry_artifact"] != browserentry.HostArtifactName(values["platform"]) || values["browser_entry_extension"] != browserentry.ExtensionArtifactName) {
+	if schema == "ardents-closed-alpha-enrollment-v4" && (values["browser_entry_artifact"] != browserHostArtifactName(values["platform"]) || values["browser_entry_extension"] != browserExtensionArtifactName) {
 		return false
 	}
 	names := []string{values["artifact"], values["trusted_root"], values["control_catalog"], values["disclosure_root"], values["control_release"], values["control_network"], values["control_compatibility"], values["control_release_root"], values["control_network_root"], values["control_compatibility_root"]}
@@ -84,6 +83,16 @@ func validDescriptor(values map[string]string) bool {
 		seen[name] = struct{}{}
 	}
 	return true
+}
+
+const browserExtensionArtifactName = "ardents-alpha-browser-entry.xpi"
+
+func browserHostArtifactName(platform string) string {
+	name := "ardents-browser-entry-" + platform
+	if strings.HasPrefix(platform, "windows-") {
+		return name + ".exe"
+	}
+	return name
 }
 
 func (descriptor descriptor) matches(request Request) error {

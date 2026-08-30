@@ -74,10 +74,22 @@ type Verified struct {
 	BrowserEntryExtension     []byte
 }
 
-// Verify checks the manifest pin before parsing it, then accepts only a
+// Verify authenticates the Network enrollment inventory. Browser enrollment-v4
+// is deliberately rejected and must enter through VerifyBrowser.
+func Verify(request Request) (Verified, error) {
+	return verify(request, false)
+}
+
+// VerifyBrowser authenticates the distinct Browser Adapter enrollment-v4
+// inventory. It never broadens the Network enrollment inventory.
+func VerifyBrowser(request Request) (Verified, error) {
+	return verify(request, true)
+}
+
+// verify checks the manifest pin before parsing it, then accepts only a
 // single-directory, regular-file inventory whose descriptor and artifact bind
 // the requested first-install facts. It never runs a bundle artifact.
-func Verify(request Request) (Verified, error) {
+func verify(request Request, browser bool) (Verified, error) {
 	if !validRequest(request) {
 		return Verified{}, errors.New("alpha enrollment request is incomplete")
 	}
@@ -112,6 +124,12 @@ func Verify(request Request) (Verified, error) {
 	descriptor, err := parseDescriptor(descriptorContents)
 	if err != nil {
 		return Verified{}, err
+	}
+	if browser != (descriptor.schema == "ardents-closed-alpha-enrollment-v4") {
+		if browser {
+			return Verified{}, errors.New("Browser Adapter enrollment requires the v4 inventory")
+		}
+		return Verified{}, errors.New("Network enrollment does not accept the Browser Adapter v4 inventory")
 	}
 	if err := exactInventory(root, entries, descriptor.artifact, request.ArtifactPath != ""); err != nil {
 		return Verified{}, err

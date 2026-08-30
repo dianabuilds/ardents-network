@@ -32,8 +32,8 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && arguments[1] == "enroll-installed" {
 		return runEnrolledInstalled(ctx, arguments[2], output)
 	}
-	if len(arguments) == 3 && arguments[1] == "alpha-browser" {
-		return runAlphaBrowserRuntime(ctx, arguments[2], output)
+	if len(arguments) == 3 && arguments[1] == "headless" {
+		return runHeadlessRuntime(ctx, arguments[2], output)
 	}
 	if len(arguments) == 2 && arguments[1] == "portable" {
 		return runPortableEndpoint(ctx, output)
@@ -57,7 +57,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 		return runEndpointRollback(ctx, arguments[2], output)
 	}
 	if len(arguments) != 3 || arguments[1] != "run" || arguments[2] == "" {
-		return errors.New("usage: ardents endpoint <portable|enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|enroll-installed <package-enrollment.json>|alpha-browser <alpha-browser-runtime.json>|user-unit <alpha-enrollment.json>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>|run <endpoint-plan.json>>")
+		return errors.New("usage: ardents endpoint <portable|enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|user-unit <alpha-enrollment.json>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>|run <endpoint-plan.json>>")
 	}
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)

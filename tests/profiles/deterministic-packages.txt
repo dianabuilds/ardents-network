@@ -1,4 +1,5 @@
 github.com/dianabuilds/ardents-network/cmd/ardents
+github.com/dianabuilds/ardents-network/cmd/ardents-browser
 github.com/dianabuilds/ardents-network/cmd/ardents-browser-entry
 github.com/dianabuilds/ardents-network/cmd/ardents-control
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
@@ -6,6 +7,7 @@ github.com/dianabuilds/ardents-network/cmd/ardents-release-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-state-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/internal/application/broker
+github.com/dianabuilds/ardents-network/internal/browseradapter
 github.com/dianabuilds/ardents-network/internal/browserentry
 github.com/dianabuilds/ardents-network/internal/browserentry/installer
 github.com/dianabuilds/ardents-network/internal/contributor

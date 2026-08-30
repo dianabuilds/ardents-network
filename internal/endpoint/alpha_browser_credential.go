@@ -28,8 +28,8 @@ type alphaBrowserSubmission struct {
 	finish        func(bool) error
 }
 
-func (endpoint *endpoint) alphaBrowserSubmission(ctx context.Context, view AlphaBrowserStateView, epoch state.ResolutionEpoch,
-	entry AlphaBrowserEntry, initiator, introduction TransitPeer, slot reachability.Introduction, at, deadline time.Time) (alphaBrowserSubmission, error) {
+func (endpoint *endpoint) alphaBrowserSubmission(ctx context.Context, view ApplicationStateView, epoch state.ResolutionEpoch,
+	entry ApplicationEntry, initiator, introduction TransitPeer, slot reachability.Introduction, at, deadline time.Time) (alphaBrowserSubmission, error) {
 	if entry == nil {
 		return alphaBrowserSubmission{}, errors.New("credential relay Entry owner is unavailable")
 	}

@@ -1,3 +1,5 @@
+//go:build browsercompat
+
 package main
 
 // identifier derives one deterministic opaque fixture identity from its test
