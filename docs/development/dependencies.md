@@ -191,6 +191,53 @@ Weakest-native-host performance remains a separate Qualification gate. Removing
 password-derived custody removes these callers. A version/profile/surface change
 requires a new dependency review and applicable ADR analysis.
 
+## Current qualification-only dependencies
+
+Status: **test-only; absent from every product binary and enrollment
+inventory.** The artifact-native custody process test imports one PTY harness
+so it can drive the real terminal-only `ardents-custody` executable on Windows
+and Unix without adding a password flag, environment variable, shared input
+stream, first-party `unsafe`, or fixture custody command.
+
+| Module | Reviewed version | License | Purpose |
+|---|---:|---|---|
+| `github.com/aymanbagabas/go-pty` | `v0.2.3`, commit `b1081175e7d78aa5e2fd02f88bcbc0af4e280039` | MIT | Cross-platform test PTY; Windows uses the native ConPTY API and Unix uses a normal PTY |
+| `github.com/creack/pty` | `v1.1.24` | MIT | Unix-only transitive PTY implementation |
+| `github.com/u-root/u-root` | `v0.16.0` | BSD-3-Clause | Declared transitive terminal support closure; not imported by the Windows process-test build |
+
+**Need and owner:** `tests/e2e/service` owns the dependency. The supported
+custody product deliberately accepts secrets only from a real no-echo terminal,
+while Windows `os/exec` cannot attach a native child to ConPTY through its
+portable public API. `go-pty` exposes one `io.ReadWriteCloser` plus an
+`exec.Cmd`-like command boundary on both selected development platforms. The
+test waits for each exact custody prompt before writing a fixed test-only
+password and asserts that the terminal transcript never contains that secret.
+It executes the exact built `ardents-custody` and `ardents` files; it neither
+imports `internal/custody` nor constructs a credential response itself.
+
+**Maintenance, security, and distribution review:** the current tagged
+`v0.2.3` release was published on 2026-05-17 from a GitHub-verified commit; its
+repository has current Windows-specific fixes and documents Windows ConPTY and
+Unix PTY support. The module is pre-v1 and has no declared security policy, so
+it is not accepted into a runtime or shipped artifact. Its first-party test
+caller imports no `unsafe` or cgo; the dependency's platform implementation may
+use operating-system primitives internally. MIT and BSD-3-Clause permit the
+test-only source dependency. `go mod verify`, the exact process test, Windows
+package dependency inspection, `govulncheck`, and artifact dependency checks
+must pass before integration. Product manifests and archives must prove that
+none of these modules contributes a file or import edge to a shipped binary.
+
+**Alternatives and removal:** an ordinary pipe is intentionally rejected by
+the custody binary and would weaken the product contract. The available MSYS
+`script` PTY is not a Windows console handle, while combining unrelated MSYS
+and Git-for-Windows `winpty` runtimes did not provide a stable native terminal.
+A first-party ConPTY wrapper would require forbidden `unsafe`; the lower-level
+Windows-only `github.com/UserExistsError/conpty` would still need a separate
+Unix dependency and more local process orchestration. Remove `go-pty` when Go's
+standard `os/exec` exposes a supported cross-platform PTY/ConPTY attachment or
+when the exact terminal ceremony is moved to an equally reproducible external
+artifact qualification runner. Any version or runtime use repeats this review.
+
 ## Development tools
 
 | Tool | Version | Purpose |

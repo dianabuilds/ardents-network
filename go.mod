@@ -3,6 +3,7 @@ module github.com/dianabuilds/ardents-network
 go 1.26.6
 
 require (
+	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/cloudflare/circl v1.6.5
 	github.com/openpcc/ohttp v0.0.80
 	github.com/quic-go/quic-go v0.61.0
@@ -15,12 +16,14 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/creack/pty v1.1.24 // indirect
 	github.com/google/go-containerregistry v0.21.9 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/openpcc/bhttp v0.0.80 // indirect
 	github.com/openpcc/twoway v0.0.80 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.11.1 // indirect
 	github.com/sigstore/protobuf-specs v0.5.2 // indirect
+	github.com/u-root/u-root v0.16.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.opentelemetry.io/otel v1.45.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
