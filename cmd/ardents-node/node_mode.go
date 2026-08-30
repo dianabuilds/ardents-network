@@ -11,14 +11,19 @@ import (
 )
 
 func runNode(ctx context.Context, path string, output io.Writer) error {
-	boundedOutput, ok := output.(*os.File)
-	if !ok {
-		return errors.New("node lifecycle output does not support write deadlines")
-	}
 	runtime, err := readNodePlan(path)
 	if err != nil {
 		return err
 	}
+	return runNodeRuntime(ctx, runtime, output)
+}
+
+func runNodeRuntime(ctx context.Context, runtime nodeRuntime, output io.Writer) error {
+	boundedOutput, ok := output.(*os.File)
+	if !ok {
+		return errors.New("node lifecycle output does not support write deadlines")
+	}
+	var err error
 	stopClockObservation := func() error { return nil }
 	if runtime.clockObservation != "" {
 		stopClockObservation, err = node.StartContributorClockObservation(ctx, runtime.clockObservation, node.ContributorClockObservationInterval)

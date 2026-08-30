@@ -18,21 +18,22 @@ const legacyRendezvousDedicatedHostResourceProfile = "h4-5-rendezvous-alpha-v1"
 
 type nodePlan struct {
 	sourceServerPlan
-	ClockObservationFile    string            `json:"clock_observation_file"`
-	OrderSeed               string            `json:"order_seed"`
-	SourceClientCertificate string            `json:"source_client_certificate"`
-	SourceClientKey         string            `json:"source_client_key"`
-	Sources                 []nodeSource      `json:"sources"`
-	NodeID                  string            `json:"node_id"`
-	IdentityKey             string            `json:"identity_key"`
-	MaximumDutyMS           uint32            `json:"maximum_duty_ms"`
-	DrainTimeoutMS          uint32            `json:"drain_timeout_ms"`
-	NodeResourceProfile     string            `json:"node_resource_profile,omitempty"`
-	DiagnosticDirectory     string            `json:"diagnostic_directory,omitempty"`
-	Rendezvous              *rendezvousPlan   `json:"rendezvous,omitempty"`
-	Initiator               *initiatorPlan    `json:"initiator,omitempty"`
-	Introduction            *introductionPlan `json:"introduction,omitempty"`
-	Responder               *responderPlan    `json:"responder,omitempty"`
+	ClockObservationFile    string             `json:"clock_observation_file"`
+	OrderSeed               string             `json:"order_seed"`
+	SourceClientCertificate string             `json:"source_client_certificate"`
+	SourceClientKey         string             `json:"source_client_key"`
+	Sources                 []nodeSource       `json:"sources"`
+	NodeID                  string             `json:"node_id"`
+	IdentityKey             string             `json:"identity_key"`
+	MaximumDutyMS           uint32             `json:"maximum_duty_ms"`
+	DrainTimeoutMS          uint32             `json:"drain_timeout_ms"`
+	NodeResourceProfile     string             `json:"node_resource_profile,omitempty"`
+	DiagnosticDirectory     string             `json:"diagnostic_directory,omitempty"`
+	Rendezvous              *rendezvousPlan    `json:"rendezvous,omitempty"`
+	Initiator               *initiatorPlan     `json:"initiator,omitempty"`
+	Introduction            *introductionPlan  `json:"introduction,omitempty"`
+	Responder               *responderPlan     `json:"responder,omitempty"`
+	TransitIssuer           *transitIssuerPlan `json:"transit_issuer,omitempty"`
 }
 
 // rendezvousPlan contains only the local finite work bounds. State still
@@ -76,6 +77,12 @@ type responderPlan struct {
 	AdmissionTimeoutMS uint32 `json:"admission_timeout_ms"`
 	DrainTimeoutMS     uint32 `json:"drain_timeout_ms"`
 }
+
+type transitIssuerPlan struct {
+	Root            string `json:"root"`
+	ConnectionLimit uint16 `json:"connection_limit"`
+	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
+}
 type nodeSource struct {
 	Address        string `json:"address"`
 	ServerName     string `json:"server_name"`
@@ -101,7 +108,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if plan.Schema != "ardents-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
-	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil
+	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil
 	if plan.NodeResourceProfile == legacyRendezvousDedicatedHostResourceProfile {
 		plan.NodeResourceProfile = node.RendezvousDedicatedHostResourceProfile
 	}
@@ -114,7 +121,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		if plan.NodeResourceProfile != node.RendezvousDedicatedHostResourceProfile {
 			return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
 		}
-		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil {
+		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil {
 			return nodeRuntime{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
 		}
 	}

@@ -47,7 +47,11 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 			AdmissionTimeout: time.Duration(plan.Responder.AdmissionTimeoutMS) * time.Millisecond,
 			DrainTimeout:     time.Duration(plan.Responder.DrainTimeoutMS) * time.Millisecond}
 	}
-	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil {
+	if plan.TransitIssuer != nil {
+		config.TransitIssuer = node.TransitIssuerProfile{Root: plan.TransitIssuer.Root, Certificate: certificate,
+			ConnectionLimit: plan.TransitIssuer.ConnectionLimit, DrainTimeout: time.Duration(plan.TransitIssuer.DrainTimeoutMS) * time.Millisecond}
+	}
+	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil {
 		return config, nil
 	}
 	root, err := readOperatorInput(plan.ClientRoot, 64<<10)

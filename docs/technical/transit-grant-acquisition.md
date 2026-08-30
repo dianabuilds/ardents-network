@@ -1,8 +1,8 @@
 # Transit Grant acquisition
 
-Status: **accepted contract; signer, owner-only issuer-root bootstrap, and
-Endpoint acquisition lifecycle implemented; supported issuer process and
-artifact-native qualification remain.**
+Status: **accepted contract; signer, owner-only issuer-root bootstrap,
+State-bound Node runtime, and Endpoint acquisition lifecycle implemented;
+artifact-native qualification remains.**
 This document owns the purpose-scoped signer, fixed encrypted outcome, durable
 issuer budget/idempotency, and Endpoint at-most-once acquisition lifecycle
 selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).
@@ -151,11 +151,11 @@ fallback.
    receiving Node verification.
 4. Endpoint pending/reconcile/present/burn state is implemented; terminal
    Application Interface diagnostics remain part of the headless composition.
-5. ADR-0063's private-material/profile bootstrap and exact Initiator binding
-   are implemented. Compose the root into a supported `ardents-node` issuer
-   lifecycle, then into the headless publish/open/withdraw journey before
-   artifact-native qualification. The retained direct constructor remains a
-   module behavior seam, not a product runtime plan.
+5. ADR-0063's private-material/profile bootstrap, exact Initiator binding, and
+   `ardents-node issuer initialize|serve` lifecycle are implemented. Compose
+   those artifact commands into the headless publish/open/withdraw journey
+   before artifact-native qualification. The retained direct constructor
+   remains a module behavior seam, not a product runtime plan.
 
 Ordinary deterministic/process gates are required during implementation. VPS,
 soak, hostile-load, platform-matrix, Browser, and release qualification remain

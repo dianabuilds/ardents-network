@@ -68,3 +68,70 @@ func TestInitializeIssuerRootPublishesOneStableStateBindableProfile(t *testing.T
 		t.Fatalf("rejected replacement changed issuer root: same=%t, err=%v", bytes.Equal(again.Profile, first.Profile), err)
 	}
 }
+
+func TestOpenIssuerFromRootBindsOnlyItsExactFirstStateDuty(t *testing.T) {
+	now := time.Unix(2_000_700_000, 0).UTC()
+	nodePublic, nodePrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initiatorPublic, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := IssuerRootConfig{Root: filepath.Join(t.TempDir(), "transit-issuer"), NetworkID: credentialID(74), NodeID: credentialID(75),
+		IdentityKey: nodePrivate, InitiatorNodeID: credentialID(76), InitiatorPublicKey: publicIdentifier(initiatorPublic),
+		AssignmentNotAfter: now.Add(time.Hour), Budget: 2, Clock: func() time.Time { return now }}
+	receipt, err := InitializeIssuerRoot(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := DecodeProfile(receipt.Profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	duty := StateDuty{NetworkID: config.NetworkID, Digest: credentialID(77), IssuerNodeID: config.NodeID,
+		IssuerPublicKey: publicIdentifier(nodePublic), InitiatorNodeID: config.InitiatorNodeID,
+		InitiatorPublicKey: config.InitiatorPublicKey, GrantSignerPublicKey: profile.GrantSignerPublicKey,
+		ProfileDigest: receipt.ProfileDigest, Epoch: 78, NotAfter: config.AssignmentNotAfter}
+	current := duty
+	open := func() (*Issuer, error) {
+		return OpenIssuerFromRoot(RootIssuerConfig{Root: config.Root, NetworkID: config.NetworkID, NodeID: config.NodeID,
+			IdentityKey: nodePrivate, CurrentDuty: func() (StateDuty, bool) { return current, true }, Clock: func() time.Time { return now }})
+	}
+	issuer, err := open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	openedProfile, err := EncodeProfile(issuer.Profile())
+	if err != nil || !bytes.Equal(openedProfile, receipt.Profile) {
+		t.Fatalf("root-backed issuer profile changed: same=%t, err=%v", bytes.Equal(openedProfile, receipt.Profile), err)
+	}
+	if err := issuer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	issuer, err = open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := issuer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	current = duty
+	current.Digest = credentialID(79)
+	current.Epoch++
+	if _, err := open(); err == nil {
+		t.Fatal("bound issuer root started under a State successor")
+	}
+	current = duty
+	current.InitiatorPublicKey = credentialID(80)
+	if _, err := open(); err == nil {
+		t.Fatal("bound issuer root accepted a substituted State Initiator")
+	}
+	current = duty
+	current.ProfileDigest = credentialID(81)
+	if _, err := open(); err == nil {
+		t.Fatal("bound issuer root accepted a different State-authenticated profile")
+	}
+}

@@ -60,6 +60,18 @@ func (store *store) BindTransitGrantIssuer(scope TransitGrantIssuerScope) error 
 	return store.commit(next)
 }
 
+// TransitGrantIssuerRoot returns owned copies of one initialized issuer
+// generation while the caller retains the store's exclusive lease.
+func (store *store) TransitGrantIssuerRoot() ([]byte, []byte, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	issuer := store.state.TransitGrantIssuer
+	if store.closed || store.failed != nil || issuer == nil || len(issuer.Profile) == 0 || len(issuer.PrivateMaterial) == 0 {
+		return nil, nil, errors.New("transit grant issuer root is unavailable")
+	}
+	return append([]byte(nil), issuer.PrivateMaterial...), append([]byte(nil), issuer.Profile...), nil
+}
+
 // InitializeTransitGrantIssuer fixes one immutable finite budget for this
 // local-role root. Reopening the exact scope and budget is idempotent; changing
 // either requires a distinct root/duty generation.

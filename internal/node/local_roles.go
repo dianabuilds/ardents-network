@@ -22,6 +22,8 @@ func retainLocalDuty(config runtimeConfig, snapshot dutyFacts, state string) err
 		class = "route-introduction"
 	case "responder":
 		class = "route-responder"
+	case "transit-issuance":
+		class = "transit-issuance"
 	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {

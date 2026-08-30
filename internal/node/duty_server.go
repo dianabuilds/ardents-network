@@ -69,6 +69,8 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 			usage := running.Usage()
 			return uint64(usage.Handshakes), uint64(usage.Connections), usage.RelayedBytes
 		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
+	case "transit-issuance":
+		return startTransitIssuer(config, snapshot)
 	default:
 		return nil, errors.New("native Route assignment is not implemented")
 	}

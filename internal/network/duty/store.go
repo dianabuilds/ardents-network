@@ -180,7 +180,7 @@ func validDuty(duty Duty, now time.Time) bool {
 func validClass(value string) bool {
 	switch value {
 	case "ordinary-initiator", "direct-source", "route-interior", "route-rendezvous",
-		"route-responder", "route-introduction", "destination-resolution", "node-duty":
+		"route-responder", "route-introduction", "destination-resolution", "transit-issuance", "node-duty":
 		return true
 	default:
 		return false

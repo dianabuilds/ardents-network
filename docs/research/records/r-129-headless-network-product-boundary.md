@@ -157,12 +157,12 @@ owning implementation slice rather than invented before the Interface exists.
   local interface for `open` and the separate administration socket for
   `publish`/`withdraw`. Deterministic Endpoint/C-2 tests carry bytes and cover
   issuer budget, idempotency, fixed outcomes, and at-most-once restart phases.
-- **Remaining composition fact (2026-08-30):** ADR-0063 resolves R-130 and the
-  credential owner now initializes/reopens one stable owner-only issuer root
-  whose public profile binds the single State-permitted Initiator. No supported
-  `ardents-node` process owns that root yet. Consequently B6 and C0 remain open;
-  composing a fixture-only artifact test would not satisfy the evaluation
-  criteria.
+- **Remaining qualification fact (2026-08-30):** ADR-0063 resolves R-130;
+  `ardents-node issuer initialize|serve` now owns the stable owner-only root,
+  exact State profile/Initiator binding, restart, and successor withdrawal.
+  B6 and C0 remain open until unpacked enrollment-v3 commands exercise the
+  complete participant journey without fixture commands; composing only a
+  module test would not satisfy the evaluation criteria.
 
 ### Planning-label disposition
 

@@ -102,6 +102,8 @@ func validateNativeDutyProfile(config runtimeConfig, snapshot dutyFacts) error {
 		}
 		_, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
 		return err
+	case "transit-issuance":
+		return validateTransitIssuerProfile(config.TransitIssuer, snapshot, config.now())
 	default:
 		return errors.New("native Route assignment is not implemented")
 	}

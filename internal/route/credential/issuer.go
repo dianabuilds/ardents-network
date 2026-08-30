@@ -21,15 +21,16 @@ import (
 // duty. It retains no endpoint, name, or unbounded issued-grant history; its
 // finite duty root stores only stable OHTTP material and bounded idempotency.
 type Issuer struct {
-	config     IssuerConfig
-	nodePublic [32]byte
-	profile    Profile
-	handler    http.Handler
-	scope      duty.TransitGrantIssuerScope
-	find       func(duty.TransitGrantIssuerScope, [32]byte, [32]byte) ([32]byte, bool, error)
-	reserve    func(duty.TransitGrantIssuerScope, [32]byte, [32]byte, [32]byte) ([32]byte, bool, error)
-	withdraw   func(duty.TransitGrantIssuerScope) error
-	close      func() error
+	config        IssuerConfig
+	nodePublic    [32]byte
+	profile       Profile
+	profileDigest [32]byte
+	handler       http.Handler
+	scope         duty.TransitGrantIssuerScope
+	find          func(duty.TransitGrantIssuerScope, [32]byte, [32]byte) ([32]byte, bool, error)
+	reserve       func(duty.TransitGrantIssuerScope, [32]byte, [32]byte, [32]byte) ([32]byte, bool, error)
+	withdraw      func(duty.TransitGrantIssuerScope) error
+	close         func() error
 }
 
 // NewIssuer opens one bounded project-operated issuer duty.
@@ -148,7 +149,8 @@ func (issuer *Issuer) serve(writer http.ResponseWriter, request *http.Request) {
 	result := Result{Outcome: Unavailable}
 	now := issuer.config.Clock().UTC()
 	current, available := issuer.config.CurrentDuty()
-	if err == nil && requestErr == nil && decodeErr == nil && available && validStateDuty(current, issuer.config, issuer.nodePublic, now) &&
+	profileCurrent := issuer.profileDigest == [32]byte{} || current.ProfileDigest == issuer.profileDigest
+	if err == nil && requestErr == nil && decodeErr == nil && available && profileCurrent && validStateDuty(current, issuer.config, issuer.nodePublic, now) &&
 		decoded.NetworkID == issuer.config.NetworkID && decoded.Digest == current.Digest && decoded.Epoch == current.Epoch &&
 		now.Before(decoded.NotAfter) && !decoded.NotAfter.After(now.Add(15*time.Second)) && !decoded.NotAfter.After(current.NotAfter) {
 		result = issuer.issue(decoded, payload, current, now)

@@ -49,6 +49,18 @@ type IssuerRootReceipt struct {
 	ProfileDigest [32]byte
 }
 
+// RootIssuerConfig opens one already initialized issuer root against current
+// authenticated State. Signer, OHTTP, profile, Initiator, and budget inputs
+// are deliberately absent.
+type RootIssuerConfig struct {
+	Root        string
+	NetworkID   [32]byte
+	NodeID      [32]byte
+	IdentityKey ed25519.PrivateKey
+	CurrentDuty CurrentDuty
+	Clock       func() time.Time
+}
+
 // Request is the whole plaintext of one OHTTP issuance exchange. It is the
 // same adjacent-hop tuple that the resulting Transit Grant binds, and has no
 // Service Name, Target, Descriptor, Publisher, or sealed introduction.
@@ -84,6 +96,7 @@ type Authorization func(Request, time.Time) bool
 // no Entry Invite, Service, Endpoint, or browser input.
 type StateDuty struct {
 	NetworkID, Digest, IssuerNodeID, IssuerPublicKey, InitiatorNodeID, InitiatorPublicKey, GrantSignerPublicKey [32]byte
+	ProfileDigest                                                                                               [32]byte
 	Epoch                                                                                                       uint64
 	NotAfter                                                                                                    time.Time
 	Withdrawn                                                                                                   bool

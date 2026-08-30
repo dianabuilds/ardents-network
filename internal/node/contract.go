@@ -119,6 +119,7 @@ type Config struct {
 	Initiator          InitiatorProfile
 	Introduction       IntroductionProfile
 	Responder          ResponderProfile
+	TransitIssuer      TransitIssuerProfile
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
@@ -178,6 +179,16 @@ type ResponderProfile struct {
 	RelayByteLimit             uint64
 	AdmissionTimeout           time.Duration
 	DrainTimeout               time.Duration
+}
+
+// TransitIssuerProfile contains only the initialized owner root, listener
+// certificate, and finite local reservations. State supplies the listener,
+// exact public profile, permitted Initiator, and duty lifetime.
+type TransitIssuerProfile struct {
+	Root            string
+	Certificate     tls.Certificate
+	ConnectionLimit uint16
+	DrainTimeout    time.Duration
 }
 
 func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }
