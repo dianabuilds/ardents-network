@@ -54,7 +54,10 @@ sh ./packaging/alpha-bundle/build.sh
 `ardents-control` artifacts outside the repository, then supplies the exact
 Endpoint/control bytes to the deterministic inventory test. The test packs,
 unpacks, verifies, and byte-compares those artifacts; it does not substitute
-fixture text for executable bytes.
+fixture text for executable bytes. The same target passes those exact built
+Endpoint and Node paths into the selected enrollment, Source, native-duty, and
+Service-readiness process scenarios; those scenarios cannot silently rebuild a
+different temporary command from source.
 
 ```sh
 make headless-check

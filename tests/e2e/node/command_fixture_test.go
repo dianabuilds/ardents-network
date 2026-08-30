@@ -5,11 +5,19 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
 func buildCommand(t *testing.T, name string) string {
 	t.Helper()
+	if prebuilt := os.Getenv("ARDENTS_E2E_PRODUCT_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))); prebuilt != "" {
+		info, err := os.Lstat(prebuilt)
+		if err != nil || !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+			t.Fatalf("prebuilt product command %s is not a regular executable: %v", name, err)
+		}
+		return prebuilt
+	}
 	if root := os.Getenv("ARDENTS_E2E_COMMAND_ROOT"); root != "" {
 		if !filepath.IsAbs(root) || filepath.Clean(root) != root {
 			t.Fatal("prebuilt E2E command root must be one clean absolute path")
@@ -33,6 +41,17 @@ func buildCommand(t *testing.T, name string) string {
 		t.Fatalf("build %s: %v\n%s", name, err, output)
 	}
 	return path
+}
+
+func TestBuildCommandUsesDeclaredPrebuiltProductExecutable(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ardents-node-artifact")
+	if err := os.WriteFile(path, []byte("exact prebuilt product command\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ARDENTS_E2E_PRODUCT_ARDENTS_NODE", path)
+	if observed := buildCommand(t, "ardents-node"); observed != path {
+		t.Fatalf("prebuilt product command = %q, want %q", observed, path)
+	}
 }
 
 func TestBuildCommandUsesDeclaredPrebuiltExecutable(t *testing.T) {

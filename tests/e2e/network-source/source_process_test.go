@@ -116,6 +116,13 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 
 func buildProductCommand(t *testing.T, name string) string {
 	t.Helper()
+	if prebuilt := os.Getenv("ARDENTS_E2E_PRODUCT_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))); prebuilt != "" {
+		info, err := os.Lstat(prebuilt)
+		if err != nil || !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+			t.Fatalf("prebuilt product command %s is not a regular executable: %v", name, err)
+		}
+		return prebuilt
+	}
 	suffix := ""
 	if runtime.GOOS == "windows" {
 		suffix = ".exe"

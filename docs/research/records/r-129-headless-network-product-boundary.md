@@ -153,6 +153,11 @@ owning implementation slice rather than invented before the Interface exists.
   exact bytes into a deterministic Browser-only archive, unpacks and
   byte-compares them, and separately verifies the enrollment-v4 companion
   inventory. This is build evidence, not signed-XPI or release qualification.
+- **Implementation measurement (2026-08-30):** `make headless-check` binds its
+  selected enrollment, State Source, native Node-duty, and Service-readiness
+  process scenarios to the exact host-named `headless-build` binaries after
+  deterministic enrollment-v3 pack/unpack byte comparison. A scenario can no
+  longer pass by silently compiling a different temporary command.
 - **Implementation measurement (2026-08-30):** the CLI now uses that same
   local interface for `open` and the separate administration socket for
   `publish`/`withdraw`. Deterministic Endpoint/C-2 tests carry bytes and cover

@@ -203,6 +203,9 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		"headless-check: headless-evidence",
 		"$(foreach command,$(HEADLESS_COMMANDS)",
 		"$(notdir $(command))-$(HEADLESS_PLATFORM)",
+		"headless-evidence: export ARDENTS_E2E_COMMAND := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
+		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
+		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NODE := $(abspath $(HEADLESS_NODE_ARTIFACT))",
 	} {
 		if !strings.Contains(makefile, required) {
 			t.Errorf("headless Network Make boundary lacks %q", required)
