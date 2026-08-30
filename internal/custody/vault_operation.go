@@ -30,6 +30,8 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 	switch operation.Kind {
 	case OperationCreateVaultRecord:
 		return vault.createRecord(ctx, operation, secrets)
+	case OperationCreateServiceAuthority:
+		return vault.createServiceAuthority(ctx, operation, secrets)
 	case OperationVerifyVaultRecord:
 		return vault.verifyRecord(ctx, operation, secrets)
 	case OperationExportRecoveryBundle:

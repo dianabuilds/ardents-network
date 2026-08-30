@@ -11,6 +11,9 @@ import (
 const (
 	// OperationCreateVaultRecord creates one independently encrypted Vault record.
 	OperationCreateVaultRecord OperationKind = "create-vault-record"
+	// OperationCreateServiceAuthority generates one Service Authority inside a
+	// new encrypted Vault record and returns only its public identity.
+	OperationCreateServiceAuthority OperationKind = "create-service-authority"
 	// OperationVerifyVaultRecord authenticates one record without releasing its root material.
 	OperationVerifyVaultRecord OperationKind = "verify-vault-record"
 	// OperationExportRecoveryBundle creates and isolatedly test-restores one new Bundle.
@@ -112,14 +115,22 @@ const (
 // Receipt contains only bounded public custody facts. In particular it never
 // includes root material, a password, a derived key, or plaintext bytes.
 type Receipt struct {
-	Operation    OperationKind
-	RecordID     string
-	Envelope     EnvelopeInfo
-	Authority    AuthorityReceipt
-	TestRestored bool
-	State        RecordState
-	Proof        []byte
-	Submission   []byte
+	Operation        OperationKind
+	RecordID         string
+	Envelope         EnvelopeInfo
+	Authority        AuthorityReceipt
+	ServiceAuthority ServiceAuthorityReceipt
+	TestRestored     bool
+	State            RecordState
+	Proof            []byte
+	Submission       []byte
+}
+
+// ServiceAuthorityReceipt is the public identity created by custody. It
+// contains neither root material nor a signing capability.
+type ServiceAuthorityReceipt struct {
+	Public [32]byte
+	Target [32]byte
 }
 
 // RecordState is the non-secret local lifecycle classification of a protected

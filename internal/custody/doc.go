@@ -20,5 +20,7 @@
 // Authority activates only from a fresh opaque witness of one current active
 // Namespace record that is strictly higher than the recovered generation and
 // revision; custody advances its local watermarks, durably writes the active
-// successor and floor, and creates neither a runtime Instance Key nor a Grant.
+// successor and floor. Service Authority creation instead generates its root
+// inside custody and returns only the public Authority and derived Target; it
+// creates neither a runtime Instance Key nor a Grant.
 package custody
