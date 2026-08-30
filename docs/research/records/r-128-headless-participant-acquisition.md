@@ -1,7 +1,7 @@
 ---
 id: R-128
 title: Headless participant current-input acquisition owner
-status: open
+status: decided; implementation-linked
 owner: Product Owner and Codex
 started: 2026-08-30
 reviewed: 2026-08-30
@@ -16,10 +16,10 @@ headless Endpoint acquire current State, an Entry, and one-use transport inputs,
 then publish, open, and withdraw through existing Network behavior without an
 operator route plan or Browser ownership.
 
-Until this question is decided, implementation must not invent a new authority,
-distribution service, long-lived credential, route planner, wire message, Route
-semantic, or Target semantic. Work independent of participant acquisition, such
-as the headless command and artifact evidence profile, remains permitted.
+The Product Owner selected the bounded authority and lifecycle on 2026-08-30.
+Implementation must follow ADR-0062 and must not widen it into a distribution
+service, long-lived credential, route planner, generic signer, new Route
+semantic, or new Target semantic.
 
 ## Current contract
 
@@ -35,9 +35,10 @@ State-declared Credential Relay shape, not its complete participant operation.
 Already fixed: current State authorizes topology; Entry is selected from that
 State; Transit Grants are finite and one-use; payload encryption is not an
 anonymity claim; no Node, Gateway, Browser, or operator may silently choose a
-fallback route. Still open: the durable issuance budget and erasure owner,
-pending-grant crash retention, withdrawal and rotation behavior, enrolled input
-distribution, and the participant-facing recovery/exhaustion lifecycle.
+fallback route. ADR-0062 now assigns the durable budget/idempotency owner to
+the signer duty and the pending/reconcile/present/burn lifecycle to Endpoint.
+Enrolled State and Entry distribution plus the complete participant command
+journey remain implementation work under that accepted contract.
 
 The relevant security owners are the
 [threat-and-response matrix](../../security/threat-model.md#threat-and-response-matrix)
@@ -211,39 +212,47 @@ Retain current tracers and the independent headless artifact boundary. This is
 the correct option if neither operational contract can be maintained by the
 actual Product Owner-and-Codex team.
 
-## Recommendation
+## Recommendation and accepted decision
 
 Do not deploy or implement the current dynamic issuer with the functional-alpha
 Network State authority key. That would directly contradict R-121 and ADR-0053
 and would give one online process an unscoped copy of the sole 1-of-1 State
 signing key.
 
-The proposed participant lifecycle is Endpoint-owned and at-most-once:
+The Product Owner accepted a purpose-scoped online Transit Grant signer which
+never receives or loads a Network State/Epoch private key. Its
+State-authenticated profile declares the separate Grant signing public key;
+receiving Nodes accept that key only for Transit Grant v1. The signer duty owns
+a finite durable global budget and Request-ID idempotency ledger. Every
+authenticated response is one fixed-size encrypted `issued`, `exhausted`,
+`withdrawn`, or `unavailable` outcome.
+
+The accepted participant lifecycle is Endpoint-owned and at-most-once:
 
 1. the Endpoint derives Capability Readiness from its authenticated enrollment,
    current State, and the capability's distinct Entry Set;
-2. one operation creates a volatile key and one durable non-secret pending
-   marker before the Credential Relay exchange;
-3. a successful exact Grant is consumed immediately by the same Endpoint-owned
-   operation and erased on every terminal outcome;
-4. a crash, State successor, withdrawal, or ambiguous response burns the pending
-   attempt and never resumes or retries the Application operation; and
-5. the signer-side duty atomically consumes its separate finite durable budget
-   before signing.
+2. one operation durably records a fresh Request ID, exact target-free tuple,
+   State-duty identity, and one-use TLS key before the exchange;
+3. an interrupted exchange reconciles only by resubmitting that exact Request
+   ID and bytes; issuer idempotency returns the same committed Grant without a
+   second budget spend;
+4. a successful exact Grant is promoted to one ready pair; once presentation
+   begins, every success or ambiguity burns the attempt and erases the key,
+   while no Application operation is automatically replayed; and
+5. State successor, withdrawal, expiry, exhaustion, or authenticated
+   unavailability produces one durable bounded terminal class with no fallback.
 
-Before implementation, the Product Owner must choose whether to authorize a
-new bounded decision for a State-authenticated, purpose-scoped online Transit
-Grant signer and fixed encrypted issuance outcomes. That successor may preserve
-the Transit Grant, Route, and Target grammars, but it must not reuse a Network
-State root key and any State/profile change requires its own research and ADR.
-If that scoped delegation is rejected, dynamic participant acquisition remains
-blocked and the usable-alpha product scope must narrow.
+This is the smallest accepted form that supports the selected headless
+restart/recovery journey without exposing the State root. It preserves Transit
+Grant v1, Route, Descriptor v2, and Target semantics; the issuer profile and
+credential request/outcome are explicitly versioned.
 
 ## Disposition
 
-R-128 is open and blocks only participant-acquisition implementation. No ADR or
-experiment is created by this record. The first independent headless
-build/test/artifact slice remains valid. The next decision slice must either
-select a bounded owner/lifecycle and promote it to current product/technical
-owners (and an ADR if required), or retain the journey as blocked and select a
-different usable-alpha scope.
+Decided by the Product Owner on 2026-08-30 and promoted to ADR-0062 plus
+`docs/technical/transit-grant-acquisition.md`. R-128 no longer blocks
+implementation; it now gates conformance. The complete headless candidate still
+requires the Endpoint acquisition owner, local Application Interface, Browser
+extraction, dependency/enrollment/artifact separation, and artifact-native
+journey selected jointly with R-129. No experiment or implementation result is
+claimed by this decision record.

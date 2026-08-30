@@ -53,17 +53,17 @@ Repository co-location remains governed by ADR-0010. This plan separates
 Modules, processes, artifacts, and dependency direction; it does not select a
 multi-repository organization.
 
-## Decision-relevant question
+## Accepted participant-acquisition dependency
 
-The selected direction is tested by
-[R-128](../research/records/r-128-headless-participant-acquisition.md), the
-current decision-relevant question. It blocks participant-acquisition
-implementation only; the independent headless build and artifact boundary may
-proceed:
+The selected direction was tested by
+[R-128](../research/records/r-128-headless-participant-acquisition.md). The
+Product Owner accepted ADR-0062's purpose-scoped signer, durable issuer
+budget/idempotency, fixed encrypted outcomes, and Endpoint-owned at-most-once
+lifecycle. Participant acquisition may proceed only through that boundary:
 
-> Which enrolled owner supplies a headless Endpoint with current State, Entry,
-> and one-use transport inputs for publish/open/withdraw without operator route
-> facts or Browser ownership?
+> The enrolled Endpoint composes authenticated State and Entry, reconciles one
+> exact Request ID through the State-selected purpose-scoped issuer, and keeps
+> the resulting one-use transport input below the local Application Interface.
 
 The proposed direction is falsified or must be narrowed if any of these is
 required:
@@ -191,6 +191,22 @@ tests and an evidence-impact statement.
 The following slices implement the selected product separation and accepted
 preliminary remediation that shares the same cohesive root cause. Unrelated
 findings remain separate change waves.
+
+The implementation waves have one dependency order even though they close one
+product objective:
+
+| Wave | Depends on | Coherent result |
+|---|---|---|
+| B1 scoped issuance | ADR-0062 and current State/Entry/Grant contracts | Purpose-scoped signer profile, durable finite budget/idempotency, and fixed encrypted outcomes without State root custody. |
+| B2 Endpoint acquisition | B1 | Durable pending/reconcile/present/burn lifecycle consuming current State, Entry, and one-use transport input. |
+| B3 Application Interface | B2 and existing Connection/Service owners | Narrow separately authorized Connection and Service Administration surfaces used by CLI and Browser Adapter. |
+| B4 Browser extraction | B3 | HTTP/Firefox/XPI/native-host presentation outside Endpoint, with the known transparent-origin defect retained as a separate dependency. |
+| B5 dependency and artifacts | B4 | Browser-free transitive command graph, separate enrollment-v3/v4 inventories and lanes, and real named packaged binaries. |
+| B6 headless qualification | B5 | Unpacked artifact-native enroll/acquire/start/publish/open/bytes/withdraw/restart-recovery journey without Browser, fixtures, or operator Route facts. |
+
+Each wave is independently testable and commit-scoped. Later waves may move
+code exposed by an earlier one, but they may not redefine its authority,
+durability, Route, Target, or wire contract implicitly.
 
 ### 1. Freeze the product and authority map
 

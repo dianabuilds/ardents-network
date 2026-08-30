@@ -62,6 +62,12 @@ and their bounded duty resources.  It claims neither unlinkable admission nor
 resistance to a malicious selected Initiator/issuer.  A hostile-peer,
 unlinkable, rate-limited membership credential is separate H4-6 research.
 
+ADR-0062 supersedes this decision's online signer custody and participant
+lifecycle: the issuer uses a separately scoped State-authenticated Grant key,
+not an Epoch authority private key, and owns durable finite budget/idempotency
+with fixed encrypted outcomes. This ADR continues to own Descriptor v2 and the
+target-free Credential Relay shape.
+
 ## Consequences
 
 - Dynamic and fixed Descriptor authorization have distinct versioned wire

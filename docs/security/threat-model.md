@@ -960,6 +960,18 @@ or privacy claim.
   version-compatible Network Epoch state. Authorization is independent of
   distribution: package, cache, mirror, peer, or imported file may carry the same
   authenticated bytes but cannot make different bytes authoritative.
+- A dynamic Transit Grant signer is a distinct State-authenticated purpose key,
+  never an Epoch authority or holder of a State private key. Its exclusive
+  durable duty root fixes one finite global budget and a bounded Request-ID
+  idempotency ledger; rollback, corruption, scope substitution, withdrawal, or
+  exhaustion fails closed. Compromise can spend only the remaining current-duty
+  budget and cannot authorize State, Route selection, Target, Namespace,
+  Release, or enrollment.
+- Endpoint Transit Grant acquisition persists one exact target-free request and
+  one-use TLS key before exchange. Reconciliation may repeat only that Request
+  ID and byte-identical tuple. Once Node presentation begins, every success or
+  ambiguity burns the attempt and erases the key; it cannot replay an
+  Application operation or create an implicit replacement request.
 - A directly contacted bootstrap, Candidate Materialization, authenticated-time,
   or Release Safety distributor may observe requester origin, public artifact,
   timing, and probable Ardents use. For every mandatory pre-Route artifact class,

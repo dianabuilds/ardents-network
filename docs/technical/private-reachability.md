@@ -126,7 +126,9 @@ The Publisher supplies:
   an Endpoint must not invent or substitute either under that Grant. Under v2
   it instead obtains one exact target-free Grant through the separate
   State-selected Credential Relay, and must not reinterpret v1 as that
-  permission;
+  permission. The separate purpose-scoped signer, durable budget, fixed
+  encrypted outcomes, and Endpoint reconciliation lifecycle are owned by
+  [Transit Grant acquisition](transit-grant-acquisition.md);
 - no Node endpoint literal, User identity, Entry Invite, Route, Application
   bytes, Service Authority private material, or Publisher ordinary origin.
 

@@ -59,6 +59,12 @@ Issuance is a finite project-operated action at publication time for the
 closed alpha. It is not a permissionless resource market, public control
 plane, availability promise, or independent-operator claim.
 
+For Descriptor v2 dynamic issuance, ADR-0062 supersedes only this ADR's signer
+authority and custody: current State authenticates a distinct purpose-scoped
+Grant signer which is not an Epoch authority and has no State private key. The
+Transit Grant v1 bytes, signature domain, exact binding, receiving-Node replay
+ledger, and adjacent-hop semantics remain owned here.
+
 ## Consequences
 
 - The Node receives a locally verifiable one-use capability without a live
