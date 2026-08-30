@@ -55,13 +55,15 @@ multi-repository organization.
 
 ## Decision-relevant question
 
-The selected direction is tested by this decision-relevant question:
+The selected direction is tested by
+[R-128](../research/records/r-128-headless-participant-acquisition.md), the
+current decision-relevant question. It blocks participant-acquisition
+implementation only; the independent headless build and artifact boundary may
+proceed:
 
-> Can the maintained Endpoint and Node form one complete headless Ardents
-> product while browser and Desktop behavior is supplied by replaceable local
-> Adapters, without duplicating network behavior, weakening the Application
-> Interface, or creating an unsupportable release burden for the one-to-one
-> team?
+> Which enrolled owner supplies a headless Endpoint with current State, Entry,
+> and one-use transport inputs for publish/open/withdraw without operator route
+> facts or Browser ownership?
 
 The proposed direction is falsified or must be narrowed if any of these is
 required:
