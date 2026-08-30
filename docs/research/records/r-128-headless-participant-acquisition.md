@@ -154,6 +154,40 @@ decision slice.
 - **Inference:** Implementing the complete participant journey now would require
   choosing at least one owner or lifecycle rule not established by accepted
   product, research, or ADR material.
+- **Current-code fact (2026-08-30):** the maintained
+  `credential.Issuer` accepts the raw Ed25519 `GrantSigner`, keeps it in the
+  online issuer process, and signs every accepted Transit Grant with it. The
+  Endpoint and receiving Node accept that signer only when its public-key
+  identifier is one of the current Network State authorities. This is not a
+  separately scoped transit-issuance key.
+- **Accepted-contract fact (2026-08-30):** R-121 and ADR-0053 make the
+  functional-alpha Network State authority a separate encrypted 1-of-1
+  Product Owner-held seed. Its private key may not enter a VPS, and its Module
+  exposes neither the seed nor an arbitrary signing capability. ADR-0047's
+  online State-authority signing operation therefore cannot be composed with
+  the accepted functional-alpha custody contract.
+- **Current-code fact (2026-08-30):** `ardents-node` does not start a
+  `transit-issuance` duty. Maintained production code has no caller of
+  `credential.NewIssuer`; current callers are behavior tests with temporary
+  keys. The conflict is consequently a design and operations blocker, not
+  evidence that a real State authority key has already been placed on a VPS.
+- **Design comparison (2026-08-30):** returning a Grant, TLS key, State view,
+  Entry contact, Route, or issuer fact through a CLI-facing Interface would
+  spread crash, spend, and erasure ordering across callers. The smallest deep
+  Module keeps acquisition inside the Endpoint. It retains at most one
+  non-secret durable pending marker, keeps the one-use private key volatile,
+  and treats every crash after a possible issuance as terminal at-most-once
+  loss with no automatic retry or Application-operation replay.
+- **Ownership conclusion (2026-08-30):** the signer-side
+  `transit-issuance` duty is the only honest owner of a durable finite issuance
+  budget. It must consume one exact State-duty-scoped unit before signing;
+  ambiguous failure burns that unit. Endpoint, Entry, Initiator, Browser, CLI,
+  and the relay Adapter cannot enforce an issuer-wide budget.
+- **Protocol consequence (2026-08-30):** the current issuer collapses budget
+  exhaustion, withdrawal, and ordinary unavailability into one response. An
+  honest remote `exhausted` diagnostic requires a fixed-size encrypted,
+  versioned credential outcome. Without that separately accepted protocol
+  change the Endpoint may report only generic credential unavailability.
 
 ## Options
 
@@ -179,11 +213,31 @@ actual Product Owner-and-Codex team.
 
 ## Recommendation
 
-Choose none yet. Product Owner acceptance is required for the durable owner and
-lifecycle facts above. Confidence is high that the present owners are
-insufficient for honest implementation; the strongest counterargument is that
-the existing Endpoint and Credential Relay code may already contain enough
-mechanics, but mechanics alone do not assign product authority or operations.
+Do not deploy or implement the current dynamic issuer with the functional-alpha
+Network State authority key. That would directly contradict R-121 and ADR-0053
+and would give one online process an unscoped copy of the sole 1-of-1 State
+signing key.
+
+The proposed participant lifecycle is Endpoint-owned and at-most-once:
+
+1. the Endpoint derives Capability Readiness from its authenticated enrollment,
+   current State, and the capability's distinct Entry Set;
+2. one operation creates a volatile key and one durable non-secret pending
+   marker before the Credential Relay exchange;
+3. a successful exact Grant is consumed immediately by the same Endpoint-owned
+   operation and erased on every terminal outcome;
+4. a crash, State successor, withdrawal, or ambiguous response burns the pending
+   attempt and never resumes or retries the Application operation; and
+5. the signer-side duty atomically consumes its separate finite durable budget
+   before signing.
+
+Before implementation, the Product Owner must choose whether to authorize a
+new bounded decision for a State-authenticated, purpose-scoped online Transit
+Grant signer and fixed encrypted issuance outcomes. That successor may preserve
+the Transit Grant, Route, and Target grammars, but it must not reuse a Network
+State root key and any State/profile change requires its own research and ADR.
+If that scoped delegation is rejected, dynamic participant acquisition remains
+blocked and the usable-alpha product scope must narrow.
 
 ## Disposition
 
