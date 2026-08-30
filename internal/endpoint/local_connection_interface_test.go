@@ -7,6 +7,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 func TestLocalConnectionInterfaceCarriesOnlyServiceLinkBytesAndTerminal(t *testing.T) {
@@ -99,5 +101,29 @@ func TestLocalApplicationCancellationClosesEstablishedAttachment(t *testing.T) {
 	case <-finished:
 	case <-time.After(time.Second):
 		t.Fatal("cancelled local Application attachment remained blocked")
+	}
+}
+
+func TestLocalConnectionInterfaceReturnsSpecificAcquisitionRefusal(t *testing.T) {
+	for outcome, want := range map[credential.Outcome]string{
+		credential.Exhausted:   "transit grant exhausted: current issuer budget is exhausted",
+		credential.Withdrawn:   "transit grant withdrawn: current issuer duty is withdrawn",
+		credential.Unavailable: "transit grant unavailable: current issuer could not provide a grant",
+	} {
+		t.Run(string(outcome), func(t *testing.T) {
+			path := shortApplicationPath(t)
+			server, err := openLocalConnectionInterface(localConnectionInterfaceConfig{Path: path,
+				Open: func(context.Context, string) (*ApplicationConnection, error) {
+					return nil, transitAcquisitionOutcomeError{outcome: outcome}
+				}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = server.Close() })
+			_, err = DialLocalApplication(t.Context(), path, "ardents-alpha://reference")
+			if err == nil || err.Error() != want {
+				t.Fatalf("local acquisition refusal = %v", err)
+			}
+		})
 	}
 }

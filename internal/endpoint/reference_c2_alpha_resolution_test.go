@@ -76,32 +76,3 @@ func c2PrivateAlphaBinding(t *testing.T, network, target [32]byte, now time.Time
 	}
 	return binding
 }
-
-// c2IssuedAlphaBinding is deliberately test-only input for C2 refusal cases
-// that must stop before any resolution attempt. Successful C2 coverage uses
-// c2PrivateAlphaBinding above.
-func c2IssuedAlphaBinding(t *testing.T, network, target [32]byte, now time.Time) alpha.Binding {
-	t.Helper()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	link, err := alpha.ParseServiceLink("ardents-alpha://reference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "c2-refusal-test", Network: network, Serial: 1,
-		NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute), Bindings: []alpha.BindingInput{{Link: link, Target: target}}}, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corpus, err := alpha.OpenCorpus(public, raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	binding, err := corpus.Resolve(link, now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return binding
-}

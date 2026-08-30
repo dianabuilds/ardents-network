@@ -116,3 +116,52 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 		t.Fatalf("administration output = %s", output.Bytes())
 	}
 }
+
+func TestHeadlessOpenReturnsFailureStatusAndRemovesPartialOutput(t *testing.T) {
+	socket := filepath.Join(os.TempDir(), "ahf-"+time.Now().Format("150405.000000")+".sock")
+	defer os.Remove(socket)
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			return
+		}
+		defer connection.Close()
+		header := make([]byte, 6)
+		_, _ = io.ReadFull(connection, header)
+		link := make([]byte, int(binary.BigEndian.Uint16(header[4:])))
+		_, _ = io.ReadFull(connection, link)
+		_, _ = connection.Write([]byte{1})
+		for {
+			var frame [4]byte
+			_, _ = io.ReadFull(connection, frame[:])
+			length := binary.BigEndian.Uint32(frame[:])
+			if length == 0 {
+				break
+			}
+			_, _ = io.CopyN(io.Discard, connection, int64(length))
+		}
+		class, reason := []byte("abrupt connection loss"), []byte("publisher stopped")
+		terminal := make([]byte, 8+len(class)+len(reason))
+		binary.BigEndian.PutUint32(terminal[:4], ^uint32(0))
+		binary.BigEndian.PutUint16(terminal[4:6], uint16(len(class)))
+		binary.BigEndian.PutUint16(terminal[6:8], uint16(len(reason)))
+		copy(terminal[8:], class)
+		copy(terminal[8+len(class):], reason)
+		_, _ = connection.Write(terminal)
+	}()
+	inputPath, outputPath := filepath.Join(t.TempDir(), "request"), filepath.Join(t.TempDir(), "response")
+	if err := os.WriteFile(inputPath, []byte("request"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runHeadlessOpen(t.Context(), socket, "ardents-alpha://service.alice", inputPath, outputPath, io.Discard); err == nil {
+		t.Fatal("failed Application terminal returned a successful CLI status")
+	}
+	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
+		t.Fatalf("failed Application retained output: %v", err)
+	}
+}

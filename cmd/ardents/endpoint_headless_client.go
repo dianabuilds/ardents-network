@@ -52,6 +52,9 @@ func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, output
 	if !open || outcome.Class == "" {
 		return errors.New("headless Application ended without a terminal outcome")
 	}
+	if outcome.Class != "clean service connection close" {
+		return errors.New(outcome.Class + ": " + outcome.Reason)
+	}
 	if err := result.Sync(); err != nil {
 		return err
 	}

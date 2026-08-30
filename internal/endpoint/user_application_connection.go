@@ -92,7 +92,7 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 	binding *alpha.Binding) (*ApplicationConnection, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} ||
 		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) {
-		return nil, errors.New("User Application Connection input is incomplete")
+		return nil, errors.New("user Application Connection input is incomplete")
 	}
 	routeInput := userRouteRequest{Introduction: input.Introduction, Reachability: input.Reachability}
 	if binding != nil {
@@ -126,7 +126,7 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 		SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes, At: at,
 		OnAuthenticated: func(authenticated [32]byte) error {
 			if authenticated != route.AuthenticatedTarget {
-				return errors.New("Application Connection authenticated a different Target")
+				return errors.New("application Connection authenticated a different Target")
 			}
 			close(ready)
 			return nil

@@ -17,7 +17,7 @@ func attachTransitGrantSigner(snapshot *dutyFacts, now time.Time) error {
 	}
 	profile, err := credential.DecodeProfile(snapshot.TransitIssuerProfile)
 	if err != nil || profile.NodeID != snapshot.TransitIssuerNodeID {
-		return errors.New("State transit issuance profile is invalid")
+		return errors.New("state transit issuance profile is invalid")
 	}
 	var issuer dutyCandidate
 	found := false
@@ -27,12 +27,12 @@ func attachTransitGrantSigner(snapshot *dutyFacts, now time.Time) error {
 			continue
 		}
 		if found || candidate.Assignment != "transit-issuance" || candidate.PublicKey == [32]byte{} {
-			return errors.New("State transit issuance candidate is ambiguous")
+			return errors.New("state transit issuance candidate is ambiguous")
 		}
 		issuer, found = candidate, true
 	}
 	if !found {
-		return errors.New("State transit issuance candidate is absent")
+		return errors.New("state transit issuance candidate is absent")
 	}
 	deadline := now.Add(15 * time.Second)
 	for _, bound := range []time.Time{snapshot.ValidUntil, issuer.ValidUntil, issuer.AssignmentNotAfter, profile.AssignmentNotAfter} {
@@ -41,7 +41,7 @@ func attachTransitGrantSigner(snapshot *dutyFacts, now time.Time) error {
 		}
 	}
 	if !now.Before(deadline) || credential.VerifyProfile(profile, snapshot.NetworkID, issuer.NodeID, issuer.PublicKey, now, deadline) != nil {
-		return errors.New("State transit issuance profile is not current")
+		return errors.New("state transit issuance profile is not current")
 	}
 	if profile.Version == 1 {
 		return nil

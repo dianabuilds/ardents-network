@@ -13,109 +13,109 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-// alphaBrowserCredentialIssuerView is deliberately additional to the stable
-// Alpha Browser Entry State view: Descriptor v1 must continue its fixed-Grant path, while a
+// transitCredentialIssuerView is deliberately additional to the stable
+// Application State view: Descriptor v1 must continue its fixed-Grant path, while a
 // Descriptor v2 fails closed if the current State cannot project this new
 // exact issuer duty.
-type alphaBrowserCredentialIssuerView interface {
+type transitCredentialIssuerView interface {
 	CredentialIssuer(time.Time, time.Time) (state.TransitIssuer, bool)
 }
 
-type alphaBrowserSubmission struct {
+type transitCredentialSubmission struct {
 	authorization []byte
 	attachment    [32]byte
 	certificate   tls.Certificate
 	finish        func(bool) error
 }
 
-func (endpoint *endpoint) alphaBrowserSubmission(ctx context.Context, view ApplicationStateView, epoch state.ResolutionEpoch,
-	entry ApplicationEntry, initiator, introduction TransitPeer, slot reachability.Introduction, at, deadline time.Time) (alphaBrowserSubmission, error) {
+func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view ApplicationStateView, epoch state.ResolutionEpoch,
+	entry ApplicationEntry, initiator, introduction TransitPeer, slot reachability.Introduction, at, deadline time.Time) (transitCredentialSubmission, error) {
 	if entry == nil {
-		return alphaBrowserSubmission{}, errors.New("credential relay Entry owner is unavailable")
+		return transitCredentialSubmission{}, errors.New("credential relay Entry owner is unavailable")
 	}
 	if slot.SubmissionMode == reachability.SubmissionFixedGrant {
-		attachment, err := alphaBrowserServiceAttachment(slot.SubmissionAuthorization, epoch, introduction.NodeID, slot.NotAfter)
+		attachment, err := applicationServiceAttachment(slot.SubmissionAuthorization, epoch, introduction.NodeID, slot.NotAfter)
 		if err != nil {
-			return alphaBrowserSubmission{}, err
+			return transitCredentialSubmission{}, err
 		}
 		// Descriptor v1 already carries its fixed Grant.  Do not hand it back
 		// through the v2-only caller input: OpenUserReachabilityRoute takes the
 		// exact descriptor field for this compatibility path.
-		return alphaBrowserSubmission{attachment: attachment}, nil
+		return transitCredentialSubmission{attachment: attachment}, nil
 	}
 	if slot.SubmissionMode != reachability.SubmissionMembershipGrant {
-		return alphaBrowserSubmission{}, errors.New("reachability descriptor submission mode is unsupported")
+		return transitCredentialSubmission{}, errors.New("reachability descriptor submission mode is unsupported")
 	}
-	issuerView, available := view.(alphaBrowserCredentialIssuerView)
+	issuerView, available := view.(transitCredentialIssuerView)
 	if !available {
-		return alphaBrowserSubmission{}, errors.New("current State does not project a transit issuer")
+		return transitCredentialSubmission{}, errors.New("current State does not project a transit issuer")
 	}
 	issuer, available := issuerView.CredentialIssuer(at, deadline)
 	if !available || issuer.NodeID == initiator.NodeID || issuer.NodeID == introduction.NodeID || issuer.Family == initiator.Family || issuer.Family == introduction.Family {
-		return alphaBrowserSubmission{}, errors.New("current State transit issuer is unavailable or overlaps the route")
+		return transitCredentialSubmission{}, errors.New("current State transit issuer is unavailable or overlaps the route")
 	}
 	profile, err := credential.DecodeProfile(issuer.Profile)
 	if err != nil || credential.VerifyProfile(profile, endpoint.network, issuer.NodeID, issuer.PublicKey, at, deadline) != nil {
-		return alphaBrowserSubmission{}, errors.New("current State transit issuer profile is invalid")
+		return transitCredentialSubmission{}, errors.New("current State transit issuer profile is invalid")
 	}
 	if endpoint.transitAcquire == nil {
-		return alphaBrowserSubmission{}, errors.New("Endpoint transit acquisition owner is unavailable")
+		return transitCredentialSubmission{}, errors.New("endpoint transit acquisition owner is unavailable")
 	}
-	carrierAttachment, err := alphaBrowserRandomID()
+	carrierAttachment, err := applicationAttachmentID()
 	if err != nil {
-		return alphaBrowserSubmission{}, errors.New("credential relay attachment is unavailable")
+		return transitCredentialSubmission{}, errors.New("credential relay attachment is unavailable")
 	}
 	scope := transitAcquisitionScope{NetworkID: endpoint.network, Digest: epoch.Digest, Epoch: epoch.Number,
 		IssuerNodeID: issuer.NodeID, IssuerPublicKey: issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(issuer.Profile),
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, IntroductionNodeID: introduction.NodeID, NotAfter: deadline}
 	attempt, err := endpoint.transitAcquire.begin(scope)
 	if err != nil {
-		return alphaBrowserSubmission{}, err
+		return transitCredentialSubmission{}, err
 	}
 	if attempt.Phase == transitPending {
 		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: issuer.PublicKey, Profile: profile,
 			At: at, Deadline: deadline, Exchange: func(exchangeCtx context.Context, envelope []byte) ([]byte, error) {
-				return endpoint.exchangeAlphaBrowserCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
+				return endpoint.exchangeTransitCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
 			}})
 		if err != nil {
 			_ = endpoint.transitAcquire.fail()
-			return alphaBrowserSubmission{}, errors.New("transit issuer is unavailable")
+			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
 		}
 		result, err := client.Issue(ctx, attempt.Request)
 		if err != nil {
 			if !errors.Is(err, credential.ErrExchangeUnavailable) {
 				_ = endpoint.transitAcquire.fail()
 			}
-			return alphaBrowserSubmission{}, errors.New("membership transit credential is unavailable")
+			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
 		}
 		if err := endpoint.transitAcquire.commit(result); err != nil {
-			return alphaBrowserSubmission{}, err
+			return transitCredentialSubmission{}, err
 		}
 		if result.Outcome != credential.Issued {
-			return alphaBrowserSubmission{}, errors.New("membership transit credential is " + string(result.Outcome))
+			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: result.Outcome}
 		}
 		attempt, err = endpoint.transitAcquire.begin(scope)
 		if err != nil {
-			return alphaBrowserSubmission{}, err
+			return transitCredentialSubmission{}, err
 		}
 	}
 	presenting, err := endpoint.transitAcquire.present(scope)
 	if err != nil {
-		return alphaBrowserSubmission{}, err
+		return transitCredentialSubmission{}, err
 	}
 	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
 	if err != nil {
 		_ = endpoint.transitAcquire.finish(false)
-		return alphaBrowserSubmission{}, err
+		return transitCredentialSubmission{}, err
 	}
-	return alphaBrowserSubmission{authorization: presenting.Grant, attachment: presenting.Request.AttachmentID,
+	return transitCredentialSubmission{authorization: presenting.Grant, attachment: presenting.Request.AttachmentID,
 		certificate: presenting.Certificate, finish: func(presented bool) error {
 			erase()
 			return endpoint.transitAcquire.finish(presented)
 		}}, nil
 }
 
-func (endpoint *endpoint) exchangeAlphaBrowserCredential(ctx context.Context, source route.EntryAcquirer, epoch state.ResolutionEpoch,
+func (endpoint *endpoint) exchangeTransitCredential(ctx context.Context, source route.EntryAcquirer, epoch state.ResolutionEpoch,
 	initiator TransitPeer, issuer state.TransitIssuer, attachment [32]byte, deadline time.Time, envelope []byte) ([]byte, error) {
 	if endpoint == nil || ctx == nil || source == nil || epoch.NetworkID != endpoint.network || epoch.Digest == [32]byte{} || epoch.Number == 0 ||
 		!validTransitPeer(initiator) || issuer.NodeID == [32]byte{} || issuer.PublicKey == [32]byte{} || attachment == [32]byte{} ||

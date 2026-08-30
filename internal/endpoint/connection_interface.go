@@ -64,7 +64,7 @@ type ConnectionInterface struct {
 func (endpoint *endpoint) OpenConnectionInterface(input ConnectionInterfaceConfig) (*ConnectionInterface, error) {
 	if endpoint == nil || input.Floor == nil || input.Current == nil || input.Entry == nil || input.Principal == [32]byte{} ||
 		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumEndpointStreamBytes {
-		return nil, errors.New("Application Connection Interface input is incomplete")
+		return nil, errors.New("application Connection Interface input is incomplete")
 	}
 	clock := input.Clock
 	if clock == nil {
@@ -77,7 +77,7 @@ func (endpoint *endpoint) OpenConnectionInterface(input ConnectionInterfaceConfi
 // authenticated opaque Application stream and bounded terminal outcome.
 func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) (*ApplicationConnection, error) {
 	if owner == nil || ctx == nil {
-		return nil, errors.New("Application Connection Interface is unavailable")
+		return nil, errors.New("application Connection Interface is unavailable")
 	}
 	link, err := alpha.ParseServiceLink(serviceLink)
 	if err != nil {
@@ -93,7 +93,7 @@ func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) 
 
 func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha.Binding) (*ApplicationConnection, error) {
 	if owner == nil {
-		return nil, errors.New("Application Connection Interface is unavailable")
+		return nil, errors.New("application Connection Interface is unavailable")
 	}
 	return owner.endpoint.openAlphaApplicationForBinding(ctx, binding, owner.input, owner.clock)
 }
@@ -102,7 +102,7 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	clock func() time.Time) (*ApplicationConnection, error) {
 	at := clock().UTC()
 	if at.IsZero() {
-		return nil, errors.New("alpha browser runtime clock is unavailable")
+		return nil, errors.New("application Connection clock is unavailable")
 	}
 	lookupDeadline := at.Add(15 * time.Second)
 	view, err := input.Current()
@@ -128,11 +128,11 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	if err != nil {
 		return nil, errors.New("current User Entry contact is unavailable")
 	}
-	initiator, err := alphaBrowserInitiator(view, initiatorContact, at, lookupDeadline)
+	initiator, err := applicationInitiator(view, initiatorContact, at, lookupDeadline)
 	if err != nil {
 		return nil, err
 	}
-	lookupAttachment, err := alphaBrowserRandomID()
+	lookupAttachment, err := applicationAttachmentID()
 	if err != nil {
 		return nil, err
 	}
@@ -153,26 +153,26 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 		return nil, errors.New("private reachability descriptor is not current State evidence")
 	}
 	slot := verified.Descriptor.Introduction
-	introduction, err := alphaBrowserStatePeer(view, slot.IntroductionNodeID, "introduction", at, slot.NotAfter)
+	introduction, err := applicationStatePeer(view, slot.IntroductionNodeID, "introduction", at, slot.NotAfter)
 	if err != nil {
 		return nil, err
 	}
-	rendezvous, err := alphaBrowserStatePeer(view, slot.RendezvousNodeID, "rendezvous", at, slot.NotAfter)
+	rendezvous, err := applicationStatePeer(view, slot.RendezvousNodeID, "rendezvous", at, slot.NotAfter)
 	if err != nil {
 		return nil, err
 	}
-	initiator, err = alphaBrowserInitiator(view, initiatorContact, at, slot.NotAfter)
+	initiator, err = applicationInitiator(view, initiatorContact, at, slot.NotAfter)
 	if err != nil {
 		return nil, err
 	}
-	if !distinctAlphaBrowserPeers(gateway, initiator, introduction, rendezvous) {
+	if !distinctApplicationPeers(gateway, initiator, introduction, rendezvous) {
 		return nil, errors.New("state private lookup and C-2 peers overlap")
 	}
 	credentialDeadline := slot.NotAfter
 	if slot.SubmissionMode == reachability.SubmissionMembershipGrant && (!at.Before(credentialDeadline) || credentialDeadline.After(lookupDeadline)) {
 		return nil, errors.New("reachability descriptor exceeds the membership credential window")
 	}
-	submission, err := endpoint.alphaBrowserSubmission(ctx, view, epoch, input.Entry, initiator, introduction, slot, at, credentialDeadline)
+	submission, err := endpoint.acquireTransitCredential(ctx, view, epoch, input.Entry, initiator, introduction, slot, at, credentialDeadline)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	if submission.finish != nil {
 		defer func() { _ = submission.finish(presented) }()
 	}
-	handshake, err := alphaBrowserRandomID()
+	handshake, err := applicationAttachmentID()
 	if err != nil {
 		return nil, err
 	}
@@ -197,15 +197,15 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	return application, err
 }
 
-// alphaBrowserServiceAttachment preserves the one-use binding of a signed
+// applicationServiceAttachment preserves the one-use binding of a signed
 // Transit Grant when a descriptor carries one. Legacy opaque authorizations
 // retain a freshly chosen attachment for the lower-level compatibility path;
 // a byte sequence that identifies itself as a Transit Grant must instead
 // validate against current State and cannot fall back.
-func alphaBrowserServiceAttachment(authorization []byte, epoch state.ResolutionEpoch, introduction [32]byte, notAfter time.Time) ([32]byte, error) {
+func applicationServiceAttachment(authorization []byte, epoch state.ResolutionEpoch, introduction [32]byte, notAfter time.Time) ([32]byte, error) {
 	grant, err := route.DecodeTransitGrant(authorization)
 	if err != nil {
-		return alphaBrowserRandomID()
+		return applicationAttachmentID()
 	}
 	var authority ed25519.PublicKey
 	for _, candidate := range epoch.Authorities {
@@ -226,7 +226,7 @@ func alphaBrowserServiceAttachment(authorization []byte, epoch state.ResolutionE
 	return grant.AttachmentID, nil
 }
 
-func alphaBrowserInitiator(view ApplicationStateView, contact entry.Candidate, at, deadline time.Time) (TransitPeer, error) {
+func applicationInitiator(view ApplicationStateView, contact entry.Candidate, at, deadline time.Time) (TransitPeer, error) {
 	candidate, available := view.Candidate(contact.NodeID, at, deadline)
 	if !available || candidate.Domain != "initiator" || candidate.PublicKey != contact.PublicKey || candidate.Endpoint != contact.Endpoint ||
 		sha256.Sum256([]byte(candidate.Family)) != contact.FamilyID {
@@ -235,7 +235,7 @@ func alphaBrowserInitiator(view ApplicationStateView, contact entry.Candidate, a
 	return TransitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: contact.FamilyID, Endpoint: candidate.Endpoint}, nil
 }
 
-func alphaBrowserStatePeer(view ApplicationStateView, nodeID [32]byte, domain string, at, deadline time.Time) (TransitPeer, error) {
+func applicationStatePeer(view ApplicationStateView, nodeID [32]byte, domain string, at, deadline time.Time) (TransitPeer, error) {
 	candidate, available := view.Candidate(nodeID, at, deadline)
 	if !available || candidate.Domain != domain || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} || candidate.Endpoint == "" {
 		return TransitPeer{}, errors.New("current State C-2 peer is unavailable")
@@ -243,7 +243,7 @@ func alphaBrowserStatePeer(view ApplicationStateView, nodeID [32]byte, domain st
 	return TransitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: sha256.Sum256([]byte(candidate.Family)), Endpoint: candidate.Endpoint}, nil
 }
 
-func distinctAlphaBrowserPeers(gateway state.DestinationResolutionGateway, peers ...TransitPeer) bool {
+func distinctApplicationPeers(gateway state.DestinationResolutionGateway, peers ...TransitPeer) bool {
 	if gateway.NodeID == [32]byte{} || gateway.Family == [32]byte{} || len(peers) != 3 {
 		return false
 	}
@@ -266,10 +266,10 @@ func distinctAlphaBrowserPeers(gateway state.DestinationResolutionGateway, peers
 	return true
 }
 
-func alphaBrowserRandomID() ([32]byte, error) {
+func applicationAttachmentID() ([32]byte, error) {
 	var value [32]byte
 	if _, err := rand.Read(value[:]); err != nil || value == [32]byte{} {
-		return [32]byte{}, errors.New("alpha browser runtime could not create a Route attachment identifier")
+		return [32]byte{}, errors.New("application Connection could not create a Route attachment identifier")
 	}
 	return value, nil
 }

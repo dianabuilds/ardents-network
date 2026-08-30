@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 const (
@@ -104,12 +106,12 @@ func (server *LocalConnectionInterface) handle(local *net.UnixConn) {
 	_ = local.SetDeadline(time.Now().Add(15 * time.Second))
 	serviceLink, err := readLocalApplicationRequest(local)
 	if err != nil {
-		_ = writeLocalApplicationRefusal(local)
+		_ = writeLocalApplicationRefusal(local, err)
 		return
 	}
 	application, err := server.open(server.ctx, serviceLink)
 	if err != nil || application == nil {
-		_ = writeLocalApplicationRefusal(local)
+		_ = writeLocalApplicationRefusal(local, err)
 		return
 	}
 	defer application.Close()
@@ -189,9 +191,26 @@ func readLocalApplicationRequest(reader io.Reader) (string, error) {
 	return string(raw), nil
 }
 
-func writeLocalApplicationRefusal(writer io.Writer) error {
-	_, err := writer.Write([]byte{0})
-	return err
+func writeLocalApplicationRefusal(writer io.Writer, cause error) error {
+	if _, err := writer.Write([]byte{0}); err != nil {
+		return err
+	}
+	return writeLocalApplicationTerminal(writer, localApplicationRefusal(cause))
+}
+
+func localApplicationRefusal(cause error) ApplicationOutcome {
+	var acquisition transitAcquisitionOutcomeError
+	if errors.As(cause, &acquisition) {
+		switch acquisition.outcome {
+		case credential.Exhausted:
+			return ApplicationOutcome{Class: "transit grant exhausted", Reason: "current issuer budget is exhausted"}
+		case credential.Withdrawn:
+			return ApplicationOutcome{Class: "transit grant withdrawn", Reason: "current issuer duty is withdrawn"}
+		default:
+			return ApplicationOutcome{Class: "transit grant unavailable", Reason: "current issuer could not provide a grant"}
+		}
+	}
+	return ApplicationOutcome{Class: "service unavailable", Reason: "Endpoint could not open the selected Service Link"}
 }
 
 func readLocalApplicationFrames(reader io.Reader, application io.Writer) error {
@@ -291,9 +310,17 @@ func DialLocalApplication(ctx context.Context, path, serviceLink string) (*Local
 		return nil, err
 	}
 	var status [1]byte
-	if _, err := io.ReadFull(connection, status[:]); err != nil || status[0] != 1 {
+	if _, err := io.ReadFull(connection, status[:]); err != nil {
 		_ = connection.Close()
 		return nil, errors.New("local Application Connection is unavailable")
+	}
+	if status[0] != 1 {
+		outcome, refusalErr := readLocalApplicationRefusal(connection)
+		_ = connection.Close()
+		if refusalErr != nil {
+			return nil, errors.New("local Application Connection is unavailable")
+		}
+		return nil, errors.New(outcome.Class + ": " + outcome.Reason)
 	}
 	_ = connection.SetDeadline(time.Time{})
 	stream, sink := io.Pipe()
@@ -302,6 +329,14 @@ func DialLocalApplication(ctx context.Context, path, serviceLink string) (*Local
 	opened.stopContext = context.AfterFunc(ctx, func() { _ = opened.Close() })
 	go opened.receive()
 	return opened, nil
+}
+
+func readLocalApplicationRefusal(reader io.Reader) (ApplicationOutcome, error) {
+	var marker [4]byte
+	if _, err := io.ReadFull(reader, marker[:]); err != nil || binary.BigEndian.Uint32(marker[:]) != localApplicationTerminal {
+		return ApplicationOutcome{}, errors.New("local Application refusal is invalid")
+	}
+	return readLocalApplicationTerminal(reader)
 }
 
 func (connection *LocalApplicationConnection) Read(destination []byte) (int, error) {

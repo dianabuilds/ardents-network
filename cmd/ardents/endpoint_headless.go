@@ -58,7 +58,7 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (run
 		return err
 	}
 	clock := time.Now
-	networkConfig, refreshState, err := alphaBrowserNetworkConfig(plan, clock)
+	networkConfig, refreshState, err := headlessNetworkConfig(plan, clock)
 	if err != nil {
 		return err
 	}
@@ -140,12 +140,12 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (run
 	return encoder.Encode(headlessRuntimeEvent{"headless-runtime-stopped", hex.EncodeToString(plan.NetworkID[:]), ""})
 }
 
-// alphaBrowserNetworkConfig preserves one owner for a State root. A static
+// headlessNetworkConfig preserves one owner for a State root. A static
 // root is useful for deliberately offline qualification. A participant that
 // supplies a source plan must give the same State trust anchors and local
 // clock owner to this runtime; it cannot make a second process mutate the
 // retained root underneath the participant runtime.
-func alphaBrowserNetworkConfig(plan decodedHeadlessRuntimePlan, clock func() time.Time) (state.Config, bool, error) {
+func headlessNetworkConfig(plan decodedHeadlessRuntimePlan, clock func() time.Time) (state.Config, bool, error) {
 	if clock == nil {
 		return state.Config{}, false, errors.New("headless runtime clock is unavailable")
 	}
@@ -157,14 +157,14 @@ func alphaBrowserNetworkConfig(plan decodedHeadlessRuntimePlan, clock func() tim
 	if err != nil {
 		return state.Config{}, false, fmt.Errorf("read participant Network State source plan: %w", err)
 	}
-	if !matchesAlphaBrowserSourcePlan(plan, config) {
+	if !matchesHeadlessSourcePlan(plan, config) {
 		return state.Config{}, false, errors.New("participant Network State source plan does not match the headless runtime")
 	}
 	config.AcceptedProfile, config.Clock = route.Profile, clock
 	return config, true, nil
 }
 
-func matchesAlphaBrowserSourcePlan(plan decodedHeadlessRuntimePlan, config state.Config) bool {
+func matchesHeadlessSourcePlan(plan decodedHeadlessRuntimePlan, config state.Config) bool {
 	return config.NetworkID == plan.NetworkID && config.Threshold == plan.NetworkThreshold &&
 		sameAuthorities(config.Authorities, plan.NetworkAuthorities) && sameOperatorPath(config.LocalRoleStateRoot, plan.LocalRoleStateRoot) &&
 		sameOperatorPath(config.ClockObservationFile, plan.TimeConfidenceFile) && config.AutomaticRefreshInterval > 0

@@ -132,19 +132,19 @@ func TestHeadlessRuntimeSourcePlanMustShareItsStateOwners(t *testing.T) {
 		headlessRuntimePlan: headlessRuntimePlan{NetworkThreshold: 1, LocalRoleStateRoot: sharedRoles, TimeConfidenceFile: sharedClock}}
 	matching := state.Config{NetworkID: plan.NetworkID, Authorities: map[[32]byte]ed25519.PublicKey{identity: public}, Threshold: 1,
 		LocalRoleStateRoot: sharedRoles, ClockObservationFile: sharedClock, AutomaticRefreshInterval: time.Second}
-	if !matchesAlphaBrowserSourcePlan(plan, matching) {
+	if !matchesHeadlessSourcePlan(plan, matching) {
 		t.Fatal("matching source plan was rejected")
 	}
 	matching.LocalRoleStateRoot = filepath.Join(directory, "other-roles")
-	if matchesAlphaBrowserSourcePlan(plan, matching) {
+	if matchesHeadlessSourcePlan(plan, matching) {
 		t.Fatal("source plan with a different local duty owner was accepted")
 	}
 	matching.LocalRoleStateRoot, matching.ClockObservationFile = sharedRoles, filepath.Join(directory, "other-clock")
-	if matchesAlphaBrowserSourcePlan(plan, matching) {
+	if matchesHeadlessSourcePlan(plan, matching) {
 		t.Fatal("source plan with a different clock owner was accepted")
 	}
 	matching.ClockObservationFile, matching.AutomaticRefreshInterval = sharedClock, 0
-	if matchesAlphaBrowserSourcePlan(plan, matching) {
+	if matchesHeadlessSourcePlan(plan, matching) {
 		t.Fatal("source plan without automatic refresh was accepted")
 	}
 }

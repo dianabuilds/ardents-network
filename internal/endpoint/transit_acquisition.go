@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"sync"
 	"time"
@@ -35,6 +34,18 @@ const (
 var errTransitAcquisitionTerminal = errors.New("transit acquisition is terminal")
 
 type transitAcquisitionPhase string
+
+type transitAcquisitionOutcomeError struct {
+	outcome credential.Outcome
+}
+
+func (failure transitAcquisitionOutcomeError) Error() string {
+	return "transit acquisition is terminal: " + string(failure.outcome)
+}
+
+func (failure transitAcquisitionOutcomeError) Unwrap() error {
+	return errTransitAcquisitionTerminal
+}
 
 type transitAcquisitionConfig struct {
 	Root   string
@@ -140,7 +151,7 @@ func (owner *transitAcquisition) begin(scope transitAcquisitionScope) (transitAc
 	if owner.state.Phase != "" {
 		if terminalTransitPhase(owner.state.Phase) {
 			if (owner.state.Phase == transitExhausted || owner.state.Phase == transitWithdrawn) && owner.state.matches(scope) {
-				return transitAcquisitionAttempt{}, fmt.Errorf("%w: %s", errTransitAcquisitionTerminal, owner.state.Phase)
+				return transitAcquisitionAttempt{}, transitAcquisitionOutcomeError{outcome: credential.Outcome(owner.state.Phase)}
 			}
 			owner.state = transitAcquisitionState{}
 		} else if !owner.state.matches(scope) {
