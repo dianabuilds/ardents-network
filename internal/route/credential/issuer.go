@@ -11,17 +11,24 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cloudflare/circl/hpke"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/openpcc/ohttp"
 )
+
+type issuerConfig struct {
+	NetworkID, NodeID  [32]byte
+	GrantSigner        ed25519.PrivateKey
+	InitiatorNodeID    [32]byte
+	InitiatorPublicKey [32]byte
+	CurrentDuty        CurrentDuty
+	Clock              func() time.Time
+}
 
 // Issuer is the isolated OHTTP handler for one State-selected transit-issuance
 // duty. It retains no endpoint, name, or unbounded issued-grant history; its
 // finite duty root stores only stable OHTTP material and bounded idempotency.
 type Issuer struct {
-	config        IssuerConfig
+	config        issuerConfig
 	nodePublic    [32]byte
 	profile       Profile
 	profileDigest [32]byte
@@ -31,76 +38,6 @@ type Issuer struct {
 	reserve       func(duty.TransitGrantIssuerScope, [32]byte, [32]byte, [32]byte) ([32]byte, bool, error)
 	withdraw      func(duty.TransitGrantIssuerScope) error
 	close         func() error
-}
-
-// NewIssuer opens one bounded project-operated issuer duty.
-func NewIssuer(config IssuerConfig) (*Issuer, error) {
-	if config.NetworkID == [32]byte{} || config.NodeID == [32]byte{} || len(config.IdentityKey) != ed25519.PrivateKeySize ||
-		len(config.GrantSigner) != ed25519.PrivateKeySize || config.InitiatorNodeID == [32]byte{} || config.InitiatorPublicKey == [32]byte{} ||
-		config.DutyRoot == "" || config.Budget == 0 || config.CurrentDuty == nil || config.Clock == nil || config.Authorize == nil {
-		return nil, errors.New("transit issuance issuer configuration is invalid")
-	}
-	nodePublic := publicKey(config.IdentityKey)
-	currentDuty, available := config.CurrentDuty()
-	if !available || !validStateDuty(currentDuty, config, nodePublic, config.Clock().UTC()) {
-		return nil, errors.New("transit issuance issuer assignment is expired")
-	}
-	kem := hpke.KEM_P256_HKDF_SHA256
-	_, generatedSecret, err := kem.Scheme().GenerateKeyPair()
-	if err != nil {
-		return nil, err
-	}
-	generatedMaterial, err := generatedSecret.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	grantPublic := config.GrantSigner.Public().(ed25519.PublicKey)
-	scope := duty.TransitGrantIssuerScope{NetworkID: currentDuty.NetworkID, Digest: currentDuty.Digest, IssuerNodeID: currentDuty.IssuerNodeID,
-		GrantSignerID: sha256.Sum256(grantPublic), Epoch: currentDuty.Epoch, NotAfter: currentDuty.NotAfter}
-	ledger, err := duty.Open(duty.Config{Root: config.DutyRoot, Clock: config.Clock, Create: config.CreateDutyRoot})
-	if err != nil {
-		return nil, err
-	}
-	retainedMaterial, err := ledger.InitializeTransitGrantIssuer(scope, config.Budget, generatedMaterial)
-	if err != nil {
-		_ = ledger.Close()
-		return nil, err
-	}
-	secret, err := kem.Scheme().UnmarshalBinaryPrivateKey(retainedMaterial)
-	if err != nil {
-		_ = ledger.Close()
-		return nil, errors.New("transit issuance OHTTP private material is invalid")
-	}
-	keyConfig := ohttp.KeyConfig{KeyID: 1, KemID: kem, PublicKey: secret.Public(),
-		SymmetricAlgorithms: []ohttp.SymmetricAlgorithm{{KDFID: hpke.KDF_HKDF_SHA256, AEADID: hpke.AEAD_AES128GCM}}}
-	encoded, err := keyConfig.MarshalBinary()
-	if err != nil {
-		_ = ledger.Close()
-		return nil, err
-	}
-	profile := Profile{Version: profileVersion, NetworkID: config.NetworkID, NodeID: config.NodeID,
-		GrantSignerID: scope.GrantSignerID, GrantSignerPublicKey: publicKey(config.GrantSigner),
-		InitiatorNodeID: config.InitiatorNodeID, InitiatorPublicKey: config.InitiatorPublicKey,
-		KeyConfig: encoded, KeyConfigDigest: sha256.Sum256(encoded), AssignmentNotAfter: currentDuty.NotAfter.UTC()}
-	profile.Signature = ed25519.Sign(config.IdentityKey, profileTranscript(profile))
-	issuer := &Issuer{config: config, nodePublic: nodePublic, profile: profile, scope: scope,
-		find: ledger.FindTransitGrantReservation, reserve: ledger.ReserveTransitGrant,
-		withdraw: ledger.WithdrawTransitGrantIssuer, close: ledger.Close}
-	issuer.config.IdentityKey = nil
-	adapter, err := ohttp.NewGateway(ohttp.KeyPair{SecretKey: secret, KeyConfig: keyConfig})
-	if err != nil {
-		_ = ledger.Close()
-		return nil, err
-	}
-	middleware := ohttp.Middleware(adapter, http.HandlerFunc(issuer.serve))
-	issuer.handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if !issuer.config.Clock().Before(issuer.profile.AssignmentNotAfter) || !issuer.acceptsInitiator(request.TLS) {
-			http.Error(writer, "unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		middleware.ServeHTTP(writer, request)
-	})
-	return issuer, nil
 }
 
 // Handler returns the issuer's OHTTP-only HTTP handler.
@@ -176,9 +113,6 @@ func (issuer *Issuer) issue(request Request, payload []byte, current StateDuty, 
 		}
 	}
 	if !found {
-		if !issuer.config.Authorize(request, now) {
-			return Result{Outcome: Unavailable}
-		}
 		if _, err := rand.Read(grantID[:]); err != nil || grantID == [32]byte{} {
 			return Result{Outcome: Unavailable}
 		}
@@ -233,7 +167,7 @@ func (issuer *Issuer) acceptsInitiatorCertificate(certificate *x509.Certificate)
 	return ok && len(public) == len(issuer.config.InitiatorPublicKey) && string(public) == string(issuer.config.InitiatorPublicKey[:])
 }
 
-func validStateDuty(duty StateDuty, config IssuerConfig, nodePublic [32]byte, now time.Time) bool {
+func validStateDuty(duty StateDuty, config issuerConfig, nodePublic [32]byte, now time.Time) bool {
 	return duty.NetworkID == config.NetworkID && duty.IssuerNodeID == config.NodeID && duty.IssuerPublicKey == nodePublic &&
 		duty.InitiatorNodeID == config.InitiatorNodeID && duty.InitiatorPublicKey == config.InitiatorPublicKey &&
 		duty.GrantSignerPublicKey == publicKey(config.GrantSigner) && duty.Digest != [32]byte{} && duty.Epoch != 0 &&

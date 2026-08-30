@@ -19,10 +19,6 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	grantPublic, grantPrivate, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
 	initiatorPublic, initiatorPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -31,29 +27,26 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		IntroductionNodeID: credentialID(43), AttachmentID: credentialID(44), ClientKeyDigest: credentialID(45),
 		Epoch: 46, NotAfter: now.Add(10 * time.Second)}
 	withdrawn := false
-	duty := func() (StateDuty, bool) {
-		return StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(47),
-			IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(48),
-			InitiatorPublicKey: publicIdentifier(initiatorPublic), GrantSignerPublicKey: publicIdentifier(grantPublic),
-			Epoch: request.Epoch, NotAfter: now.Add(time.Minute), Withdrawn: withdrawn}, true
-	}
 	root := t.TempDir()
 	initiatorCertificate := credentialCertificate(t, initiatorPrivate, 10)
 
-	start := func(create bool) (*Issuer, *httptest.Server, *http.Client) {
+	start := func() (*Issuer, *httptest.Server, *http.Client) {
 		t.Helper()
-		issuer, openErr := NewIssuer(IssuerConfig{NetworkID: request.NetworkID, NodeID: credentialID(47), IdentityKey: issuerPrivate,
-			GrantSigner: grantPrivate, InitiatorNodeID: credentialID(48), InitiatorPublicKey: publicIdentifier(initiatorPublic),
-			DutyRoot: root, CreateDutyRoot: create, Budget: 1, CurrentDuty: duty, Clock: func() time.Time { return now },
-			Authorize: func(Request, time.Time) bool { return true }})
-		if openErr != nil {
-			t.Fatal(openErr)
-		}
-		if issuer.Profile().GrantSignerPublicKey != publicIdentifier(grantPublic) ||
-			issuer.Profile().GrantSignerID != sha256.Sum256(grantPublic) {
+		issuer := openTestRootIssuer(t, root, request.NetworkID, credentialID(47), issuerPrivate,
+			credentialID(48), publicIdentifier(initiatorPublic), now.Add(time.Minute), 1, func() time.Time { return now },
+			func(profile Profile, profileDigest [32]byte) (StateDuty, bool) {
+				return StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(47),
+					IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(48),
+					InitiatorPublicKey: publicIdentifier(initiatorPublic), GrantSignerPublicKey: profile.GrantSignerPublicKey,
+					ProfileDigest: profileDigest, Epoch: request.Epoch, NotAfter: now.Add(time.Minute), Withdrawn: withdrawn}, true
+			})
+		profile := issuer.Profile()
+		grantPublic := ed25519.PublicKey(profile.GrantSignerPublicKey[:])
+		if profile.GrantSignerID != sha256.Sum256(grantPublic) {
 			t.Fatal("issuer profile did not bind the purpose-scoped Grant signer")
 		}
 		server := httptest.NewUnstartedServer(issuer.Handler())
+		var openErr error
 		server.TLS, openErr = issuer.TLSConfig(credentialCertificate(t, issuerPrivate, 11))
 		if openErr != nil {
 			t.Fatal(openErr)
@@ -83,7 +76,9 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		return result
 	}
 
-	issuer, server, httpClient := start(true)
+	issuer, server, httpClient := start()
+	openedProfile := issuer.Profile()
+	grantPublic := ed25519.PublicKey(openedProfile.GrantSignerPublicKey[:])
 	firstProfile, err := EncodeProfile(issuer.Profile())
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +97,7 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		t.Fatalf("first purpose-scoped Grant = %+v, %v", firstGrant, err)
 	}
 
-	issuer, server, httpClient = start(false)
+	issuer, server, httpClient = start()
 	defer server.Close()
 	defer httpClient.CloseIdleConnections()
 	defer func() {

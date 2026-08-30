@@ -17,26 +17,20 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	grantPublic, grantPrivate, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
 	initiatorPublic, _, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuer, err := credential.NewIssuer(credential.IssuerConfig{NetworkID: network, NodeID: issuerID, IdentityKey: issuerPrivate,
-		GrantSigner: grantPrivate, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: [32]byte(initiatorPublic),
-		DutyRoot: t.TempDir(), CreateDutyRoot: true, Budget: 2, Clock: func() time.Time { return now },
-		CurrentDuty: func() (credential.StateDuty, bool) {
+	issuer := openNodeTestIssuer(t, network, issuerID, issuerPrivate, [32]byte{4}, [32]byte(initiatorPublic), now.Add(time.Minute), 2,
+		func() time.Time { return now }, func(profile credential.Profile, profileDigest [32]byte) (credential.StateDuty, bool) {
 			return credential.StateDuty{NetworkID: network, Digest: digest, IssuerNodeID: issuerID,
 				IssuerPublicKey: [32]byte(issuerPublic), InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: [32]byte(initiatorPublic),
-				GrantSignerPublicKey: [32]byte(grantPublic), Epoch: 5, NotAfter: now.Add(time.Minute)}, true
-		}, Authorize: func(credential.Request, time.Time) bool { return true }})
-	if err != nil {
-		t.Fatal(err)
-	}
+				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
+				Epoch: 5, NotAfter: now.Add(time.Minute)}, true
+		})
 	defer func() { _ = issuer.Close() }()
+	issuerProfile := issuer.Profile()
+	grantPublic := ed25519.PublicKey(issuerProfile.GrantSignerPublicKey[:])
 	profile, err := credential.EncodeProfile(issuer.Profile())
 	if err != nil {
 		t.Fatal(err)
@@ -78,4 +72,28 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 	if err := attachTransitGrantSigner(&changed, now); err == nil {
 		t.Fatal("Node accepted an issuer profile whose permitted Initiator did not match State")
 	}
+}
+
+func openNodeTestIssuer(t *testing.T, network, issuerID [32]byte, identity ed25519.PrivateKey,
+	initiatorID, initiatorPublic [32]byte, notAfter time.Time, budget uint16, clock func() time.Time,
+	current func(credential.Profile, [32]byte) (credential.StateDuty, bool),
+) *credential.Issuer {
+	t.Helper()
+	root := t.TempDir()
+	receipt, err := credential.InitializeIssuerRoot(credential.IssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
+		IdentityKey: identity, InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
+		AssignmentNotAfter: notAfter, Budget: budget, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := credential.DecodeProfile(receipt.Profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issuer, err := credential.OpenIssuerFromRoot(credential.RootIssuerConfig{Root: root, NetworkID: network, NodeID: issuerID,
+		IdentityKey: identity, CurrentDuty: func() (credential.StateDuty, bool) { return current(profile, receipt.ProfileDigest) }, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return issuer
 }

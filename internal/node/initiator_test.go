@@ -240,32 +240,24 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T) {
 	_, material, rendezvousConfig := rendezvousFixture(t)
 	issuerCertificate, issuerPublic, issuerPrivate := resolutionGatewayCertificate(t)
-	_, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
 	request := credential.Request{RequestID: [32]byte{80}, NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest,
 		IntroductionNodeID: [32]byte{81}, AttachmentID: [32]byte{82}, ClientKeyDigest: [32]byte{83}, Epoch: rendezvousConfig.Epoch,
 		NotAfter: rendezvousConfig.NotAfter.Add(-time.Second)}
-	issuer, err := credential.NewIssuer(credential.IssuerConfig{NetworkID: request.NetworkID, NodeID: [32]byte{84}, IdentityKey: issuerPrivate,
-		GrantSigner: authorityPrivate, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: material.initiatorPublic,
-		CurrentDuty: func() (credential.StateDuty, bool) {
+	issuer := openNodeTestIssuer(t, request.NetworkID, [32]byte{84}, issuerPrivate, [32]byte{4}, material.initiatorPublic,
+		rendezvousConfig.NotAfter, 2, func() time.Time { return time.Now().UTC() },
+		func(profile credential.Profile, profileDigest [32]byte) (credential.StateDuty, bool) {
 			return credential.StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: [32]byte{84},
 				IssuerPublicKey: issuerPublic, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: material.initiatorPublic,
-				GrantSignerPublicKey: [32]byte(authorityPrivate.Public().(ed25519.PublicKey)), Epoch: request.Epoch,
-				NotAfter: rendezvousConfig.NotAfter}, true
-		}, Clock: func() time.Time { return time.Now().UTC() },
-		Authorize: func(got credential.Request, _ time.Time) bool { return got == request },
-		DutyRoot:  t.TempDir(), CreateDutyRoot: true, Budget: 2})
-	if err != nil {
-		t.Fatal(err)
-	}
+				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
+				Epoch: request.Epoch, NotAfter: rendezvousConfig.NotAfter}, true
+		})
 	defer func() { _ = issuer.Close() }()
 	server := httptest.NewUnstartedServer(issuer.Handler())
-	server.TLS, err = issuer.TLSConfig(issuerCertificate)
+	serverTLS, err := issuer.TLSConfig(issuerCertificate)
 	if err != nil {
 		t.Fatal(err)
 	}
+	server.TLS = serverTLS
 	server.StartTLS()
 	defer server.Close()
 	profile, err := credential.EncodeProfile(issuer.Profile())
@@ -330,7 +322,8 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	if result.Outcome != credential.Issued {
 		t.Fatalf("credential Relay outcome = %q", result.Outcome)
 	}
-	grant, err := route.VerifyTransitGrant(result.Grant, authorityPrivate.Public().(ed25519.PublicKey))
+	issuerProfile := issuer.Profile()
+	grant, err := route.VerifyTransitGrant(result.Grant, ed25519.PublicKey(issuerProfile.GrantSignerPublicKey[:]))
 	if err != nil || grant.AttachmentID != request.AttachmentID || grant.ClientKeyDigest != request.ClientKeyDigest ||
 		grant.TransitNodeID != request.IntroductionNodeID {
 		t.Fatalf("credential Relay Grant = %+v, %v", grant, err)

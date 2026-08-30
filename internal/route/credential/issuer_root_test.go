@@ -10,6 +10,29 @@ import (
 	"time"
 )
 
+func openTestRootIssuer(t *testing.T, root string, network, nodeID [32]byte, identity ed25519.PrivateKey,
+	initiatorID, initiatorPublic [32]byte, notAfter time.Time, budget uint16, clock func() time.Time,
+	current func(Profile, [32]byte) (StateDuty, bool),
+) *Issuer {
+	t.Helper()
+	receipt, err := InitializeIssuerRoot(IssuerRootConfig{Root: root, NetworkID: network, NodeID: nodeID,
+		IdentityKey: identity, InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
+		AssignmentNotAfter: notAfter, Budget: budget, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := DecodeProfile(receipt.Profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issuer, err := OpenIssuerFromRoot(RootIssuerConfig{Root: root, NetworkID: network, NodeID: nodeID,
+		IdentityKey: identity, CurrentDuty: func() (StateDuty, bool) { return current(profile, receipt.ProfileDigest) }, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return issuer
+}
+
 func TestInitializeIssuerRootPublishesOneStableStateBindableProfile(t *testing.T) {
 	now := time.Unix(2_000_700_000, 0).UTC()
 	nodePublic, nodePrivate, err := ed25519.GenerateKey(rand.Reader)

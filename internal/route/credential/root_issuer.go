@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/cloudflare/circl/hpke"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
@@ -49,9 +48,9 @@ func OpenIssuerFromRoot(config RootIssuerConfig) (*Issuer, error) {
 	}
 	now := config.Clock().UTC()
 	current, available := config.CurrentDuty()
-	issuerConfig := IssuerConfig{NetworkID: config.NetworkID, NodeID: config.NodeID, IdentityKey: config.IdentityKey,
+	issuerConfig := issuerConfig{NetworkID: config.NetworkID, NodeID: config.NodeID,
 		GrantSigner: grantPrivate, InitiatorNodeID: profile.InitiatorNodeID, InitiatorPublicKey: profile.InitiatorPublicKey,
-		DutyRoot: config.Root, CurrentDuty: config.CurrentDuty, Clock: config.Clock, Authorize: func(Request, time.Time) bool { return true }}
+		CurrentDuty: config.CurrentDuty, Clock: config.Clock}
 	nodePublic := publicKey(config.IdentityKey)
 	profileDigest := sha256.Sum256(rawProfile)
 	if !available || current.ProfileDigest != profileDigest || !validStateDuty(current, issuerConfig, nodePublic, now) ||
@@ -76,7 +75,6 @@ func OpenIssuerFromRoot(config RootIssuerConfig) (*Issuer, error) {
 	issuer := &Issuer{config: issuerConfig, nodePublic: nodePublic, profile: profile, profileDigest: profileDigest, scope: scope,
 		find: ledger.FindTransitGrantReservation, reserve: ledger.ReserveTransitGrant,
 		withdraw: ledger.WithdrawTransitGrantIssuer, close: ledger.Close}
-	issuer.config.IdentityKey = nil
 	middleware := ohttp.Middleware(adapter, http.HandlerFunc(issuer.serve))
 	issuer.handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if !issuer.config.Clock().Before(issuer.profile.AssignmentNotAfter) || !issuer.acceptsInitiator(request.TLS) {

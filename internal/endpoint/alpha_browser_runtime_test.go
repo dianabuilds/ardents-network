@@ -67,35 +67,25 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 	}
 	transitAuthorityID := sha256.Sum256(transitAuthorityPublic)
 	var (
-		issuerConfig node.CredentialIssuer
-		issuerState  state.TransitIssuer
-		issued       chan credential.Request
+		issuerConfig          node.CredentialIssuer
+		issuerState           state.TransitIssuer
+		membershipGrantPublic ed25519.PublicKey
 	)
 	if membership {
 		issuerCertificate, issuerPublic, issuerPrivate := c2GatewayCertificate(t)
 		issuerID := c2Identifier(149)
-		issued = make(chan credential.Request, 1)
-		issuer, issueErr := credential.NewIssuer(credential.IssuerConfig{NetworkID: network, NodeID: issuerID,
-			IdentityKey: issuerPrivate, GrantSigner: transitAuthorityPrivate, InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
-			CurrentDuty: func() (credential.StateDuty, bool) {
+		issuer := openAlphaRuntimeIssuer(t, network, issuerID, issuerPrivate, initiatorID, initiatorPublic, deadline, func() time.Time { return now },
+			func(profile credential.Profile, profileDigest [32]byte) (credential.StateDuty, bool) {
 				return credential.StateDuty{NetworkID: network, Digest: digest, IssuerNodeID: issuerID, IssuerPublicKey: issuerPublic,
-					InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic, GrantSignerPublicKey: [32]byte(transitAuthorityPublic), Epoch: 10, NotAfter: deadline}, true
-			}, Clock: func() time.Time { return now }, Authorize: func(request credential.Request, at time.Time) bool {
-				if request.NetworkID != network || request.Digest != digest || request.Epoch != 10 ||
-					request.IntroductionNodeID != introductionID || !request.NotAfter.Equal(credentialDeadline) || !at.Equal(now) {
-					return false
-				}
-				issued <- request
-				return true
-			}, DutyRoot: t.TempDir(), CreateDutyRoot: true, Budget: 4})
-		if issueErr != nil {
-			t.Fatal(issueErr)
-		}
+					InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
+					GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
+					Epoch: 10, NotAfter: deadline}, true
+			})
 		defer func() { _ = issuer.Close() }()
 		server := httptest.NewUnstartedServer(issuer.Handler())
-		server.TLS, issueErr = issuer.TLSConfig(issuerCertificate)
-		if issueErr != nil {
-			t.Fatal(issueErr)
+		server.TLS, err = issuer.TLSConfig(issuerCertificate)
+		if err != nil {
+			t.Fatal(err)
 		}
 		server.StartTLS()
 		defer server.Close()
@@ -106,6 +96,8 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 		issuerConfig = node.CredentialIssuer{NodeID: issuerID, PublicKey: issuerPublic, ProfileDigest: sha256.Sum256(profile), URL: server.URL}
 		issuerState = state.TransitIssuer{NodeID: issuerID, PublicKey: issuerPublic, Family: c2Identifier(149), Profile: profile,
 			AssignmentNotAfter: deadline}
+		issuerProfile := issuer.Profile()
+		membershipGrantPublic = ed25519.PublicKey(issuerProfile.GrantSignerPublicKey[:])
 	}
 	transitCertificate, _ := c2Certificate(t, 142, "alpha-runtime-transit-client")
 	transitKey, err := route.ClientTLSKeyDigest(transitCertificate.Leaf)
@@ -171,7 +163,7 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 	defer responder.Close()
 	introductionAdmit := alphaRuntimeIntroductionAdmit([]byte("alpha-runtime-slot"), transitAuthorityPublic, introductionGrant, network, digest, introductionID, slotDeadline)
 	if membership {
-		introductionAdmit = alphaRuntimeMembershipIntroductionAdmit([]byte("alpha-runtime-slot"), transitAuthorityPublic, network, digest, introductionID, slotDeadline, credentialDeadline)
+		introductionAdmit = alphaRuntimeMembershipIntroductionAdmit([]byte("alpha-runtime-slot"), membershipGrantPublic, network, digest, introductionID, slotDeadline, credentialDeadline)
 	}
 	introduction, err := node.StartIntroduction(node.IntroductionConfig{ListenAddress: introductionAddress, Certificate: introductionCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: introductionID, NodePublicKey: introductionPublic, Epoch: 10, NotAfter: deadline,
@@ -307,16 +299,6 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 	if request := <-requestSeen; request == nil || request.Method != http.MethodPost || request.Host != "reference.ard" || request.URL.String() != "/publish?draft=1" {
 		t.Fatalf("Publisher request through State runtime = %#v", request)
 	}
-	if membership {
-		select {
-		case request := <-issued:
-			if request.AttachmentID == [32]byte{} || request.ClientKeyDigest == [32]byte{} {
-				t.Fatalf("membership credential request omitted its adjacent-hop binding: %+v", request)
-			}
-		default:
-			t.Fatal("State-selected issuer did not authorize a membership credential")
-		}
-	}
 	if err := runtime.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -328,6 +310,30 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 	case <-time.After(time.Second):
 		t.Fatal("publisher did not terminate after runtime withdrawal")
 	}
+}
+
+func openAlphaRuntimeIssuer(t *testing.T, network, issuerID [32]byte, identity ed25519.PrivateKey,
+	initiatorID, initiatorPublic [32]byte, notAfter time.Time, clock func() time.Time,
+	current func(credential.Profile, [32]byte) (credential.StateDuty, bool),
+) *credential.Issuer {
+	t.Helper()
+	root := t.TempDir()
+	receipt, err := credential.InitializeIssuerRoot(credential.IssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
+		IdentityKey: identity, InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
+		AssignmentNotAfter: notAfter, Budget: 4, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := credential.DecodeProfile(receipt.Profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issuer, err := credential.OpenIssuerFromRoot(credential.RootIssuerConfig{Root: root, NetworkID: network, NodeID: issuerID,
+		IdentityKey: identity, CurrentDuty: func() (credential.StateDuty, bool) { return current(profile, receipt.ProfileDigest) }, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return issuer
 }
 
 type alphaRuntimeState struct {

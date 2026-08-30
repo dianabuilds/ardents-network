@@ -87,10 +87,6 @@ type Result struct {
 	Grant   []byte
 }
 
-// Authorization is the issuer-local current State and bounded-admission
-// decision. It receives no Entry Invite, browser demand, or Service data.
-type Authorization func(Request, time.Time) bool
-
 // StateDuty is the current State fact an issuer must recheck before it signs.
 // It names the already-selected issuer and Initiator duties only; it carries
 // no Entry Invite, Service, Endpoint, or browser input.
@@ -106,26 +102,6 @@ type StateDuty struct {
 // issuer. The surrounding Node lifecycle owns State acquisition and refresh;
 // Issuer accepts no static replacement duty.
 type CurrentDuty func() (StateDuty, bool)
-
-// IssuerConfig owns one State-selected, project-operated alpha issuer duty.
-// IdentityKey signs its public OHTTP profile; GrantSigner is the distinct
-// purpose-scoped signer selected by that State-authenticated profile. CurrentDuty rechecks the
-// selected issuer/Initiator duty before every signature. Authorize owns the
-// project-operated alpha's separate admission decision. DutyRoot owns the
-// stable OHTTP secret plus bounded budget/idempotency state.
-type IssuerConfig struct {
-	NetworkID, NodeID  [32]byte
-	IdentityKey        ed25519.PrivateKey
-	GrantSigner        ed25519.PrivateKey
-	InitiatorNodeID    [32]byte
-	InitiatorPublicKey [32]byte
-	DutyRoot           string
-	CreateDutyRoot     bool
-	Budget             uint16
-	CurrentDuty        CurrentDuty
-	Clock              func() time.Time
-	Authorize          Authorization
-}
 
 // ClientConfig supplies one already State-selected issuer identity/profile
 // and one Endpoint-owned opaque exchange. It cannot discover an issuer or
