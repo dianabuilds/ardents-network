@@ -1,6 +1,6 @@
 # Transit Grant acquisition
 
-Status: **accepted headless usable-alpha contract; implementation pending.**
+Status: **accepted contract; signer and Endpoint acquisition lifecycle implemented.**
 This document owns the purpose-scoped signer, fixed encrypted outcome, durable
 issuer budget/idempotency, and Endpoint at-most-once acquisition lifecycle
 selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).
@@ -57,8 +57,9 @@ The versioned response has exactly four fixed-size encrypted outcomes:
 | `withdrawn` | The authenticated issuer duty no longer permits new work. | None. |
 | `unavailable` | The request cannot safely produce or disclose another result. | None. |
 
-HTTP status, body length, timing policy, and relay framing do not vary by an
-authenticated outcome. A failure before authenticated OHTTP decoding is only
+HTTP status, body length, and relay framing do not vary by an authenticated
+outcome. Signing, storage, scheduling, and transport can still produce timing
+variation; this contract makes no timing-privacy claim. A failure before authenticated OHTTP decoding is only
 local `unavailable`; the Endpoint never infers `exhausted` or `withdrawn` from
 cleartext transport behavior.
 
@@ -90,8 +91,8 @@ not carried into a successor State duty.
 
 ## Endpoint-owned at-most-once lifecycle
 
-The Endpoint protects at most one acquisition per in-flight operation in its
-existing exclusive protected root. The durable record contains the exact
+The Endpoint protects at most one acquisition per in-flight operation in a
+separate exclusive owner-only root within its protected state profile. The durable record contains the exact
 Request ID/tuple, State-duty identity, one-use TLS private key, phase, and
 terminal class; it contains no Target or Route plan.
 
@@ -140,8 +141,8 @@ fallback.
    crash/reopen matrix.
 3. Project the purpose-scoped signer through current State to Endpoint and
    receiving Node verification.
-4. Implement Endpoint pending/reconcile/present/burn state and terminal CLI
-   diagnostics.
+4. Endpoint pending/reconcile/present/burn state is implemented; terminal
+   Application Interface diagnostics remain part of the headless composition.
 5. Compose that owner into the headless publish/open/withdraw journey before
    artifact-native qualification.
 

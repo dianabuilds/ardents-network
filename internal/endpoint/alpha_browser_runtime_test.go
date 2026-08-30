@@ -236,12 +236,15 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 	defer alphaFloor.Close()
 	statePath := filepath.Join(t.TempDir(), "browser-entry.json")
 	transitClients := map[[32]byte]tls.Certificate{introductionGrant.GrantID: transitCertificate}
+	transitAcquisitionRoot := ""
 	if membership {
 		transitClients = nil
+		transitAcquisitionRoot = filepath.Join(t.TempDir(), "transit-acquisition")
 	}
 	user, err := endpointapi.New(endpointapi.Setup{NetworkID: network, BrokerID: c2Identifier(146), AuthorityPublic: current.Credential.AuthorityPublic[:],
 		IntroductionPublic: make([]byte, 32), ConnectionPrincipal: c2Identifier(147), BrowserEntryStatePath: statePath,
-		TransitClientCertificates: transitClients})
+		TransitClientCertificates: transitClients, TransitAcquisitionRoot: transitAcquisitionRoot,
+		CreateTransitAcquisitionRoot: membership})
 	if err != nil {
 		t.Fatal(err)
 	}

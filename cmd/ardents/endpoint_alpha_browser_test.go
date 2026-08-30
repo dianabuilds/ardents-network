@@ -41,21 +41,22 @@ func TestAlphaBrowserRuntimeRetainsOnlyLocalOwnersUntilStop(t *testing.T) {
 	corpusPublic, corpusRoot := prepareAlphaRuntimeCorpus(t, directory, network.snapshot.NetworkID)
 	planPath := filepath.Join(directory, "alpha-browser-runtime.json")
 	plan := map[string]any{
-		"schema":                  "ardents-alpha-browser-runtime-v1",
-		"network_state_root":      network.root,
-		"entry_state_root":        entryRoot,
-		"alpha_corpus_state_root": corpusRoot,
-		"local_role_state_root":   rolesRoot,
-		"time_confidence_file":    confidence,
-		"network_id":              hex32(network.snapshot.NetworkID),
-		"network_authorities":     []string{hex.EncodeToString(network.authorityPublic)},
-		"network_threshold":       1,
-		"network_profile":         "ardents-interactive-route-v1",
-		"alpha_corpus_authority":  hex.EncodeToString(corpusPublic),
-		"alpha_cohort":            "runtime-test",
-		"broker_id":               hex32([32]byte{71}),
-		"connection_principal":    hex32([32]byte{72}),
-		"bytes_each_direction":    4096,
+		"schema":                   "ardents-alpha-browser-runtime-v1",
+		"network_state_root":       network.root,
+		"entry_state_root":         entryRoot,
+		"transit_acquisition_root": filepath.Join(directory, "transit-acquisition"),
+		"alpha_corpus_state_root":  corpusRoot,
+		"local_role_state_root":    rolesRoot,
+		"time_confidence_file":     confidence,
+		"network_id":               hex32(network.snapshot.NetworkID),
+		"network_authorities":      []string{hex.EncodeToString(network.authorityPublic)},
+		"network_threshold":        1,
+		"network_profile":          "ardents-interactive-route-v1",
+		"alpha_corpus_authority":   hex.EncodeToString(corpusPublic),
+		"alpha_cohort":             "runtime-test",
+		"broker_id":                hex32([32]byte{71}),
+		"connection_principal":     hex32([32]byte{72}),
+		"bytes_each_direction":     4096,
 	}
 	rawPlan, err := json.Marshal(plan)
 	if err != nil {

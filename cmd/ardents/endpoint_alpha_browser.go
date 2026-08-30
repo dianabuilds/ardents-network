@@ -29,20 +29,21 @@ type alphaBrowserRuntimePlan struct {
 	// NetworkSourcePlan is an optional existing direct-Source plan. When it
 	// is present, this runtime owns the State root's initial refresh and its
 	// automatic refresh loop; a separate process cannot share that root lease.
-	NetworkSourcePlan    string   `json:"network_source_plan,omitempty"`
-	EntryStateRoot       string   `json:"entry_state_root"`
-	AlphaCorpusStateRoot string   `json:"alpha_corpus_state_root"`
-	LocalRoleStateRoot   string   `json:"local_role_state_root"`
-	TimeConfidenceFile   string   `json:"time_confidence_file"`
-	NetworkID            string   `json:"network_id"`
-	NetworkAuthorities   []string `json:"network_authorities"`
-	NetworkThreshold     int      `json:"network_threshold"`
-	NetworkProfile       string   `json:"network_profile"`
-	AlphaCorpusAuthority string   `json:"alpha_corpus_authority"`
-	AlphaCohort          string   `json:"alpha_cohort"`
-	BrokerID             string   `json:"broker_id"`
-	ConnectionPrincipal  string   `json:"connection_principal"`
-	BytesEachDirection   uint32   `json:"bytes_each_direction"`
+	NetworkSourcePlan      string   `json:"network_source_plan,omitempty"`
+	EntryStateRoot         string   `json:"entry_state_root"`
+	TransitAcquisitionRoot string   `json:"transit_acquisition_root"`
+	AlphaCorpusStateRoot   string   `json:"alpha_corpus_state_root"`
+	LocalRoleStateRoot     string   `json:"local_role_state_root"`
+	TimeConfidenceFile     string   `json:"time_confidence_file"`
+	NetworkID              string   `json:"network_id"`
+	NetworkAuthorities     []string `json:"network_authorities"`
+	NetworkThreshold       int      `json:"network_threshold"`
+	NetworkProfile         string   `json:"network_profile"`
+	AlphaCorpusAuthority   string   `json:"alpha_corpus_authority"`
+	AlphaCohort            string   `json:"alpha_cohort"`
+	BrokerID               string   `json:"broker_id"`
+	ConnectionPrincipal    string   `json:"connection_principal"`
+	BytesEachDirection     uint32   `json:"bytes_each_direction"`
 }
 
 // runAlphaBrowserRuntime adapts the selected participant-owned Browser Entry
@@ -122,7 +123,8 @@ func runAlphaBrowserRuntimeWithStatePath(ctx context.Context, path string, outpu
 	serviceAuthority := append(ed25519.PublicKey(nil), epoch.Authorities[0].PublicKey[:]...)
 	endpoint, err := endpointapi.New(endpointapi.Setup{NetworkID: plan.NetworkID, BrokerID: plan.BrokerID,
 		AuthorityPublic: serviceAuthority, IntroductionPublic: serviceAuthority, ConnectionPrincipal: plan.ConnectionPrincipal,
-		BrowserEntryStatePath: browserState, Clock: clock})
+		BrowserEntryStatePath: browserState, TransitAcquisitionRoot: plan.TransitAcquisitionRoot,
+		CreateTransitAcquisitionRoot: true, Clock: clock})
 	if err != nil {
 		return fmt.Errorf("open participant Endpoint: %w", err)
 	}
@@ -212,7 +214,7 @@ func loadAlphaBrowserRuntimePlan(path string) (decodedAlphaBrowserRuntimePlan, e
 	if err := decodeOperatorInput(path, 16<<10, &raw); err != nil {
 		return decodedAlphaBrowserRuntimePlan{}, err
 	}
-	if raw.Schema != "ardents-alpha-browser-runtime-v1" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" ||
+	if raw.Schema != "ardents-alpha-browser-runtime-v1" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" || raw.TransitAcquisitionRoot == "" ||
 		raw.AlphaCorpusStateRoot == "" || raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.Profile ||
 		raw.AlphaCohort == "" || raw.BrokerID == "" || raw.ConnectionPrincipal == "" || raw.BytesEachDirection == 0 {
 		return decodedAlphaBrowserRuntimePlan{}, errors.New("alpha browser runtime plan is incomplete")

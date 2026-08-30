@@ -25,7 +25,7 @@ type alphaBrowserSubmission struct {
 	authorization []byte
 	attachment    [32]byte
 	certificate   tls.Certificate
-	erase         func()
+	finish        func(bool) error
 }
 
 func (endpoint *endpoint) alphaBrowserSubmission(ctx context.Context, view AlphaBrowserStateView, epoch state.ResolutionEpoch,
@@ -58,46 +58,61 @@ func (endpoint *endpoint) alphaBrowserSubmission(ctx context.Context, view Alpha
 	if err != nil || credential.VerifyProfile(profile, endpoint.network, issuer.NodeID, issuer.PublicKey, at, deadline) != nil {
 		return alphaBrowserSubmission{}, errors.New("current State transit issuer profile is invalid")
 	}
-	serviceAttachment, err := alphaBrowserRandomID()
-	if err != nil {
-		return alphaBrowserSubmission{}, err
+	if endpoint.transitAcquire == nil {
+		return alphaBrowserSubmission{}, errors.New("Endpoint transit acquisition owner is unavailable")
 	}
 	carrierAttachment, err := alphaBrowserRandomID()
-	if err != nil || carrierAttachment == serviceAttachment {
+	if err != nil {
 		return alphaBrowserSubmission{}, errors.New("credential relay attachment is unavailable")
 	}
-	certificate, err := route.NewClientCertificate()
-	if err != nil {
-		return alphaBrowserSubmission{}, errors.New("transit client key is unavailable")
-	}
-	keyDigest, err := route.ClientTLSKeyDigest(certificate.Leaf)
-	if err != nil {
-		return alphaBrowserSubmission{}, errors.New("transit client key is invalid")
-	}
-	requestID, err := alphaBrowserRandomID()
-	if err != nil {
-		return alphaBrowserSubmission{}, errors.New("transit credential Request ID is unavailable")
-	}
-	client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: issuer.PublicKey, Profile: profile,
-		At: at, Deadline: deadline, Exchange: func(exchangeCtx context.Context, envelope []byte) ([]byte, error) {
-			return endpoint.exchangeAlphaBrowserCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
-		}})
-	if err != nil {
-		return alphaBrowserSubmission{}, errors.New("transit issuer is unavailable")
-	}
-	result, err := client.Issue(ctx, credential.Request{RequestID: requestID, NetworkID: endpoint.network, Digest: epoch.Digest, Epoch: epoch.Number,
-		IntroductionNodeID: introduction.NodeID, AttachmentID: serviceAttachment, ClientKeyDigest: keyDigest, NotAfter: deadline})
-	if err != nil {
-		return alphaBrowserSubmission{}, errors.New("membership transit credential is unavailable")
-	}
-	if result.Outcome != credential.Issued {
-		return alphaBrowserSubmission{}, errors.New("membership transit credential is " + string(result.Outcome))
-	}
-	erase, err := endpoint.enrollTransitClient(result.Grant, certificate)
+	scope := transitAcquisitionScope{NetworkID: endpoint.network, Digest: epoch.Digest, Epoch: epoch.Number,
+		IssuerNodeID: issuer.NodeID, IssuerPublicKey: issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(issuer.Profile),
+		GrantSignerPublicKey: profile.GrantSignerPublicKey, IntroductionNodeID: introduction.NodeID, NotAfter: deadline}
+	attempt, err := endpoint.transitAcquire.begin(scope)
 	if err != nil {
 		return alphaBrowserSubmission{}, err
 	}
-	return alphaBrowserSubmission{authorization: result.Grant, attachment: serviceAttachment, certificate: certificate, erase: erase}, nil
+	if attempt.Phase == transitPending {
+		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: issuer.PublicKey, Profile: profile,
+			At: at, Deadline: deadline, Exchange: func(exchangeCtx context.Context, envelope []byte) ([]byte, error) {
+				return endpoint.exchangeAlphaBrowserCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
+			}})
+		if err != nil {
+			_ = endpoint.transitAcquire.fail()
+			return alphaBrowserSubmission{}, errors.New("transit issuer is unavailable")
+		}
+		result, err := client.Issue(ctx, attempt.Request)
+		if err != nil {
+			if !errors.Is(err, credential.ErrExchangeUnavailable) {
+				_ = endpoint.transitAcquire.fail()
+			}
+			return alphaBrowserSubmission{}, errors.New("membership transit credential is unavailable")
+		}
+		if err := endpoint.transitAcquire.commit(result); err != nil {
+			return alphaBrowserSubmission{}, err
+		}
+		if result.Outcome != credential.Issued {
+			return alphaBrowserSubmission{}, errors.New("membership transit credential is " + string(result.Outcome))
+		}
+		attempt, err = endpoint.transitAcquire.begin(scope)
+		if err != nil {
+			return alphaBrowserSubmission{}, err
+		}
+	}
+	presenting, err := endpoint.transitAcquire.present(scope)
+	if err != nil {
+		return alphaBrowserSubmission{}, err
+	}
+	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
+	if err != nil {
+		_ = endpoint.transitAcquire.finish(false)
+		return alphaBrowserSubmission{}, err
+	}
+	return alphaBrowserSubmission{authorization: presenting.Grant, attachment: presenting.Request.AttachmentID,
+		certificate: presenting.Certificate, finish: func(presented bool) error {
+			erase()
+			return endpoint.transitAcquire.finish(presented)
+		}}, nil
 }
 
 func (endpoint *endpoint) exchangeAlphaBrowserCredential(ctx context.Context, source route.EntryAcquirer, epoch state.ResolutionEpoch,

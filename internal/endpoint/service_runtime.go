@@ -51,6 +51,12 @@ type Setup struct {
 	// Grant IDs; neither the map nor its private keys are Service Descriptor
 	// material or browser-facing configuration.
 	TransitClientCertificates map[[32]byte]tls.Certificate
+	// TransitAcquisitionRoot is the exclusive owner-only Endpoint journal for
+	// one in-flight membership Transit Grant acquisition. Create is explicit so
+	// an uninitialized or substituted participant root cannot be claimed by a
+	// normal reopen.
+	TransitAcquisitionRoot       string
+	CreateTransitAcquisitionRoot bool
 }
 
 // connectionInput is the private common carrier input derived only from one
@@ -174,6 +180,7 @@ type endpoint struct {
 	publications    *publication.Publication
 	resources       func(string, int) uint32
 	transitClients  map[[32]byte]tls.Certificate
+	transitAcquire  *transitAcquisition
 	transitMu       sync.Mutex
 
 	alphaBrowserMu     sync.Mutex
@@ -218,20 +225,34 @@ func New(input Setup) (*endpoint, error) {
 	if err != nil {
 		return nil, err
 	}
+	var transitAcquire *transitAcquisition
+	if input.TransitAcquisitionRoot != "" {
+		transitAcquire, err = openTransitAcquisition(transitAcquisitionConfig{Root: input.TransitAcquisitionRoot,
+			Create: input.CreateTransitAcquisitionRoot, Clock: clock})
+		if err != nil {
+			return nil, err
+		}
+	}
 	var entryState *browserentry.Publisher
 	if input.BrowserEntryStatePath != "" {
 		entryState, err = browserentry.OpenPublisher(input.BrowserEntryStatePath)
 		if err != nil {
+			if transitAcquire != nil {
+				_ = transitAcquire.Close()
+			}
 			return nil, err
 		}
 	}
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,
-		admission:    admission, resources: resources, transitClients: transitClients, browserEntry: entryState}
+		admission:    admission, resources: resources, transitClients: transitClients, transitAcquire: transitAcquire, browserEntry: entryState}
 	if input.AdministrationPrincipal != [32]byte{} {
 		if input.PublicationRoot == "" {
 			if entryState != nil {
 				_ = entryState.Close()
+			}
+			if transitAcquire != nil {
+				_ = transitAcquire.Close()
 			}
 			return nil, errors.New("publisher setup lacks a publication root")
 		}
@@ -241,6 +262,9 @@ func New(input Setup) (*endpoint, error) {
 		if err != nil {
 			if entryState != nil {
 				_ = entryState.Close()
+			}
+			if transitAcquire != nil {
+				_ = transitAcquire.Close()
 			}
 			return nil, err
 		}
@@ -260,10 +284,11 @@ func (endpoint *endpoint) Close() error {
 	if endpoint.browserEntry != nil {
 		_ = endpoint.browserEntry.Close()
 	}
+	acquisitionErr := endpoint.transitAcquire.Close()
 	if endpoint.publications == nil {
-		return nil
+		return acquisitionErr
 	}
-	return endpoint.publications.Close()
+	return errors.Join(acquisitionErr, endpoint.publications.Close())
 }
 
 // Publish consumes one Administration capability before publishing an exact

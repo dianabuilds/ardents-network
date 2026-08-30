@@ -148,8 +148,9 @@ func (endpoint *endpoint) openAlphaBrowserService(ctx context.Context, binding a
 	if err != nil {
 		return nil, err
 	}
-	if submission.erase != nil {
-		defer submission.erase()
+	presented := false
+	if submission.finish != nil {
+		defer func() { _ = submission.finish(presented) }()
 	}
 	handshake, err := alphaBrowserRandomID()
 	if err != nil {
@@ -162,12 +163,14 @@ func (endpoint *endpoint) openAlphaBrowserService(ctx context.Context, binding a
 	// Descriptor is intentionally passed only after this runtime obtained it
 	// through ResolveUserReachability and revalidated it above. No external
 	// caller can provide this branch or substitute a target.
-	return endpoint.OpenAlphaTransparentUserReferenceSite(ctx, AlphaTransparentUserReferenceSiteRequest{Binding: binding,
+	site, err := endpoint.OpenAlphaTransparentUserReferenceSite(ctx, AlphaTransparentUserReferenceSiteRequest{Binding: binding,
 		Route: UserReferenceSiteRequest{Reachability: &UserReachabilityRouteRequest{Descriptor: descriptor,
 			Introduction: introduction, Initiator: initiator, Rendezvous: rendezvous, Entry: input.Entry,
 			AttachmentID: submission.attachment, EndpointHandshake: handshake, At: at,
 			SubmissionAuthorization: submission.authorization, SubmissionClientCertificate: submission.certificate}, Principal: input.Principal,
 			Capability: capability, BytesEachDirection: input.BytesEachDirection}})
+	presented = err == nil
+	return site, err
 }
 
 // alphaBrowserServiceAttachment preserves the one-use binding of a signed

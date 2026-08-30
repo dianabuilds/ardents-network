@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -14,6 +15,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/openpcc/ohttp"
 )
+
+// ErrExchangeUnavailable identifies an interruption before an authenticated
+// issuer response exists. An Endpoint may reconcile only this class with the
+// exact same durable Request ID and tuple.
+var ErrExchangeUnavailable = errors.New("transit issuance exchange is unavailable")
 
 // Client performs exactly one opaque membership-level Transit Grant exchange.
 type Client struct {
@@ -82,8 +88,11 @@ func (client *Client) Issue(ctx context.Context, input Request) (Result, error) 
 		return Result{}, errors.New("transit issuance OHTTP envelope is invalid")
 	}
 	responseEnvelope, err := client.exchange(ctx, envelope)
-	if err != nil || len(responseEnvelope) == 0 || len(responseEnvelope) > maximumEnvelopeSize {
-		return Result{}, errors.New("transit issuance is unavailable")
+	if err != nil {
+		return Result{}, fmt.Errorf("%w: %v", ErrExchangeUnavailable, err)
+	}
+	if len(responseEnvelope) == 0 || len(responseEnvelope) > maximumEnvelopeSize {
+		return Result{}, errors.New("transit issuance response is invalid")
 	}
 	response := &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{ohttp.ResponseMediaType}},
 		Body: io.NopCloser(bytes.NewReader(responseEnvelope)), Request: encapsulated}
