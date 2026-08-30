@@ -216,11 +216,11 @@ substitute a fixture or raw key/profile input. As a bounded B6 checkpoint,
 Instance initialization, separate-process response acceptance, idempotent
 retry, and terminal conflict/restart refusal. Its test-owned public Authority
 response is not the required artifact-native interactive custody ceremony.
-R-132 records the exact open publication-readiness decision exposed by B6: the
-old owner-local `ARIA`
-socket has no maintained headless owner, while the already selected
-State-authenticated `IntroductionSlotReady` transition can provide the local
-readiness commitment only after explicit Product Owner acceptance. The
+R-132 and ADR-0065 now select the Endpoint-owned publication-readiness
+transaction exposed by B6: the old owner-local `ARIA` socket has no maintained
+headless owner, and the already selected State-authenticated
+`IntroductionSlotReady` transition provides the local readiness commitment.
+Its test-first runtime and crash/recovery matrix remain delivery work. The
 transparent-origin Browser Entry defect also remains recorded as a
 separate future security slice and was deliberately not changed here.
 
@@ -307,11 +307,11 @@ Current disposition: R-130 is accepted and its owner-root bootstrap plus
 State-bound issuer lifecycle are implemented. R-131 and ADR-0064 now select the
 separate Authority Custody and host-owned Instance enrollment owners required
 by B6; those owners, their command lifecycle, non-exporting binding, and their
-real enrollment-v3 binaries are implemented. R-132 is the remaining
-decision-level dependency: it must select or reject the Endpoint-owned
-publication/slot readiness transaction before the artifact-native
-`publish -> open -> bytes -> withdraw -> restart/recovery` journey can close
-B6 and precede C0.
+real enrollment-v3 binaries are implemented. R-132 and ADR-0065 authorize the
+remaining Endpoint-owned publication/slot readiness transaction. Its retained
+runtime and the artifact-native
+`publish -> open -> bytes -> withdraw -> restart/recovery` journey must close
+B6 before C0.
 
 ### C2. Freeze and activate formal C0
 

@@ -1,7 +1,7 @@
 ---
 id: R-132
 title: Which authenticated readiness transition may commit one headless Publisher generation?
-status: open
+status: decided
 owner: Product Owner and Codex
 started: 2026-08-31
 reviewed: 2026-08-31
@@ -211,6 +211,9 @@ commit.
 
 ## Exact Product Owner decision requested
 
+The Product Owner accepted this statement on 2026-08-31. ADR-0065 fixes the
+selected readiness, failure, restart, and compatibility boundaries.
+
 > **R-132:** For the headless usable-alpha Publisher, select one
 > Endpoint-owned publication transaction. Endpoint may advance the local
 > Publication floor using the opened non-exporting Instance binding, but it
@@ -223,12 +226,14 @@ commit.
 > compatibility evidence and is absent from the maintained headless runtime.
 
 Acceptance authorizes a test-first combined Publisher start/withdraw/recovery
-slice and the artifact-native B6 journey. Rejection must select the versioned
-wire option or explicitly remove fresh Publisher start from the candidate.
+slice and the artifact-native B6 journey. A future reversal must select the
+versioned-wire option or explicitly remove fresh Publisher start from the
+candidate.
 
 ## Disposition
 
-R-132 is **open and decision-ready**. No wire, Route, Target, publication
-readiness, or runtime-plan semantics have been changed by this record.
-The transparent-origin Browser Entry defect remains a separate future security
-dependency.
+R-132 is **decided and promoted to ADR-0065**. The accepted implementation must
+exercise the combined transaction and fail-closed recovery from unpacked
+headless artifacts before B6 closes. No public wire, Route, Target, or C-2
+semantics are changed. The transparent-origin Browser Entry defect remains a
+separate future security dependency.
