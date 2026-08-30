@@ -39,6 +39,16 @@ fallback route. Still open: the durable issuance budget and erasure owner,
 pending-grant crash retention, withdrawal and rotation behavior, enrolled input
 distribution, and the participant-facing recovery/exhaustion lifecycle.
 
+The relevant security owners are the
+[threat-and-response matrix](../../security/threat-model.md#threat-and-response-matrix)
+for malicious infrastructure, Sybil/flooding, operator loss, supply chain, and
+governance capture, plus the
+[security invariants](../../security/threat-model.md#security-invariants) for
+State, Entry, Route, credential, and fail-closed behavior. Product terms keep
+their canonical meanings from the [glossary](../../../CONTEXT.md): Endpoint,
+Endpoint Owner, Entry Set, Service Target, Application Interface, and Capability
+Readiness are not interchangeable ownership or authority boundaries.
+
 The separately reported transparent-origin Browser Entry defect remains a
 dependency of a future Browser security slice and is outside this question.
 
@@ -65,8 +75,33 @@ dependency of a future Browser security slice and is outside this question.
   unbounded grant budget.
 - State successor, withdrawal, credential expiry, relay unavailability, stale
   input, and local state loss have explicit recovery or terminal behavior.
+- Latency is bounded by the earliest current-State, Entry-admission, request,
+  or Grant deadline; a timeout returns explicit unavailability and starts no
+  fallback. Acquisition adds no periodic retry after that deadline.
+- Bandwidth adds at most one bounded request and response for each required
+  one-use input and no traffic proportional to Application bytes. A candidate
+  without exact message-size limits is rejected before implementation.
+- Durable storage adds at most one finite pending reservation per in-flight
+  acquisition plus the already owned current inputs; it retains no unbounded
+  request history. Crash recovery must converge that reservation to one usable
+  spend or one terminal erasure, never both.
+- Availability is no stronger than current authenticated State, one admitted
+  Entry path, and the State-selected relay. Missing, withdrawn, saturated, or
+  expired inputs produce a visible unavailable result; there is no service,
+  clearnet, stale-state, or operator-plan fallback and no public availability
+  claim.
 - The design fits one Product Owner and Codex, uses maintained components, and
   adds no standing operator procedure that the actual team cannot sustain.
+- Distribution must remain inside the authenticated headless alpha profile and
+  must not add an unsigned side channel, Browser artifact, separate participant
+  secret delivery, or new license obligation. Any new runtime dependency is
+  rejected unless its license, distribution, maintenance, and threat-model fit
+  are first recorded in `docs/development/dependencies.md`.
+- The supported developer and accessibility surface is the existing headless
+  CLI: one documented non-interactive journey, stable exit status, and a
+  specific actionable unavailable/withdrawn/exhausted diagnostic. No GUI,
+  pointer interaction, visual-only state, manual per-request operator approval,
+  or source-code fixture is required.
 - The implementation adds no speculative package or Interface and changes no
   public wire, Route, or Target semantics without separate accepted research and
   an ADR where the choice is consequential and hard to reverse.
