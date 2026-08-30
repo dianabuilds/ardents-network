@@ -3,15 +3,20 @@ set -eu
 
 : "${ARDENTS_ALPHA_BUNDLE_COHORT:?ARDENTS_ALPHA_BUNDLE_COHORT is required}"
 : "${ARDENTS_ALPHA_BUNDLE_RELEASE:?ARDENTS_ALPHA_BUNDLE_RELEASE is required}"
+: "${ARDENTS_ALPHA_BUNDLE_PLATFORM:?ARDENTS_ALPHA_BUNDLE_PLATFORM is required}"
 : "${ARDENTS_ALPHA_BUNDLE_ENDPOINT:?ARDENTS_ALPHA_BUNDLE_ENDPOINT is required}"
 : "${ARDENTS_ALPHA_BUNDLE_CONTROL:?ARDENTS_ALPHA_BUNDLE_CONTROL is required}"
 : "${ARDENTS_ALPHA_BUNDLE_STATIC_ROOT:?ARDENTS_ALPHA_BUNDLE_STATIC_ROOT is required}"
 : "${ARDENTS_ALPHA_BUNDLE_OUTPUT:?ARDENTS_ALPHA_BUNDLE_OUTPUT is required}"
 : "${SOURCE_DATE_EPOCH:?SOURCE_DATE_EPOCH is required}"
 
-platform=linux-amd64
-endpoint_name=ardents-linux-amd64
-control_name=ardents-control-linux-amd64
+platform=$ARDENTS_ALPHA_BUNDLE_PLATFORM
+case "$platform" in
+  windows-*) executable_suffix=.exe ;;
+  *) executable_suffix= ;;
+esac
+endpoint_name="ardents-$platform$executable_suffix"
+control_name="ardents-control-$platform$executable_suffix"
 bundle_name="ardents-alpha-${ARDENTS_ALPHA_BUNDLE_RELEASE}-${platform}"
 
 case "$ARDENTS_ALPHA_BUNDLE_COHORT" in
@@ -19,6 +24,9 @@ case "$ARDENTS_ALPHA_BUNDLE_COHORT" in
 esac
 case "$ARDENTS_ALPHA_BUNDLE_RELEASE" in
   *[!A-Za-z0-9._-]* | '') echo 'invalid alpha release' >&2; exit 2 ;;
+esac
+case "$platform" in
+  *[!A-Za-z0-9._-]* | '') echo 'invalid alpha platform' >&2; exit 2 ;;
 esac
 case "$SOURCE_DATE_EPOCH" in
   *[!0-9]* | '') echo 'SOURCE_DATE_EPOCH must be a non-negative Unix timestamp' >&2; exit 2 ;;

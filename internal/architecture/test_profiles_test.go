@@ -198,7 +198,9 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 	for _, required := range []string{
 		"headless-evidence:",
 		"packaging/alpha-bundle/test.sh",
-		"headless-check: headless-build headless-evidence",
+		"headless-check: headless-evidence",
+		"go build -trimpath -o \"$(HEADLESS_ENDPOINT_ARTIFACT)\" ./cmd/ardents",
+		"go build -trimpath -o \"$(HEADLESS_CONTROL_ARTIFACT)\" ./cmd/ardents-control",
 	} {
 		if !strings.Contains(makefile, required) {
 			t.Errorf("headless Network Make boundary lacks %q", required)

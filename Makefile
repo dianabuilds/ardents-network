@@ -28,12 +28,22 @@ endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
 PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
+HEADLESS_GOOS := $(shell go env GOOS)
+HEADLESS_GOARCH := $(shell go env GOARCH)
+HEADLESS_PLATFORM := $(HEADLESS_GOOS)-$(HEADLESS_GOARCH)
+HEADLESS_SUFFIX := $(if $(filter windows,$(HEADLESS_GOOS)),.exe,)
+HEADLESS_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/headless-artifacts/$(HEADLESS_PLATFORM)
+HEADLESS_ENDPOINT_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
+HEADLESS_NODE_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-node-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
+HEADLESS_CONTROL_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-control-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
+HEADLESS_ARTIFACT_MKDIR = if not exist "$(HEADLESS_ARTIFACT_ROOT)" mkdir "$(HEADLESS_ARTIFACT_ROOT)"
 else
 HEADLESS_ARTIFACT_SHELL ?= sh
+HEADLESS_ARTIFACT_MKDIR = mkdir -p "$(HEADLESS_ARTIFACT_ROOT)"
 endif
 
 format:
@@ -53,17 +63,20 @@ e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
 
 headless-build:
-	go build $(HEADLESS_COMMANDS)
+	$(HEADLESS_ARTIFACT_MKDIR)
+	go build -trimpath -o "$(HEADLESS_ENDPOINT_ARTIFACT)" ./cmd/ardents
+	go build -trimpath -o "$(HEADLESS_NODE_ARTIFACT)" ./cmd/ardents-node
+	go build -trimpath -o "$(HEADLESS_CONTROL_ARTIFACT)" ./cmd/ardents-control
 
-headless-evidence:
-	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh
+headless-evidence: headless-build
+	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))"
 	go test ./internal/endpoint/enrollment -run '^(TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest$$' -count=1
 	go test ./tests/e2e/network-source -run '^TestFiniteSourceCommandsAsBlackBoxProcesses$$' -count=1
 	go test ./tests/e2e/node -run '^TestNativeDutyProcessesUseTheirExactStateAssignments$$' -count=1
 	go test ./tests/e2e/service -run '^TestServiceCommandReadinessTimeoutAndCleanup$$' -count=1
 
-headless-check: headless-build headless-evidence
+headless-check: headless-evidence
 
 qualification-h4-1a:
 	sh ./tests/qualification/h4-1a-ubuntu-portable/run-ubuntu.sh -timeout=2m

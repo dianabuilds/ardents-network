@@ -1,12 +1,13 @@
 # Headless Network closed-alpha bundle assembler
 
-This Ubuntu-first release-workflow adapter creates one deterministic unpackable
+This release-workflow adapter creates one deterministic unpackable
 Network alpha bundle from already authenticated inputs. It is not a signer,
 TUF repository administrator, Authority Vault, key store, downloader, or
 release publisher. Private release/control keys never enter this script, its
 environment, its output, or the repository.
 
-The caller supplies the exact Linux `amd64` Endpoint and control binaries, plus
+The caller supplies one explicit `<goos>-<goarch>` and the exact already-built
+Endpoint and control binaries for it, plus
 one direct static directory already prepared by the applicable Release and
 alpha-control authority operations. That directory must contain exactly one
 matching,
@@ -26,7 +27,7 @@ For a fixed approved successor, only the pair changes together (for example,
 inventory rather than guessing a metadata generation.
 
 The `RELEASE` descriptor must be enrollment-v3, name the supplied cohort,
-release, `linux-amd64`, both fixed executable names, `environment=alpha`, and
+release, platform, both fixed executable names, `environment=alpha`, and
 the initial trusted root. The assembler copies no unlisted entry, writes the
 complete `SHA256SUMS` inventory, and creates one gzip stream with normalized
 name order, ownership, and timestamp. Enrollment v3 deliberately contains no
@@ -40,6 +41,7 @@ and `install` available:
 ```sh
 ARDENTS_ALPHA_BUNDLE_COHORT=alpha-1 \
 ARDENTS_ALPHA_BUNDLE_RELEASE=usable-alpha-1 \
+ARDENTS_ALPHA_BUNDLE_PLATFORM=linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_ENDPOINT=/absolute/path/ardents-linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_CONTROL=/absolute/path/ardents-control-linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_STATIC_ROOT=/absolute/path/already-authenticated-static \
@@ -48,11 +50,14 @@ SOURCE_DATE_EPOCH=1767225600 \
 sh ./packaging/alpha-bundle/build.sh
 ```
 
-The contained deterministic-inventory test uses only synthetic non-authority
-files and may be run on a Linux host with the same utilities:
+`make headless-check` builds real host-named `ardents`, `ardents-node`, and
+`ardents-control` artifacts outside the repository, then supplies the exact
+Endpoint/control bytes to the deterministic inventory test. The test packs,
+unpacks, verifies, and byte-compares those artifacts; it does not substitute
+fixture text for executable bytes.
 
 ```sh
-sh ./packaging/alpha-bundle/test.sh
+make headless-check
 ```
 
 The printed archive digest is transport/provenance evidence. The Product Owner
