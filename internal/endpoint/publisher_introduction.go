@@ -86,27 +86,42 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 		return nil, errors.Join(cause, lease.Close())
 	}
 	current := lease.Current()
-	if input.Profile.NotAfter.Unix() > current.Credential.NotAfter || !matchesIntroductionRecipient(recipient, current.Credential.IntroductionHPKEPublic) {
-		return closeLease(errors.New("publisher Introduction recipient does not match the current Credential"))
-	}
-	slotCertificate, err := endpoint.transitClientCertificate(input.Profile.SlotAuthorization, input.Profile.SlotClientCertificate)
+	connection, _, err := endpoint.openPublisherIntroductionSlot(ctx, input.Profile, recipient, current.Credential)
 	if err != nil {
-		return closeLease(errors.Join(errors.New("publisher Introduction slot lacks its enrolled transit credential"), err))
+		return closeLease(err)
+	}
+	return &PublisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(input.Profile), recipient: recipient,
+		lease: lease, slot: connection}, nil
+}
+
+func (endpoint *endpoint) openPublisherIntroductionSlot(ctx context.Context, profile PublisherIntroductionProfile,
+	recipient PublisherIntroductionRecipient, credential publication.Credential,
+) (net.Conn, []byte, error) {
+	if profile.NotAfter.Unix() > credential.NotAfter || !matchesIntroductionRecipient(recipient, credential.IntroductionHPKEPublic) {
+		return nil, nil, errors.New("publisher Introduction recipient does not match the current Credential")
+	}
+	slotCertificate, err := endpoint.transitClientCertificate(profile.SlotAuthorization, profile.SlotClientCertificate)
+	if err != nil {
+		return nil, nil, errors.Join(errors.New("publisher Introduction slot lacks its enrolled transit credential"), err)
 	}
 	connection, err := route.OpenEndpointTransitAttachment(ctx, route.EndpointTransitAttachmentRequest{
-		NetworkID: input.Profile.NetworkID, Digest: input.Profile.Digest, AttachmentID: input.Profile.SlotAttachmentID,
-		TransitNodeID: input.Profile.Introduction.NodeID, TransitNodePublicKey: input.Profile.Introduction.PublicKey,
-		Epoch: input.Profile.Epoch, TransitRole: route.IntroductionRole, Endpoint: input.Profile.Introduction.Endpoint,
-		Deadline: input.Profile.NotAfter, Authorization: input.Profile.SlotAuthorization, ClientCertificate: slotCertificate,
+		NetworkID: profile.NetworkID, Digest: profile.Digest, AttachmentID: profile.SlotAttachmentID,
+		TransitNodeID: profile.Introduction.NodeID, TransitNodePublicKey: profile.Introduction.PublicKey,
+		Epoch: profile.Epoch, TransitRole: route.IntroductionRole, Endpoint: profile.Introduction.Endpoint,
+		Deadline: profile.NotAfter, Authorization: profile.SlotAuthorization, ClientCertificate: slotCertificate,
 	})
 	if err != nil {
-		return closeLease(errors.Join(errors.New("publisher Introduction slot is unavailable"), err))
+		return nil, nil, errors.Join(errors.New("publisher Introduction slot is unavailable"), err)
 	}
-	closeConnection := func(cause error) (*PublisherIntroduction, error) {
-		return nil, errors.Join(cause, connection.Close(), lease.Close())
+	closeConnection := func(cause error) (net.Conn, []byte, error) {
+		return nil, nil, errors.Join(cause, connection.Close())
 	}
-	registration := route.IntroductionSlotRegistration{Reachability: input.Profile.Reachability,
-		JoinHandle: input.Profile.JoinHandle, NotAfter: input.Profile.NotAfter}
+	registration := route.IntroductionSlotRegistration{Reachability: profile.Reachability,
+		JoinHandle: profile.JoinHandle, NotAfter: profile.NotAfter}
+	registrationRaw, err := route.EncodeIntroductionSlotRegistration(registration)
+	if err != nil {
+		return closeConnection(err)
+	}
 	if err := route.WriteIntroductionSlotRegistration(connection, registration); err != nil {
 		return closeConnection(err)
 	}
@@ -115,8 +130,12 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 		!ready.NotAfter.Equal(registration.NotAfter) {
 		return closeConnection(errors.Join(err, errors.New("publisher Introduction slot acknowledgement is invalid")))
 	}
-	return &PublisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(input.Profile), recipient: recipient,
-		lease: lease, slot: connection}, nil
+	readyRaw, err := route.EncodeIntroductionSlotReady(ready)
+	if err != nil {
+		return closeConnection(err)
+	}
+	transcript := append(registrationRaw, readyRaw...)
+	return connection, transcript, nil
 }
 
 // Wait receives one sealed slot delivery and creates the separately admitted

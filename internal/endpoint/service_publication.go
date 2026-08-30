@@ -63,8 +63,20 @@ func (endpoint *endpoint) unpublish(ctx context.Context, input WithdrawalRequest
 	if endpoint.publications == nil {
 		return withdrawalFailed("service unavailable", "publisher has no publication owner", errors.New("publication root is unavailable"))
 	}
+	endpoint.publisherMu.Lock()
+	defer endpoint.publisherMu.Unlock()
+	if endpoint.publisherSession != nil {
+		if err := endpoint.publisherSession.Close(); err != nil {
+			return withdrawalFailed("service unavailable", "Publisher Introduction slot could not be closed", err)
+		}
+		endpoint.publisherSession = nil
+	}
 	lease, err := endpoint.publications.AcquireAt(ctx, input.At)
 	if err != nil {
+		if endpoint.publisherBinding != nil {
+			_ = endpoint.publisherBinding.Withdraw()
+			endpoint.publisherBinding = nil
+		}
 		return withdrawalFailed("service unavailable", "Service is not currently published", err)
 	}
 	current := lease.Current()
@@ -73,6 +85,13 @@ func (endpoint *endpoint) unpublish(ctx context.Context, input WithdrawalRequest
 	}
 	if err := endpoint.publications.Unpublish(ctx); err != nil {
 		return withdrawalFailed("service unavailable", "Service publication could not be withdrawn", err)
+	}
+	if endpoint.publisherBinding != nil {
+		binding := endpoint.publisherBinding
+		endpoint.publisherBinding = nil
+		if err := binding.Withdraw(); err != nil {
+			return withdrawalFailed("service unavailable", "Service Instance binding could not be withdrawn", err)
+		}
 	}
 	return WithdrawalResult{Class: "unpublished", AuthenticatedTarget: current.Credential.Target,
 		Generation: current.Credential.Generation, Receipt: receipt}, nil

@@ -13,6 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
+	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
@@ -39,9 +40,15 @@ type Setup struct {
 	AdministrationPrincipal [32]byte
 	PublicationRoot         string
 	LegacyGenerationFloor   string
-	Clock                   func() time.Time
-	Resources               func(string, int) uint32
-	Admission               *broker.Broker
+	// PublisherBinding and PublisherIntroductionProfile are the Endpoint-owned
+	// accepted Instance and State-selected slot facts for the maintained
+	// headless Publisher start path. They are never supplied by an
+	// Administration caller.
+	PublisherBinding             *instance.Binding
+	PublisherIntroductionProfile PublisherIntroductionProfile
+	Clock                        func() time.Time
+	Resources                    func(string, int) uint32
+	Admission                    *broker.Broker
 	// TransitClientCertificates holds the private, one-use TLS identities
 	// provisioned with State-authorized Transit Grants. Its keys are opaque
 	// Grant IDs; neither the map nor its private keys are Service Descriptor
@@ -96,6 +103,14 @@ type PublicationResult struct {
 	IntroductionReceipt         [32]byte
 	IntroductionAcknowledgement []byte
 	Receipt                     broker.Receipt
+}
+
+// PublisherStartRequest is the complete local Application input for starting
+// the Endpoint-owned Publisher generation. All network and Service authority
+// facts remain inside Endpoint composition.
+type PublisherStartRequest struct {
+	Principal, Capability [32]byte
+	At                    time.Time
 }
 
 // WithdrawalRequest contains only the Administration capability needed to
@@ -170,15 +185,19 @@ type RuntimeResult struct {
 // endpoint owns one broker generation's sessions and current publication.
 type endpoint struct {
 	browserCompatibility
-	network, broker [32]byte
-	authority       [32]byte
-	introduction    [32]byte
-	admission       *broker.Broker
-	publications    *publication.Publication
-	resources       func(string, int) uint32
-	transitClients  map[[32]byte]tls.Certificate
-	transitAcquire  *transitAcquisition
-	transitMu       sync.Mutex
+	network, broker  [32]byte
+	authority        [32]byte
+	introduction     [32]byte
+	admission        *broker.Broker
+	publications     *publication.Publication
+	resources        func(string, int) uint32
+	transitClients   map[[32]byte]tls.Certificate
+	transitAcquire   *transitAcquisition
+	transitMu        sync.Mutex
+	publisherMu      sync.Mutex
+	publisherBinding *instance.Binding
+	publisherProfile PublisherIntroductionProfile
+	publisherSession *PublisherIntroduction
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -226,7 +245,15 @@ func New(input Setup) (*endpoint, error) {
 	}
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,
-		admission:    admission, resources: resources, transitClients: transitClients, transitAcquire: transitAcquire}
+		admission:    admission, resources: resources, transitClients: transitClients, transitAcquire: transitAcquire,
+		publisherBinding: input.PublisherBinding, publisherProfile: clonePublisherIntroductionProfile(input.PublisherIntroductionProfile)}
+	if input.PublisherBinding != nil && (input.AdministrationPrincipal == [32]byte{} ||
+		input.PublisherIntroductionProfile.NetworkID != input.NetworkID || !validPublisherIntroductionProfile(input.PublisherIntroductionProfile)) {
+		if transitAcquire != nil {
+			_ = transitAcquire.Close()
+		}
+		return nil, errors.New("publisher start ownership is incomplete")
+	}
 	if input.AdministrationPrincipal != [32]byte{} {
 		if input.PublicationRoot == "" {
 			if transitAcquire != nil {
@@ -266,12 +293,25 @@ func (endpoint *endpoint) Close() error {
 		return nil
 	}
 	endpoint.admission.Close()
+	endpoint.publisherMu.Lock()
+	session, binding := endpoint.publisherSession, endpoint.publisherBinding
+	endpoint.publisherSession = nil
+	if session != nil {
+		_ = session.Close()
+	}
 	compatibilityErr := endpoint.closeBrowserCompatibility()
 	acquisitionErr := endpoint.transitAcquire.Close()
 	if endpoint.publications == nil {
+		endpoint.publisherMu.Unlock()
 		return errors.Join(compatibilityErr, acquisitionErr)
 	}
-	return errors.Join(compatibilityErr, acquisitionErr, endpoint.publications.Close())
+	publicationErr := endpoint.publications.Close()
+	var bindingErr error
+	if binding != nil {
+		bindingErr = binding.Withdraw()
+	}
+	endpoint.publisherMu.Unlock()
+	return errors.Join(compatibilityErr, acquisitionErr, publicationErr, bindingErr)
 }
 
 // Publish consumes one Administration capability before publishing an exact
@@ -284,6 +324,18 @@ func (endpoint *endpoint) Publish(ctx context.Context, input PublicationRequest)
 		return publicationFailed("local timeout or cancellation", "local publication was cancelled", err)
 	}
 	return endpoint.publish(ctx, input)
+}
+
+// StartPublisher consumes one Administration capability and atomically binds
+// the Endpoint-owned Instance generation to its live Introduction slot.
+func (endpoint *endpoint) StartPublisher(ctx context.Context, input PublisherStartRequest) (PublicationResult, error) {
+	if endpoint == nil || input.At.IsZero() {
+		return publicationDenied("local Publisher start is incomplete")
+	}
+	if err := ctx.Err(); err != nil {
+		return publicationFailed("local timeout or cancellation", "local Publisher start was cancelled", err)
+	}
+	return endpoint.startPublisher(ctx, input)
 }
 
 // Withdraw consumes one Administration capability before withdrawing the
