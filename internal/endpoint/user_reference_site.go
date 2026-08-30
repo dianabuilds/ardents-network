@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
@@ -82,15 +83,7 @@ func (endpoint *endpoint) openAlphaUserReferenceSite(ctx context.Context, bindin
 	if endpoint == nil || binding.Network() != endpoint.network {
 		return nil, ErrAlphaBindingNetwork
 	}
-	targetLink, err := targetlink.Encode(targetlink.Link{Network: endpoint.network, Target: binding.Target()})
-	if err != nil {
-		return nil, err
-	}
-	route, err := alphaRouteRequest(input, targetLink)
-	if err != nil {
-		return nil, err
-	}
-	return endpoint.openUserReferenceSite(ctx, route, &binding, transparent)
+	return endpoint.openUserReferenceSite(ctx, input, &binding, transparent)
 }
 
 func (endpoint *endpoint) openUserReferenceSite(ctx context.Context, input UserReferenceSiteRequest, alphaBinding *alpha.Binding, transparent bool) (*UserReferenceSite, error) {
@@ -98,22 +91,19 @@ func (endpoint *endpoint) openUserReferenceSite(ctx context.Context, input UserR
 		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) {
 		return nil, errors.New("user Reference Site input is incomplete")
 	}
-	if input.Reachability != nil && input.Introduction.TargetLink != "" {
-		return nil, errors.New("user Reference Site received two route authorities")
+	routeInput := userRouteRequest{Introduction: input.Introduction, Reachability: input.Reachability}
+	var err error
+	if alphaBinding != nil {
+		targetLink, encodeErr := targetlink.Encode(targetlink.Link{Network: endpoint.network, Target: alphaBinding.Target()})
+		if encodeErr != nil {
+			return nil, encodeErr
+		}
+		routeInput, err = bindAlphaUserRoute(routeInput, targetLink)
+		if err != nil {
+			return nil, err
+		}
 	}
-	var (
-		route      *UserIntroductionRoute
-		targetLink string
-		at         = input.Introduction.At
-		err        error
-	)
-	if input.Reachability != nil {
-		route, err = endpoint.OpenUserReachabilityRoute(ctx, *input.Reachability)
-		targetLink, at = input.Reachability.TargetLink, input.Reachability.At
-	} else {
-		route, err = endpoint.OpenUserIntroductionRoute(ctx, input.Introduction)
-		targetLink = input.Introduction.TargetLink
-	}
+	route, targetLink, at, err := endpoint.openUserRoute(ctx, routeInput)
 	if err != nil {
 		return nil, err
 	}
@@ -147,10 +137,27 @@ func (endpoint *endpoint) openUserReferenceSite(ctx context.Context, input UserR
 	return running, nil
 }
 
-func alphaRouteRequest(input UserReferenceSiteRequest, targetLink string) (UserReferenceSiteRequest, error) {
+type userRouteRequest struct {
+	Introduction UserIntroductionRouteRequest
+	Reachability *UserReachabilityRouteRequest
+}
+
+func (endpoint *endpoint) openUserRoute(ctx context.Context, input userRouteRequest) (*UserIntroductionRoute, string, time.Time, error) {
+	if input.Reachability != nil && input.Introduction.TargetLink != "" {
+		return nil, "", time.Time{}, errors.New("user Application received two route authorities")
+	}
+	if input.Reachability != nil {
+		route, err := endpoint.OpenUserReachabilityRoute(ctx, *input.Reachability)
+		return route, input.Reachability.TargetLink, input.Reachability.At, err
+	}
+	route, err := endpoint.OpenUserIntroductionRoute(ctx, input.Introduction)
+	return route, input.Introduction.TargetLink, input.Introduction.At, err
+}
+
+func bindAlphaUserRoute(input userRouteRequest, targetLink string) (userRouteRequest, error) {
 	if input.Reachability != nil {
 		if input.Reachability.TargetLink != "" || input.Introduction.TargetLink != "" {
-			return UserReferenceSiteRequest{}, errors.New("alpha Reference Site route must not supply a Target Link")
+			return userRouteRequest{}, errors.New("alpha Application route must not supply a Target Link")
 		}
 		reachability := *input.Reachability
 		reachability.TargetLink = targetLink
@@ -158,7 +165,7 @@ func alphaRouteRequest(input UserReferenceSiteRequest, targetLink string) (UserR
 		return input, nil
 	}
 	if input.Introduction.TargetLink != "" {
-		return UserReferenceSiteRequest{}, errors.New("alpha Reference Site route must not supply a Target Link")
+		return userRouteRequest{}, errors.New("alpha Application route must not supply a Target Link")
 	}
 	input.Introduction.TargetLink = targetLink
 	return input, nil

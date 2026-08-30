@@ -22,6 +22,15 @@ include Route or Application facts, and an outbound connection cannot supply a
 publisher signer. This keeps publication ownership, local admission, Route
 attachment, and logical-stream recovery out of one mutable request bag.
 
+The maintained Connection Interface adds one narrower consumer operation over
+that composition. A headless caller supplies an explicit Service Link and its
+local Connection principal; Endpoint retains accepted naming state, Entry,
+Target authentication, Route inputs, the one-use Transit Grant/key, and the
+Broker capability. Only an authenticated ordered byte stream and bounded
+terminal class cross the Interface. The existing `Publish` and `Withdraw`
+operations remain the separately authorized Service Administration surface;
+the Connection Interface cannot invoke them.
+
 ## Local admission
 
 The Broker has one volatile generation. A Grant is bound to one opaque local

@@ -1,6 +1,7 @@
 package endpoint_test
 
 import (
+	"bufio"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -13,7 +14,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -23,9 +23,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-func TestC2RouteCarriesReferenceSiteBetweenTwoEndpoints(t *testing.T) {
+func TestC2RouteCarriesHeadlessApplicationStreamBetweenTwoEndpoints(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.CarrierTCP, route.CarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) { testC2RouteCarriesReferenceSite(t, carrier) })
 	}
@@ -153,39 +154,34 @@ func testC2RouteCarriesReferenceSite(t *testing.T, carrier route.CarrierProfile)
 	}()
 	requestSeen := make(chan *http.Request, 1)
 	go serveOneStaticReference(serviceApplication, requestSeen)
-	userSession, err := user.Admit(c2Identifier(73), broker.Connection)
+	explicitLink, err := targetlink.Encode(targetlink.Link{Network: network, Target: alphaBinding.Target()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	session := user.StartAlphaUserReferenceSite(ctx, endpointapi.AlphaUserReferenceSiteRequest{Binding: alphaBinding,
-		Route: endpointapi.UserReferenceSiteRequest{Reachability: &endpointapi.UserReachabilityRouteRequest{
-			Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gatewayID, GatewayNodePublicKey: gatewayPublic, GatewayFamily: c2Identifier(109),
-				GatewayProfile: gateway.Profile(), StateDigest: digest, Epoch: 10,
-				Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
-				Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
-				AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
-			Introduction: endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Family: c2Identifier(63), Endpoint: introductionAddress},
+	application, err := user.OpenUserApplicationConnection(ctx, endpointapi.UserApplicationConnectionRequest{Reachability: &endpointapi.UserReachabilityRouteRequest{TargetLink: explicitLink,
+		Private: &endpointapi.UserPrivateReachabilityRequest{GatewayNodeID: gatewayID, GatewayNodePublicKey: gatewayPublic, GatewayFamily: c2Identifier(109),
+			GatewayProfile: gateway.Profile(), StateDigest: digest, Epoch: 10,
+			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress},
 			Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
-			Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Family: c2Identifier(66), Endpoint: initiatorAddress},
-			Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Family: c2Identifier(64), Endpoint: rendezvousAddress},
-			AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now},
-			Routes: map[string]string{"": "/"}, Principal: c2Identifier(73), Capability: userSession, BytesEachDirection: 64 << 10}})
-	defer session.Close()
-	if event := <-session.Events(); event.State != endpointapi.UserReferenceStarting {
-		t.Fatalf("first User Reference event = %+v", event)
+			AttachmentID: resolutionAttachment, At: now, Deadline: resolutionDeadline},
+		Introduction: endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Family: c2Identifier(63), Endpoint: introductionAddress},
+		Entry:        c2EntryAcquirer{candidate: entry.Candidate{NodeID: initiatorID, PublicKey: initiatorPublic, Endpoint: initiatorAddress}, presentation: presentation},
+		Initiator:    endpointapi.TransitPeer{NodeID: initiatorID, PublicKey: initiatorPublic, Family: c2Identifier(66), Endpoint: initiatorAddress},
+		Rendezvous:   endpointapi.TransitPeer{NodeID: rendezvousID, PublicKey: rendezvousPublic, Family: c2Identifier(64), Endpoint: rendezvousAddress},
+		AttachmentID: serviceAttachment, EndpointHandshake: c2Identifier(74), At: now},
+		Principal: c2Identifier(73), BytesEachDirection: 64 << 10})
+	if err != nil {
+		t.Fatal(err)
 	}
-	readyEvent := <-session.Events()
-	readyReference := readyEvent.Ready
-	if readyEvent.State != endpointapi.UserReferenceReady || readyReference.AuthenticatedTarget != current.Credential.Target ||
-		readyReference.URL != "http://reference.ard/" || readyReference.AlphaProxyURL == "" {
-		t.Fatalf("Reference Site was not opened after exact C2 target authentication: %+v", readyEvent)
+	defer application.Close()
+	request, err := http.NewRequest(http.MethodGet, "http://reference/", nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	proxyURL, parseErr := url.Parse(readyReference.AlphaProxyURL)
-	if parseErr != nil {
-		t.Fatal(parseErr)
+	if err := request.Write(application); err != nil {
+		t.Fatal(err)
 	}
-	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}}
-	response, err := httpClient.Get(readyReference.URL)
+	response, err := http.ReadResponse(bufio.NewReader(application), request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,19 +193,19 @@ func testC2RouteCarriesReferenceSite(t *testing.T, carrier route.CarrierProfile)
 	if request := <-requestSeen; request == nil || request.URL.Path != "/" || request.Host != "reference" {
 		t.Fatalf("Publisher saw invalid Reference request: %#v", request)
 	}
-	if err := session.Close(); err != nil {
+	if err := application.Close(); err != nil {
 		t.Fatal(err)
 	}
 	select {
-	case event, open := <-session.Events():
-		if !open || event.State != endpointapi.UserReferenceStopped || event.Class == "" {
-			t.Fatalf("User Endpoint terminal lifecycle event = %+v (open=%t)", event, open)
+	case outcome, open := <-application.Done():
+		if !open || outcome.Class == "" {
+			t.Fatalf("User Endpoint terminal Application outcome = %+v (open=%t)", outcome, open)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("User Endpoint did not close its scoped Reference origin")
+		t.Fatal("User Endpoint did not close its headless Application stream")
 	}
-	if _, open := <-session.Events(); open {
-		t.Fatal("User Endpoint lifecycle did not terminate after its terminal event")
+	if _, open := <-application.Done(); open {
+		t.Fatal("User Endpoint Application outcome did not terminate")
 	}
 	select {
 	case outcome := <-publisherDone:

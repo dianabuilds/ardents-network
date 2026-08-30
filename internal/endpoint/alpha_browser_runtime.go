@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -70,8 +70,71 @@ func (endpoint *endpoint) OpenAlphaBrowserRuntime(ctx context.Context, input Alp
 		}})
 }
 
+// ConnectionInterface is the Connection-surface owner shared by headless CLI
+// and optional Adapters. Its Open input is only a Service Link; State, Entry,
+// Target authentication, Route, and one-use transport inputs remain private.
+type ConnectionInterface struct {
+	endpoint *endpoint
+	input    AlphaBrowserRuntimeRequest
+	clock    func() time.Time
+}
+
+// OpenConnectionInterface binds current Endpoint-owned acquisition inputs to a
+// narrow name-to-stream operation. The config is process composition, not an
+// Adapter request or Route plan.
+func (endpoint *endpoint) OpenConnectionInterface(input AlphaBrowserRuntimeRequest) (*ConnectionInterface, error) {
+	if endpoint == nil || input.Floor == nil || input.Current == nil || input.Entry == nil || input.Principal == [32]byte{} ||
+		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumEndpointStreamBytes {
+		return nil, errors.New("Application Connection Interface input is incomplete")
+	}
+	clock := input.Clock
+	if clock == nil {
+		clock = time.Now
+	}
+	return &ConnectionInterface{endpoint: endpoint, input: input, clock: clock}, nil
+}
+
+// Open resolves one exact accepted Service Link and returns only its
+// authenticated opaque Application stream and bounded terminal outcome.
+func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) (*ApplicationConnection, error) {
+	if owner == nil || ctx == nil {
+		return nil, errors.New("Application Connection Interface is unavailable")
+	}
+	link, err := alpha.ParseServiceLink(serviceLink)
+	if err != nil {
+		return nil, err
+	}
+	at := owner.clock().UTC()
+	binding, err := owner.endpoint.ResolveAcceptedAlpha(owner.input.Floor, link.String(), at)
+	if err != nil {
+		return nil, err
+	}
+	return owner.openBinding(ctx, binding)
+}
+
+func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha.Binding) (*ApplicationConnection, error) {
+	if owner == nil {
+		return nil, errors.New("Application Connection Interface is unavailable")
+	}
+	return owner.endpoint.openAlphaApplicationForBinding(ctx, binding, owner.input, owner.clock)
+}
+
 func (endpoint *endpoint) openAlphaBrowserService(ctx context.Context, binding alpha.Binding, input AlphaBrowserRuntimeRequest,
 	clock func() time.Time) (*UserReferenceSite, error) {
+	owner, err := endpoint.OpenConnectionInterface(input)
+	if err != nil {
+		return nil, err
+	}
+	owner.clock = clock
+	application, err := owner.openBinding(ctx, binding)
+	if err != nil {
+		return nil, err
+	}
+	return endpoint.openAlphaCompatibilityPresentation(binding, application)
+}
+
+func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input AlphaBrowserRuntimeRequest,
+	clock func() time.Time) (*ApplicationConnection, error) {
 	at := clock().UTC()
 	if at.IsZero() {
 		return nil, errors.New("alpha browser runtime clock is unavailable")
@@ -156,21 +219,47 @@ func (endpoint *endpoint) openAlphaBrowserService(ctx context.Context, binding a
 	if err != nil {
 		return nil, err
 	}
-	capability, err := endpoint.Admit(input.Principal, broker.Connection)
-	if err != nil {
-		return nil, errors.New("local alpha browser connection admission is unavailable")
-	}
 	// Descriptor is intentionally passed only after this runtime obtained it
 	// through ResolveUserReachability and revalidated it above. No external
 	// caller can provide this branch or substitute a target.
-	site, err := endpoint.OpenAlphaTransparentUserReferenceSite(ctx, AlphaTransparentUserReferenceSiteRequest{Binding: binding,
-		Route: UserReferenceSiteRequest{Reachability: &UserReachabilityRouteRequest{Descriptor: descriptor,
+	application, err := endpoint.openAlphaApplicationConnection(ctx, binding, UserApplicationConnectionRequest{
+		Reachability: &UserReachabilityRouteRequest{Descriptor: descriptor,
 			Introduction: introduction, Initiator: initiator, Rendezvous: rendezvous, Entry: input.Entry,
 			AttachmentID: submission.attachment, EndpointHandshake: handshake, At: at,
 			SubmissionAuthorization: submission.authorization, SubmissionClientCertificate: submission.certificate}, Principal: input.Principal,
-			Capability: capability, BytesEachDirection: input.BytesEachDirection}})
+		BytesEachDirection: input.BytesEachDirection})
 	presented = err == nil
-	return site, err
+	return application, err
+}
+
+func (endpoint *endpoint) openAlphaCompatibilityPresentation(binding alpha.Binding, application *ApplicationConnection) (*UserReferenceSite, error) {
+	if endpoint == nil || application == nil {
+		return nil, errors.New("alpha Browser compatibility presentation is unavailable")
+	}
+	hostname := alphaBrowserHostname(binding)
+	presentation, err := reference.OpenTransparent(reference.TransparentConfig{Target: binding.Target(), Hostname: hostname, Connection: application})
+	if err != nil {
+		_ = application.Close()
+		return nil, err
+	}
+	proxyURL, release, err := endpoint.openAlphaTransparentBrowserRoute(hostname, presentation)
+	if err != nil {
+		_ = presentation.Close()
+		return nil, err
+	}
+	running := &ReferenceConnection{cancel: func() { _ = application.Close() }, ready: make(chan ReferenceReady, 1),
+		done: make(chan ReferenceOutcome, 1), closed: make(chan struct{}), presentation: presentation, release: release}
+	running.publishReady(ReferenceReady{URL: "http://" + hostname + "/", AlphaProxyURL: proxyURL,
+		AuthenticatedTarget: binding.Target()})
+	go func() {
+		outcome, open := <-application.Done()
+		result := RuntimeResult{Class: outcome.Class, Reason: outcome.Reason}
+		if !open {
+			result = RuntimeResult{Class: "indeterminate failure", Reason: "Application Connection ended without an outcome"}
+		}
+		running.completeReferenceConnection(result, nil)
+	}()
+	return &UserReferenceSite{reference: running}, nil
 }
 
 // alphaBrowserServiceAttachment preserves the one-use binding of a signed
