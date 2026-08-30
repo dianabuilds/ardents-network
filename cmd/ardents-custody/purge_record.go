@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
-// purgeRecord is the separately confirmed H4-1C destructive action. It can
+// purgeRecord is the separately confirmed destructive Custody action. It can
 // remove one exact encrypted record but neither changes Authority floors nor
 // touches a Recovery Bundle destination, program, or Endpoint state.
 func purgeRecord(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {

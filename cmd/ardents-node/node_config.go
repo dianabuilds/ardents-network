@@ -14,6 +14,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+const legacyRendezvousDedicatedHostResourceProfile = "h4-5-rendezvous-alpha-v1"
+
 type nodePlan struct {
 	sourceServerPlan
 	ClockObservationFile    string            `json:"clock_observation_file"`
@@ -100,13 +102,16 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
 	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil
+	if plan.NodeResourceProfile == legacyRendezvousDedicatedHostResourceProfile {
+		plan.NodeResourceProfile = node.RendezvousDedicatedHostResourceProfile
+	}
 	if plan.NativeRendezvousProfile && !nativeDuty {
 		return nodeRuntime{}, errors.New("native Route State profile requires one local native duty")
 	}
 	// H3 resource profiles were calibrated for retired role-probe duties. The
 	// sole selected native profile is purpose-bound to one Rendezvous process.
 	if nativeDuty && plan.NodeResourceProfile != "" {
-		if plan.NodeResourceProfile != node.RendezvousFunctionalAlphaResourceProfile {
+		if plan.NodeResourceProfile != node.RendezvousDedicatedHostResourceProfile {
 			return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
 		}
 		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil {
@@ -159,7 +164,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	}
 	nodeConfig.NetworkStateRoot = plan.StateRoot
 	clockObservation := ""
-	if plan.NodeResourceProfile == node.RendezvousFunctionalAlphaResourceProfile {
+	if plan.NodeResourceProfile == node.RendezvousDedicatedHostResourceProfile {
 		clockObservation = plan.ClockObservationFile
 	}
 	return nodeRuntime{state: state, node: nodeConfig, diagnosticDirectory: plan.DiagnosticDirectory,

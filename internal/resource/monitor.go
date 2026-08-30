@@ -36,8 +36,8 @@ type profile struct {
 }
 
 var profiles = map[string]profile{
-	RendezvousFunctionalAlphaProfile: {
-		name: RendezvousFunctionalAlphaProfile, maximumFDs: 256, maximumThreads: 64,
+	RendezvousDedicatedHostProfile: {
+		name: RendezvousDedicatedHostProfile, maximumFDs: 256, maximumThreads: 64,
 		goMaxProcs: 1, goMemory: 128 << 20, exactGoMemory: true, noFile: 256, placementWait: 10 * time.Second,
 		maximumStorageBytes: 384 << 20, maximumStorageFiles: 5000,
 		maximumStorageDirectories: 5000, maximumStorageDepth: 32,

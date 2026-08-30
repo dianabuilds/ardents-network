@@ -7,7 +7,7 @@ import (
 
 // SessionFloor retains the greatest observed signed corpus serial for one
 // alpha cohort during one live resolution session. It deliberately makes no
-// restart-survival claim; a durable corpus floor is a later H4-4A promotion
+// restart-survival claim; a durable corpus floor is a later product promotion
 // gate rather than an implicit cache.
 type SessionFloor struct {
 	mu     sync.Mutex

@@ -59,10 +59,10 @@ func TestStrongBridgeProfileIsAvailable(t *testing.T) {
 	}
 }
 
-func TestRendezvousFunctionalAlphaProfileProtectsRecoversAndDrains(t *testing.T) {
+func TestRendezvousDedicatedHostProfileProtectsRecoversAndDrains(t *testing.T) {
 	var sample resource.Sample
 	guard, err := resource.New(resource.Config{
-		Profile: "h4-5-rendezvous-alpha-v1", Interval: time.Second,
+		Profile: "ardents-rendezvous-dedicated-host-v1", Interval: time.Second,
 		Measure:      func() (resource.Sample, error) { return sample, nil },
 		StorageRoots: []string{t.TempDir(), t.TempDir()},
 	})
@@ -99,7 +99,7 @@ func TestRendezvousFunctionalAlphaProfileProtectsRecoversAndDrains(t *testing.T)
 	}
 }
 
-func TestRendezvousFunctionalAlphaStorageCeilingDrains(t *testing.T) {
+func TestRendezvousDedicatedHostStorageCeilingDrains(t *testing.T) {
 	stateRoot, roleRoot := t.TempDir(), t.TempDir()
 	stateFile := filepath.Join(stateRoot, "bounded-state")
 	if err := os.WriteFile(stateFile, nil, 0o600); err != nil {
@@ -109,7 +109,7 @@ func TestRendezvousFunctionalAlphaStorageCeilingDrains(t *testing.T) {
 		t.Fatal(err)
 	}
 	guard, err := resource.New(resource.Config{
-		Profile: "h4-5-rendezvous-alpha-v1", Interval: time.Second,
+		Profile: "ardents-rendezvous-dedicated-host-v1", Interval: time.Second,
 		Measure:      func() (resource.Sample, error) { return resource.Sample{}, nil },
 		StorageRoots: []string{stateRoot, roleRoot},
 	})
@@ -120,6 +120,13 @@ func TestRendezvousFunctionalAlphaStorageCeilingDrains(t *testing.T) {
 	if err != nil || !observation.Protect || !observation.Drain ||
 		observation.Sample.StorageBytes != 384<<20 || observation.Sample.StorageFiles != 1 {
 		t.Fatalf("storage ceiling observation = %+v, %v", observation, err)
+	}
+}
+
+func TestResourceGuardRejectsLegacyPlanningProfile(t *testing.T) {
+	_, err := resource.New(resource.Config{Profile: "h4-5-rendezvous-alpha-v1", Interval: time.Second})
+	if err == nil {
+		t.Fatal("resource guard accepted a legacy planning identity outside an input reader")
 	}
 }
 

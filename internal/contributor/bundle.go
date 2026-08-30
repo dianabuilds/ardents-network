@@ -104,10 +104,12 @@ func openBundle(directory, pin string) (verifiedBundle, error) {
 	if err := decodeStrict(manifestRaw, &manifest); err != nil {
 		return verifiedBundle{}, fmt.Errorf("decode Contributor manifest: %w", err)
 	}
-	if manifest.Schema != "ardents-contributor-bundle-v1" || manifest.Profile != profileName || manifest.Generation == 0 ||
+	normalizedProfile, knownProfile := normalizeRendezvousDedicatedHostProfile(manifest.Profile)
+	if manifest.Schema != "ardents-contributor-bundle-v1" || !knownProfile || manifest.Generation == 0 ||
 		!fixedHex(manifest.DeploymentID, 32) || len(manifest.Files) != len(bundleFileSpecs) {
 		return verifiedBundle{}, errors.New("contributor bundle manifest is not canonical")
 	}
+	manifest.Profile = normalizedProfile
 	result := verifiedBundle{manifest: manifest, manifestDigest: pin, files: make(map[string][]byte, len(bundleFileSpecs))}
 	for _, spec := range bundleFileSpecs {
 		want, ok := manifest.Files[spec.name]
@@ -135,6 +137,7 @@ func validateProfilePlan(raw []byte) error {
 	if err := decodeStrict(raw, &plan); err != nil {
 		return fmt.Errorf("decode Contributor Node plan: %w", err)
 	}
+	_, knownProfile := normalizeRendezvousDedicatedHostProfile(plan.NodeResourceProfile)
 	if plan.Schema != "ardents-node-plan-v1" || plan.StateRoot != "/var/lib/private/ardents-contributor/network" ||
 		plan.LocalRoleStateRoot != "/var/lib/private/ardents-contributor/role" || !fixedHex(plan.NetworkID, 32) ||
 		plan.Threshold < 1 || plan.Threshold > len(plan.AuthorityPublic) || len(plan.AuthorityPublic) > 16 ||
@@ -142,7 +145,7 @@ func validateProfilePlan(raw []byte) error {
 		plan.ClockObservationFile != installedPath("clock.observation") || !fixedHex(plan.OrderSeed, 32) ||
 		plan.SourceClientCertificate != installedPath("source-client-cert.pem") || plan.SourceClientKey != installedPath("source-client-key.pem") ||
 		!fixedHex(plan.NodeID, 32) || plan.IdentityKey != installedPath("rendezvous-identity.pem") ||
-		plan.NodeResourceProfile != profileName || plan.DiagnosticDirectory != "/var/lib/private/ardents-contributor/diagnostics" {
+		!knownProfile || plan.DiagnosticDirectory != "/var/lib/private/ardents-contributor/diagnostics" {
 		return errors.New("contributor Node plan does not match the dedicated-host profile")
 	}
 	for _, authority := range plan.AuthorityPublic {

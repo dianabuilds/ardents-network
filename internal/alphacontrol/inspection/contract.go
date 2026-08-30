@@ -18,7 +18,7 @@ type Config struct {
 	At         time.Time
 }
 
-// Report is the bounded, non-authorizing H4-6A inspection projection.
+// Report is the bounded, non-authorizing alpha-control inspection projection.
 type Report struct {
 	Inspection                  alphacontrol.Inspection
 	CatalogCohort               string

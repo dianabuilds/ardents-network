@@ -11,7 +11,7 @@ const (
 	ComponentNetwork ComponentClass = 2
 	// ComponentCompatibility is the fixed compatibility-evidence component.
 	ComponentCompatibility ComponentClass = 3
-	// ComponentCorpus is the independently signed H4-4A Alpha Name Corpus
+	// ComponentCorpus is the independently signed Alpha Name Corpus
 	// component available only in versioned ACA2 control catalogs.
 	ComponentCorpus ComponentClass = 4
 )

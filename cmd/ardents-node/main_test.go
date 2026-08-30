@@ -70,19 +70,21 @@ func TestNodePlanRejectsLegacyResourceProfileForNativeDuty(t *testing.T) {
 	}
 }
 
-func TestNodePlanAcceptsFunctionalAlphaResourceProfileOnlyForRendezvous(t *testing.T) {
+func TestNodePlanAcceptsDedicatedHostResourceProfileOnlyForRendezvous(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name       string
+		profile    string
 		duty       string
 		wantDetail string
 	}{
-		{name: "Rendezvous", duty: `"rendezvous":{}`, wantDetail: "invalid fixed hexadecimal value"},
-		{name: "Initiator", duty: `"initiator":{}`, wantDetail: "requires only one Rendezvous duty"},
+		{name: "canonical Rendezvous", profile: "ardents-rendezvous-dedicated-host-v1", duty: `"rendezvous":{}`, wantDetail: "invalid fixed hexadecimal value"},
+		{name: "legacy Rendezvous", profile: "h4-5-rendezvous-alpha-v1", duty: `"rendezvous":{}`, wantDetail: "invalid fixed hexadecimal value"},
+		{name: "canonical Initiator", profile: "ardents-rendezvous-dedicated-host-v1", duty: `"initiator":{}`, wantDetail: "requires only one Rendezvous duty"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "functional-alpha-resource.json")
-			raw := `{"schema":"ardents-node-plan-v1","local_role_state_root":"role","authority_public":["00"],"sources":[{},{}],"node_resource_profile":"h4-5-rendezvous-alpha-v1",` + test.duty + `}`
+			raw := `{"schema":"ardents-node-plan-v1","local_role_state_root":"role","authority_public":["00"],"sources":[{},{}],"node_resource_profile":"` + test.profile + `",` + test.duty + `}`
 			if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
 				t.Fatal(err)
 			}

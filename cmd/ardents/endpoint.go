@@ -75,10 +75,10 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	return errors.Join(err, publishErr)
 }
 
-// runReplacementSelfTest is the candidate-side, no-network H4-1B check. It
-// proves that the binary actually executing matches a precommitted successor
-// record; it does not activate a program, contact the network, or start an
-// Endpoint runtime.
+// runReplacementSelfTest is the candidate-side, no-network Endpoint
+// replacement check. It proves that the binary actually executing matches a
+// precommitted successor record; it does not activate a program, contact the
+// network, or start an Endpoint runtime.
 func runReplacementSelfTest(stateRoot string, output io.Writer) error {
 	executable, err := os.Executable()
 	if err != nil {
@@ -329,8 +329,8 @@ func hexDigest(value []byte) string {
 	return hex.EncodeToString(digest[:])
 }
 
-// runPortableEndpoint adapts the selected H4-1A local lifecycle to the
-// command's bounded event projection. It intentionally creates no network
+// runPortableEndpoint adapts the selected Portable Endpoint local lifecycle to
+// the command's bounded event projection. It intentionally creates no network
 // route, browser integration, or local application capability.
 func runPortableEndpoint(ctx context.Context, output io.Writer) error {
 	encoder := json.NewEncoder(output)

@@ -44,9 +44,9 @@ type bundleComponentInspectionOutput struct {
 	NotAfter   string                      `json:"not_after"`
 }
 
-// transitionInspectionOutput makes the four H4-6B contracts visible next to
-// the non-authorizing H4-6A inspection. It is a diagnostic report, never an
-// input to Endpoint readiness or control authority.
+// transitionInspectionOutput makes the four alpha-control transition
+// contracts visible next to the non-authorizing control inspection. It is a
+// diagnostic report, never an input to Endpoint readiness or control authority.
 type transitionInspectionOutput struct {
 	Schema      string                      `json:"schema"`
 	Control     bundleInspectionOutput      `json:"control"`
@@ -89,7 +89,7 @@ func bundleInspectionReport(report inspection.Report) bundleInspectionOutput {
 }
 
 func transitionInspectionReport(report inspection.Report) transitionInspectionOutput {
-	contracts := alphacontrol.H46BTransitionContracts()
+	contracts := alphacontrol.TransitionContracts()
 	result := transitionInspectionOutput{
 		Schema: "ardents-alpha-transition-report-v1", Control: bundleInspectionReport(report),
 		Transitions: make([]transitionInspectionEntry, len(contracts)),
@@ -112,7 +112,7 @@ func transitionOutcome(report inspection.Report, domain alphacontrol.TransitionD
 	if domain == alphacontrol.DomainCompatibility && report.Release == "release-revoked" {
 		return "revoked"
 	}
-	component, selected := alphacontrol.H46BComponent(domain)
+	component, selected := alphacontrol.ComponentForTransitionDomain(domain)
 	if !selected {
 		return "forged"
 	}

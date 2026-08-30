@@ -50,7 +50,7 @@ type AlphaBrowserRuntimeRequest struct {
 	Clock              func() time.Time
 }
 
-// OpenAlphaBrowserRuntime makes the selected H4-4 composition live:
+// OpenAlphaBrowserRuntime makes the selected Alpha Browser Entry composition live:
 // name.ard -> accepted alpha floor -> State-selected private lookup -> exact
 // C-2 Service -> local transparent presentation. It leaves ordinary browser
 // traffic untouched and the Endpoint itself has no DNS or direct-origin

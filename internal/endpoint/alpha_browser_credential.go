@@ -15,7 +15,7 @@ import (
 )
 
 // alphaBrowserCredentialIssuerView is deliberately additional to the stable
-// H4-4 State view: Descriptor v1 must continue its fixed-Grant path, while a
+// Alpha Browser Entry State view: Descriptor v1 must continue its fixed-Grant path, while a
 // Descriptor v2 fails closed if the current State cannot project this new
 // exact issuer duty.
 type alphaBrowserCredentialIssuerView interface {

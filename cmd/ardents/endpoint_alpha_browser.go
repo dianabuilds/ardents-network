@@ -45,9 +45,9 @@ type alphaBrowserRuntimePlan struct {
 	BytesEachDirection   uint32   `json:"bytes_each_direction"`
 }
 
-// runAlphaBrowserRuntime adapts the selected participant-owned H4-4 runtime
-// to one explicit local plan. Browser Entry state uses the fixed per-user path
-// expected by the separately installed native host.
+// runAlphaBrowserRuntime adapts the selected participant-owned Browser Entry
+// runtime to one explicit local plan. Browser Entry state uses the fixed
+// per-user path expected by the separately installed native host.
 func runAlphaBrowserRuntime(ctx context.Context, path string, output io.Writer) error {
 	return runAlphaBrowserRuntimeWithStatePath(ctx, path, output, browserentry.DefaultStatePath)
 }

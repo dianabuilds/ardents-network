@@ -64,7 +64,7 @@ type AlphaGenesisReceipt struct {
 }
 
 // InitializeAlphaGenesis first validates the root and fixed absence, generates
-// and verifier-preflights one 30-day empty-topology H4-alpha-1 genesis, then
+// and verifier-preflights one 30-day empty-topology alpha genesis, then
 // reads a new passphrase and confirmation. Passphrases contain 16 to 1024
 // bytes. The Implementation uses the fixed 256 MiB, three-pass, four-lane
 // Argon2id profile and atomically publishes exactly one encrypted seed record

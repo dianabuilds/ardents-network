@@ -101,6 +101,58 @@ func TestPendingRejectsUnsignedOrSubstitutedSuccessor(t *testing.T) {
 	}
 }
 
+func TestEpochInstallationRejectsForkedPendingSuccessors(t *testing.T) {
+	now, network := time.Unix(1_800_000_150, 0).UTC(), [32]byte{10}
+	store, _ := pendingTestStore(t, network)
+	defer store.Close()
+	key := deterministicControlKey("pending-fork")
+	current := controlTestRecord("alice", key, now)
+	signedCurrent, err := SignRecord(network, current, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AppendPending(current.Name, []byte("initial claim"), signedCurrent, now.UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	installation, err := store.BeginEpochInstallation(Epoch{Number: 1, Digest: [32]byte{1}, CutoffOffset: 1,
+		TransitionRoot: [32]byte{2}, TransitionLength: 1, RejectionRoot: [32]byte{3}}, now, Policy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := installation.IncludePendingThrough(1); err != nil {
+		t.Fatal(err)
+	}
+	_, attesters := pendingTestPolicy(network)
+	if err := installation.Commit(pendingTestAttester(attesters)); err != nil {
+		t.Fatal(err)
+	}
+
+	first := current
+	first.Revision++
+	first.LeaseExpiresAt++
+	first.GraceExpiresAt++
+	second := first
+	second.LeaseExpiresAt++
+	second.GraceExpiresAt++
+	for _, successor := range []Record{first, second} {
+		signed, signErr := SignRecord(network, successor, key)
+		if signErr != nil {
+			t.Fatal(signErr)
+		}
+		if err := store.AppendPending(current.Name, []byte("competing successor"), signed, now.UnixMilli()+1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	candidate, err := store.BeginEpochInstallation(Epoch{Number: 2, Digest: [32]byte{4}, CutoffOffset: 2,
+		TransitionRoot: [32]byte{5}, TransitionLength: 2, RejectionRoot: [32]byte{6}}, now.Add(time.Minute), Policy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := candidate.IncludePendingThrough(3); err == nil {
+		t.Fatal("two signed successors of one predecessor were accepted into one Epoch")
+	}
+}
+
 func TestDurableControlRestoresExactSignedPendingSuccessor(t *testing.T) {
 	now, network := time.Unix(1_800_000_200, 0).UTC(), [32]byte{7}
 	policy, attesters := pendingTestPolicy(network)

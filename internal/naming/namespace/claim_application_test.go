@@ -40,8 +40,9 @@ func TestClaimWinnerMaterializesOnlyTheThresholdAuthenticatedWinner(t *testing.T
 		t.Fatal(err)
 	}
 	current, err := winner.Materialize(nil, time.Unix(100, 0).UTC(),
-		record.Policy{DefaultLeaseDuration: time.Hour})
-	if err != nil || current.Name != value.Name || current.Authority != hex.EncodeToString(value.Authority[:]) {
+		record.Policy{DefaultLeaseDuration: time.Hour, DefaultGraceDuration: 30 * time.Minute})
+	if err != nil || current.Name != value.Name || current.Authority != hex.EncodeToString(value.Authority[:]) ||
+		current.LeaseExpiresAt != 3_700 || current.GraceExpiresAt != 5_500 {
 		t.Fatalf("record=%+v err=%v", current, err)
 	}
 	if _, err := winner.Materialize(nil, time.Unix(101, 0).UTC(), record.Policy{}); err == nil {

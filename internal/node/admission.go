@@ -55,7 +55,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	if enforcePressure {
 		switch input.ResourceProfile {
 		case "h3-np1-v1", "h3-s-v1", "h3-s-v1-strong":
-		case resource.RendezvousFunctionalAlphaProfile:
+		case resource.RendezvousDedicatedHostProfile:
 			if probePlan != nil || input.Rendezvous.Certificate.PrivateKey == nil || input.Initiator.Certificate.PrivateKey != nil ||
 				input.Introduction.Certificate.PrivateKey != nil || input.Responder.Certificate.PrivateKey != nil {
 				return runtimeConfig{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")

@@ -11,17 +11,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/namespacelifecyclesimulation"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/publiccontrol"
-	"github.com/dianabuilds/ardents-network/internal/publiccontrolsimulation"
-	"github.com/dianabuilds/ardents-network/internal/rootclaimsimulation"
 )
 
 var componentNames = [...]string{"release.ac1", "network.ac1", "compatibility.ac1"}
@@ -35,7 +31,7 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, simulate-namespace-lifecycle, simulate-root-claims, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
 	switch arguments[0] {
 	case "inspect":
@@ -46,93 +42,13 @@ func run(arguments []string, output io.Writer) error {
 		return inspectTransitions(arguments[1:], output)
 	case "inspect-public-control":
 		return inspectPublicControl(arguments[1:], output)
-	case "simulate-public-control":
-		return simulatePublicControl(arguments[1:], output)
-	case "simulate-public-control-transitions":
-		return simulatePublicControlTransitions(arguments[1:], output)
-	case "simulate-namespace-lifecycle":
-		return simulateNamespaceLifecycle(arguments[1:], output)
-	case "simulate-root-claims":
-		return simulateRootClaims(arguments[1:], output)
 	case "inspect-alpha-corpus":
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
 		return acceptAlphaCorpus(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, simulate-public-control, simulate-public-control-transitions, simulate-namespace-lifecycle, simulate-root-claims, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, inspect-alpha-corpus, or accept-alpha-corpus")
 	}
-}
-
-func simulateRootClaims(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("simulate-root-claims", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var sourceRevision string
-	flags.StringVar(&sourceRevision, "source-revision", "", "exact 40-character lowercase hexadecimal source revision")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !validSourceRevision(sourceRevision) {
-		return errors.New("root claim simulation arguments are invalid")
-	}
-	report, err := rootclaimsimulation.RunWithSourceRevision(sourceRevision)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(output).Encode(report)
-}
-
-func simulateNamespaceLifecycle(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("simulate-namespace-lifecycle", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var sourceRevision string
-	flags.StringVar(&sourceRevision, "source-revision", "", "exact 40-character lowercase hexadecimal source revision")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !validSourceRevision(sourceRevision) {
-		return errors.New("namespace lifecycle simulation arguments are invalid")
-	}
-	report, err := namespacelifecyclesimulation.RunWithSourceRevision(sourceRevision)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(output).Encode(report)
-}
-
-func simulatePublicControlTransitions(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("simulate-public-control-transitions", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var sourceRevision string
-	flags.StringVar(&sourceRevision, "source-revision", "", "exact 40-character lowercase hexadecimal source revision")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !validSourceRevision(sourceRevision) {
-		return errors.New("public-control transition simulation arguments are invalid")
-	}
-	report, err := publiccontrolsimulation.RunControlledTransitionsWithSourceRevision(sourceRevision)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(output).Encode(report)
-}
-
-func simulatePublicControl(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("simulate-public-control", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var sourceRevision string
-	flags.StringVar(&sourceRevision, "source-revision", "", "exact 40-character lowercase hexadecimal source revision")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || !validSourceRevision(sourceRevision) {
-		return errors.New("public-control simulation arguments are invalid")
-	}
-	report, err := publiccontrolsimulation.RunWithSourceRevision(sourceRevision)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(output).Encode(report)
-}
-
-func validSourceRevision(value string) bool {
-	if len(value) != 40 {
-		return false
-	}
-	for _, character := range value {
-		if !strings.ContainsRune("0123456789abcdef", character) {
-			return false
-		}
-	}
-	return true
 }
 
 func inspectPublicControl(arguments []string, output io.Writer) error {
@@ -221,9 +137,9 @@ func inspectAlphaCorpus(arguments []string, output io.Writer) error {
 	}{Schema: "ardents-alpha-corpus-report-v1", Cohort: corpus.Cohort(), Corpus: string(alphacontrol.OutcomeAccepted), Network: networkText, Serial: corpus.Serial()})
 }
 
-// inspectStatements is a low-level statement-integrity diagnostic. The H4-6A
-// participant flow is inspect-bundle, which first verifies the Alpha
-// Enrollment Pin and then invokes the Release and Network State verifiers.
+// inspectStatements is a low-level statement-integrity diagnostic. The
+// alpha-control participant flow is inspect-bundle, which first verifies the
+// Alpha Enrollment Pin and then invokes the Release and Network State verifiers.
 func inspectStatements(arguments []string, output io.Writer) error {
 	flags := flag.NewFlagSet("inspect", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)

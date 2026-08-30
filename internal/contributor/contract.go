@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const profileName = "h4-5-rendezvous-alpha-v1"
-
 // SupervisorAction is one fixed system-service operation required by the
 // dedicated-host lifecycle.
 type SupervisorAction byte

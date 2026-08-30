@@ -28,7 +28,7 @@ func TestPinnedRendezvousBundleInstallsAndBecomesReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Profile != "h4-5-rendezvous-alpha-v1" || report.Generation != 1 || report.LifecycleState != "READY" || !report.Active {
+	if report.Profile != "ardents-rendezvous-dedicated-host-v1" || report.Generation != 1 || report.LifecycleState != "READY" || !report.Active {
 		t.Fatalf("install report = %+v", report)
 	}
 	program := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor", "current", "ardents-node")
@@ -361,6 +361,12 @@ func writeLifecycle(target tWriter, state string) {
 
 func writeContributorBundle(t *testing.T, generation uint64, deployment string) (string, string) {
 	t.Helper()
+	return writeContributorBundleProfiles(t, generation, deployment,
+		"ardents-rendezvous-dedicated-host-v1", "ardents-rendezvous-dedicated-host-v1")
+}
+
+func writeContributorBundleProfiles(t *testing.T, generation uint64, deployment, manifestProfile, planProfile string) (string, string) {
+	t.Helper()
 	bundle := t.TempDir()
 	files := map[string][]byte{
 		"ardents-node":            []byte(fmt.Sprintf("functional-alpha-rendezvous-program-v%d", generation)),
@@ -387,7 +393,7 @@ func writeContributorBundle(t *testing.T, generation uint64, deployment string) 
 			{"address": "192.0.2.11:48011", "server_name": "source-b.test", "identity": strings.Repeat("16", 32), "family": "source-b", "endpoint_handle": "source-b", "root_ca": "/var/lib/private/ardents-contributor/config/current/source-b-root.pem", "leaf_key_digest": strings.Repeat("17", 32)},
 		},
 		"node_id": strings.Repeat("18", 32), "identity_key": "/var/lib/private/ardents-contributor/config/current/rendezvous-identity.pem",
-		"node_resource_profile": "h4-5-rendezvous-alpha-v1", "diagnostic_directory": "/var/lib/private/ardents-contributor/diagnostics",
+		"node_resource_profile": planProfile, "diagnostic_directory": "/var/lib/private/ardents-contributor/diagnostics",
 		"rendezvous": map[string]any{"handshake_limit": 4, "waiting_limit": 2, "pair_limit": 1, "pair_byte_limit": 64 << 20, "admission_timeout_ms": 5000, "drain_timeout_ms": 5000},
 	}
 	files["node.json"], _ = json.Marshal(plan)
@@ -399,7 +405,7 @@ func writeContributorBundle(t *testing.T, generation uint64, deployment string) 
 		digest := sha256.Sum256(raw)
 		digests[name] = hex.EncodeToString(digest[:])
 	}
-	manifest := map[string]any{"schema": "ardents-contributor-bundle-v1", "profile": "h4-5-rendezvous-alpha-v1", "deployment_id": deployment, "generation": generation, "files": digests}
+	manifest := map[string]any{"schema": "ardents-contributor-bundle-v1", "profile": manifestProfile, "deployment_id": deployment, "generation": generation, "files": digests}
 	raw, _ := json.Marshal(manifest)
 	if err := os.WriteFile(filepath.Join(bundle, "manifest.json"), raw, 0o600); err != nil {
 		t.Fatal(err)

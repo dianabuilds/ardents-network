@@ -11,9 +11,9 @@ import (
 
 const eventSchema = "ardents-node-event-v1"
 
-// RendezvousFunctionalAlphaResourceProfile is the only selected native Node
-// resource profile and is restricted to the H4-5 dedicated Rendezvous duty.
-const RendezvousFunctionalAlphaResourceProfile = resource.RendezvousFunctionalAlphaProfile
+// RendezvousDedicatedHostResourceProfile is the only selected native Node
+// resource profile and is restricted to the dedicated Rendezvous duty.
+const RendezvousDedicatedHostResourceProfile = resource.RendezvousDedicatedHostProfile
 
 // DutyView is the narrow authenticated input required to decide one Node duty.
 // It does not expose Network State persistence, source, retry, or pending

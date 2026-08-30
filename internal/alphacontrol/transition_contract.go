@@ -1,7 +1,7 @@
 package alphacontrol
 
-// TransitionDomain is one independent H4-6B control decision. It is a
-// disclosure vocabulary only and never grants an Endpoint authority.
+// TransitionDomain is one independent alpha-control transition decision. It
+// is a disclosure vocabulary only and never grants an Endpoint authority.
 type TransitionDomain string
 
 const (
@@ -28,11 +28,11 @@ type TransitionContract struct {
 	Evidence        string           `json:"evidence"`
 }
 
-// H46BTransitionContracts returns the fixed alpha disclosure. Release,
+// TransitionContracts returns the fixed alpha-control disclosure. Release,
 // Network, and Compatibility retain their own authoritative mechanisms.
 // Namespace is deliberately unselected for this profile: no project control
 // statement can stand in for an authenticated global close.
-func H46BTransitionContracts() []TransitionContract {
+func TransitionContracts() []TransitionContract {
 	return []TransitionContract{
 		{
 			Domain: DomainReleaseSafety, Selected: true,
@@ -80,15 +80,15 @@ func H46BTransitionContracts() []TransitionContract {
 			RollbackFloor:   "not applicable; no current Namespace materialization floor is created",
 			EmergencyAction: "do not materialize, release, or reclaim a Namespace",
 			UserFailure:     "Namespace materialization is unavailable in this alpha profile",
-			Evidence:        "the absent Namespace authority/component and the explicit H4-6B deferral record",
+			Evidence:        "the absent Namespace authority/component and the explicit alpha-control deferral record",
 		},
 	}
 }
 
-// H46BComponent reports the independently verified ACA1 component for one
-// selected transition domain. Namespace materialization has no component in
-// the current Functional Alpha profile.
-func H46BComponent(domain TransitionDomain) (ComponentClass, bool) {
+// ComponentForTransitionDomain reports the independently verified ACA1
+// component for one selected transition domain. Namespace materialization has
+// no component in the current Functional Alpha profile.
+func ComponentForTransitionDomain(domain TransitionDomain) (ComponentClass, bool) {
 	switch domain {
 	case DomainReleaseSafety:
 		return ComponentRelease, true

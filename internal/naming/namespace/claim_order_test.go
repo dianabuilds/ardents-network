@@ -50,6 +50,10 @@ func TestClaimOrderVerifyFailsClosedForHostileSets(t *testing.T) {
 		"duplicate signer": func(_ *claim.ClaimOrder, proof *claim.ClaimProof) {
 			proof.SignerIDs[1] = proof.SignerIDs[0]
 		},
+		"incomplete rejection evidence": func(_ *claim.ClaimOrder, proof *claim.ClaimProof) {
+			proof.RejectionLength = 1
+			signClose(proof)
+		},
 		"rule fork": func(_ *claim.ClaimOrder, proof *claim.ClaimProof) {
 			proof.Rule = "ardents-name-claim-order-v2"
 			signClose(proof)

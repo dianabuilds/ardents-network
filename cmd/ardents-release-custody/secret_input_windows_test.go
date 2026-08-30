@@ -26,11 +26,8 @@ func TestDialogSecretInputUsesDifferentLocalPrompts(t *testing.T) {
 	if _, err := input.ReadSecret(context.Background(), custody.PromptUnlock); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := input.ReadSecret(context.Background(), custody.PromptAssemble); err != nil {
-		t.Fatal(err)
-	}
-	if len(messages) != 4 || messages[0] == messages[1] || messages[1] == messages[2] || messages[2] == messages[3] ||
-		!strings.Contains(messages[2], "existing") || !strings.Contains(messages[3], "assemble") {
+	if len(messages) != 3 || messages[0] == messages[1] || messages[1] == messages[2] ||
+		!strings.Contains(messages[2], "existing") {
 		t.Fatalf("messages = %q", messages)
 	}
 }

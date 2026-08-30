@@ -8,7 +8,7 @@ campaign was not replayed.
 
 ## Decision question
 
-Can one freshly installed `h4-5-rendezvous-alpha-v1` Contributor perform the
+Can one freshly installed `ardents-rendezvous-dedicated-host-v1` Contributor perform the
 real Rendezvous position in the maintained Publisher-to-User C-2 topology,
 stay inside its declared dedicated-host limits, fail and recover predictably,
 and be operated and completely withdrawn by the Product Owner without hidden
@@ -146,7 +146,12 @@ The preflight captures the selected host's actual envelope. CPU count, memory,
 and link speed are evidence rather than rejection criteria under the Product
 Owner selection of 2026-08-29. A stronger or differently sized existing host
 therefore does not fail preparation; the installed process must still enforce
-the exact `h4-5-rendezvous-alpha-v1` cgroup and runtime limits.
+the exact `ardents-rendezvous-dedicated-host-v1` cgroup and runtime limits.
+
+The retained harness creates only the canonical profile in every new bundle,
+Node plan, report, and record. Separate contributor and Node migration tests
+retain already pinned `h4-5-rendezvous-alpha-v1` bytes and prove that readers
+normalize that historical identity without permitting new writers to emit it.
 
 The Windows controller is `make qualification-h4-5-rendezvous`. It requires
 two distinct declared VPS literal IPv4 addresses, an existing OpenSSH-compatible

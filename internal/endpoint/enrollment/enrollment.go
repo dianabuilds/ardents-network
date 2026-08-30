@@ -49,7 +49,7 @@ type Request struct {
 // is passed unchanged to Release Decision; it does not grant execution.
 type Verified struct {
 	Inputs release.Inputs
-	// ControlCatalog and DisclosureRoot are enrollment-pinned H4-6A
+	// ControlCatalog and DisclosureRoot are enrollment-pinned alpha-control
 	// disclosure companions. They are deliberately not Release metadata.
 	ControlCatalog, DisclosureRoot []byte
 	ControlRelease                 []byte
@@ -58,7 +58,7 @@ type Verified struct {
 	ControlReleaseRoot             []byte
 	ControlNetworkRoot             []byte
 	ControlCompatibilityRoot       []byte
-	// CorpusAuthority is the optional independently pinned H4-4A corpus
+	// CorpusAuthority is the optional independently pinned Alpha Name Corpus
 	// authority from an enrollment-v2-or-later bundle. It is not Release metadata.
 	CorpusAuthority []byte
 	// ControlArtifact is the exact separately executable alpha-control command

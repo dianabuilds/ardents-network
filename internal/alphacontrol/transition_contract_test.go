@@ -2,8 +2,8 @@ package alphacontrol
 
 import "testing"
 
-func TestH46BTransitionContractsKeepAuthoritiesSeparate(t *testing.T) {
-	contracts := H46BTransitionContracts()
+func TestTransitionContractsKeepAuthoritiesSeparate(t *testing.T) {
+	contracts := TransitionContracts()
 	if len(contracts) != 4 {
 		t.Fatalf("transition contract count = %d, want 4", len(contracts))
 	}

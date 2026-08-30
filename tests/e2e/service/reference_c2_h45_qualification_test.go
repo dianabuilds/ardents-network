@@ -199,7 +199,7 @@ func stageH45Bundle(t *testing.T, root string, generation, pairByteLimit uint64)
 		"source_client_certificate": "/var/lib/private/ardents-contributor/config/current/source-client-cert.pem",
 		"source_client_key":         "/var/lib/private/ardents-contributor/config/current/source-client-key.pem", "sources": sources,
 		"node_id": fixture.Rendezvous.NodeID, "identity_key": "/var/lib/private/ardents-contributor/config/current/rendezvous-identity.pem",
-		"node_resource_profile": "h4-5-rendezvous-alpha-v1", "diagnostic_directory": "/var/lib/private/ardents-contributor/diagnostics",
+		"node_resource_profile": "ardents-rendezvous-dedicated-host-v1", "diagnostic_directory": "/var/lib/private/ardents-contributor/diagnostics",
 		"rendezvous": map[string]any{"handshake_limit": 4, "waiting_limit": 2, "pair_limit": 1,
 			"pair_byte_limit": pairByteLimit, "admission_timeout_ms": 5000, "drain_timeout_ms": 5000},
 	}
@@ -210,7 +210,7 @@ func stageH45Bundle(t *testing.T, root string, generation, pairByteLimit uint64)
 	files := map[string][]byte{
 		"rendezvous-cert.pem": []byte(fixture.Rendezvous.Certificate), "rendezvous-key.pem": []byte(fixture.Rendezvous.PrivateKey),
 		"rendezvous-identity.pem": []byte(fixture.Rendezvous.PrivateKey), "source-client-cert.pem": []byte(fixture.TransitStateClient.Certificate),
-		"source-client-key.pem": []byte(fixture.TransitStateClient.PrivateKey), "clock.observation": []byte("H4-5 live clock observation\n"),
+		"source-client-key.pem": []byte(fixture.TransitStateClient.PrivateKey), "clock.observation": []byte("rendezvous dedicated-host live clock observation\n"),
 		"node.json": planRaw,
 	}
 	for _, suffix := range []string{"a", "b"} {
@@ -235,9 +235,9 @@ func stageH45Bundle(t *testing.T, root string, generation, pairByteLimit uint64)
 		digest := sha256.Sum256(contents)
 		digests[name] = hex.EncodeToString(digest[:])
 	}
-	deploymentDigest := sha256.Sum256([]byte("h4-5-rendezvous:" + fixture.Network))
+	deploymentDigest := sha256.Sum256([]byte("ardents-rendezvous-dedicated-host:" + fixture.Network))
 	deployment := hex.EncodeToString(deploymentDigest[:])
-	manifest := map[string]any{"schema": "ardents-contributor-bundle-v1", "profile": "h4-5-rendezvous-alpha-v1",
+	manifest := map[string]any{"schema": "ardents-contributor-bundle-v1", "profile": "ardents-rendezvous-dedicated-host-v1",
 		"deployment_id": deployment, "generation": generation, "files": digests}
 	manifestRaw, err := json.Marshal(manifest)
 	if err != nil {
@@ -264,7 +264,7 @@ exit 0`, h43ShellQuote(root), name)
 		t.Fatalf("H4-5 Contributor %s: %v\n%s\n%s", name, err, output, report)
 	}
 	report, err := remote.readFile(t, root+"/contributor-"+name+".json")
-	if err != nil || !strings.Contains(string(report), `"profile":"h4-5-rendezvous-alpha-v1"`) {
+	if err != nil || !strings.Contains(string(report), `"profile":"ardents-rendezvous-dedicated-host-v1"`) {
 		t.Fatalf("H4-5 Contributor %s report = %q / %v", name, report, err)
 	}
 	return report

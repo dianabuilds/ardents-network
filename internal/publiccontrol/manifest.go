@@ -16,7 +16,7 @@ const (
 	MaximumEvidenceManifestSize = 1 << 20
 )
 
-// Outcome describes one H4-6C evidence-reader result. The reader has no
+// Outcome describes one public-control evidence-reader result. The reader has no
 // qualified result because factual independent operation is external evidence.
 type Outcome string
 
@@ -118,7 +118,7 @@ type builderAttestation struct {
 	Artifact string `json:"artifact"`
 }
 
-// Inspect parses and mechanically checks one declared H4-6C evidence manifest.
+// Inspect parses and mechanically checks one declared public-control evidence manifest.
 // It always returns external-evidence-required for a well-formed manifest: no
 // local reader can establish whether people or organizations are independent.
 func Inspect(raw []byte) (Report, error) {

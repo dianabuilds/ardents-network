@@ -62,11 +62,15 @@ func readInstallation(path string) (installationRecord, error) {
 		return installationRecord{}, err
 	}
 	var record installationRecord
-	if err := decodeStrict(raw, &record); err != nil || record.Schema != "ardents-contributor-installation-v1" ||
-		record.Profile != profileName || !fixedHex(record.DeploymentID, 32) || record.Generation == 0 ||
+	if err := decodeStrict(raw, &record); err != nil {
+		return installationRecord{}, errors.New("contributor installation record is invalid")
+	}
+	normalizedProfile, knownProfile := normalizeRendezvousDedicatedHostProfile(record.Profile)
+	if record.Schema != "ardents-contributor-installation-v1" || !knownProfile || !fixedHex(record.DeploymentID, 32) || record.Generation == 0 ||
 		!fixedHex(record.ManifestDigest, 32) || len(record.InstalledFiles) != len(bundleFileSpecs) || !fixedHex(record.SystemdUnitHash, 32) {
 		return installationRecord{}, errors.New("contributor installation record is invalid")
 	}
+	record.Profile = normalizedProfile
 	return record, nil
 }
 

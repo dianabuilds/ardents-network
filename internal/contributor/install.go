@@ -50,7 +50,7 @@ func (profile *Profile) installAbsent(ctx context.Context, bundle verifiedBundle
 	if _, err := profile.awaitLifecycle(ctx, profile.paths.lifecycle, "READY", 15*time.Second); err != nil {
 		return err
 	}
-	record := installationRecord{Schema: "ardents-contributor-installation-v1", Profile: profileName,
+	record := installationRecord{Schema: "ardents-contributor-installation-v1", Profile: rendezvousDedicatedHostProfile,
 		DeploymentID: bundle.manifest.DeploymentID, Generation: bundle.manifest.Generation,
 		ManifestDigest: bundle.manifestDigest, InstalledFiles: bundle.manifest.Files}
 	unitDigest := sha256.Sum256([]byte(systemdUnit))

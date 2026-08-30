@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
-// recoveryBundle executes the two participant-safe H4-1C Bundle operations.
+// recoveryBundle executes the two participant-safe Recovery Bundle operations.
 // It intentionally has no activation or deletion route: Namespace owns the
 // authenticated reconciliation witness, and destructive removal needs its own
 // confirmed custody transition.

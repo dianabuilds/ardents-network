@@ -18,7 +18,7 @@ const (
 	maximumAttachmentPathLen = 96
 )
 
-// State is one visible H4-1A Portable Endpoint lifecycle state.
+// State is one visible Portable Endpoint lifecycle state.
 type State string
 
 const (

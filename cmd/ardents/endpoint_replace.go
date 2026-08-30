@@ -19,9 +19,10 @@ import (
 
 const portableUnitName = "ardents-endpoint.service"
 
-// runEndpointReplace owns the explicit H4-1B participant action. The bundle
-// is a local path supplied for this invocation; this command does not fetch,
-// poll, schedule, or accept an arbitrary service-manager target.
+// runEndpointReplace owns the explicit participant-controlled Endpoint
+// replacement action. The bundle is a local path supplied for this invocation;
+// this command does not fetch, poll, schedule, or accept an arbitrary
+// service-manager target.
 func runEndpointReplace(ctx context.Context, bundleRoot string, output io.Writer) error {
 	if runtime.GOOS != "linux" {
 		return errors.New("endpoint replacement is available only on Linux")
@@ -99,10 +100,10 @@ func runEndpointRollback(ctx context.Context, bundleRoot string, output io.Write
 	return rollbackErr
 }
 
-// runEndpointReplacementRecovery exposes only the durable H4-1B recovery
-// classification. It cannot start, replace, or roll back a program. When a
-// failed self-test has a retained predecessor, it reports that exact bounded
-// recovery path so the Owner can supply a fresh Release-authorized rollback
+// runEndpointReplacementRecovery exposes only the durable Endpoint-replacement
+// recovery classification. It cannot start, replace, or roll back a program.
+// When a failed self-test has a retained predecessor, it reports that exact
+// bounded recovery path so the Owner can supply a fresh Release-authorized rollback
 // bundle to that predecessor program.
 func runEndpointReplacementRecovery(output io.Writer) error {
 	if runtime.GOOS != "linux" {
