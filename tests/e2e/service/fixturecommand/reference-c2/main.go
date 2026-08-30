@@ -119,7 +119,7 @@ func runPublisher(input config) error {
 		return err
 	}
 	published, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{Principal: administrator, Capability: administration,
-		Credential: credential, InstancePrivate: instancePrivate, IntroductionAcknowledgement: acknowledgement(credential, introductionPrivate, brokerID), At: now})
+		Credential: credential, InstanceSigner: instancePrivate, IntroductionAcknowledgement: acknowledgement(credential, introductionPrivate, brokerID), At: now})
 	if err != nil {
 		return err
 	}

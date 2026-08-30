@@ -2,6 +2,7 @@ package endpoint
 
 import (
 	"context"
+	"crypto"
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
@@ -78,7 +79,7 @@ type connectionInput struct {
 type PublicationRequest struct {
 	Principal, Capability       [32]byte
 	Credential                  Credential
-	InstancePrivate             ed25519.PrivateKey
+	InstanceSigner              crypto.Signer
 	IntroductionAcknowledgement []byte
 	IntroductionSocket          string
 	At                          time.Time

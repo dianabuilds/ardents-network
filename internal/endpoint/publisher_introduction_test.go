@@ -231,7 +231,7 @@ func c2PublishedEndpoint(t *testing.T, network [32]byte, now time.Time) (c2Publi
 		t.Fatal(err)
 	}
 	result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{Principal: c2Identifier(42), Capability: capability,
-		Credential: credential, InstancePrivate: instancePrivate, IntroductionAcknowledgement: c2Acknowledgement(credential, introductionPrivate, brokerID), At: now})
+		Credential: credential, InstanceSigner: instancePrivate, IntroductionAcknowledgement: c2Acknowledgement(credential, introductionPrivate, brokerID), At: now})
 	if err != nil {
 		t.Fatal(err)
 	}

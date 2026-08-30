@@ -34,12 +34,16 @@ func (endpoint *endpoint) publish(ctx context.Context, input PublicationRequest)
 		endpoint.broker, endpoint.introduction) {
 		return publicationFailed("service unavailable", "fresh Introduction publication acknowledgement is absent", errors.New("publication not acknowledged"))
 	}
-	if len(input.InstancePrivate) != ed25519.PrivateKeySize ||
-		!input.InstancePrivate.Public().(ed25519.PublicKey).Equal(ed25519.PublicKey(input.Credential.InstancePublic[:])) {
+	if input.InstanceSigner == nil {
+		return publicationFailed("service target authentication failure", "matching Instance Key possession was not proved", errors.New("instance Key mismatch"))
+	}
+	instancePublic, ok := input.InstanceSigner.Public().(ed25519.PublicKey)
+	if !ok || len(instancePublic) != ed25519.PublicKeySize ||
+		!instancePublic.Equal(ed25519.PublicKey(input.Credential.InstancePublic[:])) {
 		return publicationFailed("service target authentication failure", "matching Instance Key possession was not proved", errors.New("instance Key mismatch"))
 	}
 	current, err := endpoint.publications.Publish(ctx, publication.PublishInput{Credential: input.Credential,
-		InstanceSigner: input.InstancePrivate, Acknowledgement: input.IntroductionAcknowledgement, At: input.At})
+		InstanceSigner: input.InstanceSigner, Acknowledgement: input.IntroductionAcknowledgement, At: input.At})
 	if err != nil {
 		return publicationFailed("service target authentication failure", "exclusive Instance generation could not be published", err)
 	}

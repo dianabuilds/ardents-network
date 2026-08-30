@@ -418,7 +418,7 @@ func assertH48A11ServiceCredentialExpiry(t *testing.T, before, boundary time.Tim
 		t.Fatal(err)
 	}
 	published, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{Principal: administrationPrincipal,
-		Capability: admin, Credential: credential, InstancePrivate: instancePrivate,
+		Capability: admin, Credential: credential, InstanceSigner: instancePrivate,
 		IntroductionAcknowledgement: h48A11IntroductionAcknowledgement(credential, introductionPrivate, brokerID), At: before})
 	if err != nil || published.Class != "published" || published.AuthenticatedTarget != credential.Target || published.Generation != 1 {
 		t.Fatalf("Service Credential publication at NotAfter-1s: class=%q generation=%d err=%v", published.Class, published.Generation, err)
@@ -438,7 +438,7 @@ func assertH48A11ServiceCredentialExpiry(t *testing.T, before, boundary time.Tim
 		t.Fatal(err)
 	}
 	if result, publishErr := publisher.Publish(context.Background(), endpointapi.PublicationRequest{Principal: administrationPrincipal,
-		Capability: admin, Credential: credential, InstancePrivate: instancePrivate,
+		Capability: admin, Credential: credential, InstanceSigner: instancePrivate,
 		IntroductionAcknowledgement: h48A11IntroductionAcknowledgement(credential, introductionPrivate, brokerID), At: boundary}); publishErr == nil || result.Class != "service target authentication failure" {
 		t.Fatalf("fresh Service publication at exact NotAfter: class=%q err=%v", result.Class, publishErr)
 	}

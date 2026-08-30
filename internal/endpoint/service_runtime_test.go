@@ -3,9 +3,11 @@ package endpoint_test
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
+	"io"
 	"net"
 	"strings"
 	"sync"
@@ -15,6 +17,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
+
+type opaqueInstanceSigner struct {
+	private ed25519.PrivateKey
+}
+
+func (signer opaqueInstanceSigner) Public() crypto.PublicKey { return signer.private.Public() }
+
+func (signer opaqueInstanceSigner) Sign(random io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return signer.private.Sign(random, digest, opts)
+}
 
 func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T) {
 	t.Parallel()
@@ -27,7 +39,7 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	}
 	if result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.publisherPrincipal, Capability: connection,
-		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
+		Credential: fixture.first, InstanceSigner: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
 	}); err == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("connection grant administered service: result=%+v err=%v", result, err)
@@ -36,7 +48,7 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	administration := admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
 	if result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: administration,
-		Credential: fixture.first, InstancePrivate: fixture.firstPrivate, At: fixture.now,
+		Credential: fixture.first, InstanceSigner: fixture.firstPrivate, At: fixture.now,
 	}); err == nil || result.Class != "service unavailable" {
 		t.Fatalf("publication succeeded before Introduction acknowledgement: result=%+v err=%v", result, err)
 	}
@@ -44,7 +56,7 @@ func TestLocalGrantsKeepConnectionAdministrationAndCustodySeparate(t *testing.T)
 	administration = admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
 	published, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: administration,
-		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
+		Credential: fixture.first, InstanceSigner: opaqueInstanceSigner{private: fixture.firstPrivate},
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
 	})
 	if err != nil || published.Class != "published" || len(published.Record) == 0 {
@@ -96,7 +108,7 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 			session := admit(t, publisher, "administration", fixture.administrationPrincipal, test.at)
 			result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 				Principal: fixture.administrationPrincipal, Capability: session,
-				Credential: test.credential, InstancePrivate: test.private,
+				Credential: test.credential, InstanceSigner: test.private,
 				IntroductionAcknowledgement: acknowledgement(fixture, test.credential), At: test.at,
 			})
 			if err == nil || result.Class != "service target authentication failure" {
@@ -114,7 +126,7 @@ func TestPublicationRejectsWrongPossessionValidityScopeAndGeneration(t *testing.
 	staleSession := admit(t, publisher, "administration", fixture.administrationPrincipal, fixture.now)
 	if result, err := publisher.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: staleSession,
-		Credential: fixture.first, InstancePrivate: fixture.firstPrivate,
+		Credential: fixture.first, InstanceSigner: fixture.firstPrivate,
 		IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now,
 	}); err == nil || result.Class != "service target authentication failure" {
 		t.Fatalf("lower generation republished: result=%+v err=%v", result, err)
@@ -161,7 +173,7 @@ func TestSessionExpiresAndGenerationSurvivesEndpointRestart(t *testing.T) {
 	stale := admit(t, restarted, "administration", fixture.administrationPrincipal, fixture.now)
 	publishedResult, err := restarted.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: stale, Credential: fixture.first,
-		InstancePrivate: fixture.firstPrivate, IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now})
+		InstanceSigner: fixture.firstPrivate, IntroductionAcknowledgement: acknowledgement(fixture, fixture.first), At: fixture.now})
 	if err == nil || publishedResult.Class != "service target authentication failure" {
 		t.Fatalf("restart forgot stale generation: result=%+v err=%v", publishedResult, err)
 	}
@@ -338,7 +350,7 @@ func publish(t *testing.T, endpoint endpointRunner, fixture fixture, credential 
 	session := admit(t, endpoint, "administration", fixture.administrationPrincipal, fixture.now)
 	result, err := endpoint.Publish(context.Background(), endpointapi.PublicationRequest{
 		Principal: fixture.administrationPrincipal, Capability: session, Credential: credential,
-		InstancePrivate: private, IntroductionAcknowledgement: acknowledgement(fixture, credential), At: fixture.now})
+		InstanceSigner: private, IntroductionAcknowledgement: acknowledgement(fixture, credential), At: fixture.now})
 	if err != nil || result.Class != "published" {
 		t.Fatalf("publish generation %d: result=%+v err=%v", credential.Generation, result, err)
 	}

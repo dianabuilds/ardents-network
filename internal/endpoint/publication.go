@@ -110,7 +110,7 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	}
 	publicationResult, err := endpoint.Publish(operation, PublicationRequest{
 		Principal: principal, Capability: session, Credential: credential,
-		InstancePrivate: private, IntroductionSocket: plan.IntroductionSocket, At: at})
+		InstanceSigner: private, IntroductionSocket: plan.IntroductionSocket, At: at})
 	if err != nil {
 		return PublicationResult{}, err
 	}
