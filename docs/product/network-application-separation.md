@@ -204,11 +204,18 @@ product objective:
 | B5 dependency and artifacts | B4 | Browser-free transitive command graph, separate enrollment-v3/v4 inventories and lanes, and real named packaged binaries. |
 | B6 headless qualification | B5 | Unpacked artifact-native enroll/acquire/start/publish/open/bytes/withdraw/restart-recovery journey without Browser, fixtures, or operator Route facts. |
 
-Implementation status on 2026-08-30: B1 through B5 are implemented and
+Implementation status on 2026-08-31: B1 through B5 are implemented and
 covered by ordinary repository gates. ADR-0063's owner-only issuer root and
 exact State-bound Initiator ingress now have supported `ardents-node issuer
-initialize|serve` ownership. The unpacked B6 journey remains to be completed
-and cannot substitute a fixture or raw key/profile input. The
+initialize|serve` ownership. ADR-0064's separate Service Authority Custody,
+host-owned Instance enrollment, and non-exporting runtime binding are also
+implemented and included in the real four-binary enrollment-v3 artifact
+inventory. The unpacked B6 journey remains to be completed and cannot
+substitute a fixture or raw key/profile input. R-132 records the exact open
+publication-readiness decision exposed by B6: the old owner-local `ARIA`
+socket has no maintained headless owner, while the already selected
+State-authenticated `IntroductionSlotReady` transition can provide the local
+readiness commitment only after explicit Product Owner acceptance. The
 transparent-origin Browser Entry defect also remains recorded as a
 separate future security slice and was deliberately not changed here.
 
@@ -294,9 +301,12 @@ is inventoried for formal audit.
 Current disposition: R-130 is accepted and its owner-root bootstrap plus
 State-bound issuer lifecycle are implemented. R-131 and ADR-0064 now select the
 separate Authority Custody and host-owned Instance enrollment owners required
-by B6. Their command and lifecycle implementation plus the artifact-native
-`publish -> open -> bytes -> withdraw -> restart/recovery` journey remain open
-before C0.
+by B6; those owners, their command lifecycle, non-exporting binding, and their
+real enrollment-v3 binaries are implemented. R-132 is the remaining
+decision-level dependency: it must select or reject the Endpoint-owned
+publication/slot readiness transaction before the artifact-native
+`publish -> open -> bytes -> withdraw -> restart/recovery` journey can close
+B6 and precede C0.
 
 ### C2. Freeze and activate formal C0
 
