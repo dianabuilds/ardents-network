@@ -134,7 +134,8 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 		t.Fatal(err)
 	}
 	issueArguments := []string{"issue-service-credential", "-vault-root", vaultRoot, "-record", created.RecordID,
-		"-request", requestPath, "-environment-commitment", hex.EncodeToString(environment[:]),
+		"-request", requestPath, "-response", filepath.Join(t.TempDir(), "service-response.bin"),
+		"-environment-commitment", hex.EncodeToString(environment[:]),
 		"-network-commitment", hex.EncodeToString(network[:]), "-root-commitment", hex.EncodeToString(authorityRoot[:]),
 		"-kind", "service", "-id-commitment", created.IDCommitment}
 	var issuedOutput bytes.Buffer
@@ -153,6 +154,10 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 	}
 	if _, err := instance.ParseResponse(issued.Response); err != nil {
 		t.Fatalf("parse command response: %v", err)
+	}
+	persistedResponse, err := os.ReadFile(issueArguments[8])
+	if err != nil || !bytes.Equal(persistedResponse, issued.Response) {
+		t.Fatalf("persisted public response differs: %v", err)
 	}
 }
 

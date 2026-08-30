@@ -95,10 +95,6 @@ func (publication *Publication) Publish(ctx context.Context, input PublishInput)
 	if !ok || len(public) != ed25519.PublicKeySize || string(public) != string(input.Credential.InstancePublic[:]) {
 		return Current{}, errors.New("publication Instance signer does not match its Credential")
 	}
-	private, ok := input.InstanceSigner.(ed25519.PrivateKey)
-	if !ok || len(private) != ed25519.PrivateKeySize {
-		return Current{}, errors.New("publication Instance signer is not Ed25519")
-	}
 	publication.root.mu.Lock()
 	if publication.root.closed {
 		publication.root.mu.Unlock()
@@ -122,7 +118,7 @@ func (publication *Publication) Publish(ctx context.Context, input PublishInput)
 		return Current{}, err
 	}
 	if prior != nil {
-		prior.signer.erase()
+		prior.releaseSigner()
 		if err := removeGeneration(publication.root.path, prior.credential.Generation); err != nil {
 			return Current{}, err
 		}
@@ -143,13 +139,13 @@ func (publication *Publication) Publish(ctx context.Context, input PublishInput)
 	if err := replacePointer(publication.root.path, publicationGeneration(input.Credential.Generation)); err != nil {
 		return Current{}, fmt.Errorf("publish current publication: %w", err)
 	}
-	volatile := append(ed25519.PrivateKey(nil), private...)
+	retained, release := retainInstanceSigner(input.InstanceSigner)
 	current := &generation{credential: input.Credential, record: append([]byte(nil), record...), digest: digest,
-		signer: &volatileSigner{private: volatile}, drained: make(chan struct{})}
+		signer: retained, release: release, drained: make(chan struct{})}
 	publication.root.mu.Lock()
 	if publication.root.closed {
 		publication.root.mu.Unlock()
-		current.signer.erase()
+		current.releaseSigner()
 		return Current{}, errors.New("publication closed while publishing")
 	}
 	publication.root.floor, publication.root.current = input.Credential.Generation, current
@@ -161,6 +157,19 @@ func (publication *Publication) Publish(ctx context.Context, input PublishInput)
 // record recovered without its volatile Instance private material.
 func (publication *Publication) Acquire(ctx context.Context) (*Lease, error) {
 	return publication.AcquireAt(ctx, time.Time{})
+}
+
+// Floor returns the durable highest committed publication generation.
+func (publication *Publication) Floor() (uint64, error) {
+	if publication == nil || publication.root == nil {
+		return 0, errors.New("publication is not open")
+	}
+	publication.root.mu.Lock()
+	defer publication.root.mu.Unlock()
+	if publication.root.closed {
+		return 0, errors.New("publication is closed")
+	}
+	return publication.root.floor, nil
 }
 
 // AcquireAt retains the current publication only when it is live at the
@@ -210,7 +219,7 @@ func (publication *Publication) Unpublish(ctx context.Context) error {
 	if err := waitDrained(ctx, current); err != nil {
 		return err
 	}
-	current.signer.erase()
+	current.releaseSigner()
 	return removeGeneration(publication.root.path, current.credential.Generation)
 }
 
@@ -240,7 +249,7 @@ func (publication *Publication) Close() error {
 	}
 	if current != nil {
 		<-current.drained
-		current.signer.erase()
+		current.releaseSigner()
 		if err := removeGeneration(publication.root.path, current.credential.Generation); err != nil {
 			return err
 		}
@@ -325,6 +334,14 @@ func (lease *Lease) Close() error {
 	lease.generation, lease.publication = nil, nil
 	root.mu.Unlock()
 	return nil
+}
+
+func retainInstanceSigner(signer crypto.Signer) (crypto.Signer, func()) {
+	if private, ok := signer.(ed25519.PrivateKey); ok && len(private) == ed25519.PrivateKeySize {
+		volatile := &volatileSigner{private: append(ed25519.PrivateKey(nil), private...)}
+		return volatile, volatile.erase
+	}
+	return signer, func() {}
 }
 
 func publicationGeneration(value uint64) string { return fmt.Sprintf("%016x", value) }

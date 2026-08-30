@@ -26,7 +26,7 @@ func admittedRoot(path string) (string, error) {
 
 func prepareRoot(root string) error {
 	markerPath := filepath.Join(root, markerName)
-	if raw, err := os.ReadFile(markerPath); err == nil {
+	if raw, err := readBounded(markerPath, 128); err == nil {
 		if !bytes.Equal(raw, []byte(marker)) {
 			return ErrInvalid
 		}
@@ -44,6 +44,32 @@ func prepareRoot(root string) error {
 		return fmt.Errorf("create Service Instance lock: %w", err)
 	}
 	return syncDirectory(root)
+}
+
+func validateRootEntries(root string, hasState bool) error {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return ErrInvalid
+	}
+	want := map[string]bool{markerName: false, lockName: false}
+	if hasState {
+		want[stateName] = false
+	}
+	if len(entries) != len(want) {
+		return ErrInvalid
+	}
+	for _, entry := range entries {
+		if _, ok := want[entry.Name()]; !ok || entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+			return ErrInvalid
+		}
+		want[entry.Name()] = true
+	}
+	for _, found := range want {
+		if !found {
+			return ErrInvalid
+		}
+	}
+	return nil
 }
 
 func validateMarker(root string) error {
@@ -111,12 +137,20 @@ func writeExclusive(path string, raw []byte) error {
 }
 
 func readBounded(path string, limit int64) ([]byte, error) {
+	pathInfo, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !pathInfo.Mode().IsRegular() || pathInfo.Mode()&os.ModeSymlink != 0 ||
+		pathInfo.Size() <= 0 || pathInfo.Size() > limit {
+		return nil, ErrInvalid
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	info, err := file.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > limit {
+	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > limit || !os.SameFile(pathInfo, info) {
 		_ = file.Close()
 		return nil, ErrInvalid
 	}

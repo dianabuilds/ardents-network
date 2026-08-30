@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,6 +58,31 @@ func TestPublishAcquireDrainAndUnpublish(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(owner.root.path, "generations", publicationGeneration(1))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("withdrawn generation remained on disk: %v", err)
+	}
+}
+
+func TestPublishRetainsNonExportingInstanceSigner(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	input := fixture.input(t, 1)
+	input.InstanceSigner = &nonExportingTestSigner{private: fixture.private}
+	if _, err := owner.Publish(t.Context(), input); err != nil {
+		t.Fatalf("publish with non-exporting signer: %v", err)
+	}
+	lease, err := owner.Acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lease.Close()
+	message := []byte("non-exporting publication signer")
+	signature, err := lease.Sign(nil, message, crypto.Hash(0))
+	if err != nil || !ed25519.Verify(fixture.public, message, signature) {
+		t.Fatalf("retained non-exporting signer: %v", err)
 	}
 }
 
@@ -189,6 +215,14 @@ type publicationFixture struct {
 	private          ed25519.PrivateKey
 	public           ed25519.PublicKey
 	authPriv         ed25519.PrivateKey
+}
+
+type nonExportingTestSigner struct{ private ed25519.PrivateKey }
+
+func (signer *nonExportingTestSigner) Public() crypto.PublicKey { return signer.private.Public() }
+
+func (signer *nonExportingTestSigner) Sign(random io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return signer.private.Sign(random, digest, opts)
 }
 
 func newPublicationFixture(t *testing.T) publicationFixture {

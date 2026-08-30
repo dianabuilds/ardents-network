@@ -16,10 +16,11 @@ import (
 func serviceAuthority(ctx context.Context, mode string, arguments []string, output io.Writer, input custody.SecretInput) error {
 	flags := flag.NewFlagSet(mode, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	var root, record, requestPath, environment, network, authorityRoot, kind, identity string
+	var root, record, requestPath, responsePath, environment, network, authorityRoot, kind, identity string
 	flags.StringVar(&root, "vault-root", "", "exclusive custody vault root")
 	flags.StringVar(&record, "record", "", "current opaque Service Authority record identifier")
 	flags.StringVar(&requestPath, "request", "", "canonical public Service Instance request")
+	flags.StringVar(&responsePath, "response", "", "new canonical public Service Credential response")
 	flags.StringVar(&environment, "environment-commitment", "", "environment SHA-256 commitment")
 	flags.StringVar(&network, "network-commitment", "", "Network identifier")
 	flags.StringVar(&authorityRoot, "root-commitment", "", "authority-root SHA-256 commitment")
@@ -38,8 +39,8 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 	defer vault.Close()
 	switch mode {
 	case "create-service-authority":
-		if record != "" || requestPath != "" || kind != "" || identity != "" {
-			return errors.New("create-service-authority accepts no record, request, kind, or identity")
+		if record != "" || requestPath != "" || responsePath != "" || kind != "" || identity != "" {
+			return errors.New("create-service-authority accepts no record, request, response, kind, or identity")
 		}
 		binding, err := newServiceBinding(environment, network, authorityRoot)
 		if err != nil {
@@ -52,8 +53,8 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		}
 		return encodeServiceAuthorityReceipt(output, receipt)
 	case "issue-service-credential":
-		if record == "" || requestPath == "" {
-			return errors.New("issue-service-credential requires record and request")
+		if record == "" || requestPath == "" || responsePath == "" {
+			return errors.New("issue-service-credential requires record, request, and response")
 		}
 		binding, err := commandBinding(environment, network, authorityRoot, kind, identity)
 		if err != nil || binding.Kind != custody.AuthorityService {
@@ -68,10 +69,36 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		if err != nil {
 			return err
 		}
+		if err := writeStableCustodyPublicFile(responsePath, receipt.ServiceResponse); err != nil {
+			return err
+		}
 		return encodeServiceCredentialReceipt(output, receipt)
 	default:
 		return errors.New("unsupported Service Authority operation")
 	}
+}
+
+func writeStableCustodyPublicFile(path string, body []byte) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if errors.Is(err, os.ErrExist) {
+		existing, readErr := readPublicRequest(path)
+		if readErr != nil || string(existing) != string(body) {
+			return errors.New("Service Credential response destination conflicts")
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if _, err := file.Write(body); err != nil {
+		_ = file.Close()
+		return err
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
 }
 
 func newServiceBinding(environment, network, root string) (custody.AuthorityBinding, error) {

@@ -60,7 +60,15 @@ func Open(path string) (*Root, error) {
 	if err != nil {
 		return nil, err
 	}
-	return openPrepared(admitted)
+	root, err := openPrepared(admitted)
+	if err != nil {
+		return nil, err
+	}
+	if !root.state.present() {
+		_ = root.Close()
+		return nil, ErrInvalid
+	}
+	return root, nil
 }
 
 func openPrepared(path string) (*Root, error) {
@@ -73,6 +81,11 @@ func openPrepared(path string) (*Root, error) {
 	}
 	state, err := readState(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		_ = lock.release()
+		return nil, err
+	}
+	if err := validateRootEntries(path, state.present()); err != nil {
+		state.erase()
 		_ = lock.release()
 		return nil, err
 	}
@@ -101,6 +114,7 @@ func (root *Root) Close() error {
 		return ErrClosed
 	}
 	root.closed = true
+	root.bindingOpen = false
 	root.state.erase()
 	return root.lock.release()
 }

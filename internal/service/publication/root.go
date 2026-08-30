@@ -2,6 +2,7 @@ package publication
 
 import (
 	"bytes"
+	"crypto"
 	"errors"
 	"fmt"
 	"io"
@@ -39,10 +40,21 @@ type generation struct {
 	credential Credential
 	record     []byte
 	digest     [32]byte
-	signer     *volatileSigner
+	signer     crypto.Signer
+	release    func()
 	refs       uint32
 	withdrawn  bool
 	drained    chan struct{}
+}
+
+func (generation *generation) releaseSigner() {
+	if generation == nil || generation.signer == nil {
+		return
+	}
+	if generation.release != nil {
+		generation.release()
+	}
+	generation.signer, generation.release = nil, nil
 }
 
 func openDurableRoot(config Config) (*durableRoot, error) {
