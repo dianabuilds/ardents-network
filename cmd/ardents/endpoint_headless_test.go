@@ -20,7 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func TestHeadlessRuntimeRetainsOnlyNetworkOwnersAndApplicationSocketUntilStop(t *testing.T) {
+func TestHeadlessRuntimeRetainsNetworkOwnersAndBothApplicationSurfacesUntilStop(t *testing.T) {
 	directory := t.TempDir()
 	now := time.Now().UTC().Truncate(time.Second)
 	network := prepareCommandNetwork(t, directory, now, "ardents-interactive-route-v1")
@@ -41,13 +41,19 @@ func TestHeadlessRuntimeRetainsOnlyNetworkOwnersAndApplicationSocketUntilStop(t 
 	corpusPublic, corpusRoot := prepareAlphaRuntimeCorpus(t, directory, network.snapshot.NetworkID)
 	planPath := filepath.Join(directory, "headless-runtime.json")
 	applicationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("ahi-%d.sock", time.Now().UnixNano()))
-	t.Cleanup(func() { _ = os.Remove(applicationSocket) })
+	administrationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("ahs-%d.sock", time.Now().UnixNano()))
+	t.Cleanup(func() {
+		_ = os.Remove(applicationSocket)
+		_ = os.Remove(administrationSocket)
+	})
 	plan := map[string]any{
 		"schema":                   "ardents-headless-runtime-v1",
 		"network_state_root":       network.root,
 		"entry_state_root":         entryRoot,
 		"transit_acquisition_root": filepath.Join(directory, "transit-acquisition"),
 		"application_socket":       applicationSocket,
+		"administration_socket":    administrationSocket,
+		"publication_root":         filepath.Join(directory, "publication"),
 		"alpha_corpus_state_root":  corpusRoot,
 		"local_role_state_root":    rolesRoot,
 		"time_confidence_file":     confidence,
@@ -59,6 +65,7 @@ func TestHeadlessRuntimeRetainsOnlyNetworkOwnersAndApplicationSocketUntilStop(t 
 		"alpha_cohort":             "runtime-test",
 		"broker_id":                hex32([32]byte{71}),
 		"connection_principal":     hex32([32]byte{72}),
+		"administration_principal": hex32([32]byte{74}),
 		"bytes_each_direction":     4096,
 	}
 	rawPlan, err := json.Marshal(plan)
@@ -91,12 +98,18 @@ func TestHeadlessRuntimeRetainsOnlyNetworkOwnersAndApplicationSocketUntilStop(t 
 	if _, err := os.Stat(applicationSocket); err != nil {
 		t.Fatalf("headless Application socket was not published: %v", err)
 	}
+	if _, err := os.Stat(administrationSocket); err != nil {
+		t.Fatalf("headless Service Administration socket was not published: %v", err)
+	}
 	cancel()
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(applicationSocket); !os.IsNotExist(err) {
 		t.Fatalf("headless Application socket remained after runtime stop: %v", err)
+	}
+	if _, err := os.Stat(administrationSocket); !os.IsNotExist(err) {
+		t.Fatalf("headless Service Administration socket remained after runtime stop: %v", err)
 	}
 	var events []headlessRuntimeEvent
 	for _, line := range bytes.Split(bytes.TrimSpace(writer.Bytes()), []byte{'\n'}) {
@@ -108,7 +121,8 @@ func TestHeadlessRuntimeRetainsOnlyNetworkOwnersAndApplicationSocketUntilStop(t 
 	}
 	if len(events) != 2 || events[0].Kind != "headless-runtime-ready" || events[1].Kind != "headless-runtime-stopped" ||
 		events[0].NetworkID != hex32(network.snapshot.NetworkID) || events[1].NetworkID != events[0].NetworkID ||
-		events[0].ApplicationSocket != applicationSocket || events[1].ApplicationSocket != "" {
+		events[0].ApplicationSocket != applicationSocket || events[1].ApplicationSocket != "" ||
+		events[0].AdministrationSocket != administrationSocket || events[1].AdministrationSocket != "" {
 		t.Fatalf("headless runtime events = %+v", events)
 	}
 }

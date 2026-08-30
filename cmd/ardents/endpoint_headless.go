@@ -29,22 +29,25 @@ type headlessRuntimePlan struct {
 	// NetworkSourcePlan is an optional existing direct-Source plan. When it
 	// is present, this runtime owns the State root's initial refresh and its
 	// automatic refresh loop; a separate process cannot share that root lease.
-	NetworkSourcePlan      string   `json:"network_source_plan,omitempty"`
-	EntryStateRoot         string   `json:"entry_state_root"`
-	TransitAcquisitionRoot string   `json:"transit_acquisition_root"`
-	ApplicationSocket      string   `json:"application_socket"`
-	AlphaCorpusStateRoot   string   `json:"alpha_corpus_state_root"`
-	LocalRoleStateRoot     string   `json:"local_role_state_root"`
-	TimeConfidenceFile     string   `json:"time_confidence_file"`
-	NetworkID              string   `json:"network_id"`
-	NetworkAuthorities     []string `json:"network_authorities"`
-	NetworkThreshold       int      `json:"network_threshold"`
-	NetworkProfile         string   `json:"network_profile"`
-	AlphaCorpusAuthority   string   `json:"alpha_corpus_authority"`
-	AlphaCohort            string   `json:"alpha_cohort"`
-	BrokerID               string   `json:"broker_id"`
-	ConnectionPrincipal    string   `json:"connection_principal"`
-	BytesEachDirection     uint32   `json:"bytes_each_direction"`
+	NetworkSourcePlan       string   `json:"network_source_plan,omitempty"`
+	EntryStateRoot          string   `json:"entry_state_root"`
+	TransitAcquisitionRoot  string   `json:"transit_acquisition_root"`
+	ApplicationSocket       string   `json:"application_socket"`
+	AdministrationSocket    string   `json:"administration_socket"`
+	PublicationRoot         string   `json:"publication_root"`
+	AlphaCorpusStateRoot    string   `json:"alpha_corpus_state_root"`
+	LocalRoleStateRoot      string   `json:"local_role_state_root"`
+	TimeConfidenceFile      string   `json:"time_confidence_file"`
+	NetworkID               string   `json:"network_id"`
+	NetworkAuthorities      []string `json:"network_authorities"`
+	NetworkThreshold        int      `json:"network_threshold"`
+	NetworkProfile          string   `json:"network_profile"`
+	AlphaCorpusAuthority    string   `json:"alpha_corpus_authority"`
+	AlphaCohort             string   `json:"alpha_cohort"`
+	BrokerID                string   `json:"broker_id"`
+	ConnectionPrincipal     string   `json:"connection_principal"`
+	AdministrationPrincipal string   `json:"administration_principal"`
+	BytesEachDirection      uint32   `json:"bytes_each_direction"`
 }
 
 // runHeadlessRuntime owns Network State, Entry, Endpoint, and one private local
@@ -114,6 +117,7 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (run
 	serviceAuthority := append(ed25519.PublicKey(nil), epoch.Authorities[0].PublicKey[:]...)
 	endpoint, err := endpointapi.New(endpointapi.Setup{NetworkID: plan.NetworkID, BrokerID: plan.BrokerID,
 		AuthorityPublic: serviceAuthority, IntroductionPublic: serviceAuthority, ConnectionPrincipal: plan.ConnectionPrincipal,
+		AdministrationPrincipal: plan.AdministrationPrincipal, PublicationRoot: plan.PublicationRoot,
 		TransitAcquisitionRoot:       plan.TransitAcquisitionRoot,
 		CreateTransitAcquisitionRoot: true, Clock: clock})
 	if err != nil {
@@ -131,13 +135,24 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (run
 		return fmt.Errorf("open headless local Connection Interface: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, application.Close()) }()
+	administrationOwner, err := endpoint.OpenServiceAdministration(endpointapi.ServiceAdministrationConfig{
+		Principal: plan.AdministrationPrincipal, Clock: clock})
+	if err != nil {
+		return fmt.Errorf("open headless Service Administration owner: %w", err)
+	}
+	administration, err := endpointapi.OpenLocalServiceAdministration(plan.AdministrationSocket, administrationOwner)
+	if err != nil {
+		return fmt.Errorf("open headless local Service Administration: %w", err)
+	}
+	defer func() { runErr = errors.Join(runErr, administration.Close()) }()
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(headlessRuntimeEvent{"headless-runtime-ready", hex.EncodeToString(plan.NetworkID[:]), plan.ApplicationSocket}); err != nil {
+	if err := encoder.Encode(headlessRuntimeEvent{Kind: "headless-runtime-ready", NetworkID: hex.EncodeToString(plan.NetworkID[:]),
+		ApplicationSocket: plan.ApplicationSocket, AdministrationSocket: plan.AdministrationSocket}); err != nil {
 		return err
 	}
 	<-ctx.Done()
-	return encoder.Encode(headlessRuntimeEvent{"headless-runtime-stopped", hex.EncodeToString(plan.NetworkID[:]), ""})
+	return encoder.Encode(headlessRuntimeEvent{Kind: "headless-runtime-stopped", NetworkID: hex.EncodeToString(plan.NetworkID[:])})
 }
 
 // headlessNetworkConfig preserves one owner for a State root. A static
@@ -193,16 +208,17 @@ func sameOperatorPath(left, right string) bool {
 }
 
 type headlessRuntimeEvent struct {
-	Kind              string `json:"kind"`
-	NetworkID         string `json:"network_id"`
-	ApplicationSocket string `json:"application_socket,omitempty"`
+	Kind                 string `json:"kind"`
+	NetworkID            string `json:"network_id"`
+	ApplicationSocket    string `json:"application_socket,omitempty"`
+	AdministrationSocket string `json:"administration_socket,omitempty"`
 }
 
 type decodedHeadlessRuntimePlan struct {
 	headlessRuntimePlan
-	NetworkID, BrokerID, ConnectionPrincipal [32]byte
-	NetworkAuthorities                       map[[32]byte]ed25519.PublicKey
-	AlphaCorpusAuthority                     ed25519.PublicKey
+	NetworkID, BrokerID, ConnectionPrincipal, AdministrationPrincipal [32]byte
+	NetworkAuthorities                                                map[[32]byte]ed25519.PublicKey
+	AlphaCorpusAuthority                                              ed25519.PublicKey
 }
 
 func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
@@ -211,16 +227,18 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 		return decodedHeadlessRuntimePlan{}, err
 	}
 	if raw.Schema != "ardents-headless-runtime-v1" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" || raw.TransitAcquisitionRoot == "" ||
-		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) ||
+		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) || raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) ||
+		raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" ||
 		raw.AlphaCorpusStateRoot == "" || raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.Profile ||
-		raw.AlphaCohort == "" || raw.BrokerID == "" || raw.ConnectionPrincipal == "" || raw.BytesEachDirection == 0 {
+		raw.AlphaCohort == "" || raw.BrokerID == "" || raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" || raw.BytesEachDirection == 0 {
 		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan is incomplete")
 	}
 	result := decodedHeadlessRuntimePlan{headlessRuntimePlan: raw}
 	for _, field := range []struct {
 		encoded     string
 		destination []byte
-	}{{raw.NetworkID, result.NetworkID[:]}, {raw.BrokerID, result.BrokerID[:]}, {raw.ConnectionPrincipal, result.ConnectionPrincipal[:]}} {
+	}{{raw.NetworkID, result.NetworkID[:]}, {raw.BrokerID, result.BrokerID[:]}, {raw.ConnectionPrincipal, result.ConnectionPrincipal[:]},
+		{raw.AdministrationPrincipal, result.AdministrationPrincipal[:]}} {
 		if err := decodeOperatorFixedHex(field.encoded, field.destination); err != nil {
 			return decodedHeadlessRuntimePlan{}, err
 		}
