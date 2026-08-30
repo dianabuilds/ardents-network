@@ -6,14 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
-	binary := buildArdentsBinary(t)
+	binary := buildProductCommand(t, "ardents")
 	root := t.TempDir()
 	applicationSocket := "application.sock"
 	routeSocket := "route.sock"
@@ -55,24 +54,4 @@ func TestServiceCommandReadinessTimeoutAndCleanup(t *testing.T) {
 			t.Fatalf("Service command retained socket %s after failure: %v", path, statErr)
 		}
 	}
-}
-
-func buildArdentsBinary(t *testing.T) string {
-	t.Helper()
-	_, current, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate repository root")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(current), "..", "..", ".."))
-	name := "ardents"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	path := filepath.Join(t.TempDir(), name)
-	command := exec.Command("go", "build", "-trimpath", "-o", path, "./cmd/ardents")
-	command.Dir = root
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build ardents command: %v\n%s", err, output)
-	}
-	return path
 }

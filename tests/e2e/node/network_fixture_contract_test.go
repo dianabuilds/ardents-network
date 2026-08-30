@@ -36,6 +36,11 @@ type EpochSpec struct {
 	Rejections            map[uint32]uint16
 	AssignmentSeed        [32]byte
 	Profile               string
+	Version               byte
+	DestinationNodeID     [32]byte
+	DestinationProfile    []byte
+	TransitIssuerNodeID   [32]byte
+	TransitIssuerProfile  []byte
 	Domains               []string
 	Authorities           []ed25519.PrivateKey
 }

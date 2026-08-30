@@ -13,7 +13,11 @@ func encodeEpochCommitment(spec EpochSpec, view [][]byte, rejected [][32]byte, s
 	families uint16, capacity uint32, maxFamilyCount uint16, maxFamilyCapacity uint32) *bytes.Buffer {
 	buffer := new(bytes.Buffer)
 	buffer.WriteString("AREP")
-	buffer.WriteByte(1)
+	version := spec.Version
+	if version == 0 {
+		version = 1
+	}
+	buffer.WriteByte(version)
 	buffer.Write(spec.NetworkID[:])
 	u64(buffer, spec.Number)
 	buffer.Write(spec.Previous[:])
@@ -44,6 +48,16 @@ func encodeEpochCommitment(spec EpochSpec, view [][]byte, rejected [][32]byte, s
 		text(buffer, value.id)
 		u16(buffer, value.count)
 		u32(buffer, value.capacity)
+	}
+	if version >= 2 {
+		buffer.Write(spec.DestinationNodeID[:])
+		u16(buffer, uint16(len(spec.DestinationProfile)))
+		buffer.Write(spec.DestinationProfile)
+	}
+	if version >= 3 {
+		buffer.Write(spec.TransitIssuerNodeID[:])
+		u16(buffer, uint16(len(spec.TransitIssuerProfile)))
+		buffer.Write(spec.TransitIssuerProfile)
 	}
 	return buffer
 }

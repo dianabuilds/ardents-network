@@ -269,7 +269,12 @@ func startSource(t *testing.T, binary, plan string) func() {
 
 func startNode(t *testing.T, binary, plan string) *nodeProcess {
 	t.Helper()
-	command := exec.Command(binary, "node", "--config", plan)
+	return startNodeCommand(t, binary, "node", "--config", plan)
+}
+
+func startNodeCommand(t *testing.T, binary string, arguments ...string) *nodeProcess {
+	t.Helper()
+	command := exec.Command(binary, arguments...)
 	command.Env = append(os.Environ(), "GOMAXPROCS=1", "GOMEMLIMIT=320MiB")
 	stdout, err := command.StdoutPipe()
 	if err != nil {

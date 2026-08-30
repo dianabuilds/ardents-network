@@ -66,8 +66,18 @@ func validateEpochSpec(spec EpochSpec) error {
 	if spec.Number == 0 || spec.ValidFrom.IsZero() || !spec.ValidUntil.After(spec.ValidFrom) ||
 		len(spec.Inputs) > 64 || len(spec.Accepted) > 64 || len(spec.Rejections) > 64 ||
 		len(spec.Domains) == 0 || len(spec.Domains) > 16 || len(spec.Authorities) == 0 || len(spec.Authorities) > 16 ||
-		profile != "h3-role-probe-v1" && profile != "ardents-interactive-route-v1" {
+		profile != "h3-role-probe-v1" && profile != "ardents-interactive-route-v1" || spec.Version > 3 ||
+		(spec.DestinationNodeID == [32]byte{}) != (len(spec.DestinationProfile) == 0) ||
+		(spec.TransitIssuerNodeID == [32]byte{}) != (len(spec.TransitIssuerProfile) == 0) ||
+		len(spec.DestinationProfile) > 4096 || len(spec.TransitIssuerProfile) > 4096 {
 		return errors.New("epoch fixture specification is invalid")
+	}
+	version := spec.Version
+	if version == 0 {
+		version = 1
+	}
+	if version < 2 && spec.DestinationNodeID != [32]byte{} || version < 3 && spec.TransitIssuerNodeID != [32]byte{} {
+		return errors.New("epoch fixture extension does not match its schema version")
 	}
 	for _, domain := range spec.Domains {
 		if domain == "" || len(domain) > 32 {

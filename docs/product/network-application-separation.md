@@ -291,8 +291,12 @@ Interface, or test that merely restates the changed Implementation.
 evidence-reuse or requalification decision, and every newly introduced surface
 is inventoried for formal audit.
 
-Current disposition: the complete B1-B5 diff may receive an implementation
-review, but B6 and C0 remain open until R-130 is accepted and implemented.
+Current disposition: R-130 is accepted and its owner-root bootstrap plus
+State-bound issuer lifecycle are implemented. B6 and C0 remain open on R-131:
+the product has no accepted publisher-side owner and command for acquiring or
+importing the Service Authority, host-local Instance Key, and bounded Service
+Credential required by an artifact-native `publish -> open -> bytes ->
+withdraw -> restart/recovery` journey.
 
 ### C2. Freeze and activate formal C0
 

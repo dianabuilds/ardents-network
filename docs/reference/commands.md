@@ -18,7 +18,7 @@ configuration format or an authority source.
 | `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH` | Accept one complete authenticated offline Network State generation. It emits one `ardents-state-event-v1` `generation-accepted` JSON event. |
 | `refresh-sources --state-root PATH --source-plan PATH [--once] [--resume]` | Run one selected Direct-Origin Source wave, or wait for the plan-owned `ardents-source-plan-v1` input. It emits an `ardents-source-event-v1` `source-wave-accepted` event after acceptance. |
 | `endpoint run <endpoint-plan.json>` | Run one bounded lower-level Endpoint process. The plan remains Endpoint-owned and temporary; it is not a supported service-management format. |
-| `endpoint headless <endpoint-plan.json>` | Run the headless Endpoint from its accepted State, Entry, acquisition-state, Service-publication, and local-socket owners. It exposes only the Service-Link Connection Interface and the separately capability-bound Service Administration socket; Browser presentation is absent. Operational issuer bootstrap remains blocked by R-130. |
+| `endpoint headless <endpoint-plan.json>` | Run the headless Endpoint from its accepted State, Entry, acquisition-state, Service-publication, and local-socket owners. It exposes only the Service-Link Connection Interface and the separately capability-bound Service Administration socket; Browser presentation is absent. Publisher authority acquisition remains blocked by R-131. |
 | `endpoint open <application-socket> <service-link> <input-file> <output-file>` | Open one Service Link through the local Application Interface, half-close after streaming the exact input bytes, and create one new output file from returned bytes. The command receives no State, Entry, Grant, Target, or Route input. |
 | `endpoint publish <administration-socket>` | Request publication through the exact local one-use Service Administration capability and render its bounded receipt. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
@@ -49,6 +49,17 @@ transparent-origin Browser Entry defect remains a separate security dependency
 and is not repaired or qualified by this command.
 
 ## `ardents-node`
+
+`ardents-node issuer initialize --config PATH` performs the owner-only bootstrap
+of one durable purpose-scoped Transit Grant issuer root. It emits only the
+stable public profile receipt; the retained root contains no Network State root
+key. Repeating the exact initialization reopens the same public binding.
+
+`ardents-node issuer serve --config PATH` runs only that initialized issuer
+under its exact current `transit-issuance` State assignment. It accepts no
+parallel native duty reservation, rechecks the State-selected issuer,
+Initiator, profile, epoch, and deadline, and withdraws when that binding ceases
+to be current.
 
 `ardents-node source --config PATH` runs one selected Direct-Origin Source
 server from an `ardents-source-server-v1` input and emits
