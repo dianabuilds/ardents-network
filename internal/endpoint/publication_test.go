@@ -89,12 +89,13 @@ func TestWithdrawalAdministrationOwnsAnExplicitTerminalOperation(t *testing.T) {
 func TestWithdrawalPartialFrameStopsAtItsLifetime(t *testing.T) {
 	socket := filepath.Join(os.TempDir(), "awp-"+time.Now().Format("150405.000000")+".sock")
 	defer os.Remove(socket)
+	const operationLifetime = time.Second
 	principal, capability := [32]byte{1}, [32]byte{2}
 	fixture := &withdrawalAdministrationFixture{principal: principal, capability: capability}
 	done := make(chan error, 1)
 	go func() {
 		_, err := withdrawCurrent(context.Background(), fixture, func(string, int) uint32 { return 0 }, socket,
-			principal, time.Now(), 50*time.Millisecond)
+			principal, time.Now(), operationLifetime)
 		done <- err
 	}()
 	var connection net.Conn
@@ -117,7 +118,7 @@ func TestWithdrawalPartialFrameStopsAtItsLifetime(t *testing.T) {
 		if err == nil {
 			t.Fatal("partial withdrawal frame was accepted")
 		}
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(2 * operationLifetime):
 		t.Fatal("partial withdrawal frame outlived its operation lifetime")
 	}
 }
