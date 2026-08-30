@@ -165,12 +165,13 @@ owning implementation slice rather than invented before the Interface exists.
 - **Remaining qualification fact (2026-08-30):** ADR-0063 resolves R-130;
   `ardents-node issuer initialize|serve` now owns the stable owner-only root,
   exact State profile/Initiator binding, restart, and successor withdrawal.
-  R-131 records the remaining Publisher-authority acquisition blocker: no
-  maintained enrollment-v3 command yet supplies the already authorized Service
-  Credential and host-local Instance binding required by `publish`. B6 and C0
-  remain open until unpacked commands exercise the complete participant journey
-  without fixture commands; composing only a module test or generating a
-  Credential inside the qualification would not satisfy the criteria.
+  R-131 and ADR-0064 select separate Authority Custody and host-owned Instance
+  enrollment, but their maintained commands do not yet supply the already
+  authorized Service Credential and opened Instance binding required by
+  `publish`. B6 and C0 remain open until unpacked commands exercise the complete
+  participant journey without fixture commands; composing only a module test
+  or generating a Credential inside qualification would not satisfy the
+  criteria.
 
 ### Planning-label disposition
 

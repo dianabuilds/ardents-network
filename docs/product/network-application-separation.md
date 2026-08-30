@@ -292,11 +292,11 @@ evidence-reuse or requalification decision, and every newly introduced surface
 is inventoried for formal audit.
 
 Current disposition: R-130 is accepted and its owner-root bootstrap plus
-State-bound issuer lifecycle are implemented. B6 and C0 remain open on R-131:
-the product has no accepted publisher-side owner and command for acquiring or
-importing the Service Authority, host-local Instance Key, and bounded Service
-Credential required by an artifact-native `publish -> open -> bytes ->
-withdraw -> restart/recovery` journey.
+State-bound issuer lifecycle are implemented. R-131 and ADR-0064 now select the
+separate Authority Custody and host-owned Instance enrollment owners required
+by B6. Their command and lifecycle implementation plus the artifact-native
+`publish -> open -> bytes -> withdraw -> restart/recovery` journey remain open
+before C0.
 
 ### C2. Freeze and activate formal C0
 

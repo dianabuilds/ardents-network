@@ -64,6 +64,7 @@ Current decisions:
 - [0061 — Retain the Firefox entry only as compatibility evidence](0061-retain-firefox-entry-as-compatibility-evidence.md)
 - [0062 — Scope online Transit Grant signing away from State authority](0062-scope-online-transit-grant-signing.md)
 - [0063 — Bootstrap each Transit Grant issuer from an owner-only root](0063-bootstrap-transit-issuer-from-owner-root.md)
+- [0064 — Separate Service Authority custody from host Instance enrollment](0064-separate-service-authority-custody-from-instance-enrollment.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)

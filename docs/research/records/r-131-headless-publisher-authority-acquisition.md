@@ -1,10 +1,11 @@
 ---
 id: R-131
 title: Headless Publisher authority and Instance acquisition
-status: open
+status: decided; implementation-authorized
 owner: Product Owner
 started: 2026-08-30
 reviewed: 2026-08-30
+decided: 2026-08-30
 ---
 
 # R-131 — Headless Publisher authority and Instance acquisition
@@ -207,7 +208,10 @@ implementation.
 
 ## Exact Product Owner decision requested
 
-Accept or reject the following statement before implementation:
+The Product Owner accepted this statement on 2026-08-30. ADR-0064 fixes the
+selected ownership, monotonicity, withdrawal, restart, and recovery limits.
+
+Accepted Product Owner statement:
 
 > **R-131:** For usable alpha, select separate local Service Authority Custody
 > plus a host-owned one-generation Instance enrollment root. Custody alone
@@ -256,8 +260,10 @@ loses the Target even when an authority-locked backup survives.
 
 ## Disposition
 
-R-131 is open and blocks only the fresh Publisher-authority portion of B6. It
-does not reopen R-128/R-130, Route/Target/wire semantics, Browser separation,
-or the artifact-native enrollment/start/restart work that can proceed
-independently. No ADR or implementation is authorized until the Product Owner
-accepts an option or changes the selected candidate scope.
+R-131 selects option 1 and authorizes ADR-0064 plus one test-first vertical
+implementation. The implementation must close fresh Publisher acquisition and
+the complete artifact-native B6 journey without reopening R-128/R-130,
+Route/Target/wire semantics, Browser separation, or enrollment authority. A
+fixture Credential, caller-owned raw key file, reusable Authority in an
+enrollment bundle, or silently reactivated recovered Authority does not satisfy
+the decision.
