@@ -48,6 +48,9 @@ func TestLocalConnectionInterfaceCarriesOnlyServiceLinkBytesAndTerminal(t *testi
 	if _, err := io.WriteString(client, "hello\n"); err != nil {
 		t.Fatal(err)
 	}
+	if err := client.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
 	reply, err := bufio.NewReader(client).ReadString('\n')
 	if err != nil || reply != "reply:hello\n" {
 		t.Fatalf("local Application reply = %q, %v", reply, err)

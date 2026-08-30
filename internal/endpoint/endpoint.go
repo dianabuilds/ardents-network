@@ -32,6 +32,9 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (RuntimeR
 	if err != nil {
 		return RuntimeResult{}, err
 	}
+	defer endpoint.Close()
+	lifecycle, cancelLifecycle := context.WithCancel(ctx)
+	defer cancelLifecycle()
 	applicationListener, err := listenLocal(plan.ApplicationSocket, deadline)
 	if err != nil {
 		return RuntimeResult{}, err
@@ -57,13 +60,14 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (RuntimeR
 	setup.Resources("control-file", 1)
 	defer setup.Resources("control-file", -1)
 	defer func() { _ = routeListener.Close(); _ = os.Remove(plan.RouteSocket) }()
-	stopListeners := context.AfterFunc(ctx, func() {
+	stopListeners := context.AfterFunc(lifecycle, func() {
 		_ = applicationListener.Close()
 		_ = resultListener.Close()
 		_ = routeListener.Close()
 	})
 	defer stopListeners()
 	var published PublicationResult
+	var withdrawn <-chan endpointOutcome
 	if plan.Role == "publisher" {
 		var publishErr error
 		published, publishErr = publishCurrent(endpoint, setup.Resources, plan, setup.AdministrationPrincipal, at, deadline, ready)
@@ -71,13 +75,34 @@ func runEndpoint(ctx context.Context, plan endpointPlan, ready func()) (RuntimeR
 			return RuntimeResult{}, publishErr
 		}
 		defer setup.Resources("control-file", -2)
+		if plan.PersistentAdministration {
+			withdrawal := make(chan endpointOutcome, 1)
+			withdrawn = withdrawal
+			go func() {
+				result, withdrawErr := withdrawCurrent(lifecycle, endpoint, setup.Resources, plan.AdministrationSocket,
+					setup.AdministrationPrincipal, at, lifetime)
+				withdrawal <- endpointOutcome{result: RuntimeResult{Class: result.Class, Reason: result.Reason,
+					AuthenticatedTarget: result.AuthenticatedTarget}, err: withdrawErr}
+				if withdrawErr == nil {
+					cancelLifecycle()
+				}
+			}()
+		}
 	} else if ready != nil {
 		ready()
 	}
 	openAttachment := routeAttachmentOpener(routeListener, setup.Resources)
-	result, runErr := serveEndpointConnections(ctx, plan, endpoint, setup, applicationListener, resultListener,
+	result, runErr := serveEndpointConnections(lifecycle, plan, endpoint, setup, applicationListener, resultListener,
 		openAttachment, published, at, deadline, lifetime)
 	if plan.Role == "publisher" {
+		if withdrawn != nil {
+			withdrawal := <-withdrawn
+			if withdrawal.err == nil {
+				result, runErr = withdrawal.result, nil
+			} else {
+				runErr = errors.Join(runErr, withdrawal.err)
+			}
+		}
 		runErr = errors.Join(runErr, os.Remove(plan.PublicationFile))
 	}
 	return result, runErr

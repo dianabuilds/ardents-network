@@ -391,6 +391,21 @@ func (connection *LocalApplicationConnection) Done() <-chan ApplicationOutcome {
 	return connection.done
 }
 
+// CloseInput completes only the Adapter-to-Service byte direction. The
+// authenticated Service response and terminal outcome remain readable.
+func (connection *LocalApplicationConnection) CloseInput() error {
+	if connection == nil {
+		return nil
+	}
+	connection.writeMu.Lock()
+	defer connection.writeMu.Unlock()
+	var frame [4]byte
+	if _, err := connection.connection.Write(frame[:]); err != nil {
+		return err
+	}
+	return connection.connection.CloseWrite()
+}
+
 func (connection *LocalApplicationConnection) publishDone(outcome ApplicationOutcome) {
 	connection.doneOnce.Do(func() {
 		connection.done <- outcome
@@ -405,9 +420,7 @@ func (connection *LocalApplicationConnection) Close() error {
 	var result error
 	connection.closeOnce.Do(func() {
 		connection.writeMu.Lock()
-		var frame [4]byte
-		_, writeErr := connection.connection.Write(frame[:])
-		result = errors.Join(writeErr, connection.connection.Close())
+		result = connection.connection.Close()
 		connection.writeMu.Unlock()
 		connection.publishDone(ApplicationOutcome{Class: "local cancellation", Reason: "Application Adapter closed the local connection"})
 		_ = connection.stream.Close()

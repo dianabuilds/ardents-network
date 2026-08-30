@@ -25,6 +25,7 @@ type endpointPlan struct {
 	BytesEachDirection                                                uint32
 	SendBytes, ReceiveBytes                                           uint32
 	MaximumConnections                                                uint16
+	PersistentAdministration                                          bool
 	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter         int64
 }
 
@@ -54,7 +55,7 @@ func (value endpointPlan) validate() error {
 	}
 	if value.Role == "client" && (value.Target == "" || value.AdministrationSocket != "" ||
 		value.CredentialFile != "" || value.InstanceKeyFile != "" || value.AdministrationPrincipal != "" ||
-		value.IntroductionSocket != "" || value.PublicationRoot != "" || value.LegacyGenerationFloor != "") {
+		value.IntroductionSocket != "" || value.PublicationRoot != "" || value.LegacyGenerationFloor != "" || value.PersistentAdministration) {
 		return errors.New("client plan contains publisher administration input")
 	}
 	if value.Role == "publisher" && (value.AdministrationSocket == "" || value.CredentialFile == "" ||

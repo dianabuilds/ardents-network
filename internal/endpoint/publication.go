@@ -14,11 +14,55 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-type connectionEndpoint interface {
+type localAdmitter interface {
 	Admit([32]byte, broker.Surface) ([32]byte, error)
+}
+
+type withdrawalEndpoint interface {
+	localAdmitter
+	Withdraw(context.Context, WithdrawalRequest) (WithdrawalResult, error)
+}
+
+type connectionEndpoint interface {
+	localAdmitter
 	Publish(context.Context, PublicationRequest) (PublicationResult, error)
+	Withdraw(context.Context, WithdrawalRequest) (WithdrawalResult, error)
 	Connect(context.Context, OutboundConnectionRequest) (RuntimeResult, error)
 	Accept(context.Context, InboundConnectionRequest) (RuntimeResult, error)
+}
+
+func withdrawCurrent(ctx context.Context, endpoint withdrawalEndpoint, resources func(string, int) uint32, socket string,
+	principal [32]byte, at time.Time, lifetime time.Duration) (WithdrawalResult, error) {
+	listener, err := listenLocal(socket, lifetime)
+	if err != nil {
+		return WithdrawalResult{}, err
+	}
+	resources("control-file", 1)
+	defer resources("control-file", -1)
+	defer func() { _ = listener.Close(); _ = os.Remove(socket) }()
+	stop := context.AfterFunc(ctx, func() { _ = listener.Close() })
+	defer stop()
+	administrator, err := listener.Accept()
+	if err != nil {
+		return WithdrawalResult{}, err
+	}
+	resources("accepted-ipc", 1)
+	defer resources("accepted-ipc", -1)
+	defer administrator.Close()
+	request, err := ReadControl(ctx, administrator, 9)
+	if err != nil || string(request) != "withdraw\n" {
+		return WithdrawalResult{}, errors.Join(err, errors.New("withdrawal request is malformed, partial, or oversized"))
+	}
+	session, err := admit(endpoint, principal, "administration", at)
+	if err != nil {
+		return WithdrawalResult{}, err
+	}
+	result, err := endpoint.Withdraw(ctx, WithdrawalRequest{Principal: principal, Capability: session, At: at})
+	if err != nil {
+		return result, err
+	}
+	_, err = administrator.Write([]byte("withdrawn\n"))
+	return result, err
 }
 
 func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uint32, plan endpointPlan, principal [32]byte, at time.Time,
@@ -110,7 +154,7 @@ func deliverResult(output io.Writer, result RuntimeResult) error {
 		ReceivedBytes: result.ReceivedBytes})
 }
 
-func admit(endpoint connectionEndpoint, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
+func admit(endpoint localAdmitter, principal [32]byte, surface string, at time.Time) ([32]byte, error) {
 	if at.IsZero() {
 		return [32]byte{}, errors.New("local admission time is absent")
 	}
