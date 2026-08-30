@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	profileVersion = byte(1)
-	profileDomain  = "ardents-transit-issuance-profile-v1"
+	legacyProfileVersion = byte(1)
+	profileVersion       = byte(2)
+	legacyProfileDomain  = "ardents-transit-issuance-profile-v1"
+	profileDomain        = "ardents-transit-issuance-profile-v2"
 )
 
 // EncodeProfile serializes one signed issuer OHTTP profile. State treats the
@@ -19,11 +21,14 @@ func EncodeProfile(profile Profile) ([]byte, error) {
 	if !validProfile(profile) {
 		return nil, errors.New("transit issuance profile is invalid")
 	}
-	out := make([]byte, 0, 4+1+32+32+32+8+2+len(profile.KeyConfig)+32+ed25519.SignatureSize)
+	out := make([]byte, 0, 4+1+32*4+8+2+len(profile.KeyConfig)+32+ed25519.SignatureSize)
 	out = append(out, "ATIP"...)
-	out = append(out, profileVersion)
-	for _, value := range [][32]byte{profile.NetworkID, profile.NodeID, profile.GrantAuthorityID} {
+	out = append(out, profile.Version)
+	for _, value := range [][32]byte{profile.NetworkID, profile.NodeID, profile.GrantSignerID} {
 		out = append(out, value[:]...)
+	}
+	if profile.Version == profileVersion {
+		out = append(out, profile.GrantSignerPublicKey[:]...)
 	}
 	out = binary.BigEndian.AppendUint64(out, uint64(profile.AssignmentNotAfter.UnixNano()))
 	out = binary.BigEndian.AppendUint16(out, uint16(len(profile.KeyConfig)))
@@ -35,14 +40,22 @@ func EncodeProfile(profile Profile) ([]byte, error) {
 // DecodeProfile decodes bounded opaque State profile bytes without selecting
 // or trusting their Node association.
 func DecodeProfile(raw []byte) (Profile, error) {
-	const fixed = 4 + 1 + 32 + 32 + 32 + 8 + 2 + 32 + ed25519.SignatureSize
-	if len(raw) < fixed || len(raw) > maximumProfileBytes || string(raw[:4]) != "ATIP" || raw[4] != profileVersion {
+	const legacyFixed = 4 + 1 + 32 + 32 + 32 + 8 + 2 + 32 + ed25519.SignatureSize
+	if len(raw) < legacyFixed || len(raw) > maximumProfileBytes || string(raw[:4]) != "ATIP" ||
+		(raw[4] != legacyProfileVersion && raw[4] != profileVersion) {
 		return Profile{}, errors.New("transit issuance profile encoding is invalid")
 	}
 	offset := 5
-	profile := Profile{}
-	for _, destination := range []*[32]byte{&profile.NetworkID, &profile.NodeID, &profile.GrantAuthorityID} {
+	profile := Profile{Version: raw[4]}
+	for _, destination := range []*[32]byte{&profile.NetworkID, &profile.NodeID, &profile.GrantSignerID} {
 		copy(destination[:], raw[offset:offset+32])
+		offset += 32
+	}
+	if profile.Version == profileVersion {
+		if len(raw) < legacyFixed+32 {
+			return Profile{}, errors.New("transit issuance profile encoding is invalid")
+		}
+		copy(profile.GrantSignerPublicKey[:], raw[offset:offset+32])
 		offset += 32
 	}
 	profile.AssignmentNotAfter = time.Unix(0, int64(binary.BigEndian.Uint64(raw[offset:offset+8]))).UTC()
@@ -76,17 +89,27 @@ func VerifyProfile(profile Profile, network, node, public [32]byte, at, deadline
 }
 
 func validProfile(profile Profile) bool {
-	return profile.NetworkID != [32]byte{} && profile.NodeID != [32]byte{} && profile.GrantAuthorityID != [32]byte{} &&
+	versionValid := profile.Version == legacyProfileVersion && profile.GrantSignerPublicKey == [32]byte{} ||
+		profile.Version == profileVersion && profile.GrantSignerPublicKey != [32]byte{} &&
+			profile.GrantSignerID == sha256.Sum256(profile.GrantSignerPublicKey[:])
+	return versionValid && profile.NetworkID != [32]byte{} && profile.NodeID != [32]byte{} && profile.GrantSignerID != [32]byte{} &&
 		!profile.AssignmentNotAfter.IsZero() && len(profile.KeyConfig) > 0 && len(profile.KeyConfig) <= maximumProfileBytes &&
 		profile.KeyConfigDigest == sha256.Sum256(profile.KeyConfig) && len(profile.Signature) == ed25519.SignatureSize
 }
 
 func profileTranscript(profile Profile) []byte {
-	out := make([]byte, 0, 2+len(profileDomain)+32*3+8+4+len(profile.KeyConfig))
-	out = binary.BigEndian.AppendUint16(out, uint16(len(profileDomain)))
-	out = append(out, profileDomain...)
-	for _, value := range [][32]byte{profile.NetworkID, profile.NodeID, profile.GrantAuthorityID} {
+	domain := profileDomain
+	if profile.Version == legacyProfileVersion {
+		domain = legacyProfileDomain
+	}
+	out := make([]byte, 0, 2+len(domain)+32*4+8+4+len(profile.KeyConfig))
+	out = binary.BigEndian.AppendUint16(out, uint16(len(domain)))
+	out = append(out, domain...)
+	for _, value := range [][32]byte{profile.NetworkID, profile.NodeID, profile.GrantSignerID} {
 		out = append(out, value[:]...)
+	}
+	if profile.Version == profileVersion {
+		out = append(out, profile.GrantSignerPublicKey[:]...)
 	}
 	out = binary.BigEndian.AppendUint64(out, uint64(profile.AssignmentNotAfter.UnixNano()))
 	out = binary.BigEndian.AppendUint32(out, uint32(len(profile.KeyConfig)))

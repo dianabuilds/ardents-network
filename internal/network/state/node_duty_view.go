@@ -130,9 +130,24 @@ func (view NodeDutyView) DutyTransitIssuanceProfileDigest() [32]byte {
 	return sha256.Sum256(view.snapshot.TransitIssuanceProfile[:view.snapshot.TransitIssuanceProfileSize])
 }
 
+// DutyTransitIssuanceNodeID and DutyTransitIssuanceProfile expose one
+// authenticated opaque issuer declaration. Node passes it only to the
+// credential owner; State does not parse that profile grammar.
+func (view NodeDutyView) DutyTransitIssuanceNodeID() [32]byte {
+	return view.snapshot.TransitIssuanceNodeID
+}
+
+func (view NodeDutyView) DutyTransitIssuanceProfile() []byte {
+	if view.snapshot.TransitIssuanceProfileSize == 0 || int(view.snapshot.TransitIssuanceProfileSize) > len(view.snapshot.TransitIssuanceProfile) {
+		return nil
+	}
+	return append([]byte(nil), view.snapshot.TransitIssuanceProfile[:view.snapshot.TransitIssuanceProfileSize]...)
+}
+
 // DutyAuthorityCount, DutyAuthorityID, and DutyAuthorityPublicKey expose the
-// finite current State authority verification set required by a Node-only
-// offline Transit Grant check. They do not expose State source or persistence.
+// finite current Epoch authority set used only by historical Grant profiles.
+// Current dynamic issuance projects its distinct Grant key from the opaque
+// issuer profile. These operations expose no State source or persistence.
 func (view NodeDutyView) DutyAuthorityCount() uint8 { return view.snapshot.EpochAuthorityCount }
 func (view NodeDutyView) DutyAuthorityID(index uint8) [32]byte {
 	if index >= view.snapshot.EpochAuthorityCount {

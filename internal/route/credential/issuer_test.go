@@ -35,7 +35,7 @@ func TestClientObtainsOnlyExactMembershipGrantThroughOHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	initiatorCertificate := credentialCertificate(t, initiatorPrivate, 2)
-	request := Request{NetworkID: credentialID(1), Digest: credentialID(2), IntroductionNodeID: credentialID(3),
+	request := Request{RequestID: credentialID(9), NetworkID: credentialID(1), Digest: credentialID(2), IntroductionNodeID: credentialID(3),
 		AttachmentID: credentialID(4), ClientKeyDigest: credentialID(5), Epoch: 6, NotAfter: now.Add(10 * time.Second)}
 	var authorized Request
 	issuer, err := NewIssuer(IssuerConfig{NetworkID: request.NetworkID, NodeID: credentialID(7), IdentityKey: issuerPrivate,
@@ -43,12 +43,14 @@ func TestClientObtainsOnlyExactMembershipGrantThroughOHTTP(t *testing.T) {
 		CurrentDuty: func() (StateDuty, bool) {
 			return StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(7),
 				IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(8), InitiatorPublicKey: publicIdentifier(initiatorPublic),
-				GrantAuthorityID: sha256.Sum256(authorityPublic), Epoch: request.Epoch, NotAfter: now.Add(time.Minute)}, true
+				GrantSignerPublicKey: publicIdentifier(authorityPublic), Epoch: request.Epoch, NotAfter: now.Add(time.Minute)}, true
 		}, Clock: func() time.Time { return now },
+		DutyRoot: t.TempDir(), CreateDutyRoot: true, Budget: 4,
 		Authorize: func(got Request, at time.Time) bool { authorized = got; return at.Equal(now) && got == request }})
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = issuer.Close() }()
 	server := httptest.NewUnstartedServer(issuer.Handler())
 	server.TLS, err = issuer.TLSConfig(credentialCertificate(t, issuerPrivate, 1))
 	if err != nil {
@@ -64,15 +66,18 @@ func TestClientObtainsOnlyExactMembershipGrantThroughOHTTP(t *testing.T) {
 	}
 	defer httpClient.CloseIdleConnections()
 	client, err := OpenClient(ClientConfig{NetworkID: request.NetworkID, IssuerPublic: issuerKey, Profile: issuer.Profile(),
-		GrantAuthority: authorityPublic, Exchange: issuerExchange(httpClient, server.URL), At: now, Deadline: now.Add(15 * time.Second)})
+		Exchange: issuerExchange(httpClient, server.URL), At: now, Deadline: now.Add(15 * time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := client.Issue(context.Background(), request)
+	result, err := client.Issue(context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant, err := route.VerifyTransitGrant(raw, authorityPublic)
+	if result.Outcome != Issued {
+		t.Fatalf("issuance outcome = %q", result.Outcome)
+	}
+	grant, err := route.VerifyTransitGrant(result.Grant, authorityPublic)
 	if err != nil || authorized != request || grant.NetworkID != request.NetworkID || grant.Digest != request.Digest ||
 		grant.Epoch != request.Epoch || grant.TransitNodeID != request.IntroductionNodeID || grant.AttachmentID != request.AttachmentID ||
 		grant.ClientKeyDigest != request.ClientKeyDigest || grant.TransitRole != route.IntroductionRole || !grant.NotAfter.Equal(request.NotAfter) {
@@ -102,11 +107,13 @@ func TestIssuerRejectsCallerWithoutSelectedInitiatorCertificate(t *testing.T) {
 		CurrentDuty: func() (StateDuty, bool) {
 			return StateDuty{NetworkID: credentialID(21), Digest: credentialID(24), IssuerNodeID: credentialID(22),
 				IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(23), InitiatorPublicKey: publicIdentifier(initiatorPublic),
-				GrantAuthorityID: sha256.Sum256(authorityPublic), Epoch: 25, NotAfter: now.Add(time.Minute)}, true
-		}, Clock: func() time.Time { return now }, Authorize: func(Request, time.Time) bool { return true }})
+				GrantSignerPublicKey: publicIdentifier(authorityPublic), Epoch: 25, NotAfter: now.Add(time.Minute)}, true
+		}, Clock: func() time.Time { return now }, Authorize: func(Request, time.Time) bool { return true },
+		DutyRoot: t.TempDir(), CreateDutyRoot: true, Budget: 4})
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = issuer.Close() }()
 	server := httptest.NewUnstartedServer(issuer.Handler())
 	server.TLS, err = issuer.TLSConfig(credentialCertificate(t, issuerPrivate, 3))
 	if err != nil {
@@ -124,20 +131,20 @@ func TestIssuerRejectsCallerWithoutSelectedInitiatorCertificate(t *testing.T) {
 }
 
 func TestCredentialRequestHasClosedTargetFreeGrammar(t *testing.T) {
-	request := Request{NetworkID: credentialID(11), Digest: credentialID(12), IntroductionNodeID: credentialID(13),
+	request := Request{RequestID: credentialID(10), NetworkID: credentialID(11), Digest: credentialID(12), IntroductionNodeID: credentialID(13),
 		AttachmentID: credentialID(14), ClientKeyDigest: credentialID(15), Epoch: 16, NotAfter: time.Unix(2_000_500_010, 0).UTC()}
 	raw, err := encodeRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(raw) != 4+32*5+8+8 {
+	if len(raw) != 4+32*6+8+8 {
 		t.Fatalf("request length = %d", len(raw))
 	}
 	if _, err := decodeRequest(append(raw, []byte("target-or-name")...)); err == nil {
 		t.Fatal("credential request accepted a trailing Target or Name")
 	}
 	changed := append([]byte(nil), raw...)
-	changed[4+32*2] ^= 1
+	changed[4+32*3] ^= 1
 	if got, err := decodeRequest(changed); err != nil || got.IntroductionNodeID == request.IntroductionNodeID {
 		t.Fatalf("closed request mutation = %+v, %v", got, err)
 	}

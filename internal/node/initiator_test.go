@@ -244,7 +244,7 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := credential.Request{NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest,
+	request := credential.Request{RequestID: [32]byte{80}, NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest,
 		IntroductionNodeID: [32]byte{81}, AttachmentID: [32]byte{82}, ClientKeyDigest: [32]byte{83}, Epoch: rendezvousConfig.Epoch,
 		NotAfter: rendezvousConfig.NotAfter.Add(-time.Second)}
 	issuer, err := credential.NewIssuer(credential.IssuerConfig{NetworkID: request.NetworkID, NodeID: [32]byte{84}, IdentityKey: issuerPrivate,
@@ -252,13 +252,15 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 		CurrentDuty: func() (credential.StateDuty, bool) {
 			return credential.StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: [32]byte{84},
 				IssuerPublicKey: issuerPublic, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: material.initiatorPublic,
-				GrantAuthorityID: sha256.Sum256(authorityPrivate.Public().(ed25519.PublicKey)), Epoch: request.Epoch,
+				GrantSignerPublicKey: [32]byte(authorityPrivate.Public().(ed25519.PublicKey)), Epoch: request.Epoch,
 				NotAfter: rendezvousConfig.NotAfter}, true
 		}, Clock: func() time.Time { return time.Now().UTC() },
-		Authorize: func(got credential.Request, _ time.Time) bool { return got == request }})
+		Authorize: func(got credential.Request, _ time.Time) bool { return got == request },
+		DutyRoot:  t.TempDir(), CreateDutyRoot: true, Budget: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = issuer.Close() }()
 	server := httptest.NewUnstartedServer(issuer.Handler())
 	server.TLS, err = issuer.TLSConfig(issuerCertificate)
 	if err != nil {
@@ -307,7 +309,7 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 		t.Fatalf("CredentialRelayReady = %+v, %v", ready, err)
 	}
 	client, err := credential.OpenClient(credential.ClientConfig{NetworkID: request.NetworkID, IssuerPublic: issuerPublic, Profile: issuer.Profile(),
-		GrantAuthority: authorityPrivate.Public().(ed25519.PublicKey), At: time.Now().UTC(), Deadline: request.NotAfter,
+		At: time.Now().UTC(), Deadline: request.NotAfter,
 		Exchange: func(_ context.Context, envelope []byte) ([]byte, error) {
 			if err := route.WriteCredentialRelayEnvelope(connection, route.CredentialRelayEnvelope{OHTTP: envelope}); err != nil {
 				return nil, err
@@ -321,11 +323,14 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := client.Issue(t.Context(), request)
+	result, err := client.Issue(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant, err := route.VerifyTransitGrant(raw, authorityPrivate.Public().(ed25519.PublicKey))
+	if result.Outcome != credential.Issued {
+		t.Fatalf("credential Relay outcome = %q", result.Outcome)
+	}
+	grant, err := route.VerifyTransitGrant(result.Grant, authorityPrivate.Public().(ed25519.PublicKey))
 	if err != nil || grant.AttachmentID != request.AttachmentID || grant.ClientKeyDigest != request.ClientKeyDigest ||
 		grant.TransitNodeID != request.IntroductionNodeID {
 		t.Fatalf("credential Relay Grant = %+v, %v", grant, err)

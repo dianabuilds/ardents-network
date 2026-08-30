@@ -24,8 +24,8 @@ type TransitGrant struct {
 }
 
 // IssueTransitGrant returns the sole canonical Transit Grant v1 encoding. The
-// caller owns State-authority custody; Route only checks that its signing key
-// matches the declared current authority identifier.
+// caller owns the State-authorized Grant-signing custody; Route only checks
+// that its signing key matches the declared current issuer identifier.
 func IssueTransitGrant(input TransitGrant, signer ed25519.PrivateKey) ([]byte, error) {
 	if err := validTransitGrant(input); err != nil || len(signer) != ed25519.PrivateKeySize ||
 		input.IssuerID != sha256.Sum256(signer.Public().(ed25519.PublicKey)) {
@@ -37,7 +37,7 @@ func IssueTransitGrant(input TransitGrant, signer ed25519.PrivateKey) ([]byte, e
 }
 
 // VerifyTransitGrant decodes one closed Transit Grant v1 and proves its
-// signature under one State authority public key. Exact binding and one-use
+// signature under one State-authorized Grant public key. Exact binding and one-use
 // spending remain the receiving Node's responsibility.
 func VerifyTransitGrant(raw []byte, authority ed25519.PublicKey) (TransitGrant, error) {
 	if len(authority) != ed25519.PublicKeySize || len(raw) != transitGrantBodyLength()+ed25519.SignatureSize {
@@ -52,8 +52,8 @@ func VerifyTransitGrant(raw []byte, authority ed25519.PublicKey) (TransitGrant, 
 }
 
 // DecodeTransitGrant checks the closed wire grammar without granting trust to
-// its signer. A Node uses IssuerID only to select one current State authority
-// key, then must call VerifyTransitGrant before admission.
+// its signer. A Node uses IssuerID only to select the current State-authorized
+// Grant key, then must call VerifyTransitGrant before admission.
 func DecodeTransitGrant(raw []byte) (TransitGrant, error) {
 	if len(raw) != transitGrantBodyLength()+ed25519.SignatureSize {
 		return TransitGrant{}, errors.New("transit grant decoding input is invalid")

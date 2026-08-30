@@ -50,7 +50,7 @@ type DestinationResolutionGateway struct {
 
 // TransitIssuer is the one State-selected membership Transit Grant issuer
 // fact. Its Profile remains opaque until the credential owner verifies its
-// Node self-signature and State-authority signer declaration.
+// Node self-signature and purpose-scoped Grant signer declaration.
 type TransitIssuer struct {
 	NodeID, PublicKey, Family [32]byte
 	Profile                   []byte

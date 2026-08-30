@@ -77,7 +77,7 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 			IdentityKey: issuerPrivate, GrantSigner: transitAuthorityPrivate, InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
 			CurrentDuty: func() (credential.StateDuty, bool) {
 				return credential.StateDuty{NetworkID: network, Digest: digest, IssuerNodeID: issuerID, IssuerPublicKey: issuerPublic,
-					InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic, GrantAuthorityID: transitAuthorityID, Epoch: 10, NotAfter: deadline}, true
+					InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic, GrantSignerPublicKey: [32]byte(transitAuthorityPublic), Epoch: 10, NotAfter: deadline}, true
 			}, Clock: func() time.Time { return now }, Authorize: func(request credential.Request, at time.Time) bool {
 				if request.NetworkID != network || request.Digest != digest || request.Epoch != 10 ||
 					request.IntroductionNodeID != introductionID || !request.NotAfter.Equal(credentialDeadline) || !at.Equal(now) {
@@ -85,10 +85,11 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 				}
 				issued <- request
 				return true
-			}})
+			}, DutyRoot: t.TempDir(), CreateDutyRoot: true, Budget: 4})
 		if issueErr != nil {
 			t.Fatal(issueErr)
 		}
+		defer func() { _ = issuer.Close() }()
 		server := httptest.NewUnstartedServer(issuer.Handler())
 		server.TLS, issueErr = issuer.TLSConfig(issuerCertificate)
 		if issueErr != nil {
@@ -213,8 +214,17 @@ func testAlphaBrowserRuntime(t *testing.T, membership bool) {
 	}
 	var transitAuthorityStateKey [32]byte
 	copy(transitAuthorityStateKey[:], transitAuthorityPublic)
+	transitAuthorityStateID := transitAuthorityID
+	if membership {
+		stateAuthorityPublic, _, keyErr := ed25519.GenerateKey(rand.Reader)
+		if keyErr != nil {
+			t.Fatal(keyErr)
+		}
+		copy(transitAuthorityStateKey[:], stateAuthorityPublic)
+		transitAuthorityStateID = sha256.Sum256(stateAuthorityPublic)
+	}
 	currentState := alphaRuntimeState{epoch: state.ResolutionEpoch{Generation: "alpha-runtime", NetworkID: network, Number: 10, Digest: digest,
-		ViewRoot: c2Identifier(145), Authorities: []state.ResolutionAuthority{{ID: transitAuthorityID, PublicKey: transitAuthorityStateKey}}, Threshold: 1},
+		ViewRoot: c2Identifier(145), Authorities: []state.ResolutionAuthority{{ID: transitAuthorityStateID, PublicKey: transitAuthorityStateKey}}, Threshold: 1},
 		gateway: state.DestinationResolutionGateway{NodeID: gatewayID, PublicKey: gatewayPublic, Family: c2Identifier(137), Profile: stateProfile,
 			AssignmentNotAfter: deadline}, issuer: issuerState, candidates: map[[32]byte]state.ResolutionCandidate{
 			initiatorID:    {NodeID: initiatorID, PublicKey: initiatorPublic, Family: "initiator-family", Endpoint: initiatorAddress, Domain: "initiator", AssignmentNotAfter: deadline},

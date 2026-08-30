@@ -22,11 +22,17 @@ func stateTransitGrantAdmitter(root string, snapshot dutyFacts, now func() time.
 			return route.EndpointTransitAdmission{}, err
 		}
 		var authority ed25519.PublicKey
-		for index := uint8(0); index < snapshot.AuthorityCount; index++ {
-			candidate := snapshot.Authorities[index]
-			if candidate.ID == unverified.IssuerID {
-				authority = ed25519.PublicKey(candidate.PublicKey[:])
-				break
+		if snapshot.TransitGrantSignerID != [32]byte{} || snapshot.TransitGrantSignerPublicKey != [32]byte{} {
+			if snapshot.TransitGrantSignerID == unverified.IssuerID && snapshot.TransitGrantSignerPublicKey != [32]byte{} {
+				authority = ed25519.PublicKey(snapshot.TransitGrantSignerPublicKey[:])
+			}
+		} else {
+			for index := uint8(0); index < snapshot.AuthorityCount; index++ {
+				candidate := snapshot.Authorities[index]
+				if candidate.ID == unverified.IssuerID {
+					authority = ed25519.PublicKey(candidate.PublicKey[:])
+					break
+				}
 			}
 		}
 		grant, err := route.VerifyTransitGrant(raw, authority)

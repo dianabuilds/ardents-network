@@ -1,6 +1,7 @@
 package duty
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -41,6 +42,7 @@ type durableState struct {
 	Previous           string              `json:"previous,omitempty"`
 	Duties             []dutyRecord        `json:"duties"`
 	TransitGrantSpends []transitGrantSpend `json:"transit_grant_spends"`
+	TransitGrantIssuer *transitGrantIssuer `json:"transit_grant_issuer,omitempty"`
 }
 
 type dutyRecord struct {
@@ -61,7 +63,45 @@ type transitGrantSpend struct {
 	NotAfter int64    `json:"not_after"`
 }
 
+// TransitGrantIssuerScope is one exact State-authenticated online signing
+// duty. GrantSignerID identifies only the purpose-scoped Transit Grant key;
+// it is not an Epoch authority identifier.
+type TransitGrantIssuerScope struct {
+	NetworkID, Digest, IssuerNodeID, GrantSignerID [32]byte
+	Epoch                                          uint64
+	NotAfter                                       time.Time
+}
+
+// ErrTransitGrantIssuerExhausted and ErrTransitGrantIssuerWithdrawn are the
+// two authenticated terminal reservation classes. A Request ID conflict is
+// deliberately only unavailable to its caller.
+var (
+	ErrTransitGrantIssuerExhausted = errors.New("transit grant issuer budget is exhausted")
+	ErrTransitGrantIssuerWithdrawn = errors.New("transit grant issuer duty is withdrawn")
+	ErrTransitGrantRequestConflict = errors.New("transit grant request identifier conflicts")
+)
+
+type transitGrantIssuer struct {
+	NetworkID       [32]byte                  `json:"network_id"`
+	Digest          [32]byte                  `json:"digest"`
+	IssuerNodeID    [32]byte                  `json:"issuer_node_id"`
+	GrantSignerID   [32]byte                  `json:"grant_signer_id"`
+	Epoch           uint64                    `json:"epoch"`
+	NotAfter        int64                     `json:"not_after"`
+	Budget          uint16                    `json:"budget"`
+	Withdrawn       bool                      `json:"withdrawn"`
+	PrivateMaterial []byte                    `json:"private_material"`
+	Reservations    []transitGrantReservation `json:"reservations"`
+}
+
+type transitGrantReservation struct {
+	RequestID     [32]byte `json:"request_id"`
+	RequestDigest [32]byte `json:"request_digest"`
+	GrantID       [32]byte `json:"grant_id"`
+}
+
 const (
 	maximumStateBytes         = 64 << 10
 	maximumTransitGrantSpends = 64
+	maximumTransitGrantBudget = 64
 )
