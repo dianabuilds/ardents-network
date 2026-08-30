@@ -15,11 +15,14 @@ func TestReferenceC2CarriesConfiguredPacedDynamicWorkload(t *testing.T) {
 
 // TestReferenceC2CarriesSustainedDynamicWorkload is a short regression for
 // relay lifetime accounting. It crosses the old roughly 250-cycle failure
-// boundary without turning the checked suite into a wall-clock soak.
+// boundary without turning the checked suite into a wall-clock soak. Its
+// compressed cadence is not pacing-qualification evidence, so it declares a
+// separate scheduler-lag ceiling while the qualification profiles retain the
+// default one-interval ceiling.
 func TestReferenceC2CarriesSustainedDynamicWorkload(t *testing.T) {
 	runReferenceC2(t, referenceC2Scenario{transparentApplication: true, dynamicWorkload: referenceC2DynamicWorkload{
 		Cycles: 300, IntervalMilliseconds: 50, CycleDeadlineMilliseconds: 1_000,
-		NoFallbackEvery: 60, BytesEachDirection: 4 << 20}})
+		MaximumStartLagMilliseconds: 1_000, NoFallbackEvery: 60, BytesEachDirection: 4 << 20}})
 }
 
 func TestReferenceC2LosesPublisherApplicationAfterConfiguredWarmup(t *testing.T) {
@@ -33,11 +36,12 @@ func TestReferenceC2LosesPublisherEndpointAfterConfiguredWarmup(t *testing.T) {
 }
 
 type referenceC2DynamicWorkload struct {
-	Cycles                    uint32
-	IntervalMilliseconds      uint32
-	CycleDeadlineMilliseconds uint32
-	NoFallbackEvery           uint32
-	BytesEachDirection        uint32
+	Cycles                      uint32
+	IntervalMilliseconds        uint32
+	CycleDeadlineMilliseconds   uint32
+	MaximumStartLagMilliseconds uint32 `json:",omitempty"`
+	NoFallbackEvery             uint32
+	BytesEachDirection          uint32
 }
 
 func shortReferenceC2DynamicWorkload(cycles uint32) referenceC2DynamicWorkload {
@@ -46,6 +50,13 @@ func shortReferenceC2DynamicWorkload(cycles uint32) referenceC2DynamicWorkload {
 }
 
 func (workload referenceC2DynamicWorkload) configured() bool { return workload.Cycles != 0 }
+
+func (workload referenceC2DynamicWorkload) maximumStartLagMilliseconds() uint32 {
+	if workload.MaximumStartLagMilliseconds != 0 {
+		return workload.MaximumStartLagMilliseconds
+	}
+	return workload.IntervalMilliseconds
+}
 
 func (workload referenceC2DynamicWorkload) addTo(fixture map[string]any) {
 	if workload.configured() {
@@ -138,7 +149,7 @@ func assertReferenceC2DynamicWorkloadResult(t *testing.T, scenario referenceC2Sc
 		workload.P50CycleLatencyMicros > workload.P95CycleLatencyMicros || workload.P95CycleLatencyMicros > workload.P99CycleLatencyMicros ||
 		workload.P99CycleLatencyMicros > workload.MaximumCycleLatencyMicros ||
 		workload.MaximumCycleLatencyMicros > int64(scenario.dynamicWorkload.CycleDeadlineMilliseconds)*1_000 ||
-		workload.MaximumStartLagMicros >= int64(scenario.dynamicWorkload.IntervalMilliseconds)*1_000 {
+		workload.MaximumStartLagMicros >= int64(scenario.dynamicWorkload.maximumStartLagMilliseconds())*1_000 {
 		t.Fatalf("configured dynamic workload result = %+v", workload)
 	}
 	terminal := scenario.publisherTerminal == referenceC2PublisherApplicationReset || scenario.publisherTerminal == referenceC2PublisherEndpointStop || scenario.transitFault != ""

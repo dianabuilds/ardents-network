@@ -1725,7 +1725,8 @@ function Test-A11ProductHarnessSeams(
             '"transit_roles_live_before":true',
             '"injected_after_ready":true',
             '>"$work/publisher-application-reset.json"',
-            '>"$work/publisher-application-fault-release"'
+            '>"$work/publisher-application-fault-release.tmp"',
+            'mv -f "$work/publisher-application-fault-release.tmp" "$work/publisher-application-fault-release"'
         )
     }
     $sources = @{ qualification = $QualificationSource; evidence = $EvidenceSource; runner = $RunnerSource }

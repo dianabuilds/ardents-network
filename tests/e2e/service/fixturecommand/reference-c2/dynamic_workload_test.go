@@ -61,6 +61,35 @@ func TestConfiguredDynamicWorkloadUsesOneConnectionAndClosesAfterEveryCycle(t *t
 	}
 }
 
+func TestConfiguredDynamicWorkloadUsesDeclaredStartLagLimit(t *testing.T) {
+	proof := filepath.Join(t.TempDir(), "proof")
+	plan := dynamicWorkloadPlan{cycles: 2, interval: 10 * time.Millisecond, cycleDeadline: time.Second,
+		maximumStartLag: time.Second}
+	client, accept := dynamicWorkloadTestClient(t)
+	server := make(chan dynamicWorkloadServerResult, 1)
+	go func() {
+		connection, err := accept()
+		if err != nil {
+			server <- dynamicWorkloadServerResult{err: err}
+			return
+		}
+		workload, serveErr := serveConfiguredDynamic(connection, proof, dynamicWorkloadControls{}, plan, "", "")
+		server <- dynamicWorkloadServerResult{workload: workload, err: serveErr}
+	}()
+
+	workload, err := exerciseConfiguredDynamic(client, "http://reference.ard/", plan, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := <-server
+	if result.err != nil || workload.CompletedCycles != 2 || result.workload.CompletedCycles != 2 {
+		t.Fatalf("declared-lag workload = user %+v / server %+v / %v", workload, result.workload, result.err)
+	}
+	if workload.MaximumStartLagMicros < plan.interval.Microseconds() {
+		t.Fatalf("compressed workload maximum lag = %dµs, want at least one 10ms cadence", workload.MaximumStartLagMicros)
+	}
+}
+
 func TestConfiguredDynamicWorkloadAllowsBoundedInitialBrowserAssembly(t *testing.T) {
 	proof := filepath.Join(t.TempDir(), "proof")
 	plan := dynamicWorkloadPlan{cycles: 1, interval: 10 * time.Millisecond, cycleDeadline: 75 * time.Millisecond,
@@ -147,7 +176,11 @@ func TestConfiguredDynamicApplicationLossWaitsForExplicitInjection(t *testing.T)
 		t.Fatalf("Application fault completed before explicit injection: %v", err)
 	default:
 	}
-	if err := os.WriteFile(release, []byte("inject\n"), 0o600); err != nil {
+	releaseTemporary := release + ".tmp"
+	if err := os.WriteFile(releaseTemporary, []byte("inject\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(releaseTemporary, release); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-user; err != nil {
@@ -278,6 +311,11 @@ func TestDynamicWorkloadConfigKeepsQualificationLoadBounded(t *testing.T) {
 	if err := valid.DynamicWorkload.validate(valid); err != nil {
 		t.Fatalf("A11 dynamic workload contract was rejected: %v", err)
 	}
+	explicit := valid
+	explicit.DynamicWorkload.MaximumStartLagMilliseconds = 5_000
+	if err := explicit.DynamicWorkload.validate(explicit); err != nil {
+		t.Fatalf("bounded explicit start-lag limit was rejected: %v", err)
+	}
 	invalid := valid
 	invalid.DynamicWorkload.Cycles++
 	if err := invalid.DynamicWorkload.validate(invalid); err == nil {
@@ -293,6 +331,16 @@ func TestDynamicWorkloadConfigKeepsQualificationLoadBounded(t *testing.T) {
 	if err := invalid.DynamicWorkload.validate(invalid); err == nil {
 		t.Fatal("dynamic workload admitted a cycle deadline above five seconds")
 	}
+	invalid = valid
+	invalid.DynamicWorkload.MaximumStartLagMilliseconds = 999
+	if err := invalid.DynamicWorkload.validate(invalid); err == nil {
+		t.Fatal("dynamic workload admitted a start-lag limit below its cadence")
+	}
+	invalid = valid
+	invalid.DynamicWorkload.MaximumStartLagMilliseconds = 5_001
+	if err := invalid.DynamicWorkload.validate(invalid); err == nil {
+		t.Fatal("dynamic workload admitted a start-lag limit above its request deadline")
+	}
 }
 
 func TestConfiguredDynamicWorkloadRejectsLateFirstCycle(t *testing.T) {
@@ -300,6 +348,24 @@ func TestConfiguredDynamicWorkloadRejectsLateFirstCycle(t *testing.T) {
 	_, err := exerciseConfiguredDynamic(&http.Client{}, "http://reference.ard/", plan, "", "")
 	if err == nil || !strings.Contains(err.Error(), "missed a pacing slot") {
 		t.Fatalf("late first cycle = %v, want pacing failure before any dial", err)
+	}
+}
+
+func TestDynamicWorkloadSeparatesCompressedCadenceFromStartLagLimit(t *testing.T) {
+	configured := dynamicWorkloadConfig{IntervalMilliseconds: 50, MaximumStartLagMilliseconds: 250}
+	plan := configured.plan()
+	if plan.interval != 50*time.Millisecond || plan.maximumStartLag != 250*time.Millisecond {
+		t.Fatalf("compressed plan cadence/lag = %s/%s, want 50ms/250ms", plan.interval, plan.maximumStartLag)
+	}
+	if missedDynamicPacingSlot(60*time.Millisecond, plan.maximumStartLag) {
+		t.Fatal("declared scheduler tolerance rejected a healthy compressed workload")
+	}
+	if !missedDynamicPacingSlot(250*time.Millisecond, plan.maximumStartLag) {
+		t.Fatal("declared scheduler tolerance admitted a complete pacing overrun")
+	}
+	legacy := (dynamicWorkloadConfig{IntervalMilliseconds: 1_000}).plan()
+	if legacy.maximumStartLag != time.Second {
+		t.Fatalf("default qualification lag limit = %s, want one interval", legacy.maximumStartLag)
 	}
 }
 

@@ -78,7 +78,11 @@ func requireSelectedServiceConnectionClosed(t *testing.T, connection net.Conn, s
 func TestTransparentAlphaRouteAcceptsExactKnownBodyLimits(t *testing.T) {
 	applicationSide, proxy := openTransparentLimitRoute(t)
 	payload := bytes.Repeat([]byte{'x'}, transparentAlphaBodyLimit)
-	applicationDone := make(chan error, 1)
+	type applicationResult struct {
+		written int
+		err     error
+	}
+	applicationDone := make(chan applicationResult, 1)
 	go func() {
 		request, err := http.ReadRequest(bufio.NewReader(applicationSide))
 		if err == nil {
@@ -95,10 +99,11 @@ func TestTransparentAlphaRouteAcceptsExactKnownBodyLimits(t *testing.T) {
 		if err == nil {
 			_, err = fmt.Fprintf(applicationSide, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n", len(payload))
 		}
+		written := 0
 		if err == nil {
-			_, err = applicationSide.Write(payload)
+			written, err = applicationSide.Write(payload)
 		}
-		applicationDone <- err
+		applicationDone <- applicationResult{written: written, err: err}
 	}()
 	proxyURL, err := url.Parse(proxy.URL())
 	if err != nil {
@@ -108,17 +113,25 @@ func TestTransparentAlphaRouteAcceptsExactKnownBodyLimits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := (&http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL), DisableCompression: true}}).Do(request)
+	transport := &http.Transport{Proxy: http.ProxyURL(proxyURL), DisableCompression: true}
+	t.Cleanup(transport.CloseIdleConnections)
+	response, err := (&http.Client{Transport: transport}).Do(request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, readErr := io.ReadAll(response.Body)
 	_ = response.Body.Close()
 	if response.StatusCode != http.StatusOK || readErr != nil || !bytes.Equal(body, payload) {
-		t.Fatalf("exact body-limit response = %d, %d bytes, %v", response.StatusCode, len(body), readErr)
+		select {
+		case result := <-applicationDone:
+			t.Fatalf("exact body-limit response = %d, %d bytes, %v; Publisher write = %d bytes, %v", response.StatusCode, len(body), readErr, result.written, result.err)
+		case <-time.After(100 * time.Millisecond):
+			t.Fatalf("exact body-limit response = %d, %d bytes, %v; Publisher write remains blocked", response.StatusCode, len(body), readErr)
+		}
 	}
-	if err := <-applicationDone; err != nil {
-		t.Fatal(err)
+	result := <-applicationDone
+	if result.err != nil || result.written != len(payload) {
+		t.Fatalf("Publisher write = %d bytes, %v", result.written, result.err)
 	}
 }
 

@@ -50,8 +50,10 @@ func exerciseConfiguredDynamic(client *http.Client, origin string, plan dynamicW
 			result.ActualStartAtUTC = started.UTC()
 		}
 		startLag := started.Sub(scheduled)
-		if startLag >= plan.interval {
-			return &result, fmt.Errorf("configured dynamic cycle %d missed a pacing slot", cycle)
+		startLagLimit := plan.startLagLimit()
+		if missedDynamicPacingSlot(startLag, startLagLimit) {
+			return &result, fmt.Errorf("configured dynamic cycle %d missed a pacing slot: start lag %s reached %s limit; previous maximum cycle latency %dµs",
+				cycle, startLag.Round(time.Microsecond), startLagLimit, result.MaximumCycleLatencyMicros)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), plan.cycleDeadline)
 		err := exerciseConfiguredDynamicCycle(ctx, client, origin, cycle)
@@ -120,7 +122,8 @@ func beginConfiguredDynamicPublishAndTimeline(ctx context.Context, client *http.
 	_ = response.Body.Close()
 	if response.StatusCode != http.StatusFound || response.Header.Get("Location") != "/timeline" ||
 		response.Header.Get("Set-Cookie") != "session=dynamic; Path=/" {
-		return nil, errors.New("configured dynamic Publisher redirect or cookie was not preserved")
+		return nil, fmt.Errorf("configured dynamic Publisher redirect or cookie was not preserved: status=%d location=%q set-cookie=%q",
+			response.StatusCode, response.Header.Get("Location"), response.Header.Get("Set-Cookie"))
 	}
 	get, err := http.NewRequestWithContext(ctx, http.MethodGet, origin+"timeline", nil)
 	if err != nil {
@@ -280,6 +283,10 @@ func waitForDynamicCycle(scheduled time.Time) error {
 	defer timer.Stop()
 	<-timer.C
 	return nil
+}
+
+func missedDynamicPacingSlot(startLag, limit time.Duration) bool {
+	return limit <= 0 || startLag >= limit
 }
 
 func dynamicTerminalRequestDeadline(started, terminal time.Time, cycleDeadline time.Duration) time.Time {

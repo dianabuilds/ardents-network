@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -228,13 +227,19 @@ func (proxy *AlphaProxy) serve(writer http.ResponseWriter, request *http.Request
 		http.Error(writer, "alpha name is unavailable", alphaRouteFailureStatus(err))
 		return
 	}
-	response, err := forwardAlphaRequest(request, origin)
+	response, closeInbound, err := forwardAlphaRequest(request, origin)
 	if err != nil {
+		if closeInbound {
+			writer.Header().Set("Connection", "close")
+		}
 		http.Error(writer, "alpha service unavailable", http.StatusBadGateway)
 		return
 	}
 	defer response.Body.Close()
 	copyForwardHeaders(writer.Header(), response.Header)
+	if closeInbound {
+		writer.Header().Set("Connection", "close")
+	}
 	writer.WriteHeader(response.StatusCode)
 	_ = copyAndFlush(writer, response.Body)
 }
@@ -339,23 +344,6 @@ func (proxy *AlphaProxy) authorizesBrowserEntryRequest(request *http.Request) bo
 	}
 	expected := "Basic " + base64.StdEncoding.EncodeToString([]byte(browserentry.ProxyUsername+":"+hex.EncodeToString(proxy.browserEntryProxyCredential[:])))
 	return request.Header.Get("Proxy-Authorization") == expected
-}
-
-func forwardAlphaRequest(request *http.Request, origin alphaRouteOrigin) (*http.Response, error) {
-	if origin == nil || origin.alphaOriginAddress() == "" || origin.alphaOriginHost(request.URL.Hostname()) == "" {
-		return nil, errors.New("alpha Reference origin is unavailable")
-	}
-	forward := request.Clone(request.Context())
-	forward.RequestURI = ""
-	forward.URL = &url.URL{Scheme: "http", Host: origin.alphaOriginAddress(),
-		Path: origin.alphaOriginPath(request.URL.Path), RawQuery: request.URL.RawQuery}
-	forward.Host = origin.alphaOriginHost(request.URL.Hostname())
-	forward.Header = cloneForwardHeaders(request.Header)
-	transport := &http.Transport{Proxy: nil, DisableCompression: true, DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, "tcp", origin.alphaOriginAddress())
-	}}
-	defer transport.CloseIdleConnections()
-	return transport.RoundTrip(forward)
 }
 
 func (server *Server) alphaOriginAddress() string {

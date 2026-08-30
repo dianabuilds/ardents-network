@@ -205,7 +205,8 @@ elif [ "$product_transit" = true ] && [ "$terminal" = application-reset ]; then
    for pid in $transit_pids; do require_alive "$pid"; done
    write_fault_injection publisher-application-loss publisher-app "$publisher_app" RESET publisher-application-fault-ready
    printf '{"schema":"ardents-h4-8-a11-publisher-application-reset-v1","fault":"publisher-application-loss","pid":%s,"action":"RESET","publisher_live_before":true,"publisher_app_live_before":true,"rendezvous_node_live_before":true,"carrier_relay_live_before":true,"transit_roles_live_before":true,"injected_after_ready":true}\n' "$publisher_app" >"$work/publisher-application-reset.json"
-   printf 'inject\n' >"$work/publisher-application-fault-release") &
+   printf 'inject\n' >"$work/publisher-application-fault-release.tmp"
+   mv -f "$work/publisher-application-fault-release.tmp" "$work/publisher-application-fault-release") &
   fault_pid=$!
   pids="$pids $fault_pid"
 elif [ "$fault" = carrier-loss ]; then

@@ -19,17 +19,19 @@ const (
 // already-selected Service Connection. For terminal scenarios Cycles is the
 // number of successful warmup cycles before the declared fault is injected.
 type dynamicWorkloadConfig struct {
-	Cycles                    uint32
-	IntervalMilliseconds      uint32
-	CycleDeadlineMilliseconds uint32
-	NoFallbackEvery           uint32
-	BytesEachDirection        uint32
+	Cycles                      uint32
+	IntervalMilliseconds        uint32
+	CycleDeadlineMilliseconds   uint32
+	MaximumStartLagMilliseconds uint32 `json:",omitempty"`
+	NoFallbackEvery             uint32
+	BytesEachDirection          uint32
 }
 
 type dynamicWorkloadPlan struct {
 	cycles              uint32
 	interval            time.Duration
 	cycleDeadline       time.Duration
+	maximumStartLag     time.Duration
 	initialRequestGrace time.Duration
 	noFallbackEvery     uint32
 }
@@ -65,7 +67,7 @@ type dynamicWorkloadResult struct {
 
 func (workload dynamicWorkloadConfig) configured() bool {
 	return workload.Cycles != 0 || workload.IntervalMilliseconds != 0 || workload.CycleDeadlineMilliseconds != 0 ||
-		workload.NoFallbackEvery != 0 || workload.BytesEachDirection != 0
+		workload.MaximumStartLagMilliseconds != 0 || workload.NoFallbackEvery != 0 || workload.BytesEachDirection != 0
 }
 
 func (workload dynamicWorkloadConfig) validate(input config) error {
@@ -76,15 +78,19 @@ func (workload dynamicWorkloadConfig) validate(input config) error {
 		input.HeldRouteReady != "" || input.HeldRouteRelease != "" {
 		return errors.New("C2 configured dynamic workload requires the internal transparent Application path")
 	}
+	maximumStartLag := workload.maximumStartLagMilliseconds()
+	explicitStartLagInvalid := workload.MaximumStartLagMilliseconds != 0 &&
+		(maximumStartLag < workload.IntervalMilliseconds || maximumStartLag > workload.CycleDeadlineMilliseconds)
 	if workload.Cycles == 0 || workload.Cycles > maximumDynamicWorkloadCycles || workload.IntervalMilliseconds == 0 ||
 		workload.IntervalMilliseconds > 60_000 || workload.CycleDeadlineMilliseconds < 10 || workload.CycleDeadlineMilliseconds > 5_000 ||
+		explicitStartLagInvalid ||
 		workload.NoFallbackEvery == 0 || workload.NoFallbackEvery > workload.Cycles ||
 		workload.BytesEachDirection < 1<<20 || workload.BytesEachDirection > maximumDynamicWorkloadBytes {
 		return errors.New("C2 configured dynamic workload is incomplete or outside its bound")
 	}
 	deadline, err := input.deadline()
 	minimumRuntime := time.Duration(workload.Cycles)*time.Duration(workload.IntervalMilliseconds)*time.Millisecond +
-		time.Duration(workload.CycleDeadlineMilliseconds)*time.Millisecond + dynamicWorkloadInitialRequestGrace
+		time.Duration(max(workload.CycleDeadlineMilliseconds, maximumStartLag))*time.Millisecond + dynamicWorkloadInitialRequestGrace
 	if err != nil || time.Until(deadline) < minimumRuntime {
 		return errors.New("C2 configured dynamic workload does not fit its fixture deadline")
 	}
@@ -94,7 +100,22 @@ func (workload dynamicWorkloadConfig) validate(input config) error {
 func (workload dynamicWorkloadConfig) plan() dynamicWorkloadPlan {
 	return dynamicWorkloadPlan{cycles: workload.Cycles, interval: time.Duration(workload.IntervalMilliseconds) * time.Millisecond,
 		cycleDeadline:       time.Duration(workload.CycleDeadlineMilliseconds) * time.Millisecond,
+		maximumStartLag:     time.Duration(workload.maximumStartLagMilliseconds()) * time.Millisecond,
 		initialRequestGrace: dynamicWorkloadInitialRequestGrace, noFallbackEvery: workload.NoFallbackEvery}
+}
+
+func (workload dynamicWorkloadConfig) maximumStartLagMilliseconds() uint32 {
+	if workload.MaximumStartLagMilliseconds != 0 {
+		return workload.MaximumStartLagMilliseconds
+	}
+	return workload.IntervalMilliseconds
+}
+
+func (plan dynamicWorkloadPlan) startLagLimit() time.Duration {
+	if plan.maximumStartLag > 0 {
+		return plan.maximumStartLag
+	}
+	return plan.interval
 }
 
 func (plan dynamicWorkloadPlan) initialRequestDeadline() time.Duration {
