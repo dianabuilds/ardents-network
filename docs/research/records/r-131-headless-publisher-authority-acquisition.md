@@ -112,6 +112,122 @@ durable roots for Authority/Target leakage.
   historical fixture gap and cannot qualify a normal participant journey.
 - **Inference:** embedding reusable Service Authority in enrollment would make
   release distribution an undeclared custody owner and violate NET-04B.
+- **Measurement:** `internal/custody` already distinguishes encrypted Service
+  Authority records from Name Authority records, exports and test-restores
+  recovery bundles, and restores them only as `authority-locked`. The maintained
+  `ardents-custody` command deliberately exposes no Service Authority creation,
+  issuance, or recovered-Service activation route.
+- **Measurement:** the lower-level Publisher plan still names plaintext
+  `CredentialFile` and `InstanceKeyFile`. `publicationInputs` decodes both and
+  passes the raw private key into Endpoint. This is suitable evidence for the
+  old composition but is not the selected headless Instance acquisition
+  Interface.
+- **Measurement:** `internal/service/publication` persists a monotonic
+  generation floor and public record, retains the Instance signer only in
+  volatile memory, erases it on withdrawal, and intentionally refuses to make
+  a persisted record live after restart. A supported restart therefore needs
+  an Instance-acquisition owner; re-reading the same raw key and Credential is
+  not recovery because the publication floor rejects the same generation.
+- **Inference:** adding only a custody signing command would leave the caller
+  responsible for raw private-key files, import ordering, retry, and crash
+  reconciliation. That would be a shallow pass-through and would not close
+  R-131 or B6.
+- **Inference:** the cohesive seam is a host-owned Instance enrollment Module.
+  It must hide key generation, owner-only persistence, request/response
+  matching, at-most-once acceptance, publication-floor reconciliation, and
+  withdrawal erasure behind one narrow acquire/open outcome. Endpoint remains
+  a consumer of an opened Instance binding, not its Authority or file-format
+  owner.
+
+## Decision-ready option 1 contract
+
+Option 1 is implementable without selecting an operating-system keystore or a
+new runtime dependency if the usable-alpha claim is deliberately portable and
+bounded as follows:
+
+1. **Authority Custody owns roots and issuance.** A separate interactive
+   custody operation creates one encrypted Service Authority record or uses an
+   already active record. A second operation accepts only one canonical public
+   Instance enrollment request, advances the encrypted record's monotonic
+   Service-generation watermark, and returns one public bounded Credential.
+   Neither operation releases root material or accepts a password through
+   argv, environment, configuration, or shared stdin.
+2. **The Publisher host owns Instance enrollment.** A headless Network command
+   creates an owner-only Instance root and generates the Instance signing key
+   and Introduction recipient key inside it. It emits only a canonical public
+   request containing their public keys, Network ID, requested validity bound,
+   and a fresh request commitment. It has no Target input: Custody derives the
+   Target from its authenticated Service Authority.
+3. **Acceptance is at most once.** The host accepts only a Credential that
+   matches its exact pending request, public keys, Network, validity bound, and
+   request commitment. It atomically records either the accepted generation or
+   a terminal rejected/conflicting state. Repeating the exact response is
+   harmless; a different response for that request never replaces it.
+4. **Runtime receives an opened binding, not files.** The supported headless
+   Publisher opens the Instance root and passes a non-exporting signer plus the
+   authenticated public Credential into `internal/service/publication`.
+   `CredentialFile`, `InstanceKeyFile`, raw Target, and Service Authority are
+   absent from the maintained headless runtime Interface. The old lower-level
+   plan may remain only as non-candidate diagnostic compatibility until a
+   separately reviewed retirement.
+5. **Restart is fail-closed and generation-monotonic.** A crash cannot revive a
+   generation whose publication floor was already committed. Reconciliation
+   classifies a prepared-but-unpublished generation for its one permitted
+   publish attempt, an already-consumed generation as requiring a successor,
+   and malformed or ambiguous state as unavailable. Routine restart/recovery
+   obtains a new host key and higher Credential when the prior generation was
+   live; it never copies or silently reuses the old Instance key.
+6. **Withdrawal removes runtime authority.** Withdrawal first prevents new
+   publication/connection acquisition, drains retained work, erases the live
+   signer, and terminally closes the accepted Instance generation. Public
+   Credential bytes and monotonic floors may remain as non-secret evidence.
+7. **Recovery is honestly bounded.** Existing Authority Recovery Bundle export
+   and isolated test-restore remain supported. A restored Service Authority is
+   `authority-locked` and cannot issue; Ardents currently has no accepted
+   authenticated Service-currentness witness that could safely activate it.
+   The usable-alpha journey must prove this refusal and state that loss of the
+   active Authority record loses the Target. Selecting later activation is a
+   separate consequential research/ADR decision, not an implicit local-floor
+   reset.
+8. **Enrollment remains distribution only.** Enrollment-v3 authenticates the
+   real Network artifacts and may launch the acquisition commands, but contains
+   no Authority, Instance secret, Credential, Target, generation choice, or
+   reusable issuance power.
+
+The portable owner-only root limits the product claim: there is no hardware
+non-exportability, protection from an administrator, snapshot resistance, or
+post-compromise healing. “Non-exporting” means that no supported Interface
+returns the private Instance key; filesystem compromise remains endpoint
+compromise under the accepted threat model.
+
+This shape is one deep Module at the host Instance seam and one existing deep
+Module at the custody seam. It does not introduce a generic signer Interface,
+an online Authority service, an enrollment registrar, or a second publication
+implementation.
+
+## Exact Product Owner decision requested
+
+Accept or reject the following statement before implementation:
+
+> **R-131:** For usable alpha, select separate local Service Authority Custody
+> plus a host-owned one-generation Instance enrollment root. Custody alone
+> creates/imports the Service Authority and issues a monotonically higher
+> bounded public Credential for a canonical host-generated public request. The
+> host alone retains the non-exporting Instance and Introduction private keys,
+> accepts the exact response at most once, and exposes only an opened binding to
+> the headless Publisher runtime. Restart never revives a consumed generation;
+> it requires a fresh host key and successor Credential. Withdrawal erases the
+> live binding. Enrollment-v3 carries no Authority, Target, Credential, or
+> private Instance material. Restored Service Authority bundles remain locked
+> and issuance-unavailable until a future accepted authenticated recovery
+> witness; usable alpha makes no hardware-keystore, administrator-resistance,
+> or active Authority-recovery claim.
+
+Acceptance authorizes a short ADR that fixes these ownership and recovery
+semantics, followed by one test-first vertical implementation. Rejection must
+select option 2 or explicitly remove fresh Publisher creation from the product
+candidate; changing only command names or generating fixture credentials does
+not resolve the decision.
 
 ## Options
 
@@ -129,14 +245,14 @@ durable roots for Authority/Target leakage.
 
 ## Recommendation
 
-Do not choose during remediation. Ask the Product Owner to select the Authority
-owner and recovery promise first. Prefer evaluating option 1 because it matches
-the accepted privilege lattice and J-03, but its concrete host-key binding and
-recovery surface are consequential decisions. Confidence: high that a decision
-is required; medium that option 1 is the smallest acceptable alpha operation.
-The strongest argument against option 1 is that a complete custody workflow may
-exceed the bounded usable-alpha scope unless one-generation issuance and
-recovery are kept deliberately narrow.
+Ask the Product Owner to accept the exact bounded option 1 contract above. It
+matches the accepted privilege lattice and J-03 while making the missing active
+Authority-recovery witness an explicit non-claim rather than inventing one.
+Confidence: high that this is the smallest option that can close B6 without
+moving Authority into enrollment or leaving raw-key orchestration to callers.
+The strongest argument against it is operational: a separate request/response
+custody ceremony is less convenient, and loss of the active Authority record
+loses the Target even when an authority-locked backup survives.
 
 ## Disposition
 
