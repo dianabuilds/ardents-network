@@ -56,10 +56,10 @@ func validateTransitIssuerProfile(local TransitIssuerProfile, snapshot dutyFacts
 	if local.Root == "" || !filepath.IsAbs(local.Root) || filepath.Clean(local.Root) != local.Root ||
 		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 64 ||
 		local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute || !literalNodeEndpoint(snapshot.ProbeEndpoint) {
-		return errors.New("Transit Grant issuer local profile is incomplete")
+		return errors.New("transit grant issuer local profile is incomplete")
 	}
 	if _, available := transitIssuerStateDuty(snapshot, now); !available {
-		return errors.New("Transit Grant issuer State duty is unavailable")
+		return errors.New("transit grant issuer State duty is unavailable")
 	}
 	return nil
 }
