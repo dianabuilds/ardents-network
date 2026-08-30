@@ -3,8 +3,8 @@
 ## Question
 
 Can the actual Windows Browser Entry command authenticate one temporary
-enrollment-v4 inventory that contains the current Endpoint, Browser Entry,
-Control companions, and Mozilla-signed XPI, register only its owned native
+enrollment-v4 inventory that contains the compatible Endpoint, current Browser
+Adapter, Browser Entry, Control companions, and Mozilla-signed XPI, register only its owned native
 manifest, and withdraw it completely?
 
 ## Run
@@ -14,7 +14,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-w
 ```
 
 The qualifier refuses to replace any existing Browser Entry registry key or
-native manifest. It creates a unique temporary bundle, builds the three exact
+native manifest. It creates a unique temporary bundle, builds the four exact
 current command artifacts there, constructs one pinned enrollment-v4 manifest,
 performs installation, verifies the owned per-user native manifest, removes it,
 and deletes only its own temporary bundle.

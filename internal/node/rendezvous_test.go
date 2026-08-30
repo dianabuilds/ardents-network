@@ -69,6 +69,7 @@ func TestRendezvousDrainPreservesActivePairInsideLease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	awaitUsage(t, running, time.Second, func(usage RendezvousUsage) bool { return usage.ActivePairs == 1 })
 	result := make(chan error, 1)
 	go func() { result <- running.Drain(t.Context()) }()
 	time.Sleep(50 * time.Millisecond)

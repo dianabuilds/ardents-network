@@ -29,6 +29,7 @@ type DestinationBinding = nativeconnection.DestinationBinding
 
 // Setup fixes one Endpoint broker generation and its two local principals.
 type Setup struct {
+	browserCompatibilitySetup
 	NetworkID               [32]byte
 	BrokerID                [32]byte
 	AuthorityPublic         ed25519.PublicKey
@@ -167,6 +168,7 @@ type RuntimeResult struct {
 
 // endpoint owns one broker generation's sessions and current publication.
 type endpoint struct {
+	browserCompatibility
 	network, broker [32]byte
 	authority       [32]byte
 	introduction    [32]byte
@@ -242,6 +244,17 @@ func New(input Setup) (*endpoint, error) {
 		}
 		endpoint.publications = opened
 	}
+	compatibility, err := openBrowserCompatibility(input.browserCompatibilitySetup)
+	if err != nil {
+		if endpoint.publications != nil {
+			_ = endpoint.publications.Close()
+		}
+		if transitAcquire != nil {
+			_ = transitAcquire.Close()
+		}
+		return nil, err
+	}
+	endpoint.browserCompatibility = compatibility
 	return endpoint, nil
 }
 
@@ -252,11 +265,12 @@ func (endpoint *endpoint) Close() error {
 		return nil
 	}
 	endpoint.admission.Close()
+	compatibilityErr := endpoint.closeBrowserCompatibility()
 	acquisitionErr := endpoint.transitAcquire.Close()
 	if endpoint.publications == nil {
-		return acquisitionErr
+		return errors.Join(compatibilityErr, acquisitionErr)
 	}
-	return errors.Join(acquisitionErr, endpoint.publications.Close())
+	return errors.Join(compatibilityErr, acquisitionErr, endpoint.publications.Close())
 }
 
 // Publish consumes one Administration capability before publishing an exact

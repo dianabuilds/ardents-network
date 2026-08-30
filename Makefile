@@ -19,7 +19,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-h4-2-net-01a prepare-h4-5-rendezvous qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-3b-docker qualification-h4-3b-multihost qualification-h4-3b-vps qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment qualification-h4-5-rendezvous qualification-h4-6a-two-endpoints qualification-h4-8-a11 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture browser-build browser-check browser-compatibility-evidence build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-h4-2-net-01a prepare-h4-5-rendezvous qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-3b-docker qualification-h4-3b-multihost qualification-h4-3b-vps qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment qualification-h4-5-rendezvous qualification-h4-6a-two-endpoints qualification-h4-8-a11 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -28,6 +28,7 @@ endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
 PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
+BROWSER_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/browser-commands.txt))
 HEADLESS_GOOS := $(shell go env GOOS)
 HEADLESS_GOARCH := $(shell go env GOARCH)
 HEADLESS_PLATFORM := $(HEADLESS_GOOS)-$(HEADLESS_GOARCH)
@@ -36,14 +37,17 @@ HEADLESS_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/headless-artifacts/$(HEADLESS_PL
 HEADLESS_ENDPOINT_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_NODE_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-node-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CONTROL_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-control-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
-QUICK_CHECK_TARGETS := format-check vet unit build mod-check
+BROWSER_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/browser-artifacts/$(HEADLESS_PLATFORM)
+QUICK_CHECK_TARGETS := format-check vet unit build mod-check browser-check browser-compatibility-evidence
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
 HEADLESS_ARTIFACT_MKDIR = if not exist "$(HEADLESS_ARTIFACT_ROOT)" mkdir "$(HEADLESS_ARTIFACT_ROOT)"
+BROWSER_ARTIFACT_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(BROWSER_ARTIFACT_ROOT)') | Out-Null"
 else
 HEADLESS_ARTIFACT_SHELL ?= sh
 HEADLESS_ARTIFACT_MKDIR = mkdir -p "$(HEADLESS_ARTIFACT_ROOT)"
+BROWSER_ARTIFACT_MKDIR = mkdir -p "$(BROWSER_ARTIFACT_ROOT)"
 endif
 
 format:
@@ -62,11 +66,20 @@ unit:
 e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
 
+browser-compatibility-evidence:
+	go test -tags browsercompat ./tests/e2e/service/fixturecommand/reference-c2 -run '^$$' -count=1
+
+browser-build:
+	$(BROWSER_ARTIFACT_MKDIR)
+	$(foreach command,$(BROWSER_COMMANDS),go build -trimpath -o "$(BROWSER_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
+
+browser-check: browser-build
+	go test ./internal/endpoint/enrollment -run '^TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata$$' -count=1
+	go test ./cmd/ardents-browser-entry -run '^TestParticipantInstallAuthenticatesARealV4Bundle$$' -count=1
+
 headless-build:
 	$(HEADLESS_ARTIFACT_MKDIR)
-	go build -trimpath -o "$(HEADLESS_ENDPOINT_ARTIFACT)" ./cmd/ardents
-	go build -trimpath -o "$(HEADLESS_NODE_ARTIFACT)" ./cmd/ardents-node
-	go build -trimpath -o "$(HEADLESS_CONTROL_ARTIFACT)" ./cmd/ardents-control
+	$(foreach command,$(HEADLESS_COMMANDS),go build -trimpath -o "$(HEADLESS_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
 headless-evidence: headless-build
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))"

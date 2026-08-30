@@ -146,14 +146,15 @@ func TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata(t *testing.T) {
 func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.T) {
 	root, request := enrolledFixture(t)
 	authority, control := bytes.Repeat([]byte{9}, 32), []byte("separately manifested alpha control command")
-	host, extension := []byte("separately manifested Browser Entry host"), []byte("Mozilla-signed Browser Entry XPI")
+	adapter, host, extension := []byte("separately manifested Browser Adapter"), []byte("separately manifested Browser Entry host"), []byte("Mozilla-signed Browser Entry XPI")
 	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	const controlName = "ardents-control-linux-amd64"
+	const adapterName = "ardents-browser-linux-amd64"
 	const hostName = "ardents-browser-entry-linux-amd64"
 	const extensionName = "ardents-alpha-browser-entry.xpi"
-	for name, contents := range map[string][]byte{controlName: control, hostName: host, extensionName: extension} {
+	for name, contents := range map[string][]byte{controlName: control, adapterName: adapter, hostName: host, extensionName: extension} {
 		if err := os.WriteFile(filepath.Join(root, name), contents, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -164,12 +165,12 @@ func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.
 		t.Fatal(err)
 	}
 	descriptor = bytes.Replace(descriptor, []byte("schema=ardents-closed-alpha-enrollment-v1"), []byte("schema=ardents-closed-alpha-enrollment-v4"), 1)
-	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\ncontrol_artifact="+controlName+"\nbrowser_entry_artifact="+hostName+"\nbrowser_entry_extension="+extensionName+"\n")...)
+	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\ncontrol_artifact="+controlName+"\nbrowser_adapter_artifact="+adapterName+"\nbrowser_entry_artifact="+hostName+"\nbrowser_entry_extension="+extensionName+"\n")...)
 	if err := os.WriteFile(descriptorPath, descriptor, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	files := make(map[string][]byte)
-	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, hostName, extensionName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
+	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, adapterName, hostName, extensionName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
 		contents, readErr := os.ReadFile(filepath.Join(root, name))
 		if readErr != nil {
 			t.Fatal(readErr)
@@ -189,9 +190,10 @@ func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if verified.BrowserEntryArtifactName != hostName || !bytes.Equal(verified.BrowserEntryArtifact, host) ||
+	if verified.BrowserAdapterArtifactName != adapterName || !bytes.Equal(verified.BrowserAdapterArtifact, adapter) ||
+		verified.BrowserEntryArtifactName != hostName || !bytes.Equal(verified.BrowserEntryArtifact, host) ||
 		verified.BrowserEntryExtensionName != extensionName || !bytes.Equal(verified.BrowserEntryExtension, extension) ||
-		verified.Inputs.Files[release.MetadataURL(hostName)] != nil || verified.Inputs.Files[release.MetadataURL(extensionName)] != nil {
+		verified.Inputs.Files[release.MetadataURL(adapterName)] != nil || verified.Inputs.Files[release.MetadataURL(hostName)] != nil || verified.Inputs.Files[release.MetadataURL(extensionName)] != nil {
 		t.Fatalf("v4 Browser Entry companions crossed an incorrect boundary: %+v", verified)
 	}
 }

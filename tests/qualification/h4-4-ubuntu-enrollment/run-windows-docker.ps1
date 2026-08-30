@@ -24,6 +24,7 @@ try {
         $env:CGO_ENABLED = '0'
         foreach ($entry in @(
             @{ Output = 'ardents-linux-amd64'; Package = './cmd/ardents' },
+            @{ Output = 'ardents-browser-linux-amd64'; Package = './cmd/ardents-browser' },
             @{ Output = 'ardents-browser-entry-linux-amd64'; Package = './cmd/ardents-browser-entry' },
             @{ Output = 'ardents-control-linux-amd64'; Package = './cmd/ardents-control' }
         )) {

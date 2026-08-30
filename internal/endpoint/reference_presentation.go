@@ -5,7 +5,7 @@ package endpoint
 import (
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 )
 
 // ErrReferenceTargetMismatch reports a browser presentation whose authenticated

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 )
 
 func TestExerciseDynamicReferenceKeepsOneProxyConnectionAcrossNoFallbackProbes(t *testing.T) {

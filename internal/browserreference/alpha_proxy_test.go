@@ -1,4 +1,4 @@
-package reference_test
+package browserreference_test
 
 import (
 	"bufio"
@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 )
 
 func TestAlphaProxyForwardsOnlyItsRegisteredHTTPName(t *testing.T) {

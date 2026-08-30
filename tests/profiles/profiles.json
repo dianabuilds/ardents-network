@@ -34,6 +34,22 @@
       "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
+      "id": "browser-compatibility-source",
+      "state": "active",
+      "make_target": "browser-compatibility-evidence",
+      "surface": "retained historical Browser presentation source compile",
+      "prerequisites": [],
+      "invalid_environment": "not applicable"
+    },
+    {
+      "id": "browser-adapter",
+      "state": "active",
+      "make_target": "browser-check",
+      "surface": "Browser Adapter command build and enrollment-v4 inventory",
+      "prerequisites": [],
+      "invalid_environment": "not applicable"
+    },
+    {
       "id": "race",
       "state": "active",
       "make_target": "test-race",

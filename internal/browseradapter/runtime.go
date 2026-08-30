@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/browserentry"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
@@ -63,7 +63,7 @@ func Open(ctx context.Context, config Config) (*Runtime, error) {
 
 func open(ctx context.Context, config Config, dial applicationDial) (*Runtime, error) {
 	if ctx == nil || config.ApplicationSocket == "" || config.BrowserEntryStatePath == "" || dial == nil {
-		return nil, errors.New("Browser Adapter configuration is incomplete")
+		return nil, errors.New("browser Adapter configuration is incomplete")
 	}
 	entry, err := browserentry.OpenPublisher(config.BrowserEntryStatePath)
 	if err != nil {
@@ -84,14 +84,14 @@ func open(ctx context.Context, config Config, dial applicationDial) (*Runtime, e
 	port, err := proxy.BrowserEntryPort()
 	if err != nil || entry.Publish(port) != nil {
 		_ = runtime.Close()
-		return nil, errors.New("Browser Adapter Entry state is unavailable")
+		return nil, errors.New("browser Adapter Entry state is unavailable")
 	}
 	return runtime, nil
 }
 
 func (runtime *Runtime) openName(ctx context.Context, hostname string) error {
 	if runtime == nil || ctx == nil || !strings.HasSuffix(hostname, ".ard") || len(hostname) <= len(".ard") {
-		return errors.New("Browser Adapter Service Name is invalid")
+		return errors.New("browser Adapter Service Name is invalid")
 	}
 	link, err := alpha.ParseServiceLink("ardents-alpha://" + strings.TrimSuffix(hostname, ".ard"))
 	if err != nil {
@@ -116,7 +116,7 @@ func (runtime *Runtime) openName(ctx context.Context, hostname string) error {
 	if runtime.closed || runtime.sites[hostname] != nil {
 		runtime.mu.Unlock()
 		_ = opened.Close()
-		return errors.New("Browser Adapter Service presentation is unavailable")
+		return errors.New("browser Adapter Service presentation is unavailable")
 	}
 	runtime.sites[hostname] = opened
 	runtime.mu.Unlock()

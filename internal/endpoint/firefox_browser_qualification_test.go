@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
@@ -61,7 +61,7 @@ func TestFirefoxBrowserDemandResolvesAlphaOriginThroughEndpointProxyQualificatio
 		t.Fatal(err)
 	}
 	defer entryState.Close()
-	endpoint := &endpoint{network: network, browserEntry: entryState}
+	endpoint := &endpoint{network: network, browserCompatibility: browserCompatibility{browserEntry: entryState}}
 	if err := floor.Observe(corpus); err != nil {
 		t.Fatal(err)
 	}

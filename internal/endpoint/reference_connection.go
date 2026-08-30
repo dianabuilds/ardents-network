@@ -9,7 +9,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 

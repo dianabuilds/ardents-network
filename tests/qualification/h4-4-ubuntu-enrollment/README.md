@@ -12,7 +12,7 @@ Firefox native manifest, and withdraw it under an unprivileged Ubuntu process?
 make qualification-h4-4-ubuntu-enrollment ARDENTS_H4_4_SIGNED_XPI='C:/absolute/path/to/signed.xpi'
 ```
 
-The runner cross-builds the current Linux Endpoint, Browser Entry, and Control
+The runner cross-builds the current Linux Endpoint, Browser Adapter, Browser Entry, and Control
 artifacts outside the repository, starts the already available `ubuntu:24.04`
 image as UID 1000, and mounts the source, signed XPI, and artifacts read-only.
 The container writes its manifest-pinned v4 inventory and `$HOME` only under a

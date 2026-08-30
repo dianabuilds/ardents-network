@@ -28,8 +28,12 @@ func TestParticipantInstallAuthenticatesARealV4Bundle(t *testing.T) {
 	}
 	endpointName := "ardents-" + platform
 	hostName := browserentry.HostArtifactName(platform)
+	adapterName := "ardents-browser-" + platform
+	if runtime.GOOS == "windows" {
+		adapterName += ".exe"
+	}
 	controlName := "ardents-control-" + platform
-	for _, name := range []string{endpointName, hostName, controlName} {
+	for _, name := range []string{endpointName, adapterName, hostName, controlName} {
 		copyEnrollmentArtifact(t, executable, filepath.Join(bundle, name))
 	}
 	extension := writeBrowserEntryExtension(t, bundle)
@@ -53,6 +57,7 @@ func TestParticipantInstallAuthenticatesARealV4Bundle(t *testing.T) {
 		"control_compatibility_root=compatibility.pub",
 		"corpus_authority=corpus.pub",
 		"control_artifact=" + controlName,
+		"browser_adapter_artifact=" + adapterName,
 		"browser_entry_artifact=" + hostName,
 		"browser_entry_extension=" + browserentry.ExtensionArtifactName,
 	}, "\n") + "\n"
@@ -79,7 +84,7 @@ func TestParticipantInstallAuthenticatesARealV4Bundle(t *testing.T) {
 	for name, contents := range static {
 		files[name] = contents
 	}
-	for _, name := range []string{endpointName, hostName, controlName, browserentry.ExtensionArtifactName} {
+	for _, name := range []string{endpointName, adapterName, hostName, controlName, browserentry.ExtensionArtifactName} {
 		contents, readErr := os.ReadFile(filepath.Join(bundle, name))
 		if readErr != nil {
 			t.Fatal(readErr)

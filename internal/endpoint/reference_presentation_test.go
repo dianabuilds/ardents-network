@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 

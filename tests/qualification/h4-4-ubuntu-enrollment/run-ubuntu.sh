@@ -11,6 +11,7 @@ artifacts=$2
 expected_xpi_sha256=d88e8ecba84cda82a7b2354d1f445e19b9d092f3f3d068868d1173ef29eaa2a2
 platform=linux-amd64
 endpoint_name=ardents-$platform
+adapter_name=ardents-browser-$platform
 host_name=ardents-browser-entry-$platform
 control_name=ardents-control-$platform
 extension_name=ardents-alpha-browser-entry.xpi
@@ -20,7 +21,7 @@ if [ "$(id -u)" -eq 0 ]; then
     echo "H4-4 Ubuntu enrollment qualifier must run as an unprivileged user" >&2
     exit 2
 fi
-if [ ! -f "$signed_xpi" ] || [ ! -f "$artifacts/$endpoint_name" ] || [ ! -f "$artifacts/$host_name" ] || [ ! -f "$artifacts/$control_name" ]; then
+if [ ! -f "$signed_xpi" ] || [ ! -f "$artifacts/$endpoint_name" ] || [ ! -f "$artifacts/$adapter_name" ] || [ ! -f "$artifacts/$host_name" ] || [ ! -f "$artifacts/$control_name" ]; then
     echo "H4-4 Ubuntu enrollment qualifier inputs are unavailable" >&2
     exit 2
 fi
@@ -42,7 +43,7 @@ trap cleanup EXIT HUP INT TERM
 mkdir -p "$home_root" "$bundle"
 export HOME=$home_root
 
-for name in "$endpoint_name" "$host_name" "$control_name"; do
+for name in "$endpoint_name" "$adapter_name" "$host_name" "$control_name"; do
     cp "$artifacts/$name" "$bundle/$name"
     chmod 700 "$bundle/$name"
 done
@@ -72,6 +73,7 @@ control_network_root=network.pub
 control_compatibility_root=compatibility.pub
 corpus_authority=corpus.pub
 control_artifact=$control_name
+browser_adapter_artifact=$adapter_name
 browser_entry_artifact=$host_name
 browser_entry_extension=$extension_name
 "

@@ -73,11 +73,11 @@ func readPlan(path string) (plan, error) {
 	}
 	var extra any
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return plan{}, errors.New("Browser Adapter plan has trailing data")
+		return plan{}, errors.New("browser Adapter plan has trailing data")
 	}
 	if input.Schema != "ardents-browser-adapter-v1" || !filepath.IsAbs(input.ApplicationSocket) || !filepath.IsAbs(input.BrowserEntryStatePath) ||
 		bytes.Equal([]byte(input.ApplicationSocket), []byte(input.BrowserEntryStatePath)) {
-		return plan{}, errors.New("Browser Adapter plan is invalid")
+		return plan{}, errors.New("browser Adapter plan is invalid")
 	}
 	return input, nil
 }

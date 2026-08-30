@@ -40,7 +40,7 @@ func TestRuntimePresentsOnlyNameThroughLocalApplicationInterface(t *testing.T) {
 			go func() {
 				request, readErr := http.ReadRequest(bufio.NewReader(service))
 				if readErr == nil && request.Host == "reference.ard" {
-					_, readErr = io.WriteString(service, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+					_, _ = io.WriteString(service, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
 				}
 				_ = service.Close()
 				done <- endpoint.ApplicationOutcome{Class: "clean service connection close", Reason: "fixture complete"}

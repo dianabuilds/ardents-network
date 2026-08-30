@@ -46,6 +46,7 @@ $platform = 'windows-amd64'
 $hostName = "ardents-browser-entry-$platform.exe"
 $extensionName = 'ardents-alpha-browser-entry.xpi'
 $endpointName = "ardents-$platform"
+$adapterName = "ardents-browser-$platform.exe"
 $controlName = "ardents-control-$platform"
 $nativeHostName = 'org.ardents.alpha_browser_entry'
 $registryPath = "HKCU:\Software\Mozilla\NativeMessagingHosts\$nativeHostName"
@@ -62,6 +63,7 @@ try {
     Push-Location $repository
     try {
         Require-Success 'build enrolled Endpoint artifact' { & go build -o (Join-Path $bundle $endpointName) ./cmd/ardents }
+        Require-Success 'build enrolled Browser Adapter artifact' { & go build -o (Join-Path $bundle $adapterName) ./cmd/ardents-browser }
         Require-Success 'build enrolled Browser Entry host' { & go build -o (Join-Path $bundle $hostName) ./cmd/ardents-browser-entry }
         Require-Success 'build enrolled control companion' { & go build -o (Join-Path $bundle $controlName) ./cmd/ardents-control }
     }
@@ -90,6 +92,7 @@ try {
         'control_compatibility_root=compatibility.pub',
         'corpus_authority=corpus.pub',
         "control_artifact=$controlName",
+        "browser_adapter_artifact=$adapterName",
         "browser_entry_artifact=$hostName",
         "browser_entry_extension=$extensionName"
     )

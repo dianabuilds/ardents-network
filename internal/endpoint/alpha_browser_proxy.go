@@ -5,7 +5,7 @@ package endpoint
 import (
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/reference"
+	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
 )
 
 // openAlphaBrowserRoute registers one exact authenticated alpha name with the

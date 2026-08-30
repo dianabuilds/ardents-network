@@ -65,13 +65,16 @@ type Verified struct {
 	// from an enrollment-v3 bundle. It is intentionally not Release metadata.
 	ControlArtifactName string
 	ControlArtifact     []byte
-	// BrowserEntryArtifact and BrowserEntryExtension are the exact native host
-	// and Mozilla-signed XPI companions from an enrollment-v4 bundle. They are
-	// participant-delivery bytes, never Release metadata.
-	BrowserEntryArtifactName  string
-	BrowserEntryArtifact      []byte
-	BrowserEntryExtensionName string
-	BrowserEntryExtension     []byte
+	// BrowserAdapterArtifact, BrowserEntryArtifact, and BrowserEntryExtension
+	// are the exact Adapter, native host, and Mozilla-signed XPI companions from
+	// an enrollment-v4 bundle. They are participant-delivery bytes, never
+	// Release metadata.
+	BrowserAdapterArtifactName string
+	BrowserAdapterArtifact     []byte
+	BrowserEntryArtifactName   string
+	BrowserEntryArtifact       []byte
+	BrowserEntryExtensionName  string
+	BrowserEntryExtension      []byte
 }
 
 // Verify authenticates the Network enrollment inventory. Browser enrollment-v4
@@ -127,9 +130,9 @@ func verify(request Request, browser bool) (Verified, error) {
 	}
 	if browser != (descriptor.schema == "ardents-closed-alpha-enrollment-v4") {
 		if browser {
-			return Verified{}, errors.New("Browser Adapter enrollment requires the v4 inventory")
+			return Verified{}, errors.New("browser Adapter enrollment requires the v4 inventory")
 		}
-		return Verified{}, errors.New("Network enrollment does not accept the Browser Adapter v4 inventory")
+		return Verified{}, errors.New("network enrollment does not accept the Browser Adapter v4 inventory")
 	}
 	if err := exactInventory(root, entries, descriptor.artifact, request.ArtifactPath != ""); err != nil {
 		return Verified{}, err
@@ -218,7 +221,13 @@ func verify(request Request, browser bool) (Verified, error) {
 			return Verified{}, errors.New("alpha descriptor control artifact is absent from the manifest")
 		}
 	}
-	var browserEntryArtifact, browserEntryExtension []byte
+	var browserAdapterArtifact, browserEntryArtifact, browserEntryExtension []byte
+	if descriptor.browserAdapterArtifact != "" {
+		browserAdapterArtifact, found = files[descriptor.browserAdapterArtifact]
+		if !found {
+			return Verified{}, errors.New("alpha descriptor Browser Adapter is absent from the manifest")
+		}
+	}
 	if descriptor.browserEntryArtifact != "" {
 		browserEntryArtifact, found = files[descriptor.browserEntryArtifact]
 		if !found {
@@ -243,7 +252,7 @@ func verify(request Request, browser bool) (Verified, error) {
 		if name == descriptor.controlArtifact {
 			continue
 		}
-		if name == descriptor.browserEntryArtifact || name == descriptor.browserEntryExtension {
+		if name == descriptor.browserAdapterArtifact || name == descriptor.browserEntryArtifact || name == descriptor.browserEntryExtension {
 			continue
 		}
 		metadata[release.MetadataURL(name)] = contents
@@ -257,6 +266,7 @@ func verify(request Request, browser bool) (Verified, error) {
 		ControlReleaseRoot:   append([]byte(nil), controlReleaseRoot...), ControlNetworkRoot: append([]byte(nil), controlNetworkRoot...),
 		ControlCompatibilityRoot: append([]byte(nil), controlCompatibilityRoot...), CorpusAuthority: append([]byte(nil), corpusAuthority...),
 		ControlArtifactName: descriptor.controlArtifact, ControlArtifact: append([]byte(nil), controlArtifact...),
+		BrowserAdapterArtifactName: descriptor.browserAdapterArtifact, BrowserAdapterArtifact: append([]byte(nil), browserAdapterArtifact...),
 		BrowserEntryArtifactName: descriptor.browserEntryArtifact, BrowserEntryArtifact: append([]byte(nil), browserEntryArtifact...),
 		BrowserEntryExtensionName: descriptor.browserEntryExtension, BrowserEntryExtension: append([]byte(nil), browserEntryExtension...)}, nil
 }

@@ -109,6 +109,8 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
 		"affected-platform":              false,
+		"browser-compatibility-source":   false,
+		"browser-adapter":                false,
 		"developer":                      false,
 		"deterministic":                  false,
 		"fuzz":                           false,
@@ -199,8 +201,8 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		"headless-evidence:",
 		"packaging/alpha-bundle/test.sh",
 		"headless-check: headless-evidence",
-		"go build -trimpath -o \"$(HEADLESS_ENDPOINT_ARTIFACT)\" ./cmd/ardents",
-		"go build -trimpath -o \"$(HEADLESS_CONTROL_ARTIFACT)\" ./cmd/ardents-control",
+		"$(foreach command,$(HEADLESS_COMMANDS)",
+		"$(notdir $(command))-$(HEADLESS_PLATFORM)",
 	} {
 		if !strings.Contains(makefile, required) {
 			t.Errorf("headless Network Make boundary lacks %q", required)
@@ -216,7 +218,7 @@ func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 			for _, forbidden := range []string{
 				"github.com/dianabuilds/ardents-network/internal/browseradapter",
 				"github.com/dianabuilds/ardents-network/internal/browserentry",
-				"github.com/dianabuilds/ardents-network/internal/endpoint/reference",
+				"github.com/dianabuilds/ardents-network/internal/browserreference",
 			} {
 				if dependencies[forbidden] {
 					t.Errorf("%s dependency graph contains Browser-owned package %s", commandPath, forbidden)
