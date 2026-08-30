@@ -65,10 +65,15 @@ authorization. Its parser bound of 16 KiB per Data record is an allocation
 limit, not a product throughput promise.
 
 Publication persists public proof and its non-decreasing generation floor but
-never persists a live Instance private key. AcquireAt yields an opaque Lease;
-the Lease can sign for its generation without exposing the signer. Withdrawal,
-supersession, expiry, or close first prevent new acquisition, then wait for
-bounded references before erasing private material.
+never persists a live Instance private key. The maintained Publisher receives
+one opened host Instance binding: Endpoint can use it as an opaque Instance
+signer and as the fixed-purpose SealedIntroduction v1 recipient without any
+Interface returning private bytes or an exportable HPKE key. The old direct
+HPKE-private input remains only in lower-level compatibility evidence.
+AcquireAt yields an opaque Lease; the Lease can sign for its generation without
+exposing the signer. Withdrawal, supersession, expiry, or close first prevent
+new acquisition, then wait for bounded references before erasing private
+material.
 
 ## Endpoint process contract
 

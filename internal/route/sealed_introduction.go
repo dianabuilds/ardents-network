@@ -24,6 +24,12 @@ type SealedIntroduction struct {
 	Enc, Ciphertext                                    []byte
 }
 
+// IntroductionRecipient performs the one fixed-purpose decapsulation needed
+// by SealedIntroduction without exposing recipient key bytes.
+type IntroductionRecipient interface {
+	OpenIntroduction(encapsulation, info, authenticatedHeader, ciphertext []byte) ([]byte, error)
+}
+
 // EncodeSealedIntroduction returns the canonical transport record. It does
 // not encrypt; SealIntroduction owns the HPKE context so all callers use the
 // same AAD.
@@ -117,14 +123,32 @@ func OpenSealedIntroduction(input SealedIntroduction, recipient hpke.PrivateKey)
 	if recipient == nil {
 		return nil, errors.New("sealed Introduction recipient is unavailable")
 	}
+	return OpenSealedIntroductionWith(input, hpkeIntroductionRecipient{private: recipient})
+}
+
+// OpenSealedIntroductionWith authenticates the exact visible v1 header and
+// delegates only its fixed-purpose HPKE opening operation to an opaque
+// recipient.
+func OpenSealedIntroductionWith(input SealedIntroduction, recipient IntroductionRecipient) ([]byte, error) {
+	if recipient == nil {
+		return nil, errors.New("sealed Introduction recipient is unavailable")
+	}
 	if err := validSealedIntroduction(input, true); err != nil {
 		return nil, err
 	}
-	receiver, err := hpke.NewRecipient(input.Enc, recipient, hpke.HKDFSHA256(), hpke.AES128GCM(), introductionInfo())
+	return recipient.OpenIntroduction(input.Enc, introductionInfo(), introductionAAD(input), input.Ciphertext)
+}
+
+type hpkeIntroductionRecipient struct {
+	private hpke.PrivateKey
+}
+
+func (recipient hpkeIntroductionRecipient) OpenIntroduction(encapsulation, info, authenticatedHeader, ciphertext []byte) ([]byte, error) {
+	receiver, err := hpke.NewRecipient(encapsulation, recipient.private, hpke.HKDFSHA256(), hpke.AES128GCM(), info)
 	if err != nil {
 		return nil, err
 	}
-	return receiver.Open(introductionAAD(input), input.Ciphertext)
+	return receiver.Open(authenticatedHeader, ciphertext)
 }
 
 func introductionPrefix(input SealedIntroduction) []byte {

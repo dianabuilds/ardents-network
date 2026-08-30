@@ -66,7 +66,8 @@ func TestPublisherIntroductionDeliversOnlyCurrentPublicationToResponder(t *testi
 		Responder:        endpointapi.TransitPeer{NodeID: responderID, PublicKey: responderPublic, Endpoint: responderAddress},
 		SlotAttachmentID: slotAttachment, Reachability: reachability, JoinHandle: join, NotAfter: deadline,
 		SlotAuthorization: slotAuthorization, ResponderAuthorization: responderAuthorization}
-	session, err := publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{Profile: profile, HPKEPrivate: private, At: now})
+	session, err := publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{Profile: profile,
+		Recipient: opaqueIntroductionRecipient{private: private}, At: now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,6 +263,24 @@ func c2HPKEPrivate() (hpke.PrivateKey, error) {
 		return nil, err
 	}
 	return hpke.NewDHKEMPrivateKey(private)
+}
+
+type opaqueIntroductionRecipient struct {
+	private hpke.PrivateKey
+}
+
+func (recipient opaqueIntroductionRecipient) IntroductionPublic() [32]byte {
+	var public [32]byte
+	copy(public[:], recipient.private.PublicKey().Bytes())
+	return public
+}
+
+func (recipient opaqueIntroductionRecipient) OpenIntroduction(encapsulation, info, authenticatedHeader, ciphertext []byte) ([]byte, error) {
+	opened, err := hpke.NewRecipient(encapsulation, recipient.private, hpke.HKDFSHA256(), hpke.AES128GCM(), info)
+	if err != nil {
+		return nil, err
+	}
+	return opened.Open(authenticatedHeader, ciphertext)
 }
 
 func c2Certificate(t *testing.T, serial int64, name string) (tls.Certificate, [32]byte) {
