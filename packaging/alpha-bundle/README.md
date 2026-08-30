@@ -7,7 +7,7 @@ release publisher. Private release/control keys never enter this script, its
 environment, its output, or the repository.
 
 The caller supplies one explicit `<goos>-<goarch>` and the exact already-built
-Endpoint and control binaries for it, plus
+Endpoint, Node, control, and Authority Custody binaries for it, plus
 one direct static directory already prepared by the applicable Release and
 alpha-control authority operations. That directory must contain exactly one
 matching,
@@ -27,13 +27,16 @@ For a fixed approved successor, only the pair changes together (for example,
 inventory rather than guessing a metadata generation.
 
 The `RELEASE` descriptor must be enrollment-v3, name the supplied cohort,
-release, platform, both fixed executable names, `environment=alpha`, and
+release, platform, the Endpoint/control executable names fixed by enrollment
+v3, `environment=alpha`, and
 the initial trusted root. The assembler copies no unlisted entry, writes the
 complete `SHA256SUMS` inventory, and creates one gzip stream with normalized
 name order, ownership, and timestamp. Enrollment v3 deliberately contains no
 Browser native host or XPI; those remain separately verifiable Adapter
-artifacts. The output must be a previously absent absolute path outside the
-repository.
+artifacts. The manifest additionally pins the canonical Node and Custody
+companions; `VerifyHeadless` requires both while ordinary `Verify` preserves
+the accepted ADR-0042 v3 grammar. The output must be a previously absent
+absolute path outside the repository.
 
 Run it on an Ubuntu release workstation with GNU `tar`, `gzip`, `sha256sum`,
 and `install` available:
@@ -43,16 +46,19 @@ ARDENTS_ALPHA_BUNDLE_COHORT=alpha-1 \
 ARDENTS_ALPHA_BUNDLE_RELEASE=usable-alpha-1 \
 ARDENTS_ALPHA_BUNDLE_PLATFORM=linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_ENDPOINT=/absolute/path/ardents-linux-amd64 \
+ARDENTS_ALPHA_BUNDLE_NODE=/absolute/path/ardents-node-linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_CONTROL=/absolute/path/ardents-control-linux-amd64 \
+ARDENTS_ALPHA_BUNDLE_CUSTODY=/absolute/path/ardents-custody-linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_STATIC_ROOT=/absolute/path/already-authenticated-static \
 ARDENTS_ALPHA_BUNDLE_OUTPUT=/absolute/path/ardents-alpha-usable-alpha-1-linux-amd64.tar.gz \
 SOURCE_DATE_EPOCH=1767225600 \
 sh ./packaging/alpha-bundle/build.sh
 ```
 
-`make headless-check` builds real host-named `ardents`, `ardents-node`, and
-`ardents-control` artifacts outside the repository, then supplies the exact
-Endpoint/control bytes to the deterministic inventory test. The test packs,
+`make headless-check` builds real host-named `ardents`, `ardents-node`,
+`ardents-control`, and `ardents-custody` artifacts outside the repository,
+then supplies all four exact executable byte strings to the deterministic
+inventory test. The test packs,
 unpacks, verifies, and byte-compares those artifacts; it does not substitute
 fixture text for executable bytes. The same target passes those exact built
 Endpoint and Node paths into the selected enrollment, Source, native-duty, and

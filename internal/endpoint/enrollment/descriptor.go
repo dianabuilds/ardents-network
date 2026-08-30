@@ -56,8 +56,10 @@ func validDescriptor(values map[string]string) bool {
 	if (schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4") && values["corpus_authority"] != "corpus.pub" {
 		return false
 	}
-	if (schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4") && values["control_artifact"] != "ardents-control-"+values["platform"] {
-		return false
+	if schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4" {
+		if values["control_artifact"] != "ardents-control-"+values["platform"] {
+			return false
+		}
 	}
 	if schema == "ardents-closed-alpha-enrollment-v4" && (values["browser_adapter_artifact"] != browserAdapterArtifactName(values["platform"]) || values["browser_entry_artifact"] != browserHostArtifactName(values["platform"]) || values["browser_entry_extension"] != browserExtensionArtifactName) {
 		return false
@@ -88,15 +90,15 @@ func validDescriptor(values map[string]string) bool {
 const browserExtensionArtifactName = "ardents-alpha-browser-entry.xpi"
 
 func browserAdapterArtifactName(platform string) string {
-	name := "ardents-browser-" + platform
-	if strings.HasPrefix(platform, "windows-") {
-		return name + ".exe"
-	}
-	return name
+	return executableArtifactName("ardents-browser", platform)
 }
 
 func browserHostArtifactName(platform string) string {
-	name := "ardents-browser-entry-" + platform
+	return executableArtifactName("ardents-browser-entry", platform)
+}
+
+func executableArtifactName(command, platform string) string {
+	name := command + "-" + platform
 	if strings.HasPrefix(platform, "windows-") {
 		return name + ".exe"
 	}

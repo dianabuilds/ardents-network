@@ -65,6 +65,10 @@ type Verified struct {
 	// from an enrollment-v3 bundle. It is intentionally not Release metadata.
 	ControlArtifactName string
 	ControlArtifact     []byte
+	NodeArtifactName    string
+	NodeArtifact        []byte
+	CustodyArtifactName string
+	CustodyArtifact     []byte
 	// BrowserAdapterArtifact, BrowserEntryArtifact, and BrowserEntryExtension
 	// are the exact Adapter, native host, and Mozilla-signed XPI companions from
 	// an enrollment-v4 bundle. They are participant-delivery bytes, never
@@ -81,6 +85,20 @@ type Verified struct {
 // is deliberately rejected and must enter through VerifyBrowser.
 func Verify(request Request) (Verified, error) {
 	return verify(request, false)
+}
+
+// VerifyHeadless authenticates the Network enrollment-v3 candidate inventory
+// and requires its exact manifest-pinned Node and Authority Custody companions.
+// Verify remains available for the narrower historical v1-v3 procedures.
+func VerifyHeadless(request Request) (Verified, error) {
+	verified, err := verify(request, false)
+	if err != nil {
+		return Verified{}, err
+	}
+	if verified.NodeArtifactName == "" || verified.CustodyArtifactName == "" {
+		return Verified{}, errors.New("headless Network enrollment lacks its Node or custody artifact")
+	}
+	return verified, nil
 }
 
 // VerifyBrowser authenticates the distinct Browser Adapter enrollment-v4
@@ -221,6 +239,21 @@ func verify(request Request, browser bool) (Verified, error) {
 			return Verified{}, errors.New("alpha descriptor control artifact is absent from the manifest")
 		}
 	}
+	var nodeArtifactName, custodyArtifactName string
+	var nodeArtifact, custodyArtifact []byte
+	if descriptor.schema == "ardents-closed-alpha-enrollment-v3" || descriptor.schema == "ardents-closed-alpha-enrollment-v4" {
+		nodeName := executableArtifactName("ardents-node", descriptor.platform)
+		custodyName := executableArtifactName("ardents-custody", descriptor.platform)
+		var nodeFound, custodyFound bool
+		nodeArtifact, nodeFound = files[nodeName]
+		custodyArtifact, custodyFound = files[custodyName]
+		if nodeFound != custodyFound {
+			return Verified{}, errors.New("alpha enrollment has a partial headless companion inventory")
+		}
+		if nodeFound {
+			nodeArtifactName, custodyArtifactName = nodeName, custodyName
+		}
+	}
 	var browserAdapterArtifact, browserEntryArtifact, browserEntryExtension []byte
 	if descriptor.browserAdapterArtifact != "" {
 		browserAdapterArtifact, found = files[descriptor.browserAdapterArtifact]
@@ -252,6 +285,9 @@ func verify(request Request, browser bool) (Verified, error) {
 		if name == descriptor.controlArtifact {
 			continue
 		}
+		if name == nodeArtifactName || name == custodyArtifactName {
+			continue
+		}
 		if name == descriptor.browserAdapterArtifact || name == descriptor.browserEntryArtifact || name == descriptor.browserEntryExtension {
 			continue
 		}
@@ -266,6 +302,8 @@ func verify(request Request, browser bool) (Verified, error) {
 		ControlReleaseRoot:   append([]byte(nil), controlReleaseRoot...), ControlNetworkRoot: append([]byte(nil), controlNetworkRoot...),
 		ControlCompatibilityRoot: append([]byte(nil), controlCompatibilityRoot...), CorpusAuthority: append([]byte(nil), corpusAuthority...),
 		ControlArtifactName: descriptor.controlArtifact, ControlArtifact: append([]byte(nil), controlArtifact...),
+		NodeArtifactName: nodeArtifactName, NodeArtifact: append([]byte(nil), nodeArtifact...),
+		CustodyArtifactName: custodyArtifactName, CustodyArtifact: append([]byte(nil), custodyArtifact...),
 		BrowserAdapterArtifactName: descriptor.browserAdapterArtifact, BrowserAdapterArtifact: append([]byte(nil), browserAdapterArtifact...),
 		BrowserEntryArtifactName: descriptor.browserEntryArtifact, BrowserEntryArtifact: append([]byte(nil), browserEntryArtifact...),
 		BrowserEntryExtensionName: descriptor.browserEntryExtension, BrowserEntryExtension: append([]byte(nil), browserEntryExtension...)}, nil

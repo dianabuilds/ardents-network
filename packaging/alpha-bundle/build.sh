@@ -5,7 +5,9 @@ set -eu
 : "${ARDENTS_ALPHA_BUNDLE_RELEASE:?ARDENTS_ALPHA_BUNDLE_RELEASE is required}"
 : "${ARDENTS_ALPHA_BUNDLE_PLATFORM:?ARDENTS_ALPHA_BUNDLE_PLATFORM is required}"
 : "${ARDENTS_ALPHA_BUNDLE_ENDPOINT:?ARDENTS_ALPHA_BUNDLE_ENDPOINT is required}"
+: "${ARDENTS_ALPHA_BUNDLE_NODE:?ARDENTS_ALPHA_BUNDLE_NODE is required}"
 : "${ARDENTS_ALPHA_BUNDLE_CONTROL:?ARDENTS_ALPHA_BUNDLE_CONTROL is required}"
+: "${ARDENTS_ALPHA_BUNDLE_CUSTODY:?ARDENTS_ALPHA_BUNDLE_CUSTODY is required}"
 : "${ARDENTS_ALPHA_BUNDLE_STATIC_ROOT:?ARDENTS_ALPHA_BUNDLE_STATIC_ROOT is required}"
 : "${ARDENTS_ALPHA_BUNDLE_OUTPUT:?ARDENTS_ALPHA_BUNDLE_OUTPUT is required}"
 : "${SOURCE_DATE_EPOCH:?SOURCE_DATE_EPOCH is required}"
@@ -16,7 +18,9 @@ case "$platform" in
   *) executable_suffix= ;;
 esac
 endpoint_name="ardents-$platform$executable_suffix"
-control_name="ardents-control-$platform$executable_suffix"
+node_name="ardents-node-$platform$executable_suffix"
+control_name="ardents-control-$platform"
+custody_name="ardents-custody-$platform$executable_suffix"
 bundle_name="ardents-alpha-${ARDENTS_ALPHA_BUNDLE_RELEASE}-${platform}"
 
 case "$ARDENTS_ALPHA_BUNDLE_COHORT" in
@@ -36,7 +40,7 @@ case "$ARDENTS_ALPHA_BUNDLE_OUTPUT" in
   *) echo 'ARDENTS_ALPHA_BUNDLE_OUTPUT must be an absolute path' >&2; exit 2 ;;
 esac
 
-for input in "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_CONTROL"; do
+for input in "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_NODE" "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$ARDENTS_ALPHA_BUNDLE_CUSTODY"; do
   if [ ! -f "$input" ] || [ -L "$input" ]; then
     echo 'alpha bundle executable input must be a direct regular file' >&2
     exit 2
@@ -133,7 +137,9 @@ trap cleanup EXIT HUP INT TERM
 bundle="$stage/$bundle_name"
 mkdir -m 700 "$bundle"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$bundle/$endpoint_name"
+install -m 700 "$ARDENTS_ALPHA_BUNDLE_NODE" "$bundle/$node_name"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$bundle/$control_name"
+install -m 700 "$ARDENTS_ALPHA_BUNDLE_CUSTODY" "$bundle/$custody_name"
 for name in $static_names; do
   install -m 600 "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/$name" "$bundle/$name"
 done

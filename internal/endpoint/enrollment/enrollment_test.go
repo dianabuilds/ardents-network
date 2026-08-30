@@ -99,15 +99,20 @@ func TestVerifyReturnsV2IndependentlyPinnedCorpusAuthority(t *testing.T) {
 	}
 }
 
-func TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata(t *testing.T) {
+func TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata(t *testing.T) {
 	root, request := enrolledFixture(t)
 	authority, control := bytes.Repeat([]byte{9}, 32), []byte("separately manifested alpha control command")
+	node, custody := []byte("separately manifested Network Node command"), []byte("separately manifested Authority Custody command")
 	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	const controlName = "ardents-control-linux-amd64"
-	if err := os.WriteFile(filepath.Join(root, controlName), control, 0o700); err != nil {
-		t.Fatal(err)
+	const nodeName = "ardents-node-linux-amd64"
+	const custodyName = "ardents-custody-linux-amd64"
+	for name, contents := range map[string][]byte{controlName: control, nodeName: node, custodyName: custody} {
+		if err := os.WriteFile(filepath.Join(root, name), contents, 0o700); err != nil {
+			t.Fatal(err)
+		}
 	}
 	descriptorPath := filepath.Join(root, descriptorName)
 	descriptor, err := os.ReadFile(descriptorPath)
@@ -120,7 +125,7 @@ func TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := make(map[string][]byte)
-	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
+	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, nodeName, custodyName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
 		contents, readErr := os.ReadFile(filepath.Join(root, name))
 		if readErr != nil {
 			t.Fatal(readErr)
@@ -133,28 +138,55 @@ func TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata(t *testing.T) {
 	}
 	pinned := sha256.Sum256(manifest)
 	request.Pin.ManifestSHA256 = hex.EncodeToString(pinned[:])
-	verified, err := Verify(request)
+	verified, err := VerifyHeadless(request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(verified.CorpusAuthority, authority) || verified.ControlArtifactName != controlName ||
-		!bytes.Equal(verified.ControlArtifact, control) || verified.Inputs.Files[release.MetadataURL(controlName)] != nil {
+		!bytes.Equal(verified.ControlArtifact, control) || verified.NodeArtifactName != nodeName || !bytes.Equal(verified.NodeArtifact, node) ||
+		verified.CustodyArtifactName != custodyName || !bytes.Equal(verified.CustodyArtifact, custody) ||
+		verified.Inputs.Files[release.MetadataURL(controlName)] != nil || verified.Inputs.Files[release.MetadataURL(nodeName)] != nil ||
+		verified.Inputs.Files[release.MetadataURL(custodyName)] != nil {
 		t.Fatalf("v3 control artifact crossed an incorrect boundary: %+v", verified)
+	}
+	delete(files, nodeName)
+	delete(files, custodyName)
+	if err := os.Remove(filepath.Join(root, nodeName)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, custodyName)); err != nil {
+		t.Fatal(err)
+	}
+	legacyManifest := makeManifest(t, files)
+	if err := os.WriteFile(filepath.Join(root, manifestName), legacyManifest, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	legacyPin := sha256.Sum256(legacyManifest)
+	request.Pin.ManifestSHA256 = hex.EncodeToString(legacyPin[:])
+	if _, err := Verify(request); err != nil {
+		t.Fatalf("accepted ADR-0042 v3 inventory no longer verifies: %v", err)
+	}
+	if _, err := VerifyHeadless(request); err == nil {
+		t.Fatal("headless candidate accepted v3 without Node and custody companions")
 	}
 }
 
 func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.T) {
 	root, request := enrolledFixture(t)
 	authority, control := bytes.Repeat([]byte{9}, 32), []byte("separately manifested alpha control command")
+	node, custody := []byte("separately manifested Network Node command"), []byte("separately manifested Authority Custody command")
 	adapter, host, extension := []byte("separately manifested Browser Adapter"), []byte("separately manifested Browser Entry host"), []byte("Mozilla-signed Browser Entry XPI")
 	if err := os.WriteFile(filepath.Join(root, "corpus.pub"), authority, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	const controlName = "ardents-control-linux-amd64"
+	const nodeName = "ardents-node-linux-amd64"
+	const custodyName = "ardents-custody-linux-amd64"
 	const adapterName = "ardents-browser-linux-amd64"
 	const hostName = "ardents-browser-entry-linux-amd64"
 	const extensionName = "ardents-alpha-browser-entry.xpi"
-	for name, contents := range map[string][]byte{controlName: control, adapterName: adapter, hostName: host, extensionName: extension} {
+	for name, contents := range map[string][]byte{controlName: control, nodeName: node, custodyName: custody,
+		adapterName: adapter, hostName: host, extensionName: extension} {
 		if err := os.WriteFile(filepath.Join(root, name), contents, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -165,12 +197,13 @@ func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.
 		t.Fatal(err)
 	}
 	descriptor = bytes.Replace(descriptor, []byte("schema=ardents-closed-alpha-enrollment-v1"), []byte("schema=ardents-closed-alpha-enrollment-v4"), 1)
-	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\ncontrol_artifact="+controlName+"\nbrowser_adapter_artifact="+adapterName+"\nbrowser_entry_artifact="+hostName+"\nbrowser_entry_extension="+extensionName+"\n")...)
+	descriptor = append(descriptor[:len(descriptor)-1], []byte("\ncorpus_authority=corpus.pub\ncontrol_artifact="+controlName+"\nbrowser_adapter_artifact="+adapterName+
+		"\nbrowser_entry_artifact="+hostName+"\nbrowser_entry_extension="+extensionName+"\n")...)
 	if err := os.WriteFile(descriptorPath, descriptor, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	files := make(map[string][]byte)
-	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, adapterName, hostName, extensionName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
+	for _, name := range []string{"1.root.json", "RELEASE", "ardents-linux-amd64", controlName, nodeName, custodyName, adapterName, hostName, extensionName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"} {
 		contents, readErr := os.ReadFile(filepath.Join(root, name))
 		if readErr != nil {
 			t.Fatal(readErr)
@@ -191,6 +224,8 @@ func TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata(t *testing.
 		t.Fatal(err)
 	}
 	if verified.BrowserAdapterArtifactName != adapterName || !bytes.Equal(verified.BrowserAdapterArtifact, adapter) ||
+		verified.NodeArtifactName != nodeName || !bytes.Equal(verified.NodeArtifact, node) ||
+		verified.CustodyArtifactName != custodyName || !bytes.Equal(verified.CustodyArtifact, custody) ||
 		verified.BrowserEntryArtifactName != hostName || !bytes.Equal(verified.BrowserEntryArtifact, host) ||
 		verified.BrowserEntryExtensionName != extensionName || !bytes.Equal(verified.BrowserEntryExtension, extension) ||
 		verified.Inputs.Files[release.MetadataURL(adapterName)] != nil || verified.Inputs.Files[release.MetadataURL(hostName)] != nil || verified.Inputs.Files[release.MetadataURL(extensionName)] != nil {

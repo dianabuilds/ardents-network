@@ -1,3 +1,4 @@
 ./cmd/ardents
 ./cmd/ardents-node
 ./cmd/ardents-control
+./cmd/ardents-custody

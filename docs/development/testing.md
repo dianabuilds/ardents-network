@@ -322,7 +322,8 @@ does not mean passed, waived, or unavailable evidence.
 `make headless-check` is the bounded local profile for the standalone Network
 product boundary. Its positive command inventory is
 `tests/profiles/headless-commands.txt`: `ardents`, `ardents-node`, and
-`ardents-control`. It builds only those commands, verifies the enrollment-v3
+`ardents-control`, plus the separate `ardents-custody` command. It builds
+only those commands, verifies the enrollment-v3
 artifact boundary (including rejection of unknown inventory), and runs one
 bounded process cell for Endpoint enrollment, State Source, Node duty, and the
 headless Service command. It requires no Firefox executable, Browser Entry

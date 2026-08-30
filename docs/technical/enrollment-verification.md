@@ -57,6 +57,13 @@ manifest bytes, it proves that the current process is exactly one named
 companion from that inventory. It neither re-verifies the bundle nor executes
 the companion.
 
+`VerifyHeadless` preserves the accepted enrollment-v3 `RELEASE` grammar but
+requires the exact manifest to contain the canonical platform-named
+`ardents-node` and `ardents-custody` companions. Those bytes are returned
+outside Release metadata, alongside the already separate control artifact.
+Ordinary `Verify` continues to accept the narrower ADR-0042 v3 inventory for
+its historical corpus-control use; a partial Node/Custody pair fails closed.
+
 ## Verification owner
 
 `internal/endpoint/enrollment` behavior tests cover pin-before-parse,
