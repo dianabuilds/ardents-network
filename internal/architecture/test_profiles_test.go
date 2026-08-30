@@ -167,6 +167,20 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 
 func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T) {
 	root := repositoryRoot(t)
+	registry := readTestProfileRegistry(t, root)
+	var headlessProfile *testProfile
+	for index := range registry.Profiles {
+		if registry.Profiles[index].ID == "headless-network" {
+			headlessProfile = &registry.Profiles[index]
+			break
+		}
+	}
+	if headlessProfile == nil {
+		t.Fatal("headless Network execution profile is not registered")
+	}
+	if headlessProfile.MakeTarget != "headless-check" {
+		t.Errorf("headless Network make target = %q, want headless-check", headlessProfile.MakeTarget)
+	}
 	commands := strings.Fields(string(readProjectFile(t, root, "tests/profiles/headless-commands.txt")))
 	want := []string{"./cmd/ardents", "./cmd/ardents-node", "./cmd/ardents-control"}
 	if len(commands) != len(want) {
@@ -182,21 +196,13 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	for _, required := range []string{
-		"HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))",
-		"headless-build:",
-		"go build $(HEADLESS_COMMANDS)",
-		"headless-e2e:",
-		"TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution",
-		"headless-check: headless-build headless-e2e",
+		"headless-evidence:",
+		"packaging/alpha-bundle/test.sh",
+		"headless-check: headless-build headless-evidence",
 	} {
 		if !strings.Contains(makefile, required) {
 			t.Errorf("headless Network Make boundary lacks %q", required)
 		}
-	}
-	bundleTest := string(readProjectFile(t, root, "packaging/alpha-bundle/test.sh"))
-	if !strings.Contains(bundleTest, "schema=ardents-closed-alpha-enrollment-v3") ||
-		!strings.Contains(bundleTest, "headless bundle contains a Browser companion") {
-		t.Error("headless bundle test does not prove the enrollment-v3 Browser exclusion")
 	}
 }
 

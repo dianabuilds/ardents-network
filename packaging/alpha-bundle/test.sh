@@ -9,7 +9,8 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 static_root="$scratch/static"
-mkdir -m 700 "$static_root"
+mkdir "$static_root"
+chmod 700 "$static_root"
 printf 'endpoint\n' > "$scratch/ardents-linux-amd64"
 printf 'control\n' > "$scratch/ardents-control-linux-amd64"
 chmod 700 "$scratch/ardents-linux-amd64" "$scratch/ardents-control-linux-amd64"
@@ -70,7 +71,7 @@ fi
 # participant's locale collates uppercase and lowercase names differently.
 expected_names="$scratch/expected-names"
 actual_names="$scratch/actual-names"
-LC_ALL=C sed -n 's/^[0-9a-f]\{64\}  //p' "$bundle/SHA256SUMS" >"$expected_names"
+LC_ALL=C sed -n 's/^[0-9a-f]\{64\} [ *]//p' "$bundle/SHA256SUMS" >"$expected_names"
 printf '%s\n' SHA256SUMS >>"$expected_names"
 LC_ALL=C sort -o "$expected_names" "$expected_names"
 LC_ALL=C find "$bundle" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' |

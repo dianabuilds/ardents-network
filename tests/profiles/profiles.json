@@ -30,8 +30,8 @@
       "state": "active",
       "make_target": "headless-check",
       "surface": "headless Network command build, bounded process journey, and enrollment-v3 artifact inventory",
-      "prerequisites": ["local process execution"],
-      "invalid_environment": "headless command build or local process prerequisites unavailable"
+      "prerequisites": ["local process execution", "POSIX shell with tar, gzip, sha256sum, install, and find"],
+      "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
       "id": "race",
