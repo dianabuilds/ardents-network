@@ -67,3 +67,37 @@ func TestLocalConnectionInterfaceCarriesOnlyServiceLinkBytesAndTerminal(t *testi
 		t.Fatal("local Application terminal outcome was not delivered")
 	}
 }
+
+func TestLocalApplicationCancellationClosesEstablishedAttachment(t *testing.T) {
+	path := shortApplicationPath(t)
+	accepted := make(chan struct{})
+	server, err := openLocalConnectionInterface(localConnectionInterfaceConfig{Path: path,
+		Open: func(context.Context, string) (*ApplicationConnection, error) {
+			endpointSide, applicationSide := net.Pipe()
+			done := make(chan ApplicationOutcome)
+			close(accepted)
+			return &ApplicationConnection{stream: applicationSide, cancel: func() { _ = endpointSide.Close() }, done: done}, nil
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close() })
+	ctx, cancel := context.WithCancel(t.Context())
+	client, err := DialLocalApplication(ctx, path, "ardents-alpha://reference")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	<-accepted
+	cancel()
+	finished := make(chan error, 1)
+	go func() {
+		_, readErr := io.ReadAll(client)
+		finished <- readErr
+	}()
+	select {
+	case <-finished:
+	case <-time.After(time.Second):
+		t.Fatal("cancelled local Application attachment remained blocked")
+	}
+}

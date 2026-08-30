@@ -5,9 +5,12 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 )
+
+var applicationPathSequence atomic.Uint64
 
 func TestResultChannelAcceptsDelayedDeclaredContract(t *testing.T) {
 	applicationPath := shortApplicationPath(t)
@@ -83,7 +86,7 @@ func TestApplicationHandshakeRequiresOneCompleteFrame(t *testing.T) {
 
 func shortApplicationPath(t *testing.T) string {
 	t.Helper()
-	path := fmt.Sprintf("%s%casa-%d.sock", os.TempDir(), os.PathSeparator, time.Now().UnixNano())
+	path := fmt.Sprintf("%s%casa-%d-%d.sock", os.TempDir(), os.PathSeparator, time.Now().UnixNano(), applicationPathSequence.Add(1))
 	t.Cleanup(func() { _ = os.Remove(path); _ = os.Remove(path + ".result") })
 	return path
 }

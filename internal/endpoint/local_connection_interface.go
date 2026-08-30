@@ -251,14 +251,17 @@ func writeLocalApplicationTerminal(writer io.Writer, outcome ApplicationOutcome)
 // LocalApplicationConnection is the Adapter side of the local Connection
 // Interface. Its stream framing is private to this local seam.
 type LocalApplicationConnection struct {
-	connection *net.UnixConn
-	stream     *io.PipeReader
-	sink       *io.PipeWriter
-	writeMu    sync.Mutex
-	done       chan ApplicationOutcome
-	doneOnce   sync.Once
-	closeOnce  sync.Once
-	closed     chan struct{}
+	connection  *net.UnixConn
+	stream      *io.PipeReader
+	sink        *io.PipeWriter
+	writeMu     sync.Mutex
+	done        chan ApplicationOutcome
+	doneOnce    sync.Once
+	closeOnce   sync.Once
+	inputOnce   sync.Once
+	inputErr    error
+	closed      chan struct{}
+	stopContext func() bool
 }
 
 // DialLocalApplication requests one Service Link from a running Endpoint and
@@ -296,6 +299,7 @@ func DialLocalApplication(ctx context.Context, path, serviceLink string) (*Local
 	stream, sink := io.Pipe()
 	opened := &LocalApplicationConnection{connection: connection, stream: stream, sink: sink,
 		done: make(chan ApplicationOutcome, 1), closed: make(chan struct{})}
+	opened.stopContext = context.AfterFunc(ctx, func() { _ = opened.Close() })
 	go opened.receive()
 	return opened, nil
 }
@@ -355,6 +359,9 @@ func readLocalApplicationTerminal(reader io.Reader) (ApplicationOutcome, error) 
 }
 
 func (connection *LocalApplicationConnection) finishReceive(outcome ApplicationOutcome, err error) {
+	if connection.stopContext != nil {
+		connection.stopContext()
+	}
 	if err != nil && outcome.Class == "" {
 		outcome = ApplicationOutcome{Class: "local attachment failure", Reason: "Endpoint Application terminal outcome was invalid"}
 	}
@@ -397,13 +404,17 @@ func (connection *LocalApplicationConnection) CloseInput() error {
 	if connection == nil {
 		return nil
 	}
-	connection.writeMu.Lock()
-	defer connection.writeMu.Unlock()
-	var frame [4]byte
-	if _, err := connection.connection.Write(frame[:]); err != nil {
-		return err
-	}
-	return connection.connection.CloseWrite()
+	connection.inputOnce.Do(func() {
+		connection.writeMu.Lock()
+		defer connection.writeMu.Unlock()
+		var frame [4]byte
+		if _, err := connection.connection.Write(frame[:]); err != nil {
+			connection.inputErr = err
+			return
+		}
+		connection.inputErr = connection.connection.CloseWrite()
+	})
+	return connection.inputErr
 }
 
 func (connection *LocalApplicationConnection) publishDone(outcome ApplicationOutcome) {
@@ -419,6 +430,9 @@ func (connection *LocalApplicationConnection) Close() error {
 	}
 	var result error
 	connection.closeOnce.Do(func() {
+		if connection.stopContext != nil {
+			connection.stopContext()
+		}
 		connection.writeMu.Lock()
 		result = connection.connection.Close()
 		connection.writeMu.Unlock()

@@ -33,6 +33,8 @@ type connectionEndpoint interface {
 
 func withdrawCurrent(ctx context.Context, endpoint withdrawalEndpoint, resources func(string, int) uint32, socket string,
 	principal [32]byte, at time.Time, lifetime time.Duration) (WithdrawalResult, error) {
+	operation, cancel := context.WithTimeout(ctx, lifetime)
+	defer cancel()
 	listener, err := listenLocal(socket, lifetime)
 	if err != nil {
 		return WithdrawalResult{}, err
@@ -40,7 +42,7 @@ func withdrawCurrent(ctx context.Context, endpoint withdrawalEndpoint, resources
 	resources("control-file", 1)
 	defer resources("control-file", -1)
 	defer func() { _ = listener.Close(); _ = os.Remove(socket) }()
-	stop := context.AfterFunc(ctx, func() { _ = listener.Close() })
+	stop := context.AfterFunc(operation, func() { _ = listener.Close() })
 	defer stop()
 	administrator, err := listener.Accept()
 	if err != nil {
@@ -49,7 +51,7 @@ func withdrawCurrent(ctx context.Context, endpoint withdrawalEndpoint, resources
 	resources("accepted-ipc", 1)
 	defer resources("accepted-ipc", -1)
 	defer administrator.Close()
-	request, err := ReadControl(ctx, administrator, 9)
+	request, err := ReadControl(operation, administrator, 9)
 	if err != nil || string(request) != "withdraw\n" {
 		return WithdrawalResult{}, errors.Join(err, errors.New("withdrawal request is malformed, partial, or oversized"))
 	}
@@ -57,7 +59,7 @@ func withdrawCurrent(ctx context.Context, endpoint withdrawalEndpoint, resources
 	if err != nil {
 		return WithdrawalResult{}, err
 	}
-	result, err := endpoint.Withdraw(ctx, WithdrawalRequest{Principal: principal, Capability: session, At: at})
+	result, err := endpoint.Withdraw(operation, WithdrawalRequest{Principal: principal, Capability: session, At: at})
 	if err != nil {
 		return result, err
 	}

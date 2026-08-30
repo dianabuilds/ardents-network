@@ -86,6 +86,42 @@ func TestWithdrawalAdministrationOwnsAnExplicitTerminalOperation(t *testing.T) {
 	}
 }
 
+func TestWithdrawalPartialFrameStopsAtItsLifetime(t *testing.T) {
+	socket := filepath.Join(os.TempDir(), "awp-"+time.Now().Format("150405.000000")+".sock")
+	defer os.Remove(socket)
+	principal, capability := [32]byte{1}, [32]byte{2}
+	fixture := &withdrawalAdministrationFixture{principal: principal, capability: capability}
+	done := make(chan error, 1)
+	go func() {
+		_, err := withdrawCurrent(context.Background(), fixture, func(string, int) uint32 { return 0 }, socket,
+			principal, time.Now(), 50*time.Millisecond)
+		done <- err
+	}()
+	var connection net.Conn
+	var err error
+	for deadline := time.Now().Add(time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
+		connection, err = (&net.Dialer{}).DialContext(t.Context(), "unix", socket)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	if _, err := connection.Write([]byte("with")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("partial withdrawal frame was accepted")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("partial withdrawal frame outlived its operation lifetime")
+	}
+}
+
 type withdrawalAdministrationFixture struct {
 	principal, capability [32]byte
 	withdrawn             bool
