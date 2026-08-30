@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,7 +19,7 @@ import (
 
 // Execute performs exactly one bounded custody operation. It never retains a
 // password, derived key, plaintext root, or signing capability after return.
-func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
+func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets SecretInput) (receipt Receipt, resultErr error) {
 	vault.mu.Lock()
 	defer vault.mu.Unlock()
 	if vault.closed {
@@ -27,11 +28,21 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 	if err := ctx.Err(); err != nil {
 		return Receipt{}, err
 	}
+	operationLock, err := acquireVaultOperationLock(vault.root)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer func() { resultErr = errors.Join(resultErr, operationLock.release()) }()
+	if operation.Kind != OperationIssueServiceCredential && len(operation.ServiceRequest) != 0 {
+		return Receipt{}, ErrInvalid
+	}
 	switch operation.Kind {
 	case OperationCreateVaultRecord:
 		return vault.createRecord(ctx, operation, secrets)
 	case OperationCreateServiceAuthority:
 		return vault.createServiceAuthority(ctx, operation, secrets)
+	case OperationIssueServiceCredential:
+		return vault.issueServiceCredential(ctx, operation, secrets)
 	case OperationVerifyVaultRecord:
 		return vault.verifyRecord(ctx, operation, secrets)
 	case OperationExportRecoveryBundle:

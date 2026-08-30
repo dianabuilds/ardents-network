@@ -10,6 +10,7 @@ import (
 )
 
 const serviceCredentialWatermark = "credential-generation"
+const serviceCredentialNotAfterWatermark = "credential-not-after"
 
 func (vault *Vault) createServiceAuthority(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
 	if secrets == nil || !validServiceAuthorityCreation(operation) {
@@ -23,7 +24,8 @@ func (vault *Vault) createServiceAuthority(ctx context.Context, operation Operat
 	state := AuthorityState{
 		Binding:    operation.Authority.Binding,
 		Generation: 1,
-		Watermarks: []Watermark{{Domain: serviceCredentialWatermark, Value: 0}},
+		Watermarks: []Watermark{{Domain: serviceCredentialWatermark, Value: 0},
+			{Domain: serviceCredentialNotAfterWatermark, Value: 0}},
 	}
 	state.Binding.IDCommitment = sha256.Sum256(public)
 	state.RootMaterial = private

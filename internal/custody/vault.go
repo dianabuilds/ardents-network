@@ -34,6 +34,9 @@ func Open(config VaultConfig) (*Vault, error) {
 	if err != nil || !info.IsDir() {
 		return nil, fmt.Errorf("vault root: %w", ErrInvalid)
 	}
+	if err := prepareVaultLock(root); err != nil {
+		return nil, err
+	}
 	records := filepath.Join(root, "records")
 	if err := os.MkdirAll(records, 0o700); err != nil {
 		return nil, fmt.Errorf("create record root: %w", err)

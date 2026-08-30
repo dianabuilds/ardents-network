@@ -9,8 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
 func TestInspectEnvelopeRejectsMissingInputsBeforeCreatingCustodyState(t *testing.T) {
@@ -88,6 +90,69 @@ func TestVerifyRecordRejectsMissingPublicBindingBeforeSecretInput(t *testing.T) 
 	var output bytes.Buffer
 	if err := run(t.Context(), []string{"verify-record", "-vault-root", t.TempDir(), "-record", "not-a-record"}, &output, commandSecrets{}); err == nil {
 		t.Fatal("verify record accepted missing binding")
+	}
+}
+
+func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testing.T) {
+	vaultRoot, hostRoot := t.TempDir(), t.TempDir()
+	environment, network, authorityRoot := [32]byte{11}, [32]byte{12}, [32]byte{13}
+	password := []byte("service custody command password")
+	createArguments := []string{"create-service-authority", "-vault-root", vaultRoot,
+		"-environment-commitment", hex.EncodeToString(environment[:]),
+		"-network-commitment", hex.EncodeToString(network[:]),
+		"-root-commitment", hex.EncodeToString(authorityRoot[:])}
+	var createdOutput bytes.Buffer
+	if err := run(t.Context(), createArguments, &createdOutput,
+		&sequenceCommandSecrets{values: [][]byte{password, password}}); err != nil {
+		t.Fatalf("create Service Authority command: %v", err)
+	}
+	var created struct {
+		Schema          string `json:"schema"`
+		RecordID        string `json:"record_id"`
+		IDCommitment    string `json:"id_commitment"`
+		AuthorityPublic string `json:"authority_public"`
+		Target          string `json:"target"`
+	}
+	if err := json.Unmarshal(createdOutput.Bytes(), &created); err != nil || created.Schema != "ardents-service-authority-v1" ||
+		created.RecordID == "" || created.IDCommitment == "" || created.AuthorityPublic == "" || created.Target == "" ||
+		bytes.Contains(createdOutput.Bytes(), password) {
+		t.Fatalf("Service Authority receipt = %+v / %v", created, err)
+	}
+	now := time.Date(2030, 3, 4, 5, 6, 7, 0, time.UTC)
+	host, err := instance.Initialize(instance.InitializeConfig{Root: hostRoot, NetworkID: network,
+		NotBefore: now, NotAfter: now.Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := host.Request()
+	_ = host.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestPath := filepath.Join(t.TempDir(), "service-request.bin")
+	if err := os.WriteFile(requestPath, request, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	issueArguments := []string{"issue-service-credential", "-vault-root", vaultRoot, "-record", created.RecordID,
+		"-request", requestPath, "-environment-commitment", hex.EncodeToString(environment[:]),
+		"-network-commitment", hex.EncodeToString(network[:]), "-root-commitment", hex.EncodeToString(authorityRoot[:]),
+		"-kind", "service", "-id-commitment", created.IDCommitment}
+	var issuedOutput bytes.Buffer
+	if err := run(t.Context(), issueArguments, &issuedOutput,
+		&sequenceCommandSecrets{values: [][]byte{password}}); err != nil {
+		t.Fatalf("issue Service Credential command: %v", err)
+	}
+	var issued struct {
+		Schema   string `json:"schema"`
+		RecordID string `json:"record_id"`
+		Response []byte `json:"response"`
+	}
+	if err := json.Unmarshal(issuedOutput.Bytes(), &issued); err != nil || issued.Schema != "ardents-service-credential-response-v1" ||
+		issued.RecordID == created.RecordID || len(issued.Response) == 0 || bytes.Contains(issuedOutput.Bytes(), password) {
+		t.Fatalf("Service Credential receipt = %+v / %v", issued, err)
+	}
+	if _, err := instance.ParseResponse(issued.Response); err != nil {
+		t.Fatalf("parse command response: %v", err)
 	}
 }
 

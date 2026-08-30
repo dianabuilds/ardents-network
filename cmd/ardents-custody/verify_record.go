@@ -63,15 +63,22 @@ func commandBinding(environment, network, root, kind, identity string) (custody.
 		{root, binding.Root[:]},
 		{identity, binding.IDCommitment[:]},
 	} {
-		decoded, err := hex.DecodeString(value.text)
-		if err != nil || len(value.text) != 64 || len(decoded) != len(value.dest) || hex.EncodeToString(decoded) != value.text {
+		if err := decodeCommandCommitment(value.text, value.dest); err != nil {
 			return custody.AuthorityBinding{}, errors.New("verify-record requires lowercase SHA-256 commitments")
 		}
-		copy(value.dest, decoded)
 	}
 	binding.Kind = custody.AuthorityKind(kind)
 	if binding.Kind != custody.AuthorityService && binding.Kind != custody.AuthorityName {
 		return custody.AuthorityBinding{}, errors.New("verify-record kind must be service or name")
 	}
 	return binding, nil
+}
+
+func decodeCommandCommitment(value string, destination []byte) error {
+	decoded, err := hex.DecodeString(value)
+	if err != nil || len(value) != 64 || len(decoded) != len(destination) || hex.EncodeToString(decoded) != value {
+		return errors.New("invalid lowercase SHA-256 commitment")
+	}
+	copy(destination, decoded)
+	return nil
 }

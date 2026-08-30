@@ -14,6 +14,9 @@ const (
 	// OperationCreateServiceAuthority generates one Service Authority inside a
 	// new encrypted Vault record and returns only its public identity.
 	OperationCreateServiceAuthority OperationKind = "create-service-authority"
+	// OperationIssueServiceCredential advances one active Service Authority for
+	// an exact canonical host request and returns only its public response.
+	OperationIssueServiceCredential OperationKind = "issue-service-credential"
 	// OperationVerifyVaultRecord authenticates one record without releasing its root material.
 	OperationVerifyVaultRecord OperationKind = "verify-vault-record"
 	// OperationExportRecoveryBundle creates and isolatedly test-restores one new Bundle.
@@ -41,6 +44,8 @@ const (
 var (
 	// ErrClosed reports an operation after the owning Vault has been closed.
 	ErrClosed = errors.New("custody vault closed")
+	// ErrBusy reports another process currently executing against this Vault.
+	ErrBusy = errors.New("custody vault busy")
 	// ErrInvalid reports malformed, oversized, or semantically invalid custody input.
 	ErrInvalid = errors.New("custody input invalid")
 	// ErrUnsupported reports a canonical envelope that selects no supported profile.
@@ -72,6 +77,7 @@ type Operation struct {
 	Transition     NamespaceTransition
 	Preparation    NamespaceSubmission
 	Reconciliation *epoch.NameAuthorityReconciliation
+	ServiceRequest []byte
 }
 
 // NamespaceTransition invokes one sealed Namespace signer and returns its
@@ -120,6 +126,7 @@ type Receipt struct {
 	Envelope         EnvelopeInfo
 	Authority        AuthorityReceipt
 	ServiceAuthority ServiceAuthorityReceipt
+	ServiceResponse  []byte
 	TestRestored     bool
 	State            RecordState
 	Proof            []byte

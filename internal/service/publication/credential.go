@@ -10,8 +10,12 @@ import (
 )
 
 const (
-	publishCapability  = uint32(1)
-	connectCapability  = uint32(2)
+	// CapabilityPublish permits publication of the exact delegated Instance.
+	CapabilityPublish = uint32(1)
+	// CapabilityConnect permits accepting Service Connections for the Instance.
+	CapabilityConnect  = uint32(2)
+	publishCapability  = CapabilityPublish
+	connectCapability  = CapabilityConnect
 	credentialVersion  = uint16(2)
 	credentialBodySize = 2 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 32 + 4
 	credentialSize     = credentialBodySize + ed25519.SignatureSize
@@ -109,5 +113,22 @@ func decodeCredential(encoded []byte) (Credential, error) {
 	offset += 32
 	value.Capabilities = binary.BigEndian.Uint32(encoded[offset : offset+4])
 	copy(value.Signature[:], encoded[credentialBodySize:])
+	return value, nil
+}
+
+// EncodeCredential returns the one canonical public Credential encoding.
+func EncodeCredential(value Credential) ([]byte, error) {
+	if value.Signature == ([64]byte{}) {
+		return nil, errors.New("publication Credential is unsigned")
+	}
+	return encodeCredential(value), nil
+}
+
+// DecodeCredential accepts only the one canonical public Credential encoding.
+func DecodeCredential(encoded []byte) (Credential, error) {
+	value, err := decodeCredential(encoded)
+	if err != nil || subtle.ConstantTimeCompare(encodeCredential(value), encoded) != 1 {
+		return Credential{}, errors.New("publication Credential encoding is malformed")
+	}
 	return value, nil
 }

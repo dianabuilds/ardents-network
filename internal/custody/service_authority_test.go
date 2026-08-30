@@ -1,9 +1,12 @@
 package custody
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"testing"
+	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
@@ -43,4 +46,73 @@ func TestCreateServiceAuthorityReturnsPublicIdentityAndRetainsEncryptedRoot(t *t
 	if err != nil || verified.State != RecordActive {
 		t.Fatalf("verify encrypted Service Authority: %+v / %v", verified, err)
 	}
+}
+
+func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testing.T) {
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	binding := AuthorityBinding{Environment: [32]byte{1}, Network: [32]byte{2}, Root: [32]byte{3}, Kind: AuthorityService}
+	password := []byte("service authority vault password")
+	created, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateServiceAuthority,
+		Authority: AuthorityState{Binding: binding}}, &sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2030, 2, 3, 4, 5, 6, 0, time.UTC)
+	request := serviceInstanceRequest(t, binding.Network, now, now.Add(time.Hour))
+	issue := Operation{Kind: OperationIssueServiceCredential, RecordID: created.RecordID,
+		Expected: created.Authority.Binding, ServiceRequest: request}
+	first, err := vault.Execute(t.Context(), issue, &sequenceSecrets{values: [][]byte{password}})
+	if err != nil {
+		t.Fatalf("issue first Service Credential: %v", err)
+	}
+	retried, err := vault.Execute(t.Context(), issue, &sequenceSecrets{values: [][]byte{password}})
+	if err != nil {
+		t.Fatalf("retry first Service Credential: %v", err)
+	}
+	if first.RecordID == created.RecordID || retried.RecordID != first.RecordID ||
+		!bytes.Equal(retried.ServiceResponse, first.ServiceResponse) {
+		t.Fatalf("issuance retry changed successor: first=%+v retried=%+v", first, retried)
+	}
+	response, err := instance.ParseResponse(first.ServiceResponse)
+	if err != nil || response.RequestCommitment == [32]byte{} || response.Credential.Generation != 1 {
+		t.Fatalf("first response = %+v / %v", response, err)
+	}
+	if err := publication.Validate(response.Credential, created.ServiceAuthority.Public, binding.Network,
+		now.Add(time.Minute), publication.CapabilityPublish|publication.CapabilityConnect); err != nil {
+		t.Fatal(err)
+	}
+	different := serviceInstanceRequest(t, binding.Network, now.Add(30*time.Minute), now.Add(90*time.Minute))
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential, RecordID: created.RecordID,
+		Expected: created.Authority.Binding, ServiceRequest: different},
+		&sequenceSecrets{values: [][]byte{password}}); err == nil {
+		t.Fatal("stale Authority record issued a different successor")
+	}
+	request2 := serviceInstanceRequest(t, binding.Network, now.Add(time.Hour), now.Add(2*time.Hour))
+	second, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential, RecordID: first.RecordID,
+		Expected: created.Authority.Binding, ServiceRequest: request2}, &sequenceSecrets{values: [][]byte{password}})
+	if err != nil {
+		t.Fatalf("issue successor Service Credential: %v", err)
+	}
+	response2, err := instance.ParseResponse(second.ServiceResponse)
+	if err != nil || response2.Credential.Generation != 2 || response2.Credential.NotBefore != now.Add(time.Hour).Unix() {
+		t.Fatalf("successor response = %+v / %v", response2, err)
+	}
+}
+
+func serviceInstanceRequest(t *testing.T, network [32]byte, notBefore, notAfter time.Time) []byte {
+	t.Helper()
+	root, err := instance.Initialize(instance.InitializeConfig{Root: t.TempDir(), NetworkID: network,
+		NotBefore: notBefore, NotAfter: notAfter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := root.Request()
+	if closeErr := root.Close(); err != nil || closeErr != nil {
+		t.Fatalf("read Service Instance request: %v / %v", err, closeErr)
+	}
+	return request
 }

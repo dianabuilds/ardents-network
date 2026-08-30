@@ -103,16 +103,19 @@ Application data stream.
 
 | Route | Required flags | Result |
 |---|---|---|
+| `create-service-authority` | `--vault-root PATH` plus exact environment, Network, and Authority-root public commitments | Reads a new password and confirmation only from the terminal, generates the Service Authority inside custody, and emits its opaque record ID, public Authority, derived Target, and identity commitment. |
+| `issue-service-credential` | `--vault-root PATH --record ID --request PATH` plus the exact public Service Authority binding | Reads the active-record password only from the terminal, consumes one canonical public host request, and emits the monotonic public Credential response plus the deterministic encrypted successor record ID. An exact retry returns the same response; a different request cannot advance the stale record. |
 | `inspect-envelope` | `--vault-root PATH --envelope PATH` | Validates and prints only canonical public envelope facts as `ardents-custody-inspection-v1`. |
 | `verify-record` | `--vault-root PATH --record ID --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind service|name --id-commitment HEX` | Reads one password from an interactive no-echo terminal, verifies one active encrypted record against exact public commitments, and prints bounded non-secret facts as `ardents-custody-verification-v1`. |
 | `export-recovery-bundle` | Exact vault record, public Authority commitments, and output Bundle path | Reads the record secret only from the terminal, writes a separately passworded Bundle, and test-restores it before success. |
 | `restore-recovery-bundle` | Empty destination Vault, public commitments, Bundle path | Reads the Bundle password from the terminal and writes only an `authority-locked` quarantine record. |
 | `purge-record` | Exact vault record, public commitments, and terminal confirmation | Deletes only the exact verified encrypted record after explicit confirmation while retaining the Authority floor. |
 
-The custody command deliberately exposes no recovery activation, reconciliation
-without a Namespace witness, or Namespace signing route. A restored Name
-Authority remains locked until a separate fresh opaque Namespace witness is
-implemented and verified.
+The custody command deliberately exposes no Service recovery activation,
+reconciliation without a Namespace witness, or Namespace signing route. A
+restored Service Authority remains locked and issuance-unavailable; a restored
+Name Authority remains locked until a separate fresh opaque Namespace witness
+is implemented and verified.
 
 ## `ardents-release-custody`
 

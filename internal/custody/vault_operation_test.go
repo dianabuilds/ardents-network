@@ -42,6 +42,48 @@ func TestVaultCreatesEncryptedRecordAndVerifiesExpectedBinding(t *testing.T) {
 	}
 }
 
+func TestVaultRejectsConcurrentCrossHandleOperationAsBusy(t *testing.T) {
+	root := t.TempDir()
+	creator, err := Open(VaultConfig{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := testAuthorityState()
+	password := []byte("concurrent custody password")
+	created, err := creator.Execute(t.Context(), Operation{Kind: OperationCreateVaultRecord, Authority: state},
+		&sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil || creator.Close() != nil {
+		t.Fatalf("prepare concurrent record: %v", err)
+	}
+	first, err := Open(VaultConfig{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close()
+	second, err := Open(VaultConfig{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+	operation := Operation{Kind: OperationVerifyVaultRecord, RecordID: created.RecordID, Expected: state.Binding}
+	entered, release := make(chan struct{}), make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		_, executeErr := first.Execute(t.Context(), operation,
+			blockingSecret{value: password, entered: entered, release: release})
+		done <- executeErr
+	}()
+	<-entered
+	if _, err := second.Execute(t.Context(), operation, unreadSecrets{}); !errors.Is(err, ErrBusy) {
+		close(release)
+		t.Fatalf("concurrent custody operation error = %v, want busy", err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatalf("first custody operation: %v", err)
+	}
+}
+
 func TestVaultReturnsOneUnlockFailureForWrongSecretAndAuthenticatedCiphertextMutation(t *testing.T) {
 	vault, err := Open(VaultConfig{Root: t.TempDir()})
 	if err != nil {
@@ -396,6 +438,22 @@ func (input *sequenceSecrets) Confirm(context.Context, ConfirmationPrompt) (bool
 }
 
 type unreadSecrets struct{}
+
+type blockingSecret struct {
+	value   []byte
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (input blockingSecret) ReadSecret(context.Context, SecretPrompt) ([]byte, error) {
+	close(input.entered)
+	<-input.release
+	return append([]byte(nil), input.value...), nil
+}
+
+func (blockingSecret) Confirm(context.Context, ConfirmationPrompt) (bool, error) {
+	return false, errors.New("unexpected confirmation")
+}
 
 func (unreadSecrets) ReadSecret(context.Context, SecretPrompt) ([]byte, error) {
 	return nil, errors.New("floor rejection must precede secret read")
