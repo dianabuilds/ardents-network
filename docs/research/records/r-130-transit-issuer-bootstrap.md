@@ -1,7 +1,7 @@
 ---
 id: R-130
 title: How is the purpose-scoped Transit Grant issuer bootstrapped into authenticated State?
-status: active; blocks artifact-native membership acquisition
+status: decided; promoted to ADR-0063
 owner: Product Owner and Codex
 started: 2026-08-30
 reviewed: 2026-08-30
@@ -82,9 +82,17 @@ unpacked enrollment-v3 journey can be called complete.
 
 ## Current disposition
 
-Open Product Owner decision. R-128 and ADR-0062 remain accepted and are not
-reopened: this record only supplies the missing operational owner between the
-purpose-scoped private material and the State-authenticated public profile.
-Until decided, the repository may retain deterministic signer/Endpoint
-behavior evidence, but it must not claim a supported issuer command or a full
-artifact-native membership-acquisition journey.
+The Product Owner accepted candidate 1 on 2026-08-30 with the single
+State-declared Initiator binding. One explicit owner-only issuer-root ceremony
+creates and retains the purpose Grant signer and OHTTP material, publishes only
+the stable Node-signed public profile, and never exposes the Network State root
+key. The exact profile declares one permitted Initiator identity/key; State
+binds that ingress by authenticating the profile under its sole issuer duty.
+
+The runtime plan may name the issuer root and finite local runtime bounds but
+cannot supply a signer, profile, or Initiator. The first accepted State duty
+binds the root's durable budget and ledger. Restart reproduces the same public
+profile and ledger; State succession, withdrawal, expiry, or mismatch ends the
+old duty. Rotation and replacement require a distinct empty root and an
+explicit new State ceremony. ADR-0063 records the durable decision. R-128 and
+ADR-0062 remain accepted and are not reopened.

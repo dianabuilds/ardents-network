@@ -205,13 +205,12 @@ product objective:
 | B6 headless qualification | B5 | Unpacked artifact-native enroll/acquire/start/publish/open/bytes/withdraw/restart-recovery journey without Browser, fixtures, or operator Route facts. |
 
 Implementation status on 2026-08-30: B1 through B5 are implemented and
-covered by ordinary repository gates. B6 is not claimed: R-130 must first
-select the operational owner that creates and retains the purpose signer/OHTTP
-material, publishes its exact profile into authenticated State, and derives
-the permitted Initiator ingress without plan authority. The unpacked journey
-cannot substitute a fixture or raw key/profile input for that decision. The
-transparent-origin Browser Entry defect also remains recorded as a separate
-future security slice and was deliberately not changed here.
+covered by ordinary repository gates. ADR-0063 now selects the owner-only
+issuer-root bootstrap and exact State-bound Initiator ingress needed by B6;
+their supported command/runtime implementation and the unpacked journey remain
+to be completed. The journey cannot substitute a fixture or raw key/profile
+input. The transparent-origin Browser Entry defect also remains recorded as a
+separate future security slice and was deliberately not changed here.
 
 Each wave is independently testable and commit-scoped. Later waves may move
 code exposed by an earlier one, but they may not redefine its authority,

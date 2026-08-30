@@ -599,6 +599,14 @@ network identity, compatibility, eligibility inputs, Role Domains, and freshness
 Its distributors provide identical bytes but do not define their authority.
 _Avoid_: Bootstrap server response, peer list, permanent address list
 
+**Transit Grant Issuer**:
+A State-selected Node duty that uses one finite, purpose-scoped online key to
+issue one-use Transit Grants without possessing Network State authority. Its
+State-bound public profile permits exactly one Initiator ingress, while its
+private root, durable budget, and request reconciliation end with that exact
+duty generation.
+_Avoid_: Network State signer, enrollment registrar, Route planner, Target service
+
 **Node Record**:
 A Node-authenticated, expiring declaration of its key, supported capabilities,
 transports, declared operator family, and finite capacity. Publication makes a

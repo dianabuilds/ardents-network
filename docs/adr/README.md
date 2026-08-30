@@ -62,6 +62,8 @@ Current decisions:
 - [0057 — Simulate H4-4B canonical Name lifecycle](0057-simulate-h4-4b-canonical-name-lifecycle.md)
 - [0058 — Simulate H4-4C deterministic root claims](0058-simulate-h4-4c-root-claims.md)
 - [0061 — Retain the Firefox entry only as compatibility evidence](0061-retain-firefox-entry-as-compatibility-evidence.md)
+- [0062 — Scope online Transit Grant signing away from State authority](0062-scope-online-transit-grant-signing.md)
+- [0063 — Bootstrap each Transit Grant issuer from an owner-only root](0063-bootstrap-transit-issuer-from-owner-root.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
