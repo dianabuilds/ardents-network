@@ -19,7 +19,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture build check e2e format format-check fuzz mod-check package-ubuntu-deb prepare-h4-2-net-01a prepare-h4-5-rendezvous qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-3b-docker qualification-h4-3b-multihost qualification-h4-3b-vps qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment qualification-h4-5-rendezvous qualification-h4-6a-two-endpoints qualification-h4-8-a11 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture build check e2e format format-check fuzz headless-build headless-check headless-e2e mod-check package-ubuntu-deb prepare-h4-2-net-01a prepare-h4-5-rendezvous qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-local-emulator qualification-h4-2-multihost qualification-h4-3b-docker qualification-h4-3b-multihost qualification-h4-3b-vps qualification-h4-4a-firefox qualification-h4-4-signed-firefox qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment qualification-h4-5-rendezvous qualification-h4-6a-two-endpoints qualification-h4-8-a11 quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -27,6 +27,7 @@ define newline
 endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
 PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
+HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check
 
 format:
@@ -44,6 +45,18 @@ unit:
 
 e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
+
+headless-build:
+	go build $(HEADLESS_COMMANDS)
+
+headless-e2e:
+	go test ./internal/endpoint/enrollment -run '^(TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution)$$' -count=1
+	go test ./tests/e2e/endpoint -run '^TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest$$' -count=1
+	go test ./tests/e2e/network-source -run '^TestFiniteSourceCommandsAsBlackBoxProcesses$$' -count=1
+	go test ./tests/e2e/node -run '^TestNativeDutyProcessesUseTheirExactStateAssignments$$' -count=1
+	go test ./tests/e2e/service -run '^TestServiceCommandReadinessTimeoutAndCleanup$$' -count=1
+
+headless-check: headless-build headless-e2e
 
 qualification-h4-1a:
 	sh ./tests/qualification/h4-1a-ubuntu-portable/run-ubuntu.sh -timeout=2m

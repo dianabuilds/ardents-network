@@ -315,6 +315,17 @@ does not mean passed, waived, or unavailable evidence.
 
 ## Profile ownership and validity
 
+`make headless-check` is the bounded local profile for the standalone Network
+product boundary. Its positive command inventory is
+`tests/profiles/headless-commands.txt`: `ardents`, `ardents-node`, and
+`ardents-control`. It builds only those commands, verifies the enrollment-v3
+artifact boundary (including rejection of unknown inventory), and runs one
+bounded process cell for Endpoint enrollment, State Source, Node duty, and the
+headless Service command. It requires no Firefox executable, Browser Entry
+native host, XPI, Desktop asset, Docker, VPS, or release candidate identity.
+The separate Linux alpha-bundle assembler test remains artifact-platform
+evidence and is not a hidden prerequisite of this cross-platform profile.
+
 Every retained test belongs to one primary profile: deterministic Module,
 Adapter/process, affected platform, live, or Qualification. A higher profile proves a distinct
 process, platform, network, evidence-independence, or claim fact unavailable at

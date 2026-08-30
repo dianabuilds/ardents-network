@@ -26,6 +26,14 @@
       "invalid_environment": "process prerequisites unavailable"
     },
     {
+      "id": "headless-network",
+      "state": "active",
+      "make_target": "headless-check",
+      "surface": "headless Network command build, bounded process journey, and enrollment-v3 artifact inventory",
+      "prerequisites": ["local process execution"],
+      "invalid_environment": "headless command build or local process prerequisites unavailable"
+    },
+    {
       "id": "race",
       "state": "active",
       "make_target": "test-race",

@@ -19,7 +19,7 @@ done
 cat > "$static_root/RELEASE" <<'EOF'
 schema=ardents-closed-alpha-enrollment-v3
 cohort=alpha-test
-release=h4-alpha-test-1
+release=usable-alpha-test-1
 platform=linux-amd64
 environment=alpha
 network=alpha-test
@@ -40,7 +40,7 @@ EOF
 
 build() {
   ARDENTS_ALPHA_BUNDLE_COHORT=alpha-test \
-  ARDENTS_ALPHA_BUNDLE_RELEASE=h4-alpha-test-1 \
+  ARDENTS_ALPHA_BUNDLE_RELEASE=usable-alpha-test-1 \
   ARDENTS_ALPHA_BUNDLE_ENDPOINT="$scratch/ardents-linux-amd64" \
   ARDENTS_ALPHA_BUNDLE_CONTROL="$scratch/ardents-control-linux-amd64" \
   ARDENTS_ALPHA_BUNDLE_STATIC_ROOT="$static_root" \
@@ -54,7 +54,13 @@ build "$scratch/second.tar.gz"
 cmp -s "$scratch/first.tar.gz" "$scratch/second.tar.gz"
 
 tar -xzf "$scratch/first.tar.gz" -C "$scratch"
-bundle="$scratch/ardents-alpha-h4-alpha-test-1-linux-amd64"
+bundle="$scratch/ardents-alpha-usable-alpha-test-1-linux-amd64"
+
+if grep -Eq '^browser_entry_(artifact|extension)=' "$bundle/RELEASE" ||
+  tar -tzf "$scratch/first.tar.gz" | grep -Eq '(ardents-browser-entry|\.xpi)$'; then
+  echo 'headless bundle contains a Browser companion' >&2
+  exit 1
+fi
 (
   cd "$bundle"
   sha256sum --strict --check SHA256SUMS
@@ -78,24 +84,24 @@ if ! grep -Fqx 'LC_ALL=C find . -mindepth 1 -maxdepth 1 -type f -printf '\''%f\n
 fi
 
 if [ "$(tar -tzf "$scratch/first.tar.gz")" != "$(printf '%s\n' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/1.root.json' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/1.snapshot.json' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/1.targets.json' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/RELEASE' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/SHA256SUMS' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/ardents-control-linux-amd64' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/ardents-linux-amd64' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/catalog.ac1' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/catalog.pub' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/compatibility.ac1' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/compatibility.pub' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/corpus.pub' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/network.ac1' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/network.pub' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/release.ac1' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/release.pub' \
-  'ardents-alpha-h4-alpha-test-1-linux-amd64/timestamp.json')" ]; then
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/1.root.json' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/1.snapshot.json' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/1.targets.json' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/RELEASE' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/SHA256SUMS' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/ardents-control-linux-amd64' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/ardents-linux-amd64' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/catalog.ac1' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/catalog.pub' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/compatibility.ac1' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/compatibility.pub' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/corpus.pub' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/network.ac1' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/network.pub' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/release.ac1' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/release.pub' \
+  'ardents-alpha-usable-alpha-test-1-linux-amd64/timestamp.json')" ]; then
   echo 'alpha bundle archive inventory changed' >&2
   exit 1
 fi
@@ -103,9 +109,9 @@ fi
 mv "$static_root/1.snapshot.json" "$static_root/2.snapshot.json"
 mv "$static_root/1.targets.json" "$static_root/2.targets.json"
 build "$scratch/successor.tar.gz"
-if tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-h4-alpha-test-1-linux-amd64/1.snapshot.json' ||
-  ! tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-h4-alpha-test-1-linux-amd64/2.snapshot.json' ||
-  ! tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-h4-alpha-test-1-linux-amd64/2.targets.json'; then
+if tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-usable-alpha-test-1-linux-amd64/1.snapshot.json' ||
+  ! tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-usable-alpha-test-1-linux-amd64/2.snapshot.json' ||
+  ! tar -tzf "$scratch/successor.tar.gz" | grep -Fqx 'ardents-alpha-usable-alpha-test-1-linux-amd64/2.targets.json'; then
   echo 'alpha bundle did not retain exactly the selected successor metadata version' >&2
   exit 1
 fi

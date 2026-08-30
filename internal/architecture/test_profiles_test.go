@@ -119,6 +119,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"h4-3b-vps":                      false,
 		"h4-5-rendezvous":                false,
 		"h4-6a-two-endpoints":            false,
+		"headless-network":               false,
 		"process":                        false,
 		"qualification":                  false,
 		"race":                           false,
@@ -161,6 +162,41 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		if !found {
 			t.Errorf("required test profile %q is missing", id)
 		}
+	}
+}
+
+func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T) {
+	root := repositoryRoot(t)
+	commands := strings.Fields(string(readProjectFile(t, root, "tests/profiles/headless-commands.txt")))
+	want := []string{"./cmd/ardents", "./cmd/ardents-node", "./cmd/ardents-control"}
+	if len(commands) != len(want) {
+		t.Fatalf("headless command inventory = %v, want %v", commands, want)
+	}
+	for index := range want {
+		if commands[index] != want[index] {
+			t.Errorf("headless command %d = %q, want %q", index, commands[index], want[index])
+		}
+		if strings.Contains(commands[index], "browser") {
+			t.Errorf("headless command inventory contains Browser Adapter %q", commands[index])
+		}
+	}
+	makefile := string(readProjectFile(t, root, "Makefile"))
+	for _, required := range []string{
+		"HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))",
+		"headless-build:",
+		"go build $(HEADLESS_COMMANDS)",
+		"headless-e2e:",
+		"TestVerifyReturnsV3ControlArtifactOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution",
+		"headless-check: headless-build headless-e2e",
+	} {
+		if !strings.Contains(makefile, required) {
+			t.Errorf("headless Network Make boundary lacks %q", required)
+		}
+	}
+	bundleTest := string(readProjectFile(t, root, "packaging/alpha-bundle/test.sh"))
+	if !strings.Contains(bundleTest, "schema=ardents-closed-alpha-enrollment-v3") ||
+		!strings.Contains(bundleTest, "headless bundle contains a Browser companion") {
+		t.Error("headless bundle test does not prove the enrollment-v3 Browser exclusion")
 	}
 }
 

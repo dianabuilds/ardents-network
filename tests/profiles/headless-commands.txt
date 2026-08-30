@@ -1,0 +1,3 @@
+./cmd/ardents
+./cmd/ardents-node
+./cmd/ardents-control
