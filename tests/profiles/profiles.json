@@ -6,8 +6,8 @@
       "state": "active",
       "make_target": "quick-check",
       "surface": "deterministic-module",
-      "prerequisites": [],
-      "invalid_environment": "not applicable"
+      "prerequisites": ["POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, and hard-link-capable temporary storage"],
+      "invalid_environment": "the developer artifact shell or its required local tools are unavailable"
     },
     {
       "id": "deterministic",
@@ -30,7 +30,7 @@
       "state": "active",
       "make_target": "headless-check",
       "surface": "headless Network command build, bounded process journey, and enrollment-v3 artifact inventory",
-      "prerequisites": ["local process execution", "POSIX shell with tar, gzip, sha256sum, install, and find"],
+      "prerequisites": ["local process execution", "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, find, and hard-link-capable temporary storage"],
       "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
@@ -45,9 +45,9 @@
       "id": "browser-adapter",
       "state": "active",
       "make_target": "browser-check",
-      "surface": "Browser Adapter command build and enrollment-v4 inventory",
-      "prerequisites": [],
-      "invalid_environment": "not applicable"
+      "surface": "Browser Adapter command build, deterministic command archive, and enrollment-v4 inventory",
+      "prerequisites": ["POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, and hard-link-capable temporary storage"],
+      "invalid_environment": "the Browser Adapter artifact shell or its required local tools are unavailable"
     },
     {
       "id": "race",

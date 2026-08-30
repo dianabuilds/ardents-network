@@ -148,7 +148,11 @@ owning implementation slice rather than invented before the Interface exists.
   presentation runs in a separate `ardents-browser` Adapter; Network `Verify`
   rejects enrollment-v4 while the Browser lane requires it; and
   `make headless-check` builds, packs, unpacks, hashes, and byte-compares real
-  host-named Endpoint/control binaries.
+  host-named Endpoint/control binaries. The separate `make browser-check` lane
+  builds the real host-named Browser Adapter/native-host commands, packages the
+  exact bytes into a deterministic Browser-only archive, unpacks and
+  byte-compares them, and separately verifies the enrollment-v4 companion
+  inventory. This is build evidence, not signed-XPI or release qualification.
 - **Implementation measurement (2026-08-30):** the CLI now uses that same
   local interface for `open` and the separate administration socket for
   `publish`/`withdraw`. Deterministic Endpoint/C-2 tests carry bytes and cover

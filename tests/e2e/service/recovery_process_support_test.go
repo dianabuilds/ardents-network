@@ -125,7 +125,12 @@ func buildE2EFixtureCommand(t *testing.T, name string) string {
 		filename += ".exe"
 	}
 	path := filepath.Join(t.TempDir(), filename)
-	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", path, "./tests/e2e/service/fixturecommand/"+name)
+	arguments := []string{"build", "-trimpath", "-buildvcs=false"}
+	if name == "reference-c2" {
+		arguments = append(arguments, "-tags", "browsercompat")
+	}
+	arguments = append(arguments, "-o", path, "./tests/e2e/service/fixturecommand/"+name)
+	command := exec.Command("go", arguments...)
 	command.Dir = root
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build e2e fixture %s: %v\n%s", name, err, output)

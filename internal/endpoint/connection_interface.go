@@ -43,7 +43,7 @@ type ConnectionInterfaceConfig struct {
 	Current func() (ApplicationStateView, error)
 	Entry   ApplicationEntry
 	// Principal is the preconfigured local connection grant principal. A fresh
-	// capability is minted for each browser-demanded Service Connection.
+	// capability is minted for each Application-requested Service Connection.
 	Principal          [32]byte
 	BytesEachDirection uint32
 	Clock              func() time.Time
@@ -221,7 +221,7 @@ func applicationServiceAttachment(authorization []byte, epoch state.ResolutionEp
 	if err != nil || grant.NetworkID != epoch.NetworkID || grant.Digest != epoch.Digest || grant.Epoch != epoch.Number ||
 		grant.TransitRole != route.IntroductionRole || grant.TransitNodeID != introduction || grant.AttachmentID == [32]byte{} ||
 		notAfter.IsZero() || notAfter.After(grant.NotAfter) {
-		return [32]byte{}, errors.New("introduction transit grant does not bind the current browser route")
+		return [32]byte{}, errors.New("introduction transit grant does not bind the current Application route")
 	}
 	return grant.AttachmentID, nil
 }

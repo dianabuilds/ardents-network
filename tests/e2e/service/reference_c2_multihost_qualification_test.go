@@ -402,7 +402,7 @@ func h43BuildLinuxFixture(t *testing.T, destination string) {
 	if !ok {
 		t.Fatal("cannot locate repository root")
 	}
-	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", destination, "./tests/e2e/service/fixturecommand/reference-c2")
+	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-tags", "browsercompat", "-o", destination, "./tests/e2e/service/fixturecommand/reference-c2")
 	command.Dir = filepath.Clean(filepath.Join(filepath.Dir(current), "..", "..", ".."))
 	command.Env = append(os.Environ(), "CGO_ENABLED=0", "GOARCH=amd64", "GOOS=linux", "GOTOOLCHAIN=local")
 	if output, err := command.CombinedOutput(); err != nil {

@@ -53,7 +53,11 @@ substitute for that missing native live-network profile.
 - `make qualification-h4-8-a11 ...`: the exact six-cell A11 campaign; all
   immutable release, topology, image, port, and external-evidence inputs are
   mandatory.
-- `make quick-check`: architecture, vet, unit, build, and module tidiness.
+- `make quick-check`: architecture, vet, unit, build, module tidiness, the
+  Browser Adapter command/artifact boundary, and retained Browser compatibility
+  compilation. Its artifact cells require the POSIX shell/coreutils listed in
+  the profile registry; their absence is an invalid developer environment, not
+  a passing skip or a product failure.
 - `make check`: unit, e2e, race, build, formatting, Staticcheck, and
   vulnerability checks; fast independent checks run concurrently, then the
   wall-clock e2e suite and race suite run separately. The checked race recipe

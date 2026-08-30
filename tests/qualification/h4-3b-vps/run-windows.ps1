@@ -75,7 +75,12 @@ try {
             @{ Output = 'ardents-node-linux-amd64'; Package = './cmd/ardents-node' },
             @{ Output = 'reference-c2-linux-amd64'; Package = './tests/e2e/service/fixturecommand/reference-c2' }
         )) {
-            & go build -trimpath -buildvcs=false -o (Join-Path $artifacts $entry.Output) $entry.Package
+            if ($entry.Package -eq './tests/e2e/service/fixturecommand/reference-c2') {
+                & go build -trimpath -buildvcs=false -tags browsercompat -o (Join-Path $artifacts $entry.Output) $entry.Package
+            }
+            else {
+                & go build -trimpath -buildvcs=false -o (Join-Path $artifacts $entry.Output) $entry.Package
+            }
             if ($LASTEXITCODE -ne 0) {
                 throw "build failed for $($entry.Package)"
             }
@@ -88,7 +93,7 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw 'build failed for H4-6A control test binary'
         }
-        & go test -c -trimpath -o (Join-Path $artifacts 'h4-3b-http-limits.test') ./internal/endpoint/reference
+        & go test -c -trimpath -o (Join-Path $artifacts 'h4-3b-http-limits.test') ./internal/browserreference
         if ($LASTEXITCODE -ne 0) {
             throw 'build failed for H4-3B HTTP limit test binary'
         }

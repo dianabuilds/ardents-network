@@ -38,6 +38,8 @@ HEADLESS_ENDPOINT_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-$(HEADLESS_PLATF
 HEADLESS_NODE_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-node-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CONTROL_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-control-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 BROWSER_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/browser-artifacts/$(HEADLESS_PLATFORM)
+BROWSER_ADAPTER_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
+BROWSER_ENTRY_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-entry-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check browser-check browser-compatibility-evidence
 
 ifeq ($(OS),Windows_NT)
@@ -74,6 +76,7 @@ browser-build:
 	$(foreach command,$(BROWSER_COMMANDS),go build -trimpath -o "$(BROWSER_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
 browser-check: browser-build
+	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/browser-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(BROWSER_ADAPTER_ARTIFACT))" "$(abspath $(BROWSER_ENTRY_ARTIFACT))"
 	go test ./internal/endpoint/enrollment -run '^TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata$$' -count=1
 	go test ./cmd/ardents-browser-entry -run '^TestParticipantInstallAuthenticatesARealV4Bundle$$' -count=1
 

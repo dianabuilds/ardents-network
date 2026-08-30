@@ -210,6 +210,31 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 	}
 }
 
+func TestBrowserAdapterProfileHasClosedCommandAndArtifactBoundary(t *testing.T) {
+	root := repositoryRoot(t)
+	commands := strings.Fields(string(readProjectFile(t, root, "tests/profiles/browser-commands.txt")))
+	want := []string{"./cmd/ardents-browser", "./cmd/ardents-browser-entry"}
+	if len(commands) != len(want) {
+		t.Fatalf("Browser command inventory = %v, want %v", commands, want)
+	}
+	for index := range want {
+		if commands[index] != want[index] {
+			t.Errorf("Browser command %d = %q, want %q", index, commands[index], want[index])
+		}
+	}
+	makefile := string(readProjectFile(t, root, "Makefile"))
+	for _, required := range []string{
+		"browser-check: browser-build",
+		"packaging/browser-bundle/test.sh",
+		"$(foreach command,$(BROWSER_COMMANDS)",
+		"$(notdir $(command))-$(HEADLESS_PLATFORM)",
+	} {
+		if !strings.Contains(makefile, required) {
+			t.Errorf("Browser Adapter Make boundary lacks %q", required)
+		}
+	}
+}
+
 func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, commandPath := range []string{"./cmd/ardents", "./cmd/ardents-control"} {
