@@ -6,10 +6,10 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -63,13 +63,13 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	capability, err := owner.Admit(principal, broker.Administration)
+	administration, err := owner.OpenServiceAdministration(endpointapi.ServiceAdministrationConfig{
+		Principal: principal, Clock: func() time.Time { return now },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	started, err := owner.StartPublisher(context.Background(), endpointapi.PublisherStartRequest{
-		Principal: principal, Capability: capability, At: now,
-	})
+	started, err := administration.Publish(context.Background())
 	if err != nil || started.Class != "published" {
 		t.Fatalf("StartPublisher = %+v, %v", started, err)
 	}
@@ -80,26 +80,22 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	if _, err := binding.Sign(nil, []byte("live-consumed-binding"), crypto.Hash(0)); err != nil {
 		t.Fatalf("live consumed binding unavailable before withdrawal: %v", err)
 	}
-	retryCapability, err := owner.Admit(principal, broker.Administration)
-	if err != nil {
-		t.Fatal(err)
+	forbiddenRoute, forbiddenPeer := net.Pipe()
+	defer forbiddenRoute.Close()
+	defer forbiddenPeer.Close()
+	if result, acceptErr := owner.AcceptPublisher(context.Background(), endpointapi.InboundConnectionRequest{
+		Route: forbiddenRoute, At: now,
+	}); acceptErr == nil || result.Class != "local authorization or policy denial" {
+		t.Fatalf("Endpoint-owned Publisher accepted a caller-selected Route: %+v, %v", result, acceptErr)
 	}
-	if repeated, retryErr := owner.StartPublisher(context.Background(), endpointapi.PublisherStartRequest{
-		Principal: principal, Capability: retryCapability, At: now,
-	}); retryErr == nil || repeated.Class == "published" {
+	if repeated, retryErr := administration.Publish(context.Background()); retryErr == nil || repeated.Class == "published" {
 		t.Fatalf("repeated Publisher start = %+v, %v", repeated, retryErr)
 	}
 	if _, err := binding.Sign(nil, []byte("binding-after-retry"), crypto.Hash(0)); err != nil {
 		t.Fatalf("rejected retry withdrew the live binding: %v", err)
 	}
 
-	withdrawCapability, err := owner.Admit(principal, broker.Administration)
-	if err != nil {
-		t.Fatal(err)
-	}
-	withdrawn, err := owner.Withdraw(context.Background(), endpointapi.WithdrawalRequest{
-		Principal: principal, Capability: withdrawCapability, At: now,
-	})
+	withdrawn, err := administration.Withdraw(context.Background())
 	if err != nil || withdrawn.Class != "unpublished" || withdrawn.Generation != credential.Generation {
 		t.Fatalf("Withdraw = %+v, %v", withdrawn, err)
 	}
@@ -137,13 +133,13 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := owner.Admit(principal, broker.Administration)
+	administration, err := owner.OpenServiceAdministration(endpointapi.ServiceAdministrationConfig{
+		Principal: principal, Clock: func() time.Time { return now },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if started, startErr := owner.StartPublisher(context.Background(), endpointapi.PublisherStartRequest{
-		Principal: principal, Capability: capability, At: now,
-	}); startErr == nil || started.Class == "published" {
+	if started, startErr := administration.Publish(context.Background()); startErr == nil || started.Class == "published" {
 		t.Fatalf("unready Publisher start = %+v, %v", started, startErr)
 	}
 	if _, err := binding.Sign(nil, []byte("failed-generation"), crypto.Hash(0)); !errors.Is(err, instance.ErrUnavailable) {

@@ -338,6 +338,22 @@ func (endpoint *endpoint) StartPublisher(ctx context.Context, input PublisherSta
 	return endpoint.startPublisher(ctx, input)
 }
 
+// AcceptPublisher hands one local Publisher Application stream to the
+// Endpoint-owned live Introduction session. The caller cannot supply a Route
+// or recovery attachment.
+func (endpoint *endpoint) AcceptPublisher(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
+	if endpoint == nil || ctx == nil {
+		return denied("local Publisher acceptance is incomplete")
+	}
+	endpoint.publisherMu.Lock()
+	session := endpoint.publisherSession
+	endpoint.publisherMu.Unlock()
+	if session == nil {
+		return failed("service unavailable", "Publisher Introduction session is unavailable", errors.New("publisher is not started"))
+	}
+	return session.Accept(ctx, input)
+}
+
 // Withdraw consumes one Administration capability before withdrawing the
 // current Instance publication.
 func (endpoint *endpoint) Withdraw(ctx context.Context, input WithdrawalRequest) (WithdrawalResult, error) {

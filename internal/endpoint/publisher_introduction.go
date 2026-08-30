@@ -153,6 +153,7 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 	}
 	session.used = true
 	slot := session.slot
+	current := session.lease.Current()
 	session.mu.Unlock()
 	deadline := session.profile.NotAfter
 	if contextDeadline, ok := ctx.Deadline(); ok && contextDeadline.Before(deadline) {
@@ -176,7 +177,7 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 	}
 	instruction, err := publication.DecodeIntroductionInstruction(plaintext)
 	if err != nil || instruction.AttachmentID == session.profile.SlotAttachmentID ||
-		session.lease.Current().ValidateIntroductionInstruction(instruction) != nil {
+		current.ValidateIntroductionInstruction(instruction) != nil {
 		session.Close()
 		return nil, errors.Join(err, errors.New("publisher Introduction does not match the current publication"))
 	}
