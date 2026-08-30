@@ -17,8 +17,11 @@ configuration format or an authority source.
 |---|---|
 | `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH` | Accept one complete authenticated offline Network State generation. It emits one `ardents-state-event-v1` `generation-accepted` JSON event. |
 | `refresh-sources --state-root PATH --source-plan PATH [--once] [--resume]` | Run one selected Direct-Origin Source wave, or wait for the plan-owned `ardents-source-plan-v1` input. It emits an `ardents-source-event-v1` `source-wave-accepted` event after acceptance. |
-| `endpoint run <endpoint-plan.json>` | Run one bounded local Endpoint process. The plan remains Endpoint-owned and temporary; it is not a supported service-management format. |
-| `endpoint alpha-browser <alpha-browser-runtime.json>` | Retain the optional named-alpha Firefox compatibility runtime from local State, Entry, and corpus owners. It is not a headless-product dependency or a qualified participant Browser Entry. Its closed input contains local roots, pinned control keys, local Endpoint broker values, and optionally the existing bounded State Source plan needed to refresh that same root; it rejects a Target, Descriptor, Gateway, Node endpoint, Grant, certificate, or browser URL. The runtime, not a competing `refresh-sources` process, owns the State root while it is live. It publishes only the fixed compatibility state expected by the separately installed native host and withdraws it on stop. |
+| `endpoint run <endpoint-plan.json>` | Run one bounded lower-level Endpoint process. The plan remains Endpoint-owned and temporary; it is not a supported service-management format. |
+| `endpoint headless <endpoint-plan.json>` | Run the headless Endpoint from its accepted State, Entry, acquisition-state, Service-publication, and local-socket owners. It exposes only the Service-Link Connection Interface and the separately capability-bound Service Administration socket; Browser presentation is absent. Operational issuer bootstrap remains blocked by R-130. |
+| `endpoint open <application-socket> <service-link> <input-file> <output-file>` | Open one Service Link through the local Application Interface, half-close after streaming the exact input bytes, and create one new output file from returned bytes. The command receives no State, Entry, Grant, Target, or Route input. |
+| `endpoint publish <administration-socket>` | Request publication through the exact local one-use Service Administration capability and render its bounded receipt. |
+| `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
 | `endpoint enrollment-check <alpha-enrollment.json>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
 | `endpoint enroll <alpha-enrollment.json>` | Run the explicit Ubuntu Portable enrollment/start path after pin and Release Decision verification. |
 | `endpoint enroll-installed <package-enrollment.json>` | Run the explicit Ubuntu Installed enrollment/start path for one root-owned package artifact and versioned static enrollment root. |
@@ -34,6 +37,16 @@ configuration format or an authority source.
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
 Module diagnostics, not a capacity or hosting claim.
+
+## `ardents-browser`
+
+`ardents-browser run <browser-adapter.json>` runs the optional Browser Adapter
+from only an Endpoint Application socket and a Browser-owned state path. It
+owns HTTP/Firefox presentation and Browser Entry publication. It receives no
+Network State, Entry, Target, Route, issuer, custody, or Service Administration
+authority, and stopping or replacing it does not stop the Endpoint. The known
+transparent-origin Browser Entry defect remains a separate security dependency
+and is not repaired or qualified by this command.
 
 ## `ardents-node`
 

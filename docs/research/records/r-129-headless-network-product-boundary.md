@@ -142,6 +142,31 @@ owning implementation slice rather than invented before the Interface exists.
   than a repository split for the current two-member collaboration model; this
   assumption is rejected if independent release maintenance becomes
   unbounded.
+- **Implementation measurement (2026-08-30):** the maintained Endpoint now
+  exposes a Service-Link-only local Connection Interface; `ardents` and
+  `ardents-control` have Browser-free transitive dependency gates; Browser
+  presentation runs in a separate `ardents-browser` Adapter; Network `Verify`
+  rejects enrollment-v4 while the Browser lane requires it; and
+  `make headless-check` builds, packs, unpacks, hashes, and byte-compares real
+  host-named Endpoint/control binaries.
+- **Implementation measurement (2026-08-30):** the CLI now uses that same
+  local interface for `open` and the separate administration socket for
+  `publish`/`withdraw`. Deterministic Endpoint/C-2 tests carry bytes and cover
+  issuer budget, idempotency, fixed outcomes, and at-most-once restart phases.
+- **Blocking fact (2026-08-30):** no non-test process owns
+  `credential.NewIssuer`. Its raw signer key/static Initiator input and
+  profile-before-State bootstrap cycle require the R-130 Product Owner
+  decision. Consequently B6 and C0 remain open; composing a fixture-only
+  artifact test would not satisfy the evaluation criteria.
+
+### Planning-label disposition
+
+| Material | Disposition | Rule |
+|---|---|---|
+| Historical qualification schemas, environment variables, directories, and Make entrypoints containing H4/RC identities | **Preserve** | They identify immutable evidence and are never imported into the headless product/runtime schema. Heavy qualification remains deferred until final freeze. |
+| `h4-5-rendezvous-alpha-v1` resource profile | **Generalize** | Current writers emit `ardents-rendezvous-dedicated-host-v1`; the H4 identity remains read-only compatibility for already pinned input and receives no new writer. |
+| Fixed RC1/RC2 assembly commands and candidate identities | **Retire** | ADR-0059 removed current assembly routes. Reference evidence remains immutable and cannot seed a successor architecture or transfer qualification. |
+| H4 as a runtime/domain/package/schema boundary | **Retire** | H4 remains roadmap provenance only. New Application, enrollment, artifact, and local-interface schemas use purpose-owned identities. |
 
 ## Options
 

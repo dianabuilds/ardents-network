@@ -1,6 +1,7 @@
 # Transit Grant acquisition
 
-Status: **accepted contract; signer and Endpoint acquisition lifecycle implemented.**
+Status: **accepted contract; signer module and Endpoint acquisition lifecycle
+implemented; operational issuer bootstrap remains open under R-130.**
 This document owns the purpose-scoped signer, fixed encrypted outcome, durable
 issuer budget/idempotency, and Endpoint at-most-once acquisition lifecycle
 selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).
@@ -143,8 +144,10 @@ fallback.
    receiving Node verification.
 4. Endpoint pending/reconcile/present/burn state is implemented; terminal
    Application Interface diagnostics remain part of the headless composition.
-5. Compose that owner into the headless publish/open/withdraw journey before
-   artifact-native qualification.
+5. Resolve R-130's private-material/profile bootstrap and Initiator-ingress
+   owner, then compose that owner into the headless
+   publish/open/withdraw journey before artifact-native qualification. The
+   maintained test-only issuer construction is not a supported process owner.
 
 Ordinary deterministic/process gates are required during implementation. VPS,
 soak, hostile-load, platform-matrix, Browser, and release qualification remain
