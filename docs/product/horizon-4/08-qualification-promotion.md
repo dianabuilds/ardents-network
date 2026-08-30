@@ -1,12 +1,14 @@
 # H4-8 — Integration, qualification, and release closure
 
-Status: **historical RC2 bounded functional-alpha qualification. It is not
-qualification of the post-refactor baseline or Public Beta.**
+Status: **historical split-candidate evidence. RC1 has A1-A10; RC2 has a
+separate control run and A11 campaign. No historical candidate has aggregate
+A1-A12, and none qualifies the post-refactor baseline or Public Beta.**
 
 ## Decision
 
-H4-8 is the final integration and closure epic for one explicitly selected H4
-release profile. It does four connected jobs:
+H4-8 names planning work, not a runtime component or release-profile identity.
+For one explicitly selected release profile, the work does four connected
+jobs:
 
 1. test the complete User-to-Service path, including real multi-host alpha
    operation and selected long-running/hostile simulations;
@@ -18,10 +20,11 @@ release profile. It does four connected jobs:
    while superseded experiments, stage material, compatibility paths, fixtures,
    and process documents have either a named remaining purpose or are retired.
 
-It is not a final smoke-test bucket into which unfinished H4-1 through H4-7
-work disappears. When integration exposes a missing product contract or an
-unselected mechanism, that defect returns to its owning epic/research question;
-H4-8 records the integration evidence and verifies the repair.
+It is not a final smoke-test bucket into which unfinished work disappears. When
+integration exposes a missing product contract or an unselected mechanism,
+that defect returns to its owning product contract, research question, or
+module; the planning ledger records the integration evidence and verifies the
+repair.
 
 ## Selected release profile
 
@@ -38,16 +41,19 @@ update safely. A more ambitious transport, browser, Contributor, Namespace, or
 protected-application profile is another qualification target, not an implicit
 extension of a passing result.
 
-### Historical H4-alpha-1 — bounded functional-alpha profile
+### Historical alpha-1 split-candidate evidence
 
-The historical endpoint artifact candidate is immutable `h4-alpha-1-rc-2` at
-source revision `2c18bdf92f11f84075915576f595202f48eb05bc`; its complete identity and public
-custody companions are recorded in the
-[H4-alpha-1 bounded release profile](08b-alpha-1-release-profile.md). It
-narrows the existing selected directions into one reproducible qualification
-target. On 2026-08-28 A1-A10 passed and the immutable Ubuntu prerelease was
-published. A11 subsequently accepted all six soak/fault cells and A12 closed
-the profile. This is not Public Beta or broader independent-operation closure.
+The historical evidence belongs to two immutable candidates and must not be
+aggregated:
+
+| Candidate | Exact identity | Valid evidence boundary |
+|---|---|---|
+| RC1 | source `70bf425eec937edcc22e8f0534db992aa2002a16`; Endpoint `33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1`; control `d69b4c5d5f6fae76cbeacfb6acee8abaec9b6cbb56afd339982ea6d55ef9449c`; archive `e7ff0b26257978fd14bc3583c5de7d36eb7626bac7b43586bcb9442c53f7dba7`; pin `8ed0fd25c60a6988fcc8938baf86547c7c646744f57fb0c39186f184d13afefd` | A1-A10; the complete RC1 identity and custody companions are recorded in the [historical bounded release profile](08b-alpha-1-release-profile.md). |
+| RC2 | source `2c18bdf92f11f84075915576f595202f48eb05bc`; Endpoint `b73060105aaed09ed91d77bd560f5a0c7085c5caad41fe0dbea861cdda398e9c`; control `8999004b1074f7c87dcdea004ce46e3ecadc436f3b7364f446731e6b08ccae49`; archive `22acb89ac7abdebf197b8177e9fd84397c0e21316d2ba26991c6e37f25e90d44`; pin `1e90db9800efd903e0e0ca58a3f2f54acf4c7c6414df3e8b7c9ab825e0fa2c60` | separate two-fresh-Endpoint control run with no cached repeat, plus accepted A11 campaign evidence. |
+
+A12 retained closure and harness dispositions but supplied no executable-
+candidate qualification. Its former aggregate conclusion is withdrawn. This
+evidence is neither Public Beta nor broader independent-operation closure.
 
 | Boundary | Candidate selection | Evidence gate |
 |---|---|---|
@@ -58,10 +64,10 @@ the profile. This is not Public Beta or broader independent-operation closure.
 | Control | Enrollment-pinned ACA1 catalog and independently verified Release, Network, and Compatibility components. ADR-0038 excludes H4-4 corpus from v1; `corpus.pub` is only a manifest-pinned authority companion. | For the H4-1/H4-2 functional-alpha input gate, two fresh enrollment-pinned standalone inspection roots plus one cached repeat accept the same identities. This does not replace H4-6A's broader two-fresh-Endpoint Done condition. |
 
 The concrete Ubuntu artifact/contact, exact two-host topology, and selected
-browser/version exist in A1-A10; A11/A12 are accepted for RC2. This evidence
-is retained for its immutable candidate only. The post-refactor baseline must
-select a new candidate before H4-8 resumes. Every independent/Public Beta gate
-remains unmet rather than becoming a passing substitute.
+browser/version in A1-A10 belong to RC1. RC2's A11 and separate control result
+do not establish those cells for RC2. The post-refactor baseline must select a
+new candidate before formal qualification begins. Every independent/Public
+Beta gate remains unmet rather than becoming a passing substitute.
 
 ## Delivery slices
 
@@ -182,13 +188,12 @@ the independently evidenced promotion gates above are also met.
 - Fabricating independent operators, auditors, builders, custodians, or
   external security review when they do not exist.
 
-## Open Product Owner selections
+## Current Product Owner selection and remaining freeze inputs
 
-- Exact build/revision, live topology, resource ceilings, Reference workload,
-  and user-visible claim text for the already selected Ubuntu Portable,
-  TCP/TLS-only, Target-Link/loopback first-alpha direction once H4-1–H4-3 code
-  exists.
-- Which live and soak scenarios become active first, with their topology, load,
-  duration, resource, and fault contracts.
-- The closure-inventory scope and the release decision authority for the first
-  alpha handoff.
+The Product Owner selected remediation toward one standalone headless Network
+candidate before expensive qualification. Browser and UI products are optional
+Adapters and add no Network authority. The exact final source/build digest,
+live topology, resource ceilings, Reference workload, claims/non-claims, and
+active live/soak cells are fixed only after known remediation and
+Network/Application separation complete. That final freeze, not either
+historical RC, activates formal qualification.

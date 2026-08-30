@@ -1,26 +1,39 @@
 # H4-alpha-1 readiness matrix
 
-Status: **historical evidence: A1-A12 were green as of 2026-08-28 for
-immutable `h4-alpha-1-rc-2`. It does not qualify the post-refactor baseline or
-authorize a Public Beta claim.**
+Status: **historical split-candidate evidence ledger. RC1 has A1-A10; RC2 has
+a separate two-fresh-Endpoint control result and accepted A11 campaign
+evidence. No immutable candidate has A1-A12. This ledger does not qualify the
+post-refactor baseline or authorize a Public Beta claim.**
 
 ## Candidate identity and claim
 
-| Field | Value |
-|---|---|
-| Source revision | `70bf425eec937edcc22e8f0534db992aa2002a16` |
-| Endpoint profile | Ubuntu LTS `x86-64`, unprivileged Portable, explicit Alpha Enrollment Pin |
-| Release-gating Carrier | State-selected TCP/TLS v1; QUIC v1 is maintained separately and cannot be used as a fallback |
-| Service workload | H4-3B application-transparent HTTP/1.1: POST body/header preservation, cookie/redirect follow-up, chunked response, withdrawal, Publisher Application reset, and Publisher Endpoint loss |
-| Destination path | One explicit Target Link through one loopback Browser Adapter origin; no participant Browser Entry or public naming claim |
-| Alpha control | enrollment-pinned H4-6A catalog with independently verified Release, Network, and Compatibility components; the manifest separately pins the corpus-authority companion but this candidate does not claim a signed-corpus acceptance run |
+| Field | RC1 | RC2 |
+|---|---|---|
+| Historical release identity | `h4-alpha-1-rc-1` | `h4-alpha-1-rc-2` |
+| Source revision | `70bf425eec937edcc22e8f0534db992aa2002a16` | `2c18bdf92f11f84075915576f595202f48eb05bc` |
+| Endpoint SHA-256 | `33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1` | `b73060105aaed09ed91d77bd560f5a0c7085c5caad41fe0dbea861cdda398e9c` |
+| Control SHA-256 | `d69b4c5d5f6fae76cbeacfb6acee8abaec9b6cbb56afd339982ea6d55ef9449c` | `8999004b1074f7c87dcdea004ce46e3ecadc436f3b7364f446731e6b08ccae49` |
+| Archive SHA-256 | `e7ff0b26257978fd14bc3583c5de7d36eb7626bac7b43586bcb9442c53f7dba7` | `22acb89ac7abdebf197b8177e9fd84397c0e21316d2ba26991c6e37f25e90d44` |
+| Manifest / enrollment pin | `8ed0fd25c60a6988fcc8938baf86547c7c646744f57fb0c39186f184d13afefd` | `1e90db9800efd903e0e0ca58a3f2f54acf4c7c6414df3e8b7c9ab825e0fa2c60` |
+| Valid evidence boundary | A1-A10, including fresh/cached/fresh control inspection | separate two-fresh-Endpoint control run with no cached repeat, plus A11 |
 
-The candidate may establish only a bounded project-operated alpha journey. It
+Both candidates used the bounded Ubuntu LTS `x86-64` Portable profile,
+State-selected TCP/TLS v1 release path, explicit Target Link, and
+application-transparent HTTP/1.1 workload. QUIC remained a separately labelled
+compatible profile, never a fallback. The control bundle verified separate
+Release, Network, and Compatibility components; it made no signed-corpus,
+participant Browser Entry, or public naming claim.
+
+Either candidate may establish only a bounded project-operated alpha journey. It
 does not establish independent operation, capacity, availability, censorship
 resistance, Application-level privacy, public DNS/HTTPS, public Namespace, or
 Public Beta.
 
 ## Readiness cells
+
+Rows A1-A10 below apply to RC1 only. A11 applies to RC2 under the separately
+recorded candidate and harness identities. A12 records closure/disposition work
+and supplies no executable-candidate qualification.
 
 Every active row has a checked entry point. A required unavailable environment
 is invalid, not a passing skip. An inactive row names the missing decision or
@@ -38,10 +51,10 @@ input that prevents it from becoming an executable gate.
 | A8 | Full H4-3B two-host journey: Publisher and User endpoints on distinct hosts, with exact Target, dynamic workload, withdrawal and one declared loss case | `make qualification-h4-3b-multihost` and the topology in `tests/qualification/h4-3b-multihost/README.md` | Passed on 2026-08-27 at `70bf425eec937edcc22e8f0534db992aa2002a16`: Windows User side and project Ubuntu VPS Publisher side completed normal dynamic HTTP, withdrawal, Publisher Application reset, and Publisher Endpoint loss. Each cell retained its stage/config digest, local Windows and remote Docker host envelope, and runner-owned cleanup. Retained external evidence: `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a8-70bf425e.stdout.log`; exit receipt `h4-alpha-1-a8-70bf425e.exitcode` is `0`. It remains a project-operated two-host tracer, not independent operation, capacity, or availability evidence. |
 | A9 | Selected browser/platform: browser observes the dynamic workload and failure state at the candidate's loopback origin | Windows + Firefox `154.0.1`, clean-profile runner | Passed on 2026-08-27 at `70bf425eec937edcc22e8f0534db992aa2002a16`: Firefox `154.0.1` in a temporary clean profile performed the dynamic C-2 browser flow; the runner then completed the no-Firefox process leg. Retained external evidence: `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a9-70bf425e.stdout.log`; exit receipt `h4-alpha-1-a9-70bf425e.exitcode` is `0`. This is browser observation only: it does not claim a Windows H4-1 lifecycle, participant Browser Entry, DNS/DoH protection, or general browser isolation. |
 | A10 | Carrier boundary: selected TCP/TLS path retains C-2 behavior and no fallback; separate QUIC evidence remains labelled as a distinct compatible profile | `make qualification-h4-2-local-emulator` and `make qualification-h4-2-multihost` with the exact candidate path and expected digest | Passed. The local emulator passed on 2026-08-27, including TCP/TLS and separately labelled QUIC C-2, both-direction no-fallback, and held-route/Rendezvous-loss behavior. Evidence is `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a10-local-70bf425e.stdout.log`, exit `0`, SHA-256 `309c86073ce29bed4afde0aea0eec5c27fd94b8b846b39c0effc547cc7c7b99e`. On 2026-08-28 the exact Endpoint byte `33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1` and product Node byte `3e1120a2dffb32b12d90fd3f6be9bc3ce040f9f1a237179107c8eaec86696711` ran on project Ubuntu `24.04.3`, Linux `6.8.0-134-generic`, x86-64, 1 vCPU, 1 GiB. Signed State digest `4e0368f80a3d1542ca6f8fdc932b15089da8ef75e3d8f6bd7094c494e5b91f0e` supplied one explicit TCP/TLS v1 Rendezvous and no alternate Carrier. Product Initiator/Responder/Rendezvous processes all reported TCP/TLS at READY and owned both authenticated Carrier legs while two exact-candidate Endpoint processes retained matching 8 MiB Application bytes, clean terminals, one Route generation, and zero recovery. Retained product-Route evidence is `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-a10-exact-product-route-70bf425e.stdout.log`, exit `0`, SHA-256 `08bc3796d99d4c318e21ba4aa82f8d8aa4343e3f1ffded31184ac37611757df1`; remote cleanup was verified. The separate Node/fault record remains `h4-alpha-1-a10-multihost-70bf425e-exact-candidate.stdout.log`, exit `0`, SHA-256 `feae309c045b589085afdd3e88944d224808c13e5df4ded26efc0da3149a5a48`. Browser Entry and public naming were not configured. This is project-controlled functional evidence, not capacity, availability, hostile-network, or independent-operator evidence. |
-| A11 | Soak and fault campaign: declared duration, workload, observer, resource ceilings, state/control expiry and crash/loss cases | exact campaign runner and retained observations | Accepted on 2026-08-28: `h4-alpha-1-rc-2-h4-8-a11-attempt-14` completed 6/6 cells and all 10 invocations in 2,462,217 ms, under the 125-minute campaign deadline. Windows plus Ubuntu/Docker observers retained each attempt; the remote container limit was 1 vCPU, 1 GiB, and 128 PIDs. Normal soak ran 1,800 paced cycles; Application, Endpoint, Carrier, product Node, and deterministic expiry cells passed. Evidence: `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-rc-2-h4-8-a11-attempt-14\campaign-receipt.json`. |
-| A12 | Release closure: owned code/docs, findings, dispositions, retained raw evidence, and participant-visible limitation text | H4-8D closure inventory | Closed on 2026-08-29: RC2 release identity is unchanged; A11 harness corrections are separately committed and recorded by the accepted receipt. Failed attempt 13 is retained as a parser-defect disposition, not erased. The current product/research briefs name the accepted A11 evidence and retain all non-alpha limitations. |
+| A11 | Soak and fault campaign: declared duration, workload, observer, resource ceilings, state/control expiry and crash/loss cases | exact campaign runner and retained observations | Accepted for RC2 on 2026-08-28: `h4-alpha-1-rc-2-h4-8-a11-attempt-14` completed 6/6 cells and all 10 invocations in 2,462,217 ms, under the 125-minute campaign deadline. Windows plus Ubuntu/Docker observers retained each attempt; the remote container limit was 1 vCPU, 1 GiB, and 128 PIDs. Normal soak ran 1,800 paced cycles; Application, Endpoint, Carrier, product Node, and deterministic expiry cells passed. Remote normal/fault cells ran from harness revision `a7147b04c5e4532b189fc319c96b4791baf48c4b`; the observed Node SHA-256 was `ca4830c6f805efe03fe423d652043ddca3b75f318d23021f7f75d1efa2567ae7`. The exact RC2 Endpoint/control bundle was directly exercised by the expiry-boundaries cell. This does not establish RC2 A1-A10. Evidence: `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-rc-2-h4-8-a11-attempt-14\campaign-receipt.json`. |
+| A12 | Release closure: owned code/docs, findings, dispositions, retained raw evidence, and participant-visible limitation text | historical closure inventory | The closure record and failed-attempt dispositions are retained. Failed attempt 13 remains a parser-defect disposition rather than being erased. The former aggregate conclusion that RC2 had A1-A12 is withdrawn; A12 supplies no missing candidate qualification evidence. |
 
-## A5 exact enrolled-control entry point
+## RC1 A5 exact enrolled-control entry point
 
 The successful observation used the manifested control companion and exact
 enrolled artifact. The first and second commands share `control-a` to prove a
@@ -72,7 +85,7 @@ Those two paths were absent before the retained run. A later repetition must
 choose two new absent owner-controlled paths; it must not delete an earlier
 inspection root merely to manufacture a fresh result.
 
-## A4/A5 retained execution evidence
+## RC1 A4/A5 retained execution evidence
 
 The following files are retained outside Git under
 `C:\Users\vitek\Ardents-Release\evidence` and contain no private key or
@@ -102,12 +115,11 @@ erases an earlier failure.
 
 ## Promotion rule
 
-The Product Owner can accept only a bounded functional alpha after A1–A10 are
-green for one immutable candidate, every observed failure has a disposition,
-and the candidate's claim text names the surviving limits. That condition is
-met for immutable `h4-alpha-1-rc-2`. A11 and A12 are now separately accepted;
-this closes only the selected functional-alpha profile. A9 cannot be substituted
-by a local Go HTTP client, and no result authorizes a Public Beta claim.
+The A1-A10 bounded-alpha condition was met for RC1 only. A11 was not run for
+RC1. RC2's A11 campaign and separate two-fresh-Endpoint control run do not
+establish RC2 A1-A10; the latter has no cached repeat and is not matrix cell A5.
+Neither historical candidate has A1-A12. A9 cannot be substituted by a local
+Go HTTP client, and no result authorizes a Public Beta claim.
 If a candidate byte, platform, Carrier, control input, topology, or workload
 changes, the affected cells become pending again.
 

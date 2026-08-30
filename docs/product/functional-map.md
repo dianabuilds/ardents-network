@@ -22,13 +22,15 @@ Lab or the next code change.
 
 ## Current implementation boundary
 
-Carrier Lab and the controlled Named Unlisted Site tracer completed their
-bounded gates. Current work may research one Horizon 3 Closed Test Network slice
-at a time; implementation starts only after a record freezes that slice and the
-Product Owner explicitly promotes it. Public discovery/contribution, Bridges,
-permissionless naming, production updates and custody, Windows qualification,
-general Application isolation, and the full NET-14 qualification matrix remain
-later horizons unless separately promoted.
+Carrier Lab, the controlled Named Unlisted Site tracer, and later bounded alpha
+mechanics are retained evidence. They do not by themselves form one current
+usable or qualified product candidate. Current work may compose and remediate
+one explicitly selected headless candidate from accepted contracts before its
+exact identity is frozen. Delivery-horizon labels describe planning only and
+must not become runtime or domain identities. Public discovery/contribution,
+Bridges, permissionless naming, production updates and custody, Windows
+qualification, general Application isolation, and the full NET-14
+qualification matrix remain later gates unless separately promoted.
 
 The eventual public product still requires the fixed contracts below, but this
 registry is not one release checklist or backlog.

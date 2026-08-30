@@ -140,30 +140,28 @@ this experiment.
 
 ## Recommendation
 
-Choose option 1 with the single `BuildAlphaInputs` interface specified by
-ADR-0052. It keeps the large construction, binding, verifier-preflight, and
-atomicity work behind one fixed local Module interface rather than exposing
-generic signing. Do not generate real metadata yet: first record the actual
-Network State/topology, release identity, validity/emergency times, and
-two-builder descriptor for the candidate. **Confidence:** high that generic
-tools are insufficient for the declared operation; medium that the fixed Module
-will remain small enough. The strongest argument against option 1 is that any
-in-repository signer expands the trusted local surface and needs native
-qualification.
+The historical recommendation chose option 1 with the single
+`BuildAlphaInputs` interface specified by ADR-0052. It kept construction,
+binding, verifier preflight, and atomic publication behind one fixed local
+operation rather than exposing generic signing. ADR-0059 later retired that
+candidate-specific operation after it had served RC1/RC2; this recommendation
+is provenance, not current implementation guidance.
 
 ## Disposition
 
-Decided on 2026-08-27. The ADR-0052 fixed local Module and terminal adapter are
-maintained with verifier-accepted, deterministic-output, changed-artifact,
-unknown-field, rejected-Network, and no-overwrite behavior tests. The required
+Decided on 2026-08-27 and superseded for current implementation by ADR-0059 on
+2026-08-30. The ADR-0052 fixed local Module and terminal adapter historically
+had verifier-accepted, deterministic-output, changed-artifact, unknown-field,
+rejected-Network, and no-overwrite behavior tests. The required
 non-secret profile inputs subsequently existed, so the Product Owner authorized
 and completed the exact `h4-alpha-1-rc-1` invocation on 2026-08-28. The atomic
 output passed preflight, the deterministic bundle was assembled twice, and the
 immutable publication plus Product Owner enrollment walkthrough completed.
-The operation remains incapable of generic signing, uploading, or participant
-contact; those were explicit subsequent ceremony actions.
+The former operation was incapable of generic signing, uploading, or
+participant contact; those were explicit subsequent ceremony actions. It is
+not a maintained current operation after ADR-0059.
 
-The post-implementation review additionally fixed the exported operation to
+The historical post-implementation review additionally fixed the exported operation to
 the recorded H4-alpha-1 profile/source/artifact/control/envelope identities and
 added an invocation-time expiry/build-safety check. Thus a different
 self-consistent artifact or custody record is rejected rather than becoming an
@@ -171,10 +169,10 @@ accidental reusable signer. Freshness is rechecked immediately before the
 atomic rename so a request that crosses a bound during local construction
 leaves no visible output.
 
-On 2026-08-28 an RC2 correction required a new immutable candidate. The
-maintained successor interface remains deliberately narrower than a repository
-administrator: it admits only the exact retained RC1 root/catalog pair before
-secret use, retains root generation 1, and can produce only the fixed RC2
-generation-2 snapshot/targets, ACA1 components, and catalog. Its source and
-program-byte identities are policy pins; approval and publication evidence are
-still pending and no H4 status is implied by the interface change.
+On 2026-08-28 an RC2 correction required a new immutable candidate. The former
+successor interface admitted only the exact retained RC1 root/catalog pair
+before secret use, retained root generation 1, and produced only the fixed RC2
+generation-2 snapshot/targets, ACA1 components, and catalog. ADR-0059 removes
+both assembly routes and their candidate-specific policy from the current
+command and Module surface while preserving the receipts, ADRs, research
+record, and Git history as evidence.

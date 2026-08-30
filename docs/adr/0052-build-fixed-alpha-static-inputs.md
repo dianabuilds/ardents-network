@@ -1,10 +1,14 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-27
-supersedes: none
+superseded_by: ADR-0059
 ---
 
 # ADR-0052 — Build only fixed closed-alpha static inputs from local custody
+
+> Superseded for maintained code by
+> [ADR-0059](0059-retire-fixed-alpha-candidate-assembly.md). This record retains
+> the exact RC1/RC2 ceremony decision and provenance only.
 
 ## Context
 

@@ -62,7 +62,7 @@ The first real product commands are:
 | `cmd/ardents` | Adapt bounded Network State, Endpoint, Entry, and naming routes. |
 | `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
 | `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
-| `cmd/ardents-release-custody` | Initialize or inspect one local encrypted fixed-role release-seed record, or assemble the one profile-bound ADR-0052 TUF/H4-6A static input set through the same local secret boundary; it has no generic signer or publication route. |
+| `cmd/ardents-release-custody` | Initialize or inspect one local encrypted fixed-role release-seed record through the local secret boundary; it has no candidate assembly, signer, or publication route. |
 | `cmd/ardents-state-custody` | Create the one ADR-0053 encrypted functional-alpha Epoch seed and verifier-accepted empty-topology genesis through a local secret boundary; it has no generic signer, successor, Node-key, or publication route. |
 
 Cross-process tests live under `tests/e2e/<behavior>/`. No live-container test
@@ -81,11 +81,12 @@ or a negative Make filter. Inactive profiles record the decision required to
 activate them and are not passing evidence.
 
 This is a trunk, not a complete future directory tree. Maintained Route,
-Publication, Service Connection, Namespace, Release, Update, Endpoint, Node,
-and Custody behavior has its existing package owner; unselected behavior does
-not earn a placeholder directory. Horizon numbers and stage names never appear
-in product package paths or product command names. The package map is the
-executable current-state import policy.
+Publication, Service Connection, Namespace, Release, Update, Endpoint
+replacement, Endpoint, Node, and Custody behavior has its existing package
+owner; unselected behavior does not earn a placeholder directory. Horizon
+numbers and stage names must not appear in product package paths or product
+command names. Immutable historical evidence may retain its exact candidate
+identity; the package map is the executable current-state import policy.
 
 End-to-end and live tests drive product Interfaces and commands but cannot
 implement missing product behavior on their behalf. A passing harness shortcut

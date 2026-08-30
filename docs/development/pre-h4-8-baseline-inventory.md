@@ -1,6 +1,7 @@
-# Pre-H4-8 baseline inventory
+# Pre-audit product-candidate baseline inventory
 
-Status: **active closure inventory; H4-8 qualification is not in progress.**
+Status: **active remediation inventory; formal audit and qualification are not
+in progress.**
 
 This is a factual retention register for the stabilization work before the
 next qualification candidate. It is not a release process or a second product
@@ -9,23 +10,25 @@ the evidence value, and the permitted disposition.
 
 ## Baseline rule
 
-The former RC2/A1--A12 results remain historical functional-alpha evidence,
-not qualification of the post-refactor baseline. A future candidate needs its
-own immutable source identity and requalification matrix. No current document
-may imply otherwise.
+Historical evidence is split: RC1 has A1-A10; RC2 has a separate two-fresh-
+Endpoint control result and A11 campaign; A12 is closure/disposition evidence.
+No candidate has A1-A12, and none qualifies the post-refactor baseline. A future
+candidate needs its own immutable source identity and qualification matrix. No
+current document may imply otherwise.
 
 ## Confirmed retirement set
 
 | Item | Current owner | Retained evidence | Disposition |
 |---|---|---|---|
-| `experiments/r-124-public-control-simulation/` | ADR-0055, R-124, `internal/publiccontrolsimulation`, command tests | Versioned JSON simulation receipt and behavior tests | **Retired on 2026-08-29.** It contained only a duplicated README runbook. |
-| `experiments/r-125-controlled-project-control-transitions/` | ADR-0056, R-125, `internal/publiccontrolsimulation`, command tests | Versioned JSON simulation receipt and behavior tests | **Retired on 2026-08-29.** It contained only a duplicated README runbook. |
-| `experiments/r-126-project-control-canonical-name-lifecycle/` | ADR-0057, R-126, `internal/namespacelifecyclesimulation`, command tests | Versioned JSON simulation receipt and behavior tests | **Retired on 2026-08-29.** It contained only a duplicated README runbook. |
-| `experiments/r-127-project-control-root-claims/` | ADR-0058, R-127, `internal/rootclaimsimulation`, command tests | Versioned JSON simulation receipt and behavior tests | **Retired on 2026-08-29.** It contained only a duplicated README runbook. |
+| `experiments/r-124-public-control-simulation/` | ADR-0055, R-124, ADR-0060, `internal/publiccontrol` and Release tests | Historical versioned JSON receipt/schema plus immutable Git evidence | **Runbook retired on 2026-08-29; generator and command retired on 2026-08-30.** No synthetic role became a product Interface. |
+| `experiments/r-125-controlled-project-control-transitions/` | ADR-0056, R-125, ADR-0060, alpha-control and Release tests | Historical versioned JSON receipt/schema plus immutable Git evidence | **Runbook retired on 2026-08-29; generator and command retired on 2026-08-30.** Domain owners retain the safety assertions. |
+| `experiments/r-126-project-control-canonical-name-lifecycle/` | ADR-0057, R-126, ADR-0060, Record/Epoch/Authority tests | Historical versioned JSON receipt/schema plus immutable Git evidence | **Runbook retired on 2026-08-29; generator and command retired on 2026-08-30.** The unique pending-fork assertion moved to its owner. |
+| `experiments/r-127-project-control-root-claims/` | ADR-0058, R-127, ADR-0060, Claim/Epoch tests | Historical versioned JSON receipt/schema plus immutable Git evidence | **Runbook retired on 2026-08-29; generator and command retired on 2026-08-30.** Unique close and lease assertions moved to their owners. |
 | `experiments/r-110-safe-endpoint-replacement/` | R-110, `internal/endpoint/replacement`, `endpoint replace` command/tests | The maintained interruption/recovery matrix and current H4-1B technical contract | **Retired on 2026-08-30.** Its two-file shell prototype had no unique current behavior or evidence. |
 
-Each named research record retains its exact command and receipt contract, so
-deleting these directories does not remove the reproduction route.
+Each named research record retains its historical command and exact receipt
+identity. ADR-0060 deliberately removes the reproduction route: the retained
+receipt and Git revision are provenance, not a current command contract.
 
 ## Classified retention set
 
@@ -33,9 +36,9 @@ deleting these directories does not remove the reproduction route.
 |---|---|---|
 | `docs/research/horizon-4-program.md` | Historical research handoff, not current architecture | **Retired on 2026-08-29.** H4 scope/status and non-claims are in `docs/product/horizon-4/README.md`; active/open/decided question state is in `docs/research/questions.md` and the named records; maintained code/command boundaries are in `package-map.md` and `commands.md`; its dated campaign narrative is Git provenance. It had no inbound references. |
 | `docs/research/s6-0-preparation.md` | Historical stage preparation | **Retired on 2026-08-29.** Canonical naming, claim ordering, recovery, admission, and current materialization are owned by ADR-0014 and ADR-0017--0020 plus `docs/technical/naming.md`; R-041--R-047/R-055/R-057 retain their decision evidence; its stage gate/campaign summary is Git provenance. It had no inbound references. |
-| `docs/development/deep-audit.md` | Inactive, reusable engineering policy for one exact future candidate | **Retain.** It is intentionally not a current technical contract or qualification receipt; it owns the future audit evidence, remediation, and requalification policy and is linked by the H4 architecture objective. |
-| `docs/development/closed-alpha-input-request.md` and `closed-alpha-release-ceremony.md` | RC2 process/provenance | **Retired on 2026-08-29.** Current command/schema/output ownership is [release-custody-assembly.md](../reference/release-custody-assembly.md), with command discovery in `commands.md` and broader Module limits in `release-update-custody.md`; historical RC2 execution evidence remains in the matrix and R-119/R-120/R-121. |
-| `docs/product/horizon-4/08a-alpha-1-readiness-matrix.md` and `08b-alpha-1-release-profile.md` | RC2 qualification/provenance | Retain as historical evidence and label it as such; never represent it as qualification of a changed baseline. |
+| `docs/development/deep-audit.md` | Inactive, reusable formal engineering policy for one exact future candidate | **Retain.** It is intentionally not a current technical contract or qualification receipt; it owns formal audit evidence, post-discovery remediation, and requalification policy and is linked by the headless product-candidate objective. |
+| `docs/development/closed-alpha-input-request.md` and `closed-alpha-release-ceremony.md` | RC2 process/provenance | **Retired on 2026-08-29.** The exact former command/schema/output contract is retained as historical provenance in [release-custody-assembly.md](../reference/release-custody-assembly.md); ADR-0059 removed the completed assembly routes. Historical RC2 execution evidence remains in the matrix and R-119/R-120/R-121. |
+| `docs/product/horizon-4/08a-alpha-1-readiness-matrix.md` and `08b-alpha-1-release-profile.md` | split RC1/RC2 evidence ledger and RC1 profile provenance | Retain as corrected historical evidence; never aggregate candidates or represent either as qualification of a changed baseline. |
 | `experiments/r-105-live-introduction-tracer/` and `r-117-firefox-proxy-auth/` | Active research | **Retain.** R-105 and R-117 are open records; their experiments remain their declared falsification route. |
 | `experiments/r-115-firefox-zone-proxy/` | Retained negative Browser Entry evidence | **Retain.** R-115 directly cites the temporary PAC/add-on/native-host scripts and their resolver limitation; deleting them would remove its reproducible negative evidence. |
 | `experiments/r-118-credential-relay/`, `r-118-entry-carrier/`, and `r-118-private-transit-issuance/` | Retained decision evidence | **Retain.** R-118 explicitly leaves their distinct negative-transcript crosswalk unresolved; do not remove them until a named maintained-test owner supersedes each case. |

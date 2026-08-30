@@ -1,10 +1,10 @@
 # H4-1 — Endpoint lifecycle and distributable profiles
 
-Status: **H4-1A functional-alpha gate passed on 2026-08-28 for one immutable
-Ubuntu Portable prerelease and the Product Owner's own authenticated
-first-enrollment lifecycle. Foreground replacement, custody, and the direct
-Ubuntu `.deb` retain their existing qualification. Independent-participant,
-Windows, and Public Beta release claims remain explicitly unclaimed.**
+Status: **historical RC1 evidence covers one Ubuntu Portable prerelease and the
+Product Owner's authenticated enrollment/start/restart/stop walkthrough.
+Foreground replacement, custody, and direct Ubuntu `.deb` mechanisms remain
+maintained with their bounded tests. No current product candidate, independent-
+participant, Windows, or Public Beta lifecycle is qualified.**
 
 ## Decision
 

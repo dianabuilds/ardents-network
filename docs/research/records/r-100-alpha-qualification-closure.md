@@ -4,7 +4,7 @@ title: Usable-alpha qualification and repository closure
 status: concluded
 owner: Product Owner and Codex
 started: 2026-08-24
-reviewed: 2026-08-29
+reviewed: 2026-08-30
 ---
 
 # R-100 — What exact usable-alpha release profile, live/soak matrix, remediation rule, and closure inventory can yield reproducible evidence and a maintainable repository without mislabeling the result Public Beta?
@@ -83,9 +83,13 @@ current tree and inbound references before deletion.
   envelope, retained every observer stream, and met the fixed 125-minute
   deadline. Evidence is retained outside Git at
   `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-rc-2-h4-8-a11-attempt-14`.
-- **Inference:** A11 and the finite A12 inventory now close the selected
-  functional-alpha H4-3/H4-8 profile. They do not constitute capacity,
-  availability, hostile-network, independent-operation, or Public Beta proof.
+- **Correction:** A1-A10 belong to RC1. A11 belongs to RC2 under a separately
+  versioned harness, and the RC2 two-fresh-Endpoint control run has no cached
+  repeat. No evidence record justifies transferring RC1 cells to RC2.
+- **Inference:** A12 retains useful inventory and harness dispositions but
+  cannot close an aggregate executable-candidate profile. Neither candidate
+  constitutes capacity, availability, hostile-network, independent-operation,
+  or Public Beta proof.
 
 ## Options
 
@@ -95,15 +99,17 @@ current tree and inbound references before deletion.
 
 ## Recommendation
 
-Continue option 1 using the exact H4-alpha-1 matrix. Do not convert A1-A10 into
-a generic release label or infer A11 from elapsed wall-clock time. Options 2
-and 3 remain rejected.
+Continue option 1 for each new exact candidate. Do not convert RC1 A1-A10 into
+a generic release label, transfer them to RC2, or infer A11 from elapsed
+wall-clock time. Options 2 and 3 remain rejected.
 
 ## Disposition
 
-Concluded. Immutable `h4-alpha-1-rc-2` has green A1-A12 for the selected
-functional-alpha profile. A12 retains the failed A11 attempt 13 and its two
-harness defects (fixture transit ceiling and remote-evidence section parsing)
-as recorded dispositions; it never overwrites prior evidence. RC2 release bytes
-did not change, so no successor candidate or dependent release-byte gate was
-required. Public Beta remains separately gated on real independent evidence.
+Concluded as a qualification method with a corrected historical verdict. RC1
+has A1-A10. RC2 has a separate two-fresh-Endpoint control observation and A11
+campaign; no candidate has A1-A12. A12 retains failed attempt 13 and its harness
+defects (fixture transit ceiling and remote-evidence section parsing) as
+recorded dispositions without supplying missing candidate evidence. RC2 release
+bytes did not change during the harness repair, so no RC3 was required for A11;
+that fact does not transfer RC1 evidence. Public Beta remains separately gated
+on real independent evidence.

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-08-29
 supersedes: none
+partially-superseded-by: ADR-0060 (maintained generator and command consequence only)
 ---
 
 # ADR-0056 — Simulate H4-6D controlled project-control transitions

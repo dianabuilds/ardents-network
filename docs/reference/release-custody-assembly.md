@@ -1,12 +1,14 @@
-# Fixed alpha custody assembly reference
+# Retired fixed-alpha custody assembly reference
 
-Status: **current command/format contract for `ardents-release-custody`.** It
-documents the maintained fixed-profile adapter; it is not a release ceremony,
-publication procedure, or qualification route for a future baseline.
+Status: **retired historical command/format contract.** ADR-0059 removed both
+assembly routes and their implementation after the exact RC1/RC2 ceremonies
+completed. The material below preserves the byte and evidence provenance of
+those ceremonies; it is not an available command, a procedure, or a contract
+for a future candidate.
 
-## Commands
+## Historical commands
 
-`assemble` accepts only these absolute paths:
+The retired `assemble` route accepted only these absolute paths:
 
 ```powershell
 ardents-release-custody assemble `
@@ -17,8 +19,8 @@ ardents-release-custody assemble `
   --output ABSENT_ABSOLUTE_DIRECTORY
 ```
 
-`assemble-successor` is only the recorded RC1-to-RC2 continuation and adds a
-complete direct predecessor directory:
+The retired `assemble-successor` route was only the recorded RC1-to-RC2
+continuation and added a complete direct predecessor directory:
 
 ```powershell
 ardents-release-custody assemble-successor `
@@ -30,8 +32,8 @@ ardents-release-custody assemble-successor `
   --output ABSENT_ABSOLUTE_DIRECTORY
 ```
 
-The adapter reads an existing passphrase only through its local no-echo secret
-input. It accepts neither a secret through flags, environment, configuration,
+The retired adapter read an existing passphrase only through its local no-echo
+secret input. It accepted neither a secret through flags, environment, configuration,
 stdin, receipt, nor request JSON. Request files are direct regular files up to
 12 MiB; Endpoint/control inputs are direct regular files up to 64 MiB; output
 must be absent. The adapter rejects symlinks, changed files, relative paths,
@@ -74,8 +76,8 @@ UTC whole-second RFC 3339 values.
 }
 ```
 
-The code accepts only its recorded profile, source revision, Endpoint/control
-digests, and encrypted-envelope identity. It rejects changed artifacts,
+The retired code accepted only its recorded profile, source revision,
+Endpoint/control digests, and encrypted-envelope identity. It rejected changed artifacts,
 unaccepted lifecycle values, duplicate authorities, invalid time ordering,
 stale invocation, out-of-bound network bytes, a caller-selected role/key/path,
 or an unaccepted Network State. The ordinary announced phase has no optional
@@ -83,16 +85,16 @@ overlap or emergency fields.
 
 ## Result and verification
 
-`assemble` atomically exposes exactly fourteen direct static files only after
+`assemble` atomically exposed exactly fourteen direct static files only after
 Release, Network State, catalog, component, enrollment, and H4-6A preflight
-acceptance. `assemble-successor` retains `1.root.json`, requires the fixed
-predecessor, and emits the fixed generation-2 successor. Both return only the
+acceptance. `assemble-successor` retained `1.root.json`, required the fixed
+predecessor, and emitted the fixed generation-2 successor. Both returned only the
 public `ardents-alpha-inputs-receipt-v1` digests, source identity, validity,
 generations, file inventory, and `preflight` result.
 
-`internal/release/custody` owns semantic validation; the thin command owns
-absolute-path and bounded-file admission. Behavior tests cover request
+The retired `internal/release/custody` code owned semantic validation; the thin
+command owned absolute-path and bounded-file admission. Historical behavior tests covered request
 rejection before secret use, deterministic/atomic output, preflight failure,
 and public-only receipt rendering. Historical RC2 execution evidence is
-retained in R-119/R-120/R-121 and the historical H4-alpha-1 matrix; it does not
-qualify a post-refactor candidate.
+retained in R-119/R-120/R-121 and the historical H4-alpha-1 matrix; neither the
+record nor the retired implementation qualifies a post-refactor candidate.

@@ -105,26 +105,28 @@ terminal result, and the scoped proxy is withdrawn without a same-name,
 other-Target, or Internet fallback. A distinct registered Target is addressed
 only by an explicit request for its own authenticated name.
 
-An H4 client Endpoint plan may select `BrowserEntryProfile: "firefox-alpha"`.
-The Endpoint then owns the current alpha proxy port, a fresh local liveness
-capability, and a separate one-process proxy credential at the native host's
-fixed per-user state path while an authenticated alpha route is live; it
-removes them before route withdrawal or shutdown. An absolute
-`BrowserEntryStatePath` remains a qualification/local override and cannot be
-combined with the profile. The native host reproves the proxy before it returns
-either the port or the credential for a matching loopback Basic-auth challenge,
-and the proxy strips that authentication header before forwarding to the
-selected Publisher presentation. Endpoint state selection does not itself
-install a native manifest or add-on, start a browser, change DNS, proxy, VPN,
-or trust settings. The separately release-bound per-user manifest lifecycle is
-defined by [ADR-0045](../adr/0045-firefox-first-unlisted-browser-entry-delivery.md).
+The retained Firefox compatibility plan may select
+`BrowserEntryProfile: "firefox-alpha"`. In that regression path the Endpoint
+owns the alpha proxy port, a fresh local liveness capability, and a separate
+one-process proxy credential at the native host's fixed per-user state path
+while an authenticated alpha route is live; it removes them before route
+withdrawal or shutdown. An absolute `BrowserEntryStatePath` remains a local
+test override and cannot be combined with the profile. The native host reproves
+the proxy before it returns either the port or the credential for a matching
+loopback Basic-auth challenge, and the proxy strips that authentication header
+before forwarding to the selected Publisher presentation. This retained path
+does not install an add-on, start a browser, or change DNS, proxy, VPN, or trust
+settings. Its historical release-bound manifest lifecycle is defined by the
+superseded [ADR-0045](../adr/0045-firefox-first-unlisted-browser-entry-delivery.md);
+[ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
+keeps it outside the headless product and candidate qualification.
 
-The current generic `endpoint.Run` plan can select that Browser Entry profile
-but does not yet compose an accepted Alpha Name Corpus floor with the typed
-Private-Reachability and C-2 inputs required to demand-open `name.ard`.
-`AlphaBrowserResolution` is maintained and qualified below this plan boundary;
-promoting it to a normal Endpoint command requires R-106's participant
-acquisition/runtime input, not a caller-supplied Target or fixture descriptor.
+The generic `endpoint.Run` plan still accepts this profile only so exact
+compatibility evidence remains reproducible. `AlphaBrowserResolution` is not a
+selected participant Browser Entry and must not be promoted to a normal
+Endpoint command from R-106 inputs alone. Promotion requires a new decision for
+browser/system resolution and HTTP/HTTPS trust, followed by its own affected
+qualification.
 
 ## Verification and related decisions
 

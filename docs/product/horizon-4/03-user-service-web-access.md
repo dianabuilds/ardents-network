@@ -1,25 +1,26 @@
 # H4-3 — User, Service, and web-access path
 
-Status: **the selected RC2 bounded functional-alpha profile is historical
-evidence, not the post-refactor qualification baseline. Its H4-3B
-application-transparent HTTP/1.1 path has accepted multi-host soak/fault
-evidence for normal traffic, publication withdrawal, Publisher Application,
-Endpoint, Carrier, and product-Node loss, with exact terminal classes and no
-destination fallback. H4-4 Browser Entry is not on this epic's critical path;
-capacity, availability, public deployment, and H4-7 browser claims remain open.**
+Status: **bounded C-2 and application-transparent HTTP fixture behavior is
+maintained, with RC1 functional evidence and separate RC2 A11 campaign
+evidence. Product delivery remains open: the supported participant command has
+no complete acquisition plus `publish`/`open`/`withdraw` journey. Browser
+presentation is optional; capacity, availability, public deployment, and
+protected-Application claims remain open.**
 
 ## Decision
 
-H4-3 is the first complete user-facing proof of Ardents. Its alpha outcome is
-not a local API, a raw byte-stream demo, or a single controlled HTTP response:
+This planning epic targets the first complete user-facing proof of Ardents. Its
+core alpha outcome is a headless product journey rather than a fixture-only API
+or raw byte-stream demo:
 
-> A Publisher uses Ardents to expose one local web Service, shares an explicit
-> Ardents destination with a User, and that User opens and uses the site in an
-> existing browser through the live H4-2 network.
+> A Publisher uses the supported headless Ardents product to expose one local
+> Service, shares an explicit Target Link with a User, and that User opens the
+> Service through the CLI or local Application Interface over the live Network,
+> then observes explicit withdrawal or failure.
 
-The Publisher-to-browser loop is the definition of done. H4-1 supplies an
-installed/running Endpoint profile; H4-2 supplies a live remote network path;
-H4-3 proves that people can use the result without learning Route internals.
+The Publisher-to-User headless loop is the core definition of done. An optional
+Browser Adapter may present an already authenticated connection, but it does
+not own Network State, Route selection, Service identity, or Authority.
 
 ## The alpha loop
 
@@ -28,8 +29,9 @@ Publisher's local web server
   -> Publisher Endpoint publishes one Service Instance
   -> explicit Target Link is shared out of band
   -> User starts their Endpoint and selects the link
-  -> local browser Adapter opens an authenticated Service Connection
-  -> existing browser renders the Publisher's site
+  -> local Application Interface opens an authenticated Service Connection
+  -> CLI/Application exchanges the Publisher's opaque bytes
+  -> optional browser Adapter presents that same scoped connection
 ```
 
 Ardents is application-payload neutral. One selected local Publisher Service
@@ -66,23 +68,27 @@ what a Publisher Service may carry in the transparent-connection slice.
 
 1. The User starts the H4-1 Endpoint and waits for **Target Connect Ready** or
    a named failure.
-2. The User supplies the exact Target Link to the supported Ardents browser
-   integration. The link never falls back to DNS, search, a local alias, HTTP,
-   or another destination.
-3. The local Adapter asks the Endpoint for an authenticated Service Connection.
+2. The User supplies the exact Target Link to the supported CLI or local
+   Application Interface. The link never falls back to DNS, search, a local
+   alias, HTTP, or another destination.
+3. The local Application asks the Endpoint for an authenticated Service Connection.
    H4-2 Route/Entry recovery either preserves the connection under its declared
    contract or returns an explicit result.
-4. The Adapter passes the site's HTTP bytes to the existing browser. The User
-   sees an exact-target authentication, unavailable Service, Route failure,
-   local denial, timeout/cancellation, or close as distinct Ardents outcomes;
-   it does not receive Node topology or raw route diagnostics.
+4. The Application exchanges opaque Service bytes. The User sees an
+   exact-target authentication, unavailable Service, Route failure, local
+   denial, timeout/cancellation, or close as distinct Ardents outcomes; it does
+   not receive Node topology or raw route diagnostics. An optional Browser
+   Adapter may present an already authenticated HTTP connection without adding
+   Network authority.
 
 ## Browser Adapter boundary
 
-The browser cannot speak the Ardents local Application Interface directly. The
-Adapter is therefore a local compatibility Module between an existing browser
-and the Endpoint. H4-3A selects an explicit Endpoint-to-loopback handoff, not a
-browser proxy, extension, custom CA, URI registration, or browser fork:
+This is the retained optional compatibility tracer, not the headless product
+definition or a completion dependency. A browser cannot speak the Ardents
+local Application Interface directly, so an Adapter may bridge an already
+authenticated connection between an existing browser and the Endpoint. The
+historical H4-3A tracer selected an explicit Endpoint-to-loopback handoff, not
+a browser extension, custom CA, URI registration, or browser fork:
 
 1. the User explicitly gives one exact Target Link to the Endpoint;
 2. the Endpoint authenticates that Target and creates one scoped Service
@@ -105,6 +111,11 @@ a Service credential or a malicious-same-user isolation claim. It is visible
 to the browser and may appear in browser history. It authorizes only the
 already-selected presentation connection and never a Target choice, Local
 Grant, Service Administration action, or Endpoint control operation.
+
+The current transparent-origin implementation also has no per-OS-account proof
+on its second loopback listener. That listener must be removed or placed behind
+a current-user private channel before any supported multi-user Browser Entry
+claim. It does not block the headless CLI/Application journey.
 
 The Adapter has three non-negotiable properties:
 
@@ -152,26 +163,25 @@ authorization boundary and is not an H4-3A dependency.
   alpha-network configuration.
 - The selected local Application Interface and Service publication path expose
   separate Connection and Service Administration authority.
-- One supported browser/profile and one local Adapter mechanism are selected
-  for the alpha. The Adapter mechanism is fixed above; the browser/profile is
-  still selected by a live qualification run. Other browsers are unsupported
-  rather than silently different.
+- The supported participant surface exposes the headless publish/open/withdraw
+  operations. Browser/profile selection is an optional, separately qualified
+  presentation concern.
 
 ### Done when
 
 On separate Publisher and User endpoints, a clean User can receive an explicit
-Target Link and use the selected browser to render the bounded Reference Site
-through the live network. The evidence includes the exact endpoint/browser/
-Adapter release, Target authentication result, first page plus declared
-same-Service resource loads, readiness/failure result, and a Publisher
-withdrawal/offline case.
+Target Link and use the supported CLI or local Application Interface to
+exchange opaque bytes through the live network. The evidence includes the
+exact Endpoint build, acquisition inputs, Target authentication result,
+readiness/failure result, and a Publisher withdrawal/offline case. Optional
+browser evidence is recorded separately and cannot close this headless journey.
 
 The result is still valid if the page is ordinary HTTP Application Data inside a
 Service Connection. It must not claim browser-level privacy, public naming,
 content replication, offline delivery, a generic Internet proxy, or a global
 HTTPS identity system.
 
-### Historical RC2 qualification evidence
+### Historical fixture evidence (not current-candidate qualification)
 
 - The maintained `reference-c2` process fixture runs Publisher, its token-bound
   local Reference Site Application, User, Gateway, Initiator, Introduction,
@@ -247,14 +257,14 @@ reject an unregistered alpha name and an Internet destination. After response he
 committed, the local HTTP server may expose a truncated body rather than a
 second HTTP status; the classified Endpoint terminal remains authoritative.
 
-The exact cross-built H4-3B command and fixture bytes now pass all four dynamic
-terminal cases in a read-only, network-isolated Linux Docker cell at `1` vCPU,
-`1 GiB`, and `128` PIDs. That runner also verifies cached and two-fresh-root
-H4-6A control observations before it reports the C-2 results. This is local
-Docker evidence, not yet the full release promotion: the same exact candidate
-still needs the declared VPS repetition, selected platform/browser, and actual
-multi-host qualification. The optional H4-4 named Browser Entry remains
-compatibility evidence and is not an H4-3B completion dependency.
+The RC1 command and fixture bytes passed all four dynamic terminal cases in a
+read-only, network-isolated Linux Docker cell at `1` vCPU, `1 GiB`, and `128`
+PIDs, followed by the bounded VPS repetition, selected Firefox compatibility
+run, and project-operated multi-host journey recorded in matrix cells A7-A9.
+Those results remain historical RC1 evidence; they do not qualify the changed
+baseline or provide the missing supported participant commands. The optional
+named Browser Entry remains compatibility evidence and is not a headless
+H4-3B completion dependency.
 
 **Alpha HTTP/1.1 limits:** the transparent origin accepts at most `16 KiB` of
 request head and `1 MiB` of request body, with a `1 s` header-read timeout and

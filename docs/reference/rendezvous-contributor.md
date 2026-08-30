@@ -1,8 +1,13 @@
-# Rendezvous Contributor functional-alpha profile
+# Rendezvous Contributor dedicated-host profile
 
 Status: **accepted for the project-qualified dedicated-host Functional Alpha
-on 2026-08-29.** These commands are the complete H4-5A operator surface, not a
-public Contributor offer or a capacity/availability claim.
+on 2026-08-29.** These commands are the complete dedicated-host operator
+surface, not a public Contributor offer or a capacity/availability claim.
+
+The canonical profile identity is `ardents-rendezvous-dedicated-host-v1`.
+Readers accept the historical `h4-5-rendezvous-alpha-v1` identity only for
+already pinned bundles, Node plans, and installation records; runtime state,
+new records, and reports use the canonical identity.
 
 ## Exact supported shape
 

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0061
 date: 2026-08-26
 ---
 
@@ -63,8 +63,12 @@ overwritten.
 
 ## Compliance
 
-[R-117](../research/records/r-117-firefox-browser-entry-delivery.md) owns the
-delivery evidence and two-platform qualification. [ADR-0040](0040-bounded-alpha-name-overlay.md)
+[R-117](../research/records/r-117-firefox-browser-entry-delivery.md) retains the
+historical delivery evidence. [ADR-0040](0040-bounded-alpha-name-overlay.md)
 continues to bound `.ard` to the private alpha overlay, and
 [ADR-0044](0044-revalidate-browser-entry-proxy-authentication.md) continues to
 bound the in-browser proxy-authentication handoff.
+
+ADR-0061 supersedes this participant-delivery selection after R-115 falsified
+its required no-DNS/DoH-leak behavior. The signed XPI and bounded installation
+mechanics remain optional compatibility evidence only.

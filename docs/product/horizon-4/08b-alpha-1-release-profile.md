@@ -1,22 +1,27 @@
 # H4-alpha-1 bounded release profile
 
-Status: **historical bounded functional-alpha profile accepted on 2026-08-28.**
-Its exact Ubuntu artifact is signed, published as an immutable prerelease, and
-was exercised through the Product Owner's own authenticated enrollment. It is
-not an independent-participant/Public Beta profile or the post-refactor
-qualification candidate.
+Status: **historical RC1 bounded functional-alpha profile with A1-A10 accepted
+on 2026-08-28.** Its exact Ubuntu artifact is signed, published as an immutable
+prerelease, and was exercised through the Product Owner's own authenticated
+enrollment. It is not RC2, an independent-participant/Public Beta profile, or
+the post-refactor qualification candidate.
 
 ## Identity
 
 | Field | Fixed value |
 |---|---|
 | Profile | `ardents-h4-alpha-1-v1` |
+| Release identity | `h4-alpha-1-rc-1` |
 | Endpoint source revision | `70bf425eec937edcc22e8f0534db992aa2002a16` |
 | Endpoint artifact | Ubuntu Portable `linux-amd64`, SHA-256 `33473599f7902508d1ca9cb9d09eb6777aff05d9c7c652e96f841b196bfd1fe1` |
 | Control companion | `ardents-control-linux-amd64`, SHA-256 `d69b4c5d5f6fae76cbeacfb6acee8abaec9b6cbb56afd339982ea6d55ef9449c` |
 | Release carrier | State-selected TCP/TLS v1 only; QUIC is not a fallback or alpha claim |
 | Service journey | one exact Target Link, one loopback Browser Adapter origin, dynamic HTTP/1.1 workload |
 | H4-4 relation | an alpha corpus may be a control input; Browser Entry and `.ard` resolution are not release-gating |
+
+The historical strings `ardents-h4-alpha-1-v1` and `h4-alpha-1-rc-1` are
+immutable evidence identities. `H4` is planning vocabulary only; these names do
+not define a runtime subsystem or a naming convention for a successor.
 
 The artifact source revision is distinct from the local custody-tool revision.
 The latter may prepare static inputs but is never bundled as the Endpoint and
@@ -115,12 +120,13 @@ and
 Both observations used Go `1.26.6`, `linux/amd64`, `GOAMD64=v1`,
 `CGO_ENABLED=0`, and `-trimpath`.
 
-ADR-0052's fixed local `BuildAlphaInputs` operation consumed these facts. No
-value in this profile permits arbitrary bytes, a substitute authority, an
-online signer, or an ambient upload/contact capability. The maintained
-operation enforced this profile's source revision, Endpoint/control digests,
-selected encrypted-envelope digest, validity bounds, empty Network topology,
-and verifier preflight before publishing the static output directory.
+ADR-0052's historical fixed local `BuildAlphaInputs` operation consumed these
+facts. No value in this profile permitted arbitrary bytes, a substitute
+authority, an online signer, or an ambient upload/contact capability. The
+former operation enforced this profile's source revision, Endpoint/control
+digests, selected encrypted-envelope digest, validity bounds, empty Network
+topology, and verifier preflight before publishing the static output directory.
+ADR-0059 retires that RC-specific operation from the current product surface.
 
 ## Qualification coherence
 
@@ -146,17 +152,20 @@ isolation.
 
 ## Claims and limitations
 
-A1-A10 now pass for this exact immutable profile. The strongest claim is a
-bounded project-operated functional-alpha journey. It remains a closed
+A1-A10 pass for this exact immutable RC1 profile. The A11 campaign binds
+distinct RC2 source, Endpoint, control, archive, and pin identities and cannot
+be attributed to RC1. The former aggregate A12 closure conclusion is withdrawn.
+The strongest RC1 claim is a bounded project-operated functional-alpha journey.
+It remains a closed
 prerelease and does not claim independent control, external participants or
 operators, capacity, availability, censorship resistance, application-level
-privacy, public DNS/HTTPS, Namespace, or Public Beta readiness. Its historical
-A11 soak/fault and A12 closure do not transfer to a post-refactor candidate.
+privacy, public DNS/HTTPS, Namespace, or Public Beta readiness. No evidence in
+this profile transfers automatically to a post-refactor candidate.
 
 ## Ownership
 
-This profile is owned by H4-8A. Its artifact/enrollment transition is H4-1;
-dynamic browser transport evidence is H4-3B; the optional corpus remains H4-4;
-and the independently rooted release/network/compatibility statements are
-H4-6A. See the [readiness matrix](08a-alpha-1-readiness-matrix.md) and the
-historical R-119/R-120/R-121 custody records.
+The release, Endpoint, Network State, and control contracts own their respective
+current behavior. The H4-1, H4-3B, H4-4, H4-6A, and H4-8A references organize
+planning and historical evidence only. See the
+[readiness matrix](08a-alpha-1-readiness-matrix.md) and the historical
+R-119/R-120/R-121 custody records.

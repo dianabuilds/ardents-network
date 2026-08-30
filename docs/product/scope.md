@@ -52,9 +52,12 @@ The Product Core is the smallest durable promise that defines Ardents:
   decentralized public network.
 
 The Product Core fixes information-flow and responsibility boundaries. ADR-0009
-selects Go as the maintained project foundation, but dependencies, wire format,
-cryptographic suite, discovery mechanism, route implementation, and operating
-model remain separate decisions.
+selects Go as the maintained project foundation. For the bounded maintained
+alpha, ADR-0024, ADR-0026, and ADR-0048 select one native Interactive Route
+foundation, one closed wire grammar, and TCP/TLS plus QUIC-v1 Carrier adapters.
+Those candidate-scoped decisions do not select a long-term public Route, public
+wire protocol, censorship-resistant transport, storage engine, consensus
+system, blockchain, or protected Application runtime.
 
 The five-position split-circuit Route with a separate Introduction is the first
 Carrier Lab candidate. Four Role Domains, Candidate View, and source-exclusion
@@ -158,28 +161,8 @@ or satisfy public naming, platform, operator, or release gates.
 
 ## Horizon 3 — Closed Test Network
 
-The Named Unlisted Site slice now works in its bounded Gate C environment, so
-Horizon 3 is the next permitted scope. Ardents may assemble one separately
-scoped persistent multi-host test-network slice at a time. It remains
-project-key-controlled, invite-only or
-otherwise bounded, visibly centralized, and unable to make a public anonymity or
-decentralization claim.
-
-This horizon may add one vertical slice at a time:
-
-- authenticated epoch/bootstrap distribution and finite source handling;
-- public-role process separation, bounded Node admission, and withdrawal;
-- Bridge and transport-camouflage experiments;
-- permissionless Namespace, lease, recovery, and private-resolution candidates;
-- install/update/rollback and authority-recovery prototypes;
-- Windows compatibility plus brokered Application-isolation experiments;
-- broader recovery, overload, and role-capacity measurements.
-
-Each slice has its own stop condition. Passing the Named tracer does not
-authorize building all of them in parallel, and a project-operated test network
-is not evidence of independent operation.
-
-Horizon 3 is closed as a source of maintained behavior. Its laboratory results
+Horizon 3 admitted bounded project-controlled Closed Test Network slices. It is
+now closed as a source of maintained behavior. Its laboratory results
 are neither a product contract nor Route Qualification. Current Network State,
 Entry, Route, and Node constraints are owned by
 [Network Route and Node](../technical/network-route-node.md); endpoint and
@@ -193,14 +176,25 @@ implicit compatibility requirement.
 
 ## Horizon 4 — Usable Network Alpha and Public Beta
 
-Horizon 4 turns the retained Product Core and current technical contracts into a
-network that a person can actually use. Its first product proof is deliberately
-concrete: a User installs Ardents, starts a local Endpoint, obtains an explicit
-Target Link or Service Name, and opens a Service published by another Endpoint
-over a live multi-host network. A web Service may be the first Reference
-Application: a Developer publishes a local HTTP Service and a User opens it in
-an existing browser through a local Ardents Adapter. Ardents is not thereby a
-browser, public DNS, clearnet exit, or generic anonymous-Internet proxy.
+Horizon 4 is a delivery-planning group of ordered epics. It is not an
+architecture layer, runtime identity, protocol namespace, release identity, or
+authorization to implement the group as a whole. New horizon and epic
+identifiers may label plans and immutable historical evidence, but not
+maintained package names, exported symbols, commands, schemas, wire fields,
+persisted state, or release profiles. Existing accepted persisted or wire
+identities that contain an old stage label remain explicit compatibility
+obligations until a researched versioned migration retires them; they are not
+precedent for new identifiers.
+
+Its first product proof is deliberately concrete and headless: a Publisher
+starts a local Endpoint, publishes one local Service, and shares its explicit
+Target Link; a User on another Endpoint opens that Service through the CLI or
+local Application Interface; the Publisher then withdraws it. A web Service
+may be a Reference Application and an optional browser Adapter may present an
+already authenticated Service Connection, but neither UI nor browser code owns
+Network State, Route selection, Service identity, or Authority. Ardents is not
+thereby a browser, public DNS, clearnet exit, or generic anonymous-Internet
+proxy.
 
 An externally usable alpha is a product milestone, not a Public Beta claim. It
 may use an explicitly bounded participant set and measured, known operational
@@ -210,11 +204,10 @@ merely because the User journey works. A Product Owner walkthrough can accept a
 bounded product tracer, but is not evidence that new users understand it or
 that independent operators exist.
 
-The following are ordered **H4 epics**. They are not authorization to build all
-work in parallel. Before an epic enters implementation, it needs a named
-bounded claim, evidence plan, stop condition, and current Product Owner
-selection. An epic may supply an alpha capability before every later Public
-Beta gate is met; it may not silently inherit a stronger claim.
+The following are ordered planning epics. Only a named bounded goal with an
+evidence plan, stop condition, and current Product Owner selection enters
+implementation. An epic may supply an alpha capability before every later
+Public Beta gate is met; it may not silently inherit a stronger claim.
 
 ### [H4-1 — Endpoint lifecycle and distributable profiles](horizon-4/01-endpoint-lifecycle.md)
 
@@ -234,8 +227,8 @@ The completed public-product epic includes signed packages, repair, safe
 update, rollback protection, uninstall, and explicit Authority backup/recovery.
 Repair and uninstall must never silently erase Authority material; a rejected
 or interrupted update must never activate an unverified or older build. The
-existing Release, Update, and Custody modules are technical inputs, not proof
-that the supported platform lifecycle exists.
+existing Release, Update, Endpoint replacement, and Custody modules are
+technical inputs, not proof that the supported platform lifecycle exists.
 
 ### [H4-2 — Reachable live network and transport operation](horizon-4/02-live-network-transport.md)
 
@@ -264,19 +257,13 @@ capability readiness and bounded failures, share an explicit Target Link, and
 connect to a Service. A Developer can publish one local Service Instance with
 separate Service Administration authority.
 
-The first web-access slice uses an explicit Endpoint-to-loopback Adapter. After
-the User gives one exact Target Link to the Endpoint and it authenticates one
-Service Connection, the Endpoint opens a fresh one-connection
-`127.0.0.1:<ephemeral-port>` origin in the selected existing browser. The
-Adapter maps only the bounded H4-3A method/resource set and accepts no ordinary
-URL, proxy-form target, arbitrary Ardents destination, or administration
-operation. Closing the connection removes the origin; it never falls back to
-DNS, search, public HTTP, or another Service.
-
-The first controlled Reference Site is a static, exact-resource profile. Its
-browser response uses a header-delivered CSP sandbox in addition to restrictive
-fetch directives; it does not pass Publisher redirects or cookies. This does
-not qualify arbitrary Publisher HTML, scripts, or external navigation.
+The core access path is the headless local Application Interface carrying one
+already authenticated opaque Service Connection. If a browser Adapter is
+selected, it may present only that connection through a bounded local surface;
+it does not select a Target, own network authority, or become a generic proxy.
+R-114's application-transparent HTTP behavior supersedes the earlier static-CSP
+fixture restriction. Redirects, cookies, and dynamic content remain Application
+semantics and do not add browser-isolation or external-navigation claims.
 
 Ordinary Internet browsing remains outside Ardents and continues by the
 browser's ordinary path. A browser extension, custom URI scheme, custom CA,
@@ -403,7 +390,8 @@ proofing” of the carrier.
 
 ## Scope-change rule
 
-1. Only the current horizon enters the implementation backlog.
+1. Only an explicitly Product Owner-selected bounded goal enters the
+   implementation backlog; a horizon or epic never enters as a unit.
 2. Later-horizon requirements constrain claims and architecture seams, but do
    not authorize placeholder subsystems or speculative abstractions now.
 3. Security is never silently deferred: either the required condition is built
@@ -412,21 +400,20 @@ proofing” of the carrier.
    shows that it is still needed and the Product Owner explicitly promotes it.
 5. Failure of the current route candidate triggers redesign or project stop,
    not compensating scope in naming, governance, SDKs, or UI.
-6. Go is the maintained project foundation under ADR-0009. Runtime dependencies
-   and protocol-bound foundations remain open until evidence justifies them.
+6. Go is the maintained project foundation under ADR-0009. Candidate-scoped
+   Route, wire, and Carrier decisions apply only within their accepted bounds;
+   long-term public foundations remain open until evidence justifies them.
 
 ## How to read the other documents
 
 | Document | Meaning after this scope decision |
 |---|---|
 | [Vision](vision.md) | Long-term Product Core and public product intent. |
-| [Horizon 4 delivery briefs](horizon-4/README.md) | Ordered working briefs for usable alpha and Public Beta epics. H4-1A and full functional-alpha H4-2 are selected; every broader or later claim retains its own explicit selection and evidence. |
+| [Horizon 4 delivery briefs](horizon-4/README.md) | Planning briefs and historical evidence status for usable alpha and Public Beta work. Selection is per bounded goal, never for the horizon or an epic as a unit. |
 | [Horizon 5 review intent](horizon-5/README.md) | Future security and privacy model review: purpose, entry conditions, questions, evidence, possible outcomes, and explicit non-goals. It authorizes no current work. |
 | [Functional map](functional-map.md) | Requirements registry across all horizons, not one backlog. `fixed` means decision maturity, not “build now.” |
 | [Operating model](operating-model.md) | Target lifecycle for a public product; only explicitly promoted parts apply to Carrier Lab. |
-| [Threat model](../security/threat-model.md) | Conditions required before making each claim; an unclaimed condition need not become a current feature. |
 | [Network Route and Node](../technical/network-route-node.md) | Current route, Node, State, and Entry contract, including the limits on Route claims. |
 | [Go project foundation](../adr/0009-go-project-foundation.md) | Maintained language and runtime decision. |
 | [Threat model](../security/threat-model.md) | Conditions and evidence required for each security or privacy claim. |
-| [Operating model](operating-model.md) | Product lifecycle and future qualification boundaries. |
 | [Development gates](../development/entry-gates.md) | The only promotion path between horizons. |

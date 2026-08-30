@@ -9,11 +9,13 @@ They are completed by the accepted
 capability-specific readiness, diagnostics, update, and withdrawal.
 
 These are cross-horizon journeys, not one implementation plan. The authoritative
-order is [product scope](scope.md). Carrier Lab and the conditional Named
-Unlisted Site tracer are completed research slices. Only one separately
-researched and Product Owner-decided H3 vertical slice may become current;
-install, public join/contribution, update, Bridges, and full qualification remain
-later promotion horizons.
+order is [product scope](scope.md). Carrier Lab, the conditional Named Unlisted
+Site tracer, and later bounded alpha work are retained evidence, not separate
+product identities. Current implementation may compose one Product
+Owner-selected headless candidate from accepted contracts and must state its
+claims directly; delivery-horizon labels must not enter runtime behavior. Public
+join/contribution, Bridges, and full qualification remain later promotion
+gates unless separately selected.
 
 ## J-LAB — Falsify the Route candidate
 

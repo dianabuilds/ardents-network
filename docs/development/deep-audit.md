@@ -1,15 +1,22 @@
 # Deep audit campaign
 
-Status: **prepared future engineering policy; inactive until the Product Owner
-selects an exact audit candidate and release profile**
+Status: **prepared formal engineering policy; inactive until known remediation
+and product separation complete and the Product Owner freezes one exact audit
+candidate and release profile**
 
 Prepared: 2026-08-26
 
-This document defines the internal whole-codebase audit that may run after an
-H4 release candidate exists and before its final promotion and immutable build
-freeze. It is a reusable engineering process, not a current H4 backlog, a
-Qualification receipt, an external security review, or evidence that the
-present repository has passed the campaign.
+This document defines the formal internal whole-codebase audit that runs after
+known product, architecture, and truth-remediation work is complete and one
+exact candidate is frozen, but before promotion. It is a reusable engineering
+process, not a delivery-horizon backlog, a Qualification receipt, an external
+security review, or evidence that the present repository has passed the
+campaign.
+
+A preliminary read-only state review may inventory obvious blockers before
+remediation. It is not C0 activation, complete A-F coverage, or a reusable
+verdict for the later candidate. Its purpose is to avoid spending full audit
+and qualification effort on already known transitional defects.
 
 The campaign investigates one immutable candidate from accepted product and
 security claims down to individual implementation paths. It records complete
@@ -76,9 +83,10 @@ label `cleanup` or `refactoring`.
 
 ## 3. Activation boundary
 
-The preferred activation point is after the selected H4 implementation is
-functionally complete and its release-readiness matrix exists, but before the
-final H4 promotion decision. A separate post-release campaign may later use
+The preferred activation point is after the selected product journey is
+functionally complete, known accepted remediation and Network/Application
+separation are integrated, and its release-readiness matrix exists, but before
+the promotion decision. A separate post-release campaign may later use
 operational evidence, but cannot retroactively qualify an earlier build.
 
 The Product Owner activates the campaign only when all of the following are
@@ -88,6 +96,8 @@ true:
   Carrier/Entry profile, topology, participant/operator conditions, workload,
   resource ceilings, claims, and non-claims;
 - feature development and functional refactoring for that profile are frozen;
+- known preliminary-state findings have an implemented, rejected, deferred, or
+  claim-reducing disposition, rather than being left for formal rediscovery;
 - the working tree used to create the candidate is clean and reproducible;
 - `make check` passes for the exact revision;
 - every required higher execution profile is active with a checked entrypoint,
@@ -636,7 +646,7 @@ The one-to-one team uses five explicit human decisions:
 
 | Checkpoint | Product Owner decision |
 |---|---|
-| C0 Activate | Fix baseline, profile, claims, non-claims, and read-only scope. |
+| C0 Activate | After known remediation, freeze the exact baseline, profile, claims, non-claims, and read-only scope. |
 | C1 Invariants | Confirm that the invariant/ownership model expresses the intended product. |
 | C2 Findings | Accept or challenge evidence, impact, claim effect, and residual uncertainty. |
 | C3 Disposition | Select repair, claim/profile reduction, research return, limitation, rejection, or release stop. |
@@ -767,8 +777,8 @@ source evidence rather than merely vote among subagent conclusions.
 
 ## 14. Preparation now versus activation later
 
-This document is the only durable audit preparation required before the H4
-candidate exists. Do not create empty audit directories, speculative package
+This document is the only durable formal-audit preparation required before the
+product candidate exists. Do not create empty audit directories, speculative package
 assignments, future Qualification commands, new dependencies, or model-specific
 prompts merely to make the campaign appear active.
 

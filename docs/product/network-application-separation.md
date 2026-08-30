@@ -1,22 +1,25 @@
-# H4 closure follow-up — deep audit and Network/Application separation
+# Product-candidate remediation — headless Network and Application separation
 
-Status: **proposed next objective after the selected Horizon 4 implementation
-is functionally complete; this document authorizes no current research or
-implementation work.**
+Status: **selected active objective. Preliminary state discovery is complete;
+truth remediation and Network/Application separation precede formal C0, deep
+audit, and expensive qualification.**
 
 ## Queue placement
 
-This objective may take the next-work slot that would otherwise have gone to
-H4-7, but it does not replace, rename, or weaken H4-7. H4-7 remains the
-accepted, deferred protected-Application profile: no Application-level Endpoint
-Location Privacy claim is selected for the current generic browser path.
+The Product Owner selected this objective before H4-7. It does not replace,
+rename, or weaken H4-7: that identifier remains planning provenance for the
+deferred protected-Application profile. No Application-level Endpoint Location
+Privacy claim is selected for the generic browser path.
 
-The objective also activates the prepared
-[Deep audit campaign](../development/deep-audit.md) against one immutable H4
-candidate. The audit is a distinct read-only discovery and proof phase, not a
-name for the subsequent architecture change. Findings that require a new
-architecture leave audit discovery and receive their normal product, research,
-and ADR treatment before implementation.
+A preliminary read-only state review of fixed point
+`0292afbd572c09b55ee5cf2589ac44af99edfa66` has already identified truth,
+product-journey, ownership, and separation blockers. Its durable state and
+finding-disposition map are retained in
+[R-129](../research/records/r-129-headless-network-product-boundary.md). The prepared
+[Deep audit campaign](../development/deep-audit.md) is activated formally only
+after those known issues are dispositioned and one stable candidate is frozen.
+Findings that require a new architecture still receive their normal product,
+research, and ADR treatment rather than entering as generic cleanup.
 
 The new objective solves a different problem: Ardents Network must remain a
 standalone headless product, while Desktop, browser, and future Application
@@ -29,10 +32,10 @@ privacy model review defined by its own entry conditions.
 
 ## Objective
 
-First investigate one immutable, functionally complete H4 candidate through the
-prepared whole-codebase audit. Then make Ardents Network independently
-buildable, runnable, testable, and releasable without Desktop or browser
-artifacts:
+Make Ardents Network independently buildable, runnable, testable, and releasable
+without Desktop or browser artifacts, complete the supported headless product
+journey, and remediate accepted preliminary findings before freezing the formal
+audit candidate:
 
 - the local Endpoint and infrastructure Node own networking behavior;
 - command-line programs remain thin Adapters over maintained Modules;
@@ -41,9 +44,10 @@ artifacts:
 - no UI Adapter owns Network State, Route selection, Service identity, or
   network or Authority custody.
 
-The final candidate must preserve the audit baseline, finding dispositions,
-change-induced review, and affected requalification rather than treating a
-successful refactor as proof that the baseline had no defect.
+The final candidate must preserve the preliminary baseline and finding
+dispositions, receive independent change review, and then enter formal audit
+and affected qualification. A successful refactor is not proof that the
+baseline or final candidate had no defect.
 
 Repository co-location remains governed by ADR-0010. This plan separates
 Modules, processes, artifacts, and dependency direction; it does not select a
@@ -51,8 +55,7 @@ multi-repository organization.
 
 ## Decision-relevant question
 
-Before implementation begins, add a current research question using the
-repository research template:
+The selected direction is tested by this decision-relevant question:
 
 > Can the maintained Endpoint and Node form one complete headless Ardents
 > product while browser and Desktop behavior is supplied by replaceable local
@@ -99,32 +102,32 @@ redesign.
 
 ## Integrated execution sequence
 
-The audit and architecture work share one queue position but retain distinct
-candidate identities and change rules:
+Product remediation and the later formal audit share one objective but retain
+distinct candidate identities and change rules:
 
 ```text
-finish selected H4 functionality
-  -> clean and reproduce one exact H4 candidate
-  -> freeze immutable Audit Baseline
-  -> run Deep Audit discovery, synthesis, and proofs read-only
-  -> Product Owner disposition of findings
-  -> select architecture work and accepted remediation explicitly
-  -> implement Network/Application separation in scoped change waves
-  -> review the complete baseline-to-candidate diff
-  -> rerun every invalidated test and Qualification profile
+preliminary read-only state discovery
+  -> reconcile product/status/RC/custody truth
+  -> select finding dispositions and bounded implementation waves
+  -> complete the supported headless journey
+  -> implement Network/Application separation and accepted remediation
+  -> run ordinary gates and review the complete stabilization diff
+  -> freeze one exact candidate at C0
+  -> run formal Deep Audit A-F discovery, synthesis, and proofs read-only
+  -> disposition and repair any newly proved findings in successor candidates
+  -> rerun only invalidated evidence plus the final selected qualification set
   -> freeze and decide the final exact candidate
 ```
 
-The audit therefore begins at the last H4 closure gate: after feature work is
-complete, but before final promotion and immutable build freeze. This does not
-interrupt the current H4 implementation halfway through. The current moving
-working tree is never used as an Audit Baseline.
+Formal audit therefore begins only after product completion and known
+remediation, but before final promotion. The current moving working tree is a
+remediation baseline, never an immutable Audit Baseline.
 
-Audit discovery produces the claim map, invariant register, surface inventory,
-coverage ledger, finding register, proof results, and qualification-impact
-register required by the audit policy. The architecture plan consumes accepted
-facts from those registers, but it does not rewrite audit history or implement
-an unproved hypothesis as cleanup.
+Preliminary discovery retains its state map and dispositions as provenance.
+Formal audit independently produces the complete claim map, invariant register,
+surface inventory, coverage ledger, finding register, proof results, and
+qualification-impact register required by policy; the preliminary pass cannot
+stand in for that coverage.
 
 ## Target dependency direction
 
@@ -144,48 +147,47 @@ presentation implementations. Closing, removing, or upgrading a UI Adapter
 does not stop or replace the Endpoint.
 
 The existing Connection and Service Administration Interfaces remain the
-Application seams. An Endpoint Owner Interface is selected only after the
-audit identifies one real Desktop caller alongside the CLI Adapter; no generic
-control framework or placeholder package is created in advance.
+Application seams. An Endpoint Owner Interface is selected only when one real
+Desktop caller exists alongside the CLI Adapter; no generic control framework
+or placeholder package is created in advance.
 
-## Phase A — immutable H4 deep audit
+## Phase A — preliminary state discovery and dispositions
 
-### A1. Activate and freeze
+### A1. Inventory the current state
 
-Complete the selected H4 functionality, integrate it into a clean reproducible
-revision, pass its required checks, name its claims and non-claims, and record
-the exact source, executable, toolchain, dependency, platform, topology, and
-execution-profile identities required by the audit activation manifest.
+Inspect one clean source baseline read-only for product-contract gaps, status
+contradictions, orphaned packages, authority/RC ambiguity, unsafe coupling, and
+obvious security findings. Retain raw evidence outside the repository. Do not
+claim complete A-F coverage or candidate qualification.
 
-**Done when:** the Product Owner selects one immutable Audit Baseline and the
-campaign can distinguish it from every later candidate.
+**Done when:** the state report distinguishes verified facts, hypotheses,
+known defects, and work that remains for formal audit. This preliminary pass is
+complete for the pre-remediation baseline.
 
-### A2. Discover, synthesize, and prove
+### A2. Reconcile product and evidence truth
 
-Execute the complete A-F tracks, cross-track synthesis, and proof campaign from
-the Deep audit policy. Discovery remains read-only. Every required surface and
-coverage cell receives a supported verdict; Blocker and Major hypotheses
-receive the required deterministic, environment, or Qualification proof, or
-remain explicit release-blocking uncertainty.
+Correct current product scope, research statuses, RC/evidence attribution,
+candidate claims, and the audit/qualification sequence. Retire any exposed
+local release seed before a future real release and record infrastructure-access
+cleanup as a separate exact operational action.
 
-**Done when:** the Product Owner receives one deduplicated finding and residual-
-risk register with evidence levels, root causes, proof results, claim effects,
-and required requalification.
+**Done when:** no current document claims a nonexistent product journey,
+qualified candidate, or evidence transfer between different executable bytes.
 
-### A3. Select dispositions
+### A3. Select bounded implementation waves
 
-For each finding, choose repair, claim/profile reduction, research return,
-bounded limitation, rejection with evidence, or release stop. An architecture-
-changing finding is transferred into this product plan or another explicit
-owner before code changes begin.
+For each preliminary finding, choose repair, product completion, retirement,
+versioned migration, claim reduction, research return, bounded limitation,
+rejection with evidence, or deferral. Architecture and persisted/wire identity
+changes receive explicit owners rather than bulk cleanup.
 
-**Done when:** no discovery item can enter implementation under an ambiguous
-`cleanup` or `refactoring` label.
+**Done when:** every selected change belongs to a cohesive wave with behavior
+tests and an evidence-impact statement.
 
 ## Phase B — Network/Application separation and remediation
 
-The following slices implement the already selected product separation and any
-accepted audit remediation that shares the same cohesive root cause. Unrelated
+The following slices implement the selected product separation and accepted
+preliminary remediation that shares the same cohesive root cause. Unrelated
 findings remain separate change waves.
 
 ### 1. Freeze the product and authority map
@@ -249,27 +251,50 @@ Browser evidence identifies the exact compatible Network artifact and fails
 explicitly on incompatibility; neither lane can make the other's product or
 privacy claim.
 
-## Phase C — change review, requalification, and freeze
+## Phase C — stabilization review, C0, formal audit, and qualification
 
 ### C1. Review the complete change
 
-Review the complete Audit-Baseline-to-candidate diff independently from the
+Review the complete remediation-baseline-to-candidate diff independently from the
 implementation pass. Reopen every affected invariant, authority, state,
 lifecycle, failure, resource, persistence, release, and claim assumption.
 Reject new fallback, duplicated behavior, exported authority, speculative
 Interface, or test that merely restates the changed Implementation.
 
-**Done when:** every architecture and audit change has an explicit evidence-
-reuse or requalification decision, and every newly introduced surface has its
-required audit coverage.
+**Done when:** every architecture and remediation change has an explicit
+evidence-reuse or requalification decision, and every newly introduced surface
+is inventoried for formal audit.
 
-### C2. Requalify and freeze
+### C2. Freeze and activate formal C0
+
+Pass the ordinary repository gates, select the exact source and executable
+identity, declare platforms, topology, workload, claims/non-claims, external
+prerequisites, and immutable read-only scope, and obtain Product Owner C0
+activation under the Deep audit policy.
+
+**Done when:** one clean reproducible candidate is distinguishable from every
+development branch and known preliminary findings all have terminal
+dispositions.
+
+### C3. Run formal A-F audit and disposition findings
+
+Execute complete architecture/invariant, security, concurrency/lifecycle,
+network/wire, quality, and test-adequacy tracks read-only against the exact C0
+candidate. Synthesize root causes, prove material hypotheses, and select repair,
+claim reduction, bounded limitation, rejection, or release stop. Any repair
+creates a successor candidate and receives independent diff review.
+
+**Done when:** every selected claim and maintained surface has a supported
+coverage verdict, every material finding has proof and disposition, and
+residual uncertainty is explicit.
+
+### C4. Requalify and freeze the final candidate
 
 Run the ordinary repository gates plus every platform, process, live, soak,
 fault, recovery, overload, cleanup, and Qualification profile invalidated by
-the changes. Preserve initial failures and exact environment identities. Fix
-one final source revision and executable digest only after all required cells
-have a terminal result.
+the remediation and formal-audit findings. Preserve initial failures and exact
+environment identities. Fix one final source revision and executable digest
+only after all required cells have a terminal result.
 
 **Done when:** no unresolved Blocker or Major remains in the accepted
 candidate, residual risks are explicit, and the Product Owner can promote,
@@ -286,7 +311,7 @@ become a second Endpoint. Windows and Ubuntu are separate qualification slices.
 
 ### Managed Network Access experiment
 
-After a qualified H4-5 Node duty exists, test one provider profile and one
+After a supported qualified Contributor Node duty exists, test one provider profile and one
 short-lived entitlement for one permitted Node role, initially without billing.
 The Endpoint owns the credential and provider choice; the Browser Adapter does
 not. Exercise expiry, revocation, quota, outage, explicit provider switching,
@@ -297,7 +322,7 @@ and is not selected by this plan.
 
 The core objective closes after phases A-C when all of the following hold:
 
-- the immutable H4 Audit Baseline and complete audit registers are retained in
+- the immutable formal Audit Baseline and complete audit registers are retained in
   their permitted evidence locations;
 - every material audit hypothesis has proof, disposition, and qualification
   impact, and no unresolved Blocker or Major remains accepted;

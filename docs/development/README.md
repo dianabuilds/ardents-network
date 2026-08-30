@@ -36,7 +36,7 @@ specification.
 - [Closed-alpha enrollment verification](../technical/enrollment-verification.md)
 - [Network State, Entry, Route, and Node](../technical/network-route-node.md)
 - [Current command reference](../reference/commands.md)
-- [Fixed alpha custody assembly reference](../reference/release-custody-assembly.md)
+- [Retired fixed-alpha custody assembly provenance](../reference/release-custody-assembly.md)
 
 ## Historical provenance
 

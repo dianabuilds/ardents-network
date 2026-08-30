@@ -52,14 +52,15 @@ dependency/distribution profile.
 
 ### Experiment
 
-From a clean checkout, run:
+Historical reproduction only: use an isolated checkout of the accepted
+implementation revision `b908363c3ded0d4d921fa6ffbb4836b31434372e` and run:
 
 ```powershell
-$revision = git rev-parse HEAD
-go run ./cmd/ardents-control simulate-namespace-lifecycle --source-revision $revision
+go run ./cmd/ardents-control simulate-namespace-lifecycle --source-revision b908363c3ded0d4d921fa6ffbb4836b31434372e
 ```
 
-Retain its JSON receipt
+ADR-0060 retires this route from the current command surface; do not substitute
+the current `HEAD`. Retain its historical JSON receipt
 outside Git. It uses a temporary local Store and keys, not an alpha corpus or
 network input; any result outside the stated versioned contract falsifies it.
 
@@ -97,7 +98,10 @@ that it cannot establish public operation or governance.
 
 ## Disposition
 
-**Decided for H4-4B.** ADR-0057, the H4-4 brief, command reference, package
-map, simulator, tests, and this retained command/receipt contract own the result. No operations or
-security procedure changes because the run has no deployment, authority,
-network, or VPS action.
+**Decided for H4-4B.** ADR-0057 and this record retain the completed evidence.
+ADR-0060 later retired the campaign generator and command after moving the one
+unique pending-successor fork assertion into the Namespace Authority tests and
+cross-checking the remaining lifecycle outcomes against Record and Epoch tests.
+The historical command, schema, and receipt are unchanged. No operations or
+security procedure changes are required because the campaign had no
+deployment, authority, network, or VPS action.

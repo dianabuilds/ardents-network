@@ -61,14 +61,15 @@ renewal, reclaim, and operation after Grace remain H4-4B lifecycle concerns.
 
 ### Experiment
 
-From a clean checkout, run:
+Historical reproduction only: use an isolated checkout of the accepted
+implementation revision `baeed253cf55c3689ef8d4592dd09d8839ccf29c` and run:
 
 ```powershell
-$revision = git rev-parse HEAD
-go run ./cmd/ardents-control simulate-root-claims --source-revision $revision
+go run ./cmd/ardents-control simulate-root-claims --source-revision baeed253cf55c3689ef8d4592dd09d8839ccf29c
 ```
 
-Retain its JSON receipt outside Git. It creates two
+ADR-0060 retires this route from the current command surface; do not substitute
+the current `HEAD`. Retain its historical JSON receipt outside Git. It creates two
 locally admitted commitments in Epoch 8, reveals them in Epoch 9 only after the
 commitment is fixed, assigns authenticated input ordinals, and uses no alpha
 corpus or network input.
@@ -110,7 +111,9 @@ authority, governance, operations, and evidence decision.
 
 ## Disposition
 
-**Decided for H4-4C project-control scope.** ADR-0058, the H4-4 brief,
-command reference, package map, maintained simulator/tests, and this retained
-command/receipt contract own the result. No VPS, deployment, public authority, or user action
-occurs.
+**Decided for H4-4C project-control scope.** ADR-0058 and this record retain the
+completed evidence. ADR-0060 later retired the campaign generator and command
+after moving its unique lease/Grace and incomplete-rejection assertions into
+Claim tests and cross-checking the remaining outcomes against admission,
+ordering, and Epoch tests. The historical command, schema, and receipt are
+unchanged. No VPS, deployment, public authority, or user action occurs.

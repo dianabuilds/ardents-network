@@ -1,16 +1,24 @@
 # Ardents Network
 
-Ardents is a greenfield Go project researching and building a private network
-for location-independent Services in hostile environments. It is not
-production-ready networking software and makes no current anonymity,
+Ardents is a greenfield Go project researching and building an application
+network for private, location-independent Services in hostile environments. It
+is not production-ready networking software and makes no current anonymity,
 independent-operation, public deployment, availability, or supported Node-host
 claim.
 
-The maintained system is a bounded Closed Test Network. It has native Route,
-Entry, Service Connection, Namespace, State, Update, Custody, Endpoint, and
-Node Modules. Public contracts and platform qualification are still pending;
-the sole active research question is the measured Linux Node operating profile
-in [R-092](docs/research/records/r-092-native-node-operating-profile.md).
+The maintained system contains bounded closed-alpha Route, Entry, Service
+Connection, Namespace, State, Release, Update, Custody, Endpoint, and Node work.
+These mechanisms and their historical qualification evidence do not yet
+compose one current usable or qualified product candidate. Current work is
+reconciling that candidate around a standalone headless Network product; public
+operation, platform qualification, and independent-control claims remain
+pending.
+
+`H4` and its epic identifiers organize delivery planning only. New product,
+release, package, executable, schema, and domain identities must use product
+language instead. Historical immutable evidence names are preserved only as
+provenance while their maintained consumers are explicitly generalized or
+retired.
 
 The former implementation remains on the remote
 [`old`](https://github.com/dianabuilds/ardents-network/tree/old) branch as

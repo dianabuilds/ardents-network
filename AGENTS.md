@@ -7,9 +7,18 @@
 - Do not copy architecture, terminology, dependencies, or generated artifacts
   from `old` unless a current research record explicitly justifies doing so.
 - Go is the selected language and runtime foundation for the maintained project
-  under ADR-0009. Transport, storage engine, consensus system, blockchain,
-  route implementation, public wire protocol, and application runtime remain
+  under ADR-0009. Accepted ADRs also select one bounded closed-alpha native
+  Route, wire grammar, and TCP/TLS plus QUIC Carrier set; those selections do
+  not imply a public or long-term protocol commitment. Public transport,
+  storage, consensus, blockchain, and any protected Application runtime remain
   unselected.
+- New delivery-horizon and epic labels are planning provenance only. They must
+  not become runtime identities, package boundaries, wire fields, or domain
+  terms. Immutable historical evidence may retain its original candidate
+  identifiers. Existing accepted persisted or wire identities that contain an
+  old stage label remain compatibility obligations until an explicit researched
+  migration retires them; new maintained product code and contracts use domain
+  language.
 
 ## Current collaboration model
 

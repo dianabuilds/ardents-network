@@ -539,7 +539,7 @@ explicitly unsigned non-gating Windows companion are selected. The maintained
 Endpoint/Release handoff and H4-1A/H4-1B native Ubuntu user-session
 qualification now exist. On 2026-08-28 the Product Owner used the selected
 authenticated one-to-one direct-message class, separately from GitHub, and
-enacted the exact immutable RC through pre-execution Pin verification, Release
+enacted the exact immutable RC1 through pre-execution Pin verification, Release
 Decision, non-lingering start, retained-state restart, stop, and cleanup. This
 is the Product Owner's own functional-alpha walkthrough: no independent
 external participant, supported Windows platform, or Public Beta release claim

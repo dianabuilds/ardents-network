@@ -1,9 +1,9 @@
 # H4-5 — Contributor viability and permissionless admission
 
-Status: **H4-5A/B complete and frozen: the dedicated-host Rendezvous Functional
-Alpha profile was accepted on 2026-08-29. H4-5C co-resident contribution and
-H4-5D permissionless admission are explicitly deferred and are not part of the
-accepted profile.**
+Status: **historical project qualification accepted one bounded dedicated-host
+Rendezvous profile on 2026-08-29. It is not current capacity, availability,
+independent-operation, or permissionless-admission qualification. Co-resident
+contribution and permissionless admission remain deferred.**
 
 ## Decision
 
@@ -78,7 +78,7 @@ exact platform and duty are selected from the evidence of
 assumed from the Client Portable profile.
 
 The accepted resource placement is named
-`h4-5-rendezvous-alpha-v1`: one Ubuntu LTS `x86-64` dedicated host, one
+`ardents-rendezvous-dedicated-host-v1`: one Ubuntu LTS `x86-64` dedicated host, one
 unprivileged Rendezvous process, `1` CPU of process quota, `256 MiB` cgroup
 memory maximum with a `192 MiB` high boundary, `128 MiB` Go memory limit,
 `64` tasks, `256` file descriptors, and an aggregate Network-State plus
@@ -91,6 +91,11 @@ and pair reservations are measured separately. The Node resource governor must e
 emergency threshold; systemd/cgroup ceilings are enforcement backstops, not a
 capacity claim. These values are frozen only for the project-qualified
 dedicated-host Functional Alpha.
+
+The historical qualification bundle identity
+`h4-5-rendezvous-alpha-v1` remains reader-compatible provenance only. New
+plans, installation records, runtime state, and reports use the canonical
+product identity.
 
 **Product Owner host selection (2026-08-29):** the existing project-operated
 Ubuntu hosts are eligible for this functional-alpha campaign regardless of

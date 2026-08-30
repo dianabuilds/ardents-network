@@ -1,9 +1,10 @@
 # H4-2 — Reachable live network and transport operation
 
-Status: **H4-2 implemented for the functional alpha: TCP/TLS and QUIC v1 are
-maintained State-selected Carrier Profiles; no camouflage/Bridge profile is
-selected. Capacity, censorship-resistance, anonymity, and availability remain
-separate qualification claims.**
+Status: **bounded TCP/TLS and QUIC-v1 Carrier mechanisms are maintained behind
+State-selected profiles, with no selected camouflage/Bridge profile. They are
+not a current frozen or qualified participant-network candidate. Capacity,
+censorship resistance, anonymity, availability, and independent operation
+remain separate claims.**
 
 ## Why this epic is hard
 

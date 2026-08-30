@@ -16,7 +16,7 @@ supported Node hosting, or Route qualification.
 | internal/entry | Import and admit a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, and open an adjacent contact lifecycle. | Complete Route selection, carrier choice, or User identity. |
 | internal/route | Select and hold one native Interactive Route attachment over authenticated State, Entry, caller-owned resource facts, and one exact caller-selected TCP/TLS or QUIC-v1 Carrier. | Carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty writing. |
 | internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and joined cleanup. | State-root authority, assignment creation, or a separate probe runtime. |
-| internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated H4-5 Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
+| internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,
 storage, replay, socket, and cleanup details privately. State readers receive
@@ -97,12 +97,15 @@ directory, carrier fallback, or supported Node operating profile requires its
 own decision, compatibility rule, and Qualification evidence.
 
 The sole accepted native resource profile is
-`h4-5-rendezvous-alpha-v1`. It is accepted only for an exact Rendezvous-only
+`ardents-rendezvous-dedicated-host-v1`. It is accepted only for an exact Rendezvous-only
 Node plan and rejected for Initiator, Introduction, Responder, mixed duties,
 or arbitrary native configurations. Its 1-CPU, 192/256-MiB, 128-MiB Go,
 64-task, and 256-FD placement is qualified only for the project-operated
 dedicated-host Functional Alpha. The retained `h3-*` guard profiles may still
 support their retired-role tests, but native Route code cannot inherit them.
+Readers accept the historical `h4-5-rendezvous-alpha-v1` identity only to
+reopen already pinned bundles, Node plans, and installation records; runtime
+state, new records, and reports normalize to the canonical product identity.
 
 The Linux Contributor command writes only the bounded last lifecycle and resource
 events into its private diagnostic directory. Its Contributor Module verifies
@@ -159,7 +162,7 @@ and confirmed removal. The operator contract is the
   [ADR-0027](../adr/0027-entry-binding-v1.md),
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
   [ADR-0049](../adr/0049-defer-blocked-entry-profile.md) define the selected
-  native Route and Carrier facts. R-092 and H4-5A/B select one measured
+  native Route and Carrier facts. R-092 selects one measured
   project-qualified dedicated-host Rendezvous Functional Alpha profile. The
   result does not select another duty or make public capacity, availability,
   co-resident, permissionless, or independent-operation claims.

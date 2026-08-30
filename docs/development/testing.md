@@ -3,6 +3,12 @@
 Ardents tests behavior through three explicit surfaces. None of them is a
 delivery stage, and no surface is a prerequisite receipt for another.
 
+Some retained qualification directories, Make targets, environment names, and
+fixtures contain `h4-*` in their exact historical identity. They reproduce
+already recorded evidence only; H4 is not a test architecture, product
+profile, runtime input, or naming rule. New active profiles are named for the
+product behavior and environment they verify.
+
 ## Unit
 
 Unit and single-Module integration tests live beside their implementation as
@@ -126,7 +132,7 @@ does not mean passed, waived, or unavailable evidence.
   a temporary remote container; absence or failure of any prerequisite is an
   invalid selected environment, never a skipped pass. The loss oracle proves
   terminal closure only, not VPS-loss recovery or availability.
-- H4-5 dedicated Rendezvous preparation is owned by
+- Historical dedicated Rendezvous qualification is owned by
   `tests/qualification/h4-5-rendezvous/`. Its purpose-named preflight is
   `make prepare-h4-5-rendezvous` on the Product Owner-declared existing Ubuntu
   host. It captures the actual CPU, memory, disk, link, systemd, cgroup,

@@ -703,9 +703,12 @@ even one pair cannot pass the complete matrix, R-092 selects no native profile.
 
 ## Recommendation
 
-Retain `h4-5-rendezvous-alpha-v1` as the sole project-qualified dedicated-host
-Contributor profile. Keep its exact one-pair reservations, resource placement,
-authenticated State inputs, terminal lifecycle, and operator surface frozen.
+Historical recommendation: retain `h4-5-rendezvous-alpha-v1` as the sole
+project-qualified dedicated-host Contributor profile. The maintained canonical
+identity is now `ardents-rendezvous-dedicated-host-v1`; readers accept the
+historical identity only for already pinned input. Keep the measured one-pair
+reservations, resource placement, authenticated State inputs, terminal
+lifecycle, and operator surface frozen.
 Do not generalize the measurement into public capacity, availability,
 co-resident contribution, Source independence, or independent-operation
 claims. Initiator, Responder, Introduction, R-093, and permissionless admission

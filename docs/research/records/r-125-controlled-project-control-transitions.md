@@ -58,14 +58,15 @@ command and non-secret JSON receipt.
 
 ### Experiment
 
-From a clean checkout, run:
+Historical reproduction only: use an isolated checkout of the accepted
+implementation revision `6d2280213496c37eef44c9ce4003a8638e6c8625` and run:
 
 ```powershell
-$revision = git rev-parse HEAD
-go run ./cmd/ardents-control simulate-public-control-transitions --source-revision $revision
+go run ./cmd/ardents-control simulate-public-control-transitions --source-revision 6d2280213496c37eef44c9ce4003a8638e6c8625
 ```
 
-Retain its JSON
+ADR-0060 retires this route from the current command surface; do not substitute
+the current `HEAD`. Retain its historical JSON
 receipt outside Git. It must identify the revision, versioned outcome matrix,
 and `simulation: true`/`qualified: false`; any other result falsifies the run.
 The simulation has no network or persistent authority.
@@ -106,10 +107,10 @@ independent operation, public availability, or Public Beta readiness.
 
 ## Disposition
 
-**Decided for H4-6D.** ADR-0056, the H4-6 journey, technical contract,
-command reference, package map, question queue, simulator, and tests carry
-this decision; its duplicated experiment runbook was retired by the pre-H4-8
-baseline inventory. Security and operations documents need no new operational
-procedure because the simulation has no deployment,
-authority, network, or VPS action. A public claim needs a new Product Owner
-decision; it is not residual H4-6D work.
+**Decided for H4-6D.** ADR-0056 and this record retain the completed evidence.
+ADR-0060 later retired the campaign generator and command after cross-checking
+its floor, expiry, revocation, compatibility, emergency, and no-fallback
+assertions against their domain owners. The historical command, schema, and
+receipt are unchanged. Security and operations documents need no new procedure
+because the campaign had no deployment, authority, network, or VPS action. A
+public claim needs a new Product Owner decision; it is not residual H4-6D work.

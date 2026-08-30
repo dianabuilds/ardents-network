@@ -80,14 +80,15 @@ command and JSON receipt, usable without secrets or privileged setup.
 
 ### Experiment
 
-From a clean checkout, run:
+Historical reproduction only: use an isolated checkout of the accepted
+implementation revision `280766d3d124e9cfc6ee1ef39201220bf7393260` and run:
 
 ```powershell
-$revision = git rev-parse HEAD
-go run ./cmd/ardents-control simulate-public-control --source-revision $revision
+go run ./cmd/ardents-control simulate-public-control --source-revision 280766d3d124e9cfc6ee1ef39201220bf7393260
 ```
 
-Retain its JSON receipt
+ADR-0060 retires this route from the current command surface; do not substitute
+the current `HEAD`. Retain the historical JSON receipt
 outside Git. It must identify the exact revision, report the versioned matrix,
 and remain `simulation: true` and `qualified: false`; any other result
 falsifies the run. The command creates fresh ephemeral identities and no
@@ -138,10 +139,9 @@ is explicit: this decision does not authorize a public claim.
 
 ## Disposition
 
-**Decided for H4-6C.** ADR-0055 is the accepted decision; this record changes
-the H4-6 product brief, scope, technical contract, command reference, package
-map, research question/program, simulator and behavior tests. The maintained
-implementation stays in `internal/publiccontrolsimulation`; its duplicated
-experiment runbook was retired by the pre-H4-8 baseline inventory. There is no
-accepted follow-up. A future public claim needs a new Product Owner decision;
-it is not an open H4-6C task.
+**Decided for H4-6C.** ADR-0055 is the accepted evidence decision. ADR-0060
+later retired the completed campaign generator and command after its useful
+reader and Release assertions were cross-checked against domain-owned tests.
+The historical command, receipt schema, and retained evidence are unchanged;
+they are not a maintained product Interface. A future public claim needs a new
+Product Owner decision; it is not an open H4-6C task.

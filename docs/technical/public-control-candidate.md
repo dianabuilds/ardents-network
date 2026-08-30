@@ -1,6 +1,6 @@
 # Public-control candidate evidence contract
 
-Status: **H4-6C project-control simulation complete.**
+Status: **historical project-control campaign evidence; diagnostic reader retained.**
 This defines the bounded mechanical evidence the Product Owner and Codex
 inspect. It grants no Endpoint, release, Network Epoch, Namespace, or emergency
 authority, and it makes no public-operation or independent-participant claim.
@@ -82,10 +82,11 @@ outcomes:
 `external-evidence-required` outcome applies only to a future public-operation
 claim; it does not invalidate the completed H4-6C simulation.
 
-## Project-controlled mechanics simulation
+## Historical project-controlled mechanics simulation
 
-`ardents-control simulate-public-control --source-revision LOWERCASE_40_HEX_COMMIT` emits the
-accepted H4-6C receipt. Each invocation generates
+The retired command
+`ardents-control simulate-public-control --source-revision LOWERCASE_40_HEX_COMMIT`
+emitted the accepted H4-6C receipt. Each historical invocation generated
 fresh in-memory identities for five simulated custodians, two builders, two
 auditors, and a successor custody set. It verifies one routine `3-of-5` action,
 one expiring disable-only emergency `4-of-5` action, loss/compromise/removal/
@@ -98,7 +99,7 @@ Candidate View, and builder mismatches, and it drives the maintained reader's
 malformed, forged, stale, replayed, revoked, conflicting, unavailable and
 declared-boundary-collision results.
 
-The simulation has no persistent keys, network authority, participant data, or
+The simulation had no persistent keys, network authority, participant data, or
 VPS dependency. Its output is explicitly `simulation: true` and
 `qualified: false`, `simulation_result: passed`, caller-declared
 `declared_source_revision`, and a `receipt_digest`: qualification here means no
@@ -135,15 +136,18 @@ future signed operation format.
 | builder mismatch | both reproduced artifact digests and retained input differences | candidate blocked; do not substitute a different package |
 | auditor disagreement/withholding | all received auditor outputs and missing-object identity | `conflicting`/`unavailable`; do not choose a winner locally |
 
-R-124 and ADR-0055 own the accepted H4-6C simulation. A future public-operation
-claim needs a new Product Owner decision and must not be inferred here.
+R-124 and ADR-0055 own the accepted H4-6C evidence. ADR-0060 retired its
+maintained generator and command without changing the historical schema or
+receipt. A future public-operation claim needs a new Product Owner decision and
+must not be inferred here.
 
-## H4-6D controlled project-control transitions
+## Historical H4-6D controlled project-control transitions
 
+The retired command
 `ardents-control simulate-public-control-transitions --source-revision LOWERCASE_40_HEX_COMMIT`
-is a distinct local, non-authorizing simulation. Its evaluator has no network,
-Endpoint root, retained authority, or fallback source. It reports one versioned
-receipt with `simulation: true` and `qualified: false`.
+was a distinct local, non-authorizing simulation. Its evaluator had no network,
+Endpoint root, retained authority, or fallback source. Historical receipts
+remain versioned with `simulation: true` and `qualified: false`.
 
 | Input condition | Required outcome |
 |---|---|
@@ -155,8 +159,9 @@ receipt with `simulation: true` and `qualified: false`.
 | declared distributor unavailable | `unavailable-distribution` |
 | live disable-only emergency | `stop-emergency-disabled` |
 
-The receipt additionally records rejection of overlap without continuity,
+The receipt additionally recorded rejection of overlap without continuity,
 emergency scope escalation, and expired emergency. Neither accepted nor stopped
 simulated result selects an alternate source, lower generation, Route, or
-Endpoint action. R-125 and ADR-0056 own this H4-6D evidence; it is not public
-control or Public Beta qualification.
+Endpoint action. R-125 and ADR-0056 own this H4-6D evidence; ADR-0060 retired
+the generator and command. It is not public control or Public Beta
+qualification.

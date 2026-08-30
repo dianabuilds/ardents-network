@@ -22,11 +22,13 @@ remains available as generic/unqualified operation and the claim is absent.
 There is no silent fallback that retains the protected-mode label.
 
 **Current research outcome:** protected mode is deferred. The current H4-3
-candidate is an explicit generic-browser handoff, not a selected protected
-job, and no operating-system mechanism has been chosen. A sandbox, browser
-extension, proxy, or firewall experiment cannot become a privacy feature on
-its own; H4-7A starts only after the Product Owner names one exact workload and
-platform. See [R-099](../../research/records/r-099-protected-application-profile.md).
+core candidate is headless and does not depend on a browser. Its optional
+generic-browser compatibility trace remains unqualified, is not a selected
+protected job, and no operating-system mechanism has been chosen. A sandbox,
+browser extension, proxy, or firewall experiment cannot become a privacy
+feature on its own; H4-7A starts only after the Product Owner names one exact
+workload and platform. See
+[R-099](../../research/records/r-099-protected-application-profile.md).
 
 ## Why the ordinary browser is not enough
 

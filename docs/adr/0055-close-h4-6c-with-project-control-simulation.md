@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-08-29
 supersedes: ADR-0054 H4-6C consequence only
+partially-superseded-by: ADR-0060 (maintained generator and command consequence only)
 ---
 
 # ADR-0055 — Close H4-6C with project-control simulation

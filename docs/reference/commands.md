@@ -18,13 +18,13 @@ configuration format or an authority source.
 | `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH` | Accept one complete authenticated offline Network State generation. It emits one `ardents-state-event-v1` `generation-accepted` JSON event. |
 | `refresh-sources --state-root PATH --source-plan PATH [--once] [--resume]` | Run one selected Direct-Origin Source wave, or wait for the plan-owned `ardents-source-plan-v1` input. It emits an `ardents-source-event-v1` `source-wave-accepted` event after acceptance. |
 | `endpoint run <endpoint-plan.json>` | Run one bounded local Endpoint process. The plan remains Endpoint-owned and temporary; it is not a supported service-management format. |
-| `endpoint alpha-browser <alpha-browser-runtime.json>` | Retain one named-alpha Browser runtime from local State, Entry, and corpus owners. Its closed input contains local roots, pinned control keys, local Endpoint broker values, and optionally the existing bounded State Source plan needed to refresh that same root; it rejects a Target, Descriptor, Gateway, Node endpoint, Grant, certificate, or browser URL. The runtime, not a competing `refresh-sources` process, owns the State root while it is live. It publishes only the fixed Browser Entry state expected by the separately installed native host and withdraws it on stop. |
+| `endpoint alpha-browser <alpha-browser-runtime.json>` | Retain the optional named-alpha Firefox compatibility runtime from local State, Entry, and corpus owners. It is not a headless-product dependency or a qualified participant Browser Entry. Its closed input contains local roots, pinned control keys, local Endpoint broker values, and optionally the existing bounded State Source plan needed to refresh that same root; it rejects a Target, Descriptor, Gateway, Node endpoint, Grant, certificate, or browser URL. The runtime, not a competing `refresh-sources` process, owns the State root while it is live. It publishes only the fixed compatibility state expected by the separately installed native host and withdraws it on stop. |
 | `endpoint enrollment-check <alpha-enrollment.json>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
 | `endpoint enroll <alpha-enrollment.json>` | Run the explicit Ubuntu Portable enrollment/start path after pin and Release Decision verification. |
 | `endpoint enroll-installed <package-enrollment.json>` | Run the explicit Ubuntu Installed enrollment/start path for one root-owned package artifact and versioned static enrollment root. |
 | `endpoint user-unit <alpha-enrollment.json>` / `endpoint installed-user-unit <package-enrollment.json>` | Render, but never write, enable, or start, the matching `systemd --user` unit. |
 | `endpoint replace <replacement-bundle>` | Perform one explicit Ubuntu local Release-authorized replacement against the fixed user unit; it neither downloads nor schedules updates. |
-| `endpoint replacement-recovery` | Report durable H4-1B recovery classification only; it never starts, replaces, or rolls back a program. |
+| `endpoint replacement-recovery` | Report durable replacement recovery classification only; it never starts, replaces, or rolls back a program. |
 | `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Perform the only permitted explicit rollback: the retained predecessor, with a fresh Release authorization for its exact bytes. |
 | `entry import <entry-import-plan.json>` | Import one signed State-referenced Entry Invite into Entry-owned durable replay and replacement state. |
 | `name encode <name>` | Print one canonical Service Name wire encoding as lowercase hexadecimal. |
@@ -62,7 +62,7 @@ mismatch is rejected. Omitting the field retains the State endpoint as the
 listener and does not change existing plan behavior.
 
 On Linux, `ardents-node contributor` exposes the complete
-`h4-5-rendezvous-alpha-v1` dedicated-host lifecycle: `apply`, `diagnose`,
+`ardents-rendezvous-dedicated-host-v1` dedicated-host lifecycle: `apply`, `diagnose`,
 `restart`, `drain`, `withdraw`, and confirmed `remove`. It accepts no other
 duty or system-service operation. The exact prerequisites, authenticated
 bundle, commands, limits, diagnostics, update recovery, and residue contract
@@ -91,21 +91,20 @@ implemented and verified.
 
 ## `ardents-release-custody`
 
-`ardents-release-custody` is the Product Owner's separate local alpha
-release-seed custody adapter. It accepts no password through flags,
-environment, configuration, or shared stdin. It exposes one fixed-profile
-metadata assembly route but no generic signer, upload, artifact publication,
-Endpoint start, or VPS configuration route.
+`ardents-release-custody` is the Product Owner's separate local release-seed
+custody adapter. It accepts no password through flags, environment,
+configuration, or shared stdin. It can initialize or inspect one encrypted
+fixed-role record; it exposes no signer, metadata assembly, upload, artifact
+publication, Endpoint start, or VPS configuration route.
 
 | Route | Required flags | Result |
 |---|---|---|
 | `initialize` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads a new local passphrase and confirmation, then creates the one encrypted fixed-role seed record and prints its public receipt. |
 | `inspect` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads the existing local passphrase, authenticates the fixed encrypted record without altering it, and prints only its public receipt. |
-| `assemble` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY --request ABSOLUTE_FILE --endpoint ABSOLUTE_FILE --control ABSOLUTE_FILE --output ABSENT_ABSOLUTE_DIRECTORY` | Authenticates the selected H4-alpha-1 envelope, accepts only the recorded profile/source/artifact identities, constructs and preflights the fixed TUF/H4-6A static input set, then prints a public receipt. It does not assemble or publish the release bundle. |
-| `assemble-successor` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY --request ABSOLUTE_FILE --endpoint ABSOLUTE_FILE --control ABSOLUTE_FILE --predecessor ABSOLUTE_RC1_STATIC_DIRECTORY --output ABSENT_ABSOLUTE_DIRECTORY` | Builds only the fixed recorded RC1-to-RC2 successor after exact predecessor verification. It never selects a different predecessor, root, source, role, or output inventory. |
 
-The exact request schema, bounded-file rules, fixed output, and receipt contract
-are in the [release-custody assembly reference](release-custody-assembly.md).
+ADR-0059 retired the completed RC1/RC2 assembly routes. Their exact former
+schema and receipt contract remain as historical provenance in the
+[retired release-custody assembly reference](release-custody-assembly.md).
 
 ## `ardents-state-custody`
 
@@ -119,7 +118,7 @@ the supplied root, and prints a non-secret receipt.
 
 The child contains the encrypted `state-seeds.json` and public
 `alpha-network-state.json` request fragment. The latter declares
-`empty-no-persistent-node`: it is valid H4-6A control input, but never evidence
+`empty-no-persistent-node`: it is valid closed-alpha control input, but never evidence
 of route readiness, operator capacity, availability, independent control, or
 Public Beta governance. The command exposes no generic signer, successor,
 Node-key, upload, or publication route.
@@ -132,16 +131,18 @@ alpha name into canonical Namespace state.
 
 | Route | Required flags | Result |
 |---|---|---|
-| `inspect` | `--directory PATH --state-root PATH --disclosure-key HEX --release-key HEX --network-key HEX --compatibility-key HEX --at RFC3339` | Low-level statement-integrity diagnostic for an explicit ACA1 directory and caller-pinned component roots. It advances the catalog child of the named reader root and deliberately does not perform enrollment, artifact, Release Decision, or Network State verification. It is not the participant H4-6A route. |
-| `inspect-bundle` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant H4-6A route. It first verifies the exact enrolled bundle and artifact, then runs the maintained Release Decision, Network State, ACA1 catalog, and Release/Network/Compatibility component verifiers. The named standalone inspection root owns separate `catalog`, `release`, and `network` floor children and is physically distinct from Endpoint state. Repeating the same accepted input against the same inspection root reports the cached/no-update outcome; a second absent inspection root supplies an independent fresh observation. |
-| `inspect-transitions` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | H4-6B participant diagnostic. It runs the same enrollment-pinned inspection and emits `ardents-alpha-transition-report-v1`: nested exact H4-6A control evidence plus independent Release Safety, Network Epoch, Compatibility, and Namespace-materialization outcomes. It is read-only; `not-selected` for Namespace never creates a close, release, reclaim, or current Namespace state. |
-| `inspect-public-control` | `--evidence PATH --at RFC3339 --audit-floor-generation N --expected-predecessor DIGEST` | Diagnostic for a future public-operation claim, not an H4-6C completion gate. It reads one bounded regular `ardents-public-control-evidence-v1` manifest and emits only its content-addressed declared custody, Candidate View, package, builder, auditor, and transition findings. The floor and predecessor are explicit audit inputs, not locally retained authority. It identifies malformed, stale, replayed, revoked, conflicting, unavailable, and declared-boundary-collision evidence. `qualified` is always false and `external-evidence-required` is always present for any future public claim; neither outcome invalidates the accepted project-control simulation. It neither accepts an Epoch/package nor writes any floor. |
-| `simulate-public-control` | `--source-revision LOWERCASE_40_HEX_COMMIT` | Runs one local H4-6C mechanics simulation with fresh in-memory project-controlled keys: routine `3-of-5`, expiring disable-only emergency `4-of-5`, bidirectional lifecycle rotation, two full Candidate View reconstructions, two retained package attestations, and named rejection cells including the reader matrix. Its versioned JSON receipt carries `simulation_result: passed`, a caller-declared source revision, and a receipt digest; retain it outside the repository. It remains `simulation: true` and `qualified: false`, creates no authority, and makes no independent-operation claim. |
-| `simulate-public-control-transitions` | `--source-revision LOWERCASE_40_HEX_COMMIT` | Runs the H4-6D local transition matrix: continuous overlap is accepted; expiry, revocation, incompatible generation, rollback, distribution outage, and in-scope emergency disablement stop or become unavailable; invalid continuity and emergency forms are rejected. Its versioned JSON receipt is retained outside the repository and is always `simulation: true`, `qualified: false`; it creates no authority or public-operation claim. |
-| `simulate-namespace-lifecycle` | `--source-revision LOWERCASE_40_HEX_COMMIT` | Runs the H4-4B local canonical-Name lifecycle through durable pending successors and threshold-attested Epoch state: publication/update, expiry-to-Grace, Released refusal, next-generation reclaim, restart, and stale/fork refusal. It never accepts an alpha corpus as current state. Its versioned receipt is retained outside the repository and is always `simulation: true`, `qualified: false`. |
-| `simulate-root-claims` | `--source-revision LOWERCASE_40_HEX_COMMIT` | Runs the H4-4C local commit/reveal, deterministic winner, threshold-current materialization, lease/Grace, and withholding/incomplete/rule/control-fork refusal simulation. Its versioned receipt is always `simulation: true`, `qualified: false`; it creates no public Namespace or governance claim. |
+| `inspect` | `--directory PATH --state-root PATH --disclosure-key HEX --release-key HEX --network-key HEX --compatibility-key HEX --at RFC3339` | Low-level statement-integrity diagnostic for an explicit ACA1 directory and caller-pinned component roots. It advances the catalog child of the named reader root and deliberately does not perform enrollment, artifact, Release Decision, or Network State verification. It is not the participant bundle route. |
+| `inspect-bundle` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant closed-alpha route. It first verifies the exact enrolled bundle and artifact, then runs the maintained Release Decision, Network State, ACA1 catalog, and Release/Network/Compatibility component verifiers. The named standalone inspection root owns separate `catalog`, `release`, and `network` floor children and is physically distinct from Endpoint state. Repeating the same accepted input against the same inspection root reports the cached/no-update outcome; a second absent inspection root supplies an independent fresh observation. |
+| `inspect-transitions` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant transition diagnostic. It runs the same enrollment-pinned inspection and emits `ardents-alpha-transition-report-v1`: nested exact closed-alpha control evidence plus independent Release Safety, Network Epoch, Compatibility, and Namespace-materialization outcomes. It is read-only; `not-selected` for Namespace never creates a close, release, reclaim, or current Namespace state. |
+| `inspect-public-control` | `--evidence PATH --at RFC3339 --audit-floor-generation N --expected-predecessor DIGEST` | Diagnostic for a future public-operation claim, not proof of a retired planning campaign. It reads one bounded regular `ardents-public-control-evidence-v1` manifest and emits only its content-addressed declared custody, Candidate View, package, builder, auditor, and transition findings. The floor and predecessor are explicit audit inputs, not locally retained authority. It identifies malformed, stale, replayed, revoked, conflicting, unavailable, and declared-boundary-collision evidence. `qualified` is always false and `external-evidence-required` is always present for any future public claim; neither outcome rewrites historical project-control evidence. It neither accepts an Epoch/package nor writes any floor. |
 | `inspect-alpha-corpus` | `--catalog PATH --corpus PATH --state-root PATH --disclosure-key HEX --corpus-key HEX --network HEX --at RFC3339` | Verifies one explicit ACA2 catalog and separately signed Alpha Name Corpus under independent keys, then writes only the corpus serial/digest/bytes to its named persistent floor. It reports `ardents-alpha-corpus-report-v1`; stale, conflicting, changed, expired, or wrong-network input fails. |
 | `accept-alpha-corpus` | `--enrollment PATH --artifact PATH --control-state-root PATH --corpus-state-root PATH --catalog PATH --corpus PATH --at RFC3339` | First verifies the exact enrollment-v3-or-later bundle, its enrolled Endpoint executable, and that the running platform-specific `ardents-control` file is the exact separately manifested companion. It then accepts the fixed ACA1 Release/Network/Compatibility evidence and verifies the independently pinned ACA2/corpus component before advancing only the named Endpoint-local corpus floor. An exact repeat is harmless; a higher serial replaces the retained corpus, while a lower or same-serial-different input fails. It reports `ardents-alpha-corpus-acceptance-v1`. |
+
+The four completed planning-campaign `simulate-*` routes were retired by
+[ADR-0060](../adr/0060-retire-completed-planning-campaign-generators.md).
+Their historical command lines, JSON schema identities, and receipts remain
+unchanged in the accepted ADRs, research records, external evidence, and Git
+history; they are not current command compatibility promises.
 
 None of these routes launches a browser, opens a Service, chooses a Relay/Gateway, or
 makes an `ardents-alpha://` link a public DNS/HTTPS address. The acceptance
@@ -151,7 +152,8 @@ install an Endpoint.
 ## `ardents-browser-entry`
 
 `ardents-browser-entry native-host --state ABSOLUTE_PATH` is the fixed Firefox
-native-messaging adapter for the selected alpha Browser Entry. Firefox invokes
+native-messaging adapter for the retained optional compatibility trace. It is
+not a selected participant Browser Entry. Firefox invokes
 it through an exact-ID native manifest, not an operator shell. It consumes one
 bounded `loopback-proxy-port` or `loopback-proxy-authentication` native frame
 and returns its port (and, only for the latter, a one-process proxy password)
@@ -180,7 +182,7 @@ installs that exact XPI.
 
 The matching add-on source and manifest template are in
 `packaging/firefox-alpha-browser-entry`. A Mozilla-signed XPI and a real
-enrollment-v4 release bundle remain H4-4 promotion artifacts; repository
+enrollment-v4 release bundle remain historical promotion artifacts; repository
 source or a GitHub download alone is not an installed Browser Entry profile.
 
 ## Process and support limits

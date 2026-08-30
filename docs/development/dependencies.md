@@ -105,9 +105,9 @@ tests, non-test caller, and package-map entry now own it.
 | `github.com/cenkalti/backoff/v5` | `v5.0.3` | MIT | transitive go-tuf module dependency; absent from the maintained package import path |
 | `github.com/google/go-containerregistry` | `v0.21.9` | Apache-2.0 | signature/key conversion closure |
 | `github.com/opencontainers/go-digest` | `v1.0.0` | Apache-2.0 | digest conversion closure |
-| `github.com/secure-systems-lab/go-securesystemslib` | `v0.11.0` | MIT | maintained signing-verification support used by go-tuf metadata |
+| `github.com/secure-systems-lab/go-securesystemslib` | `v0.11.1` | MIT | maintained signing-verification support used by go-tuf metadata |
 | `github.com/sigstore/protobuf-specs` | `v0.5.2` | Apache-2.0 | signature verification type closure |
-| `github.com/sigstore/sigstore` | `v1.10.9` | Apache-2.0 | public-key verification adapter used by go-tuf and the fixed Ed25519 metadata signer adapter used only by release custody |
+| `github.com/sigstore/sigstore` | `v1.10.9` | Apache-2.0 | public-key verification adapter used by maintained Release verification and its behavior fixtures |
 | `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
 | `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | raised cryptographic support closure |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |

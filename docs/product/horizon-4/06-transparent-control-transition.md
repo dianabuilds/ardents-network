@@ -1,7 +1,8 @@
 # H4-6 — Transparent alpha control and public-control transition
 
-Status: **H4-6A and H4-6B accepted for Functional Alpha; alpha control remains
-project-operated and no independent public-control claim is accepted.**
+Status: **bounded alpha-control inspection and transition mechanics are
+maintained evidence. Control remains project-operated; no current candidate or
+independent public-control claim is accepted.**
 
 ## Decision
 
@@ -101,8 +102,10 @@ inspectable by the Product Owner and Codex.
 ADR-0055 selects five simulated custody roles, `3-of-5` routine authority, an
 expiring disable-only `4-of-5` emergency, predecessor-and-successor lifecycle
 rotation, two full Candidate View reconstructions, two builder/auditor roles,
-and the bounded reader's failure matrix. `simulate-public-control` exercises
+and the bounded reader's failure matrix. `simulate-public-control` exercised
 those exact mechanics with fresh in-memory keys and retained in-memory evidence.
+ADR-0060 later retired that completed campaign generator and command; the
+historical receipt and Git revision remain unchanged provenance.
 
 The result is **complete for H4-6C**. It neither selects a public candidate nor
 asserts independent operation, public availability, or Public Beta. Those are
@@ -115,18 +118,20 @@ decision and evidence contract.
 unsafe control transitions without using an older generation, alternate source,
 or local repair.
 
-ADR-0056 and R-125 select one bounded local matrix: continuous overlap is
+ADR-0056 and R-125 selected one bounded local matrix: continuous overlap is
 accepted; expiry, revocation, incompatible generation, rollback, distribution
-outage, and an in-scope emergency disablement each produce their exact stop or
-unavailable result. An overlap without continuity, an emergency that escalates
-its scope, and an expired emergency are rejected. The evidence is the versioned
-JSON receipt from `ardents-control simulate-public-control-transitions
---source-revision LOWERCASE_40_HEX_COMMIT`, retained outside the repository.
+outage, and an in-scope emergency disablement each produced their exact stop or
+unavailable result. An overlap without continuity, an emergency that escalated
+its scope, and an expired emergency were rejected. The evidence is the retained
+versioned JSON receipt from the now-retired `ardents-control
+simulate-public-control-transitions --source-revision
+LOWERCASE_40_HEX_COMMIT` campaign.
 
-This is complete for H4-6D once that receipt and its behavior tests pass. It is
-explicitly a Product Owner-and-Codex simulation: it creates no authority,
-modifies no Endpoint root, and makes no claim about public operation,
-independent control, availability, or Public Beta.
+This is complete historical H4-6D evidence. ADR-0060 retired the generator and
+command after cross-checking the useful assertions against their domain owners.
+The Product Owner-and-Codex simulation created no authority, modified no
+Endpoint root, and made no claim about public operation, independent control,
+availability, or Public Beta.
 
 ## Evidence and promotion gates
 

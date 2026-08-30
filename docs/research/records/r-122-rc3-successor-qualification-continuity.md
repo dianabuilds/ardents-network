@@ -4,7 +4,7 @@ title: A11 harness and RC2 candidate qualification continuity
 status: decided
 owner: Product Owner and Codex
 started: 2026-08-28
-reviewed: 2026-08-28
+reviewed: 2026-08-30
 ---
 
 # R-122 — Can the corrected A11 harness qualify immutable RC2 without a new candidate?
@@ -35,6 +35,9 @@ committed harness and records its revision as `harness_revision`. It does not
 compare the harness revision to the candidate revision. Each attempt records
 both identities. Therefore the corrected harness does not alter RC2 release
 bytes or break the runner's candidate binding.
+
+This decision evaluates only whether the A11 harness correction required RC3.
+It does not evaluate or transfer any RC1 A1-A10 evidence to RC2.
 
 ## Hypotheses
 
@@ -111,7 +114,8 @@ attempt, including a failed one, under a new external evidence root.
 Run the official A11 campaign once with the immutable RC2 candidate and the
 corrected committed harness. The final receipt must name both revisions. No
 RC3, custody operation, or dependent candidate requalification is required
-unless a release input byte changes.
+unless a release input byte changes. This recommendation does not establish any
+RC2 cell outside the declared A11 campaign.
 
 ## Disposition
 
@@ -120,5 +124,6 @@ RC2 A11 attempt 14 accepted all six cells and ten invocations in 2,462,217 ms:
 `C:\Users\vitek\Ardents-Release\evidence\h4-alpha-1-rc-2-h4-8-a11-attempt-14\campaign-receipt.json`.
 The receipt binds RC2 source/tag/archive and separately records harness revision
 `a7147b04`; no release bytes changed and no dependent candidate requalification
-was required. A12 may therefore close the selected H4-3/H4-8 functional-alpha
-profile while retaining all broader limitations.
+was required. A11 is accepted only under those separately recorded candidate
+and harness identities. This decision does not establish A1-A10 for RC2 and
+does not authorize an aggregate A1-A12 closure.

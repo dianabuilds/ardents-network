@@ -1,7 +1,7 @@
 ---
 id: R-117
 title: Firefox Browser Entry delivery boundary
-status: open
+status: closed; participant delivery selection superseded
 owner: Product Owner and Codex
 started: 2026-08-26
 reviewed: 2026-08-26
@@ -11,39 +11,48 @@ reviewed: 2026-08-26
 
 ## Decision this unlocks
 
-Select the H4-4 Firefox-first alpha delivery profile: exact signed XPI
-distribution, native-host manifest installation/removal on Windows and Ubuntu,
-the stable Endpoint state-path input, update/recovery behavior, and the limits
-of its user-facing claim.
+This record historically selected an H4-4 Firefox-first alpha delivery profile:
+exact signed XPI distribution, native-host manifest installation/removal on
+Windows and Ubuntu, the stable Endpoint state-path input, update/recovery
+behavior, and the limits of its user-facing claim. R-115 subsequently falsified
+the required no-DNS/DoH-leak behavior. ADR-0061 therefore closes participant
+delivery through this profile and retains the implementation only as optional
+compatibility evidence.
 
-## Current contract
+## Retained compatibility contract
 
-- H4-4A exposes only an already authenticated, pre-opened alpha session at
-  `http://<name>.ard/`. It is not public DNS, HTTPS, Web PKI, canonical
-  Namespace, or an arbitrary proxy. [ADR-0040](../../adr/0040-bounded-alpha-name-overlay.md)
-  and [R-115](r-115-named-browser-entry.md) are authoritative.
+- The former Firefox path exposes only an already authenticated, pre-opened
+  alpha session at `http://<name>.ard/`. Current H4-4A instead shares
+  `ardents-alpha://<name>` through the headless Application Interface. The
+  retained `.ard` trace is not public DNS, HTTPS, Web PKI, canonical Namespace,
+  or an arbitrary proxy. [ADR-0040](../../adr/0040-bounded-alpha-name-overlay.md),
+  [R-115](r-115-named-browser-entry.md), and
+  [ADR-0061](../../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
+  are authoritative.
 - The maintained add-on has a fixed ID, `proxy`, `nativeMessaging`,
   `webRequest`, and `webRequestBlocking` permissions, with every web-request
   listener limited to `.ard`. It has a terminal no-fallback proxy result for
   `.ard`, and now revalidates a loopback `407` before it returns the separate
   one-process proxy credential.
-- The selected Endpoint-plan `BrowserEntryProfile: "firefox-alpha"` resolves
+- The historical Endpoint-plan `BrowserEntryProfile: "firefox-alpha"` resolves
   to the native host's one fixed per-user state path. An explicit absolute
-  `BrowserEntryStatePath` remains a bounded qualification/local override; it
-  is not a participant profile.
-- The Product Owner accepts Firefox-first work and does not plan to buy a
-  Windows OV/EV certificate for an alpha without users. The profile must not
+  `BrowserEntryStatePath` remains a bounded compatibility-test override; it is
+  not a participant profile.
+- The Product Owner accepted the bounded Firefox-first experiment and did not
+  plan to buy a Windows OV/EV certificate for an alpha without users. The
+  retained compatibility profile must not
   install a CA, edit ordinary DNS/DoH, take port 80/443, set global browser
   proxy settings, or require a browser fork.
 
 ## Hypotheses
 
-- **H1:** a Mozilla-signed, self-distributed fixed-ID XPI plus an exact
+- **H1 (historical):** a Mozilla-signed, self-distributed fixed-ID XPI plus an exact
   enrollment-v4 Endpoint/native-host/XPI binding can install a user-local
   native manifest and stable state-path profile without changing global browser
-  or system network settings. **Partially supported by maintained source and
-  one concrete Mozilla-signed XPI; awaiting an enrolled release-shaped
-  two-platform run.**
+  or system network settings. **The mechanics are partially supported by
+  maintained source and one concrete Mozilla-signed XPI. The participant
+  hypothesis is superseded by ADR-0061, so no enrolled release-shaped
+  two-platform run is pending.**
 - **H2:** an AMO public listing is necessary for enough installation and update
   usability to justify accepting AMO listing/governance as an alpha dependency.
 - **H3:** a Browser Entry can bind its later HTTP proxy request to the active
@@ -56,7 +65,12 @@ of its user-facing claim.
   recovery, and authority contract. Retain explicit Link handoff rather than
   claim participant-ready named browsing.
 
-## Evaluation criteria
+## Historical evaluation criteria
+
+These criteria preserve the provenance of the former participant-delivery
+experiment. They are not current release gates; optional compatibility
+regression may reuse them only without making a participant Browser Entry
+claim.
 
 - A release Firefox user can install exactly one Mozilla-signed fixed-ID XPI;
   the native manifest allows only that ID and starts only the release-pinned
@@ -108,18 +122,17 @@ of its user-facing claim.
 
 ### Experiment
 
-The concrete signed alpha XPI now exists. The purpose-named signed-Firefox
+The concrete signed alpha XPI now exists. The historical purpose-named signed-Firefox
 qualifier starts a clean temporary profile, asks the operator to install that
 exact XPI explicitly, and accepts a result only after the dynamic Publisher
 proof and exact XPI/profile-index checks. It is deliberately separate from the
 temporary `web-ext` fixture, which cannot prove Release Firefox accepts a
 signed add-on. Its temporary native registration and C-2 input are still not a
-participant Release Decision. After an enrolled v4 bundle exists, qualify both
-platforms with a release-shaped, user-owned installation root. Record the exact
-manifest and binary bytes, run fresh-profile success and ordinary-URL control,
-replace with a fresh Release decision, interrupt each write boundary, and
-remove the component. The proof must show the exact per-user registration is
-gone, protected Endpoint roots remain, and a stale `.ard` route fails locally.
+participant Release Decision. The former plan to qualify both platforms after
+an enrolled v4 bundle is retired by ADR-0061. If the optional compatibility
+path is deliberately regression-tested, record its exact manifest and binary
+bytes and preserve the owned-only removal and protected-root checks, without
+promoting the result to participant or headless-network qualification.
 
 ### Failure scenarios
 
@@ -283,11 +296,14 @@ gone, protected Endpoint roots remain, and a stale `.ard` route fails locally.
 
 ## Recommendation
 
-The Product Owner selected the narrowest profile: Mozilla-signed unlisted XPI
-self-distributed with a manifest-pinned release, plus exact per-user native
-manifest registration. [ADR-0045](../../adr/0045-firefox-first-unlisted-browser-entry-delivery.md)
-records the decision. Complete the two-platform release-shaped qualification
-after an enrolled v4 bundle exists.
+Historical recommendation: the Product Owner selected the narrowest Firefox
+profile, a Mozilla-signed unlisted XPI self-distributed with a manifest-pinned
+release plus exact per-user native manifest registration. ADR-0045 recorded
+that decision. R-115 later falsified the participant Browser Entry hypothesis;
+[ADR-0061](../../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
+supersedes the delivery selection. Do not run participant release qualification
+for this profile. Any renewed Browser Entry starts with a new resolution and
+HTTP/HTTPS trust decision.
 
 **Confidence:** high that unlisted Mozilla signing is the narrowest Firefox
 delivery channel; high that an installer before a stable Endpoint state profile
@@ -297,11 +313,11 @@ install/update journey than AMO.
 
 ## Disposition
 
-Open, implementation-linked H4-4 research. ADR-0044 qualified the narrow
-`.ard`-filtered browser permission/authentication slice; ADR-0045 selected
-and implemented the bounded source-level native-manifest lifecycle and its
-v4 provenance model. Mozilla has signed the initial fixed-ID XPI, but this
-remains short of a participant-ready release until a real enrolled bundle
-completes two-platform install/replace/remove qualification. R-115 remains the owner of the browser
-address/DNS/HTTPS decision; R-113 remains the owner of corpus distribution;
-H4-6 owns name release/reclaim.
+Closed as participant-delivery research. ADR-0044 qualified the narrow
+`.ard`-filtered browser permission/authentication slice; ADR-0045 selected and
+implemented the bounded source-level native-manifest lifecycle and its v4
+provenance model. Mozilla signed the initial fixed-ID XPI, but R-115's clean
+Firefox resolver trace falsified the required no-leak behavior. ADR-0061 keeps
+these mechanics only as optional compatibility evidence, outside the headless
+network product and outside candidate qualification. R-113 remains the owner
+of corpus distribution; name release/reclaim remains control research.

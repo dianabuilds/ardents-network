@@ -49,29 +49,33 @@ Current decisions:
 - [0042 — Bind the accepting alpha-control command to enrollment v3](0042-bind-alpha-control-command-to-v3-enrollment.md)
 - [0043 — Derive Grace from signed Name deadlines](0043-derive-grace-from-signed-deadlines.md)
 - [0044 — Revalidate Browser Entry proxy authentication](0044-revalidate-browser-entry-proxy-authentication.md)
-- [0045 — Deliver the alpha Browser Entry as a signed unlisted Firefox add-on](0045-firefox-first-unlisted-browser-entry-delivery.md)
 - [0046 — Bind the Destination Resolution Gateway profile in Network State](0046-state-selected-destination-resolution-gateway.md)
 - [0047 — Issue dynamic membership-level Transit Grants through State and Entry](0047-dynamic-membership-transit-grants.md)
 - [0048 — Maintain TCP/TLS and QUIC v1 behind one Carrier contract](0048-maintain-tcp-and-quic-carriers.md)
 - [0049 — Do not select a blocked-entry profile for the functional alpha](0049-defer-blocked-entry-profile.md)
 - [0050 — Keep closed-alpha release seeds in separate local custody](0050-separate-local-release-seed-custody.md)
 - [0051 — Confirm the local release-seed public receipt without exporting secrets](0051-confirm-local-release-seed-public-receipt.md)
-- [0052 — Build only fixed closed-alpha static inputs from local custody](0052-build-fixed-alpha-static-inputs.md)
 - [0053 — Bootstrap functional-alpha Network State with a separate 1-of-1 authority](0053-bootstrap-functional-alpha-network-state.md)
 - [0054 — Separate Functional Alpha transition contracts](0054-separate-alpha-transition-contracts.md)
 - [0055 — Close H4-6C with project-control simulation](0055-close-h4-6c-with-project-control-simulation.md)
 - [0056 — Simulate H4-6D controlled project-control transitions](0056-simulate-h4-6d-controlled-project-control-transitions.md)
 - [0057 — Simulate H4-4B canonical Name lifecycle](0057-simulate-h4-4b-canonical-name-lifecycle.md)
+- [0058 — Simulate H4-4C deterministic root claims](0058-simulate-h4-4c-root-claims.md)
+- [0061 — Retain the Firefox entry only as compatibility evidence](0061-retain-firefox-entry-as-compatibility-evidence.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
 - [0030 — Retire Update V0 as an unobserved test format](0030-retire-update-v0-as-test-format.md)
+- [0059 — Retire fixed historical candidate assembly](0059-retire-fixed-alpha-candidate-assembly.md)
+- [0060 — Retire completed planning-campaign generators](0060-retire-completed-planning-campaign-generators.md)
 
 Superseded or withdrawn decisions retained for provenance:
 
 - [0012 — Select standalone WebTunnel for the H3 Camouflage Adapter](0012-select-webtunnel-for-h3-camouflage.md)
 - [0013 — Withdraw the initial Stage 6 cryptographic suite](0013-stage-6-cryptographic-suite.md)
 - [0016 — Bind and isolate launcher-born Application Principals](0016-bind-and-isolate-launcher-born-application-principals.md)
+- [0045 — Deliver the alpha Browser Entry as a signed unlisted Firefox add-on](0045-firefox-first-unlisted-browser-entry-delivery.md)
+- [0052 — Build only fixed closed-alpha static inputs from local custody](0052-build-fixed-alpha-static-inputs.md)
 
 ADR-0015 was accepted for the stopped Stage 7 work but remains the current
 release/update ownership decision. New ADRs use the next unreserved four-digit

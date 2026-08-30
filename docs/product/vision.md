@@ -1,8 +1,8 @@
 # Product vision
 
-Status: **accepted long-term product contract; current horizon is bounded H3 research**
+Status: **accepted long-term product contract**
 
-Last reviewed: 2026-08-11
+Last reviewed: 2026-08-30
 
 The complete installation, readiness, operation, update, and withdrawal contract
 is defined in [the product operating model](operating-model.md). What may be
@@ -24,15 +24,16 @@ route and protect their connections.
 ## Delivery horizon
 
 The vision describes the eventual public product, not one immediate release.
-Carrier Lab and the controlled Named Unlisted Site tracer have completed their
-bounded gates. Horizon 3 now permits research for one project-controlled Closed
-Test Network vertical slice at a time; no slice enters implementation without a
-frozen record and explicit Product Owner promotion. Public contribution,
-Bridges, permissionless naming, production updates, multiparty governance,
-Windows qualification, and complete Route Qualification remain separate later
-gates. A fixed long-term requirement is not automatically a current backlog
-item, and the ambiguous planning label `V1` is no longer used for the next
-implementation.
+Carrier Lab, the controlled Named Unlisted Site tracer, and later bounded alpha
+mechanics are evidence and provenance, not a product identity. Current work may
+compose one explicitly selected headless product candidate from accepted
+contracts and remediate the known gaps before that exact candidate is frozen.
+Delivery-horizon labels must not enter domain language or runtime behavior.
+Public contribution, Bridges, permissionless naming, production updates,
+multiparty governance, Windows qualification, and complete Route Qualification
+remain separate later gates. A fixed long-term requirement is not automatically
+a current backlog item, and the ambiguous planning label `V1` is no longer used
+for the next implementation.
 
 ## What the product adjectives mean
 

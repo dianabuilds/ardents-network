@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-08-29
 supersedes: ADR-0022 target-validity consequence for H4-4B; ADR-0043 H4-4B completion consequence only
+partially-superseded-by: ADR-0060 (maintained generator and command consequence only)
 ---
 
 # ADR-0057 — Simulate H4-4B canonical Name lifecycle

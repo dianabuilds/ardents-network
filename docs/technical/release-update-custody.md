@@ -92,12 +92,12 @@ storage.
 ADR-0050 separately assigns first closed-alpha release seeds to
 `internal/release/custody`. That local Product Owner boundary can initialize
 exactly one password-encrypted fixed-role seed record and return a public
-receipt. ADR-0052 additionally permits one profile-bound operation to consume
-that selected record internally and create only the fixed H4-alpha-1
-TUF/H4-6A static input directory after maintained verifier preflight. It cannot
-decrypt material for callers, sign arbitrary metadata, administer a TUF
-repository, publish an artifact, or configure a VPS. Real invocation remains
-gated by the recorded Network State and release facts.
+receipt. ADR-0052 historically permitted one profile-bound operation to
+consume that selected record internally and create only the fixed RC1/RC2
+static input directories after maintained verifier preflight. ADR-0059 retired
+that completed one-off operation and both terminal routes. The maintained
+custody boundary now only initializes or inspects the encrypted record; it
+cannot sign, assemble, publish, upload, or execute a release.
 
 A fresh executable cannot use its own Release Decision code to authenticate
 itself before first execution. `RootBytes` and the first executable therefore
@@ -108,7 +108,7 @@ floors, this external enrollment input authorizes no successor: later
 executable authorization remains exclusively a Release Decision followed by
 the Update boundary.
 
-For the first closed H4 alpha cohort, the selected Distribution Profile is one
+For the historical first closed-alpha cohort, the selected Distribution Profile was one
 **Alpha Enrollment Pin** sent through an already authenticated Product Owner
 contact independently of GitHub and the download path. It binds one exact
 cohort, release, platform, and manifest SHA-256. The participant compares that
