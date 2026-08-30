@@ -21,11 +21,14 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) > 0 && arguments[0] == "name" {
 		return runName(arguments[1:], output)
 	}
+	if len(arguments) > 0 && arguments[0] == "service-instance" {
+		return runServiceInstance(ctx, arguments[1:], output)
+	}
 	if len(arguments) > 0 && arguments[0] == "refresh-sources" {
 		return runRefreshSources(ctx, arguments, output)
 	}
 	if len(arguments) == 0 || arguments[0] != "accept-offline" {
-		return errors.New("usage: ardents <accept-offline|refresh-sources|endpoint|entry|name> arguments")
+		return errors.New("usage: ardents <accept-offline|refresh-sources|endpoint|entry|name|service-instance> arguments")
 	}
 	flags := flag.NewFlagSet("accept-offline", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)

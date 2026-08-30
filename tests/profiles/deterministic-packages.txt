@@ -43,6 +43,7 @@ github.com/dianabuilds/ardents-network/internal/resource
 github.com/dianabuilds/ardents-network/internal/route
 github.com/dianabuilds/ardents-network/internal/route/credential
 github.com/dianabuilds/ardents-network/internal/service/connection
+github.com/dianabuilds/ardents-network/internal/service/instance
 github.com/dianabuilds/ardents-network/internal/service/publication
 github.com/dianabuilds/ardents-network/internal/service/reachability
 github.com/dianabuilds/ardents-network/internal/service/targetlink
