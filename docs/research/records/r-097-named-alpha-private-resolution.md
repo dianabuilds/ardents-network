@@ -1,7 +1,7 @@
 ---
 id: R-097
 title: Named alpha and live private-resolution proof
-status: active
+status: decided; implementation-linked
 owner: Product Owner and Codex
 started: 2026-08-24
 reviewed: 2026-08-26
@@ -14,8 +14,10 @@ reviewed: 2026-08-26
 Decide whether to build H4-4A after H4-3, or keep Target Links as the only
 alpha destination form until canonical Namespace/public-control work is ready.
 On 2026-08-25, the Product Owner selected the bounded non-Namespace alpha
-overlay (option 4) for implementation. This record remains active until its
-private-resolution role evidence and terminal-state experiment are captured.
+overlay (option 4) for implementation. The selected private-resolution role
+evidence and terminal-state behavior are now maintained; later public naming
+and participant qualification are distinct delivery gates rather than an open
+R-097 decision.
 
 ## Current contract
 
@@ -80,10 +82,10 @@ participant-visible states.
   be silently presented as the current Ardents Namespace or as H4-4A private
   resolution. Doing so would bypass the exact current-binding rule that the
   product relies on to reject stale and conflicting proof.
-- **Current-contract fact:** H4-4 itself requires the named alpha to disclose
+- **Current-contract fact:** the naming contract requires the named alpha to disclose
   its small pre-provisioned corpus and authority, and forbids a hidden registry
-  operator, manual per-request approval, or fallback destination. [H4-4
-  brief](../../product/horizon-4/04-namespace-private-resolution.md) (inspected
+  operator, manual per-request approval, or fallback destination. [Naming
+  contract](../../technical/naming.md) (inspected
   2026-08-24).
 - **Inference:** H4-4A has a predecessor not made explicit in the initial
   ordering: R-098 must first select a readable, signed alpha-control input and
@@ -96,8 +98,8 @@ participant-visible states.
   Epoch, and expected Epoch digest. The Gateway likewise obtains only a Store
   proof and verifies it against those same inputs before passing a Binding to
   Resolution. Its focused Namespace and Resolution tests passed on 2026-08-24.
-  [Resolution view](../../internal/naming/namespace/resolution_view.go) and
-  [materialization verifier](../../internal/naming/namespace/epoch/materialization_proof.go)
+  [Resolution view](../../../internal/naming/namespace/resolution_view.go) and
+  [materialization verifier](../../../internal/naming/namespace/epoch/materialization_proof.go)
   (inspected 2026-08-24).
 - **Inference:** a R-098 signed disclosure catalog, even with a separately
   signed named-alpha component, cannot enter that verifier: it has neither an
@@ -155,7 +157,7 @@ be unjustified; deferring all names may be the simpler and more honest result.
 
 ## Disposition
 
-Active implementation record. The maintained alpha/Endpoint tests exercise
+Decided and implementation-linked. The maintained alpha/Endpoint tests exercise
 OHTTP Relay/Gateway separation without retaining per-request observations;
 unavailable, expired, withdrawn, stale, and same-serial-conflicting corpus
 outcomes; decision-time validity before durable-floor advancement; persistent

@@ -1,7 +1,7 @@
 ---
 id: R-129
 title: Can Endpoint and Node form a complete headless Ardents Network product with replaceable local Adapters?
-status: active
+status: decided; implementation-linked
 owner: Product Owner and Codex
 started: 2026-08-30
 reviewed: 2026-08-30
@@ -19,7 +19,7 @@ a narrow local Interface.
 
 ## Current contract
 
-The [product-boundary objective](../../product/network-application-separation.md),
+The [product-boundary objective](../../product/scope.md),
 [product scope](../../product/scope.md),
 [threat model](../../security/threat-model.md), and
 [glossary](../../../CONTEXT.md) apply. ADR-0009 selects Go as the maintained
@@ -211,9 +211,11 @@ more than co-location saves for the current team.
 
 ## Disposition
 
-R-129 remains **active**. Preliminary discovery is durable here but is not the
-formal A-F audit and not qualification. Truth reconciliation, bounded
-remediation, headless journey completion, dependency/artifact separation, and
-independent review precede selection of exact C0. Consequential final ownership
-or artifact decisions require an accepted ADR; implementation evidence and a
-falsification result are recorded before this question can be decided.
+R-129 is **decided and implementation-linked**. Option 2 is the maintained C0
+boundary: one repository and root Go module with separate headless Network and
+optional Application/Browser command, Module, dependency, enrollment, artifact,
+and test lanes. Endpoint owns neither Browser implementation nor Application
+client grammar; Browser commands have no dependency on Network implementation
+packages. The exact scope and withheld claims are owned by the current product
+scope, while the formal A-F architecture/security audit remains a later
+evidence campaign rather than an open product-boundary decision.

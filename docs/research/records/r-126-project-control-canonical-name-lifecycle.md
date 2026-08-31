@@ -16,7 +16,7 @@ public Namespace or waiting for unavailable external operators.
 
 ## Current contract
 
-The [H4-4 journey](../../product/horizon-4/04-namespace-private-resolution.md),
+The [naming contract](../../technical/naming.md),
 [threat model](../../security/threat-model.md), and [glossary](../../../CONTEXT.md)
 apply. ADR-0020 requires threshold-attested current materialization; ADR-0023
 requires durable pending successors; ADR-0043 selects derived Grace. ADR-0057

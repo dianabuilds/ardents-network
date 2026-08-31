@@ -40,4 +40,4 @@ fallback. It is always `simulation: true` and `qualified: false`.
 
 - ADR-0004, ADR-0054, and ADR-0055
 - [R-125](../research/records/r-125-controlled-project-control-transitions.md)
-- [Public-control candidate contract](../technical/public-control-candidate.md)
+- [R-125 controlled-transition evidence](../research/records/r-125-controlled-project-control-transitions.md)

@@ -6,19 +6,16 @@ is not production-ready networking software and makes no current anonymity,
 independent-operation, public deployment, availability, or supported Node-host
 claim.
 
-The maintained system contains bounded closed-alpha Route, Entry, Service
-Connection, Namespace, State, Release, Update, Custody, Endpoint, and Node work.
-These mechanisms and their historical qualification evidence do not yet
-compose one current usable or qualified product candidate. Current work is
-reconciling that candidate around a standalone headless Network product; public
-operation, platform qualification, and independent-control claims remain
-pending.
+The maintained system now has an explicit C0 audit boundary around the headless
+Network product and separate Application/Browser surface. That boundary is a
+candidate for architecture and security review, not a usable, released, or
+qualified public product. Public operation, platform qualification,
+independent-control, availability, anonymity, and censorship-resistance claims
+remain withheld.
 
-`H4` and its epic identifiers organize delivery planning only. New product,
-release, package, executable, schema, and domain identities must use product
-language instead. Historical immutable evidence names are preserved only as
-provenance while their maintained consumers are explicitly generalized or
-retired.
+Completed delivery labels survive only in immutable Git, accepted records, and
+wire/persisted compatibility obligations. Current product, package, executable,
+test, profile, and documentation identities use domain language.
 
 The former implementation remains on the remote
 [`old`](https://github.com/dianabuilds/ardents-network/tree/old) branch as
@@ -63,9 +60,10 @@ Maintained Go code belongs in thin `cmd/<name>` adapters and cohesive
 `make check` before integration. The package map and dependency register are
 part of the architecture contract.
 
-Stage briefs, closed research, experiments, and historical campaign material
-are removed once their current facts are promoted; Git history preserves
-provenance. Do not restore them as compatibility requirements.
+Stage briefs, closed research, completed experiments, and historical campaign
+implementations are absent from the maintained surface once their current facts
+are promoted; Git history preserves provenance. Do not restore them as
+compatibility requirements.
 
 ## License
 

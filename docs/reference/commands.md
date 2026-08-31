@@ -133,7 +133,9 @@ publication, Endpoint start, or VPS configuration route.
 
 ADR-0059 retired the completed RC1/RC2 assembly routes. Their exact former
 schema and receipt contract remain as historical provenance in the
-[retired release-custody assembly reference](release-custody-assembly.md).
+[ADR-0059](../adr/0059-retire-fixed-alpha-candidate-assembly.md) and the
+historical source at commit
+[`fbb42034`](https://github.com/dianabuilds/ardents-network/commit/fbb42034757513ac009114a00b933aefa76d8ddf).
 
 ## `ardents-state-custody`
 

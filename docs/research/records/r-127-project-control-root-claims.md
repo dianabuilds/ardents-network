@@ -16,7 +16,7 @@ claiming a public Namespace or requiring unavailable third parties.
 
 ## Current contract
 
-The [H4-4 journey](../../product/horizon-4/04-namespace-private-resolution.md),
+The [naming contract](../../technical/naming.md),
 [threat model](../../security/threat-model.md), and [glossary](../../../CONTEXT.md)
 apply. ADR-0017 fixes commit in `E`, reveal in `E+1`, lowest eligible input
 ordinal, and fail-closed close evidence. ADR-0019 fixes the bounded local

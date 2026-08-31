@@ -1,12 +1,12 @@
 # Network functional map
 
-Status: **accepted requirements registry across delivery horizons**
+Status: **accepted product requirements registry and C0 boundary input**
 
 This map describes Ardents as a network product. It separates the mandatory
 carrier contract from Application behavior and from optional Overlay Services.
 Lifecycle and release behavior are defined in the accepted
-[product operating model](operating-model.md). The authoritative implementation
-boundary is [product scope and delivery horizons](scope.md).
+[product operating model](operating-model.md). The authoritative maintained and
+audit boundary is [product scope](scope.md).
 
 Status labels:
 
@@ -16,21 +16,19 @@ Status labels:
 
 These labels describe **decision maturity only**. They never mean “implement in
 the current slice.” A fixed Public Beta or Stable Network gate remains outside
-the backlog until the preceding Delivery Horizon passes. Historical `V1`
-wording in this registry means the first public product contract, not Carrier
-Lab or the next code change.
+the backlog until explicitly selected. Historical `V1` wording in this
+registry means the first public product contract, not the C0 audit candidate or
+the next code change.
 
 ## Current implementation boundary
 
-Carrier Lab, the controlled Named Unlisted Site tracer, and later bounded alpha
-mechanics are retained evidence. They do not by themselves form one current
-usable or qualified product candidate. Current work may compose and remediate
-one explicitly selected headless candidate from accepted contracts before its
-exact identity is frozen. Delivery-horizon labels describe planning only and
-must not become runtime or domain identities. Public discovery/contribution,
-Bridges, permissionless naming, production updates and custody, Windows
-qualification, general Application isolation, and the full NET-14
-qualification matrix remain later gates unless separately promoted.
+The maintained tree composes one explicit headless Network C0 candidate and a
+separate Application/Browser candidate from accepted contracts. Neither is a
+usable, released, or qualified public product. Completed experiments and
+campaign implementations are historical provenance, not candidate surfaces.
+Public discovery/contribution, Bridges, permissionless operation, platform
+qualification, general Application isolation, and the full NET-14 matrix
+remain later gates unless separately selected.
 
 The eventual public product still requires the fixed contracts below, but this
 registry is not one release checklist or backlog.
@@ -64,7 +62,7 @@ The network connects Applications to Service Targets. It does not send product
 messages between infrastructure Node IDs, and it does not need a User identity
 in order to carry a connection.
 
-## Accepted requirements registry across horizons
+## Accepted requirements registry
 
 | ID | Requirement | Status | Evidence or decision still needed |
 |---|---|---|---|

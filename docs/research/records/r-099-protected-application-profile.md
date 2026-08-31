@@ -75,7 +75,7 @@ tree. A failed escape test rejects the selected profile/claim.
   tree, storage behavior, destination set, user journey, and claim before an
   operating-system mechanism is chosen. H4-7C separately makes a protected
   browser conditional on evidence from both the generic browser path and a
-  narrow protected profile. [H4-7 application boundary](../../product/horizon-4/07-application-boundary.md)
+  narrow protected profile. [C0 Application boundary](../../product/scope.md#c0-application-and-browser-candidate)
   (inspected 2026-08-24).
 - **Inference:** there is no present protected job: the R-096 fixture proves
   only static rendering on a loopback origin, and it deliberately forbids the

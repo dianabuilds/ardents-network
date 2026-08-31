@@ -44,4 +44,4 @@ its own evidence; it is not a remaining H4-6C requirement.
 
 - ADR-0004, ADR-0038, ADR-0054
 - [R-124](../research/records/r-124-public-control-candidate-evidence.md)
-- [Public-control candidate contract](../technical/public-control-candidate.md)
+- [R-124 project-control evidence](../research/records/r-124-public-control-candidate-evidence.md)

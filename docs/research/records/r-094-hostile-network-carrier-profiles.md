@@ -161,8 +161,8 @@ a local proxy, foreign broker, or H3 reader into maintained fallback behavior.
 - **Sourced fact:** the current `entry.CandidateOpener` returns a generic
   `net.Conn`, but explicitly says its implementation owns TCP/TLS. The concrete
   `route.OpenEntryAttachment` directly dials `tcp` and performs the TLS 1.3
-  handshake before EntryBinding exchange. [Entry contract](../../internal/entry/contract.go)
-  and [native Entry attachment](../../internal/route/entry_attachment.go)
+  handshake before EntryBinding exchange. [Entry contract](../../../internal/entry/contract.go)
+  and [native Entry attachment](../../../internal/route/entry_attachment.go)
   (accessed 2026-08-24).
 - **Inference:** H4-2 currently has a useful bounded retry/exposure owner, but
   not the deep Carrier seam described in H4-2: the route code owns a TCP/TLS

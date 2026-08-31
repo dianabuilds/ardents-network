@@ -24,7 +24,7 @@ semantic, or new Target semantic.
 ## Current contract
 
 The product boundary is
-[Network/Application separation](../../product/network-application-separation.md).
+[C0 product scope](../../product/scope.md).
 The maintained Network remains standalone; Browser and Desktop are replaceable
 Application Adapters. [R-106](r-106-target-reachability-alpha.md) retains the
 bounded reachability tracer but leaves first-run acquisition and normal Endpoint

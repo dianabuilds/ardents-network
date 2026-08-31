@@ -21,7 +21,7 @@ operator Target.
 
 ## Current contract
 
-The [headless product boundary](../../product/network-application-separation.md),
+The [headless product boundary](../../product/scope.md),
 [J-03](../../product/journeys.md#j-03--publish-a-local-service),
 [NET-03/NET-04B](../../product/functional-map.md), and
 [ADR-0003](../../adr/0003-bounded-service-instance-credentials.md) already
@@ -98,7 +98,7 @@ therefore cannot close B6.
   [ADR-0063](../../adr/0063-bootstrap-transit-issuer-from-owner-root.md),
   [R-128](r-128-headless-participant-acquisition.md), and
   [R-130](r-130-transit-issuer-bootstrap.md), inspected 2026-08-30.
-- The [headless product boundary](../../product/network-application-separation.md),
+- The [headless product boundary](../../product/scope.md),
   [J-03](../../product/journeys.md#j-03--publish-a-local-service), and
   [NET-03/NET-04B](../../product/functional-map.md), inspected 2026-08-30.
 - `internal/custody`, `internal/endpoint/service_publication.go`, and

@@ -16,7 +16,7 @@ without treating public participants or independent operators as a prerequisite.
 
 ## Current contract
 
-The [H4-6 journey](../../product/horizon-4/06-transparent-control-transition.md),
+The [alpha-control transition contract](../../technical/alpha-control-transition.md),
 [threat model](../../security/threat-model.md), and [glossary](../../../CONTEXT.md)
 apply. ADR-0004 separates control roots, ADR-0054 separates alpha transition
 domains, and ADR-0055 fixes H4-6C as project-controlled mechanics. ADR-0056

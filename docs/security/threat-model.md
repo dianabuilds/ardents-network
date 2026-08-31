@@ -1,23 +1,22 @@
 # Threat model
 
-Status: **accepted claim registry across delivery horizons; no implementation qualified**
+Status: **accepted claim registry and C0 audit input; no implementation qualified**
 
-Last reviewed: 2026-08-08
+Last reviewed: 2026-08-31
 
 ## Scope
 
-This threat model covers claims across the Product Core, Carrier Lab, Named
-Unlisted Site, Closed Test Network, Public Beta, and Stable Network horizons defined by
-[product scope](../product/scope.md). It is not one current implementation
-checklist.
+This threat model covers the current [C0 product scope](../product/scope.md) and
+the stronger public-product claims retained for later decisions. It is not a
+statement that the C0 implementation passed audit or qualification.
 
-Carrier Lab applies only the controlled Target/Instance authentication,
-Application Data protection, per-role Route knowledge, explicit failure, finite
-resource, and coarse feasibility portions. It makes no public Endpoint Location
-Privacy, anonymity, decentralization, naming, bootstrap, update, or Application-
-isolation claim. Resolving a canonical Service Name, contributing public
-infrastructure, hostile bootstrap, and production lifecycle threats become
-mandatory only when their corresponding horizon is promoted.
+For C0, the Network candidate includes headless commands and maintained
+Network, Endpoint, Service, naming, enrollment, Release, and Custody Modules.
+The separate Application/Browser candidate is reviewed for seam, privilege,
+artifact, and dependency correctness but receives no browser-isolation,
+DNS/DoH-protection, or Application Location Privacy claim. Non-executable
+compatibility evidence and historical campaign implementations are outside the
+candidate corpus.
 
 Installation, capability readiness, Time Confidence, diagnostics, update, drain,
 and public-launch concentration are covered by the accepted

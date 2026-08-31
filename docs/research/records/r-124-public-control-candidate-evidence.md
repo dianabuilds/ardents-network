@@ -16,7 +16,7 @@ into a search for people outside the actual Product Owner-and-Codex team.
 
 ## Current contract
 
-The [H4-6 journey](../../product/horizon-4/06-transparent-control-transition.md),
+The [alpha-control transition contract](../../technical/alpha-control-transition.md),
 [threat model](../../security/threat-model.md), and
 [glossary](../../../CONTEXT.md) terms Control Plane, Endpoint, Candidate View,
 and Public Beta apply. ADR-0004 keeps Control Plane roots separate and ADR-0054

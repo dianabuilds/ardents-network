@@ -101,13 +101,14 @@ state. Route Attachments are already authenticated opaque carriers; Namespace
 and State facts arrive only in the typed inputs required for Connection
 binding.
 
-For the bounded H4-3 Reference Site profile, an asynchronous User Reference
+For the bounded Browser Reference Site profile, an asynchronous User Reference
 Session reports only `starting`, authenticated `ready`, `unavailable`, and
 `stopped`. `ready` includes a fresh scoped loopback origin only after the exact
 Target authenticated; unavailable/terminal events retain the bounded Endpoint
-class and reason, never raw Route or peer diagnostics. The retained H4-3A
-presentation is a closed static Reference Site. The active H4-3B tracer adds a
-separate explicit alpha HTTP/1.1 bridge for one selected Service Connection:
+class and reason, never raw Route or peer diagnostics. The retained
+compatibility presentation is a closed static Reference Site. The maintained
+Browser reference adds a separate explicit HTTP/1.1 bridge for one selected
+Service Connection:
 it preserves ordinary request/response semantics and streaming, orders work on
 that Connection, and has no Target, Route, content-profile, or browser-wide
 proxy authority. For that presentation only, an authenticated remote

@@ -48,4 +48,4 @@ not move Firefox-specific policy into the network core.
 resolver evidence. [R-117](../research/records/r-117-firefox-browser-entry-delivery.md)
 retains the delivery provenance. The current boundary and remediation order are
 recorded in
-[network-application-separation.md](../product/network-application-separation.md).
+[current product scope](../product/scope.md).

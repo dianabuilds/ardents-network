@@ -1,7 +1,7 @@
 ---
 id: R-105
 title: Service Introduction handoff v1
-status: open
+status: decided; implementation-linked
 owner: Product Owner and Codex
 started: 2026-08-24
 reviewed: 2026-08-24
@@ -239,12 +239,15 @@ where unauthorized ingress and topology leakage would otherwise enter.
 
 ## Disposition
 
-Open and implementation-linked for the complete H4-2/H4-3 service path.
+Decided and implementation-linked for the bounded Service Introduction handoff.
 ADR-0034 selects the signed X25519 recipient binding; ADR-0035 selects live
-C-2 slots and EndpointTransitBinding v1. Maintained C-2 duties and Endpoint
-User/Publisher composition now cover the selected delivery/HPKE gate, and a
-live behavior test carries an exact Target Link through Introduction to the
-Publisher's separately admitted Responder carrier. The State/failure matrix,
-process-plan local `Accept` handoff, browser lifecycle, and repaired
-multi-process harness remain before the two-Endpoint alpha scenario. The
-previous test-only Responder leg remains evidence only.
+C-2 slots and EndpointTransitBinding v1. Maintained duties and Endpoint
+User/Publisher composition cover the selected delivery/HPKE gate.
+Authenticated State supplies one indivisible Publisher projection containing
+exactly one current Introduction, Rendezvous, and Responder; missing,
+conflicting, or ambiguous input is unavailable. Production Endpoint acquisition
+obtains the Introduction and Responder credentials in order through separate
+at-most-once journals, then the Service process tracer enters only through
+Administration Publish and observes both acquisitions. This closes R-105's
+authorization and local handoff question. A complete B6 participant journey,
+Browser lifecycle, and release qualification remain separate delivery work.

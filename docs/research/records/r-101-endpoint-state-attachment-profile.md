@@ -106,8 +106,8 @@ keys and no Ardents Authority.
   root directory and explicit protection on children. Their Unix counterpart
   rejects a root with group/other permission bits. These are useful platform
   inputs, not an authorization to make the Entry/Node packages own Endpoint
-  state. [Entry Windows permissions](../../internal/entry/root_permissions_windows.go)
-  and [Unix permissions](../../internal/entry/root_permissions_unix.go)
+  state. [Entry Windows permissions](../../../internal/entry/root_permissions_windows.go)
+  and [Unix permissions](../../../internal/entry/root_permissions_unix.go)
   (inspected 2026-08-24).
 - **Inference:** the leading H4-1A logical layout is:
 

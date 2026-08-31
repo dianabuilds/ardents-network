@@ -1,8 +1,8 @@
 # Deep audit campaign
 
-Status: **prepared formal engineering policy; inactive until known remediation
-and product separation complete and the Product Owner freezes one exact audit
-candidate and release profile**
+Status: **current audit method; activation still requires the Product Owner to
+freeze one exact C0 commit, artifact set, claims, non-claims, and review
+environment**
 
 Prepared: 2026-08-26
 
@@ -61,9 +61,9 @@ Reviewers use the repository authority order:
 2. product contract and threat model;
 3. current technical contracts;
 4. completed research records and their evidence;
-5. experiments;
-6. implementation and tests;
-7. legacy material, when a current owner explicitly requires it.
+5. implementation and maintained tests;
+6. completed research or historical Git material, only when a current owner
+   explicitly requires provenance.
 
 Open research questions are not implementation defects merely because the
 candidate cannot answer them. Conversely, working code does not resolve an

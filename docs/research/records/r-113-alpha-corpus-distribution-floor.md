@@ -1,7 +1,7 @@
 ---
 id: R-113
 title: Alpha Name Corpus distribution and durable floor
-status: active
+status: decided; implementation-linked
 owner: Product Owner and Codex
 started: 2026-08-25
 reviewed: 2026-08-26
@@ -122,7 +122,7 @@ complex if its extra root remains operationally legible.
 
 ## Disposition
 
-Active implementation research. `ACA2` now has its fixed fourth corpus
+Decided and implementation-linked. `ACA2` has its fixed fourth corpus
 component; `inspection.VerifyACA2Corpus`, `alpha.PersistentFloor`,
 `endpoint.AcceptAlphaCorpusControl`, and `ardents-control inspect-alpha-corpus`
 verify and retain only explicitly supplied bytes under independent roots. Their
@@ -155,7 +155,7 @@ multi-host, nor public-alpha claim. Non-Linux C-2 compatibility tests retain
 the same persistent-floor consumer boundary but do not qualify the control
 command procedure.
 
-Still unpromoted: concrete published alpha artifact provenance and a real
+Still outside this decision: concrete published alpha artifact provenance and a real
 participant distribution/replacement source for the explicitly supplied ACA2
 and corpus bytes. The participant procedure and immutable cohort-notice
 template are now recorded in `docs/product/closed-alpha-name-corpus.md` and

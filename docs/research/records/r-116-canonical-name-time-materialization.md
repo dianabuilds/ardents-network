@@ -22,7 +22,7 @@ administrative registrar, or a new consensus system merely to advance a clock.
 
 ## Current contract
 
-- [H4-4](../../product/horizon-4/04-namespace-private-resolution.md) requires
+- [Naming](../../technical/naming.md) requires
   an Active → Grace → Released lifecycle, exact current binding verification,
   and no registrar discretion.
 - The [threat model](../../security/threat-model.md) requires Grace to preserve
@@ -81,7 +81,7 @@ provide one.
 
 ### Primary sources
 
-- [H4-4 Namespace and private resolution](../../product/horizon-4/04-namespace-private-resolution.md),
+- [Naming and private resolution](../../technical/naming.md),
   accessed 2026-08-26.
 - [Naming and private resolution technical contract](../../technical/naming.md),
   accessed 2026-08-26.

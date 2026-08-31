@@ -158,7 +158,7 @@ capacity.
   operating profile and measured alpha utility (H4-5A/B) predecessors of the
   optional co-resident research slice (H4-5C). It says that a Client and
   Publisher must work without contributing and that H4-5C cannot block the
-  dedicated profile. [H4-5 contributor viability](../../product/horizon-4/05-contributor-viability-admission.md)
+  dedicated profile. [Rendezvous Contributor contract](../../reference/rendezvous-contributor.md)
   (inspected 2026-08-24).
 - **Inference:** the minimal safe present-day contribution contract is not a
   new binary switch or a simulated relay: ordinary Endpoint operation has no

@@ -38,7 +38,7 @@ platform qualification.
 - The maintained release/update/custody modules are technical inputs rather
   than evidence of this user-facing platform lifecycle.
 
-Relevant owners: [H4-1](../../product/horizon-4/01-endpoint-lifecycle.md),
+Relevant owners: [current C0 scope](../../product/scope.md),
 [operating model](../../product/operating-model.md),
 [release/update/custody](../../technical/release-update-custody.md), and the
 threat model's release and endpoint-compromise boundaries.
@@ -225,9 +225,9 @@ material.
   `endpoint.Run` creates Unix-domain application/result/route listeners and
   removes those paths when its process ends. The retained process test confirms
   readiness followed by bounded failure and socket cleanup, rather than durable
-  restart state. [Endpoint runtime](../../internal/endpoint/endpoint.go),
-  [Endpoint plan](../../internal/endpoint/config.go), and [process
-  test](../../../tests/e2e/service/command_process_test.go) (accessed
+  restart state. [Historical Endpoint runtime](https://github.com/dianabuilds/ardents-network/blob/c6e4222a54ddb49980a5584838a28dcd495118c1/internal/endpoint/endpoint.go),
+  [historical Endpoint plan](https://github.com/dianabuilds/ardents-network/blob/c6e4222a54ddb49980a5584838a28dcd495118c1/internal/endpoint/config.go), and [historical process
+  test](https://github.com/dianabuilds/ardents-network/blob/c6e4222a54ddb49980a5584838a28dcd495118c1/tests/e2e/service/command_process_test.go) (accessed
   2026-08-24).
 - **Inference:** current `endpoint run` cannot be wrapped into an H4-1A
   lifecycle: it provides no protected-state layout or declared supported
