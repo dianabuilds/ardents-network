@@ -92,15 +92,21 @@ func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) 
 	if err != nil {
 		return nil, err
 	}
-	at := owner.clock().UTC()
-	binding, err := owner.endpoint.ResolveAcceptedAlpha(owner.input.Floor, link.String(), at)
+	session, err := owner.endpoint.beginApplicationSession(ctx, owner.input.Principal)
 	if err != nil {
 		return nil, err
 	}
-	stream, err := owner.openBinding(ctx, binding)
+	at := owner.clock().UTC()
+	binding, err := owner.endpoint.ResolveAcceptedAlpha(owner.input.Floor, link.String(), at)
+	if err != nil {
+		session.Release()
+		return nil, err
+	}
+	stream, err := owner.openBinding(session.Context(), binding, session)
 	if err == nil {
 		return stream, nil
 	}
+	session.Release()
 	var acquisition transitAcquisitionOutcomeError
 	if !errors.As(err, &acquisition) {
 		return nil, err
@@ -115,15 +121,15 @@ func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) 
 	}
 }
 
-func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha.Binding) (applicationconnection.Stream, error) {
+func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha.Binding, session *applicationSession) (applicationconnection.Stream, error) {
 	if owner == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}
-	return owner.endpoint.openAlphaApplicationForBinding(ctx, binding, owner.input, owner.clock)
+	return owner.endpoint.openAlphaApplicationForBinding(ctx, binding, owner.input, owner.clock, session)
 }
 
 func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input ConnectionInterfaceConfig,
-	clock func() time.Time) (*ApplicationConnection, error) {
+	clock func() time.Time, session *applicationSession) (*ApplicationConnection, error) {
 	at := clock().UTC()
 	if at.IsZero() {
 		return nil, errors.New("application Connection clock is unavailable")
@@ -217,7 +223,7 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 			Introduction: introduction, Initiator: initiator, Rendezvous: rendezvous, Entry: input.Entry,
 			AttachmentID: submission.attachment, EndpointHandshake: handshake, At: at,
 			SubmissionAuthorization: submission.authorization, SubmissionClientCertificate: submission.certificate}, Principal: input.Principal,
-		BytesEachDirection: input.BytesEachDirection})
+		BytesEachDirection: input.BytesEachDirection}, session)
 	presented = err == nil
 	return application, err
 }

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
@@ -72,52 +71,57 @@ type ApplicationConnection struct {
 // OpenUserApplicationConnection opens an explicit Target-Link Application
 // stream through the same Endpoint owner used by optional Adapters.
 func (endpoint *endpoint) OpenUserApplicationConnection(ctx context.Context, input UserApplicationConnectionRequest) (*ApplicationConnection, error) {
-	return endpoint.openUserApplicationConnection(ctx, input, nil)
+	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} {
+		return nil, errors.New("user Application Connection input is incomplete")
+	}
+	session, err := endpoint.beginApplicationSession(ctx, input.Principal)
+	if err != nil {
+		return nil, err
+	}
+	return endpoint.openUserApplicationConnection(session.Context(), input, nil, session)
 }
 
-func (endpoint *endpoint) openAlphaApplicationConnection(ctx context.Context, binding alpha.Binding, input UserApplicationConnectionRequest) (*ApplicationConnection, error) {
+func (endpoint *endpoint) openAlphaApplicationConnection(ctx context.Context, binding alpha.Binding, input UserApplicationConnectionRequest,
+	session *applicationSession) (*ApplicationConnection, error) {
 	if endpoint == nil || binding.Network() != endpoint.network || binding.Target() == [32]byte{} {
+		session.Release()
 		return nil, ErrAlphaBindingNetwork
 	}
-	return endpoint.openUserApplicationConnection(ctx, input, &binding)
+	return endpoint.openUserApplicationConnection(ctx, input, &binding, session)
 }
 
 func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, input UserApplicationConnectionRequest,
-	binding *alpha.Binding) (*ApplicationConnection, error) {
+	binding *alpha.Binding, session *applicationSession) (*ApplicationConnection, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} ||
-		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) {
+		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) || session == nil {
+		session.Release()
 		return nil, errors.New("user Application Connection input is incomplete")
 	}
 	routeInput := userRouteRequest{Introduction: input.Introduction, Reachability: input.Reachability}
 	if binding != nil {
 		link, err := targetlink.Encode(targetlink.Link{Network: endpoint.network, Target: binding.Target()})
 		if err != nil {
+			session.Release()
 			return nil, err
 		}
 		routeInput, err = bindAlphaUserRoute(routeInput, link)
 		if err != nil {
+			session.Release()
 			return nil, err
 		}
 	}
 	route, _, at, err := endpoint.openUserRoute(ctx, routeInput)
 	if err != nil {
+		session.Release()
 		return nil, err
-	}
-	failRoute := func(cause error) (*ApplicationConnection, error) {
-		return nil, errors.Join(cause, route.Close())
-	}
-	capability, err := endpoint.Admit(input.Principal, broker.Connection)
-	if err != nil {
-		return failRoute(errors.New("local Application Connection admission is unavailable"))
 	}
 	owned, application := net.Pipe()
 	lifetime, cancel := context.WithCancel(ctx)
 	ready := make(chan struct{})
 	done := make(chan applicationconnection.Outcome, 1)
-	request := OutboundConnectionRequest{Principal: input.Principal, Capability: capability,
-		Target: route.AuthenticatedTarget, AuthorityPublic: route.AuthorityPublic, Publication: route.Publication,
-		Route: route.Connection, Application: owned, BytesEachDirection: input.BytesEachDirection,
-		SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes, At: at,
+	request := connectionInput{Principal: input.Principal, Target: route.AuthenticatedTarget,
+		AuthorityPublic: route.AuthorityPublic, Publication: route.Publication, Route: route.Connection,
+		Application: owned, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes, At: at,
 		OnAuthenticated: func(authenticated [32]byte) error {
 			if authenticated != route.AuthenticatedTarget {
 				return errors.New("application Connection authenticated a different Target")
@@ -126,7 +130,8 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 			return nil
 		}}
 	go func() {
-		result, runErr := endpoint.Connect(lifetime, request)
+		defer session.Release()
+		result, runErr := endpoint.connectAuthorized(lifetime, request, session.receipt)
 		_ = owned.Close()
 		closeErr := route.Close()
 		if result.Class == "" {

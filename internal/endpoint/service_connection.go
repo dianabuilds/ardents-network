@@ -9,14 +9,20 @@ import (
 	"errors"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (result RuntimeResult, err error) {
-	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
-	if consumeErr != nil {
-		return denied(consumeErr.Error())
+	session, activateErr := endpoint.activateApplicationSession(ctx, input.Session, input.Principal)
+	if activateErr != nil {
+		return denied(activateErr.Error())
 	}
+	defer session.Release()
+	return endpoint.connectAuthorized(session.Context(), input, session.receipt)
+}
+
+func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result RuntimeResult, err error) {
 	defer projectReceipt(&result, receipt)
 	authority := endpoint.authority
 	if input.AuthorityPublic != [32]byte{} {
@@ -86,10 +92,15 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 }
 
 func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (result RuntimeResult, err error) {
-	receipt, consumeErr := endpoint.consume(input.Session, input.Principal, "connection")
-	if consumeErr != nil {
-		return denied(consumeErr.Error())
+	session, activateErr := endpoint.activateApplicationSession(ctx, input.Session, input.Principal)
+	if activateErr != nil {
+		return denied(activateErr.Error())
 	}
+	defer session.Release()
+	return endpoint.acceptAuthorized(session.Context(), input, session.receipt)
+}
+
+func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result RuntimeResult, err error) {
 	defer projectReceipt(&result, receipt)
 	if err := validateStreams(input); err != nil {
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
