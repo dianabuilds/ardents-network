@@ -76,7 +76,7 @@ native Node profile.
 
 ### Experiment
 
-[`experiments/r-092-native-node-profile/`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-092-native-node-profile/)
+[`experiments/r-092-native-node-profile/`](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-092-native-node-profile/)
 contains disposable synthetic mTLS plus reciprocal-LegBinding baseline and
 role-carriage scenarios. The latter carries a bounded set of synthetic legs,
 withdraws its test listener, holds them, drains or cancels them, joins its

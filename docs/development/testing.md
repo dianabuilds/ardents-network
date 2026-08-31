@@ -35,7 +35,8 @@ artifact is an invalid environment, never a skip or passing result.
 The maintained local profiles are:
 
 - developer, deterministic, process, headless-network, browser-adapter, race,
-  fuzz, and the aggregate pre-integration check;
+  and fuzz;
+- `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `native-rendezvous-multihost`;
 - `browser-signed-xpi`, `browser-entry-windows`, and

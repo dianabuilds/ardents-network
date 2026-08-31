@@ -9,10 +9,9 @@ withdrawal. It does not select a programming language, library, cryptographic
 suite, wire encoding, or package manager. Those choices must implement this
 contract rather than redefine it.
 
-[Product scope and delivery horizons](scope.md) controls when any part of this
-model may enter implementation. Carrier Lab intentionally implements only its
-controlled Route experiment subset. Deployment custody, public bootstrap,
-naming governance, Bridges, updates, cross-platform qualification, independent
+[Product scope and audit boundary](scope.md) controls which parts of this model
+belong to the maintained C0 candidates. Public bootstrap, naming governance,
+Bridges, permissionless operation, broader platform qualification, independent
 control, and stable operations remain promotion gates even where their product
 decision is already accepted.
 
@@ -69,8 +68,8 @@ flowchart LR
   instead requires the Owner or an already trusted verifier to authenticate the
   exact digest before first execution and after copying/replacement. Untrusted
   raw bytes cannot authenticate themselves after they have already executed;
-  running them is outside Ardents security/privacy claims. The selected H4
-  closed-alpha profile uses an Alpha Enrollment Pin delivered independently of the
+  running them is outside Ardents security/privacy claims. The selected
+  closed-alpha enrollment profile uses an Alpha Enrollment Pin delivered independently of the
   distributor for exactly one cohort/release; it is not a public release
   identity and authorizes no successor.
 - Executable portability is not state portability. Vault, Grants, roots,

@@ -52,8 +52,9 @@ resources.
 8. Promote a decided contract to its current owner: an ADR for a consequential
    irreversible choice, technical/product/security documentation for the
    maintained contract, or both.
-9. Delete the closed record, experiment, and stage material once promotion is
-   complete. Git history is provenance; it is not a second live specification.
+9. Retain the completed record as decision provenance outside the main current
+   reading route. Delete its disposable experiment and stage material after
+   promotion; immutable Git history preserves their exact evidence.
 
 ## Evidence labels
 

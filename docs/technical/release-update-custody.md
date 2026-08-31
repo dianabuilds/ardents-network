@@ -1,7 +1,7 @@
 # Release, Update, and Authority Custody
 
-Status: **current maintained technical contract.** The Stage 8 technical
-refactor is complete in this bounded scope. This document does not claim a
+Status: **current maintained technical contract.** The bounded Custody
+ownership transfer is complete in this scope. This document does not claim a
 supported installer, automatic unlock, platform qualification, or a complete
 operator journey.
 
@@ -38,9 +38,9 @@ closed. Activation advances local watermarks and creates no runtime Instance
 Key or Local Grant. The original quarantine record remains export-only and
 cannot sign.
 
-## Stage 8 Custody disposition
+## Custody disposition
 
-Stage 8 completes the Custody ownership transfer and its bounded encrypted
+The maintained Custody Module owns the bounded encrypted
 Vault/Bundle/signing contract. It deliberately does not select a supported
 Windows or Ubuntu storage profile, crash/power-loss or permissions
 qualification, a qualified Application isolation profile, or a complete

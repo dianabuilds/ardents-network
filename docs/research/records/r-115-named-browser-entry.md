@@ -257,7 +257,7 @@ that proxy captured `GET http://reference.ard/ HTTP/1.1` with
 response. No listener used port 80 or 443, and the profile did not modify the
 user's Firefox profile, OS resolver, hosts file, certificate store, or system
 proxy. The reproducible disposable script and its limitations are in
-[`experiments/r-115-firefox-zone-proxy`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-115-firefox-zone-proxy/).
+[`experiments/r-115-firefox-zone-proxy`](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-115-firefox-zone-proxy/).
 
 This is a useful falsification result: Firefox does not need a successful
 public DNS answer to make the named HTTP request when its routing policy sends

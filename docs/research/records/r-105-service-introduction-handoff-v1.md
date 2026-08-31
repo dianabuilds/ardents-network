@@ -120,7 +120,7 @@ outcomes. The tracer must show that no direct User-to-Publisher or
 Rendezvous-to-Publisher path occurs.
 
 **Control-slice evidence (2026-08-24):**
-`experiments/r-105-live-introduction-tracer/run-local.ps1` built a disposable
+[The disposable live Introduction tracer](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-105-live-introduction-tracer/run-local.ps1) built a disposable
 binary outside the repository and ran separate loopback Publisher,
 Introduction, and User processes. All synthetic cells passed on the first
 run: one exact delivery; one spent-JoinHandle refusal; visible

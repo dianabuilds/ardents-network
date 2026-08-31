@@ -11,4 +11,4 @@ against the exact source import/declaration and named test. Removing an
 exception removes the source use and this row together. A changed path, risk,
 platform, ADR, or test invalidates the row rather than inheriting approval.
 
-No active exceptions are registered at the Stage 8 entry.
+No active exceptions are registered for the maintained C0 candidates.

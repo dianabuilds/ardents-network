@@ -59,10 +59,10 @@ Docker or tool installation.
 
 Run `make check` before integration. It additionally verifies exact tool
 versions, runs cross-process end-to-end tests, the unit race detector,
-Staticcheck, and govulncheck. The native Route live profile is inactive until
-M8/M11 select its peer-facing runtime and measured Node operating profile. The vulnerability check reads the
-Go vulnerability database, so this full gate requires network access unless the
-database is already cached.
+Staticcheck, and govulncheck. Selected native Rendezvous qualifications have
+their own explicit targets and prerequisites; they are not inferred by this
+ordinary gate. The vulnerability check reads the Go vulnerability database, so
+this full gate requires network access unless the database is already cached.
 
 Run `make tools-install` explicitly when the pinned development tools are
 missing. Run `bash ./scripts/install-git-hooks.sh` once per clone to enable the

@@ -1,8 +1,8 @@
 SHELL := /bin/sh
 
-# Fast product checks are container-free. Native live Route scenarios are not
-# selected until M8/M11 provide their peer-facing runtime; historical Carrier
-# Lab remains separate.
+# Fast product checks are container-free. Selected native Rendezvous scenarios
+# use explicit qualification targets and prerequisites; ordinary checks never
+# infer a live environment.
 
 QUALITY_CACHE_ROOT ?= $(if $(TEMP),$(TEMP),/tmp)/ardents-network-quality
 export GOENV := off

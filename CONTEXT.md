@@ -3,9 +3,9 @@
 Ardents is a public, independently operated network for location-private
 application services. This glossary defines the network product boundary and
 contains no protocol, library, or implementation-language choices.
-It describes eventual product language, not current implementation status;
-[product scope](docs/product/scope.md) controls which Delivery Horizon may be
-built, and Carrier Lab is not yet a public or independently operated network.
+It describes eventual product language, not current implementation status.
+[Product scope](docs/product/scope.md) names the maintained C0 audit boundary;
+that candidate is not yet a public or independently operated network.
 
 ## Actors and software
 

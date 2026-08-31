@@ -36,9 +36,9 @@ registry is not one release checklist or backlog.
 Candidate-specific records such as `NET-07H` through `NET-07M` and `NET-15`
 describe a coherent design package and its eventual claim conditions. They do
 not freeze that package as the production architecture or place all of it in
-Carrier Lab. The lab implements only the route and Introduction subset named in
-[scope](scope.md); later enforcement and control mechanisms require separate
-promotion and may be replaced after evidence from the lab.
+the maintained C0 candidates. Only the surfaces named in [scope](scope.md)
+belong to the audit boundary; later enforcement and control mechanisms require
+separate promotion and may be replaced after candidate evidence.
 
 ## Product boundary
 

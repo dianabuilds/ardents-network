@@ -79,14 +79,14 @@ into a second routing or naming authority.
 ### Experiment
 
 The first disposable data-flow experiment is
-[`experiments/r-118-private-transit-issuance`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-private-transit-issuance/).
+[`experiments/r-118-private-transit-issuance`](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-private-transit-issuance/).
 It has no network transport: it tests the minimum issuer transcript and exact
 Grant/key/one-use tuple before an H4-2 transport is selected. Its strict
 request grammar must refuse a trailing Target, a changed State Node, an expiry
 longer than State permits, a replacement TLS key, and replay.
 
 The second disposable experiment,
-[`experiments/r-118-credential-relay`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-credential-relay/),
+[`experiments/r-118-credential-relay`](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-credential-relay/),
 now runs separate Endpoint, issuer, and Initiator child processes. It captures
 only terminal disclosure/tuple evidence. Its next successor must substitute a
 real Entry attachment and State-selected issuance duty, then prove successful
@@ -157,7 +157,7 @@ experiments only if they support a selected maintained boundary.
   implement only their named resolution messages, not a generic control
   channel.
 - **Measurement (2026-08-26):** all six cells in
-  `experiments/r-118-private-transit-issuance` passed locally. The positive
+  [private Transit issuance experiment](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-private-transit-issuance/) passed locally. The positive
   issuer transcript contained only Network ID, State digest/Epoch, transit
   Node/role, attachment, client-key digest, and expiry; it contained neither
   the synthetic Target nor `reference.ard`. Strict decoding refused an
@@ -166,7 +166,7 @@ experiments only if they support a selected maintained boundary.
   This demonstrates grammar feasibility, not transport privacy, participant
   admission, durable persistence, or operational availability.
 - **Measurement (2026-08-26):** all six cells in
-  `experiments/r-118-credential-relay` passed locally under an explicit
+  [credential relay experiment](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-credential-relay/) passed locally under an explicit
   build-ignored experiment source. It starts separate Endpoint,
   Initiator, and issuer child processes. In its exact cell, the issuer saw the
   Initiator's adjacent connection, received no forwarded synthetic admission
@@ -202,7 +202,7 @@ experiments only if they support a selected maintained boundary.
   existing Entry ledger's finite attachment replay capacity is not such a
   budget; it is deliberately only a per-attachment replay guard.
 - **Measurement (2026-08-26):** the build-ignored
-  `experiments/r-118-entry-carrier` logic prototype passed. It opened a real
+  [Entry carrier logic prototype](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-entry-carrier/) passed. It opened a real
   imported `entry.Owner` attachment through `route.OpenEntryAttachment` and
   accepted it through `route.AcceptEntryAttachment` plus a separate durable
   `entry.Admitter`. Its post-admission handler received one opaque blob and no

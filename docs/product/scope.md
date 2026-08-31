@@ -54,7 +54,8 @@ The Network audit candidate is the headless maintained product surface:
 - the `internal/application/connection` and
   `internal/application/administration` Interfaces used by the headless CLI;
 - the enrollment-v3 headless artifact lane and the maintained deterministic,
-  process, race, fuzz, architecture, and purpose-named qualification profiles.
+  process, race, and fuzz profiles, the architecture gate, and purpose-named
+  qualification profiles.
 
 Endpoint composes authenticated State, Entry, Route, Service, and local
 Application boundaries. It does not own Browser presentation, Browser Entry,
