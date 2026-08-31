@@ -127,6 +127,7 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 	if err := os.WriteFile(confidence, []byte("observed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	maintainPublisherProcessConfidence(t, confidence)
 	entryRoot := filepath.Join(directory, "entry")
 	importAlphaRuntimeEntry(t, entryRoot, rolesRoot, confidence, network)
 	corpusPublic, corpusRoot := prepareAlphaRuntimeCorpus(t, directory, networkID)
@@ -203,6 +204,34 @@ func publisherProcessPhase(root string) string {
 		return err.Error()
 	}
 	return value.Phase
+}
+
+func maintainPublisherProcessConfidence(t *testing.T, path string) {
+	t.Helper()
+	stop := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				done <- nil
+				return
+			case observed := <-ticker.C:
+				if err := os.Chtimes(path, observed, observed); err != nil {
+					done <- err
+					return
+				}
+			}
+		}
+	}()
+	t.Cleanup(func() {
+		close(stop)
+		if err := <-done; err != nil {
+			t.Errorf("maintain publisher process time confidence: %v", err)
+		}
+	})
 }
 
 func publisherProcessPrivate(t *testing.T) ed25519.PrivateKey {
