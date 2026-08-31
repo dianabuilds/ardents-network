@@ -219,8 +219,8 @@ func verify(request Request) (Verified, error) {
 	var nodeArtifactName, custodyArtifactName string
 	var nodeArtifact, custodyArtifact []byte
 	if descriptor.schema == "ardents-closed-alpha-enrollment-v3" {
-		nodeName := executableArtifactName("ardents-node", descriptor.platform)
-		custodyName := executableArtifactName("ardents-custody", descriptor.platform)
+		nodeName := ExecutableArtifactName("ardents-node", descriptor.platform)
+		custodyName := ExecutableArtifactName("ardents-custody", descriptor.platform)
 		var nodeFound, custodyFound bool
 		nodeArtifact, nodeFound = files[nodeName]
 		custodyArtifact, custodyFound = files[custodyName]

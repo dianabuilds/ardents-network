@@ -87,7 +87,7 @@ func verifyEnrolledControlCommand(request enrollment.Request) error {
 		return err
 	}
 	platform := runtime.GOOS + "-" + runtime.GOARCH
-	expectedName := "ardents-control-" + platform
+	expectedName := enrollment.ExecutableArtifactName("ardents-control", platform)
 	if request.Pin.Platform != platform || verified.ControlArtifactName != expectedName || len(verified.ControlArtifact) == 0 {
 		return errors.New("alpha corpus acceptance requires an enrolled v3 control command")
 	}

@@ -122,7 +122,7 @@ func TestInspectTransitionsNamesItsInvalidArguments(t *testing.T) {
 	}
 }
 
-func TestInspectAlphaCorpusPinsACA2AndPersistsItsFloor(t *testing.T) {
+func TestInspectAlphaCorpusPinsACA2WithoutOpeningEndpointFloor(t *testing.T) {
 	now := time.Unix(2_000_400_000, 0).UTC()
 	network := [32]byte{1}
 	disclosurePublic, disclosurePrivate, err := ed25519.GenerateKey(rand.Reader)
@@ -162,11 +162,15 @@ func TestInspectAlphaCorpusPinsACA2AndPersistsItsFloor(t *testing.T) {
 	if err := os.WriteFile(corpusPath, corpus, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	floorRoot := filepath.Join(directory, "floor")
 	var output bytes.Buffer
-	arguments := []string{"inspect-alpha-corpus", "--catalog", catalogPath, "--corpus", corpusPath, "--state-root", filepath.Join(directory, "floor"),
+	arguments := []string{"inspect-alpha-corpus", "--catalog", catalogPath, "--corpus", corpusPath,
 		"--disclosure-key", hex.EncodeToString(disclosurePublic), "--corpus-key", hex.EncodeToString(corpusPublic), "--network", hex.EncodeToString(network[:]), "--at", now.Format(time.RFC3339)}
 	if err := run(arguments, &output); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := os.Stat(floorRoot); !os.IsNotExist(err) {
+		t.Fatalf("diagnostic command created Endpoint floor: %v", err)
 	}
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(output.Bytes(), &fields); err != nil {
@@ -183,6 +187,12 @@ func TestInspectAlphaCorpusPinsACA2AndPersistsItsFloor(t *testing.T) {
 	}
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil || report.Corpus != "accepted" || report.Serial != 4 {
 		t.Fatalf("alpha corpus report = %s, %v", output.String(), err)
+	}
+	if err := run(append(arguments, "--state-root", floorRoot), &bytes.Buffer{}); err == nil {
+		t.Fatal("diagnostic command accepted an Endpoint-owned state root")
+	}
+	if _, err := os.Stat(floorRoot); !os.IsNotExist(err) {
+		t.Fatalf("rejected diagnostic command changed Endpoint floor: %v", err)
 	}
 }
 

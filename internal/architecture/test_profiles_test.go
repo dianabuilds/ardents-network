@@ -233,6 +233,25 @@ func TestBrowserAdapterProfileHasClosedCommandAndArtifactBoundary(t *testing.T) 
 	}
 }
 
+func TestAlphaBundleUsesTheEnrollmentExecutableIdentityForControl(t *testing.T) {
+	root := repositoryRoot(t)
+	helper := string(readProjectFile(t, root, "scripts/enrollment-artifact-name.go"))
+	if !strings.Contains(helper, "enrollment.ExecutableArtifactName(") {
+		t.Fatal("artifact-name helper does not delegate to the enrollment package owner")
+	}
+	for _, path := range []string{"packaging/alpha-bundle/build.sh", "packaging/alpha-bundle/test.sh"} {
+		contents := string(readProjectFile(t, root, path))
+		if !strings.Contains(contents, `artifact_name ardents-control "$platform"`) {
+			t.Errorf("%s does not consume the enrollment-owned ardents-control identity", path)
+		}
+		for _, duplicate := range []string{"executable_suffix", `ardents-control-$platform`} {
+			if strings.Contains(contents, duplicate) {
+				t.Errorf("%s reconstructs the enrollment-owned identity with %q", path, duplicate)
+			}
+		}
+	}
+}
+
 func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, commandPath := range []string{"./cmd/ardents", "./cmd/ardents-control", "./cmd/ardents-node", "./cmd/ardents-custody"} {

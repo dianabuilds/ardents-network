@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -96,6 +98,92 @@ func TestVerifyReturnsV2IndependentlyPinnedCorpusAuthority(t *testing.T) {
 	}
 	if !bytes.Equal(verified.CorpusAuthority, authority) || verified.Inputs.Files[release.MetadataURL("corpus.pub")] != nil {
 		t.Fatalf("v2 corpus authority crossed an incorrect boundary: %+v", verified)
+	}
+}
+
+func TestExecutableArtifactNameIsCanonicalForEveryEnrollmentPlatform(t *testing.T) {
+	for _, test := range []struct {
+		platform string
+		want     string
+	}{
+		{platform: "linux-amd64", want: "ardents-control-linux-amd64"},
+		{platform: "windows-amd64", want: "ardents-control-windows-amd64.exe"},
+	} {
+		if got := ExecutableArtifactName("ardents-control", test.platform); got != test.want {
+			t.Fatalf("ExecutableArtifactName(ardents-control, %q) = %q, want %q", test.platform, got, test.want)
+		}
+	}
+}
+
+const windowsV3VerifierChild = "ARDENTS_WINDOWS_V3_VERIFIER_CHILD"
+
+func TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity(t *testing.T) {
+	if os.Getenv(windowsV3VerifierChild) == "1" {
+		var request Request
+		if err := json.Unmarshal([]byte(os.Getenv("ARDENTS_WINDOWS_V3_REQUEST")), &request); err != nil {
+			t.Fatal(err)
+		}
+		verified, err := Verify(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := VerifyRunningCompanion(request, verified.ControlArtifactName, verified.ControlArtifact); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+
+	const platform = "windows-amd64"
+	root := t.TempDir()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	program, err := os.ReadFile(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpointName := ExecutableArtifactName("ardents", platform)
+	controlName := ExecutableArtifactName("ardents-control", platform)
+	files := map[string][]byte{
+		"1.root.json": []byte("trusted root"), "catalog.ac1": []byte("catalog"), "catalog.pub": []byte("key"),
+		"compatibility.ac1": []byte("compatibility control"), "compatibility.pub": []byte("compatibility key"),
+		"corpus.pub": bytes.Repeat([]byte{9}, 32), "network.ac1": []byte("network control"), "network.pub": []byte("network key"),
+		"release.ac1": []byte("release control"), "release.pub": []byte("release key"), "timestamp.json": []byte("timestamp"),
+		endpointName: program, controlName: program,
+	}
+	files[descriptorName] = []byte(strings.Join([]string{
+		"schema=ardents-closed-alpha-enrollment-v3", "cohort=cohort-1", "release=alpha-1", "platform=" + platform,
+		"environment=alpha", "network=network-1", "target_path=ardents/windows-amd64/endpoint", "artifact=" + endpointName,
+		"trusted_root=1.root.json", "control_catalog=catalog.ac1", "disclosure_root=catalog.pub", "control_release=release.ac1",
+		"control_network=network.ac1", "control_compatibility=compatibility.ac1", "control_release_root=release.pub",
+		"control_network_root=network.pub", "control_compatibility_root=compatibility.pub", "corpus_authority=corpus.pub",
+		"control_artifact=" + controlName,
+	}, "\n") + "\n")
+	for name, contents := range files {
+		mode := os.FileMode(0o600)
+		if name == endpointName || name == controlName {
+			mode = 0o700
+		}
+		if err := os.WriteFile(filepath.Join(root, name), contents, mode); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := makeManifest(t, files)
+	if err := os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pin := sha256.Sum256(manifest)
+	request := Request{BundleRoot: root, ExecutablePath: filepath.Join(root, endpointName), Pin: Pin{Cohort: "cohort-1", Release: "alpha-1", Platform: platform, ManifestSHA256: hex.EncodeToString(pin[:])},
+		Environment: "alpha", Network: "network-1", TargetPath: "ardents/windows-amd64/endpoint", Architecture: "amd64", ReferenceTime: time.Date(2026, time.August, 24, 0, 0, 0, 0, time.UTC)}
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(filepath.Join(root, controlName), "-test.run=^TestWindowsV3ManifestAndRunningCompanionShareArtifactIdentity$")
+	command.Env = append(os.Environ(), windowsV3VerifierChild+"=1", "ARDENTS_WINDOWS_V3_REQUEST="+string(encoded))
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("Windows enrollment-v3 verifier contract: %v\n%s", err, output)
 	}
 }
 

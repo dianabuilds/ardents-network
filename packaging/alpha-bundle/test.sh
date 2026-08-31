@@ -12,6 +12,9 @@ ARDENTS_HEADLESS_CONTROL=$4
 ARDENTS_HEADLESS_CUSTODY=$5
 
 repository=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+artifact_name() {
+  (cd "$repository" && go run ./scripts/enrollment-artifact-name.go "$1" "$2")
+}
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/ardents-alpha-bundle-test.XXXXXX")
 cleanup() {
   rm -rf "$scratch"
@@ -22,14 +25,10 @@ static_root="$scratch/static"
 mkdir "$static_root"
 chmod 700 "$static_root"
 platform=$ARDENTS_HEADLESS_PLATFORM
-case "$platform" in
-  windows-*) executable_suffix=.exe ;;
-  *) executable_suffix= ;;
-esac
-endpoint_name="ardents-$platform$executable_suffix"
-node_name="ardents-node-$platform$executable_suffix"
-control_name="ardents-control-$platform"
-custody_name="ardents-custody-$platform$executable_suffix"
+endpoint_name=$(artifact_name ardents "$platform")
+node_name=$(artifact_name ardents-node "$platform")
+control_name=$(artifact_name ardents-control "$platform")
+custody_name=$(artifact_name ardents-custody "$platform")
 test -f "$ARDENTS_HEADLESS_ENDPOINT"
 test -f "$ARDENTS_HEADLESS_NODE"
 test -f "$ARDENTS_HEADLESS_CONTROL"

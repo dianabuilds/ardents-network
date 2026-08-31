@@ -16,7 +16,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/publiccontrol"
 )
 
@@ -81,15 +80,14 @@ func inspectPublicControl(arguments []string, output io.Writer) error {
 func inspectAlphaCorpus(arguments []string, output io.Writer) error {
 	flags := flag.NewFlagSet("inspect-alpha-corpus", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	var catalogPath, corpusPath, stateRoot, disclosureKey, corpusKey, networkText, atText string
+	var catalogPath, corpusPath, disclosureKey, corpusKey, networkText, atText string
 	flags.StringVar(&catalogPath, "catalog", "", "ACA2 catalog file")
 	flags.StringVar(&corpusPath, "corpus", "", "signed alpha corpus file")
-	flags.StringVar(&stateRoot, "state-root", "", "Endpoint-owned corpus floor root")
 	flags.StringVar(&disclosureKey, "disclosure-key", "", "ACA2 disclosure public key in lowercase hex")
 	flags.StringVar(&corpusKey, "corpus-key", "", "alpha corpus authority public key in lowercase hex")
 	flags.StringVar(&networkText, "network", "", "Ardents network ID in lowercase hex")
 	flags.StringVar(&atText, "at", "", "decision time in RFC3339")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || stateRoot == "" {
+	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
 		return errors.New("alpha corpus inspection arguments are invalid")
 	}
 	disclosure, err := decodePublicKey(disclosureKey)
@@ -119,14 +117,6 @@ func inspectAlphaCorpus(arguments []string, output io.Writer) error {
 	corpus, outcome := inspection.VerifyACA2Corpus(catalog, disclosure, corpusAuthority, corpusRaw, network, at.UTC())
 	if outcome != alphacontrol.OutcomeAccepted || corpus == nil {
 		return errors.New("alpha corpus control was not accepted")
-	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: stateRoot, Authority: corpusAuthority, Cohort: corpus.Cohort(), Network: network})
-	if err != nil {
-		return err
-	}
-	defer floor.Close()
-	if err := floor.Observe(corpus); err != nil {
-		return err
 	}
 	return json.NewEncoder(output).Encode(struct {
 		Schema  string `json:"schema"`

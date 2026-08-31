@@ -52,7 +52,7 @@ func validDescriptor(values map[string]string) bool {
 	if (schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3") && values["corpus_authority"] != "corpus.pub" {
 		return false
 	}
-	if schema == "ardents-closed-alpha-enrollment-v3" && values["control_artifact"] != executableArtifactName("ardents-control", values["platform"]) {
+	if schema == "ardents-closed-alpha-enrollment-v3" && values["control_artifact"] != ExecutableArtifactName("ardents-control", values["platform"]) {
 		return false
 	}
 	names := []string{values["artifact"], values["trusted_root"], values["control_catalog"], values["disclosure_root"], values["control_release"], values["control_network"], values["control_compatibility"], values["control_release_root"], values["control_network_root"], values["control_compatibility_root"]}
@@ -75,7 +75,9 @@ func validDescriptor(values map[string]string) bool {
 	return true
 }
 
-func executableArtifactName(command, platform string) string {
+// ExecutableArtifactName returns the one enrollment-owned artifact name for a
+// command on a declared platform. Callers must not reconstruct this identity.
+func ExecutableArtifactName(command, platform string) string {
 	name := command + "-" + platform
 	if strings.HasPrefix(platform, "windows-") {
 		return name + ".exe"

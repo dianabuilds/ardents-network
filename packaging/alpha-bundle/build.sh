@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+repository=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+artifact_name() {
+  (cd "$repository" && go run ./scripts/enrollment-artifact-name.go "$1" "$2")
+}
+
 : "${ARDENTS_ALPHA_BUNDLE_COHORT:?ARDENTS_ALPHA_BUNDLE_COHORT is required}"
 : "${ARDENTS_ALPHA_BUNDLE_RELEASE:?ARDENTS_ALPHA_BUNDLE_RELEASE is required}"
 : "${ARDENTS_ALPHA_BUNDLE_PLATFORM:?ARDENTS_ALPHA_BUNDLE_PLATFORM is required}"
@@ -13,14 +18,10 @@ set -eu
 : "${SOURCE_DATE_EPOCH:?SOURCE_DATE_EPOCH is required}"
 
 platform=$ARDENTS_ALPHA_BUNDLE_PLATFORM
-case "$platform" in
-  windows-*) executable_suffix=.exe ;;
-  *) executable_suffix= ;;
-esac
-endpoint_name="ardents-$platform$executable_suffix"
-node_name="ardents-node-$platform$executable_suffix"
-control_name="ardents-control-$platform"
-custody_name="ardents-custody-$platform$executable_suffix"
+endpoint_name=$(artifact_name ardents "$platform")
+node_name=$(artifact_name ardents-node "$platform")
+control_name=$(artifact_name ardents-control "$platform")
+custody_name=$(artifact_name ardents-custody "$platform")
 bundle_name="ardents-alpha-${ARDENTS_ALPHA_BUNDLE_RELEASE}-${platform}"
 
 case "$ARDENTS_ALPHA_BUNDLE_COHORT" in
