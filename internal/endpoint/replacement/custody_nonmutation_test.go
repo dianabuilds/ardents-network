@@ -138,7 +138,7 @@ func replacementProtectedFixture(t *testing.T, candidateUsesReleaseAuthorization
 
 func replacementReleaseFixture(t *testing.T, root string) ([]byte, release.Authorization, release.FloorSet, release.Inputs) {
 	t.Helper()
-	vector := filepath.Join("..", "..", "release", "testdata", "r049-public-vector-v1")
+	vector := filepath.Join("testdata", "r049-public-vector-v1")
 	read := func(name string) []byte {
 		data, err := os.ReadFile(filepath.Join(vector, name))
 		if err != nil {
