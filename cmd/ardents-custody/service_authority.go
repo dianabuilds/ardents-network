@@ -74,7 +74,7 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		}
 		return encodeServiceCredentialReceipt(output, receipt)
 	default:
-		return errors.New("unsupported Service Authority operation")
+		return errors.New("unsupported service Authority operation")
 	}
 }
 
@@ -83,7 +83,7 @@ func writeStableCustodyPublicFile(path string, body []byte) error {
 	if errors.Is(err, os.ErrExist) {
 		existing, readErr := readPublicRequest(path)
 		if readErr != nil || string(existing) != string(body) {
-			return errors.New("Service Credential response destination conflicts")
+			return errors.New("service Credential response destination conflicts")
 		}
 		return nil
 	}
@@ -118,7 +118,7 @@ func newServiceBinding(environment, network, root string) (custody.AuthorityBind
 func readPublicRequest(path string) ([]byte, error) {
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > 1024 {
-		return nil, errors.New("Service Instance request file is invalid")
+		return nil, errors.New("service Instance request file is invalid")
 	}
 	file, err := os.Open(path)
 	if err != nil {
@@ -127,7 +127,7 @@ func readPublicRequest(path string) ([]byte, error) {
 	raw, readErr := io.ReadAll(io.LimitReader(file, 1025))
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil || len(raw) > 1024 {
-		return nil, errors.Join(readErr, closeErr, errors.New("Service Instance request file is invalid"))
+		return nil, errors.Join(readErr, closeErr, errors.New("service Instance request file is invalid"))
 	}
 	return raw, nil
 }

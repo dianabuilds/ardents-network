@@ -8,15 +8,15 @@ import (
 )
 
 var (
-	ErrInvalid = errors.New("invalid Service Instance root")
-	ErrBusy    = errors.New("Service Instance root is busy")
-	ErrClosed  = errors.New("Service Instance root is closed")
+	ErrInvalid = errors.New("invalid service Instance root")
+	ErrBusy    = errors.New("service Instance root is busy")
+	ErrClosed  = errors.New("service Instance root is closed")
 	// ErrPending reports that no exact Authority response has been accepted.
-	ErrPending = errors.New("Service Instance response is pending")
+	ErrPending = errors.New("service Instance response is pending")
 	// ErrUnavailable reports a rejected, conflicting, or withdrawn generation.
-	ErrUnavailable = errors.New("Service Instance generation is unavailable")
+	ErrUnavailable = errors.New("service Instance generation is unavailable")
 	// ErrSuccessorRequired reports a generation already committed to publication.
-	ErrSuccessorRequired = errors.New("Service Instance successor is required")
+	ErrSuccessorRequired = errors.New("service Instance successor is required")
 )
 
 // State is the durable one-generation Instance lifecycle classification.

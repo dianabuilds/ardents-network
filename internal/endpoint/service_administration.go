@@ -28,7 +28,7 @@ type ServiceAdministration struct {
 // fresh volatile capability from the Endpoint's preconfigured local grant.
 func (endpoint *endpoint) OpenServiceAdministration(config ServiceAdministrationConfig) (*ServiceAdministration, error) {
 	if endpoint == nil || config.Principal == [32]byte{} {
-		return nil, errors.New("Service Administration input is incomplete")
+		return nil, errors.New("service Administration input is incomplete")
 	}
 	clock := config.Clock
 	if clock == nil {
@@ -40,7 +40,7 @@ func (endpoint *endpoint) OpenServiceAdministration(config ServiceAdministration
 // Publish starts the one Endpoint-owned Instance/publication/slot transaction.
 func (owner *ServiceAdministration) Publish(ctx context.Context) error {
 	if owner == nil || owner.endpoint == nil || ctx == nil {
-		return errors.New("Service Administration is unavailable")
+		return errors.New("service Administration is unavailable")
 	}
 	capability, err := owner.endpoint.Admit(owner.principal, broker.Administration)
 	if err != nil {
@@ -49,7 +49,7 @@ func (owner *ServiceAdministration) Publish(ctx context.Context) error {
 	result, err := owner.endpoint.StartPublisher(ctx, PublisherStartRequest{Principal: owner.principal, Capability: capability,
 		At: owner.clock().UTC()})
 	if err == nil && result.Class != "published" {
-		err = errors.New("Publisher start returned a non-published result")
+		err = errors.New("publisher start returned a non-published result")
 	}
 	return err
 }
@@ -58,7 +58,7 @@ func (owner *ServiceAdministration) Publish(ctx context.Context) error {
 // the Endpoint-owned Instance binding.
 func (owner *ServiceAdministration) Withdraw(ctx context.Context) error {
 	if owner == nil || owner.endpoint == nil || ctx == nil {
-		return errors.New("Service Administration is unavailable")
+		return errors.New("service Administration is unavailable")
 	}
 	capability, err := owner.endpoint.Admit(owner.principal, broker.Administration)
 	if err != nil {
@@ -67,7 +67,7 @@ func (owner *ServiceAdministration) Withdraw(ctx context.Context) error {
 	result, err := owner.endpoint.Withdraw(ctx, WithdrawalRequest{Principal: owner.principal, Capability: capability,
 		At: owner.clock().UTC()})
 	if err == nil && result.Class != "unpublished" {
-		err = errors.New("Publisher withdrawal returned a non-withdrawn result")
+		err = errors.New("publisher withdrawal returned a non-withdrawn result")
 	}
 	return err
 }

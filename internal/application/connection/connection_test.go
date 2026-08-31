@@ -31,7 +31,7 @@ func TestLocalTransportCarriesOnlyServiceLinkBytesAndTerminalOutcome(t *testing.
 		go func() {
 			request, readErr := bufio.NewReader(serverSide).ReadString('\n')
 			if readErr == nil {
-				_, readErr = io.WriteString(serverSide, "reply:"+request)
+				_, _ = io.WriteString(serverSide, "reply:"+request)
 			}
 			_ = serverSide.Close()
 			done <- Outcome{Class: CleanClose, Reason: "fixture complete"}

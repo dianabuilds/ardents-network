@@ -37,7 +37,7 @@ func runServiceInstance(ctx context.Context, arguments []string, output io.Write
 	}
 	if plan.Schema != "ardents-service-instance-initialize-v1" || !canonicalAbsolutePath(plan.Root) ||
 		!canonicalAbsolutePath(plan.RequestFile) {
-		return errors.New("Service Instance initialization plan is not canonical")
+		return errors.New("service Instance initialization plan is not canonical")
 	}
 	config := instance.InitializeConfig{Root: plan.Root}
 	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
@@ -130,7 +130,7 @@ func writeStablePublicFile(path string, body []byte) error {
 	if errors.Is(err, os.ErrExist) {
 		existing, readErr := readOperatorInput(path, 1024)
 		if readErr != nil || string(existing) != string(body) {
-			return errors.New("Service Instance public request destination conflicts")
+			return errors.New("service Instance public request destination conflicts")
 		}
 		return nil
 	}
@@ -151,7 +151,7 @@ func writeStablePublicFile(path string, body []byte) error {
 func parseCanonicalServiceTime(value string) (time.Time, error) {
 	parsed, err := time.Parse(time.RFC3339, value)
 	if err != nil || parsed.Format(time.RFC3339) != value || !parsed.Equal(parsed.UTC().Truncate(time.Second)) {
-		return time.Time{}, errors.New("Service Instance time is invalid")
+		return time.Time{}, errors.New("service Instance time is invalid")
 	}
 	return parsed.UTC(), nil
 }
