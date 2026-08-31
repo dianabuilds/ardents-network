@@ -1,4 +1,4 @@
-//go:build linux && (h41aqualification || h41bqualification)
+//go:build linux && (endpoint_portable_qualification || endpoint_replacement_qualification)
 
 package endpoint_test
 
@@ -19,10 +19,10 @@ import (
 
 func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Fatal("H4-1A qualification requires an unprivileged user session")
+		t.Fatal("portable Endpoint qualification requires an unprivileged user session")
 	}
 	if runtimeDirectory := os.Getenv("XDG_RUNTIME_DIR"); !filepath.IsAbs(runtimeDirectory) {
-		t.Fatal("H4-1A qualification requires an absolute XDG_RUNTIME_DIR from a user session")
+		t.Fatal("portable Endpoint qualification requires an absolute XDG_RUNTIME_DIR from a user session")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -44,11 +44,11 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 		}
 	})
 	if output, err := userSystemctl(t, "show-environment"); err != nil {
-		t.Fatalf("H4-1A qualification requires a reachable systemd --user manager: %v\n%s", err, output)
+		t.Fatalf("portable Endpoint qualification requires a reachable systemd --user manager: %v\n%s", err, output)
 	}
 	lingerBefore := userLinger(t)
 	if lingerBefore != "no" {
-		t.Fatalf("H4-1A qualification requires linger=no before the unit: %q", lingerBefore)
+		t.Fatalf("portable Endpoint qualification requires linger=no before the unit: %q", lingerBefore)
 	}
 
 	command := buildArdents(t)
@@ -61,7 +61,7 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unitName := "ardents-h4-1a-ubuntu-portable.service"
+	unitName := "ardents-endpoint-portable-ubuntu.service"
 	unitPath := filepath.Join(home, ".config", "systemd", "user", unitName)
 	if err := os.MkdirAll(filepath.Dir(unitPath), 0o700); err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 		t.Fatalf("render participant unit: %v", err)
 	}
 	if bytes.Contains(unit, []byte("User=")) || !bytes.Contains(unit, []byte("UMask=0077\nRestart=no\n")) {
-		t.Fatalf("rendered user unit violates H4-1A profile:\n%s", unit)
+		t.Fatalf("rendered user unit violates portable Endpoint profile:\n%s", unit)
 	}
 	if err := os.WriteFile(unitPath, unit, 0o600); err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 func requireAbsentQualificationRoot(t *testing.T, path string) {
 	t.Helper()
 	if _, err := os.Lstat(path); err == nil {
-		t.Fatalf("H4-1A qualification requires a clean user account; occupied root %s", path)
+		t.Fatalf("portable Endpoint qualification requires a clean user account; occupied root %s", path)
 	} else if !os.IsNotExist(err) {
 		t.Fatalf("inspect required-empty qualification root %s: %v", path, err)
 	}

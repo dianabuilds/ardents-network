@@ -22,7 +22,7 @@ import (
 // command, rather than the C-2 fixture's direct node.Run call, can materialize
 // every selected native duty from independently accepted State and its required
 // two authenticated Source inputs. It is a readiness boundary only: a later
-// H4-2 process test must carry one route through these product processes.
+// native Rendezvous process test must carry one route through these product processes.
 func TestNativeDutyProcessesUseTheirExactStateAssignments(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	network := sha256.Sum256([]byte("ardents-native-duty-process-network"))

@@ -1,4 +1,4 @@
-//go:build h4_2_multihost
+//go:build native_rendezvous_multihost
 
 package state_test
 
@@ -13,16 +13,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// TestH42MultiHostRendezvousAbruptRemoteNodeLoss proves the narrow failure
+// TestNativeRendezvousMultiHostAbruptRemoteNodeLoss proves the narrow failure
 // outcome of losing the remote product Node while one authenticated pair is
 // active. It is not host-loss availability, recovery, retry, or fallback
 // evidence: the direct legs must only observe terminal closure.
-func TestH42MultiHostRendezvousAbruptRemoteNodeLoss(t *testing.T) {
+func TestNativeRendezvousMultiHostAbruptRemoteNodeLoss(t *testing.T) {
 	environment := requireH42MultiHostEnvironment(t)
 	endpoint := net.JoinHostPort(environment.host, strconv.Itoa(environment.port))
 	fixture := newRendezvousStateFixture(t, endpoint)
 	stage := stageH42RemoteRendezvous(t, fixture, environment)
-	remote := h42RemoteRendezvous{environment: environment}
+	remote := nativeRendezvousMultiHostRemoteRendezvous{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
 	remote.start(t, stage)
 	remote.waitReady(t)
@@ -41,7 +41,7 @@ func TestH42MultiHostRendezvousAbruptRemoteNodeLoss(t *testing.T) {
 	}
 	defer responder.Close()
 
-	const payload = "H4-2 active rendezvous before abrupt remote Node loss"
+	const payload = "native Rendezvous active rendezvous before abrupt remote Node loss"
 	if _, err := initiator.Write([]byte(payload)); err != nil {
 		t.Fatalf("write active Initiator payload before remote Node loss: %v", err)
 	}
@@ -50,11 +50,11 @@ func TestH42MultiHostRendezvousAbruptRemoteNodeLoss(t *testing.T) {
 	}
 
 	remote.kill(t)
-	h42RequireTerminalLegClose(t, initiator, "Initiator")
-	h42RequireTerminalLegClose(t, responder, "Responder")
+	nativeRendezvousMultiHostRequireTerminalLegClose(t, initiator, "Initiator")
+	nativeRendezvousMultiHostRequireTerminalLegClose(t, responder, "Responder")
 }
 
-func h42RequireTerminalLegClose(t *testing.T, connection *tls.Conn, role string) {
+func nativeRendezvousMultiHostRequireTerminalLegClose(t *testing.T, connection *tls.Conn, role string) {
 	t.Helper()
 	if err := connection.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		t.Fatalf("set %s loss-read deadline: %v", role, err)
@@ -68,11 +68,11 @@ func h42RequireTerminalLegClose(t *testing.T, connection *tls.Conn, role string)
 	}
 }
 
-func (remote h42RemoteRendezvous) kill(t *testing.T) {
+func (remote nativeRendezvousMultiHostRemoteRendezvous) kill(t *testing.T) {
 	t.Helper()
 	command := fmt.Sprintf("set -eu; docker kill %s >/dev/null; docker container inspect %s >/dev/null 2>&1",
-		h42ShellQuote(remote.environment.container), h42ShellQuote(remote.environment.container))
+		nativeRendezvousMultiHostShellQuote(remote.environment.container), nativeRendezvousMultiHostShellQuote(remote.environment.container))
 	if output, err := remote.run(t, command); err != nil {
-		t.Fatalf("abruptly stop remote H4-2 product Node container: %v\n%s", err, output)
+		t.Fatalf("abruptly stop remote native Rendezvous product Node container: %v\n%s", err, output)
 	}
 }

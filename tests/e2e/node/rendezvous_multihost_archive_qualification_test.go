@@ -1,4 +1,4 @@
-//go:build h4_2_multihost
+//go:build native_rendezvous_multihost
 
 package state_test
 
@@ -12,10 +12,10 @@ import (
 	"strings"
 )
 
-// h42WriteArchive creates the bounded remote test bundle. It deliberately
+// nativeRendezvousMultiHostWriteArchive creates the bounded remote test bundle. It deliberately
 // rejects anything other than directories and regular files so the remote
 // extractor cannot receive a local link or device entry.
-func h42WriteArchive(root string, writer io.Writer) error {
+func nativeRendezvousMultiHostWriteArchive(root string, writer io.Writer) error {
 	gzipWriter := gzip.NewWriter(writer)
 	tarWriter := tar.NewWriter(gzipWriter)
 	walkErr := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
@@ -70,6 +70,6 @@ func h42WriteArchive(root string, writer io.Writer) error {
 	return gzipWriter.Close()
 }
 
-func h42ShellQuote(value string) string {
+func nativeRendezvousMultiHostShellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }

@@ -253,7 +253,7 @@ func enrolledRuntimeBundleWithKeys(t *testing.T, command string) (string, string
 
 func enrolledRuntimeMetadata(t *testing.T, artifact []byte, targetPath, platform string, now time.Time) (map[string][]byte, []byte) {
 	// The alpha-control fixture selects a completed required-protocol overlap so
-	// its first fresh H4-6A observation is exactly release-accepted.
+	// its first fresh alpha-control observation is exactly release-accepted.
 	metadataFiles, rootBytes, _ := enrolledRuntimeMetadataWithKeysAt(t, artifact, targetPath, platform, now, now.Add(-100*24*time.Hour))
 	return metadataFiles, rootBytes
 }

@@ -20,7 +20,7 @@ temporary directory and disappear with the run.
 
 Run them with `make e2e` or `go test ./tests/e2e/node`.
 
-The purpose-named `make qualification-h4-2-multihost` target is separate from
+The purpose-named `make qualification-native-rendezvous-multihost` target is separate from
 ordinary process tests. It cross-builds the current Node command, starts only a
 temporary real Rendezvous plus its two authenticated product State Sources on a
 declared project VPS Docker host, and opens the two native direct legs from the

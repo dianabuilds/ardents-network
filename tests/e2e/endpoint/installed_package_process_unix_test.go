@@ -20,17 +20,17 @@ import (
 )
 
 // TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes proves the first
-// H4-1D package shape with a real command artifact. It runs dpkg against a
+// installed Endpoint package package shape with a real command artifact. It runs dpkg against a
 // test-owned package database/image root instead of modifying the host.
 func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	if _, err := exec.LookPath("dpkg-deb"); err != nil {
-		t.Fatal("H4-1D process profile requires dpkg-deb")
+		t.Fatal("installed Endpoint package process profile requires dpkg-deb")
 	}
 	if _, err := exec.LookPath("dpkg"); err != nil {
-		t.Fatal("H4-1D process profile requires dpkg")
+		t.Fatal("installed Endpoint package process profile requires dpkg")
 	}
 	if _, err := exec.LookPath("setpriv"); err != nil {
-		t.Fatal("H4-1D process profile requires setpriv")
+		t.Fatal("installed Endpoint package process profile requires setpriv")
 	}
 	command := buildArdents(t)
 	bundle, enrolled, alphaInput, keys, rootBytes := enrolledRuntimeBundleWithKeys(t, command)

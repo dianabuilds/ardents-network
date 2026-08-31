@@ -1,4 +1,4 @@
-//go:build linux && h41bqualification
+//go:build linux && endpoint_replacement_qualification
 
 package endpoint_test
 
@@ -14,15 +14,15 @@ import (
 	"time"
 )
 
-// TestUbuntuPortableReplacementQualification proves H4-1B against the same
-// real unprivileged user-systemd shape selected for H4-1A. Unlike the ordinary
+// TestUbuntuPortableReplacementQualification proves Endpoint replacement against the same
+// real unprivileged user-systemd shape selected for portable Endpoint. Unlike the ordinary
 // process test, it does not replace systemctl with a recording fixture.
 func TestUbuntuPortableReplacementQualification(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Fatal("H4-1B qualification requires an unprivileged user session")
+		t.Fatal("Endpoint replacement qualification requires an unprivileged user session")
 	}
 	if runtimeDirectory := os.Getenv("XDG_RUNTIME_DIR"); !filepath.IsAbs(runtimeDirectory) {
-		t.Fatal("H4-1B qualification requires an absolute XDG_RUNTIME_DIR from a user session")
+		t.Fatal("Endpoint replacement qualification requires an absolute XDG_RUNTIME_DIR from a user session")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -44,11 +44,11 @@ func TestUbuntuPortableReplacementQualification(t *testing.T) {
 		}
 	})
 	if output, err := userSystemctl(t, "show-environment"); err != nil {
-		t.Fatalf("H4-1B qualification requires a reachable systemd --user manager: %v\n%s", err, output)
+		t.Fatalf("Endpoint replacement qualification requires a reachable systemd --user manager: %v\n%s", err, output)
 	}
 	lingerBefore := userLinger(t)
 	if lingerBefore != "no" {
-		t.Fatalf("H4-1B qualification requires linger=no before the unit: %q", lingerBefore)
+		t.Fatalf("Endpoint replacement qualification requires linger=no before the unit: %q", lingerBefore)
 	}
 
 	command := buildArdents(t)
@@ -133,10 +133,10 @@ func TestUbuntuPortableReplacementQualification(t *testing.T) {
 // authenticated, but its bounded replacement self-test must fail.
 func TestUbuntuPortableReplacementRollbackQualification(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Fatal("H4-1B qualification requires an unprivileged user session")
+		t.Fatal("Endpoint replacement qualification requires an unprivileged user session")
 	}
 	if runtimeDirectory := os.Getenv("XDG_RUNTIME_DIR"); !filepath.IsAbs(runtimeDirectory) {
-		t.Fatal("H4-1B qualification requires an absolute XDG_RUNTIME_DIR from a user session")
+		t.Fatal("Endpoint replacement qualification requires an absolute XDG_RUNTIME_DIR from a user session")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -156,11 +156,11 @@ func TestUbuntuPortableReplacementRollbackQualification(t *testing.T) {
 		}
 	})
 	if output, err := userSystemctl(t, "show-environment"); err != nil {
-		t.Fatalf("H4-1B qualification requires a reachable systemd --user manager: %v\n%s", err, output)
+		t.Fatalf("Endpoint replacement qualification requires a reachable systemd --user manager: %v\n%s", err, output)
 	}
 	lingerBefore := userLinger(t)
 	if lingerBefore != "no" {
-		t.Fatalf("H4-1B qualification requires linger=no before the unit: %q", lingerBefore)
+		t.Fatalf("Endpoint replacement qualification requires linger=no before the unit: %q", lingerBefore)
 	}
 
 	command := buildArdents(t)

@@ -1,4 +1,4 @@
-//go:build h4_2_multihost
+//go:build native_rendezvous_multihost
 
 package state_test
 
@@ -14,27 +14,27 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// TestH42MultiHostRendezvousTCPFaultRelay exercises three bounded TCP fault
+// TestNativeRendezvousMultiHostTCPFaultRelay exercises three bounded TCP fault
 // outcomes through a test-only transparent relay in front of the real remote
 // product Rendezvous. It does not model packet loss, reordering, MTU, NAT,
 // probing, host loss, recovery, or availability.
-func TestH42MultiHostRendezvousTCPFaultRelay(t *testing.T) {
+func TestNativeRendezvousMultiHostTCPFaultRelay(t *testing.T) {
 	environment := requireH42MultiHostEnvironment(t)
 	remoteEndpoint := net.JoinHostPort(environment.host, strconv.Itoa(environment.port))
 	fixture := newRendezvousStateFixture(t, remoteEndpoint)
 	stage := stageH42RemoteRendezvous(t, fixture, environment)
-	remote := h42RemoteRendezvous{environment: environment}
+	remote := nativeRendezvousMultiHostRemoteRendezvous{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
 	remote.start(t, stage)
 	remote.waitReady(t)
 	relay := startH42TCPFaultRelay(t, remoteEndpoint)
 
 	t.Run("delayed exact carriage", func(t *testing.T) {
-		initiator, responder := h42OpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc1)
-		defer h42CloseTCPFaultRelayPair(t, relay, initiator, responder)
+		initiator, responder := nativeRendezvousMultiHostOpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc1)
+		defer nativeRendezvousMultiHostCloseTCPFaultRelayPair(t, relay, initiator, responder)
 		relay.Delay(200 * time.Millisecond)
 		started := time.Now()
-		h42CarryTCPFaultRelayPayload(t, initiator, responder, "H4-2 delayed exact carriage")
+		nativeRendezvousMultiHostCarryTCPFaultRelayPayload(t, initiator, responder, "native Rendezvous delayed exact carriage")
 		if elapsed := time.Since(started); elapsed < 350*time.Millisecond || elapsed > 3*time.Second {
 			t.Fatalf("two-way 200ms relay delay elapsed %s, want [350ms,3s]", elapsed)
 		}
@@ -42,24 +42,24 @@ func TestH42MultiHostRendezvousTCPFaultRelay(t *testing.T) {
 	})
 
 	t.Run("reset closes pair and permits fresh pair", func(t *testing.T) {
-		initiator, responder := h42OpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc2)
-		h42CarryTCPFaultRelayPayload(t, initiator, responder, "H4-2 reset baseline")
+		initiator, responder := nativeRendezvousMultiHostOpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc2)
+		nativeRendezvousMultiHostCarryTCPFaultRelayPayload(t, initiator, responder, "native Rendezvous reset baseline")
 		relay.Reset(t)
-		h42RequireTerminalLegClose(t, initiator, "Initiator")
-		h42RequireTerminalLegClose(t, responder, "Responder")
+		nativeRendezvousMultiHostRequireTerminalLegClose(t, initiator, "Initiator")
+		nativeRendezvousMultiHostRequireTerminalLegClose(t, responder, "Responder")
 		_ = initiator.Close()
 		_ = responder.Close()
 		time.Sleep(200 * time.Millisecond)
-		freshInitiator, freshResponder := h42OpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc3)
-		defer h42CloseTCPFaultRelayPair(t, relay, freshInitiator, freshResponder)
-		h42CarryTCPFaultRelayPayload(t, freshInitiator, freshResponder, "H4-2 fresh pair after reset")
+		freshInitiator, freshResponder := nativeRendezvousMultiHostOpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc3)
+		defer nativeRendezvousMultiHostCloseTCPFaultRelayPair(t, relay, freshInitiator, freshResponder)
+		nativeRendezvousMultiHostCarryTCPFaultRelayPayload(t, freshInitiator, freshResponder, "native Rendezvous fresh pair after reset")
 	})
 
 	t.Run("blackhole obeys caller read budget", func(t *testing.T) {
-		initiator, responder := h42OpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc4)
-		defer h42CloseTCPFaultRelayPair(t, relay, initiator, responder)
+		initiator, responder := nativeRendezvousMultiHostOpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc4)
+		defer nativeRendezvousMultiHostCloseTCPFaultRelayPair(t, relay, initiator, responder)
 		relay.Drop()
-		if _, err := initiator.Write([]byte("H4-2 intentionally dropped payload")); err != nil {
+		if _, err := initiator.Write([]byte("native Rendezvous intentionally dropped payload")); err != nil {
 			t.Fatalf("write dropped payload: %v", err)
 		}
 		if err := responder.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
@@ -78,7 +78,7 @@ func TestH42MultiHostRendezvousTCPFaultRelay(t *testing.T) {
 	})
 }
 
-func h42OpenTCPFaultRelayPair(t *testing.T, endpoint string, fixture rendezvousStateFixture, marker byte) (*tls.Conn, *tls.Conn) {
+func nativeRendezvousMultiHostOpenTCPFaultRelayPair(t *testing.T, endpoint string, fixture rendezvousStateFixture, marker byte) (*tls.Conn, *tls.Conn) {
 	t.Helper()
 	attachment := [32]byte{marker}
 	initiator, err := openRendezvousProcessLeg(t.Context(), endpoint, fixture.initiator.certificate, fixture.rendezvous.public,
@@ -95,14 +95,14 @@ func h42OpenTCPFaultRelayPair(t *testing.T, endpoint string, fixture rendezvousS
 	return initiator, responder
 }
 
-func h42CloseTCPFaultRelayPair(t *testing.T, relay *h42TCPFaultRelay, initiator, responder *tls.Conn) {
+func nativeRendezvousMultiHostCloseTCPFaultRelayPair(t *testing.T, relay *nativeRendezvousMultiHostTCPFaultRelay, initiator, responder *tls.Conn) {
 	t.Helper()
 	_ = initiator.Close()
 	_ = responder.Close()
 	relay.WaitIdle(t)
 }
 
-func h42CarryTCPFaultRelayPayload(t *testing.T, initiator, responder *tls.Conn, payload string) {
+func nativeRendezvousMultiHostCarryTCPFaultRelayPayload(t *testing.T, initiator, responder *tls.Conn, payload string) {
 	t.Helper()
 	if _, err := initiator.Write([]byte(payload)); err != nil {
 		t.Fatalf("write fault-relay payload: %v", err)
@@ -112,67 +112,69 @@ func h42CarryTCPFaultRelayPayload(t *testing.T, initiator, responder *tls.Conn, 
 	}
 }
 
-type h42TCPFaultMode uint8
+type nativeRendezvousMultiHostTCPFaultMode uint8
 
 const (
-	h42TCPFaultNormal h42TCPFaultMode = iota
-	h42TCPFaultDelay
-	h42TCPFaultDrop
+	nativeRendezvousMultiHostTCPFaultNormal nativeRendezvousMultiHostTCPFaultMode = iota
+	nativeRendezvousMultiHostTCPFaultDelay
+	nativeRendezvousMultiHostTCPFaultDrop
 )
 
-// h42TCPFaultRelay is test-only transparent byte forwarding. Its fault switch
+// nativeRendezvousMultiHostTCPFaultRelay is test-only transparent byte forwarding. Its fault switch
 // is local to this qualification process and is never a Route or Node input.
-type h42TCPFaultRelay struct {
+type nativeRendezvousMultiHostTCPFaultRelay struct {
 	listener net.Listener
 	target   string
 
 	mu          sync.Mutex
-	mode        h42TCPFaultMode
+	mode        nativeRendezvousMultiHostTCPFaultMode
 	delay       time.Duration
 	connections map[net.Conn]struct{}
 	acceptDone  chan struct{}
 	bridges     sync.WaitGroup
 }
 
-func startH42TCPFaultRelay(t *testing.T, target string) *h42TCPFaultRelay {
+func startH42TCPFaultRelay(t *testing.T, target string) *nativeRendezvousMultiHostTCPFaultRelay {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	relay := &h42TCPFaultRelay{listener: listener, target: target, connections: make(map[net.Conn]struct{}), acceptDone: make(chan struct{})}
+	relay := &nativeRendezvousMultiHostTCPFaultRelay{listener: listener, target: target, connections: make(map[net.Conn]struct{}), acceptDone: make(chan struct{})}
 	go relay.accept()
 	t.Cleanup(func() { relay.Close(t) })
 	return relay
 }
 
-func (relay *h42TCPFaultRelay) Endpoint() string { return relay.listener.Addr().String() }
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) Endpoint() string {
+	return relay.listener.Addr().String()
+}
 
-func (relay *h42TCPFaultRelay) Delay(value time.Duration) {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) Delay(value time.Duration) {
 	relay.mu.Lock()
-	relay.mode, relay.delay = h42TCPFaultDelay, value
+	relay.mode, relay.delay = nativeRendezvousMultiHostTCPFaultDelay, value
 	relay.mu.Unlock()
 }
 
-func (relay *h42TCPFaultRelay) Drop() {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) Drop() {
 	relay.mu.Lock()
-	relay.mode, relay.delay = h42TCPFaultDrop, 0
+	relay.mode, relay.delay = nativeRendezvousMultiHostTCPFaultDrop, 0
 	relay.mu.Unlock()
 }
 
-func (relay *h42TCPFaultRelay) Normal() {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) Normal() {
 	relay.mu.Lock()
-	relay.mode, relay.delay = h42TCPFaultNormal, 0
+	relay.mode, relay.delay = nativeRendezvousMultiHostTCPFaultNormal, 0
 	relay.mu.Unlock()
 }
 
-func (relay *h42TCPFaultRelay) Reset(t *testing.T) {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) Reset(t *testing.T) {
 	t.Helper()
 	relay.closeConnectionsWithReset()
 	relay.WaitIdle(t)
 }
 
-func (relay *h42TCPFaultRelay) WaitIdle(t *testing.T) {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) WaitIdle(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
@@ -187,7 +189,7 @@ func (relay *h42TCPFaultRelay) WaitIdle(t *testing.T) {
 	t.Fatal("TCP fault relay retained a connection after cleanup")
 }
 
-func (relay *h42TCPFaultRelay) Close(t *testing.T) {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) Close(t *testing.T) {
 	t.Helper()
 	_ = relay.listener.Close()
 	<-relay.acceptDone
@@ -201,7 +203,7 @@ func (relay *h42TCPFaultRelay) Close(t *testing.T) {
 	}
 }
 
-func (relay *h42TCPFaultRelay) accept() {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) accept() {
 	defer close(relay.acceptDone)
 	for {
 		client, err := relay.listener.Accept()
@@ -213,7 +215,7 @@ func (relay *h42TCPFaultRelay) accept() {
 	}
 }
 
-func (relay *h42TCPFaultRelay) bridge(client net.Conn) {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) bridge(client net.Conn) {
 	defer relay.bridges.Done()
 	server, err := net.DialTimeout("tcp", relay.target, 3*time.Second)
 	if err != nil {
@@ -239,17 +241,17 @@ func (relay *h42TCPFaultRelay) bridge(client net.Conn) {
 	forwards.Wait()
 }
 
-func (relay *h42TCPFaultRelay) forward(destination, source net.Conn) {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) forward(destination, source net.Conn) {
 	buffer := make([]byte, 32<<10)
 	for {
 		count, readErr := source.Read(buffer)
 		if count > 0 {
 			mode, delay := relay.fault()
-			if mode != h42TCPFaultDrop {
-				if mode == h42TCPFaultDelay {
+			if mode != nativeRendezvousMultiHostTCPFaultDrop {
+				if mode == nativeRendezvousMultiHostTCPFaultDelay {
 					time.Sleep(delay)
 				}
-				if h42TCPFaultWriteAll(destination, buffer[:count]) != nil {
+				if nativeRendezvousMultiHostTCPFaultWriteAll(destination, buffer[:count]) != nil {
 					return
 				}
 			}
@@ -260,13 +262,13 @@ func (relay *h42TCPFaultRelay) forward(destination, source net.Conn) {
 	}
 }
 
-func (relay *h42TCPFaultRelay) fault() (h42TCPFaultMode, time.Duration) {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) fault() (nativeRendezvousMultiHostTCPFaultMode, time.Duration) {
 	relay.mu.Lock()
 	defer relay.mu.Unlock()
 	return relay.mode, relay.delay
 }
 
-func (relay *h42TCPFaultRelay) closeConnectionsWithReset() {
+func (relay *nativeRendezvousMultiHostTCPFaultRelay) closeConnectionsWithReset() {
 	relay.mu.Lock()
 	connections := make([]net.Conn, 0, len(relay.connections))
 	for connection := range relay.connections {
@@ -281,7 +283,7 @@ func (relay *h42TCPFaultRelay) closeConnectionsWithReset() {
 	}
 }
 
-func h42TCPFaultWriteAll(writer net.Conn, value []byte) error {
+func nativeRendezvousMultiHostTCPFaultWriteAll(writer net.Conn, value []byte) error {
 	for len(value) > 0 {
 		count, err := writer.Write(value)
 		if err != nil {

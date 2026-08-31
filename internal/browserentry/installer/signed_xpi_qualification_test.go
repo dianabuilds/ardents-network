@@ -1,4 +1,4 @@
-//go:build h4_4_signed_xpi
+//go:build browser_signed_xpi
 
 package installer
 
@@ -18,9 +18,9 @@ import (
 const alphaBrowserEntrySignedXPIHash = "d88e8ecba84cda82a7b2354d1f445e19b9d092f3f3d068868d1173ef29eaa2a2"
 
 func TestMozillaSignedAlphaBrowserEntryXPI(t *testing.T) {
-	path := os.Getenv("ARDENTS_H4_4_SIGNED_XPI")
+	path := os.Getenv("ARDENTS_BROWSER_SIGNED_XPI")
 	if path == "" {
-		t.Fatal("ARDENTS_H4_4_SIGNED_XPI must identify the Mozilla-signed XPI")
+		t.Fatal("ARDENTS_BROWSER_SIGNED_XPI must identify the Mozilla-signed XPI")
 	}
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {

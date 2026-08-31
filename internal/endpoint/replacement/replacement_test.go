@@ -28,7 +28,7 @@ func TestCommitBindsAcceptedProgramAndVerifyRejectsSubstitution(t *testing.T) {
 	decision := release.Decision{Outcome: release.OutcomeReleaseAccepted, BuildSafety: release.OutcomeReleaseAccepted,
 		Protocol: release.OutcomeReleaseAccepted, Path: "ardents/linux-amd64/ardents", Length: int64(len(artifact)),
 		Digest: digest[:], Platform: "linux-amd64", Architecture: "amd64", Environment: "h4-alpha", Network: "ardents-alpha",
-		ReleaseIdentity: "h4-1b-test", ReleaseVersion: 2, ReferenceTime: time.Unix(1, 0).UTC()}
+		ReleaseIdentity: "endpoint-replacement-test", ReleaseVersion: 2, ReferenceTime: time.Unix(1, 0).UTC()}
 	stateRoot := filepath.Join(root, "state", "replacement")
 	record, err := Prepare(context.Background(), Request{StateRoot: stateRoot, Artifact: artifact, decision: decision})
 	if err != nil {

@@ -236,7 +236,7 @@ func replacementDecision(artifact []byte, version int64) release.Decision {
 	return release.Decision{Outcome: release.OutcomeReleaseAccepted, BuildSafety: release.OutcomeReleaseAccepted,
 		Protocol: release.OutcomeReleaseAccepted, Path: "ardents/linux-amd64/ardents", Length: int64(len(artifact)), Digest: digest[:],
 		Platform: "linux-amd64", Architecture: "amd64", Environment: "h4-alpha", Network: "ardents-alpha",
-		ReleaseIdentity: "h4-1b-test", ReleaseVersion: version}
+		ReleaseIdentity: "endpoint-replacement-test", ReleaseVersion: version}
 }
 
 type replacementUnit struct{ stopped, started bool }

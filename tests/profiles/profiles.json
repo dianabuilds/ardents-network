@@ -34,15 +34,6 @@
       "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
-      "id": "browser-compatibility-source",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical Browser presentation source evidence",
-      "prerequisites": [],
-      "invalid_environment": "not applicable",
-      "activation": "new accepted research and product decisions select a maintained Browser presentation compatibility contract"
-    },
-    {
       "id": "browser-adapter",
       "state": "active",
       "make_target": "browser-check",
@@ -59,15 +50,6 @@
       "invalid_environment": "race toolchain or platform unavailable"
     },
     {
-      "id": "live",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "live-network",
-      "prerequisites": ["selected native Route peer runtime", "pinned eligible host inputs"],
-      "invalid_environment": "no native Route live suite is selected",
-      "activation": "M8/M11 provide a native peer-facing Route and a selected measured Node operating profile"
-    },
-    {
       "id": "fuzz",
       "state": "active",
       "make_target": "fuzz",
@@ -76,126 +58,71 @@
       "invalid_environment": "fuzz-capable Go toolchain unavailable"
     },
     {
-      "id": "affected-platform",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical Firefox affected-platform evidence",
-      "prerequisites": ["interactive Windows desktop host", "explicit installed Firefox executable"],
-      "invalid_environment": "the historical Windows Firefox environment is not a current qualification surface",
-      "activation": "new accepted research selects Firefox runtime qualification for a maintained product contract"
-    },
-    {
-      "id": "signed-release-input",
+      "id": "browser-signed-xpi",
       "state": "active",
-      "make_target": "qualification-h4-4-signed-xpi",
-      "surface": "signed-release-artifact",
-      "prerequisites": ["exact Mozilla-signed H4-4 XPI supplied by the Product Owner"],
+      "make_target": "qualification-browser-signed-xpi",
+      "surface": "Mozilla-signed Browser Entry artifact",
+      "prerequisites": ["exact Mozilla-signed Browser Entry XPI supplied by the Product Owner"],
       "invalid_environment": "the selected Mozilla-signed XPI is unavailable or does not match the approved alpha artifact"
     },
     {
-      "id": "signed-firefox",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical clean-profile signed Firefox Browser Entry evidence",
-      "prerequisites": ["interactive Windows desktop host", "explicit installed Firefox executable", "exact Mozilla-signed H4-4 XPI supplied by the Product Owner", "operator explicitly installs the XPI into the temporary Firefox profile"],
-      "invalid_environment": "signed Firefox runtime is not a current qualification surface",
-      "activation": "new accepted research selects Firefox runtime qualification for a maintained release"
-    },
-    {
-      "id": "windows-enrollment-v4",
+      "id": "browser-entry-windows",
       "state": "active",
-      "make_target": "qualification-h4-4-windows-enrollment",
+      "make_target": "qualification-browser-entry-windows",
       "surface": "current-user Browser Entry install/remove",
-      "prerequisites": ["Windows host", "exact Mozilla-signed H4-4 XPI supplied by the Product Owner", "no existing Browser Entry native-manifest registration"],
+      "prerequisites": ["Windows host", "exact Mozilla-signed Browser Entry XPI supplied by the Product Owner", "no existing Browser Entry native-manifest registration"],
       "invalid_environment": "the selected Windows enrollment-v4 qualification cannot establish its isolated current-user registration"
     },
     {
-      "id": "ubuntu-container-enrollment-v4",
+      "id": "browser-entry-ubuntu",
       "state": "active",
-      "make_target": "qualification-h4-4-ubuntu-enrollment",
+      "make_target": "qualification-browser-entry-ubuntu",
       "surface": "unprivileged Ubuntu container Browser Entry install/remove",
-      "prerequisites": ["available Docker engine", "pre-existing ubuntu:24.04 image", "exact Mozilla-signed H4-4 XPI supplied by the Product Owner"],
+      "prerequisites": ["available Docker engine", "pre-existing ubuntu:24.04 image", "exact Mozilla-signed Browser Entry XPI supplied by the Product Owner"],
       "invalid_environment": "the selected Ubuntu container enrollment-v4 qualification cannot create its isolated unprivileged environment"
-    },
-    {
-      "id": "soak",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical Windows-to-Ubuntu Publisher-to-User soak evidence",
-      "prerequisites": ["clean committed Windows 11 x86_64 source checkout at the exact immutable release tag", "exact Linux amd64 release archive, archive SHA-256, Enrollment Pin, Endpoint SHA-256, control-companion SHA-256, cohort, and UTC RFC3339 candidate reference instant", "literal project VPS IPv4 address and matching root SSH key/user", "Ubuntu 22.04 x86_64 with Docker 29, cgroup v2, host networking, and the exact pre-existing golang:1.26.6 image ID", "nine free non-overlapping eight-port high-port ranges beginning at the selected base port", "previously absent external evidence directory"],
-      "invalid_environment": "the selected H4-8 A11 Windows-to-Ubuntu campaign identity, topology, observer, or exact test seam is unavailable",
-      "activation": "a future release decision selects a new soak contract and maintained fixture"
     },
     {
       "id": "qualification",
       "state": "active",
       "make_target": "qualification",
-      "surface": "claim-qualification",
-      "prerequisites": ["accepted H4-1A or H4-1B Ubuntu claim", "clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
+      "surface": "selected Ubuntu Endpoint lifecycle qualification",
+      "prerequisites": ["clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
       "invalid_environment": "the selected Ubuntu user-session qualification environment is unavailable",
       "timeout": "2m"
     },
     {
-      "id": "h4-2-local-emulator",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical local Docker full-C2 evidence",
-      "prerequisites": ["Windows host", "available Docker engine", "pre-existing golang:1.26.6 image"],
-      "invalid_environment": "the selected local Docker H4-2 full-system emulator is unavailable",
-      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
-    },
-    {
-      "id": "h4-2-multihost",
+      "id": "endpoint-portable-ubuntu",
       "state": "active",
-      "make_target": "qualification-h4-2-multihost",
-      "surface": "two-host native Rendezvous qualification",
-      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "free public high port and two remote-loopback Source ports", "remote Docker host networking", "pre-existing golang:1.26.6 image"],
-      "invalid_environment": "the selected Windows-to-VPS native Route qualification environment is unavailable",
+      "make_target": "qualification-endpoint-portable-ubuntu",
+      "surface": "unprivileged Ubuntu portable Endpoint lifecycle",
+      "prerequisites": ["clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
+      "invalid_environment": "the selected Ubuntu portable Endpoint qualification environment is unavailable",
       "timeout": "2m"
     },
     {
-      "id": "h4-3b-docker",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical resource-bounded Linux Docker C-2 evidence",
-      "prerequisites": ["Windows host", "available Docker engine", "pre-existing golang:1.26.6 image"],
-      "invalid_environment": "the selected local Docker H4-3B qualification environment is unavailable",
-      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
-    },
-    {
-      "id": "h4-3b-multihost",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical two-host application-transparent C-2 evidence",
-      "prerequisites": ["Windows host", "available local Docker engine and pre-existing golang:1.26.6 image for runner-syntax validation", "literal project VPS IP", "matching SSH key", "five free public high ports and three remote-loopback ports", "remote Docker host networking and pre-existing golang:1.26.6 image"],
-      "invalid_environment": "the selected Windows-to-VPS H4-3B multi-host qualification environment is unavailable",
-      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
-    },
-    {
-      "id": "h4-3b-vps",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical project-VPS Docker application-transparent C-2 evidence",
-      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "remote Docker engine", "pre-existing golang:1.26.6 image"],
-      "invalid_environment": "the selected Windows-to-VPS H4-3B Docker qualification environment is unavailable",
-      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
-    },
-    {
-      "id": "h4-5-rendezvous",
-      "state": "inactive",
-      "make_target": "",
-      "surface": "historical dedicated-Contributor functional-alpha campaign evidence",
-      "prerequisites": ["clean committed Windows source checkout", "available local Docker engine and pre-existing golang:1.26.6 image", "two distinct literal project VPS IPv4 addresses with explicitly authorized root SSH access", "Ubuntu VPS hosts with Docker, systemd, cgroup v2, and pre-existing golang:1.26.6 image", "previously absent external evidence directory"],
-      "invalid_environment": "the selected H4-5 local-Docker or declared two-VPS qualification environment is unavailable",
-      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
-    },
-    {
-      "id": "h4-6a-two-endpoints",
+      "id": "endpoint-replacement-ubuntu",
       "state": "active",
-      "make_target": "qualification-h4-6a-two-endpoints",
+      "make_target": "qualification-endpoint-replacement-ubuntu",
+      "surface": "unprivileged Ubuntu Endpoint replacement and rollback",
+      "prerequisites": ["clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
+      "invalid_environment": "the selected Ubuntu Endpoint replacement qualification environment is unavailable",
+      "timeout": "2m"
+    },
+    {
+      "id": "native-rendezvous-multihost",
+      "state": "active",
+      "make_target": "qualification-native-rendezvous-multihost",
+      "surface": "two-host native Rendezvous qualification",
+      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "free public high port and two remote-loopback Source ports", "remote Docker host networking", "pre-existing golang:1.26.6 image"],
+      "invalid_environment": "the selected Windows-to-VPS native Route qualification environment is unavailable"
+    },
+    {
+      "id": "alpha-control-two-endpoints",
+      "state": "active",
+      "make_target": "qualification-alpha-control-two-endpoints",
       "surface": "two fresh unprivileged Ubuntu Endpoints observing one exact immutable alpha-control bundle",
       "prerequisites": ["clean Windows qualification checkout", "exact immutable Linux amd64 release archive and all independently fixed archive, enrollment, artifact, cohort, release, and time inputs", "previously absent external evidence directory", "literal project VPS IPv4 address and matching root-capable SSH account", "Ubuntu 22.04 x86_64 host with preinstalled POSIX shell, coreutils, tar, and setpriv"],
-      "invalid_environment": "the selected Windows-to-Ubuntu H4-6A two-fresh-Endpoint qualification environment is unavailable"
+      "invalid_environment": "the selected Windows-to-Ubuntu two-fresh-Endpoint alpha-control qualification environment is unavailable"
     }
   ],
   "suite_roots": [

@@ -27,7 +27,7 @@ import (
 // TestRendezvousNodeProcessPairsOnlyStateAuthorizedLegs proves the maintained
 // command composes its current signed State view into the selected native
 // Rendezvous duty. The two peer legs are deliberately direct TCP/TLS clients:
-// this H4-2A cell owns neither their Endpoint duties nor an H4-3 Route.
+// this native Rendezvous cell owns neither their Endpoint duties nor an Service Route.
 func TestRendezvousNodeProcessPairsOnlyStateAuthorizedLegs(t *testing.T) {
 	running := startRendezvousNodeProcess(t)
 	attachment := [32]byte{0x91}
@@ -280,7 +280,7 @@ type rendezvousStateRecord struct {
 func newRendezvousStateFixture(t *testing.T, endpoint string) rendezvousStateFixture {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
-	network := sha256.Sum256([]byte("ardents-h4-rendezvous-process-network"))
+	network := sha256.Sum256([]byte("ardents-native-rendezvous-process-network"))
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x71}, ed25519.SeedSize))
 	certificateAuthority := makeAuthority(t, "rendezvous-node-root")
 	fixture := rendezvousStateFixture{now: now, network: network, authorityPublic: authority.Public().(ed25519.PublicKey), authorityPrivate: authority}

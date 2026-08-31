@@ -11,7 +11,6 @@ export GOFLAGS := -mod=readonly
 export GOCACHE := $(QUALITY_CACHE_ROOT)/go-build
 export GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod
 export STATICCHECK_CACHE := $(QUALITY_CACHE_ROOT)/staticcheck
-H4_3B_MULTIHOST_TIMEOUT := -timeout=8m
 
 ifeq ($(OS),Windows_NT)
 RACE_TEST_PREFIX :=
@@ -19,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture browser-build browser-check build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-h4-2-net-01a qualification qualification-h4-1a qualification-h4-1b qualification-h4-2-multihost qualification-h4-4-signed-xpi qualification-h4-4-ubuntu-enrollment qualification-h4-4-windows-enrollment qualification-h4-6a-two-endpoints quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture browser-build browser-check build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-browser-entry-ubuntu qualification-browser-entry-windows qualification-browser-signed-xpi qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -96,31 +95,31 @@ headless-evidence: headless-build
 
 headless-check: headless-evidence
 
-qualification-h4-1a:
-	sh ./tests/qualification/h4-1a-ubuntu-portable/run-ubuntu.sh -timeout=2m
+qualification-endpoint-portable-ubuntu:
+	sh ./tests/qualification/endpoint-portable-ubuntu/run-ubuntu.sh -timeout=2m
 
-qualification-h4-1b:
-	sh ./tests/qualification/h4-1b-ubuntu-replacement/run-ubuntu.sh -timeout=2m
+qualification-endpoint-replacement-ubuntu:
+	sh ./tests/qualification/endpoint-replacement-ubuntu/run-ubuntu.sh -timeout=2m
 
-qualification-h4-2-multihost:
-	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-2-multihost/run-windows.ps1
+qualification-native-rendezvous-multihost:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/native-rendezvous-multihost/run-windows.ps1
 
-qualification-h4-6a-two-endpoints:
-	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-6a-two-endpoints/run-windows.ps1 -CandidateArchive "$(H4_6A_ARCHIVE)" -ArchiveSHA256 "$(H4_6A_ARCHIVE_SHA256)" -ManifestPin "$(H4_6A_MANIFEST_PIN)" -EndpointSHA256 "$(H4_6A_ENDPOINT_SHA256)" -ControlSHA256 "$(H4_6A_CONTROL_SHA256)" -Cohort "$(H4_6A_COHORT)" -Release "$(H4_6A_RELEASE)" -At "$(H4_6A_AT)" -VPS "$(H4_6A_VPS)" -SSHKey "$(H4_6A_SSH_KEY)" -User "$(H4_6A_VPS_USER)" -EvidenceOutput "$(H4_6A_EVIDENCE)"
+qualification-alpha-control-two-endpoints:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/alpha-control-two-endpoints/run-windows.ps1 -CandidateArchive "$(ALPHA_CONTROL_ARCHIVE)" -ArchiveSHA256 "$(ALPHA_CONTROL_ARCHIVE_SHA256)" -ManifestPin "$(ALPHA_CONTROL_MANIFEST_PIN)" -EndpointSHA256 "$(ALPHA_CONTROL_ENDPOINT_SHA256)" -ControlSHA256 "$(ALPHA_CONTROL_CONTROL_SHA256)" -Cohort "$(ALPHA_CONTROL_COHORT)" -Release "$(ALPHA_CONTROL_RELEASE)" -At "$(ALPHA_CONTROL_AT)" -VPS "$(ALPHA_CONTROL_VPS)" -SSHKey "$(ALPHA_CONTROL_SSH_KEY)" -User "$(ALPHA_CONTROL_VPS_USER)" -EvidenceOutput "$(ALPHA_CONTROL_EVIDENCE)"
 
-prepare-h4-2-net-01a:
-	sh ./tests/qualification/h4-2-net-01a/run-ubuntu.sh
+prepare-native-rendezvous-host:
+	sh ./tests/qualification/native-rendezvous-host/run-ubuntu.sh
 
-qualification-h4-4-signed-xpi:
-	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-signed-xpi/run-windows.ps1 -SignedXPI "$(ARDENTS_H4_4_SIGNED_XPI)"
+qualification-browser-signed-xpi:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/browser-signed-xpi/run-windows.ps1 -SignedXPI "$(ARDENTS_BROWSER_SIGNED_XPI)"
 
-qualification-h4-4-windows-enrollment:
-	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-windows-enrollment/run-windows.ps1 -SignedXPI "$(ARDENTS_H4_4_SIGNED_XPI)"
+qualification-browser-entry-windows:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/browser-entry-windows/run-windows.ps1 -SignedXPI "$(ARDENTS_BROWSER_SIGNED_XPI)"
 
-qualification-h4-4-ubuntu-enrollment:
-	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/h4-4-ubuntu-enrollment/run-windows-docker.ps1 -SignedXPI "$(ARDENTS_H4_4_SIGNED_XPI)"
+qualification-browser-entry-ubuntu:
+	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/browser-entry-ubuntu/run-windows-docker.ps1 -SignedXPI "$(ARDENTS_BROWSER_SIGNED_XPI)"
 
-qualification: qualification-h4-1a qualification-h4-1b
+qualification: qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu
 
 package-ubuntu-deb:
 	sh ./packaging/ubuntu-deb/build.sh

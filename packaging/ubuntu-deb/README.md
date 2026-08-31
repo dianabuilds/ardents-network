@@ -1,6 +1,6 @@
 # Ubuntu `.deb` packaging
 
-This is the selected first H4-1D package source for Ubuntu `amd64`. It builds
+This is the selected Endpoint package source for Ubuntu `amd64`. It builds
 one directly distributed `.deb`; it does not define an APT repository, a
 package signing key, a maintainer script, a system service, a user service, or
 an updater.

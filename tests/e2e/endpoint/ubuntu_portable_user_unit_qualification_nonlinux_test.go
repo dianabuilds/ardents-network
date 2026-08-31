@@ -1,9 +1,9 @@
-//go:build !linux && h41aqualification
+//go:build !linux && endpoint_portable_qualification
 
 package endpoint_test
 
 import "testing"
 
 func TestUbuntuPortableUserUnitQualificationRequiresLinux(t *testing.T) {
-	t.Fatal("H4-1A qualification requires an Ubuntu Linux systemd --user host")
+	t.Fatal("portable Endpoint qualification requires an Ubuntu Linux systemd --user host")
 }

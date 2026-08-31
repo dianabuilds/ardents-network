@@ -1,7 +1,7 @@
 # Firefox alpha Browser Entry source
 
 This directory is the fixed-ID Firefox extension source and native-host
-manifest template for the H4-4 alpha Browser Entry. The extension routes only
+manifest template for the alpha Browser Entry. The extension routes only
 `http(s)://*.ard/` through its native host. Its only permissions are
 `proxy`, `nativeMessaging`, `webRequest`, and `webRequestBlocking`; both web
 request listeners are constrained to the same `.ard` host matches. It has no
