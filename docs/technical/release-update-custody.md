@@ -52,8 +52,11 @@ implementation defects in the current Module.
 
 - `ardents name control` consumes the retained complete signed control wire;
   it is an operator input boundary, not a second Authority signing route.
-- Update has no Vault/root input and its D0 test proves it does not mutate
-  Vault or floor bytes.
+- Endpoint replacement has no Vault/root input. The current replacement-owner
+  test proves byte-for-byte preservation of an encrypted Authority Vault and a
+  persisted Release-floor root across successful replacement, stop refusal,
+  and explicit rollback; this is non-mutation evidence only, not crash,
+  power-loss, or platform qualification.
 - The retained `custody_notice` key is not live custody state. It is the exact
   H3 evidence text in the frozen `ardents-release-decision-v1`,
   `ardents-update-result-v1`, and update-manifest V0 formats. Go projections
@@ -148,9 +151,10 @@ qualification remain unselected.
 
 ## Verification
 
-Focused Release, Update, and Custody behavior tests cover metadata rejection,
-root/floor progression, interruption/recovery, rollback, residue, encrypted
-Vault non-mutation, export/restore, reconciliation, and sealed Name-control
-signing. Run the normal repository gate during development and the full check
-before integration. Platform crash, power-loss, permissions, and supported
-lifecycle qualification are not satisfied by these tests.
+Focused Release, Custody, and Endpoint replacement behavior tests cover metadata
+rejection, root/floor progression, interruption/recovery, rollback, residue,
+encrypted Vault non-mutation during replacement, export/restore,
+reconciliation, and sealed Name-control signing. Run the normal repository gate
+during development and the full check before integration. Platform crash,
+power-loss, permissions, and supported lifecycle qualification are not
+satisfied by these tests.

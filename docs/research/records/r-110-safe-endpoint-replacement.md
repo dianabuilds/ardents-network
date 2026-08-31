@@ -120,6 +120,12 @@ program and Vault/floor digests, unit state, Update result, and residue.
   fresh v3 authorization for exact v1 bytes, restored and restarted v1. This
   is an Ubuntu qualification of those two paths, not a claim about unattended
   updates, package repair, Windows, or public release.
+- **Implementation evidence:** the current owner-level behavior test creates an
+  encrypted Authority Vault and a persisted Release-floor root outside the
+  replacement state root, then checks their complete file trees byte-for-byte
+  after successful replacement, stop refusal, and explicit rollback. This
+  proves non-mutation at those exercised boundaries only; it does not prove
+  crash, power-loss, permissions, or platform qualification.
 - **Implementation evidence:** one completed immediate predecessor does not
   indefinitely block the next Release-authorized successor. The replacement
   owner first proves that the current bytes and committed journal agree, then
