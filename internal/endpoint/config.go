@@ -20,7 +20,6 @@ type endpointPlan struct {
 	ApplicationSocket, RouteSocket, AdministrationSocket              string
 	PublicationFile, CredentialFile, InstanceKeyFile                  string
 	PublicationRoot, LegacyGenerationFloor                            string
-	BrowserEntryProfile, BrowserEntryStatePath                        string
 	At, Deadline, Lifetime                                            string
 	BytesEachDirection                                                uint32
 	SendBytes, ReceiveBytes                                           uint32
@@ -46,9 +45,6 @@ func (value endpointPlan) validate() error {
 	if value.ApplicationSocket == "" || value.RouteSocket == "" || value.PublicationFile == "" ||
 		value.At == "" || value.Deadline == "" || !value.validStreamBounds() || value.MaximumConnections > 16 {
 		return errors.New("endpoint plan is incomplete or outside its bound")
-	}
-	if value.BrowserEntryProfile != "" || value.BrowserEntryStatePath != "" {
-		return errors.New("browser entry input belongs to the Browser Adapter")
 	}
 	if value.IntroductionPublic == "" {
 		return errors.New("endpoint plan lacks the Introduction verification key")

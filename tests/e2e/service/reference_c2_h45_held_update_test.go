@@ -1,4 +1,4 @@
-//go:build h4_5_rendezvous
+//go:build referencec2 && h4_5_rendezvous
 
 package service_test
 

@@ -258,6 +258,97 @@ func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	}
 }
 
+func TestBrowserCommandsHaveNetworkImplementationFreeDependencyGraphs(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, commandPath := range []string{"./cmd/ardents-browser", "./cmd/ardents-browser-entry"} {
+		t.Run(filepath.Base(commandPath), func(t *testing.T) {
+			dependencies := listedDependencies(t, root, commandPath)
+			for _, forbidden := range []string{
+				"github.com/dianabuilds/ardents-network/internal/endpoint",
+				"github.com/dianabuilds/ardents-network/internal/network",
+				"github.com/dianabuilds/ardents-network/internal/node",
+				"github.com/dianabuilds/ardents-network/internal/route",
+				"github.com/dianabuilds/ardents-network/internal/entry",
+				"github.com/dianabuilds/ardents-network/internal/service",
+				"github.com/dianabuilds/ardents-network/internal/custody",
+			} {
+				for dependency := range dependencies {
+					if dependency == forbidden || strings.HasPrefix(dependency, forbidden+"/") {
+						t.Errorf("%s dependency graph contains Network implementation %s", commandPath, dependency)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestApplicationSeamsAreSharedByTheirAdapters(t *testing.T) {
+	root := repositoryRoot(t)
+	connection := "github.com/dianabuilds/ardents-network/internal/application/connection"
+	for _, packagePath := range []string{"./cmd/ardents", "./cmd/ardents-browser", "./internal/endpoint"} {
+		if !listedDependencies(t, root, packagePath)[connection] {
+			t.Errorf("%s does not use the shared Application Connection Module", packagePath)
+		}
+	}
+	administration := "github.com/dianabuilds/ardents-network/internal/application/administration"
+	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
+		if !listedDependencies(t, root, packagePath)[administration] {
+			t.Errorf("%s does not use the shared Application Administration Module", packagePath)
+		}
+	}
+}
+
+func TestEndpointContainsNoBrowserImplementation(t *testing.T) {
+	root := repositoryRoot(t)
+	endpointRoot := filepath.Join(root, "internal", "endpoint")
+	err := filepath.WalkDir(endpointRoot, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			return nil
+		}
+		lowerName := strings.ToLower(entry.Name())
+		if strings.Contains(lowerName, "browser") || strings.Contains(lowerName, "firefox") {
+			t.Errorf("Endpoint retains Browser implementation file %s", filepath.ToSlash(path))
+		}
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		text := string(contents)
+		for _, forbidden := range []string{
+			"internal/browseradapter",
+			"internal/browserentry",
+			"internal/browserreference",
+			"//go:build browsercompat",
+		} {
+			if strings.Contains(text, forbidden) {
+				t.Errorf("Endpoint file %s retains forbidden Browser boundary %q", filepath.ToSlash(path), forbidden)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("inspect Endpoint source boundary: %v", err)
+	}
+}
+
+func TestNetworkAndBrowserArtifactInventoriesAreDisjoint(t *testing.T) {
+	root := repositoryRoot(t)
+	headless := strings.Fields(string(readProjectFile(t, root, "tests/profiles/headless-commands.txt")))
+	browser := strings.Fields(string(readProjectFile(t, root, "tests/profiles/browser-commands.txt")))
+	seen := make(map[string]bool, len(headless))
+	for _, command := range headless {
+		seen[command] = true
+	}
+	for _, command := range browser {
+		if seen[command] {
+			t.Errorf("Network-v3 and Browser-v4 inventories share command %s", command)
+		}
+	}
+}
+
 func listedDependencies(t *testing.T, root, packagePath string) map[string]bool {
 	t.Helper()
 	command := exec.Command("go", "list", "-deps", packagePath)

@@ -1,4 +1,4 @@
-//go:build linux
+//go:build referencec2 && linux
 
 package service_test
 

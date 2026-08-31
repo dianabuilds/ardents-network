@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 

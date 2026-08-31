@@ -35,11 +35,12 @@
     },
     {
       "id": "browser-compatibility-source",
-      "state": "active",
-      "make_target": "browser-compatibility-evidence",
-      "surface": "retained historical Browser presentation source compile",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical Browser presentation source evidence",
       "prerequisites": [],
-      "invalid_environment": "not applicable"
+      "invalid_environment": "not applicable",
+      "activation": "new accepted research and product decisions select a maintained Browser presentation compatibility contract"
     },
     {
       "id": "browser-adapter",
@@ -76,11 +77,12 @@
     },
     {
       "id": "affected-platform",
-      "state": "active",
-      "make_target": "qualification-h4-4a-firefox",
-      "surface": "affected-platform",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical Firefox affected-platform evidence",
       "prerequisites": ["interactive Windows desktop host", "explicit installed Firefox executable"],
-      "invalid_environment": "the selected Windows Firefox qualification environment is unavailable"
+      "invalid_environment": "the historical Windows Firefox environment is not a current qualification surface",
+      "activation": "new accepted research selects Firefox runtime qualification for a maintained product contract"
     },
     {
       "id": "signed-release-input",
@@ -92,11 +94,12 @@
     },
     {
       "id": "signed-firefox",
-      "state": "active",
-      "make_target": "qualification-h4-4-signed-firefox",
-      "surface": "clean-profile signed Firefox Browser Entry",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical clean-profile signed Firefox Browser Entry evidence",
       "prerequisites": ["interactive Windows desktop host", "explicit installed Firefox executable", "exact Mozilla-signed H4-4 XPI supplied by the Product Owner", "operator explicitly installs the XPI into the temporary Firefox profile"],
-      "invalid_environment": "the selected signed Firefox qualification cannot complete its explicit clean-profile installation"
+      "invalid_environment": "signed Firefox runtime is not a current qualification surface",
+      "activation": "new accepted research selects Firefox runtime qualification for a maintained release"
     },
     {
       "id": "windows-enrollment-v4",
@@ -116,12 +119,12 @@
     },
     {
       "id": "soak",
-      "state": "active",
-      "make_target": "qualification-h4-8-a11",
-      "surface": "bounded Windows-to-Ubuntu Publisher-to-User soak, four fault domains, fresh-topology canaries, and deterministic expiry boundaries",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical Windows-to-Ubuntu Publisher-to-User soak evidence",
       "prerequisites": ["clean committed Windows 11 x86_64 source checkout at the exact immutable release tag", "exact Linux amd64 release archive, archive SHA-256, Enrollment Pin, Endpoint SHA-256, control-companion SHA-256, cohort, and UTC RFC3339 candidate reference instant", "literal project VPS IPv4 address and matching root SSH key/user", "Ubuntu 22.04 x86_64 with Docker 29, cgroup v2, host networking, and the exact pre-existing golang:1.26.6 image ID", "nine free non-overlapping eight-port high-port ranges beginning at the selected base port", "previously absent external evidence directory"],
       "invalid_environment": "the selected H4-8 A11 Windows-to-Ubuntu campaign identity, topology, observer, or exact test seam is unavailable",
-      "timeout": "125m"
+      "activation": "a future release decision selects a new soak contract and maintained fixture"
     },
     {
       "id": "qualification",
@@ -134,12 +137,12 @@
     },
     {
       "id": "h4-2-local-emulator",
-      "state": "active",
-      "make_target": "qualification-h4-2-local-emulator",
-      "surface": "local Docker full-C2 TCP/QUIC, signed-profile, no-fallback, and simulated fault-domain qualification",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical local Docker full-C2 evidence",
       "prerequisites": ["Windows host", "available Docker engine", "pre-existing golang:1.26.6 image"],
       "invalid_environment": "the selected local Docker H4-2 full-system emulator is unavailable",
-      "timeout": "2m"
+      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
     },
     {
       "id": "h4-2-multihost",
@@ -152,37 +155,39 @@
     },
     {
       "id": "h4-3b-docker",
-      "state": "active",
-      "make_target": "qualification-h4-3b-docker",
-      "surface": "resource-bounded Linux Docker application-transparent C-2 qualification",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical resource-bounded Linux Docker C-2 evidence",
       "prerequisites": ["Windows host", "available Docker engine", "pre-existing golang:1.26.6 image"],
       "invalid_environment": "the selected local Docker H4-3B qualification environment is unavailable",
-      "timeout": "2m"
+      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
     },
     {
       "id": "h4-3b-multihost",
-      "state": "active",
-      "make_target": "qualification-h4-3b-multihost",
-      "surface": "two-host application-transparent C-2 qualification",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical two-host application-transparent C-2 evidence",
       "prerequisites": ["Windows host", "available local Docker engine and pre-existing golang:1.26.6 image for runner-syntax validation", "literal project VPS IP", "matching SSH key", "five free public high ports and three remote-loopback ports", "remote Docker host networking and pre-existing golang:1.26.6 image"],
       "invalid_environment": "the selected Windows-to-VPS H4-3B multi-host qualification environment is unavailable",
-      "timeout": "8m"
+      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
     },
     {
       "id": "h4-3b-vps",
-      "state": "active",
-      "make_target": "qualification-h4-3b-vps",
-      "surface": "project-VPS Docker application-transparent C-2 qualification",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical project-VPS Docker application-transparent C-2 evidence",
       "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "remote Docker engine", "pre-existing golang:1.26.6 image"],
-      "invalid_environment": "the selected Windows-to-VPS H4-3B Docker qualification environment is unavailable"
+      "invalid_environment": "the selected Windows-to-VPS H4-3B Docker qualification environment is unavailable",
+      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
     },
     {
       "id": "h4-5-rendezvous",
-      "state": "active",
-      "make_target": "qualification-h4-5-rendezvous",
-      "surface": "bounded dedicated-Contributor functional-alpha campaign across local Docker and two declared Ubuntu VPS hosts",
+      "state": "inactive",
+      "make_target": "",
+      "surface": "historical dedicated-Contributor functional-alpha campaign evidence",
       "prerequisites": ["clean committed Windows source checkout", "available local Docker engine and pre-existing golang:1.26.6 image", "two distinct literal project VPS IPv4 addresses with explicitly authorized root SSH access", "Ubuntu VPS hosts with Docker, systemd, cgroup v2, and pre-existing golang:1.26.6 image", "previously absent external evidence directory"],
-      "invalid_environment": "the selected H4-5 local-Docker or declared two-VPS qualification environment is unavailable"
+      "invalid_environment": "the selected H4-5 local-Docker or declared two-VPS qualification environment is unavailable",
+      "activation": "new accepted research selects a maintained cross-process fixture for this surface"
     },
     {
       "id": "h4-6a-two-endpoints",

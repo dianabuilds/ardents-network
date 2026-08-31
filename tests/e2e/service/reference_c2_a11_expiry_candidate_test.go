@@ -1,4 +1,4 @@
-//go:build h4_8_a11
+//go:build referencec2 && h4_8_a11
 
 package service_test
 
@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
 const h48A11CandidateEnvironmentPrefix = "ARDENTS_H4_8_A11_CANDIDATE_"

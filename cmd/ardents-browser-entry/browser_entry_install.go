@@ -11,7 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/browserentry"
 	"github.com/dianabuilds/ardents-network/internal/browserentry/installer"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
 // installBrowserEntry verifies the selected enrollment-v4 bundle before it

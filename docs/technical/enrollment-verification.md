@@ -1,7 +1,7 @@
 # Closed-alpha enrollment verification
 
 Status: **current maintained technical contract.** This document defines the
-bounded first-artifact verifier in `internal/endpoint/enrollment`. It is not a
+bounded first-artifact verifier in `internal/enrollment`. It is not a
 release procedure, download guide, installer, updater, or qualification
 profile.
 
@@ -66,7 +66,7 @@ its historical corpus-control use; a partial Node/Custody pair fails closed.
 
 ## Verification owner
 
-`internal/endpoint/enrollment` behavior tests cover pin-before-parse,
+`internal/enrollment` behavior tests cover pin-before-parse,
 inventory rejection, executable substitution, v2/v3/v4 companion separation,
 package-owned artifact binding, and a current companion process. Callers in
 `cmd/ardents`, `cmd/ardents-control`, and `cmd/ardents-browser-entry` exercise

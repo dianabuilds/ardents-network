@@ -1,3 +1,5 @@
+//go:build referencec2
+
 package service_test
 
 // referenceC2ID derives one deterministic opaque fixture identity from its

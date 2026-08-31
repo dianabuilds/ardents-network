@@ -1,4 +1,4 @@
-//go:build browsercompat
+//go:build referencec2
 
 package main
 

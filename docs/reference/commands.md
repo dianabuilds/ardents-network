@@ -44,7 +44,8 @@ Module diagnostics, not a capacity or hosting claim.
 
 `ardents-browser run <browser-adapter.json>` runs the optional Browser Adapter
 from only an Endpoint Application socket and a Browser-owned state path. It
-owns HTTP/Firefox presentation and Browser Entry publication. It receives no
+owns local HTTP presentation and Browser Entry publication; it does not launch
+or configure Firefox. It receives no
 Network State, Entry, Target, Route, issuer, custody, or Service Administration
 authority, and stopping or replacing it does not stop the Endpoint. The known
 transparent-origin Browser Entry defect remains a separate security dependency

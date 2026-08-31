@@ -64,7 +64,7 @@ larger process-document removal.
 
 ## Executed stabilization changes
 
-- `internal/endpoint/enrollment/enrollment.go` had four distinct
+- `internal/enrollment/enrollment.go` had four distinct
   responsibilities at 496 lines: public verification/input projection, static
   inventory, canonical descriptor, and current-companion provenance. They are
   now separate cohesive files in the same package with unchanged public

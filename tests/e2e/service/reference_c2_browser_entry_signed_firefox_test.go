@@ -1,4 +1,4 @@
-//go:build h4_4_signed_firefox
+//go:build referencec2 && h4_4_signed_firefox
 
 package service_test
 

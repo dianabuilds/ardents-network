@@ -60,6 +60,8 @@ The first real product commands are:
 | Command | Stable responsibility |
 |---|---|
 | `cmd/ardents` | Adapt bounded Network State, Endpoint, Entry, and naming routes. |
+| `cmd/ardents-browser` | Adapt optional Browser presentation to the local Application Connection Interface without importing Network implementations. |
+| `cmd/ardents-browser-entry` | Run the separately packaged Browser Entry native host and Browser-v4 enrollment operations. |
 | `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
 | `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
 | `cmd/ardents-release-custody` | Initialize or inspect one local encrypted fixed-role release-seed record through the local secret boundary; it has no candidate assembly, signer, or publication route. |
@@ -106,12 +108,16 @@ The maintained tree at the time of this decision is:
 cmd/
 internal/
   architecture/                executable repository and quality rules
+  application/connection/      shared local Connection Interface and transport
+  application/administration/  separate local Publish/Withdraw Interface and transport
+  enrollment/                  neutral Network-v3 and Browser-v4 artifact verification
 scripts/
   check-tools.go               build-ignored developer tool-version check
   install-git-hooks.sh         local hook bootstrap
 .github/workflows/
   quality.yml                  mandatory ordinary CI quality gate
 .githooks/pre-commit           local quick gate
+tests/compatibility/           non-executable historical source evidence
 docs/                          product, security, research, ADR, development, technical, and reference records
 docs/development/README.md     current contributor route through development records
 docs/reference/commands.md     current command route and limits

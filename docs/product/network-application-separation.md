@@ -1,8 +1,9 @@
 # Product-candidate remediation — headless Network and Application separation
 
-Status: **selected active objective. Preliminary state discovery is complete;
-truth remediation and Network/Application separation precede formal C0, deep
-audit, and expensive qualification.**
+Status: **selected active objective. The Application seams and Browser
+dependency direction are implemented; the bounded headless acquisition journey
+remains intentionally incomplete. Formal C0, deep audit, and expensive
+qualification remain later gates.**
 
 ## Queue placement
 
@@ -77,30 +78,37 @@ required:
 - independent artifacts create more compatibility and release work than the
   actual team can maintain.
 
-## Current baseline
+## Current implementation boundary
 
-The lower product Modules are already pointed in the intended direction:
+The maintained dependency direction now has explicit owners:
 
-- `internal/network`, `internal/node`, `internal/route`, `internal/service`, and
-  `internal/entry` do not depend on Endpoint or browser implementations;
-- `cmd/ardents-node` is a separate headless Node Adapter;
-- the Application Interface already separates Connection and Service
-  Administration authority; and
-- `internal/browserentry` and `cmd/ardents-browser-entry` already expose a
-  bounded Firefox native-host handoff rather than network behavior.
+- `internal/application/connection` owns the local Service-Link connection
+  contract, framing, typed terminal outcome, client Adapter, and server
+  transport;
+- `internal/application/administration` separately owns the closed
+  Publish/Withdraw contract, grammar, client Adapter, and server transport;
+- `internal/endpoint` supplies Network-backed Implementations of those
+  Interfaces and owns no IPC client, local wire grammar, Browser state,
+  presentation, Firefox implementation, or Browser-owned imports;
+- `cmd/ardents` and `internal/browseradapter` share the Connection Module;
+  `cmd/ardents` and Endpoint share the Administration Module;
+- `internal/enrollment` verifies the independently positive Network-v3 and
+  Browser-v4 artifact inventories without assigning that responsibility to
+  Endpoint; and
+- the named Network and Browser command graphs are disjoint and checked. The
+  Browser graph contains no Endpoint, Network State, Node, Route, Entry,
+  Service, or Custody implementation.
 
-The main coupling to remove is concentrated above those Modules:
+The former Endpoint Browser/Firefox presentation and Firefox runtime harnesses
+are retained only as non-executable source evidence under
+`tests/compatibility/browser-endpoint-v4/`. The larger C-2 source remains in
+its fixture tree behind the `referencec2` evidence tag. Neither is a current
+product package or qualification entrypoint.
 
-- `internal/endpoint` owns Firefox-specific launch, Browser Entry state,
-  loopback HTTP presentation, and alpha browser proxy lifecycle;
-- `cmd/ardents` composes Network State, Entry, naming, and the browser runtime
-  in one command Adapter;
-- Endpoint configuration names the current Firefox-specific profile; and
-- enrollment, release inventory, and end-to-end qualification currently couple
-  the headless Endpoint artifact to Browser Entry host and XPI artifacts.
-
-This is a focused extraction and Interface-deepening task, not a network
-redesign.
+This separation changes ownership and executable truth, not the selected
+network protocol. The remaining bounded work is Endpoint acquisition
+composition already authorized by R-133; it does not authorize the full B6
+journey or a new product decision.
 
 ## Integrated execution sequence
 

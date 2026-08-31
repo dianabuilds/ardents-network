@@ -1,4 +1,4 @@
-//go:build h4_3b_multihost || h4_8_a11
+//go:build referencec2 && (h4_3b_multihost || h4_8_a11)
 
 package service_test
 

@@ -18,7 +18,7 @@ github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection
 github.com/dianabuilds/ardents-network/internal/publiccontrol
 github.com/dianabuilds/ardents-network/internal/custody
 github.com/dianabuilds/ardents-network/internal/endpoint
-github.com/dianabuilds/ardents-network/internal/endpoint/enrollment
+github.com/dianabuilds/ardents-network/internal/enrollment
 github.com/dianabuilds/ardents-network/internal/endpoint/portable
 github.com/dianabuilds/ardents-network/internal/browserreference
 github.com/dianabuilds/ardents-network/internal/endpoint/replacement

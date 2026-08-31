@@ -26,7 +26,7 @@ by `openpcc/ohttp v0.0.80`.
 | `go.opentelemetry.io/otel/trace` | `v1.45.0` | Apache-2.0 | OHTTP tracing Interface |
 | `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.58.0` | BSD-3-Clause | BHTTP HTTP support |
-| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL enforcement, platform atomic replacement support, and selected-Firefox ShellExecute handoff |
+| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL/locking and registry enforcement plus platform atomic replacement support |
 | `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
 
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution

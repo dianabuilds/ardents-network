@@ -1,3 +1,5 @@
+//go:build referencec2
+
 package service_test
 
 type referenceC2TransitFault string

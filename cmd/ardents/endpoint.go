@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/portable"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/replacement"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 

@@ -94,19 +94,3 @@ func TestEndpointSetupCreatesOneBrokerGeneration(t *testing.T) {
 		t.Fatalf("Endpoint did not create its Broker generation: admission=%v error=%v", setup.Admission, err)
 	}
 }
-
-func TestEndpointPlanRejectsBrowserAdapterInput(t *testing.T) {
-	plan := endpointPlan{Role: "client", NetworkID: strings.Repeat("01", 32), BrokerID: strings.Repeat("02", 32),
-		AuthorityPublic: strings.Repeat("03", 32), ConnectionPrincipal: strings.Repeat("04", 32),
-		IntroductionPublic: strings.Repeat("05", 32), Target: strings.Repeat("06", 32),
-		ApplicationSocket: "app", RouteSocket: "route", PublicationFile: "publication", At: "2033-05-18T03:33:20Z",
-		Deadline: "5s", BytesEachDirection: 4096, BrowserEntryStatePath: "browser-entry.json"}
-	if err := plan.validate(); err == nil || !strings.Contains(err.Error(), "browser entry") {
-		t.Fatalf("Endpoint accepted Browser Adapter state input: %v", err)
-	}
-	plan.BrowserEntryStatePath = ""
-	plan.BrowserEntryProfile = "firefox-alpha"
-	if err := plan.validate(); err == nil || !strings.Contains(err.Error(), "browser entry") {
-		t.Fatalf("Endpoint accepted Browser Adapter profile input: %v", err)
-	}
-}

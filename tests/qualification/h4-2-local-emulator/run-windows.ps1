@@ -18,7 +18,7 @@ try {
             @{ Output = 'reference-c2-linux-amd64'; Package = './tests/e2e/service/fixturecommand/reference-c2' }
         )) {
             if ($entry.Package -eq './tests/e2e/service/fixturecommand/reference-c2') {
-                & go build -trimpath -buildvcs=false -tags browsercompat -o (Join-Path $artifacts $entry.Output) $entry.Package
+                & go build -trimpath -buildvcs=false -tags referencec2 -o (Join-Path $artifacts $entry.Output) $entry.Package
             }
             else {
                 & go build -trimpath -buildvcs=false -o (Join-Path $artifacts $entry.Output) $entry.Package
