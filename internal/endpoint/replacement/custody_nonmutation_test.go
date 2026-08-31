@@ -27,7 +27,7 @@ func TestReplacePreservesAuthorityVaultAndReleaseFloors(t *testing.T) {
 		{name: "rollback", run: runRollbackProtectedReplacement},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			fixture := replacementProtectedFixture(t)
+			fixture := replacementProtectedFixture(t, test.name != "rollback")
 			beforeFloors, err := json.Marshal(fixture.floors)
 			if err != nil {
 				t.Fatal(err)
@@ -49,7 +49,7 @@ func TestReplacePreservesAuthorityVaultAndReleaseFloors(t *testing.T) {
 
 func runSuccessfulProtectedReplacement(t *testing.T, fixture protectedReplacementFixture) {
 	t.Helper()
-	result, err := Replace(context.Background(), protectedAuthorizedOperation(fixture, &replacementUnit{}, replacementSelfTest{program: fixture.program}))
+	result, err := Replace(context.Background(), protectedAuthorizedOperation(fixture, fixture.candidate, &replacementUnit{}, replacementSelfTest{program: fixture.program}))
 	if err != nil || result.State != "committed-restart-permitted" {
 		t.Fatalf("Replace() = %+v, %v", result, err)
 	}
@@ -57,7 +57,7 @@ func runSuccessfulProtectedReplacement(t *testing.T, fixture protectedReplacemen
 
 func runRefusedProtectedReplacement(t *testing.T, fixture protectedReplacementFixture) {
 	t.Helper()
-	result, err := Replace(context.Background(), protectedAuthorizedOperation(fixture, refusingReplacementUnit{}, replacementSelfTest{program: fixture.program}))
+	result, err := Replace(context.Background(), protectedAuthorizedOperation(fixture, fixture.candidate, refusingReplacementUnit{}, replacementSelfTest{program: fixture.program}))
 	if err == nil || result.State != "stop-refused" {
 		t.Fatalf("refused Replace() = %+v, %v", result, err)
 	}
@@ -69,7 +69,7 @@ func runRollbackProtectedReplacement(t *testing.T, fixture protectedReplacementF
 	if err == nil || failed.State != "rollback-authorization-required" {
 		t.Fatalf("failed Replace() = %+v, %v", failed, err)
 	}
-	result, err := Rollback(context.Background(), protectedAuthorizedOperation(fixture, &replacementUnit{}, replacementSelfTest{program: fixture.program}))
+	result, err := Rollback(context.Background(), protectedAuthorizedOperation(fixture, fixture.current, &replacementUnit{}, replacementSelfTest{program: fixture.program}))
 	if err != nil || result.State != "rollback-committed-restart-permitted" {
 		t.Fatalf("Rollback() = %+v, %v", result, err)
 	}
@@ -81,8 +81,8 @@ func protectedCandidateOperation(fixture protectedReplacementFixture, unit UnitC
 		ProgramPath: fixture.program, Unit: unit, SelfTest: selfTest}
 }
 
-func protectedAuthorizedOperation(fixture protectedReplacementFixture, unit UnitControl, selfTest CandidateSelfTest) Operation {
-	return Operation{Request: Request{StateRoot: fixture.stateRoot, Artifact: fixture.current, Authorization: fixture.authorization},
+func protectedAuthorizedOperation(fixture protectedReplacementFixture, artifact []byte, unit UnitControl, selfTest CandidateSelfTest) Operation {
+	return Operation{Request: Request{StateRoot: fixture.stateRoot, Artifact: artifact, Authorization: fixture.authorization},
 		ProgramPath: fixture.program, Unit: unit, SelfTest: selfTest}
 }
 
@@ -95,7 +95,7 @@ type protectedReplacementFixture struct {
 	vaultBefore, releaseBefore                 protectedTree
 }
 
-func replacementProtectedFixture(t *testing.T) protectedReplacementFixture {
+func replacementProtectedFixture(t *testing.T, candidateUsesReleaseAuthorization bool) protectedReplacementFixture {
 	t.Helper()
 	root := t.TempDir()
 	fixture := protectedReplacementFixture{
@@ -103,17 +103,29 @@ func replacementProtectedFixture(t *testing.T) protectedReplacementFixture {
 		stateRoot:   filepath.Join(root, "state", "replacement"),
 		vaultRoot:   filepath.Join(root, "authority-vault"),
 		releaseRoot: filepath.Join(root, "release-floors"),
-		candidate:   []byte("candidate program v2"),
 	}
-	fixture.current, fixture.authorization, fixture.floors, fixture.releaseInputs = replacementReleaseFixture(t, fixture.releaseRoot)
+	releaseArtifact, authorization, floors, inputs := replacementReleaseFixture(t, fixture.releaseRoot)
+	fixture.authorization, fixture.floors, fixture.releaseInputs = authorization, floors, inputs
+	if candidateUsesReleaseAuthorization {
+		fixture.current = []byte("current program v1")
+		fixture.candidate = releaseArtifact
+	} else {
+		fixture.current = releaseArtifact
+		fixture.candidate = []byte("candidate program v2")
+	}
 	if err := replacementCreateVault(t, fixture.vaultRoot); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(fixture.program, fixture.current, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Prepare(context.Background(), Request{StateRoot: fixture.stateRoot,
-		Artifact: fixture.current, Authorization: fixture.authorization}); err != nil {
+	initial := Request{StateRoot: fixture.stateRoot, Artifact: fixture.current}
+	if candidateUsesReleaseAuthorization {
+		initial.decision = replacementDecision(fixture.current, 1)
+	} else {
+		initial.Authorization = fixture.authorization
+	}
+	if _, err := Prepare(context.Background(), initial); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := CommitPrepared(fixture.stateRoot, fixture.program); err != nil {
