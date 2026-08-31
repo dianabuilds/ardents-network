@@ -53,8 +53,9 @@ The Network audit candidate is the headless maintained product surface:
   Release, Custody, contributor, control-inspection, and resource Modules;
 - the `internal/application/broker` used by the Network Endpoint for local
   Grant admission and session lifecycle;
-- the `internal/application/connection` and
-  `internal/application/administration` Interfaces used by the headless CLI;
+- the Network-owned server implementations of the versioned local Application
+  Interface in `internal/endpoint`, with the neutral v1 contract under
+  `internal/application/interfacev1`;
 - the enrollment-v3 headless artifact lane and the maintained deterministic,
   process, race, and fuzz profiles, the architecture gate, and purpose-named
   qualification profiles.
@@ -76,16 +77,26 @@ defined at activation by the [deep-audit method](../development/deep-audit.md).
 Application and Browser code is a separate maintained product surface in the
 same repository and root Go module:
 
-- `internal/application/connection` and `internal/application/administration`
-  expose shared local Interfaces used by both headless and optional Browser
-  callers; their Network implementation remains in the Network candidate;
-- `ardents-browser`, `ardents-browser-entry`, `internal/browseradapter`,
-  `internal/browserentry`, and `internal/browserreference` own optional Browser
-  adaptation and presentation;
+- `internal/application/interfacev1/connection` and
+  `internal/application/interfacev1/administration` own the small versioned
+  local contract, bounds, lifecycle, error/outcome grammar, client/server
+  transport, and conformance vectors; Network implements the server behavior
+  in `internal/endpoint` and Applications consume only the v1 client surface;
+- `ardents-browser`, `ardents-browser-entry`, `internal/browser/adapter`,
+  `internal/browser/entry`, and `internal/browser/reference` own optional Browser
+  adaptation and presentation, including the minimal `.ard` text adapter and
+  enrollment-v4 companion verifier;
 - the enrollment-v4 Browser artifact lane is disjoint from Network-v3; and
 - Browser commands may depend on Application and Browser-owned Modules but not
-  on Endpoint, Network State, Node, Route, Entry, Service, or Custody
-  implementations.
+  on Endpoint, Network State, Node, Route, Entry, Service, Custody, Release,
+  Network enrollment, or any other Network implementation.
+
+[`ownership.json`](../development/ownership.json) is the machine-checked source,
+test, command, packaging, qualification, Interface, and historical-evidence
+inventory. Each maintained owned file and lane has exactly one owner. The
+Application extraction rehearsal copies only `application-browser` and
+`application-interface-v1` files; the Network rehearsal copies only `network`
+and `application-interface-v1` files.
 
 This surface may be audited beside the Network candidate for boundary and
 dependency correctness. It does not inherit a Network security claim, browser

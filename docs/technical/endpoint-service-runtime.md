@@ -6,11 +6,11 @@ Modules that exist in the repository. It does not select a supported desktop
 profile, a qualified Application Isolation profile, a public Service protocol,
 or a complete Route/Node qualification.
 
-Although its directory is under `internal/application`, the Broker is part of
-the C0 Network candidate because the maintained headless Endpoint uses it for
-Network local-grant admission and session lifecycle. Optional Browser callers
-reuse only the shared Connection and Administration Interfaces; this ownership
-classification adds no Browser authority or behavior.
+Although its directory is under `internal/application`, the Broker is
+Network-owned because the maintained headless Endpoint uses it for local-grant
+admission and session lifecycle. The sibling `interfacev1` directory has the
+distinct `application-interface-v1` owner: it freezes the local protocol used
+on both sides without owning either Network behavior or Browser presentation.
 
 ## Ownership
 
@@ -19,6 +19,8 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close that finite session set; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, session accounting, and grant invalidation. |
+| internal/application/interfacev1/connection | Carry one Service Link, one ordered byte stream, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/endpoint | Compose one role-local participant and implement the shared Connection and Administration Interfaces. `RunParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
@@ -93,13 +95,19 @@ material.
 
 ## Endpoint process contract
 
-`internal/application/connection` owns the sole local Service-Link Connection
-Interface: one private Unix attachment carries a bounded Service Link request,
-opaque framed bytes, and one typed terminal Outcome. There is no result
-sideband or Endpoint-owned local grammar. `internal/application/administration`
-separately owns the closed Publish/Withdraw grammar. `RunParticipant` retains
-the server transports and closes their exact socket paths after cancelling and
-joining active clients; CLI and Browser adapters use the shared client.
+`internal/application/interfacev1/connection` owns the sole local Service-Link
+Connection Interface: one private Unix attachment carries a non-empty Service
+Link of at most 512 bytes, opaque frames of at most 16 KiB, and one UTF-8 typed
+terminal outcome with a 128-byte class and 512-byte diagnostic reason. EOF
+without that outcome is not success. Setup does not retry or select an
+alternate link. `internal/application/interfacev1/administration` separately
+owns only `publish` and `withdraw`; it cannot carry Connection data or silently
+turn a failure into another success state. Both packages declare
+`ardents-application-interface-v1` and execute checked vectors under
+`testdata/conformance-v1.json`. There is no result sideband or Endpoint-owned
+local grammar. `RunParticipant` retains the Network server implementation and
+closes its exact socket paths after cancelling and joining active clients; CLI
+and Browser Applications use only the versioned client.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection
@@ -139,9 +147,12 @@ other-Target, or Internet fallback. A distinct registered Target is addressed
 only by an explicit request for its own authenticated name.
 
 Endpoint contains no Browser, Firefox, proxy, presentation, or Browser Entry
-state. `cmd/ardents-browser` and `internal/browseradapter` own the optional
-Browser presentation and depend only on the local Connection Interface plus
-Browser-owned Modules. Firefox-only source is retained as non-executable
+state. `cmd/ardents-browser` and `internal/browser/adapter` own the optional
+Browser presentation and depend only on Application Interface v1 plus
+Browser-owned Modules. The Adapter owns its minimal canonical alpha Service
+Link text conversion, while `internal/browser/entry/enrollment` owns the
+v4 companion verifier; neither imports Network naming, enrollment, Release,
+Endpoint, Route, Service, or Custody implementations. Firefox-only source is retained as non-executable
 compatibility evidence under `tests/compatibility/browser-endpoint-v4` in
 accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md).
 

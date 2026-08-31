@@ -89,6 +89,15 @@ separation are integrated, and its release-readiness matrix exists, but before
 the promotion decision. A separate post-release campaign may later use
 operational evidence, but cannot retroactively qualify an earlier build.
 
+For C0, Network and Application/Browser are distinct audit surfaces joined only
+by `ardents-application-interface-v1`. Activation records both extraction
+receipts: the Network candidate must build and test without
+`internal/browser/...` or Browser commands/packaging, and the Application
+candidate must build and reproduce its command archive from only
+`application-browser` plus `application-interface-v1` ownership. The audit
+corpus uses [`ownership.json`](ownership.json) rather than inferring ownership
+from directory names. `internal/application/broker` remains Network-owned.
+
 The Product Owner activates the campaign only when all of the following are
 true:
 
@@ -100,6 +109,8 @@ true:
   claim-reducing disposition, rather than being left for formal rediscovery;
 - the working tree used to create the candidate is clean and reproducible;
 - `make check` passes for the exact revision;
+- `make headless-check` and `make browser-check` pass their isolated extraction
+  rehearsals for the exact revision;
 - every required higher execution profile is active with a checked entrypoint,
   or is an explicit release-blocking missing prerequisite rather than a skip;
 - current ADR, product, security, technical, package-map, dependency, command,
@@ -681,6 +692,9 @@ The campaign is complete only when:
 
 - every maintained package and Go file appears in the surface inventory and
   every required matrix cell has a supported verdict;
+- every maintained source/test, command, packaging file, qualification lane,
+  Interface-v1 file, and retained historical source has exactly one checked
+  owner, with Network-v3 and Browser-v4 artifact lanes still disjoint;
 - every public, persisted, command, configuration, evidence, migration, and
   wire format is covered;
 - every selected claim traces to implementation, tests, and Qualification
