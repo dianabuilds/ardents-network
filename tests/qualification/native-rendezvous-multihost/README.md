@@ -65,7 +65,7 @@ packet loss, host loss, MTU, NAT, probing, recovery, or availability evidence.
 This is one controlled two-host TCP/TLS Node result on the declared Ubuntu host. It does not
 qualify public deployment, independent operators, true host-loss availability
 or recovery, hostile-network resilience, a full C-2 workload, capacity, or the
-2 vCPU / 2 GiB NET-01A profile. It also does not claim participant Browser Entry
+2 vCPU / 2 GiB native Rendezvous reference-host profile. It also does not claim participant Browser Entry
 or public naming. Abrupt container loss is evidence only for the
 remote Node's immediate terminal-closure behavior; it is not a VPS loss or a
 fallback test.

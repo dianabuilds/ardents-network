@@ -33,10 +33,10 @@ import (
 // legs are intentional: the existing product Node process owns the native
 // Rendezvous duty, while Endpoint/Service peer duties have their own slices.
 func TestNativeRendezvousMultiHostQualification(t *testing.T) {
-	environment := requireH42MultiHostEnvironment(t)
+	environment := requireNativeRendezvousMultiHostEnvironment(t)
 	endpoint := net.JoinHostPort(environment.host, strconv.Itoa(environment.port))
 	fixture := newRendezvousStateFixture(t, endpoint)
-	stage := stageH42RemoteRendezvous(t, fixture, environment)
+	stage := stageNativeRemoteRendezvous(t, fixture, environment)
 	t.Logf("native Rendezvous multi-host inputs: profile=%s state_epoch=%d state_digest=%s ardents_sha256=%s ardents_node_sha256=%s",
 		route.Profile, fixture.epoch.number, hex.EncodeToString(fixture.epoch.digest[:]), nativeRendezvousMultiHostFileDigest(t, filepath.Join(stage, "ardents")), nativeRendezvousMultiHostFileDigest(t, filepath.Join(stage, "ardents-node")))
 	remote := nativeRendezvousMultiHostRemoteRendezvous{environment: environment}
@@ -84,7 +84,7 @@ type nativeRendezvousMultiHostMultiHostEnvironment struct {
 	container                               string
 }
 
-func requireH42MultiHostEnvironment(t *testing.T) nativeRendezvousMultiHostMultiHostEnvironment {
+func requireNativeRendezvousMultiHostEnvironment(t *testing.T) nativeRendezvousMultiHostMultiHostEnvironment {
 	t.Helper()
 	host := os.Getenv("ARDENTS_NATIVE_RENDEZVOUS_VPS")
 	if net.ParseIP(host) == nil {
@@ -150,14 +150,14 @@ func requireH42MultiHostEnvironment(t *testing.T) nativeRendezvousMultiHostMulti
 		remoteDirectory: "/tmp/ardents-native-rendezvous-" + suffix, container: "ardents-native-rendezvous-" + suffix}
 }
 
-func stageH42RemoteRendezvous(t *testing.T, fixture rendezvousStateFixture, environment nativeRendezvousMultiHostMultiHostEnvironment) string {
+func stageNativeRemoteRendezvous(t *testing.T, fixture rendezvousStateFixture, environment nativeRendezvousMultiHostMultiHostEnvironment) string {
 	t.Helper()
 	stage := t.TempDir()
 	nativeRendezvousMultiHostCopyInput(t, stage, "ardents", environment.candidate)
 	if actual := nativeRendezvousMultiHostFileDigest(t, filepath.Join(stage, "ardents")); actual != environment.candidateDigest {
 		t.Fatalf("staged native Rendezvous candidate digest = %s, want %s", actual, environment.candidateDigest)
 	}
-	buildH42LinuxCommand(t, "ardents-node", filepath.Join(stage, "ardents-node"))
+	buildNativeLinuxCommand(t, "ardents-node", filepath.Join(stage, "ardents-node"))
 
 	sources, client := nativeRendezvousMultiHostSourceCredentials(t)
 	nativeRendezvousMultiHostCopyInput(t, stage, "rendezvous-cert.pem", fixture.rendezvous.certificatePath)
@@ -304,7 +304,7 @@ wait "$node_pid"
 `, hex.EncodeToString(fixture.network[:]), hex.EncodeToString(fixture.authorityPublic), fixture.now.Format(time.RFC3339), route.Profile)
 }
 
-func buildH42LinuxCommand(t *testing.T, name, destination string) {
+func buildNativeLinuxCommand(t *testing.T, name, destination string) {
 	t.Helper()
 	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", destination, "./cmd/"+name)
 	command.Dir = filepath.Join("..", "..", "..")

@@ -5,8 +5,9 @@ This directory reproduces the host-eligibility preflight used by the decided
 native Node operating profile. It is not itself a capacity test or a new
 decision-bearing campaign.
 
-Run this only on the separately provisioned NET-01A host, never in Docker and
-never on the project VPS.  The host must be native Ubuntu LTS `x86-64`, present
+Run this only on the separately provisioned native Rendezvous reference host,
+never in Docker and never on the project VPS. The host must be native Ubuntu
+LTS `x86-64`, present
 exactly two online CPUs, have a 2 GiB provider allocation, use cgroup v2, and
 have a separately measured symmetric 100 Mbit/s link.  Linux reserves part of
 physical RAM before exposing `MemTotal`; the runner therefore permits
@@ -25,16 +26,16 @@ region, provisioning timestamp, and the person who made that declaration.  The
 script copies it unchanged; it does not treat an arbitrary text file as a
 provider attestation.
 
-From the repository root on the NET-01A host:
+From the repository root on the native Rendezvous reference host:
 
 ```sh
-export ARDENTS_NET_01A_EVIDENCE_DIR=/var/tmp/ardents-net-01a-20260826
-export ARDENTS_NET_01A_LINK_EVIDENCE=/var/tmp/net-01a-link.txt
-export ARDENTS_NET_01A_HOST_DECLARATION=/var/tmp/net-01a-host.txt
+export ARDENTS_NATIVE_RENDEZVOUS_HOST_EVIDENCE_DIR=/var/tmp/ardents-native-rendezvous-host-20260826
+export ARDENTS_NATIVE_RENDEZVOUS_HOST_LINK_EVIDENCE=/var/tmp/native-rendezvous-link.txt
+export ARDENTS_NATIVE_RENDEZVOUS_HOST_DECLARATION=/var/tmp/native-rendezvous-host.txt
 make prepare-native-rendezvous-host
 ```
 
-`ARDENTS_NET_01A_EVIDENCE_DIR` must be a new absolute path outside the
+`ARDENTS_NATIVE_RENDEZVOUS_HOST_EVIDENCE_DIR` must be a new absolute path outside the
 repository.  The preflight writes only there, with `0700` permissions, and
 does not create a cgroup, start Docker, build a product binary, alter system
 settings, or contact a peer.  It retains a timestamp, `/etc/os-release`,

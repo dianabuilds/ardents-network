@@ -98,7 +98,7 @@ function Read-ReleaseDescriptor([string]$Path) {
     return $fields
 }
 
-function Get-H46ARequiredUbuntuEvidenceFiles {
+function Get-AlphaControlRequiredUbuntuEvidenceFiles {
     return @(
         'host-envelope.txt', 'archive-sha256.txt', 'archive-inventory.txt', 'manifest-pin.txt', 'manifest-check.txt',
         'SHA256SUMS', 'RELEASE', 'product-sha256.txt', 'expected-control-identities.txt', 'freshness-preflight.txt',
@@ -114,13 +114,13 @@ function Get-H46ARequiredUbuntuEvidenceFiles {
     )
 }
 
-function Test-H46AUbuntuEvidence([string]$Root, [string]$ExpectedCohort, [string]$ExpectedRelease) {
+function Test-AlphaControlUbuntuEvidence([string]$Root, [string]$ExpectedCohort, [string]$ExpectedRelease) {
     $issues = New-Object System.Collections.Generic.List[string]
     if (-not (Test-Path -LiteralPath $Root -PathType Container)) {
         $issues.Add('retained Ubuntu evidence directory is absent.')
         return @($issues)
     }
-    foreach ($relative in Get-H46ARequiredUbuntuEvidenceFiles) {
+    foreach ($relative in Get-AlphaControlRequiredUbuntuEvidenceFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $Root $relative) -PathType Leaf)) {
             $issues.Add("retained Ubuntu evidence lacks $relative.")
         }
@@ -185,11 +185,11 @@ function Test-H46AUbuntuEvidence([string]$Root, [string]$ExpectedCohort, [string
     return @($issues)
 }
 
-function Invoke-H46ASelfTest {
-    $root = Join-Path ([IO.Path]::GetTempPath()) ('ardents-h46a-selftest-' + [Guid]::NewGuid().ToString('N'))
+function Invoke-AlphaControlSelfTest {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('ardents-alpha-control-selftest-' + [Guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($root) | Out-Null
     try {
-        foreach ($relative in Get-H46ARequiredUbuntuEvidenceFiles) {
+        foreach ($relative in Get-AlphaControlRequiredUbuntuEvidenceFiles) {
             Write-Utf8 (Join-Path $root $relative) "placeholder`n"
         }
         Write-Utf8 (Join-Path $root 'qualification-summary.txt') "schema=ardents-alpha-control-two-endpoints-summary-v1`nendpoint_a_release=release-accepted`nendpoint_b_release=release-accepted`nendpoint_a_control_release=release-accepted`nendpoint_b_control_release=release-accepted`nrelease_floor_inventories=canonical-byte-for-byte-equal`nlifecycle_identity=selected-cohort-release`n"
@@ -213,19 +213,19 @@ function Invoke-H46ASelfTest {
             Write-Utf8 (Join-Path $root $name) "f 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  current`n"
         }
         Write-Utf8 (Join-Path $root 'process-residue.txt') "endpoint_a_pid=none running=no socket=/tmp/a socket_present=no`nendpoint_b_pid=none running=no socket=/tmp/b socket_present=no`n"
-        $valid = @(Test-H46AUbuntuEvidence $root 'cohort-1' 'alpha-1')
+        $valid = @(Test-AlphaControlUbuntuEvidence $root 'cohort-1' 'alpha-1')
         if ($valid.Count -ne 0) { throw ('valid retained evidence was rejected: ' + ($valid -join ' | ')) }
         Write-Utf8 (Join-Path $root 'qualification-summary.txt') "endpoint_a_release=no-update`n"
-        if (@(Test-H46AUbuntuEvidence $root 'cohort-1' 'alpha-1').Count -eq 0) { throw 'no-update summary was accepted.' }
+        if (@(Test-AlphaControlUbuntuEvidence $root 'cohort-1' 'alpha-1').Count -eq 0) { throw 'no-update summary was accepted.' }
         Write-Utf8 (Join-Path $root 'qualification-summary.txt') "schema=ardents-alpha-control-two-endpoints-summary-v1`nendpoint_a_release=release-accepted`nendpoint_b_release=release-accepted`nendpoint_a_control_release=release-accepted`nendpoint_b_control_release=release-accepted`nrelease_floor_inventories=canonical-byte-for-byte-equal`nlifecycle_identity=selected-cohort-release`n"
         Remove-Item -LiteralPath (Join-Path $root 'endpoint-b-control-release-floor-inventory.txt') -Force
-        if (@(Test-H46AUbuntuEvidence $root 'cohort-1' 'alpha-1').Count -eq 0) { throw 'missing retained evidence was accepted.' }
+        if (@(Test-AlphaControlUbuntuEvidence $root 'cohort-1' 'alpha-1').Count -eq 0) { throw 'missing retained evidence was accepted.' }
         Write-Output 'alpha-control-run-windows-self-test=accepted'
     }
     finally {
         if (Test-Path -LiteralPath $root -PathType Container) {
             $resolved = (Resolve-Path -LiteralPath $root).Path
-            $prefix = [IO.Path]::GetTempPath().TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar + 'ardents-h46a-selftest-'
+            $prefix = [IO.Path]::GetTempPath().TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar + 'ardents-alpha-control-selftest-'
             if (-not $resolved.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) {
                 throw 'self-test temporary root failed exact-path cleanup validation.'
             }
@@ -235,7 +235,7 @@ function Invoke-H46ASelfTest {
 }
 
 if ($SelfTest) {
-    Invoke-H46ASelfTest
+    Invoke-AlphaControlSelfTest
     exit 0
 }
 
@@ -507,7 +507,7 @@ finally {
             Write-Utf8 (Join-Path $evidencePath 'evidence-copy.exitcode') "$remoteCopyExit`n"
             if ($remoteCopyExit -ne 0) { $failures.Add('copying retained Ubuntu evidence failed.') }
             if ($remoteCopyExit -eq 0 -and $remoteRunExit -eq 0) {
-                $ubuntuIssues = @(Test-H46AUbuntuEvidence (Join-Path $evidencePath 'ubuntu') $Cohort $Release)
+                $ubuntuIssues = @(Test-AlphaControlUbuntuEvidence (Join-Path $evidencePath 'ubuntu') $Cohort $Release)
                 if ($ubuntuIssues.Count -eq 0) {
                     $ubuntuEvidenceValidated = $true
                 }

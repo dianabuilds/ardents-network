@@ -1,5 +1,5 @@
 #!/bin/sh
-# R-092 NET-01A host eligibility and evidence preparation. See README.md.
+# Native Rendezvous reference-host eligibility and evidence preparation. See README.md.
 set -eu
 
 fail_reason=''
@@ -20,7 +20,7 @@ trap finish EXIT
 
 invalid() {
 	fail_reason=$1
-	printf 'NET-01A invalid environment: %s\n' "$fail_reason" >&2
+	printf 'native Rendezvous host invalid environment: %s\n' "$fail_reason" >&2
 	exit 1
 }
 
@@ -28,17 +28,17 @@ require_command() {
 	command -v "$1" >/dev/null 2>&1 || invalid "required command is unavailable: $1"
 }
 
-case ${ARDENTS_NET_01A_EVIDENCE_DIR:-} in
-	/*) evidence_dir=$ARDENTS_NET_01A_EVIDENCE_DIR ;;
-	*) invalid 'ARDENTS_NET_01A_EVIDENCE_DIR must be a new absolute path' ;;
+case ${ARDENTS_NATIVE_RENDEZVOUS_HOST_EVIDENCE_DIR:-} in
+	/*) evidence_dir=$ARDENTS_NATIVE_RENDEZVOUS_HOST_EVIDENCE_DIR ;;
+	*) invalid 'ARDENTS_NATIVE_RENDEZVOUS_HOST_EVIDENCE_DIR must be a new absolute path' ;;
 esac
-case ${ARDENTS_NET_01A_LINK_EVIDENCE:-} in
-	/*) link_evidence=$ARDENTS_NET_01A_LINK_EVIDENCE ;;
-	*) invalid 'ARDENTS_NET_01A_LINK_EVIDENCE must name an absolute regular file' ;;
+case ${ARDENTS_NATIVE_RENDEZVOUS_HOST_LINK_EVIDENCE:-} in
+	/*) link_evidence=$ARDENTS_NATIVE_RENDEZVOUS_HOST_LINK_EVIDENCE ;;
+	*) invalid 'ARDENTS_NATIVE_RENDEZVOUS_HOST_LINK_EVIDENCE must name an absolute regular file' ;;
 esac
-case ${ARDENTS_NET_01A_HOST_DECLARATION:-} in
-	/*) host_declaration=$ARDENTS_NET_01A_HOST_DECLARATION ;;
-	*) invalid 'ARDENTS_NET_01A_HOST_DECLARATION must name an absolute regular file' ;;
+case ${ARDENTS_NATIVE_RENDEZVOUS_HOST_DECLARATION:-} in
+	/*) host_declaration=$ARDENTS_NATIVE_RENDEZVOUS_HOST_DECLARATION ;;
+	*) invalid 'ARDENTS_NATIVE_RENDEZVOUS_HOST_DECLARATION must name an absolute regular file' ;;
 esac
 
 repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
@@ -113,5 +113,5 @@ cp -- "$host_declaration" "$evidence_dir/host-declaration.txt"
 sha256sum "$evidence_dir/host.txt" "$evidence_dir/link-evidence.txt" "$evidence_dir/host-declaration.txt" >"$evidence_dir/input.sha256"
 chmod 600 "$evidence_dir/host.txt" "$evidence_dir/link-evidence.txt" "$evidence_dir/host-declaration.txt" "$evidence_dir/input.sha256"
 
-printf 'NET-01A preflight passed: %s\n' "$evidence_dir"
+printf 'native Rendezvous host preflight passed: %s\n' "$evidence_dir"
 printf '%s\n' 'This preflight only establishes host eligibility; it does not select capacity.'

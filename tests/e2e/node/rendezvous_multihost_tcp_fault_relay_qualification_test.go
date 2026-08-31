@@ -19,15 +19,15 @@ import (
 // product Rendezvous. It does not model packet loss, reordering, MTU, NAT,
 // probing, host loss, recovery, or availability.
 func TestNativeRendezvousMultiHostTCPFaultRelay(t *testing.T) {
-	environment := requireH42MultiHostEnvironment(t)
+	environment := requireNativeRendezvousMultiHostEnvironment(t)
 	remoteEndpoint := net.JoinHostPort(environment.host, strconv.Itoa(environment.port))
 	fixture := newRendezvousStateFixture(t, remoteEndpoint)
-	stage := stageH42RemoteRendezvous(t, fixture, environment)
+	stage := stageNativeRemoteRendezvous(t, fixture, environment)
 	remote := nativeRendezvousMultiHostRemoteRendezvous{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
 	remote.start(t, stage)
 	remote.waitReady(t)
-	relay := startH42TCPFaultRelay(t, remoteEndpoint)
+	relay := startNativeRendezvousTCPFaultRelay(t, remoteEndpoint)
 
 	t.Run("delayed exact carriage", func(t *testing.T) {
 		initiator, responder := nativeRendezvousMultiHostOpenTCPFaultRelayPair(t, relay.Endpoint(), fixture, 0xc1)
@@ -134,7 +134,7 @@ type nativeRendezvousMultiHostTCPFaultRelay struct {
 	bridges     sync.WaitGroup
 }
 
-func startH42TCPFaultRelay(t *testing.T, target string) *nativeRendezvousMultiHostTCPFaultRelay {
+func startNativeRendezvousTCPFaultRelay(t *testing.T, target string) *nativeRendezvousMultiHostTCPFaultRelay {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

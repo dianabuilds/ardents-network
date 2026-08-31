@@ -31,7 +31,7 @@ func TestAlphaControlReaderTwoFreshEnrolledEndpointsAgree(t *testing.T) {
 	endpoint := buildArdents(t)
 	control := buildControl(t)
 	fixture := alphaControlBundle(t, endpoint, control)
-	endpointRoots := [2]string{freshEndpointProcessRoot(t, "h46a-e1-"), freshEndpointProcessRoot(t, "h46a-e2-")}
+	endpointRoots := [2]string{freshEndpointProcessRoot(t, "alpha-control-e1-"), freshEndpointProcessRoot(t, "alpha-control-e2-")}
 	for index, root := range endpointRoots {
 		assertAlphaControlPathAbsent(t, filepath.Join(root, "state", "ardents", "floors", "release-decision"), fmt.Sprintf("fresh Endpoint %d Release floor", index))
 	}

@@ -18,10 +18,10 @@ import (
 // active. It is not host-loss availability, recovery, retry, or fallback
 // evidence: the direct legs must only observe terminal closure.
 func TestNativeRendezvousMultiHostAbruptRemoteNodeLoss(t *testing.T) {
-	environment := requireH42MultiHostEnvironment(t)
+	environment := requireNativeRendezvousMultiHostEnvironment(t)
 	endpoint := net.JoinHostPort(environment.host, strconv.Itoa(environment.port))
 	fixture := newRendezvousStateFixture(t, endpoint)
-	stage := stageH42RemoteRendezvous(t, fixture, environment)
+	stage := stageNativeRemoteRendezvous(t, fixture, environment)
 	remote := nativeRendezvousMultiHostRemoteRendezvous{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
 	remote.start(t, stage)

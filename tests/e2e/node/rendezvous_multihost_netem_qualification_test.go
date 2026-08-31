@@ -31,18 +31,18 @@ const (
 // remote product Rendezvous. It is not host loss, public-path loss, recovery,
 // availability, NAT, MTU, reordering, active-probe, or fallback evidence.
 func TestNativeRendezvousMultiHostKernelNetemRelay(t *testing.T) {
-	environment := requireH42MultiHostEnvironment(t)
+	environment := requireNativeRendezvousMultiHostEnvironment(t)
 	remoteEndpoint := net.JoinHostPort(environment.host, strconv.Itoa(environment.port))
 	fixture := newRendezvousStateFixture(t, remoteEndpoint)
-	stage := stageH42RemoteRendezvous(t, fixture, environment)
-	buildH42LinuxNetemRelay(t, filepath.Join(stage, "netem-relay"))
+	stage := stageNativeRemoteRendezvous(t, fixture, environment)
+	buildNativeLinuxNetemRelay(t, filepath.Join(stage, "netem-relay"))
 	remote := nativeRendezvousMultiHostRemoteRendezvous{environment: environment}
 	t.Cleanup(func() { remote.remove(t) })
 	remote.start(t, stage)
 	remote.waitReady(t)
 
 	t.Run("kernel delay retains exact carriage", func(t *testing.T) {
-		relay := newH42NetemRelay(environment, "delay")
+		relay := newNativeRendezvousNetemRelay(environment, "delay")
 		t.Cleanup(func() { relay.remove(t) })
 		relay.prepare(t, remote)
 		relay.start(t, nativeRendezvousMultiHostNetemDelayMode)
@@ -60,7 +60,7 @@ func TestNativeRendezvousMultiHostKernelNetemRelay(t *testing.T) {
 	})
 
 	t.Run("kernel loss prevents attachment and records drops", func(t *testing.T) {
-		relay := newH42NetemRelay(environment, "drop")
+		relay := newNativeRendezvousNetemRelay(environment, "drop")
 		t.Cleanup(func() { relay.remove(t) })
 		relay.prepare(t, remote)
 		relay.start(t, nativeRendezvousMultiHostNetemDropMode)
@@ -81,7 +81,7 @@ func TestNativeRendezvousMultiHostKernelNetemRelay(t *testing.T) {
 	})
 
 	t.Run("kernel delay loss reorder retains exact large carriage", func(t *testing.T) {
-		relay := newH42NetemRelay(environment, "impaired")
+		relay := newNativeRendezvousNetemRelay(environment, "impaired")
 		t.Cleanup(func() { relay.remove(t) })
 		relay.prepare(t, remote)
 		relay.start(t, nativeRendezvousMultiHostNetemImpairedMode)
@@ -135,7 +135,7 @@ type nativeRendezvousMultiHostNetemRelay struct {
 	container, directory string
 }
 
-func newH42NetemRelay(environment nativeRendezvousMultiHostMultiHostEnvironment, suffix string) nativeRendezvousMultiHostNetemRelay {
+func newNativeRendezvousNetemRelay(environment nativeRendezvousMultiHostMultiHostEnvironment, suffix string) nativeRendezvousMultiHostNetemRelay {
 	return nativeRendezvousMultiHostNetemRelay{environment: environment, container: environment.container + "-netem-" + suffix,
 		directory: environment.remoteDirectory + "-netem-" + suffix}
 }
@@ -213,7 +213,7 @@ func (relay nativeRendezvousMultiHostNetemRelay) remove(t *testing.T) {
 	}
 }
 
-func buildH42LinuxNetemRelay(t *testing.T, destination string) {
+func buildNativeLinuxNetemRelay(t *testing.T, destination string) {
 	t.Helper()
 	command := exec.Command("go", "build", "-o", destination, "./tests/e2e/node/fixturecommand/netem-relay")
 	command.Dir = filepath.Join("..", "..", "..")

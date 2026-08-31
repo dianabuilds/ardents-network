@@ -16,7 +16,7 @@ func TestAlphaControlTransitionsTwoFreshEnrolledEndpointsAgree(t *testing.T) {
 	endpoint := buildArdents(t)
 	control := buildControl(t)
 	fixture := alphaControlBundle(t, endpoint, control)
-	roots := [2]string{freshEndpointProcessRoot(t, "h46b-e1-"), freshEndpointProcessRoot(t, "h46b-e2-")}
+	roots := [2]string{freshEndpointProcessRoot(t, "alpha-control-transition-e1-"), freshEndpointProcessRoot(t, "alpha-control-transition-e2-")}
 	endpoints := [2]*liveEnrolledEndpoint{
 		startLiveEnrolledEndpoint(t, fixture.artifact, fixture.input, roots[0], alphaControlEndpointCohort, alphaControlEndpointRelease),
 		startLiveEnrolledEndpoint(t, fixture.artifact, fixture.input, roots[1], alphaControlEndpointCohort, alphaControlEndpointRelease),
