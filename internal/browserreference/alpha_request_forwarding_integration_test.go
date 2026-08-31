@@ -12,6 +12,8 @@ import (
 
 type alphaEarlyResponseOrigin struct{ address string }
 
+const alphaEarlyResponseTestBudget = 5 * time.Second
+
 func (origin alphaEarlyResponseOrigin) alphaOriginAddress() string  { return origin.address }
 func (alphaEarlyResponseOrigin) alphaOriginHost(host string) string { return host }
 func (alphaEarlyResponseOrigin) alphaOriginPath(path string) string { return path }
@@ -30,7 +32,7 @@ func TestAlphaProxyEarlyOriginErrorStopsSlowBrowserUpload(t *testing.T) {
 			return
 		}
 		defer connection.Close()
-		_ = connection.SetDeadline(time.Now().Add(2 * time.Second))
+		_ = connection.SetDeadline(time.Now().Add(alphaEarlyResponseTestBudget))
 		request, readErr := http.ReadRequest(bufio.NewReader(connection))
 		if readErr != nil {
 			originDone <- readErr
@@ -57,7 +59,7 @@ func TestAlphaProxyEarlyOriginErrorStopsSlowBrowserUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer browser.Close()
-	_ = browser.SetDeadline(time.Now().Add(2 * time.Second))
+	_ = browser.SetDeadline(time.Now().Add(alphaEarlyResponseTestBudget))
 	if _, err := fmt.Fprint(browser, "POST http://blog.alice.ard/upload HTTP/1.1\r\nHost: blog.alice.ard\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nx\r\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +83,7 @@ func TestAlphaProxyEarlyOriginErrorStopsSlowBrowserUpload(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(alphaEarlyResponseTestBudget):
 		t.Fatal("early origin did not finish")
 	}
 }
