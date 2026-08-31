@@ -6,6 +6,12 @@ Modules that exist in the repository. It does not select a supported desktop
 profile, a qualified Application Isolation profile, a public Service protocol,
 or a complete Route/Node qualification.
 
+Although its directory is under `internal/application`, the Broker is part of
+the C0 Network candidate because the maintained headless Endpoint uses it for
+Network local-grant admission and session lifecycle. Optional Browser callers
+reuse only the shared Connection and Administration Interfaces; this ownership
+classification adds no Browser authority or behavior.
+
 ## Ownership
 
 The local runtime has separate Modules and Interfaces:

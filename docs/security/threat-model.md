@@ -11,9 +11,10 @@ the stronger public-product claims retained for later decisions. It is not a
 statement that the C0 implementation passed audit or qualification.
 
 For C0, the Network candidate includes headless commands and maintained
-Network, Endpoint, Service, naming, enrollment, Release, and Custody Modules.
-The separate Application/Browser candidate is reviewed for seam, privilege,
-artifact, and dependency correctness but receives no browser-isolation,
+Network, Endpoint, Service, naming, enrollment, Release, Custody, and Endpoint-
+owned Application Broker Modules. The separate Application/Browser candidate is
+reviewed for shared-interface seam, privilege, artifact, and dependency
+correctness but receives no browser-isolation,
 DNS/DoH-protection, or Application Location Privacy claim. Non-executable
 compatibility evidence and historical campaign implementations are outside the
 candidate corpus.

@@ -51,6 +51,8 @@ The Network audit candidate is the headless maintained product surface:
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, naming, enrollment,
   Release, Custody, contributor, control-inspection, and resource Modules;
+- the `internal/application/broker` used by the Network Endpoint for local
+  Grant admission and session lifecycle;
 - the `internal/application/connection` and
   `internal/application/administration` Interfaces used by the headless CLI;
 - the enrollment-v3 headless artifact lane and the maintained deterministic,
@@ -74,8 +76,9 @@ defined at activation by the [deep-audit method](../development/deep-audit.md).
 Application and Browser code is a separate maintained product surface in the
 same repository and root Go module:
 
-- `internal/application/broker`, `connection`, and `administration` own local
-  capability admission and the shared local Interfaces;
+- `internal/application/connection` and `internal/application/administration`
+  expose shared local Interfaces used by both headless and optional Browser
+  callers; their Network implementation remains in the Network candidate;
 - `ardents-browser`, `ardents-browser-entry`, `internal/browseradapter`,
   `internal/browserentry`, and `internal/browserreference` own optional Browser
   adaptation and presentation;

@@ -54,11 +54,13 @@ product claim, environment, fixture, and Product Owner decision.
 ## Candidate boundaries
 
 The C0 Network candidate is exercised by the deterministic/process/race lanes,
-`headless-check`, and the selected Network qualifications. The separate
-Application/Browser candidate is exercised by the shared Application Interface
-tests, Browser-owned Module tests, `browser-check`, and its selected artifact
-mechanics. Browser commands are excluded from the Network artifact inventory,
-and Network implementation packages are excluded from Browser dependencies.
+`headless-check`, and the selected Network qualifications. This includes the
+Endpoint-owned `internal/application/broker`; its directory does not make it a
+Browser-only package. The separate Application/Browser candidate is exercised
+by shared Application Interface tests, Browser-owned Module tests,
+`browser-check`, and its selected artifact mechanics. Browser commands are
+excluded from the Network artifact inventory, and Network implementation
+packages are excluded from Browser dependencies.
 
 `tests/compatibility/browser-endpoint-v4` is the sole retained non-executable
 source exception. ADR-0061 requires it to remain outside Go package discovery,
