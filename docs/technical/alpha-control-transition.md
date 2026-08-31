@@ -1,6 +1,6 @@
 # Alpha control transition contract
 
-Status: **current Functional Alpha H4-6B contract.** This document describes
+Status: **current Functional Alpha control-transition contract.** This document describes
 an inspectable project-operated alpha. It does not claim threshold governance,
 independent custody, public control, availability, or a canonical Namespace.
 
@@ -33,8 +33,8 @@ are read-only diagnostic projections; neither changes an owner root.
 | Withheld | `unavailable`; no silent cached extension beyond validity. | The Endpoint cannot distinguish intentional withholding from outage; retry only the same authenticated identity/source rule. |
 | Unavailable | `unavailable`; no fallback root, source, profile, or Namespace authority. | Missing bounded input; cached valid state may be inspected only within its declared validity. |
 
-`inspect-transitions` emits `ardents-alpha-transition-report-v1`, nested exact
-H4-6A control identity, and a result for all four domains. The accepted
+`inspect-transitions` emits `ardents-alpha-transition-report-v1`, the nested
+exact alpha-control report identity, and a result for all four domains. The accepted
 outcomes are `accepted` and `not-selected`; failure outcomes are
 `forged`, `stale`, `replayed`, `revoked`, `conflicting`, and `unavailable`.
 

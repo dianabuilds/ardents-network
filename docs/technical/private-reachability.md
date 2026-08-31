@@ -1,6 +1,6 @@
 # Private Target reachability
 
-Status: **accepted H4-3A contract; the closed descriptor codec, Endpoint
+Status: **accepted private-reachability contract; the closed descriptor codec, Endpoint
 composition, Gateway-local durable currentness state, and fixed-size OHTTP
 Relay/Gateway exchange and ADR-0037's closed Entry-to-Initiator carrier exist;
 both in-process and seven-process Target Link → lookup → C-2 → Reference Site
@@ -160,7 +160,7 @@ unavailable`, and local policy/resource refusal without revealing route
 topology to the browser. Only a verified `resolved` result may create the
 scoped loopback Reference Site; every other result leaves no listener.
 
-Before H4-3 is declared usable, a separate Publisher, User, Gateway,
+Before private reachability supports an operational usability claim, a separate Publisher, User, Gateway,
 Introduction, Initiator, Rendezvous, and Responder process experiment must
 show: success; a changed Target; old still-time-valid credential; same-
 generation publication conflict; expired/stale introduction slot; substituted
@@ -168,11 +168,13 @@ Entry invite; Gateway withholding; Publisher withdrawal/offline; no direct
 Publisher request; and listener removal on close. The two host Ubuntu run must
 retain its exact binary and State/profile evidence.
 
-The current H4-3A implementation has qualified one in-process and one
-seven-process loopback success path, including the closed lookup carrier and
-browser-origin HTTP request. It has not yet qualified a selected real browser,
-the required failure matrix, or the two-host Ubuntu run, and therefore does
-not declare H4-3 usable.
+The maintained implementation and test denominator cover in-process and
+bounded local-process success paths, including the closed lookup carrier. The
+retired stage-specific Reference C-2 topology is provenance at
+[`fbb42034757513ac009114a00b933aefa76d8ddf`](https://github.com/dianabuilds/ardents-network/commit/fbb42034757513ac009114a00b933aefa76d8ddf),
+not current qualification. A selected real browser, the required failure
+matrix, and a two-host Ubuntu result remain unqualified, so C0 exposes this
+surface for audit without declaring it operationally usable.
 
 ## Non-claims
 

@@ -16,7 +16,8 @@ ADR-0050 creates the one-person local encrypted release-seed record, and
 ADR-0051 can recover its public receipt without exporting a secret. R-120 must
 now create the exact H4-1/H4-6A static input directory from that record without
 turning the local workstation into a general signing service. The first profile
-is recorded in `docs/product/horizon-4/08b-alpha-1-release-profile.md`, but
+was recorded in the historical
+[`08b-alpha-1-release-profile.md`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/docs/product/horizon-4/08b-alpha-1-release-profile.md), but
 its actual Network State and two-builder release facts remain gates.
 
 ## Decision

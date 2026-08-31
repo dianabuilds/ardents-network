@@ -1,6 +1,6 @@
 # Closed-alpha Ubuntu Portable enrollment
 
-Status: **H4-1A participant instruction, exercised on 2026-08-28 by the
+Status: **closed-alpha portable Endpoint instruction, exercised on 2026-08-28 by the
 Product Owner's own authenticated first-enrollment walkthrough.** This is a
 closed-alpha procedure, not an independent-participant, public-release,
 platform-support, or anonymous-onboarding claim.
@@ -136,4 +136,6 @@ systemctl --user start ardents-endpoint.service
 Deleting the stopped bundle directory removes only program bytes. It does not
 remove the per-user Vault, release floors, grants, diagnostics, cache, or live
 state roots. There is no supported automatic replacement, repair, or destructive
-state removal in H4-1A; those operations belong to H4-1B and H4-1C.
+state removal in the portable profile. Foreground replacement is separately
+owned by `internal/endpoint/replacement`; destructive state removal remains
+unsupported.

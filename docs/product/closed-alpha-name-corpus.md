@@ -1,6 +1,6 @@
 # Closed-alpha Alpha Name Corpus intake
 
-Status: **H4-4A participant procedure template; no published alpha corpus
+Status: **closed-alpha participant procedure template; no published alpha corpus
 source is currently promoted.**
 
 This procedure lets an already enrolled participant accept one finite Alpha

@@ -20,7 +20,7 @@ by `openpcc/ohttp v0.0.80`.
 | `github.com/openpcc/twoway` | `v0.0.80` | Apache-2.0 | request/response HPKE context used by OHTTP |
 | `github.com/openpcc/bhttp` | `v0.0.80` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
 | `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed HPKE implementation |
-| `github.com/quic-go/quic-go` | `v0.61.0` | MIT | maintained H4-2B QUIC v1 Carrier Adapter and QUIC varint closure required by BHTTP |
+| `github.com/quic-go/quic-go` | `v0.61.0` | MIT | maintained QUIC v1 Carrier Adapter and QUIC varint closure required by BHTTP |
 | `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
 | `go.opentelemetry.io/otel` | `v1.45.0` | Apache-2.0 | OHTTP tracing types |
 | `go.opentelemetry.io/otel/trace` | `v1.45.0` | Apache-2.0 | OHTTP tracing Interface |
@@ -69,7 +69,7 @@ library exposes equivalent protected-DACL construction and inspection; a
 version change repeats dependency, license, advisory, Windows behavior, and
 offline-build review.
 
-**H4-2B QUIC use:** `internal/route` directly imports pinned
+**QUIC Carrier use:** `internal/route` directly imports pinned
 `github.com/quic-go/quic-go v0.61.0` for the maintained
 `ardents-carrier-quic-v1` Adapter selected by ADR-0048. The module is pure Go,
 MIT licensed, supports the repository toolchain, publishes security reporting

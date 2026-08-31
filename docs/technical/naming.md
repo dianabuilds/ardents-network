@@ -125,7 +125,7 @@ tracer can grow.
   boundary and finite `notAfter`. A verifier derives Grace from signed
   deadlines after that boundary, while an explicit Grace revision remains
   valid. It does not synthesize a Released Record or choose a reclaim winner;
-  those shared transitions remain H4-6 control work under
+  those shared transitions remain alpha-control work under
   [ADR-0043](../adr/0043-derive-grace-from-signed-deadlines.md).
 - A verified Binding is not an identity, a Person, an Endpoint location, or a
   privacy guarantee. Private Resolution has the conditions and limitations in
@@ -145,7 +145,7 @@ claims remain outside this technical contract.
 
 Functional Alpha explicitly selects no substitute: under ADR-0054, alpha
 control cannot materialize, close, release, reclaim, or administratively
-recover a canonical Name. Its user-visible H4-6B outcome is `not-selected`;
+recover a canonical Name. Its user-visible control outcome is `not-selected`;
 Target Links remain the complete current destination path.
 
 ## Verification

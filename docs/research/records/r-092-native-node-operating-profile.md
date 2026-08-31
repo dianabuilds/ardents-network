@@ -86,21 +86,22 @@ follow-up must inject and measure the complete selected resource-pressure rule
 and retain its raw Linux observations, host identity, and source/binary digest
 outside Git.
 
-[`tests/qualification/h4-2-net-01a/`](../../../tests/qualification/h4-2-net-01a/)
-owns a deliberately narrow preflight for that follow-up. It creates an external
+[`tests/qualification/native-rendezvous-host/`](../../../tests/qualification/native-rendezvous-host/)
+owns the retained, deliberately narrow host-eligibility preflight. It creates an external
 evidence directory and fail-closes before measurement unless the declared host
 is native Ubuntu LTS `x86-64`, has two visible CPUs, falls in the documented
 2-GiB raw-memory observation band, exposes cgroup v2, and has a separately
 captured link-evidence file. It is preparation only: it does not run a workload,
 assert pressure, or select capacity.
 
-[`tests/qualification/h4-5-rendezvous/`](../../../tests/qualification/h4-5-rendezvous/)
-owns the superseding H4-5 declared-host contract and preflight. It captures
+The historical
+[`tests/qualification/h4-5-rendezvous/`](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/tests/qualification/h4-5-rendezvous)
+runner owned the superseding declared-host contract and preflight. It captured
 the actual existing Ubuntu host envelope without rejecting a stronger or
 differently sized host, while still requiring systemd, cgroup v2, exclusive
 Contributor managed paths, and a free selected listener port. It is also
-preparation only until its frozen two-host matrix has an executable complete
-runner and retained result.
+preparation only. That stage-specific runner is Git provenance and is not part
+of the C0 candidate.
 
 ### Failure scenarios
 
