@@ -1,7 +1,5 @@
 package enrollment
 
-import "time"
-
 const (
 	inputSchema      = "ardents-alpha-enrollment-input-v1"
 	descriptorSchema = "ardents-closed-alpha-enrollment-v4"
@@ -24,8 +22,6 @@ type Request struct {
 	BundleRoot, ExecutablePath       string
 	Pin                              Pin
 	Environment, Network, TargetPath string
-	Architecture                     string
-	ReferenceTime                    time.Time
 }
 
 // Verified contains only the Application-owned companions consumed by the

@@ -6,9 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
-	"runtime"
 	"strings"
-	"time"
 )
 
 // ClosedAlphaInput is the bounded non-secret representation of the
@@ -51,12 +49,11 @@ func ReadClosedAlphaInput(path string) (ClosedAlphaInput, error) {
 	return input, nil
 }
 
-// Request binds the pin to the exact enrolled Endpoint artifact and time.
-func (input ClosedAlphaInput) Request(artifact string, at time.Time) Request {
+// Request binds the pin to the exact enrolled Endpoint artifact.
+func (input ClosedAlphaInput) Request(artifact string) Request {
 	return Request{BundleRoot: input.BundleRoot, ExecutablePath: artifact,
 		Pin:         Pin{Cohort: input.Cohort, Release: input.Release, Platform: input.Platform, ManifestSHA256: input.ManifestSHA256},
-		Environment: input.Environment, Network: input.Network, TargetPath: input.TargetPath,
-		Architecture: runtime.GOARCH, ReferenceTime: at.UTC()}
+		Environment: input.Environment, Network: input.Network, TargetPath: input.TargetPath}
 }
 
 func validInput(input ClosedAlphaInput) bool {

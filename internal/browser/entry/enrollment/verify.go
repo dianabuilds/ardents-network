@@ -59,8 +59,7 @@ func Verify(request Request) (Verified, error) {
 func validRequest(request Request) bool {
 	return request.BundleRoot != "" && request.ExecutablePath != "" && request.Pin.Cohort != "" &&
 		request.Pin.Release != "" && request.Pin.Platform != "" && len(request.Pin.ManifestSHA256) == 64 &&
-		request.Environment != "" && request.Network != "" && request.TargetPath != "" && request.Architecture != "" &&
-		!request.ReferenceTime.IsZero()
+		request.Environment != "" && request.Network != "" && request.TargetPath != ""
 }
 
 func readExactInventory(root string, entries map[string][]byte) (map[string][]byte, error) {

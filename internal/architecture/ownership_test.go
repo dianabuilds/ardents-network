@@ -43,9 +43,6 @@ func TestMaintainedFilesHaveExactlyOneOwner(t *testing.T) {
 			return
 		}
 		relative := relativePath(t, root, path)
-		if !requiresOwnership(relative) {
-			return
-		}
 		var matches []string
 		for _, rule := range registry.Rules {
 			if ruleMatches(rule, relative) {
@@ -74,7 +71,7 @@ func TestOwnershipRegistryNamesCurrentQualificationAndArtifactLanes(t *testing.T
 	}
 	seen := make(map[string]bool)
 	for _, lane := range registry.QualificationLanes {
-		if lane.ID == "" || lane.Owner == "" || !wantQualification[lane.Path] || seen[lane.Path] {
+		if lane.ID == "" || !containsString(registry.Owners, lane.Owner) || !wantQualification[lane.Path] || seen[lane.Path] {
 			t.Errorf("invalid or duplicate qualification lane: %+v", lane)
 		}
 		seen[lane.Path] = true
@@ -90,6 +87,9 @@ func TestOwnershipRegistryNamesCurrentQualificationAndArtifactLanes(t *testing.T
 	commands := make(map[string]string)
 	packaging := make(map[string]string)
 	for _, lane := range registry.ArtifactLanes {
+		if lane.ID == "" || !containsString(registry.Owners, lane.Owner) || lane.Commands == "" || lane.Packaging == "" {
+			t.Errorf("invalid artifact lane: %+v", lane)
+		}
 		if other := commands[lane.Commands]; other != "" || packaging[lane.Packaging] != "" {
 			t.Errorf("artifact lane %s merges an inventory with another lane", lane.ID)
 		}
@@ -137,23 +137,6 @@ func readOwnershipRegistry(t *testing.T, root string) ownershipRegistry {
 		ids[rule.ID] = true
 	}
 	return registry
-}
-
-func requiresOwnership(path string) bool {
-	for _, prefix := range []string{"packaging/", "tests/qualification/", "tests/profiles/", "tests/compatibility/"} {
-		if strings.HasPrefix(path, prefix) {
-			return true
-		}
-	}
-	if !strings.HasSuffix(path, ".go") {
-		return false
-	}
-	for _, prefix := range []string{"cmd/", "internal/", "scripts/", "tests/e2e/", "tests/epochfixture/"} {
-		if strings.HasPrefix(path, prefix) {
-			return true
-		}
-	}
-	return false
 }
 
 func ruleMatches(rule ownershipRule, path string) bool {

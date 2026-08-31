@@ -30,15 +30,24 @@
     {
       "id": "historical-browser-evidence",
       "owner": "historical-evidence",
-      "include_prefixes": ["tests/compatibility/browser-endpoint-v4/"]
+      "include_prefixes": [
+        "docs/research/",
+        "experiments/",
+        "tests/compatibility/"
+      ]
     },
     {
       "id": "network",
       "owner": "network",
       "include_prefixes": [
+        ".githooks/",
+        ".github/",
         "cmd/",
+        "docs/",
         "internal/",
+        "packaging/",
         "scripts/",
+        "tests/",
         "tests/e2e/",
         "tests/epochfixture/",
         "packaging/alpha-bundle/",
@@ -46,11 +55,29 @@
         "tests/qualification/",
         "tests/profiles/"
       ],
+      "include_paths": [
+        ".dockerignore",
+        ".gitattributes",
+        ".gitignore",
+        "AGENTS.md",
+        "CONTEXT.md",
+        "CONTRIBUTING.md",
+        "go.mod",
+        "go.sum",
+        "LICENSE",
+        "Makefile",
+        "README.md"
+      ],
       "exclude_prefixes": [
         "cmd/ardents-browser/",
         "cmd/ardents-browser-entry/",
+        "docs/research/",
+        "experiments/",
         "internal/application/interfacev1/",
         "internal/browser/",
+        "packaging/browser-bundle/",
+        "packaging/firefox-alpha-browser-entry/",
+        "tests/compatibility/",
         "tests/qualification/browser-signed-xpi/",
         "tests/qualification/browser-entry-windows/",
         "tests/qualification/browser-entry-ubuntu/"

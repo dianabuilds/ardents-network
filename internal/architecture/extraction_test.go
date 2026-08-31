@@ -71,6 +71,9 @@ func extractOwnedCandidate(t *testing.T, root string, owners ...string) string {
 			return
 		}
 		relative := relativePath(t, root, path)
+		if relative == "go.mod" || relative == "go.sum" {
+			return
+		}
 		for _, rule := range registry.Rules {
 			if wanted[rule.Owner] && ruleMatches(rule, relative) {
 				copyCandidateFile(t, root, candidate, relative)

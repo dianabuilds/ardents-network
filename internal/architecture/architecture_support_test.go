@@ -26,7 +26,8 @@ func walk(t *testing.T, root string, visit func(string, os.DirEntry)) {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == ".idea") {
+		if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == ".idea" ||
+			entry.Name() == ".codex-tmp" || entry.Name() == ".codex-remote-attachments") {
 			return filepath.SkipDir
 		}
 		paths = append(paths, path)

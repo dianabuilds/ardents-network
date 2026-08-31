@@ -95,11 +95,14 @@ named commands, observe public behavior, create fresh temporary fixtures, and
 clean every owned process and file.
 
 Every maintained Go package belongs to the deterministic inventory. Every
-maintained Go source/test, command, packaging file, profile file, qualification
-lane, and retained compatibility source matches exactly one ownership rule.
-Every Go-bearing `tests/e2e` suite root belongs to exactly one process profile.
-A new package, file, or suite cannot enter through a negative filter, wildcard
-exception, or directory naming alone.
+maintained repository file—including source/test, command, build and CI input,
+documentation, packaging, profile, qualification, and retained evidence—plus
+every qualification and artifact lane matches exactly one ownership rule.
+Environment-owned `.codex-*`, `.git`, and editor state are not repository
+inputs and are excluded from the walk. Every Go-bearing `tests/e2e` suite root
+belongs to exactly one process profile. A new package, file, or suite cannot
+enter through a negative filter, wildcard exception, or directory naming
+alone.
 
 `tests/compatibility/` is non-executable provenance. Compatibility evidence
 must name its former observer and deletion/reactivation condition and does not

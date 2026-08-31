@@ -35,7 +35,7 @@ func installBrowserEntryWith(arguments []string, output io.Writer,
 	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || endpointArtifact == "" {
 		return errors.New("browser Entry installation arguments are invalid")
 	}
-	at, err := time.Parse(time.RFC3339, atText)
+	_, err := time.Parse(time.RFC3339, atText)
 	if err != nil {
 		return errors.New("browser Entry installation time is invalid")
 	}
@@ -43,7 +43,7 @@ func installBrowserEntryWith(arguments []string, output io.Writer,
 	if err != nil {
 		return err
 	}
-	request := input.Request(endpointArtifact, at)
+	request := input.Request(endpointArtifact)
 	verified, err := verify(request)
 	if err != nil {
 		return err

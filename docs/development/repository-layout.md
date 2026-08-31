@@ -106,9 +106,17 @@ The maintained tree at the time of this decision is:
 cmd/
 internal/
   architecture/                executable repository and quality rules
-  application/connection/      shared local Connection Interface and transport
-  application/administration/  separate local Publish/Withdraw Interface and transport
-  enrollment/                  neutral Network-v3 and Browser-v4 artifact verification
+  application/
+    interfacev1/connection/     versioned local Connection Interface and transport
+    interfacev1/administration/ separate local Publish/Withdraw Interface and transport
+    broker/                     Network-owned local Connection implementation
+  browser/
+    adapter/                    Browser lifecycle and local presentation adapter
+    entry/                      Firefox native host and participant state
+      enrollment/              Application-owned Browser-v4 companion verification
+      installer/               native-host registration
+    reference/                  reference HTTP presentation
+  enrollment/                  Network-v1-v3 artifact verification
 scripts/
   check-tools.go               build-ignored developer tool-version check
   install-git-hooks.sh         local hook bootstrap
@@ -169,11 +177,14 @@ Line count, file count, filename prefixes, or a future second Adapter do not by
 themselves create a package Seam. A division moves complete behavior and its
 tests; it does not introduce a global shared-types or helper package.
 
-A nested directory is a full Go package, not an organizational folder. Parent
-and child packages share no private implementation. `internal/<owner>/<module>`
-is allowed only when `<owner>` already owns several real Modules and the child
-independently meets every package rule above; otherwise use another file in the
-owning package or a factual sibling `internal/<module>`.
+A directory containing maintained Go files is a full Go package, not a visual
+grouping inside another package. An owner namespace such as `internal/browser`
+or `internal/application/interfacev1` may contain several registered Modules
+without itself containing Go files. Parent and child packages share no private
+implementation. `internal/<owner>/<module>` is allowed only when `<owner>`
+already owns several real Modules and the child independently meets every
+package rule above; otherwise use another file in the owning package or a
+factual sibling `internal/<module>`.
 
 Every new package, including a nested package, must arrive in one change with:
 
