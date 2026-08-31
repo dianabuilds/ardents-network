@@ -13,10 +13,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-// transitCredentialIssuerView is deliberately additional to the stable
-// Application State view: Descriptor v1 must continue its fixed-Grant path, while a
-// Descriptor v2 fails closed if the current State cannot project this new
-// exact issuer duty.
+// transitCredentialIssuerView is the exact issuer projection shared by the
+// Application and Publisher State views. Descriptor v1 continues its
+// fixed-Grant path, while Descriptor v2 fails closed when State cannot project
+// this issuer duty.
 type transitCredentialIssuerView interface {
 	CredentialIssuer(time.Time, time.Time) (state.TransitIssuer, bool)
 }

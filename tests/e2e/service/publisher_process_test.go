@@ -1,13 +1,14 @@
-package main
+package service_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,7 +23,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/entry"
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -30,9 +35,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-// This retained process tracer enters only through the headless runtime plan
-// and local Administration socket. The two role-scoped Grants remain inside
-// Endpoint while one real issuer budget observes their sequential acquisition.
+// This retained process tracer enters through RunParticipant and its local
+// Administration socket. The two role-scoped Grants remain inside Endpoint
+// while one real issuer budget observes their sequential acquisition.
 func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t *testing.T) {
 	directory := t.TempDir()
 	now := time.Now().UTC().Truncate(time.Second)
@@ -123,50 +128,38 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 	if err := roles.Close(); err != nil {
 		t.Fatal(err)
 	}
-	confidence := filepath.Join(directory, "time-confidence")
-	if err := os.WriteFile(confidence, []byte("observed\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	maintainPublisherProcessConfidence(t, confidence)
 	entryRoot := filepath.Join(directory, "entry")
-	importAlphaRuntimeEntry(t, entryRoot, rolesRoot, confidence, network)
-	corpusPublic, corpusRoot := prepareAlphaRuntimeCorpus(t, directory, networkID)
+	importPublisherProcessEntry(t, entryRoot, rolesRoot, network)
+	corpusPublic, corpusRoot := preparePublisherProcessCorpus(t, directory, networkID)
 	instanceRoot := publisherProcessInstance(t, filepath.Join(directory, "service-instance"), networkID, now, notAfter)
 	transitRoot := filepath.Join(directory, "transit-acquisition")
 	applicationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("pua-%d.sock", time.Now().UnixNano()))
 	administrationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("pus-%d.sock", time.Now().UnixNano()))
 	t.Cleanup(func() { _ = os.Remove(applicationSocket); _ = os.Remove(administrationSocket) })
-	plan := map[string]any{"schema": "ardents-headless-runtime-v1", "network_state_root": network.root,
-		"entry_state_root": entryRoot, "transit_acquisition_root": transitRoot,
-		"application_socket": applicationSocket, "administration_socket": administrationSocket,
-		"publication_root": filepath.Join(directory, "publication"), "service_instance_root": instanceRoot,
-		"alpha_corpus_state_root": corpusRoot, "local_role_state_root": rolesRoot, "time_confidence_file": confidence,
-		"network_id": hex32(networkID), "network_authorities": []string{hex.EncodeToString(network.authorityPublic)},
-		"network_threshold": 1, "network_profile": route.Profile, "alpha_corpus_authority": hex.EncodeToString(corpusPublic),
-		"alpha_cohort": "runtime-test", "broker_id": hex32([32]byte{71}), "connection_principal": hex32([32]byte{72}),
-		"administration_principal": hex32([32]byte{74}), "bytes_each_direction": 4096}
-	for _, forbidden := range []string{"grant", "private_key", "transit_role", "transit_node_id", "introduction_node_id", "rendezvous_node_id", "responder_node_id", "route_plan"} {
-		if _, exposed := plan[forbidden]; exposed {
-			t.Fatalf("headless caller plan exposes %q", forbidden)
-		}
-	}
-	rawPlan, err := json.Marshal(plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	planPath := filepath.Join(directory, "publisher-runtime.json")
-	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(confidence, []byte("observed\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	ctx, cancel := context.WithCancel(t.Context())
-	writer := &alphaRuntimeWriter{ready: make(chan struct{}, 1)}
+	ready := make(chan struct{}, 1)
 	done := make(chan error, 1)
-	go func() { done <- runHeadlessRuntime(ctx, planPath, writer) }()
+	go func() {
+		done <- endpoint.RunParticipant(ctx, endpoint.ParticipantRuntimeConfig{
+			Network: state.Config{Root: network.root, NetworkID: networkID,
+				Authorities: map[[32]byte]ed25519.PublicKey{network.snapshot.EpochAuthorityIDs[0]: network.authorityPublic},
+				Threshold:   1, AcceptedProfile: route.Profile},
+			EntryRoot: entryRoot, TransitAcquisitionRoot: transitRoot,
+			AlphaCorpusRoot: corpusRoot, AlphaCorpusAuthority: corpusPublic, AlphaCohort: "runtime-test",
+			LocalRoleRoot: rolesRoot, ApplicationAddress: applicationSocket, AdministrationAddress: administrationSocket,
+			PublicationRoot: filepath.Join(directory, "publication"), ServiceInstanceRoot: instanceRoot,
+			BrokerID: [32]byte{71}, ConnectionPrincipal: [32]byte{72}, AdministrationPrincipal: [32]byte{74},
+			BytesEachDirection: 4096, Clock: time.Now, TimeConfident: func() bool { return true },
+			Observe: func(event endpoint.ParticipantRuntimeEvent) error {
+				if event.Kind == "ready" {
+					ready <- struct{}{}
+				}
+				return nil
+			},
+		})
+	}()
 	select {
-	case <-writer.ready:
+	case <-ready:
 	case err := <-done:
 		t.Fatalf("publisher runtime stopped before ready: %v", err)
 	case <-time.After(15 * time.Second):
@@ -206,32 +199,117 @@ func publisherProcessPhase(root string) string {
 	return value.Phase
 }
 
-func maintainPublisherProcessConfidence(t *testing.T, path string) {
+func importPublisherProcessEntry(t *testing.T, root, rolesRoot string, network publisherProcessNetwork) {
 	t.Helper()
-	stop := make(chan struct{})
-	done := make(chan error, 1)
-	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-stop:
-				done <- nil
-				return
-			case observed := <-ticker.C:
-				if err := os.Chtimes(path, observed, observed); err != nil {
-					done <- err
-					return
-				}
-			}
+	opened, err := state.Open(state.Config{Root: network.root, NetworkID: network.snapshot.NetworkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{network.snapshot.EpochAuthorityIDs[0]: network.authorityPublic},
+		Threshold:   1, AcceptedProfile: route.Profile, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer opened.Close()
+	owner, err := entry.Open(entry.Config{Root: root, Current: func() (entry.View, error) {
+		current, currentErr := opened.Current()
+		if currentErr != nil {
+			return entry.View{}, currentErr
 		}
-	}()
-	t.Cleanup(func() {
-		close(stop)
-		if err := <-done; err != nil {
-			t.Errorf("maintain publisher process time confidence: %v", err)
-		}
-	})
+		return publisherProcessEntryView(current), nil
+	}, Conflict: func(identity, family [32]byte) (bool, error) {
+		return localroles.ReadConflict(rolesRoot, time.Now, identity, family)
+	}, Clock: time.Now, TimeConfident: func() bool { return true }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	result, err := owner.Import(publisherProcessInvite(network, time.Now().UTC()))
+	if err != nil || result.Class != entry.Accepted {
+		t.Fatalf("import publisher process Entry = %+v, %v", result, err)
+	}
+}
+
+func publisherProcessEntryView(current state.Snapshot) entry.View {
+	view := entry.View{NetworkID: current.NetworkID, Epoch: current.Epoch, Digest: current.Digest,
+		Profile: current.Profile, Fresh: current.Freshness == "fresh"}
+	for _, candidate := range current.Candidates[:current.CandidateCount] {
+		view.Candidates = append(view.Candidates, entry.Candidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
+			KeyID: candidate.KeyID, FamilyID: candidate.FamilyID, RecordDigest: candidate.RecordDigest,
+			DomainProofDigest: candidate.DomainProofDigest, Endpoint: candidate.Endpoint, Capacity: candidate.Capacity,
+			Domain: candidate.Domain, ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil,
+			AssignmentNotAfter: candidate.AssignmentNotAfter})
+	}
+	return view
+}
+
+func publisherProcessInvite(network publisherProcessNetwork, now time.Time) []byte {
+	snapshot := network.snapshot
+	var body bytes.Buffer
+	_ = binary.Write(&body, binary.BigEndian, uint16(1))
+	body.Write(snapshot.NetworkID[:])
+	_ = binary.Write(&body, binary.BigEndian, snapshot.Epoch)
+	body.Write(snapshot.Digest[:])
+	writePublisherProcessBytes(&body, []byte(route.Profile), 1)
+	candidate, _ := snapshot.BridgeCandidateByKey(snapshot.Candidates[0].KeyID)
+	body.Write(candidate.KeyID[:])
+	body.Write(candidate.NodeID[:])
+	body.Write(candidate.FamilyID[:])
+	body.Write(candidate.RecordDigest[:])
+	body.Write(candidate.DomainProofDigest[:])
+	_ = binary.Write(&body, binary.BigEndian, candidate.AssignmentNotAfter.Unix())
+	_ = binary.Write(&body, binary.BigEndian, now.Add(-time.Minute).Unix())
+	_ = binary.Write(&body, binary.BigEndian, now.Add(30*time.Minute).Unix())
+	body.Write([]byte{1, 0, 0})
+	var raw bytes.Buffer
+	raw.WriteString("ardents-entry-invite-v1")
+	_ = binary.Write(&raw, binary.BigEndian, uint16(body.Len()))
+	raw.Write(body.Bytes())
+	signed := append([]byte("ardents-entry-invite-signature-v1\x00"), body.Bytes()...)
+	raw.Write(ed25519.Sign(network.nodePrivate, signed))
+	return raw.Bytes()
+}
+
+func writePublisherProcessBytes(target *bytes.Buffer, raw []byte, width int) {
+	if width == 1 {
+		target.WriteByte(byte(len(raw)))
+	} else {
+		_ = binary.Write(target, binary.BigEndian, uint16(len(raw)))
+	}
+	target.Write(raw)
+}
+
+func preparePublisherProcessCorpus(t *testing.T, directory string, network [32]byte) (ed25519.PublicKey, string) {
+	t.Helper()
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	link, err := alpha.ParseServiceLink("ardents-alpha://runtime-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	raw, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "runtime-test", Network: network, Serial: 1,
+		NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Minute),
+		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{73}}}}, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := alpha.OpenCorpus(public, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(directory, "alpha-corpus")
+	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: root, Authority: public,
+		Cohort: "runtime-test", Network: network})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := floor.Observe(corpus); err != nil {
+		t.Fatal(err)
+	}
+	if err := floor.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return public, root
 }
 
 func publisherProcessPrivate(t *testing.T) ed25519.PrivateKey {

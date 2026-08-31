@@ -1,4 +1,4 @@
-package main
+package service_test
 
 import (
 	"bytes"
@@ -20,6 +20,13 @@ type publisherProcessPeer struct {
 	endpoint string
 }
 
+type publisherProcessNetwork struct {
+	root            string
+	snapshot        state.Snapshot
+	authorityPublic ed25519.PublicKey
+	nodePrivate     ed25519.PrivateKey
+}
+
 type publisherProcessRecord struct {
 	peer     publisherProcessPeer
 	family   string
@@ -31,7 +38,7 @@ type publisherProcessRecord struct {
 func preparePublisherCommandNetwork(t *testing.T, directory string, now, notAfter time.Time,
 	networkID [32]byte, authority ed25519.PrivateKey, seed [32]byte, peers map[string]publisherProcessPeer,
 	destinationProfile, issuerProfile []byte,
-) commandNetwork {
+) publisherProcessNetwork {
 	t.Helper()
 	domains := []string{"destination-resolution", "initiator", "introduction", "rendezvous", "responder", "transit-issuance"}
 	records := make([]publisherProcessRecord, 0, len(domains))
@@ -72,8 +79,8 @@ func preparePublisherCommandNetwork(t *testing.T, directory string, now, notAfte
 	if snapshot.Digest != digest || snapshot.CandidateCount != uint8(len(records)) || snapshot.Candidates[0].Domain != "initiator" {
 		t.Fatalf("publisher process State fixture = digest %x candidates %d first %q", snapshot.Digest, snapshot.CandidateCount, snapshot.Candidates[0].Domain)
 	}
-	return commandNetwork{root: root, snapshot: snapshot, authorityPublic: authorityPublic,
-		nodePrivate: peers["initiator"].private, domainProof: materials[0]}
+	return publisherProcessNetwork{root: root, snapshot: snapshot, authorityPublic: authorityPublic,
+		nodePrivate: peers["initiator"].private}
 }
 
 func publisherProcessFamily(t *testing.T, network, seed [32]byte, wanted string, domains []string) string {
@@ -99,13 +106,13 @@ func publisherProcessRecordBytes(network [32]byte, peer publisherProcessPeer, fa
 	raw.WriteByte(1)
 	raw.Write(network[:])
 	raw.Write(peer.nodeID[:])
-	writeCommandU64(&raw, 1)
-	writeCommandI64(&raw, from.Unix())
-	writeCommandI64(&raw, until.Unix())
-	writeCommandText(&raw, family)
+	writePublisherProcessU64(&raw, 1)
+	writePublisherProcessI64(&raw, from.Unix())
+	writePublisherProcessI64(&raw, until.Unix())
+	writePublisherProcessText(&raw, family)
 	raw.WriteByte(2)
-	writeCommandText(&raw, peer.endpoint)
-	writeCommandU16(&raw, 1)
+	writePublisherProcessText(&raw, peer.endpoint)
+	writePublisherProcessU16(&raw, 1)
 	raw.Write(peer.private.Public().(ed25519.PublicKey))
 	raw.Write(ed25519.Sign(peer.private, raw.Bytes()))
 	return raw.Bytes()
@@ -120,37 +127,37 @@ func publisherProcessEpoch(t *testing.T, network [32]byte, authority ed25519.Pri
 	raw.WriteString("AREP")
 	raw.WriteByte(3)
 	raw.Write(network[:])
-	writeCommandU64(&raw, 1)
+	writePublisherProcessU64(&raw, 1)
 	raw.Write(make([]byte, 32))
-	writeCommandI64(&raw, now.Add(-time.Minute).Unix())
-	writeCommandI64(&raw, notAfter.Unix())
-	writeCommandU32(&raw, uint32(len(inputs)))
-	writeCommandText(&raw, "ardents-interactive-route-v1")
+	writePublisherProcessI64(&raw, now.Add(-time.Minute).Unix())
+	writePublisherProcessI64(&raw, notAfter.Unix())
+	writePublisherProcessU32(&raw, uint32(len(inputs)))
+	writePublisherProcessText(&raw, "ardents-interactive-route-v1")
 	inputRoot, viewRoot := publisherProcessMerkleRoot(inputs, 0x10), publisherProcessMerkleRoot(inputs, 0x11)
 	raw.Write(inputRoot[:])
 	raw.Write(viewRoot[:])
-	writeCommandU32(&raw, uint32(len(inputs)))
+	writePublisherProcessU32(&raw, uint32(len(inputs)))
 	rejectedRoot := sha256.Sum256([]byte{0x12})
 	raw.Write(rejectedRoot[:])
-	writeCommandU32(&raw, 0)
+	writePublisherProcessU32(&raw, 0)
 	raw.Write(seed[:])
-	writeCommandText(&raw, "ardents-h3-role-domain-v1")
-	writeCommandU32(&raw, uint32(len(records)))
-	writeCommandU32(&raw, uint32(len(records)))
-	writeCommandU16(&raw, uint16(len(records)))
-	writeCommandU16(&raw, 1)
-	writeCommandU32(&raw, 1)
+	writePublisherProcessText(&raw, "ardents-h3-role-domain-v1")
+	writePublisherProcessU32(&raw, uint32(len(records)))
+	writePublisherProcessU32(&raw, uint32(len(records)))
+	writePublisherProcessU16(&raw, uint16(len(records)))
+	writePublisherProcessU16(&raw, 1)
+	writePublisherProcessU32(&raw, 1)
 	raw.WriteByte(byte(len(domains)))
 	for _, domain := range domains {
-		writeCommandText(&raw, domain)
-		writeCommandU16(&raw, 1)
-		writeCommandU32(&raw, 1)
+		writePublisherProcessText(&raw, domain)
+		writePublisherProcessU16(&raw, 1)
+		writePublisherProcessU32(&raw, 1)
 	}
 	raw.Write(destination[:])
-	writeCommandU16(&raw, uint16(len(destinationProfile)))
+	writePublisherProcessU16(&raw, uint16(len(destinationProfile)))
 	raw.Write(destinationProfile)
 	raw.Write(issuer[:])
-	writeCommandU16(&raw, uint16(len(issuerProfile)))
+	writePublisherProcessU16(&raw, uint16(len(issuerProfile)))
 	raw.Write(issuerProfile)
 	digest := sha256.Sum256(raw.Bytes())
 	authorityPublic := authority.Public().(ed25519.PublicKey)
@@ -162,11 +169,11 @@ func publisherProcessEpoch(t *testing.T, network [32]byte, authority ed25519.Pri
 	for index, record := range inputs {
 		var material bytes.Buffer
 		material.Write(digest[:])
-		writeCommandU32(&material, uint32(index))
-		writeCommandU32(&material, uint32(len(record)))
+		writePublisherProcessU32(&material, uint32(index))
+		writePublisherProcessU32(&material, uint32(len(record)))
 		material.Write(record)
 		siblings := publisherProcessMerkleProof(inputs, index, 0x11)
-		writeCommandU16(&material, uint16(len(siblings)))
+		writePublisherProcessU16(&material, uint16(len(siblings)))
 		for _, sibling := range siblings {
 			material.Write(sibling[:])
 		}
@@ -242,4 +249,25 @@ func publisherProcessMerkleSplit(length int) int {
 		split <<= 1
 	}
 	return split
+}
+
+func writePublisherProcessText(raw *bytes.Buffer, value string) {
+	raw.WriteByte(byte(len(value)))
+	raw.WriteString(value)
+}
+
+func writePublisherProcessU16(raw *bytes.Buffer, value uint16) {
+	_ = binary.Write(raw, binary.BigEndian, value)
+}
+
+func writePublisherProcessU32(raw *bytes.Buffer, value uint32) {
+	_ = binary.Write(raw, binary.BigEndian, value)
+}
+
+func writePublisherProcessU64(raw *bytes.Buffer, value uint64) {
+	_ = binary.Write(raw, binary.BigEndian, value)
+}
+
+func writePublisherProcessI64(raw *bytes.Buffer, value int64) {
+	_ = binary.Write(raw, binary.BigEndian, value)
 }
