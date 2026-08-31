@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
 // ParticipantRuntimeConfig contains the already decoded owner roots, trust
@@ -30,6 +31,7 @@ type ParticipantRuntimeConfig struct {
 	ApplicationAddress      string
 	AdministrationAddress   string
 	PublicationRoot         string
+	ServiceInstanceRoot     string
 	BrokerID                [32]byte
 	ConnectionPrincipal     [32]byte
 	AdministrationPrincipal [32]byte
@@ -111,14 +113,42 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 	if err != nil || corpus.ValidAt(now) != nil {
 		return errors.New("accepted alpha corpus is unavailable")
 	}
-	owner, err := New(Setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID,
+	setup := Setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID,
 		ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal,
 		PublicationRoot: config.PublicationRoot, TransitAcquisitionRoot: config.TransitAcquisitionRoot,
-		CreateTransitAcquisitionRoot: true, Clock: clock})
+		CreateTransitAcquisitionRoot: true, Clock: clock}
+	var instanceRoot *instance.Root
+	if config.ServiceInstanceRoot != "" {
+		instanceRoot, err = instance.Open(config.ServiceInstanceRoot)
+		if err != nil {
+			return fmt.Errorf("open Service Instance root: %w", err)
+		}
+		defer func() { runErr = errors.Join(runErr, instanceRoot.Close()) }()
+		credential, credentialErr := instanceRoot.Credential()
+		if credentialErr != nil || credential.NetworkID != config.Network.NetworkID {
+			return errors.Join(errors.New("accepted Service Instance Credential is unavailable"), credentialErr)
+		}
+		setup.AuthorityPublic = ed25519.PublicKey(append([]byte(nil), credential.AuthorityPublic[:]...))
+		setup.IntroductionPublic = ed25519.PublicKey(append([]byte(nil), credential.IntroductionHPKEPublic[:]...))
+	}
+	owner, err := New(setup)
 	if err != nil {
 		return fmt.Errorf("open participant Endpoint: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, owner.Close()) }()
+	if instanceRoot != nil {
+		floor, floorErr := owner.publications.Floor()
+		if floorErr != nil {
+			return fmt.Errorf("read Service publication floor: %w", floorErr)
+		}
+		binding, bindingErr := instanceRoot.OpenBinding(floor)
+		if bindingErr != nil {
+			return fmt.Errorf("open current Service Instance binding: %w", bindingErr)
+		}
+		if err := owner.configurePublisher(func() (ApplicationStateView, error) { return network.CurrentResolution() }, entryOwner, binding); err != nil {
+			return errors.Join(errors.New("configure State-projected Publisher attachments"), err, binding.Withdraw())
+		}
+	}
 	connectionOwner, err := owner.OpenConnectionInterface(ConnectionInterfaceConfig{Floor: floor,
 		Current: func() (ApplicationStateView, error) { return network.CurrentResolution() }, Entry: entryOwner,
 		Principal: config.ConnectionPrincipal, BytesEachDirection: config.BytesEachDirection, Clock: clock})

@@ -76,7 +76,7 @@ func startPublishedEndpoint(t *testing.T, value fixture) (endpointRunner, []byte
 		Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: address},
 		Rendezvous:       endpointapi.TransitPeer{NodeID: fixtureID(12), PublicKey: fixtureID(13), Endpoint: "127.0.0.1:26112"},
 		Responder:        endpointapi.TransitPeer{NodeID: fixtureID(14), PublicKey: fixtureID(15), Endpoint: "127.0.0.1:26114"},
-		SlotAttachmentID: fixtureID(16), Reachability: fixtureID(17), JoinHandle: fixtureID(18),
+		SlotAttachmentID: fixtureID(16), ResponderAttachmentID: fixtureID(20), Reachability: fixtureID(17), JoinHandle: fixtureID(18),
 		NotAfter: value.now.Add(time.Minute), SlotAuthorization: []byte("test-slot"),
 		ResponderAuthorization: []byte("test-responder"),
 	}

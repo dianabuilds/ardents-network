@@ -57,6 +57,24 @@ type TransitIssuer struct {
 	AssignmentNotAfter        time.Time
 }
 
+// PublisherTransitPeer is one exact authenticated transit attachment selected
+// for a Publisher. Family is the opaque family identity used by the local
+// acquisition owner; no domain name or candidate ordering escapes State.
+type PublisherTransitPeer struct {
+	NodeID, PublicKey, Family [32]byte
+	Endpoint                  string
+}
+
+// PublisherAttachment is the complete State projection for one Publisher
+// lifecycle. It is available only as one indivisible Introduction,
+// Rendezvous, and Responder triple.
+type PublisherAttachment struct {
+	NetworkID, Digest                   [32]byte
+	Epoch                               uint64
+	Introduction, Rendezvous, Responder PublisherTransitPeer
+	NotAfter                            time.Time
+}
+
 // Resolution returns the current Snapshot as a private-Resolution view. It
 // rejects malformed Epoch trust state before a consumer can derive a policy.
 func (snapshot Snapshot) Resolution() (ResolutionView, error) {
@@ -168,4 +186,50 @@ func (view ResolutionView) CredentialIssuer(at, deadline time.Time) (TransitIssu
 			Profile: profile, AssignmentNotAfter: candidate.AssignmentNotAfter}, true
 	}
 	return TransitIssuer{}, false
+}
+
+// PublisherAttachment returns exactly one current candidate for every
+// Publisher transit role. A missing or repeated role, a conflicting State, or
+// a candidate that does not cover the complete requested window makes the
+// indivisible projection unavailable.
+func (view ResolutionView) PublisherAttachment(at, deadline time.Time) (PublisherAttachment, bool) {
+	epoch, available := view.Epoch(at, deadline)
+	if !available || view.snapshot.Profile != interactiveRouteProfile {
+		return PublisherAttachment{}, false
+	}
+	selected := make(map[string]PublisherTransitPeer, 3)
+	for _, candidate := range view.snapshot.Candidates[:view.snapshot.CandidateCount] {
+		switch candidate.Domain {
+		case "introduction", "rendezvous", "responder":
+		default:
+			continue
+		}
+		if _, repeated := selected[candidate.Domain]; repeated || candidate.Capacity == 0 || candidate.NodeID == [32]byte{} ||
+			candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} || candidate.Endpoint == "" ||
+			at.Before(candidate.ValidFrom) || !deadline.Before(candidate.ValidUntil) ||
+			candidate.AssignmentNotAfter.Before(deadline) {
+			return PublisherAttachment{}, false
+		}
+		selected[candidate.Domain] = PublisherTransitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
+			Family: candidate.FamilyID, Endpoint: candidate.Endpoint}
+	}
+	introduction, introductionOK := selected["introduction"]
+	rendezvous, rendezvousOK := selected["rendezvous"]
+	responder, responderOK := selected["responder"]
+	if !introductionOK || !rendezvousOK || !responderOK || !distinctPublisherAttachmentPeers(introduction, rendezvous, responder) {
+		return PublisherAttachment{}, false
+	}
+	return PublisherAttachment{NetworkID: epoch.NetworkID, Digest: epoch.Digest, Epoch: epoch.Number,
+		Introduction: introduction, Rendezvous: rendezvous, Responder: responder, NotAfter: deadline}, true
+}
+
+func distinctPublisherAttachmentPeers(peers ...PublisherTransitPeer) bool {
+	for index, peer := range peers {
+		for prior := 0; prior < index; prior++ {
+			if peer.NodeID == peers[prior].NodeID || peer.Family == peers[prior].Family {
+				return false
+			}
+		}
+	}
+	return true
 }

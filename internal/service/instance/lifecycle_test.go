@@ -35,6 +35,11 @@ func TestAcceptedResponsePublishesThroughNonExportingBindingAndRestartRequiresSu
 	if err != nil || repeated != accepted {
 		t.Fatalf("repeat exact response = %+v / %v", repeated, err)
 	}
+	credential, err := root.Credential()
+	if err != nil || credential.NetworkID != network || credential.Generation != accepted.Generation ||
+		credential.AuthorityPublic != [32]byte(authority) {
+		t.Fatalf("accepted public Credential = %+v / %v", credential, err)
+	}
 	binding, err := root.OpenBinding(0)
 	if err != nil {
 		t.Fatal(err)

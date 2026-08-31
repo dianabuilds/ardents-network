@@ -138,7 +138,8 @@ func runPublisher(input config) error {
 	}
 	slot, err := publisher.OpenPublisherIntroduction(context.Background(), endpointapi.PublisherIntroductionRequest{
 		Profile: endpointapi.PublisherIntroductionProfile{NetworkID: network, Digest: digest, Epoch: input.Epoch, Introduction: introduction,
-			Rendezvous: rendezvous, Responder: responder, SlotAttachmentID: slotAttachment, Reachability: slotReachability, JoinHandle: join,
+			Rendezvous: rendezvous, Responder: responder, SlotAttachmentID: slotAttachment, ResponderAttachmentID: serviceAttachment,
+			Reachability: slotReachability, JoinHandle: join,
 			NotAfter: deadline, SlotAuthorization: slotAuthorization, ResponderAuthorization: responderAuthorization},
 		HPKEPrivate: hpkePrivate, At: now})
 	if err != nil {

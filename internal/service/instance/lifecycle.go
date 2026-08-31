@@ -63,6 +63,28 @@ func (root *Root) Accept(raw []byte) (Acceptance, error) {
 	}
 }
 
+// Credential returns a copy of the accepted public delegation without
+// opening its signing binding. Runtime composition uses it to reconcile the
+// durable publication floor before any Instance authority becomes usable.
+func (root *Root) Credential() (publication.Credential, error) {
+	root.mu.Lock()
+	defer root.mu.Unlock()
+	if root.closed || !root.state.present() {
+		return publication.Credential{}, ErrClosed
+	}
+	credential, err := root.state.credential()
+	if err != nil {
+		if root.state.Phase == StatePending {
+			return publication.Credential{}, ErrPending
+		}
+		return publication.Credential{}, ErrUnavailable
+	}
+	if root.state.Phase != StateAccepted {
+		return publication.Credential{}, ErrUnavailable
+	}
+	return credential, nil
+}
+
 func (root *Root) terminalResponse(phase State, raw []byte) error {
 	next := cloneState(root.state)
 	next.Phase, next.TerminalDigest = phase, sha256.Sum256(raw)

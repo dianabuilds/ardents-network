@@ -32,6 +32,7 @@ type headlessRuntimePlan struct {
 	ApplicationSocket       string   `json:"application_socket"`
 	AdministrationSocket    string   `json:"administration_socket"`
 	PublicationRoot         string   `json:"publication_root"`
+	ServiceInstanceRoot     string   `json:"service_instance_root,omitempty"`
 	AlphaCorpusStateRoot    string   `json:"alpha_corpus_state_root"`
 	LocalRoleStateRoot      string   `json:"local_role_state_root"`
 	TimeConfidenceFile      string   `json:"time_confidence_file"`
@@ -69,7 +70,8 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) erro
 		EntryRoot: plan.EntryStateRoot, TransitAcquisitionRoot: plan.TransitAcquisitionRoot,
 		AlphaCorpusRoot: plan.AlphaCorpusStateRoot, AlphaCorpusAuthority: plan.AlphaCorpusAuthority, AlphaCohort: plan.AlphaCohort,
 		LocalRoleRoot: plan.LocalRoleStateRoot, ApplicationAddress: plan.ApplicationSocket,
-		AdministrationAddress: plan.AdministrationSocket, PublicationRoot: plan.PublicationRoot, BrokerID: plan.BrokerID,
+		AdministrationAddress: plan.AdministrationSocket, PublicationRoot: plan.PublicationRoot,
+		ServiceInstanceRoot: plan.ServiceInstanceRoot, BrokerID: plan.BrokerID,
 		ConnectionPrincipal: plan.ConnectionPrincipal, AdministrationPrincipal: plan.AdministrationPrincipal,
 		BytesEachDirection: plan.BytesEachDirection, Clock: clock, TimeConfident: confident,
 		Observe: func(event endpointapi.ParticipantRuntimeEvent) error {

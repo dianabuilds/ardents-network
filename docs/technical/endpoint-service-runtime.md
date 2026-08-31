@@ -71,9 +71,15 @@ never persists a live Instance private key. The lower-level accepted Publisher
 composition can receive one opened host Instance binding and use it as an
 opaque Instance signer and fixed-purpose SealedIntroduction v1 recipient
 without any Interface returning private bytes or an exportable HPKE key. The
-maintained participant runtime still requires a Product Owner decision for its
-exact State-derived Publisher attachment projection before it may construct
-that binding and live profile.
+maintained participant runtime opens that binding only after reconciling the
+accepted public Credential with the durable publication floor. When its
+optional host `service_instance_root` is configured, it consumes State's
+indivisible Publisher attachment projection, obtains separate Introduction
+and Responder credentials through the Endpoint-owned at-most-once journals,
+and constructs the live profile without caller-supplied peers, roles, Grants,
+keys, or Route facts. Missing, conflicting, or ambiguous State projection is
+unavailable; without a Service Instance root the same process remains a
+User-only participant.
 AcquireAt yields an opaque Lease; the Lease can sign for its generation without
 exposing the signer. Withdrawal, supersession, expiry, or close first prevent
 new acquisition, then wait for bounded references before erasing private

@@ -202,3 +202,11 @@ The Product Owner accepted option 1 and the exact R-133 statement on
 records the consequential private issuance-wire decision. R-133 remains a
 dependency inside the accepted R-128/R-129 vertical slice, not a separate
 product goal.
+
+The Product Owner subsequently fixed the missing State-selection seam on the
+same date: authenticated State exposes one indivisible Publisher attachment
+projection containing exactly one current Introduction, Rendezvous, and
+Responder for the requested bounded window. A missing or repeated role,
+conflicting State, invalid candidate window, or overlapping role identity or
+family makes the whole projection unavailable. Endpoint consumes this
+projection and never selects a candidate list locally.

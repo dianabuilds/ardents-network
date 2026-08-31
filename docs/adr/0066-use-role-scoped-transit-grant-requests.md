@@ -21,3 +21,9 @@ This chooses one common grammar and budget over a separately keyed Responder
 issuer because both receiving duties already validate the exact signed role
 and Node against current State. Signer compromise can spend the remaining
 common budget across either role, but cannot sign State or select a Route.
+
+Authenticated State supplies Endpoint one indivisible Publisher attachment
+projection with exactly one current Introduction, Rendezvous, and Responder.
+Absence, ambiguity, State conflict, invalidity across the requested window, or
+role identity/family overlap makes the projection unavailable. Endpoint does
+not rank candidates or assemble a partial Publisher Route outside State.

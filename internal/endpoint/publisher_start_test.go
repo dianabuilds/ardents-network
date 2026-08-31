@@ -47,7 +47,7 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 		Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
 		Rendezvous:       endpointapi.TransitPeer{NodeID: fixtureID(64), PublicKey: fixtureID(65), Endpoint: "127.0.0.1:26064"},
 		Responder:        endpointapi.TransitPeer{NodeID: fixtureID(66), PublicKey: fixtureID(67), Endpoint: "127.0.0.1:26066"},
-		SlotAttachmentID: fixtureID(68), Reachability: fixtureID(69), JoinHandle: fixtureID(70), NotAfter: deadline,
+		SlotAttachmentID: fixtureID(68), ResponderAttachmentID: fixtureID(73), Reachability: fixtureID(69), JoinHandle: fixtureID(70), NotAfter: deadline,
 		SlotAuthorization: []byte("start-slot"), ResponderAuthorization: []byte("start-responder"),
 	}
 	principal := fixtureID(71)
@@ -111,7 +111,7 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 		Introduction:     endpointapi.TransitPeer{NodeID: fixtureID(83), PublicKey: fixtureID(84), Endpoint: unavailableAddress},
 		Rendezvous:       endpointapi.TransitPeer{NodeID: fixtureID(85), PublicKey: fixtureID(86), Endpoint: "127.0.0.1:28085"},
 		Responder:        endpointapi.TransitPeer{NodeID: fixtureID(87), PublicKey: fixtureID(88), Endpoint: "127.0.0.1:28087"},
-		SlotAttachmentID: fixtureID(89), Reachability: fixtureID(90), JoinHandle: fixtureID(91), NotAfter: deadline,
+		SlotAttachmentID: fixtureID(89), ResponderAttachmentID: fixtureID(93), Reachability: fixtureID(90), JoinHandle: fixtureID(91), NotAfter: deadline,
 		SlotAuthorization: []byte("unavailable-slot"), ResponderAuthorization: []byte("unused-responder"),
 	}
 	principal := fixtureID(92)

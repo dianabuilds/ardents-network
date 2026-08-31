@@ -30,7 +30,8 @@ type PublisherIntroductionProfile struct {
 	NetworkID, Digest                                 [32]byte
 	Epoch                                             uint64
 	Introduction, Rendezvous, Responder               TransitPeer
-	SlotAttachmentID, Reachability, JoinHandle        [32]byte
+	SlotAttachmentID, ResponderAttachmentID           [32]byte
+	Reachability, JoinHandle                          [32]byte
 	NotAfter                                          time.Time
 	SlotAuthorization, ResponderAuthorization         []byte
 	SlotClientCertificate, ResponderClientCertificate tls.Certificate
@@ -64,9 +65,12 @@ type PublisherIntroduction struct {
 	lease     *publication.Lease
 	slot      net.Conn
 
-	mu   sync.Mutex
-	used bool
-	once sync.Once
+	mu              sync.Mutex
+	used            bool
+	once            sync.Once
+	credentialOnce  sync.Once
+	credentialErr   error
+	responderFinish func(bool) error
 }
 
 // OpenPublisherIntroduction registers one finite outbound slot. Its caller
@@ -86,7 +90,7 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 		return nil, errors.Join(cause, lease.Close())
 	}
 	current := lease.Current()
-	connection, _, err := endpoint.openPublisherIntroductionSlot(ctx, input.Profile, recipient, current.Credential)
+	connection, _, err := endpoint.openPublisherIntroductionSlot(ctx, input.Profile, recipient, current.Credential, nil)
 	if err != nil {
 		return closeLease(err)
 	}
@@ -95,7 +99,7 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 }
 
 func (endpoint *endpoint) openPublisherIntroductionSlot(ctx context.Context, profile PublisherIntroductionProfile,
-	recipient PublisherIntroductionRecipient, credential publication.Credential,
+	recipient PublisherIntroductionRecipient, credential publication.Credential, finish func(bool) error,
 ) (net.Conn, []byte, error) {
 	if profile.NotAfter.Unix() > credential.NotAfter || !matchesIntroductionRecipient(recipient, credential.IntroductionHPKEPublic) {
 		return nil, nil, errors.New("publisher Introduction recipient does not match the current Credential")
@@ -111,7 +115,10 @@ func (endpoint *endpoint) openPublisherIntroductionSlot(ctx context.Context, pro
 		Deadline: profile.NotAfter, Authorization: profile.SlotAuthorization, ClientCertificate: slotCertificate,
 	})
 	if err != nil {
-		return nil, nil, errors.Join(errors.New("publisher Introduction slot is unavailable"), err)
+		return nil, nil, errors.Join(errors.New("publisher Introduction slot is unavailable"), err, finishTransitCredential(finish, false))
+	}
+	if err := finishTransitCredential(finish, true); err != nil {
+		return nil, nil, errors.Join(errors.New("publisher Introduction credential outcome is unavailable"), err, connection.Close())
 	}
 	closeConnection := func(cause error) (net.Conn, []byte, error) {
 		return nil, nil, errors.Join(cause, connection.Close())
@@ -176,7 +183,7 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 		return nil, errors.Join(errors.New("publisher Introduction ciphertext is invalid"), err)
 	}
 	instruction, err := publication.DecodeIntroductionInstruction(plaintext)
-	if err != nil || instruction.AttachmentID == session.profile.SlotAttachmentID ||
+	if err != nil || instruction.AttachmentID != session.profile.ResponderAttachmentID ||
 		current.ValidateIntroductionInstruction(instruction) != nil {
 		session.Close()
 		return nil, errors.Join(err, errors.New("publisher Introduction does not match the current publication"))
@@ -196,6 +203,10 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 	if err != nil {
 		session.Close()
 		return nil, errors.Join(errors.New("publisher Responder attachment is unavailable"), err)
+	}
+	if err := session.finishResponder(true); err != nil {
+		session.Close()
+		return nil, errors.Join(errors.New("publisher Responder credential outcome is unavailable"), err, carrier.Close())
 	}
 	_ = slot.Close()
 	return carrier, nil
@@ -232,6 +243,7 @@ func (session *PublisherIntroduction) Close() error {
 		slot, lease := session.slot, session.lease
 		session.slot, session.lease = nil, nil
 		session.mu.Unlock()
+		result = errors.Join(result, session.finishResponder(false))
 		if slot != nil {
 			result = errors.Join(result, slot.Close())
 		}
@@ -240,6 +252,24 @@ func (session *PublisherIntroduction) Close() error {
 		}
 	})
 	return result
+}
+
+func (session *PublisherIntroduction) finishResponder(presented bool) error {
+	if session == nil {
+		return nil
+	}
+	session.credentialOnce.Do(func() {
+		session.credentialErr = finishTransitCredential(session.responderFinish, presented)
+		session.responderFinish = nil
+	})
+	return session.credentialErr
+}
+
+func finishTransitCredential(finish func(bool) error, presented bool) error {
+	if finish == nil {
+		return nil
+	}
+	return finish(presented)
 }
 
 func (session *PublisherIntroduction) matchesHeader(value route.SealedIntroduction) bool {
@@ -251,6 +281,7 @@ func (session *PublisherIntroduction) matchesHeader(value route.SealedIntroducti
 
 func validPublisherIntroductionProfile(value PublisherIntroductionProfile) bool {
 	if value.NetworkID == [32]byte{} || value.Digest == [32]byte{} || value.Epoch == 0 || value.SlotAttachmentID == [32]byte{} ||
+		value.ResponderAttachmentID == [32]byte{} || value.ResponderAttachmentID == value.SlotAttachmentID ||
 		value.Reachability == [32]byte{} || value.JoinHandle == [32]byte{} || value.NotAfter.IsZero() ||
 		!value.NotAfter.Equal(value.NotAfter.UTC().Truncate(time.Second)) || !time.Now().UTC().Before(value.NotAfter) ||
 		len(value.SlotAuthorization) == 0 || len(value.SlotAuthorization) > 1024 ||
