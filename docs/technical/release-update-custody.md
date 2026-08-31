@@ -153,7 +153,7 @@ qualification remain unselected.
 
 Focused Release, Custody, and Endpoint replacement behavior tests cover metadata
 rejection, root/floor progression, interruption/recovery, rollback, residue,
-encrypted Vault non-mutation during replacement, export/restore,
+encrypted Vault non-mutation during Linux replacement, export/restore,
 reconciliation, and sealed Name-control signing. Run the normal repository gate
 during development and the full check before integration. Platform crash,
 power-loss, permissions, and supported lifecycle qualification are not

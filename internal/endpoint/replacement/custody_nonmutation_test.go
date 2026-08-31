@@ -1,3 +1,5 @@
+//go:build linux
+
 package replacement
 
 import (
@@ -16,9 +18,6 @@ import (
 )
 
 func TestReplacePreservesAuthorityVaultAndReleaseFloors(t *testing.T) {
-	if err := requireLinux(); err != nil {
-		t.Skip(err)
-	}
 	for _, test := range []struct {
 		name string
 		run  func(*testing.T, protectedReplacementFixture)
@@ -36,6 +35,7 @@ func TestReplacePreservesAuthorityVaultAndReleaseFloors(t *testing.T) {
 			test.run(t, fixture)
 			assertProtectedTreeUnchanged(t, fixture.vaultRoot, fixture.vaultBefore)
 			assertProtectedTreeUnchanged(t, fixture.releaseRoot, fixture.releaseBefore)
+			assertReleaseFloorRootRemainsValid(t, fixture)
 			afterFloors, err := json.Marshal(fixture.floors)
 			if err != nil {
 				t.Fatal(err)
@@ -49,11 +49,7 @@ func TestReplacePreservesAuthorityVaultAndReleaseFloors(t *testing.T) {
 
 func runSuccessfulProtectedReplacement(t *testing.T, fixture protectedReplacementFixture) {
 	t.Helper()
-	result, err := Replace(context.Background(), Operation{
-		Request: Request{StateRoot: fixture.stateRoot, Artifact: fixture.candidate,
-			decision: replacementDecisionWithFloors(fixture.candidate, 2, fixture.floors)},
-		ProgramPath: fixture.program, Unit: &replacementUnit{}, SelfTest: replacementSelfTest{program: fixture.program},
-	})
+	result, err := Replace(context.Background(), protectedAuthorizedOperation(fixture, &replacementUnit{}, replacementSelfTest{program: fixture.program}))
 	if err != nil || result.State != "committed-restart-permitted" {
 		t.Fatalf("Replace() = %+v, %v", result, err)
 	}
@@ -61,11 +57,7 @@ func runSuccessfulProtectedReplacement(t *testing.T, fixture protectedReplacemen
 
 func runRefusedProtectedReplacement(t *testing.T, fixture protectedReplacementFixture) {
 	t.Helper()
-	result, err := Replace(context.Background(), Operation{
-		Request: Request{StateRoot: fixture.stateRoot, Artifact: fixture.candidate,
-			decision: replacementDecisionWithFloors(fixture.candidate, 2, fixture.floors)},
-		ProgramPath: fixture.program, Unit: refusingReplacementUnit{}, SelfTest: replacementSelfTest{program: fixture.program},
-	})
+	result, err := Replace(context.Background(), protectedAuthorizedOperation(fixture, refusingReplacementUnit{}, replacementSelfTest{program: fixture.program}))
 	if err == nil || result.State != "stop-refused" {
 		t.Fatalf("refused Replace() = %+v, %v", result, err)
 	}
@@ -73,21 +65,25 @@ func runRefusedProtectedReplacement(t *testing.T, fixture protectedReplacementFi
 
 func runRollbackProtectedReplacement(t *testing.T, fixture protectedReplacementFixture) {
 	t.Helper()
-	failed, err := Replace(context.Background(), Operation{
-		Request: Request{StateRoot: fixture.stateRoot, Artifact: fixture.candidate,
-			decision: replacementDecisionWithFloors(fixture.candidate, 2, fixture.floors)},
-		ProgramPath: fixture.program, Unit: &replacementUnit{}, SelfTest: failingSelfTest{},
-	})
+	failed, err := Replace(context.Background(), protectedCandidateOperation(fixture, &replacementUnit{}, failingSelfTest{}))
 	if err == nil || failed.State != "rollback-authorization-required" {
 		t.Fatalf("failed Replace() = %+v, %v", failed, err)
 	}
-	result, err := Rollback(context.Background(), Operation{
-		Request:     Request{StateRoot: fixture.stateRoot, Artifact: fixture.current, Authorization: fixture.authorization},
-		ProgramPath: fixture.program, Unit: &replacementUnit{}, SelfTest: replacementSelfTest{program: fixture.program},
-	})
+	result, err := Rollback(context.Background(), protectedAuthorizedOperation(fixture, &replacementUnit{}, replacementSelfTest{program: fixture.program}))
 	if err != nil || result.State != "rollback-committed-restart-permitted" {
 		t.Fatalf("Rollback() = %+v, %v", result, err)
 	}
+}
+
+func protectedCandidateOperation(fixture protectedReplacementFixture, unit UnitControl, selfTest CandidateSelfTest) Operation {
+	return Operation{Request: Request{StateRoot: fixture.stateRoot, Artifact: fixture.candidate,
+		decision: replacementDecisionWithFloors(fixture.candidate, 2, fixture.floors)},
+		ProgramPath: fixture.program, Unit: unit, SelfTest: selfTest}
+}
+
+func protectedAuthorizedOperation(fixture protectedReplacementFixture, unit UnitControl, selfTest CandidateSelfTest) Operation {
+	return Operation{Request: Request{StateRoot: fixture.stateRoot, Artifact: fixture.current, Authorization: fixture.authorization},
+		ProgramPath: fixture.program, Unit: unit, SelfTest: selfTest}
 }
 
 type protectedReplacementFixture struct {
@@ -95,6 +91,7 @@ type protectedReplacementFixture struct {
 	current, candidate                         []byte
 	authorization                              release.Authorization
 	floors                                     release.FloorSet
+	releaseInputs                              release.Inputs
 	vaultBefore, releaseBefore                 protectedTree
 }
 
@@ -108,7 +105,7 @@ func replacementProtectedFixture(t *testing.T) protectedReplacementFixture {
 		releaseRoot: filepath.Join(root, "release-floors"),
 		candidate:   []byte("candidate program v2"),
 	}
-	fixture.current, fixture.authorization, fixture.floors = replacementReleaseFixture(t, fixture.releaseRoot)
+	fixture.current, fixture.authorization, fixture.floors, fixture.releaseInputs = replacementReleaseFixture(t, fixture.releaseRoot)
 	if err := replacementCreateVault(t, fixture.vaultRoot); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +124,7 @@ func replacementProtectedFixture(t *testing.T) protectedReplacementFixture {
 	return fixture
 }
 
-func replacementReleaseFixture(t *testing.T, root string) ([]byte, release.Authorization, release.FloorSet) {
+func replacementReleaseFixture(t *testing.T, root string) ([]byte, release.Authorization, release.FloorSet, release.Inputs) {
 	t.Helper()
 	vector := filepath.Join("..", "..", "release", "testdata", "r049-public-vector-v1")
 	read := func(name string) []byte {
@@ -142,7 +139,7 @@ func replacementReleaseFixture(t *testing.T, root string) ([]byte, release.Autho
 	if err != nil {
 		t.Fatal(err)
 	}
-	decision := verifier.Evaluate(context.Background(), release.Inputs{
+	inputs := release.Inputs{
 		RootBytes: read("root.json"),
 		Files: map[string][]byte{
 			"https://release.invalid/metadata/timestamp.json":  read("timestamp.json"),
@@ -152,7 +149,8 @@ func replacementReleaseFixture(t *testing.T, root string) ([]byte, release.Autho
 		TargetPath: "ardents/windows-amd64/application", Artifact: read("artifact.bin"),
 		Local: release.LocalEnvironment{Environment: "h3-test", Network: "ardents-h3-test-1",
 			Platform: "windows-amd64", Architecture: "amd64", RefTime: refTime},
-	})
+	}
+	decision := verifier.Evaluate(context.Background(), inputs)
 	if err := verifier.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +161,7 @@ func replacementReleaseFixture(t *testing.T, root string) ([]byte, release.Autho
 	if !ok {
 		t.Fatal("release fixture did not produce an authorization")
 	}
-	return read("artifact.bin"), authorization, cloneReplacementFloors(decision.Floors)
+	return append([]byte(nil), inputs.Artifact...), authorization, cloneReplacementFloors(decision.Floors), inputs
 }
 
 func replacementCreateVault(t *testing.T, root string) error {
@@ -263,6 +261,32 @@ func assertProtectedTreeUnchanged(t *testing.T, root string, before protectedTre
 		if !ok || observed.directory != expected.directory || !bytes.Equal(observed.contents, expected.contents) {
 			t.Fatalf("protected state entry %q changed", name)
 		}
+	}
+}
+
+func assertReleaseFloorRootRemainsValid(t *testing.T, fixture protectedReplacementFixture) {
+	t.Helper()
+	verifier, err := release.Open(fixture.releaseRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := verifier.Evaluate(context.Background(), fixture.releaseInputs)
+	if err := verifier.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Outcome != release.OutcomeNoUpdate {
+		t.Fatalf("reopened release floor root outcome = %s, want %s", decision.Outcome, release.OutcomeNoUpdate)
+	}
+	before, err := json.Marshal(fixture.floors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := json.Marshal(decision.Floors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("reopened release floor root does not retain the same floors")
 	}
 }
 
