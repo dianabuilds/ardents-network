@@ -28,7 +28,23 @@ type publisherTransitAcquisition struct {
 	at, deadline       time.Time
 }
 
-type publisherTransitAcquirer func(context.Context, publisherTransitAcquisition) (transitCredentialSubmission, error)
+type publisherAcquisitionPlan struct {
+	epoch                               state.ResolutionEpoch
+	entry                               ApplicationEntry
+	initiator, introduction, rendezvous TransitPeer
+	responder                           TransitPeer
+	slot                                reachability.Introduction
+	at, deadline                        time.Time
+}
+
+func (plan publisherAcquisitionPlan) requests(view transitCredentialIssuerView) [2]publisherTransitAcquisition {
+	return [2]publisherTransitAcquisition{
+		{view: view, epoch: plan.epoch, entry: plan.entry, initiator: plan.initiator, transit: plan.introduction,
+			role: route.IntroductionRole, slot: plan.slot, at: plan.at, deadline: plan.deadline},
+		{view: view, epoch: plan.epoch, entry: plan.entry, initiator: plan.initiator, transit: plan.responder,
+			role: route.ResponderRole, slot: plan.slot, at: plan.at, deadline: plan.deadline},
+	}
+}
 
 type publisherCredentialCompletions struct {
 	introduction func(bool) error
@@ -59,11 +75,7 @@ func (endpoint *endpoint) configurePublisher(current func() (publisherAttachment
 		if err != nil || view == nil {
 			return acquiredPublisherProfile{}, errors.Join(errors.New("current State resolution view is unavailable"), err)
 		}
-		return endpoint.acquirePublisherProfile(ctx, view, entry, credential, at,
-			func(acquireContext context.Context, input publisherTransitAcquisition) (transitCredentialSubmission, error) {
-				return endpoint.acquireTransitCredential(acquireContext, input.view, input.epoch, input.entry,
-					input.initiator, input.transit, input.role, input.slot, input.at, input.deadline)
-			})
+		return endpoint.acquirePublisherProfile(ctx, view, entry, credential, at)
 	}
 	return nil
 }
@@ -72,50 +84,26 @@ func (endpoint *endpoint) configurePublisher(current func() (publisherAttachment
 // projection into the two independent role-scoped Grant lifecycles required
 // by Publisher start. The returned finish functions remain Endpoint-owned.
 func (endpoint *endpoint) acquirePublisherProfile(ctx context.Context, view publisherAttachmentStateView, entry ApplicationEntry,
-	credential publication.Credential, at time.Time, acquire publisherTransitAcquirer,
+	credential publication.Credential, at time.Time,
 ) (acquiredPublisherProfile, error) {
-	if endpoint == nil || ctx == nil || view == nil || entry == nil || acquire == nil || at.IsZero() ||
+	if endpoint == nil || ctx == nil || view == nil || entry == nil || at.IsZero() ||
 		credential.NetworkID != endpoint.network || at.Unix() < credential.NotBefore || at.Unix() >= credential.NotAfter {
 		return acquiredPublisherProfile{}, errors.New("publisher attachment acquisition input is unavailable")
 	}
-	deadline := at.UTC().Add(15 * time.Second).Truncate(time.Second)
-	credentialDeadline := time.Unix(credential.NotAfter, 0).UTC()
-	if credentialDeadline.Before(deadline) {
-		deadline = credentialDeadline
-	}
-	if !at.Before(deadline) {
-		return acquiredPublisherProfile{}, errors.New("publisher attachment acquisition window is unavailable")
-	}
-	epoch, available := view.Epoch(at, deadline)
-	attachment, attachmentAvailable := view.PublisherAttachment(at, deadline)
-	if !available || !attachmentAvailable || epoch.NetworkID != endpoint.network || attachment.NetworkID != epoch.NetworkID ||
-		attachment.Digest != epoch.Digest || attachment.Epoch != epoch.Number || !attachment.NotAfter.Equal(deadline) {
-		return acquiredPublisherProfile{}, errors.New("current State Publisher attachment is unavailable")
-	}
-	contact, err := entry.Contact()
-	if err != nil {
-		return acquiredPublisherProfile{}, errors.New("current Publisher Entry contact is unavailable")
-	}
-	initiator, err := applicationInitiator(view, contact, at, deadline)
+	plan, err := endpoint.planPublisherAcquisition(view, entry, credential, at)
 	if err != nil {
 		return acquiredPublisherProfile{}, err
 	}
-	introduction := publisherTransitPeer(attachment.Introduction)
-	rendezvous := publisherTransitPeer(attachment.Rendezvous)
-	responder := publisherTransitPeer(attachment.Responder)
-	if !distinctPublisherTransitPeers(initiator, introduction, rendezvous, responder) {
-		return acquiredPublisherProfile{}, errors.New("state Publisher attachment roles overlap")
+	requests := plan.requests(view)
+	acquire := func(input publisherTransitAcquisition) (transitCredentialSubmission, error) {
+		return endpoint.acquireTransitCredential(ctx, input.view, input.epoch, input.entry,
+			input.initiator, input.transit, input.role, input.slot, input.at, input.deadline)
 	}
-	slot := reachability.Introduction{StateDigest: epoch.Digest, Epoch: epoch.Number,
-		IntroductionNodeID: introduction.NodeID, RendezvousNodeID: rendezvous.NodeID, NotAfter: deadline,
-		SubmissionMode: reachability.SubmissionMembershipGrant}
-	introductionSubmission, err := acquire(ctx, publisherTransitAcquisition{view: view, epoch: epoch, entry: entry,
-		initiator: initiator, transit: introduction, role: route.IntroductionRole, slot: slot, at: at, deadline: deadline})
+	introductionSubmission, err := acquire(requests[0])
 	if err != nil || !validPublisherSubmission(introductionSubmission) {
 		return acquiredPublisherProfile{}, errors.Join(err, errors.New("publisher Introduction credential is unavailable"))
 	}
-	responderSubmission, err := acquire(ctx, publisherTransitAcquisition{view: view, epoch: epoch, entry: entry,
-		initiator: initiator, transit: responder, role: route.ResponderRole, slot: slot, at: at, deadline: deadline})
+	responderSubmission, err := acquire(requests[1])
 	if err != nil || !validPublisherSubmission(responderSubmission) || responderSubmission.attachment == introductionSubmission.attachment {
 		return acquiredPublisherProfile{}, errors.Join(err, introductionSubmission.finish(false),
 			errors.New("publisher Responder credential is unavailable"))
@@ -126,10 +114,10 @@ func (endpoint *endpoint) acquirePublisherProfile(ctx context.Context, view publ
 		return acquiredPublisherProfile{}, errors.Join(reachabilityErr, joinErr,
 			introductionSubmission.finish(false), responderSubmission.finish(false))
 	}
-	profile := PublisherIntroductionProfile{NetworkID: epoch.NetworkID, Digest: epoch.Digest, Epoch: epoch.Number,
-		Introduction: introduction, Rendezvous: rendezvous, Responder: responder,
+	profile := PublisherIntroductionProfile{NetworkID: plan.epoch.NetworkID, Digest: plan.epoch.Digest, Epoch: plan.epoch.Number,
+		Introduction: plan.introduction, Rendezvous: plan.rendezvous, Responder: plan.responder,
 		SlotAttachmentID: introductionSubmission.attachment, ResponderAttachmentID: responderSubmission.attachment,
-		Reachability: reachabilityID, JoinHandle: joinHandle, NotAfter: deadline,
+		Reachability: reachabilityID, JoinHandle: joinHandle, NotAfter: plan.deadline,
 		SlotAuthorization:      append([]byte(nil), introductionSubmission.authorization...),
 		ResponderAuthorization: append([]byte(nil), responderSubmission.authorization...)}
 	if !validPublisherIntroductionProfile(profile) {
@@ -138,6 +126,44 @@ func (endpoint *endpoint) acquirePublisherProfile(ctx context.Context, view publ
 	}
 	return acquiredPublisherProfile{profile: profile, credentials: publisherCredentialCompletions{
 		introduction: introductionSubmission.finish, responder: responderSubmission.finish}}, nil
+}
+
+func (endpoint *endpoint) planPublisherAcquisition(view publisherAttachmentStateView, entry ApplicationEntry,
+	credential publication.Credential, at time.Time,
+) (publisherAcquisitionPlan, error) {
+	deadline := at.UTC().Add(15 * time.Second).Truncate(time.Second)
+	credentialDeadline := time.Unix(credential.NotAfter, 0).UTC()
+	if credentialDeadline.Before(deadline) {
+		deadline = credentialDeadline
+	}
+	if !at.Before(deadline) {
+		return publisherAcquisitionPlan{}, errors.New("publisher attachment acquisition window is unavailable")
+	}
+	epoch, available := view.Epoch(at, deadline)
+	attachment, attachmentAvailable := view.PublisherAttachment(at, deadline)
+	if !available || !attachmentAvailable || epoch.NetworkID != endpoint.network || attachment.NetworkID != epoch.NetworkID ||
+		attachment.Digest != epoch.Digest || attachment.Epoch != epoch.Number || !attachment.NotAfter.Equal(deadline) {
+		return publisherAcquisitionPlan{}, errors.New("current State Publisher attachment is unavailable")
+	}
+	contact, err := entry.Contact()
+	if err != nil {
+		return publisherAcquisitionPlan{}, errors.New("current Publisher Entry contact is unavailable")
+	}
+	initiator, err := applicationInitiator(view, contact, at, deadline)
+	if err != nil {
+		return publisherAcquisitionPlan{}, err
+	}
+	introduction := publisherTransitPeer(attachment.Introduction)
+	rendezvous := publisherTransitPeer(attachment.Rendezvous)
+	responder := publisherTransitPeer(attachment.Responder)
+	if !distinctPublisherTransitPeers(initiator, introduction, rendezvous, responder) {
+		return publisherAcquisitionPlan{}, errors.New("state Publisher attachment roles overlap")
+	}
+	slot := reachability.Introduction{StateDigest: epoch.Digest, Epoch: epoch.Number,
+		IntroductionNodeID: introduction.NodeID, RendezvousNodeID: rendezvous.NodeID, NotAfter: deadline,
+		SubmissionMode: reachability.SubmissionMembershipGrant}
+	return publisherAcquisitionPlan{epoch: epoch, entry: entry, initiator: initiator, introduction: introduction,
+		rendezvous: rendezvous, responder: responder, slot: slot, at: at, deadline: deadline}, nil
 }
 
 func publisherTransitPeer(value state.PublisherTransitPeer) TransitPeer {

@@ -31,6 +31,7 @@ type resolutionCandidateView interface {
 
 type ApplicationStateView interface {
 	resolutionCandidateView
+	transitCredentialIssuerView
 	Gateway(time.Time, time.Time) (state.DestinationResolutionGateway, bool)
 }
 
@@ -195,8 +196,7 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	if slot.SubmissionMode == reachability.SubmissionMembershipGrant && (!at.Before(credentialDeadline) || credentialDeadline.After(lookupDeadline)) {
 		return nil, errors.New("reachability descriptor exceeds the membership credential window")
 	}
-	issuerView, _ := view.(transitCredentialIssuerView)
-	submission, err := endpoint.acquireTransitCredential(ctx, issuerView, epoch, input.Entry, initiator, introduction,
+	submission, err := endpoint.acquireTransitCredential(ctx, view, epoch, input.Entry, initiator, introduction,
 		route.IntroductionRole, slot, at, credentialDeadline)
 	if err != nil {
 		return nil, err

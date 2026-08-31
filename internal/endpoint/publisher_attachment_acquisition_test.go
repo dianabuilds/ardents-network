@@ -19,7 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
-func TestPublisherProfileAcquiresStateProjectedRolesSeparately(t *testing.T) {
+func TestPublisherPlanOrdersStateProjectedRolesSeparately(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(2_100_000_000, 0).UTC()
 	network, digest := acquisitionID(81), acquisitionID(82)
@@ -33,30 +33,23 @@ func TestPublisherProfileAcquiresStateProjectedRolesSeparately(t *testing.T) {
 		initiator: state.ResolutionCandidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, Family: initiatorFamily,
 			Endpoint: initiator.Endpoint, Domain: "initiator"}}
 	contact := entry.Candidate{NodeID: initiator.NodeID, PublicKey: initiator.PublicKey, FamilyID: initiator.Family, Endpoint: initiator.Endpoint}
-	var calls []publisherTransitAcquisition
-	acquire := func(_ context.Context, input publisherTransitAcquisition) (transitCredentialSubmission, error) {
-		calls = append(calls, input)
-		return transitCredentialSubmission{authorization: []byte{input.role}, attachment: acquisitionID(input.role),
-			finish: func(bool) error { return nil }}, nil
-	}
 	owner := &endpoint{network: network}
-	acquired, err := owner.acquirePublisherProfile(t.Context(), view, publisherAcquisitionEntry{contact: contact},
-		publication.Credential{NetworkID: network, NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Hour).Unix()}, now, acquire)
+	plan, err := owner.planPublisherAcquisition(view, publisherAcquisitionEntry{contact: contact},
+		publication.Credential{NetworkID: network, NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Hour).Unix()}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := acquired.profile
-	if len(calls) != 2 || calls[0].role != route.IntroductionRole || calls[1].role != route.ResponderRole ||
+	calls := plan.requests(view)
+	if calls[0].role != route.IntroductionRole || calls[1].role != route.ResponderRole ||
 		calls[0].transit.NodeID != projected.Introduction.NodeID || calls[1].transit.NodeID != projected.Responder.NodeID ||
 		calls[0].initiator != initiator || calls[1].initiator != initiator || calls[0].slot.SubmissionMode != reachability.SubmissionMembershipGrant ||
 		calls[0].deadline != calls[1].deadline {
 		t.Fatalf("publisher acquisitions = %+v", calls)
 	}
-	if profile.Introduction.NodeID != projected.Introduction.NodeID || profile.Rendezvous.NodeID != projected.Rendezvous.NodeID ||
-		profile.Responder.NodeID != projected.Responder.NodeID || profile.SlotAttachmentID != acquisitionID(route.IntroductionRole) ||
-		profile.ResponderAttachmentID != acquisitionID(route.ResponderRole) || string(profile.SlotAuthorization) != string([]byte{route.IntroductionRole}) ||
-		string(profile.ResponderAuthorization) != string([]byte{route.ResponderRole}) {
-		t.Fatalf("Publisher profile = %+v", profile)
+	if plan.introduction.NodeID != projected.Introduction.NodeID || plan.rendezvous.NodeID != projected.Rendezvous.NodeID ||
+		plan.responder.NodeID != projected.Responder.NodeID || plan.epoch.NetworkID != view.epoch.NetworkID ||
+		plan.epoch.Digest != view.epoch.Digest || plan.epoch.Number != view.epoch.Number || plan.slot.NotAfter != plan.deadline {
+		t.Fatalf("Publisher plan = %+v", plan)
 	}
 }
 
