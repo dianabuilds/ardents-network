@@ -118,7 +118,7 @@ bytes. Do not use an actual Authority or public network.
   `catalog:lower-floor`; an unknown required component yielded
   `catalog:unknown-component`; and absent catalog bytes yielded
   `catalog:unavailable`. The harness wrote no files and did not start an
-  Endpoint or network listener. [Experiment README](../../../experiments/r-098-alpha-control-catalog/README.md)
+  Endpoint or network listener. [Experiment README](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-098-alpha-control-catalog/README.md)
 - **Inference:** this result supports the proposed authority separation: the
   disclosure key binds one inspectable cohort view but cannot make changed,
   expired, or lower-floor component bytes acceptable. It is not format,

@@ -26,12 +26,12 @@ co-location grants none of them access to another zone's authority material.
 | `cmd/<name>/` | One real supported executable. It contains only CLI/configuration adaptation, Module startup, result presentation, and exit-code translation. |
 | `internal/<domain>/` | Maintained cohesive deep Modules and their implementation. A directory exists only with real behavior and an owned Interface. |
 | `tests/` | Shared fixtures, checked execution-profile manifests, cross-process end-to-end tests, and explicit live-container tests. Unit and single-Module integration tests remain beside their implementation. This zone has no second Go module. |
-| `docs/product/` | Accepted product promise, delivery horizons, functions, journeys, and operating model. |
+| `docs/product/` | Accepted product promise, scope, functions, journeys, and operating model. |
 | `docs/security/` | Threat model, claim conditions, adversaries, and honest limitations. |
 | `docs/research/` | Active decision-relevant questions and the research template. |
 | `docs/adr/` | Accepted consequential decisions. Open questions and implementation progress do not belong here. |
 | `docs/development/` | Normative engineering policy, factual registries, and developer runbooks. |
-| `experiments/` | Disposable question-scoped research spikes and their instructions. It is not a maintained project tree. |
+| `experiments/` | Optional disposable question-scoped research spikes and their instructions. The zone is absent when no active experiment exists and is never maintained product code. |
 | `scripts/` | Thin, explicitly invoked bootstrap and developer wrappers. Product behavior remains in Go Modules. |
 | `packaging/` | Conditional source definitions for distributable images or operating-system packages after a delivery gate authorizes them. It contains no generated package output. |
 | `deployments/` | Conditional environment/deployment definitions after production orchestration is selected. It is not created before a real environment owner exists. |
@@ -39,7 +39,7 @@ co-location grants none of them access to another zone's authority material.
 | `.githooks/` | Optional local developer checks; CI remains authoritative. |
 | repository root | Project-wide policy and build entrypoints such as `AGENTS.md`, `README.md`, `CONTEXT.md`, `go.mod`, and `Makefile`. |
 
-`packaging/`, `deployments/`, and `tests/` are permitted locations, not
+`packaging/`, `deployments/`, `experiments/`, and `tests/` are permitted locations, not
 instructions to create empty directories. A new top-level zone requires a real
 artifact, a responsibility not owned by an existing zone, and an architecture
 review in the same change. Generated output has no repository zone.
@@ -67,24 +67,22 @@ The first real product commands are:
 | `cmd/ardents-release-custody` | Initialize or inspect one local encrypted fixed-role release-seed record through the local secret boundary; it has no candidate assembly, signer, or publication route. |
 | `cmd/ardents-state-custody` | Create the one ADR-0053 encrypted functional-alpha Epoch seed and verifier-accepted empty-topology genesis through a local secret boundary; it has no generic signer, successor, Node-key, or publication route. |
 
-Cross-process tests live under `tests/e2e/<behavior>/`. No live-container test
-tree or active live profile is currently retained. A future selected live
-scenario must introduce one purpose-named test boundary, its complete
-lifecycle, and its explicit profile selection in the owning change. Test-only
-fixture builders remain `_test.go` implementation owned by the scenario that
-uses them. Images, keys, state, captures, and generated manifests remain
-outside Git.
+Cross-process tests live under `tests/e2e/<behavior>/`. Selected host and
+artifact qualification runners live under purpose-named directories in
+`tests/qualification/`; each is an explicit active profile or a preparation
+tool named for the domain behavior it exercises. Test-only fixture builders
+remain `_test.go` implementation owned by the scenario that uses them. Images,
+keys, state, captures, and generated manifests remain outside Git.
 
 `tests/profiles/` owns the checked profile registry and positive package
 membership manifests. Every maintained and Go-bearing e2e package belongs to
-the one active profile appropriate to its surface; live and future
-Qualification selection is explicit rather than inferred from a directory name
-or a negative Make filter. Inactive profiles record the decision required to
-activate them and are not passing evidence.
+the one active profile appropriate to its surface; Qualification selection is
+explicit rather than inferred from a directory name or a negative Make filter.
+Retired profiles are removed from the registry and remain Git provenance only.
 
 This is a trunk, not a complete future directory tree. Maintained Route,
-Publication, Service Connection, Namespace, Release, Update, Endpoint
-replacement, Endpoint, Node, and Custody behavior has its existing package
+Publication, Service Connection, Namespace, Release, Endpoint replacement,
+Endpoint, Node, and Custody behavior has its existing package
 owner; unselected behavior does not earn a placeholder directory. Horizon
 numbers and stage names must not appear in product package paths or product
 command names. Immutable historical evidence may retain its exact candidate
@@ -121,7 +119,6 @@ tests/compatibility/           non-executable historical source evidence
 docs/                          product, security, research, ADR, development, technical, and reference records
 docs/development/README.md     current contributor route through development records
 docs/reference/commands.md     current command route and limits
-experiments/README.md          policy and active disposable spike route
 go.mod                         the only Go module
 Makefile                       common build and quality entrypoints
 ```

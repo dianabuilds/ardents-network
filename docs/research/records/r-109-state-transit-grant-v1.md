@@ -65,8 +65,8 @@ than test-only callbacks.
 
 - ADR-0035 and `internal/route/endpoint_transit_binding.go`, inspected
   2026-08-25.
-- `internal/node` Introduction/Responder duty construction and the
-  `tests/e2e/service/fixturecommand/reference-c2` synthetic callback,
+- `internal/node` Introduction/Responder duty construction and the historical
+  [Reference C-2 synthetic callback](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/tests/e2e/service/fixturecommand/reference-c2),
   inspected 2026-08-25.
 - Network State authority and Node-duty views in `internal/network/state`,
   inspected 2026-08-25.

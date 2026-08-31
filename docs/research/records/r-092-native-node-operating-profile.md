@@ -76,7 +76,7 @@ native Node profile.
 
 ### Experiment
 
-[`experiments/r-092-native-node-profile/`](../../../experiments/r-092-native-node-profile/)
+[`experiments/r-092-native-node-profile/`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-092-native-node-profile/)
 contains disposable synthetic mTLS plus reciprocal-LegBinding baseline and
 role-carriage scenarios. The latter carries a bounded set of synthetic legs,
 withdraws its test listener, holds them, drains or cancels them, joins its
@@ -250,7 +250,7 @@ runner and retained result.
   pair caused two new sockets to close before TLS without evicting the pair;
   and an owned drain terminated a held pair and joined all work. Every server
   result ended with zero handshake, waiting-leg, active-pair, and connection
-  counts. [Tracer evidence](../../../experiments/r-092-rendezvous-tracer/README.md)
+  counts. [Tracer evidence](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-092-rendezvous-tracer/README.md)
 - **Concurrency measurement:** the Windows race build failed before execution
   because the current MinGW/cgo link requested unavailable `-ldl`; it is not a
   tracer result. The focused exact-pair cell was then built and executed under

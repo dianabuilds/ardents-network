@@ -8,10 +8,10 @@ qualification harnesses that depended on that presentation.
 The evidence came from integration base `89480b18`. Go sources use the
 `.go.txt` suffix deliberately: they are historical records, not maintained Go
 packages, test profiles, product binaries, or qualification entrypoints. The
-larger historical C-2 fixture remains preserved in its original fixture tree
-behind the purpose-named `referencec2` evidence tag. None of these former Make
-targets may be restored without new current research and an explicit product
-decision.
+larger historical C-2 fixture is available only from the immutable
+[`fbb42034757513ac009114a00b933aefa76d8ddf`](https://github.com/dianabuilds/ardents-network/commit/fbb42034757513ac009114a00b933aefa76d8ddf)
+source snapshot. None of these former Make targets may be restored without new
+current research and an explicit product decision.
 
 Maintained ownership now lives in:
 

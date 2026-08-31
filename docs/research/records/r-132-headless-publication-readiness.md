@@ -173,8 +173,9 @@ a crash after floor advancement requires a successor.
 This changes maintained local readiness ownership but changes no Credential,
 Publication record size, Route, Target, or C-2 wire grammar. The old
 `IntroductionSocket` client path and the compiled raw `Endpoint.Publish` API are
-retired. Historical ARIA receipt material remains only in `referencec2`-tagged
-source evidence.
+retired. Historical ARIA receipt material is available only from the immutable
+[`fbb42034757513ac009114a00b933aefa76d8ddf`](https://github.com/dianabuilds/ardents-network/commit/fbb42034757513ac009114a00b933aefa76d8ddf)
+source snapshot; it is not part of the C0 candidate.
 
 ### 2. Versioned signed slot-ready wire
 

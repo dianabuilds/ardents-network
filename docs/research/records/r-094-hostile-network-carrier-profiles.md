@@ -208,7 +208,7 @@ a local proxy, foreign broker, or H3 reader into maintained fallback behavior.
   to 416 KiB, below its requested 7 MiB. This is a local operational warning,
   not a throughput measurement or failure verdict; it makes UDP socket-buffer
   settings and observed values required H4-2 host-profile evidence.
-  [Baseline experiment](../../../experiments/r-094-carrier-baseline/README.md)
+  [Baseline experiment](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-094-carrier-baseline/README.md)
 - **Inference:** the same mutual-TLS identity/exporter and a single ordered
   byte lane are mechanically available for TCP/TLS and QUIC v1 in the two
   local platform profiles. That supports the experiment seam's common oracle,
@@ -319,7 +319,7 @@ a local proxy, foreign broker, or H3 reader into maintained fallback behavior.
   all three runs; nine packets preceded each change and 253–269 followed it.
   The same QUIC Adapter and attachment then delivered the exact 262,144-byte
   transcript, retained client FD count 7→7, and joined client/relay goroutines.
-  [Rebinding experiment](../../../experiments/r-094-carrier-seam-spec/README.md)
+  [Rebinding experiment](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-094-carrier-seam-spec/README.md)
 - **Inference:** the experimental quic-go profile can transparently survive
   this narrow same-IP NAT source-port change without a new Carrier attempt.
   Migration remains Adapter-private behaviour: the common Carrier Interface
@@ -422,7 +422,7 @@ ALPN and reciprocal LegBinding, 1200-byte initial packet, no datagrams, no
 0-RTT, no Adapter-selected fallback, and no migration claim. H4-2D implements
 each attempted profile as an authenticated signed State choice.
 
-The disposable [two-Adapter Carrier seam experiment](../../../experiments/r-094-carrier-seam-spec/README.md)
+The disposable [two-Adapter Carrier seam experiment](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-094-carrier-seam-spec/README.md)
 now exercises the candidate contract in local and separate-namespace slices.
 Its experiment-only dependency review is accepted. TCP/TLS and the refined
 QUIC v1 candidate pass exact peer/binding, deadline, stopped-reader
@@ -433,7 +433,7 @@ library default was falsified at MTU 1280. Keep censorship-oriented adapters
 separate and entry-only until their distribution and exposure model has
 evidence. Do not restore H3 WebTunnel bytes or configuration by migration.
 
-The first [local carrier baseline](../../../experiments/r-094-carrier-baseline/README.md)
+The first [local carrier baseline](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-094-carrier-baseline/README.md)
 and two-Adapter slice support the common TLS/binding/byte-lane oracle. Two
 maintained implementations now justify the narrow `internal/route.Carrier`
 Interface. The separate-host public-path slice passes the same oracle. A later

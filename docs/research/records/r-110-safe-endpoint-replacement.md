@@ -17,16 +17,18 @@ a background downloader, Windows profile, package manager, or public updater.
 
 ## Current contract
 
-H4-1B requires authorized staging, drain/stop, atomic activation, self-test,
-interruption recovery, and rollback protection through Release/Update. Program
-bytes remain outside config, Vault, floors, cache, and runtime roots. Authority
-Custody is never an Update input.
+The selected Ubuntu foreground replacement requires authorized staging,
+drain/stop, atomic activation, self-test, interruption recovery, and rollback
+protection. Program bytes remain outside config, Vault, floors, cache, and
+runtime roots. Authority Custody is never a replacement input.
 
 `internal/release` issues opaque authorization only after authenticating a
-decision. `internal/update` owns an offline transaction, journal, rollback
-reservation, and recovery planner, but no artifact source, program path,
-systemd owner, or self-test process. It is technical evidence, not an H4-1B
-lifecycle implementation.
+decision. `internal/endpoint/replacement` owns the Endpoint-program binding,
+journal, retained predecessor, activation, self-test, recovery, and rollback
+semantics used by the product command. The former generic `internal/update`
+transaction had no production caller and was retired from the C0 candidate;
+its last source is immutable at
+[`fbb42034757513ac009114a00b933aefa76d8ddf`](https://github.com/dianabuilds/ardents-network/tree/fbb42034757513ac009114a00b933aefa76d8ddf/internal/update).
 
 ## Hypotheses
 
@@ -169,10 +171,9 @@ The maintained contract is deliberately small:
 
 This is not a second generic updater: `internal/endpoint/replacement` owns the
 Endpoint-program binding and interruption state, while `internal/release`
-continues to own accepted Release authorization. The existing generic
-`internal/update` tracer remains evidence for its own transaction contract and
-is not exposed as a participant command until its activation semantics can be
-made equivalent.
+continues to own accepted Release authorization. The generic transaction tracer
+used during the decision is historical Git provenance and is not a maintained
+package or participant command.
 
 The selected Ubuntu-only foreground contract is now implemented and tested
 against the stated interruption matrix. It is rejected if a later change needs

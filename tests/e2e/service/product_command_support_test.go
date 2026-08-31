@@ -47,9 +47,6 @@ func buildCommand(t *testing.T, name, packagePath string) string {
 	}
 	path := filepath.Join(t.TempDir(), filename)
 	arguments := []string{"build", "-trimpath", "-buildvcs=false"}
-	if name == "reference-c2" {
-		arguments = append(arguments, "-tags", "referencec2")
-	}
 	arguments = append(arguments, "-o", path, packagePath)
 	command := exec.Command("go", arguments...)
 	command.Dir = root

@@ -79,14 +79,14 @@ into a second routing or naming authority.
 ### Experiment
 
 The first disposable data-flow experiment is
-[`experiments/r-118-private-transit-issuance`](../../../experiments/r-118-private-transit-issuance/).
+[`experiments/r-118-private-transit-issuance`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-private-transit-issuance/).
 It has no network transport: it tests the minimum issuer transcript and exact
 Grant/key/one-use tuple before an H4-2 transport is selected. Its strict
 request grammar must refuse a trailing Target, a changed State Node, an expiry
 longer than State permits, a replacement TLS key, and replay.
 
 The second disposable experiment,
-[`experiments/r-118-credential-relay`](../../../experiments/r-118-credential-relay/),
+[`experiments/r-118-credential-relay`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-118-credential-relay/),
 now runs separate Endpoint, issuer, and Initiator child processes. It captures
 only terminal disclosure/tuple evidence. Its next successor must substitute a
 real Entry attachment and State-selected issuance duty, then prove successful

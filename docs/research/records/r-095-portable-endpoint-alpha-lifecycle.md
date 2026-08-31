@@ -317,7 +317,7 @@ material.
   from the stopped state. A `0755` state root was rejected. Removing the
   stopped/disabled program root left the synthetic state file present, and the
   runner removed every exact fixture/unit/host-temporary path afterward.
-  [Lifecycle experiment](../../../experiments/r-095-portable-endpoint-alpha-lifecycle/README.md)
+  [Lifecycle experiment](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-095-portable-endpoint-alpha-lifecycle/README.md)
 - **Negative harness result:** the first Windows→WSL wrapper run stopped before
   the matrix because backslashes were stripped from paths passed to `wslpath`.
   Slash-form input corrected it; temporary binaries were cleaned in both
@@ -359,7 +359,7 @@ material.
   changed root, changed signed bytes, wrong principal, wrong namespace, wrong
   signing key, and substituted public key. No project executable or publisher
   private key was used by the participant verifier. [Bootstrap
-  experiment](../../../experiments/r-095-portable-endpoint-alpha-lifecycle/README.md)
+  experiment](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-095-portable-endpoint-alpha-lifecycle/README.md)
 - **Replay measurement:** an `ardents-alpha-0000` bundle signed by the same
   legitimate key passed signature and checksum verification but failed the
   independently expected `ardents-alpha-0001` descriptor. First-install
@@ -388,7 +388,7 @@ material.
   execution. No key or project verifier was used and the artifact never ran.
   The first sandboxed host call was denied WSL access before the guest
   experiment; its host temporary binary was removed and it is not counted as a
-  result. [Enrollment experiment](../../../experiments/r-095-portable-endpoint-alpha-lifecycle/README.md)
+  result. [Enrollment experiment](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-095-portable-endpoint-alpha-lifecycle/README.md)
 - **Inference:** a closed cohort already needs one authenticated value outside
   GitHub. Pinning the exact manifest delegates only one bundle. Pinning an
   SSHSIG fingerprint instead delegates signing power and adds private-key

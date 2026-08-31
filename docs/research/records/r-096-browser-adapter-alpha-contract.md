@@ -168,7 +168,7 @@ removal. It makes no privacy claim.
   stopped, the same browser URL rendered `ERR_CONNECTION_REFUSED`; it did not
   reach another Target or a public fallback. Both exact temporary roots were
   removed with zero residue. [Experiment
-  README](../../../experiments/r-096-browser-loopback/README.md)
+  README](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-096-browser-loopback/README.md)
 - **Limit of measurement:** this was the Codex in-app browser, not a selected
   participant browser/profile. Its evaluation surface did not expose
   `isSecureContext`, readable cookie state, browser console CSP messages, or a

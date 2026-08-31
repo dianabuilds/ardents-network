@@ -245,7 +245,7 @@ promoting the result to participant or headless-network qualification.
   native-host route. It is not a production Release Decision or participant
   installation claim.
 - **Measurement:** the isolated
-  [`r-117-firefox-proxy-auth`](../../../experiments/r-117-firefox-proxy-auth/)
+  [`r-117-firefox-proxy-auth`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-117-firefox-proxy-auth/)
   fixture passed on 2026-08-26 with Firefox 154. Its fixed temporary
   `.ard`-only Manifest V3 add-on used `proxy`, `nativeMessaging`,
   `webRequest`, and `webRequestBlocking`. It first obtained port `57737` from

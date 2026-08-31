@@ -257,7 +257,7 @@ that proxy captured `GET http://reference.ard/ HTTP/1.1` with
 response. No listener used port 80 or 443, and the profile did not modify the
 user's Firefox profile, OS resolver, hosts file, certificate store, or system
 proxy. The reproducible disposable script and its limitations are in
-[`experiments/r-115-firefox-zone-proxy`](../../../experiments/r-115-firefox-zone-proxy/).
+[`experiments/r-115-firefox-zone-proxy`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-115-firefox-zone-proxy/).
 
 This is a useful falsification result: Firefox does not need a successful
 public DNS answer to make the named HTTP request when its routing policy sends
@@ -287,7 +287,7 @@ executed for the alpha zone and its `[{localProxy}, null]` chain did not fall
 back to that browser-defined proxy. It used no listener on 80 or 443, no daily
 Firefox profile, and no system DNS, proxy, certificate, hosts, route, or VPN
 change. The reproducible launcher is
-[`run-addon.ps1`](../../../experiments/r-115-firefox-zone-proxy/run-addon.ps1).
+[`run-addon.ps1`](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/experiments/r-115-firefox-zone-proxy/run-addon.ps1).
 
 This remains bounded evidence. It does **not** prove an unavailable `.ard`
 request did not issue a DNS/DoH packet or attempt another direct network path;

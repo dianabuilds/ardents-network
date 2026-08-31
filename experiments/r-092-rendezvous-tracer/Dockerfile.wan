@@ -1,6 +1,0 @@
-FROM scratch
-
-COPY r092-rendezvous /r092-rendezvous
-
-USER 65532:65532
-ENTRYPOINT ["/r092-rendezvous"]

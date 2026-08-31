@@ -1,6 +1,0 @@
-FROM scratch
-
-COPY r094 /r094
-
-USER 65532:65532
-ENTRYPOINT ["/r094"]

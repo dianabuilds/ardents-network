@@ -120,29 +120,31 @@ accepted root/floors before reporting network readiness. The pin is neither a
 Release Module input nor successor authority; it authorizes only this first
 bundle and makes no public or independent release-control claim.
 
-internal/update consumes only that opaque authorization. It owns the bounded
-offline technical transaction: immutable staging, rollback reservation,
-stopped-runtime Adapter calls, atomic activation, self-test, journal,
-idempotent recovery, terminal inspection, and the caller-owned schema
-copy-on-write boundary. It never receives a Vault, password, Authority root,
-or generic Custody writer. Its D0 behavior fixture proves that a real encrypted
-Vault and floor stay unchanged during the transaction.
+`internal/endpoint/replacement` consumes only the opaque Release authorization
+and exact candidate bytes. It owns the selected Ubuntu foreground replacement:
+direct-file admission, immutable staging beside the program, retained
+predecessor, stopped exact user unit, atomic activation, no-network candidate
+self-test, durable journal, explicit recovery, and separately authorized
+rollback. It never receives a Vault, password, Authority root, downloader, or
+generic Custody writer.
 
-The current Update Module is a technical tracer, not a supported installer or
-automatic updater. It selects no platform packaging, bootstrap, system
-registration, unattended activation, repair, or uninstall behavior. A
-supported lifecycle and its platform durability evidence remain separate
-decisions.
+The former generic `internal/update` transaction had no production caller and
+is retired. Its distinct schema-copy and adapter choreography are not part of
+the selected Endpoint replacement contract. Current replacement behavior and
+crash boundaries are verified at the owning Module; platform packaging,
+automatic update, Windows replacement, system registration, and public release
+qualification remain unselected.
 
 ## Cross-module invariants
 
 - Release floors and trusted roots never decrease.
-- Update cannot authorize itself or interpret Authority/Custody state.
-- Custody never supplies secrets to Release or Update.
-- A failed or interrupted tracer transaction returns an explicit bounded
-  outcome; it must not silently activate a candidate or erase the predecessor.
-- The retired V0 evidence field remains only in independent provenance vectors;
-  current V2 tracer fixtures do not create a compatibility writer.
+- Endpoint replacement cannot authorize itself or interpret Authority/Custody
+  state.
+- Custody never supplies secrets to Release or Endpoint replacement.
+- A failed or interrupted replacement returns an explicit bounded outcome; it
+  must not silently accept a candidate or erase the retained predecessor.
+- The retired V0 evidence field remains only in historical provenance; no
+  maintained writer recreates the retired generic transaction.
 
 ## Verification
 

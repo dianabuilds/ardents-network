@@ -16,12 +16,9 @@ specification.
 - [Repository layout and growth rules](repository-layout.md) define the factual
   tree and permitted growth.
 - [Testing model](testing.md) defines the selected execution profiles.
-- [Deep audit campaign](deep-audit.md) defines the inactive whole-codebase
-  review, proof, remediation, and requalification process for a future exact
-  H4 release candidate.
-- [Pre-H4-8 baseline inventory](pre-h4-8-baseline-inventory.md) records the
-  classified retention, promotion, and retirement work before a new
-  qualification candidate exists.
+- [Deep audit campaign](deep-audit.md) defines the whole-codebase review,
+  proof, remediation, and requalification method for an exact frozen C0
+  candidate.
 - [Dependency register](dependencies.md) records reviewed runtime dependencies.
 - [Scoped risk exceptions](scoped-risk-exceptions.md) records any accepted,
   bounded exception to the normal engineering rules.
@@ -36,7 +33,6 @@ specification.
 - [Closed-alpha enrollment verification](../technical/enrollment-verification.md)
 - [Network State, Entry, Route, and Node](../technical/network-route-node.md)
 - [Current command reference](../reference/commands.md)
-- [Retired fixed-alpha custody assembly provenance](../reference/release-custody-assembly.md)
 
 ## Historical provenance
 
@@ -46,5 +42,5 @@ provenance route; it is not a current command, package, or Qualification
 contract. Start with the routes above unless a current ADR or active research
 record explicitly needs that history.
 
-Only an active experiment may remain under
-[experiments](../../experiments/README.md).
+Completed experiment source is available from Git history and its accepted
+research record; no experiment is part of the current C0 tree.
