@@ -72,9 +72,11 @@ browser-build:
 	$(BROWSER_ARTIFACT_MKDIR)
 	$(foreach command,$(BROWSER_COMMANDS),go build -trimpath -o "$(BROWSER_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
+browser-check: export ARDENTS_EXTRACTION_OWNER := application-browser
+browser-check: export ARDENTS_EXTRACTION_SHELL := $(HEADLESS_ARTIFACT_SHELL)
 browser-check: browser-build
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/browser-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(BROWSER_ADAPTER_ARTIFACT))" "$(abspath $(BROWSER_ENTRY_ARTIFACT))"
-	go test ./internal/enrollment -run '^TestVerifyReturnsV4BrowserEntryCompanionsOutsideReleaseMetadata$$' -count=1
+	go test ./internal/architecture -run '^TestApplicationExtractionRehearsal$$' -count=1
 	go test ./cmd/ardents-browser-entry -run '^TestParticipantInstallAuthenticatesARealV4Bundle$$' -count=1
 
 headless-build:
@@ -93,7 +95,9 @@ headless-evidence: headless-build
 	go test ./tests/e2e/node -run '^TestNativeDutyProcessesUseTheirExactStateAssignments$$' -count=1
 	go test ./tests/e2e/service -run '^(TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses|TestServiceCommandReadinessTimeoutAndCleanup)$$' -count=1
 
+headless-check: export ARDENTS_EXTRACTION_OWNER := network
 headless-check: headless-evidence
+	go test ./internal/architecture -run '^TestNetworkExtractionRehearsal$$' -count=1
 
 qualification-endpoint-portable-ubuntu:
 	sh ./tests/qualification/endpoint-portable-ubuntu/run-ubuntu.sh -timeout=2m

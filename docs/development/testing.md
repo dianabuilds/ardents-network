@@ -12,18 +12,21 @@ code.
 - `make quick-check` runs formatting, architecture, vet, unit, named command
   builds, module tidiness, and the Browser artifact lane.
 - `make headless-check` builds the exact Network command inventory, checks the
-  enrollment-v3 artifact, and runs bounded Endpoint, Source, Node, and Service
-  process evidence without Browser artifacts.
-- `make browser-check` builds the exact Browser command inventory, checks the
-  enrollment-v4 artifact, and verifies it separately from Network-v3.
+  enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
+  process evidence, then rebuilds and tests the headless command candidate in
+  a fresh temporary tree containing no Browser/Application implementation.
+- `make browser-check` builds the exact Browser command inventory and archive,
+  checks enrollment-v4 independently from Network-v3, then copies only
+  Application-owned and Interface-v1 files to a fresh temporary tree, tests
+  them, rebuilds both real Browser commands, and reproduces the archive there.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
 - `make fuzz` exercises the maintained bounded parser/encoder fuzz surface.
 
 The headless and Browser command inventories are positive, disjoint manifests
 under `tests/profiles/`. Architecture tests check actual transitive dependency
-graphs and verify that every maintained package and suite belongs to its exact
-profile.
+graphs, the four-owner [`ownership.json`](ownership.json) registry, exact
+qualification/artifact-lane ownership, and every maintained package and suite.
 
 ## Current profiles
 
@@ -57,10 +60,13 @@ The C0 Network candidate is exercised by the deterministic/process/race lanes,
 `headless-check`, and the selected Network qualifications. This includes the
 Endpoint-owned `internal/application/broker`; its directory does not make it a
 Browser-only package. The separate Application/Browser candidate is exercised
-by shared Application Interface tests, Browser-owned Module tests,
+by Application Interface v1 conformance vectors, Browser-owned Module tests,
 `browser-check`, and its selected artifact mechanics. Browser commands are
-excluded from the Network artifact inventory, and Network implementation
-packages are excluded from Browser dependencies.
+excluded from the Network-v3 artifact inventory. Their complete transitive
+graphs may contain only `internal/browser/...` and
+`internal/application/interfacev1/...` project packages; Endpoint, Network,
+Node, Route, Entry, Service, Custody, Release, naming, and Network enrollment
+implementations are forbidden.
 
 `tests/compatibility/browser-endpoint-v4` is the sole retained non-executable
 source exception. ADR-0061 requires it to remain outside Go package discovery,
@@ -89,9 +95,11 @@ named commands, observe public behavior, create fresh temporary fixtures, and
 clean every owned process and file.
 
 Every maintained Go package belongs to the deterministic inventory. Every
-Go-bearing `tests/e2e` suite root belongs to exactly one process profile. A new
-package or suite cannot enter through a negative filter, wildcard exception, or
-directory naming alone.
+maintained Go source/test, command, packaging file, profile file, qualification
+lane, and retained compatibility source matches exactly one ownership rule.
+Every Go-bearing `tests/e2e` suite root belongs to exactly one process profile.
+A new package, file, or suite cannot enter through a negative filter, wildcard
+exception, or directory naming alone.
 
 `tests/compatibility/` is non-executable provenance. Compatibility evidence
 must name its former observer and deletion/reactivation condition and does not

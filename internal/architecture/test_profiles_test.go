@@ -239,9 +239,9 @@ func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 		t.Run(filepath.Base(commandPath), func(t *testing.T) {
 			dependencies := listedDependencies(t, root, commandPath)
 			for _, forbidden := range []string{
-				"github.com/dianabuilds/ardents-network/internal/browseradapter",
-				"github.com/dianabuilds/ardents-network/internal/browserentry",
-				"github.com/dianabuilds/ardents-network/internal/browserreference",
+				"github.com/dianabuilds/ardents-network/internal/browser/adapter",
+				"github.com/dianabuilds/ardents-network/internal/browser/entry",
+				"github.com/dianabuilds/ardents-network/internal/browser/reference",
 			} {
 				if dependencies[forbidden] {
 					t.Errorf("%s dependency graph contains Browser-owned package %s", commandPath, forbidden)
@@ -277,13 +277,13 @@ func TestBrowserCommandsHaveNetworkImplementationFreeDependencyGraphs(t *testing
 
 func TestApplicationSeamsAreSharedByTheirAdapters(t *testing.T) {
 	root := repositoryRoot(t)
-	connection := "github.com/dianabuilds/ardents-network/internal/application/connection"
+	connection := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	for _, packagePath := range []string{"./cmd/ardents", "./cmd/ardents-browser", "./internal/endpoint"} {
 		if !listedDependencies(t, root, packagePath)[connection] {
 			t.Errorf("%s does not use the shared Application Connection Module", packagePath)
 		}
 	}
-	administration := "github.com/dianabuilds/ardents-network/internal/application/administration"
+	administration := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
 		if !listedDependencies(t, root, packagePath)[administration] {
 			t.Errorf("%s does not use the shared Application Administration Module", packagePath)
@@ -353,9 +353,9 @@ func TestEndpointContainsNoBrowserImplementation(t *testing.T) {
 		}
 		text := string(contents)
 		for _, forbidden := range []string{
-			"internal/browseradapter",
-			"internal/browserentry",
-			"internal/browserreference",
+			"internal/browser/adapter",
+			"internal/browser/entry",
+			"internal/browser/reference",
 			"//go:build browsercompat",
 		} {
 			if strings.Contains(text, forbidden) {
