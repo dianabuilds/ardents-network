@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -58,20 +59,13 @@ type UserApplicationConnectionRequest struct {
 	BytesEachDirection, SendBytes, ReceiveBytes uint32
 }
 
-// ApplicationOutcome is the bounded terminal Connection projection. It never
-// identifies a Target, State, Entry, peer, Route, or transport.
-type ApplicationOutcome struct {
-	Class  string
-	Reason string
-}
-
 // ApplicationConnection is one authenticated, reliable, ordered byte stream
 // returned by the Connection Interface. Application protocol and replay
 // semantics remain entirely caller-owned.
 type ApplicationConnection struct {
 	stream io.ReadWriteCloser
 	cancel context.CancelFunc
-	done   chan ApplicationOutcome
+	done   chan applicationconnection.Outcome
 	once   sync.Once
 }
 
@@ -119,7 +113,7 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 	owned, application := net.Pipe()
 	lifetime, cancel := context.WithCancel(ctx)
 	ready := make(chan struct{})
-	done := make(chan ApplicationOutcome, 1)
+	done := make(chan applicationconnection.Outcome, 1)
 	request := OutboundConnectionRequest{Principal: input.Principal, Capability: capability,
 		Target: route.AuthenticatedTarget, AuthorityPublic: route.AuthorityPublic, Publication: route.Publication,
 		Route: route.Connection, Application: owned, BytesEachDirection: input.BytesEachDirection,
@@ -144,7 +138,7 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 		if closeErr != nil && runErr == nil {
 			result.Class, result.Reason = "indeterminate failure", "Application Connection cleanup failed"
 		}
-		done <- ApplicationOutcome{Class: result.Class, Reason: result.Reason}
+		done <- applicationconnection.Outcome{Class: result.Class, Reason: result.Reason}
 		close(done)
 	}()
 	connection := &ApplicationConnection{stream: application, cancel: cancel, done: done}
@@ -175,7 +169,7 @@ func (connection *ApplicationConnection) Write(source []byte) (int, error) {
 }
 
 // Done carries exactly one terminal outcome and then closes.
-func (connection *ApplicationConnection) Done() <-chan ApplicationOutcome {
+func (connection *ApplicationConnection) Done() <-chan applicationconnection.Outcome {
 	if connection == nil {
 		return nil
 	}

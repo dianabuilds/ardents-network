@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 func main() {
@@ -38,7 +38,7 @@ func run(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	resultPath, err := endpoint.ResultPath(arguments[2])
+	resultPath, err := applicationconnection.ResultPath(arguments[2])
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func run(arguments []string, output io.Writer) error {
 		_ = resultConnection.Close()
 		return fmt.Errorf("bound Application result lifetime: %w", err)
 	}
-	stream, err := endpoint.OpenApplication(connection, resultConnection)
+	stream, err := applicationconnection.OpenApplication(connection, resultConnection)
 	if err != nil {
 		_ = connection.Close()
 		_ = resultConnection.Close()

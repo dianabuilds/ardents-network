@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 func TestPartialAdministrationFrameStopsAtOperationDeadline(t *testing.T) {
@@ -36,7 +37,7 @@ func TestPartialAdministrationFrameStopsAtOperationDeadline(t *testing.T) {
 	started := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	if _, err := ReadControl(ctx, connection, 8); err == nil {
+	if _, err := applicationconnection.ReadControl(ctx, connection, 8); err == nil {
 		t.Fatal("partial administration frame was accepted")
 	}
 	if time.Since(started) > 500*time.Millisecond {

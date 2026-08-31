@@ -3,16 +3,16 @@ package main
 import (
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 type applicationResult struct {
-	result endpoint.Result
+	result applicationconnection.Result
 	err    error
 }
 
 func waitForResult(stream interface {
-	Result() (endpoint.Result, error)
+	Result() (applicationconnection.Result, error)
 	SetReadDeadline(time.Time) error
 }) <-chan applicationResult {
 	completed := make(chan applicationResult, 1)

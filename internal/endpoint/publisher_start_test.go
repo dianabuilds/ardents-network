@@ -42,7 +42,6 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	instancePath := t.TempDir()
 	instanceRoot, binding := c2AcceptedInstanceBinding(t, instancePath, network, authorityPrivate, now, deadline)
 	defer instanceRoot.Close()
-	credential := binding.Credential()
 	profile := endpointapi.PublisherIntroductionProfile{
 		NetworkID: network, Digest: digest, Epoch: 12,
 		Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
@@ -69,13 +68,8 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	started, err := administration.Publish(context.Background())
-	if err != nil || started.Class != "published" {
-		t.Fatalf("StartPublisher = %+v, %v", started, err)
-	}
-	current, err := publication.Decode(started.Record, authorityPublic, network, now)
-	if err != nil || current.Credential != credential {
-		t.Fatalf("published current = %+v, %v", current, err)
+	if err := administration.Publish(context.Background()); err != nil {
+		t.Fatalf("StartPublisher = %v", err)
 	}
 	if _, err := binding.Sign(nil, []byte("live-consumed-binding"), crypto.Hash(0)); err != nil {
 		t.Fatalf("live consumed binding unavailable before withdrawal: %v", err)
@@ -88,16 +82,15 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	}); acceptErr == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("Endpoint-owned Publisher accepted a caller-selected Route: %+v, %v", result, acceptErr)
 	}
-	if repeated, retryErr := administration.Publish(context.Background()); retryErr == nil || repeated.Class == "published" {
-		t.Fatalf("repeated Publisher start = %+v, %v", repeated, retryErr)
+	if retryErr := administration.Publish(context.Background()); retryErr == nil {
+		t.Fatal("repeated Publisher start succeeded")
 	}
 	if _, err := binding.Sign(nil, []byte("binding-after-retry"), crypto.Hash(0)); err != nil {
 		t.Fatalf("rejected retry withdrew the live binding: %v", err)
 	}
 
-	withdrawn, err := administration.Withdraw(context.Background())
-	if err != nil || withdrawn.Class != "unpublished" || withdrawn.Generation != credential.Generation {
-		t.Fatalf("Withdraw = %+v, %v", withdrawn, err)
+	if err := administration.Withdraw(context.Background()); err != nil {
+		t.Fatalf("Withdraw = %v", err)
 	}
 	if _, err := binding.Sign(nil, []byte("withdrawn-binding"), crypto.Hash(0)); !errors.Is(err, instance.ErrUnavailable) {
 		t.Fatalf("withdrawn binding remained usable: %v", err)
@@ -139,8 +132,8 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if started, startErr := administration.Publish(context.Background()); startErr == nil || started.Class == "published" {
-		t.Fatalf("unready Publisher start = %+v, %v", started, startErr)
+	if startErr := administration.Publish(context.Background()); startErr == nil {
+		t.Fatal("unready Publisher start succeeded")
 	}
 	if _, err := binding.Sign(nil, []byte("failed-generation"), crypto.Hash(0)); !errors.Is(err, instance.ErrUnavailable) {
 		t.Fatalf("failed generation remained usable: %v", err)

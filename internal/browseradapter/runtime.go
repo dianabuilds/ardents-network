@@ -7,15 +7,15 @@ import (
 	"strings"
 	"sync"
 
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/browserentry"
 	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
 type applicationStream interface {
 	io.ReadWriteCloser
-	Done() <-chan endpoint.ApplicationOutcome
+	Done() <-chan applicationconnection.Outcome
 }
 
 type applicationDial func(context.Context, string, string) (applicationStream, error)
@@ -57,7 +57,7 @@ type site struct {
 // an Endpoint or browser executable.
 func Open(ctx context.Context, config Config) (*Runtime, error) {
 	return open(ctx, config, func(dialCtx context.Context, path, serviceLink string) (applicationStream, error) {
-		return endpoint.DialLocalApplication(dialCtx, path, serviceLink)
+		return applicationconnection.Dial(dialCtx, path, serviceLink)
 	})
 }
 

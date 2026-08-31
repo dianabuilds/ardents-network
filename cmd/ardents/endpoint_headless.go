@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/administration"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
@@ -130,7 +132,7 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (run
 	if err != nil {
 		return fmt.Errorf("open headless Connection Interface owner: %w", err)
 	}
-	application, err := endpointapi.OpenLocalConnectionInterface(plan.ApplicationSocket, connectionOwner)
+	application, err := applicationconnection.Listen(plan.ApplicationSocket, connectionOwner)
 	if err != nil {
 		return fmt.Errorf("open headless local Connection Interface: %w", err)
 	}
@@ -140,11 +142,11 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (run
 	if err != nil {
 		return fmt.Errorf("open headless Service Administration owner: %w", err)
 	}
-	administration, err := endpointapi.OpenLocalServiceAdministration(plan.AdministrationSocket, administrationOwner)
+	administrationServer, err := administration.Listen(plan.AdministrationSocket, administrationOwner)
 	if err != nil {
 		return fmt.Errorf("open headless local Service Administration: %w", err)
 	}
-	defer func() { runErr = errors.Join(runErr, administration.Close()) }()
+	defer func() { runErr = errors.Join(runErr, administrationServer.Close()) }()
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
 	if err := encoder.Encode(headlessRuntimeEvent{Kind: "headless-runtime-ready", NetworkID: hex.EncodeToString(plan.NetworkID[:]),

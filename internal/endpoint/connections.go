@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	serviceconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
@@ -54,10 +55,10 @@ func acceptEndpointConnection(ctx context.Context, plan endpointPlan, endpoint c
 	if err != nil {
 		return endpointConnection{}, err
 	}
-	if err := acceptApplication(application, time.Now().Add(deadline)); err != nil {
+	if err := applicationconnection.AcceptApplication(application, time.Now().Add(deadline)); err != nil {
 		return endpointConnection{}, errors.Join(err, application.Close())
 	}
-	result, err := acceptResult(results, time.Now().Add(deadline))
+	result, err := applicationconnection.AcceptResult(results, time.Now().Add(deadline))
 	if err != nil {
 		return endpointConnection{}, errors.Join(err, application.Close())
 	}

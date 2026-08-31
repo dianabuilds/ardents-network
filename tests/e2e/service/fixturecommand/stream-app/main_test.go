@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	endpointpkg "github.com/dianabuilds/ardents-network/internal/endpoint"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 func TestStreamLifetimeIsBoundedIndependentlyFromDial(t *testing.T) {
@@ -25,7 +25,7 @@ func TestEarlyFailureResultInterruptsIncompleteRawWorkload(t *testing.T) {
 	applicationResult, endpointResult := net.Pipe()
 	accepted := make(chan error, 1)
 	go func() { _, err := io.ReadFull(endpoint, make([]byte, 6)); accepted <- err }()
-	stream, err := endpointpkg.OpenApplication(application, applicationResult)
+	stream, err := applicationconnection.OpenApplication(application, applicationResult)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestEarlyFailureResultInterruptsIncompleteRawWorkload(t *testing.T) {
 		exchange <- err
 	}()
 	go func() {
-		_ = endpointpkg.Write(endpointResult, endpointpkg.Result{Class: "abrupt connection loss",
+		_ = applicationconnection.WriteResult(endpointResult, applicationconnection.Result{Class: "abrupt connection loss",
 			Reason: "route Attachment proposal limit or recovery deadline reached"})
 	}()
 	select {
@@ -76,7 +76,7 @@ func TestExternalApplicationRequiresClassifiedConnectionResult(t *testing.T) {
 	defer endpoint.Close()
 	accepted := make(chan error, 1)
 	go func() { _, err := io.ReadFull(endpoint, make([]byte, 6)); accepted <- err }()
-	applicationStream, err := endpointpkg.OpenApplication(application, applicationResult)
+	applicationStream, err := applicationconnection.OpenApplication(application, applicationResult)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestExternalApplicationRequiresClassifiedConnectionResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	go func() {
-		_ = endpointpkg.Write(endpointResult, endpointpkg.Result{Class: "clean service connection close",
+		_ = applicationconnection.WriteResult(endpointResult, applicationconnection.Result{Class: "clean service connection close",
 			AuthenticatedTarget: [32]byte{1}, AcceptedBytes: 4096, ReceivedBytes: 4096})
 	}()
 	result, err := applicationStream.Result()
@@ -97,7 +97,7 @@ func TestExternalApplicationRequiresClassifiedConnectionResult(t *testing.T) {
 	go func() { _, _ = io.ReadFull(peer, make([]byte, 6)); _ = resultPeer.Close() }()
 	defer cleanEOF.Close()
 	defer resultEOF.Close()
-	stream, err := endpointpkg.OpenApplication(cleanEOF, resultEOF)
+	stream, err := applicationconnection.OpenApplication(cleanEOF, resultEOF)
 	if err != nil {
 		t.Fatal(err)
 	}

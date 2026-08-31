@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 )
 
@@ -37,50 +38,38 @@ func (endpoint *endpoint) OpenServiceAdministration(config ServiceAdministration
 }
 
 // Publish starts the one Endpoint-owned Instance/publication/slot transaction.
-func (owner *ServiceAdministration) Publish(ctx context.Context) (PublicationResult, error) {
+func (owner *ServiceAdministration) Publish(ctx context.Context) error {
 	if owner == nil || owner.endpoint == nil || ctx == nil {
-		return publicationDenied("Service Administration is unavailable")
+		return errors.New("Service Administration is unavailable")
 	}
 	capability, err := owner.endpoint.Admit(owner.principal, broker.Administration)
 	if err != nil {
-		return publicationDenied(err.Error())
+		return err
 	}
-	return owner.endpoint.StartPublisher(ctx, PublisherStartRequest{Principal: owner.principal, Capability: capability,
+	result, err := owner.endpoint.StartPublisher(ctx, PublisherStartRequest{Principal: owner.principal, Capability: capability,
 		At: owner.clock().UTC()})
+	if err == nil && result.Class != "published" {
+		err = errors.New("Publisher start returned a non-published result")
+	}
+	return err
 }
 
 // Withdraw closes the live slot and publication before terminally withdrawing
 // the Endpoint-owned Instance binding.
-func (owner *ServiceAdministration) Withdraw(ctx context.Context) (WithdrawalResult, error) {
+func (owner *ServiceAdministration) Withdraw(ctx context.Context) error {
 	if owner == nil || owner.endpoint == nil || ctx == nil {
-		return withdrawalDenied("Service Administration is unavailable")
+		return errors.New("Service Administration is unavailable")
 	}
 	capability, err := owner.endpoint.Admit(owner.principal, broker.Administration)
 	if err != nil {
-		return withdrawalDenied(err.Error())
+		return err
 	}
-	return owner.endpoint.Withdraw(ctx, WithdrawalRequest{Principal: owner.principal, Capability: capability,
+	result, err := owner.endpoint.Withdraw(ctx, WithdrawalRequest{Principal: owner.principal, Capability: capability,
 		At: owner.clock().UTC()})
+	if err == nil && result.Class != "unpublished" {
+		err = errors.New("Publisher withdrawal returned a non-withdrawn result")
+	}
+	return err
 }
 
-// OpenLocalServiceAdministration exposes the same narrow owner on one private
-// Unix socket. The wire accepts only the closed publish/withdraw operation set.
-func OpenLocalServiceAdministration(path string, owner *ServiceAdministration) (*LocalServiceAdministration, error) {
-	if owner == nil {
-		return nil, errors.New("local Service Administration owner is unavailable")
-	}
-	return openLocalServiceAdministration(localServiceAdministrationConfig{Path: path,
-		Publish: func(ctx context.Context) error {
-			result, err := owner.Publish(ctx)
-			if err == nil && result.Class != "published" {
-				err = errors.New("Publisher start returned a non-published result")
-			}
-			return err
-		}, Withdraw: func(ctx context.Context) error {
-			result, err := owner.Withdraw(ctx)
-			if err == nil && result.Class != "unpublished" {
-				err = errors.New("Publisher withdrawal returned a non-withdrawn result")
-			}
-			return err
-		}})
-}
+var _ administration.Interface = (*ServiceAdministration)(nil)

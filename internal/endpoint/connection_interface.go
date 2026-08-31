@@ -8,10 +8,12 @@ import (
 	"errors"
 	"time"
 
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -75,7 +77,7 @@ func (endpoint *endpoint) OpenConnectionInterface(input ConnectionInterfaceConfi
 
 // Open resolves one exact accepted Service Link and returns only its
 // authenticated opaque Application stream and bounded terminal outcome.
-func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) (*ApplicationConnection, error) {
+func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) (applicationconnection.Stream, error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}
@@ -88,10 +90,25 @@ func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) 
 	if err != nil {
 		return nil, err
 	}
-	return owner.openBinding(ctx, binding)
+	stream, err := owner.openBinding(ctx, binding)
+	if err == nil {
+		return stream, nil
+	}
+	var acquisition transitAcquisitionOutcomeError
+	if !errors.As(err, &acquisition) {
+		return nil, err
+	}
+	switch acquisition.outcome {
+	case credential.Exhausted:
+		return nil, applicationconnection.Refuse(applicationconnection.Outcome{Class: "transit grant exhausted", Reason: "current issuer budget is exhausted"})
+	case credential.Withdrawn:
+		return nil, applicationconnection.Refuse(applicationconnection.Outcome{Class: "transit grant withdrawn", Reason: "current issuer duty is withdrawn"})
+	default:
+		return nil, applicationconnection.Refuse(applicationconnection.Outcome{Class: "transit grant unavailable", Reason: "current issuer could not provide a grant"})
+	}
 }
 
-func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha.Binding) (*ApplicationConnection, error) {
+func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha.Binding) (applicationconnection.Stream, error) {
 	if owner == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}

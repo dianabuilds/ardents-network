@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 var applicationPathSequence atomic.Uint64
@@ -30,7 +32,7 @@ func TestResultChannelAcceptsDelayedDeclaredContract(t *testing.T) {
 		peer <- connection
 	}()
 	started := time.Now()
-	connection, err := acceptResult(listener, time.Now().Add(time.Second))
+	connection, err := applicationconnection.AcceptResult(listener, time.Now().Add(time.Second))
 	if err != nil || connection == nil {
 		t.Fatalf("declared result admission connection=%v error=%v", connection, err)
 	}
@@ -61,7 +63,7 @@ func TestApplicationHandshakeRejectsUnsupportedContract(t *testing.T) {
 	defer application.Close()
 	defer peer.Close()
 	result := make(chan error, 1)
-	go func() { result <- acceptApplication(peer, time.Now().Add(time.Second)) }()
+	go func() { result <- applicationconnection.AcceptApplication(peer, time.Now().Add(time.Second)) }()
 	if _, err := application.Write([]byte("ASAP\x01\x02")); err != nil {
 		t.Fatal(err)
 	}
@@ -75,8 +77,8 @@ func TestApplicationHandshakeRequiresOneCompleteFrame(t *testing.T) {
 	defer application.Close()
 	defer peer.Close()
 	result := make(chan error, 1)
-	go func() { result <- acceptApplication(peer, time.Now().Add(50*time.Millisecond)) }()
-	if _, err := application.Write(applicationHello[:3]); err != nil {
+	go func() { result <- applicationconnection.AcceptApplication(peer, time.Now().Add(50*time.Millisecond)) }()
+	if _, err := application.Write([]byte("ASA")); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-result; err == nil {

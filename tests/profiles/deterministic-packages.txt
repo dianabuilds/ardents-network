@@ -7,6 +7,8 @@ github.com/dianabuilds/ardents-network/cmd/ardents-release-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-state-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/internal/application/broker
+github.com/dianabuilds/ardents-network/internal/application/administration
+github.com/dianabuilds/ardents-network/internal/application/connection
 github.com/dianabuilds/ardents-network/internal/browseradapter
 github.com/dianabuilds/ardents-network/internal/browserentry
 github.com/dianabuilds/ardents-network/internal/browserentry/installer

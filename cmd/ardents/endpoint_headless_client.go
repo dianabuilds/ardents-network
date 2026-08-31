@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"os"
-	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/application/administration"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, outputPath string, output io.Writer) error {
@@ -29,7 +28,7 @@ func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, output
 			_ = os.Remove(outputPath)
 		}
 	}()
-	application, err := endpoint.DialLocalApplication(ctx, socket, serviceLink)
+	application, err := applicationconnection.Dial(ctx, socket, serviceLink)
 	if err != nil {
 		return err
 	}
@@ -65,30 +64,9 @@ func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, output
 }
 
 func runHeadlessAdministration(ctx context.Context, operation, socket string, output io.Writer) error {
-	connection, err := (&net.Dialer{}).DialContext(ctx, "unix", socket)
+	result, err := administration.Request(ctx, socket, administration.Operation(operation))
 	if err != nil {
 		return err
 	}
-	defer connection.Close()
-	if deadline, available := ctx.Deadline(); available {
-		_ = connection.SetDeadline(deadline)
-	} else {
-		_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
-	}
-	if _, err := io.WriteString(connection, operation+"\n"); err != nil {
-		return err
-	}
-	unix, ok := connection.(*net.UnixConn)
-	if !ok {
-		return errors.New("headless Service Administration attachment is not a Unix connection")
-	}
-	if err := unix.CloseWrite(); err != nil {
-		return err
-	}
-	want := map[string]string{"publish": "published\n", "withdraw": "withdrawn\n"}[operation]
-	response, err := io.ReadAll(io.LimitReader(connection, 64))
-	if want == "" || err != nil || string(response) != want {
-		return errors.Join(err, errors.New("headless Service Administration request failed"))
-	}
-	return json.NewEncoder(output).Encode(map[string]string{"kind": "headless-service-" + string(response[:len(response)-1])})
+	return json.NewEncoder(output).Encode(map[string]string{"kind": "headless-service-" + string(result)})
 }

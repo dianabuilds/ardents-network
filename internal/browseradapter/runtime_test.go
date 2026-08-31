@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 type fixtureApplication struct {
 	net.Conn
-	done chan endpoint.ApplicationOutcome
+	done chan applicationconnection.Outcome
 }
 
-func (application *fixtureApplication) Done() <-chan endpoint.ApplicationOutcome {
+func (application *fixtureApplication) Done() <-chan applicationconnection.Outcome {
 	return application.done
 }
 
@@ -36,14 +36,14 @@ func TestRuntimePresentsOnlyNameThroughLocalApplicationInterface(t *testing.T) {
 			}
 			requested <- serviceLink
 			adapter, service := net.Pipe()
-			done := make(chan endpoint.ApplicationOutcome, 1)
+			done := make(chan applicationconnection.Outcome, 1)
 			go func() {
 				request, readErr := http.ReadRequest(bufio.NewReader(service))
 				if readErr == nil && request.Host == "reference.ard" {
 					_, _ = io.WriteString(service, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
 				}
 				_ = service.Close()
-				done <- endpoint.ApplicationOutcome{Class: "clean service connection close", Reason: "fixture complete"}
+				done <- applicationconnection.Outcome{Class: "clean service connection close", Reason: "fixture complete"}
 				close(done)
 			}()
 			return &fixtureApplication{Conn: adapter, done: done}, nil

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
@@ -51,7 +52,7 @@ func withdrawCurrent(ctx context.Context, endpoint withdrawalEndpoint, resources
 	resources("accepted-ipc", 1)
 	defer resources("accepted-ipc", -1)
 	defer administrator.Close()
-	request, err := ReadControl(operation, administrator, 9)
+	request, err := applicationconnection.ReadControl(operation, administrator, 9)
 	if err != nil || string(request) != "withdraw\n" {
 		return WithdrawalResult{}, errors.Join(err, errors.New("withdrawal request is malformed, partial, or oversized"))
 	}
@@ -94,7 +95,7 @@ func publishCurrent(endpoint connectionEndpoint, resources func(string, int) uin
 	defer cancel()
 	resources("timer", 1)
 	defer resources("timer", -1)
-	request, err := ReadControl(operation, administrator, 8)
+	request, err := applicationconnection.ReadControl(operation, administrator, 8)
 	if err != nil || string(request) != "publish\n" {
 		err = errors.Join(err, errors.New("administration request is malformed, partial, or oversized"))
 		return PublicationResult{}, err
@@ -151,7 +152,7 @@ func listenLocal(path string, deadline time.Duration) (*net.UnixListener, error)
 }
 
 func deliverResult(output io.Writer, result RuntimeResult) error {
-	return Write(output, Result{Class: result.Class, Reason: result.Reason,
+	return applicationconnection.WriteResult(output, applicationconnection.Result{Class: result.Class, Reason: result.Reason,
 		AuthenticatedTarget: result.AuthenticatedTarget, AcceptedBytes: result.AcceptedBytes,
 		ReceivedBytes: result.ReceivedBytes})
 }
