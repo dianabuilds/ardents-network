@@ -195,6 +195,74 @@ the complete Publisher Responder path. Rejection requires selecting a separate
 Responder issuer/profile or removing fresh Publisher acceptance from this
 candidate.
 
+## Publisher attachment projection refinement
+
+### Decision-relevant question
+
+Which authenticated State Interface may supply the headless Publisher's
+Introduction, Rendezvous, and Responder facts without making Endpoint or an
+operator select from a candidate list?
+
+### Hypotheses and falsification
+
+- **H4:** State can derive one indivisible projection from its already
+  authenticated role-domain assignments without changing Epoch wire bytes.
+  Falsify this if any role lacks a single valid candidate for the requested
+  complete window, or if the three roles overlap by Node or family.
+- **H5:** a new Epoch-wire declaration is required to name the three Publisher
+  roles explicitly. Falsify this if the accepted assignment proof already
+  authenticates the exact role of every projected candidate and no additional
+  selection policy is needed.
+- **H0:** no complete unambiguous triple is available; Publisher start must be
+  unavailable rather than assemble a partial or locally ranked route.
+
+### Evidence
+
+- **Sourced fact:** authenticated State already verifies each accepted
+  candidate and deterministically binds its family to one role domain for the
+  Epoch.
+- **Measurement:** before this refinement `ResolutionView` could return a
+  candidate only after a caller supplied its Node ID; it had no Publisher
+  operation capable of proving completeness or ambiguity.
+- **Measurement:** Publisher start requires exactly one Introduction,
+  Rendezvous, and Responder, while role-scoped Grant acquisition needs the
+  exact Introduction and Responder Node/family facts for the same State
+  window.
+- **Inference:** local Endpoint scanning would duplicate State policy and
+  permit different consumers to interpret absence or duplicates differently.
+  A State-owned all-or-nothing projection is the smallest coherent seam.
+- **Measurement:** the retained headless process tracer starts a real
+  `RunParticipant`, enters only through the local Administration operation,
+  and observes exactly two non-concurrent requests consume one issuer budget
+  before the deliberately absent Introduction listener makes publication
+  unavailable. The caller receives neither Grant nor route facts.
+- **Measurement:** that tracer exposed and closed one adjacent lifecycle gap:
+  after a fully cleaned successful attachment, Entry now retains the terminal
+  attempt until a distinct next operation starts, then atomically replaces its
+  bounded contact journal. Unclean or replayed attempts remain unavailable.
+
+### Options
+
+1. Derive one all-or-nothing `PublisherAttachment` from authenticated current
+   role assignments. Reject absence, repetition, conflict, invalidity across
+   the requested window, or Node/family overlap.
+2. Add three explicit Node fields to a new Epoch wire version. This would add
+   persisted/wire compatibility obligations without authenticating facts not
+   already covered by the accepted assignment proof.
+3. Let Endpoint scan candidates and choose one per role. This would move
+   selection policy out of State and make ambiguity handling caller-specific.
+4. Keep Publisher start unavailable.
+
+### Recommendation and decision
+
+Option 1 is the smallest deep Interface and requires no wire migration. The
+strongest argument against it is that deterministic role assignment was not
+originally named as a Publisher binding; fail-closed completeness, window, and
+overlap checks address that limitation without treating candidate ordering as
+policy. On 2026-08-31 the Product Owner explicitly selected option 1: exactly
+one current Introduction, Rendezvous, and Responder, with absence, conflict,
+or ambiguity reported as unavailable.
+
 ## Disposition
 
 The Product Owner accepted option 1 and the exact R-133 statement on

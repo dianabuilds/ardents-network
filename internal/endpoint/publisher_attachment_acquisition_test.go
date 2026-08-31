@@ -40,11 +40,12 @@ func TestPublisherProfileAcquiresStateProjectedRolesSeparately(t *testing.T) {
 			finish: func(bool) error { return nil }}, nil
 	}
 	owner := &endpoint{network: network}
-	profile, _, _, err := owner.acquirePublisherProfile(t.Context(), view, publisherAcquisitionEntry{contact: contact},
+	acquired, err := owner.acquirePublisherProfile(t.Context(), view, publisherAcquisitionEntry{contact: contact},
 		publication.Credential{NetworkID: network, NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Hour).Unix()}, now, acquire)
 	if err != nil {
 		t.Fatal(err)
 	}
+	profile := acquired.profile
 	if len(calls) != 2 || calls[0].role != route.IntroductionRole || calls[1].role != route.ResponderRole ||
 		calls[0].transit.NodeID != projected.Introduction.NodeID || calls[1].transit.NodeID != projected.Responder.NodeID ||
 		calls[0].initiator != initiator || calls[1].initiator != initiator || calls[0].slot.SubmissionMode != reachability.SubmissionMembershipGrant ||
@@ -76,7 +77,7 @@ func TestPublisherConfigurationReadsCurrentStateOnlyOnStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	var reads int
-	if err := owner.configurePublisher(func() (ApplicationStateView, error) {
+	if err := owner.configurePublisher(func() (publisherAttachmentStateView, error) {
 		reads++
 		return nil, errors.New("test State unavailable")
 	}, publisherAcquisitionEntry{}, binding); err != nil {
@@ -149,6 +150,10 @@ func (view publisherAcquisitionView) Epoch(_, deadline time.Time) (state.Resolut
 func (view publisherAcquisitionView) PublisherAttachment(_, deadline time.Time) (state.PublisherAttachment, bool) {
 	view.attachment.NotAfter = deadline
 	return view.attachment, true
+}
+
+func (publisherAcquisitionView) CredentialIssuer(time.Time, time.Time) (state.TransitIssuer, bool) {
+	return state.TransitIssuer{}, false
 }
 
 func (view publisherAcquisitionView) Candidate(nodeID [32]byte, _, _ time.Time) (state.ResolutionCandidate, bool) {

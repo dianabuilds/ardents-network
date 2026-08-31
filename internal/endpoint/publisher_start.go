@@ -22,13 +22,12 @@ func (endpoint *endpoint) startPublisher(ctx context.Context, input PublisherSta
 			errors.New("publisher start is unavailable"))
 	}
 	if endpoint.publisherPrepare != nil {
-		profile, introductionFinish, responderFinish, prepareErr := endpoint.publisherPrepare(ctx, input.At)
+		acquired, prepareErr := endpoint.publisherPrepare(ctx, input.At)
 		if prepareErr != nil {
 			return publisherStartFailed(receipt, "service unavailable", "current Publisher attachments are unavailable", prepareErr)
 		}
-		endpoint.publisherProfile = clonePublisherIntroductionProfile(profile)
-		endpoint.publisherIntroductionFinish = introductionFinish
-		endpoint.publisherResponderFinish = responderFinish
+		endpoint.publisherProfile = clonePublisherIntroductionProfile(acquired.profile)
+		endpoint.publisherCredentials = acquired.credentials
 		endpoint.publisherPrepare = nil
 	}
 	binding := endpoint.publisherBinding
@@ -44,8 +43,8 @@ func (endpoint *endpoint) startPublisher(ctx context.Context, input PublisherSta
 		Credential: credential, InstanceSigner: binding, At: input.At,
 	}, func(readinessContext context.Context) ([]byte, error) {
 		readinessStarted = true
-		finish := endpoint.publisherIntroductionFinish
-		endpoint.publisherIntroductionFinish = nil
+		finish := endpoint.publisherCredentials.introduction
+		endpoint.publisherCredentials.introduction = nil
 		connection, transcript, openErr := endpoint.openPublisherIntroductionSlot(readinessContext,
 			endpoint.publisherProfile, binding, credential, finish)
 		if openErr != nil {
@@ -63,8 +62,8 @@ func (endpoint *endpoint) startPublisher(ctx context.Context, input PublisherSta
 			_ = slotConnection.Close()
 		}
 		if readinessStarted {
-			responderFinish := endpoint.publisherResponderFinish
-			endpoint.publisherResponderFinish = nil
+			responderFinish := endpoint.publisherCredentials.responder
+			endpoint.publisherCredentials.responder = nil
 			err = errors.Join(err, finishTransitCredential(responderFinish, false), binding.Withdraw())
 			endpoint.publisherBinding = nil
 		}
@@ -75,15 +74,15 @@ func (endpoint *endpoint) startPublisher(ctx context.Context, input PublisherSta
 		if slotConnection != nil {
 			_ = slotConnection.Close()
 		}
-		responderFinish := endpoint.publisherResponderFinish
-		endpoint.publisherResponderFinish = nil
+		responderFinish := endpoint.publisherCredentials.responder
+		endpoint.publisherCredentials.responder = nil
 		err = errors.Join(err, finishTransitCredential(responderFinish, false), endpoint.publications.Unpublish(ctx), binding.Withdraw())
 		endpoint.publisherBinding = nil
 		return publisherStartFailed(receipt, "service unavailable", "committed Publisher generation could not be retained", err)
 	}
 	session := &PublisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(endpoint.publisherProfile),
-		recipient: binding, lease: lease, slot: slotConnection, responderFinish: endpoint.publisherResponderFinish}
-	endpoint.publisherResponderFinish = nil
+		recipient: binding, lease: lease, slot: slotConnection, responderFinish: endpoint.publisherCredentials.responder}
+	endpoint.publisherCredentials.responder = nil
 	endpoint.publisherSession = session
 	endpoint.resources("control-file", 1)
 	result := PublicationResult{Class: "published", Record: current.Record,

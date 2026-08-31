@@ -145,7 +145,7 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 		if bindingErr != nil {
 			return fmt.Errorf("open current Service Instance binding: %w", bindingErr)
 		}
-		if err := owner.configurePublisher(func() (ApplicationStateView, error) { return network.CurrentResolution() }, entryOwner, binding); err != nil {
+		if err := owner.configurePublisher(func() (publisherAttachmentStateView, error) { return network.CurrentResolution() }, entryOwner, binding); err != nil {
 			return errors.Join(errors.New("configure State-projected Publisher attachments"), err, binding.Withdraw())
 		}
 	}

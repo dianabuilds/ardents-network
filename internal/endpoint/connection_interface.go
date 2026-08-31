@@ -24,10 +24,14 @@ const maximumConnectionInterfaceBytes = uint32(768 << 20)
 // open one alpha Service Link. It is implemented by
 // state.ResolutionView. It contains no State source, persistence, or candidate
 // ordering operation.
-type ApplicationStateView interface {
+type resolutionCandidateView interface {
 	Epoch(time.Time, time.Time) (state.ResolutionEpoch, bool)
-	Gateway(time.Time, time.Time) (state.DestinationResolutionGateway, bool)
 	Candidate([32]byte, time.Time, time.Time) (state.ResolutionCandidate, bool)
+}
+
+type ApplicationStateView interface {
+	resolutionCandidateView
+	Gateway(time.Time, time.Time) (state.DestinationResolutionGateway, bool)
 }
 
 // ApplicationEntry is the Endpoint's already-imported User Entry owner. It
@@ -191,7 +195,8 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	if slot.SubmissionMode == reachability.SubmissionMembershipGrant && (!at.Before(credentialDeadline) || credentialDeadline.After(lookupDeadline)) {
 		return nil, errors.New("reachability descriptor exceeds the membership credential window")
 	}
-	submission, err := endpoint.acquireTransitCredential(ctx, view, epoch, input.Entry, initiator, introduction,
+	issuerView, _ := view.(transitCredentialIssuerView)
+	submission, err := endpoint.acquireTransitCredential(ctx, issuerView, epoch, input.Entry, initiator, introduction,
 		route.IntroductionRole, slot, at, credentialDeadline)
 	if err != nil {
 		return nil, err
@@ -246,7 +251,7 @@ func applicationServiceAttachment(authorization []byte, epoch state.ResolutionEp
 	return grant.AttachmentID, nil
 }
 
-func applicationInitiator(view ApplicationStateView, contact entry.Candidate, at, deadline time.Time) (TransitPeer, error) {
+func applicationInitiator(view resolutionCandidateView, contact entry.Candidate, at, deadline time.Time) (TransitPeer, error) {
 	candidate, available := view.Candidate(contact.NodeID, at, deadline)
 	if !available || candidate.Domain != "initiator" || candidate.PublicKey != contact.PublicKey || candidate.Endpoint != contact.Endpoint ||
 		sha256.Sum256([]byte(candidate.Family)) != contact.FamilyID {
@@ -255,7 +260,7 @@ func applicationInitiator(view ApplicationStateView, contact entry.Candidate, at
 	return TransitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: contact.FamilyID, Endpoint: candidate.Endpoint}, nil
 }
 
-func applicationStatePeer(view ApplicationStateView, nodeID [32]byte, domain string, at, deadline time.Time) (TransitPeer, error) {
+func applicationStatePeer(view resolutionCandidateView, nodeID [32]byte, domain string, at, deadline time.Time) (TransitPeer, error) {
 	candidate, available := view.Candidate(nodeID, at, deadline)
 	if !available || candidate.Domain != domain || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} || candidate.Endpoint == "" {
 		return TransitPeer{}, errors.New("current State C-2 peer is unavailable")

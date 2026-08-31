@@ -171,22 +171,21 @@ type RuntimeResult struct {
 
 // endpoint owns one broker generation's sessions and current publication.
 type endpoint struct {
-	network, broker             [32]byte
-	authority                   [32]byte
-	introduction                [32]byte
-	admission                   *broker.Broker
-	publications                *publication.Publication
-	resources                   func(string, int) uint32
-	transitClients              map[[32]byte]tls.Certificate
-	transitAcquire              *transitAcquisitionSet
-	transitMu                   sync.Mutex
-	publisherMu                 sync.Mutex
-	publisherBinding            *instance.Binding
-	publisherProfile            PublisherIntroductionProfile
-	publisherSession            *PublisherIntroduction
-	publisherPrepare            func(context.Context, time.Time) (PublisherIntroductionProfile, func(bool) error, func(bool) error, error)
-	publisherIntroductionFinish func(bool) error
-	publisherResponderFinish    func(bool) error
+	network, broker      [32]byte
+	authority            [32]byte
+	introduction         [32]byte
+	admission            *broker.Broker
+	publications         *publication.Publication
+	resources            func(string, int) uint32
+	transitClients       map[[32]byte]tls.Certificate
+	transitAcquire       *transitAcquisitionSet
+	transitMu            sync.Mutex
+	publisherMu          sync.Mutex
+	publisherBinding     *instance.Binding
+	publisherProfile     PublisherIntroductionProfile
+	publisherSession     *PublisherIntroduction
+	publisherPrepare     func(context.Context, time.Time) (acquiredPublisherProfile, error)
+	publisherCredentials publisherCredentialCompletions
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
@@ -282,19 +281,18 @@ func (endpoint *endpoint) Close() error {
 	endpoint.admission.Close()
 	endpoint.publisherMu.Lock()
 	session, binding := endpoint.publisherSession, endpoint.publisherBinding
-	introductionFinish, responderFinish := endpoint.publisherIntroductionFinish, endpoint.publisherResponderFinish
+	credentials := endpoint.publisherCredentials
 	endpoint.publisherSession = nil
 	endpoint.publisherBinding = nil
 	endpoint.publisherPrepare = nil
-	endpoint.publisherIntroductionFinish = nil
-	endpoint.publisherResponderFinish = nil
+	endpoint.publisherCredentials = publisherCredentialCompletions{}
 	endpoint.publisherMu.Unlock()
 	var sessionErr error
 	if session != nil {
 		sessionErr = session.Close()
 	}
-	finishErr := errors.Join(finishTransitCredential(introductionFinish, false),
-		finishTransitCredential(responderFinish, false))
+	finishErr := errors.Join(finishTransitCredential(credentials.introduction, false),
+		finishTransitCredential(credentials.responder, false))
 	acquisitionErr := endpoint.transitAcquire.Close()
 	if endpoint.publications == nil {
 		return errors.Join(sessionErr, finishErr, acquisitionErr)

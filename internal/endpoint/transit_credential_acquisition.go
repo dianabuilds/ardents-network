@@ -28,7 +28,7 @@ type transitCredentialSubmission struct {
 	finish        func(bool) error
 }
 
-func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view ApplicationStateView, epoch state.ResolutionEpoch,
+func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view transitCredentialIssuerView, epoch state.ResolutionEpoch,
 	entry ApplicationEntry, initiator, transit TransitPeer, role byte, slot reachability.Introduction,
 	at, deadline time.Time,
 ) (transitCredentialSubmission, error) {
@@ -51,11 +51,10 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view App
 	if slot.SubmissionMode != reachability.SubmissionMembershipGrant {
 		return transitCredentialSubmission{}, errors.New("reachability descriptor submission mode is unsupported")
 	}
-	issuerView, available := view.(transitCredentialIssuerView)
-	if !available {
+	if view == nil {
 		return transitCredentialSubmission{}, errors.New("current State does not project a transit issuer")
 	}
-	issuer, available := issuerView.CredentialIssuer(at, deadline)
+	issuer, available := view.CredentialIssuer(at, deadline)
 	if !available || issuer.NodeID == initiator.NodeID || issuer.NodeID == transit.NodeID || issuer.Family == initiator.Family || issuer.Family == transit.Family {
 		return transitCredentialSubmission{}, errors.New("current State transit issuer is unavailable or overlaps the route")
 	}

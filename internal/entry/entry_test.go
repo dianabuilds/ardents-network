@@ -148,6 +148,47 @@ func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
 	}
 }
 
+func TestAcquireStartsDistinctOperationAfterOpenedAttachmentWasCleaned(t *testing.T) {
+	fixture := newLiveEntryFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	if _, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil)); err != nil {
+		t.Fatal(err)
+	}
+	open := func(context.Context, Candidate, Presentation, time.Time) (net.Conn, func() error, bool, error) {
+		client, server := net.Pipe()
+		return client, func() error { return errors.Join(client.Close(), server.Close()) }, true, nil
+	}
+	first := Attempt{ID: [32]byte{81}, Deadline: fixture.now.Add(5 * time.Second)}
+	connection, cleanup, err := owner.Acquire(context.Background(), first, open)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = connection.Close()
+	if err := cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := owner.Acquire(context.Background(), first, open); err == nil {
+		t.Fatal("Entry replayed the immediately retained terminal Attempt identity")
+	}
+	second := Attempt{ID: [32]byte{82}, Deadline: fixture.now.Add(5 * time.Second)}
+	connection, cleanup, err = owner.Acquire(context.Background(), second, open)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = connection.Close()
+	if err := cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if owner.state.Attempt == nil || owner.state.Attempt.ID != second.ID || owner.state.Attempt.Terminal != "opened" ||
+		len(owner.state.Contacts) != 1 || owner.state.Contacts[0].AttemptID != second.ID || !owner.state.Contacts[0].Cleanup {
+		t.Fatalf("successive Entry attempt = %+v contacts = %+v", owner.state.Attempt, owner.state.Contacts)
+	}
+}
+
 func TestAcquireFailsClosedWhenOpenerCannotProveCleanup(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
 	owner, err := Open(fixture.config(t.TempDir()))

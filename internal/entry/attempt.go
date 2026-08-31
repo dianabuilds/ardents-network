@@ -87,7 +87,8 @@ func (owner *owner) beginAttempt(input Attempt) (memberRecord, Candidate, byte, 
 	}
 	now := owner.config.Clock().UTC()
 	deadline := input.Deadline.UTC()
-	if !owner.config.TimeConfident() || !now.Before(deadline) || owner.state.Attempt != nil {
+	if !owner.config.TimeConfident() || !now.Before(deadline) ||
+		owner.state.Attempt != nil && (!reusableEntryAttempt(owner.state) || owner.state.Attempt.ID == input.ID) {
 		return memberRecord{}, Candidate{}, 0, time.Time{}, errors.New("entry attempt is unavailable")
 	}
 	if _, err := owner.retireInvalidActiveLocked(); err != nil {
@@ -104,6 +105,12 @@ func (owner *owner) beginAttempt(input Attempt) (memberRecord, Candidate, byte, 
 		return memberRecord{}, Candidate{}, 0, time.Time{}, errors.New("entry attempt is unavailable")
 	}
 	next := owner.state.clone()
+	// A fully cleaned opened attachment is a completed operation, not a retry
+	// authority. Retain it until the next distinct attempt is durably started,
+	// then replace the bounded terminal journal with the new live journal.
+	if next.Attempt != nil {
+		next.Attempt, next.Contacts = nil, nil
+	}
 	next.Attempt = &attemptRecord{ID: input.ID, Started: now.UnixNano(), Deadline: deadline.UnixNano()}
 	next.Contacts = append(next.Contacts, contactRecord{AttemptID: input.ID, InviteID: record.InviteID, Slot: record.Slot, Ordinal: ordinal, Started: now.UnixNano()})
 	if err := owner.commit(next, false); err != nil {
@@ -111,6 +118,25 @@ func (owner *owner) beginAttempt(input Attempt) (memberRecord, Candidate, byte, 
 		return memberRecord{}, Candidate{}, 0, time.Time{}, err
 	}
 	return record, candidate, ordinal, deadline, nil
+}
+
+func reusableEntryAttempt(state durableState) bool {
+	if state.Attempt == nil || state.Attempt.Terminal != "opened" || len(state.Contacts) == 0 {
+		return false
+	}
+	opened := false
+	for _, contact := range state.Contacts {
+		if contact.Outcome == "" || contact.Terminal == 0 || !contact.Cleanup {
+			return false
+		}
+		if contact.Outcome == "opened" {
+			if opened {
+				return false
+			}
+			opened = true
+		}
+	}
+	return opened
 }
 
 func (owner *owner) nextContact() (memberRecord, Candidate, byte, time.Time, error) {
