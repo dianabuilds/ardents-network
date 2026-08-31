@@ -13,13 +13,13 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close that finite session set; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, session accounting, and grant invalidation. |
-| internal/endpoint | Compose one role-local process and expose typed publication, withdrawal, inbound-connection, and outbound-connection operations. Run owns bounded plan loading, readiness, local listeners, signal cancellation, joining, and residue cleanup. | Local socket choreography, result-channel negotiation, Broker consumption, TLS carrier setup, publication acquisition, and Connection invocation. |
+| internal/endpoint | Compose one role-local participant and implement the shared Connection and Administration Interfaces. `RunParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
-The caller-facing Endpoint seam is role-specific: a publication request cannot
-include Route or Application facts, and an outbound connection cannot supply a
-publisher signer. This keeps publication ownership, local admission, Route
+The caller-facing Endpoint seam is role-specific: a Publisher start request
+cannot include Route, Credential, signer, or Application facts, and an outbound
+connection cannot supply a Publisher binding. This keeps publication ownership, local admission, Route
 attachment, and logical-stream recovery out of one mutable request bag.
 
 The maintained Connection Interface adds one narrower consumer operation over
@@ -27,9 +27,10 @@ that composition. A headless caller supplies an explicit Service Link and its
 local Connection principal; Endpoint retains accepted naming state, Entry,
 Target authentication, Route inputs, the one-use Transit Grant/key, and the
 Broker capability. Only an authenticated ordered byte stream and bounded
-terminal class cross the Interface. The existing `Publish` and `Withdraw`
-operations remain the separately authorized Service Administration surface;
-the Connection Interface cannot invoke them.
+terminal class cross the Interface. The `Publish` and `Withdraw`
+Administration operations remain separately authorized; Publish dispatches the
+Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
+request. The Connection Interface cannot invoke either operation.
 
 ## Local admission
 
@@ -49,14 +50,15 @@ research and an ADR.
 ## Publication and connection lifecycle
 
     Administration Grant
-      -> Endpoint.Publish
-      -> Publication.Publish one higher Instance generation
+      -> Endpoint.StartPublisher with an opened host Instance binding
+      -> register the authenticated State-selected Introduction slot
+      -> Publication.PublishAfterReadiness one higher Instance generation
       -> immutable public record + volatile signer
       -> Endpoint.Connect or Endpoint.Accept consumes a Connection Grant
       -> exact-Instance TLS challenge/proof + Service Connection v1
       -> zero or more replacement Attachments under immutable recovery facts
       -> one terminal outcome
-      -> unpublish/supersede stops acquisitions, drains references, erases private material
+      -> withdraw/supersede stops acquisitions, drains references, erases private material
 
 Service Connection accepts only the closed ardents-interactive-route-v1
 profile. It has no H3 reader, profile negotiation, direct fallback,

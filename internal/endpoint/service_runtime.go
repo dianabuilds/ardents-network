@@ -2,7 +2,6 @@ package endpoint
 
 import (
 	"context"
-	"crypto"
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
@@ -78,16 +77,6 @@ type connectionInput struct {
 	BytesEachDirection               uint32
 	SendBytes, ReceiveBytes          uint32
 	At                               time.Time
-}
-
-// PublicationRequest contains only the Administrator-authorized facts needed
-// to publish one current Instance generation.
-type PublicationRequest struct {
-	Principal, Capability       [32]byte
-	Credential                  Credential
-	InstanceSigner              crypto.Signer
-	IntroductionAcknowledgement []byte
-	At                          time.Time
 }
 
 // PublicationResult is the bounded public record and its exact admission
@@ -306,18 +295,6 @@ func (endpoint *endpoint) Close() error {
 	}
 	endpoint.publisherMu.Unlock()
 	return errors.Join(acquisitionErr, publicationErr, bindingErr)
-}
-
-// Publish consumes one Administration capability before publishing an exact
-// current Instance generation. It never accepts Route or Application facts.
-func (endpoint *endpoint) Publish(ctx context.Context, input PublicationRequest) (PublicationResult, error) {
-	if endpoint == nil || input.At.IsZero() {
-		return publicationDenied("local publication is incomplete")
-	}
-	if err := ctx.Err(); err != nil {
-		return publicationFailed("local timeout or cancellation", "local publication was cancelled", err)
-	}
-	return endpoint.publish(ctx, input)
 }
 
 // StartPublisher consumes one Administration capability and atomically binds

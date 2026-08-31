@@ -332,6 +332,13 @@ func TestEndpointOwnsNoSecondLocalApplicationTransport(t *testing.T) {
 			t.Errorf("Endpoint retains legacy local transport owner %s", file)
 		}
 	}
+	runtime := string(readProjectFile(t, root, "internal/endpoint/service_runtime.go"))
+	if strings.Contains(runtime, "PublicationRequest") {
+		t.Fatal("Endpoint retains the raw legacy publication API")
+	}
+	if _, err := os.Stat(filepath.Join(root, "internal", "service", "publication", "legacy_introduction_receipt.go")); err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Error("Service Publication retains the historical ARIA receipt grammar in production")
+	}
 }
 
 func TestEndpointContainsNoBrowserImplementation(t *testing.T) {

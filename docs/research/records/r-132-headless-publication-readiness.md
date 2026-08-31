@@ -172,9 +172,9 @@ a crash after floor advancement requires a successor.
 
 This changes maintained local readiness ownership but changes no Credential,
 Publication record size, Route, Target, or C-2 wire grammar. The old
-`IntroductionSocket` client path is retired; the Service Publication owner
-retains only validation of historical receipt evidence used by lower-level C-2
-tests.
+`IntroductionSocket` client path and the compiled raw `Endpoint.Publish` API are
+retired. Historical ARIA receipt material remains only in `referencec2`-tagged
+source evidence.
 
 ### 2. Versioned signed slot-ready wire
 
