@@ -27,6 +27,7 @@ type Introduction struct {
 	active    map[net.Conn]struct{}
 	usage     IntroductionUsage
 	stopOnce  sync.Once
+	cleanup   terminalCleanup
 	work      sync.WaitGroup
 	terminal  chan error
 }
@@ -84,7 +85,7 @@ func (running *Introduction) Protect(value bool) {
 	}
 	running.mu.Unlock()
 	for _, connection := range connections {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 }
 
@@ -92,7 +93,12 @@ func (running *Introduction) Stop() {
 	if running == nil {
 		return
 	}
-	running.stopOnce.Do(func() { running.mu.Lock(); running.draining = true; running.mu.Unlock(); _ = running.listener.Close() })
+	running.stopOnce.Do(func() {
+		running.mu.Lock()
+		running.draining = true
+		running.mu.Unlock()
+		running.cleanup.record(running.listener.Close())
+	})
 }
 
 func (running *Introduction) Usage() IntroductionUsage {
@@ -123,7 +129,7 @@ func (running *Introduction) accept() {
 			return
 		}
 		if !running.reserveHandshake(raw) {
-			_ = raw.Close()
+			running.cleanup.record(raw.Close())
 			continue
 		}
 		running.work.Add(1)
@@ -159,7 +165,7 @@ func (running *Introduction) handle(raw net.Conn) {
 			running.mu.Lock()
 			delete(running.pre, raw)
 			running.mu.Unlock()
-			_ = raw.Close()
+			running.cleanup.record(raw.Close())
 		}
 	}()
 	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)
@@ -249,7 +255,7 @@ func (running *Introduction) forward(slot *introductionLiveSlot, reachability [3
 	defer running.work.Done()
 	_ = slot.connection.SetWriteDeadline(slot.registration.NotAfter)
 	err := writeRouteBytes(slot.connection, raw)
-	_ = slot.connection.Close()
+	running.cleanup.record(slot.connection.Close())
 	running.mu.Lock()
 	<-running.deliveries
 	if err == nil {
@@ -265,7 +271,7 @@ func (running *Introduction) watchSlot(reachability [32]byte, raw, connection ne
 	defer running.work.Done()
 	buffer := make([]byte, 1)
 	_, _ = connection.Read(buffer)
-	_ = raw.Close()
+	running.cleanup.record(raw.Close())
 	running.releaseSlot(reachability)
 }
 
@@ -311,7 +317,7 @@ func (running *Introduction) Drain(ctx context.Context) error {
 	}
 	running.mu.Unlock()
 	for _, connection := range connections {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 	done := make(chan struct{})
 	go func() { running.work.Wait(); close(done) }()
@@ -319,11 +325,11 @@ func (running *Introduction) Drain(ctx context.Context) error {
 	defer timer.Stop()
 	select {
 	case <-done:
-		return nil
+		return running.cleanup.result()
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Join(running.cleanup.result(), ctx.Err())
 	case <-timer.C:
-		return errors.New("Introduction drain exceeded its Work Safety Lease")
+		return errors.Join(running.cleanup.result(), errors.New("Introduction drain exceeded its Work Safety Lease"))
 	}
 }
 

@@ -94,13 +94,15 @@ func validateNativeDutyProfile(config runtimeConfig, snapshot dutyFacts) error {
 		if snapshot.AuthorityCount == 0 {
 			return errors.New("Introduction State authority verification set is incomplete")
 		}
-		_, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
+		_, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
+			func() (dutyFacts, error) { return snapshot, nil }, config.now))
 		return err
 	case "responder":
 		if snapshot.AuthorityCount == 0 {
 			return errors.New("Responder State authority verification set is incomplete")
 		}
-		_, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
+		_, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
+			func() (dutyFacts, error) { return snapshot, nil }, config.now))
 		return err
 	case "transit-issuance":
 		return validateTransitIssuerProfile(config.TransitIssuer, snapshot, config.now())

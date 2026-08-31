@@ -1,6 +1,7 @@
 package entry
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 )
@@ -48,7 +49,9 @@ func Open(input Config) (*owner, error) {
 	if err := cleanupGenerations(root, current, state.Previous); err != nil {
 		return nil, err
 	}
-	owner := &owner{root: root, lease: lease, config: config, state: state, current: current}
+	lifecycle, cancelLifecycle := context.WithCancel(context.Background())
+	owner := &owner{root: root, lease: lease, config: config, state: state, current: current,
+		lifecycle: lifecycle, cancelLifecycle: cancelLifecycle, attachments: make(map[uint64]*attachmentLease), closeDone: make(chan struct{})}
 	next := owner.state.clone()
 	changed := false
 	interrupted := false
@@ -106,12 +109,45 @@ func Open(input Config) (*owner, error) {
 // Close releases the exclusive Entry root lease. It is idempotent.
 func (owner *owner) Close() error {
 	owner.mu.Lock()
-	defer owner.mu.Unlock()
 	if owner.closed {
-		return nil
+		err := owner.closeErr
+		owner.mu.Unlock()
+		return err
 	}
+	if owner.closing {
+		done := owner.closeDone
+		owner.mu.Unlock()
+		<-done
+		owner.mu.Lock()
+		err := owner.closeErr
+		owner.mu.Unlock()
+		return err
+	}
+	owner.closing = true
+	owner.cancelLifecycle()
+	done := owner.closeDone
+	owner.mu.Unlock()
+
+	owner.acquisitions.Wait()
+	owner.mu.Lock()
+	attachments := make([]*attachmentLease, 0, len(owner.attachments))
+	for _, attachment := range owner.attachments {
+		attachments = append(attachments, attachment)
+	}
+	owner.mu.Unlock()
+	var closeErr error
+	for _, attachment := range attachments {
+		closeErr = errors.Join(closeErr, attachment.Close())
+	}
+	closeErr = errors.Join(closeErr, owner.settleClosingAttempt())
+	closeErr = errors.Join(closeErr, owner.lease.release())
+
+	owner.mu.Lock()
 	owner.closed = true
-	return owner.lease.release()
+	owner.closeErr = closeErr
+	close(done)
+	owner.mu.Unlock()
+	return closeErr
 }
 
 func copyConfig(input Config) (Config, error) {

@@ -18,12 +18,17 @@ func (owner *owner) Acquire(ctx context.Context, attempt Attempt, open Candidate
 	if open == nil {
 		return nil, nil, errors.New("entry opener is unavailable")
 	}
+	acquisitionCtx, finishAcquisition, err := owner.startAcquisition(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer finishAcquisition()
 	record, candidate, ordinal, deadline, err := owner.beginAttempt(attempt)
 	if err != nil {
 		return nil, nil, err
 	}
 	for {
-		contactCtx, cancel, contextErr := boundedContactContext(ctx, deadline)
+		contactCtx, cancel, contextErr := boundedContactContext(acquisitionCtx, deadline)
 		if contextErr != nil {
 			finishErr := owner.finishContact(ordinal, false, true)
 			terminalErr := owner.terminalize("entry-deadline-exceeded")
@@ -53,14 +58,13 @@ func (owner *owner) Acquire(ctx context.Context, attempt Attempt, open Candidate
 			finishErr := owner.finishContact(ordinal, false, cleanupErr == nil)
 			return nil, nil, errors.Join(errors.New("entry local denial"), err, cleanupErr, finishErr)
 		}
-		return guarded, func() error {
+		attachment, trackErr := owner.trackAttachment(ordinal, cleanup)
+		if trackErr != nil {
 			cleanupErr := normalizeCleanup(cleanup())
-			finishErr := owner.finishContact(ordinal, true, cleanupErr == nil)
-			if cleanupErr != nil {
-				return errors.Join(errors.New("entry local denial"), cleanupErr, finishErr)
-			}
-			return finishErr
-		}, nil
+			finishErr := owner.finishContact(ordinal, false, cleanupErr == nil)
+			return nil, nil, errors.Join(trackErr, cleanupErr, finishErr)
+		}
+		return guarded, attachment.Close, nil
 	}
 }
 
@@ -82,7 +86,7 @@ func (owner *owner) beginAttempt(input Attempt) (memberRecord, Candidate, byte, 
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.closed || owner.failed != nil {
+	if owner.closing || owner.closed || owner.failed != nil {
 		return memberRecord{}, Candidate{}, 0, time.Time{}, errors.New("entry local denial")
 	}
 	now := owner.config.Clock().UTC()
@@ -142,7 +146,7 @@ func reusableEntryAttempt(state durableState) bool {
 func (owner *owner) nextContact() (memberRecord, Candidate, byte, time.Time, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.closed || owner.failed != nil || owner.state.Attempt == nil || owner.state.Attempt.Terminal != "" || len(owner.state.Contacts) == 0 {
+	if owner.closing || owner.closed || owner.failed != nil || owner.state.Attempt == nil || owner.state.Attempt.Terminal != "" || len(owner.state.Contacts) == 0 {
 		return memberRecord{}, Candidate{}, 0, time.Time{}, errors.New("entry attempt is unavailable")
 	}
 	last := owner.state.Contacts[len(owner.state.Contacts)-1]
@@ -203,10 +207,10 @@ func (owner *owner) finishContact(ordinal byte, opened, cleanup bool) error {
 	next.Contacts[index].Outcome = contactOutcome(opened)
 	next.Contacts[index].Cleanup = cleanup
 	next.Contacts[index].Terminal = now.UnixNano()
-	if opened {
-		next.Attempt.Terminal, next.Attempt.Ended = "opened", now.UnixNano()
-	} else if !cleanup {
+	if !cleanup {
 		next.Attempt.Terminal, next.Attempt.Ended = "entry-local-denial", now.UnixNano()
+	} else if opened {
+		next.Attempt.Terminal, next.Attempt.Ended = "opened", now.UnixNano()
 	}
 	if next.Attempt.Terminal != "" {
 		if err := owner.retireInvalidVerifiedLocked(&next); err != nil {
@@ -291,8 +295,18 @@ func boundedContactContext(parent context.Context, deadline time.Time) (context.
 }
 
 func normalizeCleanup(err error) error {
-	if errors.Is(err, net.ErrClosed) {
+	if err == nil || err == net.ErrClosed {
 		return nil
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		var result error
+		for _, part := range joined.Unwrap() {
+			result = errors.Join(result, normalizeCleanup(part))
+		}
+		return result
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok && errors.Is(err, net.ErrClosed) {
+		return normalizeCleanup(wrapped.Unwrap())
 	}
 	return err
 }

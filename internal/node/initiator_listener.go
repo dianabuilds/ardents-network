@@ -26,6 +26,7 @@ type Initiator struct {
 	active    map[route.Carrier]struct{}
 	usage     InitiatorUsage
 	stopOnce  sync.Once
+	cleanup   terminalCleanup
 	work      sync.WaitGroup
 	terminal  chan error
 }
@@ -76,7 +77,7 @@ func (running *Initiator) Protect(value bool) {
 	}
 	running.mu.Unlock()
 	for _, connection := range connections {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 }
 
@@ -90,7 +91,7 @@ func (running *Initiator) Stop() {
 		running.mu.Lock()
 		running.draining = true
 		running.mu.Unlock()
-		_ = running.listener.Close()
+		running.cleanup.record(running.listener.Close())
 	})
 }
 
@@ -123,7 +124,7 @@ func (running *Initiator) accept() {
 			return
 		}
 		if !running.admitHandshake(raw) {
-			_ = raw.Close()
+			running.cleanup.record(raw.Close())
 			continue
 		}
 		running.work.Add(1)
@@ -159,7 +160,7 @@ func (running *Initiator) handle(raw net.Conn) {
 			running.mu.Lock()
 			delete(running.pre, raw)
 			running.mu.Unlock()
-			_ = raw.Close()
+			running.cleanup.record(raw.Close())
 		}
 	}()
 	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)
@@ -252,7 +253,7 @@ func (running *Initiator) openRelay(ctx context.Context, raw, entryConnection ne
 		return
 	}
 	if err := next.SetDeadline(setup.NotAfter); err != nil || route.WriteRelayReady(entryConnection, route.RelayReady{Setup: setup}) != nil {
-		_ = next.Close()
+		running.cleanup.record(next.Close())
 		running.releaseRelay(raw, nil)
 		return
 	}
@@ -354,8 +355,8 @@ func (running *Initiator) releaseRelay(raw net.Conn, next route.Carrier) {
 	}
 	<-running.relays
 	running.mu.Unlock()
-	_ = raw.Close()
+	running.cleanup.record(raw.Close())
 	if next != nil {
-		_ = next.Close()
+		running.cleanup.record(next.Close())
 	}
 }

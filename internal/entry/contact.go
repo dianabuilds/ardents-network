@@ -8,7 +8,7 @@ import "errors"
 func (owner *owner) Contact() (Candidate, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.closed {
+	if owner.closing || owner.closed {
 		return Candidate{}, errors.New("entry owner is closed")
 	}
 	if owner.failed != nil {

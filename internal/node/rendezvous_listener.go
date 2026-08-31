@@ -28,6 +28,7 @@ type Rendezvous struct {
 	active    map[route.Carrier]struct{}
 	usage     RendezvousUsage
 	stopOnce  sync.Once
+	cleanup   terminalCleanup
 	work      sync.WaitGroup
 	terminal  chan error
 }
@@ -92,7 +93,7 @@ func (running *Rendezvous) Protect(value bool) {
 	}
 	running.mu.Unlock()
 	for _, connection := range connections {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 }
 
@@ -106,7 +107,7 @@ func (running *Rendezvous) Stop() {
 		running.mu.Lock()
 		running.draining = true
 		running.mu.Unlock()
-		_ = running.listener.Close()
+		running.cleanup.record(running.listener.Close())
 	})
 }
 
@@ -136,7 +137,7 @@ func (running *Rendezvous) accept() {
 			return
 		}
 		if !running.admitHandshake(pending) {
-			_ = pending.Close()
+			running.cleanup.record(pending.Close())
 			continue
 		}
 		running.work.Add(1)
@@ -172,7 +173,7 @@ func (running *Rendezvous) handle(pending route.PendingCarrier) {
 			running.mu.Lock()
 			delete(running.pre, pending)
 			running.mu.Unlock()
-			_ = pending.Close()
+			running.cleanup.record(pending.Close())
 		}
 	}()
 	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)

@@ -13,12 +13,18 @@ import (
 // openStateEntryAdmitter owns the Initiator-local durable Entry ledger for one
 // running duty. State facts are read through the narrow copied view; neither
 // the Entry package nor the Node listener receives State persistence/source.
-func openStateEntryAdmitter(root string, snapshot dutyFacts, now func() time.Time) (route.EntryBindingAdmitter, func() error, error) {
-	if root == "" || now == nil || snapshot.Assignment != "initiator" {
+func openStateEntryAdmitter(root string, snapshot dutyFacts, current func() (dutyFacts, error), now func() time.Time) (route.EntryBindingAdmitter, func() error, error) {
+	if root == "" || current == nil || now == nil || snapshot.Assignment != "initiator" {
 		return nil, nil, errors.New("Initiator Entry admission is incomplete")
 	}
 	verification := entry.Verification{
-		Current: func() (entry.View, error) { return entryView(snapshot) },
+		Current: func() (entry.View, error) {
+			fresh, err := currentDutyForAdmission(snapshot, current, now)
+			if err != nil {
+				return entry.View{}, err
+			}
+			return entryView(fresh)
+		},
 		Conflict: func(identity, family [32]byte) (bool, error) {
 			roles, err := duty.Open(duty.Config{Root: root, Clock: now, Create: true})
 			if err != nil {
@@ -27,8 +33,11 @@ func openStateEntryAdmitter(root string, snapshot dutyFacts, now func() time.Tim
 			conflict, conflictErr := roles.Conflict(identity, family)
 			return conflict, errors.Join(conflictErr, roles.Close())
 		},
-		Clock:         now,
-		TimeConfident: func() bool { return snapshot.Fresh && !snapshot.Conflicting && now().UTC().Before(snapshot.ValidUntil) },
+		Clock: now,
+		TimeConfident: func() bool {
+			_, err := currentDutyForAdmission(snapshot, current, now)
+			return err == nil
+		},
 	}
 	// Entry owns its own durable grammar and marker. It must therefore be a
 	// sibling of, rather than a child inside, the duty root whose owner-only

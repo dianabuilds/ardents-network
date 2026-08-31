@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -10,6 +11,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
+
+func TestTransitIssuerCleanupReportsHTTPAndRootFailures(t *testing.T) {
+	shutdownErr := errors.New("injected HTTP shutdown failure")
+	rootErr := errors.New("injected issuer root close failure")
+	err := runTransitIssuerCleanup(context.Background(), time.Second, func() error { return nil },
+		func(context.Context) error { return shutdownErr }, func() error { return rootErr })
+	if !errors.Is(err, shutdownErr) || !errors.Is(err, rootErr) {
+		t.Fatalf("Transit issuer cleanup = %v", err)
+	}
+}
 
 func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T) {
 	issuerCertificate, issuerPublic := rendezvousCertificate(t, 181, "transit-issuer")

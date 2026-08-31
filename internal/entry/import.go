@@ -8,7 +8,7 @@ import "errors"
 func (owner *owner) Import(raw []byte) (Result, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.closed {
+	if owner.closing || owner.closed {
 		return Result{}, errors.New("entry owner is closed")
 	}
 	if owner.failed != nil {

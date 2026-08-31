@@ -183,7 +183,9 @@ func withdraw(config runtimeConfig, machine *stateMachine, server *probeServer, 
 	if err := moveAndEmit(config, machine, stateDraining, snapshot, reason); err != nil {
 		return fail(config, machine, server, "external evidence channel failed", err)
 	}
-	server.Drain(context.Background())
+	if drainErr := server.Drain(context.Background()); drainErr != nil {
+		return fail(config, machine, nil, "Node role cleanup failed", drainErr)
+	}
 	if err := moveAndEmit(config, machine, stateWithdrawn, snapshot, reason); err != nil {
 		return fail(config, machine, nil, "external evidence channel failed", err)
 	}
@@ -194,13 +196,16 @@ func fail(config runtimeConfig, machine *stateMachine, server *probeServer, reas
 	if server != nil {
 		server.Stop()
 	}
+	var terminalErr error
 	if moveErr := machine.move(stateFailed); moveErr == nil {
-		_ = emitState(config, *machine, dutyFacts{}, reason)
+		terminalErr = emitState(config, *machine, dutyFacts{}, reason)
+	} else {
+		terminalErr = moveErr
 	}
 	if server != nil {
-		server.Drain(context.Background())
+		terminalErr = errors.Join(terminalErr, server.Drain(context.Background()))
 	}
-	return Result{State: stateNames[stateFailed], Reason: reason}, cause
+	return Result{State: stateNames[stateFailed], Reason: reason}, errors.Join(cause, terminalErr)
 }
 
 func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot dutyFacts, cause error) (Result, error) {
@@ -215,7 +220,8 @@ func terminalWithoutDuty(config runtimeConfig, machine *stateMachine, snapshot d
 }
 
 func sameDuty(first, second dutyFacts) bool {
-	return first.Digest == second.Digest && first.NodeID == second.NodeID &&
+	return first.Generation == second.Generation && first.NetworkID == second.NetworkID && first.Epoch == second.Epoch &&
+		first.Digest == second.Digest && first.NodeID == second.NodeID && first.Assignment == second.Assignment &&
 		first.AssignmentDigest == second.AssignmentDigest
 }
 

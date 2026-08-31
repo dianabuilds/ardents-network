@@ -64,7 +64,7 @@ func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byt
 	}
 	value.owner.mu.Lock()
 	defer value.owner.mu.Unlock()
-	if value.owner.closed || value.owner.failed != nil {
+	if value.owner.closing || value.owner.closed || value.owner.failed != nil {
 		return Authorization{}, errors.New("entry Admitter is unavailable")
 	}
 	decoded, _, class, err := validateInvite(raw, Verification{Current: value.owner.config.Current, Conflict: value.owner.config.Conflict,
@@ -96,7 +96,7 @@ func (value *Admitter) Consume(authorization Authorization, attachment, clientKe
 }
 
 func (value *Admitter) consumeLocked(authorization Authorization, attachment, clientKey [32]byte, notAfter time.Time) error {
-	if value.owner.closed || value.owner.failed != nil || authorization.InviteID == [32]byte{} || attachment == [32]byte{} || clientKey == [32]byte{} ||
+	if value.owner.closing || value.owner.closed || value.owner.failed != nil || authorization.InviteID == [32]byte{} || attachment == [32]byte{} || clientKey == [32]byte{} ||
 		notAfter.IsZero() || authorization.NotAfter.IsZero() || notAfter.After(authorization.NotAfter) {
 		return errors.New("entry admission tuple is invalid")
 	}

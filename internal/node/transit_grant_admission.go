@@ -12,9 +12,10 @@ import (
 // stateTransitGrantAdmitter verifies and durably consumes only a current
 // State-authorized exact C-2 transit grant. It is the Node-owned completion of
 // Route's opaque EndpointTransitBinding admission port.
-func stateTransitGrantAdmitter(root string, snapshot dutyFacts, now func() time.Time) route.EndpointTransitBindingAdmitter {
+func stateTransitGrantAdmitter(root string, started dutyFacts, current func() (dutyFacts, error), now func() time.Time) route.EndpointTransitBindingAdmitter {
 	return func(raw []byte, attachment, clientKey [32]byte, role byte, transitNode [32]byte, notAfter time.Time) (route.EndpointTransitAdmission, error) {
-		if root == "" || now == nil || snapshot.AuthorityCount == 0 || role != snapshotTransitRole(snapshot) || transitNode != snapshot.NodeID {
+		snapshot, currentErr := currentDutyForAdmission(started, current, now)
+		if currentErr != nil || root == "" || snapshot.AuthorityCount == 0 || role != snapshotTransitRole(snapshot) || transitNode != snapshot.NodeID {
 			return route.EndpointTransitAdmission{}, errors.New("state transit grant admission is incomplete")
 		}
 		unverified, err := route.DecodeTransitGrant(raw)
@@ -52,6 +53,21 @@ func stateTransitGrantAdmitter(root string, snapshot dutyFacts, now func() time.
 		return route.EndpointTransitAdmission{AuthorizationID: grant.GrantID, NetworkID: grant.NetworkID, Digest: grant.Digest,
 			Epoch: grant.Epoch, TransitRole: grant.TransitRole, TransitNodeID: grant.TransitNodeID, NotAfter: grant.NotAfter}, nil
 	}
+}
+
+func currentDutyForAdmission(started dutyFacts, current func() (dutyFacts, error), now func() time.Time) (dutyFacts, error) {
+	if current == nil || now == nil {
+		return dutyFacts{}, errors.New("current Node duty is unavailable")
+	}
+	fresh, err := current()
+	if err != nil || !sameDuty(started, fresh) || !fresh.Fresh || fresh.Conflicting {
+		return dutyFacts{}, errors.New("node duty generation changed before admission")
+	}
+	at := now().UTC()
+	if !at.Before(fresh.ValidUntil) || !at.Before(fresh.RecordValidUntil) {
+		return dutyFacts{}, errors.New("current node duty expired before admission")
+	}
+	return fresh, nil
 }
 
 func snapshotTransitRole(snapshot dutyFacts) byte {

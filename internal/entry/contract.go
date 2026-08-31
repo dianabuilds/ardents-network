@@ -107,12 +107,20 @@ type Presentation struct {
 type CandidateOpener func(context.Context, Candidate, Presentation, time.Time) (connection net.Conn, cleanup func() error, cleanupComplete bool, err error)
 
 type owner struct {
-	mu      sync.Mutex
-	root    string
-	lease   rootLease
-	config  Config
-	state   durableState
-	current string
-	closed  bool
-	failed  error
+	mu              sync.Mutex
+	root            string
+	lease           rootLease
+	config          Config
+	state           durableState
+	current         string
+	lifecycle       context.Context
+	cancelLifecycle context.CancelFunc
+	acquisitions    sync.WaitGroup
+	attachments     map[uint64]*attachmentLease
+	nextAttachment  uint64
+	closeDone       chan struct{}
+	closing         bool
+	closed          bool
+	closeErr        error
+	failed          error
 }

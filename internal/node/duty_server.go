@@ -23,28 +23,30 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		}
 		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
 			return rendezvousPressureUsage(running.Usage())
-		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
+		}, Stop: running.Stop, Drain: running.Drain}, nil
 	case "initiator":
-		admitter, closeAdmitter, err := openStateEntryAdmitter(config.LocalRoleStateRoot, snapshot, config.now)
+		admitter, closeAdmitter, err := openStateEntryAdmitter(config.LocalRoleStateRoot, snapshot,
+			func() (dutyFacts, error) { return currentFacts(config) }, config.now)
 		if err != nil {
 			return nil, err
 		}
 		plan, err := initiatorDuty(config.Initiator, snapshot, admitter)
 		if err != nil {
-			_ = closeAdmitter()
-			return nil, err
+			return nil, errors.Join(err, closeAdmitter())
 		}
 		running, err := StartInitiator(plan)
 		if err != nil {
-			_ = closeAdmitter()
-			return nil, err
+			return nil, errors.Join(err, closeAdmitter())
 		}
 		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
 			usage := running.Usage()
 			return uint64(usage.Handshakes), uint64(usage.Connections), usage.RelayedBytes
-		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx); _ = closeAdmitter() }}, nil
+		}, Stop: running.Stop, Drain: func(ctx context.Context) error {
+			return errors.Join(running.Drain(ctx), closeAdmitter())
+		}}, nil
 	case "introduction":
-		plan, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
+		plan, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
+			func() (dutyFacts, error) { return currentFacts(config) }, config.now))
 		if err != nil {
 			return nil, err
 		}
@@ -55,9 +57,10 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
 			usage := running.Usage()
 			return uint64(usage.Handshakes + usage.Deliveries), uint64(usage.Connections), 0
-		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
+		}, Stop: running.Stop, Drain: running.Drain}, nil
 	case "responder":
-		plan, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot, config.now))
+		plan, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
+			func() (dutyFacts, error) { return currentFacts(config) }, config.now))
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +71,7 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
 			usage := running.Usage()
 			return uint64(usage.Handshakes), uint64(usage.Connections), usage.RelayedBytes
-		}, Stop: running.Stop, Drain: func(ctx context.Context) { _ = running.Drain(ctx) }}, nil
+		}, Stop: running.Stop, Drain: running.Drain}, nil
 	case "transit-issuance":
 		return startTransitIssuer(config, snapshot)
 	default:

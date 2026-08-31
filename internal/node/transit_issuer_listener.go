@@ -22,6 +22,7 @@ type transitIssuerListener struct {
 	active   atomic.Uint32
 	protect  atomic.Bool
 	stopOnce sync.Once
+	cleanup  terminalCleanup
 	done     chan error
 }
 
@@ -66,7 +67,7 @@ func startTransitIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer,
 		running.done <- serveErr
 	}()
 	return &probeServer{Done: running.done, Protect: running.protectAdmission, Usage: running.usage,
-		Stop: running.stopAdmission, Drain: func(ctx context.Context) { running.drain(ctx, local.DrainTimeout) }}, nil
+		Stop: func() { _ = running.stopAdmission() }, Drain: func(ctx context.Context) error { return running.drain(ctx, local.DrainTimeout) }}, nil
 }
 
 type transitIssuerLimitedListener struct {
@@ -81,18 +82,18 @@ func (listener *transitIssuerLimitedListener) Accept() (net.Conn, error) {
 			return nil, err
 		}
 		if listener.running.protect.Load() {
-			_ = connection.Close()
+			listener.running.cleanup.record(connection.Close())
 			continue
 		}
 		select {
 		case listener.running.limit <- struct{}{}:
 			listener.running.active.Add(1)
-			return &transitIssuerConnection{Conn: connection, release: func() {
+			return &transitIssuerConnection{Conn: connection, cleanup: &listener.running.cleanup, release: func() {
 				<-listener.running.limit
 				listener.running.active.Add(^uint32(0))
 			}}, nil
 		default:
-			_ = connection.Close()
+			listener.running.cleanup.record(connection.Close())
 		}
 	}
 }
@@ -100,11 +101,15 @@ func (listener *transitIssuerLimitedListener) Accept() (net.Conn, error) {
 type transitIssuerConnection struct {
 	net.Conn
 	once    sync.Once
+	cleanup *terminalCleanup
 	release func()
 }
 
 func (connection *transitIssuerConnection) Close() error {
 	err := connection.Conn.Close()
+	if connection.cleanup != nil {
+		connection.cleanup.record(err)
+	}
 	connection.once.Do(connection.release)
 	return err
 }
@@ -113,13 +118,23 @@ func (running *transitIssuerListener) protectAdmission(value bool) { running.pro
 func (running *transitIssuerListener) usage() (uint64, uint64, uint64) {
 	return uint64(running.active.Load()), uint64(running.active.Load()), 0
 }
-func (running *transitIssuerListener) stopAdmission() {
-	running.stopOnce.Do(func() { _ = running.listener.Close() })
+func (running *transitIssuerListener) stopAdmission() error {
+	running.stopOnce.Do(func() {
+		running.cleanup.record(running.listener.Close())
+	})
+	return running.cleanup.result()
 }
-func (running *transitIssuerListener) drain(ctx context.Context, timeout time.Duration) {
-	running.stopAdmission()
+func (running *transitIssuerListener) drain(ctx context.Context, timeout time.Duration) error {
+	err := runTransitIssuerCleanup(ctx, timeout, running.stopAdmission, running.server.Shutdown, running.issuer.Close)
+	return errors.Join(err, running.cleanup.result())
+}
+
+func runTransitIssuerCleanup(ctx context.Context, timeout time.Duration, stop func() error,
+	shutdown func(context.Context) error, closeIssuer func() error) error {
+	stopErr := stop()
 	drainCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	_ = running.server.Shutdown(drainCtx)
-	_ = running.issuer.Close()
+	shutdownErr := shutdown(drainCtx)
+	issuerErr := closeIssuer()
+	return errors.Join(stopErr, shutdownErr, issuerErr)
 }

@@ -10,6 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/pem"
+	"errors"
 	"io"
 	"math/big"
 	"net"
@@ -21,6 +22,26 @@ import (
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
+
+func TestWithdrawDoesNotPublishSuccessWhenRoleDrainFails(t *testing.T) {
+	cleanupErr := errors.New("injected role drain failure")
+	var events []Event
+	config := runtimeConfig{Config: Config{Emit: func(_ context.Context, event Event) error {
+		events = append(events, event)
+		return nil
+	}}, now: func() time.Time { return time.Unix(100, 0).UTC() }}
+	machine := stateMachine{current: stateReady}
+	server := &probeServer{Stop: func() {}, Drain: func(context.Context) error { return cleanupErr }}
+	result, err := withdraw(config, &machine, server, dutyFacts{Assignment: "rendezvous"}, "test withdrawal")
+	if !errors.Is(err, cleanupErr) || result.State == stateNames[stateWithdrawn] {
+		t.Fatalf("withdraw result = %+v, %v", result, err)
+	}
+	for _, event := range events {
+		if event.State == stateNames[stateWithdrawn] {
+			t.Fatal("WITHDRAWN was published after unknown role cleanup")
+		}
+	}
+}
 
 const (
 	testProbeHeaderBytes  = 4 + 1 + 6*32 + 2

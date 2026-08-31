@@ -25,6 +25,7 @@ type probeListener struct {
 	nonceNext   int
 	stop        chan struct{}
 	stopOnce    sync.Once
+	cleanup     terminalCleanup
 	protected   atomic.Bool
 	terminal    chan error
 	work        sync.WaitGroup
@@ -91,7 +92,7 @@ func (s *probeListener) accept() {
 		}
 		if s.protected.Load() {
 			<-s.open
-			_ = connection.Close()
+			s.cleanup.record(connection.Close())
 			continue
 		}
 		s.track(connection, true)
@@ -113,7 +114,7 @@ func (s *probeListener) handle(connection net.Conn) {
 	defer s.work.Done()
 	defer func() { <-s.open }()
 	defer s.track(connection, false)
-	defer connection.Close()
+	defer func() { s.cleanup.record(connection.Close()) }()
 	now := s.plan.now()
 	deadline := now.Add(s.plan.config.MaximumDuty)
 	if now.Before(s.duty.EpochValidFrom) || now.Before(s.duty.RecordValidFrom) ||
@@ -161,29 +162,32 @@ func (s *probeListener) track(connection net.Conn, add bool) {
 	}
 }
 
-func (s *probeListener) drain(ctx context.Context) {
+func (s *probeListener) drain(ctx context.Context) error {
 	s.stopAdmission()
 	done := make(chan struct{})
 	go func() { s.work.Wait(); close(done) }()
 	timer := time.NewTimer(s.plan.config.DrainTimeout)
 	defer timer.Stop()
+	var drainErr error
 	select {
 	case <-done:
-		return
+		return s.cleanup.result()
 	case <-ctx.Done():
+		drainErr = ctx.Err()
 	case <-timer.C:
 	}
 	s.mu.Lock()
 	for connection := range s.connections {
-		_ = connection.Close()
+		s.cleanup.record(connection.Close())
 	}
 	s.mu.Unlock()
 	<-done
+	return errors.Join(s.cleanup.result(), drainErr)
 }
 
 func (s *probeListener) stopAdmission() {
 	s.stopOnce.Do(func() {
 		close(s.stop)
-		_ = s.listener.Close()
+		s.cleanup.record(s.listener.Close())
 	})
 }

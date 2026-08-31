@@ -47,7 +47,7 @@ type probeServer struct {
 	Protect func(bool)
 	Usage   func() (uint64, uint64, uint64)
 	Stop    func()
-	Drain   func(context.Context)
+	Drain   func(context.Context) error
 }
 
 // newProbePlan validates and owns the Node's private role-probe listener plan.

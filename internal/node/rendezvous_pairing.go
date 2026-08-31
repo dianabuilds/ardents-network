@@ -34,7 +34,8 @@ func (running *Rendezvous) register(leg *rendezvousLeg) bool {
 	default:
 		delete(running.waiting, leg.binding.AttachmentID)
 		<-running.waitingCap
-		existing.stop()
+		existing.stopDone()
+		running.cleanup.record(existing.connection.Close())
 		running.usage.WaitingRefused++
 		running.mu.Unlock()
 		return false
@@ -53,7 +54,7 @@ func (running *Rendezvous) register(leg *rendezvousLeg) bool {
 	running.work.Add(1)
 	running.mu.Unlock()
 	for _, connection := range preAdmission {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 	go running.pump(existing, leg)
 	return true
@@ -78,7 +79,7 @@ func (running *Rendezvous) expire(leg *rendezvousLeg) {
 	running.usage.Expired++
 	leg.stopDone()
 	running.mu.Unlock()
-	_ = leg.connection.Close()
+	running.cleanup.record(leg.connection.Close())
 }
 
 func (running *Rendezvous) pump(first, second *rendezvousLeg) {
@@ -93,8 +94,8 @@ func (running *Rendezvous) pump(first, second *rendezvousLeg) {
 	go copyLane(first.connection, second.connection)
 	go copyLane(second.connection, first.connection)
 	firstResult := <-results
-	_ = first.connection.Close()
-	_ = second.connection.Close()
+	running.cleanup.record(first.connection.Close())
+	running.cleanup.record(second.connection.Close())
 	secondResult := <-results
 	running.mu.Lock()
 	delete(running.active, first.connection)
@@ -127,7 +128,7 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 	}
 	running.mu.Unlock()
 	for _, connection := range preAdmission {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 	done := make(chan struct{})
 	go func() { running.work.Wait(); close(done) }()
@@ -135,15 +136,15 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 	defer timer.Stop()
 	select {
 	case <-done:
-		return nil
+		return running.cleanup.result()
 	case <-ctx.Done():
 		running.closeActivePairs()
 		<-done
-		return ctx.Err()
+		return errors.Join(running.cleanup.result(), ctx.Err())
 	case <-timer.C:
 		running.closeActivePairs()
 		<-done
-		return nil
+		return running.cleanup.result()
 	}
 }
 
@@ -155,7 +156,7 @@ func (running *Rendezvous) closeActivePairs() {
 	}
 	running.mu.Unlock()
 	for _, connection := range active {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 }
 
@@ -174,11 +175,6 @@ func (running *Rendezvous) closePreAdmissionLocked() []io.Closer {
 }
 
 func (leg *rendezvousLeg) stopDone() { leg.doneOnce.Do(func() { close(leg.done) }) }
-
-func (leg *rendezvousLeg) stop() {
-	leg.stopDone()
-	_ = leg.connection.Close()
-}
 
 // Close is the explicit shutdown form for callers that do not need a separate
 // cancellation deadline.

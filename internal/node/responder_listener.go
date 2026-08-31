@@ -27,6 +27,7 @@ type Responder struct {
 	active    map[route.Carrier]struct{}
 	usage     ResponderUsage
 	stopOnce  sync.Once
+	cleanup   terminalCleanup
 	work      sync.WaitGroup
 	terminal  chan error
 }
@@ -72,7 +73,7 @@ func (running *Responder) Protect(value bool) {
 	}
 	running.mu.Unlock()
 	for _, connection := range connections {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 }
 
@@ -80,7 +81,12 @@ func (running *Responder) Stop() {
 	if running == nil {
 		return
 	}
-	running.stopOnce.Do(func() { running.mu.Lock(); running.draining = true; running.mu.Unlock(); _ = running.listener.Close() })
+	running.stopOnce.Do(func() {
+		running.mu.Lock()
+		running.draining = true
+		running.mu.Unlock()
+		running.cleanup.record(running.listener.Close())
+	})
 }
 
 func (running *Responder) Usage() ResponderUsage {
@@ -111,7 +117,7 @@ func (running *Responder) accept() {
 			return
 		}
 		if !running.reserveHandshake(raw) {
-			_ = raw.Close()
+			running.cleanup.record(raw.Close())
 			continue
 		}
 		running.work.Add(1)
@@ -147,7 +153,7 @@ func (running *Responder) handle(raw net.Conn) {
 			running.mu.Lock()
 			delete(running.pre, raw)
 			running.mu.Unlock()
-			_ = raw.Close()
+			running.cleanup.record(raw.Close())
 		}
 	}()
 	deadline := boundedAdmissionDeadline(running.plan.now(), running.plan.AdmissionTimeout, running.plan.NotAfter)
@@ -174,7 +180,7 @@ func (running *Responder) handle(raw net.Conn) {
 		return
 	}
 	if err := next.SetDeadline(accepted.Binding.NotAfter); err != nil {
-		_ = next.Close()
+		running.cleanup.record(next.Close())
 		running.releaseRelay(raw, nil)
 		return
 	}
@@ -219,8 +225,8 @@ func (running *Responder) relay(raw, endpoint net.Conn, next route.Carrier) {
 	go copyLane(endpoint, next)
 	go copyLane(next, endpoint)
 	first := <-results
-	_ = raw.Close()
-	_ = next.Close()
+	running.cleanup.record(raw.Close())
+	running.cleanup.record(next.Close())
 	second := <-results
 	running.mu.Lock()
 	running.usage.RelayedBytes += uint64(first.bytes + second.bytes)
@@ -237,9 +243,9 @@ func (running *Responder) releaseRelay(raw net.Conn, next route.Carrier) {
 	}
 	<-running.relays
 	running.mu.Unlock()
-	_ = raw.Close()
+	running.cleanup.record(raw.Close())
 	if next != nil {
-		_ = next.Close()
+		running.cleanup.record(next.Close())
 	}
 }
 
@@ -258,7 +264,7 @@ func (running *Responder) Drain(ctx context.Context) error {
 	}
 	running.mu.Unlock()
 	for _, connection := range connections {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 	done := make(chan struct{})
 	go func() { running.work.Wait(); close(done) }()
@@ -266,11 +272,11 @@ func (running *Responder) Drain(ctx context.Context) error {
 	defer timer.Stop()
 	select {
 	case <-done:
-		return nil
+		return running.cleanup.result()
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Join(running.cleanup.result(), ctx.Err())
 	case <-timer.C:
-		return errors.New("Responder drain exceeded its Work Safety Lease")
+		return errors.Join(running.cleanup.result(), errors.New("Responder drain exceeded its Work Safety Lease"))
 	}
 }
 

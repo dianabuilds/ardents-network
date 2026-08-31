@@ -22,8 +22,8 @@ func (running *Initiator) relay(raw, entry net.Conn, next route.Carrier) {
 	go copyLane(entry, next)
 	go copyLane(next, entry)
 	first := <-results
-	_ = raw.Close()
-	_ = next.Close()
+	running.cleanup.record(raw.Close())
+	running.cleanup.record(next.Close())
 	second := <-results
 	running.mu.Lock()
 	running.usage.RelayedBytes += uint64(first.bytes + second.bytes)
@@ -49,7 +49,7 @@ func (running *Initiator) Drain(ctx context.Context) error {
 	}
 	running.mu.Unlock()
 	for _, connection := range connections {
-		_ = connection.Close()
+		running.cleanup.record(connection.Close())
 	}
 	done := make(chan struct{})
 	go func() { running.work.Wait(); close(done) }()
@@ -57,11 +57,11 @@ func (running *Initiator) Drain(ctx context.Context) error {
 	defer timer.Stop()
 	select {
 	case <-done:
-		return nil
+		return running.cleanup.result()
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Join(running.cleanup.result(), ctx.Err())
 	case <-timer.C:
-		return errors.New("Initiator drain exceeded its Work Safety Lease")
+		return errors.Join(running.cleanup.result(), errors.New("Initiator drain exceeded its Work Safety Lease"))
 	}
 }
 
