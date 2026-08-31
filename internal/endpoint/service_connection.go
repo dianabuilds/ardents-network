@@ -270,15 +270,3 @@ func proveInstance(connection io.ReadWriter, credential Credential, connectionCo
 	copy(proof[:], signature)
 	return canary, nativeconnection.Write(connection, nativeconnection.Record{Proof: &nativeconnection.Proof{ChallengeDigest: digest, Signature: proof}})
 }
-
-func equal32(value []byte, expected [32]byte) bool {
-	if len(value) != len(expected) {
-		return false
-	}
-	for index := range expected {
-		if value[index] != expected[index] {
-			return false
-		}
-	}
-	return true
-}

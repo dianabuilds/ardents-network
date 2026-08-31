@@ -19,8 +19,12 @@ const (
 	terminalMarker = ^uint32(0)
 )
 
-// Server owns one private local transport for a Connection Interface.
-type Server struct {
+// Server owns the lifecycle of one private local Connection transport.
+type Server interface {
+	Close() error
+}
+
+type server struct {
 	path     string
 	listener *net.UnixListener
 	ctx      context.Context
@@ -34,7 +38,7 @@ type Server struct {
 }
 
 // Listen exposes owner on one explicit absolute Unix-socket path.
-func Listen(path string, owner Interface) (*Server, error) {
+func Listen(path string, owner Interface) (Server, error) {
 	if path == "" || !filepath.IsAbs(path) || owner == nil {
 		return nil, errors.New("local Application Connection configuration is invalid")
 	}
@@ -52,14 +56,14 @@ func Listen(path string, owner Interface) (*Server, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	server := &Server{path: path, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
+	server := &server{path: path, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
 		clients: make(map[*net.UnixConn]struct{})}
 	server.work.Add(1)
 	go server.serve()
 	return server, nil
 }
 
-func (server *Server) serve() {
+func (server *server) serve() {
 	defer server.work.Done()
 	for {
 		connection, err := server.listener.AcceptUnix()
@@ -82,7 +86,7 @@ func (server *Server) serve() {
 	}
 }
 
-func (server *Server) handle(local *net.UnixConn) {
+func (server *server) handle(local *net.UnixConn) {
 	defer local.Close()
 	_ = local.SetDeadline(time.Now().Add(15 * time.Second))
 	serviceLink, err := readRequest(local)
@@ -136,7 +140,7 @@ func (server *Server) handle(local *net.UnixConn) {
 
 // Close refuses new clients, cancels active streams, and removes only this
 // server's exact socket path.
-func (server *Server) Close() error {
+func (server *server) Close() error {
 	if server == nil {
 		return nil
 	}
@@ -214,8 +218,8 @@ func writeData(writer io.Writer, data []byte) error {
 }
 
 func writeTerminal(writer io.Writer, outcome Outcome) error {
-	if len(outcome.Class) == 0 || len(outcome.Class) > 128 || len(outcome.Reason) > 512 {
-		return errors.New("local Application terminal outcome is invalid")
+	if err := validOutcome(outcome); err != nil {
+		return err
 	}
 	var header [8]byte
 	binary.BigEndian.PutUint32(header[:4], terminalMarker)

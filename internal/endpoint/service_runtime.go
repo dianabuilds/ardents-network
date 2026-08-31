@@ -87,7 +87,6 @@ type PublicationRequest struct {
 	Credential                  Credential
 	InstanceSigner              crypto.Signer
 	IntroductionAcknowledgement []byte
-	IntroductionSocket          string
 	At                          time.Time
 }
 

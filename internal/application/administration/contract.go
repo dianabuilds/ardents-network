@@ -22,7 +22,8 @@ type Outcome string
 // while any error is rendered as unavailable by the server Adapter. The
 // context remains live for the operation and is cancelled when the local
 // server closes. Implementations must serialize or reject conflicting
-// transitions and make withdrawal idempotency explicit in their own outcome.
+// transitions. A repeated withdrawal must either complete harmlessly or return
+// an error; this Interface has no second success outcome in which to hide it.
 type Interface interface {
 	Publish(context.Context) error
 	Withdraw(context.Context) error

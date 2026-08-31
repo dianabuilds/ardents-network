@@ -326,7 +326,8 @@ func TestEndpointOwnsNoSecondLocalApplicationTransport(t *testing.T) {
 			t.Errorf("ardents command retains legacy Endpoint transport %q", forbidden)
 		}
 	}
-	for _, file := range []string{"config.go", "connections.go", "endpoint.go", "publication.go"} {
+	for _, file := range []string{"config.go", "connections.go", "endpoint.go", "publication.go",
+		"service_introduction.go", "service_introduction_acknowledgement.go"} {
 		if _, err := os.Stat(filepath.Join(root, "internal", "endpoint", file)); err == nil || !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("Endpoint retains legacy local transport owner %s", file)
 		}

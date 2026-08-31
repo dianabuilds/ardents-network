@@ -47,6 +47,13 @@ source of the exact Initiator binding.
 
 ## Evaluation criteria
 
+- The exact user outcome is a fresh participant obtaining one purpose-scoped
+  membership Grant from the authenticated current issuer duty, without an
+  operator-supplied Route or signer.
+- Protected information is the Grant signer, OHTTP private material, ledger,
+  and Network State root; considered adversaries are a malicious caller,
+  substituted local plan/root, compromised online issuer, and stale or
+  colluding Node. The online duty must never obtain the State root.
 - A runtime plan cannot supply or substitute the signer, profile, or
   Initiator identity.
 - Network State root custody never enters the online issuer process.
@@ -56,8 +63,22 @@ source of the exact Initiator binding.
   successor, withdrawal, expiry, or mismatch.
 - One finite global budget and Request-ID outcome survive restart without
   rollback or duplicate issuance.
+- The operation adds no data-path bandwidth or storage promise. Its latency is
+  bounded by the existing one-request HTTPS/OHTTP operation and durable ledger
+  commit; availability ends on State mismatch, expiry, withdrawal, exhaustion,
+  or unavailable durable state rather than falling back.
+- Active replay, substitution, concurrent duplicate requests, interrupted
+  initialization/commit, rollback, and successor races must fail closed with a
+  reproducible terminal outcome.
 - The lifecycle is maintainable by the Product Owner and Codex without adding
   an undeclared custody operator or secret-delivery organization.
+- Implementation must reuse reviewed repository cryptography and the standard
+  runtime surface, add no unreviewed primitive or dependency, keep secret
+  misuse impossible through the command grammar, and remain maintainable by
+  the actual Product Owner/Codex team.
+- No new license or distribution constraint may enter the unpacked candidate;
+  the owner workflow must have bounded commands, non-secret receipts, and
+  reproducible diagnostics rather than expert-only database repair.
 
 ## Evidence plan
 
@@ -74,10 +95,16 @@ source of the exact Initiator binding.
 
 ### Experiment
 
-No disposable experiment was required. The selected implementation was to be
-falsified through behavior tests for initialize/reopen, interrupted root
-creation, wrong State, successor, withdrawal, exhaustion, and stable public
-profile reproduction, followed by the unpacked enrollment-v3 process tracer.
+No disposable experiment or `experiments/` directory was required. Environment:
+the root Go module on the supported local test platforms. Inputs: empty and
+reopened owner roots, matching and mismatching authenticated State, duplicate
+Request IDs, finite budgets, expiry, withdrawal, and successor duties.
+Procedure and artifacts: run `go test ./internal/route/credential ./internal/node
+./tests/e2e/node` and retain the test output; these tests exercise the named
+failure cases and stable public-profile reproduction. Another person falsifies
+H1 by reproducing signer or Initiator substitution, ledger rollback, duplicate
+issuance, or service after a terminal State case. The unpacked enrollment-v3
+process tracer is separate end-to-end corroboration.
 
 ### Failure scenarios
 
@@ -131,12 +158,16 @@ preferable if an independently maintained custody workflow were later chosen.
 
 ## Disposition
 
-The Product Owner accepted option 1 and the single State-declared Initiator
+Question state: decided and promoted to ADR-0063. The Product Owner accepted
+option 1 and the single State-declared Initiator
 binding on 2026-08-30. One owner-only issuer root creates and retains the
 purpose Grant signer and OHTTP material, emits only the stable Node-signed
 public profile, and never exposes the Network State root key. The runtime plan
 may name the root and finite bounds but cannot supply a signer, profile, or
 Initiator. Restart reproduces the same profile and ledger; succession,
 withdrawal, expiry, or mismatch ends the old duty. Rotation requires a distinct
-empty root and explicit State ceremony. ADR-0063 records the decision; R-128
-and ADR-0062 remain accepted and are not reopened.
+empty root and explicit State ceremony. ADR-0063 records the decision; R-128,
+ADR-0062, the Node/credential package map, command reference, and headless
+qualification evidence are the changed or corroborating documents. Accepted
+follow-up was the R-128 artifact-native participant tracer. No experiment code
+was created or retained.

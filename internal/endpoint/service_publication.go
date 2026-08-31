@@ -22,15 +22,7 @@ func (endpoint *endpoint) publish(ctx context.Context, input PublicationRequest)
 	if err := validateCredential(input.Credential, endpoint.authority, endpoint.network, input.At, publishCapability|connectCapability); err != nil {
 		return publicationFailed("service target authentication failure", "Service Credential is not valid for publication", err)
 	}
-	if len(input.IntroductionAcknowledgement) == 0 && input.IntroductionSocket != "" {
-		acknowledgement, err := requestIntroductionAcknowledgement(ctx, input.IntroductionSocket,
-			input.Credential, endpoint.broker, endpoint.resources)
-		if err != nil {
-			return publicationFailed("service unavailable", "Introduction acknowledgement request failed", err)
-		}
-		input.IntroductionAcknowledgement = acknowledgement
-	}
-	if !validAcknowledgement(input.IntroductionAcknowledgement, input.Credential, endpoint.network,
+	if !publication.ValidLegacyIntroductionReceipt(input.IntroductionAcknowledgement, input.Credential,
 		endpoint.broker, endpoint.introduction) {
 		return publicationFailed("service unavailable", "fresh Introduction publication acknowledgement is absent", errors.New("publication not acknowledged"))
 	}

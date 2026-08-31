@@ -1,7 +1,7 @@
 ---
 id: R-131
 title: Headless Publisher authority and Instance acquisition
-status: decided; implementation-authorized
+status: decided; promoted to ADR-0064
 owner: Product Owner
 started: 2026-08-30
 reviewed: 2026-08-30
@@ -55,6 +55,9 @@ therefore cannot close B6.
 
 - A fresh enrolled Publisher has an explicit acquire, publish, withdraw,
   restart, routine Instance successor, and Authority recovery path.
+- The exact user outcome is that fresh Publisher journey from an authenticated
+  enrollment-v3 artifact, without fixture credentials or raw private-key
+  orchestration.
 - Service Authority never enters Endpoint, Node, Browser, release metadata,
   Network State, command arguments, environment, or ordinary runtime output.
 - The Publisher runtime receives no caller-selected raw Target or Route fact;
@@ -67,6 +70,24 @@ therefore cannot close B6.
   an administrator, registrar, online custody service, or independent operator.
 - Enrollment-v3 remains a release/control inventory and does not silently
   become Service Authority custody.
+- Protected information is the Authority, Instance and Introduction private
+  keys, Target linkage, and custody password; considered adversaries are a
+  copied bundle/credential, malicious local caller, compromised ordinary
+  participant process, stale snapshot, and substituted custody/runtime root.
+- The workflow adds no network data-path bandwidth or availability promise.
+  Request/response artifacts and owner roots remain bounded; local durable
+  commits must complete within the existing operation context and fail closed
+  on interruption, conflict, expiry, rollback, or unavailable storage.
+- Active replay, response substitution, concurrent acceptance, publication
+  crash windows, generation rollback, and withdrawal/restart races must have
+  deterministic recovery or terminal refusal.
+- Cryptographic implementation must use reviewed maintained primitives, expose
+  no generic signer or raw-key command, and add no online Authority operator,
+  registrar, hidden reviewer, or other governance dependency.
+- No new runtime dependency, license, or distribution channel is selected.
+  Commands must work from a fresh unpacked candidate with interactive secret
+  entry, public-only artifacts, bounded diagnostics, and no manual database
+  repair.
 
 ## Evidence plan
 
@@ -88,12 +109,17 @@ either would require a separate primary-source review and dependency decision.
 
 ### Experiment
 
-For each admissible option, execute the exact commands from a fresh unpacked
-enrollment-v3 artifact and record: Authority creation/import ownership, host
-Instance generation, Credential issue, publication, remote byte exchange,
-withdrawal, restart, routine successor generation, and recovery refusal cases.
+No disposable experiment or `experiments/` directory was required. Environment:
+the root Go module plus a fresh unpacked enrollment-v3 candidate. Inputs: empty
+custody/Instance roots, one canonical request/response, replayed and conflicting
+responses, restart/withdrawal, lost active Authority, and an authority-locked
+recovery bundle. Procedure and artifacts: run `go test ./internal/custody
+./internal/service/instance ./internal/service/publication ./cmd/ardents
+./cmd/ardents-custody` and the B6 process qualification, retaining test output.
 Inspect process arguments, environment, bundle inventory, runtime plan, and
-durable roots for Authority/Target leakage.
+durable roots for Authority/Target/private-key leakage. Another person
+falsifies H1 by reproducing raw secret export, response replacement, generation
+revival, issuance from recovered locked Authority, or fixture-only publication.
 
 ### Failure scenarios
 
@@ -268,10 +294,15 @@ loses the Target even when an authority-locked backup survives.
 
 ## Disposition
 
-R-131 selects option 1 and authorizes ADR-0064 plus one test-first vertical
+Question state: decided and promoted to ADR-0064. R-131 selects option 1 and
+authorizes ADR-0064 plus one test-first vertical
 implementation. The implementation must close fresh Publisher acquisition and
 the complete artifact-native B6 journey without reopening R-128/R-130,
-Route/Target/wire semantics, Browser separation, or enrollment authority. A
+Route/Target/wire semantics, Browser separation, or enrollment authority. The
+accepted follow-ups are R-132 readiness composition and R-133 State-owned
+transit acquisition. ADR-0064, custody/Instance command references, the package
+map, headless product boundary, and qualification evidence are the changed or
+corroborating documents. No experiment code was created or retained. A
 fixture Credential, caller-owned raw key file, reusable Authority in an
 enrollment bundle, or silently reactivated recovered Authority does not satisfy
 the decision.

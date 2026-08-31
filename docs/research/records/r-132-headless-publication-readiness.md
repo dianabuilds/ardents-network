@@ -27,13 +27,14 @@ artifact boundary can proceed independently.
 - ADR-0035 requires the Publisher to retain one TLS-authenticated,
   State-selected live Introduction slot and treats
   `IntroductionSlotReady` as the exact confirmation of that retained slot.
-- The current lower-level `Endpoint.Publish` instead requires an `ARIA`
+- The retired lower-level `Endpoint.Publish` path requires an `ARIA`
   acknowledgement signed by the public key supplied separately as
-  `IntroductionPublic`. `requestIntroductionAcknowledgement` obtains it
-  over an owner-local Unix socket named by `IntroductionSocket`.
-- R-105 records that this Unix operation is narrow publication control, not a
-  C-2 channel. No maintained Node duty, enrolled command, or State projection
-  currently owns that socket or supplies its signing key.
+  `IntroductionPublic`. Its owner-local Unix client and `IntroductionSocket`
+  field are no longer production code; the maintained combined Publisher
+  start commits the native slot-ready transcript.
+- R-105 records that the historical Unix operation was narrow publication
+  control, not a C-2 channel. No maintained Node duty, enrolled command, or
+  State projection owns such a socket or supplies its signing key.
 - R-129 forbids an operator Route plan in the supported headless journey.
   R-131 and ADR-0064 forbid raw Credential, Instance-key, Target, or Service
   Authority input in the maintained runtime plan.
@@ -171,7 +172,9 @@ a crash after floor advancement requires a successor.
 
 This changes maintained local readiness ownership but changes no Credential,
 Publication record size, Route, Target, or C-2 wire grammar. The old
-`IntroductionSocket` path remains only lower-level compatibility evidence.
+`IntroductionSocket` client path is retired; the Service Publication owner
+retains only validation of historical receipt evidence used by lower-level C-2
+tests.
 
 ### 2. Versioned signed slot-ready wire
 

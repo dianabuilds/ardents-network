@@ -1,23 +1,6 @@
 package endpoint
 
-import (
-	"context"
-	"io"
-)
-
-func writeAll(writer io.Writer, value []byte) error {
-	for len(value) > 0 {
-		count, err := writer.Write(value)
-		if err != nil {
-			return err
-		}
-		if count == 0 {
-			return io.ErrNoProgress
-		}
-		value = value[count:]
-	}
-	return nil
-}
+import "context"
 
 func streamFailure(ctx context.Context, accepted, received uint32, err error) (RuntimeResult, error) {
 	if ctx.Err() != nil {

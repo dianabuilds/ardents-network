@@ -13,8 +13,12 @@ import (
 
 const maximumRequest = len("withdraw\n")
 
-// Server owns one private local transport for Service Administration.
-type Server struct {
+// Server owns the lifecycle of one private local Administration transport.
+type Server interface {
+	Close() error
+}
+
+type server struct {
 	path     string
 	listener *net.UnixListener
 	ctx      context.Context
@@ -28,7 +32,7 @@ type Server struct {
 }
 
 // Listen exposes owner on one explicit absolute Unix-socket path.
-func Listen(path string, owner Interface) (*Server, error) {
+func Listen(path string, owner Interface) (Server, error) {
 	if path == "" || !filepath.IsAbs(path) || owner == nil {
 		return nil, errors.New("local Service Administration configuration is invalid")
 	}
@@ -46,14 +50,14 @@ func Listen(path string, owner Interface) (*Server, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	server := &Server{path: path, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
+	server := &server{path: path, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
 		clients: make(map[*net.UnixConn]struct{})}
 	server.work.Add(1)
 	go server.serve()
 	return server, nil
 }
 
-func (server *Server) serve() {
+func (server *server) serve() {
 	defer server.work.Done()
 	for {
 		connection, err := server.listener.AcceptUnix()
@@ -76,7 +80,7 @@ func (server *Server) serve() {
 	}
 }
 
-func (server *Server) handle(connection *net.UnixConn) {
+func (server *server) handle(connection *net.UnixConn) {
 	defer connection.Close()
 	_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
 	raw, err := io.ReadAll(io.LimitReader(connection, int64(maximumRequest+1)))
@@ -109,7 +113,7 @@ func writeResponse(connection *net.UnixConn, response string) {
 
 // Close refuses new callers, cancels operations, and removes only this exact
 // socket path.
-func (server *Server) Close() error {
+func (server *server) Close() error {
 	if server == nil {
 		return nil
 	}

@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"io"
+	"unicode/utf8"
+)
+
+const (
+	maximumOutcomeClassBytes  = 128
+	maximumOutcomeReasonBytes = 512
 )
 
 const (
@@ -59,10 +65,19 @@ func (failure refusalError) Error() string {
 
 // Refuse returns a typed refusal for a server-side Interface implementation.
 func Refuse(outcome Outcome) error {
-	if outcome.Class == "" {
-		return errors.New("application Connection refusal is unclassified")
+	if err := validOutcome(outcome); err != nil {
+		return err
 	}
 	return refusalError{outcome: outcome}
+}
+
+func validOutcome(outcome Outcome) error {
+	if len(outcome.Class) == 0 || len(outcome.Class) > maximumOutcomeClassBytes ||
+		len(outcome.Reason) > maximumOutcomeReasonBytes ||
+		!utf8.ValidString(string(outcome.Class)) || !utf8.ValidString(outcome.Reason) {
+		return errors.New("application Connection terminal outcome is invalid")
+	}
+	return nil
 }
 
 func refusal(cause error) Outcome {

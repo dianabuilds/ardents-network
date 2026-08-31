@@ -11,8 +11,14 @@ import (
 	"time"
 )
 
-// Client is the local Adapter side of the Connection Interface.
-type Client struct {
+// Client is the local Adapter side of the Connection Interface. It exposes
+// only the byte stream, its terminal outcome, and an orderly input half-close.
+type Client interface {
+	Stream
+	CloseInput() error
+}
+
+type client struct {
 	connection  *net.UnixConn
 	stream      *io.PipeReader
 	sink        *io.PipeWriter
@@ -22,13 +28,12 @@ type Client struct {
 	closeOnce   sync.Once
 	inputOnce   sync.Once
 	inputErr    error
-	closed      chan struct{}
 	stopContext func() bool
 }
 
 // Dial requests one Service Link and returns no Target, State, Entry, Route,
 // credential, or administration handle.
-func Dial(ctx context.Context, path, serviceLink string) (*Client, error) {
+func Dial(ctx context.Context, path, serviceLink string) (Client, error) {
 	if ctx == nil || path == "" || serviceLink == "" || len(serviceLink) > maximumLink {
 		return nil, errors.New("local Application dial input is invalid")
 	}
@@ -67,8 +72,8 @@ func Dial(ctx context.Context, path, serviceLink string) (*Client, error) {
 	}
 	_ = connection.SetDeadline(time.Time{})
 	stream, sink := io.Pipe()
-	opened := &Client{connection: connection, stream: stream, sink: sink,
-		done: make(chan Outcome, 1), closed: make(chan struct{})}
+	opened := &client{connection: connection, stream: stream, sink: sink,
+		done: make(chan Outcome, 1)}
 	opened.stopContext = context.AfterFunc(ctx, func() { _ = opened.Close() })
 	go opened.receive()
 	return opened, nil
@@ -82,16 +87,15 @@ func readRefusal(reader io.Reader) (Outcome, error) {
 	return readTerminal(reader)
 }
 
-func (connection *Client) Read(destination []byte) (int, error) {
+func (connection *client) Read(destination []byte) (int, error) {
 	if connection == nil || connection.stream == nil {
 		return 0, net.ErrClosed
 	}
 	return connection.stream.Read(destination)
 }
 
-func (connection *Client) receive() {
+func (connection *client) receive() {
 	reader := bufio.NewReader(connection.connection)
-	defer close(connection.closed)
 	var header [4]byte
 	for {
 		if _, err := io.ReadFull(reader, header[:]); err != nil {
@@ -125,17 +129,21 @@ func readTerminal(reader io.Reader) (Outcome, error) {
 		return Outcome{}, err
 	}
 	classLength, reasonLength := int(binary.BigEndian.Uint16(lengths[:2])), int(binary.BigEndian.Uint16(lengths[2:]))
-	if classLength == 0 || classLength > 128 || reasonLength > 512 {
+	if classLength == 0 || classLength > maximumOutcomeClassBytes || reasonLength > maximumOutcomeReasonBytes {
 		return Outcome{}, errors.New("local Application terminal frame is invalid")
 	}
 	raw := make([]byte, classLength+reasonLength)
 	if _, err := io.ReadFull(reader, raw); err != nil {
 		return Outcome{}, err
 	}
-	return Outcome{Class: OutcomeClass(raw[:classLength]), Reason: string(raw[classLength:])}, nil
+	outcome := Outcome{Class: OutcomeClass(raw[:classLength]), Reason: string(raw[classLength:])}
+	if err := validOutcome(outcome); err != nil {
+		return Outcome{}, err
+	}
+	return outcome, nil
 }
 
-func (connection *Client) finishReceive(outcome Outcome, err error) {
+func (connection *client) finishReceive(outcome Outcome, err error) {
 	if connection.stopContext != nil {
 		connection.stopContext()
 	}
@@ -150,7 +158,7 @@ func (connection *Client) finishReceive(outcome Outcome, err error) {
 	_ = connection.sink.Close()
 }
 
-func (connection *Client) Write(source []byte) (int, error) {
+func (connection *client) Write(source []byte) (int, error) {
 	connection.writeMu.Lock()
 	defer connection.writeMu.Unlock()
 	written := 0
@@ -169,7 +177,7 @@ func (connection *Client) Write(source []byte) (int, error) {
 }
 
 // Done returns the one bounded terminal outcome.
-func (connection *Client) Done() <-chan Outcome {
+func (connection *client) Done() <-chan Outcome {
 	if connection == nil {
 		return nil
 	}
@@ -177,7 +185,7 @@ func (connection *Client) Done() <-chan Outcome {
 }
 
 // CloseInput completes only the Adapter-to-Service byte direction.
-func (connection *Client) CloseInput() error {
+func (connection *client) CloseInput() error {
 	if connection == nil {
 		return nil
 	}
@@ -194,7 +202,7 @@ func (connection *Client) CloseInput() error {
 	return connection.inputErr
 }
 
-func (connection *Client) publishDone(outcome Outcome) {
+func (connection *client) publishDone(outcome Outcome) {
 	connection.doneOnce.Do(func() {
 		connection.done <- outcome
 		close(connection.done)
@@ -202,7 +210,7 @@ func (connection *Client) publishDone(outcome Outcome) {
 }
 
 // Close withdraws only this local Adapter attachment.
-func (connection *Client) Close() error {
+func (connection *client) Close() error {
 	if connection == nil {
 		return nil
 	}
