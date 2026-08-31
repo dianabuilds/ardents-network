@@ -40,11 +40,11 @@ signer, issuer URL, candidate ordering, or fallback.
 
 ## Fixed request and outcome
 
-One request contains only:
+One role-scoped request contains only:
 
 - Request ID;
 - Network ID, Epoch, and State digest;
-- Descriptor-selected Introduction Node and fixed Introduction role;
+- State-selected Transit Node and exactly one Introduction or Responder role;
 - fresh attachment ID and TLS client-public-key digest; and
 - whole-second Grant expiry within the current State/duty deadline.
 
@@ -143,7 +143,7 @@ fallback.
 
 ## Implementation and evidence order
 
-1. Version and test the issuer profile and request/outcome codecs while keeping
+1. Version and test the exact role-scoped request/outcome codecs while keeping
    Transit Grant v1 unchanged.
 2. Implement the exclusive durable issuer budget/idempotency state and its
    crash/reopen matrix.

@@ -326,8 +326,8 @@ func (owner *transitAcquisition) Close() error {
 
 func (state transitAcquisitionState) request() credential.Request {
 	return credential.Request{RequestID: state.RequestID, NetworkID: state.NetworkID, Digest: state.Digest, Epoch: state.Epoch,
-		IntroductionNodeID: state.IntroductionNodeID, AttachmentID: state.AttachmentID,
-		ClientKeyDigest: state.ClientKeyDigest, NotAfter: time.Unix(state.NotAfter, 0).UTC()}
+		TransitNodeID: state.IntroductionNodeID, AttachmentID: state.AttachmentID, ClientKeyDigest: state.ClientKeyDigest,
+		TransitRole: route.IntroductionRole, NotAfter: time.Unix(state.NotAfter, 0).UTC()}
 }
 
 func (state transitAcquisitionState) certificate() (tls.Certificate, error) {

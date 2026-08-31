@@ -4,10 +4,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 const (
-	requestDomain  = "ATI2"
+	requestDomain  = "ATI3"
 	responseDomain = "ATO2"
 )
 
@@ -15,27 +17,30 @@ func encodeRequest(input Request) ([]byte, error) {
 	if !validRequest(input) {
 		return nil, errors.New("transit issuance request is invalid")
 	}
-	result := make([]byte, 0, 4+32*6+8+8)
+	result := make([]byte, 0, 4+32*6+8+1+8)
 	result = append(result, requestDomain...)
-	for _, value := range [][32]byte{input.RequestID, input.NetworkID, input.Digest, input.IntroductionNodeID, input.AttachmentID, input.ClientKeyDigest} {
+	for _, value := range [][32]byte{input.RequestID, input.NetworkID, input.Digest, input.TransitNodeID, input.AttachmentID, input.ClientKeyDigest} {
 		result = append(result, value[:]...)
 	}
 	result = binary.BigEndian.AppendUint64(result, input.Epoch)
+	result = append(result, input.TransitRole)
 	return binary.BigEndian.AppendUint64(result, uint64(input.NotAfter.Unix())), nil
 }
 
 func decodeRequest(raw []byte) (Request, error) {
-	if len(raw) != 4+32*6+8+8 || string(raw[:4]) != requestDomain {
+	if len(raw) != 4+32*6+8+1+8 || string(raw[:4]) != requestDomain {
 		return Request{}, errors.New("transit issuance request encoding is invalid")
 	}
 	offset := 4
 	result := Request{}
-	for _, destination := range []*[32]byte{&result.RequestID, &result.NetworkID, &result.Digest, &result.IntroductionNodeID, &result.AttachmentID, &result.ClientKeyDigest} {
+	for _, destination := range []*[32]byte{&result.RequestID, &result.NetworkID, &result.Digest, &result.TransitNodeID, &result.AttachmentID, &result.ClientKeyDigest} {
 		copy(destination[:], raw[offset:offset+32])
 		offset += 32
 	}
 	result.Epoch = binary.BigEndian.Uint64(raw[offset : offset+8])
 	offset += 8
+	result.TransitRole = raw[offset]
+	offset++
 	result.NotAfter = time.Unix(int64(binary.BigEndian.Uint64(raw[offset:offset+8])), 0).UTC()
 	if !validRequest(result) {
 		return Request{}, errors.New("transit issuance request content is invalid")
@@ -91,8 +96,9 @@ func unpad(raw []byte) ([]byte, error) {
 }
 
 func validRequest(input Request) bool {
-	return input.RequestID != [32]byte{} && input.NetworkID != [32]byte{} && input.Digest != [32]byte{} && input.IntroductionNodeID != [32]byte{} &&
+	return input.RequestID != [32]byte{} && input.NetworkID != [32]byte{} && input.Digest != [32]byte{} && input.TransitNodeID != [32]byte{} &&
 		input.AttachmentID != [32]byte{} && input.ClientKeyDigest != [32]byte{} && input.Epoch != 0 && !input.NotAfter.IsZero() &&
+		(input.TransitRole == route.IntroductionRole || input.TransitRole == route.ResponderRole) &&
 		input.NotAfter.Unix() > 0 && input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second))
 }
 

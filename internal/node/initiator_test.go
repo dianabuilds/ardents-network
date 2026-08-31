@@ -241,8 +241,8 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	_, material, rendezvousConfig := rendezvousFixture(t)
 	issuerCertificate, issuerPublic, issuerPrivate := resolutionGatewayCertificate(t)
 	request := credential.Request{RequestID: [32]byte{80}, NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest,
-		IntroductionNodeID: [32]byte{81}, AttachmentID: [32]byte{82}, ClientKeyDigest: [32]byte{83}, Epoch: rendezvousConfig.Epoch,
-		NotAfter: rendezvousConfig.NotAfter.Add(-time.Second)}
+		TransitNodeID: [32]byte{81}, AttachmentID: [32]byte{82}, ClientKeyDigest: [32]byte{83}, Epoch: rendezvousConfig.Epoch,
+		TransitRole: route.IntroductionRole, NotAfter: rendezvousConfig.NotAfter.Add(-time.Second)}
 	issuer := openNodeTestIssuer(t, request.NetworkID, [32]byte{84}, issuerPrivate, [32]byte{4}, material.initiatorPublic,
 		rendezvousConfig.NotAfter, 2, func() time.Time { return time.Now().UTC() },
 		func(profile credential.Profile, profileDigest [32]byte) (credential.StateDuty, bool) {
@@ -325,7 +325,7 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	issuerProfile := issuer.Profile()
 	grant, err := route.VerifyTransitGrant(result.Grant, ed25519.PublicKey(issuerProfile.GrantSignerPublicKey[:]))
 	if err != nil || grant.AttachmentID != request.AttachmentID || grant.ClientKeyDigest != request.ClientKeyDigest ||
-		grant.TransitNodeID != request.IntroductionNodeID {
+		grant.TransitNodeID != request.TransitNodeID || grant.TransitRole != request.TransitRole {
 		t.Fatalf("credential Relay Grant = %+v, %v", grant, err)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)

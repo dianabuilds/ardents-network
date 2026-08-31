@@ -65,9 +65,10 @@ type RootIssuerConfig struct {
 // same adjacent-hop tuple that the resulting Transit Grant binds, and has no
 // Service Name, Target, Descriptor, Publisher, or sealed introduction.
 type Request struct {
-	RequestID, NetworkID, Digest, IntroductionNodeID, AttachmentID, ClientKeyDigest [32]byte
-	Epoch                                                                           uint64
-	NotAfter                                                                        time.Time
+	RequestID, NetworkID, Digest, TransitNodeID, AttachmentID, ClientKeyDigest [32]byte
+	Epoch                                                                      uint64
+	TransitRole                                                                byte
+	NotAfter                                                                   time.Time
 }
 
 // Outcome is the authenticated, fixed-size issuer result vocabulary.

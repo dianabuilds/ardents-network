@@ -1,7 +1,7 @@
 ---
 id: R-133
 title: Role-scoped Transit Grant acquisition for a headless Publisher
-status: open; decision-ready
+status: completed; option 1 accepted
 owner: Product Owner and Codex
 started: 2026-08-31
 reviewed: 2026-08-31
@@ -197,7 +197,8 @@ candidate.
 
 ## Disposition
 
-R-133 is open and decision-ready. It records a newly proven dependency of the
-R-128/R-132 composition; it does not accept a protocol change or authorize an
-ADR. Independent artifact/custody and local-interface work continues while the
-decision remains open.
+The Product Owner accepted option 1 and the exact R-133 statement on
+2026-08-31. [ADR-0066](../../adr/0066-use-role-scoped-transit-grant-requests.md)
+records the consequential private issuance-wire decision. R-133 remains a
+dependency inside the accepted R-128/R-129 vertical slice, not a separate
+product goal.

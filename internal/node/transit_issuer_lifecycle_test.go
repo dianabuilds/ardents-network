@@ -61,8 +61,8 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 		t.Fatal(err)
 	}
 	request := credential.Request{RequestID: [32]byte{7}, NetworkID: network, Digest: snapshot.Digest,
-		IntroductionNodeID: [32]byte{8}, AttachmentID: [32]byte{9}, ClientKeyDigest: [32]byte{10}, Epoch: snapshot.Epoch,
-		NotAfter: now.Add(10 * time.Second)}
+		TransitNodeID: [32]byte{8}, AttachmentID: [32]byte{9}, ClientKeyDigest: [32]byte{10}, Epoch: snapshot.Epoch,
+		TransitRole: route.IntroductionRole, NotAfter: now.Add(10 * time.Second)}
 	issued, err := client.Issue(context.Background(), request)
 	if err != nil || issued.Outcome != credential.Issued {
 		t.Fatalf("root-backed issuance = %q, %v", issued.Outcome, err)

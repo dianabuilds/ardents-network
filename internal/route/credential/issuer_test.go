@@ -21,7 +21,7 @@ import (
 	"github.com/openpcc/ohttp"
 )
 
-func TestClientObtainsOnlyExactMembershipGrantThroughOHTTP(t *testing.T) {
+func TestClientObtainsOnlyExactRoleScopedGrantThroughOHTTP(t *testing.T) {
 	now := time.Unix(2_000_500_000, 0).UTC()
 	issuerPublic, issuerPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -32,8 +32,9 @@ func TestClientObtainsOnlyExactMembershipGrantThroughOHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	initiatorCertificate := credentialCertificate(t, initiatorPrivate, 2)
-	request := Request{RequestID: credentialID(9), NetworkID: credentialID(1), Digest: credentialID(2), IntroductionNodeID: credentialID(3),
-		AttachmentID: credentialID(4), ClientKeyDigest: credentialID(5), Epoch: 6, NotAfter: now.Add(10 * time.Second)}
+	request := Request{RequestID: credentialID(9), NetworkID: credentialID(1), Digest: credentialID(2), TransitNodeID: credentialID(3),
+		AttachmentID: credentialID(4), ClientKeyDigest: credentialID(5), Epoch: 6, TransitRole: route.ResponderRole,
+		NotAfter: now.Add(10 * time.Second)}
 	issuer := openTestRootIssuer(t, filepath.Join(t.TempDir(), "issuer-root"), request.NetworkID, credentialID(7), issuerPrivate,
 		credentialID(8), publicIdentifier(initiatorPublic), now.Add(time.Minute), 4, func() time.Time { return now },
 		func(profile Profile, profileDigest [32]byte) (StateDuty, bool) {
@@ -73,8 +74,8 @@ func TestClientObtainsOnlyExactMembershipGrantThroughOHTTP(t *testing.T) {
 	grantPublic := ed25519.PublicKey(issuerProfile.GrantSignerPublicKey[:])
 	grant, err := route.VerifyTransitGrant(result.Grant, grantPublic)
 	if err != nil || grant.NetworkID != request.NetworkID || grant.Digest != request.Digest ||
-		grant.Epoch != request.Epoch || grant.TransitNodeID != request.IntroductionNodeID || grant.AttachmentID != request.AttachmentID ||
-		grant.ClientKeyDigest != request.ClientKeyDigest || grant.TransitRole != route.IntroductionRole || !grant.NotAfter.Equal(request.NotAfter) {
+		grant.Epoch != request.Epoch || grant.TransitNodeID != request.TransitNodeID || grant.AttachmentID != request.AttachmentID ||
+		grant.ClientKeyDigest != request.ClientKeyDigest || grant.TransitRole != request.TransitRole || !grant.NotAfter.Equal(request.NotAfter) {
 		t.Fatalf("issued Grant = %+v, %v", grant, err)
 	}
 	if grant.IssuerID != sha256.Sum256(grantPublic) || grant.GrantID == [32]byte{} {
@@ -118,13 +119,14 @@ func TestIssuerRejectsCallerWithoutSelectedInitiatorCertificate(t *testing.T) {
 }
 
 func TestCredentialRequestHasClosedTargetFreeGrammar(t *testing.T) {
-	request := Request{RequestID: credentialID(10), NetworkID: credentialID(11), Digest: credentialID(12), IntroductionNodeID: credentialID(13),
-		AttachmentID: credentialID(14), ClientKeyDigest: credentialID(15), Epoch: 16, NotAfter: time.Unix(2_000_500_010, 0).UTC()}
+	request := Request{RequestID: credentialID(10), NetworkID: credentialID(11), Digest: credentialID(12), TransitNodeID: credentialID(13),
+		AttachmentID: credentialID(14), ClientKeyDigest: credentialID(15), Epoch: 16, TransitRole: route.IntroductionRole,
+		NotAfter: time.Unix(2_000_500_010, 0).UTC()}
 	raw, err := encodeRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(raw) != 4+32*6+8+8 {
+	if len(raw) != 4+32*6+8+1+8 {
 		t.Fatalf("request length = %d", len(raw))
 	}
 	if _, err := decodeRequest(append(raw, []byte("target-or-name")...)); err == nil {
@@ -132,8 +134,13 @@ func TestCredentialRequestHasClosedTargetFreeGrammar(t *testing.T) {
 	}
 	changed := append([]byte(nil), raw...)
 	changed[4+32*3] ^= 1
-	if got, err := decodeRequest(changed); err != nil || got.IntroductionNodeID == request.IntroductionNodeID {
+	if got, err := decodeRequest(changed); err != nil || got.TransitNodeID == request.TransitNodeID {
 		t.Fatalf("closed request mutation = %+v, %v", got, err)
+	}
+	changed = append([]byte(nil), raw...)
+	changed[4+32*6+8] = route.RendezvousRole
+	if _, err := decodeRequest(changed); err == nil {
+		t.Fatal("credential request accepted an unsupported transit role")
 	}
 }
 

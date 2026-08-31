@@ -118,7 +118,7 @@ func (client *Client) Issue(ctx context.Context, input Request) (Result, error) 
 	}
 	grant, err := route.VerifyTransitGrant(result.Grant, client.authority)
 	if err != nil || grant.NetworkID != input.NetworkID || grant.Digest != input.Digest || grant.Epoch != input.Epoch ||
-		grant.TransitNodeID != input.IntroductionNodeID || grant.TransitRole != route.IntroductionRole ||
+		grant.TransitNodeID != input.TransitNodeID || grant.TransitRole != input.TransitRole ||
 		grant.AttachmentID != input.AttachmentID || grant.ClientKeyDigest != input.ClientKeyDigest || !grant.NotAfter.Equal(input.NotAfter) {
 		return Result{}, errors.New("transit issuance Grant does not match the requested tuple")
 	}

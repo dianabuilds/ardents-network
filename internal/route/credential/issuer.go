@@ -137,8 +137,8 @@ func (issuer *Issuer) issue(request Request, payload []byte, current StateDuty, 
 func (issuer *Issuer) signGrant(request Request, grantID [32]byte) ([]byte, error) {
 	grantPublic := issuer.config.GrantSigner.Public().(ed25519.PublicKey)
 	return route.IssueTransitGrant(route.TransitGrant{IssuerID: sha256.Sum256(grantPublic), GrantID: grantID,
-		NetworkID: request.NetworkID, Digest: request.Digest, AttachmentID: request.AttachmentID, TransitNodeID: request.IntroductionNodeID,
-		ClientKeyDigest: request.ClientKeyDigest, Epoch: request.Epoch, TransitRole: route.IntroductionRole, NotAfter: request.NotAfter}, issuer.config.GrantSigner)
+		NetworkID: request.NetworkID, Digest: request.Digest, AttachmentID: request.AttachmentID, TransitNodeID: request.TransitNodeID,
+		ClientKeyDigest: request.ClientKeyDigest, Epoch: request.Epoch, TransitRole: request.TransitRole, NotAfter: request.NotAfter}, issuer.config.GrantSigner)
 }
 
 func (issuer *Issuer) writeResult(writer http.ResponseWriter, result Result) {

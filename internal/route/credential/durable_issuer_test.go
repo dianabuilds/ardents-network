@@ -24,8 +24,8 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := Request{RequestID: credentialID(40), NetworkID: credentialID(41), Digest: credentialID(42),
-		IntroductionNodeID: credentialID(43), AttachmentID: credentialID(44), ClientKeyDigest: credentialID(45),
-		Epoch: 46, NotAfter: now.Add(10 * time.Second)}
+		TransitNodeID: credentialID(43), AttachmentID: credentialID(44), ClientKeyDigest: credentialID(45),
+		Epoch: 46, TransitRole: route.IntroductionRole, NotAfter: now.Add(10 * time.Second)}
 	withdrawn := false
 	root := t.TempDir()
 	initiatorCertificate := credentialCertificate(t, initiatorPrivate, 10)
@@ -33,7 +33,7 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 	start := func() (*Issuer, *httptest.Server, *http.Client) {
 		t.Helper()
 		issuer := openTestRootIssuer(t, root, request.NetworkID, credentialID(47), issuerPrivate,
-			credentialID(48), publicIdentifier(initiatorPublic), now.Add(time.Minute), 1, func() time.Time { return now },
+			credentialID(48), publicIdentifier(initiatorPublic), now.Add(time.Minute), 2, func() time.Time { return now },
 			func(profile Profile, profileDigest [32]byte) (StateDuty, bool) {
 				return StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(47),
 					IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(48),
@@ -120,18 +120,30 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 	fresh := request
 	fresh.RequestID = credentialID(49)
 	fresh.AttachmentID = credentialID(50)
-	if result := issue(issuer, server, httpClient, fresh); result.Outcome != Exhausted || len(result.Grant) != 0 {
+	fresh.TransitNodeID = credentialID(53)
+	fresh.TransitRole = route.ResponderRole
+	responder := issue(issuer, server, httpClient, fresh)
+	responderGrant, verifyErr := route.VerifyTransitGrant(responder.Grant, grantPublic)
+	if responder.Outcome != Issued || verifyErr != nil || responderGrant.TransitRole != route.ResponderRole ||
+		responderGrant.TransitNodeID != fresh.TransitNodeID || string(responder.Grant) == string(first.Grant) {
+		t.Fatalf("shared-budget Responder outcome = %q, Grant = %+v, err = %v", responder.Outcome, responderGrant, verifyErr)
+	}
+
+	exhausted := fresh
+	exhausted.RequestID = credentialID(54)
+	exhausted.AttachmentID = credentialID(55)
+	if result := issue(issuer, server, httpClient, exhausted); result.Outcome != Exhausted || len(result.Grant) != 0 {
 		t.Fatalf("fresh request after budget = %q, %d bytes", result.Outcome, len(result.Grant))
 	}
 
 	conflict := request
-	conflict.AttachmentID = credentialID(51)
+	conflict.TransitRole = route.ResponderRole
 	if result := issue(issuer, server, httpClient, conflict); result.Outcome != Unavailable || len(result.Grant) != 0 {
 		t.Fatalf("Request ID conflict = %q, %d bytes", result.Outcome, len(result.Grant))
 	}
 
 	withdrawn = true
-	withdrawnRequest := fresh
+	withdrawnRequest := exhausted
 	withdrawnRequest.RequestID = credentialID(52)
 	if result := issue(issuer, server, httpClient, withdrawnRequest); result.Outcome != Withdrawn || len(result.Grant) != 0 {
 		t.Fatalf("withdrawn duty = %q, %d bytes", result.Outcome, len(result.Grant))
