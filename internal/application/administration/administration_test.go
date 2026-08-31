@@ -10,13 +10,21 @@ import (
 	"time"
 )
 
+type testInterface struct {
+	publish  func(context.Context) error
+	withdraw func(context.Context) error
+}
+
+func (owner testInterface) Publish(ctx context.Context) error  { return owner.publish(ctx) }
+func (owner testInterface) Withdraw(ctx context.Context) error { return owner.withdraw(ctx) }
+
 func TestLocalAdministrationDispatchesOnlyClosedOperations(t *testing.T) {
 	path := filepath.Join(os.TempDir(), fmt.Sprintf("aa-%d.sock", time.Now().UnixNano()))
 	t.Cleanup(func() { _ = os.Remove(path) })
 	published, withdrawn := make(chan struct{}, 1), make(chan struct{}, 1)
-	server, err := Listen(path, InterfaceFuncs{
-		PublishFunc:  func(context.Context) error { published <- struct{}{}; return nil },
-		WithdrawFunc: func(context.Context) error { withdrawn <- struct{}{}; return nil },
+	server, err := Listen(path, testInterface{
+		publish:  func(context.Context) error { published <- struct{}{}; return nil },
+		withdraw: func(context.Context) error { withdrawn <- struct{}{}; return nil },
 	})
 	if err != nil {
 		t.Fatal(err)

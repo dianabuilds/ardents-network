@@ -18,81 +18,125 @@ Initiator. This decision is required before `ardents-node` can expose a
 supported issuer process and before the artifact-native enrollment-v3 journey
 can exercise membership acquisition without a source fixture.
 
-## Verified blocker
+## Current contract
 
-The maintained `credential.Issuer` is a real bounded handler with fixed OHTTP
-outcomes and a durable budget/idempotency ledger, but every current caller is a
-behavior test. `IssuerConfig` receives a raw Grant signer private key and one
-static Initiator identity from its caller. `NewIssuer` also creates or reopens
-the retained OHTTP key material and then emits the Node-signed issuer profile.
+ADR-0062 fixes a purpose-scoped online Transit Grant signer with a finite
+global budget, Request-ID idempotency, fixed OHTTP outcomes, and no Route,
+Target, or Service authority. ADR-0053 keeps the Network State root outside
+online Node duties. R-128 requires the normal participant path to derive
+membership facts from authenticated State rather than an operator Route plan.
 
-Authenticated Network State must already contain that exact profile before a
-participant or receiving Node can accept the signer. A normal first start
-therefore has a cycle:
+The maintained issuer must publish its exact Node-signed OHTTP profile before
+authenticated State can select that duty, but it may serve only after State
+authenticates the same profile. State may contain several Initiator candidates,
+while the accepted issuer ingress admits one exact mutual-TLS Initiator. The
+open question was therefore the owner that breaks this bootstrap cycle and the
+source of the exact Initiator binding.
 
-```text
-issuer root/key material -> exact signed profile -> authenticated State
-authenticated State      -> current issuer duty  -> issuer process start
-```
+## Hypotheses
 
-No accepted owner currently breaks that cycle. Supplying the signer key,
-profile, State duty, or Initiator through an operator runtime plan would make
-the plan an undeclared authority and would contradict R-128's normal
-participant path. Reusing the State root key is forbidden by ADR-0053 and
-ADR-0062.
+- **H1:** One owner-only issuer root can atomically create and retain the
+  purpose key and OHTTP material, emit only a stable public profile, and later
+  serve only the same State-authenticated duty and Initiator binding.
+- **H2:** A separate encrypted custody owner is required to release the
+  purpose key to the online duty without exposing it through configuration.
+- **H3:** Caller-supplied keys and profile can satisfy the contract without
+  turning the runtime plan into an undeclared authority.
+- **H0:** No evaluated owner preserves the accepted State, Route, and key
+  boundaries; the online issuance candidate must then be removed.
 
-Current State can authorize multiple Initiator candidates, while
-`IssuerConfig` accepts exactly one mutual-TLS Initiator public key. Choosing one
-from plan order or local configuration would silently add Route authority.
-Accepting all current Initiators changes the issuer ingress and budget-abuse
-surface and therefore also needs an explicit choice.
+## Evaluation criteria
 
-## Candidate decisions
+- A runtime plan cannot supply or substitute the signer, profile, or
+  Initiator identity.
+- Network State root custody never enters the online issuer process.
+- Initialization interruption cannot create two profiles for one root, and
+  reopen reproduces the same profile and durable ledger.
+- The issuer serves only its current authenticated State duty and stops on
+  successor, withdrawal, expiry, or mismatch.
+- One finite global budget and Request-ID outcome survive restart without
+  rollback or duplicate issuance.
+- The lifecycle is maintainable by the Product Owner and Codex without adding
+  an undeclared custody operator or secret-delivery organization.
 
-1. **Issuer-root bootstrap ceremony.** A bounded local initialization creates
-   the purpose key and OHTTP material inside a new owner-only issuer root,
-   emits only the exact public Node-signed profile for the State ceremony, and
-   can later serve only when current State authenticates the same profile and
-   duty. The runtime plan never carries either private key. This is the
-   smallest candidate consistent with ADR-0062, but it adds a two-phase
-   operator lifecycle and needs an interruption/replacement contract.
-2. **Separate encrypted issuer custody.** A custody operation creates and
-   releases the purpose key/profile to the online duty. This gives stronger
-   at-rest separation but creates another secret-delivery and maintenance
-   workflow for the current team; no such owner is presently accepted.
-3. **Caller-supplied raw keys/profile.** Retain the current test-shaped config
-   as a product plan. This is rejected unless the Product Owner explicitly
-   changes the authority contract: it exposes authority through configuration
-   and cannot prove normal restart ownership.
+## Evidence plan
 
-Ingress must additionally choose either one State-declared issuer/Initiator
-binding or the complete bounded set of current `initiator` candidates. The
-former requires State to carry that binding; the latter requires an amended
-issuer TLS/admission contract and explicit global-budget abuse analysis.
+### Primary sources
 
-## Falsification and evidence
+- [ADR-0053](../../adr/0053-bootstrap-functional-alpha-network-state.md),
+  [ADR-0062](../../adr/0062-scope-online-transit-grant-signing.md), and
+  [R-128](r-128-headless-participant-acquisition.md), inspected 2026-08-30.
+- `internal/route/credential/contract.go`,
+  `internal/route/credential/issuer.go`, and
+  `internal/route/credential/profile.go`, inspected 2026-08-30.
+- `internal/network/state/node_duty_view.go` and the maintained Node duty
+  admission code, inspected 2026-08-30.
 
-Reject a candidate if a runtime plan can substitute a signer/profile or
-Initiator, if State root custody enters the online process, if interrupted
-initialization can publish two profiles for one root, if restart changes the
-profile, or if a State successor can continue serving under the prior duty.
-The accepted implementation must prove initialize/reopen, wrong-State,
-successor, withdrawal, exhausted, and interrupted-publication cases before the
-unpacked enrollment-v3 journey can be called complete.
+### Experiment
 
-## Current disposition
+No disposable experiment was required. The selected implementation was to be
+falsified through behavior tests for initialize/reopen, interrupted root
+creation, wrong State, successor, withdrawal, exhaustion, and stable public
+profile reproduction, followed by the unpacked enrollment-v3 process tracer.
 
-The Product Owner accepted candidate 1 on 2026-08-30 with the single
-State-declared Initiator binding. One explicit owner-only issuer-root ceremony
-creates and retains the purpose Grant signer and OHTTP material, publishes only
-the stable Node-signed public profile, and never exposes the Network State root
-key. The exact profile declares one permitted Initiator identity/key; State
-binds that ingress by authenticating the profile under its sole issuer duty.
+### Failure scenarios
 
-The runtime plan may name the issuer root and finite local runtime bounds but
-cannot supply a signer, profile, or Initiator. The first accepted State duty
-binds the root's durable budget and ledger. Restart reproduces the same public
-profile and ledger; State succession, withdrawal, expiry, or mismatch ends the
-old duty. Rotation and replacement require a distinct empty root and an
-explicit new State ceremony. ADR-0063 records the durable decision. R-128 and
-ADR-0062 remain accepted and are not reopened.
+- interrupted first initialization or profile publication;
+- copied or substituted runtime plan, root, profile, or Initiator;
+- State authenticates another profile or successor duty;
+- budget or Request-ID ledger rollback after restart;
+- old duty continues after withdrawal, expiry, or State succession;
+- online process obtains Network State root authority.
+
+## Findings
+
+- **Measurement:** the maintained issuer already had fixed encrypted outcomes
+  and a durable budget/idempotency ledger, but its callers supplied a raw Grant
+  signer and one Initiator identity.
+- **Sourced fact:** authenticated State must contain the exact signed issuer
+  profile before participants and receiving Nodes may accept the duty.
+- **Sourced fact:** ADR-0053 and ADR-0062 forbid reuse of the State root as the
+  online Grant-signing key.
+- **Measurement:** no accepted owner broke the first-start cycle between
+  retained issuer material, public profile publication, and State selection.
+- **Inference:** selecting an Initiator from plan order or local configuration
+  would add undeclared Route authority.
+- **Inference:** accepting every current Initiator would enlarge the ingress
+  and budget-abuse surface beyond ADR-0062.
+
+## Options
+
+1. **Issuer-root bootstrap ceremony.** A bounded owner-only initialization
+   creates the purpose key and OHTTP material, emits only the stable public
+   profile, and serves later only under the matching State duty. This adds a
+   two-phase operator lifecycle but no secret-delivery owner.
+2. **Separate encrypted issuer custody.** Custody creates and releases the
+   purpose key/profile. It strengthens at-rest separation but adds an
+   unselected secret-delivery and maintenance workflow.
+3. **Caller-supplied raw keys/profile.** Preserve the test-shaped config as a
+   product plan. This exposes issuance authority through configuration and
+   cannot prove normal restart ownership.
+
+Ingress additionally required either one State-declared issuer/Initiator
+binding or admission of the complete candidate set. The latter would amend the
+issuer TLS and abuse contract.
+
+## Recommendation
+
+Choose option 1 with one State-declared Initiator binding. Confidence is high:
+it keeps private material and interruption reconciliation local to one owner
+while reusing the already selected State duty. The strongest argument against
+it is the two-phase ceremony and its replacement burden; option 2 would be
+preferable if an independently maintained custody workflow were later chosen.
+
+## Disposition
+
+The Product Owner accepted option 1 and the single State-declared Initiator
+binding on 2026-08-30. One owner-only issuer root creates and retains the
+purpose Grant signer and OHTTP material, emits only the stable Node-signed
+public profile, and never exposes the Network State root key. The runtime plan
+may name the root and finite bounds but cannot supply a signer, profile, or
+Initiator. Restart reproduces the same profile and ledger; succession,
+withdrawal, expiry, or mismatch ends the old duty. Rotation requires a distinct
+empty root and explicit State ceremony. ADR-0063 records the decision; R-128
+and ADR-0062 remain accepted and are not reopened.

@@ -63,7 +63,7 @@ func Dial(ctx context.Context, path, serviceLink string) (*Client, error) {
 		if refusalErr != nil {
 			return nil, errors.New("local Application Connection is unavailable")
 		}
-		return nil, errors.New(outcome.Class + ": " + outcome.Reason)
+		return nil, errors.New(string(outcome.Class) + ": " + outcome.Reason)
 	}
 	_ = connection.SetDeadline(time.Time{})
 	stream, sink := io.Pipe()
@@ -132,7 +132,7 @@ func readTerminal(reader io.Reader) (Outcome, error) {
 	if _, err := io.ReadFull(reader, raw); err != nil {
 		return Outcome{}, err
 	}
-	return Outcome{Class: string(raw[:classLength]), Reason: string(raw[classLength:])}, nil
+	return Outcome{Class: OutcomeClass(raw[:classLength]), Reason: string(raw[classLength:])}, nil
 }
 
 func (connection *Client) finishReceive(outcome Outcome, err error) {
@@ -214,7 +214,7 @@ func (connection *Client) Close() error {
 		connection.writeMu.Lock()
 		result = connection.connection.Close()
 		connection.writeMu.Unlock()
-		connection.publishDone(Outcome{Class: "local cancellation", Reason: "Application Adapter closed the local connection"})
+		connection.publishDone(Outcome{Class: LocalCancellation, Reason: "Application Adapter closed the local connection"})
 		_ = connection.stream.Close()
 	})
 	return result

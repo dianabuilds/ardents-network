@@ -52,7 +52,7 @@ func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, output
 		return errors.New("headless Application ended without a terminal outcome")
 	}
 	if outcome.Class != "clean service connection close" {
-		return errors.New(outcome.Class + ": " + outcome.Reason)
+		return errors.New(string(outcome.Class) + ": " + outcome.Reason)
 	}
 	if err := result.Sync(); err != nil {
 		return err
@@ -60,7 +60,7 @@ func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, output
 	keep = true
 	return json.NewEncoder(output).Encode(struct {
 		Kind, Class, Reason string
-	}{Kind: "headless-open-complete", Class: outcome.Class, Reason: outcome.Reason})
+	}{Kind: "headless-open-complete", Class: string(outcome.Class), Reason: outcome.Reason})
 }
 
 func runHeadlessAdministration(ctx context.Context, operation, socket string, output io.Writer) error {

@@ -72,11 +72,19 @@ therefore cannot close B6.
 
 ### Primary sources
 
-The initial decision evidence is the accepted in-repository product and ADR
-contract linked above plus the maintained custody, Endpoint publication, and
-Service publication source. Any selected operating-system keystore or external
-cryptographic dependency requires its own primary-source review and dependency
-decision before implementation.
+- [ADR-0003](../../adr/0003-bounded-service-instance-credentials.md),
+  [ADR-0062](../../adr/0062-scope-online-transit-grant-signing.md),
+  [ADR-0063](../../adr/0063-bootstrap-transit-issuer-from-owner-root.md),
+  [R-128](r-128-headless-participant-acquisition.md), and
+  [R-130](r-130-transit-issuer-bootstrap.md), inspected 2026-08-30.
+- The [headless product boundary](../../product/network-application-separation.md),
+  [J-03](../../product/journeys.md#j-03--publish-a-local-service), and
+  [NET-03/NET-04B](../../product/functional-map.md), inspected 2026-08-30.
+- `internal/custody`, `internal/endpoint/service_publication.go`, and
+  `internal/service/publication`, inspected 2026-08-30.
+
+No operating-system keystore or external cryptographic dependency was selected;
+either would require a separate primary-source review and dependency decision.
 
 ### Experiment
 

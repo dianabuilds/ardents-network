@@ -124,10 +124,10 @@ func (server *Server) handle(local *net.UnixConn) {
 			outcome = value
 		}
 	case <-server.ctx.Done():
-		outcome = Outcome{Class: "local timeout or cancellation", Reason: "Endpoint stopped"}
+		outcome = Outcome{Class: LocalTimeout, Reason: "Endpoint stopped"}
 	}
 	if outcome.Class == "" {
-		outcome = Outcome{Class: "indeterminate failure", Reason: "Application Connection ended without an outcome"}
+		outcome = Outcome{Class: IndeterminateFailure, Reason: "Application Connection ended without an outcome"}
 	}
 	_ = writeTerminal(local, outcome)
 	_ = application.Close()
@@ -224,7 +224,7 @@ func writeTerminal(writer io.Writer, outcome Outcome) error {
 	if _, err := writer.Write(header[:]); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(writer, outcome.Class); err != nil {
+	if _, err := io.WriteString(writer, string(outcome.Class)); err != nil {
 		return err
 	}
 	_, err := io.WriteString(writer, outcome.Reason)

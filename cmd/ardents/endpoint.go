@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/portable"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/replacement"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
@@ -62,23 +61,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && arguments[1] == "rollback" {
 		return runEndpointRollback(ctx, arguments[2], output)
 	}
-	if len(arguments) != 3 || arguments[1] != "run" || arguments[2] == "" {
-		return errors.New("usage: ardents endpoint <portable|enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <service-link> <input-file> <output-file>|publish <administration-socket>|withdraw <administration-socket>|user-unit <alpha-enrollment.json>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>|run <endpoint-plan.json>>")
-	}
-	encoder := json.NewEncoder(output)
-	encoder.SetEscapeHTML(false)
-	result, err := endpoint.Run(ctx, arguments[2], func(role string) {
-		_ = encoder.Encode(map[string]string{"kind": "ready", "role": role})
-	})
-	if encodeErr := encoder.Encode(result); encodeErr != nil {
-		return errors.Join(err, encodeErr)
-	}
-	publishedAt := time.Now()
-	publishErr := encoder.Encode(struct {
-		Kind       string `json:"kind"`
-		AtUnixNano int64  `json:"at_unix_nano"`
-	}{Kind: "connection-result-published", AtUnixNano: publishedAt.UnixNano()})
-	return errors.Join(err, publishErr)
+	return errors.New("usage: ardents endpoint <portable|enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <service-link> <input-file> <output-file>|publish <administration-socket>|withdraw <administration-socket>|user-unit <alpha-enrollment.json>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
 }
 
 // runReplacementSelfTest is the candidate-side, no-network Endpoint

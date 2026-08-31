@@ -138,7 +138,7 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 		if closeErr != nil && runErr == nil {
 			result.Class, result.Reason = "indeterminate failure", "Application Connection cleanup failed"
 		}
-		done <- applicationconnection.Outcome{Class: result.Class, Reason: result.Reason}
+		done <- applicationconnection.Outcome{Class: applicationconnection.OutcomeClass(result.Class), Reason: result.Reason}
 		close(done)
 	}()
 	connection := &ApplicationConnection{stream: application, cancel: cancel, done: done}
@@ -147,7 +147,7 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 		return connection, nil
 	case outcome := <-done:
 		_ = connection.Close()
-		return nil, errors.New(outcome.Class + ": " + outcome.Reason)
+		return nil, errors.New(string(outcome.Class) + ": " + outcome.Reason)
 	case <-ctx.Done():
 		_ = connection.Close()
 		return nil, ctx.Err()

@@ -2,6 +2,7 @@ package architecture
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -313,6 +314,21 @@ func TestHeadlessCommandDelegatesParticipantRuntimeComposition(t *testing.T) {
 	} {
 		if strings.Contains(source, forbidden) {
 			t.Errorf("headless command retains runtime or authority decision %q", forbidden)
+		}
+	}
+}
+
+func TestEndpointOwnsNoSecondLocalApplicationTransport(t *testing.T) {
+	root := repositoryRoot(t)
+	command := string(readProjectFile(t, root, "cmd/ardents/endpoint.go"))
+	for _, forbidden := range []string{`arguments[1] == "run"`, "endpoint.Run("} {
+		if strings.Contains(command, forbidden) {
+			t.Errorf("ardents command retains legacy Endpoint transport %q", forbidden)
+		}
+	}
+	for _, file := range []string{"config.go", "connections.go", "endpoint.go", "publication.go"} {
+		if _, err := os.Stat(filepath.Join(root, "internal", "endpoint", file)); err == nil || !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("Endpoint retains legacy local transport owner %s", file)
 		}
 	}
 }

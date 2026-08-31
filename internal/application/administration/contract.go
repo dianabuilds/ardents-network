@@ -17,20 +17,13 @@ const (
 type Outcome string
 
 // Interface owns publication and withdrawal without accepting Service,
-// Network, Route, credential, key, or transport facts from a caller.
+// Network, Route, credential, key, or transport facts from a caller. Each call
+// is one non-retrying operation; nil means the requested transition committed,
+// while any error is rendered as unavailable by the server Adapter. The
+// context remains live for the operation and is cancelled when the local
+// server closes. Implementations must serialize or reject conflicting
+// transitions and make withdrawal idempotency explicit in their own outcome.
 type Interface interface {
 	Publish(context.Context) error
 	Withdraw(context.Context) error
 }
-
-// InterfaceFuncs adapts two cohesive operations to Interface.
-type InterfaceFuncs struct {
-	PublishFunc  func(context.Context) error
-	WithdrawFunc func(context.Context) error
-}
-
-// Publish implements Interface.
-func (owner InterfaceFuncs) Publish(ctx context.Context) error { return owner.PublishFunc(ctx) }
-
-// Withdraw implements Interface.
-func (owner InterfaceFuncs) Withdraw(ctx context.Context) error { return owner.WithdrawFunc(ctx) }

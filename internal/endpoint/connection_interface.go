@@ -18,6 +18,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
+const maximumConnectionInterfaceBytes = uint32(768 << 20)
+
 // ApplicationStateView is the narrow current State projection required to
 // open one alpha Service Link. It is implemented by
 // state.ResolutionView. It contains no State source, persistence, or candidate
@@ -65,7 +67,7 @@ type ConnectionInterface struct {
 // Adapter request or Route plan.
 func (endpoint *endpoint) OpenConnectionInterface(input ConnectionInterfaceConfig) (*ConnectionInterface, error) {
 	if endpoint == nil || input.Floor == nil || input.Current == nil || input.Entry == nil || input.Principal == [32]byte{} ||
-		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumEndpointStreamBytes {
+		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumConnectionInterfaceBytes {
 		return nil, errors.New("application Connection Interface input is incomplete")
 	}
 	clock := input.Clock

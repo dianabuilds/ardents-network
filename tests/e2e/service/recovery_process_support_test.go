@@ -1,3 +1,5 @@
+//go:build referencec2
+
 package service_test
 
 import (
@@ -9,9 +11,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -59,83 +58,6 @@ func (process *serviceProcess) finish(t *testing.T, output any) {
 	if err := process.command.Wait(); err != nil {
 		t.Fatalf("Service process failed: %v stderr=%s", err, process.stderr.String())
 	}
-}
-
-func runCommand(t *testing.T, ctx context.Context, root, binary string, arguments ...string) []byte {
-	t.Helper()
-	command := exec.CommandContext(ctx, binary, arguments...)
-	command.Dir = root
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("command failed: %v\n%s", err, output)
-	}
-	return output
-}
-
-func buildProductCommand(t *testing.T, name string) string {
-	t.Helper()
-	prebuilt := os.Getenv("ARDENTS_E2E_PRODUCT_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_")))
-	if prebuilt != "" {
-		info, err := os.Stat(prebuilt)
-		if err != nil || !info.Mode().IsRegular() {
-			t.Fatalf("prebuilt product command %q is not a regular file: %v", name, err)
-		}
-		return prebuilt
-	}
-	_, current, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate repository root")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(current), "..", "..", ".."))
-	filename := name
-	if runtime.GOOS == "windows" {
-		filename += ".exe"
-	}
-	path := filepath.Join(t.TempDir(), filename)
-	command := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", path, "./cmd/"+name)
-	command.Dir = root
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build %s: %v\n%s", name, err, output)
-	}
-	return path
-}
-
-func buildE2EFixtureCommand(t *testing.T, name string) string {
-	t.Helper()
-	// A cross-compiled process test cannot build an in-container fixture unless
-	// the qualification image also carries a Go toolchain. The explicit
-	// test-only override keeps that qualification on the same process scenario.
-	// Ordinary developer and CI runs do not set it and always build from the
-	// current checkout below.
-	prebuilt := os.Getenv("ARDENTS_E2E_FIXTURE_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_")))
-	if prebuilt != "" {
-		info, err := os.Stat(prebuilt)
-		if err != nil || !info.Mode().IsRegular() {
-			t.Fatalf("prebuilt e2e fixture %q is not a regular file: %v", name, err)
-		}
-		return prebuilt
-	}
-	_, current, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate repository root")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(current), "..", "..", ".."))
-	filename := name
-	if runtime.GOOS == "windows" {
-		filename += ".exe"
-	}
-	path := filepath.Join(t.TempDir(), filename)
-	arguments := []string{"build", "-trimpath", "-buildvcs=false"}
-	if name == "reference-c2" {
-		arguments = append(arguments, "-tags", "referencec2")
-	}
-	arguments = append(arguments, "-o", path, "./tests/e2e/service/fixturecommand/"+name)
-	command := exec.Command("go", arguments...)
-	command.Dir = root
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build e2e fixture %s: %v\n%s", name, err, output)
-	}
-	return path
 }
 
 type replacementRouteObservation struct {

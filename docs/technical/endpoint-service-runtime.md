@@ -65,11 +65,13 @@ authorization. Its parser bound of 16 KiB per Data record is an allocation
 limit, not a product throughput promise.
 
 Publication persists public proof and its non-decreasing generation floor but
-never persists a live Instance private key. The maintained Publisher receives
-one opened host Instance binding: Endpoint can use it as an opaque Instance
-signer and as the fixed-purpose SealedIntroduction v1 recipient without any
-Interface returning private bytes or an exportable HPKE key. The old direct
-HPKE-private input remains only in lower-level compatibility evidence.
+never persists a live Instance private key. The lower-level accepted Publisher
+composition can receive one opened host Instance binding and use it as an
+opaque Instance signer and fixed-purpose SealedIntroduction v1 recipient
+without any Interface returning private bytes or an exportable HPKE key. The
+maintained participant runtime still requires a Product Owner decision for its
+exact State-derived Publisher attachment projection before it may construct
+that binding and live profile.
 AcquireAt yields an opaque Lease; the Lease can sign for its generation without
 exposing the signer. Withdrawal, supersession, expiry, or close first prevent
 new acquisition, then wait for bounded references before erasing private
@@ -77,11 +79,13 @@ material.
 
 ## Endpoint process contract
 
-The Endpoint v1 Application contract chooses a separate terminal-result channel
-before opaque Application bytes flow. Raw-tail delivery and timing-selected
-terminal results are retired. Endpoint cancellation closes only its owned
-Application, result, and Route listeners, joins blocked accepts, and removes
-those socket paths before it returns.
+`internal/application/connection` owns the sole local Service-Link Connection
+Interface: one private Unix attachment carries a bounded Service Link request,
+opaque framed bytes, and one typed terminal Outcome. There is no result
+sideband or Endpoint-owned local grammar. `internal/application/administration`
+separately owns the closed Publish/Withdraw grammar. `RunParticipant` retains
+the server transports and closes their exact socket paths after cancelling and
+joining active clients; CLI and Browser adapters use the shared client.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection
@@ -119,35 +123,21 @@ terminal result, and the scoped proxy is withdrawn without a same-name,
 other-Target, or Internet fallback. A distinct registered Target is addressed
 only by an explicit request for its own authenticated name.
 
-The retained Firefox compatibility plan may select
-`BrowserEntryProfile: "firefox-alpha"`. In that regression path the Endpoint
-owns the alpha proxy port, a fresh local liveness capability, and a separate
-one-process proxy credential at the native host's fixed per-user state path
-while an authenticated alpha route is live; it removes them before route
-withdrawal or shutdown. An absolute `BrowserEntryStatePath` remains a local
-test override and cannot be combined with the profile. The native host reproves
-the proxy before it returns either the port or the credential for a matching
-loopback Basic-auth challenge, and the proxy strips that authentication header
-before forwarding to the selected Publisher presentation. This retained path
-does not install an add-on, start a browser, or change DNS, proxy, VPN, or trust
-settings. Its historical release-bound manifest lifecycle is defined by the
-superseded [ADR-0045](../adr/0045-firefox-first-unlisted-browser-entry-delivery.md);
-[ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
-keeps it outside the headless product and candidate qualification.
-
-The generic `endpoint.Run` plan still accepts this profile only so exact
-compatibility evidence remains reproducible. `AlphaBrowserResolution` is not a
-selected participant Browser Entry and must not be promoted to a normal
-Endpoint command from R-106 inputs alone. Promotion requires a new decision for
-browser/system resolution and HTTP/HTTPS trust, followed by its own affected
-qualification.
+Endpoint contains no Browser, Firefox, proxy, presentation, or Browser Entry
+state. `cmd/ardents-browser` and `internal/browseradapter` own the optional
+Browser presentation and depend only on the local Connection Interface plus
+Browser-owned Modules. Firefox-only source is retained as non-executable
+compatibility evidence under `tests/compatibility/browser-endpoint-v4` in
+accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md).
 
 ## Verification and related decisions
 
 - Go tests for Broker, Endpoint, Publication, and Service Connection exercise
   the Module Interfaces and failure paths.
-- The Endpoint recovery process test exercises readiness, cancellation, join,
-  socket cleanup, publication, and opaque Application stream boundaries.
+- Application Connection and Administration behavior tests exercise framing,
+  typed refusal/outcome, cancellation, join, and exact socket cleanup through
+  their public Interfaces. Architecture tests forbid a second Endpoint-local
+  transport owner and enforce the command dependency graphs.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md) selects the
   native Route foundation; [ADR-0028](../adr/0028-native-service-connection-v1.md)
   selects the closed Service Connection grammar.
