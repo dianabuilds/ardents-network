@@ -298,6 +298,25 @@ func TestApplicationSeamsAreSharedByTheirAdapters(t *testing.T) {
 	}
 }
 
+func TestHeadlessCommandDelegatesParticipantRuntimeComposition(t *testing.T) {
+	root := repositoryRoot(t)
+	source := string(readProjectFile(t, root, "cmd/ardents/endpoint_headless.go"))
+	if !strings.Contains(source, "endpointapi.RunParticipant(") {
+		t.Fatal("headless command does not delegate to the Endpoint participant runtime")
+	}
+	for _, forbidden := range []string{
+		"state.Open(",
+		"entry.Open(",
+		"applicationconnection.Listen(",
+		"administration.Listen(",
+		"Authorities[0]",
+	} {
+		if strings.Contains(source, forbidden) {
+			t.Errorf("headless command retains runtime or authority decision %q", forbidden)
+		}
+	}
+}
+
 func TestEndpointContainsNoBrowserImplementation(t *testing.T) {
 	root := repositoryRoot(t)
 	endpointRoot := filepath.Join(root, "internal", "endpoint")

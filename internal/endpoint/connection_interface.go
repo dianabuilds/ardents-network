@@ -189,7 +189,8 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	if slot.SubmissionMode == reachability.SubmissionMembershipGrant && (!at.Before(credentialDeadline) || credentialDeadline.After(lookupDeadline)) {
 		return nil, errors.New("reachability descriptor exceeds the membership credential window")
 	}
-	submission, err := endpoint.acquireTransitCredential(ctx, view, epoch, input.Entry, initiator, introduction, slot, at, credentialDeadline)
+	submission, err := endpoint.acquireTransitCredential(ctx, view, epoch, input.Entry, initiator, introduction,
+		route.IntroductionRole, slot, at, credentialDeadline)
 	if err != nil {
 		return nil, err
 	}

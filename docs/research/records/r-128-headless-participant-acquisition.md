@@ -172,13 +172,14 @@ decision slice.
   `credential.NewIssuer`; current callers are behavior tests with temporary
   keys. The conflict is consequently a design and operations blocker, not
   evidence that a real State authority key has already been placed on a VPS.
-- **Design comparison (2026-08-30):** returning a Grant, TLS key, State view,
-  Entry contact, Route, or issuer fact through a CLI-facing Interface would
-  spread crash, spend, and erasure ordering across callers. The smallest deep
-  Module keeps acquisition inside the Endpoint. It retains at most one
-  non-secret durable pending marker, keeps the one-use private key volatile,
-  and treats every crash after a possible issuance as terminal at-most-once
-  loss with no automatic retry or Application-operation replay.
+- **Superseded preliminary design comparison (2026-08-30):** the initial
+  comparison proposed retaining only a non-secret pending marker, keeping the
+  one-use private key volatile, and treating every crash after possible
+  issuance as terminal loss. The Product Owner did not select that lifecycle.
+  ADR-0062 has authority: Endpoint durably retains the exact pending Request
+  ID/tuple and one-use TLS key so an interrupted exchange can reconcile only
+  those byte-identical inputs. Presentation remains terminal and burns the key
+  on success or ambiguity; no Application operation is replayed.
 - **Ownership conclusion (2026-08-30):** the signer-side
   `transit-issuance` duty is the only honest owner of a durable finite issuance
   budget. It must consume one exact State-duty-scoped unit before signing;
@@ -256,3 +257,9 @@ requires the Endpoint acquisition owner, local Application Interface, Browser
 extraction, dependency/enrollment/artifact separation, and artifact-native
 journey selected jointly with R-129. No experiment or implementation result is
 claimed by this decision record.
+
+Implementation reconciliation on 2026-08-31 preserves that historical status:
+the accepted durable exact-key lifecycle is implemented, while the sentence
+above remains the record's original decision-time claim rather than a current
+implementation status. R-133 subsequently generalized the durable request to
+Introduction or Responder and gave each adjacent attachment a separate journal.

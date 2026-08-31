@@ -17,9 +17,11 @@ import (
 )
 
 const (
-	transitAcquisitionMarker  = "ardents-transit-acquisition-v1\n"
-	transitAcquisitionSchema  = "ardents-transit-acquisition-state-v1"
-	transitAcquisitionMaximum = int64(16 << 10)
+	transitAcquisitionMarkerV1 = "ardents-transit-acquisition-v1\n"
+	transitAcquisitionMarker   = "ardents-transit-acquisition-v2\n"
+	transitAcquisitionSchemaV1 = "ardents-transit-acquisition-state-v1"
+	transitAcquisitionSchema   = "ardents-transit-acquisition-state-v2"
+	transitAcquisitionMaximum  = int64(16 << 10)
 
 	transitPending     transitAcquisitionPhase = "pending"
 	transitReady       transitAcquisitionPhase = "ready"
@@ -31,7 +33,10 @@ const (
 	transitUnavailable transitAcquisitionPhase = "unavailable"
 )
 
-var errTransitAcquisitionTerminal = errors.New("transit acquisition is terminal")
+var (
+	errTransitAcquisitionTerminal     = errors.New("transit acquisition is terminal")
+	errInvalidTransitAcquisitionState = errors.New("transit acquisition state is invalid")
+)
 
 type transitAcquisitionPhase string
 
@@ -59,7 +64,8 @@ type transitAcquisitionScope struct {
 	IssuerNodeID, IssuerPublicKey [32]byte
 	IssuerProfileDigest           [32]byte
 	GrantSignerPublicKey          [32]byte
-	IntroductionNodeID            [32]byte
+	TransitNodeID, AttachmentID   [32]byte
+	TransitRole                   byte
 	NotAfter                      time.Time
 }
 
@@ -78,9 +84,10 @@ type transitAcquisitionState struct {
 	IssuerNodeID, IssuerPublicKey  [32]byte
 	IssuerProfileDigest            [32]byte
 	GrantSignerPublicKey           [32]byte
-	IntroductionNodeID             [32]byte
+	TransitNodeID, AttachmentID    [32]byte
+	TransitRole                    byte
 	NotAfter                       int64
-	RequestID, AttachmentID        [32]byte
+	RequestID                      [32]byte
 	ClientKeyDigest                [32]byte
 	Certificate, PrivateKey, Grant []byte
 }
@@ -176,9 +183,12 @@ func (owner *transitAcquisition) begin(scope transitAcquisitionScope) (transitAc
 	if err != nil {
 		return transitAcquisitionAttempt{}, err
 	}
-	attachmentID, err := randomTransitAcquisitionID()
-	if err != nil {
-		return transitAcquisitionAttempt{}, err
+	attachmentID := scope.AttachmentID
+	if attachmentID == [32]byte{} {
+		attachmentID, err = randomTransitAcquisitionID()
+		if err != nil {
+			return transitAcquisitionAttempt{}, err
+		}
 	}
 	keyDigest, err := route.ClientTLSKeyDigest(certificate.Leaf)
 	if err != nil {
@@ -187,7 +197,7 @@ func (owner *transitAcquisition) begin(scope transitAcquisitionScope) (transitAc
 	owner.state = transitAcquisitionState{Schema: transitAcquisitionSchema, Phase: transitPending,
 		NetworkID: scope.NetworkID, Digest: scope.Digest, Epoch: scope.Epoch, IssuerNodeID: scope.IssuerNodeID,
 		IssuerPublicKey: scope.IssuerPublicKey, IssuerProfileDigest: scope.IssuerProfileDigest,
-		GrantSignerPublicKey: scope.GrantSignerPublicKey, IntroductionNodeID: scope.IntroductionNodeID,
+		GrantSignerPublicKey: scope.GrantSignerPublicKey, TransitNodeID: scope.TransitNodeID, TransitRole: scope.TransitRole,
 		NotAfter: scope.NotAfter.Unix(), RequestID: requestID, AttachmentID: attachmentID, ClientKeyDigest: keyDigest,
 		Certificate: append([]byte(nil), certificate.Certificate[0]...), PrivateKey: append([]byte(nil), private...)}
 	if err := owner.commitState(owner.state); err != nil {
@@ -326,8 +336,8 @@ func (owner *transitAcquisition) Close() error {
 
 func (state transitAcquisitionState) request() credential.Request {
 	return credential.Request{RequestID: state.RequestID, NetworkID: state.NetworkID, Digest: state.Digest, Epoch: state.Epoch,
-		TransitNodeID: state.IntroductionNodeID, AttachmentID: state.AttachmentID, ClientKeyDigest: state.ClientKeyDigest,
-		TransitRole: route.IntroductionRole, NotAfter: time.Unix(state.NotAfter, 0).UTC()}
+		TransitNodeID: state.TransitNodeID, AttachmentID: state.AttachmentID, ClientKeyDigest: state.ClientKeyDigest,
+		TransitRole: state.TransitRole, NotAfter: time.Unix(state.NotAfter, 0).UTC()}
 }
 
 func (state transitAcquisitionState) certificate() (tls.Certificate, error) {
@@ -355,12 +365,13 @@ func (state transitAcquisitionState) matches(scope transitAcquisitionScope) bool
 	return state.NetworkID == scope.NetworkID && state.Digest == scope.Digest && state.Epoch == scope.Epoch &&
 		state.IssuerNodeID == scope.IssuerNodeID && state.IssuerPublicKey == scope.IssuerPublicKey &&
 		state.IssuerProfileDigest == scope.IssuerProfileDigest && state.GrantSignerPublicKey == scope.GrantSignerPublicKey &&
-		state.IntroductionNodeID == scope.IntroductionNodeID && state.NotAfter == scope.NotAfter.Unix()
+		state.TransitNodeID == scope.TransitNodeID && state.TransitRole == scope.TransitRole &&
+		(scope.AttachmentID == [32]byte{} || state.AttachmentID == scope.AttachmentID) && state.NotAfter == scope.NotAfter.Unix()
 }
 
 func (state transitAcquisitionState) matchesGrant(grant route.TransitGrant) bool {
 	return grant.NetworkID == state.NetworkID && grant.Digest == state.Digest && grant.Epoch == state.Epoch &&
-		grant.TransitNodeID == state.IntroductionNodeID && grant.TransitRole == route.IntroductionRole &&
+		grant.TransitNodeID == state.TransitNodeID && grant.TransitRole == state.TransitRole &&
 		grant.AttachmentID == state.AttachmentID && grant.ClientKeyDigest == state.ClientKeyDigest &&
 		grant.NotAfter.Equal(time.Unix(state.NotAfter, 0).UTC())
 }
@@ -368,7 +379,8 @@ func (state transitAcquisitionState) matchesGrant(grant route.TransitGrant) bool
 func validTransitAcquisitionScope(scope transitAcquisitionScope, now time.Time) bool {
 	return scope.NetworkID != [32]byte{} && scope.Digest != [32]byte{} && scope.Epoch != 0 &&
 		scope.IssuerNodeID != [32]byte{} && scope.IssuerPublicKey != [32]byte{} && scope.IssuerProfileDigest != [32]byte{} &&
-		scope.GrantSignerPublicKey != [32]byte{} && scope.IntroductionNodeID != [32]byte{} && now.Before(scope.NotAfter) &&
+		scope.GrantSignerPublicKey != [32]byte{} && scope.TransitNodeID != [32]byte{} &&
+		validTransitAcquisitionRole(scope.TransitRole) && now.Before(scope.NotAfter) &&
 		scope.NotAfter.Equal(scope.NotAfter.UTC().Truncate(time.Second))
 }
 
@@ -376,13 +388,13 @@ func validTransitAcquisitionState(state transitAcquisitionState) bool {
 	if state.Phase == "" {
 		return state.Schema == "" && state.NetworkID == [32]byte{} && state.Digest == [32]byte{} && state.Epoch == 0 &&
 			state.IssuerNodeID == [32]byte{} && state.IssuerPublicKey == [32]byte{} && state.IssuerProfileDigest == [32]byte{} &&
-			state.GrantSignerPublicKey == [32]byte{} && state.IntroductionNodeID == [32]byte{} && state.NotAfter == 0 &&
+			state.GrantSignerPublicKey == [32]byte{} && state.TransitNodeID == [32]byte{} && state.TransitRole == 0 && state.NotAfter == 0 &&
 			state.RequestID == [32]byte{} && state.AttachmentID == [32]byte{} && state.ClientKeyDigest == [32]byte{} &&
 			len(state.Certificate) == 0 && len(state.PrivateKey) == 0 && len(state.Grant) == 0
 	}
 	base := state.Schema == transitAcquisitionSchema && state.NetworkID != [32]byte{} && state.Digest != [32]byte{} && state.Epoch != 0 &&
 		state.IssuerNodeID != [32]byte{} && state.IssuerPublicKey != [32]byte{} && state.IssuerProfileDigest != [32]byte{} &&
-		state.GrantSignerPublicKey != [32]byte{} && state.IntroductionNodeID != [32]byte{} && state.NotAfter > 0 &&
+		state.GrantSignerPublicKey != [32]byte{} && state.TransitNodeID != [32]byte{} && validTransitAcquisitionRole(state.TransitRole) && state.NotAfter > 0 &&
 		state.RequestID != [32]byte{} && state.AttachmentID != [32]byte{} && state.ClientKeyDigest != [32]byte{}
 	if !base {
 		return false
@@ -398,6 +410,10 @@ func validTransitAcquisitionState(state transitAcquisitionState) bool {
 	}
 	return state.Phase == transitPending && len(state.Grant) == 0 ||
 		(state.Phase == transitReady || state.Phase == transitPresenting) && len(state.Grant) > 0 && len(state.Grant) <= 512
+}
+
+func validTransitAcquisitionRole(role byte) bool {
+	return role == route.IntroductionRole || role == route.ResponderRole
 }
 
 func terminalTransitPhase(phase transitAcquisitionPhase) bool {

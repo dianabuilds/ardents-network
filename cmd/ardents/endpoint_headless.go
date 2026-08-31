@@ -11,12 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/administration"
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -54,7 +49,7 @@ type headlessRuntimePlan struct {
 
 // runHeadlessRuntime owns Network State, Entry, Endpoint, and one private local
 // Connection Interface without loading Browser or presentation code.
-func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (runErr error) {
+func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) error {
 	if ctx == nil || path == "" || output == nil {
 		return errors.New("headless runtime input is incomplete")
 	}
@@ -67,94 +62,21 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) (run
 	if err != nil {
 		return err
 	}
-	network, err := state.Open(networkConfig)
-	if err != nil {
-		return fmt.Errorf("open authenticated Network State: %w", err)
-	}
-	defer func() { runErr = errors.Join(runErr, network.Close()) }()
-	if refreshState {
-		if _, err := network.Refresh(ctx); err != nil {
-			return fmt.Errorf("refresh authenticated Network State: %w", err)
-		}
-	}
-	now := clock().UTC()
-	view, err := network.CurrentResolution()
-	if err != nil {
-		return fmt.Errorf("read current Network State resolution: %w", err)
-	}
-	epoch, available := view.Epoch(now, now.Add(time.Second))
-	if !available || len(epoch.Authorities) == 0 {
-		return errors.New("current Network State resolution is unavailable")
-	}
 	confident := freshOperatorRegularFile(plan.TimeConfidenceFile, clock, 2*time.Second)
-	if !confident() {
-		return errors.New("participant time confidence is unavailable")
-	}
-	owner, err := entry.Open(entry.Config{Root: plan.EntryStateRoot, Current: func() (entry.View, error) {
-		current, currentErr := network.Current()
-		if currentErr != nil {
-			return entry.View{}, currentErr
-		}
-		return entryView(current), nil
-	}, Conflict: func(identity, family [32]byte) (bool, error) {
-		return duty.ReadConflict(plan.LocalRoleStateRoot, clock, identity, family)
-	}, Clock: clock, TimeConfident: confident})
-	if err != nil {
-		return fmt.Errorf("open participant Entry state: %w", err)
-	}
-	defer func() { runErr = errors.Join(runErr, owner.Close()) }()
-	if _, err := owner.Contact(); err != nil {
-		return fmt.Errorf("read current participant Entry contact: %w", err)
-	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: plan.AlphaCorpusStateRoot,
-		Authority: plan.AlphaCorpusAuthority, Cohort: plan.AlphaCohort, Network: plan.NetworkID})
-	if err != nil {
-		return fmt.Errorf("open alpha corpus floor: %w", err)
-	}
-	defer func() { runErr = errors.Join(runErr, floor.Close()) }()
-	corpus, err := floor.Current()
-	if err != nil || corpus.ValidAt(now) != nil {
-		return errors.New("accepted alpha corpus is unavailable")
-	}
-	serviceAuthority := append(ed25519.PublicKey(nil), epoch.Authorities[0].PublicKey[:]...)
-	endpoint, err := endpointapi.New(endpointapi.Setup{NetworkID: plan.NetworkID, BrokerID: plan.BrokerID,
-		AuthorityPublic: serviceAuthority, IntroductionPublic: serviceAuthority, ConnectionPrincipal: plan.ConnectionPrincipal,
-		AdministrationPrincipal: plan.AdministrationPrincipal, PublicationRoot: plan.PublicationRoot,
-		TransitAcquisitionRoot:       plan.TransitAcquisitionRoot,
-		CreateTransitAcquisitionRoot: true, Clock: clock})
-	if err != nil {
-		return fmt.Errorf("open participant Endpoint: %w", err)
-	}
-	defer func() { runErr = errors.Join(runErr, endpoint.Close()) }()
-	connectionOwner, err := endpoint.OpenConnectionInterface(endpointapi.ConnectionInterfaceConfig{Floor: floor,
-		Current: func() (endpointapi.ApplicationStateView, error) { return network.CurrentResolution() }, Entry: owner,
-		Principal: plan.ConnectionPrincipal, BytesEachDirection: plan.BytesEachDirection, Clock: clock})
-	if err != nil {
-		return fmt.Errorf("open headless Connection Interface owner: %w", err)
-	}
-	application, err := applicationconnection.Listen(plan.ApplicationSocket, connectionOwner)
-	if err != nil {
-		return fmt.Errorf("open headless local Connection Interface: %w", err)
-	}
-	defer func() { runErr = errors.Join(runErr, application.Close()) }()
-	administrationOwner, err := endpoint.OpenServiceAdministration(endpointapi.ServiceAdministrationConfig{
-		Principal: plan.AdministrationPrincipal, Clock: clock})
-	if err != nil {
-		return fmt.Errorf("open headless Service Administration owner: %w", err)
-	}
-	administrationServer, err := administration.Listen(plan.AdministrationSocket, administrationOwner)
-	if err != nil {
-		return fmt.Errorf("open headless local Service Administration: %w", err)
-	}
-	defer func() { runErr = errors.Join(runErr, administrationServer.Close()) }()
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(headlessRuntimeEvent{Kind: "headless-runtime-ready", NetworkID: hex.EncodeToString(plan.NetworkID[:]),
-		ApplicationSocket: plan.ApplicationSocket, AdministrationSocket: plan.AdministrationSocket}); err != nil {
-		return err
-	}
-	<-ctx.Done()
-	return encoder.Encode(headlessRuntimeEvent{Kind: "headless-runtime-stopped", NetworkID: hex.EncodeToString(plan.NetworkID[:])})
+	return endpointapi.RunParticipant(ctx, endpointapi.ParticipantRuntimeConfig{Network: networkConfig, RefreshNetwork: refreshState,
+		EntryRoot: plan.EntryStateRoot, TransitAcquisitionRoot: plan.TransitAcquisitionRoot,
+		AlphaCorpusRoot: plan.AlphaCorpusStateRoot, AlphaCorpusAuthority: plan.AlphaCorpusAuthority, AlphaCohort: plan.AlphaCohort,
+		LocalRoleRoot: plan.LocalRoleStateRoot, ApplicationAddress: plan.ApplicationSocket,
+		AdministrationAddress: plan.AdministrationSocket, PublicationRoot: plan.PublicationRoot, BrokerID: plan.BrokerID,
+		ConnectionPrincipal: plan.ConnectionPrincipal, AdministrationPrincipal: plan.AdministrationPrincipal,
+		BytesEachDirection: plan.BytesEachDirection, Clock: clock, TimeConfident: confident,
+		Observe: func(event endpointapi.ParticipantRuntimeEvent) error {
+			return encoder.Encode(headlessRuntimeEvent{Kind: "headless-runtime-" + event.Kind,
+				NetworkID: hex.EncodeToString(event.NetworkID[:]), ApplicationSocket: event.ApplicationAddress,
+				AdministrationSocket: event.AdministrationAddress})
+		}})
 }
 
 // headlessNetworkConfig preserves one owner for a State root. A static

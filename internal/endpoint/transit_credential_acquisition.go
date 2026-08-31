@@ -29,12 +29,17 @@ type transitCredentialSubmission struct {
 }
 
 func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view ApplicationStateView, epoch state.ResolutionEpoch,
-	entry ApplicationEntry, initiator, introduction TransitPeer, slot reachability.Introduction, at, deadline time.Time) (transitCredentialSubmission, error) {
+	entry ApplicationEntry, initiator, transit TransitPeer, role byte, slot reachability.Introduction,
+	at, deadline time.Time,
+) (transitCredentialSubmission, error) {
 	if entry == nil {
 		return transitCredentialSubmission{}, errors.New("credential relay Entry owner is unavailable")
 	}
 	if slot.SubmissionMode == reachability.SubmissionFixedGrant {
-		attachment, err := applicationServiceAttachment(slot.SubmissionAuthorization, epoch, introduction.NodeID, slot.NotAfter)
+		if role != route.IntroductionRole {
+			return transitCredentialSubmission{}, errors.New("fixed reachability Grant is only valid for Introduction")
+		}
+		attachment, err := applicationServiceAttachment(slot.SubmissionAuthorization, epoch, transit.NodeID, slot.NotAfter)
 		if err != nil {
 			return transitCredentialSubmission{}, err
 		}
@@ -51,14 +56,15 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view App
 		return transitCredentialSubmission{}, errors.New("current State does not project a transit issuer")
 	}
 	issuer, available := issuerView.CredentialIssuer(at, deadline)
-	if !available || issuer.NodeID == initiator.NodeID || issuer.NodeID == introduction.NodeID || issuer.Family == initiator.Family || issuer.Family == introduction.Family {
+	if !available || issuer.NodeID == initiator.NodeID || issuer.NodeID == transit.NodeID || issuer.Family == initiator.Family || issuer.Family == transit.Family {
 		return transitCredentialSubmission{}, errors.New("current State transit issuer is unavailable or overlaps the route")
 	}
 	profile, err := credential.DecodeProfile(issuer.Profile)
 	if err != nil || credential.VerifyProfile(profile, endpoint.network, issuer.NodeID, issuer.PublicKey, at, deadline) != nil {
 		return transitCredentialSubmission{}, errors.New("current State transit issuer profile is invalid")
 	}
-	if endpoint.transitAcquire == nil {
+	owner, err := endpoint.transitAcquire.owner(role)
+	if err != nil {
 		return transitCredentialSubmission{}, errors.New("endpoint transit acquisition owner is unavailable")
 	}
 	carrierAttachment, err := applicationAttachmentID()
@@ -67,8 +73,9 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view App
 	}
 	scope := transitAcquisitionScope{NetworkID: endpoint.network, Digest: epoch.Digest, Epoch: epoch.Number,
 		IssuerNodeID: issuer.NodeID, IssuerPublicKey: issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(issuer.Profile),
-		GrantSignerPublicKey: profile.GrantSignerPublicKey, IntroductionNodeID: introduction.NodeID, NotAfter: deadline}
-	attempt, err := endpoint.transitAcquire.begin(scope)
+		GrantSignerPublicKey: profile.GrantSignerPublicKey, TransitNodeID: transit.NodeID, TransitRole: role,
+		NotAfter: deadline}
+	attempt, err := owner.begin(scope)
 	if err != nil {
 		return transitCredentialSubmission{}, err
 	}
@@ -78,40 +85,40 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view App
 				return endpoint.exchangeTransitCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
 			}})
 		if err != nil {
-			_ = endpoint.transitAcquire.fail()
+			_ = owner.fail()
 			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
 		}
 		result, err := client.Issue(ctx, attempt.Request)
 		if err != nil {
 			if !errors.Is(err, credential.ErrExchangeUnavailable) {
-				_ = endpoint.transitAcquire.fail()
+				_ = owner.fail()
 			}
 			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
 		}
-		if err := endpoint.transitAcquire.commit(result); err != nil {
+		if err := owner.commit(result); err != nil {
 			return transitCredentialSubmission{}, err
 		}
 		if result.Outcome != credential.Issued {
 			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: result.Outcome}
 		}
-		attempt, err = endpoint.transitAcquire.begin(scope)
+		attempt, err = owner.begin(scope)
 		if err != nil {
 			return transitCredentialSubmission{}, err
 		}
 	}
-	presenting, err := endpoint.transitAcquire.present(scope)
+	presenting, err := owner.present(scope)
 	if err != nil {
 		return transitCredentialSubmission{}, err
 	}
 	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
 	if err != nil {
-		_ = endpoint.transitAcquire.finish(false)
+		_ = owner.finish(false)
 		return transitCredentialSubmission{}, err
 	}
 	return transitCredentialSubmission{authorization: presenting.Grant, attachment: presenting.Request.AttachmentID,
 		certificate: presenting.Certificate, finish: func(presented bool) error {
 			erase()
-			return endpoint.transitAcquire.finish(presented)
+			return owner.finish(presented)
 		}}, nil
 }
 

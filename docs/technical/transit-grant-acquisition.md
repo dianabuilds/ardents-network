@@ -1,8 +1,9 @@
 # Transit Grant acquisition
 
 Status: **accepted contract; signer, owner-only issuer-root bootstrap,
-State-bound Node runtime, and Endpoint acquisition lifecycle implemented;
-artifact-native qualification remains.**
+State-bound Node runtime, role-scoped Endpoint acquisition lifecycles, and
+Application runtime composition implemented; artifact-native qualification
+remains.**
 This document owns the purpose-scoped signer, fixed encrypted outcome, durable
 issuer budget/idempotency, and Endpoint at-most-once acquisition lifecycle
 selected by [ADR-0062](../adr/0062-scope-online-transit-grant-signing.md).
@@ -99,8 +100,9 @@ not carried into a successor State duty.
 
 ## Endpoint-owned at-most-once lifecycle
 
-The Endpoint protects at most one acquisition per in-flight operation in a
-separate exclusive owner-only root within its protected state profile. The durable record contains the exact
+The Endpoint protects at most one Introduction acquisition and one Responder
+acquisition in separate exclusive owner-only journals within its protected
+state profile. The durable record contains the exact
 Request ID/tuple, State-duty identity, one-use TLS private key, phase, and
 terminal class; it contains no Target or Route plan.
 
@@ -121,6 +123,13 @@ absent -> pending -> ready -> presenting -> spent
 - the Endpoint does not automatically replay publish, open, withdraw, or
   Application bytes. A later explicit operation uses a fresh Request ID and
   consumes another budget unit only when the caller still has authority.
+
+The v2 journal persists the explicit Transit Node and role. The accepted v1
+Introduction-only record and root marker remain readable and reconcile as an
+Introduction v2 attempt; every new state transition writes v2. The compatible
+root remains the Introduction owner, while a separately leased `responder`
+child owns the Responder lifecycle. Neither journal can reuse the other's
+Request ID, attachment, key, phase, or terminal result.
 
 The receiving Node's existing durable Grant-ID replay ledger remains the final
 at-most-once admission check. Issuer idempotency and Endpoint lifecycle do not
@@ -149,8 +158,9 @@ fallback.
    crash/reopen matrix.
 3. Project the purpose-scoped signer through current State to Endpoint and
    receiving Node verification.
-4. Endpoint pending/reconcile/present/burn state is implemented; terminal
-   Application Interface diagnostics remain part of the headless composition.
+4. Endpoint pending/reconcile/present/burn state is implemented for separate
+   Introduction and Responder owners; terminal Application Interface
+   diagnostics remain part of the participant runtime composition.
 5. ADR-0063's private-material/profile bootstrap, exact Initiator binding, and
    `ardents-node issuer initialize|serve` lifecycle are implemented. Compose
    those artifact commands into the headless publish/open/withdraw journey

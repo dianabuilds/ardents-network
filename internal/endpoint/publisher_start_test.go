@@ -35,7 +35,7 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	}
 	defer introduction.Close()
 
-	authorityPublic, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
+	_, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,10 +51,8 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 		SlotAuthorization: []byte("start-slot"), ResponderAuthorization: []byte("start-responder"),
 	}
 	principal := c2Identifier(71)
-	introductionAuthority := c2Identifier(73)
 	owner, err := endpointapi.New(endpointapi.Setup{
-		NetworkID: network, BrokerID: c2Identifier(72), AuthorityPublic: authorityPublic,
-		IntroductionPublic: ed25519.PublicKey(introductionAuthority[:]), ConnectionPrincipal: c2Identifier(74),
+		NetworkID: network, BrokerID: c2Identifier(72), ConnectionPrincipal: c2Identifier(74),
 		AdministrationPrincipal: principal, PublicationRoot: t.TempDir(),
 		PublisherBinding: binding, PublisherIntroductionProfile: profile,
 	})
@@ -116,10 +114,9 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 		SlotAttachmentID: c2Identifier(89), Reachability: c2Identifier(90), JoinHandle: c2Identifier(91), NotAfter: deadline,
 		SlotAuthorization: []byte("unavailable-slot"), ResponderAuthorization: []byte("unused-responder"),
 	}
-	principal, introductionAuthority := c2Identifier(92), c2Identifier(93)
+	principal := c2Identifier(92)
 	owner, err := endpointapi.New(endpointapi.Setup{
-		NetworkID: network, BrokerID: c2Identifier(94), AuthorityPublic: authorityPublic,
-		IntroductionPublic: ed25519.PublicKey(introductionAuthority[:]), ConnectionPrincipal: c2Identifier(95),
+		NetworkID: network, BrokerID: c2Identifier(94), ConnectionPrincipal: c2Identifier(95),
 		AdministrationPrincipal: principal, PublicationRoot: publicationRoot,
 		PublisherBinding: binding, PublisherIntroductionProfile: profile,
 	})

@@ -106,9 +106,9 @@ its fixture tree behind the `referencec2` evidence tag. Neither is a current
 product package or qualification entrypoint.
 
 This separation changes ownership and executable truth, not the selected
-network protocol. The remaining bounded work is Endpoint acquisition
-composition already authorized by R-133; it does not authorize the full B6
-journey or a new product decision.
+network protocol. R-133's role-scoped request and separate Endpoint journals
+are now implemented. The full artifact-native B6 journey remains outside this
+reconciliation and is not implicitly authorized by these architecture changes.
 
 ## Integrated execution sequence
 

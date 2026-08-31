@@ -2,7 +2,6 @@ package endpoint
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +31,9 @@ func prepareTransitAcquisitionRoot(root string, create bool) error {
 		return err
 	}
 	for _, entry := range entries {
+		if entry.IsDir() && entry.Name() == "responder" {
+			continue
+		}
 		if entry.IsDir() || entry.Name() != "owner.lock" && entry.Name() != "root.marker" && entry.Name() != "current.json" {
 			return fmt.Errorf("unknown transit acquisition root entry %q", entry.Name())
 		}
@@ -44,7 +46,7 @@ func prepareTransitAcquisitionRoot(root string, create bool) error {
 		}
 		return nil
 	}
-	if err != nil || !bytes.Equal(marker, []byte(transitAcquisitionMarker)) {
+	if err != nil || !validTransitAcquisitionMarker(marker) {
 		return errors.New("transit acquisition root marker is invalid")
 	}
 	return nil
@@ -54,7 +56,7 @@ func initializeTransitAcquisitionRoot(root string, create bool) error {
 	markerPath := filepath.Join(root, "root.marker")
 	marker, err := os.ReadFile(markerPath)
 	if err == nil {
-		if !bytes.Equal(marker, []byte(transitAcquisitionMarker)) {
+		if !validTransitAcquisitionMarker(marker) {
 			return errors.New("transit acquisition root marker is invalid")
 		}
 		return nil
@@ -98,13 +100,15 @@ func loadTransitAcquisitionState(root string) (transitAcquisitionState, error) {
 	if int64(len(raw)) > transitAcquisitionMaximum {
 		return transitAcquisitionState{}, errors.New("transit acquisition state exceeds its bound")
 	}
-	var state transitAcquisitionState
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&state); err != nil || !validTransitAcquisitionState(state) {
+	state, err := decodeTransitAcquisitionState(raw)
+	if err != nil {
 		return transitAcquisitionState{}, errors.New("transit acquisition state is invalid")
 	}
 	return state, nil
+}
+
+func validTransitAcquisitionMarker(marker []byte) bool {
+	return bytes.Equal(marker, []byte(transitAcquisitionMarker)) || bytes.Equal(marker, []byte(transitAcquisitionMarkerV1))
 }
 
 func replaceTransitAcquisitionState(root string, raw []byte) error {

@@ -190,7 +190,7 @@ type endpoint struct {
 	publications     *publication.Publication
 	resources        func(string, int) uint32
 	transitClients   map[[32]byte]tls.Certificate
-	transitAcquire   *transitAcquisition
+	transitAcquire   *transitAcquisitionSet
 	transitMu        sync.Mutex
 	publisherMu      sync.Mutex
 	publisherBinding *instance.Binding
@@ -200,15 +200,24 @@ type endpoint struct {
 
 // New creates one finite Endpoint-local admission and publication boundary.
 func New(input Setup) (*endpoint, error) {
-	if input.NetworkID == [32]byte{} || input.BrokerID == [32]byte{} ||
-		len(input.AuthorityPublic) != ed25519.PublicKeySize || len(input.IntroductionPublic) != ed25519.PublicKeySize ||
-		input.ConnectionPrincipal == [32]byte{} {
+	if input.NetworkID == [32]byte{} || input.BrokerID == [32]byte{} || input.ConnectionPrincipal == [32]byte{} ||
+		len(input.AuthorityPublic) != 0 && len(input.AuthorityPublic) != ed25519.PublicKeySize ||
+		len(input.IntroductionPublic) != 0 && len(input.IntroductionPublic) != ed25519.PublicKeySize {
 		return nil, errors.New("endpoint setup is incomplete")
 	}
 	var authority [32]byte
 	copy(authority[:], input.AuthorityPublic)
 	var introduction [32]byte
 	copy(introduction[:], input.IntroductionPublic)
+	if input.PublisherBinding != nil {
+		credential := input.PublisherBinding.Credential()
+		if credential.NetworkID != input.NetworkID ||
+			authority != [32]byte{} && authority != credential.AuthorityPublic ||
+			introduction != [32]byte{} && introduction != credential.IntroductionHPKEPublic {
+			return nil, errors.New("publisher binding does not match Endpoint setup")
+		}
+		authority, introduction = credential.AuthorityPublic, credential.IntroductionHPKEPublic
+	}
 	clock := input.Clock
 	if clock == nil {
 		clock = time.Now
@@ -233,9 +242,9 @@ func New(input Setup) (*endpoint, error) {
 	if err != nil {
 		return nil, err
 	}
-	var transitAcquire *transitAcquisition
+	var transitAcquire *transitAcquisitionSet
 	if input.TransitAcquisitionRoot != "" {
-		transitAcquire, err = openTransitAcquisition(transitAcquisitionConfig{Root: input.TransitAcquisitionRoot,
+		transitAcquire, err = openTransitAcquisitionSet(transitAcquisitionConfig{Root: input.TransitAcquisitionRoot,
 			Create: input.CreateTransitAcquisitionRoot, Clock: clock})
 		if err != nil {
 			return nil, err
@@ -252,7 +261,7 @@ func New(input Setup) (*endpoint, error) {
 		}
 		return nil, errors.New("publisher start ownership is incomplete")
 	}
-	if input.AdministrationPrincipal != [32]byte{} {
+	if input.AdministrationPrincipal != [32]byte{} && (input.PublisherBinding != nil || authority != [32]byte{}) {
 		if input.PublicationRoot == "" {
 			if transitAcquire != nil {
 				_ = transitAcquire.Close()
@@ -261,7 +270,7 @@ func New(input Setup) (*endpoint, error) {
 		}
 		opened, err := publication.Open(publication.Config{Root: input.PublicationRoot,
 			LegacyFloor: input.LegacyGenerationFloor, NetworkID: input.NetworkID,
-			Authority: input.AuthorityPublic, Clock: clock})
+			Authority: ed25519.PublicKey(authority[:]), Clock: clock})
 		if err != nil {
 			if transitAcquire != nil {
 				_ = transitAcquire.Close()
