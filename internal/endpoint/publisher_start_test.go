@@ -20,14 +20,14 @@ import (
 func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(time.Minute)
-	network, digest := c2Identifier(61), c2Identifier(62)
-	introductionID := c2Identifier(63)
-	introductionCertificate, introductionPublic := c2Certificate(t, 61, "start-introduction")
-	introductionAddress := c2AvailableAddress(t)
+	network, digest := fixtureID(61), fixtureID(62)
+	introductionID := fixtureID(63)
+	introductionCertificate, introductionPublic := testCertificate(t, 61, "start-introduction")
+	introductionAddress := availableAddress(t)
 	introduction, err := node.StartIntroduction(node.IntroductionConfig{
 		ListenAddress: introductionAddress, Certificate: introductionCertificate,
 		NetworkID: network, EpochDigest: digest, NodeID: introductionID, NodePublicKey: introductionPublic,
-		Epoch: 12, NotAfter: deadline, Admit: c2IntroductionAdmitForEpoch(network, digest, introductionID, deadline, 12),
+		Epoch: 12, NotAfter: deadline, Admit: introductionAdmitForEpoch(network, digest, introductionID, deadline, 12),
 		HandshakeLimit: 2, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second,
 	})
 	if err != nil {
@@ -40,19 +40,19 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 		t.Fatal(err)
 	}
 	instancePath := t.TempDir()
-	instanceRoot, binding := c2AcceptedInstanceBinding(t, instancePath, network, authorityPrivate, now, deadline)
+	instanceRoot, binding := acceptedInstanceBinding(t, instancePath, network, authorityPrivate, now, deadline)
 	defer instanceRoot.Close()
 	profile := endpointapi.PublisherIntroductionProfile{
 		NetworkID: network, Digest: digest, Epoch: 12,
 		Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
-		Rendezvous:       endpointapi.TransitPeer{NodeID: c2Identifier(64), PublicKey: c2Identifier(65), Endpoint: "127.0.0.1:26064"},
-		Responder:        endpointapi.TransitPeer{NodeID: c2Identifier(66), PublicKey: c2Identifier(67), Endpoint: "127.0.0.1:26066"},
-		SlotAttachmentID: c2Identifier(68), Reachability: c2Identifier(69), JoinHandle: c2Identifier(70), NotAfter: deadline,
+		Rendezvous:       endpointapi.TransitPeer{NodeID: fixtureID(64), PublicKey: fixtureID(65), Endpoint: "127.0.0.1:26064"},
+		Responder:        endpointapi.TransitPeer{NodeID: fixtureID(66), PublicKey: fixtureID(67), Endpoint: "127.0.0.1:26066"},
+		SlotAttachmentID: fixtureID(68), Reachability: fixtureID(69), JoinHandle: fixtureID(70), NotAfter: deadline,
 		SlotAuthorization: []byte("start-slot"), ResponderAuthorization: []byte("start-responder"),
 	}
-	principal := c2Identifier(71)
+	principal := fixtureID(71)
 	owner, err := endpointapi.New(endpointapi.Setup{
-		NetworkID: network, BrokerID: c2Identifier(72), ConnectionPrincipal: c2Identifier(74),
+		NetworkID: network, BrokerID: fixtureID(72), ConnectionPrincipal: fixtureID(74),
 		AdministrationPrincipal: principal, PublicationRoot: t.TempDir(),
 		PublisherBinding: binding, PublisherIntroductionProfile: profile,
 	})
@@ -98,25 +98,25 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(time.Minute)
-	network := c2Identifier(81)
+	network := fixtureID(81)
 	authorityPublic, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	instanceRoot, binding := c2AcceptedInstanceBinding(t, t.TempDir(), network, authorityPrivate, now, deadline)
+	instanceRoot, binding := acceptedInstanceBinding(t, t.TempDir(), network, authorityPrivate, now, deadline)
 	publicationRoot := t.TempDir()
-	unavailableAddress := c2AvailableAddress(t)
+	unavailableAddress := availableAddress(t)
 	profile := endpointapi.PublisherIntroductionProfile{
-		NetworkID: network, Digest: c2Identifier(82), Epoch: 13,
-		Introduction:     endpointapi.TransitPeer{NodeID: c2Identifier(83), PublicKey: c2Identifier(84), Endpoint: unavailableAddress},
-		Rendezvous:       endpointapi.TransitPeer{NodeID: c2Identifier(85), PublicKey: c2Identifier(86), Endpoint: "127.0.0.1:28085"},
-		Responder:        endpointapi.TransitPeer{NodeID: c2Identifier(87), PublicKey: c2Identifier(88), Endpoint: "127.0.0.1:28087"},
-		SlotAttachmentID: c2Identifier(89), Reachability: c2Identifier(90), JoinHandle: c2Identifier(91), NotAfter: deadline,
+		NetworkID: network, Digest: fixtureID(82), Epoch: 13,
+		Introduction:     endpointapi.TransitPeer{NodeID: fixtureID(83), PublicKey: fixtureID(84), Endpoint: unavailableAddress},
+		Rendezvous:       endpointapi.TransitPeer{NodeID: fixtureID(85), PublicKey: fixtureID(86), Endpoint: "127.0.0.1:28085"},
+		Responder:        endpointapi.TransitPeer{NodeID: fixtureID(87), PublicKey: fixtureID(88), Endpoint: "127.0.0.1:28087"},
+		SlotAttachmentID: fixtureID(89), Reachability: fixtureID(90), JoinHandle: fixtureID(91), NotAfter: deadline,
 		SlotAuthorization: []byte("unavailable-slot"), ResponderAuthorization: []byte("unused-responder"),
 	}
-	principal := c2Identifier(92)
+	principal := fixtureID(92)
 	owner, err := endpointapi.New(endpointapi.Setup{
-		NetworkID: network, BrokerID: c2Identifier(94), ConnectionPrincipal: c2Identifier(95),
+		NetworkID: network, BrokerID: fixtureID(94), ConnectionPrincipal: fixtureID(95),
 		AdministrationPrincipal: principal, PublicationRoot: publicationRoot,
 		PublisherBinding: binding, PublisherIntroductionProfile: profile,
 	})
@@ -156,7 +156,7 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 	}
 }
 
-func c2AcceptedInstanceBinding(t *testing.T, rootPath string, network [32]byte, authority ed25519.PrivateKey,
+func acceptedInstanceBinding(t *testing.T, rootPath string, network [32]byte, authority ed25519.PrivateKey,
 	now, deadline time.Time,
 ) (*instance.Root, *instance.Binding) {
 	t.Helper()
@@ -194,7 +194,7 @@ func c2AcceptedInstanceBinding(t *testing.T, rootPath string, network [32]byte, 
 	return root, binding
 }
 
-func c2IntroductionAdmitForEpoch(network, digest, nodeID [32]byte, deadline time.Time, epoch uint64) route.EndpointTransitBindingAdmitter {
+func introductionAdmitForEpoch(network, digest, nodeID [32]byte, deadline time.Time, epoch uint64) route.EndpointTransitBindingAdmitter {
 	return func(authorization []byte, attachment, key [32]byte, role byte, receivedNode [32]byte,
 		notAfter time.Time,
 	) (route.EndpointTransitAdmission, error) {
@@ -202,7 +202,7 @@ func c2IntroductionAdmitForEpoch(network, digest, nodeID [32]byte, deadline time
 			receivedNode != nodeID || !notAfter.Equal(deadline) {
 			return route.EndpointTransitAdmission{}, errors.New("unexpected Introduction admission")
 		}
-		return route.EndpointTransitAdmission{AuthorizationID: c2Identifier(75), NetworkID: network, Digest: digest,
+		return route.EndpointTransitAdmission{AuthorizationID: fixtureID(75), NetworkID: network, Digest: digest,
 			Epoch: epoch, TransitRole: route.IntroductionRole, TransitNodeID: nodeID, NotAfter: deadline}, nil
 	}
 }

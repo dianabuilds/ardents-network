@@ -1,5 +1,3 @@
-//go:build referencec2
-
 package endpoint_test
 
 import (
@@ -115,14 +113,6 @@ func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
 type serviceOutcome struct {
 	result endpointapi.RuntimeResult
 	err    error
-}
-
-type endpointRunner interface {
-	Admit([32]byte, broker.Surface) ([32]byte, error)
-	Publish(context.Context, endpointapi.PublicationRequest) (endpointapi.PublicationResult, error)
-	Withdraw(context.Context, endpointapi.WithdrawalRequest) (endpointapi.WithdrawalResult, error)
-	Connect(context.Context, endpointapi.OutboundConnectionRequest) (endpointapi.RuntimeResult, error)
-	Accept(context.Context, endpointapi.InboundConnectionRequest) (endpointapi.RuntimeResult, error)
 }
 
 func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
@@ -270,8 +260,7 @@ func TestMalformedAndOversizedPublicationsAreTargetAuthenticationFailures(t *tes
 
 func connectedEndpoints(t *testing.T, fixture fixture) (endpointRunner, endpointRunner, []byte) {
 	t.Helper()
-	publisher := newPublisher(t, fixture)
-	publication := publish(t, publisher, fixture, fixture.first, fixture.firstPrivate)
+	publisher, publication := startPublishedEndpoint(t, fixture)
 	client, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.clientPrincipal})

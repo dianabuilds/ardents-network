@@ -1,5 +1,3 @@
-//go:build !referencec2
-
 package endpoint_test
 
 import (
@@ -14,7 +12,7 @@ import (
 	"time"
 )
 
-func c2Certificate(t *testing.T, serial int64, name string) (tls.Certificate, [32]byte) {
+func testCertificate(t *testing.T, serial int64, name string) (tls.Certificate, [32]byte) {
 	t.Helper()
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -36,7 +34,7 @@ func c2Certificate(t *testing.T, serial int64, name string) (tls.Certificate, [3
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: private, Leaf: leaf}, fixed
 }
 
-func c2AvailableAddress(t *testing.T) string {
+func availableAddress(t *testing.T) string {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -49,7 +47,7 @@ func c2AvailableAddress(t *testing.T) string {
 	return address
 }
 
-func c2Identifier(value byte) [32]byte {
+func fixtureID(value byte) [32]byte {
 	var result [32]byte
 	for index := range result {
 		result[index] = value + byte(index)

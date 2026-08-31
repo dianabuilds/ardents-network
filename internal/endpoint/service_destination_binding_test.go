@@ -1,5 +1,3 @@
-//go:build referencec2
-
 package endpoint_test
 
 import (
