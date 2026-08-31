@@ -6,8 +6,8 @@ Last reviewed: 2026-08-30
 
 The complete installation, readiness, operation, update, and withdrawal contract
 is defined in [the product operating model](operating-model.md). What may be
-built now is controlled separately by
-[product scope and delivery horizons](scope.md).
+built now is controlled separately by the
+[product scope and audit boundary](scope.md).
 
 ## Vision
 
@@ -259,7 +259,7 @@ These are responsibility boundaries, not selected binaries or APIs:
     Path, not the selected Rendezvous. It carries only a sealed, expiring,
     single-use invitation that lets the Service attach its own data leg; it
     carries no Application Data and creates no offline-delivery promise.
-21. If the data-path candidate survives, the current later-horizon design has
+21. If the data-path candidate survives, the eventual promotion-gate design has
     each endpoint select its own leg using a small long-lived Entry Set and a
     small medium-lived Interior Set. Public Beta has ordinary and Bridge regimes and at
     most one Entry Set for each activated adjacent Role Domain and regime per
@@ -272,7 +272,7 @@ These are responsibility boundaries, not selected binaries or APIs:
     Entry is not rotated after one failure; a fresh User-selected Rendezvous is
     scoped to one new Service Connection, and Introduction roles rotate gradually
     with overlap.
-22. The corresponding later-horizon candidate places Initiator, Rendezvous,
+22. The corresponding promotion-gate candidate places Initiator, Rendezvous,
     Responder, and Introduction Node identities in disjoint stable Role Domains.
     This makes the five-distinct-position rule
     enforceable across independently hidden endpoint legs without turning

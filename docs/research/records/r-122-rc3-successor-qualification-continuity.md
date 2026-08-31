@@ -28,7 +28,7 @@ observed cycle. Its 10-cycle Windows-to-Ubuntu canary completed 10/10 cycles,
 used one proxy dial with no redial, and retained complete User and remote
 evidence.
 
-`tests/qualification/h4-8-a11/run-windows.ps1` independently requires that
+[The historical A11 runner](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/tests/qualification/h4-8-a11/run-windows.ps1) independently requires that
 the candidate worktree HEAD, the immutable release tag, and
 `H4_8_A11_SOURCE_REVISION` name RC2. It independently requires a clean,
 committed harness and records its revision as `harness_revision`. It does not
@@ -61,7 +61,7 @@ It does not evaluate or transfer any RC1 A1-A10 evidence to RC2.
 
 ### Primary sources
 
-- `tests/qualification/h4-8-a11/run-windows.ps1`, inspected 2026-08-28:
+- [Historical A11 runner](https://github.com/dianabuilds/ardents-network/blob/fbb42034757513ac009114a00b933aefa76d8ddf/tests/qualification/h4-8-a11/run-windows.ps1), inspected 2026-08-28:
   its input validation, input receipt, and per-attempt validation record the
   candidate and harness identities independently.
 - Retained short-canary evidence at

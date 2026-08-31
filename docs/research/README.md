@@ -4,9 +4,9 @@ Research exists to make a named product or architecture decision. It is not a
 holding area for interesting links and is not a way to smuggle an implementation
 choice into the repository.
 
-[Product scope and delivery horizons](../product/scope.md) controls which
-questions may drive current implementation. Research may design later gates,
-but a decided later-horizon contract is not a current backlog item.
+[Product scope and audit boundary](../product/scope.md) controls which questions
+may drive the maintained C0 candidates. Research may design later promotion
+gates, but a decided promotion-gate contract is not a current backlog item.
 
 ## Current one-to-one working model
 
@@ -71,8 +71,8 @@ resources.
 - `open` — question and decision criteria exist;
 - `active` — evidence collection or experiment is in progress;
 - `review` — recommendation is ready for adversarial review;
-- `decided` — a decision was accepted and must be promoted before the temporary
-  record is deleted;
+- `decided` — a decision was accepted, promoted to its current owner, and
+  retained as provenance outside the main current reading route;
 - `blocked` — a named missing input prevents useful progress;
 - `rejected` — the question or approach no longer serves the product direction.
 
