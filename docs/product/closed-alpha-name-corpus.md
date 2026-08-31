@@ -23,7 +23,8 @@ locations is a name authority. The participant must already have:
   `corpus.anc`.
 
 The v3-or-later bundle pins the corpus public key and the platform-specific
-`ardents-control-<platform>` companion. Its verified `SHA256SUMS` inventory
+`ardents-control-<platform>` companion (`.exe` is part of its canonical name on
+Windows). Its verified `SHA256SUMS` inventory
 must list both executable files; the accepting command verifies that it is
 that exact manifested companion, so a separately downloaded control command
 is not an acceptable substitute. `catalog.ac2` binds the exact corpus bytes and

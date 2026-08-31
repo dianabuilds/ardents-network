@@ -34,7 +34,10 @@ The maintained Connection Interface adds one narrower consumer operation over
 that composition. A headless caller supplies an explicit Service Link and its
 local Connection principal; Endpoint retains accepted naming state, Entry,
 Target authentication, Route inputs, the one-use Transit Grant/key, and the
-Broker capability. Only an authenticated ordered byte stream and bounded
+Broker admission input. After syntactic Service Link parsing, Endpoint activates
+and consumes the Connection capability before it reads current State, touches
+Entry or private reachability, asks an issuer for a Transit Grant, opens Route,
+or sends Introduction. Only an authenticated ordered byte stream and bounded
 terminal class cross the Interface. The `Publish` and `Withdraw`
 Administration operations remain separately authorized; Publish dispatches the
 Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
@@ -44,10 +47,21 @@ request. The Connection Interface cannot invoke either operation.
 
 The Broker has one volatile generation. A Grant is bound to one opaque local
 Principal and one of the closed surfaces connection or administration. Admit
-creates a fresh one-use capability; Consume removes it before returning a
-bounded receipt. Revoke, permitted finite drain, and close invalidate
-unconsumed capabilities immediately. Work that already consumed a capability
-is not claimed to be interrupted by Broker revocation.
+creates a fresh one-use capability. Administration consumes its capability
+before work and receives only its bounded receipt. Connection activation also
+consumes its capability, but returns an opaque active-session lease whose
+cancelable context is the ancestor of all Network work for that operation.
+The lease exposes neither the capability nor authority facts, counts against
+the Grant's finite session budget, and is released exactly once after the
+terminal outcome.
+
+Exact revoke and Broker or Endpoint close immediately cancel matching active
+Connection sessions as well as invalidating unconsumed capabilities. Drain
+refuses new admission and is allowed only when that exact Grant carried
+`PermitDrain` and the caller supplies a finite deadline. The effective boundary
+is the earlier of that deadline and the session's original expiry, so a later
+caller bound is clamped and cannot extend work. A missing or otherwise
+unprovable finite bound is denied or causes immediate cancellation.
 
 The only current isolation observation is generic/unqualified. It means the
 runtime deliberately makes no statement about sandboxing, hostile same-user
@@ -62,10 +76,11 @@ research and an ADR.
       -> register the authenticated State-selected Introduction slot
       -> Publication.PublishAfterReadiness one higher Instance generation
       -> immutable public record + volatile signer
-      -> Endpoint.Connect or Endpoint.Accept consumes a Connection Grant
+      -> Endpoint.Connect or Endpoint.Accept activates a Connection session
+      -> session authorization precedes State/Entry/issuer/Route work
       -> exact-Instance TLS challenge/proof + Service Connection v1
       -> zero or more replacement Attachments under immutable recovery facts
-      -> one terminal outcome
+      -> one terminal outcome and exactly-once session release
       -> withdraw/supersede stops acquisitions, drains references, erases private material
 
 Service Connection accepts only the closed ardents-interactive-route-v1

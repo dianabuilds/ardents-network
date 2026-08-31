@@ -28,6 +28,29 @@ under `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the four-owner [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
 
+## Preliminary Gate A1 regression coverage
+
+The current deterministic and race inventories retain the accepted preliminary
+Network authority/lifecycle repairs:
+
+- the alpha-corpus diagnostic cannot accept or create an Endpoint floor, while
+  the separately enrolled acceptance command remains the sole floor mutator;
+- the enrollment package, Windows behavior tests, and both alpha-bundle scripts
+  share the canonical `.exe` control-artifact identity;
+- revoked, draining, or closed Connection admission reaches no State, Entry,
+  issuer, Route, or Introduction work, and active sessions are budgeted,
+  canceled, drained only under a permitted finite bound, and released once;
+- Node rejects old-generation Entry and Transit Grant admissions immediately
+  after a successor and reports terminal cleanup faults without publishing
+  `WITHDRAWN`; and
+- Entry close cancels acquisition, joins and terminalizes active attachment
+  cleanup before releasing its root, including concurrent and failure cases.
+
+The architecture suite additionally prevents floor authority from returning to
+`inspect-alpha-corpus`. These are ongoing regression checks for the repaired
+candidate, not completion of the formal deep audit or authorization to begin
+its later security, concurrency, or wire tracks.
+
 ## Current profiles
 
 [`tests/profiles/profiles.json`](../../tests/profiles/profiles.json) is the

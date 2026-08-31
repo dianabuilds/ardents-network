@@ -30,13 +30,20 @@ Endpoint.
    unknown, duplicate, missing, non-regular, symlink, oversized, or unowned
    static entry.
 5. Read every declared byte, compare every digest, and prove the descriptor
-   agrees with the caller's cohort/release/platform/environment/network/target
-   facts.
+agrees with the caller's cohort/release/platform/environment/network/target
+facts.
 6. Prove the running executable is the identical bundled artifact or the one
    declared package-owned artifact, then construct Release Decision inputs.
 7. Project disclosed companions outside Release metadata: catalog and its
    roots, optional `corpus.pub`, v3 control executable, and v4 Browser Entry
    host/XPI.
+
+`ExecutableArtifactName` is the sole package-owned constructor for enrolled
+command identities. It appends the declared platform to the command and also
+appends the native executable suffix: Windows `ardents-control`, Node, Custody,
+Endpoint, and Browser command artifacts end in `.exe`; non-Windows names do
+not. Descriptor parsing, bundle construction/testing, and running-companion
+verification use that same identity rather than reconstructing it locally.
 
 The verifier permits at most 32 inventory entries, each no larger than 64 MiB.
 Names are direct file names only. Manifest and descriptor require canonical
@@ -68,7 +75,8 @@ its historical corpus-control use; a partial Node/Custody pair fails closed.
 
 `internal/enrollment` behavior tests cover pin-before-parse,
 inventory rejection, executable substitution, v2/v3/v4 companion separation,
-package-owned artifact binding, and a current companion process. Callers in
+package-owned artifact binding, Windows v3 control-manifest acceptance through
+the running-companion contract, and a current companion process. Callers in
 `cmd/ardents`, `cmd/ardents-control`, and `cmd/ardents-browser-entry` exercise
 the same narrow interface. Repository gates provide integration evidence;
 historical RC2 enrollment evidence does not qualify a future baseline.

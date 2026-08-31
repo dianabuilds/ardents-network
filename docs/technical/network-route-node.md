@@ -39,6 +39,13 @@ Connection, not Route, decides whether an attachment must be replaced. Entry
 may retain replay and adjacent-contact state but cannot construct a complete
 Route from that state.
 
+Entry owns every carrier/attachment cleanup lease returned by `Acquire`. Its
+owner rejects new acquisition as soon as close begins, cancels and joins an
+in-flight opener, closes each active attachment exactly once, and durably
+records the terminal cleanup outcome before releasing the exclusive Entry
+root. Concurrent caller cleanup and owner close share the same lease result;
+a cleanup error is returned and cannot be represented as a clean attachment.
+
 ### Adjacent-Node Carrier profiles
 
 `internal/route.Carrier` is the transport-neutral reliable ordered byte lane
@@ -76,6 +83,19 @@ role through admission, readiness, pressure protection or drain, withdrawal,
 and terminal cleanup. The former standalone probe package is intentionally
 private Node implementation; the command does not compose an independent
 probe runtime.
+
+The listener's start snapshot identifies only the duty it was created for.
+Each new Entry or Transit Grant admission re-reads the current authenticated
+duty facts and requires the exact same generation, Network, Epoch, digest,
+Node, assignment, and assignment digest to remain fresh and unconflicted. An
+accepted successor, expiry, conflict, or withdrawal therefore closes the old
+admission authority without a polling grace period.
+
+Terminal success is conditional on known cleanup. Role drain, listener or HTTP
+shutdown, and owned issuer/Entry root close errors propagate to the lifecycle
+result. Node may emit `DRAINING` while cleanup is attempted, but it must move to
+`FAILED` and must not publish `WITHDRAWN` if any required cleanup fails or its
+result is unavailable.
 
 Resource measurement is Linux-only until another native Adapter is selected
 and measured. Unsupported platforms refuse rather than silently reporting
@@ -118,8 +138,9 @@ and confirmed removal. The operator contract is the
 ## Verification and decisions
 
 - Focused Network State, Duty, Resource, Entry, Route, and Node behavior tests
-  cover durable reopen, corruption, replay, invitation replacement, attachment
-  cancellation, pressure, listener drain, withdrawal, and cleanup.
+  cover durable reopen, corruption, replay, invitation replacement, successor-
+  State admission rejection, active attachment cancellation and exactly-once
+  cleanup, pressure, listener drain, cleanup fault propagation, and withdrawal.
 - The maintained Carrier cells cover exact TCP/TLS and QUIC peer/binding
   authentication, pending-admission reservation before QUIC authentication,
   signed v1/v2 State projection and unknown-profile rejection, both directions

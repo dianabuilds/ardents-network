@@ -18,7 +18,11 @@ present the same command-line interface.
 Preserve enrollment v1 and v2 verification for their existing non-acceptance
 uses. Define `ardents-closed-alpha-enrollment-v3` for the corpus-acceptance
 route. It retains the v2 `corpus_authority=corpus.pub` companion and adds the
-canonical `control_artifact=ardents-control-<platform>` entry.
+canonical package-owned `control_artifact` name for `ardents-control` on the
+declared platform. This is `ardents-control-<platform>` on non-Windows
+platforms and `ardents-control-<platform>.exe` on Windows; descriptor parsing,
+bundle construction, and running-companion verification use the same naming
+contract.
 
 The entry is an ordinary, separately manifest-pinned bundle file, never a
 Release metadata input. Before `accept-alpha-corpus` reads ACA2 or corpus
