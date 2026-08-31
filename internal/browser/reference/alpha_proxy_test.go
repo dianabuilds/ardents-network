@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
+	reference "github.com/dianabuilds/ardents-network/internal/browser/reference"
 )
 
 func TestAlphaProxyForwardsOnlyItsRegisteredHTTPName(t *testing.T) {

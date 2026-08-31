@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	"github.com/dianabuilds/ardents-network/internal/browserentry/installer"
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry/installer"
 )
 
 // installBrowserEntry verifies the selected enrollment-v4 bundle before it
@@ -19,7 +19,7 @@ import (
 // does not install or open the signed XPI: Firefox must perform that explicit
 // participant action and validate Mozilla's signature itself.
 func installBrowserEntry(arguments []string, output io.Writer) error {
-	return installBrowserEntryWith(arguments, output, enrollment.VerifyBrowser, enrollment.VerifyRunningCompanion, installer.Install)
+	return installBrowserEntryWith(arguments, output, enrollment.Verify, enrollment.VerifyRunningCompanion, installer.Install)
 }
 
 func installBrowserEntryWith(arguments []string, output io.Writer,

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
+	reference "github.com/dianabuilds/ardents-network/internal/browser/reference"
 )
 
 func TestTransparentAlphaRoutePreservesOneDynamicServiceHTTPFlow(t *testing.T) {

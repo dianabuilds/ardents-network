@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
 )
 
 // AlphaProxy owns one loopback-only HTTP proxy for a finite set of active

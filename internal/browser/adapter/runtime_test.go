@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
 )
 
 type fixtureApplication struct {

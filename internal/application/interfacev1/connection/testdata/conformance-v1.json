@@ -1,0 +1,13 @@
+{
+  "schema": "ardents-application-interface-conformance-v1",
+  "interface_version": "ardents-application-interface-v1",
+  "request": {
+    "service_link": "ardents-alpha://reference",
+    "wire_hex": "414149320019617264656e74732d616c7068613a2f2f7265666572656e6365"
+  },
+  "terminal": {
+    "class": "clean service connection close",
+    "reason": "fixture complete",
+    "wire_hex": "ffffffff001e0010636c65616e207365727669636520636f6e6e656374696f6e20636c6f73656669787475726520636f6d706c657465"
+  }
+}

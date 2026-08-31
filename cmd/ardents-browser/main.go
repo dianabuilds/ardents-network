@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/browseradapter"
+	"github.com/dianabuilds/ardents-network/internal/browser/adapter"
 )
 
 type plan struct {

@@ -2,6 +2,10 @@ package administration
 
 import "context"
 
+// InterfaceVersion is the stable local protocol family shared by Network and
+// replaceable Applications.
+const InterfaceVersion = "ardents-application-interface-v1"
+
 // Operation is the closed local Service Administration request vocabulary.
 type Operation string
 

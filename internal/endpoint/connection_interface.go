@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	"github.com/dianabuilds/ardents-network/internal/browserentry/installer"
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry/installer"
 )
 
 func TestNativeHostRejectsUnboundedOrUnsupportedCommandInput(t *testing.T) {

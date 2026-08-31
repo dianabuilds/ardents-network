@@ -69,29 +69,18 @@ type Verified struct {
 	NodeArtifact        []byte
 	CustodyArtifactName string
 	CustodyArtifact     []byte
-	// BrowserAdapterArtifact, BrowserEntryArtifact, and BrowserEntryExtension
-	// are the exact Adapter, native host, and Mozilla-signed XPI companions from
-	// an enrollment-v4 bundle. They are participant-delivery bytes, never
-	// Release metadata.
-	BrowserAdapterArtifactName string
-	BrowserAdapterArtifact     []byte
-	BrowserEntryArtifactName   string
-	BrowserEntryArtifact       []byte
-	BrowserEntryExtensionName  string
-	BrowserEntryExtension      []byte
 }
 
-// Verify authenticates the Network enrollment inventory. Browser enrollment-v4
-// is deliberately rejected and must enter through VerifyBrowser.
+// Verify authenticates only the Network enrollment v1-v3 inventory.
 func Verify(request Request) (Verified, error) {
-	return verify(request, false)
+	return verify(request)
 }
 
 // VerifyHeadless authenticates the Network enrollment-v3 candidate inventory
 // and requires its exact manifest-pinned Node and Authority Custody companions.
 // Verify remains available for the narrower historical v1-v3 procedures.
 func VerifyHeadless(request Request) (Verified, error) {
-	verified, err := verify(request, false)
+	verified, err := verify(request)
 	if err != nil {
 		return Verified{}, err
 	}
@@ -101,16 +90,10 @@ func VerifyHeadless(request Request) (Verified, error) {
 	return verified, nil
 }
 
-// VerifyBrowser authenticates the distinct Browser Adapter enrollment-v4
-// inventory. It never broadens the Network enrollment inventory.
-func VerifyBrowser(request Request) (Verified, error) {
-	return verify(request, true)
-}
-
 // verify checks the manifest pin before parsing it, then accepts only a
 // single-directory, regular-file inventory whose descriptor and artifact bind
 // the requested first-install facts. It never runs a bundle artifact.
-func verify(request Request, browser bool) (Verified, error) {
+func verify(request Request) (Verified, error) {
 	if !validRequest(request) {
 		return Verified{}, errors.New("alpha enrollment request is incomplete")
 	}
@@ -145,12 +128,6 @@ func verify(request Request, browser bool) (Verified, error) {
 	descriptor, err := parseDescriptor(descriptorContents)
 	if err != nil {
 		return Verified{}, err
-	}
-	if browser != (descriptor.schema == "ardents-closed-alpha-enrollment-v4") {
-		if browser {
-			return Verified{}, errors.New("browser Adapter enrollment requires the v4 inventory")
-		}
-		return Verified{}, errors.New("network enrollment does not accept the Browser Adapter v4 inventory")
 	}
 	if err := exactInventory(root, entries, descriptor.artifact, request.ArtifactPath != ""); err != nil {
 		return Verified{}, err
@@ -241,7 +218,7 @@ func verify(request Request, browser bool) (Verified, error) {
 	}
 	var nodeArtifactName, custodyArtifactName string
 	var nodeArtifact, custodyArtifact []byte
-	if descriptor.schema == "ardents-closed-alpha-enrollment-v3" || descriptor.schema == "ardents-closed-alpha-enrollment-v4" {
+	if descriptor.schema == "ardents-closed-alpha-enrollment-v3" {
 		nodeName := executableArtifactName("ardents-node", descriptor.platform)
 		custodyName := executableArtifactName("ardents-custody", descriptor.platform)
 		var nodeFound, custodyFound bool
@@ -252,23 +229,6 @@ func verify(request Request, browser bool) (Verified, error) {
 		}
 		if nodeFound {
 			nodeArtifactName, custodyArtifactName = nodeName, custodyName
-		}
-	}
-	var browserAdapterArtifact, browserEntryArtifact, browserEntryExtension []byte
-	if descriptor.browserAdapterArtifact != "" {
-		browserAdapterArtifact, found = files[descriptor.browserAdapterArtifact]
-		if !found {
-			return Verified{}, errors.New("alpha descriptor Browser Adapter is absent from the manifest")
-		}
-	}
-	if descriptor.browserEntryArtifact != "" {
-		browserEntryArtifact, found = files[descriptor.browserEntryArtifact]
-		if !found {
-			return Verified{}, errors.New("alpha descriptor Browser Entry host is absent from the manifest")
-		}
-		browserEntryExtension, found = files[descriptor.browserEntryExtension]
-		if !found {
-			return Verified{}, errors.New("alpha descriptor Browser Entry extension is absent from the manifest")
 		}
 	}
 	metadata := make(map[string][]byte, len(files))
@@ -288,9 +248,6 @@ func verify(request Request, browser bool) (Verified, error) {
 		if name == nodeArtifactName || name == custodyArtifactName {
 			continue
 		}
-		if name == descriptor.browserAdapterArtifact || name == descriptor.browserEntryArtifact || name == descriptor.browserEntryExtension {
-			continue
-		}
 		metadata[release.MetadataURL(name)] = contents
 	}
 	return Verified{Inputs: release.Inputs{RootBytes: trustedRoot, Files: metadata, TargetPath: request.TargetPath,
@@ -303,10 +260,7 @@ func verify(request Request, browser bool) (Verified, error) {
 		ControlCompatibilityRoot: append([]byte(nil), controlCompatibilityRoot...), CorpusAuthority: append([]byte(nil), corpusAuthority...),
 		ControlArtifactName: descriptor.controlArtifact, ControlArtifact: append([]byte(nil), controlArtifact...),
 		NodeArtifactName: nodeArtifactName, NodeArtifact: append([]byte(nil), nodeArtifact...),
-		CustodyArtifactName: custodyArtifactName, CustodyArtifact: append([]byte(nil), custodyArtifact...),
-		BrowserAdapterArtifactName: descriptor.browserAdapterArtifact, BrowserAdapterArtifact: append([]byte(nil), browserAdapterArtifact...),
-		BrowserEntryArtifactName: descriptor.browserEntryArtifact, BrowserEntryArtifact: append([]byte(nil), browserEntryArtifact...),
-		BrowserEntryExtensionName: descriptor.browserEntryExtension, BrowserEntryExtension: append([]byte(nil), browserEntryExtension...)}, nil
+		CustodyArtifactName: custodyArtifactName, CustodyArtifact: append([]byte(nil), custodyArtifact...)}, nil
 }
 
 func validRequest(request Request) bool {

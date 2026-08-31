@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	"github.com/dianabuilds/ardents-network/internal/browserentry/installer"
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry/installer"
 )
 
 func TestParticipantInstallAuthenticatesARealV4Bundle(t *testing.T) {
@@ -112,7 +112,7 @@ func TestParticipantInstallAuthenticatesARealV4Bundle(t *testing.T) {
 	verifiedCompanion := false
 	var output strings.Builder
 	err = installBrowserEntryWith([]string{"--enrollment", inputPath, "--endpoint-artifact", filepath.Join(bundle, endpointName), "--at", time.Now().UTC().Format(time.RFC3339)}, &output,
-		enrollment.VerifyBrowser, func(_ enrollment.Request, name string, artifact []byte) error {
+		enrollment.Verify, func(_ enrollment.Request, name string, artifact []byte) error {
 			verifiedCompanion = name == hostName
 			actual, readErr := os.ReadFile(filepath.Join(bundle, hostName))
 			if readErr != nil || !bytes.Equal(artifact, actual) {

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 )
 
 // ServiceAdministrationConfig binds one preconfigured local Administration

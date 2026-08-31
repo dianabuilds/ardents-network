@@ -1,0 +1,9 @@
+{
+  "schema": "ardents-application-interface-conformance-v1",
+  "interface_version": "ardents-application-interface-v1",
+  "cases": [
+    {"operation": "publish", "request": "publish\n", "success": "published\n"},
+    {"operation": "withdraw", "request": "withdraw\n", "success": "withdrawn\n"}
+  ],
+  "failure": "unavailable\n"
+}

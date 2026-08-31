@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
+	reference "github.com/dianabuilds/ardents-network/internal/browser/reference"
 )
 
 const transparentAlphaBodyLimit = 1 << 20

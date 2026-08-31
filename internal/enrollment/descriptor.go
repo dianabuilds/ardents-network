@@ -6,13 +6,12 @@ import (
 )
 
 type descriptor struct {
-	schema                                                              string
-	cohort, release, platform, environment, network, targetPath         string
-	artifact, trustedRoot, controlCatalog, disclosureRoot               string
-	controlRelease, controlNetwork, controlCompatibility                string
-	controlReleaseRoot, controlNetworkRoot, controlCompatibilityRoot    string
-	corpusAuthority, controlArtifact                                    string
-	browserAdapterArtifact, browserEntryArtifact, browserEntryExtension string
+	schema                                                           string
+	cohort, release, platform, environment, network, targetPath      string
+	artifact, trustedRoot, controlCatalog, disclosureRoot            string
+	controlRelease, controlNetwork, controlCompatibility             string
+	controlReleaseRoot, controlNetworkRoot, controlCompatibilityRoot string
+	corpusAuthority, controlArtifact                                 string
 }
 
 func parseDescriptor(raw []byte) (descriptor, error) {
@@ -22,14 +21,11 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 		return descriptor{}, errors.New("alpha descriptor is not canonical")
 	}
 	keys := baseKeys
-	if lines[0] == "schema=ardents-closed-alpha-enrollment-v2" || lines[0] == "schema=ardents-closed-alpha-enrollment-v3" || lines[0] == "schema=ardents-closed-alpha-enrollment-v4" {
+	if lines[0] == "schema=ardents-closed-alpha-enrollment-v2" || lines[0] == "schema=ardents-closed-alpha-enrollment-v3" {
 		keys = append(append([]string(nil), baseKeys...), "corpus_authority")
 	}
-	if lines[0] == "schema=ardents-closed-alpha-enrollment-v3" || lines[0] == "schema=ardents-closed-alpha-enrollment-v4" {
+	if lines[0] == "schema=ardents-closed-alpha-enrollment-v3" {
 		keys = append(keys, "control_artifact")
-	}
-	if lines[0] == "schema=ardents-closed-alpha-enrollment-v4" {
-		keys = append(keys, "browser_adapter_artifact", "browser_entry_artifact", "browser_entry_extension")
 	}
 	if len(lines) != len(keys) {
 		return descriptor{}, errors.New("alpha descriptor is not canonical")
@@ -45,34 +41,26 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 	if !validDescriptor(values) {
 		return descriptor{}, errors.New("alpha descriptor is invalid")
 	}
-	return descriptor{schema: values["schema"], cohort: values["cohort"], release: values["release"], platform: values["platform"], environment: values["environment"], network: values["network"], targetPath: values["target_path"], artifact: values["artifact"], trustedRoot: values["trusted_root"], controlCatalog: values["control_catalog"], disclosureRoot: values["disclosure_root"], controlRelease: values["control_release"], controlNetwork: values["control_network"], controlCompatibility: values["control_compatibility"], controlReleaseRoot: values["control_release_root"], controlNetworkRoot: values["control_network_root"], controlCompatibilityRoot: values["control_compatibility_root"], corpusAuthority: values["corpus_authority"], controlArtifact: values["control_artifact"], browserAdapterArtifact: values["browser_adapter_artifact"], browserEntryArtifact: values["browser_entry_artifact"], browserEntryExtension: values["browser_entry_extension"]}, nil
+	return descriptor{schema: values["schema"], cohort: values["cohort"], release: values["release"], platform: values["platform"], environment: values["environment"], network: values["network"], targetPath: values["target_path"], artifact: values["artifact"], trustedRoot: values["trusted_root"], controlCatalog: values["control_catalog"], disclosureRoot: values["disclosure_root"], controlRelease: values["control_release"], controlNetwork: values["control_network"], controlCompatibility: values["control_compatibility"], controlReleaseRoot: values["control_release_root"], controlNetworkRoot: values["control_network_root"], controlCompatibilityRoot: values["control_compatibility_root"], corpusAuthority: values["corpus_authority"], controlArtifact: values["control_artifact"]}, nil
 }
 
 func validDescriptor(values map[string]string) bool {
 	schema := values["schema"]
-	if (schema != "ardents-closed-alpha-enrollment-v1" && schema != "ardents-closed-alpha-enrollment-v2" && schema != "ardents-closed-alpha-enrollment-v3" && schema != "ardents-closed-alpha-enrollment-v4") || values["control_release"] != "release.ac1" || values["control_network"] != "network.ac1" || values["control_compatibility"] != "compatibility.ac1" || values["control_release_root"] != "release.pub" || values["control_network_root"] != "network.pub" || values["control_compatibility_root"] != "compatibility.pub" {
+	if (schema != "ardents-closed-alpha-enrollment-v1" && schema != "ardents-closed-alpha-enrollment-v2" && schema != "ardents-closed-alpha-enrollment-v3") || values["control_release"] != "release.ac1" || values["control_network"] != "network.ac1" || values["control_compatibility"] != "compatibility.ac1" || values["control_release_root"] != "release.pub" || values["control_network_root"] != "network.pub" || values["control_compatibility_root"] != "compatibility.pub" {
 		return false
 	}
-	if (schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4") && values["corpus_authority"] != "corpus.pub" {
+	if (schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3") && values["corpus_authority"] != "corpus.pub" {
 		return false
 	}
-	if schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4" {
-		if values["control_artifact"] != "ardents-control-"+values["platform"] {
-			return false
-		}
-	}
-	if schema == "ardents-closed-alpha-enrollment-v4" && (values["browser_adapter_artifact"] != browserAdapterArtifactName(values["platform"]) || values["browser_entry_artifact"] != browserHostArtifactName(values["platform"]) || values["browser_entry_extension"] != browserExtensionArtifactName) {
+	if schema == "ardents-closed-alpha-enrollment-v3" && values["control_artifact"] != executableArtifactName("ardents-control", values["platform"]) {
 		return false
 	}
 	names := []string{values["artifact"], values["trusted_root"], values["control_catalog"], values["disclosure_root"], values["control_release"], values["control_network"], values["control_compatibility"], values["control_release_root"], values["control_network_root"], values["control_compatibility_root"]}
-	if schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4" {
+	if schema == "ardents-closed-alpha-enrollment-v2" || schema == "ardents-closed-alpha-enrollment-v3" {
 		names = append(names, values["corpus_authority"])
 	}
-	if schema == "ardents-closed-alpha-enrollment-v3" || schema == "ardents-closed-alpha-enrollment-v4" {
+	if schema == "ardents-closed-alpha-enrollment-v3" {
 		names = append(names, values["control_artifact"])
-	}
-	if schema == "ardents-closed-alpha-enrollment-v4" {
-		names = append(names, values["browser_adapter_artifact"], values["browser_entry_artifact"], values["browser_entry_extension"])
 	}
 	seen := make(map[string]struct{}, len(names))
 	for _, name := range names {
@@ -85,16 +73,6 @@ func validDescriptor(values map[string]string) bool {
 		seen[name] = struct{}{}
 	}
 	return true
-}
-
-const browserExtensionArtifactName = "ardents-alpha-browser-entry.xpi"
-
-func browserAdapterArtifactName(platform string) string {
-	return executableArtifactName("ardents-browser", platform)
-}
-
-func browserHostArtifactName(platform string) string {
-	return executableArtifactName("ardents-browser-entry", platform)
 }
 
 func executableArtifactName(command, platform string) string {

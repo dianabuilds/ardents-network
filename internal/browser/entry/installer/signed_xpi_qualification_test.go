@@ -12,7 +12,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
 )
 
 const alphaBrowserEntrySignedXPIHash = "d88e8ecba84cda82a7b2354d1f445e19b9d092f3f3d068868d1173ef29eaa2a2"

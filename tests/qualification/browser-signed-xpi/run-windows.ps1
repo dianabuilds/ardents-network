@@ -14,7 +14,7 @@ if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
     throw "Mozilla-signed XPI is unavailable: $resolved"
 }
 $env:ARDENTS_BROWSER_SIGNED_XPI = $resolved
-& go test -tags=browser_signed_xpi ./internal/browserentry/installer -run '^TestMozillaSignedAlphaBrowserEntryXPI$' -count=1
+& go test -tags=browser_signed_xpi ./internal/browser/entry/installer -run '^TestMozillaSignedAlphaBrowserEntryXPI$' -count=1
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

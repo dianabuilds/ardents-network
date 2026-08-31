@@ -26,7 +26,7 @@ func TestVerifyRunningCompanionUsesExactRunningArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := "ardents-browser-entry-test" + filepath.Ext(executable)
+	name := "ardents-control-test" + filepath.Ext(executable)
 	companion := filepath.Join(bundle, name)
 	bytes, err := os.ReadFile(executable)
 	if err != nil {

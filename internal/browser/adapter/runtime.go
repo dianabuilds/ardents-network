@@ -7,10 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
-	reference "github.com/dianabuilds/ardents-network/internal/browserreference"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
+	reference "github.com/dianabuilds/ardents-network/internal/browser/reference"
 )
 
 type applicationStream interface {
@@ -93,11 +92,11 @@ func (runtime *Runtime) openName(ctx context.Context, hostname string) error {
 	if runtime == nil || ctx == nil || !strings.HasSuffix(hostname, ".ard") || len(hostname) <= len(".ard") {
 		return errors.New("browser Adapter Service Name is invalid")
 	}
-	link, err := alpha.ParseServiceLink("ardents-alpha://" + strings.TrimSuffix(hostname, ".ard"))
+	link, err := serviceLinkForHostname(hostname)
 	if err != nil {
 		return err
 	}
-	application, err := runtime.dial(ctx, runtime.application, link.String())
+	application, err := runtime.dial(ctx, runtime.application, link)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
 )
 
 func main() {

@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/sys/windows/registry"
 
-	"github.com/dianabuilds/ardents-network/internal/browserentry"
+	"github.com/dianabuilds/ardents-network/internal/browser/entry"
 )
 
 const nativeManifestRegistryPath = "Software\\Mozilla\\NativeMessagingHosts\\" + browserentry.NativeHostName

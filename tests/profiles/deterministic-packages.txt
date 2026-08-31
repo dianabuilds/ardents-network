@@ -7,11 +7,12 @@ github.com/dianabuilds/ardents-network/cmd/ardents-release-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-state-custody
 github.com/dianabuilds/ardents-network/cmd/ardents-node
 github.com/dianabuilds/ardents-network/internal/application/broker
-github.com/dianabuilds/ardents-network/internal/application/administration
-github.com/dianabuilds/ardents-network/internal/application/connection
-github.com/dianabuilds/ardents-network/internal/browseradapter
-github.com/dianabuilds/ardents-network/internal/browserentry
-github.com/dianabuilds/ardents-network/internal/browserentry/installer
+github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration
+github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection
+github.com/dianabuilds/ardents-network/internal/browser/adapter
+github.com/dianabuilds/ardents-network/internal/browser/entry
+github.com/dianabuilds/ardents-network/internal/browser/entry/enrollment
+github.com/dianabuilds/ardents-network/internal/browser/entry/installer
 github.com/dianabuilds/ardents-network/internal/contributor
 github.com/dianabuilds/ardents-network/internal/alphacontrol
 github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection
@@ -20,7 +21,7 @@ github.com/dianabuilds/ardents-network/internal/custody
 github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/enrollment
 github.com/dianabuilds/ardents-network/internal/endpoint/portable
-github.com/dianabuilds/ardents-network/internal/browserreference
+github.com/dianabuilds/ardents-network/internal/browser/reference
 github.com/dianabuilds/ardents-network/internal/endpoint/replacement
 github.com/dianabuilds/ardents-network/internal/architecture
 github.com/dianabuilds/ardents-network/internal/entry

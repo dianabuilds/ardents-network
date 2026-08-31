@@ -7,6 +7,10 @@ import (
 	"unicode/utf8"
 )
 
+// InterfaceVersion is the stable local protocol family shared by Network and
+// replaceable Applications. Existing AAI2 frame bytes remain unchanged.
+const InterfaceVersion = "ardents-application-interface-v1"
+
 const (
 	maximumOutcomeClassBytes  = 128
 	maximumOutcomeReasonBytes = 512

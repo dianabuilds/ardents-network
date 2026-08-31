@@ -29,8 +29,8 @@ func exactExecutable(actual, expected string, artifact []byte, packageArtifact b
 
 // VerifyRunningCompanion proves that the current process is the exact named
 // regular-file companion from the already verified enrollment inventory. It is
-// intended for a bounded participant tool such as ardents-control or the
-// Browser Entry native host; it does not re-verify or execute the companion.
+// intended for a bounded participant tool such as ardents-control; it does not
+// re-verify or execute the companion.
 func VerifyRunningCompanion(request Request, name string, artifact []byte) error {
 	if request.BundleRoot == "" || !validName(name) || len(artifact) == 0 {
 		return errors.New("alpha enrollment companion is invalid")

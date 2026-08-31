@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/application/administration"
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 )
 
 func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, outputPath string, output io.Writer) error {
