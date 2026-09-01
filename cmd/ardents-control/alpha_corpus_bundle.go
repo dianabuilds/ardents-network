@@ -19,7 +19,7 @@ import (
 // acceptAlphaCorpus verifies one explicitly supplied ACA2/corpus pair against
 // a v3 enrolled bundle, then advances only the explicitly named local corpus
 // floor. It neither fetches bytes nor starts an Endpoint.
-func acceptAlphaCorpus(arguments []string, output io.Writer) error {
+func acceptAlphaCorpus(arguments []string, output io.Writer) (resultErr error) {
 	flags := flag.NewFlagSet("accept-alpha-corpus", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var enrollmentPath, artifact, controlRoot, corpusRoot, catalogPath, corpusPath, atText string
@@ -63,7 +63,7 @@ func acceptAlphaCorpus(arguments []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	defer floor.Close()
+	defer func() { resultErr = errors.Join(resultErr, floor.Close()) }()
 	if err := floor.Observe(report.Corpus); err != nil {
 		return err
 	}

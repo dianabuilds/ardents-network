@@ -7,7 +7,6 @@ import (
 	"io"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/browser/entry"
 	"github.com/dianabuilds/ardents-network/internal/browser/entry/enrollment"
@@ -28,16 +27,11 @@ func installBrowserEntryWith(arguments []string, output io.Writer,
 	install func(string, string) (installer.Result, error)) error {
 	flags := flag.NewFlagSet("install", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	var enrollmentPath, endpointArtifact, atText string
+	var enrollmentPath, endpointArtifact string
 	flags.StringVar(&enrollmentPath, "enrollment", "", "alpha enrollment input JSON")
 	flags.StringVar(&endpointArtifact, "endpoint-artifact", "", "exact enrolled Endpoint artifact path")
-	flags.StringVar(&atText, "at", "", "decision time in RFC3339")
 	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || endpointArtifact == "" {
 		return errors.New("browser Entry installation arguments are invalid")
-	}
-	_, err := time.Parse(time.RFC3339, atText)
-	if err != nil {
-		return errors.New("browser Entry installation time is invalid")
 	}
 	input, err := enrollment.ReadClosedAlphaInput(enrollmentPath)
 	if err != nil {

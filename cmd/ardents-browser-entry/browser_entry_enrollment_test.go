@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/browser/entry"
 	"github.com/dianabuilds/ardents-network/internal/browser/entry/enrollment"
@@ -111,7 +110,7 @@ func TestParticipantInstallAuthenticatesARealV4Bundle(t *testing.T) {
 	var installedHost, installedExtension string
 	verifiedCompanion := false
 	var output strings.Builder
-	err = installBrowserEntryWith([]string{"--enrollment", inputPath, "--endpoint-artifact", filepath.Join(bundle, endpointName), "--at", time.Now().UTC().Format(time.RFC3339)}, &output,
+	err = installBrowserEntryWith([]string{"--enrollment", inputPath, "--endpoint-artifact", filepath.Join(bundle, endpointName)}, &output,
 		enrollment.Verify, func(_ enrollment.Request, name string, artifact []byte) error {
 			verifiedCompanion = name == hostName
 			actual, readErr := os.ReadFile(filepath.Join(bundle, hostName))

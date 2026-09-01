@@ -51,10 +51,6 @@ func runEndpointEnrollmentUserUnit(input, action, description string, output io.
 	return err
 }
 
-func portableUserUnit(executable, enrollment string) (string, error) {
-	return enrollmentUserUnit(executable, enrollment, "enroll", "Ardents Portable Endpoint (closed alpha)")
-}
-
 func enrollmentUserUnit(executable, enrollment, action, description string) (string, error) {
 	if action != "enroll" && action != "enroll-installed" || description == "" {
 		return "", errors.New("endpoint user unit action is invalid")

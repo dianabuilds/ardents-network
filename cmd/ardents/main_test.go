@@ -70,11 +70,29 @@ func TestEndpointRouteRejectsIncompleteCommand(t *testing.T) {
 	}
 }
 
-func TestPortableUserUnitEscapesExactAbsoluteInputs(t *testing.T) {
+func TestEndpointRouteRejectsRetiredPortableBypass(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	if err := run(t.Context(), []string{"endpoint", "portable"}, &output); err == nil || output.Len() != 0 {
+		t.Fatalf("retired portable endpoint route err=%v output=%q", err, output.String())
+	}
+}
+
+func TestRefreshSourcesRejectsConflictingExecutionModesBeforeReadingPlan(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	err := run(t.Context(), []string{"refresh-sources", "--once", "--resume",
+		"--state-root", t.TempDir(), "--source-plan", filepath.Join(t.TempDir(), "absent.json")}, &output)
+	if err == nil || err.Error() != "refresh-sources --once and --resume are mutually exclusive" || output.Len() != 0 {
+		t.Fatalf("conflicting refresh modes err=%v output=%q", err, output.String())
+	}
+}
+
+func TestEnrollmentUserUnitEscapesExactAbsoluteInputs(t *testing.T) {
 	t.Parallel()
 	executable := filepath.Join(t.TempDir(), "bin", "ardents")
 	enrollment := filepath.Join(t.TempDir(), "alpha $cohort%.json")
-	unit, err := portableUserUnit(executable, enrollment)
+	unit, err := enrollmentUserUnit(executable, enrollment, "enroll", "Ardents Portable Endpoint (closed alpha)")
 	if err != nil {
 		t.Fatal(err)
 	}

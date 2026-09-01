@@ -35,6 +35,20 @@ func TestParticipantInstallAndRemovalRequireTheirExactBoundedInputs(t *testing.T
 	}
 }
 
+func TestParticipantInstallRejectsRetiredDecisionTimeInput(t *testing.T) {
+	err := installBrowserEntryWith([]string{
+		"--enrollment", filepath.Join(t.TempDir(), "missing-enrollment.json"),
+		"--endpoint-artifact", filepath.Join(t.TempDir(), "ardents"),
+		"--at", "2026-08-26T00:00:00Z",
+	}, &bytes.Buffer{}, nil, nil, nil)
+	if err == nil {
+		t.Fatal("Browser Entry installation accepted retired --at input")
+	}
+	if got, want := err.Error(), "browser Entry installation arguments are invalid"; got != want {
+		t.Fatalf("Browser Entry installation error = %q, want %q", got, want)
+	}
+}
+
 func TestParticipantInstallUsesOnlyVerifiedV4CompanionsAndKeepsXPIManual(t *testing.T) {
 	bundle := t.TempDir()
 	inputPath := filepath.Join(t.TempDir(), "enrollment.json")
@@ -51,7 +65,7 @@ func TestParticipantInstallUsesOnlyVerifiedV4CompanionsAndKeepsXPIManual(t *test
 	hostName, extensionName := browserentry.HostArtifactName(platform), browserentry.ExtensionArtifactName
 	calledVerify, calledCompanion, calledInstall := false, false, false
 	var output bytes.Buffer
-	err = installBrowserEntryWith([]string{"--enrollment", inputPath, "--endpoint-artifact", filepath.Join(bundle, "ardents"), "--at", "2026-08-26T00:00:00Z"}, &output,
+	err = installBrowserEntryWith([]string{"--enrollment", inputPath, "--endpoint-artifact", filepath.Join(bundle, "ardents")}, &output,
 		func(request enrollment.Request) (enrollment.Verified, error) {
 			calledVerify = request.BundleRoot == bundle && request.Pin.Platform == platform
 			return enrollment.Verified{BrowserEntryArtifactName: hostName, BrowserEntryArtifact: []byte("host"),

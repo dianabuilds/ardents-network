@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,26 +17,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
-func TestInspectPublicControlReportsExternalEvidenceGate(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "public-control.json")
-	if err := os.WriteFile(path, []byte(publicControlManifest()), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	var output bytes.Buffer
-	if err := run([]string{"inspect-public-control", "--evidence", path, "--at", "2029-01-01T00:00:00Z", "--audit-floor-generation", "1"}, &output); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(output.String(), `"external-evidence-required"`) {
-		t.Fatalf("public-control output = %s", output.String())
-	}
-	if strings.Contains(output.String(), `"qualified":true`) {
-		t.Fatalf("public-control output must never self-qualify: %s", output.String())
-	}
-}
-
 func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
-	const usage = "usage: ardents-control inspect, inspect-bundle, inspect-transitions, inspect-public-control, inspect-alpha-corpus, or accept-alpha-corpus"
+	const usage = "usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, or accept-alpha-corpus"
 	for _, route := range []string{
+		"inspect",
+		"inspect-public-control",
 		"simulate-public-control",
 		"simulate-public-control-transitions",
 		"simulate-namespace-lifecycle",
@@ -52,65 +36,6 @@ func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
 				t.Fatalf("retired route output = %q", output.String())
 			}
 		})
-	}
-}
-
-func publicControlManifest() string {
-	digest := "sha256:" + strings.Repeat("a", 64)
-	actors := func(role string, count int) string {
-		values := make([]string, count)
-		for index := range count {
-			keyFill := byte('0' + index)
-			if role == "builder" {
-				keyFill = byte('a' + index)
-			}
-			if role == "auditor" {
-				keyFill = byte('c' + index)
-			}
-			values[index] = fmt.Sprintf(`{"id":"%s-%d","public_key":"ed25519:%s","operator":"%s-operator-%d","organization":"%s-organization-%d","administration":"%s-administration-%d","evidence":"%s"}`,
-				role, index+1, strings.Repeat(string(keyFill), 64), role, index+1, role, index+1, role, index+1, digest)
-		}
-		return strings.Join(values, ",")
-	}
-	return fmt.Sprintf(`{"schema":"ardents-public-control-evidence-v1","candidate":"%s","transition":{"generation":1,"predecessor":"%s","not_after":"2030-01-01T00:00:00Z","revoked":false,"conflicting":false},"custody":{"threshold":3,"emergency_threshold":4,"members":[%s]},"candidate_view":{"epoch":"%s","input_log":"%s","materialization_rules":"%s","audits":[{"auditor":"auditor-1","input_log":"%s","output":"%s"},{"auditor":"auditor-2","input_log":"%s","output":"%s"}]},"builders":[%s],"auditors":[%s],"packages":[{"artifact":"%s","source":"%s","dependencies":"%s","recipe":"%s","sbom":"%s","qualification":"%s","builder_attestations":[{"builder":"builder-1","artifact":"%s"},{"builder":"builder-2","artifact":"%s"}]}]}`,
-		digest, digest, actors("custodian", 5), digest, digest, digest, digest, digest, digest, digest, actors("builder", 2), actors("auditor", 2), digest, digest, digest, digest, digest, digest, digest, digest)
-}
-
-func TestInspectReportsSeparateComponentResultsWithoutEndpoint(t *testing.T) {
-	now := time.Unix(2_000_400_000, 0).UTC()
-	directory, stateRoot := t.TempDir(), filepath.Join(t.TempDir(), "reader")
-	disclosurePublic, disclosurePrivate, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	components, roots, catalog := controlFixture(t, now, disclosurePrivate)
-	if err := os.WriteFile(filepath.Join(directory, "catalog.ac1"), catalog, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for index, name := range componentNames {
-		if err := os.WriteFile(filepath.Join(directory, name), components[index], 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	var output bytes.Buffer
-	arguments := []string{"inspect", "--directory", directory, "--state-root", stateRoot, "--disclosure-key", hex.EncodeToString(disclosurePublic),
-		"--release-key", hex.EncodeToString(roots[0]), "--network-key", hex.EncodeToString(roots[1]), "--compatibility-key", hex.EncodeToString(roots[2]), "--at", now.Format(time.RFC3339)}
-	if err := run(arguments, &output); err != nil {
-		t.Fatal(err)
-	}
-	var result struct {
-		Catalog    string `json:"catalog"`
-		Components [3]struct {
-			Outcome string `json:"outcome"`
-		} `json:"components"`
-	}
-	if err := json.Unmarshal(output.Bytes(), &result); err != nil || result.Catalog != "accepted" {
-		t.Fatalf("inspection result = %s, %v", output.String(), err)
-	}
-	for _, component := range result.Components {
-		if component.Outcome != "accepted" {
-			t.Fatalf("component result = %+v", component)
-		}
 	}
 }
 
@@ -194,31 +119,4 @@ func TestInspectAlphaCorpusPinsACA2WithoutOpeningEndpointFloor(t *testing.T) {
 	if _, err := os.Stat(floorRoot); !os.IsNotExist(err) {
 		t.Fatalf("rejected diagnostic command changed Endpoint floor: %v", err)
 	}
-}
-
-func controlFixture(t *testing.T, now time.Time, catalogSigner ed25519.PrivateKey) ([3][]byte, [3]ed25519.PublicKey, []byte) {
-	t.Helper()
-	var components [3][]byte
-	var roots [3]ed25519.PublicKey
-	catalog := alphacontrol.Catalog{Cohort: "alpha-one", Generation: 1, NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute)}
-	for index := range components {
-		public, private, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
-		statement := alphacontrol.ComponentStatement{Class: alphacontrol.ComponentClass(index + 1), Generation: 1,
-			NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute), Body: []byte{byte(index + 1)}}
-		components[index], err = alphacontrol.SignComponent(statement, private)
-		if err != nil {
-			t.Fatal(err)
-		}
-		roots[index] = public
-		catalog.Components[index] = alphacontrol.Component{Class: statement.Class, RootID: sha256.Sum256(public), Generation: 1,
-			NotAfter: statement.NotAfter, Size: uint32(len(components[index])), Digest: sha256.Sum256(components[index])}
-	}
-	raw, err := alphacontrol.Sign(catalog, catalogSigner)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return components, roots, raw
 }

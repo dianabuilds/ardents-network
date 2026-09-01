@@ -101,7 +101,7 @@ manifest_sha256=$(sha256sum "$bundle/SHA256SUMS" | awk '{print $1}')
 printf '{"schema":"ardents-alpha-enrollment-input-v1","bundle_root":"%s","cohort":"browser-entry-ubuntu-qualification","release":"mozilla-signed-0.1.0","platform":"%s","manifest_sha256":"%s","environment":"alpha","network":"browser-entry-ubuntu-qualification","target_path":"ardents/%s/endpoint"}\n' "$bundle" "$platform" "$manifest_sha256" "$platform" > "$input"
 chmod 600 "$input"
 
-if ! install_result=$("$bundle/$host_name" install --enrollment "$input" --endpoint-artifact "$bundle/$endpoint_name" --at 2026-08-26T00:00:00Z); then
+if ! install_result=$("$bundle/$host_name" install --enrollment "$input" --endpoint-artifact "$bundle/$endpoint_name"); then
     echo 'Browser Entry Ubuntu enrollment manifest follows:' >&2
     sed -n '1,32p' "$bundle/SHA256SUMS" >&2
     echo 'Browser Entry Ubuntu enrollment descriptor follows:' >&2

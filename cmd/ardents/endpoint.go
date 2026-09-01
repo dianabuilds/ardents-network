@@ -40,9 +40,6 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && (arguments[1] == "publish" || arguments[1] == "withdraw") {
 		return runHeadlessAdministration(ctx, arguments[1], arguments[2], output)
 	}
-	if len(arguments) == 2 && arguments[1] == "portable" {
-		return runPortableEndpoint(ctx, output)
-	}
 	if len(arguments) == 3 && arguments[1] == "user-unit" {
 		return runEndpointUserUnit(arguments[2], output)
 	}
@@ -61,7 +58,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && arguments[1] == "rollback" {
 		return runEndpointRollback(ctx, arguments[2], output)
 	}
-	return errors.New("usage: ardents endpoint <portable|enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <service-link> <input-file> <output-file>|publish <administration-socket>|withdraw <administration-socket>|user-unit <alpha-enrollment.json>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
+	return errors.New("usage: ardents endpoint <enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <service-link> <input-file> <output-file>|publish <administration-socket>|withdraw <administration-socket>|user-unit <alpha-enrollment.json>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
 }
 
 // runReplacementSelfTest is the candidate-side, no-network Endpoint
@@ -161,7 +158,7 @@ func runEnrolledInstalled(ctx context.Context, path string, output io.Writer) er
 	})
 }
 
-func runEnrolledEndpoint(ctx context.Context, output io.Writer, allowInstalledRebind bool, verify func() (enrollmentFact, error)) error {
+func runEnrolledEndpoint(ctx context.Context, output io.Writer, allowInstalledRebind bool, verify func() (enrollmentFact, error)) (resultErr error) {
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
 	if err := encodePortableEvent(encoder, portable.Event{State: portable.StateStarting}); err != nil {
@@ -175,7 +172,7 @@ func runEnrolledEndpoint(ctx context.Context, output io.Writer, allowInstalledRe
 	if err != nil {
 		return encodeEnrolledFailure(encoder, err, portable.FailureEvent(err))
 	}
-	defer running.Close()
+	defer func() { resultErr = errors.Join(resultErr, running.Close()) }()
 	executable, err := os.Executable()
 	if err != nil {
 		return encodeEnrolledFailure(encoder, err, portable.Event{State: portable.StateBlocked, Reason: releaseDecisionUnavailable})
@@ -316,23 +313,6 @@ func verifyInstalledEnrollment(path string) (installedEnrollmentInput, enrollmen
 func hexDigest(value []byte) string {
 	digest := sha256.Sum256(value)
 	return hex.EncodeToString(digest[:])
-}
-
-// runPortableEndpoint adapts the selected Portable Endpoint local lifecycle to
-// the command's bounded event projection. It intentionally creates no network
-// route, browser integration, or local application capability.
-func runPortableEndpoint(ctx context.Context, output io.Writer) error {
-	encoder := json.NewEncoder(output)
-	encoder.SetEscapeHTML(false)
-	config, err := portable.DefaultConfig()
-	if err != nil {
-		_ = encoder.Encode(portableEvent(portable.Event{State: portable.StateStarting}))
-		_ = encoder.Encode(portableEvent(portable.Event{State: portable.StateIncompatible, Reason: portable.ReasonLocalProfileInvalid}))
-		return err
-	}
-	return portable.Run(ctx, config, func(event portable.Event) {
-		_ = encoder.Encode(portableEvent(event))
-	})
 }
 
 func portableEvent(event portable.Event) struct {
