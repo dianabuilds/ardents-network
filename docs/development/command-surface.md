@@ -58,6 +58,11 @@ Removal of a command route does not remove the owning verification Module when
 that Module still has maintained callers. Wire and persisted identities are
 unchanged.
 
+The retired public-control parser and its diagnostic matrix have no selected
+production caller. Their exact final source and tests remain available at
+`0e580c153114dd32f4b4c1fff86842b882f71937:internal/publiccontrol`; the current
+tree does not preserve an unselected placeholder Module.
+
 ## Change rule
 
 Adding or retaining a route requires all of:

@@ -27,12 +27,16 @@ compatibility contract or a command that current product code must reproduce.
 
 The domain behavior exercised by the campaigns remains at its actual owners:
 
-- `internal/publiccontrol` tests own the diagnostic malformed, forged, stale,
-  replayed, revoked, conflicting, unavailable, boundary-collision, and
-  external-evidence outcomes. Release tests own consecutive-root, floor,
-  expiry, emergency, build-attestation, and no-fallback decisions. Synthetic
-  custodian, builder, and auditor roles had no product Interface and are not
-  migrated.
+- At the time of this decision, `internal/publiccontrol` tests retained the
+  diagnostic malformed, forged, stale, replayed, revoked, conflicting,
+  unavailable, boundary-collision, and external-evidence outcomes. The later
+  command-surface contraction left that future-public reader without a
+  production caller, so its exact final source and tests are now historical Git
+  evidence at `0e580c153114dd32f4b4c1fff86842b882f71937:internal/publiccontrol`
+  rather than a maintained placeholder Module. Release tests continue to own
+  consecutive-root, floor, expiry, emergency, build-attestation, and
+  no-fallback decisions. Synthetic custodian, builder, and auditor roles had no
+  product Interface and are not migrated.
 - Namespace Record, Epoch, and Authority tests own publish/update, Grace,
   Released refusal, next-generation reclaim, threshold current state, restart,
   stale state, conflict, and pending-successor continuity. The retirement adds
