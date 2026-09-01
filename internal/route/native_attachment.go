@@ -10,33 +10,69 @@ import (
 
 // Attachment is one admitted native Entry connection. Route creates and owns
 // its identifier, selection, resource reservation, and Entry cleanup; callers
-// receive only the opaque byte carrier and must close it exactly once.
+// receive only the opaque byte carrier. Cleanup executes once, while every
+// concurrent or later Close joins its terminal result.
 type Attachment struct {
 	connection net.Conn
 
-	mu    sync.Mutex
-	close func() error
+	mu     sync.Mutex
+	close  func() error
+	finish func(error)
+	done   chan struct{}
+	result error
 }
 
 var _ net.Conn = (*Attachment)(nil)
 
 // Close attempts the authenticated Entry, caller-owned resource, and local
-// Route-selection cleanup as one owned operation. A nil result proves their
-// release; a closed Attachment cannot be reused for another Service Connection
+// Route-selection cleanup as one owned operation. Concurrent and later calls
+// join the same terminal result; a nil result proves release happened exactly
+// once. A closed Attachment cannot be reused for another Service Connection
 // generation.
 func (attachment *Attachment) Close() error {
 	if attachment == nil {
 		return errors.New("native Route attachment is unavailable")
 	}
 	attachment.mu.Lock()
+	if attachment.done != nil {
+		done := attachment.done
+		attachment.mu.Unlock()
+		<-done
+		attachment.mu.Lock()
+		result := attachment.result
+		attachment.mu.Unlock()
+		return result
+	}
 	if attachment.connection == nil || attachment.close == nil {
 		attachment.mu.Unlock()
 		return errors.New("native Route attachment is unavailable")
 	}
-	close := attachment.close
+	cleanup := attachment.close
+	finish := attachment.finish
+	done := make(chan struct{})
+	attachment.done = done
 	attachment.connection, attachment.close = nil, nil
 	attachment.mu.Unlock()
-	return close()
+	result := cleanup()
+	if finish != nil {
+		finish(result)
+		return result
+	}
+	attachment.publish(result)
+	return result
+}
+
+func (attachment *Attachment) bindCompletion(finish func(error)) {
+	attachment.mu.Lock()
+	attachment.finish = finish
+	attachment.mu.Unlock()
+}
+
+func (attachment *Attachment) publish(result error) {
+	attachment.mu.Lock()
+	attachment.result = result
+	close(attachment.done)
+	attachment.mu.Unlock()
 }
 
 func (attachment *Attachment) carrier() (net.Conn, error) {
@@ -108,7 +144,7 @@ func (attachment *Attachment) SetWriteDeadline(deadline time.Time) error {
 }
 
 func openNativeAttachment(ctx context.Context, source EntryAcquirer, selected plan, identifier [32]byte,
-	deadline time.Time, admit ResourceAdmission, released func()) (*Attachment, error) {
+	deadline time.Time, admit ResourceAdmission) (*Attachment, error) {
 	if source == nil || selected.networkID == [32]byte{} || selected.digest == [32]byte{} || selected.epoch == 0 || identifier == [32]byte{} ||
 		deadline.IsZero() || !time.Now().Before(deadline) || admit == nil {
 		return nil, errors.New("native Route attachment request is invalid")
@@ -141,7 +177,6 @@ func openNativeAttachment(ctx context.Context, source EntryAcquirer, selected pl
 		return nil, errors.Join(err, connection.Close(), closeAttempt(), release())
 	}
 	return &Attachment{connection: connection, close: func() error {
-		defer released()
 		return errors.Join(connection.Close(), closeAttempt(), release())
 	}}, nil
 }

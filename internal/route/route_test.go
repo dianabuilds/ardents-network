@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
@@ -187,8 +189,207 @@ func TestRouteCloseReleasesEveryActiveAttachment(t *testing.T) {
 	if released != 1 {
 		t.Fatalf("active attachment release count = %d", released)
 	}
-	if err := attachment.Close(); err == nil {
-		t.Fatal("Route Close left an active attachment reusable")
+	if err := attachment.Close(); err != nil {
+		t.Fatalf("closed attachment terminal result = %v", err)
+	}
+	if attachment.LocalAddr() != nil {
+		t.Fatal("Route Close left an active attachment carrier reusable")
+	}
+}
+
+func TestRouteCloseJoinsConcurrentAttachmentCleanup(t *testing.T) {
+	synctest.Test(t, routeCloseJoinsConcurrentAttachmentCleanup)
+}
+
+func routeCloseJoinsConcurrentAttachmentCleanup(t *testing.T) {
+	now := time.Now().UTC()
+	cleanupStarted := make(chan struct{})
+	allowCleanup := make(chan struct{})
+	cleanupFailure := errors.New("resource cleanup failed")
+	var cleanupCalls atomic.Int32
+	route := openRoute(t, nativeView(now, 1), successfulEntry(), func(context.Context) (func() error, error) {
+		return func() error {
+			cleanupCalls.Add(1)
+			close(cleanupStarted)
+			<-allowCleanup
+			return cleanupFailure
+		}, nil
+	})
+	attachment, err := route.Attach(context.Background(), Intent{Deadline: now.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	attachmentResult := make(chan error, 1)
+	go func() { attachmentResult <- attachment.Close() }()
+	select {
+	case <-cleanupStarted:
+	case <-time.After(time.Second):
+		t.Fatal("Attachment cleanup did not start")
+	}
+	routeResult := make(chan error, 1)
+	go func() { routeResult <- route.Close() }()
+	synctest.Wait()
+	var routeErr error
+	early := false
+	select {
+	case routeErr = <-routeResult:
+		early = true
+	default:
+	}
+	close(allowCleanup)
+	attachmentErr := <-attachmentResult
+	if early {
+		t.Fatalf("Route Close returned before concurrent Attachment cleanup: %v", routeErr)
+	}
+	routeErr = <-routeResult
+	if !errors.Is(attachmentErr, cleanupFailure) || !errors.Is(routeErr, cleanupFailure) {
+		t.Fatalf("joined cleanup results = Attachment %v, Route %v", attachmentErr, routeErr)
+	}
+	if cleanupCalls.Load() != 1 {
+		t.Fatalf("resource cleanup call count = %d", cleanupCalls.Load())
+	}
+}
+
+func TestRouteCloseJoinsPostCleanupTerminalPublication(t *testing.T) {
+	synctest.Test(t, routeCloseJoinsPostCleanupTerminalPublication)
+}
+
+func routeCloseJoinsPostCleanupTerminalPublication(t *testing.T) {
+	now := time.Now().UTC()
+	cleanupStarted := make(chan struct{})
+	allowCleanup := make(chan struct{})
+	cleanupFailure := errors.New("resource cleanup failed after carrier close")
+	var cleanupCalls atomic.Int32
+	route := openRoute(t, nativeView(now, 1), successfulEntry(), func(context.Context) (func() error, error) {
+		return func() error {
+			cleanupCalls.Add(1)
+			close(cleanupStarted)
+			<-allowCleanup
+			return cleanupFailure
+		}, nil
+	})
+	attachment, err := route.Attach(context.Background(), Intent{Deadline: now.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	removalFinished := make(chan struct{})
+	allowTerminalPublication := make(chan struct{})
+	attachment.mu.Lock()
+	rawCleanup := attachment.close
+	attachment.close = func() error {
+		result := rawCleanup()
+		close(removalFinished)
+		<-allowTerminalPublication
+		return result
+	}
+	attachment.mu.Unlock()
+	attachmentResult := make(chan error, 1)
+	go func() { attachmentResult <- attachment.Close() }()
+	<-cleanupStarted
+
+	// Hold terminal publication after raw cleanup and the old release callback
+	// return. The Route must keep this Attachment joinable across that boundary.
+	close(allowCleanup)
+	<-removalFinished
+	routeResult := make(chan error, 1)
+	go func() { routeResult <- route.Close() }()
+	synctest.Wait()
+	var routeErr error
+	early := false
+	select {
+	case routeErr = <-routeResult:
+		early = true
+	default:
+	}
+	close(allowTerminalPublication)
+	attachmentErr := <-attachmentResult
+	if early {
+		t.Fatalf("Route Close passed the post-cleanup terminal-publication gap: %v", routeErr)
+	}
+	routeErr = <-routeResult
+	if !errors.Is(attachmentErr, cleanupFailure) || !errors.Is(routeErr, cleanupFailure) {
+		t.Fatalf("post-cleanup terminal results = Attachment %v, Route %v", attachmentErr, routeErr)
+	}
+	if cleanupCalls.Load() != 1 {
+		t.Fatalf("resource cleanup call count = %d", cleanupCalls.Load())
+	}
+}
+
+func TestRouteCloseReportsCleanupFromAttachmentOpenedWhileClosing(t *testing.T) {
+	synctest.Test(t, routeCloseReportsCleanupFromAttachmentOpenedWhileClosing)
+}
+
+func routeCloseReportsCleanupFromAttachmentOpenedWhileClosing(t *testing.T) {
+	now := time.Now().UTC()
+	entryStarted := make(chan struct{})
+	allowEntry := make(chan struct{})
+	cleanupFailure := errors.New("late attachment resource cleanup failed")
+	var cleanupCalls atomic.Int32
+	route := openRoute(t, nativeView(now, 1), entryAcquirerFunc(func(context.Context, entry.Attempt, entry.CandidateOpener) (net.Conn, func() error, error) {
+		close(entryStarted)
+		<-allowEntry
+		connection, cleanup := relayReadyPipe()
+		return connection, cleanup, nil
+	}), func(context.Context) (func() error, error) {
+		return func() error {
+			cleanupCalls.Add(1)
+			return cleanupFailure
+		}, nil
+	})
+	attachResult := make(chan error, 1)
+	go func() {
+		_, err := route.Attach(context.Background(), Intent{Deadline: now.Add(time.Minute)})
+		attachResult <- err
+	}()
+	<-entryStarted
+	closeResult := make(chan error, 1)
+	go func() { closeResult <- route.Close() }()
+	synctest.Wait()
+	route.mu.Lock()
+	closed := route.closed
+	route.mu.Unlock()
+	if !closed {
+		t.Fatal("Route Close did not reach the closed state while attachment opening was blocked")
+	}
+	close(allowEntry)
+	attachErr := <-attachResult
+	closeErr := <-closeResult
+	if !errors.Is(attachErr, cleanupFailure) {
+		t.Fatalf("late Attach cleanup result = %v", attachErr)
+	}
+	if !errors.Is(closeErr, cleanupFailure) {
+		t.Fatalf("Route Close lost late attachment cleanup failure: %v", closeErr)
+	}
+	if cleanupCalls.Load() != 1 {
+		t.Fatalf("late attachment resource cleanup call count = %d", cleanupCalls.Load())
+	}
+}
+
+func TestRouteBoundsRememberedCleanupFailure(t *testing.T) {
+	now := time.Now().UTC()
+	firstFailure := errors.New("first resource cleanup failed")
+	secondFailure := errors.New("second resource cleanup failed")
+	failures := []error{firstFailure, secondFailure}
+	cleanup := 0
+	route := openRoute(t, nativeView(now, 1), successfulEntry(), func(context.Context) (func() error, error) {
+		failure := failures[cleanup]
+		cleanup++
+		return func() error { return failure }, nil
+	})
+	for index, failure := range failures {
+		attachment, err := route.Attach(context.Background(), Intent{Deadline: now.Add(time.Minute)})
+		if err != nil {
+			t.Fatalf("Attachment %d: %v", index+1, err)
+		}
+		if err := attachment.Close(); !errors.Is(err, failure) {
+			t.Fatalf("Attachment %d cleanup = %v", index+1, err)
+		}
+	}
+	if !errors.Is(route.terminalFailure, firstFailure) || errors.Is(route.terminalFailure, secondFailure) {
+		t.Fatalf("remembered cleanup failure = %v, want first failure only", route.terminalFailure)
+	}
+	if err := route.Close(); !errors.Is(err, firstFailure) || errors.Is(err, secondFailure) {
+		t.Fatalf("bounded Route cleanup evidence = %v", err)
 	}
 }
 

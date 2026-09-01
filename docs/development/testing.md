@@ -58,6 +58,8 @@ Network authority/lifecycle repairs:
 - Node rejects old-generation Entry and Transit Grant admissions immediately
   after a successor and reports terminal cleanup faults without publishing
   `WITHDRAWN`; and
+- concurrent caller and Route Attachment close join one exactly-once cleanup
+  and return the same terminal result; and
 - Entry close cancels acquisition, joins and terminalizes active attachment
   cleanup before releasing its root, including concurrent and failure cases.
 

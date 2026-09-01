@@ -43,15 +43,16 @@ type Intent struct {
 // attachment reservation. Service Connection decides whether to request a
 // replacement; it cannot observe or direct Route's selected Node positions.
 type Route struct {
-	mu      sync.Mutex
-	config  Config
-	done    context.CancelFunc
-	doneCtx context.Context
-	closed  bool
-	pending map[[32]byte]plan
-	active  map[[32]byte]activeAttachment
-	flight  int
-	idle    *sync.Cond
+	mu              sync.Mutex
+	config          Config
+	done            context.CancelFunc
+	doneCtx         context.Context
+	closed          bool
+	pending         map[[32]byte]plan
+	active          map[[32]byte]activeAttachment
+	terminalFailure error
+	flight          int
+	idle            *sync.Cond
 }
 
 type activeAttachment struct {
@@ -95,13 +96,13 @@ func (route *Route) Attach(ctx context.Context, intent Intent) (*Attachment, err
 	if err != nil {
 		return nil, err
 	}
-	attachment, err := openNativeAttachment(attachmentCtx, route.config.Entry, selected, identifier, deadline,
-		route.config.Admit, func() { route.release(identifier) })
+	attachment, err := openNativeAttachment(attachmentCtx, route.config.Entry, selected, identifier, deadline, route.config.Admit)
 	if err != nil {
-		route.release(identifier)
+		route.releasePending(identifier)
 		return nil, err
 	}
 	route.mu.Lock()
+	attachment.bindCompletion(func(result error) { route.complete(identifier, attachment, result) })
 	if route.closed {
 		delete(route.pending, identifier)
 		route.mu.Unlock()
@@ -140,7 +141,13 @@ func (route *Route) Close() error {
 	for _, attachment := range attachments {
 		result = errors.Join(result, attachment.Close())
 	}
-	return result
+	route.mu.Lock()
+	remembered := route.terminalFailure
+	route.mu.Unlock()
+	if remembered == nil || errors.Is(result, remembered) {
+		return result
+	}
+	return errors.Join(result, remembered)
 }
 
 func (route *Route) beginAttach() error {
@@ -221,9 +228,20 @@ func (selected plan) deadline(requested time.Time) time.Time {
 	return deadline
 }
 
-func (route *Route) release(identifier [32]byte) {
+func (route *Route) releasePending(identifier [32]byte) {
 	route.mu.Lock()
 	delete(route.pending, identifier)
-	delete(route.active, identifier)
+	route.mu.Unlock()
+}
+
+func (route *Route) complete(identifier [32]byte, attachment *Attachment, result error) {
+	route.mu.Lock()
+	attachment.publish(result)
+	if route.terminalFailure == nil && result != nil {
+		route.terminalFailure = result
+	}
+	if active, ok := route.active[identifier]; ok && active.attachment == attachment {
+		delete(route.active, identifier)
+	}
 	route.mu.Unlock()
 }

@@ -37,7 +37,9 @@ caller-owned resource reservation, verifies State-pinned TLS and Entry facts,
 and returns an opaque attachment carrier to Service Connection. Service
 Connection, not Route, decides whether an attachment must be replaced. Entry
 may retain replay and adjacent-contact state but cannot construct a complete
-Route from that state.
+Route from that state. Caller and Route shutdown may race to close one active
+Attachment; all closers join the same terminal cleanup, receive the same
+result, and cannot reuse the carrier after close begins.
 
 Entry owns every carrier/attachment cleanup lease returned by `Acquire`. Its
 owner rejects new acquisition as soon as close begins, cancels and joins an
