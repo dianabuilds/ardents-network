@@ -92,15 +92,13 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
-ADR-0050 separately assigns first closed-alpha release seeds to
-`internal/release/custody`. That local Product Owner boundary can initialize
-exactly one password-encrypted fixed-role seed record and return a public
-receipt. ADR-0052 historically permitted one profile-bound operation to
-consume that selected record internally and create only the fixed RC1/RC2
-static input directories after maintained verifier preflight. ADR-0059 retired
-that completed one-off operation and both terminal routes. The maintained
-custody boundary now only initializes or inspects the encrypted record; it
-cannot sign, assemble, publish, upload, or execute a release.
+ADR-0050 through ADR-0052 historically assigned the first closed-alpha release
+seeds and fixed RC1/RC2 assembly to a separate Product Owner boundary. ADR-0059
+retired assembly after the completed ceremonies, and ADR-0067 retires the
+remaining seed initializer/inspector and its private envelope as maintained
+interfaces. Their exact records and receipts are provenance only and no future
+release accepts them automatically. `internal/release` remains the current
+Release verification owner and has no signing or custody interface.
 
 A fresh executable cannot use its own Release Decision code to authenticate
 itself before first execution. `RootBytes` and the first executable therefore

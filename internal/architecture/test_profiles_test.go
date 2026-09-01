@@ -39,12 +39,9 @@ func TestEndToEndPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
 	actual := listedPackages(t, root, "./tests/e2e/...")
 	process := listedProfilePackages(t, root, "tests/profiles/process-packages.txt")
-	ceremony := listedProfilePackages(t, root, "tests/profiles/local-ceremony-packages.txt")
 	for packagePath := range actual {
-		if process[packagePath] && ceremony[packagePath] {
-			t.Errorf("e2e package %s belongs to more than one positive process profile", packagePath)
-		} else if !process[packagePath] && !ceremony[packagePath] {
-			t.Errorf("e2e package %s must belong to one positive process profile", packagePath)
+		if !process[packagePath] {
+			t.Errorf("e2e package %s must belong to the positive process profile", packagePath)
 		}
 	}
 }
@@ -55,7 +52,6 @@ func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",
-		"tests/profiles/local-ceremony-packages.txt",
 	} {
 		for packagePath := range listedProfilePackages(t, root, path) {
 			if !actual[packagePath] {
@@ -123,7 +119,6 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"endpoint-replacement-ubuntu": false,
 		"fuzz":                        false,
 		"headless-network":            false,
-		"local-ceremony":              false,
 		"native-rendezvous-multihost": false,
 		"process":                     false,
 		"qualification":               false,

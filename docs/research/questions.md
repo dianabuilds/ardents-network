@@ -14,11 +14,12 @@ inside historical records are provenance only and authorize no implementation.
 | [R-099](records/r-099-protected-application-profile.md) | Is there one narrow application job and supported platform on which an OS-enforced or brokered boundary can deny ordinary-network escape well enough to support a bounded Application-level location claim? | **Open; no profile selected.** Generic Browser and local Application adapters make no isolation or privacy claim. Work begins only after the Product Owner selects one exact job, platform, adversary, enforcement boundary, falsification matrix, and resource budget. |
 
 R-093 is deferred without a selected co-resident Contributor experiment and is
-not active work. R-097, R-105, R-113, and R-129 are decided and
+not active work. R-097, R-105, R-113, R-129, and R-134 are decided and
 implementation-linked; their maintained contracts are owned respectively by
 [Naming](../technical/naming.md), [Endpoint and Service runtime](../technical/endpoint-service-runtime.md),
-[Alpha-control transition](../technical/alpha-control-transition.md), and the
-[C0 product scope](../product/scope.md).
+[Alpha-control transition](../technical/alpha-control-transition.md), the
+[C0 product scope](../product/scope.md), and
+[ADR-0067](../adr/0067-retire-completed-local-alpha-ceremonies.md).
 
 Closed research is not a second specification. Start from current
 [product](../product/), [security](../security/), [technical](../technical/),

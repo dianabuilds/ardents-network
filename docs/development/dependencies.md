@@ -111,15 +111,13 @@ tests, non-test caller, and package-map entry now own it.
 | `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
 | `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | raised cryptographic support closure |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
-| `golang.org/x/term` | `v0.45.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody` and `cmd/ardents-release-custody`; also present in the reviewed sigstore closure |
+| `golang.org/x/term` | `v0.45.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
 | `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260819154853-08b0e4226688` | Apache-2.0 | protobuf API type closure |
 | `google.golang.org/protobuf` | `v1.36.12` | BSD-3-Clause | signature protobuf runtime |
 
-**Need and owner:** the Release Decision Module owns verification; the bounded
-Release Custody Module additionally owns the ADR-0052 initial metadata writer.
+**Need and owner:** the Release Decision Module owns verification.
 The maintained verification path imports go-tuf `metadata` and
-`trustedmetadata`; release custody imports only `metadata` plus Sigstore's
-reviewed Ed25519 signer adapter. The broader reviewed
+`trustedmetadata`. The broader reviewed
 updater closure remains the removal/review boundary but is not imported by
 other production code. Release Decision receives bounded bytes, trusted root, exact target
 identity, and artifact bytes. It constructs one trusted set, assigns the one
@@ -146,9 +144,7 @@ module scan and stops on any reachable unpatched high/critical advisory.
 **Alternatives and removal:** the DataDog legacy fork failed the reproducible
 maintenance/conformance criterion; first-party TUF or cryptographic primitives,
 distributor authority, and a hand-built generic threshold workflow are rejected.
-The fixed custody writer constructs only the initial closed-alpha metadata and
-preflights it through Release Decision; it is not a repository administrator.
-The closure is removed with the Release Decision and Release Custody Modules. A version, module,
+The closure is removed with the Release Decision Module. A version, module,
 surface, role, delegation, cache, or multi-repository change requires a new
 dependency review and applicable ADR analysis.
 
@@ -157,39 +153,37 @@ module cache outside Git, verifies it online, and proves an offline no-cgo
 build. No module cache, vendor tree, generated repository, key, or binary
 belongs in the repository.
 
-## Current Authority and release-seed custody dependencies
+## Current Authority custody dependencies
 
-Status: **current maintained dependencies under ADR-0021 and ADR-0050.** Both
-password-derived Authority Custody and the separately scoped local release-seed
-record use `golang.org/x/crypto/argon2` from module
-`golang.org/x/crypto v0.55.0` (BSD-3-Clause). The release-verifier closure
-selects the same module version; integration must produce one shared exact
-root-module version, never parallel copies.
+Status: **current maintained dependency under ADR-0021.** Password-derived
+Authority Custody uses `golang.org/x/crypto/argon2` from module
+`golang.org/x/crypto v0.55.0` (BSD-3-Clause). Other maintained cryptographic
+owners select the same module version; integration must produce one shared
+exact root-module version, never parallel copies.
 
-`internal/custody`, `internal/release/custody`, and the ADR-0053 fixed
-functional-alpha initialization path in `internal/network/state` are the only
-Argon2 callers. Each uses only `argon2.IDKey` with the fixed v1 profile and passes the derived
+`internal/custody` is the only maintained Argon2 caller. It uses only
+`argon2.IDKey` with the fixed v1 profile and passes the derived
 32-byte key to Go 1.26 standard-library `crypto/aes` and
-`cipher.NewGCMWithRandomNonce`. The records have distinct schemas and must
-never share, import, or expose one another's authority material. No other
+`cipher.NewGCMWithRandomNonce`. No other
 Argon2 variant, dynamic parameter negotiation, signing primitive, password
 store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The current
 [release, update, and Authority Custody reference](../technical/release-update-custody.md)
 owns the maintained boundary.
 
-`cmd/ardents-custody`, `cmd/ardents-release-custody`, and
-`cmd/ardents-state-custody` are separate
-interactive adapters. They import only `golang.org/x/term` to reject a
-non-terminal descriptor and read a password without echo. Neither accepts a
+`cmd/ardents-custody` is the separate interactive Adapter. It imports only
+`golang.org/x/term` to reject a non-terminal descriptor and read a password
+without echo. It accepts no
 password from arguments, environment, configuration, nor a stream shared with
-Application data; neither exposes decrypted material.
+Application data; it exposes no decrypted material.
 
-Before a supported custody handoff or any real release-signing operation,
+Before a supported custody handoff,
 integration must run official exact-version Argon2id vectors, the fixed 256 MiB
 resource profile, license/source identity, and reachable-advisory checks.
 Weakest-native-host performance remains a separate Qualification gate. Removing
 password-derived custody removes these callers. A version/profile/surface change
-requires a new dependency review and applicable ADR analysis.
+requires a new dependency review and applicable ADR analysis. ADR-0067 retires
+the former release-seed and fixed State-genesis Argon2 callers as historical
+ceremony implementations.
 
 ## Current qualification-only dependencies
 

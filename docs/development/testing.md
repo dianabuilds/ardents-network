@@ -10,7 +10,7 @@ code.
 - `make unit` runs the positive deterministic package inventory.
 - `make e2e` runs the positive local process package inventory.
 - `make quick-check` runs formatting, architecture, vet, unit, named command
-  builds, module tidiness, and the Browser and local-ceremony artifact lanes.
+  builds, module tidiness, and the Browser artifact lane.
 - `make headless-check` builds the exact Network command inventory, checks the
   enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
@@ -23,8 +23,7 @@ code.
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
 - `make fuzz` exercises the maintained bounded parser/encoder fuzz surface.
 
-The headless, Browser, and local-ceremony command inventories are positive,
-disjoint manifests
+The headless and Browser command inventories are positive, disjoint manifests
 under `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the four-owner [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
@@ -61,8 +60,8 @@ artifact is an invalid environment, never a skip or passing result.
 
 The maintained local profiles are:
 
-- developer, deterministic, process, headless-network, browser-adapter,
-  local-ceremony, race, and fuzz;
+- developer, deterministic, process, headless-network, browser-adapter, race,
+  and fuzz;
 - `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `native-rendezvous-multihost`;
@@ -92,16 +91,11 @@ graphs may contain only `internal/browser/...` and
 Node, Route, Entry, Service, Custody, Release, naming, and Network enrollment
 implementations are forbidden.
 
-The local-ceremony profile builds `ardents-release-custody` and
-`ardents-state-custody` as separate Product Owner trust zones. Those commands
-are excluded from both participant artifact inventories. Its artifact-native
-process test invokes every retained route and proves untrusted arguments fail
-before secret input or state creation. Successful secret ceremonies remain in
-deterministic owning-Module tests; the checked profile never turns passwords
-into shared stdin or environment data merely to automate a terminal.
-The ownership registry records this non-packaged lane through its exact command
-and evidence-package inventories, so the architecture gate proves it cannot
-disappear behind the two packaged participant lanes.
+ADR-0067 retires the completed release-seed and fixed State-genesis ceremony
+commands, their deterministic writers, and their separate artifact/process
+profile. R-119 through R-121 retain the exact historical result; current test
+inventories contain no compatibility exception or hidden replacement route for
+those writers.
 
 `tests/compatibility/browser-endpoint-v4` is the sole retained non-executable
 source exception. ADR-0061 requires it to remain outside Go package discovery,

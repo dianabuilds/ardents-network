@@ -34,14 +34,6 @@
       "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
-      "id": "local-ceremony",
-      "state": "active",
-      "make_target": "ceremony-check",
-      "surface": "exact local release-custody and State-custody command build inventory plus fail-closed pre-secret process boundary",
-      "prerequisites": ["local process execution"],
-      "invalid_environment": "local ceremony artifacts or process execution unavailable"
-    },
-    {
       "id": "browser-adapter",
       "state": "active",
       "make_target": "browser-check",
@@ -157,12 +149,6 @@
       "path": "tests/e2e/service",
       "profile": "process",
       "owner": "service adapter process behavior"
-    },
-    {
-      "id": "e2e-local-ceremony",
-      "path": "tests/e2e/ceremony",
-      "profile": "local-ceremony",
-      "owner": "local custody ceremony process boundary"
     }
   ]
 }

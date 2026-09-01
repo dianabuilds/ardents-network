@@ -8,7 +8,8 @@ separate decision, or retired.
 
 ## Process boundaries
 
-Eight binaries remain. None is an accidental duplicate.
+Six binaries remain. Each owns a current participant or Application
+compatibility process seam.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
@@ -18,13 +19,11 @@ Eight binaries remain. None is an accidental duplicate.
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Application compatibility | ardents-browser | keep pending Application product choice | Optional Browser Adapter over Application Interface v1; it imports no Network implementation. |
 | Application compatibility | ardents-browser-entry | compatibility-only; research retirement | Native host plus explicit enrollment-v4 registration. ADR-0061 prevents treating it as the selected participant UI. |
-| Local ceremony | ardents-release-custody | keep | Product Owner release-seed trust zone, excluded from participant bundles. |
-| Local ceremony | ardents-state-custody | research retirement after bootstrap successor decision | One functional-alpha genesis ceremony, excluded from participant bundles. |
 
 The root cmd directory is Go's conventional collection of thin executable
 adapters; it is not a product ownership boundary. Source and artifact ownership
 are enforced separately by ownership.json, import tests, extraction checks,
-and the three command inventories under tests/profiles.
+and the two command inventories under tests/profiles.
 
 ## Retained routes
 
@@ -38,8 +37,6 @@ and the three command inventories under tests/profiles.
 | ardents-custody | create-service-authority, issue-service-credential, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 | ardents-browser | run | keep compatibility lane pending a future Desktop/Browser product decision |
 | ardents-browser-entry | native-host, install, remove | keep compatibility evidence; do not add product behavior |
-| ardents-release-custody | initialize, inspect | keep local ceremony |
-| ardents-state-custody | initialize-alpha-genesis | research retirement after an explicit replacement/retention decision |
 
 ## Retired surface
 
@@ -53,6 +50,8 @@ qualification owner and are rejected:
 | ardents-control inspect-public-control | rendered a future public-control declaration that was definitionally never qualified and had only a unit-test caller |
 | ardents-browser-entry install --at | parsed and discarded; it never affected enrollment or installation |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by ADR-0060 |
+| ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
+| ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
 
 Removal of a command route does not remove the owning verification Module when
 that Module still has maintained callers. Wire and persisted identities are

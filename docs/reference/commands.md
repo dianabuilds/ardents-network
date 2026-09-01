@@ -118,41 +118,10 @@ restored Service Authority remains locked and issuance-unavailable; a restored
 Name Authority remains locked until a separate fresh opaque Namespace witness
 is implemented and verified.
 
-## `ardents-release-custody`
-
-`ardents-release-custody` is the Product Owner's separate local release-seed
-custody adapter. It accepts no password through flags, environment,
-configuration, or shared stdin. It can initialize or inspect one encrypted
-fixed-role record; it exposes no signer, metadata assembly, upload, artifact
-publication, Endpoint start, or VPS configuration route.
-
-| Route | Required flags | Result |
-|---|---|---|
-| `initialize` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads a new local passphrase and confirmation, then creates the one encrypted fixed-role seed record and prints its public receipt. |
-| `inspect` | `--root ABSOLUTE_OWNER_ONLY_DIRECTORY` | Reads the existing local passphrase, authenticates the fixed encrypted record without altering it, and prints only its public receipt. |
-
-ADR-0059 retired the completed RC1/RC2 assembly routes. Their exact former
-schema and receipt contract remain as historical provenance in the
-[ADR-0059](../adr/0059-retire-fixed-alpha-candidate-assembly.md) and the
-historical source at commit
-[`fbb42034`](https://github.com/dianabuilds/ardents-network/commit/fbb42034757513ac009114a00b933aefa76d8ddf).
-
-## `ardents-state-custody`
-
-`ardents-state-custody` is the separate Product Owner Adapter for the one
-ADR-0053 functional-alpha Network State genesis. It accepts only
-`initialize-alpha-genesis --root ABSOLUTE_OWNER_ONLY_DIRECTORY`. The Module
-generates the Network identifier, 1-of-1 Epoch key, assignment seed, fixed
-30-day validity, and empty candidate view internally. It asks for a new local
-passphrase and confirmation, atomically creates `functional-alpha-state` below
-the supplied root, and prints a non-secret receipt.
-
-The child contains the encrypted `state-seeds.json` and public
-`alpha-network-state.json` request fragment. The latter declares
-`empty-no-persistent-node`: it is valid closed-alpha control input, but never evidence
-of route readiness, operator capacity, availability, independent control, or
-Public Beta governance. The command exposes no generic signer, successor,
-Node-key, upload, or publication route.
+The completed `ardents-release-custody` and `ardents-state-custody` local
+ceremony commands have no maintained routes. ADR-0067 retires their current
+reader/writer contracts; R-119 through R-121 and Git history retain the exact
+historical evidence.
 
 ## `ardents-control`
 

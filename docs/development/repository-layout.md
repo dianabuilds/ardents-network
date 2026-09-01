@@ -64,8 +64,6 @@ The first real product commands are:
 | `cmd/ardents-browser-entry` | Run the separately packaged Browser Entry native host and Browser-v4 enrollment operations. |
 | `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
 | `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
-| `cmd/ardents-release-custody` | Initialize or inspect one local encrypted fixed-role release-seed record through the local secret boundary; it has no candidate assembly, signer, or publication route. |
-| `cmd/ardents-state-custody` | Create the one ADR-0053 encrypted functional-alpha Epoch seed and verifier-accepted empty-topology genesis through a local secret boundary; it has no generic signer, successor, Node-key, or publication route. |
 
 Cross-process tests live under `tests/e2e/<behavior>/`. Selected host and
 artifact qualification runners live under purpose-named directories in

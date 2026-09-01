@@ -46,8 +46,7 @@ The detailed product requirements remain in the
 
 The Network audit candidate is the headless maintained product surface:
 
-- `ardents`, `ardents-node`, `ardents-control`, `ardents-custody`,
-  `ardents-release-custody`, and `ardents-state-custody`;
+- `ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`;
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, naming, enrollment,
   Release, Custody, contributor, control-inspection, and resource Modules;

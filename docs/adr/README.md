@@ -73,6 +73,7 @@ Completed retirement decisions:
 - [0030 — Retire Update V0 as an unobserved test format](0030-retire-update-v0-as-test-format.md)
 - [0059 — Retire fixed historical candidate assembly](0059-retire-fixed-alpha-candidate-assembly.md)
 - [0060 — Retire completed planning-campaign generators](0060-retire-completed-planning-campaign-generators.md)
+- [0067 — Retire completed local alpha ceremonies](0067-retire-completed-local-alpha-ceremonies.md)
 
 Superseded or withdrawn decisions retained for provenance:
 

@@ -66,62 +66,6 @@ func TestHeadlessEvidenceBindsTheExactControlArtifact(t *testing.T) {
 	}
 }
 
-func TestLocalCeremonyProfileHasClosedCommandAndArtifactBoundary(t *testing.T) {
-	root := repositoryRoot(t)
-	registry := readTestProfileRegistry(t, root)
-	var ceremony *testProfile
-	for index := range registry.Profiles {
-		if registry.Profiles[index].ID == "local-ceremony" {
-			ceremony = &registry.Profiles[index]
-			break
-		}
-	}
-	if ceremony == nil {
-		t.Fatal("local ceremony execution profile is not registered")
-	}
-	if ceremony.MakeTarget != "ceremony-check" {
-		t.Errorf("local ceremony make target = %q, want ceremony-check", ceremony.MakeTarget)
-	}
-
-	commands := strings.Fields(string(readProjectFile(t, root, "tests/profiles/local-ceremony-commands.txt")))
-	want := []string{"./cmd/ardents-release-custody", "./cmd/ardents-state-custody"}
-	if len(commands) != len(want) {
-		t.Fatalf("local ceremony command inventory = %v, want %v", commands, want)
-	}
-	participant := packageSet(t, string(readProjectFile(t, root, "tests/profiles/headless-commands.txt")))
-	browser := packageSet(t, string(readProjectFile(t, root, "tests/profiles/browser-commands.txt")))
-	for index, command := range want {
-		if commands[index] != command {
-			t.Errorf("local ceremony command %d = %q, want %q", index, commands[index], command)
-		}
-		if participant[command] || browser[command] {
-			t.Errorf("local ceremony command %q is mixed into a product artifact inventory", command)
-		}
-	}
-
-	makefile := string(readProjectFile(t, root, "Makefile"))
-	for _, required := range []string{
-		"CEREMONY_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/local-ceremony-commands.txt))",
-		"CEREMONY_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/local-ceremony-packages.txt))",
-		"ceremony-build:",
-		"$(foreach command,$(CEREMONY_COMMANDS)",
-		"ceremony-check: export ARDENTS_E2E_RELEASE_CUSTODY",
-		"ceremony-check: export ARDENTS_E2E_STATE_CUSTODY",
-		"ceremony-check: ceremony-build",
-		"go test $(CEREMONY_PACKAGES) -run '^TestLocalCeremonyArtifactsRejectUntrustedArgumentsBeforeSecretInput$$' -count=1",
-	} {
-		if !strings.Contains(makefile, required) {
-			t.Errorf("local ceremony Make boundary lacks %q", required)
-		}
-	}
-	processTest := string(readProjectFile(t, root, "tests/e2e/ceremony/local_custody_process_test.go"))
-	for _, variable := range []string{"ARDENTS_E2E_RELEASE_CUSTODY", "ARDENTS_E2E_STATE_CUSTODY"} {
-		if !strings.Contains(processTest, `requiredArtifact(t, "`+variable+`")`) {
-			t.Errorf("local ceremony process evidence does not consume %s", variable)
-		}
-	}
-}
-
 func headlessEvidenceGoTests(t *testing.T, makefile string) []string {
 	t.Helper()
 	const start = "headless-evidence: headless-build"
