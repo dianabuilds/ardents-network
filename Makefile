@@ -39,6 +39,7 @@ HEADLESS_ENDPOINT_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-$(HEADLESS_PLATF
 HEADLESS_NODE_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-node-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CONTROL_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-control-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
+CANONICAL_NETWORK_GO_BUILD_FLAGS := -trimpath -buildvcs=false
 BROWSER_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/browser-artifacts/$(HEADLESS_PLATFORM)
 BROWSER_ADAPTER_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 BROWSER_ENTRY_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-entry-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
@@ -88,7 +89,7 @@ browser-check: browser-build
 
 ceremony-build:
 	$(CEREMONY_ARTIFACT_MKDIR)
-	$(foreach command,$(CEREMONY_COMMANDS),go build -trimpath -o "$(CEREMONY_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
+	$(foreach command,$(CEREMONY_COMMANDS),go build $(CANONICAL_NETWORK_GO_BUILD_FLAGS) -o "$(CEREMONY_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
 ceremony-check: export ARDENTS_E2E_RELEASE_CUSTODY := $(abspath $(CEREMONY_RELEASE_CUSTODY_ARTIFACT))
 ceremony-check: export ARDENTS_E2E_STATE_CUSTODY := $(abspath $(CEREMONY_STATE_CUSTODY_ARTIFACT))
@@ -98,7 +99,7 @@ ceremony-check: ceremony-build
 
 headless-build:
 	$(HEADLESS_ARTIFACT_MKDIR)
-	$(foreach command,$(HEADLESS_COMMANDS),go build -trimpath -o "$(HEADLESS_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
+	$(foreach command,$(HEADLESS_COMMANDS),go build $(CANONICAL_NETWORK_GO_BUILD_FLAGS) -o "$(HEADLESS_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
 headless-evidence: export ARDENTS_E2E_COMMAND := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))
 headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))
@@ -115,7 +116,7 @@ headless-evidence: headless-build
 
 headless-check: export ARDENTS_EXTRACTION_OWNER := network
 headless-check: headless-evidence
-	go test ./internal/architecture -run '^TestNetworkExtractionRehearsal$$' -count=1
+	go test ./internal/architecture -run '^(TestNetworkExtractionRehearsal|TestCanonicalNetworkCommandBuildIsRepositoryRepresentationIndependent)$$' -count=1
 
 qualification-endpoint-portable-ubuntu:
 	sh ./tests/qualification/endpoint-portable-ubuntu/run-ubuntu.sh -timeout=2m

@@ -14,7 +14,10 @@ code.
 - `make headless-check` builds the exact Network command inventory, checks the
   enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
-  a fresh temporary tree containing no Browser/Application implementation.
+  a fresh temporary tree containing no Browser/Application implementation. It
+  also proves that canonical Network command bytes are unchanged across a
+  linked worktree, a normal Git repository, and a VCS-free extraction of the
+  same owned source.
 - `make browser-check` builds the exact Browser command inventory and archive,
   checks enrollment-v4 independently from Network-v3, then copies only
   Application-owned and Interface-v1 files to a fresh temporary tree, tests
@@ -28,6 +31,13 @@ disjoint manifests
 under `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the four-owner [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
+
+Canonical Network and local-ceremony command builds use
+`-trimpath -buildvcs=false`. Source revision and builder provenance remain
+explicit authenticated release-metadata, attestation, and receipt inputs;
+command bytes never infer those facts from the builder's clone or linked
+worktree representation. The Application/Browser artifact policy is separate
+and unchanged by this Network rule.
 
 ## Preliminary Gate A1 regression coverage
 

@@ -1,6 +1,7 @@
 package architecture
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,59 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestOwnedExtractionExcludesRepositoryMetadata(t *testing.T) {
+	candidate := extractOwnedCandidate(t, repositoryRoot(t), "network", "application-interface-v1")
+	if _, err := os.Lstat(filepath.Join(candidate, ".git")); !os.IsNotExist(err) {
+		t.Fatalf("owned extraction retained repository metadata: %v", err)
+	}
+}
+
+func TestExtractionCommandsDoNotInheritParentGitRepositoryControls(t *testing.T) {
+	environment := externalEnvironment([]string{
+		"PATH=tool-path",
+		"GIT_DIR=parent-git-dir",
+		"GIT_WORK_TREE=parent-worktree",
+		"GIT_COMMON_DIR=parent-common-dir",
+		"GIT_CONFIG_COUNT=1",
+	})
+	if strings.Join(environment, "\n") != "PATH=tool-path" {
+		t.Fatalf("extraction command environment retained parent Git repository controls: %v", environment)
+	}
+}
+
+func TestCanonicalNetworkCommandBuildIsRepositoryRepresentationIndependent(t *testing.T) {
+	root := repositoryRoot(t)
+	plain := extractOwnedCandidate(t, root, "network", "application-interface-v1")
+	versioned := extractOwnedCandidate(t, root, "network", "application-interface-v1")
+	runExternal(t, versioned, "git", "init", "--quiet")
+	runExternal(t, versioned, "git", "config", "user.name", "Ardents build proof")
+	runExternal(t, versioned, "git", "config", "user.email", "build-proof@invalid.example")
+	runExternal(t, versioned, "git", "add", ".")
+	runExternal(t, versioned, "git", "commit", "--quiet", "-m", "build proof source")
+
+	linkedArtifact := filepath.Join(t.TempDir(), "ardents-linked")
+	plainArtifact := filepath.Join(t.TempDir(), "ardents-plain")
+	versionedArtifact := filepath.Join(t.TempDir(), "ardents-versioned")
+	buildCanonicalNetworkCommand(t, root, "./cmd/ardents", linkedArtifact)
+	buildCanonicalNetworkCommand(t, plain, "./cmd/ardents", plainArtifact)
+	buildCanonicalNetworkCommand(t, versioned, "./cmd/ardents", versionedArtifact)
+	linkedBytes, err := os.ReadFile(linkedArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plainBytes, err := os.ReadFile(plainArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	versionedBytes, err := os.ReadFile(versionedArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(linkedBytes, plainBytes) || !bytes.Equal(plainBytes, versionedBytes) {
+		t.Fatal("canonical Network artifact bytes depend on linked, extracted, or normal Git repository representation")
+	}
+}
 
 func TestApplicationExtractionRehearsal(t *testing.T) {
 	if os.Getenv("ARDENTS_EXTRACTION_OWNER") != "application-browser" {
@@ -51,7 +105,7 @@ func TestNetworkExtractionRehearsal(t *testing.T) {
 	}
 	runCandidateGo(t, candidate, "test", "./cmd/ardents", "./cmd/ardents-node", "./cmd/ardents-control", "./cmd/ardents-custody", "./internal/application/broker", "./internal/application/interfacev1/...")
 	for _, command := range strings.Fields(string(readProjectFile(t, candidate, "tests/profiles/headless-commands.txt"))) {
-		buildCandidateCommand(t, candidate, command, filepath.Join(t.TempDir(), filepath.Base(command)))
+		buildCanonicalNetworkCommand(t, candidate, command, filepath.Join(t.TempDir(), filepath.Base(command)))
 	}
 }
 
@@ -121,15 +175,50 @@ func buildCandidateCommand(t *testing.T, candidate, command, output string) {
 	runCandidateGo(t, candidate, "build", "-trimpath", "-o", output, command)
 }
 
+func buildCanonicalNetworkCommand(t *testing.T, candidate, command, output string) {
+	t.Helper()
+	runCandidateGo(t, candidate, "build", "-trimpath", "-buildvcs=false", "-o", output, command)
+}
+
 func runExternal(t *testing.T, directory, name string, arguments ...string) {
 	t.Helper()
 	command := exec.Command(name, arguments...)
 	command.Dir = directory
-	command.Env = append(os.Environ(), "GOWORK=off")
+	command.Env = append(externalEnvironment(os.Environ()), "GOWORK=off")
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("%s %s: %v\n%s", name, strings.Join(arguments, " "), err, output)
 	}
+}
+
+func externalEnvironment(input []string) []string {
+	gitRepositoryVariables := map[string]bool{
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
+		"GIT_COMMON_DIR":                   true,
+		"GIT_CONFIG":                       true,
+		"GIT_CONFIG_COUNT":                 true,
+		"GIT_CONFIG_PARAMETERS":            true,
+		"GIT_DIR":                          true,
+		"GIT_GRAFT_FILE":                   true,
+		"GIT_IMPLICIT_WORK_TREE":           true,
+		"GIT_INDEX_FILE":                   true,
+		"GIT_INTERNAL_SUPER_PREFIX":        true,
+		"GIT_NO_REPLACE_OBJECTS":           true,
+		"GIT_OBJECT_DIRECTORY":             true,
+		"GIT_PREFIX":                       true,
+		"GIT_REPLACE_REF_BASE":             true,
+		"GIT_SHALLOW_FILE":                 true,
+		"GIT_WORK_TREE":                    true,
+	}
+	result := make([]string, 0, len(input))
+	for _, value := range input {
+		name, _, found := strings.Cut(value, "=")
+		if !found || gitRepositoryVariables[name] {
+			continue
+		}
+		result = append(result, value)
+	}
+	return result
 }
 
 func shellPath(path string) string {
