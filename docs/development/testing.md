@@ -51,8 +51,10 @@ Network authority/lifecycle repairs:
 - the enrollment package, Windows behavior tests, and both alpha-bundle scripts
   share the canonical `.exe` control-artifact identity;
 - revoked, draining, or closed Connection admission reaches no State, Entry,
-  issuer, Route, or Introduction work, and active sessions are budgeted,
-  canceled, drained only under a permitted finite bound, and released once;
+  issuer, Route, or Introduction work; pending capability expiry does not end
+  active Endpoint work; Connection and Administration budgets are separate;
+  and active sessions are canceled, drained only under a permitted finite
+  non-extendable bound, and released once;
 - Node rejects old-generation Entry and Transit Grant admissions immediately
   after a successor and reports terminal cleanup faults without publishing
   `WITHDRAWN`; and

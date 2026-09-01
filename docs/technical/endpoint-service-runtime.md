@@ -18,7 +18,7 @@ The local runtime has separate Modules and Interfaces:
 
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
-| internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close that finite session set; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, session accounting, and grant invalidation. |
+| internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
 | internal/application/interfacev1/connection | Carry one Service Link, one ordered byte stream, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/endpoint | Compose one role-local participant and implement the shared Connection and Administration Interfaces. `RunParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
@@ -51,17 +51,20 @@ creates a fresh one-use capability. Administration consumes its capability
 before work and receives only its bounded receipt. Connection activation also
 consumes its capability, but returns an opaque active-session lease whose
 cancelable context is the ancestor of all Network work for that operation.
+The one-use capability expires after its finite admission window; successful
+activation does not transfer that pending TTL into the active Connection.
 The lease exposes neither the capability nor authority facts, counts against
-the Grant's finite session budget, and is released exactly once after the
-terminal outcome.
+the Connection Grant's finite budget of 64 sessions, and is released exactly
+once after the terminal outcome. Administration has a separate finite budget
+of six capabilities and cannot consume the Connection floor.
 
 Exact revoke and Broker or Endpoint close immediately cancel matching active
 Connection sessions as well as invalidating unconsumed capabilities. Drain
 refuses new admission and is allowed only when that exact Grant carried
-`PermitDrain` and the caller supplies a finite deadline. The effective boundary
-is the earlier of that deadline and the session's original expiry, so a later
-caller bound is clamped and cannot extend work. A missing or otherwise
-unprovable finite bound is denied or causes immediate cancellation.
+`PermitDrain` and the caller supplies a finite deadline. The first active-lease
+drain deadline may only be shortened by later calls; it cannot be extended.
+A missing or otherwise unprovable finite bound is denied or causes immediate
+cancellation.
 
 The only current isolation observation is generic/unqualified. It means the
 runtime deliberately makes no statement about sandboxing, hostile same-user

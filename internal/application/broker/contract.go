@@ -26,8 +26,10 @@ type Config struct {
 	Clock  func() time.Time
 }
 
-// Receipt records one consumed ephemeral session without exporting the
-// underlying Principal or Local Grant representation.
+// Receipt records one consumed ephemeral capability without exporting the
+// underlying Principal or Local Grant representation. IssuedAt and ExpiresAt
+// describe that capability's admission window; they are never an active lease
+// deadline.
 type Receipt struct {
 	Session, Principal, Broker, Grant [32]byte
 	Surface                           Surface
