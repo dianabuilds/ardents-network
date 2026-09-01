@@ -124,8 +124,9 @@ turn a failure into another success state. Both packages declare
 `ardents-application-interface-v1` and execute checked vectors under
 `testdata/conformance-v1.json`. There is no result sideband or Endpoint-owned
 local grammar. `RunParticipant` retains the Network server implementation and
-closes its exact socket paths after cancelling and joining active clients; CLI
-and Browser Applications use only the versioned client.
+closes its exact socket paths after cancelling and joining active clients;
+external Applications use only the versioned client. No Browser client is
+selected in the maintained product.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection

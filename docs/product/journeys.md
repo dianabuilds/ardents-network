@@ -350,11 +350,13 @@ rebind the Application to its OS-local principal after process/Endpoint restart
 
 **Done when:** the Application can use its own protocol without treating a Node
 ID as an application address, embedding a mandatory Ardents SDK, or importing
-routing internals. The binary path remains fully usable without a browser,
-extension, or URI registration; browser integration is an optional Adapter over
-the same Interface. The Application remains responsible for User identity,
-authorization, persistence, semantic retry, and data format. Access to connection
-traffic alone does not expose Service Authority or Service administration.
+routing internals. The binary path remains fully usable without a Browser,
+extension, or URI registration. No Browser Adapter is selected in the
+maintained product; any future Browser surface must be separately researched
+and accepted before it can use the same Interface. The Application remains
+responsible for User identity, authorization, persistence, semantic retry, and
+data format. Access to connection traffic alone does not expose Service
+Authority or Service administration.
 Failed name resolution or target authentication never falls back to another
 destination or the ordinary network. After a partial write or connection loss,
 the network never claims that the remote Application processed the bytes. The

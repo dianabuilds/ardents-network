@@ -155,19 +155,21 @@ Introduction route from its accepted State and Entry facts.
 
 ## Required outcomes and qualification
 
-The public Endpoint result vocabulary must distinguish `resolved`,
+The private-resolution result vocabulary must distinguish `resolved`,
 `unavailable`, `stale`, `conflicting`, `invalid evidence`, `private resolution
 unavailable`, and local policy/resource refusal without revealing route
-topology to the browser. Only a verified `resolved` result may create the
-scoped loopback Reference Site; every other result leaves no listener.
+topology to the Application. Only a verified `resolved` result may enter the
+Endpoint-owned Connection composition; every other result creates no Route
+Attachment, Application Connection, or listener.
 
-Before private reachability supports an operational usability claim, a separate Publisher, User, Gateway,
-Introduction, Initiator, Rendezvous, and Responder process experiment must
-show: success; a changed Target; old still-time-valid credential; same-
-generation publication conflict; expired/stale introduction slot; substituted
-Entry invite; Gateway withholding; Publisher withdrawal/offline; no direct
-Publisher request; and listener removal on close. The two host Ubuntu run must
-retain its exact binary and State/profile evidence.
+Before private reachability supports an operational usability claim, a separate
+Publisher, User, Gateway, Introduction, Initiator, Rendezvous, and Responder
+process experiment must show: success; a changed Target; old still-time-valid
+credential; same-generation publication conflict; expired/stale introduction
+slot; substituted Entry invite; Gateway withholding; Publisher
+withdrawal/offline; no direct Publisher request; and Connection/Route cleanup
+on close. The two host Ubuntu run must retain its exact binary and State/profile
+evidence.
 
 The maintained implementation and test denominator cover in-process and
 bounded local-process success paths, including the closed lookup carrier. The
