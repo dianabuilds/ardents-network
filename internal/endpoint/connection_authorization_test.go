@@ -130,6 +130,96 @@ func TestActiveConnectionWorkIsCancelledByGrantAndBrokerLifecycle(t *testing.T) 
 	}
 }
 
+func TestAdmissionCapabilityTTLDoesNotTerminateActiveEndpointWork(t *testing.T) {
+	network, principal := [32]byte{21}, [32]byte{22}
+	base := time.Unix(2_000_600_000, 0).UTC()
+	clockCalls := 0
+	clock := func() time.Time {
+		clockCalls++
+		if clockCalls >= 3 {
+			return base.Add(15*time.Second - 10*time.Millisecond)
+		}
+		return base
+	}
+	admission, err := broker.New(broker.Config{ID: [32]byte{23}, Clock: clock,
+		Grants: []broker.Grant{{Principal: principal, Surface: broker.Connection, PermitDrain: true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoint, err := newEndpoint(setup{NetworkID: network, BrokerID: [32]byte{23}, ConnectionPrincipal: principal, Admission: admission})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = endpoint.Close() })
+	link, err := targetlink.Encode(targetlink.Link{Network: network, Target: [32]byte{24}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entered := make(chan struct{})
+	parent, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	go func() {
+		_, openErr := endpoint.openApplicationConnection(parent, userApplicationConnectionRequest{
+			Introduction: userIntroductionRouteRequest{TargetLink: link,
+				Introduction: userIntroductionProfile{NetworkID: network, Digest: [32]byte{25}, Epoch: 1,
+					Introduction:     transitPeer{NodeID: [32]byte{26}, PublicKey: [32]byte{27}, Endpoint: "127.0.0.1:1"},
+					RendezvousNodeID: [32]byte{28}, Reachability: [32]byte{29}, JoinHandle: [32]byte{30}, NotAfter: deadline,
+					SubmissionAuthorization: []byte("fixed-test-authorization")},
+				Entry: blockingApplicationEntry{entered: entered}, Initiator: transitPeer{NodeID: [32]byte{31}, PublicKey: [32]byte{32}, Endpoint: "127.0.0.1:2"},
+				Rendezvous:   transitPeer{NodeID: [32]byte{28}, PublicKey: [32]byte{33}, Endpoint: "127.0.0.1:3"},
+				AttachmentID: [32]byte{34}, EndpointHandshake: [32]byte{35}, At: time.Now().UTC()},
+			Principal: principal, BytesEachDirection: 1,
+		})
+		result <- openErr
+	}()
+	<-entered
+	select {
+	case err := <-result:
+		t.Fatalf("pending capability TTL terminated active Endpoint work: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	cancel()
+	if err := <-result; err == nil {
+		t.Fatal("parent cancellation left active Endpoint work running")
+	}
+}
+
+func TestAdministrationAdmissionCannotConsumeConnectionCapacityFloor(t *testing.T) {
+	network, connectionPrincipal, administrationPrincipal := [32]byte{41}, [32]byte{42}, [32]byte{43}
+	admission, err := broker.New(broker.Config{ID: [32]byte{44}, Grants: []broker.Grant{
+		{Principal: connectionPrincipal, Surface: broker.Connection},
+		{Principal: administrationPrincipal, Surface: broker.Administration},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoint, err := newEndpoint(setup{NetworkID: network, BrokerID: [32]byte{44}, ConnectionPrincipal: connectionPrincipal,
+		AdministrationPrincipal: administrationPrincipal, Admission: admission})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = endpoint.Close() })
+	for index := 0; index < 6; index++ {
+		if _, err := endpoint.Admit(administrationPrincipal, broker.Administration); err != nil {
+			t.Fatalf("Administration capability %d: %v", index+1, err)
+		}
+	}
+	connections := make([]*applicationSession, 0, 64)
+	defer func() {
+		for _, session := range connections {
+			session.Release()
+		}
+	}()
+	for index := 0; index < 64; index++ {
+		session, err := endpoint.beginApplicationSession(context.Background(), connectionPrincipal)
+		if err != nil {
+			t.Fatalf("Connection session %d of 64: %v", index+1, err)
+		}
+		connections = append(connections, session)
+	}
+}
+
 func TestConnectionAuthorizationPrecedesStateEntryIssuerAndRouteWork(t *testing.T) {
 	at := time.Unix(2_000_600_000, 0).UTC()
 	network, principal := [32]byte{1}, [32]byte{2}

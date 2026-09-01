@@ -49,13 +49,22 @@ Network authority/lifecycle repairs:
 - the enrollment package, Windows behavior tests, and both alpha-bundle scripts
   share the canonical `.exe` control-artifact identity;
 - revoked, draining, or closed Connection admission reaches no State, Entry,
-  issuer, Route, or Introduction work, and active sessions are budgeted,
-  canceled, drained only under a permitted finite bound, and released once;
+  issuer, Route, or Introduction work; pending capability expiry does not end
+  active Endpoint work; Connection and Administration budgets are separate;
+  and active sessions are canceled, drained only under a permitted finite
+  non-extendable bound, and released once;
 - Node rejects old-generation Entry and Transit Grant admissions immediately
   after a successor and reports terminal cleanup faults without publishing
   `WITHDRAWN`; and
 - Entry close cancels acquisition, joins and terminalizes active attachment
   cleanup before releasing its root, including concurrent and failure cases.
+
+`TestActiveConnectionWorkIsCancelledByGrantAndBrokerLifecycle` falsifies the
+hypothesis that terminal Grant or Broker lifecycle can leave active Route work
+running. `TestConnectionAuthorizationPrecedesStateEntryIssuerAndRouteWork`
+falsifies the hypothesis that rejected Connection admission can reach State,
+Entry, issuer, or Route work. Both exercise the production Endpoint/Broker
+composition rather than a fixture-only substitute.
 
 The architecture suite additionally prevents floor authority from returning to
 `inspect-alpha-corpus`. These are ongoing regression checks for the repaired

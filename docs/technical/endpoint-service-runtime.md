@@ -52,16 +52,20 @@ before work and receives only its bounded receipt. Connection activation also
 consumes its capability, but returns an opaque active-session lease whose
 cancelable context is the ancestor of all Network work for that operation.
 The lease exposes neither the capability nor authority facts, counts against
-the Grant's finite session budget, and is released exactly once after the
-terminal outcome.
+the Connection Grant's finite budget of 64 active sessions, and is released
+exactly once after the terminal outcome. The one-use capability expires after
+its finite admission window; successful activation does not transfer that
+pending TTL into the active Connection. Administration has a separate finite
+budget of six consumed sessions and cannot reduce Connection capacity.
 
 Exact revoke and Broker or Endpoint close immediately cancel matching active
 Connection sessions as well as invalidating unconsumed capabilities. Drain
 refuses new admission and is allowed only when that exact Grant carried
 `PermitDrain` and the caller supplies a finite deadline. The effective boundary
-is the earlier of that deadline and the session's original expiry, so a later
-caller bound is clamped and cannot extend work. A missing or otherwise
-unprovable finite bound is denied or causes immediate cancellation.
+is the first active-lease drain deadline; a later caller may shorten but cannot
+extend it. Pending-capability expiry is not an active-lease deadline. A missing
+or otherwise unprovable finite bound is denied or causes immediate
+cancellation.
 
 The only current isolation observation is generic/unqualified. It means the
 runtime deliberately makes no statement about sandboxing, hostile same-user

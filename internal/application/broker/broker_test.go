@@ -102,7 +102,7 @@ func TestActiveSessionOwnsFiniteBudgetAndCancellation(t *testing.T) {
 	if err != nil || receipt.Surface != Connection || active.Context().Err() != nil || value.Active() != 1 {
 		t.Fatalf("active Connection session = receipt=%+v active=%v err=%v count=%d", receipt, active, err, value.Active())
 	}
-	for index := 0; index < maximumSessions-1; index++ {
+	for index := 0; index < maximumAdministrationSessions; index++ {
 		if _, err := value.Admit([32]byte{3}, Administration); err != nil {
 			t.Fatalf("admit pending session %d: %v", index, err)
 		}
@@ -113,12 +113,12 @@ func TestActiveSessionOwnsFiniteBudgetAndCancellation(t *testing.T) {
 	if err := value.Revoke([32]byte{2}, Connection); err != nil {
 		t.Fatal(err)
 	}
-	if active.Context().Err() == nil || value.Active() != maximumSessions-1 {
+	if active.Context().Err() == nil || value.Active() != maximumAdministrationSessions {
 		t.Fatalf("exact revoke did not cancel active session: context=%v count=%d", active.Context().Err(), value.Active())
 	}
 	active.Release()
 	active.Release()
-	if value.Active() != maximumSessions-1 {
+	if value.Active() != maximumAdministrationSessions {
 		t.Fatal("repeated active-session release changed the budget twice")
 	}
 }

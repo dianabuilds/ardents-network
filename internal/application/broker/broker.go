@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	maximumSessions = 6
-	sessionLifetime = 15 * time.Second
+	maximumConnectionSessions     = 64
+	maximumAdministrationSessions = 6
+	capabilityLifetime            = 15 * time.Second
 )
 
 type session struct {
@@ -24,7 +25,7 @@ type session struct {
 type activeSession struct {
 	principal [32]byte
 	surface   Surface
-	expires   int64
+	deadline  int64
 	cancel    context.CancelFunc
 	timer     *time.Timer
 }
@@ -86,8 +87,9 @@ func New(config Config) (*Broker, error) {
 	if config.Clock == nil {
 		config.Clock = time.Now
 	}
-	return &Broker{id: config.ID, grants: grants, sessions: make(map[[32]byte]session, maximumSessions),
-		active: make(map[[32]byte]*activeSession, maximumSessions), draining: make(map[Surface]bool), clock: config.Clock}, nil
+	capacity := maximumConnectionSessions + maximumAdministrationSessions
+	return &Broker{id: config.ID, grants: grants, sessions: make(map[[32]byte]session, capacity),
+		active: make(map[[32]byte]*activeSession, maximumConnectionSessions), draining: make(map[Surface]bool), clock: config.Clock}, nil
 }
 
 // Admit issues one short-lived, one-use capability for an exact Principal and
@@ -102,7 +104,7 @@ func (broker *Broker) Admit(principal [32]byte, surface Surface) ([32]byte, erro
 	if !ok || broker.draining[surface] || grant.Principal != principal {
 		return [32]byte{}, errors.New("application Principal does not match Local Grant")
 	}
-	if len(broker.sessions)+len(broker.active) >= maximumSessions {
+	if broker.surfaceSessionsLocked(surface) >= maximumSessionsFor(surface) {
 		return [32]byte{}, errors.New("session budget exhausted")
 	}
 	var capability [32]byte
@@ -111,7 +113,7 @@ func (broker *Broker) Admit(principal [32]byte, surface Surface) ([32]byte, erro
 	}
 	issued := broker.clock()
 	broker.sessions[capability] = session{principal: principal, surface: surface,
-		issued: issued.UnixNano(), expires: issued.Add(sessionLifetime).UnixNano()}
+		issued: issued.UnixNano(), expires: issued.Add(capabilityLifetime).UnixNano()}
 	return capability, nil
 }
 
@@ -137,14 +139,8 @@ func (broker *Broker) Activate(parent context.Context, capability, principal [32
 		cancel()
 		return nil, Receipt{}, errors.New("active Application session parent is already cancelled")
 	}
-	state := &activeSession{principal: principal, surface: surface, expires: pending.expires, cancel: cancel}
+	state := &activeSession{principal: principal, surface: surface, cancel: cancel}
 	broker.active[capability] = state
-	remaining := time.Duration(pending.expires - broker.clock().UnixNano())
-	if remaining <= 0 {
-		broker.cancelActiveLocked(capability)
-		return nil, Receipt{}, errors.New("ephemeral session expired before activation")
-	}
-	state.timer = time.AfterFunc(remaining, func() { broker.expireActive(capability) })
 	receipt := Receipt{Session: commitment("session", capability), Principal: commitment("principal", principal),
 		Broker: commitment("broker", broker.id), Grant: grantCommitment(broker.id, principal, surface),
 		Surface: surface, IssuedAt: pending.issued, ExpiresAt: pending.expires}
@@ -224,10 +220,12 @@ func (broker *Broker) DrainUntil(surface Surface, deadline time.Time) error {
 		if session.surface != surface {
 			continue
 		}
-		boundary := deadline
-		expires := time.Unix(0, session.expires)
-		if expires.Before(boundary) {
-			boundary = expires
+		boundary := deadline.UTC()
+		if session.deadline != 0 {
+			current := time.Unix(0, session.deadline)
+			if current.Before(boundary) {
+				boundary = current
+			}
 		}
 		if !now.Before(boundary) {
 			broker.cancelActiveLocked(id)
@@ -236,6 +234,7 @@ func (broker *Broker) DrainUntil(surface Surface, deadline time.Time) error {
 		if session.timer != nil {
 			session.timer.Stop()
 		}
+		session.deadline = boundary.UnixNano()
 		session.timer = time.AfterFunc(boundary.Sub(now), func() { broker.expireActive(id) })
 	}
 	return nil
@@ -275,6 +274,28 @@ func (broker *Broker) cancelActiveLocked(id [32]byte) {
 		session.timer.Stop()
 	}
 	session.cancel()
+}
+
+func (broker *Broker) surfaceSessionsLocked(surface Surface) int {
+	count := 0
+	for _, pending := range broker.sessions {
+		if pending.surface == surface {
+			count++
+		}
+	}
+	for _, active := range broker.active {
+		if active.surface == surface {
+			count++
+		}
+	}
+	return count
+}
+
+func maximumSessionsFor(surface Surface) int {
+	if surface == Connection {
+		return maximumConnectionSessions
+	}
+	return maximumAdministrationSessions
 }
 
 // Isolation reports the only M10 isolation state selected by R-085.
