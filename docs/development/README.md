@@ -36,6 +36,12 @@ specification.
 - [Network State, Entry, Route, and Node](../technical/network-route-node.md)
 - [Current command reference](../reference/commands.md)
 
+## Retained audit receipts
+
+- [C0 run-2 Track A receipt](audit-receipts/c0-run-2-track-a.md) retains the
+  exact blocked Gate A identity and external evidence digest; it is historical
+  evidence, not a current product or Qualification claim.
+
 ## Historical provenance
 
 Closed stage material, completed research records, and disposable experiments

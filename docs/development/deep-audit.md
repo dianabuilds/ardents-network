@@ -1,8 +1,7 @@
 # Deep audit campaign
 
-Status: **current audit method; activation still requires the Product Owner to
-freeze one exact C0 commit, artifact set, claims, non-claims, and review
-environment**
+Status: **current reusable audit method; candidate-specific identities and gate
+decisions belong in immutable audit receipts**
 
 Prepared: 2026-08-26
 
@@ -76,6 +75,26 @@ identified branches or worktrees. A change to source, executable, release
 profile, selected claim, platform, topology constraint, dependency, toolchain,
 or safety/control input creates a new candidate identity.
 
+The selected iteration order is **audit track -> remediation -> new baseline**.
+The old baseline and all of its findings remain immutable historical evidence.
+After remediation, the Product Owner may freeze the repaired candidate as a new
+Audit Baseline only after a baseline-to-candidate change-impact review has
+identified every affected claim, invariant, ownership edge, coverage cell, and
+artifact. The affected cells are reviewed again against the new baseline before
+the track's gate can be accepted. A later run never edits, renames, or silently
+upgrades the verdict of the earlier run.
+
+A later run may reuse a supported conclusion for a byte-identical surface only
+when the change-impact receipt proves all of the following: the surface's Git
+object is unchanged; its accepted responsibility, Interface, callers,
+dependencies, authority, mutable state, resource/lifecycle owner, selected
+claim, and applicable profile are unchanged; no changed composition edge can
+reach the reviewed invariant; and the exact reused files and former evidence
+identity are named in the new ledger. Source equality alone is insufficient.
+Artifact, process, qualification, environment, and whole-candidate conclusions
+are never inherited merely because one source subtree is unchanged. If any
+condition is uncertain, the cell is reopened rather than reused.
+
 An audit finding that requires a consequential new architecture, wire,
 dependency, product claim, or threat boundary leaves the campaign and returns
 to its owning research/ADR/product process. It is not implemented under the
@@ -98,21 +117,45 @@ candidate must build and reproduce its command archive from only
 corpus uses [`ownership.json`](ownership.json) rather than inferring ownership
 from directory names. `internal/application/broker` remains Network-owned.
 
-The Product Owner activates the campaign only when all of the following are
+The Product Owner activates the campaign by selecting one bounded **audit
+activation profile**. It is not a release or Qualification profile. A
+source/artifact-only gate may record a runtime field as `not selected - no
+runtime or Qualification conclusion at this gate` only when the corresponding
+claim remains explicitly withheld and every affected Qualification profile or
+cell is `pending` or `release-blocking`. `not selected` is neither a pass, a
+skip, nor reusable runtime evidence.
+
+The activation profile records:
+
+- the exact source commit/tree, selected corpus, ownership expansion,
+  exclusions, executable/artifact digests, and build invocations;
+- the selected audit tracks and gate conclusions, canonical claim inputs, and
+  exact non-claims;
+- build and reviewer operating system/architecture, toolchain and dependency
+  state, and every local execution profile, entrypoint, and result used by the
+  selected gate;
+- for every selected runtime, security, availability, performance, platform,
+  or Qualification conclusion, the exact Carrier/Entry profile, topology,
+  participant/operator conditions, workload, resource ceilings, duration,
+  faults, and external prerequisites; otherwise each field is explicitly `not
+  selected` with its deferred Qualification mapping; and
+- reviewer configuration, start time, and Product Owner activation decision.
+
+The Product Owner activates the profile only when all of the following are
 true:
 
-- one bounded release profile names its source revision, executable, platforms,
-  Carrier/Entry profile, topology, participant/operator conditions, workload,
-  resource ceilings, claims, and non-claims;
-- feature development and functional refactoring for that profile are frozen;
+- feature development and functional refactoring for the selected corpus are
+  frozen;
 - known preliminary-state findings have an implemented, rejected, deferred, or
   claim-reducing disposition, rather than being left for formal rediscovery;
 - the working tree used to create the candidate is clean and reproducible;
 - `make check` passes for the exact revision;
 - `make headless-check` and `make browser-check` pass their isolated extraction
   rehearsals for the exact revision;
-- every required higher execution profile is active with a checked entrypoint,
-  or is an explicit release-blocking missing prerequisite rather than a skip;
+- every execution profile required to support the selected gate conclusion is
+  active with a checked entrypoint; a profile required only for later
+  Qualification or promotion remains an explicit `pending` or
+  `release-blocking` prerequisite rather than a skip;
 - current ADR, product, security, technical, package-map, dependency, command,
   and testing owners describe the selected behavior; and
 - the Product Owner explicitly authorizes read-only discovery against the
@@ -137,15 +180,18 @@ The activation manifest records at least:
 ```text
 campaign identifier
 source commit and tree digest
-executable digest and build invocation
-Go version and complete toolchain identity
-dependency/module state
-operating-system images and architectures
-release/profile identifier
-network and topology identity
-selected claims and non-claims
-active execution profiles and entrypoints
-required external prerequisites
+selected corpus, ownership expansion, and exclusions
+artifact set, executable digests, and build invocations
+Go version, complete toolchain identity, and dependency/module state
+build and reviewer operating systems and architectures
+audit activation profile identifier
+selected tracks and gate conclusions
+canonical claim inputs and exact non-claims
+local evidence profiles, entrypoints, and results
+deferred Qualification profiles, cells, and prerequisites
+runtime Carrier/Entry, topology, participant/operator, workload, resource,
+duration, fault, and external-prerequisite fields, either exact or explicitly
+not selected with a reason and deferred mapping
 audit model/agent configuration and tool access
 campaign start time and Product Owner decision
 ```
@@ -164,9 +210,16 @@ evidence:
 - behavior, property, fuzz, race, process, live, and Qualification tests that
   retain an ongoing purpose;
 - updated current technical and participant-facing limitations;
-- updated execution-profile registrations; and
+- updated execution-profile registrations;
+- a concise immutable receipt under `docs/development/audit-receipts/`; and
 - a concise final verdict in the canonical Qualification or release owner
-  selected at activation.
+  selected before the corresponding conclusion is accepted.
+
+The receipt contains exact identities, external evidence locators and digests,
+bounded change-impact totals, the gate decision, and invalidation rules. It is
+not a raw transcript, claim map, invariant register, coverage ledger, or second
+product specification; canonical claims and implementation contracts remain
+with their current owners.
 
 Raw and generated campaign material remains in an explicitly selected external
 audit workspace, never in the repository:
@@ -349,12 +402,18 @@ evidence level.
 
 ### Phase 0: activate and freeze
 
-The Product Owner selects the baseline and release profile. The coordinator
-creates the manifest, external workspace, initial claim map, and empty coverage
-matrix. No audit pass begins until the baseline is reproducible and immutable.
+The Product Owner selects the baseline and bounded audit activation profile. A
+release or Qualification profile is selected only before the campaign executes
+or accepts a conclusion that depends on runtime, platform, topology, workload,
+resource, hostile, soak, or release evidence. The coordinator creates the
+manifest, external workspace, initial claim map, and empty coverage matrix. No
+audit pass begins until the baseline is reproducible and immutable.
 
-**Gate 0:** candidate identity, claims, non-claims, authority documents,
-execution profiles, and reviewer configuration are complete.
+**Gate 0:** candidate source/artifact identity, selected corpus and gate
+conclusions, claim inputs and non-claims, authority documents, local evidence
+profiles, deferred Qualification map, and reviewer configuration are complete.
+Runtime fields may remain explicitly `not selected` only where the selected
+gate makes no runtime or Qualification conclusion.
 
 ### Phase 1: inventory and traceability
 
@@ -380,8 +439,38 @@ ownership model. It reviews:
 - states that are impossible to express or impossible to exclude; and
 - package-map accuracy and architecture-gate completeness.
 
+Track A coverage has two deliberately separate layers. A machine manifest
+proves exact baseline blob identity, owner, and membership of every active path
+in exactly one assignment cell. Non-exclusive cross-review cells may add
+authority or context but never own or double-count a path. The cell is the unit
+of human review and holds the supported verdict, review operations, invariants,
+and evidence.
+Individual path rows never manufacture `finding` or `no-finding` verdicts;
+the finding register alone maps findings to exact source locations. Historical
+paths and tombstones are classified separately and are not counted as active
+review cells.
+
 The Product Owner reviews the invariant register for product meaning. Track A
 does not treat generic best practice or aesthetic preference as authority.
+
+When Track A finds a baseline defect, its run stops at a historical finding
+set. The accepted loop is:
+
+```text
+immutable Track A run
+  -> Product Owner disposition
+  -> separately identified remediation
+  -> repaired candidate
+  -> exact diff and evidence-reuse decision
+  -> new immutable baseline
+  -> affected Track A cells reviewed again
+  -> Gate A decision for the new baseline
+```
+
+Tracks B-F do not begin between these steps. This bounded pre-B loop is not a
+shortcut around later proof, cross-track synthesis, or requalification: it
+exists so those tracks receive one accepted invariant model instead of a known
+defective or moving candidate.
 
 **Gate A:** the invariant register and ownership graph are accepted for use by
 later tracks; every A coverage cell has a verdict.
@@ -633,6 +722,12 @@ reuse/requalification decision.
 
 ### Phase 11: requalification and final freeze
 
+Before the first Qualification pass, the coordinator freezes an exact
+Qualification profile containing every applicable platform, Carrier/Entry,
+topology, participant/operator, workload, resource, duration, fault, and
+external-prerequisite field. No `not selected` field may support a qualified
+claim; a missing prerequisite blocks that Qualification and promotion.
+
 The final candidate runs:
 
 - all active deterministic, architecture, build, module, static, vulnerability,
@@ -798,5 +893,7 @@ prompts merely to make the campaign appear active.
 
 At activation, instantiate this policy with the actual candidate manifest,
 claims, packages, formats, execution profiles, commands, environments, and
-reviewer configuration. That instantiated material is evidence for one
-candidate, not a second permanent project specification.
+reviewer configuration. Keep those registers and raw evidence in the selected
+external workspace. The repository retains only their digest-bound immutable
+receipt; it does not turn candidate evidence into a second permanent project
+specification.
