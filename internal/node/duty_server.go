@@ -17,7 +17,7 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		if err != nil {
 			return nil, err
 		}
-		running, err := StartRendezvous(plan)
+		running, err := startRendezvous(plan)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +34,7 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		if err != nil {
 			return nil, errors.Join(err, closeAdmitter())
 		}
-		running, err := StartInitiator(plan)
+		running, err := startInitiator(plan)
 		if err != nil {
 			return nil, errors.Join(err, closeAdmitter())
 		}
@@ -50,7 +50,7 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		if err != nil {
 			return nil, err
 		}
-		running, err := StartIntroduction(plan)
+		running, err := startIntroduction(plan)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +64,7 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		if err != nil {
 			return nil, err
 		}
-		running, err := StartResponder(plan)
+		running, err := startResponder(plan)
 		if err != nil {
 			return nil, err
 		}

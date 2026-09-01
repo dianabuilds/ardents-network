@@ -16,7 +16,7 @@ func TestIntroductionForwardsOneSealedRecordThenReportsUnavailable(t *testing.T)
 	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
 	network, digest, nodeID := [32]byte{1}, [32]byte{2}, [32]byte{3}
 	reachability, join := [32]byte{4}, [32]byte{5}
-	running, err := StartIntroduction(IntroductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate,
+	running, err := startIntroduction(introductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate,
 		NetworkID: network, EpochDigest: digest, NodeID: nodeID, NodePublicKey: public, Epoch: 6, NotAfter: deadline,
 		Admit: introductionTestAdmit(network, digest, nodeID, deadline), HandshakeLimit: 2, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
@@ -63,7 +63,7 @@ func TestIntroductionSlotExpiresAtItsRegistrationDeadline(t *testing.T) {
 	slotDeadline := now.Add(3 * time.Second)
 	network, digest, nodeID := [32]byte{14}, [32]byte{15}, [32]byte{16}
 	reachability, join := [32]byte{17}, [32]byte{18}
-	running, err := StartIntroduction(IntroductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate,
+	running, err := startIntroduction(introductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate,
 		NetworkID: network, EpochDigest: digest, NodeID: nodeID, NodePublicKey: public, Epoch: 6, NotAfter: nodeDeadline,
 		Admit: introductionTestAdmit(network, digest, nodeID, slotDeadline), HandshakeLimit: 1, SlotLimit: 1, DeliveryLimit: 1,
 		AdmissionTimeout: time.Second, DrainTimeout: time.Second})
@@ -126,7 +126,7 @@ func submitIntroduction(t *testing.T, endpoint string, public, network, digest, 
 
 func TestIntroductionPlanRejectsZeroCapacity(t *testing.T) {
 	certificate, public := rendezvousCertificate(t, 52, "introduction-invalid")
-	_, err := StartIntroduction(IntroductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
+	_, err := startIntroduction(introductionConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: certificate, NetworkID: [32]byte{1}, EpochDigest: [32]byte{2},
 		NodeID: [32]byte{3}, NodePublicKey: public, Epoch: 4, NotAfter: time.Now().UTC().Add(time.Minute).Truncate(time.Second), Admit: introductionTestAdmit([32]byte{1}, [32]byte{2}, [32]byte{3}, time.Now().UTC()),
 		HandshakeLimit: 1, SlotLimit: 0, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err == nil {

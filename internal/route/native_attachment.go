@@ -12,11 +12,13 @@ import (
 // its identifier, selection, resource reservation, and Entry cleanup; callers
 // receive only the opaque byte carrier and must close it exactly once.
 type Attachment struct {
-	Connection net.Conn
+	connection net.Conn
 
 	mu    sync.Mutex
 	close func() error
 }
+
+var _ net.Conn = (*Attachment)(nil)
 
 // Close releases the authenticated Entry attempt, its caller-owned resource
 // reservation, and Route's local selection. A closed Attachment cannot be
@@ -26,14 +28,82 @@ func (attachment *Attachment) Close() error {
 		return errors.New("native Route attachment is unavailable")
 	}
 	attachment.mu.Lock()
-	if attachment.Connection == nil || attachment.close == nil {
+	if attachment.connection == nil || attachment.close == nil {
 		attachment.mu.Unlock()
 		return errors.New("native Route attachment is unavailable")
 	}
 	close := attachment.close
-	attachment.Connection, attachment.close = nil, nil
+	attachment.connection, attachment.close = nil, nil
 	attachment.mu.Unlock()
 	return close()
+}
+
+func (attachment *Attachment) carrier() (net.Conn, error) {
+	if attachment == nil {
+		return nil, errors.New("native Route attachment is unavailable")
+	}
+	attachment.mu.Lock()
+	defer attachment.mu.Unlock()
+	if attachment.connection == nil {
+		return nil, errors.New("native Route attachment is unavailable")
+	}
+	return attachment.connection, nil
+}
+
+func (attachment *Attachment) Read(destination []byte) (int, error) {
+	connection, err := attachment.carrier()
+	if err != nil {
+		return 0, err
+	}
+	return connection.Read(destination)
+}
+
+func (attachment *Attachment) Write(source []byte) (int, error) {
+	connection, err := attachment.carrier()
+	if err != nil {
+		return 0, err
+	}
+	return connection.Write(source)
+}
+
+func (attachment *Attachment) LocalAddr() net.Addr {
+	connection, err := attachment.carrier()
+	if err != nil {
+		return nil
+	}
+	return connection.LocalAddr()
+}
+
+func (attachment *Attachment) RemoteAddr() net.Addr {
+	connection, err := attachment.carrier()
+	if err != nil {
+		return nil
+	}
+	return connection.RemoteAddr()
+}
+
+func (attachment *Attachment) SetDeadline(deadline time.Time) error {
+	connection, err := attachment.carrier()
+	if err != nil {
+		return err
+	}
+	return connection.SetDeadline(deadline)
+}
+
+func (attachment *Attachment) SetReadDeadline(deadline time.Time) error {
+	connection, err := attachment.carrier()
+	if err != nil {
+		return err
+	}
+	return connection.SetReadDeadline(deadline)
+}
+
+func (attachment *Attachment) SetWriteDeadline(deadline time.Time) error {
+	connection, err := attachment.carrier()
+	if err != nil {
+		return err
+	}
+	return connection.SetWriteDeadline(deadline)
 }
 
 func openNativeAttachment(ctx context.Context, source EntryAcquirer, selected plan, identifier [32]byte,
@@ -69,7 +139,7 @@ func openNativeAttachment(ctx context.Context, source EntryAcquirer, selected pl
 	if err := setup.VerifyRelayReady(ready); err != nil {
 		return nil, errors.Join(err, connection.Close(), closeAttempt(), release())
 	}
-	return &Attachment{Connection: connection, close: func() error {
+	return &Attachment{connection: connection, close: func() error {
 		defer released()
 		return errors.Join(connection.Close(), closeAttempt(), release())
 	}}, nil

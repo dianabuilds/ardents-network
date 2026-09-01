@@ -19,10 +19,10 @@ type RendezvousPeer struct {
 	Role              byte
 }
 
-// RendezvousConfig supplies one authenticated duty snapshot to the first
+// rendezvousConfig supplies one authenticated duty projection to the first
 // native Rendezvous listener. State/assignment integration owns producing this
 // input; this duty never discovers a peer or selects another profile.
-type RendezvousConfig struct {
+type rendezvousConfig struct {
 	ListenAddress                           string
 	CarrierProfile                          route.CarrierProfile
 	Certificate                             tls.Certificate
@@ -48,13 +48,13 @@ type RendezvousUsage struct {
 }
 
 type rendezvousPlan struct {
-	RendezvousConfig
+	rendezvousConfig
 	now           func() time.Time
 	peersByNode   map[[32]byte]RendezvousPeer
 	peersByPublic map[[32]byte]RendezvousPeer
 }
 
-func newRendezvousPlan(input RendezvousConfig) (rendezvousPlan, error) {
+func newRendezvousPlan(input rendezvousConfig) (rendezvousPlan, error) {
 	if !literalNodeEndpoint(input.ListenAddress) || !supportedCarrier(input.CarrierProfile) || input.NetworkID == [32]byte{} ||
 		input.EpochDigest == [32]byte{} || input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} ||
 		input.Epoch == 0 || input.NotAfter.IsZero() || input.HandshakeLimit == 0 || input.WaitingLimit == 0 ||
@@ -72,7 +72,7 @@ func newRendezvousPlan(input RendezvousConfig) (rendezvousPlan, error) {
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return rendezvousPlan{}, err
 	}
-	result := rendezvousPlan{RendezvousConfig: input, now: now, peersByNode: make(map[[32]byte]RendezvousPeer, len(input.Peers)),
+	result := rendezvousPlan{rendezvousConfig: input, now: now, peersByNode: make(map[[32]byte]RendezvousPeer, len(input.Peers)),
 		peersByPublic: make(map[[32]byte]RendezvousPeer, len(input.Peers))}
 	if len(input.Peers) != 2 {
 		return rendezvousPlan{}, errors.New("Rendezvous duty requires one Initiator and one Responder peer")

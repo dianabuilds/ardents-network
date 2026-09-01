@@ -38,23 +38,6 @@ func OpenAdmitter(input AdmitterConfig) (*Admitter, error) {
 	return &Admitter{owner: opened}, nil
 }
 
-// Admit verifies one opaque Invite through Entry's current State/duty port and
-// returns only the non-secret authorization required by Route.
-func (value *Admitter) Admit(raw []byte) (Authorization, error) {
-	if value == nil || value.owner == nil {
-		return Authorization{}, errors.New("entry Admitter is unavailable")
-	}
-	authorization, _, class, err := Verify(raw, Verification{Current: value.owner.config.Current, Conflict: value.owner.config.Conflict,
-		Clock: value.owner.config.Clock, TimeConfident: value.owner.config.TimeConfident})
-	if err != nil {
-		return Authorization{}, err
-	}
-	if class != Accepted {
-		return Authorization{}, errors.New("entry Invite is not admitted")
-	}
-	return authorization, nil
-}
-
 // AdmitAndConsume rechecks the opaque Invite and writes its attachment use
 // while the same Entry owner lock is held. A State change cannot leave an
 // independently verified authorization waiting to be committed by this Admitter.
@@ -81,18 +64,6 @@ func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byt
 		return Authorization{}, err
 	}
 	return authorization, nil
-}
-
-// Consume atomically records an authenticated EntryBinding attachment before
-// Route allocates work. The attachment is rejected after restart until its own
-// bounded expiry.
-func (value *Admitter) Consume(authorization Authorization, attachment, clientKey [32]byte, notAfter time.Time) error {
-	if value == nil || value.owner == nil {
-		return errors.New("entry Admitter is unavailable")
-	}
-	value.owner.mu.Lock()
-	defer value.owner.mu.Unlock()
-	return value.consumeLocked(authorization, attachment, clientKey, notAfter)
 }
 
 func (value *Admitter) consumeLocked(authorization Authorization, attachment, clientKey [32]byte, notAfter time.Time) error {

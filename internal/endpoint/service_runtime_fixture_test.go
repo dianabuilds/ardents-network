@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
@@ -61,12 +60,8 @@ func startPublishedEndpoint(t *testing.T, value fixture) (endpointRunner, []byte
 	digest, introductionID := fixtureID(10), fixtureID(11)
 	certificate, introductionPublic := testCertificate(t, 10, "test-introduction")
 	address := availableAddress(t)
-	introduction, err := node.StartIntroduction(node.IntroductionConfig{
-		ListenAddress: address, Certificate: certificate, NetworkID: value.networkID, EpochDigest: digest,
-		NodeID: introductionID, NodePublicKey: introductionPublic, Epoch: 1, NotAfter: value.now.Add(time.Minute),
-		Admit:          introductionAdmitForEpoch(value.networkID, digest, introductionID, value.now.Add(time.Minute), 1),
-		HandshakeLimit: 2, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second,
-	})
+	introduction, err := startIntroductionTestHarness(address, certificate, value.networkID, digest, introductionID, 1,
+		value.now.Add(time.Minute), introductionAdmitForEpoch(value.networkID, digest, introductionID, value.now.Add(time.Minute), 1))
 	if err != nil {
 		t.Fatal(err)
 	}

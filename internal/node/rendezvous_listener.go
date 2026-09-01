@@ -41,9 +41,9 @@ type rendezvousLeg struct {
 	doneOnce   sync.Once
 }
 
-// StartRendezvous binds one exact State-authorized Carrier and literal
+// startRendezvous binds one exact State-authorized Carrier and literal
 // endpoint. It does not negotiate or fall back to another Carrier.
-func StartRendezvous(input RendezvousConfig) (*Rendezvous, error) {
+func startRendezvous(input rendezvousConfig) (*Rendezvous, error) {
 	plan, err := newRendezvousPlan(input)
 	if err != nil {
 		return nil, err
@@ -52,10 +52,10 @@ func StartRendezvous(input RendezvousConfig) (*Rendezvous, error) {
 	if err != nil {
 		return nil, err
 	}
-	return startRendezvous(plan, listener), nil
+	return startRendezvousWithListener(plan, listener), nil
 }
 
-func startRendezvous(plan rendezvousPlan, listener route.CarrierListener) *Rendezvous {
+func startRendezvousWithListener(plan rendezvousPlan, listener route.CarrierListener) *Rendezvous {
 	running := &Rendezvous{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
 		waitingCap: make(chan struct{}, plan.WaitingLimit), pairs: make(chan struct{}, plan.PairLimit),
 		pre: make(map[route.PendingCarrier]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[route.Carrier]struct{}),

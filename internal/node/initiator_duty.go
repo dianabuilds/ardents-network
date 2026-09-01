@@ -7,10 +7,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.EntryBindingAdmitter) (InitiatorConfig, error) {
+func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.EntryBindingAdmitter) (initiatorConfig, error) {
 	if snapshot.Profile != route.Profile || snapshot.Assignment != "initiator" || snapshot.ProbeEndpoint == "" || admit == nil ||
 		profile.HandshakeLimit == 0 || profile.RelayLimit == 0 || profile.RelayByteLimit == 0 || !validAdmissionTimeout(profile.AdmissionTimeout) || profile.DrainTimeout <= 0 {
-		return InitiatorConfig{}, errors.New("Initiator profile or State assignment is incomplete")
+		return initiatorConfig{}, errors.New("Initiator profile or State assignment is incomplete")
 	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {
@@ -26,13 +26,13 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.Ent
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || peer.NodeID != [32]byte{} {
-			return InitiatorConfig{}, errors.New("Initiator State Rendezvous peer is incomplete or not valid for the duty")
+			return initiatorConfig{}, errors.New("Initiator State Rendezvous peer is incomplete or not valid for the duty")
 		}
 		peer = InitiatorPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Endpoint: candidate.Endpoint,
 			CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
 	}
 	if peer.NodeID == [32]byte{} {
-		return InitiatorConfig{}, errors.New("Initiator State supplies no Rendezvous peer")
+		return initiatorConfig{}, errors.New("Initiator State supplies no Rendezvous peer")
 	}
 	for index := uint8(0); index < snapshot.CandidateCount; index++ {
 		candidate := snapshot.Candidates[index]
@@ -41,10 +41,10 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.Ent
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || gateway.NodeID != [32]byte{} {
-			return InitiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway is incomplete or not valid for the duty")
+			return initiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway is incomplete or not valid for the duty")
 		}
 		if !literalNodeEndpoint(candidate.Endpoint) {
-			return InitiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway endpoint is invalid")
+			return initiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway endpoint is invalid")
 		}
 		gateway = ResolutionGateway{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, URL: "https://" + candidate.Endpoint}
 	}
@@ -55,18 +55,18 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.Ent
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || issuer.NodeID != [32]byte{} {
-			return InitiatorConfig{}, errors.New("Initiator State transit issuer is incomplete or not valid for the duty")
+			return initiatorConfig{}, errors.New("Initiator State transit issuer is incomplete or not valid for the duty")
 		}
 		if !literalNodeEndpoint(candidate.Endpoint) {
-			return InitiatorConfig{}, errors.New("Initiator State transit issuer endpoint is invalid")
+			return initiatorConfig{}, errors.New("Initiator State transit issuer endpoint is invalid")
 		}
 		if snapshot.TransitIssuerProfileDigest == [32]byte{} {
-			return InitiatorConfig{}, errors.New("Initiator State transit issuer profile is unavailable")
+			return initiatorConfig{}, errors.New("Initiator State transit issuer profile is unavailable")
 		}
 		issuer = CredentialIssuer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
 			ProfileDigest: snapshot.TransitIssuerProfileDigest, URL: "https://" + candidate.Endpoint}
 	}
-	return InitiatorConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate, NetworkID: snapshot.NetworkID,
+	return initiatorConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate, NetworkID: snapshot.NetworkID,
 		EpochDigest: snapshot.Digest, NodeID: snapshot.NodeID, NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch,
 		NotAfter: notAfter.UTC(), Rendezvous: peer, ResolutionGateway: gateway, CredentialIssuer: issuer, Admit: admit, HandshakeLimit: profile.HandshakeLimit,
 		RelayLimit: profile.RelayLimit, RelayByteLimit: profile.RelayByteLimit, AdmissionTimeout: profile.AdmissionTimeout, DrainTimeout: profile.DrainTimeout}, nil

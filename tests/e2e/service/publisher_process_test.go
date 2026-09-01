@@ -10,7 +10,6 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -54,6 +53,10 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 		"destination-resolution": {nodeID: [32]byte{5}, private: publisherProcessPrivate(t), endpoint: "127.0.0.1:5"},
 		"transit-issuance":       {nodeID: [32]byte{6}, private: publisherProcessPrivate(t), endpoint: "127.0.0.1:6"},
 	}
+	issuerServer := httptest.NewUnstartedServer(nil)
+	issuerPeer := peers["transit-issuance"]
+	issuerPeer.endpoint = issuerServer.Listener.Addr().String()
+	peers["transit-issuance"] = issuerPeer
 	issuerRoot := filepath.Join(directory, "issuer")
 	initiatorPublic := publisherProcessPublic(peers["initiator"].private)
 	receipt, err := credential.InitializeIssuerRoot(credential.IssuerRootConfig{Root: issuerRoot,
@@ -64,6 +67,8 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 		t.Fatal(err)
 	}
 	network := preparePublisherCommandNetwork(t, directory, now, notAfter, networkID, authority, seed, peers,
+		[]byte("unused destination profile"), receipt.Profile)
+	nodeNetwork := preparePublisherCommandNetwork(t, filepath.Join(directory, "node"), now, notAfter, networkID, authority, seed, peers,
 		[]byte("unused destination profile"), receipt.Profile)
 	profile, err := credential.DecodeProfile(receipt.Profile)
 	if err != nil {
@@ -90,36 +95,13 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 		defer active.Add(-1)
 		issuer.Handler().ServeHTTP(writer, request)
 	})
-	issuerServer := httptest.NewUnstartedServer(handler)
+	issuerServer.Config.Handler = handler
 	issuerServer.TLS, err = issuer.TLSConfig(publisherProcessCertificate(t, peers["transit-issuance"].private, 6))
 	if err != nil {
 		t.Fatal(err)
 	}
 	issuerServer.StartTLS()
 	defer issuerServer.Close()
-	initiator, err := node.StartInitiator(node.InitiatorConfig{ListenAddress: initiatorAddress,
-		Certificate: publisherProcessCertificate(t, peers["initiator"].private, 1), NetworkID: networkID,
-		EpochDigest: network.snapshot.Digest, NodeID: peers["initiator"].nodeID, NodePublicKey: initiatorPublic,
-		Epoch: network.snapshot.Epoch, NotAfter: notAfter,
-		Rendezvous: node.InitiatorPeer{NodeID: peers["rendezvous"].nodeID,
-			PublicKey: publisherProcessPublic(peers["rendezvous"].private), Endpoint: peers["rendezvous"].endpoint,
-			CarrierProfile: route.CarrierTCP},
-		CredentialIssuer: node.CredentialIssuer{NodeID: duty.IssuerNodeID, PublicKey: duty.IssuerPublicKey,
-			ProfileDigest: duty.ProfileDigest, URL: issuerServer.URL},
-		Admit: func(invite []byte, attachment, key [32]byte, deadline time.Time) (route.EntryAdmission, error) {
-			if len(invite) == 0 || attachment == [32]byte{} || key == [32]byte{} || deadline.After(notAfter) {
-				return route.EntryAdmission{}, errors.New("publisher process Entry admission is invalid")
-			}
-			return route.EntryAdmission{InviteID: sha256.Sum256(invite), NetworkID: networkID,
-				Digest: network.snapshot.Digest, InitiatorNodeID: peers["initiator"].nodeID,
-				Epoch: network.snapshot.Epoch, NotAfter: deadline}, nil
-		}, HandshakeLimit: 4, RelayLimit: 2, RelayByteLimit: 16 << 10,
-		AdmissionTimeout: time.Second, DrainTimeout: time.Second})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer initiator.Close()
-
 	rolesRoot := filepath.Join(directory, "local-roles")
 	roles, err := localroles.Open(localroles.Config{Root: rolesRoot, Clock: time.Now, Create: true})
 	if err != nil {
@@ -130,6 +112,58 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 	}
 	entryRoot := filepath.Join(directory, "entry")
 	importPublisherProcessEntry(t, entryRoot, rolesRoot, network)
+	nodeState, err := state.Open(state.Config{Root: nodeNetwork.root, NetworkID: networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{nodeNetwork.snapshot.EpochAuthorityIDs[0]: nodeNetwork.authorityPublic},
+		Threshold:   1, AcceptedProfile: route.Profile, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodeContext, stopNode := context.WithCancel(t.Context())
+	nodeReady, nodeDone := make(chan struct{}, 1), make(chan error, 1)
+	initiatorCertificate := publisherProcessCertificate(t, peers["initiator"].private, 1)
+	go func() {
+		_, runErr := node.Run(nodeContext, node.Config{
+			NetworkID: networkID, NodeID: peers["initiator"].nodeID, IdentityKey: peers["initiator"].private,
+			Current: func() (node.DutyView, error) {
+				view, currentErr := nodeState.CurrentNodeDuty()
+				if currentErr != nil {
+					return nil, currentErr
+				}
+				return view, nil
+			},
+			Initiator: node.InitiatorProfile{Certificate: initiatorCertificate,
+				HandshakeLimit: 4, RelayLimit: 2, RelayByteLimit: 16 << 10,
+				AdmissionTimeout: time.Second, DrainTimeout: time.Second},
+			NetworkStateRoot: nodeNetwork.root, LocalRoleStateRoot: rolesRoot,
+			PollInterval: 20 * time.Millisecond, Now: time.Now,
+			Emit: func(_ context.Context, event node.Event) error {
+				if event.State == "READY" {
+					select {
+					case nodeReady <- struct{}{}:
+					default:
+					}
+				}
+				return nil
+			},
+		})
+		nodeDone <- runErr
+	}()
+	t.Cleanup(func() {
+		stopNode()
+		if runErr := <-nodeDone; runErr != nil {
+			t.Errorf("stop State-owned Initiator: %v", runErr)
+		}
+		if closeErr := nodeState.Close(); closeErr != nil {
+			t.Errorf("close Initiator State: %v", closeErr)
+		}
+	})
+	select {
+	case <-nodeReady:
+	case runErr := <-nodeDone:
+		t.Fatalf("State-owned Initiator stopped before ready: %v", runErr)
+	case <-time.After(10 * time.Second):
+		t.Fatal("State-owned Initiator did not become ready")
+	}
 	corpusPublic, corpusRoot := preparePublisherProcessCorpus(t, directory, networkID)
 	instanceRoot := publisherProcessInstance(t, filepath.Join(directory, "service-instance"), networkID, now, notAfter)
 	transitRoot := filepath.Join(directory, "transit-acquisition")
@@ -172,9 +206,9 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 		t.Fatal("Publisher unexpectedly opened its deliberately absent Introduction listener")
 	}
 	if requests.Load() != 2 || maximumActive.Load() != 1 {
-		t.Fatalf("common issuer observations = requests %d maximum concurrent %d, Introduction %q, Responder %q, Initiator %+v",
+		t.Fatalf("common issuer observations = requests %d maximum concurrent %d, Introduction %q, Responder %q",
 			requests.Load(), maximumActive.Load(), publisherProcessPhase(transitRoot),
-			publisherProcessPhase(filepath.Join(transitRoot, "responder")), initiator.Usage())
+			publisherProcessPhase(filepath.Join(transitRoot, "responder")))
 	}
 	if _, err := os.Stat(filepath.Join(transitRoot, "responder")); err != nil {
 		t.Fatalf("separate Responder acquisition journal was not retained: %v", err)

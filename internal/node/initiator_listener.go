@@ -31,9 +31,9 @@ type Initiator struct {
 	terminal  chan error
 }
 
-// StartInitiator binds one exact State-authorized literal Entry endpoint. It
+// startInitiator binds one exact State-authorized literal Entry endpoint. It
 // does not acquire State, discover a Rendezvous Node, or create an Entry root.
-func StartInitiator(input InitiatorConfig) (*Initiator, error) {
+func startInitiator(input initiatorConfig) (*Initiator, error) {
 	plan, err := newInitiatorPlan(input)
 	if err != nil {
 		return nil, err

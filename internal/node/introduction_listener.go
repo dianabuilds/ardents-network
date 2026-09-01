@@ -39,9 +39,9 @@ type introductionLiveSlot struct {
 	spent        bool
 }
 
-// StartIntroduction binds one State-authorized Introduction endpoint. It does
+// startIntroduction binds one State-authorized Introduction endpoint. It does
 // not discover Publishers, retain offline messages, or expose a Service port.
-func StartIntroduction(input IntroductionConfig) (*Introduction, error) {
+func startIntroduction(input introductionConfig) (*Introduction, error) {
 	plan, err := newIntroductionPlan(input)
 	if err != nil {
 		return nil, err

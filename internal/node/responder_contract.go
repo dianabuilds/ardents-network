@@ -16,10 +16,10 @@ type ResponderPeer struct {
 	CarrierProfile    route.CarrierProfile
 }
 
-// ResponderConfig supplies one authenticated State snapshot and a narrow
+// responderConfig supplies one authenticated State projection and a narrow
 // C-2 first-hop admission port. It has no Service key, Introduction plaintext,
 // browser destination, or peer-selection authority.
-type ResponderConfig struct {
+type responderConfig struct {
 	ListenAddress                  string
 	Certificate                    tls.Certificate
 	NetworkID, EpochDigest, NodeID [32]byte
@@ -41,11 +41,11 @@ type ResponderUsage struct {
 }
 
 type responderPlan struct {
-	ResponderConfig
+	responderConfig
 	now func() time.Time
 }
 
-func newResponderPlan(input ResponderConfig) (responderPlan, error) {
+func newResponderPlan(input responderConfig) (responderPlan, error) {
 	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} || input.Epoch == 0 || input.NotAfter.IsZero() ||
 		input.Rendezvous.NodeID == [32]byte{} || input.Rendezvous.PublicKey == [32]byte{} || input.Rendezvous.NodeID == input.NodeID ||
@@ -57,5 +57,5 @@ func newResponderPlan(input ResponderConfig) (responderPlan, error) {
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return responderPlan{}, err
 	}
-	return responderPlan{ResponderConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
+	return responderPlan{responderConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
 }

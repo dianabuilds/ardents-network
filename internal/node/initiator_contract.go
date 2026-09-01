@@ -33,9 +33,9 @@ type CredentialIssuer struct {
 	URL                              string
 }
 
-// InitiatorConfig supplies one authenticated State snapshot and the narrow
+// initiatorConfig supplies one authenticated State projection and the narrow
 // Entry admission port for an Initiator transit duty.
-type InitiatorConfig struct {
+type initiatorConfig struct {
 	ListenAddress                  string
 	Certificate                    tls.Certificate
 	NetworkID, EpochDigest, NodeID [32]byte
@@ -61,11 +61,11 @@ type InitiatorUsage struct {
 }
 
 type initiatorPlan struct {
-	InitiatorConfig
+	initiatorConfig
 	now func() time.Time
 }
 
-func newInitiatorPlan(input InitiatorConfig) (initiatorPlan, error) {
+func newInitiatorPlan(input initiatorConfig) (initiatorPlan, error) {
 	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} || input.Epoch == 0 || input.NotAfter.IsZero() ||
 		input.Rendezvous.NodeID == [32]byte{} || input.Rendezvous.PublicKey == [32]byte{} ||
@@ -82,7 +82,7 @@ func newInitiatorPlan(input InitiatorConfig) (initiatorPlan, error) {
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return initiatorPlan{}, err
 	}
-	return initiatorPlan{InitiatorConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
+	return initiatorPlan{initiatorConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
 }
 
 func validOptionalCredentialIssuer(issuer CredentialIssuer, local [32]byte) bool {

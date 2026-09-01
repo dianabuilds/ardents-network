@@ -60,6 +60,67 @@ func TestEndpointCompositionIsOwnedOnlyByParticipantRuntime(t *testing.T) {
 	}
 }
 
+func TestLifecycleBypassPrimitivesAreNotExported(t *testing.T) {
+	root := repositoryRoot(t)
+	entryExports := exportedPackageDeclarations(t, filepath.Join(root, "internal", "entry"))
+	for _, name := range []string{"Admit", "Consume"} {
+		if entryExports[name] {
+			t.Errorf("internal/entry still exports split admission primitive %s", name)
+		}
+	}
+	nodeExports := exportedPackageDeclarations(t, filepath.Join(root, "internal", "node"))
+	for _, name := range []string{
+		"StartInitiator", "StartRendezvous", "StartIntroduction", "StartResponder",
+		"InitiatorConfig", "RendezvousConfig", "IntroductionConfig", "ResponderConfig",
+	} {
+		if nodeExports[name] {
+			t.Errorf("internal/node still exports lifecycle-bypass primitive %s", name)
+		}
+	}
+	if exportedStructField(t, filepath.Join(root, "internal", "route"), "Attachment", "Connection") {
+		t.Error("internal/route Attachment still exports its raw Connection")
+	}
+}
+
+func exportedStructField(t *testing.T, directory, typeName, fieldName string) bool {
+	t.Helper()
+	set := token.NewFileSet()
+	packages, err := parser.ParseDir(set, directory, func(info os.FileInfo) bool {
+		return !strings.HasSuffix(info.Name(), "_test.go")
+	}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, parsed := range packages {
+		for _, file := range parsed.Files {
+			for _, declaration := range file.Decls {
+				generated, ok := declaration.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				for _, spec := range generated.Specs {
+					named, ok := spec.(*ast.TypeSpec)
+					if !ok || named.Name.Name != typeName {
+						continue
+					}
+					structure, ok := named.Type.(*ast.StructType)
+					if !ok {
+						return false
+					}
+					for _, field := range structure.Fields.List {
+						for _, name := range field.Names {
+							if name.Name == fieldName && ast.IsExported(name.Name) {
+								return true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
 func exportedPackageDeclarations(t *testing.T, directory string) map[string]bool {
 	t.Helper()
 	result := make(map[string]bool)

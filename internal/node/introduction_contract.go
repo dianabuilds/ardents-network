@@ -8,10 +8,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// IntroductionConfig supplies one State-pinned Introduction listener and its
+// introductionConfig supplies one State-pinned Introduction listener and its
 // narrow opaque transit-admission port. It never receives a Service Target,
 // HPKE private key, Publisher identity, or route plan.
-type IntroductionConfig struct {
+type introductionConfig struct {
 	ListenAddress                  string
 	Certificate                    tls.Certificate
 	NetworkID, EpochDigest, NodeID [32]byte
@@ -34,11 +34,11 @@ type IntroductionUsage struct {
 }
 
 type introductionPlan struct {
-	IntroductionConfig
+	introductionConfig
 	now func() time.Time
 }
 
-func newIntroductionPlan(input IntroductionConfig) (introductionPlan, error) {
+func newIntroductionPlan(input introductionConfig) (introductionPlan, error) {
 	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} || input.Epoch == 0 || input.NotAfter.IsZero() ||
 		input.Admit == nil || input.HandshakeLimit == 0 || input.SlotLimit == 0 || input.DeliveryLimit == 0 ||
@@ -49,5 +49,5 @@ func newIntroductionPlan(input IntroductionConfig) (introductionPlan, error) {
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return introductionPlan{}, err
 	}
-	return introductionPlan{IntroductionConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
+	return introductionPlan{introductionConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
 }

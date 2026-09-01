@@ -32,7 +32,7 @@ type Responder struct {
 	terminal  chan error
 }
 
-func StartResponder(input ResponderConfig) (*Responder, error) {
+func startResponder(input responderConfig) (*Responder, error) {
 	plan, err := newResponderPlan(input)
 	if err != nil {
 		return nil, err

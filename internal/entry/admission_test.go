@@ -1,6 +1,9 @@
 package entry
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestAdmitterPersistsExactReplayTupleAcrossReopen(t *testing.T) {
 	fixture := newEntryFixture(t)
@@ -11,11 +14,8 @@ func TestAdmitterPersistsExactReplayTupleAcrossReopen(t *testing.T) {
 	}
 	raw := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
 	attachment, clientKey := [32]byte{71}, [32]byte{72}
-	authorization, err := admitter.Admit(raw)
+	authorization, err := admitter.AdmitAndConsume(raw, attachment, clientKey, fixture.now.Add(time.Second))
 	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := admitter.AdmitAndConsume(raw, attachment, clientKey, authorization.NotAfter); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := admitter.AdmitAndConsume(raw, attachment, clientKey, authorization.NotAfter); err == nil {
@@ -32,10 +32,6 @@ func TestAdmitterPersistsExactReplayTupleAcrossReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	authorization, err = reopened.Admit(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
 	if _, err := reopened.AdmitAndConsume(raw, attachment, clientKey, authorization.NotAfter); err == nil {
 		t.Fatalf("replayed tuple after reopen = %v", err)
 	}

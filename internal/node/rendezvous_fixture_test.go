@@ -23,21 +23,21 @@ type rendezvousMaterials struct {
 	serverPublic, initiatorPublic, responderPublic [32]byte
 }
 
-func rendezvousFixture(t *testing.T) (*Rendezvous, rendezvousMaterials, RendezvousConfig) {
+func rendezvousFixture(t *testing.T) (*Rendezvous, rendezvousMaterials, rendezvousConfig) {
 	return rendezvousFixtureWith(t, 2, 2, 1, 1<<20, 5*time.Second)
 }
 
-func rendezvousFixtureForCarrier(t *testing.T, profile route.CarrierProfile) (*Rendezvous, rendezvousMaterials, RendezvousConfig) {
+func rendezvousFixtureForCarrier(t *testing.T, profile route.CarrierProfile) (*Rendezvous, rendezvousMaterials, rendezvousConfig) {
 	return rendezvousFixtureForCarrierWith(t, profile, 2, 2, 1, 1<<20, 5*time.Second)
 }
 
 func rendezvousFixtureWith(t *testing.T, handshakes, waiting, pairs uint16, pairBytes uint64,
-	lifetime time.Duration) (*Rendezvous, rendezvousMaterials, RendezvousConfig) {
+	lifetime time.Duration) (*Rendezvous, rendezvousMaterials, rendezvousConfig) {
 	return rendezvousFixtureForCarrierWith(t, route.CarrierTCP, handshakes, waiting, pairs, pairBytes, lifetime)
 }
 
 func rendezvousFixtureForCarrierWith(t *testing.T, profile route.CarrierProfile, handshakes, waiting, pairs uint16,
-	pairBytes uint64, lifetime time.Duration) (*Rendezvous, rendezvousMaterials, RendezvousConfig) {
+	pairBytes uint64, lifetime time.Duration) (*Rendezvous, rendezvousMaterials, rendezvousConfig) {
 	t.Helper()
 	material := rendezvousMaterials{}
 	material.server, material.serverPublic = rendezvousCertificate(t, 1, "server")
@@ -47,13 +47,13 @@ func rendezvousFixtureForCarrierWith(t *testing.T, profile route.CarrierProfile,
 	if profile == route.CarrierQUIC {
 		endpoint = availableLoopbackUDPEndpoint(t)
 	}
-	config := RendezvousConfig{ListenAddress: endpoint, CarrierProfile: profile, Certificate: material.server,
+	config := rendezvousConfig{ListenAddress: endpoint, CarrierProfile: profile, Certificate: material.server,
 		NetworkID: [32]byte{1}, EpochDigest: [32]byte{2}, NodeID: [32]byte{3}, NodePublicKey: material.serverPublic,
 		Epoch: 4, NotAfter: time.Now().UTC().Truncate(time.Second).Add(lifetime),
 		Peers: []RendezvousPeer{{NodeID: [32]byte{4}, PublicKey: material.initiatorPublic, Role: route.InitiatorRole},
 			{NodeID: [32]byte{5}, PublicKey: material.responderPublic, Role: route.ResponderRole}},
 		HandshakeLimit: handshakes, WaitingLimit: waiting, PairLimit: pairs, PairByteLimit: pairBytes, AdmissionTimeout: time.Second, DrainTimeout: time.Second}
-	running, err := StartRendezvous(config)
+	running, err := startRendezvous(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func openRendezvousLeg(ctx context.Context, endpoint string, certificate tls.Cer
 	return connection, nil
 }
 
-func openRendezvousCarrier(ctx context.Context, config RendezvousConfig, certificate tls.Certificate, server [32]byte,
+func openRendezvousCarrier(ctx context.Context, config rendezvousConfig, certificate tls.Certificate, server [32]byte,
 	binding route.LegBinding) (route.Carrier, error) {
 	return route.OpenNodeLeg(ctx, route.NodeLegRequest{CarrierProfile: config.CarrierProfile, Endpoint: config.ListenAddress,
 		Certificate: certificate, ExpectedPeerKey: server, Binding: binding, Deadline: binding.NotAfter})

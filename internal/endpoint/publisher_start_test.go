@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -23,12 +22,8 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	introductionID := fixtureID(63)
 	introductionCertificate, introductionPublic := testCertificate(t, 61, "start-introduction")
 	introductionAddress := availableAddress(t)
-	introduction, err := node.StartIntroduction(node.IntroductionConfig{
-		ListenAddress: introductionAddress, Certificate: introductionCertificate,
-		NetworkID: network, EpochDigest: digest, NodeID: introductionID, NodePublicKey: introductionPublic,
-		Epoch: 12, NotAfter: deadline, Admit: introductionAdmitForEpoch(network, digest, introductionID, deadline, 12),
-		HandshakeLimit: 2, SlotLimit: 1, DeliveryLimit: 1, AdmissionTimeout: time.Second, DrainTimeout: time.Second,
-	})
+	introduction, err := startIntroductionTestHarness(introductionAddress, introductionCertificate, network, digest,
+		introductionID, 12, deadline, introductionAdmitForEpoch(network, digest, introductionID, deadline, 12))
 	if err != nil {
 		t.Fatal(err)
 	}

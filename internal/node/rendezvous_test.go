@@ -315,7 +315,7 @@ func TestRendezvousReservesHandshakeWaitingAndPairSlots(t *testing.T) {
 }
 
 func TestRendezvousRejectsIncompleteConfiguration(t *testing.T) {
-	if running, err := StartRendezvous(RendezvousConfig{}); err == nil || running != nil {
+	if running, err := startRendezvous(rendezvousConfig{}); err == nil || running != nil {
 		t.Fatalf("incomplete configuration result = (%v, %v)", running, err)
 	}
 }

@@ -35,7 +35,7 @@ func TestInitiatorRelaysOnlyAfterExactSetupAndReady(t *testing.T) {
 	}
 	defer responder.Close()
 	presentation := entry.Presentation{InviteID: [32]byte{22}, Invite: []byte{2, 4, 6, 8}}
-	initiator, err := StartInitiator(InitiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
+	initiator, err := startInitiator(initiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4},
 		NodePublicKey: material.initiatorPublic, Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
 		Rendezvous: InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
@@ -156,7 +156,7 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 	defer server.Close()
 	attachment := [32]byte{49}
 	presentation := entry.Presentation{InviteID: [32]byte{50}, Invite: []byte{5, 0, 5}}
-	initiator, err := StartInitiator(InitiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
+	initiator, err := startInitiator(initiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4},
 		NodePublicKey: material.initiatorPublic, Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
 		Rendezvous:        InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
@@ -266,7 +266,7 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	}
 	carrierAttachment := [32]byte{85}
 	presentation := entry.Presentation{InviteID: [32]byte{86}, Invite: []byte{8, 6, 4, 2}}
-	initiator, err := StartInitiator(InitiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
+	initiator, err := startInitiator(initiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4}, NodePublicKey: material.initiatorPublic,
 		Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
 		Rendezvous:       InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
@@ -360,7 +360,7 @@ func resolutionGatewayCertificate(t *testing.T) (tls.Certificate, [32]byte, ed25
 	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private, Leaf: leaf}, identifier, private
 }
 
-func initiatorAdmission(presentation entry.Presentation, attachment [32]byte, config RendezvousConfig) route.EntryBindingAdmitter {
+func initiatorAdmission(presentation entry.Presentation, attachment [32]byte, config rendezvousConfig) route.EntryBindingAdmitter {
 	return func(invite []byte, received, key [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
 		if string(invite) != string(presentation.Invite) || received != attachment || key == [32]byte{} || !notAfter.Equal(config.NotAfter) {
 			return route.EntryAdmission{}, errors.New("unexpected Entry admission")
