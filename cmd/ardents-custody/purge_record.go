@@ -13,7 +13,7 @@ import (
 // purgeRecord is the separately confirmed destructive Custody action. It can
 // remove one exact encrypted record but neither changes Authority floors nor
 // touches a Recovery Bundle destination, program, or Endpoint state.
-func purgeRecord(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {
+func purgeRecord(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) (resultErr error) {
 	flags := flag.NewFlagSet("purge-record", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var root, record, environment, network, authorityRoot, kind, identity string
@@ -38,13 +38,15 @@ func purgeRecord(ctx context.Context, arguments []string, output io.Writer, inpu
 	if err != nil {
 		return err
 	}
-	defer vault.Close()
+	defer func() { resultErr = errors.Join(resultErr, vault.Close()) }()
 	receipt, err := vault.Execute(ctx, custody.Operation{Kind: custody.OperationPurgeVaultRecord, RecordID: record, Expected: binding}, input)
 	if err != nil {
 		return err
 	}
 	return json.NewEncoder(output).Encode(struct {
-		Schema, Operation, RecordID string
-		RetainedFloor               bool `json:"retained_floor"`
+		Schema        string `json:"schema"`
+		Operation     string `json:"operation"`
+		RecordID      string `json:"record_id"`
+		RetainedFloor bool   `json:"retained_floor"`
 	}{Schema: "ardents-custody-purge-v1", Operation: string(receipt.Operation), RecordID: receipt.RecordID, RetainedFloor: true})
 }

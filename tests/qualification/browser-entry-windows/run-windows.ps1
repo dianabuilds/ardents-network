@@ -139,7 +139,7 @@ try {
 
     $hostArtifact = Join-Path $bundle $hostName
     $endpoint = Join-Path $bundle $endpointName
-    $installResult = & $hostArtifact install --enrollment $inputPath --endpoint-artifact $endpoint --at '2026-08-26T00:00:00Z'
+    $installResult = & $hostArtifact install --enrollment $inputPath --endpoint-artifact $endpoint
     if ($LASTEXITCODE -ne 0) {
         throw "native manifest installation failed with exit code $LASTEXITCODE"
     }

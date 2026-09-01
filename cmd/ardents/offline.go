@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-func run(ctx context.Context, arguments []string, output io.Writer) error {
+func run(ctx context.Context, arguments []string, output io.Writer) (resultErr error) {
 	if len(arguments) > 0 && arguments[0] == "endpoint" {
 		return runEndpoint(ctx, arguments, output)
 	}
@@ -60,7 +60,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("open network state: %w", err)
 	}
-	defer store.Close()
+	defer func() { resultErr = errors.Join(resultErr, store.Close()) }()
 	snapshot, err := store.Accept(ctx, epoch, inputs, [][]byte{material})
 	if err != nil {
 		return fmt.Errorf("accept offline state: %w", err)

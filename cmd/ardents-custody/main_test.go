@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -29,9 +30,29 @@ func TestInspectEnvelopeRendersOnlyPublicHeaderFacts(t *testing.T) {
 	if err := os.WriteFile(path, body, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	beforeEntries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeBody, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var output bytes.Buffer
-	if err := run(t.Context(), []string{"inspect-envelope", "-vault-root", filepath.Join(root, "vault"), "-envelope", path}, &output, nil); err != nil {
+	if err := run(t.Context(), []string{"inspect-envelope", "-envelope", path}, &output, nil); err != nil {
 		t.Fatalf("inspect envelope: %v", err)
+	}
+	afterEntries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterBody, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(beforeEntries) != 1 || len(afterEntries) != 1 ||
+		beforeEntries[0].Name() != afterEntries[0].Name() || !bytes.Equal(beforeBody, afterBody) {
+		t.Fatalf("read-only envelope inspection changed its source directory: before=%v after=%v", beforeEntries, afterEntries)
 	}
 	var result struct {
 		Schema    string `json:"schema"`
@@ -118,7 +139,7 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 		bytes.Contains(createdOutput.Bytes(), password) {
 		t.Fatalf("Service Authority receipt = %+v / %v", created, err)
 	}
-	now := time.Date(2030, 3, 4, 5, 6, 7, 0, time.UTC)
+	now := time.Now().UTC().Truncate(time.Second)
 	host, err := instance.Initialize(instance.InitializeConfig{Root: hostRoot, NetworkID: network,
 		NotBefore: now, NotAfter: now.Add(time.Hour)})
 	if err != nil {
@@ -133,6 +154,7 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 	if err := os.WriteFile(requestPath, request, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	requestDigest := sha256.Sum256(request)
 	issueArguments := []string{"issue-service-credential", "-vault-root", vaultRoot, "-record", created.RecordID,
 		"-request", requestPath, "-response", filepath.Join(t.TempDir(), "service-response.bin"),
 		"-environment-commitment", hex.EncodeToString(environment[:]),
@@ -140,7 +162,7 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 		"-kind", "service", "-id-commitment", created.IDCommitment}
 	var issuedOutput bytes.Buffer
 	if err := run(t.Context(), issueArguments, &issuedOutput,
-		&sequenceCommandSecrets{values: [][]byte{password}}); err != nil {
+		&sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{requestDigest}}); err != nil {
 		t.Fatalf("issue Service Credential command: %v", err)
 	}
 	var issued struct {
@@ -158,6 +180,68 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 	persistedResponse, err := os.ReadFile(issueArguments[8])
 	if err != nil || !bytes.Equal(persistedResponse, issued.Response) {
 		t.Fatalf("persisted public response differs: %v", err)
+	}
+}
+
+func TestIssueServiceCredentialRejectsSubstitutedRequestBeforePasswordOrMutation(t *testing.T) {
+	vaultRoot, hostRoot := t.TempDir(), t.TempDir()
+	environment, network, authorityRoot := [32]byte{21}, [32]byte{22}, [32]byte{23}
+	password := []byte("service custody substitution password")
+	createArguments := []string{"create-service-authority", "-vault-root", vaultRoot,
+		"-environment-commitment", hex.EncodeToString(environment[:]),
+		"-network-commitment", hex.EncodeToString(network[:]),
+		"-root-commitment", hex.EncodeToString(authorityRoot[:])}
+	var createdOutput bytes.Buffer
+	if err := run(t.Context(), createArguments, &createdOutput,
+		&sequenceCommandSecrets{values: [][]byte{password, password}}); err != nil {
+		t.Fatal(err)
+	}
+	var created struct {
+		RecordID     string `json:"record_id"`
+		IDCommitment string `json:"id_commitment"`
+	}
+	if err := json.Unmarshal(createdOutput.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	host, err := instance.Initialize(instance.InitializeConfig{Root: hostRoot, NetworkID: network,
+		NotBefore: now, NotAfter: now.Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := host.Request()
+	if closeErr := host.Close(); err != nil || closeErr != nil {
+		t.Fatalf("read substituted request: %v / %v", err, closeErr)
+	}
+	requestPath := filepath.Join(t.TempDir(), "substituted-request.bin")
+	responsePath := filepath.Join(t.TempDir(), "response.bin")
+	if err := os.WriteFile(requestPath, request, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	recordPath := filepath.Join(vaultRoot, "records", "record-"+created.RecordID+".json")
+	before, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trustedDifferentDigest := sha256.Sum256([]byte("independently transferred different host request"))
+	input := &sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{trustedDifferentDigest}}
+	arguments := []string{"issue-service-credential", "-vault-root", vaultRoot, "-record", created.RecordID,
+		"-request", requestPath, "-response", responsePath,
+		"-environment-commitment", hex.EncodeToString(environment[:]),
+		"-network-commitment", hex.EncodeToString(network[:]), "-root-commitment", hex.EncodeToString(authorityRoot[:]),
+		"-kind", "service", "-id-commitment", created.IDCommitment}
+	if err := run(t.Context(), arguments, &bytes.Buffer{}, input); err == nil {
+		t.Fatal("custody issued for a request that did not match the independently transferred commitment")
+	}
+	if input.index != 0 {
+		t.Fatal("substituted request reached the password prompt")
+	}
+	after, err := os.ReadFile(recordPath)
+	if err != nil || !bytes.Equal(after, before) {
+		t.Fatalf("substituted request changed the Authority record: %v", err)
+	}
+	if _, err := os.Stat(responsePath); !os.IsNotExist(err) {
+		t.Fatalf("substituted request created a response: %v", err)
 	}
 }
 
@@ -221,6 +305,20 @@ func TestPurgeRecordRequiresConfirmedCustodyTransition(t *testing.T) {
 	if bytes.Contains(output.Bytes(), state.RootMaterial) || bytes.Contains(output.Bytes(), password) {
 		t.Fatal("purge command returned secret material")
 	}
+	var receipt map[string]any
+	if err := json.Unmarshal(output.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"schema", "operation", "record_id", "retained_floor"} {
+		if _, found := receipt[key]; !found {
+			t.Fatalf("purge receipt lacks canonical %q field: %v", key, receipt)
+		}
+	}
+	for _, key := range []string{"Schema", "Operation", "RecordID"} {
+		if _, found := receipt[key]; found {
+			t.Fatalf("purge receipt exposes Go field name %q: %v", key, receipt)
+		}
+	}
 	if _, err := os.Stat(filepath.Join(root, "records", "record-"+created.RecordID+".json")); !os.IsNotExist(err) {
 		t.Fatalf("purged record remains: %v", err)
 	}
@@ -257,6 +355,7 @@ func (commandSecrets) Confirm(context.Context, custody.ConfirmationPrompt) (bool
 type sequenceCommandSecrets struct {
 	values        [][]byte
 	confirmations []bool
+	commitments   [][32]byte
 	index         int
 }
 
@@ -276,6 +375,15 @@ func (input *sequenceCommandSecrets) Confirm(context.Context, custody.Confirmati
 	confirmed := input.confirmations[0]
 	input.confirmations = input.confirmations[1:]
 	return confirmed, nil
+}
+
+func (input *sequenceCommandSecrets) ReadServiceRequestCommitment(context.Context) ([32]byte, error) {
+	if len(input.commitments) == 0 {
+		return [32]byte{}, errors.New("unexpected service request commitment")
+	}
+	commitment := input.commitments[0]
+	input.commitments = input.commitments[1:]
+	return commitment, nil
 }
 
 func custodyBindingArguments(binding custody.AuthorityBinding) []string {

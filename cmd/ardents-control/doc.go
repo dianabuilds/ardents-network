@@ -1,4 +1,4 @@
-// Command ardents-control inspects one bounded alpha-control directory.
-// It is a standalone reader and never starts an Endpoint or passes discovered
-// roots, catalog facts, or component bytes into an Endpoint acceptance path.
+// Command ardents-control verifies enrolled alpha-control and corpus evidence.
+// Its inspection floors are standalone; only the explicit corpus-acceptance
+// route may advance the named Endpoint-local corpus floor.
 package main

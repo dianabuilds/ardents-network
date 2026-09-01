@@ -3,6 +3,7 @@ package custody
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/epoch"
@@ -37,8 +38,6 @@ const (
 	// record only after password verification and an explicit confirmation. It
 	// deliberately retains Authority floors.
 	OperationPurgeVaultRecord OperationKind = "purge-vault-record"
-	// OperationInspectEnvelope validates only an envelope's public canonical header.
-	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
 
 var (
@@ -58,16 +57,18 @@ var (
 // Authority Vault records. It is not a Recovery Bundle destination.
 type VaultConfig struct {
 	Root string
+	// Now supplies the wall clock used for bounded credential issuance. A nil
+	// function selects time.Now; tests inject an exact instant.
+	Now func() time.Time
 }
 
 // OperationKind selects one custody state transition. No unrecognized operation
 // is accepted.
 type OperationKind string
 
-// Operation supplies the bounded data for exactly one Kind. Path is a public
-// envelope source for inspection and an Owner-selected new Bundle destination
-// for export. Fields unrelated to the selected operation must retain their zero
-// value.
+// Operation supplies the bounded data for exactly one Kind. Path is an explicit
+// public Recovery Bundle source for restore or Owner-selected destination for
+// export. Fields unrelated to the selected operation must retain their zero value.
 type Operation struct {
 	Kind           OperationKind
 	Authority      AuthorityState
@@ -78,6 +79,9 @@ type Operation struct {
 	Preparation    NamespaceSubmission
 	Reconciliation *epoch.NameAuthorityReconciliation
 	ServiceRequest []byte
+	// ServiceRequestCommitment is the exact independently transferred digest
+	// that the Custodian approved for Service Credential issuance.
+	ServiceRequestCommitment [32]byte
 }
 
 // NamespaceTransition invokes one sealed Namespace signer and returns its

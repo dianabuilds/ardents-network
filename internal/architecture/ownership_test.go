@@ -43,6 +43,9 @@ func TestMaintainedFilesHaveExactlyOneOwner(t *testing.T) {
 			return
 		}
 		relative := relativePath(t, root, path)
+		if relative == ".git" {
+			return
+		}
 		var matches []string
 		for _, rule := range registry.Rules {
 			if ruleMatches(rule, relative) {

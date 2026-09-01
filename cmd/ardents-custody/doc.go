@@ -1,6 +1,5 @@
-// Command ardents-custody is the separate custody-process adapter. It exposes
-// canonical public envelope metadata and can verify one encrypted record after
-// reading a password only from an interactive no-echo terminal. It never
-// accepts a password or decrypted Authority material through arguments,
-// configuration, environment, or standard input shared with application data.
+// Command ardents-custody is the separate Authority custody adapter. It owns
+// Service Authority creation and request-bound Credential issuance, encrypted
+// record verification, Recovery Bundles, confirmed record purge, and pure
+// public-envelope inspection. Secrets come only from an interactive terminal.
 package main

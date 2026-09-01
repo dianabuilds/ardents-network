@@ -38,7 +38,7 @@ type sourcePlanMember struct {
 	LeafKeyDigest  string `json:"leaf_key_digest"`
 }
 
-func runRefreshSources(ctx context.Context, arguments []string, output io.Writer) error {
+func runRefreshSources(ctx context.Context, arguments []string, output io.Writer) (resultErr error) {
 	flags := flag.NewFlagSet("refresh-sources", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	root, planPath, once, resume := "", "", false, false
@@ -48,6 +48,9 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	flags.BoolVar(&resume, "resume", false, "resume automatic refresh from current state")
 	if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: ardents refresh-sources --state-root PATH --source-plan PATH")
+	}
+	if once && resume {
+		return errors.New("refresh-sources --once and --resume are mutually exclusive")
 	}
 	events := newEventOutput(output)
 	config, err := readSourcePlan(root, planPath)
@@ -59,7 +62,7 @@ func runRefreshSources(ctx context.Context, arguments []string, output io.Writer
 	if err != nil {
 		return fmt.Errorf("open network state: %w", err)
 	}
-	defer store.Close()
+	defer func() { resultErr = errors.Join(resultErr, store.Close()) }()
 	snapshot, err := store.Current()
 	if !resume {
 		snapshot, err = store.Refresh(ctx)

@@ -138,7 +138,7 @@ func TestInspectEnvelopeRejectsUnsupportedParametersBeforeSecretInput(t *testing
 	if err := os.WriteFile(path, []byte(`{"profile":"ardents-authority-envelope-v1","schema_version":1,"purpose":"authority-vault","kdf":{"name":"argon2id","version":19,"memory_kib":1,"passes":3,"lanes":4,"salt":"AAAAAAAAAAAAAAAAAAAAAA"},"aead":"aes-256-gcm-random-nonce","ciphertext":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := vault.Execute(context.Background(), Operation{Kind: OperationInspectEnvelope, Path: path}, nil); !errors.Is(err, ErrUnsupported) {
+	if _, err := InspectEnvelope(path); !errors.Is(err, ErrUnsupported) {
 		t.Fatalf("inspect unsupported = %v, want unsupported", err)
 	}
 }

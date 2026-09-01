@@ -9,10 +9,14 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
+
+const maximumServiceCredentialLifetime = 24 * time.Hour
+const maximumServiceCredentialHorizon = 48 * time.Hour
 
 func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
 	if secrets == nil || !validServiceIssuance(operation) {
@@ -21,6 +25,18 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	request, err := instance.ParseRequest(operation.ServiceRequest)
 	if err != nil || request.NetworkID != operation.Expected.Network {
 		return Receipt{}, ErrInvalid
+	}
+	expired, supported := serviceCredentialValidity(request, vault.now().UTC())
+	if !supported {
+		return Receipt{}, ErrInvalid
+	}
+	successorID := serviceSuccessorRecordID(operation.RecordID, request.Commitment)
+	if expired {
+		existing, readErr := readEnvelopeFile(filepath.Join(vault.records, "record-"+successorID+".json"))
+		zero(existing)
+		if readErr != nil {
+			return Receipt{}, ErrInvalid
+		}
 	}
 	sourceRaw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
 	if err != nil {
@@ -44,7 +60,6 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if err != nil {
 		return Receipt{}, err
 	}
-	successorID := serviceSuccessorRecordID(operation.RecordID, request.Commitment)
 	floors, err := vault.readFloors()
 	if err != nil {
 		return Receipt{}, err
@@ -54,7 +69,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 		return Receipt{}, ErrInvalid
 	}
 	sourceCurrent, successorCurrent := floorEqualsState(floor, source), floorEqualsState(floor, successor)
-	if !sourceCurrent && !successorCurrent {
+	if (!sourceCurrent && !successorCurrent) || (expired && !successorCurrent) {
 		return Receipt{}, ErrInvalid
 	}
 	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password)
@@ -76,9 +91,26 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 			Target: publication.Target(public)}, ServiceResponse: response, State: RecordActive}, nil
 }
 
+func serviceCredentialValidity(request instance.RequestView, at time.Time) (expired bool, supported bool) {
+	if request.NotBefore < 0 || request.NotAfter < 0 || request.NotAfter <= request.NotBefore {
+		return false, false
+	}
+	lifetimeSeconds := request.NotAfter - request.NotBefore
+	nowSeconds := at.Unix()
+	if nowSeconds < 0 || lifetimeSeconds > int64(maximumServiceCredentialLifetime/time.Second) {
+		return false, false
+	}
+	if request.NotAfter <= nowSeconds {
+		return true, true
+	}
+	return false, request.NotAfter-nowSeconds <= int64(maximumServiceCredentialHorizon/time.Second)
+}
+
 func validServiceIssuance(operation Operation) bool {
+	requestCommitment := sha256.Sum256(operation.ServiceRequest)
 	return validRecordID(operation.RecordID) && operation.Expected.Kind == AuthorityService &&
 		operation.Expected != (AuthorityBinding{}) && len(operation.ServiceRequest) != 0 && operation.Path == "" &&
+		operation.ServiceRequestCommitment == requestCommitment &&
 		isZeroAuthorityState(operation.Authority) && operation.Transition == nil && operation.Preparation == nil &&
 		operation.Reconciliation == nil
 }

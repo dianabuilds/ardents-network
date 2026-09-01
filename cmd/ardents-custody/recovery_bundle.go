@@ -15,7 +15,7 @@ import (
 // It intentionally has no activation or deletion route: Namespace owns the
 // authenticated reconciliation witness, and destructive removal needs its own
 // confirmed custody transition.
-func recoveryBundle(ctx context.Context, mode string, arguments []string, output io.Writer, input custody.SecretInput) error {
+func recoveryBundle(ctx context.Context, mode string, arguments []string, output io.Writer, input custody.SecretInput) (resultErr error) {
 	flags := flag.NewFlagSet(mode, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var root, record, bundle, environment, network, authorityRoot, kind, identity string
@@ -42,7 +42,7 @@ func recoveryBundle(ctx context.Context, mode string, arguments []string, output
 	if err != nil {
 		return err
 	}
-	defer vault.Close()
+	defer func() { resultErr = errors.Join(resultErr, vault.Close()) }()
 	operation := custody.Operation{RecordID: record, Expected: binding, Path: bundle}
 	switch mode {
 	case "export-recovery-bundle":

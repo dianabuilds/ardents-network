@@ -63,11 +63,12 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 	initialized := runCommand(t, t.Context(), directory, binary,
 		"service-instance", "initialize", "--config", planPath)
 	var initialization struct {
-		Schema  string `json:"schema"`
-		Request []byte `json:"request"`
+		Schema        string `json:"schema"`
+		Request       []byte `json:"request"`
+		RequestSHA256 string `json:"request_sha256"`
 	}
 	if err := json.Unmarshal(initialized, &initialization); err != nil ||
-		initialization.Schema != "ardents-service-instance-request-v1" {
+		initialization.Schema != "ardents-service-instance-request-v1" || initialization.RequestSHA256 == "" {
 		t.Fatalf("initialization receipt = %+v / %v", initialization, err)
 	}
 	request, err := os.ReadFile(requestPath)
@@ -87,7 +88,8 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		"-root-commitment", hex.EncodeToString(authorityRoot[:]),
 		"-kind", "service", "-id-commitment", created.IDCommitment}
 	issuedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "vault-unlock password:", value: password}}, issueArguments...)
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: initialization.RequestSHA256},
+			{prompt: "vault-unlock password:", value: password}}, issueArguments...)
 	if bytes.Contains(issuedTerminal, []byte(password)) {
 		t.Fatal("custody artifact echoed its unlock password")
 	}
@@ -107,7 +109,8 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		t.Fatalf("custody response file differs from receipt: %v", err)
 	}
 	repeatedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "vault-unlock password:", value: password}}, issueArguments...)
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: initialization.RequestSHA256},
+			{prompt: "vault-unlock password:", value: password}}, issueArguments...)
 	var repeated struct {
 		RecordID string `json:"record_id"`
 		Response []byte `json:"response"`

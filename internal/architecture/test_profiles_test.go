@@ -39,10 +39,12 @@ func TestEndToEndPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
 	actual := listedPackages(t, root, "./tests/e2e/...")
 	process := listedProfilePackages(t, root, "tests/profiles/process-packages.txt")
+	ceremony := listedProfilePackages(t, root, "tests/profiles/local-ceremony-packages.txt")
 	for packagePath := range actual {
-		_, inProcess := process[packagePath]
-		if !inProcess {
-			t.Errorf("e2e package %s must belong to the process profile", packagePath)
+		if process[packagePath] && ceremony[packagePath] {
+			t.Errorf("e2e package %s belongs to more than one positive process profile", packagePath)
+		} else if !process[packagePath] && !ceremony[packagePath] {
+			t.Errorf("e2e package %s must belong to one positive process profile", packagePath)
 		}
 	}
 }
@@ -53,6 +55,7 @@ func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",
+		"tests/profiles/local-ceremony-packages.txt",
 	} {
 		for packagePath := range listedProfilePackages(t, root, path) {
 			if !actual[packagePath] {
@@ -120,6 +123,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"endpoint-replacement-ubuntu": false,
 		"fuzz":                        false,
 		"headless-network":            false,
+		"local-ceremony":              false,
 		"native-rendezvous-multihost": false,
 		"process":                     false,
 		"qualification":               false,
@@ -200,6 +204,7 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NODE := $(abspath $(HEADLESS_NODE_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEADLESS_CUSTODY_ARTIFACT))",
+		"headless-evidence: export ARDENTS_E2E_CONTROL := $(abspath $(HEADLESS_CONTROL_ARTIFACT))",
 		"TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses",
 	} {
 		if !strings.Contains(makefile, required) {

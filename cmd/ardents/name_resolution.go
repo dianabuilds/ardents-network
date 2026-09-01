@@ -87,8 +87,8 @@ func currentResolution(config state.Config) (state.ResolutionView, error) {
 	if err != nil {
 		return state.ResolutionView{}, err
 	}
-	defer store.Close()
-	return store.CurrentResolution()
+	view, currentErr := store.CurrentResolution()
+	return view, errors.Join(currentErr, store.Close())
 }
 
 func readResolutionInput(path string) (resolutionInput, state.Config, nameresolution.Selection, error) {
