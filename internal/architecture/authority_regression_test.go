@@ -45,6 +45,46 @@ func TestTransitIssuerRootCustodyIsNotExportedFromDuty(t *testing.T) {
 	}
 }
 
+func TestReceivingTransitSpendLedgerHasOneTruthfulOwnerContract(t *testing.T) {
+	root := repositoryRoot(t)
+	checks := []struct {
+		path     string
+		required []string
+	}{
+		{"internal/network/duty/doc.go", []string{"receiving Node", "Transit Grant spend ledger"}},
+		{"docs/development/package-map.md", []string{"`internal/network/duty`", "receiving-Node one-use Transit Grant spend ledger"}},
+		{"docs/technical/network-route-node.md", []string{"internal/network/duty", "receiving-Node one-use Transit Grant spend ledger"}},
+		{"docs/technical/transit-grant-acquisition.md", []string{"owned by", "`internal/network/duty`", "does not own a second ledger"}},
+	}
+	for _, check := range checks {
+		content := string(readProjectFile(t, root, check.path))
+		for _, required := range check.required {
+			if !strings.Contains(content, required) {
+				t.Errorf("%s omits receiving Transit Grant spend-ledger ownership %q", check.path, required)
+			}
+		}
+	}
+}
+
+func TestAlphaControlReadersExportNoFixtureWriters(t *testing.T) {
+	root := repositoryRoot(t)
+	readers := []struct {
+		path      string
+		forbidden []string
+	}{
+		{"internal/alphacontrol", []string{"Sign", "SignV2", "SignComponent"}},
+		{"internal/alphacontrol/inspection", []string{"EncodeReleaseEvidence", "EncodeNetworkEvidence", "EncodeCompatibilityEvidence"}},
+	}
+	for _, reader := range readers {
+		exported := exportedPackageDeclarations(t, filepath.Join(root, filepath.FromSlash(reader.path)))
+		for _, name := range reader.forbidden {
+			if exported[name] {
+				t.Errorf("%s exports fixture-only writer %s", reader.path, name)
+			}
+		}
+	}
+}
+
 func TestEndpointCompositionIsOwnedOnlyByParticipantRuntime(t *testing.T) {
 	root := repositoryRoot(t)
 	exported := exportedPackageDeclarations(t, filepath.Join(root, "internal", "endpoint"))

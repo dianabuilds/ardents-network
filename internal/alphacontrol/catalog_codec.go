@@ -10,19 +10,6 @@ import (
 
 const catalogDomain = "ardents-alpha-control-catalog-v1\x00"
 
-// Sign returns the one canonical signed Catalog v1 encoding.
-func Sign(input Catalog, signer ed25519.PrivateKey) ([]byte, error) {
-	if len(signer) != ed25519.PrivateKeySize {
-		return nil, errors.New("alpha control catalog signer is invalid")
-	}
-	payload, err := catalogPayload(input)
-	if err != nil {
-		return nil, err
-	}
-	copy(input.Signature[:], ed25519.Sign(signer, append([]byte(catalogDomain), payload...)))
-	return append(payload, input.Signature[:]...), nil
-}
-
 // Verify decodes and verifies one catalog against its independently supplied
 // disclosure public key and reader decision time.
 func Verify(raw []byte, public ed25519.PublicKey, at time.Time) (Catalog, [32]byte, error) {
@@ -44,29 +31,6 @@ func Verify(raw []byte, public ed25519.PublicKey, at time.Time) (Catalog, [32]by
 	copy(catalog.Signature[:], signature)
 	digest = sha256.Sum256(raw)
 	return catalog, digest, nil
-}
-
-func catalogPayload(input Catalog) ([]byte, error) {
-	if !validCatalog(input) {
-		return nil, errors.New("alpha control catalog is invalid")
-	}
-	payload := make([]byte, 0, MaximumCatalogSize-ed25519.SignatureSize)
-	payload = append(payload, 'A', 'C', 'A', '1', 1, byte(len(input.Cohort)))
-	payload = append(payload, input.Cohort...)
-	payload = binary.BigEndian.AppendUint64(payload, input.Generation)
-	payload = binary.BigEndian.AppendUint64(payload, uint64(input.NotBefore.Unix()))
-	payload = binary.BigEndian.AppendUint64(payload, uint64(input.NotAfter.Unix()))
-	payload = append(payload, input.PreviousDigest[:]...)
-	payload = append(payload, byte(len(input.Components)))
-	for _, component := range input.Components {
-		payload = append(payload, byte(component.Class))
-		payload = append(payload, component.RootID[:]...)
-		payload = binary.BigEndian.AppendUint64(payload, component.Generation)
-		payload = binary.BigEndian.AppendUint64(payload, uint64(component.NotAfter.Unix()))
-		payload = binary.BigEndian.AppendUint32(payload, component.Size)
-		payload = append(payload, component.Digest[:]...)
-	}
-	return payload, nil
 }
 
 func decodeCatalogPayload(payload []byte) (Catalog, error) {

@@ -22,7 +22,7 @@ func TestVerifyNetworkUsesMaintainedNetworkStateAcceptance(t *testing.T) {
 	now := time.Unix(2_000_400_000, 0).UTC()
 	network := [32]byte{7}
 	epoch, epochDigest := signedEmptyEpoch(network, now, private)
-	body, err := EncodeNetworkEvidence(NetworkEvidence{NetworkID: network, Profile: "h3-role-probe-v1", Threshold: 1,
+	body, err := encodeNetworkEvidence(NetworkEvidence{NetworkID: network, Profile: "h3-role-probe-v1", Threshold: 1,
 		Authorities: []ed25519.PublicKey{public}, Epoch: epoch, EpochDigest: epochDigest})
 	if err != nil {
 		t.Fatal(err)
