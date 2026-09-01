@@ -10,7 +10,7 @@ import (
 func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.EntryBindingAdmitter) (initiatorConfig, error) {
 	if snapshot.Profile != route.Profile || snapshot.Assignment != "initiator" || snapshot.ProbeEndpoint == "" || admit == nil ||
 		profile.HandshakeLimit == 0 || profile.RelayLimit == 0 || profile.RelayByteLimit == 0 || !validAdmissionTimeout(profile.AdmissionTimeout) || profile.DrainTimeout <= 0 {
-		return initiatorConfig{}, errors.New("Initiator profile or State assignment is incomplete")
+		return initiatorConfig{}, errors.New("initiator profile or State assignment is incomplete")
 	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {
@@ -26,13 +26,13 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.Ent
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || peer.NodeID != [32]byte{} {
-			return initiatorConfig{}, errors.New("Initiator State Rendezvous peer is incomplete or not valid for the duty")
+			return initiatorConfig{}, errors.New("initiator State Rendezvous peer is incomplete or not valid for the duty")
 		}
 		peer = initiatorPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Endpoint: candidate.Endpoint,
 			CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
 	}
 	if peer.NodeID == [32]byte{} {
-		return initiatorConfig{}, errors.New("Initiator State supplies no Rendezvous peer")
+		return initiatorConfig{}, errors.New("initiator State supplies no Rendezvous peer")
 	}
 	for index := uint8(0); index < snapshot.CandidateCount; index++ {
 		candidate := snapshot.Candidates[index]
@@ -41,10 +41,10 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.Ent
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || gateway.NodeID != [32]byte{} {
-			return initiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway is incomplete or not valid for the duty")
+			return initiatorConfig{}, errors.New("initiator State Destination Resolution Gateway is incomplete or not valid for the duty")
 		}
 		if !literalNodeEndpoint(candidate.Endpoint) {
-			return initiatorConfig{}, errors.New("Initiator State Destination Resolution Gateway endpoint is invalid")
+			return initiatorConfig{}, errors.New("initiator State Destination Resolution Gateway endpoint is invalid")
 		}
 		gateway = resolutionGateway{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, URL: "https://" + candidate.Endpoint}
 	}
@@ -55,13 +55,13 @@ func initiatorDuty(profile InitiatorProfile, snapshot dutyFacts, admit route.Ent
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || issuer.NodeID != [32]byte{} {
-			return initiatorConfig{}, errors.New("Initiator State transit issuer is incomplete or not valid for the duty")
+			return initiatorConfig{}, errors.New("initiator State transit issuer is incomplete or not valid for the duty")
 		}
 		if !literalNodeEndpoint(candidate.Endpoint) {
-			return initiatorConfig{}, errors.New("Initiator State transit issuer endpoint is invalid")
+			return initiatorConfig{}, errors.New("initiator State transit issuer endpoint is invalid")
 		}
 		if snapshot.TransitIssuerProfileDigest == [32]byte{} {
-			return initiatorConfig{}, errors.New("Initiator State transit issuer profile is unavailable")
+			return initiatorConfig{}, errors.New("initiator State transit issuer profile is unavailable")
 		}
 		issuer = credentialIssuer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey,
 			ProfileDigest: snapshot.TransitIssuerProfileDigest, URL: "https://" + candidate.Endpoint}
@@ -92,14 +92,14 @@ func validateNativeDutyProfile(config runtimeConfig, snapshot dutyFacts) error {
 		return err
 	case "introduction":
 		if snapshot.AuthorityCount == 0 {
-			return errors.New("Introduction State authority verification set is incomplete")
+			return errors.New("introduction State authority verification set is incomplete")
 		}
 		_, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
 			func() (dutyFacts, error) { return snapshot, nil }, config.now))
 		return err
 	case "responder":
 		if snapshot.AuthorityCount == 0 {
-			return errors.New("Responder State authority verification set is incomplete")
+			return errors.New("responder State authority verification set is incomplete")
 		}
 		_, err := responderDuty(config.Responder, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
 			func() (dutyFacts, error) { return snapshot, nil }, config.now))

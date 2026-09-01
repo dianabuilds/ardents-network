@@ -293,7 +293,7 @@ func writeRouteBytes(writer net.Conn, value []byte) error {
 			return err
 		}
 		if count <= 0 || count > len(value) {
-			return errors.New("Introduction delivery write is short")
+			return errors.New("introduction delivery write is short")
 		}
 		value = value[count:]
 	}
@@ -305,7 +305,7 @@ func writeRouteBytes(writer net.Conn, value []byte) error {
 // not claim that all duty-owned work is gone.
 func (running *introduction) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
-		return errors.New("Introduction duty is unavailable")
+		return errors.New("introduction duty is unavailable")
 	}
 	running.Stop()
 	running.mu.Lock()
@@ -330,7 +330,7 @@ func (running *introduction) Drain(ctx context.Context) error {
 	case <-ctx.Done():
 		return errors.Join(running.cleanup.result(), ctx.Err())
 	case <-timer.C:
-		return errors.Join(running.cleanup.result(), errors.New("Introduction drain exceeded its Work Safety Lease"))
+		return errors.Join(running.cleanup.result(), errors.New("introduction drain exceeded its Work Safety Lease"))
 	}
 }
 

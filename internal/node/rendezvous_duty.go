@@ -10,7 +10,7 @@ func rendezvousDuty(profile RendezvousProfile, snapshot dutyFacts) (rendezvousCo
 	if snapshot.Profile != route.Profile || snapshot.Assignment != "rendezvous" || snapshot.ProbeEndpoint == "" ||
 		profile.HandshakeLimit == 0 || profile.WaitingLimit == 0 || profile.PairLimit == 0 || profile.PairByteLimit == 0 ||
 		!validAdmissionTimeout(profile.AdmissionTimeout) || profile.DrainTimeout <= 0 {
-		return rendezvousConfig{}, errors.New("Rendezvous profile or State assignment is incomplete")
+		return rendezvousConfig{}, errors.New("rendezvous profile or State assignment is incomplete")
 	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {

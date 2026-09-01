@@ -9,7 +9,7 @@ import (
 func responderDuty(profile ResponderProfile, snapshot dutyFacts, admit route.EndpointTransitBindingAdmitter) (responderConfig, error) {
 	if snapshot.Profile != route.Profile || snapshot.Assignment != "responder" || snapshot.ProbeEndpoint == "" || admit == nil ||
 		profile.HandshakeLimit == 0 || profile.RelayLimit == 0 || profile.RelayByteLimit == 0 || !validAdmissionTimeout(profile.AdmissionTimeout) || profile.DrainTimeout <= 0 {
-		return responderConfig{}, errors.New("Responder profile or State assignment is incomplete")
+		return responderConfig{}, errors.New("responder profile or State assignment is incomplete")
 	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {
@@ -22,13 +22,13 @@ func responderDuty(profile ResponderProfile, snapshot dutyFacts, admit route.End
 			continue
 		}
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) || peer.NodeID != [32]byte{} {
-			return responderConfig{}, errors.New("Responder State Rendezvous peer is incomplete or not valid for the duty")
+			return responderConfig{}, errors.New("responder State Rendezvous peer is incomplete or not valid for the duty")
 		}
 		peer = responderPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Endpoint: candidate.Endpoint,
 			CarrierProfile: route.CarrierProfile(candidate.CarrierProfile)}
 	}
 	if peer.NodeID == [32]byte{} {
-		return responderConfig{}, errors.New("Responder State supplies no Rendezvous peer")
+		return responderConfig{}, errors.New("responder State supplies no Rendezvous peer")
 	}
 	return responderConfig{ListenAddress: snapshot.ProbeEndpoint, Certificate: profile.Certificate, NetworkID: snapshot.NetworkID, EpochDigest: snapshot.Digest,
 		NodeID: snapshot.NodeID, NodePublicKey: snapshot.NodePublicKey, Epoch: snapshot.Epoch, NotAfter: notAfter.UTC(), rendezvous: peer,

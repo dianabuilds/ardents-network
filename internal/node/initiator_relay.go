@@ -37,7 +37,7 @@ func (running *initiator) relay(raw, entry net.Conn, next route.Carrier) {
 // not claim that all duty-owned work is gone.
 func (running *initiator) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
-		return errors.New("Initiator duty is unavailable")
+		return errors.New("initiator duty is unavailable")
 	}
 	running.Stop()
 	running.mu.Lock()
@@ -62,7 +62,7 @@ func (running *initiator) Drain(ctx context.Context) error {
 	case <-ctx.Done():
 		return errors.Join(running.cleanup.result(), ctx.Err())
 	case <-timer.C:
-		return errors.Join(running.cleanup.result(), errors.New("Initiator drain exceeded its Work Safety Lease"))
+		return errors.Join(running.cleanup.result(), errors.New("initiator drain exceeded its Work Safety Lease"))
 	}
 }
 

@@ -216,18 +216,18 @@ func (running *rendezvous) validateIncoming(binding route.LegBinding, state tls.
 	if binding.NetworkID != running.plan.NetworkID || binding.Epoch != running.plan.Epoch || binding.Digest != running.plan.EpochDigest ||
 		binding.PeerRole != route.RendezvousRole || binding.PeerNodeID != running.plan.NodeID ||
 		binding.NotAfter.After(running.plan.NotAfter.UTC()) || !running.plan.now().Before(binding.NotAfter) {
-		return errors.New("Rendezvous LegBinding context is unauthorized")
+		return errors.New("rendezvous LegBinding context is unauthorized")
 	}
 	peer, found := running.plan.peersByNode[binding.SenderNodeID]
 	if !found || peer.Role != binding.SenderRole {
-		return errors.New("Rendezvous LegBinding sender is unauthorized")
+		return errors.New("rendezvous LegBinding sender is unauthorized")
 	}
 	if len(state.PeerCertificates) != 1 {
-		return errors.New("Rendezvous TLS client certificate is missing")
+		return errors.New("rendezvous TLS client certificate is missing")
 	}
 	public, ok := state.PeerCertificates[0].PublicKey.(ed25519.PublicKey)
 	if !ok || string(public) != string(peer.PublicKey[:]) {
-		return errors.New("Rendezvous LegBinding and TLS identity differ")
+		return errors.New("rendezvous LegBinding and TLS identity differ")
 	}
 	return nil
 }

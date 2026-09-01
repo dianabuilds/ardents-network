@@ -112,7 +112,7 @@ func (running *rendezvous) pump(first, second *rendezvousLeg) {
 // that boundary before joining every owned worker.
 func (running *rendezvous) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
-		return errors.New("Rendezvous duty is unavailable")
+		return errors.New("rendezvous duty is unavailable")
 	}
 	running.Stop()
 	var preAdmission []io.Closer

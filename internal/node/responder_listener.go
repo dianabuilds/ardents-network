@@ -251,7 +251,7 @@ func (running *responder) releaseRelay(raw net.Conn, next route.Carrier) {
 
 func (running *responder) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
-		return errors.New("Responder duty is unavailable")
+		return errors.New("responder duty is unavailable")
 	}
 	running.Stop()
 	running.mu.Lock()
@@ -276,7 +276,7 @@ func (running *responder) Drain(ctx context.Context) error {
 	case <-ctx.Done():
 		return errors.Join(running.cleanup.result(), ctx.Err())
 	case <-timer.C:
-		return errors.Join(running.cleanup.result(), errors.New("Responder drain exceeded its Work Safety Lease"))
+		return errors.Join(running.cleanup.result(), errors.New("responder drain exceeded its Work Safety Lease"))
 	}
 }
 

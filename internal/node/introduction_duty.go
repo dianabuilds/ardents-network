@@ -9,7 +9,7 @@ import (
 func introductionDuty(profile IntroductionProfile, snapshot dutyFacts, admit route.EndpointTransitBindingAdmitter) (introductionConfig, error) {
 	if snapshot.Profile != route.Profile || snapshot.Assignment != "introduction" || snapshot.ProbeEndpoint == "" || admit == nil ||
 		profile.HandshakeLimit == 0 || profile.SlotLimit == 0 || profile.DeliveryLimit == 0 || !validAdmissionTimeout(profile.AdmissionTimeout) || profile.DrainTimeout <= 0 {
-		return introductionConfig{}, errors.New("Introduction profile or State assignment is incomplete")
+		return introductionConfig{}, errors.New("introduction profile or State assignment is incomplete")
 	}
 	notAfter := snapshot.ValidUntil
 	if snapshot.RecordValidUntil.Before(notAfter) {

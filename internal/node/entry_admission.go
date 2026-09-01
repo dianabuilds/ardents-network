@@ -15,7 +15,7 @@ import (
 // the Entry package nor the Node listener receives State persistence/source.
 func openStateEntryAdmitter(root string, snapshot dutyFacts, current func() (dutyFacts, error), now func() time.Time) (route.EntryBindingAdmitter, func() error, error) {
 	if root == "" || current == nil || now == nil || snapshot.Assignment != "initiator" {
-		return nil, nil, errors.New("Initiator Entry admission is incomplete")
+		return nil, nil, errors.New("initiator Entry admission is incomplete")
 	}
 	verification := entry.Verification{
 		Current: func() (entry.View, error) {
@@ -58,7 +58,7 @@ func openStateEntryAdmitter(root string, snapshot dutyFacts, current func() (dut
 
 func entryView(snapshot dutyFacts) (entry.View, error) {
 	if snapshot.NetworkID == [32]byte{} || snapshot.Epoch == 0 || snapshot.Digest == [32]byte{} || snapshot.Profile != route.Profile || !snapshot.Fresh {
-		return entry.View{}, errors.New("Initiator State Entry view is incomplete")
+		return entry.View{}, errors.New("initiator State Entry view is incomplete")
 	}
 	view := entry.View{NetworkID: snapshot.NetworkID, Epoch: snapshot.Epoch, Digest: snapshot.Digest, Profile: snapshot.Profile, Fresh: snapshot.Fresh,
 		Candidates: make([]entry.Candidate, 0, snapshot.CandidateCount)}

@@ -44,7 +44,7 @@ func newIntroductionPlan(input introductionConfig) (introductionPlan, error) {
 		input.Admit == nil || input.HandshakeLimit == 0 || input.SlotLimit == 0 || input.DeliveryLimit == 0 ||
 		!validAdmissionTimeout(input.AdmissionTimeout) || input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute || !input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) ||
 		!time.Now().UTC().Before(input.NotAfter) {
-		return introductionPlan{}, errors.New("Introduction duty configuration is incomplete or outside its implementation bound")
+		return introductionPlan{}, errors.New("introduction duty configuration is incomplete or outside its implementation bound")
 	}
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return introductionPlan{}, err

@@ -140,7 +140,7 @@ func openRendezvousLeg(ctx context.Context, endpoint string, certificate tls.Cer
 	peer, err := route.ReadNodeLegBinding(connection)
 	if err != nil || binding.VerifyReciprocal(peer) != nil {
 		_ = raw.Close()
-		return nil, fmt.Errorf("Rendezvous reciprocal LegBinding is invalid: read=%v verify=%v local=%+v peer=%+v", err, binding.VerifyReciprocal(peer), binding, peer)
+		return nil, fmt.Errorf("rendezvous reciprocal LegBinding is invalid: read=%v verify=%v local=%+v peer=%+v", err, binding.VerifyReciprocal(peer), binding, peer)
 	}
 	if err := connection.SetDeadline(time.Time{}); err != nil {
 		_ = raw.Close()

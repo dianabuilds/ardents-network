@@ -74,10 +74,10 @@ func newInitiatorPlan(input initiatorConfig) (initiatorPlan, error) {
 		!validOptionalCredentialIssuer(input.credentialIssuer, input.NodeID) || input.Admit == nil ||
 		input.HandshakeLimit == 0 || input.RelayLimit == 0 || input.RelayByteLimit == 0 || input.RelayByteLimit > uint64(1<<63-1) ||
 		!validAdmissionTimeout(input.AdmissionTimeout) || input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
-		return initiatorPlan{}, errors.New("Initiator duty configuration is incomplete or outside its implementation bound")
+		return initiatorPlan{}, errors.New("initiator duty configuration is incomplete or outside its implementation bound")
 	}
 	if !input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) || !time.Now().UTC().Before(input.NotAfter) {
-		return initiatorPlan{}, errors.New("Initiator duty has expired or has an invalid expiry")
+		return initiatorPlan{}, errors.New("initiator duty has expired or has an invalid expiry")
 	}
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return initiatorPlan{}, err

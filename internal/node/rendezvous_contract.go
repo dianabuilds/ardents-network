@@ -60,14 +60,14 @@ func newRendezvousPlan(input rendezvousConfig) (rendezvousPlan, error) {
 		input.Epoch == 0 || input.NotAfter.IsZero() || input.HandshakeLimit == 0 || input.WaitingLimit == 0 ||
 		input.PairLimit == 0 || input.PairByteLimit == 0 || input.PairByteLimit > uint64(1<<63-1) ||
 		!validAdmissionTimeout(input.AdmissionTimeout) || input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
-		return rendezvousPlan{}, errors.New("Rendezvous duty configuration is incomplete or outside its implementation bound")
+		return rendezvousPlan{}, errors.New("rendezvous duty configuration is incomplete or outside its implementation bound")
 	}
 	now := func() time.Time { return time.Now().UTC() }
 	if !now().Before(input.NotAfter.UTC()) {
-		return rendezvousPlan{}, errors.New("Rendezvous duty has expired")
+		return rendezvousPlan{}, errors.New("rendezvous duty has expired")
 	}
 	if !input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) {
-		return rendezvousPlan{}, errors.New("Rendezvous duty expiry must use whole UTC seconds")
+		return rendezvousPlan{}, errors.New("rendezvous duty expiry must use whole UTC seconds")
 	}
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return rendezvousPlan{}, err
@@ -75,24 +75,24 @@ func newRendezvousPlan(input rendezvousConfig) (rendezvousPlan, error) {
 	result := rendezvousPlan{rendezvousConfig: input, now: now, peersByNode: make(map[[32]byte]rendezvousPeer, len(input.Peers)),
 		peersByPublic: make(map[[32]byte]rendezvousPeer, len(input.Peers))}
 	if len(input.Peers) != 2 {
-		return rendezvousPlan{}, errors.New("Rendezvous duty requires one Initiator and one Responder peer")
+		return rendezvousPlan{}, errors.New("rendezvous duty requires one Initiator and one Responder peer")
 	}
 	for _, peer := range input.Peers {
 		if peer.NodeID == [32]byte{} || peer.PublicKey == [32]byte{} || peer.NodeID == input.NodeID ||
 			(peer.Role != route.InitiatorRole && peer.Role != route.ResponderRole) {
-			return rendezvousPlan{}, errors.New("Rendezvous peer is invalid")
+			return rendezvousPlan{}, errors.New("rendezvous peer is invalid")
 		}
 		if _, exists := result.peersByNode[peer.NodeID]; exists {
-			return rendezvousPlan{}, errors.New("Rendezvous peer Node identity is duplicated")
+			return rendezvousPlan{}, errors.New("rendezvous peer Node identity is duplicated")
 		}
 		if _, exists := result.peersByPublic[peer.PublicKey]; exists {
-			return rendezvousPlan{}, errors.New("Rendezvous peer public key is duplicated")
+			return rendezvousPlan{}, errors.New("rendezvous peer public key is duplicated")
 		}
 		result.peersByNode[peer.NodeID], result.peersByPublic[peer.PublicKey] = peer, peer
 	}
 	if result.peersByNodeForRole(route.InitiatorRole).NodeID == [32]byte{} ||
 		result.peersByNodeForRole(route.ResponderRole).NodeID == [32]byte{} {
-		return rendezvousPlan{}, errors.New("Rendezvous peer sides are incomplete")
+		return rendezvousPlan{}, errors.New("rendezvous peer sides are incomplete")
 	}
 	return result, nil
 }
