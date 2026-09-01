@@ -99,6 +99,9 @@ process test invokes every retained route and proves untrusted arguments fail
 before secret input or state creation. Successful secret ceremonies remain in
 deterministic owning-Module tests; the checked profile never turns passwords
 into shared stdin or environment data merely to automate a terminal.
+The ownership registry records this non-packaged lane through its exact command
+and evidence-package inventories, so the architecture gate proves it cannot
+disappear behind the two packaged participant lanes.
 
 `tests/compatibility/browser-endpoint-v4` is the sole retained non-executable
 source exception. ADR-0061 requires it to remain outside Go package discovery,

@@ -31,7 +31,11 @@ type qualificationLane struct {
 }
 
 type artifactLane struct {
-	ID, Owner, Commands, Packaging string
+	ID               string `json:"id"`
+	Owner            string `json:"owner"`
+	Commands         string `json:"commands"`
+	Packaging        string `json:"packaging"`
+	EvidencePackages string `json:"evidence_packages"`
 }
 
 func TestMaintainedFilesHaveExactlyOneOwner(t *testing.T) {
@@ -84,19 +88,77 @@ func TestOwnershipRegistryNamesCurrentQualificationAndArtifactLanes(t *testing.T
 			t.Errorf("qualification lane has no owner: %s", path)
 		}
 	}
-	if len(registry.ArtifactLanes) != 2 {
-		t.Fatalf("artifact ownership lanes = %d, want 2", len(registry.ArtifactLanes))
+	wantArtifactInventories := make(map[string]bool)
+	profileEntries, err := os.ReadDir(filepath.Join(root, "tests", "profiles"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range profileEntries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), "-commands.txt") {
+			wantArtifactInventories["tests/profiles/"+entry.Name()] = true
+		}
 	}
 	commands := make(map[string]string)
-	packaging := make(map[string]string)
+	compositions := make(map[string]string)
+	identifiers := make(map[string]bool)
 	for _, lane := range registry.ArtifactLanes {
-		if lane.ID == "" || !containsString(registry.Owners, lane.Owner) || lane.Commands == "" || lane.Packaging == "" {
+		if lane.ID == "" || identifiers[lane.ID] || !containsString(registry.Owners, lane.Owner) || !wantArtifactInventories[lane.Commands] {
 			t.Errorf("invalid artifact lane: %+v", lane)
 		}
-		if other := commands[lane.Commands]; other != "" || packaging[lane.Packaging] != "" {
+		identifiers[lane.ID] = true
+		if other := commands[lane.Commands]; other != "" {
 			t.Errorf("artifact lane %s merges an inventory with another lane", lane.ID)
 		}
-		commands[lane.Commands], packaging[lane.Packaging] = lane.ID, lane.ID
+		commands[lane.Commands] = lane.ID
+
+		composition := lane.Packaging
+		if (lane.Packaging == "") == (lane.EvidencePackages == "") {
+			t.Errorf("artifact lane %s must name exactly one packaging or evidence-packages composition", lane.ID)
+			continue
+		}
+		if lane.EvidencePackages != "" {
+			composition = lane.EvidencePackages
+			wantEvidence := strings.TrimSuffix(lane.Commands, "-commands.txt") + "-packages.txt"
+			if lane.EvidencePackages != wantEvidence {
+				t.Errorf("artifact lane %s evidence packages = %q, want %q", lane.ID, lane.EvidencePackages, wantEvidence)
+			}
+		}
+		if other := compositions[composition]; other != "" {
+			t.Errorf("artifact lanes %s and %s share composition %s", other, lane.ID, composition)
+		}
+		compositions[composition] = lane.ID
+		assertArtifactLanePath(t, root, registry, lane.Owner, lane.Commands, false)
+		assertArtifactLanePath(t, root, registry, lane.Owner, composition, lane.Packaging != "")
+	}
+	for inventory := range wantArtifactInventories {
+		if commands[inventory] == "" {
+			t.Errorf("artifact command inventory has no owner: %s", inventory)
+		}
+	}
+}
+
+func assertArtifactLanePath(t *testing.T, root string, registry ownershipRegistry, owner, path string, wantDirectory bool) {
+	t.Helper()
+	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(path)))
+	if err != nil {
+		t.Errorf("artifact lane path %s: %v", path, err)
+		return
+	}
+	if info.IsDir() != wantDirectory {
+		t.Errorf("artifact lane path %s directory = %t, want %t", path, info.IsDir(), wantDirectory)
+	}
+	ownershipPath := path
+	if wantDirectory {
+		ownershipPath += "/"
+	}
+	var matches []ownershipRule
+	for _, rule := range registry.Rules {
+		if ruleMatches(rule, ownershipPath) {
+			matches = append(matches, rule)
+		}
+	}
+	if len(matches) != 1 || matches[0].Owner != owner {
+		t.Errorf("artifact lane path %s owner = %v, want exactly %s", path, matches, owner)
 	}
 }
 

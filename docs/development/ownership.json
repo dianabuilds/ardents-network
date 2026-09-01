@@ -97,6 +97,7 @@
   ],
   "artifact_lanes": [
     {"id": "network-v3", "owner": "network", "commands": "tests/profiles/headless-commands.txt", "packaging": "packaging/alpha-bundle"},
-    {"id": "browser-v4", "owner": "application-browser", "commands": "tests/profiles/browser-commands.txt", "packaging": "packaging/browser-bundle"}
+    {"id": "browser-v4", "owner": "application-browser", "commands": "tests/profiles/browser-commands.txt", "packaging": "packaging/browser-bundle"},
+    {"id": "local-ceremony", "owner": "network", "commands": "tests/profiles/local-ceremony-commands.txt", "evidence_packages": "tests/profiles/local-ceremony-packages.txt"}
   ]
 }
