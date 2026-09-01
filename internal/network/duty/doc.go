@@ -1,2 +1,3 @@
-// Package duty owns bounded Endpoint-local Role Domain duty and exposure truth.
+// Package duty owns bounded Endpoint-local Role Domain duty and exposure truth,
+// including the receiving Node's durable one-use Transit Grant spend ledger.
 package duty

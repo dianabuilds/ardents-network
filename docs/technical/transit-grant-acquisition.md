@@ -131,9 +131,11 @@ root remains the Introduction owner, while a separately leased `responder`
 child owns the Responder lifecycle. Neither journal can reuse the other's
 Request ID, attachment, key, phase, or terminal result.
 
-The receiving Node's existing durable Grant-ID replay ledger remains the final
-at-most-once admission check. Issuer idempotency and Endpoint lifecycle do not
-replace it.
+The receiving Node invokes the existing durable Grant-ID replay ledger owned by
+`internal/network/duty`; that Module is the final at-most-once spend owner.
+`internal/node` owns the current-duty recheck and admission composition around
+that decision, but does not own a second ledger. Issuer idempotency and Endpoint
+lifecycle do not replace either check.
 
 ## Product and failure boundary
 
