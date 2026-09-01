@@ -45,6 +45,35 @@ func TestTransitIssuerRootCustodyIsNotExportedFromDuty(t *testing.T) {
 	}
 }
 
+func TestReceivingTransitSpendLedgerHasOneTruthfulOwnerContract(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, path := range []string{"internal/network/duty/doc.go", "docs/technical/network-route-node.md"} {
+		content := string(readProjectFile(t, root, path))
+		if !strings.Contains(content, "receiving") || !strings.Contains(content, "Transit Grant") || !strings.Contains(content, "spend ledger") {
+			t.Errorf("%s omits receiving one-use Transit Grant spend-ledger ownership", path)
+		}
+	}
+}
+
+func TestAlphaControlReadersExportNoFixtureWriters(t *testing.T) {
+	root := repositoryRoot(t)
+	readers := []struct {
+		path      string
+		forbidden []string
+	}{
+		{"internal/alphacontrol", []string{"Sign", "SignV2", "SignComponent"}},
+		{"internal/alphacontrol/inspection", []string{"EncodeReleaseEvidence", "EncodeNetworkEvidence", "EncodeCompatibilityEvidence"}},
+	}
+	for _, reader := range readers {
+		exported := exportedPackageDeclarations(t, filepath.Join(root, filepath.FromSlash(reader.path)))
+		for _, name := range reader.forbidden {
+			if exported[name] {
+				t.Errorf("%s exports fixture-only writer %s", reader.path, name)
+			}
+		}
+	}
+}
+
 func TestEndpointCompositionIsOwnedOnlyByParticipantRuntime(t *testing.T) {
 	root := repositoryRoot(t)
 	exported := exportedPackageDeclarations(t, filepath.Join(root, "internal", "endpoint"))

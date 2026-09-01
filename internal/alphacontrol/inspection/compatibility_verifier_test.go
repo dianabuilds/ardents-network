@@ -14,8 +14,9 @@ func TestVerifyCompatibilityBindsReleaseAndNetworkIdentities(t *testing.T) {
 	var releaseDigest [32]byte
 	copy(releaseDigest[:], releaseDecision.Digest)
 	network := state.Snapshot{Epoch: 7, Digest: [32]byte{2}, Profile: "h3-role-probe-v1"}
-	body, err := EncodeCompatibilityEvidence(CompatibilityEvidence{ReleaseDigest: releaseDigest, ReleaseBuildIdentity: "build-7", ProtocolPhase: "h4-a",
+	body, err := encodeCompatibilityEvidence(CompatibilityEvidence{ReleaseDigest: releaseDigest, ReleaseBuildIdentity: "build-7", ProtocolPhase: "h4-a",
 		NetworkDigest: network.Digest, NetworkEpoch: network.Epoch, NetworkProfile: network.Profile})
+
 	if err != nil {
 		t.Fatal(err)
 	}

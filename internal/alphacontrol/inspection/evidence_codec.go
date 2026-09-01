@@ -44,8 +44,7 @@ type CompatibilityEvidence struct {
 	NetworkProfile       string
 }
 
-// EncodeReleaseEvidence returns the canonical release evidence body.
-func EncodeReleaseEvidence(value ReleaseEvidence) ([]byte, error) {
+func encodeReleaseEvidence(value ReleaseEvidence) ([]byte, error) {
 	if value.ArtifactDigest == [32]byte{} || !validText(value.TargetPath, 255) || !validText(value.ReleaseIdentity, 255) ||
 		!validText(value.BuildIdentity, 255) || !validText(value.ProtocolPhase, 64) || !validText(value.BuildState, 64) {
 		return nil, errors.New("alpha release evidence is invalid")
@@ -76,13 +75,11 @@ func decodeReleaseEvidence(raw []byte) (ReleaseEvidence, error) {
 	if offset != len(raw) {
 		return ReleaseEvidence{}, errors.New("alpha release evidence has trailing bytes")
 	}
-	_, err := EncodeReleaseEvidence(value)
+	_, err := encodeReleaseEvidence(value)
 	return value, err
 }
 
-// EncodeNetworkEvidence returns the canonical offline Network State evidence
-// body. It intentionally contains bytes only; it cannot select a source.
-func EncodeNetworkEvidence(value NetworkEvidence) ([]byte, error) {
+func encodeNetworkEvidence(value NetworkEvidence) ([]byte, error) {
 	if value.NetworkID == [32]byte{} || value.EpochDigest == [32]byte{} || !validText(value.Profile, 64) || value.Threshold == 0 ||
 		int(value.Threshold) > len(value.Authorities) || len(value.Authorities) > 16 || len(value.Epoch) == 0 || len(value.Epoch) > 1<<20 ||
 		len(value.Inputs) > 64 || len(value.Materials) > 64 {
@@ -176,12 +173,11 @@ func decodeNetworkEvidence(raw []byte) (NetworkEvidence, error) {
 	if offset != len(raw) {
 		return NetworkEvidence{}, errors.New("alpha network evidence has trailing bytes")
 	}
-	_, err = EncodeNetworkEvidence(value)
+	_, err = encodeNetworkEvidence(value)
 	return value, err
 }
 
-// EncodeCompatibilityEvidence returns the canonical compatibility body.
-func EncodeCompatibilityEvidence(value CompatibilityEvidence) ([]byte, error) {
+func encodeCompatibilityEvidence(value CompatibilityEvidence) ([]byte, error) {
 	if value.ReleaseDigest == [32]byte{} || value.NetworkDigest == [32]byte{} || value.NetworkEpoch == 0 ||
 		!validText(value.ReleaseBuildIdentity, 255) || !validText(value.ProtocolPhase, 64) || !validText(value.NetworkProfile, 64) {
 		return nil, errors.New("alpha compatibility evidence is invalid")
@@ -219,7 +215,7 @@ func decodeCompatibilityEvidence(raw []byte) (CompatibilityEvidence, error) {
 		return CompatibilityEvidence{}, errors.New("alpha compatibility evidence network binding is invalid")
 	}
 	value.NetworkProfile = profile
-	_, err = EncodeCompatibilityEvidence(value)
+	_, err = encodeCompatibilityEvidence(value)
 	return value, err
 }
 

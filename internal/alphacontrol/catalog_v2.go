@@ -10,20 +10,6 @@ import (
 
 const catalogV2Domain = "ardents-alpha-control-catalog-v2\x00"
 
-// SignV2 returns the canonical signed ACA2 catalog encoding. ACA2 neither
-// changes nor loosens ACA1's fixed three-component parser.
-func SignV2(input CatalogV2, signer ed25519.PrivateKey) ([]byte, error) {
-	if len(signer) != ed25519.PrivateKeySize {
-		return nil, errors.New("alpha control ACA2 signer is invalid")
-	}
-	payload, err := catalogV2Payload(input)
-	if err != nil {
-		return nil, err
-	}
-	copy(input.Signature[:], ed25519.Sign(signer, append([]byte(catalogV2Domain), payload...)))
-	return append(payload, input.Signature[:]...), nil
-}
-
 // VerifyV2 verifies one exact ACA2 catalog under the separately pinned
 // disclosure key. It is reader evidence only, never Endpoint authorization.
 func VerifyV2(raw []byte, public ed25519.PublicKey, at time.Time) (CatalogV2, [32]byte, error) {
@@ -45,29 +31,6 @@ func VerifyV2(raw []byte, public ed25519.PublicKey, at time.Time) (CatalogV2, [3
 	copy(catalog.Signature[:], signature)
 	digest = sha256.Sum256(raw)
 	return catalog, digest, nil
-}
-
-func catalogV2Payload(input CatalogV2) ([]byte, error) {
-	if !validCatalogV2(input) {
-		return nil, errors.New("alpha control ACA2 is invalid")
-	}
-	payload := make([]byte, 0, MaximumCatalogSize-ed25519.SignatureSize)
-	payload = append(payload, 'A', 'C', 'A', '2', 2, byte(len(input.Cohort)))
-	payload = append(payload, input.Cohort...)
-	payload = binary.BigEndian.AppendUint64(payload, input.Generation)
-	payload = binary.BigEndian.AppendUint64(payload, uint64(input.NotBefore.Unix()))
-	payload = binary.BigEndian.AppendUint64(payload, uint64(input.NotAfter.Unix()))
-	payload = append(payload, input.PreviousDigest[:]...)
-	payload = append(payload, byte(len(input.Components)))
-	for _, component := range input.Components {
-		payload = append(payload, byte(component.Class))
-		payload = append(payload, component.RootID[:]...)
-		payload = binary.BigEndian.AppendUint64(payload, component.Generation)
-		payload = binary.BigEndian.AppendUint64(payload, uint64(component.NotAfter.Unix()))
-		payload = binary.BigEndian.AppendUint32(payload, component.Size)
-		payload = append(payload, component.Digest[:]...)
-	}
-	return payload, nil
 }
 
 func decodeCatalogV2Payload(payload []byte) (CatalogV2, error) {

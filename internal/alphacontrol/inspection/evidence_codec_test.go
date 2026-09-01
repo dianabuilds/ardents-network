@@ -12,7 +12,7 @@ func TestEvidenceCodecsAreCanonicalAndBounded(t *testing.T) {
 		t.Fatal(err)
 	}
 	release := ReleaseEvidence{ArtifactDigest: [32]byte{1}, TargetPath: "ardents/linux-amd64/endpoint", ReleaseIdentity: "alpha-1", BuildIdentity: "build-1", ProtocolPhase: "h4-a", BuildState: "accepted"}
-	releaseRaw, err := EncodeReleaseEvidence(release)
+	releaseRaw, err := encodeReleaseEvidence(release)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func TestEvidenceCodecsAreCanonicalAndBounded(t *testing.T) {
 		t.Fatalf("release decode = %+v, %v", decoded, err)
 	}
 	network := NetworkEvidence{NetworkID: [32]byte{2}, EpochDigest: [32]byte{3}, Profile: "h3-role-probe-v1", Threshold: 1, Authorities: []ed25519.PublicKey{public}, Epoch: []byte("epoch"), Inputs: [][]byte{[]byte("input")}, Materials: [][]byte{[]byte("material")}}
-	networkRaw, err := EncodeNetworkEvidence(network)
+	networkRaw, err := encodeNetworkEvidence(network)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestEvidenceCodecsAreCanonicalAndBounded(t *testing.T) {
 		t.Fatalf("network decode = %+v, %v", decodedNetwork, err)
 	}
 	compatibility := CompatibilityEvidence{ReleaseDigest: [32]byte{3}, ReleaseBuildIdentity: "build-1", ProtocolPhase: "h4-a", NetworkDigest: [32]byte{4}, NetworkEpoch: 1, NetworkProfile: "h3-role-probe-v1"}
-	compatibilityRaw, err := EncodeCompatibilityEvidence(compatibility)
+	compatibilityRaw, err := encodeCompatibilityEvidence(compatibility)
 	if err != nil {
 		t.Fatal(err)
 	}

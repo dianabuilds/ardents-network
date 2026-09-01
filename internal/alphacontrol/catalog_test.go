@@ -17,7 +17,7 @@ func TestInspectRequiresCatalogBindingFloorsAndComponentVerification(t *testing.
 	}
 	now := time.Unix(2_000_400_000, 0).UTC()
 	components, roots, catalog := signedFixture(t, now)
-	raw, err := alphacontrol.Sign(catalog, private)
+	raw, err := signCatalog(catalog, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestInspectRequiresCatalogBindingFloorsAndComponentVerification(t *testing.
 	conflict := catalog
 	conflict.Components[0].Generation = 1
 	conflict.Components[0].Digest = sha256.Sum256([]byte("different"))
-	conflictingRaw, err := alphacontrol.Sign(conflict, private)
+	conflictingRaw, err := signCatalog(conflict, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestVerifyRejectsChangedSignedPayloadAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Unix(2_000_400_000, 0).UTC()
-	raw, err := alphacontrol.Sign(catalogFixture(now, [3][]byte{[]byte("a"), []byte("b"), []byte("c")}), private)
+	raw, err := signCatalog(catalogFixture(now, [3][]byte{[]byte("a"), []byte("b"), []byte("c")}), private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestInspectReportsUnavailableAndRefusesCatalogRollback(t *testing.T) {
 	now := time.Unix(2_000_400_000, 0).UTC()
 	components, roots, catalog := signedFixture(t, now)
 	catalog.Generation = 2
-	raw, err := alphacontrol.Sign(catalog, private)
+	raw, err := signCatalog(catalog, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestInspectReportsUnavailableAndRefusesCatalogRollback(t *testing.T) {
 		t.Fatalf("unavailable component inspection = %+v, %+v, %v", result, floor, err)
 	}
 	catalog.Generation = 1
-	rollback, err := alphacontrol.Sign(catalog, private)
+	rollback, err := signCatalog(catalog, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,8 +123,9 @@ func TestVerifyComponentRequiresItsOwnSignatureAndCatalogReference(t *testing.T)
 		t.Fatal(err)
 	}
 	now := time.Unix(2_000_400_000, 0).UTC()
-	raw, err := alphacontrol.SignComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentRelease, Generation: 4,
+	raw, err := signComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentRelease, Generation: 4,
 		NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute), Body: []byte("TUF inputs")}, private)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,14 +151,15 @@ func TestInspectRejectsCatalogSelectedComponentSignerOutsidePinnedRoot(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	components[0], err = alphacontrol.SignComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentRelease, Generation: 1,
+	components[0], err = signComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentRelease, Generation: 1,
 		NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute), Body: []byte("catalog-selected signer")}, unpinnedPrivate)
+
 	if err != nil {
 		t.Fatal(err)
 	}
 	catalog.Components[0].Size = uint32(len(components[0]))
 	catalog.Components[0].Digest = sha256.Sum256(components[0])
-	raw, err := alphacontrol.Sign(catalog, disclosurePrivate)
+	raw, err := signCatalog(catalog, disclosurePrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +179,7 @@ func TestReaderPersistsCatalogFloorAndRefusesConflictingReplacement(t *testing.T
 	}
 	now := time.Unix(2_000_400_000, 0).UTC()
 	components, roots, catalog := signedFixture(t, now)
-	raw, err := alphacontrol.Sign(catalog, private)
+	raw, err := signCatalog(catalog, private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +204,7 @@ func TestReaderPersistsCatalogFloorAndRefusesConflictingReplacement(t *testing.T
 	defer reader.Close()
 	conflict := catalog
 	conflict.Components[0].Digest = sha256.Sum256([]byte("different"))
-	conflictingRaw, signErr := alphacontrol.Sign(conflict, private)
+	conflictingRaw, signErr := signCatalog(conflict, private)
 	if signErr != nil {
 		t.Fatal(signErr)
 	}
@@ -258,8 +260,9 @@ func signedFixture(t *testing.T, now time.Time) ([3][]byte, [3]ed25519.PublicKey
 		if err != nil {
 			t.Fatal(err)
 		}
-		components[index], err = alphacontrol.SignComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentClass(index + 1), Generation: 1,
+		components[index], err = signComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentClass(index + 1), Generation: 1,
 			NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute), Body: []byte{byte(index + 1)}}, private)
+
 		if err != nil {
 			t.Fatal(err)
 		}

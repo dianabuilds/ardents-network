@@ -22,7 +22,7 @@ func TestACA2BindsExactlyFourFixedComponentsWithoutChangingACA1(t *testing.T) {
 		catalog.Components[index] = alphacontrol.Component{Class: alphacontrol.ComponentClass(index + 1), RootID: [32]byte{byte(index + 1)},
 			Generation: uint64(index + 1), NotAfter: now.Add(time.Minute), Size: uint32(len(body)), Digest: sha256.Sum256(body)}
 	}
-	raw, err := alphacontrol.SignV2(catalog, private)
+	raw, err := signCatalogV2(catalog, private)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -39,7 +39,7 @@ func TestEndpointAcceptAlphaCorpusControlPinsACA2AndAdvancesDurableFloor(t *test
 	}
 	catalog.Components[3] = alphacontrol.Component{Class: alphacontrol.ComponentCorpus, RootID: sha256.Sum256(corpusPublic),
 		Generation: 4, NotAfter: now.Add(time.Minute), Size: uint32(len(corpusRaw)), Digest: sha256.Sum256(corpusRaw)}
-	catalogRaw, err := alphacontrol.SignV2(catalog, disclosurePrivate)
+	catalogRaw, err := signCatalogV2Fixture(catalog, disclosurePrivate)
 	if err != nil {
 		t.Fatal(err)
 	}

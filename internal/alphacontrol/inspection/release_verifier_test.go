@@ -39,8 +39,9 @@ func TestVerifyReleaseUsesMaintainedReleaseDecision(t *testing.T) {
 	}
 	var digest [32]byte
 	copy(digest[:], decision.Digest)
-	body, err := EncodeReleaseEvidence(ReleaseEvidence{ArtifactDigest: digest, TargetPath: decision.Path, ReleaseIdentity: decision.ReleaseIdentity,
+	body, err := encodeReleaseEvidence(ReleaseEvidence{ArtifactDigest: digest, TargetPath: decision.Path, ReleaseIdentity: decision.ReleaseIdentity,
 		BuildIdentity: decision.BuildIdentity, ProtocolPhase: decision.ProtocolPhase, BuildState: decision.BuildState})
+
 	if err != nil {
 		t.Fatal(err)
 	}

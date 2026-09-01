@@ -146,7 +146,7 @@ func alphaCorpusCatalog(t *testing.T, fixture alphaControlBundleFixture, serial 
 	}
 	catalog.Components[3] = alphacontrol.Component{Class: alphacontrol.ComponentCorpus, RootID: sha256.Sum256(fixture.corpusPublic),
 		Generation: serial, NotAfter: fixture.now.Add(10 * time.Minute), Size: uint32(len(corpus)), Digest: sha256.Sum256(corpus)}
-	raw, err := alphacontrol.SignV2(catalog, fixture.disclosurePrivate)
+	raw, err := signAlphaCatalogV2Fixture(catalog, fixture.disclosurePrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func alphaControlStatements(t *testing.T, decision release.Decision, now time.Ti
 	}
 	var artifactDigest [32]byte
 	copy(artifactDigest[:], decision.Digest)
-	releaseBody, err := inspection.EncodeReleaseEvidence(inspection.ReleaseEvidence{ArtifactDigest: artifactDigest, TargetPath: decision.Path,
+	releaseBody, err := encodeReleaseEvidenceFixture(inspection.ReleaseEvidence{ArtifactDigest: artifactDigest, TargetPath: decision.Path,
 		ReleaseIdentity: decision.ReleaseIdentity, BuildIdentity: decision.BuildIdentity, ProtocolPhase: decision.ProtocolPhase, BuildState: decision.BuildState})
 	if err != nil {
 		t.Fatal(err)
@@ -278,11 +278,11 @@ func alphaControlStatements(t *testing.T, decision release.Decision, now time.Ti
 	}
 	networkID := [32]byte{9}
 	epoch, epochDigest := alphaControlEpoch(networkID, now, authorityPrivate)
-	networkBody, err := inspection.EncodeNetworkEvidence(inspection.NetworkEvidence{NetworkID: networkID, EpochDigest: epochDigest, Profile: "h3-role-probe-v1", Threshold: 1, Authorities: []ed25519.PublicKey{authority}, Epoch: epoch})
+	networkBody, err := encodeNetworkEvidenceFixture(inspection.NetworkEvidence{NetworkID: networkID, EpochDigest: epochDigest, Profile: "h3-role-probe-v1", Threshold: 1, Authorities: []ed25519.PublicKey{authority}, Epoch: epoch})
 	if err != nil {
 		t.Fatal(err)
 	}
-	compatibilityBody, err := inspection.EncodeCompatibilityEvidence(inspection.CompatibilityEvidence{ReleaseDigest: artifactDigest,
+	compatibilityBody, err := encodeCompatibilityEvidenceFixture(inspection.CompatibilityEvidence{ReleaseDigest: artifactDigest,
 		ReleaseBuildIdentity: decision.BuildIdentity, ProtocolPhase: decision.ProtocolPhase, NetworkDigest: epochDigest, NetworkEpoch: 1, NetworkProfile: "h3-role-probe-v1"})
 	if err != nil {
 		t.Fatal(err)
@@ -296,7 +296,7 @@ func alphaControlStatements(t *testing.T, decision release.Decision, now time.Ti
 		if keyErr != nil {
 			t.Fatal(keyErr)
 		}
-		components[index], keyErr = alphacontrol.SignComponent(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentClass(index + 1), Generation: 1,
+		components[index], keyErr = signAlphaComponentFixture(alphacontrol.ComponentStatement{Class: alphacontrol.ComponentClass(index + 1), Generation: 1,
 			NotBefore: now.Add(-time.Minute), NotAfter: catalog.NotAfter, Body: body}, private)
 		if keyErr != nil {
 			t.Fatal(keyErr)
@@ -305,7 +305,7 @@ func alphaControlStatements(t *testing.T, decision release.Decision, now time.Ti
 		catalog.Components[index] = alphacontrol.Component{Class: alphacontrol.ComponentClass(index + 1), RootID: sha256.Sum256(public), Generation: 1,
 			NotAfter: catalog.NotAfter, Size: uint32(len(components[index])), Digest: sha256.Sum256(components[index])}
 	}
-	raw, err := alphacontrol.Sign(catalog, disclosurePrivate)
+	raw, err := signAlphaCatalogFixture(catalog, disclosurePrivate)
 	if err != nil {
 		t.Fatal(err)
 	}

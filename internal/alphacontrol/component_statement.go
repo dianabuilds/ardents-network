@@ -22,18 +22,6 @@ type ComponentStatement struct {
 	Signature           [64]byte
 }
 
-// SignComponent returns one canonical signed component statement. It is used
-// by controlled alpha fixture builders; production signing remains outside the
-// reader and Endpoint.
-func SignComponent(input ComponentStatement, signer ed25519.PrivateKey) ([]byte, error) {
-	if len(signer) != ed25519.PrivateKeySize || !validStatement(input) {
-		return nil, errors.New("alpha control component statement is invalid")
-	}
-	payload := statementPayload(input)
-	copy(input.Signature[:], ed25519.Sign(signer, append([]byte(componentDomain), payload...)))
-	return append(payload, input.Signature[:]...), nil
-}
-
 // VerifyComponent verifies the component-local signature under the separately
 // supplied component root and its exact catalog reference. It intentionally
 // cannot alter Release, Network State, or Endpoint roots: it returns a
@@ -64,16 +52,6 @@ func verifiedComponent(reference Component, raw []byte, root ed25519.PublicKey, 
 		return ComponentStatement{}, OutcomeExpired
 	}
 	return statement, OutcomeAccepted
-}
-
-func statementPayload(input ComponentStatement) []byte {
-	payload := make([]byte, 0, 4+1+1+8+8+8+4+len(input.Body))
-	payload = append(payload, 'A', 'C', 'S', '1', 1, byte(input.Class))
-	payload = binary.BigEndian.AppendUint64(payload, input.Generation)
-	payload = binary.BigEndian.AppendUint64(payload, uint64(input.NotBefore.Unix()))
-	payload = binary.BigEndian.AppendUint64(payload, uint64(input.NotAfter.Unix()))
-	payload = binary.BigEndian.AppendUint32(payload, uint32(len(input.Body)))
-	return append(payload, input.Body...)
 }
 
 func decodeStatementPayload(payload []byte) (ComponentStatement, error) {
