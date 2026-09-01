@@ -9,17 +9,22 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
+
+const maximumServiceCredentialLifetime = 24 * time.Hour
+const maximumServiceCredentialHorizon = 48 * time.Hour
 
 func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operation, secrets SecretInput) (Receipt, error) {
 	if secrets == nil || !validServiceIssuance(operation) {
 		return Receipt{}, ErrInvalid
 	}
 	request, err := instance.ParseRequest(operation.ServiceRequest)
-	if err != nil || request.NetworkID != operation.Expected.Network {
+	if err != nil || request.NetworkID != operation.Expected.Network ||
+		!boundedServiceCredentialValidity(request, time.Now().UTC()) {
 		return Receipt{}, ErrInvalid
 	}
 	sourceRaw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
@@ -76,9 +81,21 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 			Target: publication.Target(public)}, ServiceResponse: response, State: RecordActive}, nil
 }
 
+func boundedServiceCredentialValidity(request instance.RequestView, at time.Time) bool {
+	if request.NotBefore < 0 || request.NotAfter < 0 || request.NotAfter <= request.NotBefore {
+		return false
+	}
+	lifetimeSeconds := request.NotAfter - request.NotBefore
+	horizonSeconds := request.NotAfter - at.Unix()
+	return lifetimeSeconds <= int64(maximumServiceCredentialLifetime/time.Second) &&
+		horizonSeconds > 0 && horizonSeconds <= int64(maximumServiceCredentialHorizon/time.Second)
+}
+
 func validServiceIssuance(operation Operation) bool {
+	requestCommitment := sha256.Sum256(operation.ServiceRequest)
 	return validRecordID(operation.RecordID) && operation.Expected.Kind == AuthorityService &&
 		operation.Expected != (AuthorityBinding{}) && len(operation.ServiceRequest) != 0 && operation.Path == "" &&
+		operation.ServiceRequestCommitment == requestCommitment &&
 		isZeroAuthorityState(operation.Authority) && operation.Transition == nil && operation.Preparation == nil &&
 		operation.Reconciliation == nil
 }

@@ -3,6 +3,8 @@ package custody
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/sha256"
+	"errors"
 	"testing"
 	"time"
 
@@ -61,10 +63,10 @@ func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	now := time.Date(2030, 2, 3, 4, 5, 6, 0, time.UTC)
+	now := time.Now().UTC().Truncate(time.Second)
 	request := serviceInstanceRequest(t, binding.Network, now, now.Add(time.Hour))
 	issue := Operation{Kind: OperationIssueServiceCredential, RecordID: created.RecordID,
-		Expected: created.Authority.Binding, ServiceRequest: request}
+		Expected: created.Authority.Binding, ServiceRequest: request, ServiceRequestCommitment: sha256.Sum256(request)}
 	first, err := vault.Execute(t.Context(), issue, &sequenceSecrets{values: [][]byte{password}})
 	if err != nil {
 		t.Fatalf("issue first Service Credential: %v", err)
@@ -87,19 +89,47 @@ func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testin
 	}
 	different := serviceInstanceRequest(t, binding.Network, now.Add(30*time.Minute), now.Add(90*time.Minute))
 	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential, RecordID: created.RecordID,
-		Expected: created.Authority.Binding, ServiceRequest: different},
+		Expected: created.Authority.Binding, ServiceRequest: different, ServiceRequestCommitment: sha256.Sum256(different)},
 		&sequenceSecrets{values: [][]byte{password}}); err == nil {
 		t.Fatal("stale Authority record issued a different successor")
 	}
 	request2 := serviceInstanceRequest(t, binding.Network, now.Add(time.Hour), now.Add(2*time.Hour))
 	second, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential, RecordID: first.RecordID,
-		Expected: created.Authority.Binding, ServiceRequest: request2}, &sequenceSecrets{values: [][]byte{password}})
+		Expected: created.Authority.Binding, ServiceRequest: request2, ServiceRequestCommitment: sha256.Sum256(request2)}, &sequenceSecrets{values: [][]byte{password}})
 	if err != nil {
 		t.Fatalf("issue successor Service Credential: %v", err)
 	}
 	response2, err := instance.ParseResponse(second.ServiceResponse)
 	if err != nil || response2.Credential.Generation != 2 || response2.Credential.NotBefore != now.Add(time.Hour).Unix() {
 		t.Fatalf("successor response = %+v / %v", response2, err)
+	}
+}
+
+func TestIssueServiceCredentialRejectsUnboundedValidityBeforePassword(t *testing.T) {
+	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	binding := AuthorityBinding{Environment: [32]byte{1}, Network: [32]byte{2}, Root: [32]byte{3}, Kind: AuthorityService}
+	password := []byte("bounded service authority password")
+	created, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateServiceAuthority,
+		Authority: AuthorityState{Binding: binding}}, &sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	request := serviceInstanceRequest(t, binding.Network, now, now.Add(24*time.Hour+time.Second))
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential,
+		RecordID: created.RecordID, Expected: created.Authority.Binding, ServiceRequest: request,
+		ServiceRequestCommitment: sha256.Sum256(request)}, unreadSecrets{}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("unbounded Service Credential request = %v, want invalid before password", err)
+	}
+	future := serviceInstanceRequest(t, binding.Network, now.Add(49*time.Hour), now.Add(50*time.Hour))
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential,
+		RecordID: created.RecordID, Expected: created.Authority.Binding, ServiceRequest: future,
+		ServiceRequestCommitment: sha256.Sum256(future)}, unreadSecrets{}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("far-future Service Credential request = %v, want invalid before password", err)
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
-func verifyRecord(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {
+func verifyRecord(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) (resultErr error) {
 	flags := flag.NewFlagSet("verify-record", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var root, record, environment, network, authorityRoot, kind, identity string
@@ -36,7 +36,7 @@ func verifyRecord(ctx context.Context, arguments []string, output io.Writer, inp
 	if err != nil {
 		return err
 	}
-	defer vault.Close()
+	defer func() { resultErr = errors.Join(resultErr, vault.Close()) }()
 	receipt, err := vault.Execute(ctx, custody.Operation{Kind: custody.OperationVerifyVaultRecord, RecordID: record, Expected: binding}, input)
 	if err != nil {
 		return err
@@ -64,12 +64,12 @@ func commandBinding(environment, network, root, kind, identity string) (custody.
 		{identity, binding.IDCommitment[:]},
 	} {
 		if err := decodeCommandCommitment(value.text, value.dest); err != nil {
-			return custody.AuthorityBinding{}, errors.New("verify-record requires lowercase SHA-256 commitments")
+			return custody.AuthorityBinding{}, errors.New("custody operation requires lowercase SHA-256 commitments")
 		}
 	}
 	binding.Kind = custody.AuthorityKind(kind)
 	if binding.Kind != custody.AuthorityService && binding.Kind != custody.AuthorityName {
-		return custody.AuthorityBinding{}, errors.New("verify-record kind must be service or name")
+		return custody.AuthorityBinding{}, errors.New("custody operation kind must be service or name")
 	}
 	return binding, nil
 }

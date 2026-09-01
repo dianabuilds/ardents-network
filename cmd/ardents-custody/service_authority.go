@@ -13,6 +13,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
+type serviceRequestCommitmentInput interface {
+	ReadServiceRequestCommitment(context.Context) ([32]byte, error)
+}
+
 func serviceAuthority(ctx context.Context, mode string, arguments []string, output io.Writer, input custody.SecretInput) error {
 	flags := flag.NewFlagSet(mode, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -32,11 +36,7 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 	if flags.NArg() != 0 || root == "" || input == nil {
 		return errors.New(mode + " requires a vault root, public inputs, and interactive secret input")
 	}
-	vault, err := custody.Open(custody.VaultConfig{Root: root})
-	if err != nil {
-		return err
-	}
-	defer vault.Close()
+	var operation custody.Operation
 	switch mode {
 	case "create-service-authority":
 		if record != "" || requestPath != "" || responsePath != "" || kind != "" || identity != "" {
@@ -46,12 +46,8 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		if err != nil {
 			return err
 		}
-		receipt, err := vault.Execute(ctx, custody.Operation{Kind: custody.OperationCreateServiceAuthority,
-			Authority: custody.AuthorityState{Binding: binding}}, input)
-		if err != nil {
-			return err
-		}
-		return encodeServiceAuthorityReceipt(output, receipt)
+		operation = custody.Operation{Kind: custody.OperationCreateServiceAuthority,
+			Authority: custody.AuthorityState{Binding: binding}}
 	case "issue-service-credential":
 		if record == "" || requestPath == "" || responsePath == "" {
 			return errors.New("issue-service-credential requires record, request, and response")
@@ -64,18 +60,39 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		if err != nil {
 			return err
 		}
-		receipt, err := vault.Execute(ctx, custody.Operation{Kind: custody.OperationIssueServiceCredential,
-			RecordID: record, Expected: binding, ServiceRequest: request}, input)
+		commitmentInput, ok := input.(serviceRequestCommitmentInput)
+		if !ok {
+			return errors.New("issue-service-credential requires an independently transferred request commitment")
+		}
+		approvedCommitment, err := commitmentInput.ReadServiceRequestCommitment(ctx)
 		if err != nil {
 			return err
 		}
-		if err := writeStableCustodyPublicFile(responsePath, receipt.ServiceResponse); err != nil {
-			return err
+		requestCommitment := sha256.Sum256(request)
+		if approvedCommitment != requestCommitment {
+			return errors.New("service request does not match the independently transferred commitment")
 		}
-		return encodeServiceCredentialReceipt(output, receipt)
+		operation = custody.Operation{Kind: custody.OperationIssueServiceCredential,
+			RecordID: record, Expected: binding, ServiceRequest: request,
+			ServiceRequestCommitment: approvedCommitment}
 	default:
 		return errors.New("unsupported service Authority operation")
 	}
+	vault, err := custody.Open(custody.VaultConfig{Root: root})
+	if err != nil {
+		return err
+	}
+	receipt, executeErr := vault.Execute(ctx, operation, input)
+	if err := errors.Join(executeErr, vault.Close()); err != nil {
+		return err
+	}
+	if mode == "create-service-authority" {
+		return encodeServiceAuthorityReceipt(output, receipt)
+	}
+	if err := writeStableCustodyPublicFile(responsePath, receipt.ServiceResponse); err != nil {
+		return err
+	}
+	return encodeServiceCredentialReceipt(output, receipt)
 }
 
 func writeStableCustodyPublicFile(path string, body []byte) error {

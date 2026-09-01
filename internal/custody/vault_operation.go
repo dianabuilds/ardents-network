@@ -33,7 +33,8 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return Receipt{}, err
 	}
 	defer func() { resultErr = errors.Join(resultErr, operationLock.release()) }()
-	if operation.Kind != OperationIssueServiceCredential && len(operation.ServiceRequest) != 0 {
+	if operation.Kind != OperationIssueServiceCredential &&
+		(len(operation.ServiceRequest) != 0 || operation.ServiceRequestCommitment != ([32]byte{})) {
 		return Receipt{}, ErrInvalid
 	}
 	switch operation.Kind {
@@ -57,8 +58,6 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return vault.activateRecoveredAuthority(ctx, operation, secrets)
 	case OperationPurgeVaultRecord:
 		return vault.purgeRecord(ctx, operation, secrets)
-	case OperationInspectEnvelope:
-		return vault.inspect(operation)
 	default:
 		return Receipt{}, ErrInvalid
 	}
@@ -231,21 +230,6 @@ func (signer *custodyTransitionSigner) erase() {
 	zero(signer.private)
 	zero(signer.signature)
 	signer.private, signer.signature = nil, nil
-}
-
-func (vault *Vault) inspect(operation Operation) (Receipt, error) {
-	if operation.RecordID != "" || !isZeroAuthorityState(operation.Authority) || operation.Expected != (AuthorityBinding{}) || operation.Path == "" || operation.Transition != nil || operation.Preparation != nil || operation.Reconciliation != nil {
-		return Receipt{}, ErrInvalid
-	}
-	raw, err := readEnvelopeFile(operation.Path)
-	if err != nil {
-		return Receipt{}, fmt.Errorf("read custody envelope: %w", err)
-	}
-	info, err := inspectEnvelope(raw)
-	if err != nil {
-		return Receipt{}, err
-	}
-	return Receipt{Operation: OperationInspectEnvelope, Envelope: info}, nil
 }
 
 func readPassword(ctx context.Context, input SecretInput, prompt SecretPrompt) ([]byte, error) {

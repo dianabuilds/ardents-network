@@ -14,7 +14,7 @@ func run(ctx context.Context, arguments []string, output io.Writer, input custod
 	}
 	switch arguments[0] {
 	case "inspect-envelope":
-		return inspectEnvelope(ctx, arguments[1:], output)
+		return inspectEnvelope(arguments[1:], output)
 	case "create-service-authority", "issue-service-credential":
 		return serviceAuthority(ctx, arguments[0], arguments[1:], output, input)
 	case "verify-record":

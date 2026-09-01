@@ -37,8 +37,6 @@ const (
 	// record only after password verification and an explicit confirmation. It
 	// deliberately retains Authority floors.
 	OperationPurgeVaultRecord OperationKind = "purge-vault-record"
-	// OperationInspectEnvelope validates only an envelope's public canonical header.
-	OperationInspectEnvelope OperationKind = "inspect-envelope"
 )
 
 var (
@@ -78,6 +76,9 @@ type Operation struct {
 	Preparation    NamespaceSubmission
 	Reconciliation *epoch.NameAuthorityReconciliation
 	ServiceRequest []byte
+	// ServiceRequestCommitment is the exact independently transferred digest
+	// that the Custodian approved for Service Credential issuance.
+	ServiceRequestCommitment [32]byte
 }
 
 // NamespaceTransition invokes one sealed Namespace signer and returns its
