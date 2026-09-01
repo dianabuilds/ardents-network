@@ -23,9 +23,20 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 		return Receipt{}, ErrInvalid
 	}
 	request, err := instance.ParseRequest(operation.ServiceRequest)
-	if err != nil || request.NetworkID != operation.Expected.Network ||
-		!boundedServiceCredentialValidity(request, time.Now().UTC()) {
+	if err != nil || request.NetworkID != operation.Expected.Network {
 		return Receipt{}, ErrInvalid
+	}
+	expired, supported := serviceCredentialValidity(request, vault.now().UTC())
+	if !supported {
+		return Receipt{}, ErrInvalid
+	}
+	successorID := serviceSuccessorRecordID(operation.RecordID, request.Commitment)
+	if expired {
+		existing, readErr := readEnvelopeFile(filepath.Join(vault.records, "record-"+successorID+".json"))
+		zero(existing)
+		if readErr != nil {
+			return Receipt{}, ErrInvalid
+		}
 	}
 	sourceRaw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
 	if err != nil {
@@ -49,7 +60,6 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if err != nil {
 		return Receipt{}, err
 	}
-	successorID := serviceSuccessorRecordID(operation.RecordID, request.Commitment)
 	floors, err := vault.readFloors()
 	if err != nil {
 		return Receipt{}, err
@@ -59,7 +69,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 		return Receipt{}, ErrInvalid
 	}
 	sourceCurrent, successorCurrent := floorEqualsState(floor, source), floorEqualsState(floor, successor)
-	if !sourceCurrent && !successorCurrent {
+	if (!sourceCurrent && !successorCurrent) || (expired && !successorCurrent) {
 		return Receipt{}, ErrInvalid
 	}
 	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password)
@@ -81,14 +91,19 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 			Target: publication.Target(public)}, ServiceResponse: response, State: RecordActive}, nil
 }
 
-func boundedServiceCredentialValidity(request instance.RequestView, at time.Time) bool {
+func serviceCredentialValidity(request instance.RequestView, at time.Time) (expired bool, supported bool) {
 	if request.NotBefore < 0 || request.NotAfter < 0 || request.NotAfter <= request.NotBefore {
-		return false
+		return false, false
 	}
 	lifetimeSeconds := request.NotAfter - request.NotBefore
-	horizonSeconds := request.NotAfter - at.Unix()
-	return lifetimeSeconds <= int64(maximumServiceCredentialLifetime/time.Second) &&
-		horizonSeconds > 0 && horizonSeconds <= int64(maximumServiceCredentialHorizon/time.Second)
+	nowSeconds := at.Unix()
+	if nowSeconds < 0 || lifetimeSeconds > int64(maximumServiceCredentialLifetime/time.Second) {
+		return false, false
+	}
+	if request.NotAfter <= nowSeconds {
+		return true, true
+	}
+	return false, request.NotAfter-nowSeconds <= int64(maximumServiceCredentialHorizon/time.Second)
 }
 
 func validServiceIssuance(operation Operation) bool {

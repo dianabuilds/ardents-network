@@ -51,7 +51,9 @@ func TestCreateServiceAuthorityReturnsPublicIdentityAndRetainsEncryptedRoot(t *t
 }
 
 func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testing.T) {
-	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	now := time.Date(2026, time.September, 1, 2, 3, 4, 0, time.UTC)
+	clock := now
+	vault, err := Open(VaultConfig{Root: t.TempDir(), Now: func() time.Time { return clock }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +65,6 @@ func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	now := time.Now().UTC().Truncate(time.Second)
 	request := serviceInstanceRequest(t, binding.Network, now, now.Add(time.Hour))
 	issue := Operation{Kind: OperationIssueServiceCredential, RecordID: created.RecordID,
 		Expected: created.Authority.Binding, ServiceRequest: request, ServiceRequestCommitment: sha256.Sum256(request)}
@@ -94,8 +95,9 @@ func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testin
 		t.Fatal("stale Authority record issued a different successor")
 	}
 	request2 := serviceInstanceRequest(t, binding.Network, now.Add(time.Hour), now.Add(2*time.Hour))
-	second, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential, RecordID: first.RecordID,
-		Expected: created.Authority.Binding, ServiceRequest: request2, ServiceRequestCommitment: sha256.Sum256(request2)}, &sequenceSecrets{values: [][]byte{password}})
+	issue2 := Operation{Kind: OperationIssueServiceCredential, RecordID: first.RecordID,
+		Expected: created.Authority.Binding, ServiceRequest: request2, ServiceRequestCommitment: sha256.Sum256(request2)}
+	second, err := vault.Execute(t.Context(), issue2, &sequenceSecrets{values: [][]byte{password}})
 	if err != nil {
 		t.Fatalf("issue successor Service Credential: %v", err)
 	}
@@ -103,10 +105,17 @@ func TestIssueServiceCredentialAdvancesAuthorityAndRetriesExactRequest(t *testin
 	if err != nil || response2.Credential.Generation != 2 || response2.Credential.NotBefore != now.Add(time.Hour).Unix() {
 		t.Fatalf("successor response = %+v / %v", response2, err)
 	}
+	clock = now.Add(3 * time.Hour)
+	expiredRetry, err := vault.Execute(t.Context(), issue2, &sequenceSecrets{values: [][]byte{password}})
+	if err != nil || expiredRetry.RecordID != second.RecordID ||
+		!bytes.Equal(expiredRetry.ServiceResponse, second.ServiceResponse) {
+		t.Fatalf("expired exact retry changed successor: retry=%+v / %v", expiredRetry, err)
+	}
 }
 
 func TestIssueServiceCredentialRejectsUnboundedValidityBeforePassword(t *testing.T) {
-	vault, err := Open(VaultConfig{Root: t.TempDir()})
+	now := time.Date(2026, time.September, 1, 2, 3, 4, 0, time.UTC)
+	vault, err := Open(VaultConfig{Root: t.TempDir(), Now: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +127,6 @@ func TestIssueServiceCredentialRejectsUnboundedValidityBeforePassword(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	now := time.Now().UTC().Truncate(time.Second)
 	request := serviceInstanceRequest(t, binding.Network, now, now.Add(24*time.Hour+time.Second))
 	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential,
 		RecordID: created.RecordID, Expected: created.Authority.Binding, ServiceRequest: request,
@@ -130,6 +138,12 @@ func TestIssueServiceCredentialRejectsUnboundedValidityBeforePassword(t *testing
 		RecordID: created.RecordID, Expected: created.Authority.Binding, ServiceRequest: future,
 		ServiceRequestCommitment: sha256.Sum256(future)}, unreadSecrets{}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("far-future Service Credential request = %v, want invalid before password", err)
+	}
+	expired := serviceInstanceRequest(t, binding.Network, now.Add(-2*time.Hour), now.Add(-time.Hour))
+	if _, err := vault.Execute(t.Context(), Operation{Kind: OperationIssueServiceCredential,
+		RecordID: created.RecordID, Expected: created.Authority.Binding, ServiceRequest: expired,
+		ServiceRequestCommitment: sha256.Sum256(expired)}, unreadSecrets{}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("new expired Service Credential request = %v, want invalid before password", err)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // Vault is the exclusive owner of one encrypted record root.
@@ -13,6 +14,7 @@ type Vault struct {
 	records    string
 	quarantine string
 	floors     string
+	now        func() time.Time
 	mu         sync.Mutex
 	closed     bool
 }
@@ -37,6 +39,10 @@ func Open(config VaultConfig) (*Vault, error) {
 	if err := prepareVaultLock(root); err != nil {
 		return nil, err
 	}
+	now := config.Now
+	if now == nil {
+		now = time.Now
+	}
 	records := filepath.Join(root, "records")
 	if err := os.MkdirAll(records, 0o700); err != nil {
 		return nil, fmt.Errorf("create record root: %w", err)
@@ -45,7 +51,8 @@ func Open(config VaultConfig) (*Vault, error) {
 	if err := os.MkdirAll(quarantine, 0o700); err != nil {
 		return nil, fmt.Errorf("create quarantine record root: %w", err)
 	}
-	return &Vault{root: root, records: records, quarantine: quarantine, floors: filepath.Join(root, "authority-floors.json")}, nil
+	return &Vault{root: root, records: records, quarantine: quarantine,
+		floors: filepath.Join(root, "authority-floors.json"), now: now}, nil
 }
 
 // Close rejects future operations. It never leaves a record unlocked because

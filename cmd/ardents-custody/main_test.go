@@ -30,13 +30,29 @@ func TestInspectEnvelopeRendersOnlyPublicHeaderFacts(t *testing.T) {
 	if err := os.WriteFile(path, body, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	beforeEntries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeBody, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var output bytes.Buffer
-	vaultRoot := filepath.Join(root, "vault-that-must-not-be-created")
 	if err := run(t.Context(), []string{"inspect-envelope", "-envelope", path}, &output, nil); err != nil {
 		t.Fatalf("inspect envelope: %v", err)
 	}
-	if _, err := os.Stat(vaultRoot); !os.IsNotExist(err) {
-		t.Fatalf("read-only envelope inspection created custody state: %v", err)
+	afterEntries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterBody, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(beforeEntries) != 1 || len(afterEntries) != 1 ||
+		beforeEntries[0].Name() != afterEntries[0].Name() || !bytes.Equal(beforeBody, afterBody) {
+		t.Fatalf("read-only envelope inspection changed its source directory: before=%v after=%v", beforeEntries, afterEntries)
 	}
 	var result struct {
 		Schema    string `json:"schema"`
