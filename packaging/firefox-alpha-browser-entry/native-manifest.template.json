@@ -1,7 +1,0 @@
-{
-  "name": "org.ardents.alpha_browser_entry",
-  "description": "Ardents Alpha Browser Entry native host",
-  "path": "ABSOLUTE_PATH_TO_ARDENTS_BROWSER_ENTRY",
-  "type": "stdio",
-  "allowed_extensions": ["alpha-browser-entry@ardents.network"]
-}

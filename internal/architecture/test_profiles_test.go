@@ -109,10 +109,6 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
 		"alpha-control-two-endpoints": false,
-		"browser-adapter":             false,
-		"browser-entry-ubuntu":        false,
-		"browser-entry-windows":       false,
-		"browser-signed-xpi":          false,
 		"developer":                   false,
 		"deterministic":               false,
 		"endpoint-portable-ubuntu":    false,
@@ -184,9 +180,6 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		if commands[index] != want[index] {
 			t.Errorf("headless command %d = %q, want %q", index, commands[index], want[index])
 		}
-		if strings.Contains(commands[index], "browser") {
-			t.Errorf("headless command inventory contains Browser Adapter %q", commands[index])
-		}
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	for _, required := range []string{
@@ -204,31 +197,6 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 	} {
 		if !strings.Contains(makefile, required) {
 			t.Errorf("headless Network Make boundary lacks %q", required)
-		}
-	}
-}
-
-func TestBrowserAdapterProfileHasClosedCommandAndArtifactBoundary(t *testing.T) {
-	root := repositoryRoot(t)
-	commands := strings.Fields(string(readProjectFile(t, root, "tests/profiles/browser-commands.txt")))
-	want := []string{"./cmd/ardents-browser", "./cmd/ardents-browser-entry"}
-	if len(commands) != len(want) {
-		t.Fatalf("Browser command inventory = %v, want %v", commands, want)
-	}
-	for index := range want {
-		if commands[index] != want[index] {
-			t.Errorf("Browser command %d = %q, want %q", index, commands[index], want[index])
-		}
-	}
-	makefile := string(readProjectFile(t, root, "Makefile"))
-	for _, required := range []string{
-		"browser-check: browser-build",
-		"packaging/browser-bundle/test.sh",
-		"$(foreach command,$(BROWSER_COMMANDS)",
-		"$(notdir $(command))-$(HEADLESS_PLATFORM)",
-	} {
-		if !strings.Contains(makefile, required) {
-			t.Errorf("Browser Adapter Make boundary lacks %q", required)
 		}
 	}
 }
@@ -270,34 +238,10 @@ func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	}
 }
 
-func TestBrowserCommandsHaveNetworkImplementationFreeDependencyGraphs(t *testing.T) {
-	root := repositoryRoot(t)
-	for _, commandPath := range []string{"./cmd/ardents-browser", "./cmd/ardents-browser-entry"} {
-		t.Run(filepath.Base(commandPath), func(t *testing.T) {
-			dependencies := listedDependencies(t, root, commandPath)
-			for _, forbidden := range []string{
-				"github.com/dianabuilds/ardents-network/internal/endpoint",
-				"github.com/dianabuilds/ardents-network/internal/network",
-				"github.com/dianabuilds/ardents-network/internal/node",
-				"github.com/dianabuilds/ardents-network/internal/route",
-				"github.com/dianabuilds/ardents-network/internal/entry",
-				"github.com/dianabuilds/ardents-network/internal/service",
-				"github.com/dianabuilds/ardents-network/internal/custody",
-			} {
-				for dependency := range dependencies {
-					if dependency == forbidden || strings.HasPrefix(dependency, forbidden+"/") {
-						t.Errorf("%s dependency graph contains Network implementation %s", commandPath, dependency)
-					}
-				}
-			}
-		})
-	}
-}
-
 func TestApplicationSeamsAreSharedByTheirAdapters(t *testing.T) {
 	root := repositoryRoot(t)
 	connection := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
-	for _, packagePath := range []string{"./cmd/ardents", "./cmd/ardents-browser", "./internal/endpoint"} {
+	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
 		if !listedDependencies(t, root, packagePath)[connection] {
 			t.Errorf("%s does not use the shared Application Connection Module", packagePath)
 		}
@@ -388,17 +332,43 @@ func TestEndpointContainsNoBrowserImplementation(t *testing.T) {
 	}
 }
 
-func TestNetworkAndBrowserArtifactInventoriesAreDisjoint(t *testing.T) {
+func TestRetiredBrowserSurfaceHasNoCurrentPaths(t *testing.T) {
 	root := repositoryRoot(t)
-	headless := strings.Fields(string(readProjectFile(t, root, "tests/profiles/headless-commands.txt")))
-	browser := strings.Fields(string(readProjectFile(t, root, "tests/profiles/browser-commands.txt")))
-	seen := make(map[string]bool, len(headless))
-	for _, command := range headless {
-		seen[command] = true
+	for _, relative := range []string{
+		"cmd/ardents-browser",
+		"cmd/ardents-browser-entry",
+		"internal/browser",
+		"packaging/browser-bundle",
+		"packaging/firefox-alpha-browser-entry",
+		"tests/qualification/browser-signed-xpi",
+		"tests/qualification/browser-entry-windows",
+		"tests/qualification/browser-entry-ubuntu",
+		"tests/profiles/browser-commands.txt",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+			t.Errorf("retired Browser path still exists: %s", relative)
+		}
 	}
-	for _, command := range browser {
-		if seen[command] {
-			t.Errorf("Network-v3 and Browser-v4 inventories share command %s", command)
+	for _, relative := range []string{
+		"Makefile",
+		"tests/profiles/profiles.json",
+		"tests/profiles/deterministic-packages.txt",
+		"docs/development/package-map.md",
+		"docs/development/ownership.json",
+	} {
+		contents := string(readProjectFile(t, root, relative))
+		for _, forbidden := range []string{
+			"cmd/ardents-browser",
+			"cmd/ardents-browser-entry",
+			"internal/browser/",
+			"browser-check",
+			"browser-build",
+			"qualification-browser-",
+			"browser-commands.txt",
+		} {
+			if strings.Contains(contents, forbidden) {
+				t.Errorf("current boundary %s retains retired Browser reference %q", relative, forbidden)
+			}
 		}
 	}
 }

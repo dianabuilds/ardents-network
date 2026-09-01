@@ -162,22 +162,6 @@ func assertArtifactLanePath(t *testing.T, root string, registry ownershipRegistr
 	}
 }
 
-func TestApplicationCandidateImportsOnlyBrowserAndInterfaceOwners(t *testing.T) {
-	root := repositoryRoot(t)
-	for _, command := range []string{"./cmd/ardents-browser", "./cmd/ardents-browser-entry"} {
-		for dependency := range listedDependencies(t, root, command) {
-			if !strings.HasPrefix(dependency, modulePath+"/internal/") {
-				continue
-			}
-			if strings.HasPrefix(dependency, modulePath+"/internal/browser/") ||
-				strings.HasPrefix(dependency, modulePath+"/internal/application/interfacev1/") {
-				continue
-			}
-			t.Errorf("Application command %s imports Network implementation %s", command, dependency)
-		}
-	}
-}
-
 func readOwnershipRegistry(t *testing.T, root string) ownershipRegistry {
 	t.Helper()
 	var registry ownershipRegistry

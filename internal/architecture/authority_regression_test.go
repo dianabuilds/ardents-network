@@ -120,7 +120,6 @@ func TestMaintainedTruthDoesNotClaimUnownedCompositionOrUnprovenCleanup(t *testi
 		path      string
 		forbidden []string
 	}{
-		{"docs/technical/enrollment-verification.md", []string{"Browser Entry companions", "cmd/ardents-browser-entry` exercise the same narrow interface"}},
 		{"docs/technical/naming.md", []string{"production Gateway or Resolver path", "Production Resolution consumes"}},
 		{"docs/technical/network-route-node.md", []string{"listener's start snapshot identifies"}},
 		{"internal/route/route.go", []string{"returns one atomic current fact", "Once Close returns, no Route selection or resource"}},
