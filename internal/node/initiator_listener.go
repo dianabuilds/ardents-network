@@ -13,7 +13,7 @@ import (
 
 // Initiator owns one running native Entry listener, its State-pinned next-leg
 // dials, and all accepted relay work. It never selects another Node or route.
-type Initiator struct {
+type initiator struct {
 	plan       initiatorPlan
 	listener   net.Listener
 	handshakes chan struct{}
@@ -24,7 +24,7 @@ type Initiator struct {
 	protected bool
 	pre       map[net.Conn]struct{}
 	active    map[route.Carrier]struct{}
-	usage     InitiatorUsage
+	usage     initiatorUsage
 	stopOnce  sync.Once
 	cleanup   terminalCleanup
 	work      sync.WaitGroup
@@ -33,7 +33,7 @@ type Initiator struct {
 
 // startInitiator binds one exact State-authorized literal Entry endpoint. It
 // does not acquire State, discover a Rendezvous Node, or create an Entry root.
-func startInitiator(input initiatorConfig) (*Initiator, error) {
+func startInitiator(input initiatorConfig) (*initiator, error) {
 	plan, err := newInitiatorPlan(input)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func startInitiator(input initiatorConfig) (*Initiator, error) {
 	if err != nil {
 		return nil, err
 	}
-	running := &Initiator{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
+	running := &initiator{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
 		relays: make(chan struct{}, plan.RelayLimit), pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{}),
 		terminal: make(chan error, 1)}
 	running.work.Add(1)
@@ -52,7 +52,7 @@ func startInitiator(input initiatorConfig) (*Initiator, error) {
 
 // Done yields the sole terminal listener outcome. A nil value means the duty
 // was stopped deliberately; a non-nil value requires Node withdrawal.
-func (running *Initiator) Done() <-chan error {
+func (running *initiator) Done() <-chan error {
 	if running == nil {
 		return nil
 	}
@@ -61,7 +61,7 @@ func (running *Initiator) Done() <-chan error {
 
 // Protect cancels pre-relay work and refuses new Entry work while preserving
 // relays already established through the accepted setup.
-func (running *Initiator) Protect(value bool) {
+func (running *initiator) Protect(value bool) {
 	if running == nil {
 		return
 	}
@@ -83,7 +83,7 @@ func (running *Initiator) Protect(value bool) {
 
 // Stop closes only new Initiator admission. Call Drain to join every accepted
 // handshake and relay within the duty's declared lease.
-func (running *Initiator) Stop() {
+func (running *initiator) Stop() {
 	if running == nil {
 		return
 	}
@@ -96,9 +96,9 @@ func (running *Initiator) Stop() {
 }
 
 // Usage returns only aggregate local duty state.
-func (running *Initiator) Usage() InitiatorUsage {
+func (running *initiator) Usage() initiatorUsage {
 	if running == nil {
-		return InitiatorUsage{}
+		return initiatorUsage{}
 	}
 	running.mu.Lock()
 	defer running.mu.Unlock()
@@ -108,7 +108,7 @@ func (running *Initiator) Usage() InitiatorUsage {
 	return result
 }
 
-func (running *Initiator) accept() {
+func (running *initiator) accept() {
 	defer running.work.Done()
 	for {
 		raw, err := running.listener.Accept()
@@ -132,7 +132,7 @@ func (running *Initiator) accept() {
 	}
 }
 
-func (running *Initiator) admitHandshake(raw net.Conn) bool {
+func (running *initiator) admitHandshake(raw net.Conn) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected || len(running.relays) == cap(running.relays) {
@@ -149,7 +149,7 @@ func (running *Initiator) admitHandshake(raw net.Conn) bool {
 	}
 }
 
-func (running *Initiator) handle(raw net.Conn) {
+func (running *initiator) handle(raw net.Conn) {
 	defer running.work.Done()
 	handshakeHeld, owned := true, true
 	defer func() {
@@ -195,7 +195,7 @@ func (running *Initiator) handle(raw net.Conn) {
 	running.openCredentialRelay(workCtx, raw, entryConnection, *operation.CredentialRelay)
 }
 
-func (running *Initiator) validEntryOperation(operation route.EntryOperation) bool {
+func (running *initiator) validEntryOperation(operation route.EntryOperation) bool {
 	if operation.Relay != nil && operation.ResolutionRelay == nil {
 		return running.validateSetup(*operation.Relay) == nil
 	}
@@ -208,7 +208,7 @@ func (running *Initiator) validEntryOperation(operation route.EntryOperation) bo
 	return false
 }
 
-func (running *Initiator) openCredentialRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.CredentialRelaySetup) {
+func (running *initiator) openCredentialRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.CredentialRelaySetup) {
 	if err := entryConnection.SetDeadline(setup.NotAfter); err != nil || route.WriteCredentialRelayReady(entryConnection, route.CredentialRelayReady{Setup: setup}) != nil {
 		running.releaseRelay(raw, nil)
 		return
@@ -222,7 +222,7 @@ func (running *Initiator) openCredentialRelay(ctx context.Context, raw, entryCon
 	defer cancel()
 	client, err := credential.HTTPClient(setup.IssuerNodePublicKey, running.plan.Certificate)
 	if err == nil {
-		response, forwardErr := credential.ForwardOHTTP(forwardCtx, running.plan.CredentialIssuer.URL, client, envelope.OHTTP)
+		response, forwardErr := credential.ForwardOHTTP(forwardCtx, running.plan.credentialIssuer.URL, client, envelope.OHTTP)
 		client.CloseIdleConnections()
 		err = forwardErr
 		if err == nil {
@@ -238,16 +238,16 @@ func (running *Initiator) openCredentialRelay(ctx context.Context, raw, entryCon
 	running.releaseRelay(raw, nil)
 }
 
-func (running *Initiator) openRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.RelaySetup) {
+func (running *initiator) openRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.RelaySetup) {
 	if err := entryConnection.SetDeadline(setup.NotAfter); err != nil {
 		running.releaseRelay(raw, nil)
 		return
 	}
-	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{CarrierProfile: running.plan.Rendezvous.CarrierProfile, Endpoint: running.plan.Rendezvous.Endpoint,
-		Certificate: running.plan.Certificate, ExpectedPeerKey: running.plan.Rendezvous.PublicKey, Deadline: setup.NotAfter,
+	next, err := route.OpenNodeLeg(ctx, route.NodeLegRequest{CarrierProfile: running.plan.rendezvous.CarrierProfile, Endpoint: running.plan.rendezvous.Endpoint,
+		Certificate: running.plan.Certificate, ExpectedPeerKey: running.plan.rendezvous.PublicKey, Deadline: setup.NotAfter,
 		Binding: route.LegBinding{NetworkID: setup.NetworkID, Epoch: setup.Epoch, Digest: setup.Digest, AttachmentID: setup.AttachmentID,
 			SenderRole: route.InitiatorRole, PeerRole: route.RendezvousRole, SenderNodeID: running.plan.NodeID,
-			PeerNodeID: running.plan.Rendezvous.NodeID, NotAfter: setup.NotAfter}})
+			PeerNodeID: running.plan.rendezvous.NodeID, NotAfter: setup.NotAfter}})
 	if err != nil {
 		running.releaseRelay(raw, nil)
 		return
@@ -264,7 +264,7 @@ func (running *Initiator) openRelay(ctx context.Context, raw, entryConnection ne
 	go running.relay(raw, entryConnection, next)
 }
 
-func (running *Initiator) openResolutionRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.ResolutionRelaySetup) {
+func (running *initiator) openResolutionRelay(ctx context.Context, raw, entryConnection net.Conn, setup route.ResolutionRelaySetup) {
 	if err := entryConnection.SetDeadline(setup.NotAfter); err != nil || route.WriteResolutionRelayReady(entryConnection, route.ResolutionRelayReady{Setup: setup}) != nil {
 		running.releaseRelay(raw, nil)
 		return
@@ -278,7 +278,7 @@ func (running *Initiator) openResolutionRelay(ctx context.Context, raw, entryCon
 	defer cancel()
 	client, err := reachability.GatewayHTTPClient(setup.GatewayNodePublicKey)
 	if err == nil {
-		response, forwardErr := reachability.ForwardOHTTP(forwardCtx, running.plan.ResolutionGateway.URL, client, envelope.OHTTP)
+		response, forwardErr := reachability.ForwardOHTTP(forwardCtx, running.plan.resolutionGateway.URL, client, envelope.OHTTP)
 		client.CloseIdleConnections()
 		err = forwardErr
 		if err == nil {
@@ -298,19 +298,19 @@ func (running *Initiator) openResolutionRelay(ctx context.Context, raw, entryCon
 	running.releaseRelay(raw, nil)
 }
 
-func (running *Initiator) validateSetup(setup route.RelaySetup) error {
+func (running *initiator) validateSetup(setup route.RelaySetup) error {
 	if setup.NetworkID != running.plan.NetworkID || setup.Digest != running.plan.EpochDigest || setup.Epoch != running.plan.Epoch ||
 		setup.TransitRole != route.InitiatorRole || setup.TransitNodeID != running.plan.NodeID ||
-		setup.NextRole != route.RendezvousRole || setup.NextNodeID != running.plan.Rendezvous.NodeID ||
-		setup.NextNodePublicKey != running.plan.Rendezvous.PublicKey || setup.NotAfter.After(running.plan.NotAfter) ||
+		setup.NextRole != route.RendezvousRole || setup.NextNodeID != running.plan.rendezvous.NodeID ||
+		setup.NextNodePublicKey != running.plan.rendezvous.PublicKey || setup.NotAfter.After(running.plan.NotAfter) ||
 		!running.plan.now().Before(setup.NotAfter) {
 		return errors.New("RelaySetup is not authorized by the current Initiator duty")
 	}
 	return nil
 }
 
-func (running *Initiator) validateResolutionSetup(setup route.ResolutionRelaySetup) error {
-	gateway := running.plan.ResolutionGateway
+func (running *initiator) validateResolutionSetup(setup route.ResolutionRelaySetup) error {
+	gateway := running.plan.resolutionGateway
 	if gateway.NodeID == [32]byte{} || setup.NetworkID != running.plan.NetworkID || setup.Digest != running.plan.EpochDigest ||
 		setup.Epoch != running.plan.Epoch || setup.InitiatorNodeID != running.plan.NodeID ||
 		setup.GatewayNodeID != gateway.NodeID || setup.GatewayNodePublicKey != gateway.PublicKey ||
@@ -320,8 +320,8 @@ func (running *Initiator) validateResolutionSetup(setup route.ResolutionRelaySet
 	return nil
 }
 
-func (running *Initiator) validateCredentialSetup(setup route.CredentialRelaySetup) error {
-	issuer := running.plan.CredentialIssuer
+func (running *initiator) validateCredentialSetup(setup route.CredentialRelaySetup) error {
+	issuer := running.plan.credentialIssuer
 	if issuer.NodeID == [32]byte{} || setup.NetworkID != running.plan.NetworkID || setup.Digest != running.plan.EpochDigest ||
 		setup.Epoch != running.plan.Epoch || setup.InitiatorNodeID != running.plan.NodeID || setup.IssuerNodeID != issuer.NodeID ||
 		setup.IssuerNodePublicKey != issuer.PublicKey || setup.IssuerProfileDigest != issuer.ProfileDigest ||
@@ -331,7 +331,7 @@ func (running *Initiator) validateCredentialSetup(setup route.CredentialRelaySet
 	return nil
 }
 
-func (running *Initiator) reserveRelay(raw net.Conn) bool {
+func (running *initiator) reserveRelay(raw net.Conn) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected {
@@ -347,7 +347,7 @@ func (running *Initiator) reserveRelay(raw net.Conn) bool {
 	}
 }
 
-func (running *Initiator) releaseRelay(raw net.Conn, next route.Carrier) {
+func (running *initiator) releaseRelay(raw net.Conn, next route.Carrier) {
 	running.mu.Lock()
 	delete(running.active, raw)
 	if next != nil {

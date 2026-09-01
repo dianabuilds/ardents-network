@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func (running *Initiator) relay(raw, entry net.Conn, next route.Carrier) {
+func (running *initiator) relay(raw, entry net.Conn, next route.Carrier) {
 	defer running.work.Done()
 	type result struct{ bytes int64 }
 	results := make(chan result, 2)
@@ -35,7 +35,7 @@ func (running *Initiator) relay(raw, entry net.Conn, next route.Carrier) {
 // Drain closes admission and attempts to cancel and join every handshake and
 // relay inside the declared work safety lease. A timeout or context error does
 // not claim that all duty-owned work is gone.
-func (running *Initiator) Drain(ctx context.Context) error {
+func (running *initiator) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Initiator duty is unavailable")
 	}
@@ -66,7 +66,7 @@ func (running *Initiator) Drain(ctx context.Context) error {
 	}
 }
 
-func (running *Initiator) closePreAdmissionLocked() []net.Conn {
+func (running *initiator) closePreAdmissionLocked() []net.Conn {
 	connections := make([]net.Conn, 0, len(running.pre))
 	for connection := range running.pre {
 		connections = append(connections, connection)
@@ -76,4 +76,4 @@ func (running *Initiator) closePreAdmissionLocked() []net.Conn {
 
 // Close is the explicit shutdown form for callers that do not need a separate
 // cancellation deadline.
-func (running *Initiator) Close() error { return running.Drain(context.Background()) }
+func (running *initiator) Close() error { return running.Drain(context.Background()) }

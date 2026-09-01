@@ -10,7 +10,7 @@ import (
 
 // ResponderPeer is the sole State-authorized Rendezvous neighbour for a
 // Publisher-side C-2 attachment. It is neither discovery nor a fallback set.
-type ResponderPeer struct {
+type responderPeer struct {
 	NodeID, PublicKey [32]byte
 	Endpoint          string
 	CarrierProfile    route.CarrierProfile
@@ -26,7 +26,7 @@ type responderConfig struct {
 	NodePublicKey                  [32]byte
 	Epoch                          uint64
 	NotAfter                       time.Time
-	Rendezvous                     ResponderPeer
+	rendezvous                     responderPeer
 	Admit                          route.EndpointTransitBindingAdmitter
 	HandshakeLimit, RelayLimit     uint16
 	RelayByteLimit                 uint64
@@ -34,7 +34,7 @@ type responderConfig struct {
 	DrainTimeout                   time.Duration
 }
 
-type ResponderUsage struct {
+type responderUsage struct {
 	Handshakes, ActiveRelays, Connections uint16
 	CompletedRelays, RefusedBeforeTLS     uint64
 	RelayRefused, RelayedBytes            uint64
@@ -48,8 +48,8 @@ type responderPlan struct {
 func newResponderPlan(input responderConfig) (responderPlan, error) {
 	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} || input.Epoch == 0 || input.NotAfter.IsZero() ||
-		input.Rendezvous.NodeID == [32]byte{} || input.Rendezvous.PublicKey == [32]byte{} || input.Rendezvous.NodeID == input.NodeID ||
-		!literalNodeEndpoint(input.Rendezvous.Endpoint) || !supportedCarrier(input.Rendezvous.CarrierProfile) || input.Admit == nil || input.HandshakeLimit == 0 || input.RelayLimit == 0 ||
+		input.rendezvous.NodeID == [32]byte{} || input.rendezvous.PublicKey == [32]byte{} || input.rendezvous.NodeID == input.NodeID ||
+		!literalNodeEndpoint(input.rendezvous.Endpoint) || !supportedCarrier(input.rendezvous.CarrierProfile) || input.Admit == nil || input.HandshakeLimit == 0 || input.RelayLimit == 0 ||
 		input.RelayByteLimit == 0 || input.RelayByteLimit > uint64(1<<63-1) || !validAdmissionTimeout(input.AdmissionTimeout) || input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute ||
 		!input.NotAfter.Equal(input.NotAfter.UTC().Truncate(time.Second)) || !time.Now().UTC().Before(input.NotAfter) {
 		return responderPlan{}, errors.New("Responder duty configuration is incomplete or outside its implementation bound")

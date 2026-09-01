@@ -69,7 +69,7 @@ func TestRendezvousDrainPreservesActivePairInsideLease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	awaitUsage(t, running, time.Second, func(usage RendezvousUsage) bool { return usage.ActivePairs == 1 })
+	awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool { return usage.ActivePairs == 1 })
 	result := make(chan error, 1)
 	go func() { result <- running.Drain(t.Context()) }()
 	time.Sleep(50 * time.Millisecond)
@@ -222,7 +222,7 @@ func TestRendezvousExpiresUnpairedLeg(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer leg.Close()
-	awaitUsage(t, running, 3*time.Second, func(usage RendezvousUsage) bool {
+	awaitUsage(t, running, 3*time.Second, func(usage rendezvousUsage) bool {
 		return usage.Expired == 1 && usage.WaitingLegs == 0 && usage.Connections == 0
 	})
 }
@@ -248,7 +248,7 @@ func TestRendezvousBoundsEachPairedDirection(t *testing.T) {
 	if got := readExact(t, responder, 4); string(got) != "1234" {
 		t.Fatalf("bounded relay bytes = %q", got)
 	}
-	awaitUsage(t, running, time.Second, func(usage RendezvousUsage) bool {
+	awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool {
 		return usage.ActivePairs == 0 && usage.RelayedBytes == 4
 	})
 }
@@ -266,7 +266,7 @@ func TestRendezvousReservesHandshakeWaitingAndPairSlots(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer second.Close()
-		awaitUsage(t, running, time.Second, func(usage RendezvousUsage) bool {
+		awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool {
 			return usage.Handshakes == 1 && usage.RefusedBeforeTLS == 1
 		})
 	})
@@ -308,7 +308,7 @@ func TestRendezvousReservesHandshakeWaitingAndPairSlots(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer extra.Close()
-		awaitUsage(t, running, time.Second, func(usage RendezvousUsage) bool {
+		awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool {
 			return usage.ActivePairs == 1 && usage.RefusedBeforeTLS == 1
 		})
 	})

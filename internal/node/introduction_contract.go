@@ -27,7 +27,7 @@ type introductionConfig struct {
 
 // IntroductionUsage is aggregate non-secret bounded work. A delivery count is
 // sealed-byte forwarding only; it never asserts Publisher or Service success.
-type IntroductionUsage struct {
+type introductionUsage struct {
 	Handshakes, Slots, Deliveries, Connections uint16
 	Registered, Delivered, Unavailable         uint64
 	RefusedBeforeTLS                           uint64

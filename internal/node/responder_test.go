@@ -19,7 +19,7 @@ func TestResponderDutyUsesOneStateRendezvousPeer(t *testing.T) {
 		return route.EndpointTransitAdmission{}, nil
 	}
 	plan, err := responderDuty(profile, snapshot, admit)
-	if err != nil || plan.Rendezvous.NodeID != snapshot.Candidates[0].NodeID || plan.Rendezvous.CarrierProfile != route.CarrierQUIC || !plan.NotAfter.Equal(snapshot.RecordValidUntil) {
+	if err != nil || plan.rendezvous.NodeID != snapshot.Candidates[0].NodeID || plan.rendezvous.CarrierProfile != route.CarrierQUIC || !plan.NotAfter.Equal(snapshot.RecordValidUntil) {
 		t.Fatalf("Responder State duty = %+v, %v", plan, err)
 	}
 	snapshot.Candidates[1] = dutyCandidate{NodeID: [32]byte{37}, PublicKey: [32]byte{38}, Endpoint: "127.0.0.1:30263", CarrierProfile: string(route.CarrierTCP), Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}

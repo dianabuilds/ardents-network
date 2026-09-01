@@ -11,7 +11,7 @@ import (
 
 // InitiatorPeer is one exact State-authorized adjacent Node fact. It is neither
 // discovery input nor a fallback list.
-type InitiatorPeer struct {
+type initiatorPeer struct {
 	NodeID, PublicKey [32]byte
 	Endpoint          string
 	CarrierProfile    route.CarrierProfile
@@ -20,7 +20,7 @@ type InitiatorPeer struct {
 // ResolutionGateway is the separate State-authorized OHTTP Gateway fact for
 // the finite private lookup operation. Its HTTPS URL is never supplied by the
 // Endpoint setup; the Initiator alone obtains it from State.
-type ResolutionGateway struct {
+type resolutionGateway struct {
 	NodeID, PublicKey [32]byte
 	URL               string
 }
@@ -28,7 +28,7 @@ type ResolutionGateway struct {
 // CredentialIssuer is the separate State-selected OHTTP issuer fact for one
 // membership-level Transit Grant exchange. Its URL is read only by the
 // Initiator from authenticated State, never by Endpoint setup.
-type CredentialIssuer struct {
+type credentialIssuer struct {
 	NodeID, PublicKey, ProfileDigest [32]byte
 	URL                              string
 }
@@ -42,9 +42,9 @@ type initiatorConfig struct {
 	NodePublicKey                  [32]byte
 	Epoch                          uint64
 	NotAfter                       time.Time
-	Rendezvous                     InitiatorPeer
-	ResolutionGateway              ResolutionGateway
-	CredentialIssuer               CredentialIssuer
+	rendezvous                     initiatorPeer
+	resolutionGateway              resolutionGateway
+	credentialIssuer               credentialIssuer
 	Admit                          route.EntryBindingAdmitter
 	HandshakeLimit, RelayLimit     uint16
 	RelayByteLimit                 uint64
@@ -54,7 +54,7 @@ type initiatorConfig struct {
 
 // InitiatorUsage contains aggregate local reservations and terminal transit
 // counters. It exposes neither targets nor peer addresses.
-type InitiatorUsage struct {
+type initiatorUsage struct {
 	Handshakes, ActiveRelays, Connections uint16
 	CompletedRelays, RefusedBeforeTLS     uint64
 	SetupRefused, RelayedBytes            uint64
@@ -68,10 +68,10 @@ type initiatorPlan struct {
 func newInitiatorPlan(input initiatorConfig) (initiatorPlan, error) {
 	if !literalNodeEndpoint(input.ListenAddress) || input.NetworkID == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.NodeID == [32]byte{} || input.NodePublicKey == [32]byte{} || input.Epoch == 0 || input.NotAfter.IsZero() ||
-		input.Rendezvous.NodeID == [32]byte{} || input.Rendezvous.PublicKey == [32]byte{} ||
-		input.Rendezvous.NodeID == input.NodeID || !literalNodeEndpoint(input.Rendezvous.Endpoint) || !supportedCarrier(input.Rendezvous.CarrierProfile) ||
-		!validOptionalInitiatorPeer(input.ResolutionGateway, input.NodeID) ||
-		!validOptionalCredentialIssuer(input.CredentialIssuer, input.NodeID) || input.Admit == nil ||
+		input.rendezvous.NodeID == [32]byte{} || input.rendezvous.PublicKey == [32]byte{} ||
+		input.rendezvous.NodeID == input.NodeID || !literalNodeEndpoint(input.rendezvous.Endpoint) || !supportedCarrier(input.rendezvous.CarrierProfile) ||
+		!validOptionalInitiatorPeer(input.resolutionGateway, input.NodeID) ||
+		!validOptionalCredentialIssuer(input.credentialIssuer, input.NodeID) || input.Admit == nil ||
 		input.HandshakeLimit == 0 || input.RelayLimit == 0 || input.RelayByteLimit == 0 || input.RelayByteLimit > uint64(1<<63-1) ||
 		!validAdmissionTimeout(input.AdmissionTimeout) || input.DrainTimeout <= 0 || input.DrainTimeout > time.Minute {
 		return initiatorPlan{}, errors.New("Initiator duty configuration is incomplete or outside its implementation bound")
@@ -85,7 +85,7 @@ func newInitiatorPlan(input initiatorConfig) (initiatorPlan, error) {
 	return initiatorPlan{initiatorConfig: input, now: func() time.Time { return time.Now().UTC() }}, nil
 }
 
-func validOptionalCredentialIssuer(issuer CredentialIssuer, local [32]byte) bool {
+func validOptionalCredentialIssuer(issuer credentialIssuer, local [32]byte) bool {
 	empty := issuer.NodeID == [32]byte{} && issuer.PublicKey == [32]byte{} && issuer.ProfileDigest == [32]byte{} && issuer.URL == ""
 	if empty {
 		return true
@@ -95,7 +95,7 @@ func validOptionalCredentialIssuer(issuer CredentialIssuer, local [32]byte) bool
 		issuer.NodeID != [32]byte{} && issuer.PublicKey != [32]byte{} && issuer.ProfileDigest != [32]byte{} && issuer.NodeID != local
 }
 
-func validOptionalInitiatorPeer(peer ResolutionGateway, local [32]byte) bool {
+func validOptionalInitiatorPeer(peer resolutionGateway, local [32]byte) bool {
 	empty := peer.NodeID == [32]byte{} && peer.PublicKey == [32]byte{} && peer.URL == ""
 	if empty {
 		return true

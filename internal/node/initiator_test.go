@@ -38,7 +38,7 @@ func TestInitiatorRelaysOnlyAfterExactSetupAndReady(t *testing.T) {
 	initiator, err := startInitiator(initiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4},
 		NodePublicKey: material.initiatorPublic, Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
-		Rendezvous: InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
+		rendezvous: initiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
 		Admit:      initiatorAdmission(presentation, attachment, rendezvousConfig), HandshakeLimit: 2, RelayLimit: 1,
 		RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
@@ -109,9 +109,9 @@ func TestInitiatorDutyUsesOnlyStateAssignedRendezvous(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plan.Rendezvous.NodeID != snapshot.Candidates[0].NodeID || plan.Rendezvous.PublicKey != snapshot.Candidates[0].PublicKey ||
-		plan.Rendezvous.Endpoint != snapshot.Candidates[0].Endpoint || plan.Rendezvous.CarrierProfile != route.CarrierQUIC {
-		t.Fatalf("Initiator State duty peer = %+v", plan.Rendezvous)
+	if plan.rendezvous.NodeID != snapshot.Candidates[0].NodeID || plan.rendezvous.PublicKey != snapshot.Candidates[0].PublicKey ||
+		plan.rendezvous.Endpoint != snapshot.Candidates[0].Endpoint || plan.rendezvous.CarrierProfile != route.CarrierQUIC {
+		t.Fatalf("Initiator State duty peer = %+v", plan.rendezvous)
 	}
 	snapshot.Candidates[1] = dutyCandidate{NodeID: [32]byte{37}, PublicKey: [32]byte{38}, Endpoint: "127.0.0.1:30236",
 		CarrierProfile: string(route.CarrierTCP), Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}
@@ -159,8 +159,8 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 	initiator, err := startInitiator(initiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4},
 		NodePublicKey: material.initiatorPublic, Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
-		Rendezvous:        InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
-		ResolutionGateway: ResolutionGateway{NodeID: [32]byte{48}, PublicKey: gatewayPublic, URL: server.URL},
+		rendezvous:        initiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
+		resolutionGateway: resolutionGateway{NodeID: [32]byte{48}, PublicKey: gatewayPublic, URL: server.URL},
 		Admit:             initiatorAdmission(presentation, attachment, rendezvousConfig), HandshakeLimit: 2, RelayLimit: 1,
 		RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
@@ -269,8 +269,8 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	initiator, err := startInitiator(initiatorConfig{ListenAddress: availableLoopbackEndpoint(t), Certificate: material.initiator,
 		NetworkID: rendezvousConfig.NetworkID, EpochDigest: rendezvousConfig.EpochDigest, NodeID: [32]byte{4}, NodePublicKey: material.initiatorPublic,
 		Epoch: rendezvousConfig.Epoch, NotAfter: rendezvousConfig.NotAfter,
-		Rendezvous:       InitiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
-		CredentialIssuer: CredentialIssuer{NodeID: [32]byte{84}, PublicKey: issuerPublic, ProfileDigest: sha256.Sum256(profile), URL: server.URL},
+		rendezvous:       initiatorPeer{NodeID: rendezvousConfig.NodeID, PublicKey: material.serverPublic, Endpoint: rendezvousConfig.ListenAddress, CarrierProfile: route.CarrierTCP},
+		credentialIssuer: credentialIssuer{NodeID: [32]byte{84}, PublicKey: issuerPublic, ProfileDigest: sha256.Sum256(profile), URL: server.URL},
 		Admit:            initiatorAdmission(presentation, carrierAttachment, rendezvousConfig), HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second})
 	if err != nil {
 		t.Fatal(err)

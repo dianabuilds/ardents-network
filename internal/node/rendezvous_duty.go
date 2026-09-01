@@ -16,7 +16,7 @@ func rendezvousDuty(profile RendezvousProfile, snapshot dutyFacts) (rendezvousCo
 	if snapshot.RecordValidUntil.Before(notAfter) {
 		notAfter = snapshot.RecordValidUntil
 	}
-	peers := make([]RendezvousPeer, 0, 2)
+	peers := make([]rendezvousPeer, 0, 2)
 	for index := uint8(0); index < snapshot.CandidateCount; index++ {
 		candidate := snapshot.Candidates[index]
 		if candidate.NodeID == snapshot.NodeID || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} {
@@ -34,7 +34,7 @@ func rendezvousDuty(profile RendezvousProfile, snapshot dutyFacts) (rendezvousCo
 		if candidate.ValidFrom.After(snapshot.EpochValidFrom) || candidate.ValidUntil.Before(notAfter) {
 			return rendezvousConfig{}, errors.New("rendezvous peer is not valid for the complete duty")
 		}
-		peers = append(peers, RendezvousPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Role: role})
+		peers = append(peers, rendezvousPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Role: role})
 	}
 	if len(peers) != 2 || peers[0].Role == peers[1].Role {
 		return rendezvousConfig{}, errors.New("state does not supply one Initiator and one Responder peer")

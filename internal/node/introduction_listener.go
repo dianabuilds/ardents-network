@@ -12,7 +12,7 @@ import (
 
 // Introduction owns one live-slot listener. It forwards exact sealed bytes;
 // it cannot decrypt them, select a peer, or create a Publisher-side leg.
-type Introduction struct {
+type introduction struct {
 	plan       introductionPlan
 	listener   net.Listener
 	handshakes chan struct{}
@@ -25,7 +25,7 @@ type Introduction struct {
 	pre       map[net.Conn]struct{}
 	slots     map[[32]byte]*introductionLiveSlot
 	active    map[net.Conn]struct{}
-	usage     IntroductionUsage
+	usage     introductionUsage
 	stopOnce  sync.Once
 	cleanup   terminalCleanup
 	work      sync.WaitGroup
@@ -41,7 +41,7 @@ type introductionLiveSlot struct {
 
 // startIntroduction binds one State-authorized Introduction endpoint. It does
 // not discover Publishers, retain offline messages, or expose a Service port.
-func startIntroduction(input introductionConfig) (*Introduction, error) {
+func startIntroduction(input introductionConfig) (*introduction, error) {
 	plan, err := newIntroductionPlan(input)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func startIntroduction(input introductionConfig) (*Introduction, error) {
 	if err != nil {
 		return nil, err
 	}
-	running := &Introduction{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
+	running := &introduction{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
 		slotsCap: make(chan struct{}, plan.SlotLimit), deliveries: make(chan struct{}, plan.DeliveryLimit),
 		pre: make(map[net.Conn]struct{}), slots: make(map[[32]byte]*introductionLiveSlot), active: make(map[net.Conn]struct{}), terminal: make(chan error, 1)}
 	running.work.Add(1)
@@ -58,7 +58,7 @@ func startIntroduction(input introductionConfig) (*Introduction, error) {
 	return running, nil
 }
 
-func (running *Introduction) Done() <-chan error {
+func (running *introduction) Done() <-chan error {
 	if running == nil {
 		return nil
 	}
@@ -67,7 +67,7 @@ func (running *Introduction) Done() <-chan error {
 
 // Protect refuses only new handshakes and closes pre-control work. Registered
 // slots remain alive until their own deadline or deliberate drain.
-func (running *Introduction) Protect(value bool) {
+func (running *introduction) Protect(value bool) {
 	if running == nil {
 		return
 	}
@@ -89,7 +89,7 @@ func (running *Introduction) Protect(value bool) {
 	}
 }
 
-func (running *Introduction) Stop() {
+func (running *introduction) Stop() {
 	if running == nil {
 		return
 	}
@@ -101,9 +101,9 @@ func (running *Introduction) Stop() {
 	})
 }
 
-func (running *Introduction) Usage() IntroductionUsage {
+func (running *introduction) Usage() introductionUsage {
 	if running == nil {
-		return IntroductionUsage{}
+		return introductionUsage{}
 	}
 	running.mu.Lock()
 	defer running.mu.Unlock()
@@ -113,7 +113,7 @@ func (running *Introduction) Usage() IntroductionUsage {
 	return result
 }
 
-func (running *Introduction) accept() {
+func (running *introduction) accept() {
 	defer running.work.Done()
 	for {
 		raw, err := running.listener.Accept()
@@ -137,7 +137,7 @@ func (running *Introduction) accept() {
 	}
 }
 
-func (running *Introduction) reserveHandshake(raw net.Conn) bool {
+func (running *introduction) reserveHandshake(raw net.Conn) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected {
@@ -154,7 +154,7 @@ func (running *Introduction) reserveHandshake(raw net.Conn) bool {
 	}
 }
 
-func (running *Introduction) handle(raw net.Conn) {
+func (running *introduction) handle(raw net.Conn) {
 	defer running.work.Done()
 	handshakeHeld, owned := true, true
 	defer func() {
@@ -205,7 +205,7 @@ func (running *Introduction) handle(raw net.Conn) {
 	}
 }
 
-func (running *Introduction) register(raw, connection net.Conn, binding route.EndpointTransitBinding, registration route.IntroductionSlotRegistration) bool {
+func (running *introduction) register(raw, connection net.Conn, binding route.EndpointTransitBinding, registration route.IntroductionSlotRegistration) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected || registration.NotAfter.After(running.plan.NotAfter) || !running.plan.now().Before(registration.NotAfter) ||
@@ -224,7 +224,7 @@ func (running *Introduction) register(raw, connection net.Conn, binding route.En
 	}
 }
 
-func (running *Introduction) submit(connection net.Conn, attachment [32]byte, sealed route.SealedIntroduction, raw []byte) {
+func (running *introduction) submit(connection net.Conn, attachment [32]byte, sealed route.SealedIntroduction, raw []byte) {
 	available := false
 	running.mu.Lock()
 	if !running.draining && !running.protected && sealed.NetworkID == running.plan.NetworkID && sealed.Digest == running.plan.EpochDigest && sealed.Epoch == running.plan.Epoch &&
@@ -251,7 +251,7 @@ func (running *Introduction) submit(connection net.Conn, attachment [32]byte, se
 	_ = route.WriteIntroductionDeliveryResult(connection, route.IntroductionDeliveryResult{AttachmentID: attachment, Outcome: outcome})
 }
 
-func (running *Introduction) forward(slot *introductionLiveSlot, reachability [32]byte, raw []byte) {
+func (running *introduction) forward(slot *introductionLiveSlot, reachability [32]byte, raw []byte) {
 	defer running.work.Done()
 	_ = slot.connection.SetWriteDeadline(slot.registration.NotAfter)
 	err := writeRouteBytes(slot.connection, raw)
@@ -267,7 +267,7 @@ func (running *Introduction) forward(slot *introductionLiveSlot, reachability [3
 	running.releaseSlot(reachability)
 }
 
-func (running *Introduction) watchSlot(reachability [32]byte, raw, connection net.Conn) {
+func (running *introduction) watchSlot(reachability [32]byte, raw, connection net.Conn) {
 	defer running.work.Done()
 	buffer := make([]byte, 1)
 	_, _ = connection.Read(buffer)
@@ -275,7 +275,7 @@ func (running *Introduction) watchSlot(reachability [32]byte, raw, connection ne
 	running.releaseSlot(reachability)
 }
 
-func (running *Introduction) releaseSlot(reachability [32]byte) {
+func (running *introduction) releaseSlot(reachability [32]byte) {
 	running.mu.Lock()
 	slot := running.slots[reachability]
 	if slot != nil {
@@ -303,7 +303,7 @@ func writeRouteBytes(writer net.Conn, value []byte) error {
 // Drain closes admission and every live slot, then attempts to join TLS/control
 // work inside the duty's declared drain bound. A timeout or context error does
 // not claim that all duty-owned work is gone.
-func (running *Introduction) Drain(ctx context.Context) error {
+func (running *introduction) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Introduction duty is unavailable")
 	}
@@ -334,4 +334,4 @@ func (running *Introduction) Drain(ctx context.Context) error {
 	}
 }
 
-func (running *Introduction) Close() error { return running.Drain(context.Background()) }
+func (running *introduction) Close() error { return running.Drain(context.Background()) }

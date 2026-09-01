@@ -17,22 +17,22 @@ func TestRoleDrainsReportListenerCleanupFailures(t *testing.T) {
 		drain func() error
 	}{
 		{name: "Initiator", drain: func() error {
-			running := &Initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
+			running := &initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
 				pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{})}
 			return running.Drain(context.Background())
 		}},
 		{name: "Introduction", drain: func() error {
-			running := &Introduction{plan: introductionPlan{introductionConfig: introductionConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
+			running := &introduction{plan: introductionPlan{introductionConfig: introductionConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
 				pre: make(map[net.Conn]struct{}), active: make(map[net.Conn]struct{})}
 			return running.Drain(context.Background())
 		}},
 		{name: "Responder", drain: func() error {
-			running := &Responder{plan: responderPlan{responderConfig: responderConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
+			running := &responder{plan: responderPlan{responderConfig: responderConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
 				pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{})}
 			return running.Drain(context.Background())
 		}},
 		{name: "Rendezvous", drain: func() error {
-			running := &Rendezvous{plan: rendezvousPlan{rendezvousConfig: rendezvousConfig{DrainTimeout: time.Second}}, listener: terminalFailingCarrierListener{err: injected},
+			running := &rendezvous{plan: rendezvousPlan{rendezvousConfig: rendezvousConfig{DrainTimeout: time.Second}}, listener: terminalFailingCarrierListener{err: injected},
 				pre: make(map[route.PendingCarrier]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[route.Carrier]struct{}),
 				waitingCap: make(chan struct{}, 1)}
 			return running.Drain(context.Background())
@@ -54,7 +54,7 @@ func TestRoleDrainsReportListenerCleanupFailures(t *testing.T) {
 
 func TestTerminalCleanupPreservesFailureJoinedWithClosed(t *testing.T) {
 	injected := errors.New("injected carrier cleanup failure")
-	running := &Initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{},
+	running := &initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{},
 		pre: make(map[net.Conn]struct{}), active: map[route.Carrier]struct{}{terminalFailingCarrier{err: errors.Join(net.ErrClosed, injected)}: {}}}
 	if err := running.Drain(context.Background()); !errors.Is(err, injected) {
 		t.Fatalf("Drain error = %v, want joined carrier cleanup failure", err)
@@ -81,7 +81,7 @@ func TestWorkerCleanupFailuresSurviveActiveRemoval(t *testing.T) {
 		{name: "Initiator", run: func() error {
 			raw := &terminalFailingNetConn{err: injected}
 			next := terminalFailingCarrier{err: injected}
-			running := &Initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second, RelayByteLimit: 1}}, listener: terminalFailingListener{},
+			running := &initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second, RelayByteLimit: 1}}, listener: terminalFailingListener{},
 				relays: make(chan struct{}, 1), pre: make(map[net.Conn]struct{}), active: map[route.Carrier]struct{}{raw: {}, next: {}}}
 			running.relays <- struct{}{}
 			running.work.Add(1)
@@ -92,7 +92,7 @@ func TestWorkerCleanupFailuresSurviveActiveRemoval(t *testing.T) {
 			connection := &terminalFailingNetConn{err: injected}
 			reachability := [32]byte{1}
 			slot := &introductionLiveSlot{registration: route.IntroductionSlotRegistration{NotAfter: time.Now().Add(time.Hour)}, raw: connection, connection: connection}
-			running := &Introduction{plan: introductionPlan{introductionConfig: introductionConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{},
+			running := &introduction{plan: introductionPlan{introductionConfig: introductionConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{},
 				slotsCap: make(chan struct{}, 1), deliveries: make(chan struct{}, 1), pre: make(map[net.Conn]struct{}),
 				slots: map[[32]byte]*introductionLiveSlot{reachability: slot}, active: map[net.Conn]struct{}{connection: {}}}
 			running.slotsCap <- struct{}{}
@@ -104,7 +104,7 @@ func TestWorkerCleanupFailuresSurviveActiveRemoval(t *testing.T) {
 		{name: "Responder", run: func() error {
 			raw := &terminalFailingNetConn{err: injected}
 			next := terminalFailingCarrier{err: injected}
-			running := &Responder{plan: responderPlan{responderConfig: responderConfig{DrainTimeout: time.Second, RelayByteLimit: 1}}, listener: terminalFailingListener{},
+			running := &responder{plan: responderPlan{responderConfig: responderConfig{DrainTimeout: time.Second, RelayByteLimit: 1}}, listener: terminalFailingListener{},
 				relays: make(chan struct{}, 1), pre: make(map[net.Conn]struct{}), active: map[route.Carrier]struct{}{raw: {}, next: {}}}
 			running.relays <- struct{}{}
 			running.work.Add(1)
@@ -114,7 +114,7 @@ func TestWorkerCleanupFailuresSurviveActiveRemoval(t *testing.T) {
 		{name: "Rendezvous", run: func() error {
 			first := terminalFailingCarrier{err: injected}
 			second := terminalFailingCarrier{err: injected}
-			running := &Rendezvous{plan: rendezvousPlan{rendezvousConfig: rendezvousConfig{DrainTimeout: time.Second, PairByteLimit: 1}}, listener: terminalFailingCarrierListener{},
+			running := &rendezvous{plan: rendezvousPlan{rendezvousConfig: rendezvousConfig{DrainTimeout: time.Second, PairByteLimit: 1}}, listener: terminalFailingCarrierListener{},
 				pairs: make(chan struct{}, 1), pre: make(map[route.PendingCarrier]struct{}), waiting: make(map[[32]byte]*rendezvousLeg),
 				active: map[route.Carrier]struct{}{first: {}, second: {}}}
 			running.pairs <- struct{}{}

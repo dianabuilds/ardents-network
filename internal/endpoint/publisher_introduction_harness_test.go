@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -15,6 +16,7 @@ import (
 // proves the participant boundary without exposing a Node role starter.
 type introductionTestHarness struct {
 	listener net.Listener
+	accepted chan struct{}
 	done     chan struct{}
 
 	mu         sync.Mutex
@@ -29,7 +31,7 @@ func startIntroductionTestHarness(address string, certificate tls.Certificate, n
 	if err != nil {
 		return nil, err
 	}
-	harness := &introductionTestHarness{listener: listener, done: make(chan struct{})}
+	harness := &introductionTestHarness{listener: listener, accepted: make(chan struct{}), done: make(chan struct{})}
 	go harness.serve(certificate, network, digest, nodeID, epoch, deadline, admit)
 	return harness, nil
 }
@@ -42,6 +44,10 @@ func (harness *introductionTestHarness) serve(certificate tls.Certificate, netwo
 	if err != nil {
 		return
 	}
+	harness.mu.Lock()
+	harness.connection = raw
+	harness.mu.Unlock()
+	close(harness.accepted)
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	accepted, err := route.AcceptEndpointTransitAttachment(ctx, raw, route.EndpointTransitAttachmentAcceptance{
 		NetworkID: network, Digest: digest, TransitNodeID: nodeID, Epoch: epoch, TransitRole: route.IntroductionRole,
@@ -71,6 +77,34 @@ func (harness *introductionTestHarness) serve(certificate tls.Certificate, netwo
 	buffer := make([]byte, 1)
 	_, _ = accepted.Connection.Read(buffer)
 	_ = accepted.Connection.Close()
+}
+
+func TestIntroductionTestHarnessCloseCancelsAcceptedHandshake(t *testing.T) {
+	certificate, _ := testCertificate(t, 91, "closing-introduction-harness")
+	deadline := time.Now().UTC().Add(time.Second)
+	harness, err := startIntroductionTestHarness(availableAddress(t), certificate, fixtureID(91), fixtureID(92),
+		fixtureID(93), 1, deadline, introductionAdmitForEpoch(fixtureID(91), fixtureID(92), fixtureID(93), deadline, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := net.Dial("tcp", harness.listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	<-harness.accepted
+	closed := make(chan error, 1)
+	go func() { closed <- harness.Close() }()
+	select {
+	case closeErr := <-closed:
+		if closeErr != nil {
+			t.Fatal(closeErr)
+		}
+	case <-time.After(100 * time.Millisecond):
+		_ = raw.Close()
+		<-closed
+		t.Fatal("Introduction harness cleanup did not cancel an accepted handshake")
+	}
 }
 
 func (harness *introductionTestHarness) Close() error {

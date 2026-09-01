@@ -14,7 +14,7 @@ import (
 // Responder owns the Publisher-side C-2 listener and exactly one State-pinned
 // Rendezvous leg per accepted attachment. It never reads an Introduction
 // plaintext or accepts a client-selected next hop.
-type Responder struct {
+type responder struct {
 	plan       responderPlan
 	listener   net.Listener
 	handshakes chan struct{}
@@ -25,14 +25,14 @@ type Responder struct {
 	protected bool
 	pre       map[net.Conn]struct{}
 	active    map[route.Carrier]struct{}
-	usage     ResponderUsage
+	usage     responderUsage
 	stopOnce  sync.Once
 	cleanup   terminalCleanup
 	work      sync.WaitGroup
 	terminal  chan error
 }
 
-func startResponder(input responderConfig) (*Responder, error) {
+func startResponder(input responderConfig) (*responder, error) {
 	plan, err := newResponderPlan(input)
 	if err != nil {
 		return nil, err
@@ -41,21 +41,21 @@ func startResponder(input responderConfig) (*Responder, error) {
 	if err != nil {
 		return nil, err
 	}
-	running := &Responder{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit), relays: make(chan struct{}, plan.RelayLimit),
+	running := &responder{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit), relays: make(chan struct{}, plan.RelayLimit),
 		pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{}), terminal: make(chan error, 1)}
 	running.work.Add(1)
 	go running.accept()
 	return running, nil
 }
 
-func (running *Responder) Done() <-chan error {
+func (running *responder) Done() <-chan error {
 	if running == nil {
 		return nil
 	}
 	return running.terminal
 }
 
-func (running *Responder) Protect(value bool) {
+func (running *responder) Protect(value bool) {
 	if running == nil {
 		return
 	}
@@ -77,7 +77,7 @@ func (running *Responder) Protect(value bool) {
 	}
 }
 
-func (running *Responder) Stop() {
+func (running *responder) Stop() {
 	if running == nil {
 		return
 	}
@@ -89,9 +89,9 @@ func (running *Responder) Stop() {
 	})
 }
 
-func (running *Responder) Usage() ResponderUsage {
+func (running *responder) Usage() responderUsage {
 	if running == nil {
-		return ResponderUsage{}
+		return responderUsage{}
 	}
 	running.mu.Lock()
 	defer running.mu.Unlock()
@@ -101,7 +101,7 @@ func (running *Responder) Usage() ResponderUsage {
 	return result
 }
 
-func (running *Responder) accept() {
+func (running *responder) accept() {
 	defer running.work.Done()
 	for {
 		raw, err := running.listener.Accept()
@@ -125,7 +125,7 @@ func (running *Responder) accept() {
 	}
 }
 
-func (running *Responder) reserveHandshake(raw net.Conn) bool {
+func (running *responder) reserveHandshake(raw net.Conn) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected || len(running.relays) == cap(running.relays) {
@@ -142,7 +142,7 @@ func (running *Responder) reserveHandshake(raw net.Conn) bool {
 	}
 }
 
-func (running *Responder) handle(raw net.Conn) {
+func (running *responder) handle(raw net.Conn) {
 	defer running.work.Done()
 	handshakeHeld, owned := true, true
 	defer func() {
@@ -171,10 +171,10 @@ func (running *Responder) handle(raw net.Conn) {
 	<-running.handshakes
 	handshakeHeld = false
 	owned = false
-	next, err := route.OpenNodeLeg(workCtx, route.NodeLegRequest{CarrierProfile: running.plan.Rendezvous.CarrierProfile, Endpoint: running.plan.Rendezvous.Endpoint, Certificate: running.plan.Certificate,
-		ExpectedPeerKey: running.plan.Rendezvous.PublicKey, Deadline: accepted.Binding.NotAfter, Binding: route.LegBinding{NetworkID: accepted.Binding.NetworkID,
+	next, err := route.OpenNodeLeg(workCtx, route.NodeLegRequest{CarrierProfile: running.plan.rendezvous.CarrierProfile, Endpoint: running.plan.rendezvous.Endpoint, Certificate: running.plan.Certificate,
+		ExpectedPeerKey: running.plan.rendezvous.PublicKey, Deadline: accepted.Binding.NotAfter, Binding: route.LegBinding{NetworkID: accepted.Binding.NetworkID,
 			Epoch: accepted.Binding.Epoch, Digest: accepted.Binding.Digest, AttachmentID: accepted.Binding.AttachmentID, SenderRole: route.ResponderRole,
-			PeerRole: route.RendezvousRole, SenderNodeID: running.plan.NodeID, PeerNodeID: running.plan.Rendezvous.NodeID, NotAfter: accepted.Binding.NotAfter}})
+			PeerRole: route.RendezvousRole, SenderNodeID: running.plan.NodeID, PeerNodeID: running.plan.rendezvous.NodeID, NotAfter: accepted.Binding.NotAfter}})
 	if err != nil {
 		running.releaseRelay(raw, nil)
 		return
@@ -191,7 +191,7 @@ func (running *Responder) handle(raw net.Conn) {
 	go running.relay(raw, accepted.Connection, next)
 }
 
-func (running *Responder) reserveRelay(raw net.Conn) bool {
+func (running *responder) reserveRelay(raw net.Conn) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected {
@@ -207,13 +207,13 @@ func (running *Responder) reserveRelay(raw net.Conn) bool {
 	}
 }
 
-func (running *Responder) refuseRelay() {
+func (running *responder) refuseRelay() {
 	running.mu.Lock()
 	running.usage.RelayRefused++
 	running.mu.Unlock()
 }
 
-func (running *Responder) relay(raw, endpoint net.Conn, next route.Carrier) {
+func (running *responder) relay(raw, endpoint net.Conn, next route.Carrier) {
 	defer running.work.Done()
 	type lane struct{ bytes int64 }
 	results := make(chan lane, 2)
@@ -235,7 +235,7 @@ func (running *Responder) relay(raw, endpoint net.Conn, next route.Carrier) {
 	running.releaseRelay(raw, next)
 }
 
-func (running *Responder) releaseRelay(raw net.Conn, next route.Carrier) {
+func (running *responder) releaseRelay(raw net.Conn, next route.Carrier) {
 	running.mu.Lock()
 	delete(running.active, raw)
 	if next != nil {
@@ -249,7 +249,7 @@ func (running *Responder) releaseRelay(raw net.Conn, next route.Carrier) {
 	}
 }
 
-func (running *Responder) Drain(ctx context.Context) error {
+func (running *responder) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Responder duty is unavailable")
 	}
@@ -280,4 +280,4 @@ func (running *Responder) Drain(ctx context.Context) error {
 	}
 }
 
-func (running *Responder) Close() error { return running.Drain(context.Background()) }
+func (running *responder) Close() error { return running.Drain(context.Background()) }

@@ -72,6 +72,9 @@ func TestLifecycleBypassPrimitivesAreNotExported(t *testing.T) {
 	for _, name := range []string{
 		"StartInitiator", "StartRendezvous", "StartIntroduction", "StartResponder",
 		"InitiatorConfig", "RendezvousConfig", "IntroductionConfig", "ResponderConfig",
+		"Initiator", "Rendezvous", "Introduction", "Responder",
+		"InitiatorUsage", "RendezvousUsage", "IntroductionUsage", "ResponderUsage",
+		"InitiatorPeer", "RendezvousPeer", "ResponderPeer", "CredentialIssuer", "ResolutionGateway",
 	} {
 		if nodeExports[name] {
 			t.Errorf("internal/node still exports lifecycle-bypass primitive %s", name)

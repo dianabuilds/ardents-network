@@ -51,7 +51,7 @@ func TestIntroductionForwardsOneSealedRecordThenReportsUnavailable(t *testing.T)
 	if result := submitIntroduction(t, running.listener.Addr().String(), public, network, digest, nodeID, deadline, second, userAuthorization, sealed); result.Outcome != route.IntroductionUnavailable {
 		t.Fatalf("spent JoinHandle result = %+v", result)
 	}
-	awaitIntroductionUsage(t, running, time.Second, func(usage IntroductionUsage) bool {
+	awaitIntroductionUsage(t, running, time.Second, func(usage introductionUsage) bool {
 		return usage.Slots == 0 && usage.Delivered == 1 && usage.Unavailable >= 1
 	})
 }
@@ -153,7 +153,7 @@ func TestIntroductionDutyUsesOnlyItsStateAssignment(t *testing.T) {
 	}
 }
 
-func awaitIntroductionUsage(t *testing.T, running *Introduction, timeout time.Duration, predicate func(IntroductionUsage) bool) {
+func awaitIntroductionUsage(t *testing.T, running *introduction, timeout time.Duration, predicate func(introductionUsage) bool) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {

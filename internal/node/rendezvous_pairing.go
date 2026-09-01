@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func (running *Rendezvous) register(leg *rendezvousLeg) bool {
+func (running *rendezvous) register(leg *rendezvousLeg) bool {
 	running.mu.Lock()
 	if running.draining {
 		running.mu.Unlock()
@@ -60,7 +60,7 @@ func (running *Rendezvous) register(leg *rendezvousLeg) bool {
 	return true
 }
 
-func (running *Rendezvous) expire(leg *rendezvousLeg) {
+func (running *rendezvous) expire(leg *rendezvousLeg) {
 	defer running.work.Done()
 	timer := time.NewTimer(leg.binding.NotAfter.Sub(running.plan.now()))
 	defer timer.Stop()
@@ -82,7 +82,7 @@ func (running *Rendezvous) expire(leg *rendezvousLeg) {
 	running.cleanup.record(leg.connection.Close())
 }
 
-func (running *Rendezvous) pump(first, second *rendezvousLeg) {
+func (running *rendezvous) pump(first, second *rendezvousLeg) {
 	defer running.work.Done()
 	type result struct{ bytes int64 }
 	results := make(chan result, 2)
@@ -110,7 +110,7 @@ func (running *Rendezvous) pump(first, second *rendezvousLeg) {
 // Drain closes admission and pre-admission work first, lets accepted pairs
 // finish inside the declared duty bound, then closes any pair still active at
 // that boundary before joining every owned worker.
-func (running *Rendezvous) Drain(ctx context.Context) error {
+func (running *rendezvous) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Rendezvous duty is unavailable")
 	}
@@ -148,7 +148,7 @@ func (running *Rendezvous) Drain(ctx context.Context) error {
 	}
 }
 
-func (running *Rendezvous) closeActivePairs() {
+func (running *rendezvous) closeActivePairs() {
 	running.mu.Lock()
 	active := make([]io.Closer, 0, len(running.active))
 	for connection := range running.active {
@@ -160,7 +160,7 @@ func (running *Rendezvous) closeActivePairs() {
 	}
 }
 
-func (running *Rendezvous) closePreAdmissionLocked() []io.Closer {
+func (running *rendezvous) closePreAdmissionLocked() []io.Closer {
 	connections := make([]io.Closer, 0, len(running.pre)+len(running.waiting))
 	for connection := range running.pre {
 		connections = append(connections, connection)
@@ -178,4 +178,4 @@ func (leg *rendezvousLeg) stopDone() { leg.doneOnce.Do(func() { close(leg.done) 
 
 // Close is the explicit shutdown form for callers that do not need a separate
 // cancellation deadline.
-func (running *Rendezvous) Close() error { return running.Drain(context.Background()) }
+func (running *rendezvous) Close() error { return running.Drain(context.Background()) }

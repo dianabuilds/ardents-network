@@ -14,7 +14,7 @@ import (
 
 // RendezvousPeer is one State-authorized adjacent Node identity for one side
 // of a Rendezvous attachment. It is not a discovery record or a fallback.
-type RendezvousPeer struct {
+type rendezvousPeer struct {
 	NodeID, PublicKey [32]byte
 	Role              byte
 }
@@ -30,7 +30,7 @@ type rendezvousConfig struct {
 	NodePublicKey                           [32]byte
 	Epoch                                   uint64
 	NotAfter                                time.Time
-	Peers                                   []RendezvousPeer
+	Peers                                   []rendezvousPeer
 	HandshakeLimit, WaitingLimit, PairLimit uint16
 	PairByteLimit                           uint64
 	AdmissionTimeout                        time.Duration
@@ -40,7 +40,7 @@ type rendezvousConfig struct {
 // RendezvousUsage contains aggregate, non-secret local reservation and
 // terminal counters. It deliberately contains no peer addresses, bindings, or
 // complete route history.
-type RendezvousUsage struct {
+type rendezvousUsage struct {
 	Handshakes, WaitingLegs, ActivePairs, Connections uint16
 	CompletedPairs, RefusedBeforeTLS                  uint64
 	DuplicateSideRejected, WaitingRefused, Expired    uint64
@@ -50,8 +50,8 @@ type RendezvousUsage struct {
 type rendezvousPlan struct {
 	rendezvousConfig
 	now           func() time.Time
-	peersByNode   map[[32]byte]RendezvousPeer
-	peersByPublic map[[32]byte]RendezvousPeer
+	peersByNode   map[[32]byte]rendezvousPeer
+	peersByPublic map[[32]byte]rendezvousPeer
 }
 
 func newRendezvousPlan(input rendezvousConfig) (rendezvousPlan, error) {
@@ -72,8 +72,8 @@ func newRendezvousPlan(input rendezvousConfig) (rendezvousPlan, error) {
 	if err := validateNodeCertificate(input.Certificate, input.NodePublicKey); err != nil {
 		return rendezvousPlan{}, err
 	}
-	result := rendezvousPlan{rendezvousConfig: input, now: now, peersByNode: make(map[[32]byte]RendezvousPeer, len(input.Peers)),
-		peersByPublic: make(map[[32]byte]RendezvousPeer, len(input.Peers))}
+	result := rendezvousPlan{rendezvousConfig: input, now: now, peersByNode: make(map[[32]byte]rendezvousPeer, len(input.Peers)),
+		peersByPublic: make(map[[32]byte]rendezvousPeer, len(input.Peers))}
 	if len(input.Peers) != 2 {
 		return rendezvousPlan{}, errors.New("Rendezvous duty requires one Initiator and one Responder peer")
 	}
@@ -97,13 +97,13 @@ func newRendezvousPlan(input rendezvousConfig) (rendezvousPlan, error) {
 	return result, nil
 }
 
-func (plan rendezvousPlan) peersByNodeForRole(role byte) RendezvousPeer {
+func (plan rendezvousPlan) peersByNodeForRole(role byte) rendezvousPeer {
 	for _, peer := range plan.peersByNode {
 		if peer.Role == role {
 			return peer
 		}
 	}
-	return RendezvousPeer{}
+	return rendezvousPeer{}
 }
 
 func literalNodeEndpoint(endpoint string) bool {

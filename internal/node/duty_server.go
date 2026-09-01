@@ -79,7 +79,7 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 	}
 }
 
-func rendezvousPressureUsage(usage RendezvousUsage) (timers, queueItems, queueBytes uint64) {
+func rendezvousPressureUsage(usage rendezvousUsage) (timers, queueItems, queueBytes uint64) {
 	// Completed pairs, connections, and relayed bytes are cumulative evidence,
 	// not live reservations. The Rendezvous implementation exposes its live
 	// bounded work as handshakes and waiting legs; active pairs are protected by

@@ -13,7 +13,7 @@ import (
 
 // Rendezvous owns one running State-selected Carrier listener and every
 // accepted work item. It is a Node duty handle, never a transport selector.
-type Rendezvous struct {
+type rendezvous struct {
 	plan       rendezvousPlan
 	listener   route.CarrierListener
 	handshakes chan struct{}
@@ -26,7 +26,7 @@ type Rendezvous struct {
 	pre       map[route.PendingCarrier]struct{}
 	waiting   map[[32]byte]*rendezvousLeg
 	active    map[route.Carrier]struct{}
-	usage     RendezvousUsage
+	usage     rendezvousUsage
 	stopOnce  sync.Once
 	cleanup   terminalCleanup
 	work      sync.WaitGroup
@@ -43,7 +43,7 @@ type rendezvousLeg struct {
 
 // startRendezvous binds one exact State-authorized Carrier and literal
 // endpoint. It does not negotiate or fall back to another Carrier.
-func startRendezvous(input rendezvousConfig) (*Rendezvous, error) {
+func startRendezvous(input rendezvousConfig) (*rendezvous, error) {
 	plan, err := newRendezvousPlan(input)
 	if err != nil {
 		return nil, err
@@ -55,8 +55,8 @@ func startRendezvous(input rendezvousConfig) (*Rendezvous, error) {
 	return startRendezvousWithListener(plan, listener), nil
 }
 
-func startRendezvousWithListener(plan rendezvousPlan, listener route.CarrierListener) *Rendezvous {
-	running := &Rendezvous{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
+func startRendezvousWithListener(plan rendezvousPlan, listener route.CarrierListener) *rendezvous {
+	running := &rendezvous{plan: plan, listener: listener, handshakes: make(chan struct{}, plan.HandshakeLimit),
 		waitingCap: make(chan struct{}, plan.WaitingLimit), pairs: make(chan struct{}, plan.PairLimit),
 		pre: make(map[route.PendingCarrier]struct{}), waiting: make(map[[32]byte]*rendezvousLeg), active: make(map[route.Carrier]struct{}),
 		terminal: make(chan error, 1)}
@@ -67,7 +67,7 @@ func startRendezvousWithListener(plan rendezvousPlan, listener route.CarrierList
 
 // Done yields the sole terminal listener outcome. A nil value means the duty
 // was stopped deliberately; a non-nil value requires Node withdrawal.
-func (running *Rendezvous) Done() <-chan error {
+func (running *rendezvous) Done() <-chan error {
 	if running == nil {
 		return nil
 	}
@@ -77,7 +77,7 @@ func (running *Rendezvous) Done() <-chan error {
 // Protect cancels pre-admission work and refuses new work while preserving
 // active paired legs. It is the Node resource-pressure transition, not an
 // alternate duty state or peer-selection mechanism.
-func (running *Rendezvous) Protect(value bool) {
+func (running *rendezvous) Protect(value bool) {
 	if running == nil {
 		return
 	}
@@ -99,7 +99,7 @@ func (running *Rendezvous) Protect(value bool) {
 
 // Stop closes only Rendezvous admission. Call Drain afterwards to join every
 // existing worker inside the duty's declared lease.
-func (running *Rendezvous) Stop() {
+func (running *rendezvous) Stop() {
 	if running == nil {
 		return
 	}
@@ -112,16 +112,16 @@ func (running *Rendezvous) Stop() {
 }
 
 // Usage returns only aggregate local duty state.
-func (running *Rendezvous) Usage() RendezvousUsage {
+func (running *rendezvous) Usage() rendezvousUsage {
 	if running == nil {
-		return RendezvousUsage{}
+		return rendezvousUsage{}
 	}
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	return running.snapshotLocked()
 }
 
-func (running *Rendezvous) accept() {
+func (running *rendezvous) accept() {
 	defer running.work.Done()
 	for {
 		pending, err := running.listener.Accept(context.Background())
@@ -145,7 +145,7 @@ func (running *Rendezvous) accept() {
 	}
 }
 
-func (running *Rendezvous) admitHandshake(pending route.PendingCarrier) bool {
+func (running *rendezvous) admitHandshake(pending route.PendingCarrier) bool {
 	running.mu.Lock()
 	defer running.mu.Unlock()
 	if running.draining || running.protected || len(running.pairs) == cap(running.pairs) {
@@ -162,7 +162,7 @@ func (running *Rendezvous) admitHandshake(pending route.PendingCarrier) bool {
 	}
 }
 
-func (running *Rendezvous) handle(pending route.PendingCarrier) {
+func (running *rendezvous) handle(pending route.PendingCarrier) {
 	defer running.work.Done()
 	handshakeHeld, owned := true, true
 	defer func() {
@@ -212,7 +212,7 @@ func (running *Rendezvous) handle(pending route.PendingCarrier) {
 	owned = false
 }
 
-func (running *Rendezvous) validateIncoming(binding route.LegBinding, state tls.ConnectionState) error {
+func (running *rendezvous) validateIncoming(binding route.LegBinding, state tls.ConnectionState) error {
 	if binding.NetworkID != running.plan.NetworkID || binding.Epoch != running.plan.Epoch || binding.Digest != running.plan.EpochDigest ||
 		binding.PeerRole != route.RendezvousRole || binding.PeerNodeID != running.plan.NodeID ||
 		binding.NotAfter.After(running.plan.NotAfter.UTC()) || !running.plan.now().Before(binding.NotAfter) {
@@ -232,13 +232,13 @@ func (running *Rendezvous) validateIncoming(binding route.LegBinding, state tls.
 	return nil
 }
 
-func (running *Rendezvous) reciprocal(binding route.LegBinding) route.LegBinding {
+func (running *rendezvous) reciprocal(binding route.LegBinding) route.LegBinding {
 	return route.LegBinding{NetworkID: binding.NetworkID, Epoch: binding.Epoch, Digest: binding.Digest,
 		AttachmentID: binding.AttachmentID, SenderRole: route.RendezvousRole, PeerRole: binding.SenderRole,
 		SenderNodeID: running.plan.NodeID, PeerNodeID: binding.SenderNodeID, NotAfter: binding.NotAfter}
 }
 
-func (running *Rendezvous) snapshotLocked() RendezvousUsage {
+func (running *rendezvous) snapshotLocked() rendezvousUsage {
 	result := running.usage
 	result.Handshakes, result.WaitingLegs, result.ActivePairs = uint16(len(running.handshakes)), uint16(len(running.waitingCap)), uint16(len(running.pairs))
 	result.Connections = uint16(len(running.pre) + len(running.waiting) + len(running.active))
