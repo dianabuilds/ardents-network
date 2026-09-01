@@ -46,7 +46,7 @@ func transitIssuerStateDuty(snapshot dutyFacts, now time.Time) (credential.State
 	if !issuerBound || !initiatorBound {
 		return credential.StateDuty{}, false
 	}
-	return credential.StateDuty{NetworkID: snapshot.NetworkID, Digest: snapshot.Digest, IssuerNodeID: snapshot.NodeID,
+	return credential.StateDuty{Generation: snapshot.Generation, NetworkID: snapshot.NetworkID, Digest: snapshot.Digest, IssuerNodeID: snapshot.NodeID,
 		IssuerPublicKey: snapshot.NodePublicKey, InitiatorNodeID: profile.InitiatorNodeID, InitiatorPublicKey: profile.InitiatorPublicKey,
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: sha256.Sum256(snapshot.TransitIssuerProfile),
 		Epoch: snapshot.Epoch, NotAfter: profile.AssignmentNotAfter}, true

@@ -5,7 +5,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -72,6 +76,22 @@ func TestInitializeIssuerRootPublishesOneStableStateBindableProfile(t *testing.T
 	if err := VerifyProfile(profile, config.NetworkID, config.NodeID, publicIdentifier(nodePublic), now, now.Add(15*time.Second)); err != nil {
 		t.Fatal(err)
 	}
+	marker, err := os.ReadFile(filepath.Join(root, ".ardents-local-roles-v2"))
+	if err != nil || string(marker) != "ardents-local-roles-v2\n" {
+		t.Fatalf("issuer root v2 marker = %q, %v", marker, err)
+	}
+	pointer, err := os.ReadFile(filepath.Join(root, "current"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stateRaw, err := os.ReadFile(filepath.Join(root, "state-"+strings.TrimSuffix(string(pointer), "\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var state issuerRootState
+	if err := json.Unmarshal(stateRaw, &state); err != nil || state.Version != 2 {
+		t.Fatalf("issuer root JSON version = %d, %v", state.Version, err)
+	}
 
 	reopened, err := InitializeIssuerRoot(config)
 	if err != nil {
@@ -89,6 +109,62 @@ func TestInitializeIssuerRootPublishesOneStableStateBindableProfile(t *testing.T
 	again, err := InitializeIssuerRoot(config)
 	if err != nil || !bytes.Equal(again.Profile, first.Profile) {
 		t.Fatalf("rejected replacement changed issuer root: same=%t, err=%v", bytes.Equal(again.Profile, first.Profile), err)
+	}
+}
+
+func TestIssuerRootRejectsEveryV1FormWithoutMutation(t *testing.T) {
+	now := time.Unix(2_000_700_000, 0).UTC()
+	_, identity, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name  string
+		state *issuerRootState
+	}{
+		{name: "marker only"},
+		{name: "unbound", state: &issuerRootState{Version: 1, Generation: 1, Duties: []json.RawMessage{}, TransitGrantSpends: []json.RawMessage{}}},
+		{name: "bound", state: &issuerRootState{Version: 1, Generation: 1, Duties: []json.RawMessage{}, TransitGrantSpends: []json.RawMessage{},
+			TransitGrantIssuer: &issuerRootRecord{StateGeneration: testStateGeneration, ProfileDigest: credentialID(1), Profile: []byte{1},
+				NetworkID: credentialID(2), Digest: credentialID(3), IssuerNodeID: credentialID(4), GrantSignerID: credentialID(5), Epoch: 6, NotAfter: now.Add(time.Hour).Unix(), Budget: 1, PrivateMaterial: []byte{1}}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := filepath.Join(t.TempDir(), "legacy-root")
+			if err := os.Mkdir(root, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".ardents-local-roles-v1"), []byte("ardents-local-roles-v1\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if test.state != nil {
+				raw, marshalErr := json.Marshal(test.state)
+				if marshalErr != nil {
+					t.Fatal(marshalErr)
+				}
+				name := issuerStateDigest(raw)
+				if err := os.WriteFile(filepath.Join(root, "state-"+name), raw, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, "current"), []byte(name+"\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, "watermark"), []byte(fmt.Sprintf("1 %s\n", name)), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before := issuerRootBytes(t, root)
+			if _, err := InitializeIssuerRoot(IssuerRootConfig{Root: root, NetworkID: credentialID(10), NodeID: credentialID(11),
+				IdentityKey: identity, InitiatorNodeID: credentialID(12), InitiatorPublicKey: credentialID(13),
+				AssignmentNotAfter: now.Add(time.Hour), Budget: 1, Clock: func() time.Time { return now }}); err == nil {
+				t.Fatal("v1 issuer root was accepted")
+			}
+			if _, statErr := os.Lstat(filepath.Join(root, issuerRootLockName)); !os.IsNotExist(statErr) {
+				t.Fatalf("v1 issuer root acquired a lease: %v", statErr)
+			}
+			if after := issuerRootBytes(t, root); !bytes.Equal(after, before) {
+				t.Fatal("v1 issuer root changed while being rejected")
+			}
+		})
 	}
 }
 
@@ -113,7 +189,7 @@ func TestOpenIssuerFromRootBindsOnlyItsExactFirstStateDuty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	duty := StateDuty{NetworkID: config.NetworkID, Digest: credentialID(77), IssuerNodeID: config.NodeID,
+	duty := StateDuty{Generation: testStateGeneration, NetworkID: config.NetworkID, Digest: credentialID(77), IssuerNodeID: config.NodeID,
 		IssuerPublicKey: publicIdentifier(nodePublic), InitiatorNodeID: config.InitiatorNodeID,
 		InitiatorPublicKey: config.InitiatorPublicKey, GrantSignerPublicKey: profile.GrantSignerPublicKey,
 		ProfileDigest: receipt.ProfileDigest, Epoch: 78, NotAfter: config.AssignmentNotAfter}
@@ -142,6 +218,11 @@ func TestOpenIssuerFromRootBindsOnlyItsExactFirstStateDuty(t *testing.T) {
 	}
 
 	current = duty
+	current.Generation = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	if _, err := open(); err == nil {
+		t.Fatal("bound issuer root started under a generation-only State successor")
+	}
+	current = duty
 	current.Digest = credentialID(79)
 	current.Epoch++
 	if _, err := open(); err == nil {
@@ -158,3 +239,5 @@ func TestOpenIssuerFromRootBindsOnlyItsExactFirstStateDuty(t *testing.T) {
 		t.Fatal("bound issuer root accepted a different State-authenticated profile")
 	}
 }
+
+const testStateGeneration = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

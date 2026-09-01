@@ -39,7 +39,7 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot := dutyFacts{Generation: "issuer-generation", NetworkID: network, Epoch: 4, Digest: [32]byte{5},
+	snapshot := dutyFacts{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: network, Epoch: 4, Digest: [32]byte{5},
 		EpochValidFrom: now.Add(-time.Second), ValidUntil: until, Profile: route.Profile, Fresh: true, RecordPresent: true,
 		NodeID: issuerID, NodePublicKey: issuerPublic, RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until,
 		DeclaredFamily: "issuer-family", ProbeEndpoint: reserveAddress(t), Assignment: "transit-issuance", AssignmentDigest: [32]byte{6},
@@ -83,8 +83,7 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 	}
 
 	lock.Lock()
-	snapshot.Epoch++
-	snapshot.Digest = [32]byte{11}
+	snapshot.Generation = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	lock.Unlock()
 	waitForStateEvent(t, events, "DRAINING")
 	select {

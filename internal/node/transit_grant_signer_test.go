@@ -23,7 +23,7 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 	}
 	issuer := openNodeTestIssuer(t, network, issuerID, issuerPrivate, [32]byte{4}, [32]byte(initiatorPublic), now.Add(time.Minute), 2,
 		func() time.Time { return now }, func(profile credential.Profile, profileDigest [32]byte) (credential.StateDuty, bool) {
-			return credential.StateDuty{NetworkID: network, Digest: digest, IssuerNodeID: issuerID,
+			return credential.StateDuty{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: network, Digest: digest, IssuerNodeID: issuerID,
 				IssuerPublicKey: [32]byte(issuerPublic), InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: [32]byte(initiatorPublic),
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
 				Epoch: 5, NotAfter: now.Add(time.Minute)}, true
@@ -39,7 +39,7 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot := dutyFacts{NetworkID: network, Epoch: 5, Digest: digest, ValidUntil: now.Add(time.Minute),
+	snapshot := dutyFacts{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: network, Epoch: 5, Digest: digest, ValidUntil: now.Add(time.Minute),
 		TransitIssuerNodeID: issuerID, TransitIssuerProfile: profile, CandidateCount: 2,
 		Candidates: [64]dutyCandidate{
 			{NodeID: issuerID, PublicKey: [32]byte(issuerPublic), Assignment: "transit-issuance",

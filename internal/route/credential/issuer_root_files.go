@@ -2,6 +2,7 @@ package credential
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,7 +22,38 @@ func inspectIssuerRoot(root string, create bool) error {
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("transit grant issuer root is not an owned directory")
 	}
-	return validateIssuerRootPermissions(root, info)
+	return nil
+}
+
+// preflightIssuerRoot rejects retired v1 roots without taking a lease or
+// performing any ownership, lock, staging, or recovery mutation. It is run
+// again after the lease to close a root-substitution race.
+func preflightIssuerRoot(root string) error {
+	if _, err := os.Lstat(filepath.Join(root, legacyIssuerRootMarkerName)); err == nil {
+		return errors.New("transit grant issuer root v1 is unsupported")
+	} else if !os.IsNotExist(err) {
+		return errors.New("transit grant issuer root legacy marker is unreadable")
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) > 9 {
+		return errors.New("transit grant issuer root exceeds its entry bound")
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), "state-") {
+			continue
+		}
+		raw, readErr := readIssuerFile(filepath.Join(root, entry.Name()), maximumIssuerState)
+		if readErr != nil {
+			continue
+		}
+		var header struct {
+			Version uint8 `json:"version"`
+		}
+		if json.Unmarshal(raw, &header) == nil && header.Version == 1 {
+			return errors.New("transit grant issuer root v1 is unsupported")
+		}
+	}
+	return nil
 }
 
 func prepareIssuerRoot(root string, create bool) error {

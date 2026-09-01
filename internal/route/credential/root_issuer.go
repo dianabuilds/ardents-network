@@ -56,7 +56,7 @@ func OpenIssuerFromRoot(config RootIssuerConfig) (*Issuer, error) {
 		!current.NotAfter.Equal(profile.AssignmentNotAfter) {
 		return closeOnError(errors.New("root-backed transit issuer assignment is unavailable"))
 	}
-	scope := issuerScope{NetworkID: current.NetworkID, Digest: current.Digest, IssuerNodeID: current.IssuerNodeID,
+	scope := issuerScope{Generation: current.Generation, NetworkID: current.NetworkID, Digest: current.Digest, IssuerNodeID: current.IssuerNodeID,
 		GrantSignerID: profile.GrantSignerID, Epoch: current.Epoch, NotAfter: current.NotAfter}
 	if err := ledger.bind(scope); err != nil {
 		return closeOnError(err)

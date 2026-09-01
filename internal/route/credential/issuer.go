@@ -21,19 +21,20 @@ var (
 )
 
 type issuerScope struct {
+	Generation                                     string
 	NetworkID, Digest, IssuerNodeID, GrantSignerID [32]byte
 	Epoch                                          uint64
 	NotAfter                                       time.Time
 }
 
 func validIssuerScope(scope issuerScope) bool {
-	return scope.NetworkID != [32]byte{} && scope.Digest != [32]byte{} && scope.IssuerNodeID != [32]byte{} &&
+	return issuerStateName.MatchString(scope.Generation) && scope.NetworkID != [32]byte{} && scope.Digest != [32]byte{} && scope.IssuerNodeID != [32]byte{} &&
 		scope.GrantSignerID != [32]byte{} && scope.Epoch != 0 && !scope.NotAfter.IsZero() && scope.NotAfter.Unix() > 0 &&
 		scope.NotAfter.Equal(scope.NotAfter.UTC().Truncate(time.Second))
 }
 
 func sameIssuerScope(issuer *issuerRootRecord, scope issuerScope) bool {
-	return issuer != nil && issuer.NetworkID == scope.NetworkID && issuer.Digest == scope.Digest &&
+	return issuer != nil && issuer.StateGeneration == scope.Generation && issuer.NetworkID == scope.NetworkID && issuer.Digest == scope.Digest &&
 		issuer.IssuerNodeID == scope.IssuerNodeID && issuer.GrantSignerID == scope.GrantSignerID && issuer.Epoch == scope.Epoch &&
 		issuer.NotAfter == scope.NotAfter.Unix()
 }
@@ -110,7 +111,7 @@ func (issuer *Issuer) serve(writer http.ResponseWriter, request *http.Request) {
 	now := issuer.config.Clock().UTC()
 	current, available := issuer.config.CurrentDuty()
 	profileCurrent := issuer.profileDigest == [32]byte{} || current.ProfileDigest == issuer.profileDigest
-	if err == nil && requestErr == nil && decodeErr == nil && available && profileCurrent && validStateDuty(current, issuer.config, issuer.nodePublic, now) &&
+	if err == nil && requestErr == nil && decodeErr == nil && available && current.Generation == issuer.scope.Generation && profileCurrent && validStateDuty(current, issuer.config, issuer.nodePublic, now) &&
 		decoded.NetworkID == issuer.config.NetworkID && decoded.Digest == current.Digest && decoded.Epoch == current.Epoch &&
 		now.Before(decoded.NotAfter) && !decoded.NotAfter.After(now.Add(15*time.Second)) && !decoded.NotAfter.After(current.NotAfter) {
 		result = issuer.issue(decoded, payload, current, now)
@@ -191,7 +192,7 @@ func (issuer *Issuer) acceptsInitiatorCertificate(certificate *x509.Certificate)
 }
 
 func validStateDuty(duty StateDuty, config issuerConfig, nodePublic [32]byte, now time.Time) bool {
-	return duty.NetworkID == config.NetworkID && duty.IssuerNodeID == config.NodeID && duty.IssuerPublicKey == nodePublic &&
+	return issuerStateName.MatchString(duty.Generation) && duty.NetworkID == config.NetworkID && duty.IssuerNodeID == config.NodeID && duty.IssuerPublicKey == nodePublic &&
 		duty.InitiatorNodeID == config.InitiatorNodeID && duty.InitiatorPublicKey == config.InitiatorPublicKey &&
 		duty.GrantSignerPublicKey == publicKey(config.GrantSigner) && duty.Digest != [32]byte{} && duty.Epoch != 0 &&
 		!duty.NotAfter.IsZero() && duty.NotAfter.Equal(duty.NotAfter.UTC().Truncate(time.Second)) && now.Before(duty.NotAfter)

@@ -92,6 +92,7 @@ type Result struct {
 // It names the already-selected issuer and Initiator duties only; it carries
 // no Entry Invite, Service, Endpoint, or browser input.
 type StateDuty struct {
+	Generation                                                                                                  string
 	NetworkID, Digest, IssuerNodeID, IssuerPublicKey, InitiatorNodeID, InitiatorPublicKey, GrantSignerPublicKey [32]byte
 	ProfileDigest                                                                                               [32]byte
 	Epoch                                                                                                       uint64

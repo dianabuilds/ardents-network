@@ -18,13 +18,14 @@ import (
 )
 
 const (
-	issuerRootMarkerName  = ".ardents-local-roles-v1"
-	issuerRootMarker      = "ardents-local-roles-v1\n"
-	issuerRootLockName    = ".ardents-local-roles-lock"
-	maximumIssuerState    = 64 << 10
-	maximumIssuerMaterial = 256
-	maximumIssuerProfile  = 4096
-	maximumIssuerBudget   = 64
+	issuerRootMarkerName       = ".ardents-local-roles-v2"
+	issuerRootMarker           = "ardents-local-roles-v2\n"
+	legacyIssuerRootMarkerName = ".ardents-local-roles-v1"
+	issuerRootLockName         = ".ardents-local-roles-lock"
+	maximumIssuerState         = 64 << 10
+	maximumIssuerMaterial      = 256
+	maximumIssuerProfile       = 4096
+	maximumIssuerBudget        = 64
 )
 
 var issuerStateName = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -50,6 +51,7 @@ type issuerRootState struct {
 }
 
 type issuerRootRecord struct {
+	StateGeneration string                  `json:"state_generation"`
 	ProfileDigest   [32]byte                `json:"profile_digest,omitempty"`
 	Profile         []byte                  `json:"profile,omitempty"`
 	NetworkID       [32]byte                `json:"network_id"`
@@ -81,6 +83,9 @@ func openIssuerRootStore(root string, clock func() time.Time, create bool) (*iss
 	if err := inspectIssuerRoot(absolute, create); err != nil {
 		return nil, err
 	}
+	if err := preflightIssuerRoot(absolute); err != nil {
+		return nil, err
+	}
 	lease, err := acquireIssuerRootLease(absolute)
 	if err != nil {
 		return nil, err
@@ -91,6 +96,16 @@ func openIssuerRootStore(root string, clock func() time.Time, create bool) (*iss
 			_ = lease.release()
 		}
 	}()
+	if err := preflightIssuerRoot(absolute); err != nil {
+		return nil, err
+	}
+	info, err := os.Lstat(absolute)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateIssuerRootPermissions(absolute, info); err != nil {
+		return nil, err
+	}
 	if err := prepareIssuerRoot(absolute, create); err != nil {
 		return nil, err
 	}
@@ -161,6 +176,7 @@ func (store *issuerRootStore) bind(scope issuerScope) error {
 		return errors.New("transit grant issuer root is already bound")
 	}
 	next := cloneIssuerRootState(store.state)
+	next.TransitGrantIssuer.StateGeneration = scope.Generation
 	next.TransitGrantIssuer.NetworkID, next.TransitGrantIssuer.Digest = scope.NetworkID, scope.Digest
 	next.TransitGrantIssuer.IssuerNodeID, next.TransitGrantIssuer.GrantSignerID = scope.IssuerNodeID, scope.GrantSignerID
 	next.TransitGrantIssuer.Epoch, next.TransitGrantIssuer.NotAfter = scope.Epoch, scope.NotAfter.Unix()
@@ -246,7 +262,7 @@ func (store *issuerRootStore) close() error {
 }
 
 func (store *issuerRootStore) commit(next issuerRootState) error {
-	next.Version, next.Generation, next.Previous = 1, store.state.Generation+1, store.current
+	next.Version, next.Generation, next.Previous = 2, store.state.Generation+1, store.current
 	if !validIssuerRootState(next) {
 		return errors.New("transit grant issuer root state is invalid")
 	}
@@ -283,7 +299,7 @@ func loadIssuerRootState(root string) (issuerRootState, string, error) {
 	pointer, err := readIssuerFile(filepath.Join(root, "current"), 65)
 	if os.IsNotExist(err) {
 		if !hasWatermark {
-			return issuerRootState{Version: 1, Duties: []json.RawMessage{}, TransitGrantSpends: []json.RawMessage{}}, "", nil
+			return issuerRootState{Version: 2, Duties: []json.RawMessage{}, TransitGrantSpends: []json.RawMessage{}}, "", nil
 		}
 		state, loadErr := loadIssuerGeneration(root, watermark)
 		if loadErr != nil || state.Generation != generation {
@@ -356,7 +372,7 @@ func loadIssuerWatermark(root string) (uint64, string, bool, error) {
 }
 
 func validIssuerRootState(state issuerRootState) bool {
-	if state.Version != 1 || state.Generation == 0 || state.Previous != "" && !issuerStateName.MatchString(state.Previous) ||
+	if state.Version != 2 || state.Generation == 0 || state.Previous != "" && !issuerStateName.MatchString(state.Previous) ||
 		state.Duties == nil || len(state.Duties) != 0 || state.TransitGrantSpends == nil || len(state.TransitGrantSpends) != 0 {
 		return false
 	}
@@ -365,9 +381,9 @@ func validIssuerRootState(state issuerRootState) bool {
 		return true
 	}
 	profileValid := len(issuer.Profile) > 0 && len(issuer.Profile) <= maximumIssuerProfile && sha256.Sum256(issuer.Profile) == issuer.ProfileDigest
-	bound := issuer.NetworkID != [32]byte{} && issuer.Digest != [32]byte{} && issuer.IssuerNodeID != [32]byte{} &&
+	bound := issuerStateName.MatchString(issuer.StateGeneration) && issuer.NetworkID != [32]byte{} && issuer.Digest != [32]byte{} && issuer.IssuerNodeID != [32]byte{} &&
 		issuer.GrantSignerID != [32]byte{} && issuer.Epoch != 0 && issuer.NotAfter > 0
-	unbound := issuer.NetworkID == [32]byte{} && issuer.Digest == [32]byte{} && issuer.IssuerNodeID == [32]byte{} &&
+	unbound := issuer.StateGeneration == "" && issuer.NetworkID == [32]byte{} && issuer.Digest == [32]byte{} && issuer.IssuerNodeID == [32]byte{} &&
 		issuer.GrantSignerID == [32]byte{} && issuer.Epoch == 0 && issuer.NotAfter == 0
 	if !profileValid || !bound && !unbound || issuer.Budget == 0 || issuer.Budget > maximumIssuerBudget ||
 		len(issuer.PrivateMaterial) == 0 || len(issuer.PrivateMaterial) > maximumIssuerMaterial || len(issuer.Reservations) > int(issuer.Budget) {

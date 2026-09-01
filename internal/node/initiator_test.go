@@ -246,7 +246,7 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 	issuer := openNodeTestIssuer(t, request.NetworkID, [32]byte{84}, issuerPrivate, [32]byte{4}, material.initiatorPublic,
 		rendezvousConfig.NotAfter, 2, func() time.Time { return time.Now().UTC() },
 		func(profile credential.Profile, profileDigest [32]byte) (credential.StateDuty, bool) {
-			return credential.StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: [32]byte{84},
+			return credential.StateDuty{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: [32]byte{84},
 				IssuerPublicKey: issuerPublic, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: material.initiatorPublic,
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
 				Epoch: request.Epoch, NotAfter: rendezvousConfig.NotAfter}, true

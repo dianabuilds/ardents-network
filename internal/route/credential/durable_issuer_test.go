@@ -7,6 +7,8 @@ import (
 	"crypto/sha256"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -27,6 +29,7 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		TransitNodeID: credentialID(43), AttachmentID: credentialID(44), ClientKeyDigest: credentialID(45),
 		Epoch: 46, TransitRole: route.IntroductionRole, NotAfter: now.Add(10 * time.Second)}
 	withdrawn := false
+	generation := testStateGeneration
 	root := t.TempDir()
 	initiatorCertificate := credentialCertificate(t, initiatorPrivate, 10)
 
@@ -35,7 +38,7 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		issuer := openTestRootIssuer(t, root, request.NetworkID, credentialID(47), issuerPrivate,
 			credentialID(48), publicIdentifier(initiatorPublic), now.Add(time.Minute), 2, func() time.Time { return now },
 			func(profile Profile, profileDigest [32]byte) (StateDuty, bool) {
-				return StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(47),
+				return StateDuty{Generation: generation, NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(47),
 					IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(48),
 					InitiatorPublicKey: publicIdentifier(initiatorPublic), GrantSignerPublicKey: profile.GrantSignerPublicKey,
 					ProfileDigest: profileDigest, Epoch: request.Epoch, NotAfter: now.Add(time.Minute), Withdrawn: withdrawn}, true
@@ -117,6 +120,37 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		t.Fatalf("reconciled outcome changed: %q, same Grant = %t", reconciled.Outcome, string(reconciled.Grant) == string(first.Grant))
 	}
 
+	beforeSuccessor := issuerRootBytes(t, root)
+	generation = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	find, reserve, withdraw := issuer.find, issuer.reserve, issuer.withdraw
+	findCalls, reserveCalls, withdrawCalls := 0, 0, 0
+	issuer.find = func(scope issuerScope, requestID, requestDigest [32]byte) ([32]byte, bool, error) {
+		findCalls++
+		return find(scope, requestID, requestDigest)
+	}
+	issuer.reserve = func(scope issuerScope, requestID, requestDigest, grantID [32]byte) ([32]byte, bool, error) {
+		reserveCalls++
+		return reserve(scope, requestID, requestDigest, grantID)
+	}
+	issuer.withdraw = func(scope issuerScope) error {
+		withdrawCalls++
+		return withdraw(scope)
+	}
+	successor := request
+	successor.RequestID = credentialID(56)
+	successor.AttachmentID = credentialID(57)
+	if result := issue(issuer, server, httpClient, successor); result.Outcome != Unavailable || len(result.Grant) != 0 {
+		t.Fatalf("generation-only State successor outcome = %q, %d bytes", result.Outcome, len(result.Grant))
+	}
+	if afterSuccessor := issuerRootBytes(t, root); string(afterSuccessor) != string(beforeSuccessor) {
+		t.Fatal("generation-only State successor mutated the issuer root")
+	}
+	if findCalls != 0 || reserveCalls != 0 || withdrawCalls != 0 {
+		t.Fatalf("generation-only State successor touched ledger: find=%d reserve=%d withdraw=%d", findCalls, reserveCalls, withdrawCalls)
+	}
+	issuer.find, issuer.reserve, issuer.withdraw = find, reserve, withdraw
+	generation = testStateGeneration
+
 	fresh := request
 	fresh.RequestID = credentialID(49)
 	fresh.AttachmentID = credentialID(50)
@@ -148,6 +182,32 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 	if result := issue(issuer, server, httpClient, withdrawnRequest); result.Outcome != Withdrawn || len(result.Grant) != 0 {
 		t.Fatalf("withdrawn duty = %q, %d bytes", result.Outcome, len(result.Grant))
 	}
+}
+
+func issuerRootBytes(t *testing.T, root string) []byte {
+	t.Helper()
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result []byte
+	for _, entry := range entries {
+		if entry.Name() == issuerRootLockName {
+			continue
+		}
+		if entry.IsDir() {
+			t.Fatalf("issuer root unexpectedly contains directory %q", entry.Name())
+		}
+		raw, readErr := os.ReadFile(filepath.Join(root, entry.Name()))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		result = append(result, entry.Name()...)
+		result = append(result, 0)
+		result = append(result, raw...)
+		result = append(result, 0)
+	}
+	return result
 }
 
 func TestCredentialOutcomePlaintextHasOneFixedSize(t *testing.T) {

@@ -38,7 +38,7 @@ func TestClientObtainsOnlyExactRoleScopedGrantThroughOHTTP(t *testing.T) {
 	issuer := openTestRootIssuer(t, filepath.Join(t.TempDir(), "issuer-root"), request.NetworkID, credentialID(7), issuerPrivate,
 		credentialID(8), publicIdentifier(initiatorPublic), now.Add(time.Minute), 4, func() time.Time { return now },
 		func(profile Profile, profileDigest [32]byte) (StateDuty, bool) {
-			return StateDuty{NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(7),
+			return StateDuty{Generation: testStateGeneration, NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(7),
 				IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(8), InitiatorPublicKey: publicIdentifier(initiatorPublic),
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
 				Epoch: request.Epoch, NotAfter: now.Add(time.Minute)}, true
@@ -96,7 +96,7 @@ func TestIssuerRejectsCallerWithoutSelectedInitiatorCertificate(t *testing.T) {
 	issuer := openTestRootIssuer(t, filepath.Join(t.TempDir(), "issuer-root"), credentialID(21), credentialID(22), issuerPrivate,
 		credentialID(23), publicIdentifier(initiatorPublic), now.Add(time.Minute), 4, func() time.Time { return now },
 		func(profile Profile, profileDigest [32]byte) (StateDuty, bool) {
-			return StateDuty{NetworkID: credentialID(21), Digest: credentialID(24), IssuerNodeID: credentialID(22),
+			return StateDuty{Generation: testStateGeneration, NetworkID: credentialID(21), Digest: credentialID(24), IssuerNodeID: credentialID(22),
 				IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(23), InitiatorPublicKey: publicIdentifier(initiatorPublic),
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
 				Epoch: 25, NotAfter: now.Add(time.Minute)}, true
