@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture browser-build browser-check build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-browser-entry-ubuntu qualification-browser-entry-windows qualification-browser-signed-xpi qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check browser-build browser-check build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-browser-entry-ubuntu qualification-browser-entry-windows qualification-browser-signed-xpi qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -40,11 +40,12 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 BROWSER_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/browser-artifacts/$(HEADLESS_PLATFORM)
 BROWSER_ADAPTER_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 BROWSER_ENTRY_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-entry-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
-QUICK_CHECK_TARGETS := format-check vet unit build mod-check browser-check
+override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false
+QUICK_CHECK_TARGETS := format-check vet unit build mod-check browser-check artifact-representation-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
-HEADLESS_ARTIFACT_MKDIR = if not exist "$(HEADLESS_ARTIFACT_ROOT)" mkdir "$(HEADLESS_ARTIFACT_ROOT)"
+HEADLESS_ARTIFACT_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(HEADLESS_ARTIFACT_ROOT)') | Out-Null"
 BROWSER_ARTIFACT_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(BROWSER_ARTIFACT_ROOT)') | Out-Null"
 else
 HEADLESS_ARTIFACT_SHELL ?= sh
@@ -70,7 +71,7 @@ e2e:
 
 browser-build:
 	$(BROWSER_ARTIFACT_MKDIR)
-	$(foreach command,$(BROWSER_COMMANDS),go build -trimpath -o "$(BROWSER_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
+	$(foreach command,$(BROWSER_COMMANDS),go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(BROWSER_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
 browser-check: export ARDENTS_EXTRACTION_OWNER := application-browser
 browser-check: export ARDENTS_EXTRACTION_SHELL := $(HEADLESS_ARTIFACT_SHELL)
@@ -79,9 +80,13 @@ browser-check: browser-build
 	go test ./internal/architecture -run '^TestApplicationExtractionRehearsal$$' -count=1
 	go test ./cmd/ardents-browser-entry -run '^TestParticipantInstallAuthenticatesARealV4Bundle$$' -count=1
 
+artifact-representation-check: export ARDENTS_CANONICAL_BUILD_REPRESENTATIONS := 1
+artifact-representation-check:
+	go test ./internal/architecture -run '^TestCanonicalCommandBuildIsRepositoryRepresentationIndependent$$' -count=1
+
 headless-build:
 	$(HEADLESS_ARTIFACT_MKDIR)
-	$(foreach command,$(HEADLESS_COMMANDS),go build -trimpath -o "$(HEADLESS_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
+	$(foreach command,$(HEADLESS_COMMANDS),go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(HEADLESS_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
 headless-evidence: export ARDENTS_E2E_COMMAND := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))
 headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))

@@ -72,6 +72,15 @@ tool named for the domain behavior it exercises. Test-only fixture builders
 remain `_test.go` implementation owned by the scenario that uses them. Images,
 keys, state, captures, and generated manifests remain outside Git.
 
+The root `Makefile` owns the canonical Go command-build policy. Canonical
+artifacts disable implicit VCS stamping so identical selected source has the
+same bytes across repeated normal clones and ownership extractions and a linked
+worktree. Source
+revision remains explicit external release and attestation provenance and is
+not reconstructed from an artifact's local repository representation.
+The checked public-Make proof covers the complete current post-ADR-0067 set:
+four headless commands and two Browser commands.
+
 `tests/profiles/` owns the checked profile registry and positive package
 membership manifests. Every maintained and Go-bearing e2e package belongs to
 the one active profile appropriate to its surface; Qualification selection is

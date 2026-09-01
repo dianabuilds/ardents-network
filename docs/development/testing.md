@@ -10,11 +10,14 @@ code.
 - `make unit` runs the positive deterministic package inventory.
 - `make e2e` runs the positive local process package inventory.
 - `make quick-check` runs formatting, architecture, vet, unit, named command
-  builds, module tidiness, and the Browser artifact lane.
+  builds, module tidiness, the Browser artifact lane, and the canonical artifact
+  representation proof.
 - `make headless-check` builds the exact Network command inventory, checks the
   enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
-  a fresh temporary tree containing no Browser/Application implementation.
+  a fresh temporary tree containing no Browser/Application implementation. It
+  also proves that canonical command bytes are unchanged when the same owned
+  source is represented as a Git repository or as a VCS-free extraction.
 - `make browser-check` builds the exact Browser command inventory and archive,
   checks enrollment-v4 independently from Network-v3, then copies only
   Application-owned and Interface-v1 files to a fresh temporary tree, tests
@@ -27,6 +30,16 @@ The headless and Browser command inventories are positive, disjoint manifests
 under `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the four-owner [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
+
+Canonical command builds use the non-overridable
+`-trimpath -buildvcs=false` policy. The public Make proof builds all six current
+post-ADR-0067 headless and Browser artifacts from two independent normal
+clones, a linked worktree, and two independent VCS-free ownership extractions,
+then requires byte-identical
+outputs without implicit `vcs.*` settings. Source revision and builder
+provenance remain explicit authenticated release-metadata,
+attestation, and receipt inputs; command bytes never infer those facts from the
+builder's clone or linked-worktree representation.
 
 ## Preliminary Gate A1 regression coverage
 

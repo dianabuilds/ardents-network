@@ -6,8 +6,8 @@
       "state": "active",
       "make_target": "quick-check",
       "surface": "deterministic-module",
-      "prerequisites": ["POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, and hard-link-capable temporary storage"],
-      "invalid_environment": "the developer artifact shell or its required local tools are unavailable"
+      "prerequisites": ["local Git executable with init, commit, clone, and linked-worktree support", "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, and hard-link-capable temporary storage"],
+      "invalid_environment": "the developer Git or artifact-shell prerequisites are unavailable"
     },
     {
       "id": "deterministic",
