@@ -102,12 +102,22 @@ func TestLocalCeremonyProfileHasClosedCommandAndArtifactBoundary(t *testing.T) {
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	for _, required := range []string{
 		"CEREMONY_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/local-ceremony-commands.txt))",
+		"CEREMONY_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/local-ceremony-packages.txt))",
 		"ceremony-build:",
 		"$(foreach command,$(CEREMONY_COMMANDS)",
+		"ceremony-check: export ARDENTS_E2E_RELEASE_CUSTODY",
+		"ceremony-check: export ARDENTS_E2E_STATE_CUSTODY",
 		"ceremony-check: ceremony-build",
+		"go test $(CEREMONY_PACKAGES) -run '^TestLocalCeremonyArtifactsRejectUntrustedArgumentsBeforeSecretInput$$' -count=1",
 	} {
 		if !strings.Contains(makefile, required) {
 			t.Errorf("local ceremony Make boundary lacks %q", required)
+		}
+	}
+	processTest := string(readProjectFile(t, root, "tests/e2e/ceremony/local_custody_process_test.go"))
+	for _, variable := range []string{"ARDENTS_E2E_RELEASE_CUSTODY", "ARDENTS_E2E_STATE_CUSTODY"} {
+		if !strings.Contains(processTest, `requiredArtifact(t, "`+variable+`")`) {
+			t.Errorf("local ceremony process evidence does not consume %s", variable)
 		}
 	}
 }

@@ -29,6 +29,7 @@ PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
 BROWSER_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/browser-commands.txt))
 CEREMONY_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/local-ceremony-commands.txt))
+CEREMONY_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/local-ceremony-packages.txt))
 HEADLESS_GOOS := $(shell go env GOOS)
 HEADLESS_GOARCH := $(shell go env GOARCH)
 HEADLESS_PLATFORM := $(HEADLESS_GOOS)-$(HEADLESS_GOARCH)
@@ -42,6 +43,8 @@ BROWSER_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/browser-artifacts/$(HEADLESS_PLAT
 BROWSER_ADAPTER_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 BROWSER_ENTRY_ARTIFACT := $(BROWSER_ARTIFACT_ROOT)/ardents-browser-entry-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 CEREMONY_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/local-ceremony-artifacts/$(HEADLESS_PLATFORM)
+CEREMONY_RELEASE_CUSTODY_ARTIFACT := $(CEREMONY_ARTIFACT_ROOT)/ardents-release-custody-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
+CEREMONY_STATE_CUSTODY_ARTIFACT := $(CEREMONY_ARTIFACT_ROOT)/ardents-state-custody-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 QUICK_CHECK_TARGETS := format-check vet unit build mod-check browser-check ceremony-check
 
 ifeq ($(OS),Windows_NT)
@@ -87,8 +90,11 @@ ceremony-build:
 	$(CEREMONY_ARTIFACT_MKDIR)
 	$(foreach command,$(CEREMONY_COMMANDS),go build -trimpath -o "$(CEREMONY_ARTIFACT_ROOT)/$(notdir $(command))-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)" $(command)$(newline))
 
+ceremony-check: export ARDENTS_E2E_RELEASE_CUSTODY := $(abspath $(CEREMONY_RELEASE_CUSTODY_ARTIFACT))
+ceremony-check: export ARDENTS_E2E_STATE_CUSTODY := $(abspath $(CEREMONY_STATE_CUSTODY_ARTIFACT))
 ceremony-check: ceremony-build
 	go test ./internal/architecture -run '^TestLocalCeremonyProfileHasClosedCommandAndArtifactBoundary$$' -count=1
+	go test $(CEREMONY_PACKAGES) -run '^TestLocalCeremonyArtifactsRejectUntrustedArgumentsBeforeSecretInput$$' -count=1
 
 headless-build:
 	$(HEADLESS_ARTIFACT_MKDIR)
