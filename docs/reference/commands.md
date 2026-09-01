@@ -39,17 +39,6 @@ The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
 Module diagnostics, not a capacity or hosting claim.
 
-## `ardents-browser`
-
-`ardents-browser run <browser-adapter.json>` runs the optional Browser Adapter
-from only an Endpoint Application socket and a Browser-owned state path. It
-owns local HTTP presentation and Browser Entry publication; it does not launch
-or configure Firefox. It receives no
-Network State, Entry, Target, Route, issuer, custody, or Service Administration
-authority, and stopping or replacing it does not stop the Endpoint. The known
-transparent-origin Browser Entry defect remains a separate security dependency
-and is not repaired or qualified by this command.
-
 ## `ardents-node`
 
 `ardents-node issuer initialize --config PATH` performs the owner-only bootstrap
@@ -152,42 +141,6 @@ None of these routes launches a browser, opens a Service, chooses a Relay/Gatewa
 makes an `ardents-alpha://` link a public DNS/HTTPS address. The acceptance
 route retains only supplied bytes after its checks; it does not fetch or
 install an Endpoint.
-
-## `ardents-browser-entry`
-
-`ardents-browser-entry native-host --state ABSOLUTE_PATH` is the fixed Firefox
-native-messaging adapter for the retained optional compatibility trace. It is
-not a selected participant Browser Entry. Firefox invokes
-it through an exact-ID native manifest, not an operator shell. It consumes one
-bounded `loopback-proxy-port` or `loopback-proxy-authentication` native frame
-and returns its port (and, only for the latter, a one-process proxy password)
-only after the
-current Endpoint-owned AlphaProxy answers a random local liveness probe. It
-never receives a Service Name, Target, Service credential, route, or browser
-URL; its bounded authentication answer is only the separate current local proxy
-password. It cannot install the extension, open a browser, resolve a name, or
-act as a proxy.
-
-The separately invoked participant route
-`ardents-browser-entry install --enrollment PATH --endpoint-artifact PATH`
-accepts only an enrollment-v4 bundle. It first verifies the exact enrolled
-Endpoint artifact, the running native-host executable, and the fixed-ID XPI
-companion against one independently delivered manifest pin. It then creates or
-replaces only the current user's exact native-messaging registration. On
-Windows this is the one `HKCU\Software\Mozilla\NativeMessagingHosts` value;
-on Ubuntu it is the one per-user Firefox native-manifest file. The command
-prints the XPI path and `manual-required`: the participant still installs the
-Mozilla-signed unlisted XPI explicitly in Firefox. `ardents-browser-entry
-remove` withdraws only that native-manifest registration; it cannot remove the
-XPI, Endpoint state, Authority, corpus, or Release floors. The installer also
-rejects an XPI without the current Mozilla COSE signature metadata, but leaves
-cryptographic signature acceptance to Firefox when the participant explicitly
-installs that exact XPI.
-
-The matching add-on source and manifest template are in
-`packaging/firefox-alpha-browser-entry`. A Mozilla-signed XPI and a real
-enrollment-v4 release bundle remain historical promotion artifacts; repository
-source or a GitHub download alone is not an installed Browser Entry profile.
 
 ## Process and support limits
 

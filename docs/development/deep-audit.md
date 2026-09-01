@@ -108,14 +108,12 @@ separation are integrated, and its release-readiness matrix exists, but before
 the promotion decision. A separate post-release campaign may later use
 operational evidence, but cannot retroactively qualify an earlier build.
 
-For C0, Network and Application/Browser are distinct audit surfaces joined only
-by `ardents-application-interface-v1`. Activation records both extraction
-receipts: the Network candidate must build and test without
-`internal/browser/...` or Browser commands/packaging, and the Application
-candidate must build and reproduce its command archive from only
-`application-browser` plus `application-interface-v1` ownership. The audit
-corpus uses [`ownership.json`](ownership.json) rather than inferring ownership
-from directory names. `internal/application/broker` remains Network-owned.
+For C0, the headless Network candidate and neutral Application Interface are
+joined only by `ardents-application-interface-v1`. The audit corpus uses
+[`ownership.json`](ownership.json) rather than inferring ownership from
+directory names. `internal/application/broker` remains Network-owned; the
+former Browser implementation and qualification lanes are historical evidence
+only under ADR-0068.
 
 The Product Owner activates the campaign by selecting one bounded **audit
 activation profile**. It is not a release or Qualification profile. A
@@ -150,8 +148,8 @@ true:
   claim-reducing disposition, rather than being left for formal rediscovery;
 - the working tree used to create the candidate is clean and reproducible;
 - `make check` passes for the exact revision;
-- `make headless-check` and `make browser-check` pass their isolated extraction
-  rehearsals for the exact revision;
+- `make headless-check` passes its isolated extraction rehearsal for the exact
+  revision;
 - every execution profile required to support the selected gate conclusion is
   active with a checked entrypoint; a profile required only for later
   Qualification or promotion remains an explicit `pending` or
@@ -789,7 +787,7 @@ The campaign is complete only when:
   every required matrix cell has a supported verdict;
 - every maintained source/test, command, packaging file, qualification lane,
   Interface-v1 file, and retained historical source has exactly one checked
-  owner, with Network-v3 and Browser-v4 artifact lanes still disjoint;
+  owner, with the four-command headless artifact lane represented exactly once;
 - every public, persisted, command, configuration, evidence, migration, and
   wire format is covered;
 - every selected claim traces to implementation, tests, and Qualification

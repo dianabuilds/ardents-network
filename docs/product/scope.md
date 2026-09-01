@@ -71,37 +71,30 @@ The C0 Network candidate is ready to be *audited*, not qualified for public
 operation. The audit must use the exact frozen commit and artifact identities
 defined at activation by the [deep-audit method](../development/deep-audit.md).
 
-## C0 Application and Browser candidate
+## C0 Application Interface
 
-Application and Browser code is a separate maintained product surface in the
-same repository and root Go module:
-
-- `internal/application/interfacev1/connection` and
-  `internal/application/interfacev1/administration` own the small versioned
-  local contract, bounds, lifecycle, error/outcome grammar, client/server
-  transport, and conformance vectors; Network implements the server behavior
-  in `internal/endpoint` and Applications consume only the v1 client surface;
-- `ardents-browser`, `ardents-browser-entry`, `internal/browser/adapter`,
-  `internal/browser/entry`, and `internal/browser/reference` own optional Browser
-  adaptation and presentation, including the minimal `.ard` text adapter and
-  enrollment-v4 companion verifier;
-- the enrollment-v4 Browser artifact lane is disjoint from Network-v3; and
-- Browser commands may depend on Application and Browser-owned Modules but not
-  on Endpoint, Network State, Node, Route, Entry, Service, Custody, Release,
-  Network enrollment, or any other Network implementation.
+The maintained Application surface is the neutral v1 contract in
+`internal/application/interfacev1/connection` and
+`internal/application/interfacev1/administration`. It owns the small versioned
+local contract, bounds, lifecycle, error/outcome grammar, local transport, and
+conformance vectors. Network implements the server behavior in `internal/endpoint`
+and the maintained commands use only the selected interface seam. No Browser
+client, presentation, native host, extension, or enrollment-v4 artifact is a
+current product surface.
 
 [`ownership.json`](../development/ownership.json) is the machine-checked source,
 test, command, packaging, qualification, Interface, and historical-evidence
 inventory. Each maintained owned file and lane has exactly one owner. The
-Application extraction rehearsal copies only `application-browser` and
-`application-interface-v1` files; the Network rehearsal copies only `network`
-and `application-interface-v1` files.
+current artifact set contains only the four headless commands, while the
+Application Interface remains a neutral shared seam.
 
-This surface may be audited beside the Network candidate for boundary and
-dependency correctness. It does not inherit a Network security claim, browser
-isolation claim, DNS/DoH protection, Web PKI identity, general proxy authority,
-or supported Firefox participant journey. The unresolved transparent-origin
-defect remains outside this preparation goal.
+The former Browser implementation and qualification lanes are retired by
+[ADR-0068](../adr/0068-retire-active-browser-implementation.md). The retained
+Firefox/Endpoint source under `tests/compatibility/browser-endpoint-v4`, its
+accepted ADRs and research records, and immutable audit receipts are
+non-executable evidence only. They do not inherit a Network security claim,
+Browser isolation claim, Web PKI identity, general proxy authority, or
+supported Firefox participant journey.
 
 ## Excluded historical evidence
 

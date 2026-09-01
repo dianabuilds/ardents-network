@@ -8,8 +8,8 @@ separate decision, or retired.
 
 ## Process boundaries
 
-Six binaries remain. Each owns a current participant or Application
-compatibility process seam.
+Four binaries remain. Each owns a maintained headless participant or control
+process seam.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
@@ -17,13 +17,11 @@ compatibility process seam.
 | Network participant | ardents-node | keep | Source, Node duty, Transit Grant issuer, and dedicated-host Contributor process lifecycle. |
 | Network participant | ardents-control | keep after contraction | Enrollment-pinned alpha-control/corpus reader and the sole corpus-floor acceptance adapter. |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
-| Application compatibility | ardents-browser | keep pending Application product choice | Optional Browser Adapter over Application Interface v1; it imports no Network implementation. |
-| Application compatibility | ardents-browser-entry | compatibility-only; research retirement | Native host plus explicit enrollment-v4 registration. ADR-0061 prevents treating it as the selected participant UI. |
 
 The root cmd directory is Go's conventional collection of thin executable
 adapters; it is not a product ownership boundary. Source and artifact ownership
 are enforced separately by ownership.json, import tests, extraction checks,
-and the two command inventories under tests/profiles.
+and the headless command inventory under tests/profiles.
 
 ## Retained routes
 
@@ -35,8 +33,6 @@ and the two command inventories under tests/profiles.
 | ardents-node | source, node, issuer initialize/serve, contributor apply/diagnose/restart/drain/withdraw/remove | keep |
 | ardents-control | inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus | keep |
 | ardents-custody | create-service-authority, issue-service-credential, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
-| ardents-browser | run | keep compatibility lane pending a future Desktop/Browser product decision |
-| ardents-browser-entry | native-host, install, remove | keep compatibility evidence; do not add product behavior |
 
 ## Retired surface
 
@@ -48,7 +44,6 @@ qualification owner and are rejected:
 | ardents endpoint portable | bypassed enrollment and Release Decision while duplicating the selected endpoint enroll lifecycle |
 | ardents-control inspect | caller-keyed low-level ACA1 reader with its own mutable floor duplicated the enrollment-pinned participant inspection |
 | ardents-control inspect-public-control | rendered a future public-control declaration that was definitionally never qualified and had only a unit-test caller |
-| ardents-browser-entry install --at | parsed and discarded; it never affected enrollment or installation |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by ADR-0060 |
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |

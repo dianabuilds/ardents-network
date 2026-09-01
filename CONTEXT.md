@@ -72,15 +72,6 @@ optional SDKs may wrap it but do not define it. Authority Custody is a stronger
 separate local boundary and is never implied by this interface.
 _Avoid_: Mandatory SDK, application runtime, network wire protocol
 
-**Browser Adapter**:
-A compatibility helper that presents one already selected and authenticated
-Service Connection to an existing browser through a fresh, connection-scoped
-local origin. It cannot select an arbitrary Target, proxy ordinary URLs, expose
-Endpoint administration, define remote Service identity, or earn an
-Application-level privacy claim. Closing the connection withdraws its origin
-without public-network fallback.
-_Avoid_: Browser proxy, Ardents browser, HTTPS identity, privacy boundary
-
 **Application Principal**:
 An operating-system-enforced or launcher-brokered identity for one local
 Application/helper process tree and session to which Local Grants are bound. A

@@ -133,21 +133,6 @@ state. Route Attachments are already authenticated opaque carriers; Namespace
 and State facts arrive only in the typed inputs required for Connection
 binding.
 
-For the bounded Browser Reference Site profile, an asynchronous User Reference
-Session reports only `starting`, authenticated `ready`, `unavailable`, and
-`stopped`. `ready` includes a fresh scoped loopback origin only after the exact
-Target authenticated; unavailable/terminal events retain the bounded Endpoint
-class and reason, never raw Route or peer diagnostics. The retained
-compatibility presentation is a closed static Reference Site. The maintained
-Browser reference adds a separate explicit HTTP/1.1 bridge for one selected
-Service Connection:
-it preserves ordinary request/response semantics and streaming, orders work on
-that Connection, and has no Target, Route, content-profile, or browser-wide
-proxy authority. For that presentation only, an authenticated remote
-Application terminal closes the local bridge so a completed Publisher cannot
-leave the visible name usable. The session owns no destination selection,
-retry, generic proxy capability, or additional browser authority.
-
 Explicit publication withdrawal uses a fresh Service Administration capability
 and returns `unpublished` only for the exact Target/generation after retained
 connections drain; an established connection may therefore finish as `clean
@@ -164,15 +149,11 @@ terminal result, and the scoped proxy is withdrawn without a same-name,
 other-Target, or Internet fallback. A distinct registered Target is addressed
 only by an explicit request for its own authenticated name.
 
-Endpoint contains no Browser, Firefox, proxy, presentation, or Browser Entry
-state. `cmd/ardents-browser` and `internal/browser/adapter` own the optional
-Browser presentation and depend only on Application Interface v1 plus
-Browser-owned Modules. The Adapter owns its minimal canonical alpha Service
-Link text conversion, while `internal/browser/entry/enrollment` owns the
-v4 companion verifier; neither imports Network naming, enrollment, Release,
-Endpoint, Route, Service, or Custody implementations. Firefox-only source is retained as non-executable
-compatibility evidence under `tests/compatibility/browser-endpoint-v4` in
-accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md).
+The Endpoint contains no Browser presentation or Browser Entry state. The
+former Browser implementation and qualification lanes are retired; Firefox
+source remains only as non-executable compatibility evidence under
+`tests/compatibility/browser-endpoint-v4` in accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
+and [ADR-0068](../adr/0068-retire-active-browser-implementation.md).
 
 ## Verification and related decisions
 
