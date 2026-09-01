@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"bytes"
@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
@@ -34,19 +32,19 @@ func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 320<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
-		result, err := client.Connect(ctx, request)
+		result, err := client.connectForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: publisherAttachments, Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)
-		result, err := publisher.Accept(ctx, request)
+		result, err := publisher.acceptForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 

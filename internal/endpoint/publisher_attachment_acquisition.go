@@ -21,8 +21,8 @@ type publisherAttachmentStateView interface {
 type publisherTransitAcquisition struct {
 	view               transitCredentialIssuerView
 	epoch              state.ResolutionEpoch
-	entry              ApplicationEntry
-	initiator, transit TransitPeer
+	entry              applicationEntry
+	initiator, transit transitPeer
 	role               byte
 	slot               reachability.Introduction
 	at, deadline       time.Time
@@ -30,9 +30,9 @@ type publisherTransitAcquisition struct {
 
 type publisherAcquisitionPlan struct {
 	epoch                               state.ResolutionEpoch
-	entry                               ApplicationEntry
-	initiator, introduction, rendezvous TransitPeer
-	responder                           TransitPeer
+	entry                               applicationEntry
+	initiator, introduction, rendezvous transitPeer
+	responder                           transitPeer
 	slot                                reachability.Introduction
 	at, deadline                        time.Time
 }
@@ -52,11 +52,11 @@ type publisherCredentialCompletions struct {
 }
 
 type acquiredPublisherProfile struct {
-	profile     PublisherIntroductionProfile
+	profile     publisherIntroductionProfile
 	credentials publisherCredentialCompletions
 }
 
-func (endpoint *endpoint) configurePublisher(current func() (publisherAttachmentStateView, error), entry ApplicationEntry,
+func (endpoint *endpoint) configurePublisher(current func() (publisherAttachmentStateView, error), entry applicationEntry,
 	binding *instance.Binding,
 ) error {
 	if endpoint == nil || current == nil || entry == nil || binding == nil || endpoint.publications == nil || endpoint.transitAcquire == nil {
@@ -83,7 +83,7 @@ func (endpoint *endpoint) configurePublisher(current func() (publisherAttachment
 // acquirePublisherProfile turns one indivisible authenticated State
 // projection into the two independent role-scoped Grant lifecycles required
 // by Publisher start. The returned finish functions remain Endpoint-owned.
-func (endpoint *endpoint) acquirePublisherProfile(ctx context.Context, view publisherAttachmentStateView, entry ApplicationEntry,
+func (endpoint *endpoint) acquirePublisherProfile(ctx context.Context, view publisherAttachmentStateView, entry applicationEntry,
 	credential publication.Credential, at time.Time,
 ) (acquiredPublisherProfile, error) {
 	if endpoint == nil || ctx == nil || view == nil || entry == nil || at.IsZero() ||
@@ -114,7 +114,7 @@ func (endpoint *endpoint) acquirePublisherProfile(ctx context.Context, view publ
 		return acquiredPublisherProfile{}, errors.Join(reachabilityErr, joinErr,
 			introductionSubmission.finish(false), responderSubmission.finish(false))
 	}
-	profile := PublisherIntroductionProfile{NetworkID: plan.epoch.NetworkID, Digest: plan.epoch.Digest, Epoch: plan.epoch.Number,
+	profile := publisherIntroductionProfile{NetworkID: plan.epoch.NetworkID, Digest: plan.epoch.Digest, Epoch: plan.epoch.Number,
 		Introduction: plan.introduction, Rendezvous: plan.rendezvous, Responder: plan.responder,
 		SlotAttachmentID: introductionSubmission.attachment, ResponderAttachmentID: responderSubmission.attachment,
 		Reachability: reachabilityID, JoinHandle: joinHandle, NotAfter: plan.deadline,
@@ -128,7 +128,7 @@ func (endpoint *endpoint) acquirePublisherProfile(ctx context.Context, view publ
 		introduction: introductionSubmission.finish, responder: responderSubmission.finish}}, nil
 }
 
-func (endpoint *endpoint) planPublisherAcquisition(view publisherAttachmentStateView, entry ApplicationEntry,
+func (endpoint *endpoint) planPublisherAcquisition(view publisherAttachmentStateView, entry applicationEntry,
 	credential publication.Credential, at time.Time,
 ) (publisherAcquisitionPlan, error) {
 	deadline := at.UTC().Add(15 * time.Second).Truncate(time.Second)
@@ -166,11 +166,11 @@ func (endpoint *endpoint) planPublisherAcquisition(view publisherAttachmentState
 		rendezvous: rendezvous, responder: responder, slot: slot, at: at, deadline: deadline}, nil
 }
 
-func publisherTransitPeer(value state.PublisherTransitPeer) TransitPeer {
-	return TransitPeer{NodeID: value.NodeID, PublicKey: value.PublicKey, Family: value.Family, Endpoint: value.Endpoint}
+func publisherTransitPeer(value state.PublisherTransitPeer) transitPeer {
+	return transitPeer{NodeID: value.NodeID, PublicKey: value.PublicKey, Family: value.Family, Endpoint: value.Endpoint}
 }
 
-func distinctPublisherTransitPeers(peers ...TransitPeer) bool {
+func distinctPublisherTransitPeers(peers ...transitPeer) bool {
 	if len(peers) != 4 {
 		return false
 	}

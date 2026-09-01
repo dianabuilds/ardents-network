@@ -23,13 +23,13 @@ const (
 )
 
 // Recovery is owned by the native connection lifecycle.
-type Recovery = nativeconnection.Recovery
+type routeRecovery = nativeconnection.Recovery
 
 // DestinationBinding is owned by the native connection lifecycle.
-type DestinationBinding = nativeconnection.DestinationBinding
+type destinationBinding = nativeconnection.DestinationBinding
 
 // Setup fixes one Endpoint broker generation and its two local principals.
-type Setup struct {
+type setup struct {
 	NetworkID               [32]byte
 	BrokerID                [32]byte
 	AuthorityPublic         ed25519.PublicKey
@@ -43,7 +43,7 @@ type Setup struct {
 	// headless Publisher start path. They are never supplied by an
 	// Administration caller.
 	PublisherBinding             *instance.Binding
-	PublisherIntroductionProfile PublisherIntroductionProfile
+	publisherIntroductionProfile publisherIntroductionProfile
 	Clock                        func() time.Time
 	Resources                    func(string, int) uint32
 	Admission                    *broker.Broker
@@ -68,11 +68,11 @@ type connectionInput struct {
 	Publication                      []byte
 	Route                            net.Conn
 	Application                      io.ReadWriteCloser
-	OpenAttachment                   func(context.Context, Recovery) (net.Conn, error)
+	OpenAttachment                   func(context.Context, routeRecovery) (net.Conn, error)
 	OnAuthenticated                  func([32]byte) error
-	RecoveryBinding                  Recovery
-	NameBinding                      DestinationBinding
-	NameUpdates                      <-chan DestinationBinding
+	RecoveryBinding                  routeRecovery
+	NameBinding                      destinationBinding
+	NameUpdates                      <-chan destinationBinding
 	closeApplicationOnRemoteTerminal bool
 	BytesEachDirection               uint32
 	SendBytes, ReceiveBytes          uint32
@@ -81,7 +81,7 @@ type connectionInput struct {
 
 // PublicationResult is the bounded public record and its exact admission
 // receipt. It contains no Route, Application, or connection facts.
-type PublicationResult struct {
+type publicationResult struct {
 	Class                       string
 	Reason                      string
 	Record                      []byte
@@ -95,21 +95,21 @@ type PublicationResult struct {
 // PublisherStartRequest is the complete local Application input for starting
 // the Endpoint-owned Publisher generation. All network and Service authority
 // facts remain inside Endpoint composition.
-type PublisherStartRequest struct {
+type publisherStartRequest struct {
 	Principal, Capability [32]byte
 	At                    time.Time
 }
 
 // WithdrawalRequest contains only the Administration capability needed to
 // release the current publication.
-type WithdrawalRequest struct {
+type withdrawalRequest struct {
 	Principal, Capability [32]byte
 	At                    time.Time
 }
 
 // WithdrawalResult reports the released public generation and its exact
 // admission receipt. It contains no connection facts.
-type WithdrawalResult struct {
+type withdrawalResult struct {
 	Class               string
 	Reason              string
 	AuthenticatedTarget [32]byte
@@ -119,17 +119,17 @@ type WithdrawalResult struct {
 
 // OutboundConnectionRequest contains exactly the client-side facts for one
 // authenticated Connection. It has no publisher publication owner or signer.
-type OutboundConnectionRequest struct {
+type outboundConnectionRequest struct {
 	Principal, Capability, Target    [32]byte
 	AuthorityPublic                  [32]byte
 	Publication                      []byte
 	Route                            net.Conn
 	Application                      io.ReadWriteCloser
-	OpenAttachment                   func(context.Context, Recovery) (net.Conn, error)
+	OpenAttachment                   func(context.Context, routeRecovery) (net.Conn, error)
 	OnAuthenticated                  func([32]byte) error
-	RecoveryBinding                  Recovery
-	NameBinding                      DestinationBinding
-	NameUpdates                      <-chan DestinationBinding
+	RecoveryBinding                  routeRecovery
+	NameBinding                      destinationBinding
+	NameUpdates                      <-chan destinationBinding
 	closeApplicationOnRemoteTerminal bool
 	BytesEachDirection               uint32
 	SendBytes, ReceiveBytes          uint32
@@ -138,12 +138,12 @@ type OutboundConnectionRequest struct {
 
 // InboundConnectionRequest contains exactly the publisher-side facts for one
 // authenticated Connection. It has no public record or resolved target input.
-type InboundConnectionRequest struct {
+type inboundConnectionRequest struct {
 	Principal, Capability   [32]byte
 	Route                   net.Conn
 	Application             io.ReadWriteCloser
-	OpenAttachment          func(context.Context, Recovery) (net.Conn, error)
-	RecoveryBinding         Recovery
+	OpenAttachment          func(context.Context, routeRecovery) (net.Conn, error)
+	RecoveryBinding         routeRecovery
 	BytesEachDirection      uint32
 	SendBytes, ReceiveBytes uint32
 	At                      time.Time
@@ -152,7 +152,7 @@ type InboundConnectionRequest struct {
 // RuntimeResult is a bounded endpoint-runtime outcome with no Route internals.
 // Its remaining evidence projection is reduced independently of the
 // role-specific operation inputs.
-type RuntimeResult struct {
+type runtimeResult struct {
 	Class                    string         `json:"class"`
 	Reason                   string         `json:"reason"`
 	AuthenticatedTarget      [32]byte       `json:"authenticated_target"`
@@ -182,14 +182,14 @@ type endpoint struct {
 	transitMu            sync.Mutex
 	publisherMu          sync.Mutex
 	publisherBinding     *instance.Binding
-	publisherProfile     PublisherIntroductionProfile
-	publisherSession     *PublisherIntroduction
+	publisherProfile     publisherIntroductionProfile
+	publisherSession     *publisherIntroduction
 	publisherPrepare     func(context.Context, time.Time) (acquiredPublisherProfile, error)
 	publisherCredentials publisherCredentialCompletions
 }
 
 // New creates one finite Endpoint-local admission and publication boundary.
-func New(input Setup) (*endpoint, error) {
+func newEndpoint(input setup) (*endpoint, error) {
 	if input.NetworkID == [32]byte{} || input.BrokerID == [32]byte{} || input.ConnectionPrincipal == [32]byte{} ||
 		len(input.AuthorityPublic) != 0 && len(input.AuthorityPublic) != ed25519.PublicKeySize ||
 		len(input.IntroductionPublic) != 0 && len(input.IntroductionPublic) != ed25519.PublicKeySize {
@@ -243,9 +243,9 @@ func New(input Setup) (*endpoint, error) {
 	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,
 		admission:    admission, resources: resources, transitClients: transitClients, transitAcquire: transitAcquire,
-		publisherBinding: input.PublisherBinding, publisherProfile: clonePublisherIntroductionProfile(input.PublisherIntroductionProfile)}
+		publisherBinding: input.PublisherBinding, publisherProfile: clonePublisherIntroductionProfile(input.publisherIntroductionProfile)}
 	if input.PublisherBinding != nil && (input.AdministrationPrincipal == [32]byte{} ||
-		input.PublisherIntroductionProfile.NetworkID != input.NetworkID || !validPublisherIntroductionProfile(input.PublisherIntroductionProfile)) {
+		input.publisherIntroductionProfile.NetworkID != input.NetworkID || !validPublisherIntroductionProfile(input.publisherIntroductionProfile)) {
 		if transitAcquire != nil {
 			_ = transitAcquire.Close()
 		}
@@ -307,7 +307,7 @@ func (endpoint *endpoint) Close() error {
 
 // StartPublisher consumes one Administration capability and atomically binds
 // the Endpoint-owned Instance generation to its live Introduction slot.
-func (endpoint *endpoint) StartPublisher(ctx context.Context, input PublisherStartRequest) (PublicationResult, error) {
+func (endpoint *endpoint) StartPublisher(ctx context.Context, input publisherStartRequest) (publicationResult, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return publicationDenied("local Publisher start is incomplete")
 	}
@@ -320,7 +320,7 @@ func (endpoint *endpoint) StartPublisher(ctx context.Context, input PublisherSta
 // AcceptPublisher hands one local Publisher Application stream to the
 // Endpoint-owned live Introduction session. The caller cannot supply a Route
 // or recovery attachment.
-func (endpoint *endpoint) AcceptPublisher(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
+func (endpoint *endpoint) AcceptPublisher(ctx context.Context, input inboundConnectionRequest) (runtimeResult, error) {
 	if endpoint == nil || ctx == nil {
 		return denied("local Publisher acceptance is incomplete")
 	}
@@ -330,12 +330,12 @@ func (endpoint *endpoint) AcceptPublisher(ctx context.Context, input InboundConn
 	if session == nil {
 		return failed("service unavailable", "Publisher Introduction session is unavailable", errors.New("publisher is not started"))
 	}
-	return session.Accept(ctx, input)
+	return session.acceptApplication(ctx, input)
 }
 
 // Withdraw consumes one Administration capability before withdrawing the
 // current Instance publication.
-func (endpoint *endpoint) Withdraw(ctx context.Context, input WithdrawalRequest) (WithdrawalResult, error) {
+func (endpoint *endpoint) Withdraw(ctx context.Context, input withdrawalRequest) (withdrawalResult, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return withdrawalDenied("local withdrawal is incomplete")
 	}
@@ -346,7 +346,7 @@ func (endpoint *endpoint) Withdraw(ctx context.Context, input WithdrawalRequest)
 }
 
 // Connect runs one client-side native Connection with only outbound facts.
-func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionRequest) (RuntimeResult, error) {
+func (endpoint *endpoint) connectForHarness(ctx context.Context, input outboundConnectionRequest) (runtimeResult, error) {
 	return endpoint.runOutbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
 		Target: input.Target, AuthorityPublic: input.AuthorityPublic, Publication: input.Publication, Route: input.Route, Application: input.Application,
 		OpenAttachment: input.OpenAttachment, RecoveryBinding: input.RecoveryBinding, NameBinding: input.NameBinding,
@@ -355,14 +355,14 @@ func (endpoint *endpoint) Connect(ctx context.Context, input OutboundConnectionR
 }
 
 // Accept runs one publisher-side native Connection with only inbound facts.
-func (endpoint *endpoint) Accept(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
+func (endpoint *endpoint) acceptForHarness(ctx context.Context, input inboundConnectionRequest) (runtimeResult, error) {
 	return endpoint.runInbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
 		Route: input.Route, Application: input.Application, OpenAttachment: input.OpenAttachment,
 		RecoveryBinding: input.RecoveryBinding, BytesEachDirection: input.BytesEachDirection,
 		SendBytes: input.SendBytes, ReceiveBytes: input.ReceiveBytes, At: input.At})
 }
 
-func (endpoint *endpoint) runOutbound(ctx context.Context, input connectionInput) (RuntimeResult, error) {
+func (endpoint *endpoint) runOutbound(ctx context.Context, input connectionInput) (runtimeResult, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return denied("local operation is incomplete")
 	}
@@ -372,7 +372,7 @@ func (endpoint *endpoint) runOutbound(ctx context.Context, input connectionInput
 	return endpoint.connect(ctx, input)
 }
 
-func (endpoint *endpoint) runInbound(ctx context.Context, input connectionInput) (RuntimeResult, error) {
+func (endpoint *endpoint) runInbound(ctx context.Context, input connectionInput) (runtimeResult, error) {
 	if endpoint == nil || input.At.IsZero() {
 		return denied("local operation is incomplete")
 	}
@@ -382,26 +382,26 @@ func (endpoint *endpoint) runInbound(ctx context.Context, input connectionInput)
 	return endpoint.accept(ctx, input)
 }
 
-func publicationDenied(reason string) (PublicationResult, error) {
+func publicationDenied(reason string) (publicationResult, error) {
 	return publicationFailed("local authorization or policy denial", reason, errors.New(reason))
 }
 
-func publicationFailed(class, reason string, err error) (PublicationResult, error) {
-	return PublicationResult{Class: class, Reason: reason}, err
+func publicationFailed(class, reason string, err error) (publicationResult, error) {
+	return publicationResult{Class: class, Reason: reason}, err
 }
 
-func withdrawalDenied(reason string) (WithdrawalResult, error) {
+func withdrawalDenied(reason string) (withdrawalResult, error) {
 	return withdrawalFailed("local authorization or policy denial", reason, errors.New(reason))
 }
 
-func withdrawalFailed(class, reason string, err error) (WithdrawalResult, error) {
-	return WithdrawalResult{Class: class, Reason: reason}, err
+func withdrawalFailed(class, reason string, err error) (withdrawalResult, error) {
+	return withdrawalResult{Class: class, Reason: reason}, err
 }
 
-func denied(reason string) (RuntimeResult, error) {
+func denied(reason string) (runtimeResult, error) {
 	return failed("local authorization or policy denial", reason, errors.New(reason))
 }
 
-func failed(class, reason string, err error) (RuntimeResult, error) {
-	return RuntimeResult{Class: class, Reason: reason}, err
+func failed(class, reason string, err error) (runtimeResult, error) {
+	return runtimeResult{Class: class, Reason: reason}, err
 }

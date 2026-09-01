@@ -13,23 +13,23 @@ import (
 // private Target lookup. The Gateway endpoint is deliberately absent: only the
 // admitted Initiator obtains that literal URL from its authenticated State
 // duty. This request is separate from the Entry attachment later spent on C-2.
-type UserPrivateReachabilityRequest struct {
+type userPrivateReachabilityRequest struct {
 	GatewayNodeID, GatewayNodePublicKey [32]byte
 	GatewayFamily                       [32]byte
 	GatewayProfile                      reachability.GatewayProfile
 	StateDigest                         [32]byte
 	Epoch                               uint64
-	Initiator                           TransitPeer
+	Initiator                           transitPeer
 	Entry                               route.EntryAcquirer
 	AttachmentID                        [32]byte
 	At, Deadline                        time.Time
 }
 
-// ResolveUserReachability carries one OHTTP request through a newly admitted
+// resolveUserReachability carries one OHTTP request through a newly admitted
 // Entry attachment, verifies no descriptor itself, and returns only the
 // Gateway's opaque descriptor bytes. The caller must pass those bytes to the
 // exact Target verifier before C-2 composition.
-func (endpoint *endpoint) ResolveUserReachability(ctx context.Context, link string, input UserPrivateReachabilityRequest) ([]byte, error) {
+func (endpoint *endpoint) resolveUserReachability(ctx context.Context, link string, input userPrivateReachabilityRequest) ([]byte, error) {
 	if endpoint == nil || ctx == nil || input.GatewayNodeID == [32]byte{} || input.GatewayNodePublicKey == [32]byte{} || input.GatewayFamily == [32]byte{} ||
 		input.GatewayProfile.NodeID != input.GatewayNodeID || input.StateDigest == [32]byte{} || input.Epoch == 0 ||
 		!validTransitPeer(input.Initiator) || input.Entry == nil || input.AttachmentID == [32]byte{} || input.At.IsZero() ||
@@ -54,7 +54,7 @@ func (endpoint *endpoint) ResolveUserReachability(ctx context.Context, link stri
 	return descriptor, nil
 }
 
-func (endpoint *endpoint) exchangePrivateReachability(ctx context.Context, input UserPrivateReachabilityRequest, envelope []byte) (reachability.OHTTPResponse, error) {
+func (endpoint *endpoint) exchangePrivateReachability(ctx context.Context, input userPrivateReachabilityRequest, envelope []byte) (reachability.OHTTPResponse, error) {
 	connection, cleanup, err := route.OpenEntryAttachment(ctx, input.Entry, route.EntryAttachmentRequest{NetworkID: endpoint.network,
 		Digest: input.StateDigest, Epoch: input.Epoch, AttachmentID: input.AttachmentID, Deadline: input.Deadline})
 	if err != nil || connection == nil || cleanup == nil {

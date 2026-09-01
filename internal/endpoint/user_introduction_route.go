@@ -15,13 +15,13 @@ import (
 // Entry retains its invite/contact lifecycle, and the caller supplies only
 // State-selected peers; this operation neither discovers a Node nor tries an
 // alternate destination.
-type UserIntroductionRouteRequest struct {
+type userIntroductionRouteRequest struct {
 	TargetLink            string
 	Publication           []byte
 	AuthorityPublic       [32]byte
-	Introduction          UserIntroductionProfile
+	Introduction          userIntroductionProfile
 	Entry                 route.EntryAcquirer
-	Initiator, Rendezvous TransitPeer
+	Initiator, Rendezvous transitPeer
 	AttachmentID          [32]byte
 	EndpointHandshake     [32]byte
 	At                    time.Time
@@ -33,7 +33,7 @@ type UserIntroductionRouteRequest struct {
 // Responder authorization binds that same opaque value. The caller passes
 // Connection only to the selected Endpoint Service Connection operation, then
 // must Close it when that operation ends.
-type UserIntroductionRoute struct {
+type userIntroductionRoute struct {
 	Connection          net.Conn
 	AuthenticatedTarget [32]byte
 	AuthorityPublic     [32]byte
@@ -45,11 +45,11 @@ type UserIntroductionRoute struct {
 	once    sync.Once
 }
 
-// OpenUserIntroductionRoute opens one Entry-to-Initiator carrier, authorizes
+// openUserIntroductionRoute opens one Entry-to-Initiator carrier, authorizes
 // its exact Rendezvous leg, then delivers the same State-selected Attachment
 // ID to the selected Publisher Introduction slot. It closes the carrier on every
 // refusal, never falling back to another peer, publication, or Target.
-func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input UserIntroductionRouteRequest) (*UserIntroductionRoute, error) {
+func (endpoint *endpoint) openUserIntroductionRoute(ctx context.Context, input userIntroductionRouteRequest) (*userIntroductionRoute, error) {
 	if endpoint == nil || ctx == nil || input.At.IsZero() || input.Entry == nil || input.AttachmentID == [32]byte{} ||
 		input.EndpointHandshake == [32]byte{} || !validTransitPeer(input.Initiator) ||
 		!validTransitPeer(input.Rendezvous) || input.Initiator.NodeID == input.Rendezvous.NodeID ||
@@ -73,7 +73,7 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 		}
 		return nil, errors.New("user Entry attachment lacks its owned cleanup")
 	}
-	closeRoute := func(cause error) (*UserIntroductionRoute, error) {
+	closeRoute := func(cause error) (*userIntroductionRoute, error) {
 		return nil, errors.Join(cause, cleanup())
 	}
 	setup := route.RelaySetup{NetworkID: input.Introduction.NetworkID, Digest: input.Introduction.Digest, AttachmentID: input.AttachmentID,
@@ -87,7 +87,7 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 	if err != nil || setup.VerifyRelayReady(ready) != nil {
 		return closeRoute(errors.Join(errors.New("user Initiator RelayReady is invalid"), err, setup.VerifyRelayReady(ready)))
 	}
-	delivery, err := endpoint.SubmitIntroductionFromLink(ctx, UserIntroductionRequest{TargetLink: input.TargetLink, Publication: input.Publication,
+	delivery, err := endpoint.SubmitIntroductionFromLink(ctx, userIntroductionRequest{TargetLink: input.TargetLink, Publication: input.Publication,
 		AuthorityPublic: input.AuthorityPublic, Profile: input.Introduction, AttachmentID: input.AttachmentID, EndpointHandshake: input.EndpointHandshake, At: input.At})
 	if err != nil {
 		return closeRoute(err)
@@ -99,13 +99,13 @@ func (endpoint *endpoint) OpenUserIntroductionRoute(ctx context.Context, input U
 	if authority == [32]byte{} {
 		authority = endpoint.authority
 	}
-	return &UserIntroductionRoute{Connection: connection, AuthenticatedTarget: delivery.AuthenticatedTarget, AuthorityPublic: authority,
+	return &userIntroductionRoute{Connection: connection, AuthenticatedTarget: delivery.AuthenticatedTarget, AuthorityPublic: authority,
 		Publication: append([]byte(nil), input.Publication...), Generation: delivery.Generation, AttachmentID: input.AttachmentID, cleanup: cleanup}, nil
 }
 
 // Close releases the Entry-owned carrier exactly once. It does not withdraw a
 // Publisher publication, alter Node duties, or retain Route material.
-func (route *UserIntroductionRoute) Close() error {
+func (route *userIntroductionRoute) Close() error {
 	if route == nil || route.cleanup == nil {
 		return nil
 	}
@@ -119,6 +119,6 @@ func (route *UserIntroductionRoute) Close() error {
 	return err
 }
 
-func validTransitPeer(peer TransitPeer) bool {
+func validTransitPeer(peer transitPeer) bool {
 	return peer.NodeID != [32]byte{} && peer.PublicKey != [32]byte{} && peer.Endpoint != ""
 }

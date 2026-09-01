@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"crypto/ed25519"

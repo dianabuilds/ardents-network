@@ -13,7 +13,7 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (result RuntimeResult, err error) {
+func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (result runtimeResult, err error) {
 	session, activateErr := endpoint.activateApplicationSession(ctx, input.Session, input.Principal)
 	if activateErr != nil {
 		return denied(activateErr.Error())
@@ -22,7 +22,7 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 	return endpoint.connectAuthorized(session.Context(), input, session.receipt)
 }
 
-func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result RuntimeResult, err error) {
+func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result runtimeResult, err error) {
 	defer projectReceipt(&result, receipt)
 	authority := endpoint.authority
 	if input.AuthorityPublic != [32]byte{} {
@@ -83,7 +83,7 @@ func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectio
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
-	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
+	return runtimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: outcome.Accepted,
 		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: outcome.Received,
 		QueueHighWater:  outcome.QueueHigh,
@@ -91,7 +91,7 @@ func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectio
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
-func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (result RuntimeResult, err error) {
+func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (result runtimeResult, err error) {
 	session, activateErr := endpoint.activateApplicationSession(ctx, input.Session, input.Principal)
 	if activateErr != nil {
 		return denied(activateErr.Error())
@@ -100,7 +100,7 @@ func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (re
 	return endpoint.acceptAuthorized(session.Context(), input, session.receipt)
 }
 
-func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result RuntimeResult, err error) {
+func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result runtimeResult, err error) {
 	defer projectReceipt(&result, receipt)
 	if err := validateStreams(input); err != nil {
 		return failed("local authorization or policy denial", "bounded local stream input is invalid", err)
@@ -152,7 +152,7 @@ func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connection
 		applyRecoveryOutcome(&result, outcome)
 		return result, failure
 	}
-	return RuntimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
+	return runtimeResult{Class: "clean service connection close", AuthenticatedTarget: credential.Target,
 		Generation: credential.Generation, AcceptedBytes: outcome.Accepted,
 		AcknowledgedBytes: outcome.Acknowledged, ReceivedBytes: outcome.Received,
 		QueueHighWater:  outcome.QueueHigh,
@@ -160,7 +160,7 @@ func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connection
 		ContinuityCommitment: outcome.ContinuityCommitment}, nil
 }
 
-func applyRecoveryOutcome(result *RuntimeResult, outcome nativeconnection.Outcome) {
+func applyRecoveryOutcome(result *runtimeResult, outcome nativeconnection.Outcome) {
 	result.AcknowledgedBytes = outcome.Acknowledged
 	result.QueueHighWater = outcome.QueueHigh
 	result.RouteGeneration = outcome.Generation
@@ -168,8 +168,7 @@ func applyRecoveryOutcome(result *RuntimeResult, outcome nativeconnection.Outcom
 	result.ContinuityCommitment = outcome.ContinuityCommitment
 }
 
-func newNativeStream(ctx context.Context, input connectionInput, credential Credential, recovery Recovery,
-	private crypto.Signer, client bool, initial *securedAttachment, continuity, connectionContext [32]byte,
+func newNativeStream(ctx context.Context, input connectionInput, credential publicationCredential, recovery routeRecovery, private crypto.Signer, client bool, initial *securedAttachment, continuity, connectionContext [32]byte,
 	resources func(string, int) uint32) (*nativeconnection.Stream, error) {
 	first, err := nativeAttachment(initial)
 	if err != nil {
@@ -201,7 +200,7 @@ func newNativeStream(ctx context.Context, input connectionInput, credential Cred
 	}
 	nameBinding, nameUpdates := input.NameBinding, input.NameUpdates
 	if !client {
-		nameBinding, nameUpdates = DestinationBinding{}, nil
+		nameBinding, nameUpdates = destinationBinding{}, nil
 	}
 	return nativeconnection.NewStream(nativeconnection.StreamConfig{Context: ctx, Application: input.Application,
 		NetworkID: credential.NetworkID, Recovery: recovery, OpenAttachment: opener, Initial: first,
@@ -230,12 +229,12 @@ func streamBounds(input connectionInput) (uint32, uint32) {
 	return input.SendBytes, input.ReceiveBytes
 }
 
-func validateRecoveryBinding(input connectionInput, credential Credential) error {
+func validateRecoveryBinding(input connectionInput, credential publicationCredential) error {
 	return nativeconnection.ValidateRecovery(input.OpenAttachment != nil, input.RecoveryBinding,
 		input.At.Unix(), credential.NotAfter)
 }
 
-func authenticateInstance(connection io.ReadWriter, credential Credential, connectionContext [32]byte) ([32]byte, error) {
+func authenticateInstance(connection io.ReadWriter, credential publicationCredential, connectionContext [32]byte) ([32]byte, error) {
 	var canary [32]byte
 	if _, err := rand.Read(canary[:]); err != nil {
 		return canary, err
@@ -257,7 +256,7 @@ func authenticateInstance(connection io.ReadWriter, credential Credential, conne
 	return canary, nil
 }
 
-func proveInstance(connection io.ReadWriter, credential Credential, connectionContext [32]byte, signer crypto.Signer) ([32]byte, error) {
+func proveInstance(connection io.ReadWriter, credential publicationCredential, connectionContext [32]byte, signer crypto.Signer) ([32]byte, error) {
 	var canary [32]byte
 	record, err := nativeconnection.Read(connection)
 	if err != nil {

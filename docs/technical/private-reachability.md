@@ -150,7 +150,8 @@ for `resolved`:
 The Endpoint obtains its Initiator, connection Rendezvous, and Entry acquisition
 from its own current State/Entry owners. It must check that all role identities
 and known families satisfy the declared exclusions before passing typed values
-to `OpenUserIntroductionRoute`.
+to the participant-owned Endpoint runtime, which composes the private
+Introduction route from its accepted State and Entry facts.
 
 ## Required outcomes and qualification
 

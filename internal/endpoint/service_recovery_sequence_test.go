@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"bytes"
@@ -7,8 +7,6 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
@@ -26,19 +24,19 @@ func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: clientRoutes[0], OpenAttachment: attachmentQueue(clientRoutes[1:]...),
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
-		result, err := client.Connect(ctx, request)
+		result, err := client.connectForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: publisherRoutes[0],
 			OpenAttachment: attachmentQueue(publisherRoutes[1:]...), Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)
-		result, err := publisher.Accept(ctx, request)
+		result, err := publisher.acceptForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 

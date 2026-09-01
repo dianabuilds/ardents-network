@@ -17,7 +17,7 @@ import (
 // TransitPeer is one State-selected Introduction, Responder, or Rendezvous
 // identity. Endpoint owns the chosen profile; this type does not discover or
 // select a peer.
-type TransitPeer struct {
+type transitPeer struct {
 	NodeID, PublicKey [32]byte
 	Family            [32]byte
 	Endpoint          string
@@ -26,10 +26,10 @@ type TransitPeer struct {
 // PublisherIntroductionProfile is the complete finite C-2 context selected
 // for one Publisher live slot. Its authorizations are opaque capabilities for
 // the receiving transit duties, not Service material or route candidates.
-type PublisherIntroductionProfile struct {
+type publisherIntroductionProfile struct {
 	NetworkID, Digest                                 [32]byte
 	Epoch                                             uint64
-	Introduction, Rendezvous, Responder               TransitPeer
+	Introduction, Rendezvous, Responder               transitPeer
 	SlotAttachmentID, ResponderAttachmentID           [32]byte
 	Reachability, JoinHandle                          [32]byte
 	NotAfter                                          time.Time
@@ -39,16 +39,16 @@ type PublisherIntroductionProfile struct {
 
 // PublisherIntroductionRecipient is the non-exporting host capability needed
 // to authenticate and open one SealedIntroduction v1 record.
-type PublisherIntroductionRecipient interface {
+type publisherIntroductionRecipient interface {
 	route.IntroductionRecipient
 	IntroductionPublic() [32]byte
 }
 
 // PublisherIntroductionRequest supplies the non-public HPKE recipient for a
 // live Publisher publication and one State-selected C-2 profile.
-type PublisherIntroductionRequest struct {
-	Profile   PublisherIntroductionProfile
-	Recipient PublisherIntroductionRecipient
+type publisherIntroductionRequest struct {
+	Profile   publisherIntroductionProfile
+	Recipient publisherIntroductionRecipient
 	// HPKEPrivate is retained only for lower-level compatibility evidence.
 	// The supported headless runtime passes Recipient instead.
 	HPKEPrivate hpke.PrivateKey
@@ -58,10 +58,10 @@ type PublisherIntroductionRequest struct {
 // PublisherIntroduction owns one registered live slot and its retained
 // publication lease. Wait returns one authenticated Responder carrier only
 // after the sealed instruction matches that exact retained publication.
-type PublisherIntroduction struct {
+type publisherIntroduction struct {
 	endpoint  *endpoint
-	profile   PublisherIntroductionProfile
-	recipient PublisherIntroductionRecipient
+	profile   publisherIntroductionProfile
+	recipient publisherIntroductionRecipient
 	lease     *publication.Lease
 	slot      net.Conn
 
@@ -76,8 +76,8 @@ type PublisherIntroduction struct {
 // OpenPublisherIntroduction registers one finite outbound slot. Its caller
 // must retain the returned session until it has handed the accepted carrier to
 // the Publisher Endpoint; Close then releases the current publication lease.
-func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input PublisherIntroductionRequest) (*PublisherIntroduction, error) {
-	recipient, recipientErr := publisherIntroductionRecipient(input)
+func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input publisherIntroductionRequest) (*publisherIntroduction, error) {
+	recipient, recipientErr := resolvePublisherIntroductionRecipient(input)
 	if endpoint == nil || endpoint.publications == nil || ctx == nil || recipientErr != nil || input.At.IsZero() ||
 		input.Profile.NetworkID != endpoint.network || !validPublisherIntroductionProfile(input.Profile) {
 		return nil, errors.New("publisher Introduction input is incomplete or outside its bound")
@@ -86,7 +86,7 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 	if err != nil {
 		return nil, errors.New("current Publisher publication is unavailable")
 	}
-	closeLease := func(cause error) (*PublisherIntroduction, error) {
+	closeLease := func(cause error) (*publisherIntroduction, error) {
 		return nil, errors.Join(cause, lease.Close())
 	}
 	current := lease.Current()
@@ -94,12 +94,12 @@ func (endpoint *endpoint) OpenPublisherIntroduction(ctx context.Context, input P
 	if err != nil {
 		return closeLease(err)
 	}
-	return &PublisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(input.Profile), recipient: recipient,
+	return &publisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(input.Profile), recipient: recipient,
 		lease: lease, slot: connection}, nil
 }
 
-func (endpoint *endpoint) openPublisherIntroductionSlot(ctx context.Context, profile PublisherIntroductionProfile,
-	recipient PublisherIntroductionRecipient, credential publication.Credential, finish func(bool) error,
+func (endpoint *endpoint) openPublisherIntroductionSlot(ctx context.Context, profile publisherIntroductionProfile,
+	recipient publisherIntroductionRecipient, credential publication.Credential, finish func(bool) error,
 ) (net.Conn, []byte, error) {
 	if profile.NotAfter.Unix() > credential.NotAfter || !matchesIntroductionRecipient(recipient, credential.IntroductionHPKEPublic) {
 		return nil, nil, errors.New("publisher Introduction recipient does not match the current Credential")
@@ -149,7 +149,7 @@ func (endpoint *endpoint) openPublisherIntroductionSlot(ctx context.Context, pro
 // Publisher-to-Responder attachment it authorizes. Any malformed, expired,
 // replayed, foreign-publication, or cancelled delivery closes the slot and
 // releases its lease without creating a Responder attachment.
-func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error) {
+func (session *publisherIntroduction) Wait(ctx context.Context) (net.Conn, error) {
 	if session == nil || ctx == nil {
 		return nil, errors.New("publisher Introduction session is unavailable")
 	}
@@ -216,7 +216,7 @@ func (session *PublisherIntroduction) Wait(ctx context.Context) (net.Conn, error
 // the Publisher Endpoint's existing native Connection acceptance path. The
 // caller supplies only the authorized local Application attachment; it cannot
 // substitute a route or install a recovery opener for this one-use handoff.
-func (session *PublisherIntroduction) Accept(ctx context.Context, input InboundConnectionRequest) (RuntimeResult, error) {
+func (session *publisherIntroduction) acceptApplication(ctx context.Context, input inboundConnectionRequest) (runtimeResult, error) {
 	if session == nil || session.endpoint == nil || ctx == nil || input.Route != nil || input.OpenAttachment != nil || input.Application == nil || input.At.IsZero() ||
 		(input.SendBytes == 0 && input.ReceiveBytes == 0 && input.BytesEachDirection == 0) {
 		return failed("local authorization or policy denial", "Publisher Introduction local handoff is incomplete or attempts to select a route", errors.New("publisher Introduction local handoff is invalid"))
@@ -228,12 +228,12 @@ func (session *PublisherIntroduction) Accept(ctx context.Context, input InboundC
 	defer carrier.Close()
 	defer session.Close()
 	input.Route = carrier
-	return session.endpoint.Accept(ctx, input)
+	return session.endpoint.acceptForHarness(ctx, input)
 }
 
 // Close withdraws this local slot and releases the retained publication. It
 // does not withdraw the Publisher's publication itself.
-func (session *PublisherIntroduction) Close() error {
+func (session *publisherIntroduction) Close() error {
 	if session == nil {
 		return nil
 	}
@@ -254,7 +254,7 @@ func (session *PublisherIntroduction) Close() error {
 	return result
 }
 
-func (session *PublisherIntroduction) finishResponder(presented bool) error {
+func (session *publisherIntroduction) finishResponder(presented bool) error {
 	if session == nil {
 		return nil
 	}
@@ -272,14 +272,14 @@ func finishTransitCredential(finish func(bool) error, presented bool) error {
 	return finish(presented)
 }
 
-func (session *PublisherIntroduction) matchesHeader(value route.SealedIntroduction) bool {
+func (session *publisherIntroduction) matchesHeader(value route.SealedIntroduction) bool {
 	profile := session.profile
 	return value.NetworkID == profile.NetworkID && value.Digest == profile.Digest && value.Epoch == profile.Epoch &&
 		value.IntroductionNodeID == profile.Introduction.NodeID && value.RendezvousNodeID == profile.Rendezvous.NodeID &&
 		value.Reachability == profile.Reachability && value.JoinHandle == profile.JoinHandle && value.NotAfter.Equal(profile.NotAfter)
 }
 
-func validPublisherIntroductionProfile(value PublisherIntroductionProfile) bool {
+func validPublisherIntroductionProfile(value publisherIntroductionProfile) bool {
 	if value.NetworkID == [32]byte{} || value.Digest == [32]byte{} || value.Epoch == 0 || value.SlotAttachmentID == [32]byte{} ||
 		value.ResponderAttachmentID == [32]byte{} || value.ResponderAttachmentID == value.SlotAttachmentID ||
 		value.Reachability == [32]byte{} || value.JoinHandle == [32]byte{} || value.NotAfter.IsZero() ||
@@ -289,7 +289,7 @@ func validPublisherIntroductionProfile(value PublisherIntroductionProfile) bool 
 		!validOptionalTransitClientCertificate(value.SlotClientCertificate) || !validOptionalTransitClientCertificate(value.ResponderClientCertificate) {
 		return false
 	}
-	peers := []TransitPeer{value.Introduction, value.Rendezvous, value.Responder}
+	peers := []transitPeer{value.Introduction, value.Rendezvous, value.Responder}
 	for index, peer := range peers {
 		if peer.NodeID == [32]byte{} || peer.PublicKey == [32]byte{} || peer.Endpoint == "" {
 			return false
@@ -303,7 +303,7 @@ func validPublisherIntroductionProfile(value PublisherIntroductionProfile) bool 
 	return true
 }
 
-func matchesIntroductionRecipient(recipient PublisherIntroductionRecipient, expected [32]byte) bool {
+func matchesIntroductionRecipient(recipient publisherIntroductionRecipient, expected [32]byte) bool {
 	if recipient == nil || expected == [32]byte{} {
 		return false
 	}
@@ -311,7 +311,7 @@ func matchesIntroductionRecipient(recipient PublisherIntroductionRecipient, expe
 	return subtle.ConstantTimeCompare(public[:], expected[:]) == 1
 }
 
-func publisherIntroductionRecipient(input PublisherIntroductionRequest) (PublisherIntroductionRecipient, error) {
+func resolvePublisherIntroductionRecipient(input publisherIntroductionRequest) (publisherIntroductionRecipient, error) {
 	if input.Recipient != nil {
 		if input.HPKEPrivate != nil {
 			return nil, errors.New("publisher Introduction supplied two recipients")
@@ -342,7 +342,7 @@ func (recipient legacyIntroductionRecipient) OpenIntroduction(encapsulation, inf
 	return opened.Open(authenticatedHeader, ciphertext)
 }
 
-func clonePublisherIntroductionProfile(value PublisherIntroductionProfile) PublisherIntroductionProfile {
+func clonePublisherIntroductionProfile(value publisherIntroductionProfile) publisherIntroductionProfile {
 	value.SlotAuthorization = append([]byte(nil), value.SlotAuthorization...)
 	value.ResponderAuthorization = append([]byte(nil), value.ResponderAuthorization...)
 	return value

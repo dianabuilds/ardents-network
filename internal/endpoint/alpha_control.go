@@ -13,7 +13,7 @@ import (
 // AlphaCorpusControlInput is one explicitly supplied ACA2/corpus pair. It
 // contains no URL, downloader, catalog-selected key, or Endpoint readiness
 // decision.
-type AlphaCorpusControlInput struct {
+type alphaCorpusControlInput struct {
 	Catalog         []byte
 	DisclosureKey   ed25519.PublicKey
 	Corpus          []byte
@@ -26,7 +26,7 @@ type AlphaCorpusControlInput struct {
 // independent pinned roots, then advances only the supplied Endpoint-local
 // floor. It never accepts ACA1, starts a connection, or treats alpha names as
 // canonical Namespace claims.
-func (endpoint *endpoint) AcceptAlphaCorpusControl(input AlphaCorpusControlInput) (*alpha.Corpus, error) {
+func (endpoint *endpoint) AcceptAlphaCorpusControl(input alphaCorpusControlInput) (*alpha.Corpus, error) {
 	if endpoint == nil || input.Floor == nil || input.At.IsZero() {
 		return nil, errors.New("alpha corpus control input is incomplete")
 	}

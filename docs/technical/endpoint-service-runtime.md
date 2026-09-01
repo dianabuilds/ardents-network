@@ -72,11 +72,11 @@ research and an ADR.
 ## Publication and connection lifecycle
 
     Administration Grant
-      -> Endpoint.StartPublisher with an opened host Instance binding
+      -> participant-owned Endpoint runtime with an opened host Instance binding
       -> register the authenticated State-selected Introduction slot
       -> Publication.PublishAfterReadiness one higher Instance generation
       -> immutable public record + volatile signer
-      -> Endpoint.Connect or Endpoint.Accept activates a Connection session
+      -> the participant-owned Connection boundary activates a session
       -> session authorization precedes State/Entry/issuer/Route work
       -> exact-Instance TLS challenge/proof + Service Connection v1
       -> zero or more replacement Attachments under immutable recovery facts

@@ -2,7 +2,7 @@ package endpoint
 
 import "context"
 
-func streamFailure(ctx context.Context, accepted, received uint32, err error) (RuntimeResult, error) {
+func streamFailure(ctx context.Context, accepted, received uint32, err error) (runtimeResult, error) {
 	if ctx.Err() != nil {
 		result, failure := failed("local timeout or cancellation", "Service Connection was cancelled locally", ctx.Err())
 		result.AcceptedBytes, result.ReceivedBytes = accepted, received

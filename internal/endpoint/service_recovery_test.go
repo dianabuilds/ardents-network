@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"bytes"
@@ -18,8 +18,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 func TestForgedReplacementTerminatesInsteadOfTryingAnotherProposal(t *testing.T) {
@@ -41,19 +39,19 @@ func TestForgedReplacementTerminatesInsteadOfTryingAnotherProposal(t *testing.T)
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 96<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := client.Connect(ctx, request)
+		result, err := client.connectForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: publisherAttachments, Application: publisherEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := publisher.Accept(ctx, request)
+		result, err := publisher.acceptForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() { _, _ = clientApplication.Write(seededBytes(256<<10, 17)) }()
@@ -93,24 +91,24 @@ func TestCarrierFailureRecoversSameApplicationStreams(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	go func() {
-		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{
+		request := recoveryOutbound(outboundConnectionRequest{
 			Principal:  fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now),
 			Target:     fixture.first.Target, Publication: publication,
 			Route: failAfter(initialClient, 768<<10), OpenAttachment: clientAttachments,
 			Application: clientEndpoint, BytesEachDirection: transferSize, At: fixture.now,
 		}, binding)
-		result, err := client.Connect(ctx, request)
+		result, err := client.connectForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(endpointapi.InboundConnectionRequest{
+		request := recoveryInbound(inboundConnectionRequest{
 			Principal:  fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now),
 			Route:      initialPublisher, OpenAttachment: publisherAttachments,
 			Application: publisherEndpoint, BytesEachDirection: transferSize, At: fixture.now,
 		}, binding)
-		result, err := publisher.Accept(ctx, request)
+		result, err := publisher.acceptForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 
@@ -160,19 +158,19 @@ func TestDirectionalCarrierFailureDoesNotRequireReverseApplicationBytes(t *testi
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 300<<10), OpenAttachment: attachmentQueue(replacementClient),
 			Application: clientEndpoint, SendBytes: transferSize, At: fixture.now}, binding)
-		result, err := client.Connect(ctx, request)
+		result, err := client.connectForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: attachmentQueue(replacementPublisher), Application: publisherEndpoint,
 			ReceiveBytes: transferSize, At: fixture.now}, binding)
-		result, err := publisher.Accept(ctx, request)
+		result, err := publisher.acceptForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	expected := seededBytes(transferSize, 37)
@@ -204,7 +202,7 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	var proposals atomic.Uint32
-	opener := func(context.Context, endpointapi.Recovery) (net.Conn, error) {
+	opener := func(context.Context, routeRecovery) (net.Conn, error) {
 		proposals.Add(1)
 		return nil, errors.New("unexpected attachment proposal")
 	}
@@ -213,18 +211,18 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfterWait(initialClient, 96<<10, 1100*time.Millisecond), OpenAttachment: opener,
 			Application: clientEndpoint, BytesEachDirection: 256 << 10, At: authorizedAt}, binding)
-		result, err := client.Connect(ctx, request)
+		result, err := client.connectForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: opener, Application: publisherEndpoint, BytesEachDirection: 256 << 10, At: authorizedAt}, binding)
-		result, err := publisher.Accept(ctx, request)
+		result, err := publisher.acceptForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() { _, _ = clientApplication.Write(seededBytes(256<<10, 17)) }()
@@ -263,20 +261,20 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		request := recoveryOutbound(endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		request := recoveryOutbound(outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: failAfter(initialClient, 96<<10),
 			OpenAttachment: unavailableAttachments, Application: clientEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := client.Connect(ctx, request)
+		result, err := client.connectForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		request := recoveryInbound(endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		request := recoveryInbound(inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: initialPublisher,
 			OpenAttachment: unavailableAttachments, Application: publisherEndpoint,
 			BytesEachDirection: 256 << 10, At: fixture.now}, binding)
-		result, err := publisher.Accept(ctx, request)
+		result, err := publisher.acceptForHarness(ctx, request)
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() { _, _ = clientApplication.Write(seededBytes(256<<10, 17)) }()
@@ -295,40 +293,40 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 	}
 }
 
-func testRecoveryBinding(fixture fixture) endpointapi.Recovery {
-	return endpointapi.Recovery{CandidateView: [32]byte{41}, IsolationContext: [32]byte{42},
+func testRecoveryBinding(fixture fixture) routeRecovery {
+	return routeRecovery{CandidateView: [32]byte{41}, IsolationContext: [32]byte{42},
 		DestinationBinding: [32]byte{43}, RouteProfile: "ardents-interactive-route-v1",
 		WorkSafetyNotAfter: fixture.first.NotAfter, WorkSafetyMaximum: fixture.first.NotAfter,
 		NoNewRecoveryAfter: fixture.first.NotAfter}
 }
 
-func recoveryOutbound(request endpointapi.OutboundConnectionRequest, binding endpointapi.Recovery) endpointapi.OutboundConnectionRequest {
+func recoveryOutbound(request outboundConnectionRequest, binding routeRecovery) outboundConnectionRequest {
 	request.RecoveryBinding = binding
 	return request
 }
 
-func recoveryInbound(request endpointapi.InboundConnectionRequest, binding endpointapi.Recovery) endpointapi.InboundConnectionRequest {
+func recoveryInbound(request inboundConnectionRequest, binding routeRecovery) inboundConnectionRequest {
 	request.RecoveryBinding = binding
 	return request
 }
 
-func unavailableAttachments(context.Context, endpointapi.Recovery) (net.Conn, error) {
+func unavailableAttachments(context.Context, routeRecovery) (net.Conn, error) {
 	return nil, errors.New("no safe eligible Route Attachment remains")
 }
 
-func attachmentQueue(connections ...net.Conn) func(context.Context, endpointapi.Recovery) (net.Conn, error) {
+func attachmentQueue(connections ...net.Conn) func(context.Context, routeRecovery) (net.Conn, error) {
 	return recordingAttachmentQueue(nil, connections...)
 }
 
-type observedAttachmentRequest struct{ endpointapi.Recovery }
+type observedAttachmentRequest struct{ routeRecovery }
 
 func recordingAttachmentQueue(requests chan<- observedAttachmentRequest,
-	connections ...net.Conn) func(context.Context, endpointapi.Recovery) (net.Conn, error) {
+	connections ...net.Conn) func(context.Context, routeRecovery) (net.Conn, error) {
 	queue := make(chan net.Conn, len(connections))
 	for _, connection := range connections {
 		queue <- connection
 	}
-	return func(ctx context.Context, request endpointapi.Recovery) (net.Conn, error) {
+	return func(ctx context.Context, request routeRecovery) (net.Conn, error) {
 		if requests != nil {
 			requests <- observedAttachmentRequest{request}
 		}

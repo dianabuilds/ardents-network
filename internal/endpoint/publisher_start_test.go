@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
@@ -42,25 +41,26 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	instancePath := t.TempDir()
 	instanceRoot, binding := acceptedInstanceBinding(t, instancePath, network, authorityPrivate, now, deadline)
 	defer instanceRoot.Close()
-	profile := endpointapi.PublisherIntroductionProfile{
+	profile := publisherIntroductionProfile{
 		NetworkID: network, Digest: digest, Epoch: 12,
-		Introduction:     endpointapi.TransitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
-		Rendezvous:       endpointapi.TransitPeer{NodeID: fixtureID(64), PublicKey: fixtureID(65), Endpoint: "127.0.0.1:26064"},
-		Responder:        endpointapi.TransitPeer{NodeID: fixtureID(66), PublicKey: fixtureID(67), Endpoint: "127.0.0.1:26066"},
+		Introduction:     transitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
+		Rendezvous:       transitPeer{NodeID: fixtureID(64), PublicKey: fixtureID(65), Endpoint: "127.0.0.1:26064"},
+		Responder:        transitPeer{NodeID: fixtureID(66), PublicKey: fixtureID(67), Endpoint: "127.0.0.1:26066"},
 		SlotAttachmentID: fixtureID(68), ResponderAttachmentID: fixtureID(73), Reachability: fixtureID(69), JoinHandle: fixtureID(70), NotAfter: deadline,
 		SlotAuthorization: []byte("start-slot"), ResponderAuthorization: []byte("start-responder"),
 	}
 	principal := fixtureID(71)
-	owner, err := endpointapi.New(endpointapi.Setup{
+	owner, err := newEndpoint(setup{
 		NetworkID: network, BrokerID: fixtureID(72), ConnectionPrincipal: fixtureID(74),
 		AdministrationPrincipal: principal, PublicationRoot: t.TempDir(),
-		PublisherBinding: binding, PublisherIntroductionProfile: profile,
+		PublisherBinding: binding, publisherIntroductionProfile: profile,
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	administration, err := owner.OpenServiceAdministration(endpointapi.ServiceAdministrationConfig{
+	administration, err := owner.OpenServiceAdministration(serviceAdministrationConfig{
 		Principal: principal, Clock: func() time.Time { return now },
 	})
 	if err != nil {
@@ -75,7 +75,7 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	forbiddenRoute, forbiddenPeer := net.Pipe()
 	defer forbiddenRoute.Close()
 	defer forbiddenPeer.Close()
-	if result, acceptErr := owner.AcceptPublisher(context.Background(), endpointapi.InboundConnectionRequest{
+	if result, acceptErr := owner.AcceptPublisher(context.Background(), inboundConnectionRequest{
 		Route: forbiddenRoute, At: now,
 	}); acceptErr == nil || result.Class != "local authorization or policy denial" {
 		t.Fatalf("Endpoint-owned Publisher accepted a caller-selected Route: %+v, %v", result, acceptErr)
@@ -106,24 +106,25 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 	instanceRoot, binding := acceptedInstanceBinding(t, t.TempDir(), network, authorityPrivate, now, deadline)
 	publicationRoot := t.TempDir()
 	unavailableAddress := availableAddress(t)
-	profile := endpointapi.PublisherIntroductionProfile{
+	profile := publisherIntroductionProfile{
 		NetworkID: network, Digest: fixtureID(82), Epoch: 13,
-		Introduction:     endpointapi.TransitPeer{NodeID: fixtureID(83), PublicKey: fixtureID(84), Endpoint: unavailableAddress},
-		Rendezvous:       endpointapi.TransitPeer{NodeID: fixtureID(85), PublicKey: fixtureID(86), Endpoint: "127.0.0.1:28085"},
-		Responder:        endpointapi.TransitPeer{NodeID: fixtureID(87), PublicKey: fixtureID(88), Endpoint: "127.0.0.1:28087"},
+		Introduction:     transitPeer{NodeID: fixtureID(83), PublicKey: fixtureID(84), Endpoint: unavailableAddress},
+		Rendezvous:       transitPeer{NodeID: fixtureID(85), PublicKey: fixtureID(86), Endpoint: "127.0.0.1:28085"},
+		Responder:        transitPeer{NodeID: fixtureID(87), PublicKey: fixtureID(88), Endpoint: "127.0.0.1:28087"},
 		SlotAttachmentID: fixtureID(89), ResponderAttachmentID: fixtureID(93), Reachability: fixtureID(90), JoinHandle: fixtureID(91), NotAfter: deadline,
 		SlotAuthorization: []byte("unavailable-slot"), ResponderAuthorization: []byte("unused-responder"),
 	}
 	principal := fixtureID(92)
-	owner, err := endpointapi.New(endpointapi.Setup{
+	owner, err := newEndpoint(setup{
 		NetworkID: network, BrokerID: fixtureID(94), ConnectionPrincipal: fixtureID(95),
 		AdministrationPrincipal: principal, PublicationRoot: publicationRoot,
-		PublisherBinding: binding, PublisherIntroductionProfile: profile,
+		PublisherBinding: binding, publisherIntroductionProfile: profile,
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
-	administration, err := owner.OpenServiceAdministration(endpointapi.ServiceAdministrationConfig{
+	administration, err := owner.OpenServiceAdministration(serviceAdministrationConfig{
 		Principal: principal, Clock: func() time.Time { return now },
 	})
 	if err != nil {

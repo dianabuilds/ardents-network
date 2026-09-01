@@ -29,7 +29,7 @@ type resolutionCandidateView interface {
 	Candidate([32]byte, time.Time, time.Time) (state.ResolutionCandidate, bool)
 }
 
-type ApplicationStateView interface {
+type applicationStateView interface {
 	resolutionCandidateView
 	transitCredentialIssuerView
 	Gateway(time.Time, time.Time) (state.DestinationResolutionGateway, bool)
@@ -39,18 +39,18 @@ type ApplicationStateView interface {
 // exposes one current contact so the Endpoint can bind an Initiator identity
 // before a closed Entry acquisition. Entry retains invite validation, retry,
 // and durable contact state.
-type ApplicationEntry interface {
+type applicationEntry interface {
 	route.EntryAcquirer
 	Contact() (entry.Candidate, error)
 }
 
-// ConnectionInterfaceConfig binds the local durable alpha floor to current
+// connectionInterfaceConfig binds the local durable alpha floor to accepted
 // State and an already-imported Entry set. No caller may provide a Target,
 // Gateway URL/profile, C-2 peer, Route, or browser destination.
-type ConnectionInterfaceConfig struct {
+type connectionInterfaceConfig struct {
 	Floor   *alpha.PersistentFloor
-	Current func() (ApplicationStateView, error)
-	Entry   ApplicationEntry
+	Current func() (applicationStateView, error)
+	Entry   applicationEntry
 	// Principal is the preconfigured local connection grant principal. A fresh
 	// capability is minted for each Application-requested Service Connection.
 	Principal          [32]byte
@@ -58,19 +58,19 @@ type ConnectionInterfaceConfig struct {
 	Clock              func() time.Time
 }
 
-// ConnectionInterface is the Connection-surface owner shared by headless CLI
+// connectionInterface is the Connection-surface owner shared by headless CLI
 // and optional Adapters. Its Open input is only a Service Link; State, Entry,
 // Target authentication, Route, and one-use transport inputs remain private.
-type ConnectionInterface struct {
+type connectionInterface struct {
 	endpoint *endpoint
-	input    ConnectionInterfaceConfig
+	input    connectionInterfaceConfig
 	clock    func() time.Time
 }
 
-// OpenConnectionInterface binds current Endpoint-owned acquisition inputs to a
+// openConnectionInterface binds accepted Endpoint-owned acquisition inputs to a
 // narrow name-to-stream operation. The config is process composition, not an
 // Adapter request or Route plan.
-func (endpoint *endpoint) OpenConnectionInterface(input ConnectionInterfaceConfig) (*ConnectionInterface, error) {
+func (endpoint *endpoint) openConnectionInterface(input connectionInterfaceConfig) (*connectionInterface, error) {
 	if endpoint == nil || input.Floor == nil || input.Current == nil || input.Entry == nil || input.Principal == [32]byte{} ||
 		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumConnectionInterfaceBytes {
 		return nil, errors.New("application Connection Interface input is incomplete")
@@ -79,12 +79,12 @@ func (endpoint *endpoint) OpenConnectionInterface(input ConnectionInterfaceConfi
 	if clock == nil {
 		clock = time.Now
 	}
-	return &ConnectionInterface{endpoint: endpoint, input: input, clock: clock}, nil
+	return &connectionInterface{endpoint: endpoint, input: input, clock: clock}, nil
 }
 
 // Open resolves one exact accepted Service Link and returns only its
 // authenticated opaque Application stream and bounded terminal outcome.
-func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) (applicationconnection.Stream, error) {
+func (owner *connectionInterface) Open(ctx context.Context, serviceLink string) (applicationconnection.Stream, error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}
@@ -121,15 +121,15 @@ func (owner *ConnectionInterface) Open(ctx context.Context, serviceLink string) 
 	}
 }
 
-func (owner *ConnectionInterface) openBinding(ctx context.Context, binding alpha.Binding, session *applicationSession) (applicationconnection.Stream, error) {
+func (owner *connectionInterface) openBinding(ctx context.Context, binding alpha.Binding, session *applicationSession) (applicationconnection.Stream, error) {
 	if owner == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}
 	return owner.endpoint.openAlphaApplicationForBinding(ctx, binding, owner.input, owner.clock, session)
 }
 
-func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input ConnectionInterfaceConfig,
-	clock func() time.Time, session *applicationSession) (*ApplicationConnection, error) {
+func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input connectionInterfaceConfig,
+	clock func() time.Time, session *applicationSession) (*applicationConnection, error) {
 	at := clock().UTC()
 	if at.IsZero() {
 		return nil, errors.New("application Connection clock is unavailable")
@@ -170,7 +170,7 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	if err != nil {
 		return nil, err
 	}
-	descriptor, err := endpoint.ResolveUserReachability(ctx, targetLink, UserPrivateReachabilityRequest{
+	descriptor, err := endpoint.resolveUserReachability(ctx, targetLink, userPrivateReachabilityRequest{
 		GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey, GatewayFamily: gateway.Family, GatewayProfile: profile,
 		StateDigest: epoch.Digest, Epoch: epoch.Number, Initiator: initiator, Entry: input.Entry,
 		AttachmentID: lookupAttachment, At: at, Deadline: lookupDeadline,
@@ -216,10 +216,10 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 		return nil, err
 	}
 	// Descriptor is intentionally passed only after this runtime obtained it
-	// through ResolveUserReachability and revalidated it above. No external
+	// through resolveUserReachability and revalidated it above. No external
 	// caller can provide this branch or substitute a target.
-	application, err := endpoint.openAlphaApplicationConnection(ctx, binding, UserApplicationConnectionRequest{
-		Reachability: &UserReachabilityRouteRequest{Descriptor: descriptor,
+	application, err := endpoint.openAlphaApplicationConnection(ctx, binding, userApplicationConnectionRequest{
+		Reachability: &userReachabilityRouteRequest{Descriptor: descriptor,
 			Introduction: introduction, Initiator: initiator, Rendezvous: rendezvous, Entry: input.Entry,
 			AttachmentID: submission.attachment, EndpointHandshake: handshake, At: at,
 			SubmissionAuthorization: submission.authorization, SubmissionClientCertificate: submission.certificate}, Principal: input.Principal,
@@ -257,24 +257,24 @@ func applicationServiceAttachment(authorization []byte, epoch state.ResolutionEp
 	return grant.AttachmentID, nil
 }
 
-func applicationInitiator(view resolutionCandidateView, contact entry.Candidate, at, deadline time.Time) (TransitPeer, error) {
+func applicationInitiator(view resolutionCandidateView, contact entry.Candidate, at, deadline time.Time) (transitPeer, error) {
 	candidate, available := view.Candidate(contact.NodeID, at, deadline)
 	if !available || candidate.Domain != "initiator" || candidate.PublicKey != contact.PublicKey || candidate.Endpoint != contact.Endpoint ||
 		sha256.Sum256([]byte(candidate.Family)) != contact.FamilyID {
-		return TransitPeer{}, errors.New("user entry contact does not match current initiator state")
+		return transitPeer{}, errors.New("user entry contact does not match current initiator state")
 	}
-	return TransitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: contact.FamilyID, Endpoint: candidate.Endpoint}, nil
+	return transitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: contact.FamilyID, Endpoint: candidate.Endpoint}, nil
 }
 
-func applicationStatePeer(view resolutionCandidateView, nodeID [32]byte, domain string, at, deadline time.Time) (TransitPeer, error) {
+func applicationStatePeer(view resolutionCandidateView, nodeID [32]byte, domain string, at, deadline time.Time) (transitPeer, error) {
 	candidate, available := view.Candidate(nodeID, at, deadline)
 	if !available || candidate.Domain != domain || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} || candidate.Endpoint == "" {
-		return TransitPeer{}, errors.New("current State C-2 peer is unavailable")
+		return transitPeer{}, errors.New("current State C-2 peer is unavailable")
 	}
-	return TransitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: sha256.Sum256([]byte(candidate.Family)), Endpoint: candidate.Endpoint}, nil
+	return transitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: sha256.Sum256([]byte(candidate.Family)), Endpoint: candidate.Endpoint}, nil
 }
 
-func distinctApplicationPeers(gateway state.DestinationResolutionGateway, peers ...TransitPeer) bool {
+func distinctApplicationPeers(gateway state.DestinationResolutionGateway, peers ...transitPeer) bool {
 	if gateway.NodeID == [32]byte{} || gateway.Family == [32]byte{} || len(peers) != 3 {
 		return false
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-func (endpoint *endpoint) unpublish(ctx context.Context, input WithdrawalRequest) (result WithdrawalResult, err error) {
+func (endpoint *endpoint) unpublish(ctx context.Context, input withdrawalRequest) (result withdrawalResult, err error) {
 	receipt, consumeErr := endpoint.consume(input.Capability, input.Principal, "administration")
 	if consumeErr != nil {
 		return withdrawalDenied(consumeErr.Error())
@@ -48,14 +48,14 @@ func (endpoint *endpoint) unpublish(ctx context.Context, input WithdrawalRequest
 			return withdrawalFailed("service unavailable", "Service Instance binding could not be withdrawn", err)
 		}
 	}
-	return WithdrawalResult{Class: "unpublished", AuthenticatedTarget: current.Credential.Target,
+	return withdrawalResult{Class: "unpublished", AuthenticatedTarget: current.Credential.Target,
 		Generation: current.Credential.Generation, Receipt: receipt}, nil
 }
 
-func decodePublication(encoded []byte, authority, network [32]byte, at time.Time) (Credential, error) {
+func decodePublication(encoded []byte, authority, network [32]byte, at time.Time) (publicationCredential, error) {
 	current, err := publication.Decode(encoded, ed25519.PublicKey(authority[:]), network, at)
 	if err != nil {
-		return Credential{}, err
+		return publicationCredential{}, err
 	}
 	return current.Credential, nil
 }

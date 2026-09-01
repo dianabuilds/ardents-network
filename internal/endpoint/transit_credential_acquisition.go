@@ -29,7 +29,7 @@ type transitCredentialSubmission struct {
 }
 
 func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view transitCredentialIssuerView, epoch state.ResolutionEpoch,
-	entry ApplicationEntry, initiator, transit TransitPeer, role byte, slot reachability.Introduction,
+	entry applicationEntry, initiator, transit transitPeer, role byte, slot reachability.Introduction,
 	at, deadline time.Time,
 ) (transitCredentialSubmission, error) {
 	if entry == nil {
@@ -44,7 +44,7 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 			return transitCredentialSubmission{}, err
 		}
 		// Descriptor v1 already carries its fixed Grant.  Do not hand it back
-		// through the v2-only caller input: OpenUserReachabilityRoute takes the
+		// through the private v2-only input: openUserReachabilityRoute takes the
 		// exact descriptor field for this compatibility path.
 		return transitCredentialSubmission{attachment: attachment}, nil
 	}
@@ -122,7 +122,7 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 }
 
 func (endpoint *endpoint) exchangeTransitCredential(ctx context.Context, source route.EntryAcquirer, epoch state.ResolutionEpoch,
-	initiator TransitPeer, issuer state.TransitIssuer, attachment [32]byte, deadline time.Time, envelope []byte) ([]byte, error) {
+	initiator transitPeer, issuer state.TransitIssuer, attachment [32]byte, deadline time.Time, envelope []byte) ([]byte, error) {
 	if endpoint == nil || ctx == nil || source == nil || epoch.NetworkID != endpoint.network || epoch.Digest == [32]byte{} || epoch.Number == 0 ||
 		!validTransitPeer(initiator) || issuer.NodeID == [32]byte{} || issuer.PublicKey == [32]byte{} || attachment == [32]byte{} ||
 		deadline.IsZero() || len(envelope) == 0 || len(envelope) > route.CredentialEnvelopeCapacity {

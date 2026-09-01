@@ -14,11 +14,11 @@ import (
 // already-obtained descriptor with independently State-selected User peers.
 // The descriptor owns Publication and live Introduction-slot facts; callers
 // cannot replace them with plan data.
-type UserReachabilityRouteRequest struct {
+type userReachabilityRouteRequest struct {
 	TargetLink                          string
 	Descriptor                          []byte
-	Private                             *UserPrivateReachabilityRequest
-	Introduction, Initiator, Rendezvous TransitPeer
+	Private                             *userPrivateReachabilityRequest
+	Introduction, Initiator, Rendezvous transitPeer
 	Entry                               route.EntryAcquirer
 	AttachmentID, EndpointHandshake     [32]byte
 	// SubmissionAuthorization and SubmissionClientCertificate are produced
@@ -29,11 +29,11 @@ type UserReachabilityRouteRequest struct {
 	At                          time.Time
 }
 
-// OpenUserReachabilityRoute performs one selected private lookup when present,
+// openUserReachabilityRoute performs one selected private lookup when present,
 // verifies its descriptor before spending C-2 Entry work, checks its fixed
 // Introduction/Rendezvous identities against State-selected peers, then invokes
 // the existing bounded C-2 route composition. It performs no peer discovery.
-func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input UserReachabilityRouteRequest) (*UserIntroductionRoute, error) {
+func (endpoint *endpoint) openUserReachabilityRoute(ctx context.Context, input userReachabilityRouteRequest) (*userIntroductionRoute, error) {
 	if endpoint == nil || ctx == nil || input.At.IsZero() || (len(input.Descriptor) == 0 && input.Private == nil) ||
 		(len(input.Descriptor) != 0 && input.Private != nil) || !validTransitPeer(input.Introduction) ||
 		!validTransitPeer(input.Initiator) || !validTransitPeer(input.Rendezvous) || input.Entry == nil ||
@@ -51,7 +51,7 @@ func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input U
 	}
 	descriptor := input.Descriptor
 	if input.Private != nil {
-		descriptor, err = endpoint.ResolveUserReachability(ctx, input.TargetLink, *input.Private)
+		descriptor, err = endpoint.resolveUserReachability(ctx, input.TargetLink, *input.Private)
 		if err != nil {
 			return nil, err
 		}
@@ -75,9 +75,9 @@ func (endpoint *endpoint) OpenUserReachabilityRoute(ctx context.Context, input U
 		input.Initiator.NodeID == input.Rendezvous.NodeID {
 		return nil, errors.New("private reachability State peers do not match descriptor")
 	}
-	return endpoint.OpenUserIntroductionRoute(ctx, UserIntroductionRouteRequest{TargetLink: input.TargetLink,
+	return endpoint.openUserIntroductionRoute(ctx, userIntroductionRouteRequest{TargetLink: input.TargetLink,
 		Publication: verified.Current.Record, AuthorityPublic: verified.Descriptor.AuthorityPublic,
-		Introduction: UserIntroductionProfile{NetworkID: endpoint.network, Digest: slot.StateDigest, Epoch: slot.Epoch,
+		Introduction: userIntroductionProfile{NetworkID: endpoint.network, Digest: slot.StateDigest, Epoch: slot.Epoch,
 			Introduction: input.Introduction, RendezvousNodeID: slot.RendezvousNodeID, Reachability: slot.Reachability,
 			JoinHandle: slot.JoinHandle, NotAfter: slot.NotAfter, SubmissionAuthorization: submissionAuthorization,
 			SubmissionClientCertificate: input.SubmissionClientCertificate},

@@ -75,7 +75,7 @@ func TestActiveConnectionWorkIsCancelledByGrantAndBrokerLifecycle(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			endpoint, err := New(Setup{NetworkID: network, BrokerID: [32]byte{3}, ConnectionPrincipal: principal, Admission: admission})
+			endpoint, err := newEndpoint(setup{NetworkID: network, BrokerID: [32]byte{3}, ConnectionPrincipal: principal, Admission: admission})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,14 +92,14 @@ func TestActiveConnectionWorkIsCancelledByGrantAndBrokerLifecycle(t *testing.T) 
 			result := make(chan error, 1)
 			deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
 			go func() {
-				_, openErr := endpoint.OpenUserApplicationConnection(context.Background(), UserApplicationConnectionRequest{
-					Introduction: UserIntroductionRouteRequest{TargetLink: link,
-						Introduction: UserIntroductionProfile{NetworkID: network, Digest: [32]byte{4}, Epoch: 1,
-							Introduction:     TransitPeer{NodeID: [32]byte{5}, PublicKey: [32]byte{6}, Endpoint: "127.0.0.1:1"},
+				_, openErr := endpoint.openApplicationConnection(context.Background(), userApplicationConnectionRequest{
+					Introduction: userIntroductionRouteRequest{TargetLink: link,
+						Introduction: userIntroductionProfile{NetworkID: network, Digest: [32]byte{4}, Epoch: 1,
+							Introduction:     transitPeer{NodeID: [32]byte{5}, PublicKey: [32]byte{6}, Endpoint: "127.0.0.1:1"},
 							RendezvousNodeID: [32]byte{7}, Reachability: [32]byte{8}, JoinHandle: [32]byte{10}, NotAfter: deadline,
 							SubmissionAuthorization: []byte("fixed-test-authorization")},
-						Entry: blockingApplicationEntry{entered: entered}, Initiator: TransitPeer{NodeID: [32]byte{11}, PublicKey: [32]byte{12}, Endpoint: "127.0.0.1:2"},
-						Rendezvous:   TransitPeer{NodeID: [32]byte{7}, PublicKey: [32]byte{13}, Endpoint: "127.0.0.1:3"},
+						Entry: blockingApplicationEntry{entered: entered}, Initiator: transitPeer{NodeID: [32]byte{11}, PublicKey: [32]byte{12}, Endpoint: "127.0.0.1:2"},
+						Rendezvous:   transitPeer{NodeID: [32]byte{7}, PublicKey: [32]byte{13}, Endpoint: "127.0.0.1:3"},
 						AttachmentID: [32]byte{14}, EndpointHandshake: [32]byte{15}, At: time.Now().UTC()},
 					Principal: principal, BytesEachDirection: 1,
 				})
@@ -151,7 +151,7 @@ func TestConnectionAuthorizationPrecedesStateEntryIssuerAndRouteWork(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			endpoint, err := New(Setup{NetworkID: network, BrokerID: [32]byte{3}, ConnectionPrincipal: principal, Admission: admission})
+			endpoint, err := newEndpoint(setup{NetworkID: network, BrokerID: [32]byte{3}, ConnectionPrincipal: principal, Admission: admission})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -162,8 +162,8 @@ func TestConnectionAuthorizationPrecedesStateEntryIssuerAndRouteWork(t *testing.
 			})
 			floor, link := acceptedConnectionFloor(t, network, at)
 			counts := &connectionWorkCounts{}
-			owner, err := endpoint.OpenConnectionInterface(ConnectionInterfaceConfig{Floor: floor,
-				Current: func() (ApplicationStateView, error) {
+			owner, err := endpoint.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
+				Current: func() (applicationStateView, error) {
 					counts.state++
 					return countingApplicationState{counts: counts}, nil
 				}, Entry: countingApplicationEntry{counts: counts}, Principal: principal, BytesEachDirection: 1, Clock: func() time.Time { return at }})

@@ -39,7 +39,7 @@ func (attachment *securedAttachment) close() {
 	_ = attachment.transport.Close()
 }
 
-func secureClient(ctx context.Context, raw net.Conn, credential Credential, connectionContext [32]byte,
+func secureClient(ctx context.Context, raw net.Conn, credential publicationCredential, connectionContext [32]byte,
 	generation uint64) (*securedAttachment, [32]byte, error) {
 	config := &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
 		InsecureSkipVerify: true, SessionTicketsDisabled: true, VerifyConnection: verifyInstance(credential.InstancePublic)}
@@ -51,8 +51,7 @@ func secureClient(ctx context.Context, raw net.Conn, credential Credential, conn
 	return exportedAttachment(connection, connectionContext, generation)
 }
 
-func securePublisher(ctx context.Context, raw net.Conn, credential Credential,
-	signer crypto.Signer, connectionContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
+func securePublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer, connectionContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
 	certificate, err := instanceCertificate(credential, signer)
 	if err != nil {
 		raw.Close()
@@ -91,7 +90,7 @@ func exportedAttachment(connection *tls.Conn, connectionContext [32]byte, genera
 		context: connectionContext, transport: connection.NetConn(), exporterCommitment: exporterCommitment}, continuity, nil
 }
 
-func connectionContext(credential Credential, recovery Recovery, publicationDigest [32]byte) ([32]byte, error) {
+func connectionContext(credential publicationCredential, recovery routeRecovery, publicationDigest [32]byte) ([32]byte, error) {
 	return nativeconnection.Context(nativeconnection.ContextInput{Network: credential.NetworkID, Target: credential.Target,
 		InstancePublic: credential.InstancePublic, PublicationDigest: publicationDigest,
 		InstanceGeneration: credential.Generation, CandidateView: recovery.CandidateView,
@@ -113,7 +112,7 @@ func verifyInstance(expected [32]byte) func(tls.ConnectionState) error {
 	}
 }
 
-func instanceCertificate(credential Credential, signer crypto.Signer) (tls.Certificate, error) {
+func instanceCertificate(credential publicationCredential, signer crypto.Signer) (tls.Certificate, error) {
 	public, ok := signer.Public().(ed25519.PublicKey)
 	if !ok || len(public) != ed25519.PublicKeySize || !bytes.Equal(public, credential.InstancePublic[:]) {
 		return tls.Certificate{}, errors.New("service Instance key does not match the current Credential")

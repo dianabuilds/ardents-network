@@ -49,14 +49,14 @@ func TestEndpointAcceptAlphaCorpusControlPinsACA2AndAdvancesDurableFloor(t *test
 	}
 	defer floor.Close()
 	endpoint := &endpoint{network: network}
-	accepted, err := endpoint.AcceptAlphaCorpusControl(AlphaCorpusControlInput{Catalog: catalogRaw, DisclosureKey: disclosurePublic,
+	accepted, err := endpoint.AcceptAlphaCorpusControl(alphaCorpusControlInput{Catalog: catalogRaw, DisclosureKey: disclosurePublic,
 		Corpus: corpusRaw, CorpusAuthority: corpusPublic, Floor: floor, At: now})
 	if err != nil || accepted.Serial() != 4 {
 		t.Fatalf("accepted alpha corpus = (%v, %v)", accepted, err)
 	}
 	changed := append([]byte(nil), catalogRaw...)
 	changed[len(changed)-1]++
-	if result, err := endpoint.AcceptAlphaCorpusControl(AlphaCorpusControlInput{Catalog: changed, DisclosureKey: disclosurePublic,
+	if result, err := endpoint.AcceptAlphaCorpusControl(alphaCorpusControlInput{Catalog: changed, DisclosureKey: disclosurePublic,
 		Corpus: corpusRaw, CorpusAuthority: corpusPublic, Floor: floor, At: now}); err == nil || result != nil {
 		t.Fatalf("changed ACA2 acceptance = (%v, %v)", result, err)
 	}

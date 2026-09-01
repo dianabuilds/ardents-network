@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-func (endpoint *endpoint) startPublisher(ctx context.Context, input PublisherStartRequest) (PublicationResult, error) {
+func (endpoint *endpoint) startPublisher(ctx context.Context, input publisherStartRequest) (publicationResult, error) {
 	receipt, consumeErr := endpoint.consume(input.Capability, input.Principal, "administration")
 	if consumeErr != nil {
 		return publicationDenied(consumeErr.Error())
@@ -80,18 +80,18 @@ func (endpoint *endpoint) startPublisher(ctx context.Context, input PublisherSta
 		endpoint.publisherBinding = nil
 		return publisherStartFailed(receipt, "service unavailable", "committed Publisher generation could not be retained", err)
 	}
-	session := &PublisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(endpoint.publisherProfile),
+	session := &publisherIntroduction{endpoint: endpoint, profile: clonePublisherIntroductionProfile(endpoint.publisherProfile),
 		recipient: binding, lease: lease, slot: slotConnection, responderFinish: endpoint.publisherCredentials.responder}
 	endpoint.publisherCredentials.responder = nil
 	endpoint.publisherSession = session
 	endpoint.resources("control-file", 1)
-	result := PublicationResult{Class: "published", Record: current.Record,
+	result := publicationResult{Class: "published", Record: current.Record,
 		IntroductionReceipt: sha256.Sum256(slotTranscript), AuthenticatedTarget: current.Credential.Target,
 		Generation: current.Credential.Generation, Receipt: receipt}
 	return result, nil
 }
 
-func publisherStartFailed(receipt broker.Receipt, class, reason string, cause error) (PublicationResult, error) {
+func publisherStartFailed(receipt broker.Receipt, class, reason string, cause error) (publicationResult, error) {
 	result, err := publicationFailed(class, reason, cause)
 	result.Receipt = receipt
 	return result, err

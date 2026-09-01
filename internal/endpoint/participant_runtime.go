@@ -113,7 +113,7 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 	if err != nil || corpus.ValidAt(now) != nil {
 		return errors.New("accepted alpha corpus is unavailable")
 	}
-	setup := Setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID,
+	setup := setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID,
 		ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal,
 		PublicationRoot: config.PublicationRoot, TransitAcquisitionRoot: config.TransitAcquisitionRoot,
 		CreateTransitAcquisitionRoot: true, Clock: clock}
@@ -131,7 +131,7 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 		setup.AuthorityPublic = ed25519.PublicKey(append([]byte(nil), credential.AuthorityPublic[:]...))
 		setup.IntroductionPublic = ed25519.PublicKey(append([]byte(nil), credential.IntroductionHPKEPublic[:]...))
 	}
-	owner, err := New(setup)
+	owner, err := newEndpoint(setup)
 	if err != nil {
 		return fmt.Errorf("open participant Endpoint: %w", err)
 	}
@@ -149,8 +149,8 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 			return errors.Join(errors.New("configure State-projected Publisher attachments"), err, binding.Withdraw())
 		}
 	}
-	connectionOwner, err := owner.OpenConnectionInterface(ConnectionInterfaceConfig{Floor: floor,
-		Current: func() (ApplicationStateView, error) { return network.CurrentResolution() }, Entry: entryOwner,
+	connectionOwner, err := owner.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
+		Current: func() (applicationStateView, error) { return network.CurrentResolution() }, Entry: entryOwner,
 		Principal: config.ConnectionPrincipal, BytesEachDirection: config.BytesEachDirection, Clock: clock})
 	if err != nil {
 		return fmt.Errorf("open Connection Interface owner: %w", err)
@@ -160,7 +160,7 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 		return fmt.Errorf("open local Connection Interface: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, connectionServer.Close()) }()
-	administrationOwner, err := owner.OpenServiceAdministration(ServiceAdministrationConfig{
+	administrationOwner, err := owner.OpenServiceAdministration(serviceAdministrationConfig{
 		Principal: config.AdministrationPrincipal, Clock: clock})
 	if err != nil {
 		return fmt.Errorf("open Service Administration owner: %w", err)

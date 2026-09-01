@@ -60,6 +60,6 @@ func (session *applicationSession) Release() {
 	}
 }
 
-func projectReceipt(result *RuntimeResult, receipt broker.Receipt) {
+func projectReceipt(result *runtimeResult, receipt broker.Receipt) {
 	result.Admission = receipt
 }

@@ -14,19 +14,19 @@ import (
 )
 
 type userRouteRequest struct {
-	Introduction UserIntroductionRouteRequest
-	Reachability *UserReachabilityRouteRequest
+	Introduction userIntroductionRouteRequest
+	Reachability *userReachabilityRouteRequest
 }
 
-func (endpoint *endpoint) openUserRoute(ctx context.Context, input userRouteRequest) (*UserIntroductionRoute, string, time.Time, error) {
+func (endpoint *endpoint) openUserRoute(ctx context.Context, input userRouteRequest) (*userIntroductionRoute, string, time.Time, error) {
 	if input.Reachability != nil && input.Introduction.TargetLink != "" {
 		return nil, "", time.Time{}, errors.New("user Application received two route authorities")
 	}
 	if input.Reachability != nil {
-		route, err := endpoint.OpenUserReachabilityRoute(ctx, *input.Reachability)
+		route, err := endpoint.openUserReachabilityRoute(ctx, *input.Reachability)
 		return route, input.Reachability.TargetLink, input.Reachability.At, err
 	}
-	route, err := endpoint.OpenUserIntroductionRoute(ctx, input.Introduction)
+	route, err := endpoint.openUserIntroductionRoute(ctx, input.Introduction)
 	return route, input.Introduction.TargetLink, input.Introduction.At, err
 }
 
@@ -51,9 +51,9 @@ func bindAlphaUserRoute(input userRouteRequest, targetLink string) (userRouteReq
 // one explicit headless Application stream. Endpoint retains Target
 // authentication, Route opening, one-use transport inputs, and the Local Grant
 // capability; the caller receives none of those facts.
-type UserApplicationConnectionRequest struct {
-	Introduction                                UserIntroductionRouteRequest
-	Reachability                                *UserReachabilityRouteRequest
+type userApplicationConnectionRequest struct {
+	Introduction                                userIntroductionRouteRequest
+	Reachability                                *userReachabilityRouteRequest
 	Principal                                   [32]byte
 	BytesEachDirection, SendBytes, ReceiveBytes uint32
 }
@@ -61,16 +61,16 @@ type UserApplicationConnectionRequest struct {
 // ApplicationConnection is one authenticated, reliable, ordered byte stream
 // returned by the Connection Interface. Application protocol and replay
 // semantics remain entirely caller-owned.
-type ApplicationConnection struct {
+type applicationConnection struct {
 	stream io.ReadWriteCloser
 	cancel context.CancelFunc
 	done   chan applicationconnection.Outcome
 	once   sync.Once
 }
 
-// OpenUserApplicationConnection opens an explicit Target-Link Application
+// openApplicationConnection opens an explicit Target-Link Application
 // stream through the same Endpoint owner used by optional Adapters.
-func (endpoint *endpoint) OpenUserApplicationConnection(ctx context.Context, input UserApplicationConnectionRequest) (*ApplicationConnection, error) {
+func (endpoint *endpoint) openApplicationConnection(ctx context.Context, input userApplicationConnectionRequest) (*applicationConnection, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} {
 		return nil, errors.New("user Application Connection input is incomplete")
 	}
@@ -81,8 +81,8 @@ func (endpoint *endpoint) OpenUserApplicationConnection(ctx context.Context, inp
 	return endpoint.openUserApplicationConnection(session.Context(), input, nil, session)
 }
 
-func (endpoint *endpoint) openAlphaApplicationConnection(ctx context.Context, binding alpha.Binding, input UserApplicationConnectionRequest,
-	session *applicationSession) (*ApplicationConnection, error) {
+func (endpoint *endpoint) openAlphaApplicationConnection(ctx context.Context, binding alpha.Binding, input userApplicationConnectionRequest,
+	session *applicationSession) (*applicationConnection, error) {
 	if endpoint == nil || binding.Network() != endpoint.network || binding.Target() == [32]byte{} {
 		session.Release()
 		return nil, ErrAlphaBindingNetwork
@@ -90,8 +90,8 @@ func (endpoint *endpoint) openAlphaApplicationConnection(ctx context.Context, bi
 	return endpoint.openUserApplicationConnection(ctx, input, &binding, session)
 }
 
-func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, input UserApplicationConnectionRequest,
-	binding *alpha.Binding, session *applicationSession) (*ApplicationConnection, error) {
+func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, input userApplicationConnectionRequest,
+	binding *alpha.Binding, session *applicationSession) (*applicationConnection, error) {
 	if endpoint == nil || ctx == nil || input.Principal == [32]byte{} ||
 		(input.BytesEachDirection == 0 && input.SendBytes == 0 && input.ReceiveBytes == 0) || session == nil {
 		session.Release()
@@ -146,7 +146,7 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 		done <- applicationconnection.Outcome{Class: applicationconnection.OutcomeClass(result.Class), Reason: result.Reason}
 		close(done)
 	}()
-	connection := &ApplicationConnection{stream: application, cancel: cancel, done: done}
+	connection := &applicationConnection{stream: application, cancel: cancel, done: done}
 	select {
 	case <-ready:
 		return connection, nil
@@ -159,14 +159,14 @@ func (endpoint *endpoint) openUserApplicationConnection(ctx context.Context, inp
 	}
 }
 
-func (connection *ApplicationConnection) Read(destination []byte) (int, error) {
+func (connection *applicationConnection) Read(destination []byte) (int, error) {
 	if connection == nil || connection.stream == nil {
 		return 0, io.ErrClosedPipe
 	}
 	return connection.stream.Read(destination)
 }
 
-func (connection *ApplicationConnection) Write(source []byte) (int, error) {
+func (connection *applicationConnection) Write(source []byte) (int, error) {
 	if connection == nil || connection.stream == nil {
 		return 0, io.ErrClosedPipe
 	}
@@ -174,7 +174,7 @@ func (connection *ApplicationConnection) Write(source []byte) (int, error) {
 }
 
 // Done carries exactly one terminal outcome and then closes.
-func (connection *ApplicationConnection) Done() <-chan applicationconnection.Outcome {
+func (connection *applicationConnection) Done() <-chan applicationconnection.Outcome {
 	if connection == nil {
 		return nil
 	}
@@ -183,7 +183,7 @@ func (connection *ApplicationConnection) Done() <-chan applicationconnection.Out
 
 // Close stops only this Application stream. It cannot withdraw a Service or
 // mutate Network, Entry, or custody state.
-func (connection *ApplicationConnection) Close() error {
+func (connection *applicationConnection) Close() error {
 	if connection == nil {
 		return nil
 	}

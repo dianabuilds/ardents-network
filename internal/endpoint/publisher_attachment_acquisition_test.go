@@ -24,7 +24,7 @@ func TestPublisherPlanOrdersStateProjectedRolesSeparately(t *testing.T) {
 	now := time.Unix(2_100_000_000, 0).UTC()
 	network, digest := acquisitionID(81), acquisitionID(82)
 	initiatorFamily := "publisher-initiator"
-	initiator := TransitPeer{NodeID: acquisitionID(83), PublicKey: acquisitionID(84), Family: sha256.Sum256([]byte(initiatorFamily)), Endpoint: "127.0.0.1:3183"}
+	initiator := transitPeer{NodeID: acquisitionID(83), PublicKey: acquisitionID(84), Family: sha256.Sum256([]byte(initiatorFamily)), Endpoint: "127.0.0.1:3183"}
 	projected := state.PublisherAttachment{NetworkID: network, Digest: digest, Epoch: 86,
 		Introduction: state.PublisherTransitPeer{NodeID: acquisitionID(87), PublicKey: acquisitionID(88), Family: acquisitionID(89), Endpoint: "127.0.0.1:3187"},
 		Rendezvous:   state.PublisherTransitPeer{NodeID: acquisitionID(90), PublicKey: acquisitionID(91), Family: acquisitionID(92), Endpoint: "127.0.0.1:3190"},
@@ -62,10 +62,11 @@ func TestPublisherConfigurationReadsCurrentStateOnlyOnStart(t *testing.T) {
 	}
 	instanceRoot, binding := publisherAcquisitionBinding(t, network, private, now)
 	credential := binding.Credential()
-	owner, err := New(Setup{NetworkID: network, BrokerID: acquisitionID(103),
+	owner, err := newEndpoint(setup{NetworkID: network, BrokerID: acquisitionID(103),
 		AuthorityPublic: ed25519.PublicKey(credential.AuthorityPublic[:]), IntroductionPublic: ed25519.PublicKey(credential.IntroductionHPKEPublic[:]),
 		ConnectionPrincipal: acquisitionID(104), AdministrationPrincipal: principal, PublicationRoot: t.TempDir(),
 		TransitAcquisitionRoot: t.TempDir(), CreateTransitAcquisitionRoot: true, Clock: func() time.Time { return now }})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +84,7 @@ func TestPublisherConfigurationReadsCurrentStateOnlyOnStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.StartPublisher(t.Context(), PublisherStartRequest{Principal: principal, Capability: capability, At: now}); err == nil || reads != 1 {
+	if _, err := owner.StartPublisher(t.Context(), publisherStartRequest{Principal: principal, Capability: capability, At: now}); err == nil || reads != 1 {
 		t.Fatalf("StartPublisher read count = %d, err = %v", reads, err)
 	}
 	if err := owner.Close(); err != nil {

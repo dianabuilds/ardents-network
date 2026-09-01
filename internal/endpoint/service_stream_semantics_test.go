@@ -1,4 +1,4 @@
-package endpoint_test
+package endpoint
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 type finalEOFApplication struct{ *bytes.Reader }
@@ -47,16 +46,18 @@ func TestPartialApplicationChunkIsFramedWithoutWaitingForRecordBoundary(t *testi
 	defer cancel()
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		result, err := client.Connect(ctx, endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		result, err := client.connectForHarness(ctx, outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: clientRoute, Application: clientEndpoint,
 			SendBytes: partial * 2, At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		result, err := publisher.Accept(ctx, endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		result, err := publisher.acceptForHarness(ctx, inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: publisherRoute,
 			Application: publisherEndpoint, ReceiveBytes: partial * 2, At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	payload := seededBytes(partial, 51)
@@ -86,16 +87,18 @@ func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
 	clientApplication := &finalEOFApplication{Reader: bytes.NewReader(payload)}
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		result, err := client.Connect(context.Background(), endpointapi.OutboundConnectionRequest{
+		result, err := client.connectForHarness(context.Background(), outboundConnectionRequest{
 			Principal: fixture.clientPrincipal, Capability: session(client, fixture.clientPrincipal, fixture.now),
 			Target: fixture.first.Target, Publication: publication, Route: clientRoute,
 			Application: clientApplication, SendBytes: uint32(len(payload)), At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		result, err := publisher.Accept(context.Background(), endpointapi.InboundConnectionRequest{
+		result, err := publisher.acceptForHarness(context.Background(), inboundConnectionRequest{
 			Principal: fixture.publisherPrincipal, Capability: session(publisher, fixture.publisherPrincipal, fixture.now),
 			Route: publisherRoute, Application: publisherEndpoint, ReceiveBytes: uint32(len(payload)), At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	received := make([]byte, len(payload))
@@ -111,7 +114,7 @@ func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
 }
 
 type serviceOutcome struct {
-	result endpointapi.RuntimeResult
+	result runtimeResult
 	err    error
 }
 
@@ -162,16 +165,18 @@ func TestLogicalQueueBackpressuresAtFrozenDirectionalCap(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	outcomes := make(chan serviceOutcome, 2)
 	go func() {
-		result, err := client.Connect(ctx, endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		result, err := client.connectForHarness(ctx, outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: session(client, fixture.clientPrincipal, fixture.now), Target: fixture.first.Target,
 			Publication: publication, Route: clientRoute, Application: clientEndpoint,
 			BytesEachDirection: 4 << 20, At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		result, err := publisher.Accept(ctx, endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		result, err := publisher.acceptForHarness(ctx, inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: session(publisher, fixture.publisherPrincipal, fixture.now), Route: publisherRoute,
 			Application: publisherEndpoint, BytesEachDirection: 4 << 20, At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	writeDone := make(chan error, 1)
@@ -245,13 +250,15 @@ func TestOrderlyHalfCloseReportsObservedPartialCounts(t *testing.T) {
 func TestMalformedAndOversizedPublicationsAreTargetAuthenticationFailures(t *testing.T) {
 	fixture := newFixture(t)
 	for _, publication := range [][]byte{{1, 2, 3}, make([]byte, 9<<10)} {
-		client, _ := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
+		client, _ := newEndpoint(setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
 			AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 			ConnectionPrincipal: fixture.clientPrincipal})
+
 		session := admit(t, client, "connection", fixture.clientPrincipal, fixture.now)
-		result, err := client.Connect(context.Background(), endpointapi.OutboundConnectionRequest{
+		result, err := client.connectForHarness(context.Background(), outboundConnectionRequest{
 			Principal: fixture.clientPrincipal, Capability: session, Target: fixture.first.Target,
 			Publication: publication, At: fixture.now})
+
 		if err == nil || result.Class != "service target authentication failure" {
 			t.Fatalf("malformed publication returned %+v err=%v", result, err)
 		}
@@ -261,9 +268,10 @@ func TestMalformedAndOversizedPublicationsAreTargetAuthenticationFailures(t *tes
 func connectedEndpoints(t *testing.T, fixture fixture) (endpointRunner, endpointRunner, []byte) {
 	t.Helper()
 	publisher, publication := startPublishedEndpoint(t, fixture)
-	client, err := endpointapi.New(endpointapi.Setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
+	client, err := newEndpoint(setup{NetworkID: fixture.networkID, BrokerID: [32]byte{8},
 		AuthorityPublic: fixture.authorityPublic, IntroductionPublic: fixture.introductionPublic,
 		ConnectionPrincipal: fixture.clientPrincipal})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,15 +284,17 @@ func runConnections(ctx context.Context, fixture fixture, client, publisher endp
 	clientSession := session(client, fixture.clientPrincipal, fixture.now)
 	publisherSession := session(publisher, fixture.publisherPrincipal, fixture.now)
 	go func() {
-		result, err := client.Connect(ctx, endpointapi.OutboundConnectionRequest{Principal: fixture.clientPrincipal,
+		result, err := client.connectForHarness(ctx, outboundConnectionRequest{Principal: fixture.clientPrincipal,
 			Capability: clientSession, Target: fixture.first.Target, Publication: publication, Route: clientRoute,
 			Application: clientApplication, BytesEachDirection: 64 << 10, At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	go func() {
-		result, err := publisher.Accept(ctx, endpointapi.InboundConnectionRequest{Principal: fixture.publisherPrincipal,
+		result, err := publisher.acceptForHarness(ctx, inboundConnectionRequest{Principal: fixture.publisherPrincipal,
 			Capability: publisherSession, Route: publisherRoute, Application: publisherApplication,
 			BytesEachDirection: 64 << 10, At: fixture.now})
+
 		outcomes <- serviceOutcome{result, err}
 	}()
 	return outcomes

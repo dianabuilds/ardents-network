@@ -45,6 +45,21 @@ func TestTransitIssuerRootCustodyIsNotExportedFromDuty(t *testing.T) {
 	}
 }
 
+func TestEndpointCompositionIsOwnedOnlyByParticipantRuntime(t *testing.T) {
+	root := repositoryRoot(t)
+	exported := exportedPackageDeclarations(t, filepath.Join(root, "internal", "endpoint"))
+	for _, name := range []string{
+		"New", "Setup", "OpenConnectionInterface", "ConnectionInterfaceConfig", "ApplicationStateView", "ApplicationEntry",
+		"OpenUserApplicationConnection", "UserApplicationConnectionRequest", "OpenUserIntroductionRoute", "UserIntroductionRouteRequest",
+		"OpenUserReachabilityRoute", "UserReachabilityRouteRequest", "ResolveUserReachability", "UserPrivateReachabilityRequest",
+		"Connect", "Accept", "OutboundConnectionRequest", "InboundConnectionRequest",
+	} {
+		if exported[name] {
+			t.Errorf("internal/endpoint still exports caller-authorized composition surface %s", name)
+		}
+	}
+}
+
 func exportedPackageDeclarations(t *testing.T, directory string) map[string]bool {
 	t.Helper()
 	result := make(map[string]bool)
