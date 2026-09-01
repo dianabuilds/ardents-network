@@ -137,7 +137,7 @@ func TestAdmissionCapabilityTTLDoesNotTerminateActiveEndpointWork(t *testing.T) 
 	clock := func() time.Time {
 		clockCalls++
 		if clockCalls >= 3 {
-			return base.Add(15*time.Second - 10*time.Millisecond)
+			return base.Add(16 * time.Second)
 		}
 		return base
 	}
@@ -173,11 +173,10 @@ func TestAdmissionCapabilityTTLDoesNotTerminateActiveEndpointWork(t *testing.T) 
 		})
 		result <- openErr
 	}()
-	<-entered
 	select {
 	case err := <-result:
 		t.Fatalf("pending capability TTL terminated active Endpoint work: %v", err)
-	case <-time.After(50 * time.Millisecond):
+	case <-entered:
 	}
 	cancel()
 	if err := <-result; err == nil {
@@ -217,6 +216,9 @@ func TestAdministrationAdmissionCannotConsumeConnectionCapacityFloor(t *testing.
 			t.Fatalf("Connection session %d of 64: %v", index+1, err)
 		}
 		connections = append(connections, session)
+	}
+	if _, err := endpoint.beginApplicationSession(context.Background(), connectionPrincipal); err == nil {
+		t.Fatal("Connection session 65 bypassed its finite capacity")
 	}
 }
 

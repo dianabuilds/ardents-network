@@ -57,6 +57,8 @@ exactly once after the terminal outcome. The one-use capability expires after
 its finite admission window; successful activation does not transfer that
 pending TTL into the active Connection. Administration has a separate finite
 budget of six consumed sessions and cannot reduce Connection capacity.
+The activation receipt retains the consumed capability's issue and expiry
+window; that receipt timestamp is not an active Connection lease deadline.
 
 Exact revoke and Broker or Endpoint close immediately cancel matching active
 Connection sessions as well as invalidating unconsumed capabilities. Drain

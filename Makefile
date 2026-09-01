@@ -50,7 +50,7 @@ QUICK_CHECK_TARGETS := format-check vet unit build mod-check browser-check cerem
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
-HEADLESS_ARTIFACT_MKDIR = if not exist "$(HEADLESS_ARTIFACT_ROOT)" mkdir "$(HEADLESS_ARTIFACT_ROOT)"
+HEADLESS_ARTIFACT_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(HEADLESS_ARTIFACT_ROOT)') | Out-Null"
 BROWSER_ARTIFACT_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(BROWSER_ARTIFACT_ROOT)') | Out-Null"
 CEREMONY_ARTIFACT_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(CEREMONY_ARTIFACT_ROOT)') | Out-Null"
 else
