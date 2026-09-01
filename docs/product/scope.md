@@ -89,7 +89,7 @@ current artifact set contains only the four headless commands, while the
 Application Interface remains a neutral shared seam.
 
 The former Browser implementation and qualification lanes are retired by
-[ADR-0068](../adr/0068-retire-active-browser-implementation.md). The retained
+[ADR-0069](../adr/0069-retire-active-browser-implementation.md). The retained
 Firefox/Endpoint source under `tests/compatibility/browser-endpoint-v4`, its
 accepted ADRs and research records, and immutable audit receipts are
 non-executable evidence only. They do not inherit a Network security claim,

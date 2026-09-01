@@ -4,7 +4,7 @@ date: 2026-09-01
 extends: 0061-retain-firefox-entry-as-compatibility-evidence.md
 ---
 
-# ADR-0068 — Retire the active Browser implementation and qualification lanes
+# ADR-0069 — Retire the active Browser implementation and qualification lanes
 
 ## Context
 

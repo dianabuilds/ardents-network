@@ -153,7 +153,7 @@ The Endpoint contains no Browser presentation or Browser Entry state. The
 former Browser implementation and qualification lanes are retired; Firefox
 source remains only as non-executable compatibility evidence under
 `tests/compatibility/browser-endpoint-v4` in accordance with [ADR-0061](../adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
-and [ADR-0068](../adr/0068-retire-active-browser-implementation.md).
+and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 
 ## Verification and related decisions
 

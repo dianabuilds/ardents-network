@@ -113,7 +113,7 @@ joined only by `ardents-application-interface-v1`. The audit corpus uses
 [`ownership.json`](ownership.json) rather than inferring ownership from
 directory names. `internal/application/broker` remains Network-owned; the
 former Browser implementation and qualification lanes are historical evidence
-only under ADR-0068.
+only under ADR-0069.
 
 The Product Owner activates the campaign by selecting one bounded **audit
 activation profile**. It is not a release or Qualification profile. A
