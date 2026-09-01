@@ -133,7 +133,7 @@ func (store *store) commit(next durableState) error {
 func validDurableState(state durableState) bool {
 	return state.Version == 1 && state.Generation > 0 &&
 		(state.Previous == "" || stateName.MatchString(state.Previous)) && validRecords(state.Duties) &&
-		validTransitGrantSpends(state.TransitGrantSpends) && validTransitGrantIssuer(state.TransitGrantIssuer)
+		validTransitGrantSpends(state.TransitGrantSpends)
 }
 
 func validRecords(records []dutyRecord) bool {
@@ -167,32 +167,6 @@ func validTransitGrantSpends(spends []transitGrantSpend) bool {
 			return false
 		}
 		seen[spend.GrantID] = true
-	}
-	return true
-}
-
-func validTransitGrantIssuer(issuer *transitGrantIssuer) bool {
-	if issuer == nil {
-		return true
-	}
-	profileValid := len(issuer.Profile) == 0 && issuer.ProfileDigest == [32]byte{} ||
-		len(issuer.Profile) > 0 && len(issuer.Profile) <= maximumTransitGrantProfileBytes && sha256.Sum256(issuer.Profile) == issuer.ProfileDigest
-	bound := issuer.NetworkID != [32]byte{} && issuer.Digest != [32]byte{} && issuer.IssuerNodeID != [32]byte{} &&
-		issuer.GrantSignerID != [32]byte{} && issuer.Epoch != 0 && issuer.NotAfter > 0
-	unbound := len(issuer.Profile) > 0 && issuer.NetworkID == [32]byte{} && issuer.Digest == [32]byte{} && issuer.IssuerNodeID == [32]byte{} &&
-		issuer.GrantSignerID == [32]byte{} && issuer.Epoch == 0 && issuer.NotAfter == 0
-	if !profileValid || !bound && !unbound || issuer.Budget == 0 ||
-		issuer.Budget > maximumTransitGrantBudget || len(issuer.PrivateMaterial) == 0 || len(issuer.PrivateMaterial) > 256 ||
-		len(issuer.Reservations) > int(issuer.Budget) {
-		return false
-	}
-	seen := make(map[[32]byte]bool, len(issuer.Reservations))
-	for _, reservation := range issuer.Reservations {
-		if reservation.RequestID == [32]byte{} || reservation.RequestDigest == [32]byte{} || reservation.GrantID == [32]byte{} ||
-			seen[reservation.RequestID] {
-			return false
-		}
-		seen[reservation.RequestID] = true
 	}
 	return true
 }

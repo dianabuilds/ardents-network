@@ -70,8 +70,7 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 	}
 	now := store.clock().UTC()
 	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)+len(duties)),
-		TransitGrantSpends: liveTransitGrantSpends(store.state.TransitGrantSpends, now),
-		TransitGrantIssuer: cloneTransitGrantIssuer(store.state.TransitGrantIssuer)}
+		TransitGrantSpends: liveTransitGrantSpends(store.state.TransitGrantSpends, now)}
 	for _, retained := range store.state.Duties {
 		if retained.Producer != producer && now.Unix() < retained.NotAfter {
 			next.Duties = append(next.Duties, retained)
@@ -84,7 +83,7 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 		next.Duties = append(next.Duties, dutyRecord{Producer: producer, Identity: duty.Identity,
 			Family: duty.Family, Class: duty.Class, State: duty.State, NotAfter: duty.NotAfter.Unix()})
 	}
-	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) || !validTransitGrantIssuer(next.TransitGrantIssuer) {
+	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) {
 		return errors.New("local role state exceeds its bound")
 	}
 	return store.commit(next)
@@ -113,15 +112,14 @@ func (store *store) SpendTransitGrant(nodeID, grantID [32]byte, notAfter time.Ti
 	if len(spends) >= maximumTransitGrantSpends {
 		return errors.New("transit grant spend ledger is full")
 	}
-	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)), TransitGrantSpends: spends,
-		TransitGrantIssuer: cloneTransitGrantIssuer(store.state.TransitGrantIssuer)}
+	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)), TransitGrantSpends: spends}
 	for _, retained := range store.state.Duties {
 		if now.Unix() < retained.NotAfter {
 			next.Duties = append(next.Duties, retained)
 		}
 	}
 	next.TransitGrantSpends = append(next.TransitGrantSpends, transitGrantSpend{NodeID: nodeID, GrantID: grantID, NotAfter: notAfter.Unix()})
-	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) || !validTransitGrantIssuer(next.TransitGrantIssuer) {
+	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) {
 		return errors.New("transit grant spend ledger is invalid")
 	}
 	return store.commit(next)

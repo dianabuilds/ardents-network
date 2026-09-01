@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/cloudflare/circl/hpke"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/openpcc/ohttp"
 )
 
@@ -51,14 +50,18 @@ func InitializeIssuerRoot(config IssuerRootConfig) (IssuerRootReceipt, error) {
 	if err != nil {
 		return IssuerRootReceipt{}, err
 	}
-	ledger, err := duty.Open(duty.Config{Root: config.Root, Clock: config.Clock, Create: true})
+	ledger, err := openIssuerRootStore(config.Root, config.Clock, true)
 	if err != nil {
 		return IssuerRootReceipt{}, err
 	}
-	retainedPrivate, retainedProfile, initializeErr := ledger.InitializeTransitGrantIssuerRoot(sha256.Sum256(raw), config.Budget, privateMaterial, raw)
-	closeErr := ledger.Close()
+	retainedProfile, initializeErr := ledger.initialize(sha256.Sum256(raw), config.Budget, privateMaterial, raw)
+	retainedPrivate, _, materialErr := ledger.material()
+	closeErr := ledger.close()
 	if initializeErr != nil {
 		return IssuerRootReceipt{}, errors.Join(initializeErr, closeErr)
+	}
+	if materialErr != nil {
+		return IssuerRootReceipt{}, errors.Join(materialErr, closeErr)
 	}
 	if closeErr != nil {
 		return IssuerRootReceipt{}, closeErr

@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/cloudflare/circl/hpke"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/openpcc/ohttp"
 )
 
@@ -19,12 +18,12 @@ func OpenIssuerFromRoot(config RootIssuerConfig) (*Issuer, error) {
 		len(config.IdentityKey) != ed25519.PrivateKeySize || config.CurrentDuty == nil || config.Clock == nil {
 		return nil, errors.New("root-backed transit issuer configuration is invalid")
 	}
-	ledger, err := duty.Open(duty.Config{Root: config.Root, Clock: config.Clock})
+	ledger, err := openIssuerRootStore(config.Root, config.Clock, false)
 	if err != nil {
 		return nil, err
 	}
-	closeOnError := func(cause error) (*Issuer, error) { return nil, errors.Join(cause, ledger.Close()) }
-	privateMaterial, rawProfile, err := ledger.TransitGrantIssuerRoot()
+	closeOnError := func(cause error) (*Issuer, error) { return nil, errors.Join(cause, ledger.close()) }
+	privateMaterial, rawProfile, err := ledger.material()
 	if err != nil {
 		return closeOnError(err)
 	}
@@ -57,9 +56,9 @@ func OpenIssuerFromRoot(config RootIssuerConfig) (*Issuer, error) {
 		!current.NotAfter.Equal(profile.AssignmentNotAfter) {
 		return closeOnError(errors.New("root-backed transit issuer assignment is unavailable"))
 	}
-	scope := duty.TransitGrantIssuerScope{NetworkID: current.NetworkID, Digest: current.Digest, IssuerNodeID: current.IssuerNodeID,
+	scope := issuerScope{NetworkID: current.NetworkID, Digest: current.Digest, IssuerNodeID: current.IssuerNodeID,
 		GrantSignerID: profile.GrantSignerID, Epoch: current.Epoch, NotAfter: current.NotAfter}
-	if err := ledger.BindTransitGrantIssuer(scope); err != nil {
+	if err := ledger.bind(scope); err != nil {
 		return closeOnError(err)
 	}
 	secret, err := hpke.KEM_P256_HKDF_SHA256.Scheme().UnmarshalBinaryPrivateKey(ohttpMaterial)
@@ -73,8 +72,7 @@ func OpenIssuerFromRoot(config RootIssuerConfig) (*Issuer, error) {
 		return closeOnError(err)
 	}
 	issuer := &Issuer{config: issuerConfig, nodePublic: nodePublic, profile: profile, profileDigest: profileDigest, scope: scope,
-		find: ledger.FindTransitGrantReservation, reserve: ledger.ReserveTransitGrant,
-		withdraw: ledger.WithdrawTransitGrantIssuer, close: ledger.Close}
+		find: ledger.find, reserve: ledger.reserve, withdraw: ledger.withdraw, close: ledger.close}
 	middleware := ohttp.Middleware(adapter, http.HandlerFunc(issuer.serve))
 	issuer.handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if !issuer.config.Clock().Before(issuer.profile.AssignmentNotAfter) || !issuer.acceptsInitiator(request.TLS) {

@@ -11,9 +11,32 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
+
+var (
+	errIssuerExhausted       = errors.New("transit grant issuer budget is exhausted")
+	errIssuerWithdrawn       = errors.New("transit grant issuer duty is withdrawn")
+	errIssuerRequestConflict = errors.New("transit grant request identifier conflicts")
+)
+
+type issuerScope struct {
+	NetworkID, Digest, IssuerNodeID, GrantSignerID [32]byte
+	Epoch                                          uint64
+	NotAfter                                       time.Time
+}
+
+func validIssuerScope(scope issuerScope) bool {
+	return scope.NetworkID != [32]byte{} && scope.Digest != [32]byte{} && scope.IssuerNodeID != [32]byte{} &&
+		scope.GrantSignerID != [32]byte{} && scope.Epoch != 0 && !scope.NotAfter.IsZero() && scope.NotAfter.Unix() > 0 &&
+		scope.NotAfter.Equal(scope.NotAfter.UTC().Truncate(time.Second))
+}
+
+func sameIssuerScope(issuer *issuerRootRecord, scope issuerScope) bool {
+	return issuer != nil && issuer.NetworkID == scope.NetworkID && issuer.Digest == scope.Digest &&
+		issuer.IssuerNodeID == scope.IssuerNodeID && issuer.GrantSignerID == scope.GrantSignerID && issuer.Epoch == scope.Epoch &&
+		issuer.NotAfter == scope.NotAfter.Unix()
+}
 
 type issuerConfig struct {
 	NetworkID, NodeID  [32]byte
@@ -33,10 +56,10 @@ type Issuer struct {
 	profile       Profile
 	profileDigest [32]byte
 	handler       http.Handler
-	scope         duty.TransitGrantIssuerScope
-	find          func(duty.TransitGrantIssuerScope, [32]byte, [32]byte) ([32]byte, bool, error)
-	reserve       func(duty.TransitGrantIssuerScope, [32]byte, [32]byte, [32]byte) ([32]byte, bool, error)
-	withdraw      func(duty.TransitGrantIssuerScope) error
+	scope         issuerScope
+	find          func(issuerScope, [32]byte, [32]byte) ([32]byte, bool, error)
+	reserve       func(issuerScope, [32]byte, [32]byte, [32]byte) ([32]byte, bool, error)
+	withdraw      func(issuerScope) error
 	close         func() error
 }
 
@@ -98,7 +121,7 @@ func (issuer *Issuer) serve(writer http.ResponseWriter, request *http.Request) {
 func (issuer *Issuer) issue(request Request, payload []byte, current StateDuty, now time.Time) Result {
 	digest := sha256.Sum256(payload)
 	grantID, found, err := issuer.find(issuer.scope, request.RequestID, digest)
-	if errors.Is(err, duty.ErrTransitGrantRequestConflict) {
+	if errors.Is(err, errIssuerRequestConflict) {
 		return Result{Outcome: Unavailable}
 	}
 	if err != nil {
@@ -117,10 +140,10 @@ func (issuer *Issuer) issue(request Request, payload []byte, current StateDuty, 
 			return Result{Outcome: Unavailable}
 		}
 		grantID, _, err = issuer.reserve(issuer.scope, request.RequestID, digest, grantID)
-		if errors.Is(err, duty.ErrTransitGrantIssuerExhausted) {
+		if errors.Is(err, errIssuerExhausted) {
 			return Result{Outcome: Exhausted}
 		}
-		if errors.Is(err, duty.ErrTransitGrantIssuerWithdrawn) {
+		if errors.Is(err, errIssuerWithdrawn) {
 			return Result{Outcome: Withdrawn}
 		}
 		if err != nil {
