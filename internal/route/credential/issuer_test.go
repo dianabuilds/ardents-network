@@ -41,7 +41,7 @@ func TestClientObtainsOnlyExactRoleScopedGrantThroughOHTTP(t *testing.T) {
 			return StateDuty{Generation: testStateGeneration, NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(7),
 				IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(8), InitiatorPublicKey: publicIdentifier(initiatorPublic),
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
-				Epoch: request.Epoch, NotAfter: now.Add(time.Minute)}, true
+				Epoch: request.Epoch, NotAfter: now.Add(time.Minute), Fresh: true}, true
 		})
 	defer func() { _ = issuer.Close() }()
 	server := httptest.NewUnstartedServer(issuer.Handler())
@@ -99,7 +99,7 @@ func TestIssuerRejectsCallerWithoutSelectedInitiatorCertificate(t *testing.T) {
 			return StateDuty{Generation: testStateGeneration, NetworkID: credentialID(21), Digest: credentialID(24), IssuerNodeID: credentialID(22),
 				IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(23), InitiatorPublicKey: publicIdentifier(initiatorPublic),
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
-				Epoch: 25, NotAfter: now.Add(time.Minute)}, true
+				Epoch: 25, NotAfter: now.Add(time.Minute), Fresh: true}, true
 		})
 	defer func() { _ = issuer.Close() }()
 	server := httptest.NewUnstartedServer(issuer.Handler())

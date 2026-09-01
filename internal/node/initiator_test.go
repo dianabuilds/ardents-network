@@ -249,7 +249,7 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 			return credential.StateDuty{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: [32]byte{84},
 				IssuerPublicKey: issuerPublic, InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: material.initiatorPublic,
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
-				Epoch: request.Epoch, NotAfter: rendezvousConfig.NotAfter}, true
+				Epoch: request.Epoch, NotAfter: rendezvousConfig.NotAfter, Fresh: true}, true
 		})
 	defer func() { _ = issuer.Close() }()
 	server := httptest.NewUnstartedServer(issuer.Handler())

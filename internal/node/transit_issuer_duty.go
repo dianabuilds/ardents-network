@@ -10,7 +10,7 @@ import (
 )
 
 func transitIssuerStateDuty(snapshot dutyFacts, now time.Time) (credential.StateDuty, bool) {
-	if snapshot.Assignment != "transit-issuance" || snapshot.NodeID == [32]byte{} || snapshot.NodePublicKey == [32]byte{} ||
+	if snapshot.Assignment != "transit-issuance" || !snapshot.Fresh || snapshot.Conflicting || snapshot.NodeID == [32]byte{} || snapshot.NodePublicKey == [32]byte{} ||
 		snapshot.TransitIssuerNodeID != snapshot.NodeID || len(snapshot.TransitIssuerProfile) == 0 || !now.Before(snapshot.ValidUntil) ||
 		!now.Before(snapshot.RecordValidUntil) {
 		return credential.StateDuty{}, false
@@ -49,7 +49,7 @@ func transitIssuerStateDuty(snapshot dutyFacts, now time.Time) (credential.State
 	return credential.StateDuty{Generation: snapshot.Generation, NetworkID: snapshot.NetworkID, Digest: snapshot.Digest, IssuerNodeID: snapshot.NodeID,
 		IssuerPublicKey: snapshot.NodePublicKey, InitiatorNodeID: profile.InitiatorNodeID, InitiatorPublicKey: profile.InitiatorPublicKey,
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: sha256.Sum256(snapshot.TransitIssuerProfile),
-		Epoch: snapshot.Epoch, NotAfter: profile.AssignmentNotAfter}, true
+		Epoch: snapshot.Epoch, NotAfter: profile.AssignmentNotAfter, Fresh: true}, true
 }
 
 func validateTransitIssuerProfile(local TransitIssuerProfile, snapshot dutyFacts, now time.Time) error {

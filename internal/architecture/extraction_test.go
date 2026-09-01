@@ -141,7 +141,7 @@ func runExternal(t *testing.T, directory, name string, arguments ...string) {
 }
 
 func externalEnvironment(input []string) []string {
-	gitRepositoryVariables := map[string]bool{
+	inheritedControlVariables := map[string]bool{
 		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
 		"GIT_COMMON_DIR":                   true,
 		"GIT_CONFIG":                       true,
@@ -172,7 +172,7 @@ func externalEnvironment(input []string) []string {
 	result := make([]string, 0, len(input))
 	for _, value := range input {
 		name, _, found := strings.Cut(value, "=")
-		if !found || gitRepositoryVariables[strings.ToUpper(name)] {
+		if !found || inheritedControlVariables[strings.ToUpper(name)] {
 			continue
 		}
 		result = append(result, value)

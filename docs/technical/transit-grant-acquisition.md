@@ -78,8 +78,11 @@ public bytes. State then authenticates those exact opaque bytes. The first
 accepted runtime duty irreversibly binds the root to its Network ID, canonical
 State Generation, Epoch/digest, issuer Node, Grant signer, assignment deadline,
 and budget generation. State Generation is independent lowercase 64-hex
-continuity evidence: the exact same generation may reopen, while a different
-generation is unavailable before any root lookup, withdrawal, or reservation.
+continuity evidence. Every request rechecks a fresh, non-conflicting current
+duty against that complete tuple; any generation, Epoch, digest, issuer,
+signer, or assignment-deadline change is unavailable before any root lookup,
+withdrawal, or reservation. Only the byte-identical duty may reopen and use
+the bound ledger.
 The owner root is explicitly v2 (`.ardents-local-roles-v2` with exact marker
 text and strict JSON Version 2). A v1 bound, unbound, or marker-only root is
 rejected read-only before lease acquisition and again under lease; there is no

@@ -133,24 +133,17 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	result := make(map[string][]byte)
-	for _, inventory := range []struct {
-		path string
-		root string
-	}{
-		{path: "tests/profiles/headless-commands.txt", root: headlessRoot},
-	} {
-		for _, command := range strings.Fields(string(readProjectFile(t, repository, inventory.path))) {
-			path := filepath.Join(inventory.root, filepath.Base(command)+"-"+platform+executableSuffix())
-			raw, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatalf("read selected artifact %s: %v", command, err)
-			}
-			if _, duplicate := result[command]; duplicate {
-				t.Fatalf("selected artifact command is duplicated: %s", command)
-			}
-			assertNoVCSBuildSettings(t, path)
-			result[command] = raw
+	for _, command := range strings.Fields(string(readProjectFile(t, repository, "tests/profiles/headless-commands.txt"))) {
+		path := filepath.Join(headlessRoot, filepath.Base(command)+"-"+platform+executableSuffix())
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read selected artifact %s: %v", command, err)
 		}
+		if _, duplicate := result[command]; duplicate {
+			t.Fatalf("selected artifact command is duplicated: %s", command)
+		}
+		assertNoVCSBuildSettings(t, path)
+		result[command] = raw
 	}
 	if len(result) != 4 {
 		t.Fatalf("selected post-retirement artifact set has %d commands, want 4", len(result))

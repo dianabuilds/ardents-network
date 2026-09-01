@@ -74,11 +74,11 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	duty := credential.StateDuty{NetworkID: networkID, Digest: network.snapshot.Digest,
+	duty := credential.StateDuty{Generation: network.snapshot.Generation, NetworkID: networkID, Digest: network.snapshot.Digest,
 		IssuerNodeID: peers["transit-issuance"].nodeID, IssuerPublicKey: publisherProcessPublic(peers["transit-issuance"].private),
 		InitiatorNodeID: peers["initiator"].nodeID, InitiatorPublicKey: initiatorPublic,
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: receipt.ProfileDigest,
-		Epoch: network.snapshot.Epoch, NotAfter: notAfter}
+		Epoch: network.snapshot.Epoch, NotAfter: notAfter, Fresh: true}
 	issuer, err := credential.OpenIssuerFromRoot(credential.RootIssuerConfig{Root: issuerRoot, NetworkID: networkID,
 		NodeID: duty.IssuerNodeID, IdentityKey: peers["transit-issuance"].private,
 		CurrentDuty: func() (credential.StateDuty, bool) { return duty, true }, Clock: time.Now})

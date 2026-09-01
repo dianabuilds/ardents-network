@@ -97,6 +97,7 @@ type StateDuty struct {
 	ProfileDigest                                                                                               [32]byte
 	Epoch                                                                                                       uint64
 	NotAfter                                                                                                    time.Time
+	Fresh, Conflicting                                                                                          bool
 	Withdrawn                                                                                                   bool
 }
 

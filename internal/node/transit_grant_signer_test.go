@@ -26,7 +26,7 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 			return credential.StateDuty{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: network, Digest: digest, IssuerNodeID: issuerID,
 				IssuerPublicKey: [32]byte(issuerPublic), InitiatorNodeID: [32]byte{4}, InitiatorPublicKey: [32]byte(initiatorPublic),
 				GrantSignerPublicKey: profile.GrantSignerPublicKey, ProfileDigest: profileDigest,
-				Epoch: 5, NotAfter: now.Add(time.Minute)}, true
+				Epoch: 5, NotAfter: now.Add(time.Minute), Fresh: true}, true
 		})
 	defer func() { _ = issuer.Close() }()
 	issuerProfile := issuer.Profile()
@@ -39,7 +39,9 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot := dutyFacts{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: network, Epoch: 5, Digest: digest, ValidUntil: now.Add(time.Minute),
+	snapshot := dutyFacts{Generation: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", NetworkID: network, Epoch: 5, Digest: digest,
+		NodeID: issuerID, NodePublicKey: [32]byte(issuerPublic), Assignment: "transit-issuance", Fresh: true,
+		ValidUntil: now.Add(time.Minute), RecordValidUntil: now.Add(time.Minute),
 		TransitIssuerNodeID: issuerID, TransitIssuerProfile: profile, CandidateCount: 2,
 		Candidates: [64]dutyCandidate{
 			{NodeID: issuerID, PublicKey: [32]byte(issuerPublic), Assignment: "transit-issuance",
@@ -56,6 +58,24 @@ func TestNodeProjectsOnlyPurposeScopedSignerFromStateIssuerProfile(t *testing.T)
 	}
 	if snapshot.TransitGrantSignerID == snapshot.Authorities[0].ID {
 		t.Fatal("purpose-scoped Grant signer collapsed into the Epoch authority")
+	}
+	if _, available := transitIssuerStateDuty(snapshot, now); !available {
+		t.Fatal("fresh non-conflicting State issuer duty was unavailable")
+	}
+	for _, unavailable := range []struct {
+		name   string
+		mutate func(*dutyFacts)
+	}{
+		{name: "stale", mutate: func(duty *dutyFacts) { duty.Fresh = false }},
+		{name: "conflicting", mutate: func(duty *dutyFacts) { duty.Conflicting = true }},
+	} {
+		t.Run(unavailable.name, func(t *testing.T) {
+			changedDuty := snapshot
+			unavailable.mutate(&changedDuty)
+			if _, available := transitIssuerStateDuty(changedDuty, now); available {
+				t.Fatal("unavailable State projected a transit issuer duty")
+			}
+		})
 	}
 
 	changed := snapshot

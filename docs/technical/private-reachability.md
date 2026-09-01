@@ -3,8 +3,8 @@
 Status: **accepted private-reachability contract; the closed descriptor codec, Endpoint
 composition, Gateway-local durable currentness state, and fixed-size OHTTP
 Relay/Gateway exchange and ADR-0037's closed Entry-to-Initiator carrier exist;
-both in-process and seven-process Target Link → lookup → C-2 → Reference Site
-tests pass. Live qualification remains pending.** This is the Target-keyed
+both in-process and bounded local-process Target Link → lookup → Endpoint-owned
+Service Connection tests pass. Live qualification remains pending.** This is the Target-keyed
 companion to the Namespace-only private
 resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md)
 and [ADR-0037](../adr/0037-private-reachability-entry-carrier.md).

@@ -147,7 +147,7 @@ and confirmed removal. The operator contract is the
 - The maintained Carrier cells cover exact TCP/TLS and QUIC peer/binding
   authentication, pending-admission reservation before QUIC authentication,
   signed v1/v2 State projection and unknown-profile rejection, both directions
-  of no-fallback behavior, and the same Publisher-to-User C-2 Reference Site
+  of no-fallback behavior, and the same authenticated native Route attachment
   journey over each profile. The restricted local Docker campaign repeats
   those cells from cross-built Linux bytes at 1 vCPU/1 GiB with no external
   network. Its recurring QUIC UDP-buffer warning forbids a throughput or
@@ -164,8 +164,9 @@ and confirmed removal. The operator contract is the
   commands. The Linux Docker route test uses `SIGTERM` and requires
   `DRAINING` then `WITHDRAWN` after the completed journey; a linked signed
   State successor also withdraws all four commands. Its product-transit
-  offline case produces `service unavailable` without a Reference URL, and a
-  Linux Rendezvous process test drains a held authenticated pair on `SIGTERM`.
+  offline case produces `service unavailable` without opening an Application
+  Connection, and a Linux Rendezvous process test drains a held authenticated
+  pair on `SIGTERM`.
   Its neighbouring C-2 roles remain fixtures. This does not prove a full C-2
   active-work drain, multi-host operation, or a host profile. The Windows
   compatibility harness retains forced cleanup.

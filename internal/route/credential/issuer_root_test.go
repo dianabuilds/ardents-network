@@ -192,7 +192,7 @@ func TestOpenIssuerFromRootBindsOnlyItsExactFirstStateDuty(t *testing.T) {
 	duty := StateDuty{Generation: testStateGeneration, NetworkID: config.NetworkID, Digest: credentialID(77), IssuerNodeID: config.NodeID,
 		IssuerPublicKey: publicIdentifier(nodePublic), InitiatorNodeID: config.InitiatorNodeID,
 		InitiatorPublicKey: config.InitiatorPublicKey, GrantSignerPublicKey: profile.GrantSignerPublicKey,
-		ProfileDigest: receipt.ProfileDigest, Epoch: 78, NotAfter: config.AssignmentNotAfter}
+		ProfileDigest: receipt.ProfileDigest, Epoch: 78, NotAfter: config.AssignmentNotAfter, Fresh: true}
 	current := duty
 	open := func() (*Issuer, error) {
 		return OpenIssuerFromRoot(RootIssuerConfig{Root: config.Root, NetworkID: config.NetworkID, NodeID: config.NodeID,

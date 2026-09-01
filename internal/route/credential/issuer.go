@@ -111,7 +111,7 @@ func (issuer *Issuer) serve(writer http.ResponseWriter, request *http.Request) {
 	now := issuer.config.Clock().UTC()
 	current, available := issuer.config.CurrentDuty()
 	profileCurrent := issuer.profileDigest == [32]byte{} || current.ProfileDigest == issuer.profileDigest
-	if err == nil && requestErr == nil && decodeErr == nil && available && current.Generation == issuer.scope.Generation && profileCurrent && validStateDuty(current, issuer.config, issuer.nodePublic, now) &&
+	if err == nil && requestErr == nil && decodeErr == nil && available && sameStateDutyScope(issuer.scope, current) && profileCurrent && validStateDuty(current, issuer.config, issuer.nodePublic, now) &&
 		decoded.NetworkID == issuer.config.NetworkID && decoded.Digest == current.Digest && decoded.Epoch == current.Epoch &&
 		now.Before(decoded.NotAfter) && !decoded.NotAfter.After(now.Add(15*time.Second)) && !decoded.NotAfter.After(current.NotAfter) {
 		result = issuer.issue(decoded, payload, current, now)
@@ -192,10 +192,15 @@ func (issuer *Issuer) acceptsInitiatorCertificate(certificate *x509.Certificate)
 }
 
 func validStateDuty(duty StateDuty, config issuerConfig, nodePublic [32]byte, now time.Time) bool {
-	return issuerStateName.MatchString(duty.Generation) && duty.NetworkID == config.NetworkID && duty.IssuerNodeID == config.NodeID && duty.IssuerPublicKey == nodePublic &&
+	return duty.Fresh && !duty.Conflicting && issuerStateName.MatchString(duty.Generation) && duty.NetworkID == config.NetworkID && duty.IssuerNodeID == config.NodeID && duty.IssuerPublicKey == nodePublic &&
 		duty.InitiatorNodeID == config.InitiatorNodeID && duty.InitiatorPublicKey == config.InitiatorPublicKey &&
 		duty.GrantSignerPublicKey == publicKey(config.GrantSigner) && duty.Digest != [32]byte{} && duty.Epoch != 0 &&
 		!duty.NotAfter.IsZero() && duty.NotAfter.Equal(duty.NotAfter.UTC().Truncate(time.Second)) && now.Before(duty.NotAfter)
+}
+
+func sameStateDutyScope(scope issuerScope, duty StateDuty) bool {
+	return duty.Generation == scope.Generation && duty.NetworkID == scope.NetworkID && duty.Digest == scope.Digest &&
+		duty.IssuerNodeID == scope.IssuerNodeID && duty.Epoch == scope.Epoch && duty.NotAfter.Equal(scope.NotAfter)
 }
 
 func publicKey(private ed25519.PrivateKey) [32]byte {

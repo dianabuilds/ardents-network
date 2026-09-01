@@ -41,7 +41,7 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 				return StateDuty{Generation: generation, NetworkID: request.NetworkID, Digest: request.Digest, IssuerNodeID: credentialID(47),
 					IssuerPublicKey: publicIdentifier(issuerPublic), InitiatorNodeID: credentialID(48),
 					InitiatorPublicKey: publicIdentifier(initiatorPublic), GrantSignerPublicKey: profile.GrantSignerPublicKey,
-					ProfileDigest: profileDigest, Epoch: request.Epoch, NotAfter: now.Add(time.Minute), Withdrawn: withdrawn}, true
+					ProfileDigest: profileDigest, Epoch: request.Epoch, NotAfter: now.Add(time.Minute), Fresh: true, Withdrawn: withdrawn}, true
 			})
 		profile := issuer.Profile()
 		grantPublic := ed25519.PublicKey(profile.GrantSignerPublicKey[:])
