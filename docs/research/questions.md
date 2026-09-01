@@ -20,6 +20,8 @@ implementation-linked; their maintained contracts are owned respectively by
 [Alpha-control transition](../technical/alpha-control-transition.md), the
 [C0 product scope](../product/scope.md), and
 [ADR-0067](../adr/0067-retire-completed-local-alpha-ceremonies.md).
+R-135 is decided and promoted to [ADR-0068](../adr/0068-bind-transit-issuer-roots-to-state-generation.md);
+its maintained contract belongs to [Transit Grant acquisition](../technical/transit-grant-acquisition.md).
 
 Closed research is not a second specification. Start from current
 [product](../product/), [security](../security/), [technical](../technical/),

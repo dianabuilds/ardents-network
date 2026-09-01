@@ -50,6 +50,10 @@ replacement or rotation is an explicit initialization into a distinct empty
 issuer root followed by a new State ceremony; an existing root is never
 repurposed or replenished.
 
+[ADR-0068](0068-bind-transit-issuer-roots-to-state-generation.md) further
+requires independent canonical State-generation continuity and the v2
+owner-root format. It rejects every v1 root without migration or mutation.
+
 ## Consequences
 
 - Bootstrap is a deliberate two-phase owner operation: initialize and publish
@@ -68,3 +72,5 @@ repurposed or replenished.
 Product Owner decision and rejected alternatives. ADR-0062 continues to own
 signer scope, fixed encrypted outcomes, and Endpoint at-most-once lifecycle.
 ADR-0053 continues to own the separate Network State authority root.
+[R-135](../research/records/r-135-transit-issuer-generation-continuity.md)
+records the follow-up continuity decision.

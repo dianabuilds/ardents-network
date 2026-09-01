@@ -75,10 +75,17 @@ Before State publication, one explicit initialization opens a new exclusive
 owner-only root, creates the purpose signer and OHTTP material, and atomically
 retains their Node-signed public profile. Reopening returns byte-identical
 public bytes. State then authenticates those exact opaque bytes. The first
-accepted runtime duty irreversibly binds the root to its Network ID,
-Epoch/digest, issuer Node, Grant signer, assignment deadline, and budget
-generation. Opening a missing, corrupt, substituted, rolled-back, successor-,
-or scope-mismatched root fails closed; replacement uses a distinct empty root.
+accepted runtime duty irreversibly binds the root to its Network ID, canonical
+State Generation, Epoch/digest, issuer Node, Grant signer, assignment deadline,
+and budget generation. State Generation is independent lowercase 64-hex
+continuity evidence: the exact same generation may reopen, while a different
+generation is unavailable before any root lookup, withdrawal, or reservation.
+The owner root is explicitly v2 (`.ardents-local-roles-v2` with exact marker
+text and strict JSON Version 2). A v1 bound, unbound, or marker-only root is
+rejected read-only before lease acquisition and again under lease; there is no
+migration. Opening a missing, corrupt, substituted, rolled-back, successor-,
+or scope-mismatched root fails closed; replacement uses a distinct empty root
+and an explicit initialize/bind ceremony.
 
 For a valid request, the issuer serializes this transition:
 

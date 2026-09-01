@@ -67,6 +67,7 @@ Current decisions:
 - [0064 — Separate Service Authority custody from host Instance enrollment](0064-separate-service-authority-custody-from-instance-enrollment.md)
 - [0065 — Commit headless publication after live Introduction readiness](0065-commit-publication-after-live-introduction-readiness.md)
 - [0066 — Use role-scoped Transit Grant requests](0066-use-role-scoped-transit-grant-requests.md)
+- [0068 — Bind Transit Grant issuer roots to State generation](0068-bind-transit-issuer-roots-to-state-generation.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
