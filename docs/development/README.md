@@ -41,6 +41,10 @@ specification.
 - [C0 run-2 Track A receipt](audit-receipts/c0-run-2-track-a.md) retains the
   exact blocked Gate A identity and external evidence digest; it is historical
   evidence, not a current product or Qualification claim.
+- [C0 run-2 Gate A remediation receipt](audit-receipts/c0-run-2-gate-a-remediation.md)
+  records the exact accepted source-artifact candidate, all 15 finding
+  dispositions, repeated affected-cell evidence, and reproducible artifact
+  digests. Track B remains unstarted.
 
 ## Historical provenance
 
