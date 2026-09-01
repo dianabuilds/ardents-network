@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -178,13 +177,6 @@ func externalEnvironment(input []string) []string {
 		result = append(result, value)
 	}
 	return result
-}
-
-func shellPath(path string) string {
-	if runtime.GOOS == "windows" {
-		return filepath.ToSlash(path)
-	}
-	return path
 }
 
 func errorsJoin(first, second error) error {
