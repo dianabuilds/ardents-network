@@ -120,6 +120,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"endpoint-replacement-ubuntu": false,
 		"fuzz":                        false,
 		"headless-network":            false,
+		"local-ceremony":              false,
 		"native-rendezvous-multihost": false,
 		"process":                     false,
 		"qualification":               false,
@@ -200,6 +201,7 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NODE := $(abspath $(HEADLESS_NODE_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEADLESS_CUSTODY_ARTIFACT))",
+		"headless-evidence: export ARDENTS_E2E_CONTROL := $(abspath $(HEADLESS_CONTROL_ARTIFACT))",
 		"TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses",
 	} {
 		if !strings.Contains(makefile, required) {

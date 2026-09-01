@@ -34,6 +34,14 @@
       "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
+      "id": "local-ceremony",
+      "state": "active",
+      "make_target": "ceremony-check",
+      "surface": "exact local release-custody and State-custody command build inventory",
+      "prerequisites": [],
+      "invalid_environment": "not applicable"
+    },
+    {
       "id": "browser-adapter",
       "state": "active",
       "make_target": "browser-check",

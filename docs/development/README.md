@@ -24,6 +24,8 @@ specification.
   bounded exception to the normal engineering rules.
 - [Current package map](package-map.md) is the factual register of maintained
   Go packages and their permitted imports.
+- [Command surface inventory](command-surface.md) records the process, artifact,
+  route, retirement, and future-decision boundaries for every maintained binary.
 
 ## Current technical references
 
