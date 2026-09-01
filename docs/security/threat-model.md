@@ -12,12 +12,12 @@ statement that the C0 implementation passed audit or qualification.
 
 For C0, the Network candidate includes headless commands and maintained
 Network, Endpoint, Service, naming, enrollment, Release, Custody, and Endpoint-
-owned Application Broker Modules. The separate Application/Browser candidate is
-reviewed for shared-interface seam, privilege, artifact, and dependency
-correctness but receives no browser-isolation,
-DNS/DoH-protection, or Application Location Privacy claim. Non-executable
-compatibility evidence and historical campaign implementations are outside the
-candidate corpus.
+owned Application Broker Modules. The neutral Application Interface is reviewed
+for shared-interface seam, privilege, artifact, and dependency correctness but
+receives no Application Location Privacy claim. The active Browser
+implementation and qualification lanes are retired; non-executable compatibility
+evidence and historical campaign implementations are outside the candidate
+corpus.
 
 Installation, capability readiness, Time Confidence, diagnostics, update, drain,
 and public-launch concentration are covered by the accepted

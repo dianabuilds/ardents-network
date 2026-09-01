@@ -60,8 +60,6 @@ The first real product commands are:
 | Command | Stable responsibility |
 |---|---|
 | `cmd/ardents` | Adapt bounded Network State, Endpoint, Entry, and naming routes. |
-| `cmd/ardents-browser` | Adapt optional Browser presentation to the local Application Connection Interface without importing Network implementations. |
-| `cmd/ardents-browser-entry` | Run the separately packaged Browser Entry native host and Browser-v4 enrollment operations. |
 | `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
 | `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
 
@@ -79,7 +77,7 @@ worktree. Source
 revision remains explicit external release and attestation provenance and is
 not reconstructed from an artifact's local repository representation.
 The checked public-Make proof covers the complete current post-ADR-0067 set:
-four headless commands and two Browser commands.
+four headless commands.
 
 `tests/profiles/` owns the checked profile registry and positive package
 membership manifests. Every maintained and Go-bearing e2e package belongs to
@@ -117,12 +115,6 @@ internal/
     interfacev1/connection/     versioned local Connection Interface and transport
     interfacev1/administration/ separate local Publish/Withdraw Interface and transport
     broker/                     Network-owned local Connection implementation
-  browser/
-    adapter/                    Browser lifecycle and local presentation adapter
-    entry/                      Firefox native host and participant state
-      enrollment/              Application-owned Browser-v4 companion verification
-      installer/               native-host registration
-    reference/                  reference HTTP presentation
   enrollment/                  Network-v1-v3 artifact verification
 scripts/
   check-tools.go               build-ignored developer tool-version check
@@ -185,8 +177,8 @@ themselves create a package Seam. A division moves complete behavior and its
 tests; it does not introduce a global shared-types or helper package.
 
 A directory containing maintained Go files is a full Go package, not a visual
-grouping inside another package. An owner namespace such as `internal/browser`
-or `internal/application/interfacev1` may contain several registered Modules
+grouping inside another package. An owner namespace such as
+`internal/application/interfacev1` may contain several registered Modules
 without itself containing Go files. Parent and child packages share no private
 implementation. `internal/<owner>/<module>` is allowed only when `<owner>`
 already owns several real Modules and the child independently meets every

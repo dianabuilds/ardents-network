@@ -19,10 +19,9 @@ the manifest-pinned Node and Authority Custody companions. It never executes
 or installs any byte, writes a Release or control floor, downloads from a
 source, or grants authority to a Release, State, Namespace, Route, or Endpoint.
 
-Browser enrollment is a separate Application-owned contract in
-`internal/browser/entry/enrollment`. The Browser Entry command uses that
-verifier for enrollment-v4 Endpoint, native-host, and XPI companion identities;
-those inputs and results do not pass through `internal/enrollment`.
+Browser enrollment-v4 is not part of the maintained verifier or artifact
+surface. Its former inputs and results remain only in the non-executable
+compatibility evidence tree.
 
 ## Acceptance sequence
 
@@ -84,7 +83,5 @@ inventory rejection, executable substitution, v2/v3 companion separation,
 package-owned artifact binding, Windows v3 control-manifest acceptance through
 the running-companion contract, and a current companion process. Callers in
 `cmd/ardents` and `cmd/ardents-control` exercise this narrow Network enrollment
-interface. Browser-v4 behavior is owned and tested separately by
-`internal/browser/entry/enrollment` and `cmd/ardents-browser-entry`. Repository
-gates provide integration evidence;
+interface. Repository gates provide integration evidence;
 historical RC2 enrollment evidence does not qualify a future baseline.

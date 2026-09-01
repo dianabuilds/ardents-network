@@ -75,6 +75,7 @@ Completed retirement decisions:
 - [0059 — Retire fixed historical candidate assembly](0059-retire-fixed-alpha-candidate-assembly.md)
 - [0060 — Retire completed planning-campaign generators](0060-retire-completed-planning-campaign-generators.md)
 - [0067 — Retire completed local alpha ceremonies](0067-retire-completed-local-alpha-ceremonies.md)
+- [0068 — Retire the active Browser implementation and qualification lanes](0068-retire-active-browser-implementation.md)
 
 Superseded or withdrawn decisions retained for provenance:
 

@@ -7,11 +7,12 @@ independent-operation, public deployment, availability, or supported Node-host
 claim.
 
 The maintained system now has an explicit C0 audit boundary around the headless
-Network product and separate Application/Browser surface. That boundary is a
+Network product and its neutral Application Interface. That boundary is a
 candidate for architecture and security review, not a usable, released, or
 qualified public product. Public operation, platform qualification,
 independent-control, availability, anonymity, and censorship-resistance claims
-remain withheld.
+remain withheld. The active Browser implementation and qualification lanes are
+retired; Firefox material remains only as immutable compatibility evidence.
 
 Completed delivery labels survive only in immutable Git, accepted records, and
 wire/persisted compatibility obligations. Current product, package, executable,

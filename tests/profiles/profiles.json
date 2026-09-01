@@ -34,14 +34,6 @@
       "invalid_environment": "headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
-      "id": "browser-adapter",
-      "state": "active",
-      "make_target": "browser-check",
-      "surface": "Browser Adapter command build, deterministic command archive, and enrollment-v4 inventory",
-      "prerequisites": ["POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, and hard-link-capable temporary storage"],
-      "invalid_environment": "the Browser Adapter artifact shell or its required local tools are unavailable"
-    },
-    {
       "id": "race",
       "state": "active",
       "make_target": "test-race",
@@ -56,30 +48,6 @@
       "surface": "deterministic-fuzz",
       "prerequisites": ["Go fuzz-capable toolchain"],
       "invalid_environment": "fuzz-capable Go toolchain unavailable"
-    },
-    {
-      "id": "browser-signed-xpi",
-      "state": "active",
-      "make_target": "qualification-browser-signed-xpi",
-      "surface": "Mozilla-signed Browser Entry artifact",
-      "prerequisites": ["exact Mozilla-signed Browser Entry XPI supplied by the Product Owner"],
-      "invalid_environment": "the selected Mozilla-signed XPI is unavailable or does not match the approved alpha artifact"
-    },
-    {
-      "id": "browser-entry-windows",
-      "state": "active",
-      "make_target": "qualification-browser-entry-windows",
-      "surface": "current-user Browser Entry install/remove",
-      "prerequisites": ["Windows host", "exact Mozilla-signed Browser Entry XPI supplied by the Product Owner", "no existing Browser Entry native-manifest registration"],
-      "invalid_environment": "the selected Windows enrollment-v4 qualification cannot establish its isolated current-user registration"
-    },
-    {
-      "id": "browser-entry-ubuntu",
-      "state": "active",
-      "make_target": "qualification-browser-entry-ubuntu",
-      "surface": "unprivileged Ubuntu container Browser Entry install/remove",
-      "prerequisites": ["available Docker engine", "pre-existing ubuntu:24.04 image", "exact Mozilla-signed Browser Entry XPI supplied by the Product Owner"],
-      "invalid_environment": "the selected Ubuntu container enrollment-v4 qualification cannot create its isolated unprivileged environment"
     },
     {
       "id": "qualification",

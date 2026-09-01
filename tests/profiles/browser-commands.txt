@@ -1,2 +1,0 @@
-./cmd/ardents-browser
-./cmd/ardents-browser-entry

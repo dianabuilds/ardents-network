@@ -2,7 +2,6 @@
   "schema": "ardents-source-ownership-v1",
   "owners": [
     "network",
-    "application-browser",
     "application-interface-v1",
     "historical-evidence"
   ],
@@ -13,22 +12,7 @@
       "include_prefixes": ["internal/application/interfacev1/"]
     },
     {
-      "id": "application-browser",
-      "owner": "application-browser",
-      "include_prefixes": [
-        "cmd/ardents-browser/",
-        "cmd/ardents-browser-entry/",
-        "internal/browser/",
-        "packaging/browser-bundle/",
-        "packaging/firefox-alpha-browser-entry/",
-        "tests/qualification/browser-signed-xpi/",
-        "tests/qualification/browser-entry-windows/",
-        "tests/qualification/browser-entry-ubuntu/"
-      ],
-      "include_paths": ["tests/profiles/browser-commands.txt"]
-    },
-    {
-      "id": "historical-browser-evidence",
+      "id": "historical-evidence",
       "owner": "historical-evidence",
       "include_prefixes": [
         "docs/research/",
@@ -69,20 +53,12 @@
         "README.md"
       ],
       "exclude_prefixes": [
-        "cmd/ardents-browser/",
-        "cmd/ardents-browser-entry/",
         "docs/research/",
         "experiments/",
         "internal/application/interfacev1/",
-        "internal/browser/",
-        "packaging/browser-bundle/",
-        "packaging/firefox-alpha-browser-entry/",
-        "tests/compatibility/",
-        "tests/qualification/browser-signed-xpi/",
-        "tests/qualification/browser-entry-windows/",
-        "tests/qualification/browser-entry-ubuntu/"
+        "tests/compatibility/"
       ],
-      "exclude_paths": ["tests/profiles/browser-commands.txt"]
+      "exclude_paths": []
     }
   ],
   "qualification_lanes": [
@@ -90,13 +66,9 @@
     {"id": "endpoint-replacement-ubuntu", "owner": "network", "path": "tests/qualification/endpoint-replacement-ubuntu"},
     {"id": "native-rendezvous-multihost", "owner": "network", "path": "tests/qualification/native-rendezvous-multihost"},
     {"id": "native-rendezvous-host", "owner": "network", "path": "tests/qualification/native-rendezvous-host"},
-    {"id": "alpha-control-two-endpoints", "owner": "network", "path": "tests/qualification/alpha-control-two-endpoints"},
-    {"id": "browser-signed-xpi", "owner": "application-browser", "path": "tests/qualification/browser-signed-xpi"},
-    {"id": "browser-entry-windows", "owner": "application-browser", "path": "tests/qualification/browser-entry-windows"},
-    {"id": "browser-entry-ubuntu", "owner": "application-browser", "path": "tests/qualification/browser-entry-ubuntu"}
+    {"id": "alpha-control-two-endpoints", "owner": "network", "path": "tests/qualification/alpha-control-two-endpoints"}
   ],
   "artifact_lanes": [
-    {"id": "network-v3", "owner": "network", "commands": "tests/profiles/headless-commands.txt", "packaging": "packaging/alpha-bundle"},
-    {"id": "browser-v4", "owner": "application-browser", "commands": "tests/profiles/browser-commands.txt", "packaging": "packaging/browser-bundle"}
+    {"id": "network-v3", "owner": "network", "commands": "tests/profiles/headless-commands.txt", "packaging": "packaging/alpha-bundle"}
   ]
 }

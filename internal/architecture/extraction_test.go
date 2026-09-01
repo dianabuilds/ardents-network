@@ -17,7 +17,7 @@ func TestCanonicalCommandBuildIsRepositoryRepresentationIndependent(t *testing.T
 		return
 	}
 	root := repositoryRoot(t)
-	source := extractOwnedCandidate(t, root, "network", "application-browser", "application-interface-v1")
+	source := extractOwnedCandidate(t, root, "network", "application-interface-v1")
 	runProofGit(t, source, "init", "--quiet")
 	runProofGit(t, source, "config", "user.name", "Ardents build proof")
 	runProofGit(t, source, "config", "user.email", "build-proof@invalid.example")
@@ -29,8 +29,8 @@ func TestCanonicalCommandBuildIsRepositoryRepresentationIndependent(t *testing.T
 	linkedParent := t.TempDir()
 	linked := filepath.Join(linkedParent, "linked-worktree")
 	runProofGit(t, normalOne, "worktree", "add", "--quiet", "--detach", linked, "HEAD")
-	extractedOne := extractOwnedCandidate(t, root, "network", "application-browser", "application-interface-v1")
-	extractedTwo := extractOwnedCandidate(t, root, "network", "application-browser", "application-interface-v1")
+	extractedOne := extractOwnedCandidate(t, root, "network", "application-interface-v1")
+	extractedTwo := extractOwnedCandidate(t, root, "network", "application-interface-v1")
 
 	representations := []struct {
 		name string
@@ -116,7 +116,6 @@ func TestCanonicalCommandBuildPolicyCannotDrift(t *testing.T) {
 	for _, required := range []string{
 		"override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false",
 		"$(foreach command,$(HEADLESS_COMMANDS),go build $(CANONICAL_GO_BUILD_FLAGS)",
-		"$(foreach command,$(BROWSER_COMMANDS),go build $(CANONICAL_GO_BUILD_FLAGS)",
 		"HEADLESS_ARTIFACT_MKDIR = powershell -NoProfile -Command \"[System.IO.Directory]::CreateDirectory('$(HEADLESS_ARTIFACT_ROOT)') | Out-Null\"",
 	} {
 		if !strings.Contains(makefile, required) {
@@ -129,9 +128,8 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 	t.Helper()
 	artifactParent := t.TempDir()
 	headlessRoot := filepath.Join(artifactParent, "headless")
-	browserRoot := filepath.Join(artifactParent, "browser")
-	runExternal(t, repository, "make", "headless-build", "browser-build",
-		"HEADLESS_ARTIFACT_ROOT="+headlessRoot, "BROWSER_ARTIFACT_ROOT="+browserRoot,
+	runExternal(t, repository, "make", "headless-build",
+		"HEADLESS_ARTIFACT_ROOT="+headlessRoot,
 		"CANONICAL_GO_BUILD_FLAGS=-trimpath")
 
 	platform := runtime.GOOS + "-" + runtime.GOARCH
@@ -141,7 +139,6 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 		root string
 	}{
 		{path: "tests/profiles/headless-commands.txt", root: headlessRoot},
-		{path: "tests/profiles/browser-commands.txt", root: browserRoot},
 	} {
 		for _, command := range strings.Fields(string(readProjectFile(t, repository, inventory.path))) {
 			path := filepath.Join(inventory.root, filepath.Base(command)+"-"+platform+executableSuffix())
@@ -156,8 +153,8 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 			result[command] = raw
 		}
 	}
-	if len(result) != 6 {
-		t.Fatalf("selected post-retirement artifact set has %d commands, want 6", len(result))
+	if len(result) != 4 {
+		t.Fatalf("selected post-retirement artifact set has %d commands, want 4", len(result))
 	}
 	return result
 }
@@ -195,30 +192,6 @@ func TestExtractionCommandsDoNotInheritParentRepositoryControls(t *testing.T) {
 	if strings.Join(environment, "\n") != "PATH=tool-path" {
 		t.Fatalf("extraction command environment retained parent repository controls: %v", environment)
 	}
-}
-
-func TestApplicationExtractionRehearsal(t *testing.T) {
-	if os.Getenv("ARDENTS_EXTRACTION_OWNER") != "application-browser" {
-		return
-	}
-	root := repositoryRoot(t)
-	candidate := extractOwnedCandidate(t, root, "application-browser", "application-interface-v1")
-	runCandidateGo(t, candidate, "test", "./internal/browser/...", "./internal/application/interfacev1/...", "./cmd/ardents-browser", "./cmd/ardents-browser-entry")
-	artifacts := filepath.Join(t.TempDir(), "browser-artifacts")
-	if err := os.Mkdir(artifacts, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	platform := runtime.GOOS + "-" + runtime.GOARCH
-	suffix := executableSuffix()
-	adapter := filepath.Join(artifacts, "ardents-browser-"+platform+suffix)
-	entry := filepath.Join(artifacts, "ardents-browser-entry-"+platform+suffix)
-	buildCandidateCommand(t, root, candidate, "./cmd/ardents-browser", adapter)
-	buildCandidateCommand(t, root, candidate, "./cmd/ardents-browser-entry", entry)
-	shell := os.Getenv("ARDENTS_EXTRACTION_SHELL")
-	if shell == "" {
-		t.Fatal("Application extraction requires ARDENTS_EXTRACTION_SHELL")
-	}
-	runExternal(t, candidate, shell, shellPath(filepath.Join(candidate, "packaging", "browser-bundle", "test.sh")), platform, shellPath(adapter), shellPath(entry))
 }
 
 func TestNetworkExtractionRehearsal(t *testing.T) {

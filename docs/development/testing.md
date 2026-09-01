@@ -9,32 +9,28 @@ code.
 
 - `make unit` runs the positive deterministic package inventory.
 - `make e2e` runs the positive local process package inventory.
-- `make quick-check` runs formatting, architecture, vet, unit, named command
-  builds, module tidiness, the Browser artifact lane, and the canonical artifact
-  representation proof.
+- `make quick-check` runs formatting, architecture, vet, unit, the four named
+  command builds, module tidiness, and the canonical artifact representation
+  proof.
 - `make headless-check` builds the exact Network command inventory, checks the
   enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in
   a fresh temporary tree containing no Browser/Application implementation. It
   also proves that canonical command bytes are unchanged when the same owned
   source is represented as a Git repository or as a VCS-free extraction.
-- `make browser-check` builds the exact Browser command inventory and archive,
-  checks enrollment-v4 independently from Network-v3, then copies only
-  Application-owned and Interface-v1 files to a fresh temporary tree, tests
-  them, rebuilds both real Browser commands, and reproduces the archive there.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
 - `make fuzz` exercises the maintained bounded parser/encoder fuzz surface.
 
-The headless and Browser command inventories are positive, disjoint manifests
-under `tests/profiles/`. Architecture tests check actual transitive dependency
-graphs, the four-owner [`ownership.json`](ownership.json) registry, exact
+The headless command inventory is the sole current artifact manifest under
+`tests/profiles/`. Architecture tests check actual transitive dependency
+graphs, the three-owner [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
 
 Canonical command builds use the non-overridable
-`-trimpath -buildvcs=false` policy. The public Make proof builds all six current
-post-ADR-0067 headless and Browser artifacts from two independent normal
-clones, a linked worktree, and two independent VCS-free ownership extractions,
+`-trimpath -buildvcs=false` policy. The public Make proof builds all four current
+headless artifacts from two independent normal clones, a linked worktree, and
+two independent VCS-free ownership extractions,
 then requires byte-identical
 outputs without implicit `vcs.*` settings. Source revision and builder
 provenance remain explicit authenticated release-metadata,
@@ -77,13 +73,10 @@ artifact is an invalid environment, never a skip or passing result.
 
 The maintained local profiles are:
 
-- developer, deterministic, process, headless-network, browser-adapter, race,
-  and fuzz;
+- developer, deterministic, process, headless-network, race, and fuzz;
 - `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `native-rendezvous-multihost`;
-- `browser-signed-xpi`, `browser-entry-windows`, and
-  `browser-entry-ubuntu`; and
 - `alpha-control-two-endpoints`.
 
 Profile, target, directory, build-tag, environment-variable, and test names use
@@ -98,15 +91,11 @@ product claim, environment, fixture, and Product Owner decision.
 
 The C0 Network candidate is exercised by the deterministic/process/race lanes,
 `headless-check`, and the selected Network qualifications. This includes the
-Endpoint-owned `internal/application/broker`; its directory does not make it a
-Browser-only package. The separate Application/Browser candidate is exercised
-by Application Interface v1 conformance vectors, Browser-owned Module tests,
-`browser-check`, and its selected artifact mechanics. Browser commands are
-excluded from the Network-v3 artifact inventory. Their complete transitive
-graphs may contain only `internal/browser/...` and
-`internal/application/interfacev1/...` project packages; Endpoint, Network,
-Node, Route, Entry, Service, Custody, Release, naming, and Network enrollment
-implementations are forbidden.
+Endpoint-owned `internal/application/broker`; its directory is not a separate
+Application product. The neutral Application Interface v1 remains covered by
+its conformance vectors and the Endpoint's shared seam. No Browser command,
+Browser implementation, Browser artifact, or Browser qualification is part of
+the current candidate.
 
 ADR-0067 retires the completed release-seed and fixed State-genesis ceremony
 commands, their deterministic writers, and their separate artifact/process
