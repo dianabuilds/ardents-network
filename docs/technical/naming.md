@@ -16,17 +16,19 @@ Namespace-owned under R-060; it does not import Network State as a foundation.
 `naming/resolution` owns one fixed private OHTTP exchange, its role-local
 selection, nonce/replay state, and observer-safe counters. It transports opaque
 Authority Submission bytes and current proofs. Resolution receives a verified
-immutable Binding; it does not receive or assemble a lifecycle Record in its
-production Gateway or Resolver path.
+immutable Binding; it does not receive or assemble a lifecycle Record. The
+package has maintained module behavior, but no maintained production runtime
+currently composes a Gateway or Resolver from these seams.
 
-The current flow is:
+The maintained module contracts cover the following transitions; no single
+production runtime composes this whole sequence:
 
 ```text
 Namespace derives an exact successor/Record pair from a canonical unsigned
 existing-Name Intent
   -> Custody signs only that sealed pair when its authenticated active
      Authority, predecessor generation, and predecessor revision match
-  -> private Gateway accepts only submitted/denied
+  -> the Gateway-side module accepts only submitted/denied
   -> Namespace persists the signed successor as pending
   -> authenticated Epoch installation selects a pending prefix and/or ClaimWinner
   -> threshold-attested Store commit publishes current state
@@ -136,8 +138,9 @@ tracer can grow.
 The public `Record`, `Op`, `ApplyLegacy`/`ApplyAtLegacy`, `VerifyLegacy`,
 `ResolveBindingLegacy`, raw
 `Store.CommitLegacy`, and historical Stage 6 fixtures remain compatibility surface.
-Production Resolution consumes the sealed Gateway/verifier views rather than
-those caller-constructed values. The remaining global-close owner is not
+Maintained Resolution behavior consumes sealed Gateway/verifier views rather
+than those caller-constructed values, but that behavior is not a production
+Gateway/Resolver composition. The remaining global-close owner is not
 selected: it would have to accept the opaque admitted input, commit its
 ordinal/root, and issue the complete threshold-signed close before it yields a
 `ClaimWinner`. Scale, index/cache, product capacity, and supported-platform

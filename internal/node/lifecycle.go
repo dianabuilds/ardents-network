@@ -8,7 +8,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// Run owns one Node duty and returns only after terminal cleanup.
+// Run owns one Node duty through its bounded terminal-cleanup attempt. A failed
+// result reports cleanup that did not complete or could not be proven.
 func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	config, err := resolveConfig(input)
 	if err != nil {

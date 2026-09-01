@@ -326,7 +326,8 @@ type Event struct {
 	Resource         *resource.Sample `json:"resource,omitempty"`
 }
 
-// Result describes the terminal state after the listener and accepted work are gone.
+// Result describes the observed terminal lifecycle outcome. FAILED may report
+// cleanup that did not complete or could not be proven inside its bound.
 type Result struct {
 	State            string
 	Epoch            uint64

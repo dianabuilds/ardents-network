@@ -15,7 +15,7 @@ supported Node hosting, or Route qualification.
 | internal/resource | Resolve the current process's own cgroup-v2 directory, measure selected Linux process limits, and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
 | internal/entry | Import and admit a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, and open an adjacent contact lifecycle. | Complete Route selection, carrier choice, or User identity. |
 | internal/route | Select and hold one native Interactive Route attachment over authenticated State, Entry, caller-owned resource facts, and one exact caller-selected TCP/TLS or QUIC-v1 Carrier. | Carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty writing. |
-| internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and joined cleanup. | State-root authority, assignment creation, or a separate probe runtime. |
+| internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. | State-root authority, assignment creation, or a separate probe runtime. |
 | internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,
@@ -84,7 +84,8 @@ and terminal cleanup. The former standalone probe package is intentionally
 private Node implementation; the command does not compose an independent
 probe runtime.
 
-The listener's start snapshot identifies only the duty it was created for.
+The accepted duty projection captured at listener start identifies only the
+duty for which that listener was created.
 Each new Entry or Transit Grant admission re-reads the current authenticated
 duty facts and requires the exact same generation, Network, Epoch, digest,
 Node, assignment, and assignment digest to remain fresh and unconflicted. An

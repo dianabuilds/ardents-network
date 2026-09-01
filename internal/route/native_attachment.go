@@ -20,9 +20,10 @@ type Attachment struct {
 
 var _ net.Conn = (*Attachment)(nil)
 
-// Close releases the authenticated Entry attempt, its caller-owned resource
-// reservation, and Route's local selection. A closed Attachment cannot be
-// reused for another Service Connection generation.
+// Close attempts the authenticated Entry, caller-owned resource, and local
+// Route-selection cleanup as one owned operation. A nil result proves their
+// release; a closed Attachment cannot be reused for another Service Connection
+// generation.
 func (attachment *Attachment) Close() error {
 	if attachment == nil {
 		return errors.New("native Route attachment is unavailable")

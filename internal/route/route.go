@@ -10,9 +10,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-// View is Route's opaque read-only authenticated Network State seam. A View
-// returns one atomic current fact; Route never opens a State root or parses an
-// epoch representation.
+// View is Route's opaque read-only authenticated Network State seam. Current
+// returns one immutable durably published projection; Route never opens a
+// State root or parses an epoch representation.
 type View interface {
 	Current() (state.Snapshot, error)
 }
@@ -113,9 +113,10 @@ func (route *Route) Attach(ctx context.Context, intent Intent) (*Attachment, err
 	return attachment, nil
 }
 
-// Close cancels pending attachment attempts, joins them, and closes every
-// active attachment. Once Close returns, no Route selection or resource
-// reservation remains live.
+// Close cancels pending attachment attempts, joins them, and attempts to close
+// every active attachment. A nil result proves that no Route selection or
+// resource reservation remains live; otherwise it reports the joined cleanup
+// evidence without claiming successful release.
 func (route *Route) Close() error {
 	if route == nil {
 		return errors.New("native Route is unavailable")

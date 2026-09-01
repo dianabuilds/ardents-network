@@ -32,8 +32,9 @@ func (running *Initiator) relay(raw, entry net.Conn, next route.Carrier) {
 	running.releaseRelay(raw, next)
 }
 
-// Drain closes admission, cancels every remaining handshake and relay, and
-// joins all duty-owned work before the declared work safety lease expires.
+// Drain closes admission and attempts to cancel and join every handshake and
+// relay inside the declared work safety lease. A timeout or context error does
+// not claim that all duty-owned work is gone.
 func (running *Initiator) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Initiator duty is unavailable")

@@ -300,8 +300,9 @@ func writeRouteBytes(writer net.Conn, value []byte) error {
 	return nil
 }
 
-// Drain closes admission and every live slot, then joins all TLS/control work
-// inside the duty's declared drain bound.
+// Drain closes admission and every live slot, then attempts to join TLS/control
+// work inside the duty's declared drain bound. A timeout or context error does
+// not claim that all duty-owned work is gone.
 func (running *Introduction) Drain(ctx context.Context) error {
 	if running == nil || ctx == nil {
 		return errors.New("Introduction duty is unavailable")

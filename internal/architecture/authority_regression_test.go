@@ -82,6 +82,31 @@ func TestLifecycleBypassPrimitivesAreNotExported(t *testing.T) {
 	}
 }
 
+func TestMaintainedTruthDoesNotClaimUnownedCompositionOrUnprovenCleanup(t *testing.T) {
+	root := repositoryRoot(t)
+	checks := []struct {
+		path      string
+		forbidden []string
+	}{
+		{"docs/technical/enrollment-verification.md", []string{"Browser Entry companions", "cmd/ardents-browser-entry` exercise the same narrow interface"}},
+		{"docs/technical/naming.md", []string{"production Gateway or Resolver path", "Production Resolution consumes"}},
+		{"docs/technical/network-route-node.md", []string{"listener's start snapshot identifies"}},
+		{"internal/route/route.go", []string{"returns one atomic current fact", "Once Close returns, no Route selection or resource"}},
+		{"internal/route/native_attachment.go", []string{"Close releases the authenticated Entry attempt"}},
+		{"internal/node/lifecycle.go", []string{"returns only after terminal cleanup"}},
+		{"internal/node/initiator_relay.go", []string{"joins all duty-owned work before"}},
+		{"internal/node/introduction_listener.go", []string{"joins all TLS/control work"}},
+	}
+	for _, check := range checks {
+		content := string(readProjectFile(t, root, check.path))
+		for _, forbidden := range check.forbidden {
+			if strings.Contains(content, forbidden) {
+				t.Errorf("%s retains overstated truth %q", check.path, forbidden)
+			}
+		}
+	}
+}
+
 func exportedStructField(t *testing.T, directory, typeName, fieldName string) bool {
 	t.Helper()
 	set := token.NewFileSet()

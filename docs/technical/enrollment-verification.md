@@ -13,11 +13,16 @@ network, target path, architecture, and reference time. The only supported
 Installed-profile variation supplies one explicit package-owned executable in
 `ArtifactPath`; all remaining enrolled static files remain below Bundle Root.
 
-It returns `Verified`: exact bytes for Release Decision plus the separately
-scoped alpha-control, corpus, and Browser Entry companions. It never executes
+It returns `Verified`: exact bytes for Release Decision plus separately scoped
+alpha-control and corpus companions; `VerifyHeadless` additionally requires
+the manifest-pinned Node and Authority Custody companions. It never executes
 or installs any byte, writes a Release or control floor, downloads from a
-source, or grants authority to a Release, State, Namespace, Route, or
-Endpoint.
+source, or grants authority to a Release, State, Namespace, Route, or Endpoint.
+
+Browser enrollment is a separate Application-owned contract in
+`internal/browser/entry/enrollment`. The Browser Entry command uses that
+verifier for enrollment-v4 Endpoint, native-host, and XPI companion identities;
+those inputs and results do not pass through `internal/enrollment`.
 
 ## Acceptance sequence
 
@@ -35,19 +40,20 @@ facts.
 6. Prove the running executable is the identical bundled artifact or the one
    declared package-owned artifact, then construct Release Decision inputs.
 7. Project disclosed companions outside Release metadata: catalog and its
-   roots, optional `corpus.pub`, v3 control executable, and v4 Browser Entry
-   host/XPI.
+   roots, optional `corpus.pub`, the v3 control executable, and the separately
+   required headless Node/Custody pair when `VerifyHeadless` is used.
 
 `ExecutableArtifactName` is the sole package-owned constructor for enrolled
 command identities. It appends the declared platform to the command and also
-appends the native executable suffix: Windows `ardents-control`, Node, Custody,
-Endpoint, and Browser command artifacts end in `.exe`; non-Windows names do
-not. Descriptor parsing, bundle construction/testing, and running-companion
-verification use that same identity rather than reconstructing it locally.
+appends the native executable suffix: accepted Windows `ardents-control`, Node,
+Custody, and Endpoint command artifacts end in `.exe`; non-Windows names do
+not. The accepted Network enrollment-v1--v3 descriptor parsing, bundle
+construction/testing, and running-companion verification use that same
+identity rather than reconstructing it locally.
 
 The verifier permits at most 32 inventory entries, each no larger than 64 MiB.
 Names are direct file names only. Manifest and descriptor require canonical
-newline-terminated forms; v1--v4 descriptors have fixed field ordering and
+newline-terminated forms; v1--v3 descriptors have fixed field ordering and
 fixed companion identities.
 
 ## Failure behavior
@@ -74,9 +80,11 @@ its historical corpus-control use; a partial Node/Custody pair fails closed.
 ## Verification owner
 
 `internal/enrollment` behavior tests cover pin-before-parse,
-inventory rejection, executable substitution, v2/v3/v4 companion separation,
+inventory rejection, executable substitution, v2/v3 companion separation,
 package-owned artifact binding, Windows v3 control-manifest acceptance through
 the running-companion contract, and a current companion process. Callers in
-`cmd/ardents`, `cmd/ardents-control`, and `cmd/ardents-browser-entry` exercise
-the same narrow interface. Repository gates provide integration evidence;
+`cmd/ardents` and `cmd/ardents-control` exercise this narrow Network enrollment
+interface. Browser-v4 behavior is owned and tested separately by
+`internal/browser/entry/enrollment` and `cmd/ardents-browser-entry`. Repository
+gates provide integration evidence;
 historical RC2 enrollment evidence does not qualify a future baseline.
