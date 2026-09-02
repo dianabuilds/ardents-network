@@ -132,7 +132,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 	assertServiceInstanceUnavailable(t, directory, binary, rootPath, responsePath)
 }
 
-func TestHeadlessCredentialResponsePublicationFailsAtomicallyAndRetriesExactlyOnce(t *testing.T) {
+func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	binary := buildProductCommand(t, "ardents")
 	custodyBinary := buildProductCommand(t, "ardents-custody")
 	directory := t.TempDir()
