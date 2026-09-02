@@ -130,8 +130,7 @@ func Rollback(ctx context.Context, operation Operation) (Result, error) {
 		return Result{State: "stop-refused", Current: current, Predecessor: journalRecord.candidate}, err
 	}
 	if err := activateStaged(staged, operation.ProgramPath); err != nil {
-		startErr := operation.Unit.Start(context.Background())
-		return Result{State: "activation-failed", Current: current, Predecessor: journalRecord.candidate}, errors.Join(err, startErr)
+		return Result{State: "activation-failed", Current: current, Predecessor: journalRecord.candidate}, err
 	}
 	if !sameProgramPath(operation.ProgramPath, journalRecord.programPath) {
 		return Result{State: "repair-required", Current: current, Predecessor: journalRecord.predecessor}, errors.New("endpoint rollback target does not match retained journal")
@@ -233,8 +232,7 @@ func replace(ctx context.Context, operation Operation, control *operationControl
 		return Result{State: "stop-refused", Current: current, Predecessor: predecessorDigest}, err
 	}
 	if err := activateStaged(staged, operation.ProgramPath); err != nil {
-		startErr := operation.Unit.Start(context.Background())
-		return Result{State: "activation-failed", Current: current, Predecessor: predecessorDigest}, errors.Join(err, startErr)
+		return Result{State: "activation-failed", Current: current, Predecessor: predecessorDigest}, err
 	}
 	if err := store.writeJournal(journal{phase: "activated", programPath: operation.ProgramPath, predecessor: predecessorDigest, candidate: candidate.Digest}); err != nil {
 		return Result{State: "self-test-required", Current: candidate, Predecessor: predecessorDigest}, err
