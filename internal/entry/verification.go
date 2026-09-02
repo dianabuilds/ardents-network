@@ -65,5 +65,11 @@ func validateInvite(raw []byte, input Verification) (invite, Candidate, Class, e
 		notAfter.After(candidate.ValidUntil) || notAfter.After(candidate.AssignmentNotAfter) {
 		return decoded, Candidate{}, Expired, nil
 	}
+	if input.MinimumReservation > 0 {
+		required := now.Add(input.MinimumReservation)
+		if !required.Before(candidate.AssignmentNotAfter) {
+			return decoded, Candidate{}, Insufficient, nil
+		}
+	}
 	return decoded, candidate, Accepted, nil
 }

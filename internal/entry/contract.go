@@ -48,6 +48,11 @@ type Verification struct {
 	Conflict      func([32]byte, [32]byte) (bool, error)
 	Clock         func() time.Time
 	TimeConfident func() bool
+	// MinimumReservation is the lower bound on the caller's required
+	// entry+role+drain lifetime. When non-zero, an Invite is accepted only
+	// when the assignment `not-after` is strictly after now+MinimumReservation.
+	// The zero value disables the check and preserves backward compatibility.
+	MinimumReservation time.Duration
 }
 
 // Authorization is the non-secret, current result of one verified Invite.
@@ -73,6 +78,7 @@ const (
 	ReplacementRejected Class = "replacement-rejected"
 	Expired             Class = "expired"
 	Replay              Class = "replay"
+	Insufficient        Class = "insufficient"
 )
 
 // Result is the bounded classification of one import attempt.
