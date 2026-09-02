@@ -37,6 +37,15 @@ func (capture *interactiveProductCapture) bytes() []byte {
 
 func runInteractiveProductCommand(t *testing.T, directory, binary string, inputs []interactiveProductInput, arguments ...string) []byte {
 	t.Helper()
+	output, err := runInteractiveProductCommandResult(t, directory, binary, inputs, arguments...)
+	if err != nil {
+		t.Fatalf("interactive product command failed: %v\n%s", err, output)
+	}
+	return output
+}
+
+func runInteractiveProductCommandResult(t *testing.T, directory, binary string, inputs []interactiveProductInput, arguments ...string) ([]byte, error) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	terminal, err := pty.New()
@@ -79,10 +88,7 @@ func runInteractiveProductCommand(t *testing.T, directory, binary string, inputs
 		t.Fatalf("interactive product output did not close: %v", ctx.Err())
 	}
 	output := capture.bytes()
-	if waitErr != nil || closeErr != nil {
-		t.Fatalf("interactive product command failed: wait=%v close=%v\n%s", waitErr, closeErr, output)
-	}
-	return output
+	return output, errors.Join(waitErr, closeErr)
 }
 
 func waitForInteractivePrompt(ctx context.Context, capture *interactiveProductCapture, prompt string) error {
