@@ -5,7 +5,7 @@ import "path/filepath"
 type hostPaths struct {
 	root, programRoot, programCurrent, privateRoot, configRoot, configCurrent string
 	diagnostics, lifecycle, record, unit                                      string
-	installing                                                                string
+	installing, lease                                                         string
 }
 
 func newHostPaths(root string) hostPaths {
@@ -18,6 +18,7 @@ func newHostPaths(root string) hostPaths {
 		diagnostics: diagnostics, lifecycle: filepath.Join(diagnostics, "lifecycle.json"),
 		record:     filepath.Join(privateRoot, "installation.json"),
 		installing: filepath.Join(root, "var", "lib", "private", "ardents-contributor-installing.json"),
+		lease:      filepath.Join(root, "var", "lib", "private", "ardents-contributor-operation.lock"),
 		unit:       filepath.Join(root, "etc", "systemd", "system", "ardents-rendezvous-contributor.service")}
 }
 

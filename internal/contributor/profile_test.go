@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -311,14 +312,23 @@ func TestRemovalRequiresExactWithdrawnDeploymentAndLeavesBundle(t *testing.T) {
 
 type profileSupervisor struct {
 	hostRoot                string
+	mu                      sync.Mutex
 	active                  bool
 	enabled                 bool
 	failNextStart           bool
 	failNextStopAfterAction bool
 	suppressStartLifecycle  bool
+	stopEntered             chan struct{}
+	releaseStop             chan struct{}
+	stopPaused              bool
 }
 
-func (supervisor *profileSupervisor) Do(_ context.Context, action contributor.SupervisorAction) (contributor.SupervisorState, error) {
+func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.SupervisorAction) (contributor.SupervisorState, error) {
+	if err := supervisor.pauseFirstStop(ctx, action); err != nil {
+		return contributor.SupervisorState{}, err
+	}
+	supervisor.mu.Lock()
+	defer supervisor.mu.Unlock()
 	switch action {
 	case contributor.SupervisorReload:
 	case contributor.SupervisorEnable:
@@ -343,6 +353,27 @@ func (supervisor *profileSupervisor) Do(_ context.Context, action contributor.Su
 		supervisor.enabled = false
 	}
 	return contributor.SupervisorState{Active: supervisor.active, Enabled: supervisor.enabled}, nil
+}
+
+func (supervisor *profileSupervisor) pauseFirstStop(ctx context.Context, action contributor.SupervisorAction) error {
+	if action != contributor.SupervisorStop {
+		return nil
+	}
+	supervisor.mu.Lock()
+	if supervisor.stopEntered == nil || supervisor.releaseStop == nil || supervisor.stopPaused {
+		supervisor.mu.Unlock()
+		return nil
+	}
+	supervisor.stopPaused = true
+	entered, release := supervisor.stopEntered, supervisor.releaseStop
+	supervisor.mu.Unlock()
+	close(entered)
+	select {
+	case <-release:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 type tWriter struct{ root string }

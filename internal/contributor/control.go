@@ -8,13 +8,20 @@ import (
 
 // Control executes one fixed lifecycle action. Confirmation is used only by
 // the destructive Remove action.
-func (profile *Profile) Control(ctx context.Context, action Action, confirmation string) (Report, error) {
+func (profile *Profile) Control(ctx context.Context, action Action, confirmation string) (report Report, resultErr error) {
 	if profile == nil || ctx == nil {
 		return Report{}, errors.New("contributor profile is unavailable")
 	}
 	if action != Remove && confirmation != "" {
 		return Report{}, errors.New("contributor confirmation is not accepted for this action")
 	}
+	lease, err := profile.acquireRootLease()
+	if err != nil {
+		return Report{}, err
+	}
+	defer func() {
+		resultErr = errors.Join(resultErr, lease.release())
+	}()
 	record, err := readInstallation(profile.paths.record)
 	if err != nil {
 		return Report{}, err

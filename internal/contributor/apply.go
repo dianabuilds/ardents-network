@@ -10,7 +10,7 @@ import (
 
 // Apply verifies one independently pinned bundle before parsing it. Generation
 // one creates an absent profile; later generations use the update transaction.
-func (profile *Profile) Apply(ctx context.Context, directory, manifestPin string) (Report, error) {
+func (profile *Profile) Apply(ctx context.Context, directory, manifestPin string) (report Report, resultErr error) {
 	if profile == nil || ctx == nil {
 		return Report{}, errors.New("contributor profile is unavailable")
 	}
@@ -18,6 +18,13 @@ func (profile *Profile) Apply(ctx context.Context, directory, manifestPin string
 	if err != nil {
 		return Report{}, err
 	}
+	lease, err := profile.acquireRootLease()
+	if err != nil {
+		return Report{}, err
+	}
+	defer func() {
+		resultErr = errors.Join(resultErr, lease.release())
+	}()
 	if _, statErr := os.Stat(profile.paths.record); statErr == nil {
 		current, readErr := readInstallation(profile.paths.record)
 		if readErr != nil {
