@@ -147,6 +147,7 @@ func TestHeadlessCredentialResponsePublicationFailsAtomicallyAndRetriesExactlyOn
 		"-environment-commitment", hex.EncodeToString(environment[:]),
 		"-network-commitment", hex.EncodeToString(network[:]),
 		"-root-commitment", hex.EncodeToString(authorityRoot[:]))
+	assertTerminalPasswordHidden(t, createdTerminal, password)
 	var created struct {
 		Schema       string `json:"schema"`
 		RecordID     string `json:"record_id"`
@@ -177,8 +178,11 @@ func TestHeadlessCredentialResponsePublicationFailsAtomicallyAndRetriesExactlyOn
 			"not_after":    now.Add(time.Hour).Format(time.RFC3339),
 			"request_file": requestPath,
 		})
-		if err != nil || os.WriteFile(planPath, plan, 0o600) != nil {
-			t.Fatal("write Service Instance process plan")
+		if err != nil {
+			t.Fatalf("marshal Service Instance process plan: %v", err)
+		}
+		if err := os.WriteFile(planPath, plan, 0o600); err != nil {
+			t.Fatalf("write Service Instance process plan %q: %v", planPath, err)
 		}
 		initialized := runCommand(t, t.Context(), directory, binary,
 			"service-instance", "initialize", "--config", planPath)
@@ -210,6 +214,7 @@ func TestHeadlessCredentialResponsePublicationFailsAtomicallyAndRetriesExactlyOn
 	failedTerminal, err := runInteractiveProductCommandResult(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
 			{prompt: "vault-unlock password:", value: password}}, issueArguments(blocked.requestPath, conflictingResponsePath)...)
+	assertTerminalPasswordHidden(t, failedTerminal, password)
 	if err == nil || !bytes.Contains(failedTerminal, []byte("service Credential response destination conflicts")) {
 		t.Fatalf("conflicting Credential response publication = %v / %s", err, failedTerminal)
 	}
@@ -221,6 +226,7 @@ func TestHeadlessCredentialResponsePublicationFailsAtomicallyAndRetriesExactlyOn
 	recoveredTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
 			{prompt: "vault-unlock password:", value: password}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
+	assertTerminalPasswordHidden(t, recoveredTerminal, password)
 	var recovered struct {
 		Schema     string `json:"schema"`
 		RecordID   string `json:"record_id"`
@@ -238,6 +244,7 @@ func TestHeadlessCredentialResponsePublicationFailsAtomicallyAndRetriesExactlyOn
 	repeatedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
 			{prompt: "vault-unlock password:", value: password}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
+	assertTerminalPasswordHidden(t, repeatedTerminal, password)
 	var repeated struct {
 		RecordID string `json:"record_id"`
 		Response []byte `json:"response"`
@@ -254,11 +261,19 @@ func TestHeadlessCredentialResponsePublicationFailsAtomicallyAndRetriesExactlyOn
 	secondTerminal, secondErr := runInteractiveProductCommandResult(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: conflicting.requestSHA256},
 			{prompt: "vault-unlock password:", value: password}}, issueArguments(conflicting.requestPath, conflictingPublicationPath)...)
+	assertTerminalPasswordHidden(t, secondTerminal, password)
 	if secondErr == nil {
 		t.Fatalf("different request published a second Credential response after exact recovery: %s", secondTerminal)
 	}
 	if _, statErr := os.Stat(conflictingPublicationPath); !os.IsNotExist(statErr) {
 		t.Fatalf("rejected different request published a response: %v", statErr)
+	}
+}
+
+func assertTerminalPasswordHidden(t *testing.T, transcript []byte, password string) {
+	t.Helper()
+	if bytes.Contains(transcript, []byte(password)) {
+		t.Fatal("custody command echoed its terminal password")
 	}
 }
 
