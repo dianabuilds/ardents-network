@@ -118,13 +118,13 @@ func TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit(t *testing
 	if bytes.Contains(limitedTerminal, []byte("ardents-service-credential-response-v1")) {
 		t.Fatalf("file-size-limited custody command emitted a response receipt: %s", limitedTerminal)
 	}
-	visibleResponse := assertZeroByteVisibleCredentialResponse(t, responsePath)
+	assertNoVisibleCredentialResponse(t, responsePath)
 
 	retryTerminal, retryErr := runInteractiveProductCommandResult(t, directory, custodyBinary, issueInputs, issueArguments(responsePath)...)
 	assertTerminalPasswordHidden(t, retryTerminal, password)
 	if retryErr != nil {
-		t.Fatalf("exact Credential retry after RLIMIT_FSIZE failure did not recover: first=%v visible_response={mode=%s,size=%d} retry=%v\n%s",
-			limitedErr, visibleResponse.Mode(), visibleResponse.Size(), retryErr, retryTerminal)
+		t.Fatalf("exact Credential retry after RLIMIT_FSIZE failure did not recover: first=%v visible_response=absent retry=%v\n%s",
+			limitedErr, retryErr, retryTerminal)
 	}
 	var retried struct {
 		Schema         string `json:"schema"`
@@ -172,18 +172,9 @@ func assertFileSizeLimitFailure(t *testing.T, err error, terminal []byte) {
 	t.Fatalf("file-size-limited custody termination = %#v / %s, want SIGXFSZ or a nonzero file-too-large failure", exitError.ProcessState.Sys(), terminal)
 }
 
-func assertZeroByteVisibleCredentialResponse(t *testing.T, path string) os.FileInfo {
+func assertNoVisibleCredentialResponse(t *testing.T, path string) {
 	t.Helper()
-	info, err := os.Lstat(path)
-	if err != nil {
-		t.Fatalf("file-size-limited custody response is not visible: %v", err)
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("file-size-limited custody response remains visible: %v", err)
 	}
-	if !info.Mode().IsRegular() || info.Size() != 0 {
-		t.Fatalf("file-size-limited custody response = mode=%s size=%d, want a zero-byte regular file", info.Mode(), info.Size())
-	}
-	body, err := os.ReadFile(path)
-	if err != nil || len(body) != 0 {
-		t.Fatalf("file-size-limited custody response bytes = %d / %v, want zero", len(body), err)
-	}
-	return info
 }

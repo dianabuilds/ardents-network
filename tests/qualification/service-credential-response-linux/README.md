@@ -20,8 +20,8 @@ through one successful real issuance at a distinct public response path, so the
 file-size limit reaches the public response boundary rather than earlier Vault
 persistence. It then executes the same custody request at a fresh response path
 under `ulimit -f 0`. It requires the real Linux file-size-limit failure (either
-`SIGXFSZ` or the command's nonzero `file too large` result) and a visible
-zero-byte regular response path without a response receipt.
+`SIGXFSZ` or the command's nonzero `file too large` result), no visible public
+response path, and no response receipt.
 It then repeats the byte-identical custody command without the limit, at that
 same response path, and requires the public receipt, public response bytes, and
 real host acceptance to recover. Every captured custody terminal transcript is

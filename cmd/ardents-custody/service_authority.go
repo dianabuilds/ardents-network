@@ -89,33 +89,10 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 	if mode == "create-service-authority" {
 		return encodeServiceAuthorityReceipt(output, receipt)
 	}
-	if err := writeStableCustodyPublicFile(responsePath, receipt.ServiceResponse); err != nil {
+	if err := publishStableCustodyPublicFile(responsePath, receipt.ServiceResponse); err != nil {
 		return err
 	}
 	return encodeServiceCredentialReceipt(output, receipt)
-}
-
-func writeStableCustodyPublicFile(path string, body []byte) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if errors.Is(err, os.ErrExist) {
-		existing, readErr := readPublicRequest(path)
-		if readErr != nil || string(existing) != string(body) {
-			return errors.New("service Credential response destination conflicts")
-		}
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if _, err := file.Write(body); err != nil {
-		_ = file.Close()
-		return err
-	}
-	if err := file.Sync(); err != nil {
-		_ = file.Close()
-		return err
-	}
-	return file.Close()
 }
 
 func newServiceBinding(environment, network, root string) (custody.AuthorityBinding, error) {
