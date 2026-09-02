@@ -17,7 +17,7 @@ func NewRelay(gatewayURL string, client *http.Client) (*relay, error) {
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || client == nil {
 		return nil, errors.New("private resolution Relay requires one HTTPS Gateway")
 	}
-	return &relay{gateway: gatewayURL, client: client}, nil
+	return &relay{gateway: gatewayURL, client: privateRelayHTTPClient(client)}, nil
 }
 
 // Handler returns the endpoint-adjacent opaque forwarding Adapter.
@@ -72,4 +72,10 @@ func (relay *relay) forward(writer http.ResponseWriter, request *http.Request) {
 		Gateway: relay.gateway, Request: sha256.Sum256(body), Response: sha256.Sum256(responseBody),
 		RequestBytes: uint64(len(body)), ResponseBytes: uint64(len(responseBody)), KeyID: body[0], Deadline: deadline})
 	relay.mu.Unlock()
+}
+
+func privateRelayHTTPClient(client *http.Client) *http.Client {
+	configured := *client
+	configured.CheckRedirect = rejectPrivateResolutionRedirect
+	return &configured
 }

@@ -200,5 +200,5 @@ func isolatedPrivateClient(base *http.Transport) *http.Client {
 		}
 	}
 	transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
-	return &http.Client{Transport: transport}
+	return &http.Client{Transport: transport, CheckRedirect: rejectPrivateRedirect}
 }

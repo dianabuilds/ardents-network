@@ -78,7 +78,7 @@ func ForwardOHTTP(ctx context.Context, gatewayURL string, client *http.Client, e
 		return OHTTPResponse{}, errors.New("private reachability OHTTP forward is invalid")
 	}
 	forward.Header.Set("Content-Type", ohttpRequestType)
-	response, err := client.Do(forward)
+	response, err := privateForwardHTTPClient(client).Do(forward)
 	if err != nil {
 		return OHTTPResponse{}, errors.New("private reachability Gateway is unavailable")
 	}
@@ -90,4 +90,10 @@ func ForwardOHTTP(ctx context.Context, gatewayURL string, client *http.Client, e
 		return OHTTPResponse{}, errors.New("private reachability Gateway response is invalid")
 	}
 	return OHTTPResponse{Envelope: responseBody, Chunked: contentType == ohttp.ChunkedResponseMediaType}, nil
+}
+
+func privateForwardHTTPClient(client *http.Client) *http.Client {
+	configured := *client
+	configured.CheckRedirect = rejectPrivateRedirect
+	return &configured
 }

@@ -32,7 +32,11 @@ func HTTPClient(expected [32]byte, certificate tls.Certificate) (*http.Client, e
 				}
 				return nil
 			}}}
-	return &http.Client{Transport: transport}, nil
+	return &http.Client{Transport: transport, CheckRedirect: rejectIssuerRedirect}, nil
+}
+
+func rejectIssuerRedirect(_ *http.Request, _ []*http.Request) error {
+	return errors.New("transit issuance issuer redirects are forbidden")
 }
 
 // ForwardOHTTP exchanges one opaque envelope with one State-selected issuer.
@@ -48,7 +52,7 @@ func ForwardOHTTP(ctx context.Context, issuerURL string, client *http.Client, en
 		return nil, errors.New("transit issuance OHTTP forward is invalid")
 	}
 	request.Header.Set("Content-Type", ohttp.RequestMediaType)
-	response, err := client.Do(request)
+	response, err := issuerForwardHTTPClient(client).Do(request)
 	if err != nil {
 		return nil, errors.New("transit issuance issuer is unavailable")
 	}
@@ -59,4 +63,10 @@ func ForwardOHTTP(ctx context.Context, issuerURL string, client *http.Client, en
 		return nil, errors.New("transit issuance issuer response is invalid")
 	}
 	return body, nil
+}
+
+func issuerForwardHTTPClient(client *http.Client) *http.Client {
+	configured := *client
+	configured.CheckRedirect = rejectIssuerRedirect
+	return &configured
 }

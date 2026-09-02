@@ -156,7 +156,11 @@ func isolatedHTTPClient(base *http.Transport) *http.Client {
 		}
 	}
 	transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
-	return &http.Client{Transport: transport}
+	return &http.Client{Transport: transport, CheckRedirect: rejectPrivateResolutionRedirect}
+}
+
+func rejectPrivateResolutionRedirect(_ *http.Request, _ []*http.Request) error {
+	return errors.New("private resolution redirects are forbidden")
 }
 
 // Observation returns only bounded local counts with no query-derived identifier.

@@ -27,5 +27,9 @@ func GatewayHTTPClient(expected [32]byte) (*http.Client, error) {
 				}
 				return nil
 			}}}
-	return &http.Client{Transport: transport}, nil
+	return &http.Client{Transport: transport, CheckRedirect: rejectPrivateRedirect}, nil
+}
+
+func rejectPrivateRedirect(_ *http.Request, _ []*http.Request) error {
+	return errors.New("private reachability redirects are forbidden")
 }

@@ -132,5 +132,9 @@ func isolatedClient(base *http.Transport) *http.Client {
 		}
 	}
 	transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
-	return &http.Client{Transport: transport}
+	return &http.Client{Transport: transport, CheckRedirect: rejectAlphaPrivateRedirect}
+}
+
+func rejectAlphaPrivateRedirect(_ *http.Request, _ []*http.Request) error {
+	return errors.New("alpha private resolution redirects are forbidden")
 }
