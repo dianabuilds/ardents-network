@@ -54,6 +54,9 @@ func TestReplaceDoesNotRunCandidateBeforeSuccessfulSelfTestWhenActivationDirecto
 	if runtime.GOOS != "linux" {
 		t.Skip("linux-only replacement behavior")
 	}
+	if os.Geteuid() == 0 {
+		t.Fatal("invalid test environment: Endpoint replacement directory-sync regression requires a clean unprivileged Ubuntu account; root bypasses chmod(0300)")
+	}
 	root := t.TempDir()
 	programDirectory := filepath.Join(root, "program")
 	if err := os.Mkdir(programDirectory, 0o700); err != nil {
@@ -67,27 +70,33 @@ func TestReplaceDoesNotRunCandidateBeforeSuccessfulSelfTestWhenActivationDirecto
 	if err := os.WriteFile(program, predecessor, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	predecessorDigest := sha256.Sum256(predecessor)
-	predecessorDecision := release.Decision{Outcome: release.OutcomeReleaseAccepted, BuildSafety: release.OutcomeReleaseAccepted,
-		Protocol: release.OutcomeReleaseAccepted, Path: "ardents/linux-amd64/ardents", Length: int64(len(predecessor)), Digest: predecessorDigest[:],
-		Platform: "linux-amd64", Architecture: "amd64", Environment: "h4-alpha", Network: "ardents-alpha",
-		ReleaseIdentity: "endpoint-replacement-test", ReleaseVersion: 1}
+	predecessorDecision := replacementDecision(predecessor, 1)
 	if _, err := Prepare(context.Background(), Request{StateRoot: stateRoot, Artifact: predecessor, decision: predecessorDecision}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := CommitPrepared(stateRoot, program); err != nil {
 		t.Fatal(err)
 	}
-	candidateDigest := sha256.Sum256(candidate)
-	candidateDecision := predecessorDecision
-	candidateDecision.Length = int64(len(candidate))
-	candidateDecision.Digest = candidateDigest[:]
-	candidateDecision.ReleaseVersion = 2
+	candidateDecision := replacementDecision(candidate, 2)
 	successfulSelfTests := 0
 	var startedProgramDigest [sha256.Size]byte
+	invalidEnvironment := errors.New("invalid test environment: Endpoint replacement directory-sync regression requires a clean unprivileged Ubuntu account with no directory-read permission bypass")
 	unit := &replacementUnit{
 		onStop: func(context.Context) error {
-			return os.Chmod(programDirectory, 0o300)
+			if err := os.Chmod(programDirectory, 0o300); err != nil {
+				return err
+			}
+			directory, err := os.Open(programDirectory)
+			if errors.Is(err, fs.ErrPermission) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if closeErr := directory.Close(); closeErr != nil {
+				return closeErr
+			}
+			return invalidEnvironment
 		},
 		onStart: func(context.Context) error {
 			started, err := os.ReadFile(program)
@@ -107,6 +116,9 @@ func TestReplaceDoesNotRunCandidateBeforeSuccessfulSelfTestWhenActivationDirecto
 		ProgramPath: program, Unit: unit, SelfTest: replacementSelfTest{program: program, successes: &successfulSelfTests}})
 	if restoreErr := os.Chmod(programDirectory, 0o700); restoreErr != nil {
 		t.Fatal(restoreErr)
+	}
+	if errors.Is(err, invalidEnvironment) {
+		t.Fatal(err)
 	}
 	if err == nil || result.State != "activation-failed" || !errors.Is(err, fs.ErrPermission) {
 		t.Fatalf("Replace() after activated-directory sync failure = %+v, %v", result, err)
@@ -143,11 +155,7 @@ func TestReplaceDoesNotRunCandidateBeforeSuccessfulSelfTestWhenActivationDirecto
 	if running.Record.Digest != retainedDigest || recovery.Predecessor != retainedDigest || prepared.Record.Digest == retainedDigest {
 		t.Fatalf("persisted predecessor/candidate digests = running=%x recovery=%x prepared=%x retained=%x", running.Record.Digest, recovery.Predecessor, prepared.Record.Digest, retainedDigest)
 	}
-	nextDigest := sha256.Sum256(nextCandidate)
-	nextDecision := candidateDecision
-	nextDecision.Length = int64(len(nextCandidate))
-	nextDecision.Digest = nextDigest[:]
-	nextDecision.ReleaseVersion = 3
+	nextDecision := replacementDecision(nextCandidate, 3)
 	nextResult, nextErr := Replace(context.Background(), Operation{Request: Request{StateRoot: stateRoot, Artifact: nextCandidate, decision: nextDecision},
 		ProgramPath: program, Unit: &replacementUnit{}, SelfTest: replacementSelfTest{program: program}})
 	if nextErr == nil || nextResult.State != "current-mismatch" {
