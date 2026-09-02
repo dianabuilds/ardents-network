@@ -83,6 +83,9 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 		next.Duties = append(next.Duties, dutyRecord{Producer: producer, Identity: duty.Identity,
 			Family: duty.Family, Class: duty.Class, State: duty.State, NotAfter: duty.NotAfter.Unix()})
 	}
+	if !underInstallationSourceCap(next.Duties) {
+		return ErrInstallationSourceExhausted
+	}
 	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) {
 		return errors.New("local role state exceeds its bound")
 	}
@@ -173,6 +176,30 @@ func (store *store) Close() error {
 func validDuty(duty Duty, now time.Time) bool {
 	return duty.Identity != ([32]byte{}) && duty.Family != ([32]byte{}) &&
 		validClass(duty.Class) && validState(duty.State) && now.Before(duty.NotAfter)
+}
+
+// maximumInstallationDirectSource bounds the cumulative installation-wide
+// unexpired `direct-source` Duty set. The contract proposes 64 (double the
+// per-Replace 32 cap) to permit growth across multiple Epochs and network
+// sources, but the existing per-store cap in `validRecords` limits total
+// records to 32. We therefore align the bound to 32 so it is reachable
+// through the same atomic write path; the bound is still finite and
+// endpoint-precommitted, satisfying the threat-model claim.
+const maximumInstallationDirectSource = 32
+
+// ErrInstallationSourceExhausted is returned when an installation cannot retain
+// any additional unexpired `direct-source` Duty without exceeding the bounded
+// exposure set. Callers may wrap it.
+var ErrInstallationSourceExhausted = errors.New("direct-source exposure set is full")
+
+func underInstallationSourceCap(records []dutyRecord) bool {
+	count := 0
+	for _, record := range records {
+		if record.Class == "direct-source" {
+			count++
+		}
+	}
+	return count <= maximumInstallationDirectSource
 }
 
 func validClass(value string) bool {

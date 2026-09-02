@@ -19,7 +19,17 @@ func (s *networkState) retainSourceExposures(notAfter time.Time) error {
 			Family: sha256.Sum256([]byte(s.config.sourceInfo.Families[index])),
 			Class:  "direct-source", State: "exposed", NotAfter: notAfter}
 	}
-	return errors.Join(roles.Replace(sourceProducer("exposure", s.config.root), duties), roles.Close())
+	if err := roles.Replace(sourceProducer("exposure", s.config.root), duties); err != nil {
+		return errors.Join(wrapSourceReplaceError(err), roles.Close())
+	}
+	return roles.Close()
+}
+
+func wrapSourceReplaceError(err error) error {
+	if errors.Is(err, duty.ErrInstallationSourceExhausted) {
+		return errors.New("source exposure set is full: " + err.Error())
+	}
+	return err
 }
 
 func (s *networkState) retainSourceServer() error {

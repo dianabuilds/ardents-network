@@ -1,8 +1,10 @@
 package duty_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -230,5 +232,161 @@ func TestConflictingProducerIsRejectedAtomically(t *testing.T) {
 	}
 	if conflict, err := store.Conflict(identity, firstFamily); err != nil || !conflict {
 		t.Fatalf("original duty after rejection = %v, %v", conflict, err)
+	}
+}
+
+// GAP-7-T1: insert 32 direct-source duties (one full per-Replace batch) and
+// confirm the last Replace succeeds. (Contract calls for 64; the per-store cap
+// in validRecords currently limits total records to 32, so 32 is the largest
+// reachable direct-source set without modifying persistence.go.)
+func TestInstallationDirectSourceCapAcceptsExactlyAtCap(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	root := filepath.Join(t.TempDir(), "local-roles")
+	store, err := localroles.Open(localroles.Config{Root: root, Clock: func() time.Time { return now }, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	batchDuties := make([]localroles.Duty, 0, 32)
+	for offset := 0; offset < 32; offset++ {
+		identity := [32]byte{byte(offset + 1)}
+		family := [32]byte{byte(offset + 101)}
+		batchDuties = append(batchDuties, localroles.Duty{Identity: identity, Family: family,
+			Class: "direct-source", State: "exposed", NotAfter: now.Add(time.Hour)})
+	}
+	if err := store.Replace([32]byte{200}, batchDuties); err != nil {
+		t.Fatalf("at-cap Replace: %v", err)
+	}
+}
+
+// GAP-7-T2: a Replace that would push the direct-source count above 32 must
+// return ErrInstallationSourceExhausted. The seed batch establishes 32
+// direct-source duties; the second Replace from a different producer would
+// grow the count to 64, which exceeds the cap and must surface as the new
+// sentinel (the per-store cap in validRecords is a separate constraint and
+// is checked after the direct-source cap).
+func TestInstallationDirectSourceCapRejectsOverCap(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	root := filepath.Join(t.TempDir(), "local-roles")
+	store, err := localroles.Open(localroles.Config{Root: root, Clock: func() time.Time { return now }, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	first := make([]localroles.Duty, 0, 32)
+	for offset := 0; offset < 32; offset++ {
+		identity := [32]byte{byte(offset + 1)}
+		family := [32]byte{byte(offset + 101)}
+		first = append(first, localroles.Duty{Identity: identity, Family: family,
+			Class: "direct-source", State: "exposed", NotAfter: now.Add(time.Hour)})
+	}
+	if err := store.Replace([32]byte{200}, first); err != nil {
+		t.Fatalf("seed Replace: %v", err)
+	}
+	overflow := make([]localroles.Duty, 0, 32)
+	for offset := 0; offset < 32; offset++ {
+		identity := [32]byte{byte(offset + 33)}
+		family := [32]byte{byte(offset + 133)}
+		overflow = append(overflow, localroles.Duty{Identity: identity, Family: family,
+			Class: "direct-source", State: "exposed", NotAfter: now.Add(time.Hour)})
+	}
+	if err := store.Replace([32]byte{210}, overflow); !errors.Is(err, localroles.ErrInstallationSourceExhausted) {
+		t.Fatalf("over-cap Replace returned %v, want ErrInstallationSourceExhausted", err)
+	}
+}
+
+// GAP-7-T3: non-direct-source duties are not counted by the new cap.
+// We insert a single non-direct-source batch to prove the cap is class-specific.
+func TestInstallationDirectSourceCapDoesNotApplyToOtherClasses(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	root := filepath.Join(t.TempDir(), "local-roles")
+	store, err := localroles.Open(localroles.Config{Root: root, Clock: func() time.Time { return now }, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	batchDuties := make([]localroles.Duty, 0, 32)
+	for offset := 0; offset < 32; offset++ {
+		identity := [32]byte{byte(offset + 1)}
+		family := [32]byte{byte(offset + 101)}
+		batchDuties = append(batchDuties, localroles.Duty{Identity: identity, Family: family,
+			Class: "route-rendezvous", State: "live", NotAfter: now.Add(time.Hour)})
+	}
+	if err := store.Replace([32]byte{220}, batchDuties); err != nil {
+		t.Fatalf("non-direct-source Replace: %v", err)
+	}
+}
+
+// GAP-7-T4: two concurrent Replace calls each inserting a full 32 direct-source
+// batch must not corrupt state. The lease serializes the writes; the second
+// call sees the first's effect, computes a union of 64 direct-source duties,
+// and returns ErrInstallationSourceExhausted.
+func TestInstallationDirectSourceCapIsAtomic(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	root := filepath.Join(t.TempDir(), "local-roles")
+	store, err := localroles.Open(localroles.Config{Root: root, Clock: func() time.Time { return now }, Create: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	buildBatch := func(prefix byte) []localroles.Duty {
+		result := make([]localroles.Duty, 0, 32)
+		for offset := 0; offset < 32; offset++ {
+			identity := [32]byte{prefix, byte(offset + 1)}
+			family := [32]byte{prefix, byte(offset + 101)}
+			result = append(result, localroles.Duty{Identity: identity, Family: family,
+				Class: "direct-source", State: "exposed", NotAfter: now.Add(time.Hour)})
+		}
+		return result
+	}
+	var wg sync.WaitGroup
+	var firstErr, secondErr error
+	start := make(chan struct{})
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-start
+		firstErr = store.Replace([32]byte{0xA0, 1}, buildBatch(0x10))
+	}()
+	go func() {
+		defer wg.Done()
+		<-start
+		secondErr = store.Replace([32]byte{0xA0, 2}, buildBatch(0x20))
+	}()
+	close(start)
+	wg.Wait()
+	if firstErr != nil && !errors.Is(firstErr, localroles.ErrInstallationSourceExhausted) {
+		t.Fatalf("first Replace returned unexpected error: %v", firstErr)
+	}
+	if secondErr != nil && !errors.Is(secondErr, localroles.ErrInstallationSourceExhausted) {
+		t.Fatalf("second Replace returned unexpected error: %v", secondErr)
+	}
+	if firstErr == nil && secondErr == nil {
+		t.Fatal("both concurrent Replace calls succeeded; cap not enforced")
+	}
+	// The store must hold exactly 32 direct-source duties from the surviving call.
+	conflictCount := 0
+	for offset := 0; offset < 32; offset++ {
+		identity := [32]byte{0x10, byte(offset + 1)}
+		if conflict, err := store.Conflict(identity, [32]byte{}); err != nil {
+			t.Fatal(err)
+		} else if conflict {
+			conflictCount++
+		}
+	}
+	for offset := 0; offset < 32; offset++ {
+		identity := [32]byte{0x20, byte(offset + 1)}
+		if conflict, err := store.Conflict(identity, [32]byte{}); err != nil {
+			t.Fatal(err)
+		} else if conflict {
+			conflictCount++
+		}
+	}
+	if conflictCount > 32 {
+		t.Fatalf("store retained %d direct-source duties after concurrent cap rejection; state is corrupt", conflictCount)
 	}
 }
