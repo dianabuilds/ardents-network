@@ -500,7 +500,10 @@ or privacy claim.
   within that Credential's scope until expiry or learned authenticated
   supersession, but neither raw root export nor permanent Target replacement.
   Co-locating Service Authority is supported only with an explicit warning and
-  forfeits that containment.
+  forfeits that containment. The "explicit warning" is a documentation-only
+  obligation in C0; no runtime or CLI emission is required because the
+  runtime cannot give a platform-level co-location witness. A qualified
+  platform Adapter (R-099) is the only path to a runtime warning.
 - A Service Connection binds the exact Instance Key/Credential proof and has a
   terminal `not-after` no later than Credential validity and its Work Safety
   Lease. Learned authenticated supersession may make new leg/recovery work stop
@@ -522,6 +525,9 @@ or privacy claim.
   already authorized public Credential and matching non-exportable Instance Key
   for publication/configuration but cannot create/import/export/rotate an
   Authority, issue a Credential, or export either root or Instance key.
+  Authority Custody is intentionally not on the Local Grant surface; the
+  "non-collapse" claim is upheld by access being only through `internal/custody`
+  operations, not by a separate broker.Surface.
 - Name Authority is distinct from Service Authority and controls only the
   authenticated Service Name binding. It is unnecessary for ordinary
   publication or resolution; compromising it permits malicious name rebinding
@@ -897,7 +903,10 @@ or privacy claim.
   connections close immediately unless an explicit finite drain-then-revoke was
   selected beforehand, and that drain cannot exceed its Work Safety Lease.
   Stored local policy may survive restart, but process/session bearer state does
-  not; fresh OS-local principal binding is required.
+  not; fresh OS-local principal binding is required. A Connection Grant with
+  `PermitDrain: false` (the default in C0) is always closed immediately on
+  revoke; the "drain-then-revoke" path is opt-in via the per-Grant `PermitDrain`
+  flag.
 - An Endpoint Owner controls only one endpoint. No Local Grant, Endpoint Owner,
   Node operator, or sponsor is a network-wide administrator or approval root.
 - A qualified public V1 Contributor runs on a dedicated host/installation and
