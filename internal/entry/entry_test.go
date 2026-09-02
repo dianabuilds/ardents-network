@@ -82,6 +82,30 @@ func TestVerifyReturnsOnlyCurrentInitiatorAuthorization(t *testing.T) {
 	}
 }
 
+// TestVerifyReturnsConflictingRoleWhenConflictCallbackReturnsTrue exercises
+// the entry.Verify → Verification.Conflict → ConflictingRole path end-to-end.
+// The Conflict callback is a stub that returns (true, nil) to simulate a
+// state-level conflict (e.g., a direct-source exposure). The real conflict
+// detection logic is tested separately in
+// internal/network/duty/source_collision_chain_test.go.
+func TestVerifyReturnsConflictingRoleWhenConflictCallbackReturnsTrue(t *testing.T) {
+	fixture := newEntryFixture(t)
+	raw := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
+	verification := Verification{
+		Current:       func() (View, error) { return fixture.view, nil },
+		Conflict:      func([32]byte, [32]byte) (bool, error) { return true, nil },
+		Clock:         func() time.Time { return fixture.now },
+		TimeConfident: func() bool { return true },
+	}
+	_, _, class, err := Verify(raw, verification)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if class != ConflictingRole {
+		t.Fatalf("class = %q, want %q", class, ConflictingRole)
+	}
+}
+
 func TestReplacementImmediatelyRetiresInactiveGenerationOne(t *testing.T) {
 	fixture := newEntryFixture(t)
 	owner, err := Open(fixture.config(t.TempDir()))
