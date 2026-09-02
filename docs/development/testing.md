@@ -76,6 +76,7 @@ The maintained local profiles are:
 - developer, deterministic, process, headless-network, race, and fuzz;
 - `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
+- `service-credential-response-linux`;
 - `native-rendezvous-multihost`;
 - `alpha-control-two-endpoints`.
 

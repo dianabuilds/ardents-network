@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -93,6 +93,9 @@ qualification-endpoint-portable-ubuntu:
 
 qualification-endpoint-replacement-ubuntu:
 	sh ./tests/qualification/endpoint-replacement-ubuntu/run-ubuntu.sh -timeout=2m
+
+qualification-service-credential-response-linux:
+	sh ./tests/qualification/service-credential-response-linux/run-ubuntu.sh -timeout=2m
 
 qualification-native-rendezvous-multihost:
 	powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/qualification/native-rendezvous-multihost/run-windows.ps1

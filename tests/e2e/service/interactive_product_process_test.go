@@ -16,6 +16,7 @@ import (
 type interactiveProductInput struct {
 	prompt string
 	value  string
+	secret bool
 }
 
 type interactiveProductCapture struct {
@@ -70,7 +71,14 @@ func runInteractiveProductCommandResult(t *testing.T, directory, binary string, 
 			_ = command.Wait()
 			t.Fatalf("interactive product prompt: %v\n%s", err, capture.bytes())
 		}
-		if _, err := io.WriteString(terminal, input.value+"\r\n"); err != nil {
+		if input.secret {
+			if err := waitForInteractiveNoEcho(ctx, terminal); err != nil {
+				_ = terminal.Close()
+				_ = command.Wait()
+				t.Fatalf("interactive product password terminal: %v\n%s", err, capture.bytes())
+			}
+		}
+		if _, err := io.WriteString(terminal, input.value+interactiveProductLineEnding(input.secret)); err != nil {
 			_ = terminal.Close()
 			_ = command.Wait()
 			t.Fatalf("write interactive product input: %v", err)
@@ -81,7 +89,7 @@ func runInteractiveProductCommandResult(t *testing.T, directory, binary string, 
 	select {
 	case copyErr := <-copyDone:
 		if copyErr != nil && !errors.Is(copyErr, io.EOF) && !errors.Is(copyErr, os.ErrClosed) &&
-			!errors.Is(copyErr, errors.ErrUnsupported) {
+			!errors.Is(copyErr, errors.ErrUnsupported) && !isExpectedInteractiveProductReadError(copyErr) {
 			t.Fatalf("read interactive product output: %v", copyErr)
 		}
 	case <-ctx.Done():
