@@ -2,9 +2,6 @@ package contributor_test
 
 import (
 	"context"
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -95,36 +92,13 @@ func TestConcurrentWithdrawDoesNotStopOrClaimCommittedSuccessor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("successor apply after withdraw released the root: %v", err)
 	}
-	if applied.Generation != 2 || !applied.Active || applied.LifecycleState != "READY" {
+	if applied.DeploymentID != deployment || applied.Generation != 2 || applied.ManifestDigest != secondPin || !applied.Active || applied.LifecycleState != "READY" {
 		t.Fatalf("successor apply report = %+v", applied)
 	}
 	diagnosed, err := successor.Control(t.Context(), contributor.Diagnose, "")
 	if err != nil {
 		t.Errorf("diagnose after concurrent commands: %v", err)
-	} else if diagnosed.Generation != 2 || !diagnosed.Active || diagnosed.LifecycleState != "READY" {
+	} else if diagnosed.DeploymentID != deployment || diagnosed.Generation != 2 || diagnosed.ManifestDigest != secondPin || !diagnosed.Active || diagnosed.LifecycleState != "READY" {
 		t.Errorf("successor was changed by the earlier withdraw: %+v", diagnosed)
 	}
-	record := readPersistedContributorInstallation(t, hostRoot)
-	if record.DeploymentID != deployment || record.Generation != 2 || record.ManifestDigest != secondPin {
-		t.Errorf("installation record after concurrent commands = %+v, want generation two", record)
-	}
-}
-
-type persistedContributorInstallation struct {
-	DeploymentID   string `json:"deployment_id"`
-	Generation     uint64 `json:"generation"`
-	ManifestDigest string `json:"manifest_digest"`
-}
-
-func readPersistedContributorInstallation(t *testing.T, hostRoot string) persistedContributorInstallation {
-	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor", "installation.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var record persistedContributorInstallation
-	if err := json.Unmarshal(raw, &record); err != nil {
-		t.Fatal(err)
-	}
-	return record
 }
