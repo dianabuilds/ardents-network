@@ -72,7 +72,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if (!sourceCurrent && !successorCurrent) || (expired && !successorCurrent) {
 		return Receipt{}, ErrInvalid
 	}
-	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password)
+	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password, sourceCurrent)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -173,7 +173,7 @@ func serviceSuccessorRecordID(recordID string, commitment [32]byte) string {
 	return hex.EncodeToString(digest[:16])
 }
 
-func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthorityState, password []byte) ([]byte, EnvelopeInfo, error) {
+func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthorityState, password []byte, allowCreation bool) ([]byte, EnvelopeInfo, error) {
 	path := filepath.Join(vault.records, "record-"+recordID+".json")
 	raw, err := readEnvelopeFile(path)
 	if err == nil {
@@ -188,6 +188,9 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthoritySt
 	}
 	if !errors.Is(err, os.ErrNotExist) {
 		return nil, EnvelopeInfo{}, err
+	}
+	if !allowCreation {
+		return nil, EnvelopeInfo{}, ErrInvalid
 	}
 	plaintext, err := encodeAuthorityState(PurposeVault, expected)
 	if err != nil {
