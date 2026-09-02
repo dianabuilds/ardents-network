@@ -64,6 +64,7 @@
   "qualification_lanes": [
     {"id": "endpoint-portable-ubuntu", "owner": "network", "path": "tests/qualification/endpoint-portable-ubuntu"},
     {"id": "endpoint-replacement-ubuntu", "owner": "network", "path": "tests/qualification/endpoint-replacement-ubuntu"},
+    {"id": "service-credential-response-linux", "owner": "network", "path": "tests/qualification/service-credential-response-linux"},
     {"id": "native-rendezvous-multihost", "owner": "network", "path": "tests/qualification/native-rendezvous-multihost"},
     {"id": "native-rendezvous-host", "owner": "network", "path": "tests/qualification/native-rendezvous-host"},
     {"id": "alpha-control-two-endpoints", "owner": "network", "path": "tests/qualification/alpha-control-two-endpoints"}

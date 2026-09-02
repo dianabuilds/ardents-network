@@ -77,6 +77,15 @@
       "timeout": "2m"
     },
     {
+      "id": "service-credential-response-linux",
+      "state": "active",
+      "make_target": "qualification-service-credential-response-linux",
+      "surface": "unprivileged Linux/Docker Service Credential response publication",
+      "prerequisites": ["POSIX shell with id, mktemp, and rm", "unprivileged Docker client with a reachable daemon", "preinstalled golang:1.26.6 image", "local Go 1.26.6 toolchain and populated immutable module cache"],
+      "invalid_environment": "the selected Linux/Docker Service Credential response profile is unavailable",
+      "timeout": "2m"
+    },
+    {
       "id": "native-rendezvous-multihost",
       "state": "active",
       "make_target": "qualification-native-rendezvous-multihost",
