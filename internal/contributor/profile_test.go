@@ -305,6 +305,16 @@ func TestRemovalRequiresExactWithdrawnDeploymentAndLeavesBundle(t *testing.T) {
 			t.Fatalf("removed path %s remains: %v", path, err)
 		}
 	}
+	privateParent := filepath.Join(hostRoot, "var", "lib", "private")
+	entries, err := os.ReadDir(privateParent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "ardents-contributor") {
+			t.Fatalf("Contributor managed residue %s remains after removal", entry.Name())
+		}
+	}
 	if _, err := os.Stat(filepath.Join(bundle, "manifest.json")); err != nil {
 		t.Fatalf("removal changed source bundle: %v", err)
 	}
@@ -321,6 +331,7 @@ type profileSupervisor struct {
 	stopEntered             chan struct{}
 	releaseStop             chan struct{}
 	stopPaused              bool
+	stopCalls               int
 }
 
 func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.SupervisorAction) (contributor.SupervisorState, error) {
@@ -343,6 +354,7 @@ func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.
 			writeLifecycle(tWriter{root: supervisor.hostRoot}, "READY")
 		}
 	case contributor.SupervisorStop:
+		supervisor.stopCalls++
 		supervisor.active = false
 		writeLifecycle(tWriter{root: supervisor.hostRoot}, "WITHDRAWN")
 		if supervisor.failNextStopAfterAction {
@@ -353,6 +365,12 @@ func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.
 		supervisor.enabled = false
 	}
 	return contributor.SupervisorState{Active: supervisor.active, Enabled: supervisor.enabled}, nil
+}
+
+func (supervisor *profileSupervisor) stopCount() int {
+	supervisor.mu.Lock()
+	defer supervisor.mu.Unlock()
+	return supervisor.stopCalls
 }
 
 func (supervisor *profileSupervisor) pauseFirstStop(ctx context.Context, action contributor.SupervisorAction) error {

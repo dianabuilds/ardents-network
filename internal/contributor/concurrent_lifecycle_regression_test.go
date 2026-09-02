@@ -3,43 +3,25 @@ package contributor_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/contributor"
 )
 
-const (
-	contributorChildApplyMode = "ARDENTS_CONTRIBUTOR_CHILD_APPLY"
-	contributorChildRoot      = "ARDENTS_CONTRIBUTOR_CHILD_ROOT"
-	contributorChildBundle    = "ARDENTS_CONTRIBUTOR_CHILD_BUNDLE"
-	contributorChildPin       = "ARDENTS_CONTRIBUTOR_CHILD_PIN"
-)
-
 func TestConcurrentWithdrawDoesNotStopOrClaimCommittedSuccessor(t *testing.T) {
-	if os.Getenv(contributorChildApplyMode) == "1" {
-		testConcurrentWithdrawChildApply(t)
-		return
-	}
 	hostRoot := t.TempDir()
 	supervisor := &profileSupervisor{
 		hostRoot:    hostRoot,
 		stopEntered: make(chan struct{}),
 		releaseStop: make(chan struct{}),
 	}
-	t.Cleanup(func() {
-		select {
-		case <-supervisor.releaseStop:
-		default:
-			close(supervisor.releaseStop)
-		}
-	})
+	var releaseStop sync.Once
+	releaseWithdraw := func() { releaseStop.Do(func() { close(supervisor.releaseStop) }) }
 	withdrawer, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
 	if err != nil {
 		t.Fatal(err)
@@ -59,33 +41,55 @@ func TestConcurrentWithdrawDoesNotStopOrClaimCommittedSuccessor(t *testing.T) {
 		err    error
 	}
 	withdrawDone := make(chan controlResult, 1)
+	withdrawJoined := false
+	var withdrawn controlResult
+	withdrawCtx, cancelWithdraw := context.WithTimeout(t.Context(), 5*time.Second)
 	go func() {
-		report, controlErr := withdrawer.Control(t.Context(), contributor.Withdraw, "")
+		report, controlErr := withdrawer.Control(withdrawCtx, contributor.Withdraw, "")
 		withdrawDone <- controlResult{report: report, err: controlErr}
+	}()
+	applyCtx, cancelApply := context.WithTimeout(t.Context(), 5*time.Second)
+	defer func() {
+		cancelApply()
+		cancelWithdraw()
+		releaseWithdraw()
+		if !withdrawJoined {
+			withdrawn = <-withdrawDone
+			withdrawJoined = true
+		}
 	}()
 	select {
 	case <-supervisor.stopEntered:
 	case <-time.After(5 * time.Second):
-		t.Fatal("withdraw did not reach the Supervisor stop boundary")
+		t.Error("withdraw did not reach the Supervisor stop boundary")
+		return
 	}
 
 	second, secondPin := writeContributorBundle(t, 2, deployment)
-	childOutput, childErr := runConcurrentWithdrawChildApply(hostRoot, second, secondPin)
-	if childErr != nil {
-		t.Errorf("concurrent child apply failed to run: %v\n%s", childErr, childOutput)
-	} else if !strings.Contains(childOutput, "contributor root is busy") {
-		t.Errorf("concurrent child apply reached the Supervisor instead of returning contributor root is busy:\n%s", childOutput)
+	concurrent, concurrentErr := successor.Apply(applyCtx, second, secondPin)
+	busy := concurrentErr != nil && strings.Contains(concurrentErr.Error(), "contributor root is busy")
+	if !busy {
+		t.Errorf("concurrent successor apply = %+v, %v; want contributor root is busy", concurrent, concurrentErr)
 	}
-	close(supervisor.releaseStop)
+	if supervisor.stopCount() != 0 {
+		t.Errorf("concurrent successor reached destructive Supervisor stop before withdraw released the root")
+	}
+	if !busy {
+		return
+	}
+	releaseWithdraw()
 
-	var withdrawn controlResult
 	select {
 	case withdrawn = <-withdrawDone:
+		withdrawJoined = true
 	case <-time.After(5 * time.Second):
-		t.Fatal("paused withdraw did not return after release")
+		t.Error("paused withdraw did not return after release")
 	}
-	if withdrawn.err != nil {
-		t.Fatalf("withdraw with a rejected concurrent successor: %v", withdrawn.err)
+	if !withdrawJoined || withdrawn.err != nil {
+		if withdrawn.err != nil {
+			t.Errorf("withdraw with a rejected concurrent successor: %v", withdrawn.err)
+		}
+		return
 	}
 	applied, err := successor.Apply(t.Context(), second, secondPin)
 	if err != nil {
@@ -104,36 +108,6 @@ func TestConcurrentWithdrawDoesNotStopOrClaimCommittedSuccessor(t *testing.T) {
 	if record.DeploymentID != deployment || record.Generation != 2 || record.ManifestDigest != secondPin {
 		t.Errorf("installation record after concurrent commands = %+v, want generation two", record)
 	}
-}
-
-func runConcurrentWithdrawChildApply(hostRoot, bundle, pin string) (string, error) {
-	command := exec.Command(os.Args[0], "-test.run=^TestConcurrentWithdrawDoesNotStopOrClaimCommittedSuccessor$", "-test.v")
-	command.Env = append(os.Environ(), contributorChildApplyMode+"=1", contributorChildRoot+"="+hostRoot,
-		contributorChildBundle+"="+bundle, contributorChildPin+"="+pin)
-	output, err := command.CombinedOutput()
-	return string(output), err
-}
-
-func testConcurrentWithdrawChildApply(t *testing.T) {
-	root, bundle, pin := os.Getenv(contributorChildRoot), os.Getenv(contributorChildBundle), os.Getenv(contributorChildPin)
-	if root == "" || bundle == "" || pin == "" {
-		t.Fatal("concurrent child apply is missing its required input")
-	}
-	profile, err := contributor.Open(contributor.Config{Root: root, Supervisor: rejectingChildSupervisor{}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := profile.Apply(t.Context(), bundle, pin); err == nil {
-		t.Fatal("concurrent child apply unexpectedly completed")
-	} else if _, writeErr := fmt.Fprint(os.Stdout, err.Error()); writeErr != nil {
-		t.Fatal(writeErr)
-	}
-}
-
-type rejectingChildSupervisor struct{}
-
-func (rejectingChildSupervisor) Do(context.Context, contributor.SupervisorAction) (contributor.SupervisorState, error) {
-	return contributor.SupervisorState{}, errors.New("concurrent child apply reached the Supervisor")
 }
 
 type persistedContributorInstallation struct {
