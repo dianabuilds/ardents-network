@@ -137,7 +137,7 @@ func validDurableState(state durableState) bool {
 }
 
 func validRecords(records []dutyRecord) bool {
-	if len(records) > 32 {
+	if len(records) > 64 {
 		return false
 	}
 	producers := map[[32]byte]bool{}

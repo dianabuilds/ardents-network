@@ -62,7 +62,7 @@ func Open(input Config) (*store, error) {
 func (store *store) Replace(producer [32]byte, duties []Duty) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	if store.closed || store.failed != nil || producer == ([32]byte{}) || len(duties) > 32 {
+	if store.closed || store.failed != nil || producer == ([32]byte{}) || len(duties) > 64 {
 		if store.failed != nil {
 			return errors.New("local role store requires restart after a failed commit")
 		}
@@ -179,13 +179,13 @@ func validDuty(duty Duty, now time.Time) bool {
 }
 
 // maximumInstallationDirectSource bounds the cumulative installation-wide
-// unexpired `direct-source` Duty set. The contract proposes 64 (double the
-// per-Replace 32 cap) to permit growth across multiple Epochs and network
-// sources, but the existing per-store cap in `validRecords` limits total
-// records to 32. We therefore align the bound to 32 so it is reachable
-// through the same atomic write path; the bound is still finite and
-// endpoint-precommitted, satisfying the threat-model claim.
-const maximumInstallationDirectSource = 32
+// unexpired `direct-source` Duty set. The per-store cap in `validRecords`
+// is also raised to 64, so the installation-wide bound is a true distinct
+// ceiling (not a subset of the per-store cap) and growth across multiple
+// Epochs and network sources remains reachable through the same atomic
+// write path; the bound is still finite and endpoint-precommitted,
+// satisfying the threat-model claim.
+const maximumInstallationDirectSource = 64
 
 // ErrInstallationSourceExhausted is returned when an installation cannot retain
 // any additional unexpired `direct-source` Duty without exceeding the bounded
