@@ -1,0 +1,320 @@
+name: ardents-multi-node-pilot
+
+# Disposable six-node pilot harness. Two source servers publish one canonical
+# State fixture; six consumer containers refresh against them; the test-driver
+# container asserts that all six consumers converged on the same
+# source-wave-accepted event. See ./README.md for scope and limits.
+#
+# Service ordering: prebake -> source-a/b -> clock-tick -> node-1..6 ->
+# test-driver. clock-tick is the single shared live owner of the regular
+# clock-observation file. It refreshes the file's mtime every 500 ms so all
+# consumers remain inside the two-second production clock-confidence bound.
+
+networks:
+  pilot:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+x-artifacts: &artifacts
+  type: bind
+  source: ${ARDENTS_PILOT_EVIDENCE_DIR:?set ARDENTS_PILOT_EVIDENCE_DIR to an existing directory outside the repository}/artifacts
+  target: /workspace/artifacts
+
+x-evidence: &evidence
+  type: bind
+  source: ${ARDENTS_PILOT_EVIDENCE_DIR:?set ARDENTS_PILOT_EVIDENCE_DIR to an existing directory outside the repository}
+  target: /workspace/evidence
+
+x-tick: &tick
+  - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+x-node-setup: &node-setup
+  - ./scripts/node-setup.sh:/workspace/scripts/node-setup.sh:ro
+
+services:
+  builder:
+    image: golang:1.26-bookworm
+    profiles: ["build"]
+    working_dir: /src
+    networks: [pilot]
+    volumes:
+      - ../..:/src:ro
+      - *artifacts
+      - ./build.sh:/workspace/build.sh:ro
+    command: ["/bin/bash", "/workspace/build.sh"]
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4.0"
+
+  prebake:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    environment:
+      PILOT_SOURCE_A_ADDRESS: 172.30.0.10:4101
+      PILOT_SOURCE_B_ADDRESS: 172.30.0.11:4102
+    command:
+      - /bin/bash
+      - -c
+      - /workspace/artifacts/test-driver-linux-amd64 prebake /workspace/evidence
+    depends_on:
+      builder:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  source-a:
+    image: golang:1.26-bookworm
+    networks:
+      pilot:
+        ipv4_address: 172.30.0.10
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-a.json
+    depends_on:
+      prebake:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4101' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
+  source-b:
+    image: golang:1.26-bookworm
+    networks:
+      pilot:
+        ipv4_address: 172.30.0.11
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-b.json
+    depends_on:
+      prebake:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4102' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
+  clock-tick:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+    working_dir: /workspace
+    command:
+      - /workspace/scripts/clock-tick.sh
+      - /workspace/evidence/fixtures/clock.observation
+    depends_on:
+      source-a:
+        condition: service_healthy
+      source-b:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /workspace/evidence/fixtures/clock.observation && now=$$(date +%s) && observed=$$(stat -c %Y /workspace/evidence/fixtures/clock.observation) && test $$((now - observed)) -le 1"]
+      interval: 500ms
+      timeout: 1s
+      retries: 10
+      start_period: 1s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.1"
+
+  node-1:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+      - ./scripts/node-setup.sh:/workspace/scripts/node-setup.sh:ro
+    working_dir: /workspace
+    command:
+      - /bin/bash
+      - -c
+      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-1 /workspace/evidence /workspace/evidence/fixtures/client.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-1 --source-plan /workspace/evidence/plans/node-1.json > /workspace/evidence/nodes/node-1.json 2>&1
+    depends_on:
+      clock-tick:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.4"
+
+  node-2:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+      - ./scripts/node-setup.sh:/workspace/scripts/node-setup.sh:ro
+    working_dir: /workspace
+    command:
+      - /bin/bash
+      - -c
+      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-2 /workspace/evidence /workspace/evidence/fixtures/client.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-2 --source-plan /workspace/evidence/plans/node-2.json > /workspace/evidence/nodes/node-2.json 2>&1
+    depends_on:
+      clock-tick:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.4"
+
+  node-3:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+      - ./scripts/node-setup.sh:/workspace/scripts/node-setup.sh:ro
+    working_dir: /workspace
+    command:
+      - /bin/bash
+      - -c
+      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-3 /workspace/evidence /workspace/evidence/fixtures/client.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-3 --source-plan /workspace/evidence/plans/node-3.json > /workspace/evidence/nodes/node-3.json 2>&1
+    depends_on:
+      clock-tick:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.4"
+
+  node-4:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+      - ./scripts/node-setup.sh:/workspace/scripts/node-setup.sh:ro
+    working_dir: /workspace
+    command:
+      - /bin/bash
+      - -c
+      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-4 /workspace/evidence /workspace/evidence/fixtures/client.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-4 --source-plan /workspace/evidence/plans/node-4.json > /workspace/evidence/nodes/node-4.json 2>&1
+    depends_on:
+      clock-tick:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.4"
+
+  node-5:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+      - ./scripts/node-setup.sh:/workspace/scripts/node-setup.sh:ro
+    working_dir: /workspace
+    command:
+      - /bin/bash
+      - -c
+      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-5 /workspace/evidence /workspace/evidence/fixtures/client.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-5 --source-plan /workspace/evidence/plans/node-5.json > /workspace/evidence/nodes/node-5.json 2>&1
+    depends_on:
+      clock-tick:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.4"
+
+  node-6:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+      - ./scripts/node-setup.sh:/workspace/scripts/node-setup.sh:ro
+    working_dir: /workspace
+    command:
+      - /bin/bash
+      - -c
+      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-6 /workspace/evidence /workspace/evidence/fixtures/client.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-6 --source-plan /workspace/evidence/plans/node-6.json > /workspace/evidence/nodes/node-6.json 2>&1
+    depends_on:
+      clock-tick:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.4"
+
+  test-driver:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/test-driver-linux-amd64
+      - verify
+      - /workspace/evidence
+    depends_on:
+      node-1:
+        condition: service_completed_successfully
+      node-2:
+        condition: service_completed_successfully
+      node-3:
+        condition: service_completed_successfully
+      node-4:
+        condition: service_completed_successfully
+      node-5:
+        condition: service_completed_successfully
+      node-6:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.3"
