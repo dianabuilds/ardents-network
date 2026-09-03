@@ -18,12 +18,16 @@ fi
 SOURCES=(
     "$DRIVER/doc.go"
     "$DRIVER/main.go"
+    "$DRIVER/prebake.go"
+    "$DRIVER/verify.go"
+    "$DRIVER/selftest.go"
     "$DRIVER/convergence.go"
     "$DRIVER/encoding.go"
     "$DRIVER/epoch.go"
     "$DRIVER/fixtures.go"
     "$DRIVER/record.go"
     "$DRIVER/sourceplan.go"
+    "$DRIVER/verify_adversary.go"
 )
 
 "$GO" test "${SOURCES[@]}" "$DRIVER/sourceplan_test.go"

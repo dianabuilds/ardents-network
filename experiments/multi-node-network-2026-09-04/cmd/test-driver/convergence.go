@@ -87,6 +87,17 @@ func ReadSourceWaveEvent(path string) (SourceWaveEvent, error) {
 			return SourceWaveEvent{}, fmt.Errorf("pilot: parse node log line: %w", err)
 		}
 		if event.Schema == "ardents-source-event-v1" && event.Kind == "source-wave-accepted" {
+			var shape struct {
+				SourceOutcomes []json.RawMessage `json:"source_outcomes"`
+			}
+			if err := json.Unmarshal(trimmed, &shape); err != nil {
+				return SourceWaveEvent{}, fmt.Errorf("pilot: inspect source_outcomes: %w", err)
+			}
+			if len(shape.SourceOutcomes) != len(event.SourceOutcomes) {
+				return SourceWaveEvent{}, fmt.Errorf(
+					"pilot: source_outcomes has %d entries, want %d",
+					len(shape.SourceOutcomes), len(event.SourceOutcomes))
+			}
 			return event, nil
 		}
 		if err == io.EOF {

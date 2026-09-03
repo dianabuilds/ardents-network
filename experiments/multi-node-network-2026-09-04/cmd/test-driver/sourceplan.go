@@ -28,10 +28,12 @@ import (
 // 172.30.0.10 / 172.30.0.11, and the compose env vars override these defaults
 // for any deployment that wants different addresses.
 const (
-	DefaultSourceAddressA = "172.30.0.10:4101"
-	DefaultSourceAddressB = "172.30.0.11:4102"
-	SourceListenA         = "0.0.0.0:4101"
-	SourceListenB         = "0.0.0.0:4102"
+	DefaultSourceAddressA   = "172.30.0.10:4101"
+	DefaultSourceAddressB   = "172.30.0.11:4102"
+	DefaultAdversaryAddress = "172.30.0.20:4103"
+	SourceListenA           = "0.0.0.0:4101"
+	SourceListenB           = "0.0.0.0:4102"
+	SourceListenC           = "0.0.0.0:4103"
 )
 
 // ResolveSourceAddress returns the address from the named environment
@@ -163,8 +165,9 @@ type SourceServerPlan struct {
 }
 
 // SourceClientPlan is the on-disk JSON shape that
-// "ardents refresh-sources --source-plan <path>" parses. All six consumer
-// nodes share the same plan; only their --state-root differs.
+// "ardents refresh-sources --source-plan <path>" parses. Slice 1 gives all
+// six consumers the shared honest plan. Slice 2 replaces node-6's copy with
+// the probe plan while node-1..5 retain the honest plan.
 type SourceClientPlan struct {
 	Schema               string             `json:"schema"`
 	NetworkID            string             `json:"network_id"`
@@ -262,6 +265,73 @@ func WritePlans(fixturesDir, sourceAState, sourceBState, sourceAAddress, sourceB
 		return fmt.Errorf("pilot: write client plan: %w", err)
 	}
 	return nil
+}
+
+// WriteAdversarySourcePlan emits the source-c.json plan the adversary
+// container reads. The plan pins the adversary authority as the Epoch
+// signer (because the forged epoch is signed by it) and reuses source-a's
+// server certificate chain so the adversary listens with a leaf whose
+// digest matches the value the probe consumer's plan pins. The adversary
+// service uses the same mTLS surface as source-a but listens on a
+// different IP:port and serves the forged State root.
+func WriteAdversarySourcePlan(fixturesDir, sourceCState string,
+	fixtures Fixtures, clientPin [32]byte, now time.Time) error {
+	adversaryAuthorityHex := fmt.Sprintf("%x", fixtures.AdversaryAuthorityPublic)
+	clientRoot := filepath.Join(fixturesDir, "client-ca.pem")
+	at := now.UTC().Format(time.RFC3339)
+	return writeJSON(filepath.Join(fixturesDir, "source-c.json"), SourceServerPlan{
+		Schema: "ardents-source-server-v1", StateRoot: sourceCState,
+		LocalRoleStateRoot:   filepath.Join(sourceCState, "local-roles"),
+		NetworkID:            fixtures.NetworkIDHex,
+		AuthorityPublic:      []string{adversaryAuthorityHex},
+		Threshold:            1,
+		At:                   at,
+		Listen:               SourceListenC,
+		ServerCertificate:    filepath.Join(fixturesDir, "source-a.pem"),
+		ServerKey:            filepath.Join(fixturesDir, "source-a-key.pem"),
+		ClientRoot:           clientRoot,
+		ClientKeyDigests:     []string{fmt.Sprintf("%x", clientPin)},
+		MaterializationIndex: 0,
+	})
+}
+
+// WriteProbeClientPlan emits client-probe.json for the one probe consumer
+// that intentionally tries the adversary. The plan lists source-b (real)
+// and source-c (adversary) as the two configured sources. Both share the
+// same client certificate, but the source-c leaf digest is the same as
+// source-a's pin because the adversary container reuses the source-a
+// server cert chain. The probe consumer's authority_public contains only
+// the real authority, so the consumer will fail to validate source-c's
+// forged signer and report a non-valid outcome for that source.
+func WriteProbeClientPlan(fixturesDir, sourceBAddress, sourceCAddress string,
+	fixtures Fixtures, sourceBPin, sourceAPin [32]byte, now time.Time) error {
+	authorityHex := fmt.Sprintf("%x", fixtures.AuthorityPublic)
+	sourceRoot := filepath.Join(fixturesDir, "source-ca.pem")
+	clientCert := filepath.Join(fixturesDir, "client.pem")
+	clientKey := filepath.Join(fixturesDir, "client-key.pem")
+	orderSeedDigest := sha256.Sum256([]byte("pilot-order-seed-1"))
+	orderSeed := fmt.Sprintf("%x", orderSeedDigest)
+	at := now.UTC().Format(time.RFC3339)
+	identityBDigest := sha256.Sum256([]byte("pilot-source-b-identity"))
+	identityB := fmt.Sprintf("%x", identityBDigest)
+	identityCDigest := sha256.Sum256([]byte("pilot-source-c-identity"))
+	identityC := fmt.Sprintf("%x", identityCDigest)
+	return writeJSON(filepath.Join(fixturesDir, "client-probe.json"), SourceClientPlan{
+		Schema: "ardents-source-plan-v1", NetworkID: fixtures.NetworkIDHex,
+		AuthorityPublic: []string{authorityHex}, Threshold: 1, ClockObservedAt: at,
+		ClockObservationFile: filepath.Join(fixturesDir, "clock.observation"),
+		OrderSeed:            orderSeed, MaterializationIndex: 0,
+		LocalRoleStateRoot: filepath.Join(fixturesDir, "consumer-local-roles"),
+		ClientCertificate:  clientCert, ClientKey: clientKey,
+		Sources: []SourceClientSpec{
+			{Address: sourceBAddress, ServerName: "pilot-source-b.test", Identity: identityB,
+				Family: "pilot-source-b-family", EndpointHandle: "pilot-source-b-handle",
+				RootCA: sourceRoot, LeafKeyDigest: fmt.Sprintf("%x", sourceBPin)},
+			{Address: sourceCAddress, ServerName: "pilot-source-a.test", Identity: identityC,
+				Family: "pilot-source-c-family", EndpointHandle: "pilot-source-c-handle",
+				RootCA: sourceRoot, LeafKeyDigest: fmt.Sprintf("%x", sourceAPin)},
+		},
+	})
 }
 
 func writeJSON(path string, value any) error {

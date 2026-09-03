@@ -1,11 +1,12 @@
 name: ardents-multi-node-pilot
 
-# Disposable six-node pilot harness. Two source servers publish one canonical
-# State fixture; six consumer containers refresh against them; the test-driver
-# container asserts that all six consumers converged on the same
-# source-wave-accepted event. See ./README.md for scope and limits.
+# Disposable six-node pilot harness. Two honest source servers publish one
+# canonical State fixture while a third serves the same body with a forged
+# signer; five honest consumers and one probe refresh against the configured
+# pair, and the test-driver checks their exact outcomes and generation. See
+# ./README.md for scope and limits.
 #
-# Service ordering: prebake -> source-a/b -> clock-tick -> node-1..6 ->
+# Service ordering: prebake -> source-a/b/adversary -> clock-tick -> node-1..6 ->
 # test-driver. clock-tick is the single shared live owner of the regular
 # clock-observation file. It refreshes the file's mtime every 500 ms so all
 # consumers remain inside the two-second production clock-confidence bound.
@@ -59,10 +60,11 @@ services:
     environment:
       PILOT_SOURCE_A_ADDRESS: 172.30.0.10:4101
       PILOT_SOURCE_B_ADDRESS: 172.30.0.11:4102
+      PILOT_ADVERSARY_ADDRESS: 172.30.0.20:4103
     command:
       - /bin/bash
       - -c
-      - /workspace/artifacts/test-driver-linux-amd64 prebake /workspace/evidence
+      - /workspace/artifacts/test-driver-linux-amd64 prebake_adversary /workspace/evidence
     depends_on:
       builder:
         condition: service_completed_successfully
@@ -130,6 +132,43 @@ services:
           memory: 512M
           cpus: "0.8"
 
+  # Slice 2: the adversary is a third ardents-node source that serves the
+  # SAME content-addressed State body re-signed with an attacker-controlled
+  # Epoch key. The mTLS surface (cert chain, leaf digest) reuses source-a's
+  # so the leaf_key_digest pin in the probe consumer's plan still matches.
+  # The forge becomes visible only when the source client checks the Epoch
+  # signature against the consumer's authority_public list. The probe
+  # consumer's plan lists source-b + source-c, so it sees one valid source
+  # and one non-valid source per wave.
+  adversary:
+    image: golang:1.26-bookworm
+    networks:
+      pilot:
+        ipv4_address: 172.30.0.20
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-c.json
+    depends_on:
+      prebake:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4103' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
   clock-tick:
     image: golang:1.26-bookworm
     networks: [pilot]
@@ -144,6 +183,8 @@ services:
       source-a:
         condition: service_healthy
       source-b:
+        condition: service_healthy
+      adversary:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "test -f /workspace/evidence/fixtures/clock.observation && now=$$(date +%s) && observed=$$(stat -c %Y /workspace/evidence/fixtures/clock.observation) && test $$((now - observed)) -le 1"]
@@ -279,7 +320,7 @@ services:
     command:
       - /bin/bash
       - -c
-      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-6 /workspace/evidence /workspace/evidence/fixtures/client.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-6 --source-plan /workspace/evidence/plans/node-6.json > /workspace/evidence/nodes/node-6.json 2>&1
+      - mkdir -p /workspace/evidence/nodes && /workspace/scripts/node-setup.sh node-6 /workspace/evidence /workspace/evidence/fixtures/client-probe.json && /workspace/artifacts/ardents-linux-amd64 refresh-sources --once --state-root /workspace/evidence/state/node-6 --source-plan /workspace/evidence/plans/node-6.json > /workspace/evidence/nodes/node-6.json 2>&1
     depends_on:
       clock-tick:
         condition: service_healthy
@@ -298,7 +339,7 @@ services:
     working_dir: /workspace
     command:
       - /workspace/artifacts/test-driver-linux-amd64
-      - verify
+      - verify_adversary
       - /workspace/evidence
     depends_on:
       node-1:
