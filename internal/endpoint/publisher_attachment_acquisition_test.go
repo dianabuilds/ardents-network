@@ -64,8 +64,8 @@ func TestPublisherConfigurationReadsCurrentStateOnlyOnStart(t *testing.T) {
 	credential := binding.Credential()
 	owner, err := newEndpoint(setup{NetworkID: network, BrokerID: acquisitionID(103),
 		AuthorityPublic: ed25519.PublicKey(credential.AuthorityPublic[:]), IntroductionPublic: ed25519.PublicKey(credential.IntroductionHPKEPublic[:]),
-		ConnectionPrincipal: acquisitionID(104), AdministrationPrincipal: principal, PublicationRoot: t.TempDir(),
-		TransitAcquisitionRoot: t.TempDir(), CreateTransitAcquisitionRoot: true, Clock: func() time.Time { return now }})
+		ConnectionPrincipal: acquisitionID(104), AdministrationPrincipal: principal, PublicationRoot: publicationStoreRoot(t),
+		TransitAcquisitionRoot: transitAcquisitionRoot(t), CreateTransitAcquisitionRoot: true, Clock: func() time.Time { return now }})
 
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestPublisherConfigurationReadsCurrentStateOnlyOnStart(t *testing.T) {
 
 func publisherAcquisitionBinding(t *testing.T, network [32]byte, authority ed25519.PrivateKey, now time.Time) (*instance.Root, *instance.Binding) {
 	t.Helper()
-	root, err := instance.Initialize(instance.InitializeConfig{Root: t.TempDir(), NetworkID: network,
+	root, err := instance.Initialize(instance.InitializeConfig{Root: serviceInstanceFixtureRoot(t), NetworkID: network,
 		NotBefore: now, NotAfter: now.Add(time.Hour)})
 	if err != nil {
 		t.Fatal(err)

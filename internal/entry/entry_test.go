@@ -6,13 +6,26 @@ import (
 	"crypto/rand"
 	"errors"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
+// entryRoot creates the owner-only directory for an Entry state root,
+// independent of the test process umask.
+func entryRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "entry-state")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func TestImportContactAndReopenUsesOnlyCurrentStateCandidate(t *testing.T) {
 	fixture := newEntryFixture(t)
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +54,7 @@ func TestImportContactAndReopenUsesOnlyCurrentStateCandidate(t *testing.T) {
 
 func TestImportRejectsInviteWithWrongSignatureOrSurplusBytes(t *testing.T) {
 	fixture := newEntryFixture(t)
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +121,7 @@ func TestVerifyReturnsConflictingRoleWhenConflictCallbackReturnsTrue(t *testing.
 
 func TestReplacementImmediatelyRetiresInactiveGenerationOne(t *testing.T) {
 	fixture := newEntryFixture(t)
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +147,7 @@ func TestReplacementImmediatelyRetiresInactiveGenerationOne(t *testing.T) {
 
 func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +187,7 @@ func TestAcquireRetriesOneCleanFailureAndRecordsTerminalCleanup(t *testing.T) {
 
 func TestAcquireStartsDistinctOperationAfterOpenedAttachmentWasCleaned(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +228,7 @@ func TestAcquireStartsDistinctOperationAfterOpenedAttachmentWasCleaned(t *testin
 
 func TestAcquireFailsClosedWhenOpenerCannotProveCleanup(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +248,7 @@ func TestAcquireFailsClosedWhenOpenerCannotProveCleanup(t *testing.T) {
 
 func TestReplacementDrainsUntilLiveAttemptSettles(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +282,7 @@ func TestReplacementDrainsUntilLiveAttemptSettles(t *testing.T) {
 
 func TestOpenTerminalizesInterruptedAttemptAndSettlesReplacement(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	root := t.TempDir()
+	root := entryRoot(t)
 	owner, err := Open(fixture.config(root))
 	if err != nil {
 		t.Fatal(err)
@@ -304,7 +317,7 @@ func TestOpenTerminalizesInterruptedAttemptAndSettlesReplacement(t *testing.T) {
 func TestAcquiredCarrierStopsAfterTimeConfidenceLoss(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
 	confident := true
-	config := fixture.config(t.TempDir())
+	config := fixture.config(entryRoot(t))
 	config.TimeConfident = func() bool { return confident }
 	owner, err := Open(config)
 	if err != nil {

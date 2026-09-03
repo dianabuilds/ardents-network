@@ -29,7 +29,7 @@ func TestRunKeepsInitiatorReadyWhileItsEntryLedgerIsHeld(t *testing.T) {
 	go func() {
 		value, err := Run(ctx, Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID, IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey),
 			Current: func() (DutyView, error) { return snapshot, nil }, Initiator: InitiatorProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second},
-			PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: t.TempDir(), CheckPlacement: func() error { return nil },
+			PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
 			Emit: func(_ context.Context, event Event) error { events <- event; return nil }})
 		result <- value
 		errors <- err

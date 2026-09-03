@@ -318,7 +318,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	roots.AppendCertsFromPEM(ca.pem)
 	fixture := &lifecycleFixture{snapshot: snapshot, serverRoots: roots, client: client.certificate, serverName: "node.test"}
 	fixture.config = Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID, IdentityKey: identityPrivate,
-		LocalRoleStateRoot: t.TempDir(),
+		LocalRoleStateRoot: localRoleStateRoot(t),
 		Probe: ProbeConfig{ListenAddress: address, Certificate: server.certificate, ClientRootPEM: ca.pem,
 			ClientKeyPins: [][32]byte{sha256.Sum256(pinBytes)}, MaximumDuty: 2 * time.Second, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond,

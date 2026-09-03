@@ -30,7 +30,7 @@ func TestIssuerReconcilesOneDurableBudgetUnitAcrossRestart(t *testing.T) {
 		Epoch: 46, TransitRole: route.IntroductionRole, NotAfter: now.Add(10 * time.Second)}
 	withdrawn := false
 	generation := testStateGeneration
-	root := t.TempDir()
+	root := transitIssuerFixtureRoot(t)
 	initiatorCertificate := credentialCertificate(t, initiatorPrivate, 10)
 
 	start := func() (*Issuer, *httptest.Server, *http.Client) {

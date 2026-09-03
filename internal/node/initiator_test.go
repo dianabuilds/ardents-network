@@ -139,7 +139,7 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 	runningRendezvous, material, rendezvousConfig := rendezvousFixture(t)
 	defer runningRendezvous.Close()
 	gatewayCertificate, gatewayPublic, gatewayPrivate := resolutionGatewayCertificate(t)
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: rendezvousConfig.NetworkID})
+	store, err := reachability.OpenStore(reachability.StoreConfig{Root: reachabilityStoreRoot(t), NetworkID: rendezvousConfig.NetworkID})
 	if err != nil {
 		t.Fatal(err)
 	}

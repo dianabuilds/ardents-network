@@ -27,7 +27,7 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 	initiatorCertificate, initiatorPublic := rendezvousCertificate(t, 182, "transit-initiator")
 	now := time.Now().UTC().Truncate(time.Second)
 	until := now.Add(time.Minute)
-	root := t.TempDir()
+	root := transitIssuerStoreRoot(t)
 	network, issuerID, initiatorID := [32]byte{1}, [32]byte{2}, [32]byte{3}
 	receipt, err := credential.InitializeIssuerRoot(credential.IssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: issuerCertificate.PrivateKey.(ed25519.PrivateKey), InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
@@ -52,7 +52,7 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 	config := Config{NetworkID: network, NodeID: issuerID, IdentityKey: issuerCertificate.PrivateKey.(ed25519.PrivateKey),
 		Current:       func() (DutyView, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
 		TransitIssuer: TransitIssuerProfile{Root: root, Certificate: issuerCertificate, ConnectionLimit: 2, DrainTimeout: time.Second},
-		PollInterval:  10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: t.TempDir(), CheckPlacement: func() error { return nil },
+		PollInterval:  10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	results := make(chan Result, 1)
 	errors := make(chan error, 1)

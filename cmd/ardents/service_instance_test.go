@@ -102,7 +102,7 @@ func TestServiceInstanceInitializePublishesOnlyStableRequest(t *testing.T) {
 func TestServiceInstanceBindingOpensSealedIntroductionWithoutExportingRecipient(t *testing.T) {
 	now := time.Date(2030, 7, 8, 9, 10, 11, 0, time.UTC)
 	network := [32]byte{51}
-	root, err := instance.Initialize(instance.InitializeConfig{Root: t.TempDir(), NetworkID: network,
+	root, err := instance.Initialize(instance.InitializeConfig{Root: serviceInstanceFixtureRoot(t), NetworkID: network,
 		NotBefore: now, NotAfter: now.Add(time.Hour)})
 	if err != nil {
 		t.Fatal(err)
@@ -164,4 +164,13 @@ func TestServiceInstanceBindingOpensSealedIntroductionWithoutExportingRecipient(
 	if _, err := route.OpenSealedIntroductionWith(sealed, binding); err == nil {
 		t.Fatal("withdrawn binding opened a sealed Introduction")
 	}
+}
+
+func serviceInstanceFixtureRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "service-instance-root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

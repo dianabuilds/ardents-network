@@ -16,7 +16,7 @@ import (
 func TestAcceptedResponsePublishesThroughNonExportingBindingAndRestartRequiresSuccessor(t *testing.T) {
 	now := time.Date(2030, 4, 5, 6, 7, 8, 0, time.UTC)
 	network := [32]byte{21}
-	rootPath, publicationPath := t.TempDir(), t.TempDir()
+	rootPath, publicationPath := instanceFixtureRoot(t), t.TempDir()
 	root, err := Initialize(InitializeConfig{Root: rootPath, NetworkID: network,
 		NotBefore: now, NotAfter: now.Add(time.Hour)})
 	if err != nil {
@@ -84,7 +84,7 @@ func TestAcceptedResponsePublishesThroughNonExportingBindingAndRestartRequiresSu
 
 func TestDifferentResponseConflictsAndWithdrawalErasesBinding(t *testing.T) {
 	now := time.Date(2030, 5, 6, 7, 8, 9, 0, time.UTC)
-	rootPath := t.TempDir()
+	rootPath := instanceFixtureRoot(t)
 	root, err := Initialize(InitializeConfig{Root: rootPath, NetworkID: [32]byte{31},
 		NotBefore: now, NotAfter: now.Add(time.Hour)})
 	if err != nil {
@@ -119,7 +119,7 @@ func TestDifferentResponseConflictsAndWithdrawalErasesBinding(t *testing.T) {
 	}
 	_ = reopened.Close()
 
-	withdrawRoot, err := Initialize(InitializeConfig{Root: t.TempDir(), NetworkID: [32]byte{32},
+	withdrawRoot, err := Initialize(InitializeConfig{Root: instanceFixtureRoot(t), NetworkID: [32]byte{32},
 		NotBefore: now, NotAfter: now.Add(time.Hour)})
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +145,7 @@ func TestDifferentResponseConflictsAndWithdrawalErasesBinding(t *testing.T) {
 
 func TestMalformedResponseIsTerminalAndAmbiguousRootFailsClosed(t *testing.T) {
 	now := time.Date(2030, 6, 7, 8, 9, 10, 0, time.UTC)
-	rootPath := t.TempDir()
+	rootPath := instanceFixtureRoot(t)
 	root, err := Initialize(InitializeConfig{Root: rootPath, NetworkID: [32]byte{41},
 		NotBefore: now, NotAfter: now.Add(time.Hour)})
 	if err != nil {

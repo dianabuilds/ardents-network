@@ -100,7 +100,7 @@ func replacementProtectedFixture(t *testing.T, candidateUsesReleaseAuthorization
 	root := t.TempDir()
 	fixture := protectedReplacementFixture{
 		program:     filepath.Join(root, "ardents"),
-		stateRoot:   filepath.Join(root, "state", "replacement"),
+		stateRoot:   replacementStateRoot(t),
 		vaultRoot:   filepath.Join(root, "authority-vault"),
 		releaseRoot: filepath.Join(root, "release-floors"),
 	}

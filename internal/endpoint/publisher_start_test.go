@@ -33,7 +33,7 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	instancePath := t.TempDir()
+	instancePath := serviceInstanceFixtureRoot(t)
 	instanceRoot, binding := acceptedInstanceBinding(t, instancePath, network, authorityPrivate, now, deadline)
 	defer instanceRoot.Close()
 	profile := publisherIntroductionProfile{
@@ -47,7 +47,7 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	principal := fixtureID(71)
 	owner, err := newEndpoint(setup{
 		NetworkID: network, BrokerID: fixtureID(72), ConnectionPrincipal: fixtureID(74),
-		AdministrationPrincipal: principal, PublicationRoot: t.TempDir(),
+		AdministrationPrincipal: principal, PublicationRoot: publicationStoreRoot(t),
 		PublisherBinding: binding, publisherIntroductionProfile: profile,
 	})
 
@@ -98,8 +98,8 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	instanceRoot, binding := acceptedInstanceBinding(t, t.TempDir(), network, authorityPrivate, now, deadline)
-	publicationRoot := t.TempDir()
+	instanceRoot, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), network, authorityPrivate, now, deadline)
+	publicationRoot := publicationStoreRoot(t)
 	unavailableAddress := availableAddress(t)
 	profile := publisherIntroductionProfile{
 		NetworkID: network, Digest: fixtureID(82), Epoch: 13,

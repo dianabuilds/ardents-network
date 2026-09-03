@@ -189,7 +189,13 @@ type alphaControlBundleFixture struct {
 func alphaControlBundle(t *testing.T, endpoint, control string) alphaControlBundleFixture {
 	t.Helper()
 	platform := runtime.GOOS + "-" + runtime.GOARCH
-	artifactName, controlName, targetPath := "ardents-"+platform, "ardents-control-"+platform, "ardents/"+platform+"/endpoint"
+	artifactName, controlName, nodeName, custodyName, targetPath := "ardents-"+platform, "ardents-control-"+platform, "ardents-node-"+platform, "ardents-custody-"+platform, "ardents/"+platform+"/endpoint"
+	if runtime.GOOS == "windows" {
+		artifactName += ".exe"
+		controlName += ".exe"
+		nodeName += ".exe"
+		custodyName += ".exe"
+	}
 	artifact, err := os.ReadFile(endpoint)
 	if err != nil {
 		t.Fatal(err)
@@ -216,15 +222,18 @@ func alphaControlBundle(t *testing.T, endpoint, control string) alphaControlBund
 		"control_catalog=catalog.ac1", "disclosure_root=catalog.pub", "control_release=release.ac1", "control_network=network.ac1", "control_compatibility=compatibility.ac1",
 		"control_release_root=release.pub", "control_network_root=network.pub", "control_compatibility_root=compatibility.pub", "corpus_authority=corpus.pub", "control_artifact=" + controlName,
 	}, "\n") + "\n"
-	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact, controlName: controlArtifact, "catalog.ac1": catalog, "catalog.pub": catalogRoot,
+	// Endpoint enrollment is headless and therefore verifies all four command
+	// inventory entries. This fixture runs only Endpoint and Control, so its
+	// Node and Custody payloads remain inert but are separately pinned facts.
+	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact, controlName: controlArtifact, nodeName: []byte("node"), custodyName: []byte("custody"), "catalog.ac1": catalog, "catalog.pub": catalogRoot,
 		"release.ac1": components[0], "network.ac1": components[1], "compatibility.ac1": components[2], "release.pub": roots[0], "network.pub": roots[1], "compatibility.pub": roots[2], "corpus.pub": corpusPublic}
 	for name, contents := range metadataFiles {
 		files[name] = contents
 	}
-	names := []string{"1.root.json", "1.snapshot.json", "1.targets.json", "RELEASE", controlName, artifactName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
+	names := []string{"1.root.json", "1.snapshot.json", "1.targets.json", "RELEASE", controlName, custodyName, artifactName, nodeName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "corpus.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "timestamp.json"}
 	for _, name := range names {
 		mode := os.FileMode(0o600)
-		if name == artifactName || name == controlName {
+		if name == artifactName || name == controlName || name == nodeName || name == custodyName {
 			mode = 0o700
 		}
 		writeEnrollmentFile(t, filepath.Join(bundle, name), files[name], mode)

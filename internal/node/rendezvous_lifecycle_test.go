@@ -29,7 +29,7 @@ func TestRunServesStateAssignedRendezvousThenWithdraws(t *testing.T) {
 		Current: func() (DutyView, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
 		Rendezvous: RendezvousProfile{Certificate: server, HandshakeLimit: 2, WaitingLimit: 2, PairLimit: 1,
 			PairByteLimit: 1 << 20, AdmissionTimeout: time.Second, DrainTimeout: time.Second}, PollInterval: 10 * time.Millisecond,
-		Quarantine: time.Millisecond, LocalRoleStateRoot: t.TempDir(), CheckPlacement: func() error { return nil },
+		Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	results := make(chan Result, 1)
 	errors := make(chan error, 1)

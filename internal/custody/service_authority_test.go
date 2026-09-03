@@ -5,6 +5,8 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -149,7 +151,7 @@ func TestIssueServiceCredentialRejectsUnboundedValidityBeforePassword(t *testing
 
 func serviceInstanceRequest(t *testing.T, network [32]byte, notBefore, notAfter time.Time) []byte {
 	t.Helper()
-	root, err := instance.Initialize(instance.InitializeConfig{Root: t.TempDir(), NetworkID: network,
+	root, err := instance.Initialize(instance.InitializeConfig{Root: serviceInstanceFixtureRoot(t), NetworkID: network,
 		NotBefore: notBefore, NotAfter: notAfter})
 	if err != nil {
 		t.Fatal(err)
@@ -159,4 +161,13 @@ func serviceInstanceRequest(t *testing.T, network [32]byte, notBefore, notAfter 
 		t.Fatalf("read Service Instance request: %v / %v", err, closeErr)
 	}
 	return request
+}
+
+func serviceInstanceFixtureRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "service-instance-root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

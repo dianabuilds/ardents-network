@@ -32,7 +32,7 @@ func TestStateTransitGrantAdmitterConsumesOnlyOneExactCurrentGrant(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	admit := stateTransitGrantAdmitter(t.TempDir(), snapshot, readCurrent, func() time.Time { return now })
+	admit := stateTransitGrantAdmitter(transitGrantRoot(t), snapshot, readCurrent, func() time.Time { return now })
 	if _, err := admit(raw, grant.AttachmentID, grant.ClientKeyDigest, grant.TransitRole, grant.TransitNodeID, deadline); err != nil {
 		t.Fatal(err)
 	}

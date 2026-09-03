@@ -43,7 +43,7 @@ func TestEndpointAcceptAlphaCorpusControlPinsACA2AndAdvancesDurableFloor(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: t.TempDir(), Authority: corpusPublic, Cohort: "alpha-one", Network: network})
+	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: alphaPersistentFloorRoot(t), Authority: corpusPublic, Cohort: "alpha-one", Network: network})
 	if err != nil {
 		t.Fatal(err)
 	}

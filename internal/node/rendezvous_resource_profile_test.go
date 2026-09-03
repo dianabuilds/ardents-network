@@ -6,12 +6,23 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node"
 )
+
+func exclusiveRoot(t *testing.T, name string) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), name)
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
 
 func TestFunctionalAlphaResourceProfileAcceptsOnlyRendezvousDuty(t *testing.T) {
 	_, identity, err := ed25519.GenerateKey(rand.Reader)
@@ -20,7 +31,7 @@ func TestFunctionalAlphaResourceProfileAcceptsOnlyRendezvousDuty(t *testing.T) {
 	}
 	stateErr := errors.New("state unavailable for profile acceptance test")
 	base := node.Config{
-		IdentityKey: identity, NetworkStateRoot: t.TempDir(), LocalRoleStateRoot: t.TempDir(), PollInterval: time.Second,
+		IdentityKey: identity, NetworkStateRoot: exclusiveRoot(t, "network-state"), LocalRoleStateRoot: exclusiveRoot(t, "local-role-state"), PollInterval: time.Second,
 		ResourceProfile: "ardents-rendezvous-dedicated-host-v1",
 		Current:         func() (node.DutyView, error) { return nil, stateErr },
 		Emit:            func(context.Context, node.Event) error { return nil },

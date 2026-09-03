@@ -170,7 +170,7 @@ func openMaintainedConnectionComposition(t *testing.T, clock func() time.Time, a
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: network})
+	store, err := reachability.OpenStore(reachability.StoreConfig{Root: reachabilityStoreRoot(t), NetworkID: network})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func acceptedConnectionFloor(t *testing.T, network [32]byte, at time.Time) (*alp
 	if err != nil {
 		t.Fatal(err)
 	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: t.TempDir(), Authority: public,
+	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: alphaPersistentFloorRoot(t), Authority: public,
 		Cohort: "connection-authorization", Network: network})
 	if err != nil {
 		t.Fatal(err)

@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -37,12 +38,12 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 		"XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"XDG_RUNTIME_DIR="+filepath.Join(root, "runtime"),
 	)
-	var stderr bytes.Buffer
-	running.Stderr = &stderr
 	stdout, err := running.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
+	stderr := &processStderrBuffer{}
+	running.Stderr = stderr
 	if err := running.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -403,8 +404,10 @@ func enrolledRuntimeSign(t *testing.T, value interface {
 
 func enrolledRuntimeManifest(t *testing.T, names []string, files map[string][]byte) []byte {
 	t.Helper()
-	lines := make([]string, 0, len(names))
-	for _, name := range names {
+	canonicalNames := append([]string(nil), names...)
+	sort.Strings(canonicalNames)
+	lines := make([]string, 0, len(canonicalNames))
+	for _, name := range canonicalNames {
 		contents, found := files[name]
 		if !found {
 			t.Fatalf("missing enrolled runtime file %q", name)

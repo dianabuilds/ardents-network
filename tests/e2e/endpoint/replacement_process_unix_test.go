@@ -165,8 +165,8 @@ func runEnrolledUntilStopped(t *testing.T, command, input string, environment []
 	if err != nil {
 		t.Fatal(err)
 	}
-	var stderr bytes.Buffer
-	running.Stderr = &stderr
+	stderr := &processStderrBuffer{}
+	running.Stderr = stderr
 	if err := running.Start(); err != nil {
 		t.Fatal(err)
 	}

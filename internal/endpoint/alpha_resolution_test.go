@@ -92,7 +92,7 @@ func TestEndpointResolveAcceptedAlphaUsesOnlyItsPersistentFloor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: t.TempDir(), Authority: authorityPublic,
+	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: alphaPersistentFloorRoot(t), Authority: authorityPublic,
 		Cohort: "closed-alpha-1", Network: network})
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestEndpointResolveAcceptedAlphaUsesOnlyItsPersistentFloor(t *testing.T) {
 		t.Fatalf("Endpoint accepted alpha result = %+v", resolved)
 	}
 	wrongNetwork := targetLinkBytes(2)
-	wrongFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: t.TempDir(), Authority: authorityPublic,
+	wrongFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: alphaPersistentFloorRoot(t), Authority: authorityPublic,
 		Cohort: "closed-alpha-1", Network: wrongNetwork})
 	if err != nil {
 		t.Fatal(err)

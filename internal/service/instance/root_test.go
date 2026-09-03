@@ -2,13 +2,15 @@ package instance
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestInitializedHostRootReopensTheSamePublicRequest(t *testing.T) {
 	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
-	config := InitializeConfig{Root: t.TempDir(), NetworkID: [32]byte{1}, NotBefore: now, NotAfter: now.Add(time.Hour)}
+	config := InitializeConfig{Root: instanceFixtureRoot(t), NetworkID: [32]byte{1}, NotBefore: now, NotAfter: now.Add(time.Hour)}
 	root, err := Initialize(config)
 	if err != nil {
 		t.Fatalf("initialize host Instance root: %v", err)
@@ -40,4 +42,13 @@ func TestInitializedHostRootReopensTheSamePublicRequest(t *testing.T) {
 	if !bytes.Equal(again, request) {
 		t.Fatal("reopened host root changed its public request")
 	}
+}
+
+func instanceFixtureRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "instance-root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

@@ -26,7 +26,7 @@ func TestStateEntryAdmitterUsesSeparateLedgerRoot(t *testing.T) {
 		Assignment: "initiator", AssignmentDigest: [32]byte{11}, ValidUntil: until, RecordValidUntil: until,
 		CandidateCount: 1, Candidates: [64]dutyCandidate{candidate}}
 	current := snapshot
-	admit, closeAdmitter, err := openStateEntryAdmitter(t.TempDir(), snapshot, func() (dutyFacts, error) { return current, nil }, func() time.Time { return now })
+	admit, closeAdmitter, err := openStateEntryAdmitter(entryAdmitterRoot(t), snapshot, func() (dutyFacts, error) { return current, nil }, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}

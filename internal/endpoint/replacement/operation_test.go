@@ -13,13 +13,24 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
+// stateRoot creates the owner-only replacement state directory, independent
+// of the test process umask.
+func replacementStateRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "state", "replacement")
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func TestReplaceActivatesOnlyAfterPreparedCandidateSelfTest(t *testing.T) {
 	if err := requireLinux(); err != nil {
 		t.Skip(err)
 	}
 	root := t.TempDir()
 	program := filepath.Join(root, "ardents")
-	stateRoot := filepath.Join(root, "state", "replacement")
+	stateRoot := replacementStateRoot(t)
 	v1 := []byte("current program v1")
 	v2 := []byte("candidate program v2")
 	if err := os.WriteFile(program, v1, 0o700); err != nil {
@@ -63,7 +74,7 @@ func TestReplaceDoesNotRunCandidateBeforeSuccessfulSelfTestWhenActivationDirecto
 		t.Fatal(err)
 	}
 	program := filepath.Join(programDirectory, "ardents")
-	stateRoot := filepath.Join(root, "state", "replacement")
+	stateRoot := replacementStateRoot(t)
 	predecessor := []byte("current program v1")
 	candidate := []byte("candidate program v2")
 	nextCandidate := []byte("candidate program v3")
@@ -179,7 +190,7 @@ func TestReplaceRetainsCandidateForAuthorizedRollbackAfterSelfTestFailure(t *tes
 	}
 	root := t.TempDir()
 	program := filepath.Join(root, "ardents")
-	stateRoot := filepath.Join(root, "state", "replacement")
+	stateRoot := replacementStateRoot(t)
 	v1, v2 := []byte("current program v1"), []byte("candidate program v2")
 	if err := os.WriteFile(program, v1, 0o700); err != nil {
 		t.Fatal(err)
@@ -238,7 +249,7 @@ func TestRollbackRestoresRetainedPredecessorOnlyAfterFreshReleaseAuthorization(t
 	}
 	root := t.TempDir()
 	program := filepath.Join(root, "ardents")
-	stateRoot := filepath.Join(root, "state", "replacement")
+	stateRoot := replacementStateRoot(t)
 	v1, v2 := []byte("current program v1"), []byte("candidate program v2")
 	if err := os.WriteFile(program, v1, 0o700); err != nil {
 		t.Fatal(err)
@@ -278,7 +289,7 @@ func TestReplaceRetiresOnlyCompletedPredecessorBeforeNextAuthorizedSuccessor(t *
 	}
 	root := t.TempDir()
 	program := filepath.Join(root, "ardents")
-	stateRoot := filepath.Join(root, "state", "replacement")
+	stateRoot := replacementStateRoot(t)
 	v1, v2, v3 := []byte("current program v1"), []byte("candidate program v2"), []byte("candidate program v3")
 	if err := os.WriteFile(program, v1, 0o700); err != nil {
 		t.Fatal(err)
@@ -342,7 +353,7 @@ func replacementFixture(t *testing.T) (string, string, []byte) {
 	t.Helper()
 	root := t.TempDir()
 	program := filepath.Join(root, "ardents")
-	stateRoot := filepath.Join(root, "state", "replacement")
+	stateRoot := replacementStateRoot(t)
 	v1, v2 := []byte("current program v1"), []byte("candidate program v2")
 	if err := os.WriteFile(program, v1, 0o700); err != nil {
 		t.Fatal(err)

@@ -99,7 +99,7 @@ func openNodeTestIssuer(t *testing.T, network, issuerID [32]byte, identity ed255
 	current func(credential.Profile, [32]byte) (credential.StateDuty, bool),
 ) *credential.Issuer {
 	t.Helper()
-	root := t.TempDir()
+	root := transitIssuerStoreRoot(t)
 	receipt, err := credential.InitializeIssuerRoot(credential.IssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: identity, InitiatorNodeID: initiatorID, InitiatorPublicKey: initiatorPublic,
 		AssignmentNotAfter: notAfter, Budget: budget, Clock: clock})

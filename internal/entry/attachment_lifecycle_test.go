@@ -11,7 +11,7 @@ import (
 
 func TestCloseCleansActiveAttachmentBeforeReleasingRoot(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	root := t.TempDir()
+	root := entryRoot(t)
 	owner, err := Open(fixture.config(root))
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestCloseCleansActiveAttachmentBeforeReleasingRoot(t *testing.T) {
 
 func TestCloseSerializesConcurrentAcquireAndAttachmentCleanup(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	root := t.TempDir()
+	root := entryRoot(t)
 	owner, err := Open(fixture.config(root))
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +130,7 @@ func TestCloseSerializesConcurrentAcquireAndAttachmentCleanup(t *testing.T) {
 
 func TestCloseCancelsInflightAcquisitionAndPersistsTerminalOutcome(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	root := t.TempDir()
+	root := entryRoot(t)
 	owner, err := Open(fixture.config(root))
 	if err != nil {
 		t.Fatal(err)
@@ -173,7 +173,7 @@ func TestCloseCancelsInflightAcquisitionAndPersistsTerminalOutcome(t *testing.T)
 
 func TestCloseReturnsAttachmentCleanupFailureAfterPersistingIt(t *testing.T) {
 	fixture := newLiveEntryFixture(t)
-	root := t.TempDir()
+	root := entryRoot(t)
 	owner, err := Open(fixture.config(root))
 	if err != nil {
 		t.Fatal(err)

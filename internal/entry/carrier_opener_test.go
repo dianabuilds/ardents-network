@@ -24,7 +24,7 @@ func TestAcquirePassesStateCandidateToMutualTLSOpener(t *testing.T) {
 	defer listener.Close()
 	fixture.candidates[0].Endpoint = listener.Addr().String()
 	fixture.view.Candidates[0] = fixture.candidates[0]
-	owner, err := Open(fixture.config(t.TempDir()))
+	owner, err := Open(fixture.config(entryRoot(t)))
 	if err != nil {
 		t.Fatal(err)
 	}

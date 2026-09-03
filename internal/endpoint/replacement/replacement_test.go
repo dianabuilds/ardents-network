@@ -29,7 +29,7 @@ func TestCommitBindsAcceptedProgramAndVerifyRejectsSubstitution(t *testing.T) {
 		Protocol: release.OutcomeReleaseAccepted, Path: "ardents/linux-amd64/ardents", Length: int64(len(artifact)),
 		Digest: digest[:], Platform: "linux-amd64", Architecture: "amd64", Environment: "h4-alpha", Network: "ardents-alpha",
 		ReleaseIdentity: "endpoint-replacement-test", ReleaseVersion: 2, ReferenceTime: time.Unix(1, 0).UTC()}
-	stateRoot := filepath.Join(root, "state", "replacement")
+	stateRoot := replacementStateRoot(t)
 	record, err := Prepare(context.Background(), Request{StateRoot: stateRoot, Artifact: artifact, decision: decision})
 	if err != nil {
 		t.Fatalf("Prepare() error = %v", err)

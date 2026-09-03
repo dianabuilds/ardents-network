@@ -71,7 +71,7 @@ func newFixture(t *testing.T) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	root, binding := acceptedInstanceBinding(t, t.TempDir(), value.networkID, value.authorityPrivate,
+	root, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), value.networkID, value.authorityPrivate,
 		value.now, value.now.Add(time.Minute))
 	value.binding, value.first = binding, binding.Credential()
 	t.Cleanup(func() {
@@ -103,7 +103,7 @@ func startPublishedEndpoint(t *testing.T, value fixture) (endpointRunner, []byte
 	}
 	owner, err := newEndpoint(setup{
 		NetworkID: value.networkID, BrokerID: fixtureID(19), ConnectionPrincipal: value.publisherPrincipal,
-		AdministrationPrincipal: value.administrationPrincipal, PublicationRoot: t.TempDir(),
+		AdministrationPrincipal: value.administrationPrincipal, PublicationRoot: publicationStoreRoot(t),
 		PublisherBinding: value.binding, publisherIntroductionProfile: profile,
 	})
 

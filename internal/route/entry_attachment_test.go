@@ -7,11 +7,22 @@ import (
 	"crypto/tls"
 	"errors"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
 )
+
+func entryAdmitterRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "entry-admitter")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
 
 func TestOpenEntryAttachmentUsesStatePinnedTLSAndSendsExactBinding(t *testing.T) {
 	serverCertificate := entryBindingCertificate(t, 51)
@@ -183,7 +194,7 @@ func TestEntryAdmitterPortUsesOneDurableEntryOperation(t *testing.T) {
 		Candidates: []entry.Candidate{candidate}}
 	verification := entry.Verification{Current: func() (entry.View, error) { return view, nil },
 		Conflict: func([32]byte, [32]byte) (bool, error) { return false, nil }, Clock: func() time.Time { return now }, TimeConfident: func() bool { return true }}
-	admitter, err := entry.OpenAdmitter(entry.AdmitterConfig{Root: t.TempDir(), Verification: verification})
+	admitter, err := entry.OpenAdmitter(entry.AdmitterConfig{Root: entryAdmitterRoot(t), Verification: verification})
 	if err != nil {
 		t.Fatal(err)
 	}

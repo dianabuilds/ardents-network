@@ -104,7 +104,7 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredent
 	if err != nil {
 		t.Fatal(err)
 	}
-	publicationOwner, err := publication.Open(publication.Config{Root: t.TempDir(), NetworkID: network, Authority: authorityPublic,
+	publicationOwner, err := publication.Open(publication.Config{Root: publicationStoreRoot(t), NetworkID: network, Authority: authorityPublic,
 		Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +116,7 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredent
 		t.Fatal(err)
 	}
 
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), NetworkID: network})
+	store, err := reachability.OpenStore(reachability.StoreConfig{Root: reachabilityStoreRoot(t), NetworkID: network})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredent
 	}
 	issuerInitiatorPublic := testCertificatePublic(t, issuerClientCertificate)
 	issuerPublic := testCertificatePublic(t, issuerCertificate)
-	issuerRoot := t.TempDir()
+	issuerRoot := credentialIssuerRoot(t)
 	const issuerNode = byte(79)
 	receipt, err := credential.InitializeIssuerRoot(credential.IssuerRootConfig{Root: issuerRoot, NetworkID: network, NodeID: [32]byte{issuerNode},
 		IdentityKey: issuerIdentity, InitiatorNodeID: [32]byte{80}, InitiatorPublicKey: issuerInitiatorPublic,
@@ -228,7 +228,7 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredent
 			Endpoint: "127.0.0.1:2", Domain: "rendezvous", AssignmentNotAfter: now.Add(time.Minute)},
 		issuer: state.TransitIssuer{NodeID: [32]byte{issuerNode}, PublicKey: issuerPublic, Family: [32]byte{84}, Profile: receipt.Profile}}
 	endpoint, err := newEndpoint(setup{NetworkID: network, BrokerID: [32]byte{85}, ConnectionPrincipal: [32]byte{86},
-		TransitAcquisitionRoot: t.TempDir(), CreateTransitAcquisitionRoot: true, Clock: func() time.Time { return now }})
+		TransitAcquisitionRoot: transitAcquisitionRoot(t), CreateTransitAcquisitionRoot: true, Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
 	}

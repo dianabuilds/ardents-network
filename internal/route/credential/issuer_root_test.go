@@ -37,6 +37,17 @@ func openTestRootIssuer(t *testing.T, root string, network, nodeID [32]byte, ide
 	return issuer
 }
 
+// transitIssuerFixtureRoot creates the owner-only issuer root required by the
+// Unix permission contract, independent of the test process umask.
+func transitIssuerFixtureRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "transit-issuer")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func TestInitializeIssuerRootPublishesOneStableStateBindableProfile(t *testing.T) {
 	now := time.Unix(2_000_700_000, 0).UTC()
 	nodePublic, nodePrivate, err := ed25519.GenerateKey(rand.Reader)

@@ -7,7 +7,7 @@ import (
 
 func TestAdmitterPersistsExactReplayTupleAcrossReopen(t *testing.T) {
 	fixture := newEntryFixture(t)
-	root := t.TempDir()
+	root := entryRoot(t)
 	admitter, err := OpenAdmitter(AdmitterConfig{Root: root, Verification: fixture.verification()})
 	if err != nil {
 		t.Fatal(err)

@@ -115,7 +115,7 @@ func TestVerifyRecordRejectsMissingPublicBindingBeforeSecretInput(t *testing.T) 
 }
 
 func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testing.T) {
-	vaultRoot, hostRoot := t.TempDir(), t.TempDir()
+	vaultRoot, hostRoot := t.TempDir(), serviceInstanceFixtureRoot(t)
 	environment, network, authorityRoot := [32]byte{11}, [32]byte{12}, [32]byte{13}
 	password := []byte("service custody command password")
 	createArguments := []string{"create-service-authority", "-vault-root", vaultRoot,
@@ -184,7 +184,7 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 }
 
 func TestIssueServiceCredentialRejectsSubstitutedRequestBeforePasswordOrMutation(t *testing.T) {
-	vaultRoot, hostRoot := t.TempDir(), t.TempDir()
+	vaultRoot, hostRoot := t.TempDir(), serviceInstanceFixtureRoot(t)
 	environment, network, authorityRoot := [32]byte{21}, [32]byte{22}, [32]byte{23}
 	password := []byte("service custody substitution password")
 	createArguments := []string{"create-service-authority", "-vault-root", vaultRoot,
@@ -243,6 +243,15 @@ func TestIssueServiceCredentialRejectsSubstitutedRequestBeforePasswordOrMutation
 	if _, err := os.Stat(responsePath); !os.IsNotExist(err) {
 		t.Fatalf("substituted request created a response: %v", err)
 	}
+}
+
+func serviceInstanceFixtureRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "service-instance-root")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }
 
 func TestRecoveryBundleCommandsKeepAuthorityLockedOnRestore(t *testing.T) {
