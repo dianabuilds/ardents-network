@@ -20,11 +20,11 @@ by `openpcc/ohttp v0.0.80`.
 | `github.com/openpcc/twoway` | `v0.0.80` | Apache-2.0 | request/response HPKE context used by OHTTP |
 | `github.com/openpcc/bhttp` | `v0.0.80` | Apache-2.0 | RFC 9292 known-length HTTP encoding |
 | `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed HPKE implementation |
-| `github.com/quic-go/quic-go` | `v0.61.0` | MIT | maintained QUIC v1 Carrier Adapter and QUIC varint closure required by BHTTP |
+| `github.com/quic-go/quic-go` | `v0.62.0` | MIT | maintained QUIC v1 Carrier Adapter and QUIC varint closure required by BHTTP |
 | `github.com/cespare/xxhash/v2` | `v2.3.0` | MIT | tracing dependency closure |
 | `go.opentelemetry.io/otel` | `v1.45.0` | Apache-2.0 | OHTTP tracing types |
 | `go.opentelemetry.io/otel/trace` | `v1.45.0` | Apache-2.0 | OHTTP tracing Interface |
-| `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | selected cryptographic support closure |
+| `golang.org/x/crypto` | `v0.56.0` | BSD-3-Clause | selected cryptographic support closure |
 | `golang.org/x/net` | `v0.58.0` | BSD-3-Clause | BHTTP HTTP support |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL/locking and registry enforcement plus platform atomic replacement support |
 | `golang.org/x/text` | `v0.41.0` | BSD-3-Clause | BHTTP normalization |
@@ -70,7 +70,7 @@ version change repeats dependency, license, advisory, Windows behavior, and
 offline-build review.
 
 **QUIC Carrier use:** `internal/route` directly imports pinned
-`github.com/quic-go/quic-go v0.61.0` for the maintained
+`github.com/quic-go/quic-go v0.62.0` for the maintained
 `ardents-carrier-quic-v1` Adapter selected by ADR-0048. The module is pure Go,
 MIT licensed, supports the repository toolchain, publishes security reporting
 and advisories, and passed R-094's exact-version binary vulnerability, TLS peer
@@ -109,7 +109,7 @@ tests, non-test caller, and package-map entry now own it.
 | `github.com/sigstore/protobuf-specs` | `v0.5.2` | Apache-2.0 | signature verification type closure |
 | `github.com/sigstore/sigstore` | `v1.10.9` | Apache-2.0 | public-key verification adapter used by maintained Release verification and its behavior fixtures |
 | `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
-| `golang.org/x/crypto` | `v0.55.0` | BSD-3-Clause | raised cryptographic support closure |
+| `golang.org/x/crypto` | `v0.56.0` | BSD-3-Clause | raised cryptographic support closure |
 | `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
 | `golang.org/x/term` | `v0.45.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
 | `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260819154853-08b0e4226688` | Apache-2.0 | protobuf API type closure |
@@ -157,7 +157,7 @@ belongs in the repository.
 
 Status: **current maintained dependency under ADR-0021.** Password-derived
 Authority Custody uses `golang.org/x/crypto/argon2` from module
-`golang.org/x/crypto v0.55.0` (BSD-3-Clause). Other maintained cryptographic
+`golang.org/x/crypto v0.56.0` (BSD-3-Clause). Other maintained cryptographic
 owners select the same module version; integration must produce one shared
 exact root-module version, never parallel copies.
 

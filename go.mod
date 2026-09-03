@@ -6,10 +6,10 @@ require (
 	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/cloudflare/circl v1.6.5
 	github.com/openpcc/ohttp v0.0.80
-	github.com/quic-go/quic-go v0.61.0
+	github.com/quic-go/quic-go v0.62.0
 	github.com/sigstore/sigstore v1.10.9
 	github.com/theupdateframework/go-tuf/v2 v2.4.2
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
 )
