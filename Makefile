@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -49,7 +49,7 @@ endif
 
 format:
 	go fmt ./...
-	gofmt -w ./scripts/check-tools.go
+	gofmt -w ./scripts/check-tools.go ./scripts/check-deadcode.go
 
 format-check architecture:
 	go test ./internal/architecture -run TestRepositoryArchitecture -count=1
@@ -134,14 +134,18 @@ staticcheck: tools-check
 vuln: tools-check
 	govulncheck ./...
 
+deadcode: tools-check
+	go run ./scripts/check-deadcode.go
+
 quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
 
 check:
-	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln
+	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln deadcode
 	$(MAKE) --output-sync=target e2e
 	$(MAKE) --output-sync=target test-race
 
 tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
 	go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+	go install golang.org/x/tools/cmd/deadcode@v0.48.0

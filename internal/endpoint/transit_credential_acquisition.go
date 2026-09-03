@@ -28,6 +28,78 @@ type transitCredentialSubmission struct {
 	finish        func(bool) error
 }
 
+// acquireUserRouteCredential is Endpoint's adapter for Route's already
+// selected membership Grant tuple. Route owns the Entry/Initiator carrier and
+// the exact User-route peers; Endpoint owns only the durable at-most-once
+// request, local key enrollment, and terminal spend record.
+func (endpoint *endpoint) acquireUserRouteCredential(ctx context.Context, input route.CredentialRequest) (route.Credential, error) {
+	if endpoint == nil || ctx == nil || input.Epoch.NetworkID != endpoint.network || input.Epoch.Digest == [32]byte{} || input.Epoch.Number == 0 ||
+		input.TransitRole != route.IntroductionRole || input.AttachmentID == [32]byte{} || input.At.IsZero() || !input.At.Before(input.NotAfter) || input.Exchange == nil ||
+		!validRouteTransitPeer(input.Initiator) || !validRouteTransitPeer(input.Transit) || input.Issuer.NodeID == [32]byte{} ||
+		input.Issuer.PublicKey == [32]byte{} || input.Issuer.Family == [32]byte{} {
+		return route.Credential{}, errors.New("user Route credential request is incomplete")
+	}
+	profile, err := credential.DecodeProfile(input.Issuer.Profile)
+	if err != nil || credential.VerifyProfile(profile, endpoint.network, input.Issuer.NodeID, input.Issuer.PublicKey, input.At, input.NotAfter) != nil {
+		return route.Credential{}, errors.New("current State transit issuer profile is invalid")
+	}
+	owner, err := endpoint.transitAcquire.owner(input.TransitRole)
+	if err != nil {
+		return route.Credential{}, errors.New("endpoint transit acquisition owner is unavailable")
+	}
+	scope := transitAcquisitionScope{NetworkID: endpoint.network, Digest: input.Epoch.Digest, Epoch: input.Epoch.Number,
+		IssuerNodeID: input.Issuer.NodeID, IssuerPublicKey: input.Issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(input.Issuer.Profile),
+		GrantSignerPublicKey: profile.GrantSignerPublicKey, TransitNodeID: input.Transit.NodeID, AttachmentID: input.AttachmentID,
+		TransitRole: input.TransitRole, NotAfter: input.NotAfter}
+	attempt, err := owner.begin(scope)
+	if err != nil {
+		return route.Credential{}, err
+	}
+	if attempt.Phase == transitPending {
+		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: input.Issuer.PublicKey, Profile: profile,
+			At: input.At, Deadline: input.NotAfter, Exchange: credential.Exchange(input.Exchange)})
+		if err != nil {
+			_ = owner.fail()
+			return route.Credential{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
+		}
+		result, err := client.Issue(ctx, attempt.Request)
+		if err != nil {
+			if !errors.Is(err, credential.ErrExchangeUnavailable) {
+				_ = owner.fail()
+			}
+			return route.Credential{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
+		}
+		if err := owner.commit(result); err != nil {
+			return route.Credential{}, err
+		}
+		if result.Outcome != credential.Issued {
+			return route.Credential{}, transitAcquisitionOutcomeError{outcome: result.Outcome}
+		}
+		attempt, err = owner.begin(scope)
+		if err != nil {
+			return route.Credential{}, err
+		}
+	}
+	presenting, err := owner.present(scope)
+	if err != nil {
+		return route.Credential{}, err
+	}
+	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
+	if err != nil {
+		_ = owner.finish(false)
+		return route.Credential{}, err
+	}
+	return route.Credential{Authorization: append([]byte(nil), presenting.Grant...), ClientCertificate: presenting.Certificate,
+		Finish: func(presented bool) error {
+			erase()
+			return owner.finish(presented)
+		}}, nil
+}
+
+func validRouteTransitPeer(peer route.TransitPeer) bool {
+	return peer.NodeID != [32]byte{} && peer.PublicKey != [32]byte{} && peer.Family != [32]byte{} && peer.Endpoint != ""
+}
+
 func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view transitCredentialIssuerView, epoch state.ResolutionEpoch,
 	entry applicationEntry, initiator, transit transitPeer, role byte, slot reachability.Introduction,
 	at, deadline time.Time,
@@ -43,9 +115,8 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 		if err != nil {
 			return transitCredentialSubmission{}, err
 		}
-		// Descriptor v1 already carries its fixed Grant.  Do not hand it back
-		// through the private v2-only input: openUserReachabilityRoute takes the
-		// exact descriptor field for this compatibility path.
+		// Descriptor v1 already carries its fixed Grant; the Publisher path keeps
+		// this exact capability rather than acquiring a membership credential.
 		return transitCredentialSubmission{attachment: attachment}, nil
 	}
 	if slot.SubmissionMode != reachability.SubmissionMembershipGrant {

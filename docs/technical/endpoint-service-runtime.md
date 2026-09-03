@@ -43,6 +43,17 @@ Administration operations remain separately authorized; Publish dispatches the
 Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
 request. The Connection Interface cannot invoke either operation.
 
+For a User connection, Endpoint parses and authenticates the Service Link,
+activates its local capability, and passes only the authenticated Target to the
+opened `route.Route`. Route owns the volatile State/Entry/private-reachability/
+Introduction sequence and returns only a verified Attachment plus immutable
+Target/publication evidence. Endpoint supplies Route a narrow callback for its
+durable membership Transit Grant journal; the callback cannot select a carrier
+or peer. A Grant is terminalized immediately after receiving-Introduction TLS
+admission, even when subsequent delivery or Service TLS fails. Fixed Grants
+remain verified against current State inside Route. This is the boundary
+selected by [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md).
+
 ## Local admission
 
 The Broker has one volatile generation. A Grant is bound to one opaque local

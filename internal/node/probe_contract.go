@@ -83,9 +83,3 @@ func newProbePlan(input ProbeConfig, identity ed25519.PublicKey, now func() time
 	}
 	return &probePlan{config: input, now: func() time.Time { return now().UTC() }}, nil
 }
-
-// ListenAddress returns the literal endpoint owned by the plan.
-func (p *probePlan) ListenAddress() string { return p.config.ListenAddress }
-
-// MaximumDuty returns the longest accepted connection lifetime.
-func (p *probePlan) MaximumDuty() time.Duration { return p.config.MaximumDuty }

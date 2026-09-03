@@ -23,6 +23,10 @@ type transitPeer struct {
 	Endpoint          string
 }
 
+func validTransitPeer(peer transitPeer) bool {
+	return peer.NodeID != [32]byte{} && peer.PublicKey != [32]byte{} && peer.Endpoint != ""
+}
+
 // PublisherIntroductionProfile is the complete finite C-2 context selected
 // for one Publisher live slot. Its authorizations are opaque capabilities for
 // the receiving transit duties, not Service material or route candidates.

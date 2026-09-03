@@ -145,6 +145,15 @@ The receiving Node's existing durable Grant-ID replay ledger remains the final
 at-most-once admission check. Issuer idempotency and Endpoint lifecycle do not
 replace it.
 
+For a User-side membership descriptor, [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md)
+keeps this journal in Endpoint but moves the volatile carrier sequence into
+Route. Endpoint supplies only the exact journal tuple and local certificate;
+Route supplies one opaque Credential Relay exchange through the selected
+Entry/Initiator and calls the journal completion immediately after
+Introduction's Grant-bound TLS admission. A later sealed-Introduction or
+Service-connection failure therefore burns the presented credential and cannot
+return it to `ready`.
+
 ## Product and failure boundary
 
 Acquisition is an Endpoint operation below the local Application Interface.

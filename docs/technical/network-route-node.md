@@ -14,7 +14,7 @@ supported Node hosting, or Route qualification.
 | internal/network/duty | Persist the Endpoint-local Role Domain generation, watermark, expiry, conflict truth, and receiving-Node one-use Transit Grant spend ledger. | Network State publication, assignment creation, Route ownership, issuer custody, or Node process lifecycle. |
 | internal/resource | Resolve the current process's own cgroup-v2 directory, measure selected Linux process limits, and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
 | internal/entry | Import and admit a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, and open an adjacent contact lifecycle. | Complete Route selection, carrier choice, or User identity. |
-| internal/route | Select and hold one native Interactive Route attachment over authenticated State, Entry, caller-owned resource facts, and one exact caller-selected TCP/TLS or QUIC-v1 Carrier. | Carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty writing. |
+| internal/route | Compose and hold one native Interactive User-route attachment from authenticated State, Entry, caller-owned resource facts, private reachability, Descriptor-selected peers, and the exact selected TCP/TLS or QUIC-v1 carrier. | Candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
 | internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. | State-root authority, assignment creation, or a separate probe runtime. |
 | internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
@@ -32,14 +32,19 @@ LegBinding and SealedIntroduction have fixed binary records; State/publication
 select supported generations, not a Node or peer value. The profile has no H3
 reader, direct fallback, generic record map, or version-negotiation path.
 
-Route owns volatile attachment selection and cleanup. It receives a
-caller-owned resource reservation, verifies State-pinned TLS and Entry facts,
-and returns an opaque attachment carrier to Service Connection. Service
-Connection, not Route, decides whether an attachment must be replaced. Entry
-may retain replay and adjacent-contact state but cannot construct a complete
-Route from that state. Caller and Route shutdown may race to close one active
-Attachment; all closers join the same terminal cleanup, receive the same
-result, and cannot reuse the carrier after close begins.
+Route owns volatile User-route composition and cleanup. It reserves caller
+capacity before reading State, then obtains only State's exact Gateway,
+Initiator, and issuer facts; carries private reachability through Entry;
+verifies the Descriptor against the authenticated Target; and uses its exact
+Introduction/Rendezvous slot to return an opaque Attachment and immutable
+evidence to Service Connection. Endpoint owns Service-Link/capability binding
+and its durable credential journal through a narrow callback; it cannot choose
+a Route carrier or peer. Service Connection, not Route, decides whether an
+attachment must be replaced. Entry may retain replay and adjacent-contact state
+but cannot construct a complete Route from that state. Caller and Route
+shutdown may race to close one active Attachment; all closers join the same
+terminal cleanup, receive the same result, and cannot reuse the carrier after
+close begins.
 
 Entry owns every carrier/attachment cleanup lease returned by `Acquire`. Its
 owner rejects new acquisition as soon as close begins, cancels and joins an
@@ -182,6 +187,7 @@ and confirmed removal. The operator contract is the
   Route topology, privacy, independent operation, public deployment, or a
   Node profile.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md),
+	[ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md),
   [ADR-0025](../adr/0025-state-referenced-entry-invites.md),
   [ADR-0026](../adr/0026-interactive-route-v1-wire.md), and
   [ADR-0027](../adr/0027-entry-binding-v1.md),

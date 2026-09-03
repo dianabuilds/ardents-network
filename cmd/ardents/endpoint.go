@@ -146,7 +146,7 @@ func runEnrollmentCheck(path string, output io.Writer) error {
 // readiness. It has no network route, browser capability, or update action.
 func runEnrolledPortable(ctx context.Context, path string, output io.Writer) error {
 	return runEnrolledEndpoint(ctx, output, false, func() (enrollmentFact, error) {
-		input, verified, err := verifyEnrollment(path)
+		input, verified, err := verifyHeadlessEnrollment(path)
 		return enrollmentFact{Cohort: input.Cohort, Release: input.Release, Verified: verified}, err
 	})
 }
@@ -264,6 +264,17 @@ func encodePortableEvent(encoder *json.Encoder, event portable.Event) error {
 }
 
 func verifyEnrollment(path string) (alphaEnrollmentInput, enrollment.Verified, error) {
+	return verifyAlphaEnrollment(path, enrollment.Verify)
+}
+
+// verifyHeadlessEnrollment authenticates the portable participant's complete
+// Node and custody inventory. Generic enrollment-check deliberately calls
+// verifyEnrollment because it is a local diagnosis, not a runtime launch.
+func verifyHeadlessEnrollment(path string) (alphaEnrollmentInput, enrollment.Verified, error) {
+	return verifyAlphaEnrollment(path, enrollment.VerifyHeadless)
+}
+
+func verifyAlphaEnrollment(path string, verify func(enrollment.Request) (enrollment.Verified, error)) (alphaEnrollmentInput, enrollment.Verified, error) {
 	var input alphaEnrollmentInput
 	if err := decodeOperatorInput(path, 16<<10, &input); err != nil {
 		return alphaEnrollmentInput{}, enrollment.Verified{}, err
@@ -278,7 +289,7 @@ func verifyEnrollment(path string) (alphaEnrollmentInput, enrollment.Verified, e
 	if err != nil {
 		return alphaEnrollmentInput{}, enrollment.Verified{}, err
 	}
-	verified, err := enrollment.Verify(enrollment.Request{BundleRoot: input.BundleRoot, ExecutablePath: executable,
+	verified, err := verify(enrollment.Request{BundleRoot: input.BundleRoot, ExecutablePath: executable,
 		Pin: enrollment.Pin{Cohort: input.Cohort, Release: input.Release, Platform: input.Platform,
 			ManifestSHA256: input.ManifestSHA256}, Environment: input.Environment, Network: input.Network,
 		TargetPath: input.TargetPath, Architecture: runtime.GOARCH, ReferenceTime: time.Now().UTC()})

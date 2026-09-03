@@ -131,7 +131,6 @@ func (resolver *resolver) Resolve(ctx context.Context, serviceName string, at ti
 		return resolver.failure(invalidEvidenceClass, errors.New("resolution response Record version is inconsistent"))
 	}
 	resolver.mu.Lock()
-	resolver.observation.Resolved++
 	resolver.roleEvidence.Result = resolvedClass
 	resolver.roleEvidence.Target = binding.Target
 	resolver.roleEvidence.Generation = binding.Generation
@@ -163,13 +162,6 @@ func rejectPrivateResolutionRedirect(_ *http.Request, _ []*http.Request) error {
 	return errors.New("private resolution redirects are forbidden")
 }
 
-// Observation returns only bounded local counts with no query-derived identifier.
-func (resolver *resolver) Observation() (requests, resolved, failed uint32) {
-	resolver.mu.Lock()
-	defer resolver.mu.Unlock()
-	return resolver.observation.Requests, resolver.observation.Resolved, resolver.observation.Failed
-}
-
 // ConnectionExclusions returns the resolution identities/families that a
 // subsequent connection plan must exclude, plus its distinct Rendezvous.
 func (resolver *resolver) ConnectionExclusions() ([][32]byte, []string, [32]byte) {
@@ -179,7 +171,6 @@ func (resolver *resolver) ConnectionExclusions() ([][32]byte, []string, [32]byte
 
 func (resolver *resolver) failure(class string, _ error) (result, error) {
 	resolver.mu.Lock()
-	resolver.observation.Failed++
 	resolver.roleEvidence.Result = class
 	resolver.mu.Unlock()
 	return result{Class: class}, errors.New(class)
@@ -188,7 +179,6 @@ func (resolver *resolver) failure(class string, _ error) (result, error) {
 func (resolver *resolver) begin() bool {
 	resolver.mu.Lock()
 	defer resolver.mu.Unlock()
-	resolver.observation.Requests++
 	if resolver.used {
 		return false
 	}

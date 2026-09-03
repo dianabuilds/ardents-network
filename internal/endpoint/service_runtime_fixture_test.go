@@ -21,6 +21,33 @@ type endpointRunner interface {
 	acceptForHarness(context.Context, inboundConnectionRequest) (runtimeResult, error)
 }
 
+func (endpoint *endpoint) connectForHarness(ctx context.Context, input outboundConnectionRequest) (runtimeResult, error) {
+	return endpoint.runOutbound(ctx, connectionInput{Principal: input.Principal, Session: input.Capability,
+		Target: input.Target, AuthorityPublic: input.AuthorityPublic, Publication: input.Publication, Route: input.Route, Application: input.Application,
+		OpenAttachment: input.OpenAttachment, RecoveryBinding: input.RecoveryBinding, NameBinding: input.NameBinding,
+		NameUpdates: input.NameUpdates, closeApplicationOnRemoteTerminal: input.closeApplicationOnRemoteTerminal, OnAuthenticated: input.OnAuthenticated, BytesEachDirection: input.BytesEachDirection, SendBytes: input.SendBytes,
+		ReceiveBytes: input.ReceiveBytes, At: input.At})
+}
+
+func (endpoint *endpoint) runOutbound(ctx context.Context, input connectionInput) (runtimeResult, error) {
+	if endpoint == nil || input.At.IsZero() {
+		return denied("local operation is incomplete")
+	}
+	if err := ctx.Err(); err != nil {
+		return failed("local timeout or cancellation", "local operation was cancelled", err)
+	}
+	return endpoint.connect(ctx, input)
+}
+
+func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (runtimeResult, error) {
+	session, err := endpoint.activateApplicationSession(ctx, input.Session, input.Principal)
+	if err != nil {
+		return denied(err.Error())
+	}
+	defer session.Release()
+	return endpoint.connectAuthorized(session.Context(), input, session.receipt)
+}
+
 type fixture struct {
 	now                                            time.Time
 	networkID, clientPrincipal, publisherPrincipal [32]byte

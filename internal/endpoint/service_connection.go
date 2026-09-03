@@ -13,15 +13,6 @@ import (
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
-func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (result runtimeResult, err error) {
-	session, activateErr := endpoint.activateApplicationSession(ctx, input.Session, input.Principal)
-	if activateErr != nil {
-		return denied(activateErr.Error())
-	}
-	defer session.Release()
-	return endpoint.connectAuthorized(session.Context(), input, session.receipt)
-}
-
 func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result runtimeResult, err error) {
 	defer projectReceipt(&result, receipt)
 	authority := endpoint.authority

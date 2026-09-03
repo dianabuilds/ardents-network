@@ -34,19 +34,4 @@ func (gateway *gateway) control(writer http.ResponseWriter, request *http.Reques
 	}
 	writer.Header().Set("Content-Type", "application/octet-stream")
 	_, _ = writer.Write(response)
-	gateway.mu.Lock()
-	gateway.observation.ControlRequests++
-	if result.Class == "submitted" {
-		gateway.observation.ControlAccepted++
-	} else {
-		gateway.observation.ControlDenied++
-	}
-	gateway.mu.Unlock()
-}
-
-// ControlObservation returns only bounded counts, never operation fields.
-func (gateway *gateway) ControlObservation() (requests, accepted, denied uint32) {
-	gateway.mu.Lock()
-	defer gateway.mu.Unlock()
-	return gateway.observation.ControlRequests, gateway.observation.ControlAccepted, gateway.observation.ControlDenied
 }

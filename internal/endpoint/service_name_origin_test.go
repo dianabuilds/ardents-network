@@ -4,7 +4,13 @@ import (
 	"context"
 	"net"
 	"testing"
+
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
+
+func continuesNameBinding(initial, update destinationBinding) bool {
+	return nativeconnection.ContinuesNameOrigin(initial, update)
+}
 
 func TestNameBindingContinuationIsMonotonicAndDestinationExact(t *testing.T) {
 	t.Parallel()

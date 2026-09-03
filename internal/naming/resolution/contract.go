@@ -110,12 +110,6 @@ type result struct {
 	Binding record.Binding
 }
 
-type resolverObservation struct {
-	Requests uint32
-	Resolved uint32
-	Failed   uint32
-}
-
 type relayObservation struct {
 	Requests      uint32
 	RequestBytes  uint64
@@ -123,12 +117,9 @@ type relayObservation struct {
 }
 
 type gatewayObservation struct {
-	Requests        uint32
-	Resolved        uint32
-	Rejected        uint32
-	ControlRequests uint32
-	ControlAccepted uint32
-	ControlDenied   uint32
+	Requests uint32
+	Resolved uint32
+	Rejected uint32
 }
 
 type gateway struct {
@@ -156,7 +147,6 @@ type resolver struct {
 	transport    *ohttp.Transport
 	mu           sync.Mutex
 	used         bool
-	observation  resolverObservation
 	roleEvidence resolverRoleEvidence
 }
 

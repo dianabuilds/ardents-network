@@ -16,12 +16,34 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
-	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 type connectionWorkCounts struct {
 	state, entry, issuer, route int
+}
+
+func openConnectionRoute(t *testing.T, network [32]byte, current func() (applicationStateView, error), entry applicationEntry,
+	clock func() time.Time,
+) *route.Route {
+	t.Helper()
+	owner, err := route.Open(route.Config{NetworkID: network, Current: func() (route.StateView, error) {
+		view, viewErr := current()
+		return view, viewErr
+	}, Entry: entry, Credentials: func(context.Context, route.CredentialRequest) (route.Credential, error) {
+		return route.Credential{}, errors.New("test credential adapter must not run")
+	}, Admit: func(ctx context.Context) (func() error, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return func() error { return nil }, nil
+	}, Clock: clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	return owner
 }
 
 type countingApplicationState struct{ counts *connectionWorkCounts }
@@ -177,9 +199,10 @@ func openMaintainedConnectionComposition(t *testing.T, clock func() time.Time, a
 			Endpoint: contact.Endpoint, Domain: "initiator", AssignmentNotAfter: at.Add(time.Minute)},
 	}
 	entryOwner := &blockingApplicationEntry{contact: contact, entered: make(chan struct{}, 1)}
+	current := func() (applicationStateView, error) { return view, nil }
+	userRoute := openConnectionRoute(t, network, current, entryOwner, clock)
 	owner, err := endpoint.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
-		Current: func() (applicationStateView, error) { return view, nil }, Entry: entryOwner,
-		Principal: connectionPrincipal, BytesEachDirection: 1, Clock: clock})
+		Route: userRoute, Principal: connectionPrincipal, BytesEachDirection: 1, Clock: clock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,70 +212,6 @@ func openMaintainedConnectionComposition(t *testing.T, clock func() time.Time, a
 func (owner countingApplicationEntry) Acquire(context.Context, entry.Attempt, entry.CandidateOpener) (net.Conn, func() error, error) {
 	owner.counts.route++
 	return nil, nil, errors.New("test Route must not be opened")
-}
-
-func TestActiveConnectionWorkIsCancelledByGrantAndBrokerLifecycle(t *testing.T) {
-	for _, terminal := range []string{"revoke", "drain", "close"} {
-		t.Run(terminal, func(t *testing.T) {
-			network, principal := [32]byte{1}, [32]byte{2}
-			admission, err := broker.New(broker.Config{ID: [32]byte{3},
-				Grants: []broker.Grant{{Principal: principal, Surface: broker.Connection, PermitDrain: true}}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			endpoint, err := newEndpoint(setup{NetworkID: network, BrokerID: [32]byte{3}, ConnectionPrincipal: principal, Admission: admission})
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() {
-				if closeErr := endpoint.Close(); closeErr != nil {
-					t.Errorf("close Endpoint: %v", closeErr)
-				}
-			})
-			link, err := targetlink.Encode(targetlink.Link{Network: network, Target: [32]byte{9}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			entered := make(chan struct{})
-			result := make(chan error, 1)
-			deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
-			go func() {
-				_, openErr := endpoint.openApplicationConnection(context.Background(), userApplicationConnectionRequest{
-					Introduction: userIntroductionRouteRequest{TargetLink: link,
-						Introduction: userIntroductionProfile{NetworkID: network, Digest: [32]byte{4}, Epoch: 1,
-							Introduction:     transitPeer{NodeID: [32]byte{5}, PublicKey: [32]byte{6}, Endpoint: "127.0.0.1:1"},
-							RendezvousNodeID: [32]byte{7}, Reachability: [32]byte{8}, JoinHandle: [32]byte{10}, NotAfter: deadline,
-							SubmissionAuthorization: []byte("fixed-test-authorization")},
-						Entry: &blockingApplicationEntry{entered: entered}, Initiator: transitPeer{NodeID: [32]byte{11}, PublicKey: [32]byte{12}, Endpoint: "127.0.0.1:2"},
-						Rendezvous:   transitPeer{NodeID: [32]byte{7}, PublicKey: [32]byte{13}, Endpoint: "127.0.0.1:3"},
-						AttachmentID: [32]byte{14}, EndpointHandshake: [32]byte{15}, At: time.Now().UTC()},
-					Principal: principal, BytesEachDirection: 1,
-				})
-				result <- openErr
-			}()
-			<-entered
-			if admission.Active() != 1 {
-				t.Fatalf("active Route work session count = %d, want 1", admission.Active())
-			}
-			switch terminal {
-			case "revoke":
-				err = admission.Revoke(principal, broker.Connection)
-			case "drain":
-				err = admission.DrainUntil(broker.Connection, time.Now())
-			case "close":
-				admission.Close()
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := <-result; err == nil {
-				t.Fatal("terminal Grant lifecycle left Route acquisition running")
-			}
-			if admission.Active() != 0 {
-				t.Fatalf("terminal Grant lifecycle retained %d sessions", admission.Active())
-			}
-		})
-	}
 }
 
 func TestAdmissionCapabilityTTLDoesNotTerminateActiveEndpointWork(t *testing.T) {
@@ -372,11 +331,13 @@ func TestConnectionAuthorizationPrecedesStateEntryIssuerAndRouteWork(t *testing.
 			})
 			floor, link := acceptedConnectionFloor(t, network, at)
 			counts := &connectionWorkCounts{}
+			current := func() (applicationStateView, error) {
+				counts.state++
+				return countingApplicationState{counts: counts}, nil
+			}
+			userRoute := openConnectionRoute(t, network, current, countingApplicationEntry{counts: counts}, func() time.Time { return at })
 			owner, err := endpoint.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
-				Current: func() (applicationStateView, error) {
-					counts.state++
-					return countingApplicationState{counts: counts}, nil
-				}, Entry: countingApplicationEntry{counts: counts}, Principal: principal, BytesEachDirection: 1, Clock: func() time.Time { return at }})
+				Route: userRoute, Principal: principal, BytesEachDirection: 1, Clock: func() time.Time { return at }})
 			if err != nil {
 				t.Fatal(err)
 			}

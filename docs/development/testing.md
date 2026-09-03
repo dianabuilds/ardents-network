@@ -22,6 +22,23 @@ code.
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
 - `make fuzz` exercises the maintained bounded parser/encoder fuzz surface.
 
+## Reachability audit
+
+`make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained
+Windows and Linux production builds, then for their test executables. The test
+result must be empty. Production results must match
+[`tests/profiles/deadcode-allowlist.json`](../../tests/profiles/deadcode-allowlist.json)
+exactly: an entry names every retained symbol, its classification, rationale,
+owner, and deletion condition. Prefix, package, or count-based exceptions are
+not permitted.
+
+Most retained production entries are intentionally unwired closed-alpha
+tracers with deterministic behavior evidence; this is not a claim that they
+are a selected product path. A newly reported symbol fails the gate until its
+owner either removes it or reviews it with a concrete retirement condition.
+An absent listed symbol also fails the gate, so the registry cannot silently
+accumulate stale exemptions. `make check` includes this audit.
+
 The headless command inventory is the sole current artifact manifest under
 `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the three-owner [`ownership.json`](ownership.json) registry, exact

@@ -15,6 +15,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
+func (owner *transitAcquisition) stateForTest() transitAcquisitionState {
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	return owner.state
+}
+
 func TestTransitAcquisitionReconcilesAndBurnsAmbiguousPresentation(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(2_000_000_000, 0).UTC()

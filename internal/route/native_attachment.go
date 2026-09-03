@@ -1,19 +1,18 @@
 package route
 
 import (
-	"context"
 	"errors"
 	"net"
 	"sync"
 	"time"
 )
 
-// Attachment is one admitted native Entry connection. Route creates and owns
-// its identifier, selection, resource reservation, and Entry cleanup; callers
-// receive only the opaque byte carrier. Cleanup executes once, while every
-// concurrent or later Close joins its terminal result.
+// Attachment is one admitted, fully authenticated User Route byte carrier.
+// It owns the Entry cleanup and Route resource release exactly once while the
+// caller receives only net.Conn and immutable post-verification Evidence.
 type Attachment struct {
 	connection net.Conn
+	evidence   Evidence
 
 	mu     sync.Mutex
 	close  func() error
@@ -24,14 +23,29 @@ type Attachment struct {
 
 var _ net.Conn = (*Attachment)(nil)
 
-// Close attempts the authenticated Entry, caller-owned resource, and local
-// Route-selection cleanup as one owned operation. Concurrent and later calls
-// join the same terminal result; a nil result proves release happened exactly
-// once. A closed Attachment cannot be reused for another Service Connection
-// generation.
+// Evidence returns a copy of the verified result that binds this carrier to
+// the exact Target, publication, and attachment identity. It remains readable
+// after Close but never exposes Route peers, State, or credential material.
+func (attachment *Attachment) Evidence() (Evidence, error) {
+	if attachment == nil {
+		return Evidence{}, errors.New("user Route attachment is unavailable")
+	}
+	attachment.mu.Lock()
+	defer attachment.mu.Unlock()
+	if attachment.evidence.AuthenticatedTarget == [32]byte{} || attachment.evidence.AttachmentID == [32]byte{} {
+		return Evidence{}, errors.New("user Route attachment has no verified evidence")
+	}
+	result := attachment.evidence
+	result.Publication = append([]byte(nil), result.Publication...)
+	return result, nil
+}
+
+// Close joins concurrent callers on one terminal cleanup. It closes the
+// Entry-owned carrier and Route-owned capacity only through its owner-provided
+// cleanup function; a later caller observes the same terminal result.
 func (attachment *Attachment) Close() error {
 	if attachment == nil {
-		return errors.New("native Route attachment is unavailable")
+		return errors.New("user Route attachment is unavailable")
 	}
 	attachment.mu.Lock()
 	if attachment.done != nil {
@@ -45,20 +59,18 @@ func (attachment *Attachment) Close() error {
 	}
 	if attachment.connection == nil || attachment.close == nil {
 		attachment.mu.Unlock()
-		return errors.New("native Route attachment is unavailable")
+		return errors.New("user Route attachment is unavailable")
 	}
-	cleanup := attachment.close
-	finish := attachment.finish
-	done := make(chan struct{})
-	attachment.done = done
+	cleanup, finish := attachment.close, attachment.finish
+	attachment.done = make(chan struct{})
 	attachment.connection, attachment.close = nil, nil
 	attachment.mu.Unlock()
 	result := cleanup()
 	if finish != nil {
 		finish(result)
-		return result
+	} else {
+		attachment.publish(result)
 	}
-	attachment.publish(result)
 	return result
 }
 
@@ -71,18 +83,20 @@ func (attachment *Attachment) bindCompletion(finish func(error)) {
 func (attachment *Attachment) publish(result error) {
 	attachment.mu.Lock()
 	attachment.result = result
-	close(attachment.done)
+	if attachment.done != nil {
+		close(attachment.done)
+	}
 	attachment.mu.Unlock()
 }
 
 func (attachment *Attachment) carrier() (net.Conn, error) {
 	if attachment == nil {
-		return nil, errors.New("native Route attachment is unavailable")
+		return nil, errors.New("user Route attachment is unavailable")
 	}
 	attachment.mu.Lock()
 	defer attachment.mu.Unlock()
 	if attachment.connection == nil {
-		return nil, errors.New("native Route attachment is unavailable")
+		return nil, errors.New("user Route attachment is unavailable")
 	}
 	return attachment.connection, nil
 }
@@ -141,61 +155,4 @@ func (attachment *Attachment) SetWriteDeadline(deadline time.Time) error {
 		return err
 	}
 	return connection.SetWriteDeadline(deadline)
-}
-
-func openNativeAttachment(ctx context.Context, source EntryAcquirer, selected plan, identifier [32]byte,
-	deadline time.Time, admit ResourceAdmission) (*Attachment, error) {
-	if source == nil || selected.networkID == [32]byte{} || selected.digest == [32]byte{} || selected.epoch == 0 || identifier == [32]byte{} ||
-		deadline.IsZero() || !time.Now().Before(deadline) || admit == nil {
-		return nil, errors.New("native Route attachment request is invalid")
-	}
-	setup, err := selected.relaySetup(identifier, deadline)
-	if err != nil {
-		return nil, err
-	}
-	release, err := admit(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if release == nil {
-		return nil, errors.New("native Route resource admission has no release")
-	}
-	connection, closeAttempt, err := OpenEntryAttachment(ctx, source, EntryAttachmentRequest{
-		NetworkID: selected.networkID, Digest: selected.digest, Epoch: selected.epoch, AttachmentID: identifier, Deadline: deadline,
-	})
-	if err != nil {
-		return nil, errors.Join(err, release())
-	}
-	if err := WriteRelaySetup(connection, setup); err != nil {
-		return nil, errors.Join(err, connection.Close(), closeAttempt(), release())
-	}
-	ready, err := ReadRelayReady(connection)
-	if err != nil {
-		return nil, errors.Join(err, connection.Close(), closeAttempt(), release())
-	}
-	if err := setup.VerifyRelayReady(ready); err != nil {
-		return nil, errors.Join(err, connection.Close(), closeAttempt(), release())
-	}
-	return &Attachment{connection: connection, close: func() error {
-		return errors.Join(connection.Close(), closeAttempt(), release())
-	}}, nil
-}
-
-func (selected plan) relaySetup(identifier [32]byte, deadline time.Time) (RelaySetup, error) {
-	var initiator, rendezvous position
-	for _, value := range selected.positions {
-		switch value.role {
-		case "initiator":
-			initiator = value
-		case "rendezvous":
-			rendezvous = value
-		}
-	}
-	setup := RelaySetup{NetworkID: selected.networkID, Digest: selected.digest, AttachmentID: identifier, Epoch: selected.epoch,
-		TransitRole: InitiatorRole, NextRole: RendezvousRole, TransitNodeID: initiator.nodeID, NextNodeID: rendezvous.nodeID,
-		NextNodePublicKey: rendezvous.publicKey, NotAfter: deadline.UTC().Truncate(time.Second)}
-	if err := validRelaySetup(setup); err != nil {
-		return RelaySetup{}, err
-	}
-	return setup, nil
 }

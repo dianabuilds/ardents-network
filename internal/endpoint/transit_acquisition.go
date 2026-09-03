@@ -315,12 +315,6 @@ func (owner *transitAcquisition) commitState(state transitAcquisitionState) erro
 	return err
 }
 
-func (owner *transitAcquisition) stateForTest() transitAcquisitionState {
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	return owner.state
-}
-
 func (owner *transitAcquisition) Close() error {
 	if owner == nil {
 		return nil

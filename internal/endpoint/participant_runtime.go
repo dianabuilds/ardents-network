@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
@@ -149,9 +150,27 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 			return errors.Join(errors.New("configure State-projected Publisher attachments"), err, binding.Withdraw())
 		}
 	}
+	userRoute, err := route.Open(route.Config{NetworkID: config.Network.NetworkID,
+		Current: func() (route.StateView, error) {
+			current, currentErr := network.CurrentResolution()
+			if currentErr != nil {
+				return nil, currentErr
+			}
+			return current, nil
+		}, Entry: entryOwner, Credentials: owner.acquireUserRouteCredential,
+		Admit: func(routeCtx context.Context) (func() error, error) {
+			if err := routeCtx.Err(); err != nil {
+				return nil, err
+			}
+			release := acquireResource(owner.resources, "user-route-attachment")
+			return func() error { release(); return nil }, nil
+		}, Clock: clock})
+	if err != nil {
+		return fmt.Errorf("open participant User Route: %w", err)
+	}
+	defer func() { runErr = errors.Join(runErr, userRoute.Close()) }()
 	connectionOwner, err := owner.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
-		Current: func() (applicationStateView, error) { return network.CurrentResolution() }, Entry: entryOwner,
-		Principal: config.ConnectionPrincipal, BytesEachDirection: config.BytesEachDirection, Clock: clock})
+		Route: userRoute, Principal: config.ConnectionPrincipal, BytesEachDirection: config.BytesEachDirection, Clock: clock})
 	if err != nil {
 		return fmt.Errorf("open Connection Interface owner: %w", err)
 	}

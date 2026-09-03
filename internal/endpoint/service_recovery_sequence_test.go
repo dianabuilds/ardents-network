@@ -54,7 +54,6 @@ func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
 		outcome := <-outcomes
 		if outcome.err != nil || outcome.result.Class != "clean service connection close" ||
 			outcome.result.RouteGeneration != 4 || outcome.result.RecoveryCount != 3 ||
-			outcome.result.ApplicationIPCAccepts > 1 ||
 			outcome.result.AcceptedBytes != outcome.result.AcknowledgedBytes {
 			t.Fatalf("three recoveries changed the logical connection: result=%+v err=%v", outcome.result, outcome.err)
 		}

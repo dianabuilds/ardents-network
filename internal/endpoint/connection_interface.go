@@ -14,8 +14,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
-	"github.com/dianabuilds/ardents-network/internal/service/reachability"
-	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 const maximumConnectionInterfaceBytes = uint32(768 << 20)
@@ -44,13 +42,13 @@ type applicationEntry interface {
 	Contact() (entry.Candidate, error)
 }
 
-// connectionInterfaceConfig binds the local durable alpha floor to accepted
-// State and an already-imported Entry set. No caller may provide a Target,
-// Gateway URL/profile, C-2 peer, Route, or browser destination.
+// connectionInterfaceConfig binds the local durable alpha floor to the
+// already-constructed Endpoint-owned Route. Its construction is process
+// composition; the Connection Interface caller cannot provide a Target,
+// Gateway URL/profile, C-2 peer, Route plan, or browser destination.
 type connectionInterfaceConfig struct {
-	Floor   *alpha.PersistentFloor
-	Current func() (applicationStateView, error)
-	Entry   applicationEntry
+	Floor *alpha.PersistentFloor
+	Route *route.Route
 	// Principal is the preconfigured local connection grant principal. A fresh
 	// capability is minted for each Application-requested Service Connection.
 	Principal          [32]byte
@@ -71,7 +69,7 @@ type connectionInterface struct {
 // narrow name-to-stream operation. The config is process composition, not an
 // Adapter request or Route plan.
 func (endpoint *endpoint) openConnectionInterface(input connectionInterfaceConfig) (*connectionInterface, error) {
-	if endpoint == nil || input.Floor == nil || input.Current == nil || input.Entry == nil || input.Principal == [32]byte{} ||
+	if endpoint == nil || input.Floor == nil || input.Route == nil || input.Principal == [32]byte{} ||
 		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumConnectionInterfaceBytes {
 		return nil, errors.New("application Connection Interface input is incomplete")
 	}
@@ -130,102 +128,18 @@ func (owner *connectionInterface) openBinding(ctx context.Context, binding alpha
 
 func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input connectionInterfaceConfig,
 	clock func() time.Time, session *applicationSession) (*applicationConnection, error) {
-	at := clock().UTC()
-	if at.IsZero() {
-		return nil, errors.New("application Connection clock is unavailable")
+	if endpoint == nil || input.Route == nil || session == nil || binding.Network() != endpoint.network || binding.Target() == [32]byte{} {
+		return nil, errors.New("application Connection Route input is unavailable")
 	}
-	lookupDeadline := at.Add(15 * time.Second)
-	view, err := input.Current()
-	if err != nil || view == nil {
-		return nil, errors.New("current State resolution view is unavailable")
-	}
-	epoch, available := view.Epoch(at, lookupDeadline)
-	if !available || epoch.NetworkID != endpoint.network {
-		return nil, errors.New("current State resolution epoch is unavailable")
-	}
-	gateway, available := view.Gateway(at, lookupDeadline)
-	if !available {
-		return nil, errors.New("state destination resolution gateway is unavailable")
-	}
-	profile, err := reachability.DecodeGatewayProfile(gateway.Profile)
-	if err != nil {
-		return nil, errors.New("state destination resolution gateway profile is invalid")
-	}
-	if err := reachability.VerifyGatewayProfile(profile, endpoint.network, gateway.NodeID, gateway.PublicKey, at, lookupDeadline); err != nil {
-		return nil, errors.New("state destination resolution gateway profile is invalid")
-	}
-	initiatorContact, err := input.Entry.Contact()
-	if err != nil {
-		return nil, errors.New("current User Entry contact is unavailable")
-	}
-	initiator, err := applicationInitiator(view, initiatorContact, at, lookupDeadline)
+	attachment, err := input.Route.Attach(ctx, route.Intent{Target: binding.Target()})
 	if err != nil {
 		return nil, err
 	}
-	lookupAttachment, err := applicationAttachmentID()
+	evidence, err := attachment.Evidence()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, attachment.Close())
 	}
-	targetLink, err := targetlink.Encode(targetlink.Link{Network: endpoint.network, Target: binding.Target()})
-	if err != nil {
-		return nil, err
-	}
-	descriptor, err := endpoint.resolveUserReachability(ctx, targetLink, userPrivateReachabilityRequest{
-		GatewayNodeID: gateway.NodeID, GatewayNodePublicKey: gateway.PublicKey, GatewayFamily: gateway.Family, GatewayProfile: profile,
-		StateDigest: epoch.Digest, Epoch: epoch.Number, Initiator: initiator, Entry: input.Entry,
-		AttachmentID: lookupAttachment, At: at, Deadline: lookupDeadline,
-	})
-	if err != nil {
-		return nil, err
-	}
-	verified, err := reachability.Verify(descriptor, binding.Target(), endpoint.network, at)
-	if err != nil || verified.Descriptor.Introduction.StateDigest != epoch.Digest || verified.Descriptor.Introduction.Epoch != epoch.Number {
-		return nil, errors.New("private reachability descriptor is not current State evidence")
-	}
-	slot := verified.Descriptor.Introduction
-	introduction, err := applicationStatePeer(view, slot.IntroductionNodeID, "introduction", at, slot.NotAfter)
-	if err != nil {
-		return nil, err
-	}
-	rendezvous, err := applicationStatePeer(view, slot.RendezvousNodeID, "rendezvous", at, slot.NotAfter)
-	if err != nil {
-		return nil, err
-	}
-	initiator, err = applicationInitiator(view, initiatorContact, at, slot.NotAfter)
-	if err != nil {
-		return nil, err
-	}
-	if !distinctApplicationPeers(gateway, initiator, introduction, rendezvous) {
-		return nil, errors.New("state private lookup and C-2 peers overlap")
-	}
-	credentialDeadline := slot.NotAfter
-	if slot.SubmissionMode == reachability.SubmissionMembershipGrant && (!at.Before(credentialDeadline) || credentialDeadline.After(lookupDeadline)) {
-		return nil, errors.New("reachability descriptor exceeds the membership credential window")
-	}
-	submission, err := endpoint.acquireTransitCredential(ctx, view, epoch, input.Entry, initiator, introduction,
-		route.IntroductionRole, slot, at, credentialDeadline)
-	if err != nil {
-		return nil, err
-	}
-	presented := false
-	if submission.finish != nil {
-		defer func() { _ = submission.finish(presented) }()
-	}
-	handshake, err := applicationAttachmentID()
-	if err != nil {
-		return nil, err
-	}
-	// Descriptor is intentionally passed only after this runtime obtained it
-	// through resolveUserReachability and revalidated it above. No external
-	// caller can provide this branch or substitute a target.
-	application, err := endpoint.openAlphaApplicationConnection(ctx, binding, userApplicationConnectionRequest{
-		Reachability: &userReachabilityRouteRequest{Descriptor: descriptor,
-			Introduction: introduction, Initiator: initiator, Rendezvous: rendezvous, Entry: input.Entry,
-			AttachmentID: submission.attachment, EndpointHandshake: handshake, At: at,
-			SubmissionAuthorization: submission.authorization, SubmissionClientCertificate: submission.certificate}, Principal: input.Principal,
-		BytesEachDirection: input.BytesEachDirection}, session)
-	presented = err == nil
-	return application, err
+	return endpoint.openAlphaRouteApplicationConnection(ctx, binding, input, clock, session, attachment, evidence)
 }
 
 // applicationServiceAttachment preserves the one-use binding of a signed
@@ -264,37 +178,6 @@ func applicationInitiator(view resolutionCandidateView, contact entry.Candidate,
 		return transitPeer{}, errors.New("user entry contact does not match current initiator state")
 	}
 	return transitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: contact.FamilyID, Endpoint: candidate.Endpoint}, nil
-}
-
-func applicationStatePeer(view resolutionCandidateView, nodeID [32]byte, domain string, at, deadline time.Time) (transitPeer, error) {
-	candidate, available := view.Candidate(nodeID, at, deadline)
-	if !available || candidate.Domain != domain || candidate.NodeID == [32]byte{} || candidate.PublicKey == [32]byte{} || candidate.Endpoint == "" {
-		return transitPeer{}, errors.New("current State C-2 peer is unavailable")
-	}
-	return transitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: sha256.Sum256([]byte(candidate.Family)), Endpoint: candidate.Endpoint}, nil
-}
-
-func distinctApplicationPeers(gateway state.DestinationResolutionGateway, peers ...transitPeer) bool {
-	if gateway.NodeID == [32]byte{} || gateway.Family == [32]byte{} || len(peers) != 3 {
-		return false
-	}
-	identities := [][32]byte{gateway.NodeID}
-	families := [][32]byte{gateway.Family}
-	for _, peer := range peers {
-		if !validTransitPeer(peer) || peer.Family == [32]byte{} {
-			return false
-		}
-		identities = append(identities, peer.NodeID)
-		families = append(families, peer.Family)
-	}
-	for index := range identities {
-		for other := 0; other < index; other++ {
-			if identities[index] == identities[other] || families[index] == families[other] {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func applicationAttachmentID() ([32]byte, error) {

@@ -279,5 +279,3 @@ func (running *responder) Drain(ctx context.Context) error {
 		return errors.Join(running.cleanup.result(), errors.New("responder drain exceeded its Work Safety Lease"))
 	}
 }
-
-func (running *responder) Close() error { return running.Drain(context.Background()) }

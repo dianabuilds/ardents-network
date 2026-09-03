@@ -239,6 +239,7 @@ artifact qualification runner. Any version or runtime use repeats this review.
 | Go | 1.26.x; CI pins 1.26.6 | compiler, formatter, tests, vet |
 | Staticcheck | 2025.1.1 | additional correctness analysis |
 | govulncheck | v1.1.4 | reachable Go vulnerability analysis |
+| deadcode | v0.48.0 (`golang.org/x/tools`) | reachability analysis for reviewed production code and test-only code |
 
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
