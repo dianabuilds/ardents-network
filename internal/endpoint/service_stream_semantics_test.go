@@ -119,6 +119,7 @@ type serviceOutcome struct {
 }
 
 func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
+	started := time.Now()
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoute, publisherRoute := tcpPair(t)
@@ -139,15 +140,19 @@ func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
 			t.Fatal("Service Connection did not reach Application backpressure")
 		}
 	}
+	t.Logf("[DEBUG-c005] applications entered after %s", time.Since(started))
 	select {
 	case outcome := <-outcomes:
 		t.Fatalf("blocked Application completed without input: %+v %v", outcome.result, outcome.err)
 	default:
 	}
+	cancelled := time.Now()
 	cancel()
 	var wrong []serviceOutcome
-	for range 2 {
+	for index := range 2 {
 		outcome := <-outcomes
+		t.Logf("[DEBUG-c005] cancellation outcome=%d after=%s class=%q accepted=%d received=%d err=%v", index,
+			time.Since(cancelled), outcome.result.Class, outcome.result.AcceptedBytes, outcome.result.ReceivedBytes, outcome.err)
 		if outcome.err == nil || outcome.result.Class != "local timeout or cancellation" ||
 			outcome.result.AcceptedBytes != 0 || outcome.result.ReceivedBytes != 0 {
 			wrong = append(wrong, outcome)
