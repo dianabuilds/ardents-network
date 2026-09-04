@@ -85,19 +85,16 @@ func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T)
 	lock.Lock()
 	snapshot.Generation = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	lock.Unlock()
-	successorSet := time.Now()
 	waitForStateEvent(t, events, "DRAINING")
 	select {
 	case result := <-results:
-		runErr := <-errors
-		t.Logf("[DEBUG-c005] successor terminal after=%s state=%q reason=%q err=%v", time.Since(successorSet), result.State, result.Reason, runErr)
 		if result.State != "WITHDRAWN" {
 			t.Fatalf("successor terminal result = %+v", result)
 		}
-		if runErr != nil {
-			t.Fatal(runErr)
-		}
 	case <-time.After(testLifecycleWait):
 		t.Fatal("State successor did not stop the Transit Grant issuer")
+	}
+	if err := <-errors; err != nil {
+		t.Fatal(err)
 	}
 }
