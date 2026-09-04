@@ -49,6 +49,20 @@ When materials disagree, use this order:
 Open questions are not decisions. Experiments are evidence, not project
 foundations.
 
+## Current-document route
+
+For maintained C0 work, read the current [product scope](docs/product/scope.md),
+[threat model](docs/security/threat-model.md), the affected current technical
+owner, and the relevant development owner before searching more broadly. Read
+an ADR only when that current owner or scope links to it; read a completed
+research record, experiment, audit receipt, compatibility tree, or `old` only
+to recover named provenance. Historical material cannot supply a current
+requirement, implementation plan, support claim, or backlog item.
+
+The C0 Closed Alpha delivery state belongs in the selected issue tracker and
+milestone. Current product documents state the contract and its limits; they
+must not become a second task ledger or repeat historical campaign chronology.
+
 ## Research discipline
 
 - Every research effort starts with a decision-relevant question from

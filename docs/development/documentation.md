@@ -15,11 +15,14 @@ workflow. Implementation and operator facts belong in the smallest current
 technical, operations, or reference document that has the responsible Module
 or command as its source.
 
-The normal routes are: contributor from `README.md` to current technical
-architecture and package map; operator from the runbook to command and
-configuration reference; auditor from product/threat contract to current
-technical/format/Qualification facts and then selected ADR/research provenance.
-No reader should have to infer implemented behavior from stage chronology.
+The normal routes are: contributor from `README.md` to product scope, threat
+model, the affected current technical owner, and package map; operator from
+the runbook to command and configuration reference; auditor from product/threat
+contract to current technical/format/Qualification facts and then selected
+ADR/research provenance. An ADR index, research queue, experiment directory,
+receipt, compatibility tree, and Git history are not default implementation
+routes. No reader should have to infer implemented behavior from stage
+chronology.
 
 ## Promotion and retirement
 
@@ -40,6 +43,11 @@ audience/task, change cadence, or audit-retention need. Do not mirror package
 file order or create empty future manuals. A target technical, operations, or
 reference document first appears with real owned behavior; a package rename is
 not a documentation boundary by itself.
+
+The C0 delivery backlog and its live status belong in the selected issue tracker
+and milestone, not in an ADR, research record, experiment README, or product
+contract. A current document may link to a tracker item for operational status,
+but it stays a stable contract rather than a second backlog.
 
 ## Checks
 

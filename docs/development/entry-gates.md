@@ -5,6 +5,12 @@ accepted ADRs, the threat model, current technical documentation, and the
 package map are the authority order. Historical stage material and closed
 research do not authorize behavior.
 
+For C0 work, begin with the product scope and threat model, then read the
+smallest affected current technical and development owners. Consult an accepted
+ADR only through a link from those owners; consult closed research, experiments,
+audit receipts, compatibility material, or Git history only as named provenance.
+Broad historical search is not a substitute for identifying the current owner.
+
 ## Research and experiments
 
 An experiment starts only with an active question in

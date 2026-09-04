@@ -42,6 +42,41 @@ The detailed product requirements remain in the
 [journeys](journeys.md), and lifecycle rules in the
 [operating model](operating-model.md).
 
+## C0 Closed Alpha readiness profile
+
+This is the selected narrow delivery profile for the current C0 candidate. It
+is a readiness target, not evidence that the candidate is qualified, released,
+publicly supported, anonymous, independently operated, or censorship
+resistant.
+
+One technical operator may use an authenticated, manually installed Ubuntu LTS
+`x86-64` artifact against project-controlled infrastructure to publish one
+active Service Instance and let a second Endpoint connect through an explicit
+Target Link. The maintained operator surface is the four headless commands
+`ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`; a concrete
+journey may invoke only the subset it needs. Operator instructions must not
+require editing JSON, extracting test-fixture keys, knowing package names, or
+reading ADRs to discover command order.
+
+The readiness journey is: verify the supplied artifact before execution,
+create its supported local state, start the selected project-controlled
+components, publish one Service Instance, obtain a Target Link, establish a
+second Endpoint Service Connection, exchange bounded opaque Application bytes,
+and stop and restart without losing required durable state. A supported manual
+replacement remains authenticated and explicit; automatic update is outside
+this profile.
+
+The profile does not select Browser or GUI delivery, Windows qualification,
+public or permissionless operation, independent operators, canonical Service
+Names or Namespace governance, additional Carriers, mobile/macOS, high-load
+operation, availability, anonymity, or censorship-resistance claims. Those
+items remain outside C0 unless a later Product Owner decision, research
+question, and required durable decision admit them.
+
+Current C0 delivery status and work sequencing belong in the selected issue
+tracker and milestone, not in this contract or research records. The product
+contract remains stable; the tracker is the one live task ledger.
+
 ## C0 Network candidate
 
 The Network audit candidate is the headless maintained product surface:

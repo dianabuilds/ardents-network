@@ -38,21 +38,31 @@ generic local Broker does not provide a qualified isolation claim.
 
 ## Start here
 
-- [Product scope](docs/product/scope.md) and [product vision](docs/product/vision.md)
-- [Threat model](docs/security/threat-model.md)
-- [Domain language](CONTEXT.md)
-- Current technical contracts:
-  [naming](docs/technical/naming.md),
-  [network/route/node](docs/technical/network-route-node.md),
-  [endpoint/service](docs/technical/endpoint-service-runtime.md), and
-  [release/update/custody](docs/technical/release-update-custody.md), and
-  [alpha-control transitions](docs/technical/alpha-control-transition.md)
-- [Development documentation](docs/development/README.md) and the factual
-  [package map](docs/development/package-map.md)
-- [Architecture decisions](docs/adr/README.md)
-- [Current command reference](docs/reference/commands.md)
-- [Active research queue](docs/research/questions.md)
-- [Contributor workflow](CONTRIBUTING.md)
+For maintained C0 work, read in this order:
+
+1. [C0 product scope](docs/product/scope.md) and the
+   [threat model](docs/security/threat-model.md);
+2. [Domain language](CONTEXT.md), then only the affected current technical
+   contract — [naming](docs/technical/naming.md),
+   [network/route/node](docs/technical/network-route-node.md),
+   [endpoint/service](docs/technical/endpoint-service-runtime.md),
+   [private reachability](docs/technical/private-reachability.md),
+   [Transit Grant acquisition](docs/technical/transit-grant-acquisition.md),
+   [enrollment verification](docs/technical/enrollment-verification.md),
+   [release/update/custody](docs/technical/release-update-custody.md), or
+   [alpha-control transitions](docs/technical/alpha-control-transition.md);
+3. the applicable current engineering owner in
+   [development documentation](docs/development/README.md), especially the
+   [package map](docs/development/package-map.md), testing model, and command
+   reference; and
+4. an ADR or research record only when a current owner links to it for a
+   decision or evidence question.
+
+[Architecture decisions](docs/adr/README.md), the
+[research queue](docs/research/questions.md), audit receipts, completed
+experiments, and compatibility trees are retained provenance. They are not a
+default implementation route. Follow [CONTRIBUTING.md](CONTRIBUTING.md) for
+the maintained change workflow.
 
 ## Working on the repository
 
