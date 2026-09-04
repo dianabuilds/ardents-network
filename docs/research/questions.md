@@ -12,6 +12,7 @@ inside historical records are provenance only and authorize no implementation.
 | ID | Open question | Current status |
 |---|---|---|
 | [R-099](records/r-099-protected-application-profile.md) | Is there one narrow application job and supported platform on which an OS-enforced or brokered boundary can deny ordinary-network escape well enough to support a bounded Application-level location claim? | **Open; no profile selected.** Generic Browser and local Application adapters make no isolation or privacy claim. Work begins only after the Product Owner selects one exact job, platform, adversary, enforcement boundary, falsification matrix, and resource budget. |
+| R-139 | Can a coordinator constrain goal-driven agents to stable consumer identities and immutable decisions while preserving real Source acceptance and an expected invalid-State rejection? | **Open; S3.6.5 locally qualifies the repaired coordinator.** Four-persona concurrency and any cap-exhaustion security claim remain separately gated. Owned by `experiments/multi-agent-real-2026-09-04/`. |
 
 R-093 is deferred without a selected co-resident Contributor experiment and is
 not active work. R-097, R-105, R-113, R-129, and R-134 are decided and
