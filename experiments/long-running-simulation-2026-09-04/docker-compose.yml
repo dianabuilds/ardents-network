@@ -1,0 +1,203 @@
+name: ardents-long-running-simulation
+
+# Disposable R-138 long-running simulation harness. S3.1 (smoke slice):
+# one source server publishes one canonical State fixture; the
+# sim-driver container runs 100 ticks of `ardents refresh-sources`
+# against it, writes one tick.json per tick, and aborts the run if
+# any of the four trip-wires trips. See ./README.md for scope and
+# limits.
+#
+# Service ordering: builder -> prebake -> source-a -> sim-driver.
+# The sim-driver is the only consumer in S3.1; later slices add
+# the DriftInjector (S3.2), Adversary (S3.3), Auditor (S3.4), and
+# multi-source/multi-consumer (S3.5) without changing the bind
+# mounts.
+#
+# Network: 172.32.0.0/24, deliberately different from the slice 2
+# pilot's 172.30.0.0/24 so the two harnesses can run side by side
+# without collision. The sim-driver container does NOT need a
+# fixed IP — it dials the source by literal IP:port the same way
+# the slice 2 consumers do.
+
+networks:
+  sim:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.32.0.0/24
+
+x-artifacts: &artifacts
+  type: bind
+  source: ${ARDENTS_LONGRUN_EVIDENCE_DIR:?set ARDENTS_LONGRUN_EVIDENCE_DIR to an existing directory outside the repository}/artifacts
+  target: /workspace/artifacts
+
+x-evidence: &evidence
+  type: bind
+  source: ${ARDENTS_LONGRUN_EVIDENCE_DIR:?set ARDENTS_LONGRUN_EVIDENCE_DIR to an existing directory outside the repository}
+  target: /workspace/evidence
+
+services:
+  builder:
+    image: golang:1.26-bookworm
+    profiles: ["build"]
+    working_dir: /src
+    networks: [sim]
+    volumes:
+      - ../..:/src:ro
+      - *artifacts
+      - ./build.sh:/workspace/build.sh:ro
+    command: ["/bin/bash", "/workspace/build.sh"]
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4.0"
+
+  # Reuses the slice 2 pilot's prebake via the test-driver binary
+  # built by the builder. The `prebake` subcommand (NOT
+  # `prebake_adversary`) is used because S3.1 has no adversary.
+  # PILOT_SOURCE_A_ADDRESS and PILOT_SOURCE_B_ADDRESS pin the
+  # prebake's address-resolution to the S3.1 sim network (the
+  # slice 2 test-driver's prebake defaults to 172.30.0.10:4101
+  # and 172.30.0.11:4102 on the pilot's 172.30.0.0/24, so S3.1
+  # MUST override both via these env vars or the consumer would
+  # dial the wrong addresses). Both source-a and source-b
+  # containers are started further down this compose; the prebake
+  # just materialises the matching state roots and source plan
+  # that both containers serve.
+  prebake:
+    image: golang:1.26-bookworm
+    networks: [sim]
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    environment:
+      PILOT_SOURCE_A_ADDRESS: 172.32.0.10:4101
+      PILOT_SOURCE_B_ADDRESS: 172.32.0.11:4102
+    command:
+      - /bin/bash
+      - -c
+      - /workspace/artifacts/test-driver-linux-amd64 prebake /workspace/evidence
+    depends_on:
+      builder:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  # S3.1's primary source server. Listens on 0.0.0.0:4101 inside
+  # the container; the sim-driver dials it at 172.32.0.10:4101.
+  # The listen port is hard-coded in the slice 2 sourceplan.go
+  # SourceListenA constant; changing it would require coordinated
+  # edits to sourceplan.go + source-a.json + the test-driver prebake
+  # output, which S3.1 deliberately avoids.
+  source-a:
+    image: golang:1.26-bookworm
+    networks:
+      sim:
+        ipv4_address: 172.32.0.10
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-a.json
+    depends_on:
+      prebake:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4101' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
+  # S3.1's second source server. The production source client
+  # requires EXACTLY 2 sources in the per-tick plan
+  # (cmd/ardents/source_plan.go rejects "len(plan.Sources) != 2"
+  # with "source plan is not canonical or complete"), so the
+  # S3.1 contract's "1 source" must be read as "1 honest-source
+  # type" rather than "1 source container". The S3.1 docker-
+  # compose therefore starts two honest source containers
+  # (source-a, source-b) that both serve the same pre-baked
+  # State, both respond "valid" on every wave, and never diverge
+  # across the 100-tick run. This is the S3.1 no-drift invariant.
+  #
+  # The contract's sim-driver role is unchanged: it still owns
+  # 1 consumer, 1 Timekeeper, 1 Observer, and 1 tick loop. The
+  # "1 source" in the role table means "1 honest-source type",
+  # which is realised at the network layer by 2 identical honest
+  # source containers to satisfy the production source-plan
+  # contract. S3.2 (DriftInjector) will add a 3rd source-b variant
+  # with a different generation to exercise multi-generation roll-
+  # forward; S3.1 deliberately avoids that.
+  source-b:
+    image: golang:1.26-bookworm
+    networks:
+      sim:
+        ipv4_address: 172.32.0.11
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-b.json
+    depends_on:
+      prebake:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4102' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
+  # S3.1's only consumer / Timekeeper / Observer. Runs the 100-
+  # tick loop, writes one tick.json per tick under
+  # /workspace/evidence/ticks/, and exits 0 on full success.
+  # The Timekeeper goroutine inside the sim-driver keeps the
+  # shared fixtures/clock.observation mtime fresh at 50ms; a
+  # separate clock-tick container is NOT used (the user spec folds
+  # the Timekeeper into the sim-driver). The run aborts on the
+  # first trip-wire fire, so a healthy run is the only successful
+  # exit.
+  sim-driver:
+    image: golang:1.26-bookworm
+    networks: [sim]
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/sim-driver-linux-amd64
+      - tick-loop
+      - /workspace/evidence
+    depends_on:
+      source-a:
+        condition: service_healthy
+      source-b:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.3"
