@@ -17,7 +17,7 @@ import (
 )
 
 // headlessRuntimePlan contains the non-route local inputs required to retain
-// one named-alpha participant runtime and its local Connection Interface. It
+// one Target Link participant runtime and its local Connection Interface. It
 // deliberately has no Target, Descriptor, Gateway, Node endpoint, Grant,
 // certificate, Browser, or presentation input.
 type headlessRuntimePlan struct {
@@ -33,15 +33,12 @@ type headlessRuntimePlan struct {
 	AdministrationSocket    string   `json:"administration_socket"`
 	PublicationRoot         string   `json:"publication_root"`
 	ServiceInstanceRoot     string   `json:"service_instance_root,omitempty"`
-	AlphaCorpusStateRoot    string   `json:"alpha_corpus_state_root"`
 	LocalRoleStateRoot      string   `json:"local_role_state_root"`
 	TimeConfidenceFile      string   `json:"time_confidence_file"`
 	NetworkID               string   `json:"network_id"`
 	NetworkAuthorities      []string `json:"network_authorities"`
 	NetworkThreshold        int      `json:"network_threshold"`
 	NetworkProfile          string   `json:"network_profile"`
-	AlphaCorpusAuthority    string   `json:"alpha_corpus_authority"`
-	AlphaCohort             string   `json:"alpha_cohort"`
 	BrokerID                string   `json:"broker_id"`
 	ConnectionPrincipal     string   `json:"connection_principal"`
 	AdministrationPrincipal string   `json:"administration_principal"`
@@ -68,7 +65,6 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) erro
 	encoder.SetEscapeHTML(false)
 	return endpointapi.RunParticipant(ctx, endpointapi.ParticipantRuntimeConfig{Network: networkConfig, RefreshNetwork: refreshState,
 		EntryRoot: plan.EntryStateRoot, TransitAcquisitionRoot: plan.TransitAcquisitionRoot,
-		AlphaCorpusRoot: plan.AlphaCorpusStateRoot, AlphaCorpusAuthority: plan.AlphaCorpusAuthority, AlphaCohort: plan.AlphaCohort,
 		LocalRoleRoot: plan.LocalRoleStateRoot, ApplicationAddress: plan.ApplicationSocket,
 		AdministrationAddress: plan.AdministrationSocket, PublicationRoot: plan.PublicationRoot,
 		ServiceInstanceRoot: plan.ServiceInstanceRoot, BrokerID: plan.BrokerID,
@@ -144,7 +140,6 @@ type decodedHeadlessRuntimePlan struct {
 	headlessRuntimePlan
 	NetworkID, BrokerID, ConnectionPrincipal, AdministrationPrincipal [32]byte
 	NetworkAuthorities                                                map[[32]byte]ed25519.PublicKey
-	AlphaCorpusAuthority                                              ed25519.PublicKey
 }
 
 func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
@@ -155,8 +150,8 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 	if raw.Schema != "ardents-headless-runtime-v1" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" || raw.TransitAcquisitionRoot == "" ||
 		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) || raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) ||
 		raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" ||
-		raw.AlphaCorpusStateRoot == "" || raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.Profile ||
-		raw.AlphaCohort == "" || raw.BrokerID == "" || raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" || raw.BytesEachDirection == 0 {
+		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.Profile || raw.BrokerID == "" ||
+		raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" || raw.BytesEachDirection == 0 {
 		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan is incomplete")
 	}
 	result := decodedHeadlessRuntimePlan{headlessRuntimePlan: raw}
@@ -174,10 +169,5 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 		return decodedHeadlessRuntimePlan{}, err
 	}
 	result.NetworkAuthorities = authorities
-	corpusAuthority := make(ed25519.PublicKey, ed25519.PublicKeySize)
-	if err := decodeOperatorFixedHex(raw.AlphaCorpusAuthority, corpusAuthority); err != nil {
-		return decodedHeadlessRuntimePlan{}, err
-	}
-	result.AlphaCorpusAuthority = corpusAuthority
 	return result, nil
 }

@@ -10,7 +10,6 @@ import (
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -19,7 +18,7 @@ import (
 const maximumConnectionInterfaceBytes = uint32(768 << 20)
 
 // ApplicationStateView is the narrow current State projection required to
-// open one alpha Service Link. It is implemented by
+// open one Target Link. It is implemented by
 // state.ResolutionView. It contains no State source, persistence, or candidate
 // ordering operation.
 type resolutionCandidateView interface {
@@ -42,12 +41,11 @@ type applicationEntry interface {
 	Contact() (entry.Candidate, error)
 }
 
-// connectionInterfaceConfig binds the local durable alpha floor to the
-// already-constructed Endpoint-owned Route. Its construction is process
+// connectionInterfaceConfig binds the already-constructed Endpoint-owned Route.
+// Its construction is process
 // composition; the Connection Interface caller cannot provide a Target,
 // Gateway URL/profile, C-2 peer, Route plan, or browser destination.
 type connectionInterfaceConfig struct {
-	Floor *alpha.PersistentFloor
 	Route *route.Route
 	// Principal is the preconfigured local connection grant principal. A fresh
 	// capability is minted for each Application-requested Service Connection.
@@ -57,7 +55,7 @@ type connectionInterfaceConfig struct {
 }
 
 // connectionInterface is the Connection-surface owner shared by headless CLI
-// and optional Adapters. Its Open input is only a Service Link; State, Entry,
+// and optional Adapters. Its Open input is only a Target Link; State, Entry,
 // Target authentication, Route, and one-use transport inputs remain private.
 type connectionInterface struct {
 	endpoint *endpoint
@@ -69,7 +67,7 @@ type connectionInterface struct {
 // narrow name-to-stream operation. The config is process composition, not an
 // Adapter request or Route plan.
 func (endpoint *endpoint) openConnectionInterface(input connectionInterfaceConfig) (*connectionInterface, error) {
-	if endpoint == nil || input.Floor == nil || input.Route == nil || input.Principal == [32]byte{} ||
+	if endpoint == nil || input.Route == nil || input.Principal == [32]byte{} ||
 		input.BytesEachDirection == 0 || input.BytesEachDirection > maximumConnectionInterfaceBytes {
 		return nil, errors.New("application Connection Interface input is incomplete")
 	}
@@ -80,13 +78,13 @@ func (endpoint *endpoint) openConnectionInterface(input connectionInterfaceConfi
 	return &connectionInterface{endpoint: endpoint, input: input, clock: clock}, nil
 }
 
-// Open resolves one exact accepted Service Link and returns only its
+// Open resolves one exact Target Link and returns only its
 // authenticated opaque Application stream and bounded terminal outcome.
-func (owner *connectionInterface) Open(ctx context.Context, serviceLink string) (applicationconnection.Stream, error) {
+func (owner *connectionInterface) Open(ctx context.Context, targetLink string) (applicationconnection.Stream, error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}
-	link, err := alpha.ParseServiceLink(serviceLink)
+	target, err := owner.endpoint.TargetFromLink(targetLink)
 	if err != nil {
 		return nil, err
 	}
@@ -94,13 +92,7 @@ func (owner *connectionInterface) Open(ctx context.Context, serviceLink string) 
 	if err != nil {
 		return nil, err
 	}
-	at := owner.clock().UTC()
-	binding, err := owner.endpoint.ResolveAcceptedAlpha(owner.input.Floor, link.String(), at)
-	if err != nil {
-		session.Release()
-		return nil, err
-	}
-	stream, err := owner.openBinding(session.Context(), binding, session)
+	stream, err := owner.openTarget(session.Context(), target, session)
 	if err == nil {
 		return stream, nil
 	}
@@ -119,19 +111,19 @@ func (owner *connectionInterface) Open(ctx context.Context, serviceLink string) 
 	}
 }
 
-func (owner *connectionInterface) openBinding(ctx context.Context, binding alpha.Binding, session *applicationSession) (applicationconnection.Stream, error) {
+func (owner *connectionInterface) openTarget(ctx context.Context, target [32]byte, session *applicationSession) (applicationconnection.Stream, error) {
 	if owner == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}
-	return owner.endpoint.openAlphaApplicationForBinding(ctx, binding, owner.input, owner.clock, session)
+	return owner.endpoint.openTargetApplication(ctx, target, owner.input, owner.clock, session)
 }
 
-func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, binding alpha.Binding, input connectionInterfaceConfig,
+func (endpoint *endpoint) openTargetApplication(ctx context.Context, target [32]byte, input connectionInterfaceConfig,
 	clock func() time.Time, session *applicationSession) (*applicationConnection, error) {
-	if endpoint == nil || input.Route == nil || session == nil || binding.Network() != endpoint.network || binding.Target() == [32]byte{} {
+	if endpoint == nil || input.Route == nil || session == nil || target == [32]byte{} {
 		return nil, errors.New("application Connection Route input is unavailable")
 	}
-	attachment, err := input.Route.Attach(ctx, route.Intent{Target: binding.Target()})
+	attachment, err := input.Route.Attach(ctx, route.Intent{Target: target})
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +131,7 @@ func (endpoint *endpoint) openAlphaApplicationForBinding(ctx context.Context, bi
 	if err != nil {
 		return nil, errors.Join(err, attachment.Close())
 	}
-	return endpoint.openAlphaRouteApplicationConnection(ctx, binding, input, clock, session, attachment, evidence)
+	return endpoint.openTargetRouteApplicationConnection(ctx, target, input, clock, session, attachment, evidence)
 }
 
 // applicationServiceAttachment preserves the one-use binding of a signed

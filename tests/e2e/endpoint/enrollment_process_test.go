@@ -14,16 +14,16 @@ import (
 
 func TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest(t *testing.T) {
 	command := buildArdents(t)
-	bundle, enrolledCommand, input := enrollmentBundle(t, command)
+	bundle, enrolledCommand, manifestPin := enrollmentBundle(t, command)
 
-	output, err := exec.Command(enrolledCommand, "endpoint", "enrollment-check", input).CombinedOutput()
+	output, err := exec.Command(enrolledCommand, "endpoint", "enrollment-check", bundle, manifestPin).CombinedOutput()
 	if err != nil {
 		t.Fatalf("verify exact enrolled bundle: %v\n%s", err, output)
 	}
 	var observed struct {
 		Kind, Cohort, Release, Platform, ArtifactSHA256 string
 	}
-	if err := json.Unmarshal(output, &observed); err != nil || observed.Kind != "alpha-enrollment-verified" ||
+	if err := json.Unmarshal(output, &observed); err != nil || observed.Kind != "manifest-pinned-enrollment-verified" ||
 		observed.Cohort != "closed-cohort-1" || observed.Release != "alpha-1" || observed.Platform != runtime.GOOS+"-"+runtime.GOARCH ||
 		len(observed.ArtifactSHA256) != sha256.Size*2 {
 		t.Fatalf("exact bundle result = %q / %+v / %v", output, observed, err)
@@ -33,9 +33,20 @@ func TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest(t *te
 	if err := os.WriteFile(manifest, []byte("changed-before-parse\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output, err = exec.Command(enrolledCommand, "endpoint", "enrollment-check", input).CombinedOutput()
+	output, err = exec.Command(enrolledCommand, "endpoint", "enrollment-check", bundle, manifestPin).CombinedOutput()
 	if err == nil || !strings.Contains(string(output), "independent pin") {
 		t.Fatalf("changed manifest result: err=%v output=%s", err, output)
+	}
+}
+
+func TestManifestPinnedEnrollmentArgumentsReadsOnlyFixtureMetadata(t *testing.T) {
+	input := filepath.Join(t.TempDir(), "fixture.json")
+	if err := os.WriteFile(input, []byte(`{"bundle_root":"/bundle","manifest_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bundleRoot, manifestPin := manifestPinnedEnrollmentArguments(t, input)
+	if bundleRoot != "/bundle" || manifestPin != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
+		t.Fatalf("fixture arguments = %q, %q", bundleRoot, manifestPin)
 	}
 }
 
@@ -130,16 +141,29 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 	manifest := []byte(strings.Join(lines, "\n") + "\n")
 	writeEnrollmentFile(t, filepath.Join(bundle, "SHA256SUMS"), manifest, 0o600)
 	pinned := sha256.Sum256(manifest)
-	input := filepath.Join(t.TempDir(), "alpha-enrollment.json")
-	raw, err := json.Marshal(map[string]string{
-		"schema": "ardents-alpha-enrollment-input-v1", "bundle_root": bundle, "cohort": "closed-cohort-1", "release": "alpha-1",
-		"platform": platform, "manifest_sha256": hex.EncodeToString(pinned[:]), "environment": "alpha", "network": "alpha-network-1", "target_path": targetPath,
-	})
+	return bundle, filepath.Join(bundle, artifactName), hex.EncodeToString(pinned[:])
+}
+
+// manifestPinnedEnrollmentArguments recovers test-fixture metadata only. The
+// production command receives the independently pinned manifest digest, never
+// this fixture file.
+func manifestPinnedEnrollmentArguments(t *testing.T, input string) (string, string) {
+	t.Helper()
+	raw, err := os.ReadFile(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeEnrollmentFile(t, input, raw, 0o600)
-	return bundle, filepath.Join(bundle, artifactName), input
+	var enrollment struct {
+		BundleRoot     string `json:"bundle_root"`
+		ManifestSHA256 string `json:"manifest_sha256"`
+	}
+	if err := json.Unmarshal(raw, &enrollment); err != nil {
+		t.Fatal(err)
+	}
+	if enrollment.BundleRoot == "" || enrollment.ManifestSHA256 == "" {
+		t.Fatalf("fixture enrollment has no manifest-pinned arguments: %q", input)
+	}
+	return enrollment.BundleRoot, enrollment.ManifestSHA256
 }
 
 func writeEnrollmentFile(t *testing.T, path string, contents []byte, mode os.FileMode) {

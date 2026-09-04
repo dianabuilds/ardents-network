@@ -10,7 +10,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -25,9 +24,6 @@ type ParticipantRuntimeConfig struct {
 	RefreshNetwork          bool
 	EntryRoot               string
 	TransitAcquisitionRoot  string
-	AlphaCorpusRoot         string
-	AlphaCorpusAuthority    ed25519.PublicKey
-	AlphaCohort             string
 	LocalRoleRoot           string
 	ApplicationAddress      string
 	AdministrationAddress   string
@@ -51,11 +47,10 @@ type ParticipantRuntimeEvent struct {
 	AdministrationAddress string
 }
 
-// RunParticipant owns the live State, Entry, alpha floor, Endpoint, and both
+// RunParticipant owns the live State, Entry, Endpoint, and both
 // local Application transports until cancellation.
 func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runErr error) {
 	if ctx == nil || config.Network.Root == "" || config.EntryRoot == "" || config.TransitAcquisitionRoot == "" ||
-		config.AlphaCorpusRoot == "" || len(config.AlphaCorpusAuthority) != ed25519.PublicKeySize || config.AlphaCohort == "" ||
 		config.LocalRoleRoot == "" || config.ApplicationAddress == "" || config.AdministrationAddress == "" ||
 		config.ApplicationAddress == config.AdministrationAddress || config.BrokerID == [32]byte{} ||
 		config.ConnectionPrincipal == [32]byte{} || config.AdministrationPrincipal == [32]byte{} ||
@@ -103,16 +98,6 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 	defer func() { runErr = errors.Join(runErr, entryOwner.Close()) }()
 	if _, err := entryOwner.Contact(); err != nil {
 		return fmt.Errorf("read current participant Entry contact: %w", err)
-	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: config.AlphaCorpusRoot,
-		Authority: config.AlphaCorpusAuthority, Cohort: config.AlphaCohort, Network: config.Network.NetworkID})
-	if err != nil {
-		return fmt.Errorf("open alpha corpus floor: %w", err)
-	}
-	defer func() { runErr = errors.Join(runErr, floor.Close()) }()
-	corpus, err := floor.Current()
-	if err != nil || corpus.ValidAt(now) != nil {
-		return errors.New("accepted alpha corpus is unavailable")
 	}
 	setup := setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID,
 		ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal,
@@ -169,8 +154,8 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 		return fmt.Errorf("open participant User Route: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, userRoute.Close()) }()
-	connectionOwner, err := owner.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
-		Route: userRoute, Principal: config.ConnectionPrincipal, BytesEachDirection: config.BytesEachDirection, Clock: clock})
+	connectionOwner, err := owner.openConnectionInterface(connectionInterfaceConfig{Route: userRoute,
+		Principal: config.ConnectionPrincipal, BytesEachDirection: config.BytesEachDirection, Clock: clock})
 	if err != nil {
 		return fmt.Errorf("open Connection Interface owner: %w", err)
 	}

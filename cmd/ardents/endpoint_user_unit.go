@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -11,20 +12,68 @@ import (
 )
 
 // runEndpointUserUnit writes the explicit Ubuntu systemd --user unit for one
-// exact Portable artifact and enrollment input. It does not write the unit,
+// exact Portable artifact, bundle directory, and manifest pin. It does not write the unit,
 // reload systemd, enable it, or start the Endpoint.
-func runEndpointUserUnit(input string, output io.Writer) error {
-	return runEndpointEnrollmentUserUnit(input, "enroll", "Ardents Portable Endpoint (closed alpha)", output)
+func runEndpointUserUnit(bundleRoot, manifestSHA256 string, output io.Writer) error {
+	if runtime.GOOS != "linux" {
+		return errors.New("endpoint user unit is available only on Linux")
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	executable, err = filepath.Abs(executable)
+	if err != nil {
+		return err
+	}
+	bundleRoot, err = filepath.Abs(bundleRoot)
+	if err != nil {
+		return err
+	}
+	unit, err := portableEnrollmentUserUnit(executable, bundleRoot, manifestSHA256, "Ardents Portable Endpoint (closed alpha)")
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(output, unit)
+	return err
+}
+
+func portableEnrollmentUserUnit(executable, bundleRoot, manifestSHA256, description string) (string, error) {
+	if description == "" {
+		return "", errors.New("portable Endpoint user unit description is required")
+	}
+	executable, err := unitArgument(executable)
+	if err != nil {
+		return "", fmt.Errorf("portable Endpoint executable: %w", err)
+	}
+	bundleRoot, err = unitArgument(bundleRoot)
+	if err != nil {
+		return "", fmt.Errorf("portable Endpoint bundle root: %w", err)
+	}
+	manifestSHA256, err = manifestPinArgument(manifestSHA256)
+	if err != nil {
+		return "", err
+	}
+	return "[Unit]\n" +
+		"Description=" + description + "\n" +
+		"After=default.target\n\n" +
+		"[Service]\n" +
+		"Type=simple\n" +
+		"UMask=0077\n" +
+		"Restart=no\n" +
+		"ExecStart=" + executable + " endpoint enroll " + bundleRoot + " " + manifestSHA256 + "\n\n" +
+		"[Install]\n" +
+		"WantedBy=default.target\n", nil
 }
 
 // runEndpointInstalledUserUnit renders the explicit per-user service for one
 // already-installed Ubuntu package enrollment. It neither invokes dpkg nor
 // enables, starts, lingers, or administers a user service.
 func runEndpointInstalledUserUnit(input string, output io.Writer) error {
-	return runEndpointEnrollmentUserUnit(input, "enroll-installed", "Ardents Installed Endpoint (closed alpha)", output)
+	return runEndpointInstalledEnrollmentUserUnit(input, "Ardents Installed Endpoint (closed alpha)", output)
 }
 
-func runEndpointEnrollmentUserUnit(input, action, description string, output io.Writer) error {
+func runEndpointInstalledEnrollmentUserUnit(input, description string, output io.Writer) error {
 	if runtime.GOOS != "linux" {
 		return errors.New("endpoint user unit is available only on Linux")
 	}
@@ -43,7 +92,7 @@ func runEndpointEnrollmentUserUnit(input, action, description string, output io.
 	if err != nil {
 		return err
 	}
-	unit, err := enrollmentUserUnit(executable, enrollment, action, description)
+	unit, err := installedEnrollmentUserUnit(executable, enrollment, description)
 	if err != nil {
 		return err
 	}
@@ -51,9 +100,9 @@ func runEndpointEnrollmentUserUnit(input, action, description string, output io.
 	return err
 }
 
-func enrollmentUserUnit(executable, enrollment, action, description string) (string, error) {
-	if action != "enroll" && action != "enroll-installed" || description == "" {
-		return "", errors.New("endpoint user unit action is invalid")
+func installedEnrollmentUserUnit(executable, enrollment, description string) (string, error) {
+	if description == "" {
+		return "", errors.New("installed Endpoint user unit description is required")
 	}
 	executable, err := unitArgument(executable)
 	if err != nil {
@@ -70,7 +119,7 @@ func enrollmentUserUnit(executable, enrollment, action, description string) (str
 		"Type=simple\n" +
 		"UMask=0077\n" +
 		"Restart=no\n" +
-		"ExecStart=" + executable + " endpoint " + action + " " + enrollment + "\n\n" +
+		"ExecStart=" + executable + " endpoint enroll-installed " + enrollment + "\n\n" +
 		"[Install]\n" +
 		"WantedBy=default.target\n", nil
 }
@@ -86,4 +135,12 @@ func unitArgument(value string) (string, error) {
 	}
 	replacer := strings.NewReplacer("\\", "\\\\", "\"", "\\\"", "$", "$$", "%", "%%")
 	return "\"" + replacer.Replace(value) + "\"", nil
+}
+
+func manifestPinArgument(value string) (string, error) {
+	decoded, err := hex.DecodeString(value)
+	if err != nil || len(decoded) != 32 || strings.ToLower(value) != value {
+		return "", errors.New("manifest pin must be 64 lowercase hexadecimal characters")
+	}
+	return value, nil
 }

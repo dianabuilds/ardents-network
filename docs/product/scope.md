@@ -100,16 +100,14 @@ resource; cancellation or timeout; and closed Service Connection. A lower
 level diagnostic may add detail but cannot silently reinterpret one of these
 classes as success or fallback.
 
-This profile deliberately records one current blocking gap: the maintained
-`ardents endpoint open` route accepts an alpha Service Link, while the selected
-C0 journey starts with a Target Link; the existing portable enrollment
-instruction also asks an operator to transcribe `alpha-enrollment.json`. Those
-paths do not yet satisfy this profile's Target Link and no-manual-JSON
-requirements. Until one bounded, tested operator route supplies the selected
-Target Link-to-Connection transition and owned inputs without manual JSON,
-the C0 Closed Alpha route is not accepted. This is a delivery requirement, not
-permission to bypass the Endpoint-owned Resolution, Route, or authority
-boundaries.
+The maintained `ardents endpoint open` route now accepts only an explicit
+Target Link. Its bounded two-Endpoint test proves the Target Link-to-Connection
+transition through the Endpoint-owned Resolution and Route boundaries. The
+portable enrollment route receives only the bundle root and an independently
+delivered manifest SHA-256 pin; it verifies that pin before parsing the
+manifest and derives the remaining enrollment facts from its bound `RELEASE`
+descriptor. This does not bypass Endpoint-owned Resolution, Route, or
+authority boundaries.
 
 ## C0 Network candidate
 

@@ -14,10 +14,10 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
+	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
 type connectionWorkCounts struct {
@@ -165,7 +165,7 @@ func openMaintainedConnectionComposition(t *testing.T, clock func() time.Time, a
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = endpoint.Close() })
-	floor, link := acceptedConnectionFloor(t, network, at)
+	link := targetConnectionLink(t, network)
 	gatewayPublic, gatewayPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -201,8 +201,8 @@ func openMaintainedConnectionComposition(t *testing.T, clock func() time.Time, a
 	entryOwner := &blockingApplicationEntry{contact: contact, entered: make(chan struct{}, 1)}
 	current := func() (applicationStateView, error) { return view, nil }
 	userRoute := openConnectionRoute(t, network, current, entryOwner, clock)
-	owner, err := endpoint.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
-		Route: userRoute, Principal: connectionPrincipal, BytesEachDirection: 1, Clock: clock})
+	owner, err := endpoint.openConnectionInterface(connectionInterfaceConfig{Route: userRoute,
+		Principal: connectionPrincipal, BytesEachDirection: 1, Clock: clock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,15 +329,15 @@ func TestConnectionAuthorizationPrecedesStateEntryIssuerAndRouteWork(t *testing.
 					t.Errorf("close Endpoint: %v", closeErr)
 				}
 			})
-			floor, link := acceptedConnectionFloor(t, network, at)
+			link := targetConnectionLink(t, network)
 			counts := &connectionWorkCounts{}
 			current := func() (applicationStateView, error) {
 				counts.state++
 				return countingApplicationState{counts: counts}, nil
 			}
 			userRoute := openConnectionRoute(t, network, current, countingApplicationEntry{counts: counts}, func() time.Time { return at })
-			owner, err := endpoint.openConnectionInterface(connectionInterfaceConfig{Floor: floor,
-				Route: userRoute, Principal: principal, BytesEachDirection: 1, Clock: func() time.Time { return at }})
+			owner, err := endpoint.openConnectionInterface(connectionInterfaceConfig{Route: userRoute,
+				Principal: principal, BytesEachDirection: 1, Clock: func() time.Time { return at }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -351,37 +351,34 @@ func TestConnectionAuthorizationPrecedesStateEntryIssuerAndRouteWork(t *testing.
 	}
 }
 
-func acceptedConnectionFloor(t *testing.T, network [32]byte, at time.Time) (*alpha.PersistentFloor, string) {
+func TestConnectionInterfaceRejectsInvalidTargetLinkBeforeApplicationWork(t *testing.T) {
+	composition := openMaintainedConnectionComposition(t, time.Now, false)
+	foreign, err := targetlink.Encode(targetlink.Link{Network: [32]byte{99}, Target: [32]byte{9}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, destination := range []string{"ardents-alpha://service.test", foreign} {
+		t.Run(destination, func(t *testing.T) {
+			if _, err := composition.owner.Open(t.Context(), destination); err == nil {
+				t.Fatal("invalid Target Link opened an Application stream")
+			}
+			if active := composition.admission.Active(); active != 0 {
+				t.Fatalf("invalid Target Link consumed %d Application capabilities", active)
+			}
+			select {
+			case <-composition.entry.entered:
+				t.Fatal("invalid Target Link touched Entry before rejection")
+			default:
+			}
+		})
+	}
+}
+
+func targetConnectionLink(t *testing.T, network [32]byte) string {
 	t.Helper()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
+	link, err := targetlink.Encode(targetlink.Link{Network: network, Target: [32]byte{9}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	link, err := alpha.ParseServiceLink("ardents-alpha://service.test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "connection-authorization", Network: network, Serial: 1,
-		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{9}}}, NotBefore: at.Add(-time.Second), NotAfter: at.Add(time.Minute)}, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corpus, err := alpha.OpenCorpus(public, raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: alphaPersistentFloorRoot(t), Authority: public,
-		Cohort: "connection-authorization", Network: network})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if closeErr := floor.Close(); closeErr != nil {
-			t.Errorf("close alpha floor: %v", closeErr)
-		}
-	})
-	if err := floor.Observe(corpus); err != nil {
-		t.Fatal(err)
-	}
-	return floor, link.String()
+	return link
 }

@@ -21,16 +21,16 @@ func (stream *testStream) Done() <-chan Outcome { return stream.done }
 
 type testInterface func(context.Context, string) (Stream, error)
 
-func (open testInterface) Open(ctx context.Context, serviceLink string) (Stream, error) {
-	return open(ctx, serviceLink)
+func (open testInterface) Open(ctx context.Context, targetLink string) (Stream, error) {
+	return open(ctx, targetLink)
 }
 
-func TestLocalTransportCarriesOnlyServiceLinkBytesAndTerminalOutcome(t *testing.T) {
+func TestLocalTransportCarriesOnlyTargetLinkBytesAndTerminalOutcome(t *testing.T) {
 	path := filepath.Join(os.TempDir(), fmt.Sprintf("ac-%d.sock", time.Now().UnixNano()))
 	t.Cleanup(func() { _ = os.Remove(path) })
 	opened := make(chan string, 1)
-	server, err := Listen(path, testInterface(func(_ context.Context, serviceLink string) (Stream, error) {
-		opened <- serviceLink
+	server, err := Listen(path, testInterface(func(_ context.Context, targetLink string) (Stream, error) {
+		opened <- targetLink
 		serverSide, applicationSide := net.Pipe()
 		done := make(chan Outcome, 1)
 		go func() {
@@ -54,7 +54,7 @@ func TestLocalTransportCarriesOnlyServiceLinkBytesAndTerminalOutcome(t *testing.
 	}
 	defer client.Close()
 	if got := <-opened; got != "ardents-alpha://reference" {
-		t.Fatalf("opened Service Link = %q", got)
+		t.Fatalf("opened Target Link = %q", got)
 	}
 	if _, err := io.WriteString(client, "hello\n"); err != nil {
 		t.Fatal(err)

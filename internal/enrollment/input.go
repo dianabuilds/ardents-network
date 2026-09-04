@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -66,6 +67,47 @@ func (input ClosedAlphaInput) Request(artifact string, at time.Time) Request {
 	return Request{BundleRoot: input.BundleRoot, ExecutablePath: artifact,
 		Pin:         Pin{Cohort: input.Cohort, Release: input.Release, Platform: input.Platform, ManifestSHA256: input.ManifestSHA256},
 		Environment: input.Environment, Network: input.Network, TargetPath: input.TargetPath, Architecture: runtime.GOARCH, ReferenceTime: at.UTC()}
+}
+
+// RequestFromManifestPin derives the complete portable enrollment request only
+// after the independently delivered manifest pin has authenticated the bundle
+// manifest. It reads no caller-written enrollment document. The caller must
+// still pass the result to Verify or VerifyHeadless before using any artifact.
+func RequestFromManifestPin(bundleRoot, executablePath, manifestSHA256 string, at time.Time) (Request, error) {
+	if bundleRoot == "" || executablePath == "" || manifestSHA256 == "" || at.IsZero() {
+		return Request{}, errors.New("manifest-pinned enrollment input is incomplete")
+	}
+	root, err := filepath.Abs(bundleRoot)
+	if err != nil {
+		return Request{}, errors.New("resolve manifest-pinned enrollment bundle")
+	}
+	manifest, err := readEnrollmentFile(filepath.Join(root, manifestName), false)
+	if err != nil {
+		return Request{}, errors.New("read manifest-pinned enrollment manifest")
+	}
+	if !equalDigest(manifest, manifestSHA256) {
+		return Request{}, errors.New("manifest-pinned enrollment manifest does not match the independent pin")
+	}
+	entries, err := parseManifest(manifest)
+	if err != nil {
+		return Request{}, err
+	}
+	descriptorDigest, found := entries[descriptorName]
+	if !found {
+		return Request{}, errors.New("manifest-pinned enrollment lacks its descriptor")
+	}
+	descriptorContents, err := readEnrollmentFile(filepath.Join(root, descriptorName), false)
+	if err != nil || !bytes.Equal(digest(descriptorContents), descriptorDigest) {
+		return Request{}, errors.New("manifest-pinned enrollment descriptor does not match manifest")
+	}
+	descriptor, err := parseDescriptor(descriptorContents)
+	if err != nil {
+		return Request{}, err
+	}
+	return Request{BundleRoot: root, ExecutablePath: executablePath,
+		Pin:         Pin{Cohort: descriptor.cohort, Release: descriptor.release, Platform: descriptor.platform, ManifestSHA256: manifestSHA256},
+		Environment: descriptor.environment, Network: descriptor.network, TargetPath: descriptor.targetPath,
+		Architecture: runtime.GOARCH, ReferenceTime: at.UTC()}, nil
 }
 
 func validClosedAlphaInput(input ClosedAlphaInput) bool {

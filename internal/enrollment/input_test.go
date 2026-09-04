@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -38,5 +39,29 @@ func TestReadClosedAlphaInputRejectsUnknownAndIncompleteFields(t *testing.T) {
 	}
 	if _, err := ReadClosedAlphaInput(path); err == nil {
 		t.Fatal("unknown incomplete enrollment input was accepted")
+	}
+}
+
+func TestRequestFromManifestPinDerivesOnlyPinnedBundleFacts(t *testing.T) {
+	root, want := enrolledFixture(t)
+	request, err := RequestFromManifestPin(root, want.ExecutablePath, want.Pin.ManifestSHA256, want.ReferenceTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.BundleRoot != root || request.ExecutablePath != want.ExecutablePath || request.Pin != want.Pin ||
+		request.Environment != want.Environment || request.Network != want.Network || request.TargetPath != want.TargetPath ||
+		request.Architecture != runtime.GOARCH || !request.ReferenceTime.Equal(want.ReferenceTime) {
+		t.Fatalf("manifest-pinned request = %+v, want %+v", request, want)
+	}
+}
+
+func TestRequestFromManifestPinRejectsChangedManifestBeforeDescriptorParsing(t *testing.T) {
+	root, want := enrolledFixture(t)
+	if err := os.WriteFile(filepath.Join(root, manifestName), []byte("not a manifest\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RequestFromManifestPin(root, want.ExecutablePath, want.Pin.ManifestSHA256, want.ReferenceTime); err == nil ||
+		!strings.Contains(err.Error(), "independent pin") {
+		t.Fatalf("changed pinned manifest result = %v", err)
 	}
 }

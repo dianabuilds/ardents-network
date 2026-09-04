@@ -1,12 +1,15 @@
 # Closed-alpha Alpha Name Corpus intake
 
-Status: **closed-alpha participant procedure template; no published alpha corpus
-source is currently promoted.**
+Status: **deferred closed-alpha design template; it is not a maintained C0
+operator procedure and no published alpha corpus source is promoted.**
 
-This procedure lets an already enrolled participant accept one finite Alpha
-Name Corpus for the `ardents-alpha://` overlay. It is not public DNS, a name
-registration workflow, an automatic updater, or a browser configuration
-procedure.
+This retained template describes a separately selected future Alpha Name Corpus
+intake route for an already enrolled participant. It is not part of the
+maintained Target Link-to-Connection journey and must not be used as a
+first-enrollment instruction while it remains deferred. Re-activating it
+requires a separately selected issue to reconcile its inputs with the current
+portable enrollment contract. It is not public DNS, a name registration
+workflow, an automatic updater, or a browser configuration procedure.
 
 ## Trust boundary
 

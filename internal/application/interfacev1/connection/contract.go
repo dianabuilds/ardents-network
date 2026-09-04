@@ -49,11 +49,11 @@ type Stream interface {
 	Done() <-chan Outcome
 }
 
-// Interface opens one Service Link without accepting Network or Route facts.
+// Interface opens one Target Link without accepting Network or Route facts.
 // The link is non-empty and at most 512 bytes. The context governs both setup
 // and the returned Stream lifetime. An implementation may return Refuse for a
 // classified denial; every other error is exposed as ServiceUnavailable by
-// the server Adapter. No operation retries or opens an alternate Service Link.
+// the server Adapter. No operation retries or opens an alternate Target Link.
 type Interface interface {
 	Open(context.Context, string) (Stream, error)
 }
@@ -89,5 +89,5 @@ func refusal(cause error) Outcome {
 	if errors.As(cause, &classified) {
 		return classified.outcome
 	}
-	return Outcome{Class: ServiceUnavailable, Reason: "Endpoint could not open the selected Service Link"}
+	return Outcome{Class: ServiceUnavailable, Reason: "Endpoint could not open the selected Target Link"}
 }

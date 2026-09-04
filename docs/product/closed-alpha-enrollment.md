@@ -30,8 +30,7 @@ participant has received or enacted an invitation.
 These commands use Ubuntu's preinstalled POSIX shell, `sha256sum`, `find`,
 `sed`, `sort`, and `cmp`; they do not execute the downloaded binary. Substitute
 the independently received digest and the participant's absolute bundle path.
-Do not add the Enrollment Input to this directory: the manifest inventory is
-exact.
+Do not add a file to this directory: the manifest inventory is exact.
 
 ```sh
 set -eu
@@ -69,39 +68,14 @@ Any non-zero result stops the journey. Do not mark the artifact executable, run
 it can recheck the inventory before Endpoint readiness only after the artifact
 has already executed.
 
-## Create the local enrollment input
+## Start without a local enrollment file
 
-After the preceding verification succeeds, read the non-secret values in the
-verified `RELEASE` descriptor and create the input outside the bundle. The
-invitation's cohort/release/platform/manifest digest must be copied exactly;
-the descriptor's `environment`, `network`, and `target_path` must agree with
-the values below. This file contains no Authority and no private key.
-
-```sh
-set -eu
-umask 077
-input_home="$HOME/.local/state/ardents-alpha/declared-release"
-mkdir -p "$input_home"
-chmod 700 "$input_home"
-cat >"$input_home/alpha-enrollment.json" <<'EOF'
-{
-  "schema": "ardents-alpha-enrollment-input-v1",
-  "bundle_root": "/absolute/path/to/unpacked-bundle",
-  "cohort": "declared-cohort",
-  "release": "declared-release",
-  "platform": "linux-amd64",
-  "manifest_sha256": "64-lowercase-hex-characters-from-the-invitation",
-  "environment": "verified-environment",
-  "network": "verified-network",
-  "target_path": "ardents/linux-amd64/endpoint"
-}
-EOF
-chmod 600 "$input_home/alpha-enrollment.json"
-```
-
-The input is a one-bundle local transcription, not a release root and not
-authority to accept successors. It cannot be stored inside the bundle without
-causing the exact inventory check to fail.
+After the preceding external verification succeeds, use the same absolute
+bundle path and independently received manifest pin to render the unit. The
+program rechecks that pin before parsing `SHA256SUMS`, then derives the
+cohort, release, platform, environment, network, and target path from the
+manifest-bound `RELEASE` descriptor. There is no local enrollment JSON to
+create, keep, or treat as release authority.
 
 ## Explicit Ubuntu user-session start
 
@@ -112,7 +86,8 @@ render the unit. Replace the command path with the verified artifact path.
 chmod 700 /absolute/path/to/unpacked-bundle/ardents-linux-amd64
 mkdir -p ~/.config/systemd/user
 /absolute/path/to/unpacked-bundle/ardents-linux-amd64 endpoint user-unit \
-  "$HOME/.local/state/ardents-alpha/declared-release/alpha-enrollment.json" \
+  /absolute/path/to/unpacked-bundle \
+  64-lowercase-hex-characters-from-the-invitation \
   > ~/.config/systemd/user/ardents-endpoint.service
 chmod 600 ~/.config/systemd/user/ardents-endpoint.service
 systemctl --user daemon-reload

@@ -27,11 +27,12 @@ import (
 
 func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	command := buildArdents(t)
-	bundle, enrolledCommand, input := enrolledRuntimeBundle(t, command)
+	bundle, enrolledCommand, _ := enrolledRuntimeBundle(t, command)
+	manifestPin := enrolledRuntimeManifestPin(t, bundle)
 	root := enrolledRuntimeRoot(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
-	running := exec.CommandContext(ctx, enrolledCommand, "endpoint", "enroll", input)
+	running := exec.CommandContext(ctx, enrolledCommand, "endpoint", "enroll", bundle, manifestPin)
 	running.Env = append(os.Environ(),
 		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
@@ -109,7 +110,7 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	if err := os.RemoveAll(bundle); err != nil {
 		t.Fatal(err)
 	}
-	restarted := exec.CommandContext(ctx, successor, "endpoint", "enroll", input)
+	restarted := exec.CommandContext(ctx, successor, "endpoint", "enroll", bundle, manifestPin)
 	restarted.Env = append(os.Environ(),
 		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
@@ -150,12 +151,13 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 
 func TestEnrolledPortableReportsInvalidPinBeforeReady(t *testing.T) {
 	command := buildArdents(t)
-	bundle, enrolledCommand, input := enrolledRuntimeBundle(t, command)
+	bundle, enrolledCommand, _ := enrolledRuntimeBundle(t, command)
+	manifestPin := enrolledRuntimeManifestPin(t, bundle)
 	if err := os.WriteFile(filepath.Join(bundle, "SHA256SUMS"), []byte("changed-before-parse\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	root := enrolledRuntimeRoot(t)
-	running := exec.Command(enrolledCommand, "endpoint", "enroll", input)
+	running := exec.Command(enrolledCommand, "endpoint", "enroll", bundle, manifestPin)
 	running.Env = append(os.Environ(),
 		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
@@ -188,9 +190,9 @@ func TestEnrolledPortableReportsInvalidPinBeforeReady(t *testing.T) {
 
 func TestEnrolledPortableRejectsInventoryWithoutHeadlessCompanions(t *testing.T) {
 	command := buildArdents(t)
-	_, enrolledCommand, input := enrollmentBundle(t, command)
+	bundle, enrolledCommand, manifestPin := enrollmentBundle(t, command)
 	root := enrolledRuntimeRoot(t)
-	running := exec.Command(enrolledCommand, "endpoint", "enroll", input)
+	running := exec.Command(enrolledCommand, "endpoint", "enroll", bundle, manifestPin)
 	running.Env = append(os.Environ(),
 		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
@@ -236,6 +238,16 @@ type enrolledRuntimeKey struct {
 func enrolledRuntimeBundle(t *testing.T, command string) (string, string, string) {
 	bundle, enrolled, input, _, _ := enrolledRuntimeBundleWithKeys(t, command)
 	return bundle, enrolled, input
+}
+
+func enrolledRuntimeManifestPin(t *testing.T, bundle string) string {
+	t.Helper()
+	manifest, err := os.ReadFile(filepath.Join(bundle, "SHA256SUMS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin := sha256.Sum256(manifest)
+	return hex.EncodeToString(pin[:])
 }
 
 func enrolledRuntimeBundleWithKeys(t *testing.T, command string) (string, string, string, []enrolledRuntimeKey, []byte) {
