@@ -62,11 +62,14 @@ func Open(input Config) (*store, error) {
 func (store *store) Replace(producer [32]byte, duties []Duty) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	if store.closed || store.failed != nil || producer == ([32]byte{}) || len(duties) > 64 {
+	if store.closed || store.failed != nil || producer == ([32]byte{}) {
 		if store.failed != nil {
 			return errors.New("local role store requires restart after a failed commit")
 		}
 		return errors.New("local role replacement is invalid")
+	}
+	if len(duties) > 64 {
+		return ErrLocalRoleRecordLimit
 	}
 	now := store.clock().UTC()
 	next := durableState{Duties: make([]dutyRecord, 0, len(store.state.Duties)+len(duties)),
@@ -86,7 +89,10 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 	if !underInstallationSourceCap(next.Duties) {
 		return ErrInstallationSourceExhausted
 	}
-	if !validRecords(next.Duties) || !validTransitGrantSpends(next.TransitGrantSpends) {
+	if err := validateRecords(next.Duties); err != nil {
+		return err
+	}
+	if !validTransitGrantSpends(next.TransitGrantSpends) {
 		return errors.New("local role state exceeds its bound")
 	}
 	return store.commit(next)
@@ -191,6 +197,19 @@ const maximumInstallationDirectSource = 64
 // any additional unexpired `direct-source` Duty without exceeding the bounded
 // exposure set. Callers may wrap it.
 var ErrInstallationSourceExhausted = errors.New("direct-source exposure set is full")
+
+// ErrLocalRoleRecordLimit reports that one local-role store would retain more
+// duties than its fixed bound. It is distinct from the direct-source exposure
+// bound, which returns ErrInstallationSourceExhausted.
+var ErrLocalRoleRecordLimit = errors.New("local role record limit exceeded")
+
+// ErrLocalRoleProducerLimit reports that one local-role store would retain
+// duties for more producer identities than its fixed bound.
+var ErrLocalRoleProducerLimit = errors.New("local role producer limit exceeded")
+
+// ErrLocalRoleConflict reports an identity or family collision between
+// retained non-Initiator duties.
+var ErrLocalRoleConflict = errors.New("local role duty conflicts with retained state")
 
 func underInstallationSourceCap(records []dutyRecord) bool {
 	count := 0

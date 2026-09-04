@@ -137,24 +137,34 @@ func validDurableState(state durableState) bool {
 }
 
 func validRecords(records []dutyRecord) bool {
+	return validateRecords(records) == nil
+}
+
+func validateRecords(records []dutyRecord) error {
 	if len(records) > 64 {
-		return false
+		return ErrLocalRoleRecordLimit
 	}
 	producers := map[[32]byte]bool{}
 	seen := map[[3][32]byte]bool{}
 	for _, record := range records {
 		if record.Producer == ([32]byte{}) || record.Identity == ([32]byte{}) || record.Family == ([32]byte{}) ||
 			!validClass(record.Class) || !validState(record.State) || record.NotAfter <= 0 {
-			return false
+			return errors.New("local role record is invalid")
 		}
 		producers[record.Producer] = true
 		key := [3][32]byte{record.Producer, record.Identity, record.Family}
 		if seen[key] {
-			return false
+			return errors.New("local role record is duplicated")
 		}
 		seen[key] = true
 	}
-	return len(producers) <= 16 && conflictFree(records)
+	if len(producers) > 16 {
+		return ErrLocalRoleProducerLimit
+	}
+	if !conflictFree(records) {
+		return ErrLocalRoleConflict
+	}
+	return nil
 }
 
 func validTransitGrantSpends(spends []transitGrantSpend) bool {

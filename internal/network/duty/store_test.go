@@ -227,8 +227,8 @@ func TestConflictingProducerIsRejectedAtomically(t *testing.T) {
 	}
 	second := localroles.Duty{Identity: identity, Family: [32]byte{16},
 		Class: "route-rendezvous", State: "live", NotAfter: now.Add(time.Hour)}
-	if err := store.Replace([32]byte{17}, []localroles.Duty{second}); err == nil {
-		t.Fatal("conflicting producer was retained")
+	if err := store.Replace([32]byte{17}, []localroles.Duty{second}); !errors.Is(err, localroles.ErrLocalRoleConflict) {
+		t.Fatalf("conflicting producer returned %v, want ErrLocalRoleConflict", err)
 	}
 	if conflict, err := store.Conflict(identity, firstFamily); err != nil || !conflict {
 		t.Fatalf("original duty after rejection = %v, %v", conflict, err)
