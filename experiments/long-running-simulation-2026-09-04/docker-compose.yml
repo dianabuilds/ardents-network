@@ -22,9 +22,12 @@ name: ardents-long-running-simulation
 networks:
   sim:
     driver: bridge
+    internal: true
     ipam:
       config:
         - subnet: 172.32.0.0/24
+  build:
+    driver: bridge
 
 x-artifacts: &artifacts
   type: bind
@@ -41,7 +44,10 @@ services:
     image: golang:1.26-bookworm
     profiles: ["build"]
     working_dir: /src
-    networks: [sim]
+    # Building can download modules; it is intentionally outside the isolated
+    # simulation network. Every service that handles simulated State uses only
+    # the internal `sim` network below.
+    networks: [build]
     volumes:
       - ../..:/src:ro
       - *artifacts

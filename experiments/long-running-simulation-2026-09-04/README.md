@@ -1,6 +1,10 @@
 # R-138 long-running simulation
 
-Status: **scaffold + S3.1 contract only**. Implementation pending.
+Status: **S3.1 smoke and S3.6 mock-user code are implemented and pass the
+hermetic pre-flight; neither slice is accepted.** The Docker-backed 100-tick
+run and external evidence have not been run. No production-coordination,
+substitute-user, availability, load, or privacy claim follows from this
+experiment.
 
 This experiment answers R-138 from `docs/research/questions.md`: can a
 long-running multi-actor simulation keep the slice 2 invariants green across
@@ -45,8 +49,8 @@ tick; if any trip-wire fires the run aborts.
 
 | Slice | Adds | Files (+/-) | LOC delta | Depends on |
 |-------|------|-------------|----------:|------------|
-| **S3.1** (smoke, green 63/100 ticks, AC4 PARTIAL on Windows wall-clock) | Tick loop, Timekeeper, Observer, 2 HonestSource containers, 1 HonestConsumer subprocess, trip-wire catalog | +7 new | ~500 | slice 2 pilot |
-| **S3.6** (next) | UserActor with 3 personas (honest, confused, impatient) + in-memory credential store + per-tick action selection + user-action trip-wires. **Mock state, no real `ardents` CLI calls in S3.6** | +3 new, ~3 modified | ~600 | S3.1 |
+| **S3.1** (implemented; pre-flight green, Docker smoke unrun) | Tick loop, Timekeeper, Observer, 2 HonestSource containers, 1 HonestConsumer subprocess, trip-wire catalog | +7 new | ~500 | slice 2 pilot |
+| **S3.6** (implemented; pre-flight green, Docker smoke unrun) | UserActor with 3 personas (honest, confused, impatient) + in-memory credential store + per-tick action selection + user-action trip-wires. **Mock state, no real `ardents` CLI calls in S3.6** | +3 new, ~3 modified | ~600 | S3.1 |
 | S3.2 | DriftInjector (consumer churn + multi-generation roll-forward via Authority) | +2 new, ~1 modified | ~600 | S3.1, S3.6 |
 | S3.3 | Adversary with scripted policy (forge / replay-old / withhold / split-view) | +2 new, ~1 modified | ~700 | S3.2 |
 | S3.4 | Auditor agent + 4–5 more trip-wires + mutation tests on the Observer | +1 new, ~1 modified | ~400 | S3.3 |
@@ -61,7 +65,8 @@ new capability, one new file".
 ## S3.1 contract
 
 ### Question
-Can a single source + single consumer + Timekeeper + Observer, running 100
+Can two identical honest Source containers + one consumer + Timekeeper +
+Observer, running 100
 accelerated ticks at 100 ms wall-clock per tick, with no adversary and no
 drift, keep all slice 2 invariants green on every tick?
 
@@ -85,8 +90,8 @@ The simulation is falsified if any of:
 - `cmd/sim-driver/main.go` is the simulation driver. It owns the tick loop,
   Timekeeper, and Observer. It shells out to `ardents refresh-sources` once
   per tick and reads the resulting event log.
-- `docker-compose.yml` (slice-internal) starts one `ardents-node source`
-  container bound to a fresh `172.32.0.0/24` subnet (deliberately
+- `docker-compose.yml` (slice-internal) starts two `ardents-node source`
+  containers bound to an internal `172.32.0.0/24` subnet (deliberately
   different from the slice 2 pilot's `172.30.0.0/24` so the two harnesses
   can run side by side without collision).
 - The driver reuses the prebake machinery from the slice 2 pilot verbatim
@@ -100,15 +105,15 @@ The simulation is falsified if any of:
 
 | AC | Verification |
 |----|--------------|
-| AC1 Build green | `go build ./experiments/long-running-simulation-2026-09-04/cmd/sim-driver/...` exits 0 (works on Windows host) |
-| AC2 Vet green | `go vet ./...` exit 0 |
-| AC3 Self-test green | `go run ... self-test` exits 0 and prints PASS for the new smoke self-test (one tick) |
-| AC4 100-tick smoke green | `docker compose up` (in the experiment dir) runs 100 ticks, all 100 `tick.json` show `verdict=accept`, `state.observed_digest` is constant across all 100 ticks, wall-clock ≤ 30 s |
+| AC1 Build green | `bash ./test.sh` exits 0 and prints `build OK`. The build-ignored driver files are deliberately passed as explicit paths. |
+| AC2 Vet green | `bash ./test.sh` exits 0 and prints `vet OK`; generic `go vet ./...` intentionally does not include the build-ignored driver. |
+| AC3 Self-test green | `bash ./test.sh` exits 0 and prints PASS for the S3.1 and S3.6 self-tests (18 PASS lines currently). |
+| AC4 100-tick smoke green | **Unrun; not accepted.** With `ARDENTS_LONGRUN_EVIDENCE_DIR` set to an existing directory outside the repository, `docker compose --profile build up --abort-on-container-exit --exit-code-from sim-driver` runs 100 ticks. Evidence must show every `tick.json` has `verdict=accept`, `state.observed_digest` is constant, and wall-clock ≤ 30 s. |
 | AC5 Trip-wire catalog present | the catalog has at least 4 trip-wires (generation drift, source exit, consumer parse error, tick budget) and each is unit-tested in self-test |
-| AC6 Out of simulation scope | `docker ps` after the run shows no production containers, no `172.30.0.0/24` network, no host egress from the simulation network |
+| AC6 Out of simulation scope | The `sim` network is Compose `internal: true`; only the ephemeral builder uses the separate `build` network to download modules. Before accepting a Docker run, inspect the Compose-created `sim` network and record `Internal=true`, record that `prebake`, both sources, and `sim-driver` attach only to `sim`, and verify `docker ps` shows no production containers or `172.30.0.0/24` network. This is the egress-negative check for the simulation services. |
 | AC7 No modification of slice 2 | `git status -s` shows slice 2 files (`experiments/multi-node-network-2026-09-04/`) unchanged |
 
-### Required output format (after S3.1 implementation)
+### Required output format (after an S3.1 acceptance run)
 
 In the final assistant message:
 1. baseline SHA + итоговый SHA (uncommitted, no delta)
@@ -126,7 +131,7 @@ In the final assistant message:
 - Cross-network isolation (S3.5)
 - Mutation tests on the Observer (S3.4)
 - Auditor agent (S3.4)
-- UserActor / user simulation (S3.6)
+- UserActor / user simulation (implemented as S3.6 mock state; not accepted)
 - `go test -race` (Windows host cannot run `-race`; defer to carrier lab)
 - any modification to slice 2 files
 - any modification to `internal/`, `cmd/ardents/`, `cmd/ardents-node/`
@@ -210,9 +215,9 @@ do not affect the consumer's `observed_digest`.
 
 | AC | Verification |
 |----|--------------|
-| AC1 Build green | `go build -o NUL <10 sim-driver source files>` exits 0 |
-| AC2 Vet green | `go vet <10 sim-driver source files>` exits 0 |
-| AC3 Self-test green | `go run ... self-test` exits 0 and prints PASS for the 5 new user cases plus all 13 S3.1 cases = 18 PASS lines |
+| AC1 Build green | `bash ./test.sh` exits 0 and prints `build OK`; it passes the ten build-ignored driver files explicitly. |
+| AC2 Vet green | `bash ./test.sh` exits 0 and prints `vet OK`; generic `go vet ./...` intentionally does not include build-ignored driver files. |
+| AC3 Self-test green | `bash ./test.sh` exits 0 and prints PASS for the 5 new user cases plus all 13 S3.1 cases = 18 PASS lines |
 | AC4 100-tick smoke green | `docker compose --profile build up` runs 100 ticks, all 100 `tick.json` show `verdict.accept=true` (network layer), and the new `user_actions.jsonl` shows ≥ 30 user actions across the 3 personas (≈1 every 3 ticks on average). Wall-clock ≤ 60 s. Trip-wire `user_impossible_action` may fire (confused persona) but is informational; trip-wires `generation_drift` / `source_exit` / `consumer_parse_error` / `tick_budget` must not fire. |
 | AC5 User trip-wire catalog | 2 new wires (`user_impossible_action`, `user_retry_storm`), each unit-tested in self-test. The `user_impossible_action` is informational (does not abort the run); all other wires remain fatal. |
 | AC6 Persona rates | honest emits actions in the expected 4-step sequence; confused has impossible-action rate 4–6 % over 1000 simulated ticks; impatient emits exactly 1 action per tick over 10 ticks (no cooldown) |
@@ -234,25 +239,25 @@ do not affect the consumer's `observed_digest`.
 - any modification to `internal/`, `cmd/ardents/`, `cmd/ardents-node/`
 - any modification to ADRs or R-NNN records
 
-## Local layout (S3.1 will fill this in)
+## Local layout (implemented files)
 
 ```
 experiments/long-running-simulation-2026-09-04/
 ├── README.md           (this file)
-├── doc.go              (if needed, see slice 2 doc.go for precedent)
 ├── build.sh            (cross-compile sim-driver for linux/amd64)
 ├── test.sh             (local pre-flight on Windows; skips -race)
-├── docker-compose.yml  (2 source containers + sim-driver)
+├── docker-compose.yml  (isolated sim network, build network, 2 source containers + sim-driver)
 ├── cmd/
 │   └── sim-driver/
 │       ├── doc.go
 │       ├── main.go
-│       ├── tickloop.go
 │       ├── timekeeper.go
 │       ├── observer.go
-│       ├── fixtures.go   (or reuse cmd/test-driver via Go import)
-│       └── tripwires.go
-└── scripts/
-    ├── clock-tick.sh    (accelerated clock; not the pilot's clock-tick)
-    └── node-setup.sh    (per-actor setup if any)
+│       ├── tripwires.go
+│       ├── fixtures.go
+│       ├── selftest.go
+│       ├── credentials.go
+│       ├── personas.go
+│       └── useractor.go
+└── (Docker evidence is deliberately external to this repository.)
 ```
