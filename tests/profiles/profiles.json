@@ -26,6 +26,14 @@
       "invalid_environment": "process prerequisites unavailable"
     },
     {
+      "id": "package-e2e",
+      "state": "active",
+      "make_target": "package-e2e",
+      "surface": "privileged Ubuntu package installation, upgrade, removal, and purge",
+      "prerequisites": ["Linux host", "passwordless sudo to root", "dpkg-deb, dpkg, and setpriv"],
+      "invalid_environment": "the selected privileged Ubuntu package process profile is unavailable"
+    },
+    {
       "id": "headless-network",
       "state": "active",
       "make_target": "headless-check",

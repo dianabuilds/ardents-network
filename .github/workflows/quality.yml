@@ -27,4 +27,4 @@ jobs:
       - name: Install pinned quality tools
         run: make tools-install
       - name: Run mandatory quality gate
-        run: sudo env "PATH=$PATH" make check
+        run: make check

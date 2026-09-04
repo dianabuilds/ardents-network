@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -62,6 +62,9 @@ unit:
 
 e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
+
+package-e2e:
+	sudo env "PATH=$$PATH" "GOTOOLCHAIN=$(GOTOOLCHAIN)" "GOENV=$(GOENV)" "GOFLAGS=$(GOFLAGS)" "GOCACHE=$(GOCACHE)" "GOMODCACHE=$(GOMODCACHE)" go test -tags packagee2e ./tests/e2e/endpoint -run '^TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes$$' -shuffle=on -count=1
 
 artifact-representation-check: export ARDENTS_CANONICAL_BUILD_REPRESENTATIONS := 1
 artifact-representation-check:
@@ -143,6 +146,9 @@ quick-check:
 check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln deadcode
 	$(MAKE) --output-sync=target e2e
+ifeq ($(HEADLESS_GOOS),linux)
+	$(MAKE) --output-sync=target package-e2e
+endif
 	$(MAKE) --output-sync=target test-race
 
 tools-install:

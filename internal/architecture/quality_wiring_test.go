@@ -13,6 +13,9 @@ func assertQualityWiring(t *testing.T, root string) {
 	makefile := readProjectFile(t, root, "Makefile")
 	for _, required := range []string{
 		"unit:", "e2e:",
+		"package-e2e:",
+		"-tags packagee2e ./tests/e2e/endpoint",
+		"$(MAKE) --output-sync=target package-e2e",
 		"QUICK_CHECK_TARGETS := format-check vet unit build mod-check",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln",
@@ -39,7 +42,7 @@ func assertQualityWiring(t *testing.T, root string) {
 	}
 	workflow := readProjectFile(t, root, ".github/workflows/quality.yml")
 	goVersion := moduleGoVersion(t, root)
-	for _, required := range []string{"contents: read", "go-version: " + goVersion, `run: sudo env "PATH=$PATH" make check`} {
+	for _, required := range []string{"contents: read", "go-version: " + goVersion, "run: make check"} {
 		if !bytes.Contains(workflow, []byte(required)) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}

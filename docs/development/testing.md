@@ -90,7 +90,7 @@ artifact is an invalid environment, never a skip or passing result.
 
 The maintained local profiles are:
 
-- developer, deterministic, process, headless-network, race, and fuzz;
+- developer, deterministic, process, package-e2e, headless-network, race, and fuzz;
 - `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `service-credential-response-linux`;
