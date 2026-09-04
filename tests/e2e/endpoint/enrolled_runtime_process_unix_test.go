@@ -245,12 +245,6 @@ func enrolledRuntimeBundleWithKeys(t *testing.T, command string) (string, string
 	controlName := "ardents-control-" + platform
 	nodeName := "ardents-node-" + platform
 	custodyName := "ardents-custody-" + platform
-	if runtime.GOOS == "windows" {
-		artifactName += ".exe"
-		controlName += ".exe"
-		nodeName += ".exe"
-		custodyName += ".exe"
-	}
 	artifact, err := os.ReadFile(command)
 	if err != nil {
 		t.Fatal(err)

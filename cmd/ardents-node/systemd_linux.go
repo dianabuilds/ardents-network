@@ -35,7 +35,7 @@ func (systemdSupervisor) Do(ctx context.Context, action contributor.SupervisorAc
 	case contributor.SupervisorStatus:
 		return systemdState(ctx)
 	default:
-		return contributor.SupervisorState{}, errors.New("Contributor supervisor action is invalid")
+		return contributor.SupervisorState{}, errors.New("contributor supervisor action is invalid")
 	}
 	if err := exec.CommandContext(ctx, "systemctl", arguments...).Run(); err != nil {
 		return contributor.SupervisorState{}, err

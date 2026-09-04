@@ -190,12 +190,6 @@ func alphaControlBundle(t *testing.T, endpoint, control string) alphaControlBund
 	t.Helper()
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	artifactName, controlName, nodeName, custodyName, targetPath := "ardents-"+platform, "ardents-control-"+platform, "ardents-node-"+platform, "ardents-custody-"+platform, "ardents/"+platform+"/endpoint"
-	if runtime.GOOS == "windows" {
-		artifactName += ".exe"
-		controlName += ".exe"
-		nodeName += ".exe"
-		custodyName += ".exe"
-	}
 	artifact, err := os.ReadFile(endpoint)
 	if err != nil {
 		t.Fatal(err)

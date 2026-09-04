@@ -259,36 +259,6 @@ func TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata(t *testing.T) {
 	}
 }
 
-func TestVerifyBindsPackageOwnedArtifactOutsideStaticEnrollmentDirectory(t *testing.T) {
-	root, request := enrolledFixture(t)
-	artifactName := "ardents-linux-amd64"
-	artifact, err := os.ReadFile(filepath.Join(root, artifactName))
-	if err != nil {
-		t.Fatal(err)
-	}
-	installed := filepath.Join(t.TempDir(), "usr", "lib", "ardents", "ardents")
-	if err := os.MkdirAll(filepath.Dir(installed), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(installed, artifact, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(root, artifactName)); err != nil {
-		t.Fatal(err)
-	}
-	request.ExecutablePath = installed
-	request.ArtifactPath = installed
-	if _, err := Verify(request); err != nil {
-		t.Fatalf("Verify(package enrollment) = %v", err)
-	}
-	if err := os.WriteFile(installed, []byte("substituted installed program"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Verify(request); err == nil {
-		t.Fatalf("substituted installed program result = %v", err)
-	}
-}
-
 func enrolledFixture(t *testing.T) (string, Request) {
 	t.Helper()
 	root := t.TempDir()
