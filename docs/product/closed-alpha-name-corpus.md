@@ -47,54 +47,19 @@ name source.
 
 ## First intake
 
-Put the downloaded pair outside the enrolled bundle. The following Ubuntu
-example uses owner-only state roots and does not start an Endpoint, modify DNS,
-install a certificate, or launch a browser.
+There is deliberately no executable first-intake procedure in this deferred
+template. In particular, do not create or retain an `alpha-enrollment.json`
+file and do not infer that `ardents-control accept-alpha-corpus` accepts a
+current Portable enrollment argument. The historic command sequence was
+removed because its JSON input no longer matches the current manifest-pinned
+Portable contract.
 
-```sh
-set -eu
-umask 077
-
-bundle=/absolute/path/to/unpacked-bundle
-artifact="$bundle/ardents-linux-amd64"
-control="$bundle/ardents-control-linux-amd64"
-enrollment="$HOME/.local/state/ardents-alpha/declared-release/alpha-enrollment.json"
-incoming=/absolute/path/to/received-alpha-corpus
-state_root="${XDG_STATE_HOME:-$HOME/.local/state}/ardents-alpha/name-corpus"
-control_root="$state_root/control"
-corpus_root="$state_root/corpus-floor"
-
-test -f "$artifact"
-test -f "$control"
-test -f "$enrollment"
-test -f "$incoming/catalog.ac2"
-test -f "$incoming/corpus.anc"
-mkdir -p "$state_root"
-chmod 700 "$state_root"
-
-"$control" accept-alpha-corpus \
-  --enrollment "$enrollment" --artifact "$artifact" \
-  --control-state-root "$control_root" --corpus-state-root "$corpus_root" \
-  --catalog "$incoming/catalog.ac2" --corpus "$incoming/corpus.anc" \
-  --at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-```
-
-Each floor root is owner-only and must belong to the account running the
-command. The command refuses a group-accessible, symlinked, or foreign-owned
-floor root rather than repairing or claiming it.
-
-The command is the `ardents-control` binary already verified as a regular file
-in the same exact bundle. It checks the enrolled Endpoint artifact named by
-`--artifact`, but it is not itself an Endpoint and does not start one. This
-template cannot be promoted from a bundle that lacks that manifested command.
-A future Endpoint package may expose the same operation only through a
-documented, equivalently verified command; do not substitute an arbitrary
-binary merely because it has the same command name.
-
-Success prints `ardents-alpha-corpus-acceptance-v1` with `corpus: accepted`,
-the Network and retained serial. A non-zero result means the corpus floor was
-not advanced. The independent ACA1 inspection root can retain its own accepted
-control evidence; it is not a usable name floor.
+Before this template can become a live procedure, its selected issue must
+define one concrete command invocation that receives the bundle root and the
+independently delivered manifest pin without reintroducing an ambient
+enrollment document. That change must also preserve the owner-only corpus and
+control floor roots, exact manifested Endpoint/control binaries, corpus
+serial/floor behavior, and explicit failure outcome described here.
 
 ## Replacement and withdrawal
 

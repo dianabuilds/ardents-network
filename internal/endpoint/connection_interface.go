@@ -10,6 +10,7 @@ import (
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/entry"
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
@@ -41,12 +42,13 @@ type applicationEntry interface {
 	Contact() (entry.Candidate, error)
 }
 
-// connectionInterfaceConfig binds the already-constructed Endpoint-owned Route.
-// Its construction is process
+// connectionInterfaceConfig binds the already-constructed Endpoint-owned Route
+// and an optional preaccepted legacy Service Link floor. Its construction is process
 // composition; the Connection Interface caller cannot provide a Target,
 // Gateway URL/profile, C-2 peer, Route plan, or browser destination.
 type connectionInterfaceConfig struct {
-	Route *route.Route
+	Route                  *route.Route
+	LegacyServiceLinkFloor *alpha.PersistentFloor
 	// Principal is the preconfigured local connection grant principal. A fresh
 	// capability is minted for each Application-requested Service Connection.
 	Principal          [32]byte
@@ -55,8 +57,9 @@ type connectionInterfaceConfig struct {
 }
 
 // connectionInterface is the Connection-surface owner shared by headless CLI
-// and optional Adapters. Its Open input is only a Target Link; State, Entry,
-// Target authentication, Route, and one-use transport inputs remain private.
+// and optional Adapters. Its Open input is a Target Link, except for the
+// explicit preaccepted v1 Service Link migration path. State, Entry, Target
+// authentication, Route, and one-use transport inputs remain private.
 type connectionInterface struct {
 	endpoint *endpoint
 	input    connectionInterfaceConfig
@@ -78,20 +81,42 @@ func (endpoint *endpoint) openConnectionInterface(input connectionInterfaceConfi
 	return &connectionInterface{endpoint: endpoint, input: input, clock: clock}, nil
 }
 
-// Open resolves one exact Target Link and returns only its
-// authenticated opaque Application stream and bounded terminal outcome.
+// Open resolves one exact Target Link and returns only its authenticated opaque
+// Application stream and bounded terminal outcome. A legacy Service Link is
+// recognized only when process composition supplied its complete preaccepted
+// corpus floor; it never becomes a Target Link fallback for new C0 runtimes.
 func (owner *connectionInterface) Open(ctx context.Context, targetLink string) (applicationconnection.Stream, error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("application Connection Interface is unavailable")
 	}
 	target, err := owner.endpoint.TargetFromLink(targetLink)
-	if err != nil {
+	if err == nil {
+		session, sessionErr := owner.endpoint.beginApplicationSession(ctx, owner.input.Principal)
+		if sessionErr != nil {
+			return nil, sessionErr
+		}
+		return owner.openTargetForSession(session, target)
+	}
+	if owner.input.LegacyServiceLinkFloor == nil {
 		return nil, err
 	}
-	session, err := owner.endpoint.beginApplicationSession(ctx, owner.input.Principal)
-	if err != nil {
+	legacyLink, legacyErr := alpha.ParseServiceLink(targetLink)
+	if legacyErr != nil {
 		return nil, err
 	}
+	session, sessionErr := owner.endpoint.beginApplicationSession(ctx, owner.input.Principal)
+	if sessionErr != nil {
+		return nil, sessionErr
+	}
+	binding, bindingErr := owner.endpoint.ResolveAcceptedAlpha(owner.input.LegacyServiceLinkFloor, legacyLink.String(), owner.clock().UTC())
+	if bindingErr != nil {
+		session.Release()
+		return nil, bindingErr
+	}
+	return owner.openTargetForSession(session, binding.Target())
+}
+
+func (owner *connectionInterface) openTargetForSession(session *applicationSession, target [32]byte) (applicationconnection.Stream, error) {
 	stream, err := owner.openTarget(session.Context(), target, session)
 	if err == nil {
 		return stream, nil

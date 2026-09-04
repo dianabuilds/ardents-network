@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/entry"
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -20,22 +21,28 @@ import (
 // anchors, and local Application addresses for one Endpoint process. It has no
 // Browser, Target, Route plan, Grant, private Service Authority, or peer input.
 type ParticipantRuntimeConfig struct {
-	Network                 state.Config
-	RefreshNetwork          bool
-	EntryRoot               string
-	TransitAcquisitionRoot  string
-	LocalRoleRoot           string
-	ApplicationAddress      string
-	AdministrationAddress   string
-	PublicationRoot         string
-	ServiceInstanceRoot     string
-	BrokerID                [32]byte
-	ConnectionPrincipal     [32]byte
-	AdministrationPrincipal [32]byte
-	BytesEachDirection      uint32
-	Clock                   func() time.Time
-	TimeConfident           func() bool
-	Observe                 func(ParticipantRuntimeEvent) error
+	Network                state.Config
+	RefreshNetwork         bool
+	EntryRoot              string
+	TransitAcquisitionRoot string
+	// LegacyServiceLink* is a complete preaccepted v1 Alpha corpus floor used
+	// only to restart or migrate an existing v1 runtime plan. New C0 plans
+	// leave all three fields absent and accept Target Links only.
+	LegacyServiceLinkRoot      string
+	LegacyServiceLinkAuthority ed25519.PublicKey
+	LegacyServiceLinkCohort    string
+	LocalRoleRoot              string
+	ApplicationAddress         string
+	AdministrationAddress      string
+	PublicationRoot            string
+	ServiceInstanceRoot        string
+	BrokerID                   [32]byte
+	ConnectionPrincipal        [32]byte
+	AdministrationPrincipal    [32]byte
+	BytesEachDirection         uint32
+	Clock                      func() time.Time
+	TimeConfident              func() bool
+	Observe                    func(ParticipantRuntimeEvent) error
 }
 
 // ParticipantRuntimeEvent is the typed process lifecycle observed by the thin
@@ -50,7 +57,9 @@ type ParticipantRuntimeEvent struct {
 // RunParticipant owns the live State, Entry, Endpoint, and both
 // local Application transports until cancellation.
 func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runErr error) {
+	legacyServiceLink := config.LegacyServiceLinkRoot != "" || len(config.LegacyServiceLinkAuthority) != 0 || config.LegacyServiceLinkCohort != ""
 	if ctx == nil || config.Network.Root == "" || config.EntryRoot == "" || config.TransitAcquisitionRoot == "" ||
+		(legacyServiceLink && (config.LegacyServiceLinkRoot == "" || len(config.LegacyServiceLinkAuthority) != ed25519.PublicKeySize || config.LegacyServiceLinkCohort == "")) ||
 		config.LocalRoleRoot == "" || config.ApplicationAddress == "" || config.AdministrationAddress == "" ||
 		config.ApplicationAddress == config.AdministrationAddress || config.BrokerID == [32]byte{} ||
 		config.ConnectionPrincipal == [32]byte{} || config.AdministrationPrincipal == [32]byte{} ||
@@ -98,6 +107,19 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 	defer func() { runErr = errors.Join(runErr, entryOwner.Close()) }()
 	if _, err := entryOwner.Contact(); err != nil {
 		return fmt.Errorf("read current participant Entry contact: %w", err)
+	}
+	var legacyServiceLinkFloor *alpha.PersistentFloor
+	if legacyServiceLink {
+		legacyServiceLinkFloor, err = alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: config.LegacyServiceLinkRoot,
+			Authority: config.LegacyServiceLinkAuthority, Cohort: config.LegacyServiceLinkCohort, Network: config.Network.NetworkID})
+		if err != nil {
+			return fmt.Errorf("open legacy Service Link corpus floor: %w", err)
+		}
+		defer func() { runErr = errors.Join(runErr, legacyServiceLinkFloor.Close()) }()
+		corpus, corpusErr := legacyServiceLinkFloor.Current()
+		if corpusErr != nil || corpus.ValidAt(now) != nil {
+			return errors.New("accepted legacy Service Link corpus is unavailable")
+		}
 	}
 	setup := setup{NetworkID: config.Network.NetworkID, BrokerID: config.BrokerID,
 		ConnectionPrincipal: config.ConnectionPrincipal, AdministrationPrincipal: config.AdministrationPrincipal,
@@ -154,7 +176,7 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 		return fmt.Errorf("open participant User Route: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, userRoute.Close()) }()
-	connectionOwner, err := owner.openConnectionInterface(connectionInterfaceConfig{Route: userRoute,
+	connectionOwner, err := owner.openConnectionInterface(connectionInterfaceConfig{LegacyServiceLinkFloor: legacyServiceLinkFloor, Route: userRoute,
 		Principal: config.ConnectionPrincipal, BytesEachDirection: config.BytesEachDirection, Clock: clock})
 	if err != nil {
 		return fmt.Errorf("open Connection Interface owner: %w", err)

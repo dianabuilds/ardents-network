@@ -23,6 +23,14 @@ Browser enrollment-v4 is not part of the maintained verifier or artifact
 surface. Its former inputs and results remain only in the non-executable
 compatibility evidence tree.
 
+The Endpoint adapter also retains a parser for the complete historical
+`ardents-alpha-enrollment-input-v1` document when an already generated Portable
+user unit invokes its original three-argument command. This is an execution
+compatibility bridge, not an enrollment format: it derives the same verifier
+request, including the manifest digest, and new C0 enrollment and newly rendered
+units receive the bundle root and independently delivered pin as separate
+arguments.
+
 ## Acceptance sequence
 
 1. Reject an incomplete request and resolve Bundle Root to an absolute path.

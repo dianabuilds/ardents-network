@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +28,7 @@ import (
 
 func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	command := buildArdents(t)
-	bundle, enrolledCommand, _ := enrolledRuntimeBundle(t, command)
+	bundle, enrolledCommand, legacyInput := enrolledRuntimeBundle(t, command)
 	manifestPin := enrolledRuntimeManifestPin(t, bundle)
 	root := enrolledRuntimeRoot(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
@@ -110,7 +111,10 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	if err := os.RemoveAll(bundle); err != nil {
 		t.Fatal(err)
 	}
-	restarted := exec.CommandContext(ctx, successor, "endpoint", "enroll", bundle, manifestPin)
+	// The persisted v1 user unit still passes its one JSON argument. The old
+	// bundle is gone, so this restart proves that an accepted replacement is
+	// recognized before any obsolete first-enrollment verification is attempted.
+	restarted := exec.CommandContext(ctx, successor, "endpoint", "enroll", legacyInput)
 	restarted.Env = append(os.Environ(),
 		"XDG_CONFIG_HOME="+filepath.Join(root, "config"),
 		"XDG_STATE_HOME="+filepath.Join(root, "state"),
@@ -124,6 +128,18 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 	if err := restarted.Start(); err != nil {
 		t.Fatal(err)
 	}
+	restartedFinished := false
+	t.Cleanup(func() {
+		if restartedFinished {
+			return
+		}
+		if err := restarted.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			t.Errorf("terminate successor Endpoint after failed process assertion: %v", err)
+		}
+		if err := restarted.Wait(); err != nil {
+			t.Errorf("join successor Endpoint after failed process assertion: %v", err)
+		}
+	})
 	restartedScanner := bufio.NewScanner(restartedOut)
 	var restartedEvents []struct{ Kind, State string }
 	for len(restartedEvents) < 3 && restartedScanner.Scan() {
@@ -145,8 +161,10 @@ func TestEnrolledPortableAcceptsPinnedBundleAndReleaseDecision(t *testing.T) {
 		t.Fatalf("successor restart did not stop: %v", restartedScanner.Err())
 	}
 	if err := restarted.Wait(); err != nil {
+		restartedFinished = true
 		t.Fatalf("successor restart exit: %v", err)
 	}
+	restartedFinished = true
 }
 
 func TestEnrolledPortableReportsInvalidPinBeforeReady(t *testing.T) {

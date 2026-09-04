@@ -38,6 +38,17 @@ func runEndpointUserUnit(bundleRoot, manifestSHA256 string, output io.Writer) er
 	return err
 }
 
+// runLegacyEndpointUserUnit turns one historical Portable enrollment input
+// into the current pin-argument unit. It exists only for explicit migration;
+// new units never retain the JSON path.
+func runLegacyEndpointUserUnit(path string, output io.Writer) error {
+	input, err := loadLegacyPortableEnrollment(path)
+	if err != nil {
+		return err
+	}
+	return runEndpointUserUnit(input.BundleRoot, input.ManifestSHA256, output)
+}
+
 func portableEnrollmentUserUnit(executable, bundleRoot, manifestSHA256, description string) (string, error) {
 	if description == "" {
 		return "", errors.New("portable Endpoint user unit description is required")

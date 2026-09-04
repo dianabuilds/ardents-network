@@ -22,8 +22,14 @@ import (
 // result projection. The Endpoint owns process and connection lifecycle; this
 // command only selects its explicit operator route.
 func runEndpoint(ctx context.Context, arguments []string, output io.Writer) error {
+	if len(arguments) == 3 && arguments[1] == "enrollment-check" {
+		return runLegacyEnrollmentCheck(arguments[2], output)
+	}
 	if len(arguments) == 4 && arguments[1] == "enrollment-check" {
 		return runEnrollmentCheck(arguments[2], arguments[3], output)
+	}
+	if len(arguments) == 3 && arguments[1] == "enroll" {
+		return runLegacyEnrolledPortable(ctx, arguments[2], output)
 	}
 	if len(arguments) == 4 && arguments[1] == "enroll" {
 		return runEnrolledPortable(ctx, arguments[2], arguments[3], output)
@@ -39,6 +45,9 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	}
 	if len(arguments) == 3 && (arguments[1] == "publish" || arguments[1] == "withdraw") {
 		return runHeadlessAdministration(ctx, arguments[1], arguments[2], output)
+	}
+	if len(arguments) == 3 && arguments[1] == "user-unit" {
+		return runLegacyEndpointUserUnit(arguments[2], output)
 	}
 	if len(arguments) == 4 && arguments[1] == "user-unit" {
 		return runEndpointUserUnit(arguments[2], arguments[3], output)
@@ -128,6 +137,20 @@ func runEnrollmentCheck(bundleRoot, manifestSHA256 string, output io.Writer) err
 		ArtifactSHA256: hexDigest(fact.Verified.Inputs.Artifact)})
 }
 
+func runLegacyEnrollmentCheck(path string, output io.Writer) error {
+	input, verified, err := verifyLegacyPortableEnrollment(path, enrollment.Verify)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(output)
+	encoder.SetEscapeHTML(false)
+	return encoder.Encode(struct {
+		Kind, Cohort, Release, Platform string
+		ArtifactSHA256                  string
+	}{Kind: "alpha-enrollment-verified", Cohort: input.Cohort, Release: input.Release, Platform: input.Platform,
+		ArtifactSHA256: hexDigest(verified.Inputs.Artifact)})
+}
+
 // runEnrolledPortable is the selected first-run composition: it claims the
 // local owner profile before release-floor mutation, verifies the bundle pin,
 // commits an accepted Release Decision, and only then exposes Portable
@@ -135,6 +158,13 @@ func runEnrollmentCheck(bundleRoot, manifestSHA256 string, output io.Writer) err
 func runEnrolledPortable(ctx context.Context, bundleRoot, manifestSHA256 string, output io.Writer) error {
 	return runEnrolledEndpoint(ctx, output, false, func() (enrollmentFact, error) {
 		return verifyManifestPinnedEnrollment(bundleRoot, manifestSHA256, enrollment.VerifyHeadless)
+	})
+}
+
+func runLegacyEnrolledPortable(ctx context.Context, path string, output io.Writer) error {
+	return runEnrolledEndpoint(ctx, output, false, func() (enrollmentFact, error) {
+		input, verified, err := verifyLegacyPortableEnrollment(path, enrollment.VerifyHeadless)
+		return enrollmentFact{Cohort: input.Cohort, Release: input.Release, Verified: verified}, err
 	})
 }
 
@@ -266,6 +296,32 @@ func verifyManifestPinnedEnrollment(bundleRoot, manifestSHA256 string,
 	}
 	verified, err := verify(request)
 	return enrollmentFact{Cohort: request.Pin.Cohort, Release: request.Pin.Release, Verified: verified}, err
+}
+
+func verifyLegacyPortableEnrollment(path string,
+	verify func(enrollment.Request) (enrollment.Verified, error),
+) (enrollment.ClosedAlphaInput, enrollment.Verified, error) {
+	input, err := loadLegacyPortableEnrollment(path)
+	if err != nil {
+		return enrollment.ClosedAlphaInput{}, enrollment.Verified{}, err
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		return enrollment.ClosedAlphaInput{}, enrollment.Verified{}, err
+	}
+	verified, err := verify(input.Request(executable, time.Now().UTC()))
+	return input, verified, err
+}
+
+func loadLegacyPortableEnrollment(path string) (enrollment.ClosedAlphaInput, error) {
+	input, err := enrollment.ReadClosedAlphaInput(path)
+	if err != nil {
+		return enrollment.ClosedAlphaInput{}, err
+	}
+	if input.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return enrollment.ClosedAlphaInput{}, errors.New("legacy portable enrollment input does not match this platform")
+	}
+	return input, nil
 }
 
 func verifyInstalledEnrollment(path string) (installedEnrollmentInput, enrollment.Verified, error) {

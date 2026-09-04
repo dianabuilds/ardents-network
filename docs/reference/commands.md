@@ -3,7 +3,7 @@
 Status: **current maintained command routes.** These commands exercise the
 implemented closed-test-network Modules. They are not a public operator API,
 installer, supported Node hosting profile, or compatibility promise for old
-plans and results.
+plans and results, except for explicitly documented bounded migration adapters.
 
 Every command fails closed on malformed, unavailable, or unqualified input.
 Its bounded input belongs to the owning Module; a plan is not an ambient
@@ -19,7 +19,7 @@ configuration format or an authority source.
 | `refresh-sources --state-root PATH --source-plan PATH [--once|--resume]` | Run one selected Direct-Origin Source wave, resume from current State, or wait for the plan-owned `ardents-source-plan-v1` refresh interval. `--once` and `--resume` are mutually exclusive. It emits an `ardents-source-event-v1` `source-wave-accepted` event only after actual acceptance. |
 | `service-instance initialize --config PATH` | Create or reopen one host-owned Service Instance generation from an `ardents-service-instance-initialize-v1` plan whose `request_file` names one new public output, and emit its stable public request plus `request_sha256` for the independently transferred custody ceremony. The command exposes neither private key, Service Authority, Credential, Target, Route, nor Browser state. |
 | `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
-| `endpoint headless <headless-runtime.json>` | Decode the bounded participant plan and call the Endpoint-owned runtime, which retains accepted State, Entry, separate Introduction/Responder acquisition state, and the local Application transports. An optional `service_instance_root` names an already accepted host Instance generation: the runtime reconciles its public Credential with the publication floor, opens the non-exporting binding, and consumes only State's exact Publisher attachment projection. Without that field it is User-only. It exposes only the Target-Link Connection Interface and separately capability-bound Service Administration socket; Browser presentation is absent. Network Epoch authorities are never substituted for Service Authority. |
+| `endpoint headless <headless-runtime.json>` | Decode the bounded participant plan and call the Endpoint-owned runtime, which retains accepted State, Entry, separate Introduction/Responder acquisition state, and the local Application transports. An optional `service_instance_root` names an already accepted host Instance generation: the runtime reconciles its public Credential with the publication floor, opens the non-exporting binding, and consumes only State's exact Publisher attachment projection. Without that field it is User-only. It exposes only the Target-Link Connection Interface and separately capability-bound Service Administration socket; Browser presentation is absent. Network Epoch authorities are never substituted for Service Authority. A complete historical `alpha_corpus_*` triple is accepted only to restart or migrate an already persisted v1 plan, and resolves only an exact accepted `ardents-alpha://` link through that plan's local floor. |
 | `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Open one explicit Target Link through the local Application Interface, half-close after streaming the exact input bytes, and create one new output file from returned bytes. The command receives no State, Entry, Grant, raw Target, or Route input. |
 | `endpoint publish <administration-socket>` | Request publication through the exact local one-use Service Administration capability and render its bounded receipt. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
@@ -38,6 +38,13 @@ configuration format or an authority source.
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
 Module diagnostics, not a capacity or hosting claim.
+
+The three-argument v1 forms `endpoint enrollment-check <alpha-enrollment.json>`,
+`endpoint enroll <alpha-enrollment.json>`, and `endpoint user-unit
+<alpha-enrollment.json>` are retained solely so a pre-existing Portable user
+unit can restart or render its explicit migration unit. They verify the same
+bundle and manifest digest but are not a new C0 enrollment route; new units use
+the independently delivered manifest pin argument.
 
 ## `ardents-node`
 

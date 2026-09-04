@@ -3,6 +3,8 @@ package endpoint
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/tls"
 	"errors"
 	"io"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
@@ -25,16 +28,40 @@ func TestConnectionInterfaceOpensTargetLinkThroughTwoEndpoints(t *testing.T) {
 	defer fixture.close()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
+	link, err := targetlink.Encode(targetlink.Link{Network: fixture.network, Target: fixture.target})
+	if err != nil {
+		t.Fatal(err)
+	}
+	exchangeConnectionInterfaceLink(t, fixture, ctx, link, nil)
+}
+
+// TestConnectionInterfaceOpensPersistedLegacyServiceLinkThroughTwoEndpoints
+// proves the bounded v1 adapter: only a complete accepted local corpus can
+// resolve an exact historical Service Link to the same authenticated Target.
+func TestConnectionInterfaceOpensPersistedLegacyServiceLinkThroughTwoEndpoints(t *testing.T) {
+	fixture := openUserRouteCredentialFixture(t, route.IntroductionDelivered)
+	defer fixture.close()
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	floor, link := acceptedLegacyServiceLinkFloor(t, fixture)
+	t.Cleanup(func() {
+		if err := floor.Close(); err != nil {
+			t.Errorf("close legacy Service Link floor: %v", err)
+		}
+	})
+	exchangeConnectionInterfaceLink(t, fixture, ctx, link, floor)
+}
+
+func exchangeConnectionInterfaceLink(t *testing.T, fixture *userRouteCredentialFixture, ctx context.Context, link string,
+	legacyFloor *alpha.PersistentFloor,
+) {
+	t.Helper()
 	const byteLimit = uint32(19)
 	publisherApplication, publisherResult, closePublisher := startTargetLinkPublisher(t, fixture, ctx, byteLimit)
 	defer closePublisher()
 
 	owner, err := fixture.endpoint.openConnectionInterface(connectionInterfaceConfig{Route: fixture.route,
-		Principal: [32]byte{86}, BytesEachDirection: byteLimit, Clock: func() time.Time { return fixture.now }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	link, err := targetlink.Encode(targetlink.Link{Network: fixture.network, Target: fixture.target})
+		LegacyServiceLinkFloor: legacyFloor, Principal: [32]byte{86}, BytesEachDirection: byteLimit, Clock: func() time.Time { return fixture.now }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +117,40 @@ func TestConnectionInterfaceOpensTargetLinkThroughTwoEndpoints(t *testing.T) {
 		t.Fatalf("publisher Endpoint did not finish the bounded stream: %v", ctx.Err())
 	}
 	fixture.wait(t)
+}
+
+func acceptedLegacyServiceLinkFloor(t *testing.T, fixture *userRouteCredentialFixture) (*alpha.PersistentFloor, string) {
+	t.Helper()
+	authorityPublic, authorityPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	link, err := alpha.ParseServiceLink("ardents-alpha://reference")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "closed-alpha-1", Network: fixture.network, Serial: 1,
+		Bindings: []alpha.BindingInput{{Link: link, Target: fixture.target}}, NotBefore: fixture.now.Add(-time.Minute),
+		NotAfter: fixture.now.Add(time.Minute)}, authorityPrivate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := alpha.OpenCorpus(authorityPublic, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: alphaPersistentFloorRoot(t), Authority: authorityPublic,
+		Cohort: "closed-alpha-1", Network: fixture.network})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := floor.Observe(corpus); err != nil {
+		if closeErr := floor.Close(); closeErr != nil {
+			t.Fatalf("observe legacy Service Link corpus: %v; close floor: %v", err, closeErr)
+		}
+		t.Fatal(err)
+	}
+	return floor, link.String()
 }
 
 func startTargetLinkPublisher(t *testing.T, fixture *userRouteCredentialFixture, ctx context.Context, byteLimit uint32,

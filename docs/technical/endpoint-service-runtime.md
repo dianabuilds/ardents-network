@@ -139,6 +139,16 @@ closes its exact socket paths after cancelling and joining active clients;
 external Applications use only the versioned client. No Browser client is
 selected in the maintained product.
 
+The `ardents-application-interface-v1` frame identity and its opaque link bytes
+remain accepted persisted-interface obligations. A runtime plan carrying the
+complete historical Alpha corpus triple is therefore a narrow migration
+adapter: it recognizes only an exact `ardents-alpha://` Service Link, resolves
+it through that plan's already accepted local floor, and then supplies the
+bound Target to the same Endpoint/Route path. Fresh C0 plans omit that triple
+and accept only Target Links. A malformed Target Link never falls back to a
+Service Link, and the adapter ends only after an explicit versioned
+plan/interface migration.
+
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection
 state. Route Attachments are already authenticated opaque carriers; Namespace

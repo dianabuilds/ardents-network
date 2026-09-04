@@ -39,6 +39,43 @@ func TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest(t *te
 	}
 }
 
+// TestLegacyEnrollmentCheckRemainsAvailableForPersistedPortableUnits proves
+// that an already-generated v1 user unit remains restartable. New enrollment
+// uses the separate manifest-pin argument route above.
+func TestLegacyEnrollmentCheckRemainsAvailableForPersistedPortableUnits(t *testing.T) {
+	command := buildArdents(t)
+	bundle, enrolledCommand, manifestPin := enrollmentBundle(t, command)
+	legacyInput := filepath.Join(t.TempDir(), "alpha-enrollment.json")
+	input, err := json.Marshal(map[string]string{
+		"schema":          "ardents-alpha-enrollment-input-v1",
+		"bundle_root":     bundle,
+		"cohort":          "closed-cohort-1",
+		"release":         "alpha-1",
+		"platform":        runtime.GOOS + "-" + runtime.GOARCH,
+		"manifest_sha256": manifestPin,
+		"environment":     "alpha",
+		"network":         "alpha-network-1",
+		"target_path":     "ardents/" + runtime.GOOS + "-" + runtime.GOARCH + "/endpoint",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyInput, input, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output, err := exec.Command(enrolledCommand, "endpoint", "enrollment-check", legacyInput).CombinedOutput()
+	if err != nil {
+		t.Fatalf("verify persisted v1 unit input: %v\n%s", err, output)
+	}
+	var observed struct {
+		Kind, Cohort, Release, Platform string
+	}
+	if err := json.Unmarshal(output, &observed); err != nil || observed.Kind != "alpha-enrollment-verified" ||
+		observed.Cohort != "closed-cohort-1" || observed.Release != "alpha-1" || observed.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		t.Fatalf("persisted v1 unit result = %q / %+v / %v", output, observed, err)
+	}
+}
+
 func TestManifestPinnedEnrollmentArgumentsReadsOnlyFixtureMetadata(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "fixture.json")
 	if err := os.WriteFile(input, []byte(`{"bundle_root":"/bundle","manifest_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`), 0o600); err != nil {

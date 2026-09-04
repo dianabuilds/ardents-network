@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -128,6 +129,61 @@ func TestHeadlessRuntimePlanRejectsRouteAuthorityInput(t *testing.T) {
 	}
 	if _, err := loadHeadlessRuntimePlan(path); err == nil {
 		t.Fatal("headless runtime plan accepted a route authority field")
+	}
+}
+
+func TestHeadlessRuntimePlanAcceptsCompleteLegacyServiceLinkMigration(t *testing.T) {
+	directory := t.TempDir()
+	corpusAuthority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{6}, ed25519.SeedSize)).Public().(ed25519.PublicKey)
+	plan := map[string]any{
+		"schema":                   "ardents-headless-runtime-v1",
+		"network_state_root":       filepath.Join(directory, "network"),
+		"entry_state_root":         filepath.Join(directory, "entry"),
+		"transit_acquisition_root": filepath.Join(directory, "transit"),
+		"application_socket":       filepath.Join(directory, "application.sock"),
+		"administration_socket":    filepath.Join(directory, "administration.sock"),
+		"publication_root":         filepath.Join(directory, "publication"),
+		"alpha_corpus_state_root":  filepath.Join(directory, "alpha-corpus"),
+		"local_role_state_root":    filepath.Join(directory, "roles"),
+		"time_confidence_file":     filepath.Join(directory, "time-confidence"),
+		"network_id":               strings.Repeat("01", 32),
+		"network_authorities":      []string{strings.Repeat("02", 32)},
+		"network_threshold":        1,
+		"network_profile":          "ardents-interactive-route-v1",
+		"alpha_corpus_authority":   hex.EncodeToString(corpusAuthority),
+		"alpha_cohort":             "closed-alpha-1",
+		"broker_id":                strings.Repeat("03", 32),
+		"connection_principal":     strings.Repeat("04", 32),
+		"administration_principal": strings.Repeat("05", 32),
+		"bytes_each_direction":     4096,
+	}
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "legacy-runtime.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := loadHeadlessRuntimePlan(path)
+	if err != nil {
+		t.Fatalf("load persisted v1 runtime plan: %v", err)
+	}
+	if decoded.AlphaCorpusStateRoot != plan["alpha_corpus_state_root"] || decoded.AlphaCohort != "closed-alpha-1" ||
+		!bytes.Equal(decoded.LegacyServiceLinkAuthority, corpusAuthority) {
+		t.Fatalf("decoded legacy Service Link transition = %+v", decoded)
+	}
+
+	delete(plan, "alpha_cohort")
+	raw, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadHeadlessRuntimePlan(path); err == nil {
+		t.Fatal("headless runtime plan accepted an incomplete legacy Service Link transition")
 	}
 }
 
