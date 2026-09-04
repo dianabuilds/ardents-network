@@ -44,10 +44,13 @@ file order or create empty future manuals. A target technical, operations, or
 reference document first appears with real owned behavior; a package rename is
 not a documentation boundary by itself.
 
-The C0 delivery backlog and its live status belong in the selected issue tracker
-and milestone, not in an ADR, research record, experiment README, or product
-contract. A current document may link to a tracker item for operational status,
-but it stays a stable contract rather than a second backlog.
+The C0 delivery backlog and its live status belong in GitHub Issues under the
+[`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones),
+not in an ADR, research record, experiment README, or product contract. Its
+absence blocks a new C0 implementation slice. At most one C0 implementation
+issue and one explicitly selected research question may be in progress. A
+current document may link to a tracker item for operational status, but it
+stays a stable contract rather than a second backlog.
 
 ## Checks
 

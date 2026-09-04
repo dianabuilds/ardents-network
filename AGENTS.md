@@ -63,6 +63,17 @@ The C0 Closed Alpha delivery state belongs in the selected issue tracker and
 milestone. Current product documents state the contract and its limits; they
 must not become a second task ledger or repeat historical campaign chronology.
 
+## C0 work-in-progress limit
+
+The one live C0 ledger is GitHub Issues in the
+[`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones).
+Until that milestone exists and is accessible, do not begin a new C0
+implementation slice; only contract clarification, review, or a green-baseline
+repair may proceed. The milestone permits exactly one in-progress C0
+implementation issue and at most one explicitly selected active research
+question. An open or deferred question is not active merely because its
+historical evidence remains in the repository.
+
 ## Research discipline
 
 - Every research effort starts with a decision-relevant question from

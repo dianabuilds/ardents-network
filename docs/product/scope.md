@@ -73,9 +73,43 @@ operation, availability, anonymity, or censorship-resistance claims. Those
 items remain outside C0 unless a later Product Owner decision, research
 question, and required durable decision admit them.
 
-Current C0 delivery status and work sequencing belong in the selected issue
-tracker and milestone, not in this contract or research records. The product
-contract remains stable; the tracker is the one live task ledger.
+Current C0 delivery status and work sequencing belong in GitHub Issues under
+the [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones),
+not in this contract or research records. The product contract remains stable;
+the tracker is the one live task ledger.
+
+### C0 command roles, state, and blocking route gap
+
+The four commands have non-interchangeable C0 roles: `ardents-control` verifies
+the enrollment-pinned control evidence; `ardents-node` runs only the
+project-controlled Source, Transit issuance, and selected Node duties;
+`ardents-custody` creates the Service Authority and issues the one public
+Service Credential without exporting Authority material; and `ardents` owns
+Endpoint enrollment/runtime, Service Instance initialization/acceptance,
+publication, and local Application byte exchange. Their durable inputs remain
+separate: immutable artifact and enrollment inputs, project Node/issuer roots,
+Custody Vault, Service Instance root and public request/response, Endpoint
+State/Entry/Transit/Publication roots, and local Application/Administration
+sockets. No role may borrow another role's root or private material.
+
+The C0 operator route must expose stable, actionable failures for a rejected
+artifact or enrollment input; stale, conflicting, revoked, expired,
+incompatible, or unavailable current State; rejected or conflicting Service
+Credential response; unauthorized or unavailable Route; exhausted local
+resource; cancellation or timeout; and closed Service Connection. A lower
+level diagnostic may add detail but cannot silently reinterpret one of these
+classes as success or fallback.
+
+This profile deliberately records one current blocking gap: the maintained
+`ardents endpoint open` route accepts an alpha Service Link, while the selected
+C0 journey starts with a Target Link; the existing portable enrollment
+instruction also asks an operator to transcribe `alpha-enrollment.json`. Those
+paths do not yet satisfy this profile's Target Link and no-manual-JSON
+requirements. Until one bounded, tested operator route supplies the selected
+Target Link-to-Connection transition and owned inputs without manual JSON,
+the C0 Closed Alpha route is not accepted. This is a delivery requirement, not
+permission to bypass the Endpoint-owned Resolution, Route, or authority
+boundaries.
 
 ## C0 Network candidate
 
