@@ -1,0 +1,175 @@
+name: ardents-multi-agent-real
+
+# Minimal network harness for the multi-agent real-network run. Reuses
+# the slice 2 pilot's prebaked evidence (state roots, source plans,
+# client plans, clock observation file) from the bind-mounted
+# $ARDENTS_PILOT_EVIDENCE_DIR. The source servers, clock owner, and one
+# inert agent-executor are started. LLM agents run only the host wrapper;
+# the wrapper performs docker exec and owns every command/path parameter.
+#
+# All three source services (source-a, source-b, adversary) bind to
+# 0.0.0.0 inside the docker network (172.30.0.10:4101 / .11:4102 /
+# .20:4103). The executor gets real network access to all Sources without
+# publishing ports to the host. Source containers never double as mutable
+# consumers.
+#
+# Started services (in order):
+#   source-a   172.30.0.10:4101
+#   source-b   172.30.0.11:4102
+#   adversary  172.30.0.20:4103
+#   clock-tick updates /workspace/evidence/fixtures/clock.observation
+#   agent-executor receives fixed wrapper-owned refresh commands
+
+networks:
+  pilot:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+x-artifacts: &artifacts
+  type: bind
+  source: ${ARDENTS_PILOT_EVIDENCE_DIR:?set ARDENTS_PILOT_EVIDENCE_DIR to the existing slice 2 evidence dir}/artifacts
+  target: /workspace/artifacts
+
+x-evidence: &evidence
+  type: bind
+  source: ${ARDENTS_PILOT_EVIDENCE_DIR}
+  target: /workspace/evidence
+
+services:
+  source-a:
+    image: golang:1.26-bookworm
+    networks:
+      pilot:
+        ipv4_address: 172.30.0.10
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-a.json
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4101' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
+  source-b:
+    image: golang:1.26-bookworm
+    networks:
+      pilot:
+        ipv4_address: 172.30.0.11
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-b.json
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4102' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
+  adversary:
+    image: golang:1.26-bookworm
+    networks:
+      pilot:
+        ipv4_address: 172.30.0.20
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command:
+      - /workspace/artifacts/ardents-node-linux-amd64
+      - source
+      - --config
+      - /workspace/evidence/fixtures/source-c.json
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4103' || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.8"
+
+  clock-tick:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *evidence
+      - ./scripts/clock-tick.sh:/workspace/scripts/clock-tick.sh:ro
+    working_dir: /workspace
+    command:
+      - /workspace/scripts/clock-tick.sh
+      - /workspace/evidence/fixtures/clock.observation
+    depends_on:
+      source-a:
+        condition: service_healthy
+      source-b:
+        condition: service_healthy
+      adversary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /workspace/evidence/fixtures/clock.observation && now=$$(date +%s) && observed=$$(stat -c %Y /workspace/evidence/fixtures/clock.observation) && test $$((now - observed)) -le 1"]
+      interval: 500ms
+      timeout: 1s
+      retries: 10
+      start_period: 1s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.1"
+
+  agent-executor:
+    image: golang:1.26-bookworm
+    networks: [pilot]
+    volumes:
+      - *artifacts
+      - *evidence
+    working_dir: /workspace
+    command: ["bash", "-lc", "trap 'exit 0' INT TERM; while true; do sleep 3600 & wait $$!; done"]
+    depends_on:
+      source-a:
+        condition: service_healthy
+      source-b:
+        condition: service_healthy
+      adversary:
+        condition: service_healthy
+      clock-tick:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -x /workspace/artifacts/ardents-linux-amd64"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 1s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.2"
