@@ -20,6 +20,71 @@ type observedApplication struct {
 	once    sync.Once
 }
 
+type connectionTrace struct {
+	Operation string
+	Deadline  time.Time
+	At        time.Time
+	Err       error
+}
+
+type tracedConnection struct {
+	net.Conn
+	mu     sync.Mutex
+	traces []connectionTrace
+}
+
+func (connection *tracedConnection) SetDeadline(deadline time.Time) error {
+	err := connection.Conn.SetDeadline(deadline)
+	connection.record("deadline", deadline, err)
+	return err
+}
+
+func (connection *tracedConnection) SetReadDeadline(deadline time.Time) error {
+	err := connection.Conn.SetReadDeadline(deadline)
+	connection.record("read deadline", deadline, err)
+	return err
+}
+
+func (connection *tracedConnection) SetWriteDeadline(deadline time.Time) error {
+	err := connection.Conn.SetWriteDeadline(deadline)
+	connection.record("write deadline", deadline, err)
+	return err
+}
+
+func (connection *tracedConnection) Read(value []byte) (int, error) {
+	read, err := connection.Conn.Read(value)
+	if err != nil {
+		connection.record("read", time.Time{}, err)
+	}
+	return read, err
+}
+
+func (connection *tracedConnection) Write(value []byte) (int, error) {
+	written, err := connection.Conn.Write(value)
+	if err != nil {
+		connection.record("write", time.Time{}, err)
+	}
+	return written, err
+}
+
+func (connection *tracedConnection) Close() error {
+	err := connection.Conn.Close()
+	connection.record("close", time.Time{}, err)
+	return err
+}
+
+func (connection *tracedConnection) record(operation string, deadline time.Time, err error) {
+	connection.mu.Lock()
+	defer connection.mu.Unlock()
+	connection.traces = append(connection.traces, connectionTrace{Operation: operation, Deadline: deadline, At: time.Now(), Err: err})
+}
+
+func (connection *tracedConnection) trace() []connectionTrace {
+	connection.mu.Lock()
+	defer connection.mu.Unlock()
+	return append([]connectionTrace(nil), connection.traces...)
+}
+
 func (application *observedApplication) Read(value []byte) (int, error) {
 	application.once.Do(func() { close(application.entered) })
 	return application.Conn.Read(value)
@@ -123,16 +188,30 @@ func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoute, publisherRoute := tcpPair(t)
+	clientRouteTrace := &tracedConnection{Conn: clientRoute}
+	publisherRouteTrace := &tracedConnection{Conn: publisherRoute}
 	clientEndpoint, clientApplication := net.Pipe()
 	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpointTrace := &tracedConnection{Conn: clientEndpoint}
+	publisherEndpointTrace := &tracedConnection{Conn: publisherEndpoint}
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
+	t.Cleanup(func() {
+		for name, connection := range map[string]*tracedConnection{
+			"client route": clientRouteTrace, "publisher route": publisherRouteTrace,
+			"client application": clientEndpointTrace, "publisher application": publisherEndpointTrace,
+		} {
+			for _, trace := range connection.trace() {
+				t.Logf("[DEBUG-c005] %s trace=%+v", name, trace)
+			}
+		}
+	})
 	ctx, cancel := context.WithCancel(context.Background())
 	clientEntered, publisherEntered := make(chan struct{}), make(chan struct{})
 	outcomes := runConnections(ctx, fixture, client, publisher, publication,
-		clientRoute, publisherRoute,
-		&observedApplication{Conn: clientEndpoint, entered: clientEntered},
-		&observedApplication{Conn: publisherEndpoint, entered: publisherEntered})
+		clientRouteTrace, publisherRouteTrace,
+		&observedApplication{Conn: clientEndpointTrace, entered: clientEntered},
+		&observedApplication{Conn: publisherEndpointTrace, entered: publisherEntered})
 	for _, entered := range []chan struct{}{clientEntered, publisherEntered} {
 		select {
 		case <-entered:
