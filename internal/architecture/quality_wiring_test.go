@@ -39,7 +39,7 @@ func assertQualityWiring(t *testing.T, root string) {
 	}
 	workflow := readProjectFile(t, root, ".github/workflows/quality.yml")
 	goVersion := moduleGoVersion(t, root)
-	for _, required := range []string{"contents: read", "go-version: " + goVersion, "run: make check"} {
+	for _, required := range []string{"contents: read", "go-version: " + goVersion, `run: sudo env "PATH=$PATH" make check`} {
 		if !bytes.Contains(workflow, []byte(required)) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}

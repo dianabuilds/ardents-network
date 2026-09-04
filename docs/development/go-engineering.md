@@ -66,8 +66,10 @@ this full gate requires network access unless the database is already cached.
 
 Run `make tools-install` explicitly when the pinned development tools are
 missing. Run `bash ./scripts/install-git-hooks.sh` once per clone to enable the
-local pre-commit gate. CI independently runs `make check`; the hook is not the
-security boundary.
+local pre-commit gate. CI independently runs `make check` in an explicit root
+environment on Ubuntu because the selected `.deb` process profile must exercise
+`dpkg` and `setpriv`; a missing privilege invalidates that profile rather than
+skipping it. The hook is not the security boundary.
 
 ## Basis
 

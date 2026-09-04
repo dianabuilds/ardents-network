@@ -20,8 +20,11 @@ import (
 )
 
 // TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes proves the first
-// installed Endpoint package package shape with a real command artifact. It runs dpkg against a
-// test-owned package database/image root instead of modifying the host.
+// installed Endpoint package shape with a real command artifact. It runs dpkg
+// against a test-owned package database/image root instead of modifying the
+// host. The selected Linux profile executes this test as root because dpkg and
+// setpriv must create and verify root-owned package files before the Endpoint
+// runs as an unprivileged user.
 func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	if _, err := exec.LookPath("dpkg-deb"); err != nil {
 		t.Fatal("installed Endpoint package process profile requires dpkg-deb")
