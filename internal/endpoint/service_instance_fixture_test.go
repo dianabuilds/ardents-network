@@ -28,17 +28,6 @@ func alphaPersistentFloorRoot(t *testing.T) string {
 	return root
 }
 
-// transitGrantRoot creates the owner-only directory required by transit grant
-// issuer and admission fixtures, independent of the test process umask.
-func transitGrantRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "transit-grant")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
 // publicationStoreRoot creates the owner-only directory for a Publication root,
 // independent of the test process umask.
 func publicationStoreRoot(t *testing.T) string {

@@ -11,9 +11,11 @@ supersedes: ADR-0024 (TCP-only Carrier set) and ADR-0025 (TCP-only Entry resolut
 H4-2 requires a failed or blocked adjacent transport to be replaceable without
 giving a Node or Adapter authority to select a peer, downgrade a profile, or
 continue an old attachment under different delivery semantics. TCP/TLS is the
-maintained baseline. R-094 demonstrated that pinned `quic-go` QUIC v1 can
-provide the same mutually authenticated TLS 1.3 state, reciprocal LegBinding,
-ordered byte lane, bounded deadline, MTU-1280 configuration, and cleanup oracle.
+maintained baseline. R-094 demonstrated the original pinned `quic-go v0.61.0`
+QUIC-v1 profile; R-140 requalifies the direct dependency at `v0.62.0` for the
+same mutually authenticated TLS 1.3 state, reciprocal LegBinding, ordered byte
+lane, bounded deadline, 1200-byte initial-packet configuration, and cleanup
+oracle.
 
 ## Decision
 
@@ -21,7 +23,7 @@ Maintain two adjacent-Node Carrier Profiles behind `internal/route`'s narrow
 Carrier Interface:
 
 - `ardents-carrier-tcp-tls-v1`;
-- `ardents-carrier-quic-v1`, implemented with `quic-go v0.61.0`.
+- `ardents-carrier-quic-v1`, implemented with `quic-go v0.62.0`.
 
 Both use the existing `ardents-interactive-route-v1` TLS ALPN and closed
 LegBinding. QUIC disables 0-RTT and datagrams, exposes exactly one ordered
@@ -56,8 +58,9 @@ cannot silently change the Carrier of a live attachment.
   transport-neutral `stale`, `incompatible`, `unauthorized`, `canceled`,
   `timeout`, `unavailable`, or `closed` failure classes while keeping the
   transport-specific cause private.
-- A version or dependency change repeats the R-094 security, MTU, cancellation,
-  cleanup, and host-profile checks.
+- A version or dependency change repeats the R-140 security, MTU, cancellation,
+  cleanup, and host-profile checks. R-094's exact `v0.61.0` network evidence
+  never qualifies a changed candidate.
 - This decision makes no path-migration, censorship-resistance, capacity,
   anonymity, or availability claim.
 
@@ -66,4 +69,7 @@ cannot silently change the Carrier of a live attachment.
 - [ADR-0024](0024-native-interactive-route-foundation.md) remains the Route and
   authentication foundation.
 - [R-094](../research/records/r-094-hostile-network-carrier-profiles.md) is the
-  dependency and behavior evidence.
+  original `v0.61.0` dependency and behavior evidence.
+- [R-140](../research/records/r-140-quic-go-v0-62-c0-requalification.md)
+  requalifies the `v0.62.0` direct dependency and records the remaining
+  exact-version network-profile gate.

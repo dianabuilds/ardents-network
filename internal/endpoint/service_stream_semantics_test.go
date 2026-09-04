@@ -145,12 +145,19 @@ func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
 	default:
 	}
 	cancel()
+	var wrong []serviceOutcome
 	for range 2 {
 		outcome := <-outcomes
 		if outcome.err == nil || outcome.result.Class != "local timeout or cancellation" ||
 			outcome.result.AcceptedBytes != 0 || outcome.result.ReceivedBytes != 0 {
-			t.Fatalf("dishonest cancellation result: %+v err=%v", outcome.result, outcome.err)
+			wrong = append(wrong, outcome)
 		}
+	}
+	for _, outcome := range wrong {
+		t.Errorf("dishonest cancellation result: %+v err=%v", outcome.result, outcome.err)
+	}
+	if len(wrong) > 0 {
+		t.FailNow()
 	}
 }
 

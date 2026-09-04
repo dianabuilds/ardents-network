@@ -26,8 +26,8 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 	environment, authorityRoot := [32]byte{42}, [32]byte{43}
 	password := "artifact native custody password"
 	createdTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "vault-create password:", value: password},
-			{prompt: "vault-create-confirm password:", value: password}},
+		[]interactiveProductInput{{prompt: "vault-create password:", value: password, secret: true},
+			{prompt: "vault-create-confirm password:", value: password, secret: true}},
 		"create-service-authority", "-vault-root", vaultRoot,
 		"-environment-commitment", hex.EncodeToString(environment[:]),
 		"-network-commitment", hex.EncodeToString(network[:]),
@@ -89,7 +89,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		"-kind", "service", "-id-commitment", created.IDCommitment}
 	issuedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: initialization.RequestSHA256},
-			{prompt: "vault-unlock password:", value: password}}, issueArguments...)
+			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments...)
 	if bytes.Contains(issuedTerminal, []byte(password)) {
 		t.Fatal("custody artifact echoed its unlock password")
 	}
@@ -110,7 +110,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 	}
 	repeatedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: initialization.RequestSHA256},
-			{prompt: "vault-unlock password:", value: password}}, issueArguments...)
+			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments...)
 	var repeated struct {
 		RecordID string `json:"record_id"`
 		Response []byte `json:"response"`
@@ -141,8 +141,8 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	environment, authorityRoot := [32]byte{62}, [32]byte{63}
 	password := "atomic credential response custody password"
 	createdTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "vault-create password:", value: password},
-			{prompt: "vault-create-confirm password:", value: password}},
+		[]interactiveProductInput{{prompt: "vault-create password:", value: password, secret: true},
+			{prompt: "vault-create-confirm password:", value: password, secret: true}},
 		"create-service-authority", "-vault-root", vaultRoot,
 		"-environment-commitment", hex.EncodeToString(environment[:]),
 		"-network-commitment", hex.EncodeToString(network[:]),
@@ -213,7 +213,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	}
 	failedTerminal, err := runInteractiveProductCommandResult(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
-			{prompt: "vault-unlock password:", value: password}}, issueArguments(blocked.requestPath, conflictingResponsePath)...)
+			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(blocked.requestPath, conflictingResponsePath)...)
 	assertTerminalPasswordHidden(t, failedTerminal, password)
 	if err == nil || !bytes.Contains(failedTerminal, []byte("service Credential response destination conflicts")) {
 		t.Fatalf("conflicting Credential response publication = %v / %s", err, failedTerminal)
@@ -225,7 +225,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	recoveredResponsePath := filepath.Join(directory, "recovered-response.bin")
 	recoveredTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
-			{prompt: "vault-unlock password:", value: password}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
+			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
 	assertTerminalPasswordHidden(t, recoveredTerminal, password)
 	var recovered struct {
 		Schema     string `json:"schema"`
@@ -243,7 +243,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	}
 	repeatedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
-			{prompt: "vault-unlock password:", value: password}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
+			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
 	assertTerminalPasswordHidden(t, repeatedTerminal, password)
 	var repeated struct {
 		RecordID string `json:"record_id"`
@@ -260,7 +260,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	conflictingPublicationPath := filepath.Join(directory, "second-response.bin")
 	secondTerminal, secondErr := runInteractiveProductCommandResult(t, directory, custodyBinary,
 		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: conflicting.requestSHA256},
-			{prompt: "vault-unlock password:", value: password}}, issueArguments(conflicting.requestPath, conflictingPublicationPath)...)
+			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(conflicting.requestPath, conflictingPublicationPath)...)
 	assertTerminalPasswordHidden(t, secondTerminal, password)
 	if secondErr == nil {
 		t.Fatalf("different request published a second Credential response after exact recovery: %s", secondTerminal)

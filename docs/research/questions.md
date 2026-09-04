@@ -12,6 +12,7 @@ inside historical records are provenance only and authorize no implementation.
 | ID | Open question | Current status |
 |---|---|---|
 | [R-099](records/r-099-protected-application-profile.md) | Is there one narrow application job and supported platform on which an OS-enforced or brokered boundary can deny ordinary-network escape well enough to support a bounded Application-level location claim? | **Open; no profile selected.** Generic Browser and local Application adapters make no isolation or privacy claim. Work begins only after the Product Owner selects one exact job, platform, adversary, enforcement boundary, falsification matrix, and resource budget. |
+| [R-137](records/r-137-c0-stress-test.md) | Did the pre-C0 Linux stress spike reveal a maintained-candidate defect? | **Deferred.** The partial runner isolated a test-lifecycle artefact but did not produce a clean exact-candidate stress result. Reopen only with a selected C0 Linux budget and external evidence root. |
 | R-139 | Can a coordinator constrain goal-driven agents to stable consumer identities and immutable decisions while preserving real Source acceptance and an expected invalid-State rejection? | **Open; S3.6.5 locally qualifies the repaired coordinator.** Four-persona concurrency and any cap-exhaustion security claim remain separately gated. Owned by `experiments/multi-agent-real-2026-09-04/`. |
 
 R-093 is deferred without a selected co-resident Contributor experiment and is
@@ -26,7 +27,11 @@ its maintained contract belongs to [Transit Grant acquisition](../technical/tran
 R-136 is decided and promoted to [ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md);
 its maintained Route/Endpoint boundary belongs to [Network Route and Node](../technical/network-route-node.md)
 and [Endpoint and Service runtime](../technical/endpoint-service-runtime.md).
-
+R-140 is decided and promotes the current `quic-go v0.62.0` direct dependency
+to [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md) and the
+[dependency register](../development/dependencies.md). Its external
+carrier-profile matrix remains a pre-freeze C0 gate rather than an inherited
+v0.61.0 result.
 Closed research is not a second specification. Start from current
 [product](../product/), [security](../security/), [technical](../technical/),
 [reference](../reference/), [development](../development/), and accepted

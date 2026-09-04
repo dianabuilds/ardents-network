@@ -17,17 +17,6 @@ func localRoleStateRoot(t *testing.T) string {
 	return root
 }
 
-// networkStateRoot creates the owner-only directory for a network state root,
-// independent of the test process umask.
-func networkStateRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "network-state")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
 // transitIssuerStoreRoot creates the owner-only directory for a transit issuer root,
 // independent of the test process umask.
 func transitIssuerStoreRoot(t *testing.T) string {

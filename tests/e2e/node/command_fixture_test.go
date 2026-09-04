@@ -60,6 +60,7 @@ func TestBuildCommandUsesDeclaredPrebuiltExecutable(t *testing.T) {
 	if err := os.WriteFile(path, []byte("exact prebuilt test command\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("ARDENTS_E2E_PRODUCT_ARDENTS_NODE", "")
 	t.Setenv("ARDENTS_E2E_COMMAND_ROOT", root)
 	if observed := buildCommand(t, "ardents-node"); observed != path {
 		t.Fatalf("prebuilt command = %q, want %q", observed, path)

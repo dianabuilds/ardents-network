@@ -72,10 +72,12 @@ offline-build review.
 **QUIC Carrier use:** `internal/route` directly imports pinned
 `github.com/quic-go/quic-go v0.62.0` for the maintained
 `ardents-carrier-quic-v1` Adapter selected by ADR-0048. The module is pure Go,
-MIT licensed, supports the repository toolchain, publishes security reporting
-and advisories, and passed R-094's exact-version binary vulnerability, TLS peer
-binding, LegBinding, timeout, cleanup, selective blocking, loss/reorder,
-MTU-1280, NAT-rebinding, and separate-host checks. `golang.org/x/net/quic` was
+MIT licensed, supports the repository toolchain, and publishes security
+reporting. R-140 verifies its exact source, checksum, Go 1.26.6 compatibility,
+local TLS peer binding, LegBinding, timeout, cleanup, and no-fallback behavior.
+The external selective-blocking, loss/reorder, MTU-1280, NAT-rebinding,
+resource, and separate-host matrix must be rerun for the exact frozen C0
+artifact; R-094's `v0.61.0` results do not carry forward. `golang.org/x/net/quic` was
 rejected because upstream still describes it as work in progress; a first-party
 QUIC implementation is forbidden cryptographic/protocol work; TCP-only cannot
 exercise the required second Carrier seam. Remove this direct use if QUIC is
