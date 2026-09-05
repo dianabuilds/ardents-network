@@ -3,6 +3,7 @@ package endpoint
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -116,6 +117,23 @@ func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
 type serviceOutcome struct {
 	result runtimeResult
 	err    error
+}
+
+func TestCallerCancellationWinsStreamFailureClassification(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	want := runtimeResult{AuthenticatedTarget: [32]byte{1}, Generation: 2, RouteGeneration: 3,
+		RecoveryCount: 4, ContinuityCommitment: [32]byte{5}, AcceptedBytes: 6, AcknowledgedBytes: 7,
+		ReceivedBytes: 8, QueueHighWater: 9, Admission: broker.Receipt{Session: [32]byte{10}}}
+	got, err := preferCallerCancellation(ctx, want, errors.New("carrier closed before the session context observed cancellation"))
+	if !errors.Is(err, context.Canceled) || got.Class != "local timeout or cancellation" ||
+		got.Reason != "Service Connection was cancelled locally" {
+		t.Fatalf("caller cancellation was not authoritative: result=%+v err=%v", got, err)
+	}
+	want.Class, want.Reason = got.Class, got.Reason
+	if got != want {
+		t.Fatalf("caller cancellation discarded stream evidence: got=%+v want=%+v", got, want)
+	}
 }
 
 func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
