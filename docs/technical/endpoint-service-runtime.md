@@ -19,7 +19,7 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
-| internal/application/interfacev1/connection | Carry one Service Link, one ordered byte stream, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/interfacev1/connection | Carry one Target Link, one ordered byte stream, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/endpoint | Compose one role-local participant and implement the shared Connection and Administration Interfaces. `RunParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
@@ -31,10 +31,10 @@ connection cannot supply a Publisher binding. This keeps publication ownership, 
 attachment, and logical-stream recovery out of one mutable request bag.
 
 The maintained Connection Interface adds one narrower consumer operation over
-that composition. A headless caller supplies an explicit Service Link and its
-local Connection principal; Endpoint retains accepted naming state, Entry,
-Target authentication, Route inputs, the one-use Transit Grant/key, and the
-Broker admission input. After syntactic Service Link parsing, Endpoint activates
+that composition. A headless caller supplies one explicit Target Link; Endpoint
+retains the local Connection principal, authenticated State, Entry, Target
+authentication, Route inputs, the one-use Transit Grant/key, and the Broker
+admission input. After syntactic Target Link parsing and Network binding, Endpoint activates
 and consumes the Connection capability before it reads current State, touches
 Entry or private reachability, asks an issuer for a Transit Grant, opens Route,
 or sends Introduction. Only an authenticated ordered byte stream and bounded
@@ -43,7 +43,7 @@ Administration operations remain separately authorized; Publish dispatches the
 Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
 request. The Connection Interface cannot invoke either operation.
 
-For a User connection, Endpoint parses and authenticates the Service Link,
+For a User connection, Endpoint parses and binds the Target Link to its Network,
 activates its local capability, and passes only the authenticated Target to the
 opened `route.Route`. Route owns the volatile State/Entry/private-reachability/
 Introduction sequence and returns only a verified Attachment plus immutable
@@ -124,8 +124,8 @@ material.
 
 ## Endpoint process contract
 
-`internal/application/interfacev1/connection` owns the sole local Service-Link
-Connection Interface: one private Unix attachment carries a non-empty Service
+`internal/application/interfacev1/connection` owns the sole local Target-Link
+Connection Interface: one private Unix attachment carries a non-empty Target
 Link of at most 512 bytes, opaque frames of at most 16 KiB, and one UTF-8 typed
 terminal outcome with a 128-byte class and 512-byte diagnostic reason. EOF
 without that outcome is not success. Setup does not retry or select an
@@ -138,6 +138,16 @@ local grammar. `RunParticipant` retains the Network server implementation and
 closes its exact socket paths after cancelling and joining active clients;
 external Applications use only the versioned client. No Browser client is
 selected in the maintained product.
+
+The `ardents-application-interface-v1` frame identity and its opaque link bytes
+remain accepted persisted-interface obligations. A runtime plan carrying the
+complete historical Alpha corpus triple is therefore a narrow migration
+adapter: it recognizes only an exact `ardents-alpha://` Service Link, resolves
+it through that plan's already accepted local floor, and then supplies the
+bound Target to the same Endpoint/Route path. Fresh C0 plans omit that triple
+and accept only Target Links. A malformed Target Link never falls back to a
+Service Link, and the adapter ends only after an explicit versioned
+plan/interface migration.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection

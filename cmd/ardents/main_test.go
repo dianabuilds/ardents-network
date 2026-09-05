@@ -88,18 +88,19 @@ func TestRefreshSourcesRejectsConflictingExecutionModesBeforeReadingPlan(t *test
 	}
 }
 
-func TestEnrollmentUserUnitEscapesExactAbsoluteInputs(t *testing.T) {
+func TestPortableEnrollmentUserUnitEscapesExactArguments(t *testing.T) {
 	t.Parallel()
 	executable := filepath.Join(t.TempDir(), "bin", "ardents")
-	enrollment := filepath.Join(t.TempDir(), "alpha $cohort%.json")
-	unit, err := enrollmentUserUnit(executable, enrollment, "enroll", "Ardents Portable Endpoint (closed alpha)")
+	bundle := filepath.Join(t.TempDir(), "bundle $cohort%")
+	manifestPin := strings.Repeat("a", 64)
+	unit, err := portableEnrollmentUserUnit(executable, bundle, manifestPin, "Ardents Portable Endpoint (closed alpha)")
 	if err != nil {
 		t.Fatal(err)
 	}
 	escapedExecutable, _ := unitArgument(executable)
-	escapedEnrollment, _ := unitArgument(enrollment)
-	if !strings.Contains(unit, "ExecStart="+escapedExecutable+" endpoint enroll "+escapedEnrollment) ||
-		!strings.Contains(escapedEnrollment, "$$cohort%%") ||
+	escapedBundle, _ := unitArgument(bundle)
+	if !strings.Contains(unit, "ExecStart="+escapedExecutable+" endpoint enroll "+escapedBundle+" "+manifestPin) ||
+		!strings.Contains(escapedBundle, "$$cohort%%") ||
 		!strings.Contains(unit, "UMask=0077\nRestart=no\n") || strings.Contains(unit, "User=") {
 		t.Fatalf("unexpected Portable user unit:\n%s", unit)
 	}
@@ -108,13 +109,16 @@ func TestEnrollmentUserUnitEscapesExactAbsoluteInputs(t *testing.T) {
 			t.Fatalf("unit argument accepted %q", value)
 		}
 	}
+	if _, err := portableEnrollmentUserUnit(executable, bundle, strings.Repeat("A", 64), "Ardents"); err == nil {
+		t.Fatal("portable unit accepted a non-canonical manifest pin")
+	}
 }
 
 func TestInstalledUserUnitUsesOnlyExplicitInstalledEnrollmentAction(t *testing.T) {
 	t.Parallel()
 	executable := filepath.Join(t.TempDir(), "usr", "lib", "ardents", "ardents")
 	enrollment := filepath.Join(t.TempDir(), "package-enrollment.json")
-	unit, err := enrollmentUserUnit(executable, enrollment, "enroll-installed", "Ardents Installed Endpoint (closed alpha)")
+	unit, err := installedEnrollmentUserUnit(executable, enrollment, "Ardents Installed Endpoint (closed alpha)")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,8 +129,8 @@ func TestInstalledUserUnitUsesOnlyExplicitInstalledEnrollmentAction(t *testing.T
 		strings.Contains(unit, "endpoint enroll ") || strings.Contains(unit, "User=") || strings.Contains(unit, "Restart=always") {
 		t.Fatalf("unexpected Installed user unit:\n%s", unit)
 	}
-	if _, err := enrollmentUserUnit(executable, enrollment, "run", "Ardents"); err == nil {
-		t.Fatal("installed unit accepted an arbitrary command action")
+	if _, err := installedEnrollmentUserUnit(executable, enrollment, ""); err == nil {
+		t.Fatal("installed unit accepted an empty description")
 	}
 }
 

@@ -31,10 +31,10 @@ type client struct {
 	stopContext func() bool
 }
 
-// Dial requests one Service Link and returns no Target, State, Entry, Route,
+// Dial requests one Target Link and returns no Target, State, Entry, Route,
 // credential, or administration handle.
-func Dial(ctx context.Context, path, serviceLink string) (Client, error) {
-	if ctx == nil || path == "" || serviceLink == "" || len(serviceLink) > maximumLink {
+func Dial(ctx context.Context, path, targetLink string) (Client, error) {
+	if ctx == nil || path == "" || targetLink == "" || len(targetLink) > maximumLink {
 		return nil, errors.New("local Application dial input is invalid")
 	}
 	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
@@ -49,10 +49,10 @@ func Dial(ctx context.Context, path, serviceLink string) (Client, error) {
 	if deadline, available := ctx.Deadline(); available {
 		_ = connection.SetDeadline(deadline)
 	}
-	request := make([]byte, len(localMagic)+2+len(serviceLink))
+	request := make([]byte, len(localMagic)+2+len(targetLink))
 	copy(request, localMagic)
-	binary.BigEndian.PutUint16(request[len(localMagic):], uint16(len(serviceLink)))
-	copy(request[len(localMagic)+2:], serviceLink)
+	binary.BigEndian.PutUint16(request[len(localMagic):], uint16(len(targetLink)))
+	copy(request[len(localMagic)+2:], targetLink)
 	if _, err := connection.Write(request); err != nil {
 		_ = connection.Close()
 		return nil, err

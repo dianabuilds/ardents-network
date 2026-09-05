@@ -52,11 +52,12 @@ func TestUbuntuPortableReplacementQualification(t *testing.T) {
 	}
 
 	command := buildArdents(t)
-	bundle, enrolled, input, keys, rootBytes := enrolledRuntimeBundleWithKeys(t, command)
+	bundle, enrolled, _, keys, rootBytes := enrolledRuntimeBundleWithKeys(t, command)
+	manifestPin := enrolledRuntimeManifestPin(t, bundle)
 	if err := os.Chmod(enrolled, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	verifyExternallyBeforeExecution(t, bundle, input)
+	verifyExternallyBeforeExecution(t, bundle, manifestPin)
 	if err := os.Chmod(enrolled, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +66,7 @@ func TestUbuntuPortableReplacementQualification(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(unitPath), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	unit, err := exec.Command(enrolled, "endpoint", "user-unit", input).Output()
+	unit, err := exec.Command(enrolled, "endpoint", "user-unit", bundle, manifestPin).Output()
 	if err != nil {
 		t.Fatalf("render participant unit: %v", err)
 	}
@@ -164,11 +165,12 @@ func TestUbuntuPortableReplacementRollbackQualification(t *testing.T) {
 	}
 
 	command := buildArdents(t)
-	bundle, enrolled, input, keys, rootBytes := enrolledRuntimeBundleWithKeys(t, command)
+	bundle, enrolled, _, keys, rootBytes := enrolledRuntimeBundleWithKeys(t, command)
+	manifestPin := enrolledRuntimeManifestPin(t, bundle)
 	if err := os.Chmod(enrolled, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	verifyExternallyBeforeExecution(t, bundle, input)
+	verifyExternallyBeforeExecution(t, bundle, manifestPin)
 	if err := os.Chmod(enrolled, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +179,7 @@ func TestUbuntuPortableReplacementRollbackQualification(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(unitPath), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	unit, err := exec.Command(enrolled, "endpoint", "user-unit", input).Output()
+	unit, err := exec.Command(enrolled, "endpoint", "user-unit", bundle, manifestPin).Output()
 	if err != nil {
 		t.Fatalf("render participant unit: %v", err)
 	}

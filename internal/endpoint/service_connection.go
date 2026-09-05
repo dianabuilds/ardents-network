@@ -88,7 +88,8 @@ func (endpoint *endpoint) accept(ctx context.Context, input connectionInput) (re
 		return denied(activateErr.Error())
 	}
 	defer session.Release()
-	return endpoint.acceptAuthorized(session.Context(), input, session.receipt)
+	result, err = endpoint.acceptAuthorized(session.Context(), input, session.receipt)
+	return preferCallerCancellation(ctx, result, err)
 }
 
 func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connectionInput, receipt broker.Receipt) (result runtimeResult, err error) {

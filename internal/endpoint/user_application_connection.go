@@ -9,7 +9,6 @@ import (
 	"time"
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -23,14 +22,14 @@ type applicationConnection struct {
 	once   sync.Once
 }
 
-// openAlphaRouteApplicationConnection binds Route's opaque authenticated
+// openTargetRouteApplicationConnection binds Route's opaque authenticated
 // Attachment to the existing Service Connection lifecycle. Endpoint supplies
 // the local capability/session and no Route selection or credential input.
-func (endpoint *endpoint) openAlphaRouteApplicationConnection(ctx context.Context, binding alpha.Binding, input connectionInterfaceConfig,
+func (endpoint *endpoint) openTargetRouteApplicationConnection(ctx context.Context, target [32]byte, input connectionInterfaceConfig,
 	clock func() time.Time, session *applicationSession, attachment *route.Attachment, evidence route.Evidence,
 ) (*applicationConnection, error) {
-	if endpoint == nil || ctx == nil || session == nil || attachment == nil || binding.Network() != endpoint.network ||
-		binding.Target() == [32]byte{} || evidence.AuthenticatedTarget != binding.Target() || evidence.AuthorityPublic == [32]byte{} ||
+	if endpoint == nil || ctx == nil || session == nil || attachment == nil || target == [32]byte{} ||
+		evidence.AuthenticatedTarget != target || evidence.AuthorityPublic == [32]byte{} ||
 		len(evidence.Publication) == 0 || evidence.AttachmentID == [32]byte{} || input.Principal == [32]byte{} || input.BytesEachDirection == 0 {
 		if attachment != nil {
 			_ = attachment.Close()

@@ -4,18 +4,17 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -37,8 +36,7 @@ func TestHeadlessRuntimeRetainsNetworkOwnersAndBothApplicationSurfacesUntilStop(
 		t.Fatal(err)
 	}
 	entryRoot := filepath.Join(directory, "entry")
-	importAlphaRuntimeEntry(t, entryRoot, rolesRoot, confidence, network)
-	corpusPublic, corpusRoot := prepareAlphaRuntimeCorpus(t, directory, network.snapshot.NetworkID)
+	importRuntimeEntry(t, entryRoot, rolesRoot, confidence, network)
 	planPath := filepath.Join(directory, "headless-runtime.json")
 	applicationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("ahi-%d.sock", time.Now().UnixNano()))
 	administrationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("ahs-%d.sock", time.Now().UnixNano()))
@@ -54,15 +52,12 @@ func TestHeadlessRuntimeRetainsNetworkOwnersAndBothApplicationSurfacesUntilStop(
 		"application_socket":       applicationSocket,
 		"administration_socket":    administrationSocket,
 		"publication_root":         filepath.Join(directory, "publication"),
-		"alpha_corpus_state_root":  corpusRoot,
 		"local_role_state_root":    rolesRoot,
 		"time_confidence_file":     confidence,
 		"network_id":               hex32(network.snapshot.NetworkID),
 		"network_authorities":      []string{hex.EncodeToString(network.authorityPublic)},
 		"network_threshold":        1,
 		"network_profile":          "ardents-interactive-route-v1",
-		"alpha_corpus_authority":   hex.EncodeToString(corpusPublic),
-		"alpha_cohort":             "runtime-test",
 		"broker_id":                hex32([32]byte{71}),
 		"connection_principal":     hex32([32]byte{72}),
 		"administration_principal": hex32([32]byte{74}),
@@ -83,7 +78,7 @@ func TestHeadlessRuntimeRetainsNetworkOwnersAndBothApplicationSurfacesUntilStop(
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	writer := &alphaRuntimeWriter{ready: make(chan struct{}, 1)}
+	writer := &headlessRuntimeWriter{ready: make(chan struct{}, 1)}
 	done := make(chan error, 1)
 	go func() {
 		done <- runHeadlessRuntime(ctx, planPath, writer)
@@ -137,6 +132,61 @@ func TestHeadlessRuntimePlanRejectsRouteAuthorityInput(t *testing.T) {
 	}
 }
 
+func TestHeadlessRuntimePlanAcceptsCompleteLegacyServiceLinkMigration(t *testing.T) {
+	directory := t.TempDir()
+	corpusAuthority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{6}, ed25519.SeedSize)).Public().(ed25519.PublicKey)
+	plan := map[string]any{
+		"schema":                   "ardents-headless-runtime-v1",
+		"network_state_root":       filepath.Join(directory, "network"),
+		"entry_state_root":         filepath.Join(directory, "entry"),
+		"transit_acquisition_root": filepath.Join(directory, "transit"),
+		"application_socket":       filepath.Join(directory, "application.sock"),
+		"administration_socket":    filepath.Join(directory, "administration.sock"),
+		"publication_root":         filepath.Join(directory, "publication"),
+		"alpha_corpus_state_root":  filepath.Join(directory, "alpha-corpus"),
+		"local_role_state_root":    filepath.Join(directory, "roles"),
+		"time_confidence_file":     filepath.Join(directory, "time-confidence"),
+		"network_id":               strings.Repeat("01", 32),
+		"network_authorities":      []string{strings.Repeat("02", 32)},
+		"network_threshold":        1,
+		"network_profile":          "ardents-interactive-route-v1",
+		"alpha_corpus_authority":   hex.EncodeToString(corpusAuthority),
+		"alpha_cohort":             "closed-alpha-1",
+		"broker_id":                strings.Repeat("03", 32),
+		"connection_principal":     strings.Repeat("04", 32),
+		"administration_principal": strings.Repeat("05", 32),
+		"bytes_each_direction":     4096,
+	}
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "legacy-runtime.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := loadHeadlessRuntimePlan(path)
+	if err != nil {
+		t.Fatalf("load persisted v1 runtime plan: %v", err)
+	}
+	if decoded.AlphaCorpusStateRoot != plan["alpha_corpus_state_root"] || decoded.AlphaCohort != "closed-alpha-1" ||
+		!bytes.Equal(decoded.LegacyServiceLinkAuthority, corpusAuthority) {
+		t.Fatalf("decoded legacy Service Link transition = %+v", decoded)
+	}
+
+	delete(plan, "alpha_cohort")
+	raw, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadHeadlessRuntimePlan(path); err == nil {
+		t.Fatal("headless runtime plan accepted an incomplete legacy Service Link transition")
+	}
+}
+
 func TestHeadlessRuntimeSourcePlanMustShareItsStateOwners(t *testing.T) {
 	directory := t.TempDir()
 	sharedRoles, sharedClock := filepath.Join(directory, "roles"), filepath.Join(directory, "clock")
@@ -163,7 +213,7 @@ func TestHeadlessRuntimeSourcePlanMustShareItsStateOwners(t *testing.T) {
 	}
 }
 
-func importAlphaRuntimeEntry(t *testing.T, root, rolesRoot, confidence string, network commandNetwork) {
+func importRuntimeEntry(t *testing.T, root, rolesRoot, confidence string, network commandNetwork) {
 	t.Helper()
 	opened, err := state.Open(state.Config{Root: network.root, NetworkID: network.snapshot.NetworkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{network.snapshot.EpochAuthorityIDs[0]: network.authorityPublic},
@@ -191,47 +241,13 @@ func importAlphaRuntimeEntry(t *testing.T, root, rolesRoot, confidence string, n
 	}
 }
 
-func prepareAlphaRuntimeCorpus(t *testing.T, directory string, network [32]byte) (ed25519.PublicKey, string) {
-	t.Helper()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	link, err := alpha.ParseServiceLink("ardents-alpha://runtime-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	raw, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "runtime-test", Network: network, Serial: 1,
-		NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Minute), Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{73}}}}, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corpus, err := alpha.OpenCorpus(public, raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	root := filepath.Join(directory, "alpha-corpus")
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: root, Authority: public, Cohort: "runtime-test", Network: network})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := floor.Observe(corpus); err != nil {
-		t.Fatal(err)
-	}
-	if err := floor.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return public, root
-}
-
-type alphaRuntimeWriter struct {
+type headlessRuntimeWriter struct {
 	mu    sync.Mutex
 	bytes bytes.Buffer
 	ready chan struct{}
 }
 
-func (writer *alphaRuntimeWriter) Write(value []byte) (int, error) {
+func (writer *headlessRuntimeWriter) Write(value []byte) (int, error) {
 	writer.mu.Lock()
 	_, err := writer.bytes.Write(value)
 	writer.mu.Unlock()
@@ -244,7 +260,7 @@ func (writer *alphaRuntimeWriter) Write(value []byte) (int, error) {
 	return len(value), err
 }
 
-func (writer *alphaRuntimeWriter) Bytes() []byte {
+func (writer *headlessRuntimeWriter) Bytes() []byte {
 	writer.mu.Lock()
 	defer writer.mu.Unlock()
 	return append([]byte(nil), writer.bytes.Bytes()...)

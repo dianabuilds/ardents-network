@@ -4,7 +4,6 @@ package endpoint_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -52,11 +51,12 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 	}
 
 	command := buildArdents(t)
-	bundle, enrolledCommand, input := enrolledRuntimeBundle(t, command)
+	bundle, enrolledCommand, _ := enrolledRuntimeBundle(t, command)
+	manifestPin := enrolledRuntimeManifestPin(t, bundle)
 	if err := os.Chmod(enrolledCommand, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	verifyExternallyBeforeExecution(t, bundle, input)
+	verifyExternallyBeforeExecution(t, bundle, manifestPin)
 	if err := os.Chmod(enrolledCommand, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestUbuntuPortableUserUnitQualification(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(unitPath), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	unit, err := exec.Command(enrolledCommand, "endpoint", "user-unit", input).Output()
+	unit, err := exec.Command(enrolledCommand, "endpoint", "user-unit", bundle, manifestPin).Output()
 	if err != nil {
 		t.Fatalf("render participant unit: %v", err)
 	}
@@ -180,26 +180,16 @@ func cleanupQualificationUnit(t *testing.T, unitName, unitPath string) {
 	}
 }
 
-func verifyExternallyBeforeExecution(t *testing.T, bundle, input string) {
+func verifyExternallyBeforeExecution(t *testing.T, bundle, manifestPin string) {
 	t.Helper()
-	raw, err := os.ReadFile(input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var enrollment struct {
-		ManifestSHA256 string `json:"manifest_sha256"`
-	}
-	if err := json.Unmarshal(raw, &enrollment); err != nil {
-		t.Fatal(err)
-	}
 	digestCommand := exec.Command("sha256sum", "SHA256SUMS")
 	digestCommand.Dir = bundle
 	digest, err := digestCommand.Output()
 	if err != nil {
 		t.Fatalf("run external sha256sum: %v", err)
 	}
-	if actual := strings.Fields(string(digest)); len(actual) != 2 || actual[0] != enrollment.ManifestSHA256 || actual[1] != "SHA256SUMS" {
-		t.Fatalf("external manifest digest = %q, want %q", digest, enrollment.ManifestSHA256)
+	if actual := strings.Fields(string(digest)); len(actual) != 2 || actual[0] != manifestPin || actual[1] != "SHA256SUMS" {
+		t.Fatalf("external manifest digest = %q, want %q", digest, manifestPin)
 	}
 	check := exec.Command("sha256sum", "--strict", "--check", "SHA256SUMS")
 	check.Dir = bundle

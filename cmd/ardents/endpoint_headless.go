@@ -17,7 +17,7 @@ import (
 )
 
 // headlessRuntimePlan contains the non-route local inputs required to retain
-// one named-alpha participant runtime and its local Connection Interface. It
+// one Target Link participant runtime and its local Connection Interface. It
 // deliberately has no Target, Descriptor, Gateway, Node endpoint, Grant,
 // certificate, Browser, or presentation input.
 type headlessRuntimePlan struct {
@@ -26,22 +26,25 @@ type headlessRuntimePlan struct {
 	// NetworkSourcePlan is an optional existing direct-Source plan. When it
 	// is present, this runtime owns the State root's initial refresh and its
 	// automatic refresh loop; a separate process cannot share that root lease.
-	NetworkSourcePlan       string   `json:"network_source_plan,omitempty"`
-	EntryStateRoot          string   `json:"entry_state_root"`
-	TransitAcquisitionRoot  string   `json:"transit_acquisition_root"`
-	ApplicationSocket       string   `json:"application_socket"`
-	AdministrationSocket    string   `json:"administration_socket"`
-	PublicationRoot         string   `json:"publication_root"`
-	ServiceInstanceRoot     string   `json:"service_instance_root,omitempty"`
-	AlphaCorpusStateRoot    string   `json:"alpha_corpus_state_root"`
+	NetworkSourcePlan      string `json:"network_source_plan,omitempty"`
+	EntryStateRoot         string `json:"entry_state_root"`
+	TransitAcquisitionRoot string `json:"transit_acquisition_root"`
+	ApplicationSocket      string `json:"application_socket"`
+	AdministrationSocket   string `json:"administration_socket"`
+	PublicationRoot        string `json:"publication_root"`
+	ServiceInstanceRoot    string `json:"service_instance_root,omitempty"`
+	// These three fields occur only in persisted v1 runtime plans. A complete
+	// triple enables the bounded legacy Service Link transition; new C0 plans
+	// omit all three fields and accept Target Links only.
+	AlphaCorpusStateRoot    string   `json:"alpha_corpus_state_root,omitempty"`
 	LocalRoleStateRoot      string   `json:"local_role_state_root"`
 	TimeConfidenceFile      string   `json:"time_confidence_file"`
 	NetworkID               string   `json:"network_id"`
 	NetworkAuthorities      []string `json:"network_authorities"`
 	NetworkThreshold        int      `json:"network_threshold"`
 	NetworkProfile          string   `json:"network_profile"`
-	AlphaCorpusAuthority    string   `json:"alpha_corpus_authority"`
-	AlphaCohort             string   `json:"alpha_cohort"`
+	AlphaCorpusAuthority    string   `json:"alpha_corpus_authority,omitempty"`
+	AlphaCohort             string   `json:"alpha_cohort,omitempty"`
 	BrokerID                string   `json:"broker_id"`
 	ConnectionPrincipal     string   `json:"connection_principal"`
 	AdministrationPrincipal string   `json:"administration_principal"`
@@ -68,8 +71,9 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) erro
 	encoder.SetEscapeHTML(false)
 	return endpointapi.RunParticipant(ctx, endpointapi.ParticipantRuntimeConfig{Network: networkConfig, RefreshNetwork: refreshState,
 		EntryRoot: plan.EntryStateRoot, TransitAcquisitionRoot: plan.TransitAcquisitionRoot,
-		AlphaCorpusRoot: plan.AlphaCorpusStateRoot, AlphaCorpusAuthority: plan.AlphaCorpusAuthority, AlphaCohort: plan.AlphaCohort,
-		LocalRoleRoot: plan.LocalRoleStateRoot, ApplicationAddress: plan.ApplicationSocket,
+		LegacyServiceLinkRoot: plan.AlphaCorpusStateRoot, LegacyServiceLinkAuthority: plan.LegacyServiceLinkAuthority,
+		LegacyServiceLinkCohort: plan.AlphaCohort,
+		LocalRoleRoot:           plan.LocalRoleStateRoot, ApplicationAddress: plan.ApplicationSocket,
 		AdministrationAddress: plan.AdministrationSocket, PublicationRoot: plan.PublicationRoot,
 		ServiceInstanceRoot: plan.ServiceInstanceRoot, BrokerID: plan.BrokerID,
 		ConnectionPrincipal: plan.ConnectionPrincipal, AdministrationPrincipal: plan.AdministrationPrincipal,
@@ -144,7 +148,7 @@ type decodedHeadlessRuntimePlan struct {
 	headlessRuntimePlan
 	NetworkID, BrokerID, ConnectionPrincipal, AdministrationPrincipal [32]byte
 	NetworkAuthorities                                                map[[32]byte]ed25519.PublicKey
-	AlphaCorpusAuthority                                              ed25519.PublicKey
+	LegacyServiceLinkAuthority                                        ed25519.PublicKey
 }
 
 func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
@@ -155,9 +159,13 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 	if raw.Schema != "ardents-headless-runtime-v1" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" || raw.TransitAcquisitionRoot == "" ||
 		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) || raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) ||
 		raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" ||
-		raw.AlphaCorpusStateRoot == "" || raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.Profile ||
-		raw.AlphaCohort == "" || raw.BrokerID == "" || raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" || raw.BytesEachDirection == 0 {
+		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.Profile || raw.BrokerID == "" ||
+		raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" || raw.BytesEachDirection == 0 {
 		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan is incomplete")
+	}
+	legacyServiceLink := raw.AlphaCorpusStateRoot != "" || raw.AlphaCorpusAuthority != "" || raw.AlphaCohort != ""
+	if legacyServiceLink && (raw.AlphaCorpusStateRoot == "" || raw.AlphaCorpusAuthority == "" || raw.AlphaCohort == "") {
+		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan legacy Service Link transition is incomplete")
 	}
 	result := decodedHeadlessRuntimePlan{headlessRuntimePlan: raw}
 	for _, field := range []struct {
@@ -174,10 +182,12 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 		return decodedHeadlessRuntimePlan{}, err
 	}
 	result.NetworkAuthorities = authorities
-	corpusAuthority := make(ed25519.PublicKey, ed25519.PublicKeySize)
-	if err := decodeOperatorFixedHex(raw.AlphaCorpusAuthority, corpusAuthority); err != nil {
-		return decodedHeadlessRuntimePlan{}, err
+	if legacyServiceLink {
+		authority := make(ed25519.PublicKey, ed25519.PublicKeySize)
+		if err := decodeOperatorFixedHex(raw.AlphaCorpusAuthority, authority); err != nil {
+			return decodedHeadlessRuntimePlan{}, err
+		}
+		result.LegacyServiceLinkAuthority = authority
 	}
-	result.AlphaCorpusAuthority = corpusAuthority
 	return result, nil
 }

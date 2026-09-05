@@ -45,7 +45,8 @@ func (endpoint *endpoint) connect(ctx context.Context, input connectionInput) (r
 		return denied(err.Error())
 	}
 	defer session.Release()
-	return endpoint.connectAuthorized(session.Context(), input, session.receipt)
+	result, err := endpoint.connectAuthorized(session.Context(), input, session.receipt)
+	return preferCallerCancellation(ctx, result, err)
 }
 
 type fixture struct {

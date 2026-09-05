@@ -159,7 +159,8 @@ func runEnrolledUntilStopped(t *testing.T, command, input string, environment []
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
-	running := exec.CommandContext(ctx, command, "endpoint", "enroll", input)
+	bundleRoot, manifestPin := manifestPinnedEnrollmentArguments(t, input)
+	running := exec.CommandContext(ctx, command, "endpoint", "enroll", bundleRoot, manifestPin)
 	running.Env = environment
 	stdout, err := running.StdoutPipe()
 	if err != nil {

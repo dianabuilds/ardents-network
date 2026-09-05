@@ -23,10 +23,16 @@ import (
 // command only selects its explicit operator route.
 func runEndpoint(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) == 3 && arguments[1] == "enrollment-check" {
-		return runEnrollmentCheck(arguments[2], output)
+		return runLegacyEnrollmentCheck(arguments[2], output)
+	}
+	if len(arguments) == 4 && arguments[1] == "enrollment-check" {
+		return runEnrollmentCheck(arguments[2], arguments[3], output)
 	}
 	if len(arguments) == 3 && arguments[1] == "enroll" {
-		return runEnrolledPortable(ctx, arguments[2], output)
+		return runLegacyEnrolledPortable(ctx, arguments[2], output)
+	}
+	if len(arguments) == 4 && arguments[1] == "enroll" {
+		return runEnrolledPortable(ctx, arguments[2], arguments[3], output)
 	}
 	if len(arguments) == 3 && arguments[1] == "enroll-installed" {
 		return runEnrolledInstalled(ctx, arguments[2], output)
@@ -41,7 +47,10 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 		return runHeadlessAdministration(ctx, arguments[1], arguments[2], output)
 	}
 	if len(arguments) == 3 && arguments[1] == "user-unit" {
-		return runEndpointUserUnit(arguments[2], output)
+		return runLegacyEndpointUserUnit(arguments[2], output)
+	}
+	if len(arguments) == 4 && arguments[1] == "user-unit" {
+		return runEndpointUserUnit(arguments[2], arguments[3], output)
 	}
 	if len(arguments) == 3 && arguments[1] == "installed-user-unit" {
 		return runEndpointInstalledUserUnit(arguments[2], output)
@@ -58,7 +67,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && arguments[1] == "rollback" {
 		return runEndpointRollback(ctx, arguments[2], output)
 	}
-	return errors.New("usage: ardents endpoint <enrollment-check <alpha-enrollment.json>|enroll <alpha-enrollment.json>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <service-link> <input-file> <output-file>|publish <administration-socket>|withdraw <administration-socket>|user-unit <alpha-enrollment.json>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
+	return errors.New("usage: ardents endpoint <enrollment-check <bundle-root> <manifest-sha256>|enroll <bundle-root> <manifest-sha256>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <target-link> <input-file> <output-file>|publish <administration-socket>|withdraw <administration-socket>|user-unit <bundle-root> <manifest-sha256>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
 }
 
 // runReplacementSelfTest is the candidate-side, no-network Endpoint
@@ -84,18 +93,6 @@ func runReplacementSelfTest(stateRoot string, output io.Writer) error {
 		ReleaseVersion       int64 `json:"release_version"`
 	}{Kind: "endpoint-replacement-self-test", State: string(running.State), Release: running.Record.ReleaseID,
 		ReleaseVersion: running.Record.ReleaseVersion})
-}
-
-type alphaEnrollmentInput struct {
-	Schema         string `json:"schema"`
-	BundleRoot     string `json:"bundle_root"`
-	Cohort         string `json:"cohort"`
-	Release        string `json:"release"`
-	Platform       string `json:"platform"`
-	ManifestSHA256 string `json:"manifest_sha256"`
-	Environment    string `json:"environment"`
-	Network        string `json:"network"`
-	TargetPath     string `json:"target_path"`
 }
 
 type installedEnrollmentInput struct {
@@ -126,8 +123,22 @@ const (
 // for one closed-alpha bundle. It verifies the independently delivered pin
 // before parsing the manifest and does not report Endpoint or network
 // readiness. It cannot authenticate its own first execution.
-func runEnrollmentCheck(path string, output io.Writer) error {
-	input, verified, err := verifyEnrollment(path)
+func runEnrollmentCheck(bundleRoot, manifestSHA256 string, output io.Writer) error {
+	fact, err := verifyManifestPinnedEnrollment(bundleRoot, manifestSHA256, enrollment.Verify)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(output)
+	encoder.SetEscapeHTML(false)
+	return encoder.Encode(struct {
+		Kind, Cohort, Release, Platform string
+		ArtifactSHA256                  string
+	}{Kind: "manifest-pinned-enrollment-verified", Cohort: fact.Cohort, Release: fact.Release, Platform: fact.Verified.Inputs.Local.Platform,
+		ArtifactSHA256: hexDigest(fact.Verified.Inputs.Artifact)})
+}
+
+func runLegacyEnrollmentCheck(path string, output io.Writer) error {
+	input, verified, err := verifyLegacyPortableEnrollment(path, enrollment.Verify)
 	if err != nil {
 		return err
 	}
@@ -144,9 +155,15 @@ func runEnrollmentCheck(path string, output io.Writer) error {
 // local owner profile before release-floor mutation, verifies the bundle pin,
 // commits an accepted Release Decision, and only then exposes Portable
 // readiness. It has no network route, browser capability, or update action.
-func runEnrolledPortable(ctx context.Context, path string, output io.Writer) error {
+func runEnrolledPortable(ctx context.Context, bundleRoot, manifestSHA256 string, output io.Writer) error {
 	return runEnrolledEndpoint(ctx, output, false, func() (enrollmentFact, error) {
-		input, verified, err := verifyHeadlessEnrollment(path)
+		return verifyManifestPinnedEnrollment(bundleRoot, manifestSHA256, enrollment.VerifyHeadless)
+	})
+}
+
+func runLegacyEnrolledPortable(ctx context.Context, path string, output io.Writer) error {
+	return runEnrolledEndpoint(ctx, output, false, func() (enrollmentFact, error) {
+		input, verified, err := verifyLegacyPortableEnrollment(path, enrollment.VerifyHeadless)
 		return enrollmentFact{Cohort: input.Cohort, Release: input.Release, Verified: verified}, err
 	})
 }
@@ -263,37 +280,48 @@ func encodePortableEvent(encoder *json.Encoder, event portable.Event) error {
 	return encoder.Encode(portableEvent(event))
 }
 
-func verifyEnrollment(path string) (alphaEnrollmentInput, enrollment.Verified, error) {
-	return verifyAlphaEnrollment(path, enrollment.Verify)
+func verifyManifestPinnedEnrollment(bundleRoot, manifestSHA256 string,
+	verify func(enrollment.Request) (enrollment.Verified, error),
+) (enrollmentFact, error) {
+	executable, err := os.Executable()
+	if err != nil {
+		return enrollmentFact{}, err
+	}
+	request, err := enrollment.RequestFromManifestPin(bundleRoot, executable, manifestSHA256, time.Now().UTC())
+	if err != nil {
+		return enrollmentFact{}, err
+	}
+	if request.Pin.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return enrollmentFact{}, errors.New("manifest-pinned enrollment does not match this platform")
+	}
+	verified, err := verify(request)
+	return enrollmentFact{Cohort: request.Pin.Cohort, Release: request.Pin.Release, Verified: verified}, err
 }
 
-// verifyHeadlessEnrollment authenticates the portable participant's complete
-// Node and custody inventory. Generic enrollment-check deliberately calls
-// verifyEnrollment because it is a local diagnosis, not a runtime launch.
-func verifyHeadlessEnrollment(path string) (alphaEnrollmentInput, enrollment.Verified, error) {
-	return verifyAlphaEnrollment(path, enrollment.VerifyHeadless)
-}
-
-func verifyAlphaEnrollment(path string, verify func(enrollment.Request) (enrollment.Verified, error)) (alphaEnrollmentInput, enrollment.Verified, error) {
-	var input alphaEnrollmentInput
-	if err := decodeOperatorInput(path, 16<<10, &input); err != nil {
-		return alphaEnrollmentInput{}, enrollment.Verified{}, err
-	}
-	if input.Schema != "ardents-alpha-enrollment-input-v1" {
-		return alphaEnrollmentInput{}, enrollment.Verified{}, errors.New("alpha enrollment input schema is not canonical")
-	}
-	if input.Platform != runtime.GOOS+"-"+runtime.GOARCH {
-		return alphaEnrollmentInput{}, enrollment.Verified{}, errors.New("alpha enrollment input does not match this platform")
+func verifyLegacyPortableEnrollment(path string,
+	verify func(enrollment.Request) (enrollment.Verified, error),
+) (enrollment.ClosedAlphaInput, enrollment.Verified, error) {
+	input, err := loadLegacyPortableEnrollment(path)
+	if err != nil {
+		return enrollment.ClosedAlphaInput{}, enrollment.Verified{}, err
 	}
 	executable, err := os.Executable()
 	if err != nil {
-		return alphaEnrollmentInput{}, enrollment.Verified{}, err
+		return enrollment.ClosedAlphaInput{}, enrollment.Verified{}, err
 	}
-	verified, err := verify(enrollment.Request{BundleRoot: input.BundleRoot, ExecutablePath: executable,
-		Pin: enrollment.Pin{Cohort: input.Cohort, Release: input.Release, Platform: input.Platform,
-			ManifestSHA256: input.ManifestSHA256}, Environment: input.Environment, Network: input.Network,
-		TargetPath: input.TargetPath, Architecture: runtime.GOARCH, ReferenceTime: time.Now().UTC()})
+	verified, err := verify(input.Request(executable, time.Now().UTC()))
 	return input, verified, err
+}
+
+func loadLegacyPortableEnrollment(path string) (enrollment.ClosedAlphaInput, error) {
+	input, err := enrollment.ReadClosedAlphaInput(path)
+	if err != nil {
+		return enrollment.ClosedAlphaInput{}, err
+	}
+	if input.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return enrollment.ClosedAlphaInput{}, errors.New("legacy portable enrollment input does not match this platform")
+	}
+	return input, nil
 }
 
 func verifyInstalledEnrollment(path string) (installedEnrollmentInput, enrollment.Verified, error) {

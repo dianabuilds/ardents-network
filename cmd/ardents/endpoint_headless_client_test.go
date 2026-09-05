@@ -10,9 +10,11 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
-func TestHeadlessOpenCarriesBytesThroughOnlyTheServiceLinkInterface(t *testing.T) {
+func TestHeadlessOpenCarriesBytesThroughOnlyTheTargetLinkInterface(t *testing.T) {
 	socket := filepath.Join(os.TempDir(), "aho-"+time.Now().Format("150405.000000")+".sock")
 	defer os.Remove(socket)
 	listener, err := net.Listen("unix", socket)
@@ -28,12 +30,13 @@ func TestHeadlessOpenCarriesBytesThroughOnlyTheServiceLinkInterface(t *testing.T
 	if err := os.WriteFile(inputPath, []byte("request bytes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	targetLink := headlessTargetLink(t)
 	var receipt bytes.Buffer
-	if err := runHeadlessOpen(t.Context(), socket, "ardents-alpha://service.alice", inputPath, outputPath, &receipt); err != nil {
+	if err := runHeadlessOpen(t.Context(), socket, targetLink, inputPath, outputPath, &receipt); err != nil {
 		t.Fatal(err)
 	}
 	observed := <-seen
-	if observed.link != "ardents-alpha://service.alice" || observed.input != "request bytes" {
+	if observed.link != targetLink || observed.input != "request bytes" {
 		t.Fatalf("headless open observed %+v", observed)
 	}
 	response, err := os.ReadFile(outputPath)
@@ -158,10 +161,19 @@ func TestHeadlessOpenReturnsFailureStatusAndRemovesPartialOutput(t *testing.T) {
 	if err := os.WriteFile(inputPath, []byte("request"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runHeadlessOpen(t.Context(), socket, "ardents-alpha://service.alice", inputPath, outputPath, io.Discard); err == nil {
+	if err := runHeadlessOpen(t.Context(), socket, headlessTargetLink(t), inputPath, outputPath, io.Discard); err == nil {
 		t.Fatal("failed Application terminal returned a successful CLI status")
 	}
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
 		t.Fatalf("failed Application retained output: %v", err)
 	}
+}
+
+func headlessTargetLink(t *testing.T) string {
+	t.Helper()
+	link, err := targetlink.Encode(targetlink.Link{Network: [32]byte{1}, Target: [32]byte{2}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return link
 }

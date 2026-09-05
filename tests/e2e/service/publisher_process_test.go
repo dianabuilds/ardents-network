@@ -24,7 +24,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/entry"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	localroles "github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
@@ -164,7 +163,6 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 	case <-time.After(10 * time.Second):
 		t.Fatal("State-owned Initiator did not become ready")
 	}
-	corpusPublic, corpusRoot := preparePublisherProcessCorpus(t, directory, networkID)
 	instanceRoot := publisherProcessInstance(t, filepath.Join(directory, "service-instance"), networkID, now, notAfter)
 	transitRoot := filepath.Join(directory, "transit-acquisition")
 	applicationSocket := filepath.Join(os.TempDir(), fmt.Sprintf("pua-%d.sock", time.Now().UnixNano()))
@@ -179,7 +177,6 @@ func TestHeadlessPublisherAcquiresIntroductionAndResponderFromOneIssuerBudget(t 
 				Authorities: map[[32]byte]ed25519.PublicKey{network.snapshot.EpochAuthorityIDs[0]: network.authorityPublic},
 				Threshold:   1, AcceptedProfile: route.Profile},
 			EntryRoot: entryRoot, TransitAcquisitionRoot: transitRoot,
-			AlphaCorpusRoot: corpusRoot, AlphaCorpusAuthority: corpusPublic, AlphaCohort: "runtime-test",
 			LocalRoleRoot: rolesRoot, ApplicationAddress: applicationSocket, AdministrationAddress: administrationSocket,
 			PublicationRoot: filepath.Join(directory, "publication"), ServiceInstanceRoot: instanceRoot,
 			BrokerID: [32]byte{71}, ConnectionPrincipal: [32]byte{72}, AdministrationPrincipal: [32]byte{74},
@@ -308,42 +305,6 @@ func writePublisherProcessBytes(target *bytes.Buffer, raw []byte, width int) {
 		_ = binary.Write(target, binary.BigEndian, uint16(len(raw)))
 	}
 	target.Write(raw)
-}
-
-func preparePublisherProcessCorpus(t *testing.T, directory string, network [32]byte) (ed25519.PublicKey, string) {
-	t.Helper()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	link, err := alpha.ParseServiceLink("ardents-alpha://runtime-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	raw, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "runtime-test", Network: network, Serial: 1,
-		NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Minute),
-		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{73}}}}, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	corpus, err := alpha.OpenCorpus(public, raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	root := filepath.Join(directory, "alpha-corpus")
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: root, Authority: public,
-		Cohort: "runtime-test", Network: network})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := floor.Observe(corpus); err != nil {
-		t.Fatal(err)
-	}
-	if err := floor.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return public, root
 }
 
 func publisherProcessPrivate(t *testing.T) ed25519.PrivateKey {

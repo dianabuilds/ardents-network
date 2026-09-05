@@ -10,8 +10,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
-	"fmt"
-	"io"
 	"math/big"
 	"net"
 	"net/http"
@@ -68,16 +66,22 @@ func TestUserRouteCredentialCompletionUsesEndpointJournal(t *testing.T) {
 }
 
 type userRouteCredentialFixture struct {
-	route      *route.Route
-	endpoint   *endpoint
-	target     [32]byte
-	entry      *userRouteCredentialEntry
-	entryCalls int
-	serverDone <-chan error
-	close      func()
+	route             *route.Route
+	endpoint          *endpoint
+	now               time.Time
+	network           [32]byte
+	authority         ed25519.PublicKey
+	credential        publication.Credential
+	instanceSigner    ed25519.PrivateKey
+	target            [32]byte
+	entry             *userRouteCredentialEntry
+	entryCalls        int
+	connectionHandler func(net.Conn) error
+	serverDone        <-chan error
+	close             func()
 }
 
-func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredentialFixture {
+func openUserRouteCredentialFixture(t *testing.T, outcome byte) *userRouteCredentialFixture {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	deadline := now.Add(10 * time.Second)
@@ -206,15 +210,20 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredent
 	issuerTransport.TLSClientConfig.Certificates = []tls.Certificate{issuerClientCertificate}
 	issuerClient = &http.Client{Transport: issuerTransport}
 
+	var result *userRouteCredentialFixture
 	entryOwner := &userRouteCredentialEntry{contact: entry.Candidate{NodeID: [32]byte{80}, PublicKey: issuerInitiatorPublic,
 		FamilyID: sha256.Sum256([]byte("initiator-family")), Endpoint: "127.0.0.1:1"}, errs: make(chan error, 3)}
 	entryOwner.handlers = []func(net.Conn) error{
 		resolutionRelayHandler(gatewayServer.URL, gatewayServer.Client()),
 		credentialRelayHandler(issuerServer.URL, issuerClient),
-		introductionRelayHandler,
+		func(connection net.Conn) error {
+			var handler func(net.Conn) error
+			if result != nil {
+				handler = result.connectionHandler
+			}
+			return targetLinkIntroductionRelayHandler(connection, handler)
+		},
 	}
-	serverDone := serveCredentialLifecycleIntroduction(listener, network, digest, epoch, [32]byte{introductionNode}, deadline, introductionCertificate, outcome)
-
 	var gatewayKey [32]byte
 	copy(gatewayKey[:], gatewayPublic)
 	view := userRouteCredentialState{epoch: state.ResolutionEpoch{Generation: "user-route-credential-lifecycle", NetworkID: network, Digest: digest, Number: epoch},
@@ -238,8 +247,9 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredent
 	if err != nil {
 		t.Fatal(err)
 	}
-	return userRouteCredentialFixture{route: routeOwner, endpoint: endpoint, target: current.Credential.Target, entry: entryOwner,
-		entryCalls: len(entryOwner.handlers), serverDone: serverDone, close: func() {
+	result = &userRouteCredentialFixture{route: routeOwner, endpoint: endpoint, now: now, network: network,
+		authority: authorityPublic, credential: publicationCredential, instanceSigner: instancePrivate,
+		target: current.Credential.Target, entry: entryOwner, entryCalls: len(entryOwner.handlers), close: func() {
 			_ = routeOwner.Close()
 			_ = endpoint.Close()
 			_ = listener.Close()
@@ -249,6 +259,9 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) userRouteCredent
 			_ = store.Close()
 			_ = publicationOwner.Close()
 		}}
+	result.serverDone = serveTargetLinkIntroduction(listener, network, digest, epoch, [32]byte{introductionNode}, deadline,
+		introductionCertificate, outcome, nil)
+	return result
 }
 
 type userRouteCredentialState struct {
@@ -377,57 +390,6 @@ func credentialRelayHandler(issuerURL string, client *http.Client) func(net.Conn
 		}
 		return err
 	}
-}
-
-func introductionRelayHandler(connection net.Conn) error {
-	setup, err := route.ReadRelaySetup(connection)
-	if err != nil {
-		return err
-	}
-	if err := route.WriteRelayReady(connection, route.RelayReady{Setup: setup}); err != nil {
-		return err
-	}
-	_, err = io.Copy(io.Discard, connection)
-	if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
-		return nil
-	}
-	return err
-}
-
-func serveCredentialLifecycleIntroduction(listener net.Listener, network, digest [32]byte, epoch uint64, node [32]byte,
-	deadline time.Time, certificate tls.Certificate, outcome byte,
-) <-chan error {
-	result := make(chan error, 1)
-	go func() {
-		defer close(result)
-		connection, err := listener.Accept()
-		if err != nil {
-			result <- err
-			return
-		}
-		accepted, err := route.AcceptEndpointTransitAttachment(context.Background(), connection, route.EndpointTransitAttachmentAcceptance{
-			NetworkID: network, Digest: digest, TransitNodeID: node, Epoch: epoch, TransitRole: route.IntroductionRole,
-			Deadline: deadline, Certificate: certificate,
-			Admit: func(authorization []byte, attachment, key [32]byte, role byte, transit [32]byte, notAfter time.Time) (route.EndpointTransitAdmission, error) {
-				if len(authorization) == 0 || attachment == [32]byte{} || key == [32]byte{} || role != route.IntroductionRole || transit != node || !notAfter.Equal(deadline) {
-					return route.EndpointTransitAdmission{}, errors.New("Introduction admission input is invalid")
-				}
-				return route.EndpointTransitAdmission{AuthorizationID: [32]byte{87}, NetworkID: network, Digest: digest, TransitNodeID: node,
-					Epoch: epoch, TransitRole: route.IntroductionRole, NotAfter: deadline}, nil
-			}})
-		if err != nil {
-			result <- err
-			return
-		}
-		defer accepted.Connection.Close()
-		control, err := route.ReadIntroductionControlRecord(accepted.Connection)
-		if err != nil || control.Sealed == nil {
-			result <- fmt.Errorf("read sealed Introduction: %w", err)
-			return
-		}
-		result <- route.WriteIntroductionDeliveryResult(accepted.Connection, route.IntroductionDeliveryResult{AttachmentID: accepted.Binding.AttachmentID, Outcome: outcome})
-	}()
-	return result
 }
 
 func mustEncodeGatewayProfile(t *testing.T, profile reachability.GatewayProfile) []byte {

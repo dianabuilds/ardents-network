@@ -35,7 +35,8 @@ type endpointLifecycleEvent struct {
 func startLiveEnrolledEndpoint(t *testing.T, artifact, input, root, expectedCohort, expectedRelease string) *liveEnrolledEndpoint {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
-	running := &liveEnrolledEndpoint{command: exec.CommandContext(ctx, artifact, "endpoint", "enroll", input), cancel: cancel}
+	bundleRoot, manifestPin := manifestPinnedEnrollmentArguments(t, input)
+	running := &liveEnrolledEndpoint{command: exec.CommandContext(ctx, artifact, "endpoint", "enroll", bundleRoot, manifestPin), cancel: cancel}
 	running.command.WaitDelay = time.Second
 	running.command.Env = endpointEnvironment(root)
 	running.stderr = &processStderrBuffer{}

@@ -89,12 +89,12 @@ func (server *server) serve() {
 func (server *server) handle(local *net.UnixConn) {
 	defer local.Close()
 	_ = local.SetDeadline(time.Now().Add(15 * time.Second))
-	serviceLink, err := readRequest(local)
+	targetLink, err := readRequest(local)
 	if err != nil {
 		_ = writeRefusal(local, err)
 		return
 	}
-	application, err := server.owner.Open(server.ctx, serviceLink)
+	application, err := server.owner.Open(server.ctx, targetLink)
 	if err != nil || application == nil {
 		_ = writeRefusal(local, err)
 		return
@@ -165,7 +165,7 @@ func readRequest(reader io.Reader) (string, error) {
 	}
 	length := int(binary.BigEndian.Uint16(header[len(localMagic):]))
 	if length == 0 || length > maximumLink {
-		return "", errors.New("local Application Service Link is invalid")
+		return "", errors.New("local Application Target Link is invalid")
 	}
 	raw := make([]byte, length)
 	if _, err := io.ReadFull(reader, raw); err != nil {
