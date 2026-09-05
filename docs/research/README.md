@@ -88,5 +88,8 @@ requires ongoing specialist staffing, moderation, 24/7 operations, or review
 that is not available, record that as an unmet dependency rather than silently
 assigning it to a fictional future team.
 
-See [reference systems](reference-systems.md) for the starting landscape. Those
-systems are sources of patterns and evidence, not preselected dependencies.
+Each research record owns the primary sources used for its decision and must
+verify their current revision, access date, and relevance. A general system
+comparison is not decision evidence or a dependency selection. The initial
+[reference-system landscape](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/research/reference-systems.md)
+is archived as historical orientation.

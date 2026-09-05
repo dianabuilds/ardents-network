@@ -13,7 +13,7 @@ and [ADR-0037](../adr/0037-private-reachability-entry-carrier.md).
 
 Given an exact, network-bound Target Link, the Endpoint obtains one
 authenticated, current Service Publication and short-lived live introduction
-facts. The result is input to the existing User C-2 composition; it is neither
+facts. The result is input to the User Route composition; it is neither
 a Service Connection nor evidence that the Publisher is online.
 
 The protocol has three roles:
@@ -25,10 +25,16 @@ Publisher -- authenticated descriptor publication ----------+
 ```
 
 The Initiator can observe Endpoint adjacency but not the Target. The Gateway can
-observe the Target but not the Endpoint origin. Both are State-selected
-Rendezvous-domain identities and their known families are excluded from the
-later Service Connection's Rendezvous. A lookup uses a separate Isolation
-Context/channel and a separate Initiator Entry acquisition from the connection
+observe the Target but not the Endpoint origin. The maintained State assigns
+the adjacent Initiator to `initiator` and the Gateway to the separate
+`destination-resolution` duty domain. The Gateway identity and known family
+are excluded from the later Service Connection's peers. This current C0
+assignment is distinct from the public-product model that places Destination
+Resolution within the non-adjacent Rendezvous Domain; it does not qualify that
+public topology. ADR-0037's Initiator operation carries the opaque lookup, so
+the Initiator is not a Rendezvous-domain HTTP Relay.
+
+A lookup uses a separate Isolation Context/channel and a separate Initiator Entry acquisition from the connection
 it will enable. No role receives a Publisher origin, Service private key,
 complete Route, or authority to select a fallback.
 
@@ -81,7 +87,7 @@ Thus a Gateway can withhold results, return an expired descriptor, or deny
 service, all of which become explicit unavailable outcomes. It cannot make a
 different Target, forged publication, or older overlapping Credential produce
 a Service Connection. A descriptor for an old but still-live slot may at most
-try the same authenticated Service Instance; ordinary C-2 slot replay controls
+try the same authenticated Service Instance; Introduction slot replay controls
 then yield unavailable rather than a different destination.
 
 `internal/service/reachability.Store` implements the Gateway-local part of
@@ -93,8 +99,9 @@ two differing Publications at one generation as persistent `conflicting`.
 The Gateway's `Publish` boundary requires a current authenticated State-role
 authorization callback before it gives a descriptor to that Store; the Store
 itself remains the lower-level durable currentness owner. Endpoint composition
-requires separate lookup and C-2 attachment identifiers and rejects the
-Gateway's identity or family when it overlaps any C-2 peer.
+requires separate lookup and Service Connection attachment identifiers and
+rejects the Gateway's identity or family when it overlaps any Service Connection
+peer.
 
 ## Bounded records
 
@@ -175,9 +182,10 @@ The maintained implementation and test denominator cover in-process and
 bounded local-process success paths, including the closed lookup carrier. The
 retired stage-specific Reference C-2 topology is provenance at
 [`fbb42034757513ac009114a00b933aefa76d8ddf`](https://github.com/dianabuilds/ardents-network/commit/fbb42034757513ac009114a00b933aefa76d8ddf),
-not current qualification. A selected real browser, the required failure
-matrix, and a two-host Ubuntu result remain unqualified, so C0 exposes this
-surface for audit without declaring it operationally usable.
+not current qualification. The required failure matrix and two-host Ubuntu
+qualification remain unfulfilled. C0 exposes this surface for audit without declaring it
+operationally usable. Browser use requires a separate product decision and
+Application isolation evidence; it is not a prerequisite for headless C0.
 
 ## Non-claims
 

@@ -37,10 +37,11 @@ The maintained contract requires:
   are not independent operators, and a generic Application Adapter is not an
   isolation boundary.
 
-The detailed product requirements remain in the
-[functional map](functional-map.md), participant behavior in
-[journeys](journeys.md), and lifecycle rules in the
-[operating model](operating-model.md).
+The [functional map](functional-map.md), [journeys](journeys.md), and
+[operating model](operating-model.md) retain the broader public-product
+requirements, behavior, and lifecycle. Read their relevant sections when a C0
+surface depends on them; they are not an additional C0 checklist. The profile
+below and the linked current technical owners describe the maintained subset.
 
 ## C0 Closed Alpha readiness profile
 
@@ -78,7 +79,7 @@ the [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network
 not in this contract or research records. The product contract remains stable;
 the tracker is the one live task ledger.
 
-### C0 command roles, state, and blocking route gap
+### C0 command roles, state, and outcomes
 
 The four commands have non-interchangeable C0 roles: `ardents-control` verifies
 the enrollment-pinned control evidence; `ardents-node` runs only the
@@ -88,7 +89,7 @@ Service Credential without exporting Authority material; and `ardents` owns
 Endpoint enrollment/runtime, Service Instance initialization/acceptance,
 publication, and local Application byte exchange. Their durable inputs remain
 separate: immutable artifact and enrollment inputs, project Node/issuer roots,
-Custody Vault, Service Instance root and public request/response, Endpoint
+Authority Vault, Service Instance root and public request/response, Endpoint
 State/Entry/Transit/Publication roots, and local Application/Administration
 sockets. No role may borrow another role's root or private material.
 
@@ -193,7 +194,8 @@ C0 preparation and an internal audit do not establish:
 - a public permissionless Namespace, participant Browser Entry, signed release,
   or Public Beta;
 - Application-level network isolation for a generic Adapter; or
-- a complete artifact-native B6 participant journey.
+- a complete participant journey using only the supplied artifacts and
+  supported operator commands.
 
 Any later claim states the protected information, adversary, conditions,
 measurement, and limitation, and requires its own exact candidate and evidence.

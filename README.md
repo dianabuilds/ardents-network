@@ -71,10 +71,11 @@ Maintained Go code belongs in thin `cmd/<name>` adapters and cohesive
 `make check` before integration. The package map and dependency register are
 part of the architecture contract.
 
-Stage briefs, closed research, completed experiments, and historical campaign
-implementations are absent from the maintained surface once their current facts
-are promoted; Git history preserves provenance. Do not restore them as
-compatibility requirements.
+Accepted ADRs and completed research records remain decision provenance outside
+the current implementation route. Superseded stage procedures and completed
+experiment implementations are retired to Git after their unique facts are
+promoted. Their former presence creates no new compatibility requirement; see
+[documentation policy](docs/development/documentation.md#promotion-and-retirement).
 
 ## License
 

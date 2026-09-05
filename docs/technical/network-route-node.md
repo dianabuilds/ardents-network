@@ -184,34 +184,27 @@ and confirmed removal. The operator contract is the
   network. Its recurring QUIC UDP-buffer warning forbids a throughput or
   capacity conclusion.
 - Process tests cover authenticated source-to-State and Node lifecycles; the
-  A11 multi-host cells additionally put the exact product Rendezvous behind a
+  selected multi-host cells additionally put the exact product Rendezvous behind a
   test-owned raw TCP Carrier relay, retain both PIDs/lifecycles, and inject
   Carrier-reset and exact product-Node-kill faults without a fixture
   Rendezvous or transit fallback. They remain bounded functional evidence, not
   a public network or native host profile.
 - Product-command tests now start separate Initiator, Introduction, Rendezvous,
   and Responder processes from one signed native Route Epoch, verify their
-  exact State assignments, and carry one local C-2 journey through those
+  exact State assignments, and carry one local Service Connection journey through those
   commands. The Linux Docker route test uses `SIGTERM` and requires
   `DRAINING` then `WITHDRAWN` after the completed journey; a linked signed
   State successor also withdraws all four commands. Its product-transit
   offline case produces `service unavailable` without opening an Application
   Connection, and a Linux Rendezvous process test drains a held authenticated
   pair on `SIGTERM`.
-  Its neighbouring C-2 roles remain fixtures. This does not prove a full C-2
+  Its neighbouring Route roles remain fixtures. This does not prove a full Route
   active-work drain, multi-host operation, or a host profile. The Windows
   compatibility harness retains forced cleanup.
-- One disposable mixed closed-network run completed Windows Initiator -> local
-  Docker Introduction -> VPS Docker Rendezvous -> VPS-private Docker
-  Responder. Every leg selected TLS 1.3 and the exact Route ALPN; the
-  65,536-byte opaque payload had the same reported SHA-256
-  `c3eb7cad...74076247` at Initiator and Responder, and all four roles exited
-  successfully. Introduction was loopback-only; the temporary VPS exposure
-  was Rendezvous only; containers, networks, images, tarball, keys, port, and
-  isolated worktree were removed afterwards. This is functional integration
-  evidence only: it does not establish State/Entry, Service Connection,
-  Route topology, privacy, independent operation, public deployment, or a
-  Node profile.
+- A [historical mixed-host run](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/technical/network-route-node.md#verification-and-decisions)
+  retains bounded functional integration evidence for its exact candidate.
+  It supplies no current Route, privacy, host-profile, or public-operation
+  qualification.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md),
 	[ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md),
   [ADR-0025](../adr/0025-state-referenced-entry-invites.md),
@@ -220,6 +213,6 @@ and confirmed removal. The operator contract is the
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
   [ADR-0049](../adr/0049-defer-blocked-entry-profile.md) define the selected
   native Route and Carrier facts. R-092 selects one measured
-  project-qualified dedicated-host Rendezvous Functional Alpha profile. The
+  project-qualified dedicated-host Rendezvous closed-alpha profile. The
   result does not select another duty or make public capacity, availability,
   co-resident, permissionless, or independent-operation claims.

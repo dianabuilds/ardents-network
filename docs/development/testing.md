@@ -5,6 +5,18 @@ artifact profiles, and explicitly selected qualifications. A historical result
 is evidence about its exact candidate; it is not an entrypoint for current
 code.
 
+## Qualification evidence
+
+A Qualification Evidence Bundle is an immutable, content-addressed record for
+one exact candidate and its declared conditions. It retains precommitted
+inputs, complete raw observations, invalidations, and deterministic verdict
+outputs so the result can be recomputed. A selected log excerpt or ordinary
+test report is insufficient. Public retention and change-impact requirements
+remain NET-14AJ and NET-14AK in the
+[requirements registry](../product/functional-map.md#accepted-requirements-registry).
+An internal audit uses the separate [audit method](deep-audit.md) and cannot
+substitute for independent review.
+
 ## Ordinary checks
 
 - `make unit` runs the positive deterministic package inventory.
@@ -21,6 +33,15 @@ code.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
 - `make fuzz` exercises the maintained bounded parser/encoder fuzz surface.
+
+Ordinary checks do not build or run Docker and never install tools implicitly.
+`make check` also verifies pinned tool versions and the dead-code inventory.
+Its vulnerability check uses the [Go vulnerability database](https://go.dev/doc/security/vuln/)
+and requires network access unless the needed data is already cached. On Linux,
+it additionally runs `package-e2e`, which uses root to exercise `dpkg` and
+`setpriv`; missing privilege invalidates that selected profile. Dedicated
+Rendezvous qualifications have their own targets and prerequisites. Local
+setup and hook installation belong in [CONTRIBUTING.md](../../CONTRIBUTING.md#local-setup).
 
 ## Reachability audit
 

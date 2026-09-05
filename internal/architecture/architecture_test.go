@@ -91,7 +91,7 @@ func assertRequiredProjectFiles(t *testing.T, root string) {
 	t.Helper()
 	required := []string{
 		"go.mod", "Makefile", "CONTRIBUTING.md", ".github/workflows/quality.yml", ".githooks/pre-commit",
-		"docs/development/go-engineering.md", "docs/development/dependencies.md",
+		"docs/development/testing.md", "docs/development/dependencies.md",
 		"docs/development/repository-layout.md", "docs/development/package-map.md",
 		"docs/development/ownership.json",
 		"docs/development/documentation.md",

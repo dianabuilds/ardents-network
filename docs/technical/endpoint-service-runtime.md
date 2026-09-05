@@ -80,8 +80,8 @@ cancellation.
 The only current isolation observation is generic/unqualified. It means the
 runtime deliberately makes no statement about sandboxing, hostile same-user
 applications, process-tree confinement, supported host platforms, or
-Application Location Privacy. A qualified platform Adapter requires separate
-research and an ADR.
+Application-level Endpoint Location Privacy. A qualified platform Adapter
+requires separate research and an ADR.
 
 ## Publication and connection lifecycle
 
@@ -198,12 +198,11 @@ owner rejects acquisition as soon as unpublish begins, before retained leases
 finish draining.
 A non-EOF Publisher Application socket failure and an abrupt Publisher Endpoint
 loss are `abrupt connection loss`, never `service unavailable` or clean close.
-If a Publisher fails after HTTP response headers are committed, the local HTTP
-server may expose only the already received body prefix because it cannot emit
-a second status. `ReferenceConnection.Done` remains the authoritative bounded
-terminal result, and the scoped proxy is withdrawn without a same-name,
-other-Target, or Internet fallback. A distinct registered Target is addressed
-only by an explicit request for its own authenticated name.
+An Application may receive a byte prefix before an abrupt failure. The typed
+terminal outcome remains authoritative for the Connection lifecycle; received
+bytes do not prove that an Application operation completed. Interpretation of
+HTTP status, response completeness, or semantic retry belongs to the external
+Application. Endpoint never substitutes another Target or an Internet path.
 
 The Endpoint contains no Browser presentation or Browser Entry state. The
 former Browser implementation and qualification lanes are retired; Firefox
@@ -223,4 +222,4 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
   native Route foundation; [ADR-0028](../adr/0028-native-service-connection-v1.md)
   selects the closed Service Connection grammar.
 - The Broker is limited to its explicit generic/unqualified contract; it makes
-  no platform-isolation or Application Location Privacy claim.
+  no platform-isolation or Application-level Endpoint Location Privacy claim.

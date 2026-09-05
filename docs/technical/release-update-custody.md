@@ -22,6 +22,11 @@ its interactive terminal, and returns one public signed response plus the
 deterministic encrypted successor record. Neither the request nor the response
 exports Authority material.
 
+The current Service Instance Credential binds an Ed25519 Instance public key
+and a separate X25519 Introduction recipient public key. The latter is not
+derived from the Instance key. These are technical format choices; Service
+Credential is the glossary's short form for the same public credential.
+
 One supported Service Credential has a maximum 24-hour lifetime and a terminal
 horizon of 48 hours from issuance. The successor ledger also requires a new
 validity interval not to overlap its predecessor for the same Target. An exact

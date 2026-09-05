@@ -674,9 +674,10 @@ support a public `decentralized` or qualified anonymity claim.
 
 ## 5. Performance and capacity
 
-The accepted R-023 endpoint, latency, throughput, recovery, overload, queue,
-platform, and Qualification Evidence gates remain the product budgets. This
-closure adds the following rules:
+NET-14 in the [requirements registry](functional-map.md#accepted-requirements-registry)
+owns the exact endpoint, latency, throughput, recovery, overload, queue,
+platform, and qualification budgets. This operating model adds the following
+lifecycle rules:
 
 - startup is measured separately for each required capability; a quick
   `Target Connect Ready` result cannot hide unavailable naming or publishing;
@@ -868,33 +869,6 @@ Node's role-local view only after Route Qualification. It makes no blanket claim
 against a Node that also controls/observes an endpoint or active probe source,
 arbitrary collusion, hidden common control, Sybil majority, Broad Traffic
 Observation, endpoint compromise, or identity revealed by the Application.
-
-## Resolved contradictions
-
-| Previous contradiction | Resolution |
-|---|---|
-| Independently hidden endpoint legs could not prove five distinct Node IDs. | Stable disjoint Role Domains make cross-leg identity overlap impossible without a hidden-set rejection oracle. |
-| A Target Link bypassed naming but still needed descriptor lookup, which could otherwise share one identity/family with an endpoint Entry. | Private Reachability Resolution uses a Destination Resolution Role restricted to the non-adjacent Rendezvous Domain and excluded from the same connection's Rendezvous; a Target Link never means direct lookup. |
-| A Service rejecting a proposed Rendezvous against its hidden Entry Set could reveal that set. | The proposed Rendezvous comes from its own domain; Service path construction never conditions an observable result on hidden cross-domain identity overlap. |
-| One Entry Set per freely creatable Isolation Context let an Application force unlimited Entry sampling. | Entry exposure is Endpoint × adjacent Role Domain × regime scoped; co-resident client/publication roles remain domain-separated while per-context channels and all higher state remain separate. |
-| One Bridge identity could otherwise expose several endpoint roles. | Every Bridge key has one epoch-bound adjacent Role Domain and its Invite proves that eligibility; an Invite changes only the bounded set in that domain/regime. |
-| A Node/family could switch domains while an old long-lived Entry still used it, recreating cross-domain overlap. | Assignment bounds every new duty; reassignment stops new work and quarantines identity/family until all old-domain duties terminate. Emergency may close work, never overlap domains. |
-| A directly contacted bootstrap/materialization/time source could later learn an exact destination as a resolver or Route Node. | Direct-origin source duty is incompatible with Route/Resolution eligibility, and every actually contacted authenticated identity/known family remains in a bounded Endpoint-local exclusion set through its terminal exposure lease. External hidden common control remains an explicit limitation. |
-| One `network-ready` flag could hide missing naming, Route, publication, or qualification capability. | A Common Readiness Base is shared, then each capability adds its own role path; R-023's existing startup numbers mean Target Connect Ready only. |
-| Expiring state trusted an unchecked wall clock. | Time Confidence combines monotonic runtime, a non-decreasing watermark, authenticated epochs, and explicit failure. |
-| A partial Candidate View download was described as proof of a globally complete view, and signers could silently omit eligible Nodes. | The epoch commits a logical complete View and transparent input cutoff; clients verify indexed material only, while independent full auditors verify global inclusion and summaries. |
-| A compromised online V1 Service Authority made the Target permanently impersonable, while “Credential” ambiguously named a secret. | Runtime holds a private Instance Key plus a public bounded Credential; copying the Credential alone grants nothing, and only root compromise requires Target replacement. |
-| A stale root-only backup could sign an old generation after restore or falsely recreate Local Grants. | The Recovery Bundle carries authority-owned monotonic commitments/watermarks, remains non-signing until reconciliation, and never derives Local Grants or runtime keys. |
-| Credential expiry bounded new publication but not an already-live recoverable connection. | Every connection and its recovery have a terminal bound no later than Credential expiry, with earlier authenticated supersession deadlines when learned. |
-| Rebinding a Name after Service Authority compromise did not evict already-live old-Target connections. | A Name-origin Destination Binding joins the Work Safety Lease; Recovery Pending, Release, or a different authenticated Target stops recovery and closes finitely without retargeting the stream. Explicit Target connections deliberately receive no Name rescue. |
-| Revoking a Local Grant did not define the fate of already-open child sessions. | Revocation immediately kills custody/admin sessions and new work; data either closes immediately or follows an explicitly preselected finite drain, and no ephemeral bearer survives restart. |
-| Service Administration wording collapsed publication privilege back into permanent Service Authority custody. | Connection use, per-Service publication/configuration, and Authority Custody are three non-collapsing grants; only Custody may operate on roots or issue Credentials, and neither raw root nor Instance Key is exportable through Service Administration. |
-| A public Contributor co-resident with a User/Publisher would expose the protected endpoint and invalidate separate resource/independence evidence. | V1 public contribution uses a dedicated host and own controlled identities/families are excluded from local Routes; Client+Publisher co-residence instead requires a separately qualified combined endpoint profile. |
-| Release qualification existed without a safe update lifecycle, and protocol migration was conflated with unsafe-build revocation. | Threshold executable authorization, rollback protection, atomic Installed activation or stopped Portable replacement, drain, and two separate protocol/build state machines now form the lifecycle. |
-| An expired Release Safety State required the blocked Ardents runtime to update itself. | Repair then uses only a preconfigured external privacy proxy, an explicit direct choice, or offline import; there is no self-route or silent privacy fallback. |
-| Diagnostics could recreate a User/Service graph or cross Local Grant boundaries. | Default diagnostics are local, bounded, non-uploading, and grant-scoped to connection Application, one Service, Endpoint Owner aggregate, or Contributor role. |
-| A correct Ardents Route was treated as if it also constrained an Application's public listeners, DNS, WebRTC, external-resource, callback, or direct-socket behavior. | Carrier privacy covers only traffic submitted to Ardents. Claim-bearing private application UX requires a deny-by-default Network-Isolated Application Boundary; a generic adapter remains usable but visibly unqualified for that claim. |
-| The canonical Namespace could block all carrier progress. | Direct authenticated Target Links remain a complete destination path; naming is optional and never a fallback rewrite. |
 
 ## Remaining bottlenecks and stop conditions
 
