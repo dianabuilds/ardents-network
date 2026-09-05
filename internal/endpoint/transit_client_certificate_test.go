@@ -45,6 +45,23 @@ func TestTransitClientCertificateRequiresGrantLocalEnrollment(t *testing.T) {
 	}
 }
 
+func TestTransitClientCertificateRejectsMalformedGrantBeforeChoosingCredential(t *testing.T) {
+	underTest := &endpoint{}
+	supplied := transitClientTestCertificate(t, 208)
+	for name, authorization := range map[string][]byte{
+		"empty":     nil,
+		"random":    {1, 2, 3, 4},
+		"truncated": []byte("ardents-transit-grant-v1"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := underTest.transitClientCertificate(authorization, supplied)
+			if err == nil {
+				t.Fatalf("malformed Transit Grant selected credential %+v", got)
+			}
+		})
+	}
+}
+
 func transitClientTestID(value byte) [32]byte {
 	var result [32]byte
 	for index := range result {

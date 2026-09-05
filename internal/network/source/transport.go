@@ -142,6 +142,7 @@ func clientTLSConfig(client client) *tls.Config {
 		RootCAs: client.roots, ServerName: client.serverName,
 		Certificates:       []tls.Certificate{client.certificate},
 		ClientSessionCache: nil, SessionTicketsDisabled: true,
+		Time: client.clock,
 		VerifyConnection: func(state tls.ConnectionState) error {
 			if len(state.PeerCertificates) == 0 {
 				return errors.New("distribution source certificate is missing")
@@ -160,7 +161,7 @@ func serverTLSConfig(server server) *tls.Config {
 		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
 		Certificates: []tls.Certificate{server.certificate},
 		ClientAuth:   tls.RequireAndVerifyClientCert, ClientCAs: server.clientRoots,
-		SessionTicketsDisabled: true,
+		SessionTicketsDisabled: true, Time: server.clock,
 		VerifyConnection: func(state tls.ConnectionState) error {
 			if len(state.PeerCertificates) == 0 {
 				return errors.New("distribution client certificate is missing")

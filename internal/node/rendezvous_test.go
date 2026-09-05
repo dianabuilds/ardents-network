@@ -303,11 +303,18 @@ func TestRendezvousReservesHandshakeWaitingAndPairSlots(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer second.Close()
-		extra, err := net.Dial("tcp", config.ListenAddress)
-		if err != nil {
-			t.Fatal(err)
+		awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool {
+			return usage.ActivePairs == 1
+		})
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		// Attempting the TLS handshake makes the rejected admission observable to
+		// the client. RefusedBeforeTLS below proves the listener made that
+		// decision before authenticating this leg.
+		if err := submitRejectedLeg(ctx, config.ListenAddress, material.initiator, material.serverPublic,
+			legFor(material, [32]byte{6}, route.InitiatorRole, config.NotAfter)); err == nil {
+			t.Fatal("pair-capacity leg was accepted")
 		}
-		defer extra.Close()
 		awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool {
 			return usage.ActivePairs == 1 && usage.RefusedBeforeTLS == 1
 		})

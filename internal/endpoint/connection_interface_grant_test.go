@@ -44,6 +44,22 @@ func TestApplicationServiceAttachmentUsesOnlyCurrentSignedGrant(t *testing.T) {
 	}
 }
 
+func TestApplicationServiceAttachmentRejectsMalformedGrantWithoutAttachment(t *testing.T) {
+	epoch := state.ResolutionEpoch{NetworkID: applicationGrantID(1), Number: 7, Digest: applicationGrantID(2)}
+	for name, authorization := range map[string][]byte{
+		"empty":     nil,
+		"random":    {1, 2, 3, 4},
+		"truncated": []byte("ardents-transit-grant-v1"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			attachment, err := applicationServiceAttachment(authorization, epoch, applicationGrantID(3), time.Now().UTC())
+			if err == nil || attachment != [32]byte{} {
+				t.Fatalf("malformed Transit Grant produced attachment %x, %v", attachment, err)
+			}
+		})
+	}
+}
+
 func applicationGrantID(marker byte) [32]byte {
 	var value [32]byte
 	for index := range value {

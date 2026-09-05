@@ -2,12 +2,13 @@ package entry
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"sync"
 	"time"
 )
 
-const profileID = "ardents-interactive-route-v1"
+const profileID = "ardents-interactive-route-v2"
 
 // Candidate is one bounded, authenticated adjacent Entry fact projected by
 // the State adapter. Entry never discovers or mutates this data.
@@ -59,9 +60,9 @@ type Verification struct {
 // It is valid only for the caller's present attempt and does not identify the
 // User that presented the Invite.
 type Authorization struct {
-	InviteID, NetworkID, Digest, InitiatorNodeID [32]byte
-	Epoch                                        uint64
-	NotAfter                                     time.Time
+	InviteID, NetworkID, Digest, InitiatorNodeID, RecipientPublicKey [32]byte
+	Epoch                                                            uint64
+	NotAfter                                                         time.Time
 }
 
 // Class is the closed result of one Invite import.
@@ -129,4 +130,5 @@ type owner struct {
 	closed          bool
 	closeErr        error
 	failed          error
+	recipient       tls.Certificate
 }

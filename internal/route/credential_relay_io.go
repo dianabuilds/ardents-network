@@ -97,7 +97,7 @@ func encodeCredentialRelayEnvelope(kind byte, input CredentialRelayEnvelope) ([]
 		return nil, errors.New("credential relay envelope is outside its capacity")
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+2+len(input.OHTTP))
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, kind)
 	body = appendProfile(body)
 	body = appendUint16(body, uint16(len(input.OHTTP)))
@@ -123,7 +123,7 @@ func encodeCredentialRelayResponse(input CredentialRelayResponse) ([]byte, error
 		return nil, errors.New("credential relay response is outside its capacity")
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+1+2+len(input.OHTTP))
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, credentialRelayResponseKind)
 	body = appendProfile(body)
 	body = append(body, input.Framing)
@@ -168,7 +168,7 @@ func credentialRouteBody(raw []byte, kind byte) (*wireReader, error) {
 		return nil, errors.New("credential relay wire length is invalid")
 	}
 	reader = &wireReader{raw: body}
-	if reader.uint16() != 1 || reader.uint8() != kind {
+	if reader.uint16() != routeWireVersion || reader.uint8() != kind {
 		return nil, errors.New("credential relay wire kind or version is invalid")
 	}
 	profileLength := int(reader.uint8())

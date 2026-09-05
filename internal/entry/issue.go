@@ -9,15 +9,15 @@ import (
 // IssueInput is one bounded, State-referenced Entry Invite issuance request.
 // The issuer supplies no Route, Target, Service, or User information.
 type IssueInput struct {
-	NetworkID, Digest   [32]byte
-	Epoch               uint64
-	Candidate           Candidate
-	NotBefore, NotAfter time.Time
-	Slot, Generation    byte
-	Replaces            *[32]byte
+	NetworkID, Digest, RecipientPublicKey [32]byte
+	Epoch                                 uint64
+	Candidate                             Candidate
+	NotBefore, NotAfter                   time.Time
+	Slot, Generation                      byte
+	Replaces                              *[32]byte
 }
 
-// Issue returns the canonical signed Entry Invite v1. Custody of the selected
+// Issue returns the canonical signed Entry Invite v2. Custody of the selected
 // candidate signer remains outside Entry; this function cannot import, retain,
 // or activate the issued Invite.
 func Issue(input IssueInput, signer ed25519.PrivateKey) ([]byte, error) {
@@ -25,12 +25,13 @@ func Issue(input IssueInput, signer ed25519.PrivateKey) ([]byte, error) {
 		return nil, err
 	}
 	body := make([]byte, 0, 256)
-	body = appendIssueUint16(body, 1)
+	body = appendIssueUint16(body, inviteWireVersion)
 	body = append(body, input.NetworkID[:]...)
 	body = appendIssueUint64(body, input.Epoch)
 	body = append(body, input.Digest[:]...)
 	body = append(body, byte(len(profileID)))
 	body = append(body, profileID...)
+	body = append(body, input.RecipientPublicKey[:]...)
 	for _, value := range [][32]byte{input.Candidate.KeyID, input.Candidate.NodeID, input.Candidate.FamilyID,
 		input.Candidate.RecordDigest, input.Candidate.DomainProofDigest} {
 		body = append(body, value[:]...)
@@ -67,7 +68,7 @@ func appendIssueUint64(destination []byte, value uint64) []byte {
 }
 
 func validIssueInput(input IssueInput, signer ed25519.PrivateKey) error {
-	if len(signer) != ed25519.PrivateKeySize || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.Epoch == 0 ||
+	if len(signer) != ed25519.PrivateKeySize || input.NetworkID == [32]byte{} || input.Digest == [32]byte{} || input.RecipientPublicKey == [32]byte{} || input.Epoch == 0 ||
 		input.Candidate.NodeID == [32]byte{} || input.Candidate.KeyID == [32]byte{} || input.Candidate.FamilyID == [32]byte{} ||
 		input.Candidate.RecordDigest == [32]byte{} || input.Candidate.DomainProofDigest == [32]byte{} || input.Candidate.Domain != "initiator" ||
 		input.Candidate.AssignmentNotAfter.IsZero() || input.NotBefore.IsZero() || input.NotAfter.IsZero() ||

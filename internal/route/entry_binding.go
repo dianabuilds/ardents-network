@@ -13,8 +13,8 @@ const (
 	maximumEntryInvite = 1024
 )
 
-// EntryBinding is the User-to-Initiator v1 admission context. Invite is an
-// opaque R-077 capability: only Entry validates it. ClientKeyDigest binds that
+// EntryBinding is the User-to-Initiator v2 admission context. Invite is an
+// opaque Entry capability: only Entry validates it. ClientKeyDigest binds that
 // capability to the fresh mTLS client key for this one attachment and is never
 // a User identity or Route authority.
 type EntryBinding struct {
@@ -28,18 +28,18 @@ type EntryBinding struct {
 // It deliberately contains no User identity, credential, Route topology, or
 // raw Invite bytes.
 type EntryAdmission struct {
-	InviteID, NetworkID, Digest, InitiatorNodeID [32]byte
-	Epoch                                        uint64
-	NotAfter                                     time.Time
+	InviteID, NetworkID, Digest, InitiatorNodeID, RecipientPublicKey [32]byte
+	Epoch                                                            uint64
+	NotAfter                                                         time.Time
 }
 
 // EntryBindingAdmitter verifies an opaque Invite against current Entry/State
 // facts and records its replay tuple in one owner-controlled operation. The
 // composition adapter maps the Entry-owned result to EntryAdmission; Route
 // never reads an Entry root or verifies an Invite signature itself.
-type EntryBindingAdmitter func([]byte, [32]byte, [32]byte, time.Time) (EntryAdmission, error)
+type EntryBindingAdmitter func([]byte, [32]byte, [32]byte, [32]byte, time.Time) (EntryAdmission, error)
 
-// EncodeEntryBinding returns the only canonical v1 User-to-Initiator binding.
+// EncodeEntryBinding returns the only canonical v2 User-to-Initiator binding.
 func EncodeEntryBinding(input EntryBinding) ([]byte, error) {
 	if err := validEntryBinding(input); err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func EncodeEntryBinding(input EntryBinding) ([]byte, error) {
 	return routeEnvelope(body)
 }
 
-// DecodeEntryBinding rejects non-canonical, incomplete, and surplus v1 bytes
+// DecodeEntryBinding rejects non-canonical, incomplete, and surplus v2 bytes
 // before the Initiator asks Entry to validate the opaque Invite.
 func DecodeEntryBinding(raw []byte) (EntryBinding, error) {
 	reader, err := routeBody(raw, entryBindingKind)
@@ -125,21 +125,42 @@ func AdmitEntryBinding(input EntryBinding, peer *x509.Certificate, now time.Time
 	if digest != input.ClientKeyDigest {
 		return errors.New("entry binding does not match the TLS client key")
 	}
-	admission, err := admit(append([]byte(nil), input.Invite...), input.AttachmentID, input.ClientKeyDigest, input.NotAfter)
+	recipient, err := ClientTLSPublicKey(peer)
+	if err != nil {
+		return err
+	}
+	admission, err := admit(append([]byte(nil), input.Invite...), input.AttachmentID, input.ClientKeyDigest, recipient, input.NotAfter)
 	if err != nil {
 		return err
 	}
 	if admission.InviteID == [32]byte{} || admission.NetworkID != input.NetworkID || admission.Digest != input.Digest ||
 		admission.Epoch != input.Epoch || admission.InitiatorNodeID != input.InitiatorNodeID || admission.NotAfter.IsZero() ||
-		input.NotAfter.After(admission.NotAfter) {
+		input.NotAfter.After(admission.NotAfter) || admission.RecipientPublicKey != recipient {
 		return errors.New("entry binding does not match current Invite authorization")
 	}
 	return nil
 }
 
+// ClientTLSPublicKey returns the exact Ed25519 public key presented by the
+// peer certificate. An Entry Invite commits to this value, not to a caller
+// selected digest, so an intercepted Invite cannot be presented by another
+// TLS client identity.
+func ClientTLSPublicKey(certificate *x509.Certificate) ([32]byte, error) {
+	if certificate == nil || certificate.PublicKeyAlgorithm != x509.Ed25519 {
+		return [32]byte{}, errors.New("entry client certificate is not Ed25519")
+	}
+	public, ok := certificate.PublicKey.(ed25519.PublicKey)
+	if !ok || len(public) != ed25519.PublicKeySize {
+		return [32]byte{}, errors.New("entry client certificate public key is invalid")
+	}
+	var result [32]byte
+	copy(result[:], public)
+	return result, nil
+}
+
 func entryBindingPrefix(input EntryBinding) []byte {
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+32+8+32+2)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, entryBindingKind)
 	body = appendProfile(body)
 	body = append(body, input.NetworkID[:]...)

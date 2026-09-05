@@ -31,11 +31,11 @@ func TestResolutionViewProjectsOneCompletePublisherAttachment(t *testing.T) {
 	}
 	spec := testEpochSpec{networkID: network, number: 1, validFrom: now.Add(-time.Minute), validUntil: now.Add(time.Hour),
 		inputs: recordBytes(records), accepted: records, rejections: map[uint32]uint16{}, assignmentSeed: seed, domains: domains,
-		authorities: []ed25519.PrivateKey{authority}, profile: "ardents-interactive-route-v1", version: 1}
+		authorities: []ed25519.PrivateKey{authority}, profile: "ardents-interactive-route-v2", version: 1}
 	epoch := buildTestEpoch(t, spec)
 	opened, err := state.Open(state.Config{Root: t.TempDir(), NetworkID: network,
 		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(authority.Public().(ed25519.PublicKey)): authority.Public().(ed25519.PublicKey)},
-		Threshold:   1, Now: now, AcceptedProfile: "ardents-interactive-route-v1"})
+		Threshold:   1, Now: now, AcceptedProfile: "ardents-interactive-route-v2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,11 +91,11 @@ func acceptedPublisherView(t *testing.T, network [32]byte, authority ed25519.Pri
 	t.Helper()
 	spec := testEpochSpec{networkID: network, number: 1, validFrom: now.Add(-time.Minute), validUntil: now.Add(time.Hour),
 		inputs: recordBytes(records), accepted: records, rejections: map[uint32]uint16{}, assignmentSeed: seed, domains: domains,
-		authorities: []ed25519.PrivateKey{authority}, profile: "ardents-interactive-route-v1", version: 1}
+		authorities: []ed25519.PrivateKey{authority}, profile: "ardents-interactive-route-v2", version: 1}
 	epoch := buildTestEpoch(t, spec)
 	opened, err := state.Open(state.Config{Root: t.TempDir(), NetworkID: network,
 		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(authority.Public().(ed25519.PublicKey)): authority.Public().(ed25519.PublicKey)},
-		Threshold:   1, Now: now, AcceptedProfile: "ardents-interactive-route-v1"})
+		Threshold:   1, Now: now, AcceptedProfile: "ardents-interactive-route-v2"})
 	if err != nil {
 		t.Fatal(err)
 	}

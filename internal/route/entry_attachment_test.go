@@ -35,8 +35,9 @@ func TestOpenEntryAttachmentUsesStatePinnedTLSAndSendsExactBinding(t *testing.T)
 	candidate := entry.Candidate{NodeID: identifier(52), Endpoint: listener.Addr().String()}
 	copy(candidate.PublicKey[:], public)
 	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	clientCertificate := entryBindingCertificate(t, 58)
 	request := EntryAttachmentRequest{NetworkID: identifier(53), Digest: identifier(54), Epoch: 55,
-		AttachmentID: identifier(56), Deadline: deadline}
+		AttachmentID: identifier(56), Deadline: deadline, ClientCertificate: clientCertificate}
 	presentation := entry.Presentation{InviteID: identifier(57), Invite: []byte{9, 8, 7}}
 	received := make(chan EntryBinding, 1)
 	failed := make(chan error, 1)
@@ -105,8 +106,9 @@ func TestAcceptEntryAttachmentVerifiesAndConsumesBeforeReturning(t *testing.T) {
 	candidate := entry.Candidate{NodeID: identifier(62), Endpoint: listener.Addr().String()}
 	copy(candidate.PublicKey[:], public)
 	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
+	clientCertificate := entryBindingCertificate(t, 68)
 	request := EntryAttachmentRequest{NetworkID: identifier(63), Digest: identifier(64), Epoch: 65,
-		AttachmentID: identifier(66), Deadline: deadline}
+		AttachmentID: identifier(66), Deadline: deadline, ClientCertificate: clientCertificate}
 	presentation := entry.Presentation{InviteID: identifier(67), Invite: []byte{1, 3, 3, 7}}
 	verified := make(chan struct{}, 1)
 	consumed := make(chan struct{}, 1)
@@ -117,16 +119,21 @@ func TestAcceptEntryAttachmentVerifiesAndConsumesBeforeReturning(t *testing.T) {
 			serverDone <- acceptErr
 			return
 		}
+		recipient, recipientErr := ClientTLSPublicKey(clientCertificate.Leaf)
+		if recipientErr != nil {
+			serverDone <- recipientErr
+			return
+		}
 		admission := EntryAdmission{InviteID: presentation.InviteID, NetworkID: request.NetworkID, Digest: request.Digest,
-			Epoch: request.Epoch, InitiatorNodeID: candidate.NodeID, NotAfter: deadline}
+			Epoch: request.Epoch, InitiatorNodeID: candidate.NodeID, RecipientPublicKey: recipient, NotAfter: deadline}
 		secured, acceptErr := AcceptEntryAttachment(t.Context(), raw, EntryAttachmentAcceptance{
 			NetworkID: request.NetworkID, Digest: request.Digest, Epoch: request.Epoch, InitiatorNodeID: candidate.NodeID,
 			Deadline: deadline, Certificate: serverCertificate,
-			Admit: func(invite []byte, attachment, key [32]byte, notAfter time.Time) (EntryAdmission, error) {
+			Admit: func(invite []byte, attachment, key, receivedRecipient [32]byte, notAfter time.Time) (EntryAdmission, error) {
 				if string(invite) != string(presentation.Invite) {
 					return EntryAdmission{}, errors.New("wrong Invite")
 				}
-				if attachment != request.AttachmentID || key == [32]byte{} || !notAfter.Equal(deadline) {
+				if attachment != request.AttachmentID || key == [32]byte{} || receivedRecipient != recipient || !notAfter.Equal(deadline) {
 					return EntryAdmission{}, errors.New("wrong consumed Entry tuple")
 				}
 				verified <- struct{}{}
@@ -174,7 +181,7 @@ func TestAcceptEntryAttachmentRefusesAdmissionDeadlinePastDutyExpiry(t *testing.
 	deadline := time.Now().UTC().Add(time.Minute).Truncate(time.Second)
 	_, err := AcceptEntryAttachment(t.Context(), server, EntryAttachmentAcceptance{NetworkID: identifier(68), Digest: identifier(69),
 		InitiatorNodeID: identifier(70), Epoch: 71, Deadline: deadline, AdmissionDeadline: deadline.Add(time.Second),
-		Certificate: entryBindingCertificate(t, 72), Admit: func([]byte, [32]byte, [32]byte, time.Time) (EntryAdmission, error) {
+		Certificate: entryBindingCertificate(t, 72), Admit: func([]byte, [32]byte, [32]byte, [32]byte, time.Time) (EntryAdmission, error) {
 			return EntryAdmission{}, nil
 		}})
 	if err == nil {
@@ -199,18 +206,19 @@ func TestEntryAdmitterPortUsesOneDurableEntryOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer admitter.Close()
-	raw := routeTestInvite(view, candidate, private, now)
+	recipient := identifier(85)
+	raw := routeTestInvite(view, candidate, private, recipient, now)
 	port := EntryAdmitterPort(admitter)
 	if port == nil {
 		t.Fatal("Entry Admitter port is unavailable")
 	}
 	attachment, clientKey := identifier(83), identifier(84)
-	admission, err := port(raw, attachment, clientKey, now.Add(time.Minute))
+	admission, err := port(raw, attachment, clientKey, recipient, now.Add(time.Minute))
 	if err != nil || admission.NetworkID != view.NetworkID || admission.Digest != view.Digest || admission.Epoch != view.Epoch ||
 		admission.InitiatorNodeID != candidate.NodeID {
 		t.Fatalf("Entry Admitter port = %+v, %v", admission, err)
 	}
-	if _, err := port(raw, attachment, clientKey, now.Add(time.Minute)); err == nil {
+	if _, err := port(raw, attachment, clientKey, recipient, now.Add(time.Minute)); err == nil {
 		t.Fatal("Entry Admitter port accepted a replayed tuple")
 	}
 }
@@ -221,14 +229,15 @@ func (call entryAcquirerFunc) Acquire(ctx context.Context, attempt entry.Attempt
 	return call(ctx, attempt, opener)
 }
 
-func routeTestInvite(view entry.View, candidate entry.Candidate, private ed25519.PrivateKey, now time.Time) []byte {
+func routeTestInvite(view entry.View, candidate entry.Candidate, private ed25519.PrivateKey, recipient [32]byte, now time.Time) []byte {
 	body := make([]byte, 0, 256)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, 2)
 	body = append(body, view.NetworkID[:]...)
 	body = appendUint64(body, view.Epoch)
 	body = append(body, view.Digest[:]...)
 	body = append(body, byte(len(Profile)))
 	body = append(body, Profile...)
+	body = append(body, recipient[:]...)
 	body = append(body, candidate.KeyID[:]...)
 	body = append(body, candidate.NodeID[:]...)
 	body = append(body, candidate.FamilyID[:]...)
@@ -238,9 +247,9 @@ func routeTestInvite(view entry.View, candidate entry.Candidate, private ed25519
 	body = appendUint64(body, uint64(now.Add(-time.Minute).Unix()))
 	body = appendUint64(body, uint64(now.Add(30*time.Minute).Unix()))
 	body = append(body, 1, 0, 0)
-	signature := ed25519.Sign(private, append([]byte("ardents-entry-invite-signature-v1\x00"), body...))
-	raw := make([]byte, 0, len("ardents-entry-invite-v1")+2+len(body)+len(signature))
-	raw = append(raw, "ardents-entry-invite-v1"...)
+	signature := ed25519.Sign(private, append([]byte("ardents-entry-invite-signature-v2\x00"), body...))
+	raw := make([]byte, 0, len("ardents-entry-invite-v2")+2+len(body)+len(signature))
+	raw = append(raw, "ardents-entry-invite-v2"...)
 	raw = appendUint16(raw, uint16(len(body)))
 	raw = append(raw, body...)
 	return append(raw, signature...)

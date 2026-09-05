@@ -86,7 +86,7 @@ func validateNativeDutyProfile(config runtimeConfig, snapshot dutyFacts) error {
 		if _, err := entryView(snapshot); err != nil {
 			return err
 		}
-		_, err := initiatorDuty(config.Initiator, snapshot, func([]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
+		_, err := initiatorDuty(config.Initiator, snapshot, func([]byte, [32]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
 			return route.EntryAdmission{}, nil
 		})
 		return err

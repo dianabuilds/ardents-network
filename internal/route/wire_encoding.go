@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	routeWireMagic = "ardents-interactive-route-v1\x00"
-	// Profile is the exact native Interactive Route v1 ALPN and wire profile.
-	Profile         = "ardents-interactive-route-v1"
+	routeWireMagic   = "ardents-interactive-route-v2\x00"
+	routeWireVersion = uint16(2)
+	// Profile is the exact native Interactive Route v2 ALPN and wire profile.
+	Profile         = "ardents-interactive-route-v2"
 	maximumWireBody = 4096
 )
 
@@ -77,7 +78,7 @@ func routeBody(raw []byte, kind byte) (*wireReader, error) {
 		return nil, errors.New("route wire length is invalid")
 	}
 	reader = &wireReader{raw: body}
-	if reader.uint16() != 1 || reader.uint8() != kind {
+	if reader.uint16() != routeWireVersion || reader.uint8() != kind {
 		return nil, errors.New("route wire kind or version is invalid")
 	}
 	profileLength := int(reader.uint8())

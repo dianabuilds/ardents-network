@@ -302,6 +302,10 @@ type userRouteCredentialEntry struct {
 
 func (owner *userRouteCredentialEntry) Contact() (entry.Candidate, error) { return owner.contact, nil }
 
+func (owner *userRouteCredentialEntry) RecipientCertificate() (tls.Certificate, error) {
+	return route.NewClientCertificate()
+}
+
 func (owner *userRouteCredentialEntry) Acquire(_ context.Context, _ entry.Attempt, _ entry.CandidateOpener) (net.Conn, func() error, error) {
 	owner.mu.Lock()
 	if owner.next == len(owner.handlers) {

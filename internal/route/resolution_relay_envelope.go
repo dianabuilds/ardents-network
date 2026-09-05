@@ -68,7 +68,7 @@ func resolutionEnvelopeRecord(kind byte, input ResolutionRelayEnvelope) ([]byte,
 		return nil, errors.New("resolution relay envelope is outside its capacity")
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+2+len(input.OHTTP))
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, kind)
 	body = appendProfile(body)
 	body = appendUint16(body, uint16(len(input.OHTTP)))
@@ -94,7 +94,7 @@ func resolutionResponseRecord(input ResolutionRelayResponse) ([]byte, error) {
 		return nil, errors.New("resolution relay envelope is outside its capacity")
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+1+2+len(input.OHTTP))
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, resolutionRelayResponseKind)
 	body = appendProfile(body)
 	body = append(body, input.Framing)

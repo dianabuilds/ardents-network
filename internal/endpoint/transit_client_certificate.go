@@ -28,14 +28,13 @@ func cloneTransitClientCertificates(input map[[32]byte]tls.Certificate) (map[[32
 	return result, nil
 }
 
-// transitClientCertificate resolves a grant-bound identity only from this
-// Endpoint's local enrollment. Legacy opaque authorizations retain the fresh
-// per-attempt key path used by narrow component tests; a decodable Transit
-// Grant is never silently attempted with a fresh or caller-substituted key.
+// transitClientCertificate resolves a closed Transit Grant only from this
+// Endpoint's local enrollment. Decode failure is rejected before it can select
+// a caller-supplied or newly generated TLS identity.
 func (endpoint *endpoint) transitClientCertificate(authorization []byte, supplied tls.Certificate) (tls.Certificate, error) {
 	grant, err := route.DecodeTransitGrant(authorization)
 	if err != nil {
-		return supplied, nil
+		return tls.Certificate{}, errors.New("transit authorization is not a valid Transit Grant")
 	}
 	if endpoint == nil {
 		return tls.Certificate{}, errors.New("transit grant has no Endpoint-local credential")

@@ -69,3 +69,89 @@ func TestStateTransitGrantAdmitterConsumesOnlyOneExactCurrentGrant(t *testing.T)
 		t.Fatal("successor State left old-generation Transit Grant admission live")
 	}
 }
+
+func TestStateTransitGrantAdmitterSeparatesGrantLifetimeFromTLSCertificate(t *testing.T) {
+	start := time.Now().UTC().Truncate(time.Second)
+	certificate, err := route.NewClientCertificate()
+	if err != nil || certificate.Leaf == nil {
+		t.Fatalf("new client certificate leaf = %t / %v", certificate.Leaf != nil, err)
+	}
+	if !start.After(certificate.Leaf.NotBefore) || !start.Before(certificate.Leaf.NotAfter) {
+		t.Fatalf("certificate is not valid at test start: [%v,%v) / %v", certificate.Leaf.NotBefore, certificate.Leaf.NotAfter, start)
+	}
+	clientKey, err := route.ClientTLSKeyDigest(certificate.Leaf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := ed25519.NewKeyFromSeed([]byte{7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7})
+	public := signer.Public().(ed25519.PublicKey)
+	stateSigner := ed25519.NewKeyFromSeed([]byte{6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6})
+	statePublic := stateSigner.Public().(ed25519.PublicKey)
+	snapshot := dutyFacts{Generation: "grant-lifetime", NetworkID: [32]byte{1}, Epoch: 2, Digest: [32]byte{3}, NodeID: [32]byte{4},
+		Assignment: "introduction", AssignmentDigest: [32]byte{5}, Fresh: true, ValidUntil: start.Add(10 * time.Minute), RecordValidUntil: start.Add(10 * time.Minute),
+		Authorities: [16]dutyAuthority{{ID: sha256.Sum256(statePublic), PublicKey: [32]byte(statePublic)}}, AuthorityCount: 1,
+		TransitGrantSignerID: sha256.Sum256(public), TransitGrantSignerPublicKey: [32]byte(public)}
+	clock := start
+	current := func() (dutyFacts, error) { return snapshot, nil }
+	issue := func(id byte, notAfter time.Time) ([]byte, route.TransitGrant) {
+		grant := route.TransitGrant{IssuerID: sha256.Sum256(public), GrantID: [32]byte{id}, NetworkID: snapshot.NetworkID, Digest: snapshot.Digest,
+			AttachmentID: [32]byte{id + 10}, TransitNodeID: snapshot.NodeID, ClientKeyDigest: clientKey, Epoch: snapshot.Epoch,
+			TransitRole: route.IntroductionRole, NotAfter: notAfter}
+		raw, issueErr := route.IssueTransitGrant(grant, signer)
+		if issueErr != nil {
+			t.Fatal(issueErr)
+		}
+		return raw, grant
+	}
+	admit := func(root string, raw []byte, grant route.TransitGrant, key [32]byte) error {
+		_, admitErr := stateTransitGrantAdmitter(root, snapshot, current, func() time.Time { return clock })(raw,
+			grant.AttachmentID, key, grant.TransitRole, grant.TransitNodeID, grant.NotAfter)
+		return admitErr
+	}
+
+	validRaw, validGrant := issue(1, start.Add(time.Minute))
+	if err := admit(transitGrantRoot(t), validRaw, validGrant, clientKey); err != nil {
+		t.Fatalf("fresh grant admission = %v", err)
+	}
+
+	wrongDigestRaw, wrongDigestGrant := issue(2, start.Add(time.Minute))
+	wrongKey := clientKey
+	wrongKey[0] ^= 0xff
+	wrongDigestRoot := transitGrantRoot(t)
+	if err := admit(wrongDigestRoot, wrongDigestRaw, wrongDigestGrant, wrongKey); err == nil {
+		t.Fatal("wrong client key digest was accepted")
+	}
+	if err := admit(wrongDigestRoot, wrongDigestRaw, wrongDigestGrant, clientKey); err != nil {
+		t.Fatalf("wrong key digest consumed grant: %v", err)
+	}
+
+	exactRaw, exactGrant := issue(3, start.Add(2*time.Minute))
+	clock = exactGrant.NotAfter
+	if !clock.Before(certificate.Leaf.NotAfter) {
+		t.Fatalf("certificate expired before exact Grant deadline: %v", certificate.Leaf.NotAfter)
+	}
+	if err := admit(transitGrantRoot(t), exactRaw, exactGrant, clientKey); err == nil {
+		t.Fatal("Grant was accepted exactly at NotAfter")
+	}
+
+	afterRaw, afterGrant := issue(4, start.Add(3*time.Minute))
+	clock = afterGrant.NotAfter.Add(time.Second)
+	if !clock.Before(certificate.Leaf.NotAfter) {
+		t.Fatalf("certificate expired before post-deadline check: %v", certificate.Leaf.NotAfter)
+	}
+	if err := admit(transitGrantRoot(t), afterRaw, afterGrant, clientKey); err == nil {
+		t.Fatal("expired unspent Grant was accepted while certificate remained valid")
+	}
+
+	clock = start
+	replayRaw, replayGrant := issue(5, start.Add(4*time.Minute))
+	replayRoot := transitGrantRoot(t)
+	if err := admit(replayRoot, replayRaw, replayGrant, clientKey); err != nil {
+		t.Fatalf("replay baseline admission = %v", err)
+	}
+	if err := admit(replayRoot, replayRaw, replayGrant, clientKey); err == nil {
+		t.Fatal("replayed Grant was accepted after reopening admitter")
+	}
+}

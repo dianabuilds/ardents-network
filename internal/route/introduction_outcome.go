@@ -38,7 +38,7 @@ func EncodeIntroductionSlotReady(input IntroductionSlotReady) ([]byte, error) {
 		return nil, err
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+32+8)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, introductionSlotReadyKind)
 	body = appendProfile(body)
 	body = append(body, input.Reachability[:]...)
@@ -75,7 +75,7 @@ func EncodeIntroductionDeliveryResult(input IntroductionDeliveryResult) ([]byte,
 		return nil, errors.New("introduction delivery result is invalid")
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+1)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, introductionDeliveryResultKind)
 	body = appendProfile(body)
 	body = append(body, input.AttachmentID[:]...)

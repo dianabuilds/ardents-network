@@ -42,6 +42,10 @@ func Open(input Config) (*owner, error) {
 	if err := prepareRoot(root); err != nil {
 		return nil, err
 	}
+	recipient, err := entryRecipientCertificate(root)
+	if err != nil {
+		return nil, err
+	}
 	state, current, err := loadState(root)
 	if err != nil {
 		return nil, err
@@ -50,7 +54,7 @@ func Open(input Config) (*owner, error) {
 		return nil, err
 	}
 	lifecycle, cancelLifecycle := context.WithCancel(context.Background())
-	owner := &owner{root: root, lease: lease, config: config, state: state, current: current,
+	owner := &owner{root: root, lease: lease, config: config, state: state, current: current, recipient: recipient,
 		lifecycle: lifecycle, cancelLifecycle: cancelLifecycle, attachments: make(map[uint64]*attachmentLease), closeDone: make(chan struct{})}
 	next := owner.state.clone()
 	changed := false

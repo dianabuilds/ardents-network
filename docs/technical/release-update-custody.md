@@ -13,6 +13,24 @@ the accepted fixed Argon2id/AES-GCM profile from ADR-0021. Callers receive only
 bounded public receipts, never a password, derived key, root, or generic
 signing capability.
 
+### Service Credential issuance
+
+The Service host generates its Instance and Introduction public keys and gives
+Custody one public request. The Custodian separately receives and types that
+request's exact lowercase SHA-256 digest, unlocks the Authority only through
+its interactive terminal, and returns one public signed response plus the
+deterministic encrypted successor record. Neither the request nor the response
+exports Authority material.
+
+One supported Service Credential has a maximum 24-hour lifetime and a terminal
+horizon of 48 hours from issuance. The successor ledger also requires a new
+validity interval not to overlap its predecessor for the same Target. An exact
+retry of the same request is idempotent; it is not a reusable authorization for
+a future request. Custody has no automatic renewal route, password file,
+argument, environment, or configuration bypass. The service's published-root
+restart limitation remains an Endpoint implementation limit, rather than a
+claim that every future product lifecycle must work this way.
+
 An active Name Authority signs either one exact sealed transition or the
 ordered pair that `naming/namespace/authority.Prepare` derives from an unsigned
 existing-Name Intent. The pair must have the active public key, the active

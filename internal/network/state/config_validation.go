@@ -62,7 +62,11 @@ func validateConfig(input Config) (config, error) {
 		authorities[id] = append(ed25519.PublicKey(nil), public...)
 	}
 	initial := clock().UTC()
-	sourcePlan, sourceInfo, err := source.New(input.Source, authorities)
+	sourceInput := input.Source
+	if sourceInput.VerificationClock == nil {
+		sourceInput.VerificationClock = clock
+	}
+	sourcePlan, sourceInfo, err := source.New(sourceInput, authorities)
 	if err != nil {
 		return config{}, err
 	}

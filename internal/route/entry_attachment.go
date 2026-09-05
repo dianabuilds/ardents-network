@@ -22,12 +22,17 @@ type EntryAcquirer interface {
 	Acquire(context.Context, entry.Attempt, entry.CandidateOpener) (net.Conn, func() error, error)
 }
 
+type entryRecipientCertificate interface {
+	RecipientCertificate() (tls.Certificate, error)
+}
+
 // EntryAttachmentRequest is the endpoint-selected context for one fresh C-5
 // attachment. It contains no Service Target or complete Route selection.
 type EntryAttachmentRequest struct {
 	NetworkID, Digest, AttachmentID [32]byte
 	Epoch                           uint64
 	Deadline                        time.Time
+	ClientCertificate               tls.Certificate
 }
 
 // EntryAttachmentAcceptance is the Initiator's narrow state and replay port.
@@ -49,12 +54,12 @@ func EntryAdmitterPort(value *entry.Admitter) EntryBindingAdmitter {
 	if value == nil {
 		return nil
 	}
-	return func(invite []byte, attachment, clientKey [32]byte, notAfter time.Time) (EntryAdmission, error) {
-		authorization, err := value.AdmitAndConsume(invite, attachment, clientKey, notAfter)
+	return func(invite []byte, attachment, clientKey, recipient [32]byte, notAfter time.Time) (EntryAdmission, error) {
+		authorization, err := value.AdmitAndConsume(invite, attachment, clientKey, recipient, notAfter)
 		if err != nil {
 			return EntryAdmission{}, err
 		}
-		return EntryAdmission{InviteID: authorization.InviteID, NetworkID: authorization.NetworkID, Digest: authorization.Digest,
+		return EntryAdmission{InviteID: authorization.InviteID, NetworkID: authorization.NetworkID, Digest: authorization.Digest, RecipientPublicKey: authorization.RecipientPublicKey,
 			Epoch: authorization.Epoch, InitiatorNodeID: authorization.InitiatorNodeID, NotAfter: authorization.NotAfter}, nil
 	}
 }
@@ -68,11 +73,14 @@ func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryA
 		input.Epoch == 0 || input.Deadline.IsZero() || !time.Now().Before(input.Deadline) {
 		return nil, nil, errors.New("entry attachment request is invalid")
 	}
+	certificate, err := entryAttachmentCertificate(source, input.ClientCertificate)
+	if err != nil {
+		return nil, nil, err
+	}
 	return source.Acquire(ctx, entry.Attempt{ID: input.AttachmentID, Deadline: input.Deadline},
 		func(contactCtx context.Context, candidate entry.Candidate, presentation entry.Presentation, deadline time.Time) (net.Conn, func() error, bool, error) {
-			certificate, err := NewClientCertificate()
-			if err != nil {
-				return nil, nil, true, err
+			if _, err := ClientTLSPublicKey(certificate.Leaf); err != nil {
+				return nil, nil, false, err
 			}
 			secured, err := dialNativeEndpointTLS(contactCtx, candidate.Endpoint, candidate.PublicKey, certificate, deadline)
 			if err != nil {
@@ -94,6 +102,21 @@ func OpenEntryAttachment(ctx context.Context, source EntryAcquirer, input EntryA
 			}
 			return secured, cleanup, true, nil
 		})
+}
+
+func entryAttachmentCertificate(source EntryAcquirer, supplied tls.Certificate) (tls.Certificate, error) {
+	if supplied.PrivateKey != nil && supplied.Leaf != nil {
+		return supplied, nil
+	}
+	owner, ok := source.(entryRecipientCertificate)
+	if !ok {
+		return tls.Certificate{}, errors.New("entry attachment has no enrolled recipient certificate")
+	}
+	certificate, err := owner.RecipientCertificate()
+	if err != nil || certificate.PrivateKey == nil || certificate.Leaf == nil {
+		return tls.Certificate{}, errors.New("entry attachment has no enrolled recipient certificate")
+	}
+	return certificate, nil
 }
 
 // AcceptEntryAttachment performs the native Initiator-side TLS handshake,

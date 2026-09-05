@@ -115,7 +115,7 @@ func AdmitEndpointTransitBinding(input EndpointTransitBinding, peerClientKey [32
 
 func endpointTransitBindingPrefix(input EndpointTransitBinding) []byte {
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+1+32+8+32+2)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, endpointTransitBindingKind)
 	body = appendProfile(body)
 	body = append(body, input.NetworkID[:]...)

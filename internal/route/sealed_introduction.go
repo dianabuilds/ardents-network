@@ -153,7 +153,7 @@ func (recipient hpkeIntroductionRecipient) OpenIntroduction(encapsulation, info,
 
 func introductionPrefix(input SealedIntroduction) []byte {
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+32+32+8+32+32)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, sealedIntroductionKind)
 	body = appendProfile(body)
 	body = append(body, input.NetworkID[:]...)
@@ -173,7 +173,7 @@ func introductionAAD(input SealedIntroduction) []byte {
 }
 
 func introductionInfo() []byte {
-	return []byte("ardents-interactive-route-v1\x00sealed-introduction\x00")
+	return []byte("ardents-interactive-route-v2\x00sealed-introduction\x00")
 }
 
 func validSealedIntroduction(input SealedIntroduction, encrypted bool) error {

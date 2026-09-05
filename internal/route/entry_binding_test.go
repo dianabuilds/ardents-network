@@ -17,13 +17,13 @@ import (
 	"time"
 )
 
-func TestEntryBindingV1CanonicalVector(t *testing.T) {
+func TestEntryBindingV2CanonicalVector(t *testing.T) {
 	input := entryBindingFixture()
 	raw, err := EncodeEntryBinding(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const want = "617264656e74732d696e7465726163746976652d726f7574652d76310000d60001011c617264656e74732d696e7465726163746976652d726f7574652d76311500000000000000000000000000000000000000000000000000000000000000000000000000001916000000000000000000000000000000000000000000000000000000000000001700000000000000000000000000000000000000000000000000000000000000180000000000000000000000000000000000000000000000000000000000000000000000684ee1801a00000000000000000000000000000000000000000000000000000000000000000401020304"
+	const want = "617264656e74732d696e7465726163746976652d726f7574652d76320000d60002011c617264656e74732d696e7465726163746976652d726f7574652d76321500000000000000000000000000000000000000000000000000000000000000000000000000001916000000000000000000000000000000000000000000000000000000000000001700000000000000000000000000000000000000000000000000000000000000180000000000000000000000000000000000000000000000000000000000000000000000684ee1801a00000000000000000000000000000000000000000000000000000000000000000401020304"
 	if hex.EncodeToString(raw) != want {
 		t.Fatalf("canonical EntryBinding vector = %x, want %s", raw, want)
 	}
@@ -33,7 +33,7 @@ func TestEntryBindingV1CanonicalVector(t *testing.T) {
 	}
 }
 
-func TestEntryBindingV1RejectsWrongKindAndMalformedInvite(t *testing.T) {
+func TestEntryBindingV2RejectsWrongKindAndMalformedInvite(t *testing.T) {
 	raw, err := EncodeEntryBinding(entryBindingFixture())
 	if err != nil {
 		t.Fatal(err)
@@ -45,6 +45,31 @@ func TestEntryBindingV1RejectsWrongKindAndMalformedInvite(t *testing.T) {
 		if _, err := DecodeEntryBinding(value); err == nil {
 			t.Fatalf("mutation %d was accepted", index)
 		}
+	}
+}
+
+func TestEntryBindingV2RejectsRouteV1Identity(t *testing.T) {
+	raw, err := EncodeEntryBinding(entryBindingFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := append([]byte(nil), raw...)
+	copy(legacy, "ardents-interactive-route-v1\x00")
+	if _, err := DecodeEntryBinding(legacy); err == nil {
+		t.Fatal("Route v1 EntryBinding identity was accepted by Route v2")
+	}
+}
+
+func TestEntryBindingV2RejectsRouteV1Body(t *testing.T) {
+	raw, err := EncodeEntryBinding(entryBindingFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := append([]byte(nil), raw...)
+	legacy[len(routeWireMagic)+2] = 0
+	legacy[len(routeWireMagic)+3] = 1
+	if _, err := DecodeEntryBinding(legacy); err == nil {
+		t.Fatal("Route v1 EntryBinding body was accepted by Route v2")
 	}
 }
 
@@ -89,16 +114,23 @@ func TestAdmitEntryBindingRejectsSubstitutionAndConsumesOneTuple(t *testing.T) {
 	}
 	binding := entryBindingFixture()
 	binding.ClientKeyDigest = digest
+	recipient, err := ClientTLSPublicKey(certificate.Leaf)
+	if err != nil {
+		t.Fatal(err)
+	}
 	admission := EntryAdmission{InviteID: identifier(42), NetworkID: binding.NetworkID, Digest: binding.Digest,
-		Epoch: binding.Epoch, InitiatorNodeID: binding.InitiatorNodeID, NotAfter: binding.NotAfter.Add(time.Minute)}
+		Epoch: binding.Epoch, InitiatorNodeID: binding.InitiatorNodeID, RecipientPublicKey: recipient, NotAfter: binding.NotAfter.Add(time.Minute)}
 	var lock sync.Mutex
 	consumed := map[[96]byte]struct{}{}
-	admit := func(raw []byte, attachment, clientKey [32]byte, notAfter time.Time) (EntryAdmission, error) {
+	admit := func(raw []byte, attachment, clientKey, receivedRecipient [32]byte, notAfter time.Time) (EntryAdmission, error) {
 		if !bytes.Equal(raw, binding.Invite) {
 			return EntryAdmission{}, errors.New("wrong opaque Invite")
 		}
 		if notAfter != binding.NotAfter {
 			return EntryAdmission{}, errors.New("wrong binding expiry")
+		}
+		if receivedRecipient != recipient {
+			return EntryAdmission{}, errors.New("wrong Invite recipient")
 		}
 		var key [96]byte
 		copy(key[:32], admission.InviteID[:])

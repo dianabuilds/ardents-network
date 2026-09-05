@@ -108,6 +108,13 @@ Application data stream.
 | `restore-recovery-bundle` | Empty destination Vault, public commitments, Bundle path | Reads the Bundle password from the terminal and writes only an `authority-locked` quarantine record. |
 | `purge-record` | Exact vault record, public commitments, and terminal confirmation | Deletes only the exact verified encrypted record after explicit confirmation while retaining the Authority floor. |
 
+The command surface has no automatic Service Credential renewal route. The
+interactive issuance, finite validity, and published-Instance restart limits
+are owned by [Custody](../technical/release-update-custody.md) and
+[Endpoint and Service](../technical/endpoint-service-runtime.md); replacing a
+file, changing a Target, or deleting state is not a command-level recovery
+procedure.
+
 The custody command deliberately exposes no Service recovery activation,
 reconciliation without a Namespace witness, or Namespace signing route. A
 restored Service Authority remains locked and issuance-unavailable; a restored

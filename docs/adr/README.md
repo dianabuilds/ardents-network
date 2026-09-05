@@ -68,6 +68,8 @@ Current decisions:
 - [0065 — Commit headless publication after live Introduction readiness](0065-commit-publication-after-live-introduction-readiness.md)
 - [0066 — Use role-scoped Transit Grant requests](0066-use-role-scoped-transit-grant-requests.md)
 - [0068 — Bind Transit Grant issuer roots to State generation](0068-bind-transit-issuer-roots-to-state-generation.md)
+- [0071 — Recipient-bound offline Headless enrollment](0071-recipient-bound-offline-headless-enrollment.md)
+- [0072 — Adopt offline-enrollment Route/Entry v2 for C0](0072-adopt-offline-enrollment-route-v2.md)
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)

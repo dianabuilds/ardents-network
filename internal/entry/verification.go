@@ -14,7 +14,7 @@ func Verify(raw []byte, input Verification) (Authorization, Candidate, Class, er
 	if err != nil || class != Accepted {
 		return Authorization{}, Candidate{}, class, err
 	}
-	return Authorization{InviteID: decoded.id, NetworkID: decoded.networkID, Digest: decoded.epochDigest,
+	return Authorization{InviteID: decoded.id, NetworkID: decoded.networkID, Digest: decoded.epochDigest, RecipientPublicKey: decoded.recipientPublicKey,
 		Epoch: decoded.epoch, InitiatorNodeID: decoded.nodeID, NotAfter: time.Unix(decoded.notAfter, 0).UTC()}, candidate, Accepted, nil
 }
 

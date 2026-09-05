@@ -73,7 +73,7 @@ func (input ResolutionRelaySetup) VerifyResolutionRelayReady(ready ResolutionRel
 
 func resolutionRelayRecord(kind byte, input ResolutionRelaySetup) ([]byte, error) {
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+32+32+32+2+8)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, kind)
 	body = appendProfile(body)
 	body = append(body, input.NetworkID[:]...)

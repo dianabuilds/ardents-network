@@ -75,6 +75,29 @@ func TestImportRejectsInviteWithWrongSignatureOrSurplusBytes(t *testing.T) {
 	}
 }
 
+func TestImportRejectsInviteV1IdentityAndBody(t *testing.T) {
+	fixture := newEntryFixture(t)
+	owner, err := Open(fixture.config(entryRoot(t)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	invite := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
+	legacyIdentity := append([]byte(nil), invite...)
+	copy(legacyIdentity, "ardents-entry-invite-v1")
+	legacyBody := append([]byte(nil), invite...)
+	legacyBody[len(inviteMagic)+2] = 0
+	legacyBody[len(inviteMagic)+3] = 1
+	for name, raw := range map[string][]byte{"identity": legacyIdentity, "body": legacyBody} {
+		t.Run(name, func(t *testing.T) {
+			result, importErr := owner.Import(raw)
+			if importErr != nil || result.Class == Accepted {
+				t.Fatalf("v1 Invite import = %+v, %v", result, importErr)
+			}
+		})
+	}
+}
+
 func TestVerifyReturnsOnlyCurrentInitiatorAuthorization(t *testing.T) {
 	fixture := newEntryFixture(t)
 	raw := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
@@ -84,7 +107,7 @@ func TestVerifyReturnsOnlyCurrentInitiatorAuthorization(t *testing.T) {
 	}
 	if authorization.InviteID == [32]byte{} || authorization.NetworkID != fixture.view.NetworkID ||
 		authorization.Digest != fixture.view.Digest || authorization.Epoch != fixture.view.Epoch ||
-		authorization.InitiatorNodeID != fixture.candidates[0].NodeID || !authorization.NotAfter.After(fixture.now) ||
+		authorization.InitiatorNodeID != fixture.candidates[0].NodeID || authorization.RecipientPublicKey != fixture.recipient || !authorization.NotAfter.After(fixture.now) ||
 		candidate != fixture.candidates[0] {
 		t.Fatalf("unexpected authorization = %+v, candidate = %+v", authorization, candidate)
 	}
@@ -350,12 +373,13 @@ type entryFixture struct {
 	view       View
 	candidates []Candidate
 	private    map[[32]byte]ed25519.PrivateKey
+	recipient  [32]byte
 }
 
 func newEntryFixture(t *testing.T) entryFixture {
 	t.Helper()
 	now := time.Unix(1_750_000_000, 0).UTC()
-	fixture := entryFixture{now: now, private: map[[32]byte]ed25519.PrivateKey{}}
+	fixture := entryFixture{now: now, private: map[[32]byte]ed25519.PrivateKey{}, recipient: [32]byte{91}}
 	fixture.view = View{NetworkID: [32]byte{1}, Epoch: 7, Digest: [32]byte{2}, Profile: profileID, Fresh: true}
 	for index := range 2 {
 		public, private, err := ed25519.GenerateKey(rand.Reader)
@@ -399,12 +423,13 @@ func (fixture entryFixture) verification() Verification {
 func (fixture entryFixture) invite(t *testing.T, candidate Candidate, slot, generation byte, replaces *[32]byte) []byte {
 	t.Helper()
 	body := make([]byte, 0, 256)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, inviteWireVersion)
 	body = append(body, fixture.view.NetworkID[:]...)
 	body = appendUint64(body, fixture.view.Epoch)
 	body = append(body, fixture.view.Digest[:]...)
 	body = append(body, byte(len(profileID)))
 	body = append(body, profileID...)
+	body = append(body, fixture.recipient[:]...)
 	body = append(body, candidate.KeyID[:]...)
 	body = append(body, candidate.NodeID[:]...)
 	body = append(body, candidate.FamilyID[:]...)
@@ -431,7 +456,7 @@ func (fixture entryFixture) invite(t *testing.T, candidate Candidate, slot, gene
 func TestIssueProducesAStateReferencedInvite(t *testing.T) {
 	fixture := newEntryFixture(t)
 	candidate := fixture.candidates[0]
-	raw, err := Issue(IssueInput{NetworkID: fixture.view.NetworkID, Digest: fixture.view.Digest, Epoch: fixture.view.Epoch,
+	raw, err := Issue(IssueInput{NetworkID: fixture.view.NetworkID, Digest: fixture.view.Digest, RecipientPublicKey: fixture.recipient, Epoch: fixture.view.Epoch,
 		Candidate: candidate, NotBefore: fixture.now.Add(-time.Second), NotAfter: fixture.now.Add(time.Second), Slot: 0, Generation: 1},
 		fixture.private[candidate.KeyID])
 	if err != nil {

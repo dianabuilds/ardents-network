@@ -26,8 +26,8 @@ fallback truth.
 
 ## Native Route profile
 
-The selected Route profile is ardents-interactive-route-v1. EntryBinding binds
-one signed Invite to a fresh User-to-Initiator TLS attempt key. Node-to-Node
+The selected Route profile is ardents-interactive-route-v2. EntryBinding binds
+one signed v2 Invite to a fresh User-to-Initiator TLS attempt key. Node-to-Node
 LegBinding and SealedIntroduction have fixed binary records; State/publication
 select supported generations, not a Node or peer value. The profile has no H3
 reader, direct fallback, generic record map, or version-negotiation path.
@@ -82,6 +82,32 @@ cannot change any advertised candidate, Node identity, State digest or Epoch,
 or Carrier profile; hostname, unspecified, public, and port-divergent overrides
 fail before listener startup. With no override, Rendezvous binds the State
 endpoint exactly as before.
+
+## TLS material boundaries
+
+Native Route, Entry, and Node TLS use local certificates for their bounded
+attempts and selected peer keys from authenticated State and binding evidence.
+Route creates its self-signed client certificate for one attachment (currently
+16 minutes); its public-key digest is bound into the Entry or Transit record.
+Node duties receive their local certificate in the bounded plan. The effective
+attempt deadline comes from the authenticated Entry, Transit, or selected duty
+fact. Their trust does not depend on an external CA issuance service: the peer
+verifies TLS 1.3, the selected Route ALPN, the State-pinned Ed25519 key, and
+the reciprocal binding.
+
+Direct-Origin Source has a distinct X.509 transport boundary. Its client
+accepts only the configured CA, hostname, and server leaf-key pin. Its server
+requires a CA-verified client certificate and an authorized client leaf-key
+pin. `ardents` and `ardents-node` read the declared PEM key pairs and roots
+while constructing the bounded Source configuration; `internal/network/source`
+then owns copies for its one configured TLS client or listener. Replacing a PEM
+file does not alter a running Source process: there is no hot reload or
+Source-side certificate issuer in the maintained surface. A changed certificate
+therefore needs a separately checked new configuration and lifecycle action;
+the X.509 `NotBefore`/`NotAfter` limits are checked during a new handshake.
+The current contract does not promise seamless rotation or that an already
+established TLS connection is immediately interrupted when a certificate
+expires.
 
 ## Node and Resource lifecycle
 
@@ -189,8 +215,8 @@ and confirmed removal. The operator contract is the
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md),
 	[ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md),
   [ADR-0025](../adr/0025-state-referenced-entry-invites.md),
-  [ADR-0026](../adr/0026-interactive-route-v1-wire.md), and
-  [ADR-0027](../adr/0027-entry-binding-v1.md),
+  [ADR-0072](../adr/0072-adopt-offline-enrollment-route-v2.md), which
+  supersedes their C0 Route/Entry selection,
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
   [ADR-0049](../adr/0049-defer-blocked-entry-profile.md) define the selected
   native Route and Carrier facts. R-092 selects one measured

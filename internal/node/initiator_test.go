@@ -47,9 +47,13 @@ func TestInitiatorRelaysOnlyAfterExactSetupAndReady(t *testing.T) {
 	defer initiator.Close()
 	candidate := entry.Candidate{NodeID: [32]byte{4}, PublicKey: material.initiatorPublic, Endpoint: initiator.listener.Addr().String()}
 	acquirer := initiatorEntryAcquirer{candidate: candidate, presentation: presentation}
+	entryCertificate, err := route.NewClientCertificate()
+	if err != nil {
+		t.Fatal(err)
+	}
 	connection, cleanup, err := route.OpenEntryAttachment(t.Context(), acquirer, route.EntryAttachmentRequest{
 		NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, Epoch: rendezvousConfig.Epoch,
-		AttachmentID: attachment, Deadline: rendezvousConfig.NotAfter})
+		AttachmentID: attachment, Deadline: rendezvousConfig.NotAfter, ClientCertificate: entryCertificate})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +106,7 @@ func TestInitiatorDutyUsesOnlyStateAssignedRendezvous(t *testing.T) {
 		Candidates: [64]dutyCandidate{{NodeID: [32]byte{35}, PublicKey: [32]byte{36}, Endpoint: "127.0.0.1:30235", CarrierProfile: string(route.CarrierQUIC),
 			Assignment: "rendezvous", ValidFrom: now.Add(-time.Second), ValidUntil: now.Add(time.Minute)}}, CandidateCount: 1}
 	profile := InitiatorProfile{Certificate: certificate, HandshakeLimit: 2, RelayLimit: 1, RelayByteLimit: 1024, AdmissionTimeout: time.Second, DrainTimeout: time.Second}
-	admit := func([]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
+	admit := func([]byte, [32]byte, [32]byte, [32]byte, time.Time) (route.EntryAdmission, error) {
 		return route.EntryAdmission{}, nil
 	}
 	plan, err := initiatorDuty(profile, snapshot, admit)
@@ -168,9 +172,13 @@ func TestInitiatorForwardsOneOpaqueResolutionEnvelopeToExactGateway(t *testing.T
 	}
 	defer initiator.Close()
 	candidate := entry.Candidate{NodeID: [32]byte{4}, PublicKey: material.initiatorPublic, Endpoint: initiator.listener.Addr().String()}
+	entryCertificate, err := route.NewClientCertificate()
+	if err != nil {
+		t.Fatal(err)
+	}
 	connection, cleanup, err := route.OpenEntryAttachment(t.Context(), initiatorEntryAcquirer{candidate: candidate, presentation: presentation}, route.EntryAttachmentRequest{
 		NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, Epoch: rendezvousConfig.Epoch,
-		AttachmentID: attachment, Deadline: rendezvousConfig.NotAfter})
+		AttachmentID: attachment, Deadline: rendezvousConfig.NotAfter, ClientCertificate: entryCertificate})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,8 +292,12 @@ func TestInitiatorForwardsOneOpaqueCredentialEnvelopeToExactIssuer(t *testing.T)
 		t.Fatal("Initiator accepted a Credential Relay setup with a substituted issuer profile")
 	}
 	candidate := entry.Candidate{NodeID: [32]byte{4}, PublicKey: material.initiatorPublic, Endpoint: initiator.listener.Addr().String()}
+	entryCertificate, err := route.NewClientCertificate()
+	if err != nil {
+		t.Fatal(err)
+	}
 	connection, cleanup, err := route.OpenEntryAttachment(t.Context(), initiatorEntryAcquirer{candidate: candidate, presentation: presentation}, route.EntryAttachmentRequest{
-		NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, Epoch: rendezvousConfig.Epoch, AttachmentID: carrierAttachment, Deadline: rendezvousConfig.NotAfter})
+		NetworkID: rendezvousConfig.NetworkID, Digest: rendezvousConfig.EpochDigest, Epoch: rendezvousConfig.Epoch, AttachmentID: carrierAttachment, Deadline: rendezvousConfig.NotAfter, ClientCertificate: entryCertificate})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,12 +373,12 @@ func resolutionGatewayCertificate(t *testing.T) (tls.Certificate, [32]byte, ed25
 }
 
 func initiatorAdmission(presentation entry.Presentation, attachment [32]byte, config rendezvousConfig) route.EntryBindingAdmitter {
-	return func(invite []byte, received, key [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
+	return func(invite []byte, received, key, recipient [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
 		if string(invite) != string(presentation.Invite) || received != attachment || key == [32]byte{} || !notAfter.Equal(config.NotAfter) {
 			return route.EntryAdmission{}, errors.New("unexpected Entry admission")
 		}
 		return route.EntryAdmission{InviteID: presentation.InviteID, NetworkID: config.NetworkID, Digest: config.EpochDigest,
-			Epoch: config.Epoch, InitiatorNodeID: [32]byte{4}, NotAfter: config.NotAfter}, nil
+			Epoch: config.Epoch, InitiatorNodeID: [32]byte{4}, RecipientPublicKey: recipient, NotAfter: config.NotAfter}, nil
 	}
 }
 

@@ -33,6 +33,34 @@ to [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md) and the
 [dependency register](../development/dependencies.md). Its external
 carrier-profile matrix remains a pre-freeze C0 gate rather than an inherited
 v0.61.0 result.
+R-141 is decided: Authority-signed early supersession needs an unselected
+Authority-currentness transport and discovery topology, so C0 retains the
+expiry-gated successor limitation. This is not a permanent product requirement;
+reopen only as one separately selected research question with a complete
+topology, trust, privacy, availability, rollback, and operator matrix.
+R-142 is decided: C0 retains explicit interactive Service Credential issuance
+and no automatic renewal. Existing one exact-request retry and an intentionally
+prepared future Credential do not create an unattended issuer, currentness, or
+restart guarantee. Reopen only with a separately selected finite-renewal
+authority, durable-state, time/revocation, topology, and operator decision.
+R-143 is decided: C0 renews Source server/client leafs under the same key, CA,
+hostname, and pins through controlled process restart. It selects no issuer,
+hot reload, key-pin, or CA rotation; expired material admits no new connection
+and recovers only from externally authenticated replacement input.
+R-144 is decided and promoted to ADR-0071: C0 selects H1, an offline
+recipient-enrollment issuer and one exact sealed response, with a separate
+offline challenge-bound time witness. The witness has a purpose-separated trust
+key, answers a fresh local challenge, and is accepted only inside one bounded
+monotonic request window; a restart without that continuity requires a fresh
+response. This direction is not implementation authority: its Entry, Source,
+command, package, artifact, and operational owner contracts must be accepted
+before one C0 implementation issue may be selected.
+R-145 is decided and promoted to ADR-0072: C0 replaces the bearer Route/Entry
+v1 profile with recipient-bound Route/Entry v2, adds the offline
+`ardents-enrollment` artifact, and gives State the verified time-witness
+receiver boundary. Its exact grammars and tests are implementation work for
+the selected C0-05 issue; neither v1 fallback nor another active research
+question is created.
 Closed research is not a second specification. Start from current
 [product](../product/), [security](../security/), [technical](../technical/),
 [reference](../reference/), [development](../development/), and accepted

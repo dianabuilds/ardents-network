@@ -18,7 +18,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	now := time.Now().UTC().Truncate(time.Second)
-	network := prepareCommandNetwork(t, directory, now, "ardents-interactive-route-v1")
+	network := prepareCommandNetwork(t, directory, now, "ardents-interactive-route-v2")
 	invite := commandInvite(network, now)
 	invitePath := filepath.Join(directory, "bridge.invite")
 	if err := os.WriteFile(invitePath, invite, 0o600); err != nil {
@@ -44,7 +44,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 		"state_root": filepath.Join(directory, "bridge-state"), "network_state_root": network.root,
 		"invite_file": invitePath, "network_id": hex32(network.snapshot.NetworkID),
 		"network_authorities": []string{hex.EncodeToString(network.authorityPublic)},
-		"network_threshold":   1, "network_profile": "ardents-interactive-route-v1",
+		"network_threshold":   1, "network_profile": "ardents-interactive-route-v2",
 		"local_role_state_root": rolesRoot,
 		"time_confidence_file":  confidencePath,
 	}
@@ -142,11 +142,13 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 func commandInvite(fixture commandNetwork, now time.Time) []byte {
 	snapshot := fixture.snapshot
 	var body bytes.Buffer
-	_ = binary.Write(&body, binary.BigEndian, uint16(1))
+	_ = binary.Write(&body, binary.BigEndian, uint16(2))
 	body.Write(snapshot.NetworkID[:])
 	_ = binary.Write(&body, binary.BigEndian, snapshot.Epoch)
 	body.Write(snapshot.Digest[:])
-	writeCommandBytes(&body, []byte("ardents-interactive-route-v1"), 1)
+	writeCommandBytes(&body, []byte("ardents-interactive-route-v2"), 1)
+	recipient := [32]byte{91}
+	body.Write(recipient[:])
 	candidateFacts, _ := snapshot.BridgeCandidateByKey(snapshot.Candidates[0].KeyID)
 	body.Write(candidateFacts.KeyID[:])
 	body.Write(candidateFacts.NodeID[:])
@@ -159,10 +161,10 @@ func commandInvite(fixture commandNetwork, now time.Time) []byte {
 	body.Write([]byte{1, 0, 0})
 
 	var raw bytes.Buffer
-	raw.WriteString("ardents-entry-invite-v1")
+	raw.WriteString("ardents-entry-invite-v2")
 	_ = binary.Write(&raw, binary.BigEndian, uint16(body.Len()))
 	raw.Write(body.Bytes())
-	signed := append([]byte("ardents-entry-invite-signature-v1\x00"), body.Bytes()...)
+	signed := append([]byte("ardents-entry-invite-signature-v2\x00"), body.Bytes()...)
 	raw.Write(ed25519.Sign(fixture.nodePrivate, signed))
 	return raw.Bytes()
 }
