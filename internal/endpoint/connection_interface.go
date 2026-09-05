@@ -160,14 +160,13 @@ func (endpoint *endpoint) openTargetApplication(ctx context.Context, target [32]
 }
 
 // applicationServiceAttachment preserves the one-use binding of a signed
-// Transit Grant when a descriptor carries one. Legacy opaque authorizations
-// retain a freshly chosen attachment for the lower-level compatibility path;
-// a byte sequence that identifies itself as a Transit Grant must instead
-// validate against current State and cannot fall back.
+// Transit Grant when a descriptor carries one. Decode failure is rejected
+// before an attachment identifier can be allocated; State remains responsible
+// for the Grant signature and current-authority checks below.
 func applicationServiceAttachment(authorization []byte, epoch state.ResolutionEpoch, introduction [32]byte, notAfter time.Time) ([32]byte, error) {
 	grant, err := route.DecodeTransitGrant(authorization)
 	if err != nil {
-		return applicationAttachmentID()
+		return [32]byte{}, errors.New("application Transit Grant is malformed")
 	}
 	var authority ed25519.PublicKey
 	for _, candidate := range epoch.Authorities {

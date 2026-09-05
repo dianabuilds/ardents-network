@@ -22,7 +22,7 @@ import (
 func TestHeadlessRuntimeRetainsNetworkOwnersAndBothApplicationSurfacesUntilStop(t *testing.T) {
 	directory := t.TempDir()
 	now := time.Now().UTC().Truncate(time.Second)
-	network := prepareCommandNetwork(t, directory, now, "ardents-interactive-route-v1")
+	network := prepareCommandNetwork(t, directory, now, "ardents-interactive-route-v2")
 	confidence := filepath.Join(directory, "time-confidence")
 	if err := os.WriteFile(confidence, []byte("observed\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestHeadlessRuntimeRetainsNetworkOwnersAndBothApplicationSurfacesUntilStop(
 		"network_id":               hex32(network.snapshot.NetworkID),
 		"network_authorities":      []string{hex.EncodeToString(network.authorityPublic)},
 		"network_threshold":        1,
-		"network_profile":          "ardents-interactive-route-v1",
+		"network_profile":          "ardents-interactive-route-v2",
 		"broker_id":                hex32([32]byte{71}),
 		"connection_principal":     hex32([32]byte{72}),
 		"administration_principal": hex32([32]byte{74}),
@@ -149,7 +149,7 @@ func TestHeadlessRuntimePlanAcceptsCompleteLegacyServiceLinkMigration(t *testing
 		"network_id":               strings.Repeat("01", 32),
 		"network_authorities":      []string{strings.Repeat("02", 32)},
 		"network_threshold":        1,
-		"network_profile":          "ardents-interactive-route-v1",
+		"network_profile":          "ardents-interactive-route-v2",
 		"alpha_corpus_authority":   hex.EncodeToString(corpusAuthority),
 		"alpha_cohort":             "closed-alpha-1",
 		"broker_id":                strings.Repeat("03", 32),
@@ -217,7 +217,7 @@ func importRuntimeEntry(t *testing.T, root, rolesRoot, confidence string, networ
 	t.Helper()
 	opened, err := state.Open(state.Config{Root: network.root, NetworkID: network.snapshot.NetworkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{network.snapshot.EpochAuthorityIDs[0]: network.authorityPublic},
-		Threshold:   1, AcceptedProfile: "ardents-interactive-route-v1", Clock: time.Now})
+		Threshold:   1, AcceptedProfile: "ardents-interactive-route-v2", Clock: time.Now})
 	if err != nil {
 		t.Fatal(err)
 	}

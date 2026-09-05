@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	inviteMagic       = "ardents-entry-invite-v1"
-	inviteSignature   = "ardents-entry-invite-signature-v1"
-	inviteIdentifier  = "ardents-entry-invite-id-v1"
+	inviteMagic       = "ardents-entry-invite-v2"
+	inviteSignature   = "ardents-entry-invite-signature-v2"
+	inviteIdentifier  = "ardents-entry-invite-id-v2"
+	inviteWireVersion = uint16(2)
 	maximumInviteSize = 1024
 )
 
@@ -39,7 +40,7 @@ func decodeInvite(raw []byte) (invite, Class) {
 		return invite{}, Invalid
 	}
 	bodyReader := byteReader{raw: body}
-	if bodyReader.uint16() != 1 {
+	if bodyReader.uint16() != inviteWireVersion {
 		if bodyReader.failed {
 			return invite{}, Invalid
 		}

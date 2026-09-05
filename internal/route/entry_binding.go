@@ -139,7 +139,7 @@ func AdmitEntryBinding(input EntryBinding, peer *x509.Certificate, now time.Time
 
 func entryBindingPrefix(input EntryBinding) []byte {
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+32+8+32+2)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, entryBindingKind)
 	body = appendProfile(body)
 	body = append(body, input.NetworkID[:]...)

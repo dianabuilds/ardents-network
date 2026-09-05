@@ -43,7 +43,7 @@ func configureClients(plan *Plan, input Config, authorities map[[32]byte]ed25519
 			return errors.New("client, source, and Epoch signer keys must be separate")
 		}
 		plan.clients[index] = client{address: declared.Address, serverName: declared.ServerName,
-			roots: roots, leafKeyDigest: declared.LeafKeyDigest, certificate: clientCertificate}
+			roots: roots, leafKeyDigest: declared.LeafKeyDigest, certificate: clientCertificate, clock: input.VerificationClock}
 		plan.details.Identities[index], plan.details.Families[index], plan.details.EndpointHandles[index] =
 			declared.Identity, declared.Family, declared.EndpointHandle
 		raw := append([]byte("ardents-h3-direct-source-exposure-v1\x00"), declared.Identity[:]...)
@@ -92,7 +92,7 @@ func configureServer(input Config, authorities map[[32]byte]ed25519.PublicKey) (
 		timeout = 3 * time.Second
 	}
 	return server{address: input.ServeAddress, certificate: cloneCertificate(input.ServeCertificate),
-		clientRoots: roots, clientDigests: pins, headerTimeout: timeout}, nil
+		clientRoots: roots, clientDigests: pins, headerTimeout: timeout, clock: input.VerificationClock}, nil
 }
 
 func cloneCertificate(input tls.Certificate) tls.Certificate {

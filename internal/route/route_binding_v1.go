@@ -34,7 +34,7 @@ func EncodeLegBinding(input LegBinding) ([]byte, error) {
 		return nil, err
 	}
 	body := make([]byte, 0, 2+1+1+len(Profile)+32+8+32+32+1+32+1+32+8)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, routeWireVersion)
 	body = append(body, legBindingKind)
 	body = appendProfile(body)
 	body = append(body, input.NetworkID[:]...)

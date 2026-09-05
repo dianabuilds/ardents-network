@@ -65,7 +65,7 @@ func TestGAP5VerifyRejectsAtBoundaryOfMinimumReservation(t *testing.T) {
 func (fixture entryFixture) inviteWithWindow(t *testing.T, candidate Candidate, slot, generation byte, replaces *[32]byte, notBefore, notAfter time.Time) []byte {
 	t.Helper()
 	body := make([]byte, 0, 256)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, inviteWireVersion)
 	body = append(body, fixture.view.NetworkID[:]...)
 	body = appendUint64(body, fixture.view.Epoch)
 	body = append(body, fixture.view.Digest[:]...)

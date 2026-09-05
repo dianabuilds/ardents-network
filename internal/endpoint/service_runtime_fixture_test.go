@@ -5,12 +5,15 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/tls"
 	"net"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
@@ -93,19 +96,27 @@ func startPublishedEndpoint(t *testing.T, value fixture) (endpointRunner, []byte
 	if err != nil {
 		t.Fatal(err)
 	}
+	slotCertificate, _ := testCertificate(t, 16, "test-slot-client")
+	responderCertificate, _ := testCertificate(t, 20, "test-responder-client")
+	slotGrantID, responderGrantID := fixtureID(21), fixtureID(22)
+	slotAuthorization := issueEndpointTransitFixtureGrant(t, value.networkID, digest, fixtureID(16), introductionID, 1,
+		route.IntroductionRole, slotGrantID, value.now.Add(time.Minute), slotCertificate)
+	responderAuthorization := issueEndpointTransitFixtureGrant(t, value.networkID, digest, fixtureID(20), fixtureID(14), 1,
+		route.ResponderRole, responderGrantID, value.now.Add(time.Minute), responderCertificate)
 	profile := publisherIntroductionProfile{
 		NetworkID: value.networkID, Digest: digest, Epoch: 1,
 		Introduction:     transitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: address},
 		Rendezvous:       transitPeer{NodeID: fixtureID(12), PublicKey: fixtureID(13), Endpoint: "127.0.0.1:26112"},
 		Responder:        transitPeer{NodeID: fixtureID(14), PublicKey: fixtureID(15), Endpoint: "127.0.0.1:26114"},
 		SlotAttachmentID: fixtureID(16), ResponderAttachmentID: fixtureID(20), Reachability: fixtureID(17), JoinHandle: fixtureID(18),
-		NotAfter: value.now.Add(time.Minute), SlotAuthorization: []byte("test-slot"),
-		ResponderAuthorization: []byte("test-responder"),
+		NotAfter: value.now.Add(time.Minute), SlotAuthorization: slotAuthorization, SlotClientCertificate: slotCertificate,
+		ResponderAuthorization: responderAuthorization, ResponderClientCertificate: responderCertificate,
 	}
 	owner, err := newEndpoint(setup{
 		NetworkID: value.networkID, BrokerID: fixtureID(19), ConnectionPrincipal: value.publisherPrincipal,
 		AdministrationPrincipal: value.administrationPrincipal, PublicationRoot: publicationStoreRoot(t),
 		PublisherBinding: value.binding, publisherIntroductionProfile: profile,
+		TransitClientCertificates: map[[32]byte]tls.Certificate{slotGrantID: slotCertificate, responderGrantID: responderCertificate},
 	})
 
 	if err != nil {
@@ -128,6 +139,27 @@ func startPublishedEndpoint(t *testing.T, value fixture) (endpointRunner, []byte
 		t.Fatalf("start Publisher: result=%+v err=%v", result, err)
 	}
 	return owner, result.Record
+}
+
+func issueEndpointTransitFixtureGrant(t *testing.T, network, digest, attachment, node [32]byte, epoch uint64, role byte,
+	grantID [32]byte, notAfter time.Time, certificate tls.Certificate,
+) []byte {
+	t.Helper()
+	digestKey, err := route.ClientTLSKeyDigest(certificate.Leaf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := route.IssueTransitGrant(route.TransitGrant{IssuerID: sha256.Sum256(public), GrantID: grantID,
+		NetworkID: network, Digest: digest, AttachmentID: attachment, TransitNodeID: node, ClientKeyDigest: digestKey,
+		Epoch: epoch, TransitRole: role, NotAfter: notAfter}, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }
 
 func admit(t *testing.T, endpoint endpointRunner, surface string, principal [32]byte, at time.Time) [32]byte {

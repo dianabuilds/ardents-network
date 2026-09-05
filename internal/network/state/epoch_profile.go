@@ -4,7 +4,7 @@ import "errors"
 
 const (
 	roleProbeProfile        = "h3-role-probe-v1"
-	interactiveRouteProfile = "ardents-interactive-route-v1"
+	interactiveRouteProfile = "ardents-interactive-route-v2"
 )
 
 func knownProfile(profile string) bool {

@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-func TestEndpointTransitBindingV1CanonicalVector(t *testing.T) {
+func TestEndpointTransitBindingV2CanonicalVector(t *testing.T) {
 	input := endpointTransitBindingFixture()
 	raw, err := EncodeEndpointTransitBinding(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const want = "617264656e74732d696e7465726163746976652d726f7574652d76310000d70001061c617264656e74732d696e7465726163746976652d726f7574652d76313d0000000000000000000000000000000000000000000000000000000000000000000000000000413e000000000000000000000000000000000000000000000000000000000000003f0000000000000000000000000000000000000000000000000000000000000002400000000000000000000000000000000000000000000000000000000000000000000000684ee180420000000000000000000000000000000000000000000000000000000000000000040708090a"
+	const want = "617264656e74732d696e7465726163746976652d726f7574652d76320000d70002061c617264656e74732d696e7465726163746976652d726f7574652d76323d0000000000000000000000000000000000000000000000000000000000000000000000000000413e000000000000000000000000000000000000000000000000000000000000003f0000000000000000000000000000000000000000000000000000000000000002400000000000000000000000000000000000000000000000000000000000000000000000684ee180420000000000000000000000000000000000000000000000000000000000000000040708090a"
 	if hex.EncodeToString(raw) != want {
 		t.Fatalf("canonical EndpointTransitBinding vector = %x, want %s", raw, want)
 	}
@@ -24,7 +24,7 @@ func TestEndpointTransitBindingV1CanonicalVector(t *testing.T) {
 	}
 }
 
-func TestEndpointTransitBindingV1RejectsWrongRoleAndMalformedBytes(t *testing.T) {
+func TestEndpointTransitBindingV2RejectsWrongRoleAndMalformedBytes(t *testing.T) {
 	raw, err := EncodeEndpointTransitBinding(endpointTransitBindingFixture())
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +40,7 @@ func TestEndpointTransitBindingV1RejectsWrongRoleAndMalformedBytes(t *testing.T)
 	}
 }
 
-func TestEndpointTransitBindingV1RefusesFractionalExpiry(t *testing.T) {
+func TestEndpointTransitBindingV2RefusesFractionalExpiry(t *testing.T) {
 	binding := endpointTransitBindingFixture()
 	binding.NotAfter = binding.NotAfter.Add(time.Nanosecond)
 	if _, err := EncodeEndpointTransitBinding(binding); err == nil {

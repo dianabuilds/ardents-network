@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"math/big"
 	"net"
@@ -61,6 +62,58 @@ func TestSourceTLSVerification(t *testing.T) {
 	}
 }
 
+func TestSourcePlanUsesConfiguredVerificationClock(t *testing.T) {
+	now := time.Date(2032, time.February, 3, 4, 5, 6, 0, time.UTC)
+	fixture := newSourceTLSFixture(t, now)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clock := func() time.Time { return now }
+	server, _, err := New(Config{ServeAddress: address, ServeCertificate: fixture.server,
+		ServeClientRootPEM: fixture.authority.rootPEM, ServeClientKeyDigests: [][32]byte{fixture.clientPin}, VerificationClock: clock}, nil)
+	if err != nil {
+		t.Fatalf("new source server plan: %v", err)
+	}
+	client, _, err := New(Config{Sources: [2]Source{
+		{Address: address, ServerName: fixture.serverName, Identity: [32]byte{1}, Family: "source-one", EndpointHandle: "source-one", RootPEM: fixture.authority.rootPEM, LeafKeyDigest: fixture.serverPin},
+		{Address: "127.0.0.1:9", ServerName: "unused-source.test", Identity: [32]byte{2}, Family: "source-two", EndpointHandle: "source-two", RootPEM: fixture.authority.rootPEM, LeafKeyDigest: [32]byte{3}},
+	}, ClientCertificate: fixture.client, VerificationClock: clock}, nil)
+	if err != nil {
+		t.Fatalf("new source client plan: %v", err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	ready, served := make(chan error, 1), make(chan error, 1)
+	go func() {
+		served <- server.Serve(ctx, ready, nil, nil, func(context.Context, Message) Message { return Message{Status: "not-found"} })
+	}()
+	if err := <-ready; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Fetch(ctx, 0, Message{Operation: "latest"}); err != nil {
+		t.Fatalf("configured verification time did not authenticate valid TLS: %v", err)
+	}
+	cancel()
+	if err := <-served; !errors.Is(err, context.Canceled) {
+		t.Fatalf("source server stop = %v, want cancellation", err)
+	}
+}
+
+func TestSourcePlanRejectsTLSWithoutVerificationClock(t *testing.T) {
+	now := time.Date(2032, time.February, 3, 4, 5, 6, 0, time.UTC)
+	fixture := newSourceTLSFixture(t, now)
+	if _, _, err := New(Config{ServeAddress: "127.0.0.1:19443", ServeCertificate: fixture.server,
+		ServeClientRootPEM: fixture.authority.rootPEM, ServeClientKeyDigests: [][32]byte{fixture.clientPin}}, nil); err == nil ||
+		!strings.Contains(err.Error(), "verification clock") {
+		t.Fatalf("configured TLS Source without clock = %v", err)
+	}
+}
+
 type sourceTLSFixture struct {
 	authority  sourceTLSAuthority
 	server     tls.Certificate
@@ -74,6 +127,7 @@ type sourceTLSAuthority struct {
 	certificate *x509.Certificate
 	private     ed25519.PrivateKey
 	pool        *x509.CertPool
+	rootPEM     []byte
 	nextSeed    byte
 }
 
@@ -103,7 +157,8 @@ func newSourceTLSAuthority(t *testing.T, now time.Time, seed byte) sourceTLSAuth
 	}
 	pool := x509.NewCertPool()
 	pool.AddCert(certificate)
-	return sourceTLSAuthority{certificate: certificate, private: private, pool: pool, nextSeed: seed + 1}
+	return sourceTLSAuthority{certificate: certificate, private: private, pool: pool,
+		rootPEM: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: raw}), nextSeed: seed + 1}
 }
 
 func (authority *sourceTLSAuthority) issueServer(t *testing.T, notBefore, notAfter time.Time, hostname string) tls.Certificate {

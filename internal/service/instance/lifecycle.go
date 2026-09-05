@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-const introductionInfo = "ardents-interactive-route-v1\x00sealed-introduction\x00"
+const introductionInfo = "ardents-interactive-route-v2\x00sealed-introduction\x00"
 
 // Accept performs the one durable at-most-once response transition.
 func (root *Root) Accept(raw []byte) (Acceptance, error) {

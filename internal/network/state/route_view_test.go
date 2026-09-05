@@ -69,7 +69,7 @@ func TestNativeRouteProfileCannotConsumeRoleProbeEpoch(t *testing.T) {
 	opened, err := state.Open(state.Config{
 		Root: t.TempDir(), NetworkID: value.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
-		Threshold:   1, Now: time.Unix(value.now, 0), AcceptedProfile: "ardents-interactive-route-v1",
+		Threshold:   1, Now: time.Unix(value.now, 0), AcceptedProfile: "ardents-interactive-route-v2",
 	})
 	if err != nil {
 		t.Fatal(err)

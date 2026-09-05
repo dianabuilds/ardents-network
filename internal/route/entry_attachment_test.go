@@ -223,7 +223,7 @@ func (call entryAcquirerFunc) Acquire(ctx context.Context, attempt entry.Attempt
 
 func routeTestInvite(view entry.View, candidate entry.Candidate, private ed25519.PrivateKey, now time.Time) []byte {
 	body := make([]byte, 0, 256)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, 2)
 	body = append(body, view.NetworkID[:]...)
 	body = appendUint64(body, view.Epoch)
 	body = append(body, view.Digest[:]...)
@@ -238,9 +238,9 @@ func routeTestInvite(view entry.View, candidate entry.Candidate, private ed25519
 	body = appendUint64(body, uint64(now.Add(-time.Minute).Unix()))
 	body = appendUint64(body, uint64(now.Add(30*time.Minute).Unix()))
 	body = append(body, 1, 0, 0)
-	signature := ed25519.Sign(private, append([]byte("ardents-entry-invite-signature-v1\x00"), body...))
-	raw := make([]byte, 0, len("ardents-entry-invite-v1")+2+len(body)+len(signature))
-	raw = append(raw, "ardents-entry-invite-v1"...)
+	signature := ed25519.Sign(private, append([]byte("ardents-entry-invite-signature-v2\x00"), body...))
+	raw := make([]byte, 0, len("ardents-entry-invite-v2")+2+len(body)+len(signature))
+	raw = append(raw, "ardents-entry-invite-v2"...)
 	raw = appendUint16(raw, uint16(len(body)))
 	raw = append(raw, body...)
 	return append(raw, signature...)

@@ -32,6 +32,10 @@ type Config struct {
 	ClientCertificate tls.Certificate
 	MaterialIndex     uint32
 	OrderSeed         [32]byte
+	// VerificationClock is the State-owned verification time used only for
+	// X.509 validation on configured Source TLS handshakes. A configured
+	// client or listener without it is invalid.
+	VerificationClock func() time.Time
 
 	ServeAddress          string
 	ServeCertificate      tls.Certificate
@@ -65,6 +69,7 @@ type client struct {
 	roots         *x509.CertPool
 	leafKeyDigest [32]byte
 	certificate   tls.Certificate
+	clock         func() time.Time
 }
 
 type server struct {
@@ -73,6 +78,7 @@ type server struct {
 	clientRoots   *x509.CertPool
 	clientDigests map[[32]byte]bool
 	headerTimeout time.Duration
+	clock         func() time.Time
 }
 
 // New validates and owns one complete source plan. Empty acquisition and
@@ -83,11 +89,17 @@ func New(input Config, authorities map[[32]byte]ed25519.PublicKey) (*Plan, Detai
 		return nil, Details{}, errors.New("source materialization index exceeds its bound")
 	}
 	if input.Sources[0].Address != "" || input.Sources[1].Address != "" {
+		if input.VerificationClock == nil {
+			return nil, Details{}, errors.New("source verification clock is required")
+		}
 		if err := configureClients(plan, input, authorities); err != nil {
 			return nil, Details{}, err
 		}
 	}
 	if input.ServeAddress != "" {
+		if input.VerificationClock == nil {
+			return nil, Details{}, errors.New("source verification clock is required")
+		}
 		resolved, err := configureServer(input, authorities)
 		if err != nil {
 			return nil, Details{}, err

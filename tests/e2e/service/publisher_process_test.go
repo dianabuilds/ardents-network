@@ -274,7 +274,7 @@ func publisherProcessEntryView(current state.Snapshot) entry.View {
 func publisherProcessInvite(network publisherProcessNetwork, now time.Time) []byte {
 	snapshot := network.snapshot
 	var body bytes.Buffer
-	_ = binary.Write(&body, binary.BigEndian, uint16(1))
+	_ = binary.Write(&body, binary.BigEndian, uint16(2))
 	body.Write(snapshot.NetworkID[:])
 	_ = binary.Write(&body, binary.BigEndian, snapshot.Epoch)
 	body.Write(snapshot.Digest[:])
@@ -290,10 +290,10 @@ func publisherProcessInvite(network publisherProcessNetwork, now time.Time) []by
 	_ = binary.Write(&body, binary.BigEndian, now.Add(30*time.Minute).Unix())
 	body.Write([]byte{1, 0, 0})
 	var raw bytes.Buffer
-	raw.WriteString("ardents-entry-invite-v1")
+	raw.WriteString("ardents-entry-invite-v2")
 	_ = binary.Write(&raw, binary.BigEndian, uint16(body.Len()))
 	raw.Write(body.Bytes())
-	signed := append([]byte("ardents-entry-invite-signature-v1\x00"), body.Bytes()...)
+	signed := append([]byte("ardents-entry-invite-signature-v2\x00"), body.Bytes()...)
 	raw.Write(ed25519.Sign(network.nodePrivate, signed))
 	return raw.Bytes()
 }

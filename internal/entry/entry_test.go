@@ -75,6 +75,29 @@ func TestImportRejectsInviteWithWrongSignatureOrSurplusBytes(t *testing.T) {
 	}
 }
 
+func TestImportRejectsInviteV1IdentityAndBody(t *testing.T) {
+	fixture := newEntryFixture(t)
+	owner, err := Open(fixture.config(entryRoot(t)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	invite := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
+	legacyIdentity := append([]byte(nil), invite...)
+	copy(legacyIdentity, "ardents-entry-invite-v1")
+	legacyBody := append([]byte(nil), invite...)
+	legacyBody[len(inviteMagic)+2] = 0
+	legacyBody[len(inviteMagic)+3] = 1
+	for name, raw := range map[string][]byte{"identity": legacyIdentity, "body": legacyBody} {
+		t.Run(name, func(t *testing.T) {
+			result, importErr := owner.Import(raw)
+			if importErr != nil || result.Class == Accepted {
+				t.Fatalf("v1 Invite import = %+v, %v", result, importErr)
+			}
+		})
+	}
+}
+
 func TestVerifyReturnsOnlyCurrentInitiatorAuthorization(t *testing.T) {
 	fixture := newEntryFixture(t)
 	raw := fixture.invite(t, fixture.candidates[0], 0, 1, nil)
@@ -399,7 +422,7 @@ func (fixture entryFixture) verification() Verification {
 func (fixture entryFixture) invite(t *testing.T, candidate Candidate, slot, generation byte, replaces *[32]byte) []byte {
 	t.Helper()
 	body := make([]byte, 0, 256)
-	body = appendUint16(body, 1)
+	body = appendUint16(body, inviteWireVersion)
 	body = append(body, fixture.view.NetworkID[:]...)
 	body = appendUint64(body, fixture.view.Epoch)
 	body = append(body, fixture.view.Digest[:]...)

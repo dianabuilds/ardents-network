@@ -64,7 +64,7 @@ func preparePublisherCommandNetwork(t *testing.T, directory string, now, notAfte
 	authorityID := sha256.Sum256(authorityPublic)
 	owner, err := state.Open(state.Config{Root: root, NetworkID: networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{authorityID: authorityPublic}, Threshold: 1,
-		Now: now, AcceptedProfile: "ardents-interactive-route-v1"})
+		Now: now, AcceptedProfile: "ardents-interactive-route-v2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func publisherProcessEpoch(t *testing.T, network [32]byte, authority ed25519.Pri
 	writePublisherProcessI64(&raw, now.Add(-time.Minute).Unix())
 	writePublisherProcessI64(&raw, notAfter.Unix())
 	writePublisherProcessU32(&raw, uint32(len(inputs)))
-	writePublisherProcessText(&raw, "ardents-interactive-route-v1")
+	writePublisherProcessText(&raw, "ardents-interactive-route-v2")
 	inputRoot, viewRoot := publisherProcessMerkleRoot(inputs, 0x10), publisherProcessMerkleRoot(inputs, 0x11)
 	raw.Write(inputRoot[:])
 	raw.Write(viewRoot[:])

@@ -17,7 +17,7 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := "0ea52c142f054a51785356cdc539c694b42ce48b8b14d7770d9845485d9dfba7"; fmt.Sprintf("%x", context) != got {
+	if got := "eb4eb78a776102345e0ad6667090d44640ab648f17ba013afa49e57f8f3636ea"; fmt.Sprintf("%x", context) != got {
 		t.Fatalf("ConnectionContext = %x, want %s", context, got)
 	}
 	challenge := Challenge{Network: [32]byte{1}, Target: [32]byte{2}, InstanceGeneration: 5, Context: context, Nonce: [32]byte{9}}

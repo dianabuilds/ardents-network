@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
 	"errors"
 	"net"
 	"testing"
@@ -36,19 +37,28 @@ func TestStartPublisherOwnsInstancePublicationAndReadySlot(t *testing.T) {
 	instancePath := serviceInstanceFixtureRoot(t)
 	instanceRoot, binding := acceptedInstanceBinding(t, instancePath, network, authorityPrivate, now, deadline)
 	defer instanceRoot.Close()
+	slotCertificate, _ := testCertificate(t, 68, "start-slot-client")
+	responderCertificate, _ := testCertificate(t, 73, "start-responder-client")
+	slotGrantID, responderGrantID := fixtureID(75), fixtureID(76)
+	slotAuthorization := issueEndpointTransitFixtureGrant(t, network, digest, fixtureID(68), introductionID, 12,
+		route.IntroductionRole, slotGrantID, deadline, slotCertificate)
+	responderAuthorization := issueEndpointTransitFixtureGrant(t, network, digest, fixtureID(73), fixtureID(66), 12,
+		route.ResponderRole, responderGrantID, deadline, responderCertificate)
 	profile := publisherIntroductionProfile{
 		NetworkID: network, Digest: digest, Epoch: 12,
 		Introduction:     transitPeer{NodeID: introductionID, PublicKey: introductionPublic, Endpoint: introductionAddress},
 		Rendezvous:       transitPeer{NodeID: fixtureID(64), PublicKey: fixtureID(65), Endpoint: "127.0.0.1:26064"},
 		Responder:        transitPeer{NodeID: fixtureID(66), PublicKey: fixtureID(67), Endpoint: "127.0.0.1:26066"},
 		SlotAttachmentID: fixtureID(68), ResponderAttachmentID: fixtureID(73), Reachability: fixtureID(69), JoinHandle: fixtureID(70), NotAfter: deadline,
-		SlotAuthorization: []byte("start-slot"), ResponderAuthorization: []byte("start-responder"),
+		SlotAuthorization: slotAuthorization, SlotClientCertificate: slotCertificate,
+		ResponderAuthorization: responderAuthorization, ResponderClientCertificate: responderCertificate,
 	}
 	principal := fixtureID(71)
 	owner, err := newEndpoint(setup{
 		NetworkID: network, BrokerID: fixtureID(72), ConnectionPrincipal: fixtureID(74),
 		AdministrationPrincipal: principal, PublicationRoot: publicationStoreRoot(t),
 		PublisherBinding: binding, publisherIntroductionProfile: profile,
+		TransitClientCertificates: map[[32]byte]tls.Certificate{slotGrantID: slotCertificate, responderGrantID: responderCertificate},
 	})
 
 	if err != nil {
@@ -101,19 +111,28 @@ func TestStartPublisherSlotFailureConsumesGenerationWithoutExposure(t *testing.T
 	instanceRoot, binding := acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), network, authorityPrivate, now, deadline)
 	publicationRoot := publicationStoreRoot(t)
 	unavailableAddress := availableAddress(t)
+	slotCertificate, _ := testCertificate(t, 89, "unavailable-slot-client")
+	responderCertificate, _ := testCertificate(t, 93, "unavailable-responder-client")
+	slotGrantID, responderGrantID := fixtureID(96), fixtureID(97)
+	slotAuthorization := issueEndpointTransitFixtureGrant(t, network, fixtureID(82), fixtureID(89), fixtureID(83), 13,
+		route.IntroductionRole, slotGrantID, deadline, slotCertificate)
+	responderAuthorization := issueEndpointTransitFixtureGrant(t, network, fixtureID(82), fixtureID(93), fixtureID(87), 13,
+		route.ResponderRole, responderGrantID, deadline, responderCertificate)
 	profile := publisherIntroductionProfile{
 		NetworkID: network, Digest: fixtureID(82), Epoch: 13,
 		Introduction:     transitPeer{NodeID: fixtureID(83), PublicKey: fixtureID(84), Endpoint: unavailableAddress},
 		Rendezvous:       transitPeer{NodeID: fixtureID(85), PublicKey: fixtureID(86), Endpoint: "127.0.0.1:28085"},
 		Responder:        transitPeer{NodeID: fixtureID(87), PublicKey: fixtureID(88), Endpoint: "127.0.0.1:28087"},
 		SlotAttachmentID: fixtureID(89), ResponderAttachmentID: fixtureID(93), Reachability: fixtureID(90), JoinHandle: fixtureID(91), NotAfter: deadline,
-		SlotAuthorization: []byte("unavailable-slot"), ResponderAuthorization: []byte("unused-responder"),
+		SlotAuthorization: slotAuthorization, SlotClientCertificate: slotCertificate,
+		ResponderAuthorization: responderAuthorization, ResponderClientCertificate: responderCertificate,
 	}
 	principal := fixtureID(92)
 	owner, err := newEndpoint(setup{
 		NetworkID: network, BrokerID: fixtureID(94), ConnectionPrincipal: fixtureID(95),
 		AdministrationPrincipal: principal, PublicationRoot: publicationRoot,
 		PublisherBinding: binding, publisherIntroductionProfile: profile,
+		TransitClientCertificates: map[[32]byte]tls.Certificate{slotGrantID: slotCertificate, responderGrantID: responderCertificate},
 	})
 
 	if err != nil {

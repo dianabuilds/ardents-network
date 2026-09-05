@@ -99,7 +99,7 @@ func resolutionRouteBody(raw []byte, kind byte) (*wireReader, error) {
 		return nil, errors.New("resolution relay wire length is invalid")
 	}
 	reader = &wireReader{raw: body}
-	if reader.uint16() != 1 || reader.uint8() != kind {
+	if reader.uint16() != routeWireVersion || reader.uint8() != kind {
 		return nil, errors.New("route wire kind or version is invalid")
 	}
 	profileLength := int(reader.uint8())

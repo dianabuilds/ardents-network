@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const profileID = "ardents-interactive-route-v1"
+const profileID = "ardents-interactive-route-v2"
 
 // Candidate is one bounded, authenticated adjacent Entry fact projected by
 // the State adapter. Entry never discovers or mutates this data.

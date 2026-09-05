@@ -17,7 +17,7 @@ type IssueInput struct {
 	Replaces            *[32]byte
 }
 
-// Issue returns the canonical signed Entry Invite v1. Custody of the selected
+// Issue returns the canonical signed Entry Invite v2. Custody of the selected
 // candidate signer remains outside Entry; this function cannot import, retain,
 // or activate the issued Invite.
 func Issue(input IssueInput, signer ed25519.PrivateKey) ([]byte, error) {
@@ -25,7 +25,7 @@ func Issue(input IssueInput, signer ed25519.PrivateKey) ([]byte, error) {
 		return nil, err
 	}
 	body := make([]byte, 0, 256)
-	body = appendIssueUint16(body, 1)
+	body = appendIssueUint16(body, inviteWireVersion)
 	body = append(body, input.NetworkID[:]...)
 	body = appendIssueUint64(body, input.Epoch)
 	body = append(body, input.Digest[:]...)

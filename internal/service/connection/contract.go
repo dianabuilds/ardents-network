@@ -5,7 +5,7 @@ import "time"
 const (
 	// Profile is the only endpoint record profile accepted by native Service
 	// Connection v1. It is never negotiated or chosen by a peer.
-	Profile = "ardents-interactive-route-v1"
+	Profile = "ardents-interactive-route-v2"
 
 	// MaximumDataBytes is a parser/allocation bound, not a product stream
 	// limit or workload contract.
