@@ -303,6 +303,9 @@ func TestRendezvousReservesHandshakeWaitingAndPairSlots(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer second.Close()
+		awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool {
+			return usage.ActivePairs == 1
+		})
 		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
 		// Attempting the TLS handshake makes the rejected admission observable to
