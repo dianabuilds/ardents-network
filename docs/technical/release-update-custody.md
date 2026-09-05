@@ -157,6 +157,30 @@ form, symlink, non-regular file, or oversized residue remains an explicit
 failure. Any state mutation still belongs to a locked replacement operation;
 the read-only paths do not repair, delete, roll back, or alter Release floors.
 
+### Foreground replacement retry
+
+Release commits its non-decreasing floors before the foreground replacement
+writer opens Endpoint state. Therefore a repeat of the same explicit `endpoint
+replace` bundle can receive a fresh opaque `no-update` authorization even when
+the earlier attempt did not activate its candidate. `internal/endpoint/replacement`
+alone joins that fresh authorization to the durable replacement evidence; the
+command only passes the exact candidate bytes and opaque authorization through.
+
+| Durable observation after a fresh Release check | Permitted action | Safe outcome |
+|---|---|---|
+| Current executable matches the exact candidate record | Do not stop, stage, activate, or delete retained evidence. | Return the existing committed outcome. |
+| No journal, or an exact `prepared` record without a journal, and an authenticated forward candidate | A `release-accepted` authorization starts the transaction. A `no-update` authorization may start only a candidate whose exact authenticated release version is newer than the committed current record. | Prepare the exact candidate and retain the current executable before activation. This covers a failure after Release committed floors but before a replacement journal existed. |
+| `prepared` journal | Require the exact current executable, candidate record, program path, and journal predecessor. Retain or verify the predecessor, then continue. | Continue only that preactivation transaction. |
+| `rollback-retained` or `staged` journal | Require the exact current executable, candidate record, program path, retained predecessor, and journal digests. Restage the exact candidate before another unit stop. | A transient staging or stop refusal can be retried with a fresh authorization without deleting the journal or predecessor. |
+| `activated` or `self-test-failed` journal | Do not use preactivation retry. | Recovery remains classification-only; a failed self-test requires separately Release-authorized rollback. |
+| Different candidate, current digest, program path, journal, missing/invalid Release authorization, or non-forward unbound `no-update` candidate | Do not mutate replacement state. | Return an explicit refusal or repair-required outcome. |
+
+The replacement writer serializes every row with its existing exclusive state
+lease. Release still exclusively evaluates signature, expiry, revocation,
+compatibility, and floors on every attempt; no stored authorization becomes a
+reusable permission, and a retry never decreases a floor or introduces an
+automatic rollback.
+
 The former generic `internal/update` transaction had no production caller and
 is retired. Its distinct schema-copy and adapter choreography are not part of
 the selected Endpoint replacement contract. Current replacement behavior and

@@ -459,7 +459,12 @@ func decodeRecord(raw []byte) (Record, error) {
 	if err != nil || version < 1 {
 		return Record{}, errors.New("endpoint replacement current record release version is invalid")
 	}
-	for _, value := range append(values[1:3], values[4:9]...) {
+	for _, value := range values[1:3] {
+		if strings.ContainsAny(value, "\r\n") {
+			return Record{}, errors.New("endpoint replacement current record is invalid")
+		}
+	}
+	for _, value := range values[4:9] {
 		if strings.ContainsAny(value, "\r\n") {
 			return Record{}, errors.New("endpoint replacement current record is invalid")
 		}
