@@ -71,6 +71,7 @@ func (fixture entryFixture) inviteWithWindow(t *testing.T, candidate Candidate, 
 	body = append(body, fixture.view.Digest[:]...)
 	body = append(body, byte(len(profileID)))
 	body = append(body, profileID...)
+	body = append(body, fixture.recipient[:]...)
 	body = append(body, candidate.KeyID[:]...)
 	body = append(body, candidate.NodeID[:]...)
 	body = append(body, candidate.FamilyID[:]...)

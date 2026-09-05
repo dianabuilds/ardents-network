@@ -114,16 +114,23 @@ func TestAdmitEntryBindingRejectsSubstitutionAndConsumesOneTuple(t *testing.T) {
 	}
 	binding := entryBindingFixture()
 	binding.ClientKeyDigest = digest
+	recipient, err := ClientTLSPublicKey(certificate.Leaf)
+	if err != nil {
+		t.Fatal(err)
+	}
 	admission := EntryAdmission{InviteID: identifier(42), NetworkID: binding.NetworkID, Digest: binding.Digest,
-		Epoch: binding.Epoch, InitiatorNodeID: binding.InitiatorNodeID, NotAfter: binding.NotAfter.Add(time.Minute)}
+		Epoch: binding.Epoch, InitiatorNodeID: binding.InitiatorNodeID, RecipientPublicKey: recipient, NotAfter: binding.NotAfter.Add(time.Minute)}
 	var lock sync.Mutex
 	consumed := map[[96]byte]struct{}{}
-	admit := func(raw []byte, attachment, clientKey [32]byte, notAfter time.Time) (EntryAdmission, error) {
+	admit := func(raw []byte, attachment, clientKey, receivedRecipient [32]byte, notAfter time.Time) (EntryAdmission, error) {
 		if !bytes.Equal(raw, binding.Invite) {
 			return EntryAdmission{}, errors.New("wrong opaque Invite")
 		}
 		if notAfter != binding.NotAfter {
 			return EntryAdmission{}, errors.New("wrong binding expiry")
+		}
+		if receivedRecipient != recipient {
+			return EntryAdmission{}, errors.New("wrong Invite recipient")
 		}
 		var key [96]byte
 		copy(key[:32], admission.InviteID[:])

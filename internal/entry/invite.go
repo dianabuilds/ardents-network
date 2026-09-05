@@ -17,7 +17,7 @@ type invite struct {
 	body                                    []byte
 	signature                               []byte
 	id, networkID, epochDigest, issuerID    [32]byte
-	nodeID, familyID                        [32]byte
+	nodeID, familyID, recipientPublicKey    [32]byte
 	recordDigest, domainProofDigest         [32]byte
 	epoch                                   uint64
 	profile                                 string
@@ -51,6 +51,7 @@ func decodeInvite(raw []byte) (invite, Class) {
 	decoded.epoch = bodyReader.uint64()
 	copy(decoded.epochDigest[:], bodyReader.take(32))
 	decoded.profile = string(bodyReader.short(63))
+	copy(decoded.recipientPublicKey[:], bodyReader.take(32))
 	copy(decoded.issuerID[:], bodyReader.take(32))
 	copy(decoded.nodeID[:], bodyReader.take(32))
 	copy(decoded.familyID[:], bodyReader.take(32))
@@ -68,7 +69,7 @@ func decodeInvite(raw []byte) (invite, Class) {
 		bodyReader.failed = true
 	}
 	if bodyReader.failed || !bodyReader.done() || !validProfile(decoded.profile) || decoded.networkID == [32]byte{} ||
-		decoded.epoch == 0 || decoded.epochDigest == [32]byte{} || decoded.issuerID == [32]byte{} ||
+		decoded.epoch == 0 || decoded.epochDigest == [32]byte{} || decoded.recipientPublicKey == [32]byte{} || decoded.issuerID == [32]byte{} ||
 		decoded.nodeID == [32]byte{} || decoded.familyID == [32]byte{} || decoded.recordDigest == [32]byte{} ||
 		decoded.domainProofDigest == [32]byte{} || decoded.assignmentNotAfter <= 0 || decoded.notBefore <= 0 ||
 		decoded.notAfter <= decoded.notBefore || decoded.slot > 1 || decoded.slotGeneration < 1 || decoded.slotGeneration > 2 ||

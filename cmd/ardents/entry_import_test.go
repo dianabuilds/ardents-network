@@ -147,6 +147,8 @@ func commandInvite(fixture commandNetwork, now time.Time) []byte {
 	_ = binary.Write(&body, binary.BigEndian, snapshot.Epoch)
 	body.Write(snapshot.Digest[:])
 	writeCommandBytes(&body, []byte("ardents-interactive-route-v2"), 1)
+	recipient := [32]byte{91}
+	body.Write(recipient[:])
 	candidateFacts, _ := snapshot.BridgeCandidateByKey(snapshot.Candidates[0].KeyID)
 	body.Write(candidateFacts.KeyID[:])
 	body.Write(candidateFacts.NodeID[:])

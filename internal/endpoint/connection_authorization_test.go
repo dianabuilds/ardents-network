@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -78,6 +79,10 @@ func (owner countingApplicationEntry) Contact() (entry.Candidate, error) {
 type blockingApplicationEntry struct {
 	contact entry.Candidate
 	entered chan struct{}
+}
+
+func (owner *blockingApplicationEntry) RecipientCertificate() (tls.Certificate, error) {
+	return route.NewClientCertificate()
 }
 
 func (owner *blockingApplicationEntry) Contact() (entry.Candidate, error) {

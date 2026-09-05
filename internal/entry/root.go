@@ -46,7 +46,7 @@ func verifyRootClaim(root string) error {
 		return errors.New("entry state ownership marker is invalid")
 	}
 	entries, readErr := os.ReadDir(root)
-	if readErr != nil || len(entries) > 9 {
+	if readErr != nil || len(entries) > 10 {
 		return errors.New("entry state root exceeds its entry bound")
 	}
 	if os.IsNotExist(err) && (len(entries) != 1 || entries[0].Name() != rootLockName) {
@@ -54,7 +54,7 @@ func verifyRootClaim(root string) error {
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		allowed := name == rootMarkerName || name == rootLockName || name == "current" || name == "watermark" ||
+		allowed := name == rootMarkerName || name == rootLockName || name == recipientName || name == "current" || name == "watermark" ||
 			strings.HasPrefix(name, "state-") || strings.HasPrefix(name, ".stage-") ||
 			strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-")
 		if entry.IsDir() || !allowed {
@@ -70,7 +70,7 @@ func verifyRootCandidate(root string) error {
 		return errors.New("entry state ownership marker is invalid")
 	}
 	entries, readErr := os.ReadDir(root)
-	if readErr != nil || len(entries) > 9 {
+	if readErr != nil || len(entries) > 10 {
 		return errors.New("entry state root exceeds its entry bound")
 	}
 	if os.IsNotExist(err) && len(entries) != 0 {
@@ -78,7 +78,7 @@ func verifyRootCandidate(root string) error {
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		allowed := name == rootMarkerName || name == rootLockName || name == "current" || name == "watermark" ||
+		allowed := name == rootMarkerName || name == rootLockName || name == recipientName || name == "current" || name == "watermark" ||
 			strings.HasPrefix(name, "state-") || strings.HasPrefix(name, ".stage-") ||
 			strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-")
 		if entry.IsDir() || !allowed {
@@ -107,7 +107,7 @@ func prepareRoot(root string) error {
 		}
 	}
 	entries, err := os.ReadDir(root)
-	if err != nil || len(entries) > 9 {
+	if err != nil || len(entries) > 10 {
 		return errors.New("entry state root exceeds its entry bound")
 	}
 	for _, entry := range entries {
@@ -121,7 +121,7 @@ func prepareRoot(root string) error {
 			}
 			continue
 		}
-		if name != rootMarkerName && name != rootLockName && name != "current" && name != "watermark" && !strings.HasPrefix(name, "state-") {
+		if name != rootMarkerName && name != rootLockName && name != recipientName && name != "current" && name != "watermark" && !strings.HasPrefix(name, "state-") {
 			return fmt.Errorf("unknown Entry state entry %q", name)
 		}
 	}

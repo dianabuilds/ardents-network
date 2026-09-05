@@ -31,7 +31,8 @@ func TestStateEntryAdmitterUsesSeparateLedgerRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer closeAdmitter()
-	raw, err := entry.Issue(entry.IssueInput{NetworkID: snapshot.NetworkID, Digest: snapshot.Digest, Epoch: snapshot.Epoch,
+	recipient := [32]byte{15}
+	raw, err := entry.Issue(entry.IssueInput{NetworkID: snapshot.NetworkID, Digest: snapshot.Digest, RecipientPublicKey: recipient, Epoch: snapshot.Epoch,
 		Candidate: entry.Candidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, KeyID: candidate.KeyID, FamilyID: candidate.FamilyID,
 			RecordDigest: candidate.RecordDigest, DomainProofDigest: candidate.DomainProofDigest, Endpoint: candidate.Endpoint, Capacity: candidate.Capacity,
 			Domain: candidate.Assignment, ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil, AssignmentNotAfter: candidate.AssignmentNotAfter},
@@ -39,11 +40,11 @@ func TestStateEntryAdmitterUsesSeparateLedgerRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := admit(raw, [32]byte{9}, [32]byte{10}, until)
+	got, err := admit(raw, [32]byte{9}, [32]byte{10}, recipient, until)
 	if err != nil || got.InitiatorNodeID != candidate.NodeID || got.NotAfter != until {
 		t.Fatalf("State Entry admission = %+v, %v", got, err)
 	}
-	oldSuccessorRaw, err := entry.Issue(entry.IssueInput{NetworkID: snapshot.NetworkID, Digest: snapshot.Digest, Epoch: snapshot.Epoch,
+	oldSuccessorRaw, err := entry.Issue(entry.IssueInput{NetworkID: snapshot.NetworkID, Digest: snapshot.Digest, RecipientPublicKey: recipient, Epoch: snapshot.Epoch,
 		Candidate: entry.Candidate{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, KeyID: candidate.KeyID, FamilyID: candidate.FamilyID,
 			RecordDigest: candidate.RecordDigest, DomainProofDigest: candidate.DomainProofDigest, Endpoint: candidate.Endpoint, Capacity: candidate.Capacity,
 			Domain: candidate.Assignment, ValidFrom: candidate.ValidFrom, ValidUntil: candidate.ValidUntil, AssignmentNotAfter: candidate.AssignmentNotAfter},
@@ -53,7 +54,7 @@ func TestStateEntryAdmitterUsesSeparateLedgerRoot(t *testing.T) {
 	}
 	current.Generation = "generation-2"
 	current.Digest = [32]byte{12}
-	if _, err := admit(oldSuccessorRaw, [32]byte{13}, [32]byte{14}, until); err == nil {
+	if _, err := admit(oldSuccessorRaw, [32]byte{13}, [32]byte{14}, recipient, until); err == nil {
 		t.Fatal("successor State left old-generation Entry admission live")
 	}
 }

@@ -46,12 +46,12 @@ func openStateEntryAdmitter(root string, snapshot dutyFacts, current func() (dut
 	if err != nil {
 		return nil, nil, err
 	}
-	return func(raw []byte, attachment, clientKey [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
-		authorization, admitErr := admitter.AdmitAndConsume(raw, attachment, clientKey, notAfter)
+	return func(raw []byte, attachment, clientKey, recipient [32]byte, notAfter time.Time) (route.EntryAdmission, error) {
+		authorization, admitErr := admitter.AdmitAndConsume(raw, attachment, clientKey, recipient, notAfter)
 		if admitErr != nil {
 			return route.EntryAdmission{}, admitErr
 		}
-		return route.EntryAdmission{InviteID: authorization.InviteID, NetworkID: authorization.NetworkID, Digest: authorization.Digest,
+		return route.EntryAdmission{InviteID: authorization.InviteID, NetworkID: authorization.NetworkID, Digest: authorization.Digest, RecipientPublicKey: authorization.RecipientPublicKey,
 			Epoch: authorization.Epoch, InitiatorNodeID: authorization.InitiatorNodeID, NotAfter: authorization.NotAfter}, nil
 	}, admitter.Close, nil
 }

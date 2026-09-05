@@ -41,7 +41,7 @@ func OpenAdmitter(input AdmitterConfig) (*Admitter, error) {
 // AdmitAndConsume rechecks the opaque Invite and writes its attachment use
 // while the same Entry owner lock is held. A State change cannot leave an
 // independently verified authorization waiting to be committed by this Admitter.
-func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byte, notAfter time.Time) (Authorization, error) {
+func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey, recipient [32]byte, notAfter time.Time) (Authorization, error) {
 	if value == nil || value.owner == nil {
 		return Authorization{}, errors.New("entry Admitter is unavailable")
 	}
@@ -58,7 +58,10 @@ func (value *Admitter) AdmitAndConsume(raw []byte, attachment, clientKey [32]byt
 	if class != Accepted {
 		return Authorization{}, errors.New("entry Invite is not admitted")
 	}
-	authorization := Authorization{InviteID: decoded.id, NetworkID: decoded.networkID, Digest: decoded.epochDigest,
+	if recipient == [32]byte{} || decoded.recipientPublicKey != recipient {
+		return Authorization{}, errors.New("entry Invite recipient does not match the TLS client key")
+	}
+	authorization := Authorization{InviteID: decoded.id, NetworkID: decoded.networkID, Digest: decoded.epochDigest, RecipientPublicKey: decoded.recipientPublicKey,
 		Epoch: decoded.epoch, InitiatorNodeID: decoded.nodeID, NotAfter: time.Unix(decoded.notAfter, 0).UTC()}
 	if err := value.consumeLocked(authorization, attachment, clientKey, notAfter); err != nil {
 		return Authorization{}, err
