@@ -143,7 +143,7 @@ func openReplacementAuthorization(ctx context.Context, stateHome, bundleRoot, op
 	if closeErr != nil {
 		return release.Inputs{}, release.Authorization{}, closeErr
 	}
-	if decision.Outcome != release.OutcomeReleaseAccepted {
+	if decision.Outcome != release.OutcomeReleaseAccepted && (operation != "replacement" || decision.Outcome != release.OutcomeNoUpdate) {
 		return release.Inputs{}, release.Authorization{}, fmt.Errorf("endpoint %s Release decision is not accepted: %s (%s)", operation, decision.Outcome, decision.Notice)
 	}
 	authorization, ok := decision.Authorization()

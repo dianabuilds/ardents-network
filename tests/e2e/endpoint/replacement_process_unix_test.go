@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint/replacement"
+	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -61,6 +63,153 @@ func TestEndpointReplaceRunsAuthenticatedCandidateAndFixedUserUnit(t *testing.T)
 	log, err := os.ReadFile(logPath)
 	if err != nil || string(log) != "--user stop ardents-endpoint.service\n--user start ardents-endpoint.service\n" {
 		t.Fatalf("systemctl calls = %q, %v", log, err)
+	}
+	runEnrolledUntilStopped(t, enrolled, input, environment)
+}
+
+func TestEndpointReplaceRetriesAuthenticatedCandidateAfterStopRefusal(t *testing.T) {
+	command := buildArdents(t)
+	_, enrolled, input, keys, rootBytes := enrolledRuntimeBundleWithKeys(t, command)
+	root, err := os.MkdirTemp("/tmp", "er-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { removeEndpointProcessTree(t, root) })
+	environment := endpointEnvironment(root)
+	runEnrolledUntilStopped(t, enrolled, input, environment)
+
+	original, err := os.ReadFile(enrolled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidateArtifact := append(append([]byte(nil), original...), 0)
+	platform := runtime.GOOS + "-" + runtime.GOARCH
+	targetPath := "ardents/" + platform + "/endpoint"
+	candidateMetadata := replacementMetadata(t, candidateArtifact, targetPath, platform, time.Now().UTC().Truncate(time.Second), keys)
+	candidateMetadata["2.root.json"] = replacementRoot(t, rootBytes, keys)
+	candidate := replacementBundle(t, candidateArtifact, rootBytes, candidateMetadata, targetPath, platform)
+	retryMetadata := make(map[string][]byte, len(candidateMetadata)-1)
+	for name, contents := range candidateMetadata {
+		if name != "2.root.json" {
+			retryMetadata[name] = contents
+		}
+	}
+	retryCandidate := replacementBundle(t, candidateArtifact, replacementRoot(t, rootBytes, keys), retryMetadata, targetPath, platform)
+	fakeBin, logPath, refusalMarker := replacementStopRefusalSystemctlFixture(t)
+	replaceEnvironment := append(environment, "PATH="+fakeBin+":"+os.Getenv("PATH"), "ARDENTS_REPLACEMENT_SYSTEMCTL_LOG="+logPath,
+		"ARDENTS_REPLACEMENT_SYSTEMCTL_REFUSAL_MARKER="+refusalMarker)
+
+	first := exec.Command(enrolled, "endpoint", "replace", candidate)
+	first.Env = replaceEnvironment
+	output, err := first.CombinedOutput()
+	if err == nil {
+		t.Fatalf("first endpoint replace unexpectedly succeeded:\n%s", output)
+	}
+	var refused struct{ Kind, State string }
+	firstLine := strings.SplitN(string(output), "\n", 2)[0]
+	if err := json.Unmarshal([]byte(firstLine), &refused); err != nil || refused.Kind != "endpoint-replacement" || refused.State != "stop-refused" {
+		t.Fatalf("first endpoint replace result = %q / %+v / %v", output, refused, err)
+	}
+	if program, readErr := os.ReadFile(enrolled); readErr != nil || !bytes.Equal(program, original) {
+		t.Fatalf("program after stop refusal = %d bytes / %v", len(program), readErr)
+	}
+
+	retryInputs, err := replacement.LoadBundle(retryCandidate, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier, err := release.Open(filepath.Join(root, "state", "ardents", "floors", "release-decision"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	retryDecision := verifier.Evaluate(t.Context(), retryInputs)
+	if err := verifier.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if retryDecision.Outcome != release.OutcomeNoUpdate {
+		t.Fatalf("retry Release decision = %s, want %s", retryDecision.Outcome, release.OutcomeNoUpdate)
+	}
+	second := exec.Command(enrolled, "endpoint", "replace", retryCandidate)
+	second.Env = replaceEnvironment
+	output, err = second.CombinedOutput()
+	if err != nil {
+		t.Fatalf("retry endpoint replace: %v\n%s", err, output)
+	}
+	var completed struct{ Kind, State string }
+	if err := json.Unmarshal(output, &completed); err != nil || completed.Kind != "endpoint-replacement" || completed.State != "committed-restart-permitted" {
+		t.Fatalf("retry endpoint replace result = %q / %+v / %v", output, completed, err)
+	}
+	if log, readErr := os.ReadFile(logPath); readErr != nil || string(log) != "--user stop ardents-endpoint.service\n--user stop ardents-endpoint.service\n--user start ardents-endpoint.service\n" {
+		t.Fatalf("retry systemctl calls = %q, %v", log, readErr)
+	}
+	if program, readErr := os.ReadFile(enrolled); readErr != nil || !bytes.Equal(program, candidateArtifact) {
+		t.Fatalf("program after retry = %d bytes / %v", len(program), readErr)
+	}
+	runEnrolledUntilStopped(t, enrolled, input, environment)
+}
+
+func TestEndpointReplaceUsesNoUpdateAfterReleaseCommittedBeforeWriterState(t *testing.T) {
+	command := buildArdents(t)
+	_, enrolled, input, keys, rootBytes := enrolledRuntimeBundleWithKeys(t, command)
+	root, err := os.MkdirTemp("/tmp", "er-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { removeEndpointProcessTree(t, root) })
+	environment := endpointEnvironment(root)
+	runEnrolledUntilStopped(t, enrolled, input, environment)
+
+	original, err := os.ReadFile(enrolled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidateArtifact := append(append([]byte(nil), original...), 0)
+	platform := runtime.GOOS + "-" + runtime.GOARCH
+	targetPath := "ardents/" + platform + "/endpoint"
+	metadataFiles := replacementMetadata(t, candidateArtifact, targetPath, platform, time.Now().UTC().Truncate(time.Second), keys)
+	metadataFiles["2.root.json"] = replacementRoot(t, rootBytes, keys)
+	acceptedBundle := replacementBundle(t, candidateArtifact, rootBytes, metadataFiles, targetPath, platform)
+	retryMetadata := make(map[string][]byte, len(metadataFiles)-1)
+	for name, contents := range metadataFiles {
+		if name != "2.root.json" {
+			retryMetadata[name] = contents
+		}
+	}
+	retryBundle := replacementBundle(t, candidateArtifact, replacementRoot(t, rootBytes, keys), retryMetadata, targetPath, platform)
+	inputs, err := replacement.LoadBundle(acceptedBundle, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier, err := release.Open(filepath.Join(root, "state", "ardents", "floors", "release-decision"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := verifier.Evaluate(t.Context(), inputs)
+	if err := verifier.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if decision.Outcome != release.OutcomeReleaseAccepted {
+		t.Fatalf("pre-writer Release decision = %s, want %s", decision.Outcome, release.OutcomeReleaseAccepted)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "state", "ardents", "replacement", "journal")); !os.IsNotExist(err) {
+		t.Fatalf("pre-writer Release evaluation created replacement journal: %v", err)
+	}
+	fakeBin, logPath := replacementSystemctlFixture(t)
+	replace := exec.Command(enrolled, "endpoint", "replace", retryBundle)
+	replace.Env = append(environment, "PATH="+fakeBin+":"+os.Getenv("PATH"), "ARDENTS_REPLACEMENT_SYSTEMCTL_LOG="+logPath)
+	output, err := replace.CombinedOutput()
+	if err != nil {
+		t.Fatalf("endpoint replace after pre-writer Release decision: %v\n%s", err, output)
+	}
+	var result struct{ Kind, State string }
+	if err := json.Unmarshal(output, &result); err != nil || result.Kind != "endpoint-replacement" || result.State != "committed-restart-permitted" {
+		t.Fatalf("endpoint replace after pre-writer Release decision = %q / %+v / %v", output, result, err)
+	}
+	if log, readErr := os.ReadFile(logPath); readErr != nil || string(log) != "--user stop ardents-endpoint.service\n--user start ardents-endpoint.service\n" {
+		t.Fatalf("pre-writer retry systemctl calls = %q, %v", log, readErr)
+	}
+	if program, readErr := os.ReadFile(enrolled); readErr != nil || !bytes.Equal(program, candidateArtifact) {
+		t.Fatalf("program after pre-writer retry = %d bytes / %v", len(program), readErr)
 	}
 	runEnrolledUntilStopped(t, enrolled, input, environment)
 }
@@ -308,4 +457,17 @@ func replacementSystemctlFixture(t *testing.T) (string, string) {
 		t.Fatal(err)
 	}
 	return directory, log
+}
+
+func replacementStopRefusalSystemctlFixture(t *testing.T) (string, string, string) {
+	t.Helper()
+	directory := t.TempDir()
+	log := filepath.Join(directory, "systemctl.log")
+	marker := filepath.Join(directory, "stop-refused-once")
+	script := filepath.Join(directory, "systemctl")
+	contents := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$ARDENTS_REPLACEMENT_SYSTEMCTL_LOG\"\nif [ \"$1\" = \"--user\" ] && [ \"$2\" = \"stop\" ] && [ ! -e \"$ARDENTS_REPLACEMENT_SYSTEMCTL_REFUSAL_MARKER\" ]; then\n: > \"$ARDENTS_REPLACEMENT_SYSTEMCTL_REFUSAL_MARKER\"\nexit 1\nfi\n"
+	if err := os.WriteFile(script, []byte(contents), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return directory, log, marker
 }

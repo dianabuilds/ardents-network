@@ -179,8 +179,8 @@ func replace(ctx context.Context, operation Operation, control *operationControl
 		return Result{State: "release-rejected"}, err
 	}
 	decision, authorized := authorizedDecision(operation.Request)
-	if !authorized || decision.Outcome != release.OutcomeReleaseAccepted {
-		return Result{State: "release-rejected"}, errors.New("endpoint replacement requires a newly accepted Release authorization")
+	if !authorized || !replacementAuthorizationEligible(decision) {
+		return Result{State: "release-rejected"}, errors.New("endpoint replacement requires a current Release authorization")
 	}
 	store, err := openStore(operation.StateRoot, false)
 	if err != nil {
@@ -199,23 +199,38 @@ func replace(ctx context.Context, operation Operation, control *operationControl
 	if int64(len(predecessor)) != current.Length || predecessorDigest != current.Digest {
 		return Result{State: "current-mismatch", Current: current}, errors.New("endpoint replacement current program does not match its committed record")
 	}
-	if err := store.retireCompletedRollback(current, operation.ProgramPath); err != nil {
-		return Result{State: "rollback-retained", Current: current, Predecessor: predecessorDigest}, err
+	if candidate == current {
+		if err := store.validateCompletedCandidate(current, operation.ProgramPath); err != nil {
+			return Result{State: "repair-required", Current: current, Predecessor: predecessorDigest}, err
+		}
+		return Result{State: "committed-restart-permitted", Current: current, Predecessor: predecessorDigest}, nil
 	}
-	if err := store.prepare(candidate); err != nil {
-		return Result{State: "replacement-pending", Current: current, Predecessor: predecessorDigest}, err
+	resuming, err := store.resumePreactivation(current, candidate, operation.ProgramPath, predecessor)
+	if err != nil {
+		return Result{State: "repair-required", Current: current, Predecessor: predecessorDigest}, err
 	}
-	if err := store.writeJournal(journal{phase: "prepared", programPath: operation.ProgramPath, predecessor: predecessorDigest, candidate: candidate.Digest}); err != nil {
-		return Result{State: "replacement-pending", Current: current, Predecessor: predecessorDigest}, err
+	if decision.Outcome == release.OutcomeNoUpdate && !resuming && candidate.ReleaseVersion <= current.ReleaseVersion {
+		return Result{State: "release-rejected", Current: current, Predecessor: predecessorDigest}, errors.New("endpoint replacement no-update authorization is not a forward or retained preactivation candidate")
 	}
-	if err := writeExecutableAtomic(store.root, rollbackName, predecessor); err != nil {
-		return Result{State: "replacement-pending", Current: current, Predecessor: predecessorDigest}, err
-	}
-	if err := store.writeJournal(journal{phase: "rollback-retained", programPath: operation.ProgramPath, predecessor: predecessorDigest, candidate: candidate.Digest}); err != nil {
-		return Result{State: "rollback-retained", Current: current, Predecessor: predecessorDigest}, err
-	}
-	if interrupted(control, "rollback-retained") {
-		return Result{State: "rollback-retained", Current: current, Predecessor: predecessorDigest}, errOperationInterrupted
+	if !resuming {
+		if err := store.retireCompletedRollback(current, operation.ProgramPath); err != nil {
+			return Result{State: "rollback-retained", Current: current, Predecessor: predecessorDigest}, err
+		}
+		if err := store.prepare(candidate); err != nil {
+			return Result{State: "replacement-pending", Current: current, Predecessor: predecessorDigest}, err
+		}
+		if err := store.writeJournal(journal{phase: "prepared", programPath: operation.ProgramPath, predecessor: predecessorDigest, candidate: candidate.Digest}); err != nil {
+			return Result{State: "replacement-pending", Current: current, Predecessor: predecessorDigest}, err
+		}
+		if err := store.ensureRetainedPredecessor(current, predecessor); err != nil {
+			return Result{State: "replacement-pending", Current: current, Predecessor: predecessorDigest}, err
+		}
+		if err := store.writeJournal(journal{phase: "rollback-retained", programPath: operation.ProgramPath, predecessor: predecessorDigest, candidate: candidate.Digest}); err != nil {
+			return Result{State: "rollback-retained", Current: current, Predecessor: predecessorDigest}, err
+		}
+		if interrupted(control, "rollback-retained") {
+			return Result{State: "rollback-retained", Current: current, Predecessor: predecessorDigest}, errOperationInterrupted
+		}
 	}
 	staged, err := stageProgram(operation.ProgramPath, operation.Artifact)
 	if err != nil {
