@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net"
 	"sync"
 	"time"
 
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 // ApplicationConnection is one authenticated, reliable, ordered byte stream
 // returned by the Connection Interface. Application protocol and replay
 // semantics remain entirely caller-owned.
 type applicationConnection struct {
-	stream io.ReadWriteCloser
+	stream nativeconnection.Application
 	cancel context.CancelFunc
 	done   chan applicationconnection.Outcome
 	once   sync.Once
@@ -43,7 +43,7 @@ func (endpoint *endpoint) openTargetRouteApplicationConnection(ctx context.Conte
 		session.Release()
 		return nil, errors.New("application Connection clock is unavailable")
 	}
-	owned, application := net.Pipe()
+	owned, application := newApplicationHalfClosePair()
 	lifetime, cancel := context.WithCancel(ctx)
 	ready := make(chan struct{})
 	done := make(chan applicationconnection.Outcome, 1)
@@ -98,6 +98,15 @@ func (connection *applicationConnection) Write(source []byte) (int, error) {
 		return 0, io.ErrClosedPipe
 	}
 	return connection.stream.Write(source)
+}
+
+// CloseInput completes only the local Application-to-Service direction. Read
+// remains available for the authenticated Service response.
+func (connection *applicationConnection) CloseInput() error {
+	if connection == nil || connection.stream == nil {
+		return io.ErrClosedPipe
+	}
+	return connection.stream.CloseInput()
 }
 
 // Done carries exactly one terminal outcome and then closes.

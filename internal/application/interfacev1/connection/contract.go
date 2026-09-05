@@ -40,12 +40,14 @@ type Outcome struct {
 
 // Stream is one authenticated opaque Application byte stream. Read and Write
 // may proceed concurrently; the transport splits writes into frames of at
-// most 16 KiB. The implementation must close the read direction and publish
-// exactly one non-empty Done result when the Service Connection terminates.
-// Close cancels only this attachment and must be safe after Done. Callers must
-// not interpret EOF without the Done result as semantic success.
+// most 16 KiB. CloseInput delivers EOF to the Service while preserving Read
+// for its response. The implementation must close the read direction and
+// publish exactly one non-empty Done result when the Service Connection
+// terminates. Close cancels only this attachment and must be safe after Done.
+// Callers must not interpret EOF without the Done result as semantic success.
 type Stream interface {
 	io.ReadWriteCloser
+	CloseInput() error
 	Done() <-chan Outcome
 }
 

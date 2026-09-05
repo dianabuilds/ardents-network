@@ -5,7 +5,6 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
-	"io"
 	"net"
 	"sync"
 	"time"
@@ -67,7 +66,7 @@ type connectionInput struct {
 	AuthorityPublic                  [32]byte
 	Publication                      []byte
 	Route                            net.Conn
-	Application                      io.ReadWriteCloser
+	Application                      nativeconnection.Application
 	OpenAttachment                   func(context.Context, routeRecovery) (net.Conn, error)
 	OnAuthenticated                  func([32]byte) error
 	RecoveryBinding                  routeRecovery
@@ -124,7 +123,7 @@ type outboundConnectionRequest struct {
 	AuthorityPublic                  [32]byte
 	Publication                      []byte
 	Route                            net.Conn
-	Application                      io.ReadWriteCloser
+	Application                      nativeconnection.Application
 	OpenAttachment                   func(context.Context, routeRecovery) (net.Conn, error)
 	OnAuthenticated                  func([32]byte) error
 	RecoveryBinding                  routeRecovery
@@ -141,7 +140,7 @@ type outboundConnectionRequest struct {
 type inboundConnectionRequest struct {
 	Principal, Capability   [32]byte
 	Route                   net.Conn
-	Application             io.ReadWriteCloser
+	Application             nativeconnection.Application
 	OpenAttachment          func(context.Context, routeRecovery) (net.Conn, error)
 	RecoveryBinding         routeRecovery
 	BytesEachDirection      uint32

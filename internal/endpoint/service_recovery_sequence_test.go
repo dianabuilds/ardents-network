@@ -15,8 +15,8 @@ func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
 	binding := testRecoveryBinding(fixture)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoutes, publisherRoutes := sequentialRouteAttachments(3, 320<<10)
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 
@@ -48,6 +48,12 @@ func TestThreeSequentialFailuresKeepOneApplicationConnection(t *testing.T) {
 		t.Fatalf("sequential recovery bytes differ: err=%v", err)
 	}
 	if err := <-writeDone; err != nil {
+		t.Fatal(err)
+	}
+	if err := clientApplication.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
+	if err := publisherApplication.CloseInput(); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {

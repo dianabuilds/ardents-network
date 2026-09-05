@@ -61,7 +61,7 @@ type AttachmentOpener func(context.Context, Recovery) (*Attachment, error)
 // Attachment and, optionally, a finite replacement source.
 type StreamConfig struct {
 	Context        context.Context
-	Application    io.ReadWriteCloser
+	Application    Application
 	NetworkID      [32]byte
 	Recovery       Recovery
 	OpenAttachment AttachmentOpener
@@ -76,6 +76,15 @@ type StreamConfig struct {
 	// streams retain their bidirectional half-close semantics.
 	CloseApplicationOnRemoteTerminal bool
 	Resources                        func(string, int) uint32
+}
+
+// Application is the local byte stream presented to a native Service
+// Connection. CloseInput is a directional half-close: it makes the peer's
+// input reader observe EOF while this Application remains readable. Close is
+// a distinct full abort used for cancellation and cleanup.
+type Application interface {
+	io.ReadWriteCloser
+	CloseInput() error
 }
 
 // Outcome is the terminal native logical-stream evidence. Product outcome
@@ -93,7 +102,7 @@ type Outcome struct {
 // authorization authority.
 type Stream struct {
 	ctx                              context.Context
-	application                      io.ReadWriteCloser
+	application                      Application
 	networkID                        [32]byte
 	recovery                         Recovery
 	opener                           AttachmentOpener

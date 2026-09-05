@@ -25,8 +25,8 @@ func TestNameOriginConnectionClosesWhenTargetBindingChanges(t *testing.T) {
 	}
 	updates := make(chan destinationBinding, 1)
 	clientRoute, publisherRoute := net.Pipe()
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	t.Cleanup(func() {
 		_ = clientApplication.Close()
 		_ = publisherApplication.Close()

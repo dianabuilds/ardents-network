@@ -23,8 +23,8 @@ func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
 	requests := make(chan observedAttachmentRequest, 8)
 	clientAttachments := recordingAttachmentQueue(requests, failAfter(failedClient, 0), validClient)
 	publisherAttachments := recordingAttachmentQueue(requests, failedPublisher, validPublisher)
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 
@@ -56,6 +56,12 @@ func TestFailedReplacementFallsThroughWithoutResettingConnection(t *testing.T) {
 		t.Fatalf("bytes changed across failed replacement: err=%v", err)
 	}
 	if err := <-writeDone; err != nil {
+		t.Fatal(err)
+	}
+	if err := clientApplication.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
+	if err := publisherApplication.CloseInput(); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {

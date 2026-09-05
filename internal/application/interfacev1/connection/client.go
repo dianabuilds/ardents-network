@@ -27,6 +27,7 @@ type client struct {
 	doneOnce    sync.Once
 	closeOnce   sync.Once
 	inputOnce   sync.Once
+	inputClosed bool
 	inputErr    error
 	stopContext func() bool
 }
@@ -159,8 +160,14 @@ func (connection *client) finishReceive(outcome Outcome, err error) {
 }
 
 func (connection *client) Write(source []byte) (int, error) {
+	if connection == nil || connection.connection == nil {
+		return 0, net.ErrClosed
+	}
 	connection.writeMu.Lock()
 	defer connection.writeMu.Unlock()
+	if connection.inputClosed {
+		return 0, net.ErrClosed
+	}
 	written := 0
 	for len(source) > 0 {
 		length := len(source)
@@ -192,6 +199,7 @@ func (connection *client) CloseInput() error {
 	connection.inputOnce.Do(func() {
 		connection.writeMu.Lock()
 		defer connection.writeMu.Unlock()
+		connection.inputClosed = true
 		var frame [4]byte
 		if _, err := connection.connection.Write(frame[:]); err != nil {
 			connection.inputErr = err

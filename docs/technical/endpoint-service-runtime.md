@@ -19,11 +19,11 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
-| internal/application/interfacev1/connection | Carry one Target Link, one ordered byte stream, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/interfacev1/connection | Carry one Target Link, one ordered byte stream with explicit directional input close, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/endpoint | Compose one role-local participant and implement the shared Connection and Administration Interfaces. `RunParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
-| internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
+| internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
 The caller-facing Endpoint seam is role-specific: a Publisher start request
 cannot include Route, Credential, signer, or Application facts, and an outbound
@@ -177,6 +177,17 @@ no Namespace, Network State, Release, Update, Custody, or Route-selection
 state. Route Attachments are already authenticated opaque carriers; Namespace
 and State facts arrive only in the typed inputs required for Connection
 binding.
+
+`Stream.CloseInput` is an orderly directional operation, distinct from
+`Stream.Close`. A local Application sends the accepted zero-length AAI2 input
+frame to state that no more request bytes will arrive; the local transport
+preserves it through Endpoint and native Service Connection as the existing
+authenticated Terminal record. Conversely, only a verified matching remote
+Terminal gives the local Application reader EOF. Either transition leaves the
+opposite direction available for a response, is safe to repeat, and rejects
+later writes in its closed input direction. Cancellation, malformed local
+input, carrier loss, and full close remain abort paths, and neither local nor
+native EOF is semantic success without the one typed terminal outcome.
 
 Explicit publication withdrawal uses a fresh Service Administration capability
 and returns `unpublished` only for the exact Target/generation after retained
