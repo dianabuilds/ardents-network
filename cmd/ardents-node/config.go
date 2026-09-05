@@ -61,10 +61,11 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.Now, err = time.Parse(time.RFC3339, plan.At)
+	at, err := time.Parse(time.RFC3339, plan.At)
 	if err != nil {
 		return nil, err
 	}
+	config.Clock = sourcePlanClock(at, time.Since)
 	config.Source.ServeCertificate, err = readOperatorKeyPair(plan.ServerCertificate, plan.ServerKey)
 	if err != nil {
 		return nil, err
@@ -82,4 +83,12 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 		return nil, err
 	}
 	return store, nil
+}
+
+// sourcePlanClock advances the operator-declared initial instant using the
+// process monotonic clock. Source receives this State-owned clock for each TLS
+// handshake; it must not keep validating certificates at the startup instant.
+func sourcePlanClock(at time.Time, elapsed func(time.Time) time.Duration) func() time.Time {
+	started := time.Now()
+	return func() time.Time { return at.Add(elapsed(started)).UTC() }
 }

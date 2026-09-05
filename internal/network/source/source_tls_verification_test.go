@@ -73,7 +73,8 @@ func TestSourcePlanUsesConfiguredVerificationClock(t *testing.T) {
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	clock := func() time.Time { return now }
+	current := now
+	clock := func() time.Time { return current }
 	server, _, err := New(Config{ServeAddress: address, ServeCertificate: fixture.server,
 		ServeClientRootPEM: fixture.authority.rootPEM, ServeClientKeyDigests: [][32]byte{fixture.clientPin}, VerificationClock: clock}, nil)
 	if err != nil {
@@ -97,6 +98,10 @@ func TestSourcePlanUsesConfiguredVerificationClock(t *testing.T) {
 	}
 	if _, err := client.Fetch(ctx, 0, Message{Operation: "latest"}); err != nil {
 		t.Fatalf("configured verification time did not authenticate valid TLS: %v", err)
+	}
+	current = now.Add(2 * time.Hour)
+	if _, err := client.Fetch(ctx, 0, Message{Operation: "latest"}); err == nil {
+		t.Fatal("Source accepted a TLS certificate after its configured verification clock advanced past expiry")
 	}
 	cancel()
 	if err := <-served; !errors.Is(err, context.Canceled) {
