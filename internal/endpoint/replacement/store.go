@@ -25,6 +25,19 @@ const (
 
 var errStoreAbsent = errors.New("endpoint replacement state is absent")
 
+type temporaryEntryDestination struct {
+	name    string
+	maximum int64
+}
+
+var temporaryEntryDestinations = []temporaryEntryDestination{
+	{name: markerName, maximum: maximumText},
+	{name: currentName, maximum: maximumText},
+	{name: preparedName, maximum: maximumText},
+	{name: journalName, maximum: maximumText},
+	{name: rollbackName, maximum: maximumProgramBytes},
+}
+
 type store struct {
 	root string
 	lock *os.File
@@ -128,12 +141,44 @@ func validateRoot(root string, create bool) error {
 		return err
 	}
 	for _, entry := range entries {
-		if entry.Name() != markerName && entry.Name() != currentName && entry.Name() != preparedName && entry.Name() != journalName && entry.Name() != rollbackName && entry.Name() != ".lock" &&
-			!strings.HasPrefix(entry.Name(), ".current-") && !strings.HasPrefix(entry.Name(), ".prepared-") {
-			return errors.New("endpoint replacement state has an unknown entry")
+		if entry.Name() == markerName || entry.Name() == currentName || entry.Name() == preparedName || entry.Name() == journalName || entry.Name() == rollbackName || entry.Name() == ".lock" {
+			continue
 		}
+		if maximum, ok := temporaryEntryMaximum(entry.Name()); ok {
+			info, infoErr := entry.Info()
+			if infoErr != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() > maximum {
+				return errors.New("endpoint replacement state has an invalid owned temporary entry")
+			}
+			continue
+		}
+		return errors.New("endpoint replacement state has an unknown entry")
 	}
 	return nil
+}
+
+func temporaryEntryMaximum(name string) (int64, bool) {
+	const temporaryPrefix = "."
+	const temporarySuffix = ".tmp"
+	if !strings.HasPrefix(name, temporaryPrefix) || !strings.HasSuffix(name, temporarySuffix) {
+		return 0, false
+	}
+	trimmed := strings.TrimSuffix(strings.TrimPrefix(name, temporaryPrefix), temporarySuffix)
+	for _, destination := range temporaryEntryDestinations {
+		prefix := destination.name + "-"
+		if !strings.HasPrefix(trimmed, prefix) {
+			continue
+		}
+		token := strings.TrimPrefix(trimmed, prefix)
+		if len(token) != 16 || strings.ToLower(token) != token {
+			return 0, false
+		}
+		decoded, err := hex.DecodeString(token)
+		if err != nil || len(decoded) != 8 {
+			return 0, false
+		}
+		return destination.maximum, true
+	}
+	return 0, false
 }
 
 func (store *store) current() (Record, error) {
@@ -296,11 +341,29 @@ func writeExecutableAtomic(root, name string, contents []byte) error {
 }
 
 func writeAtomicMode(root, name string, contents []byte, mode os.FileMode) error {
+	return writeAtomicModeWithInterruption(root, name, contents, mode, nil)
+}
+
+type atomicWriteCheckpoint string
+
+const (
+	atomicWriteTemporarySynced atomicWriteCheckpoint = "temporary-synced"
+	atomicWriteRenamed         atomicWriteCheckpoint = "renamed"
+)
+
+// writeAtomicModeWithInterruption shares the production writer sequence while
+// allowing owner tests to model process interruption at a durable boundary.
+// An interruption intentionally leaves the observed state untouched.
+func writeAtomicModeWithInterruption(root, name string, contents []byte, mode os.FileMode, interrupt func(string, atomicWriteCheckpoint) error) error {
 	var token [8]byte
 	if _, err := rand.Read(token[:]); err != nil {
 		return err
 	}
-	temporary := filepath.Join(root, "."+name+"-"+hex.EncodeToString(token[:])+".tmp")
+	temporaryName, err := temporaryEntryName(name, token)
+	if err != nil {
+		return err
+	}
+	temporary := filepath.Join(root, temporaryName)
 	file, err := os.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
 		return err
@@ -315,9 +378,19 @@ func writeAtomicMode(root, name string, contents []byte, mode os.FileMode) error
 		_ = os.Remove(temporary)
 		return err
 	}
+	if interrupt != nil {
+		if err := interrupt(temporary, atomicWriteTemporarySynced); err != nil {
+			return err
+		}
+	}
 	if err := os.Rename(temporary, filepath.Join(root, name)); err != nil {
 		_ = os.Remove(temporary)
 		return err
+	}
+	if interrupt != nil {
+		if err := interrupt(temporary, atomicWriteRenamed); err != nil {
+			return err
+		}
 	}
 	directory, err := os.Open(root)
 	if err != nil {
@@ -326,6 +399,14 @@ func writeAtomicMode(root, name string, contents []byte, mode os.FileMode) error
 	err = directory.Sync()
 	closeErr := directory.Close()
 	return errors.Join(err, closeErr)
+}
+
+func temporaryEntryName(destination string, token [8]byte) (string, error) {
+	name := "." + destination + "-" + hex.EncodeToString(token[:]) + ".tmp"
+	if _, ok := temporaryEntryMaximum(name); !ok {
+		return "", errors.New("endpoint replacement temporary destination is invalid")
+	}
+	return name, nil
 }
 
 func encodeRecord(record Record) ([]byte, error) {

@@ -147,6 +147,16 @@ self-test, durable journal, explicit recovery, and separately authorized
 rollback. It never receives a Vault, password, Authority root, downloader, or
 generic Custody writer.
 
+The replacement writer and reader share one closed set of bounded temporary
+file forms for `marker`, `current`, `prepared`, `journal`, and retained
+predecessor writes. A direct regular file in one exact writer form is only
+interrupted-write residue: read-only startup verification and recovery may
+continue from a valid committed `current` record, but never treat that residue
+as an authorized record or remove it. A foreign name, malformed temporary
+form, symlink, non-regular file, or oversized residue remains an explicit
+failure. Any state mutation still belongs to a locked replacement operation;
+the read-only paths do not repair, delete, roll back, or alter Release floors.
+
 The former generic `internal/update` transaction had no production caller and
 is retired. Its distinct schema-copy and adapter choreography are not part of
 the selected Endpoint replacement contract. Current replacement behavior and

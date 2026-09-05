@@ -28,7 +28,7 @@ configuration format or an authority source.
 | `endpoint enroll-installed <package-enrollment.json>` | Run the explicit Ubuntu Installed enrollment/start path for one root-owned package artifact and versioned static enrollment root. |
 | `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Render, but never write, enable, or start, the matching `systemd --user` unit. |
 | `endpoint replace <replacement-bundle>` | Perform one explicit Ubuntu local Release-authorized replacement against the fixed user unit; it neither downloads nor schedules updates. |
-| `endpoint replacement-recovery` | Report durable replacement recovery classification only; it never starts, replaces, or rolls back a program. |
+| `endpoint replacement-recovery` | Report durable replacement recovery classification only; it never starts, replaces, or rolls back a program. An owned interrupted temporary write does not invalidate a matching committed executable; this read-only route leaves the residue untouched. Unexpected state must not be manually edited or deleted. |
 | `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Perform the only permitted explicit rollback: the retained predecessor, with a fresh Release authorization for its exact bytes. |
 | `entry import <entry-import-plan.json>` | Import one signed State-referenced Entry Invite into Entry-owned durable replay and replacement state. |
 | `name encode <name>` | Print one canonical Service Name wire encoding as lowercase hexadecimal. |
