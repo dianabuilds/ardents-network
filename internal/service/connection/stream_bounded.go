@@ -76,11 +76,21 @@ func (stream *Stream) sendApplicationBounded(limit uint64) error {
 			}
 			continue
 		}
-		if stream.sendEnd >= limit {
-			stream.mu.Unlock()
-			return stream.finishBoundedSend()
-		}
 		remaining, available := limit-stream.sendEnd, logicalQueueLimit-len(stream.sendData)
+		if remaining == 0 {
+			stream.mu.Unlock()
+			read, err := stream.application.Read(buffer[:1])
+			if read > 0 {
+				return errors.New("Application input exceeded its directional byte bound")
+			}
+			if err != nil {
+				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
+					return stream.finishBoundedSend()
+				}
+				return err
+			}
+			continue
+		}
 		want := len(buffer)
 		if uint64(want) > remaining {
 			want = int(remaining)
@@ -222,8 +232,15 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 			if !valid {
 				return ErrActiveViolation
 			}
-			if closeApplication {
-				_ = stream.application.Close()
+			if firstTerminal {
+				if closeApplication {
+					err = stream.application.Close()
+				} else {
+					err = stream.application.CloseInput()
+				}
+				if err != nil {
+					return err
+				}
 			}
 			stream.queueAcknowledgement(offset)
 			continue

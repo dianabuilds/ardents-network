@@ -7,13 +7,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
-	"net"
+	"io"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
@@ -182,7 +183,7 @@ func seededBytes(length, seed int) []byte {
 	return value
 }
 
-func assertExchange(t *testing.T, client, publisher net.Conn, clientBytes, publisherBytes []byte) {
+func assertExchange(t *testing.T, client, publisher nativeconnection.Application, clientBytes, publisherBytes []byte) {
 	t.Helper()
 	type result struct {
 		got []byte
@@ -194,6 +195,9 @@ func assertExchange(t *testing.T, client, publisher net.Conn, clientBytes, publi
 	go func() {
 		defer writers.Done()
 		_, err := client.Write(clientBytes)
+		if err == nil {
+			err = client.CloseInput()
+		}
 		if err != nil {
 			results <- result{err: err}
 		}
@@ -201,6 +205,9 @@ func assertExchange(t *testing.T, client, publisher net.Conn, clientBytes, publi
 	go func() {
 		defer writers.Done()
 		_, err := publisher.Write(publisherBytes)
+		if err == nil {
+			err = publisher.CloseInput()
+		}
 		if err != nil {
 			results <- result{err: err}
 		}
@@ -226,7 +233,7 @@ func assertExchange(t *testing.T, client, publisher net.Conn, clientBytes, publi
 	}
 }
 
-func netReadFull(connection net.Conn, destination []byte) (int, error) {
+func netReadFull(connection io.Reader, destination []byte) (int, error) {
 	total := 0
 	for total < len(destination) {
 		count, err := connection.Read(destination[total:])

@@ -11,19 +11,20 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 type finalEOFApplication struct{ *bytes.Reader }
 
 type observedApplication struct {
-	net.Conn
+	nativeconnection.Application
 	entered chan struct{}
 	once    sync.Once
 }
 
 func (application *observedApplication) Read(value []byte) (int, error) {
 	application.once.Do(func() { close(application.entered) })
-	return application.Conn.Read(value)
+	return application.Application.Read(value)
 }
 
 func (application *finalEOFApplication) Read(value []byte) (int, error) {
@@ -33,14 +34,15 @@ func (application *finalEOFApplication) Read(value []byte) (int, error) {
 
 func (*finalEOFApplication) Write(value []byte) (int, error) { return len(value), nil }
 func (*finalEOFApplication) Close() error                    { return nil }
+func (*finalEOFApplication) CloseInput() error               { return nil }
 
 func TestPartialApplicationChunkIsFramedWithoutWaitingForRecordBoundary(t *testing.T) {
 	const partial = 16_381
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoute, publisherRoute := net.Pipe()
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -67,10 +69,16 @@ func TestPartialApplicationChunkIsFramedWithoutWaitingForRecordBoundary(t *testi
 	if err := <-written; err != nil {
 		t.Fatal(err)
 	}
-	_ = publisherApplication.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
 	received := make([]byte, partial)
-	if _, err := io.ReadFull(publisherApplication, received); err != nil {
-		t.Fatalf("partial chunk remained buffered at Endpoint: %v", err)
+	read := make(chan error, 1)
+	go func() { _, err := io.ReadFull(publisherApplication, received); read <- err }()
+	select {
+	case err := <-read:
+		if err != nil {
+			t.Fatalf("partial chunk remained buffered at Endpoint: %v", err)
+		}
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("partial chunk remained buffered at Endpoint")
 	}
 	cancel()
 	for range 2 {
@@ -83,7 +91,7 @@ func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoute, publisherRoute := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer publisherApplication.Close()
 	clientApplication := &finalEOFApplication{Reader: bytes.NewReader(payload)}
 	outcomes := make(chan serviceOutcome, 2)
@@ -105,6 +113,9 @@ func TestFinalApplicationBytesReturnedWithEOFCompleteCleanly(t *testing.T) {
 	received := make([]byte, len(payload))
 	if _, err := io.ReadFull(publisherApplication, received); err != nil || !bytes.Equal(received, payload) {
 		t.Fatalf("final bytes accompanying EOF were not delivered: %v", err)
+	}
+	if err := publisherApplication.CloseInput(); err != nil {
+		t.Fatal(err)
 	}
 	for range 2 {
 		outcome := <-outcomes
@@ -140,16 +151,16 @@ func TestSlowConsumersApplyBackpressureUntilLocalCancellation(t *testing.T) {
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoute, publisherRoute := tcpPair(t)
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	clientEntered, publisherEntered := make(chan struct{}), make(chan struct{})
 	outcomes := runConnections(ctx, fixture, client, publisher, publication,
 		clientRoute, publisherRoute,
-		&observedApplication{Conn: clientEndpoint, entered: clientEntered},
-		&observedApplication{Conn: publisherEndpoint, entered: publisherEntered})
+		&observedApplication{Application: clientEndpoint, entered: clientEntered},
+		&observedApplication{Application: publisherEndpoint, entered: publisherEntered})
 	for _, entered := range []chan struct{}{clientEntered, publisherEntered} {
 		select {
 		case <-entered:
@@ -183,8 +194,8 @@ func TestLogicalQueueBackpressuresAtFrozenDirectionalCap(t *testing.T) {
 	fixture := newFixture(t)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	clientRoute, publisherRoute := tcpPair(t)
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -251,7 +262,7 @@ func TestOrderlyHalfCloseReportsObservedPartialCounts(t *testing.T) {
 	clientEndpoint, clientApplication := tcpPair(t)
 	publisherEndpoint, publisherApplication := tcpPair(t)
 	outcomes := runConnections(context.Background(), fixture, client, publisher, publication,
-		clientRoute, publisherRoute, clientEndpoint, publisherEndpoint)
+		clientRoute, publisherRoute, tcpApplication{Conn: clientEndpoint}, tcpApplication{Conn: publisherEndpoint})
 	writePartial(t, clientApplication, 1024, 17)
 	writePartial(t, publisherApplication, 2048, 91)
 	closeWrite(t, clientApplication)
@@ -304,7 +315,7 @@ func connectedEndpoints(t *testing.T, fixture fixture) (endpointRunner, endpoint
 }
 
 func runConnections(ctx context.Context, fixture fixture, client, publisher endpointRunner, publication []byte,
-	clientRoute, publisherRoute, clientApplication, publisherApplication net.Conn) <-chan serviceOutcome {
+	clientRoute, publisherRoute net.Conn, clientApplication, publisherApplication nativeconnection.Application) <-chan serviceOutcome {
 	outcomes := make(chan serviceOutcome, 2)
 	clientSession := session(client, fixture.clientPrincipal, fixture.now)
 	publisherSession := session(publisher, fixture.publisherPrincipal, fixture.now)
@@ -338,6 +349,16 @@ func writePartial(t *testing.T, connection net.Conn, count, seed int) {
 	if written, err := connection.Write(seededBytes(count, seed)); err != nil || written != count {
 		t.Fatalf("partial write=%d err=%v", written, err)
 	}
+}
+
+type tcpApplication struct{ net.Conn }
+
+func (application tcpApplication) CloseInput() error {
+	halfClose, available := application.Conn.(interface{ CloseWrite() error })
+	if !available {
+		return errors.New("TCP Application does not support an input half-close")
+	}
+	return halfClose.CloseWrite()
 }
 
 func tcpPair(t *testing.T) (net.Conn, net.Conn) {

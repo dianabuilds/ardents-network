@@ -80,7 +80,7 @@ func TestStreamFullSendQueueUnblocksForReplay(t *testing.T) {
 }
 
 func TestStreamRecoveryExhaustionPublishesTerminalBeforeWakingWaiter(t *testing.T) {
-	application, applicationPeer := net.Pipe()
+	application, applicationPeer := halfClosePair()
 	defer applicationPeer.Close()
 	failed := &Attachment{generation: 1}
 	firstProposal := make(chan struct{})
@@ -119,8 +119,8 @@ func TestStreamRecoveryExhaustionPublishesTerminalBeforeWakingWaiter(t *testing.
 
 func TestStreamExchangesInitialContinuityBeforeBidirectionalData(t *testing.T) {
 	clientCarrier, publisherCarrier := net.Pipe()
-	clientApplication, clientUser := net.Pipe()
-	publisherApplication, publisherUser := net.Pipe()
+	clientApplication, clientUser := halfClosePair()
+	publisherApplication, publisherUser := halfClosePair()
 	defer clientUser.Close()
 	defer publisherUser.Close()
 	connectionContext, exporter, key := [32]byte{1}, [32]byte{2}, [32]byte{3}
@@ -200,17 +200,26 @@ func TestStreamBoundedAcceptsTerminalBeforeDirectionalLimit(t *testing.T) {
 	results := make(chan result, 2)
 	go func() { outcome, err := client.RunBounded(32, 32); results <- result{outcome, err} }()
 	go func() { outcome, err := publisher.RunBounded(32, 32); results <- result{outcome, err} }()
-	go func() { _, _ = clientUser.Write([]byte("request")); _ = clientUser.CloseWrite() }()
-	go func() { _, _ = publisherUser.Write([]byte("ok")); _ = publisherUser.CloseWrite() }()
-	clientRead, publisherRead := make([]byte, 2), make([]byte, 7)
+	go func() { _, _ = clientUser.Write([]byte("request")); _ = clientUser.CloseInput() }()
+	publisherInput, readErr := io.ReadAll(publisherUser)
+	if readErr != nil || string(publisherInput) != "request" {
+		t.Fatalf("publisher input before response = %q, %v", publisherInput, readErr)
+	}
+	if _, err := publisherUser.Write([]byte("ok")); err != nil {
+		t.Fatal(err)
+	}
+	if err := publisherUser.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := clientUser.Write([]byte("late")); !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatalf("write after input close = %v, want closed pipe", err)
+	}
+	clientRead := make([]byte, 2)
 	if _, err := io.ReadFull(clientUser, clientRead); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := io.ReadFull(publisherUser, publisherRead); err != nil {
-		t.Fatal(err)
-	}
-	if string(clientRead) != "ok" || string(publisherRead) != "request" {
-		t.Fatalf("unexpected bounded exchange: client=%q publisher=%q", clientRead, publisherRead)
+	if string(clientRead) != "ok" {
+		t.Fatalf("unexpected bounded response: client=%q", clientRead)
 	}
 	for range 2 {
 		result := <-results
@@ -299,6 +308,8 @@ type bufferApplication struct{ bytes.Buffer }
 
 func (*bufferApplication) Close() error { return nil }
 
+func (*bufferApplication) CloseInput() error { return nil }
+
 type halfCloseApplication struct {
 	reader *io.PipeReader
 	writer *io.PipeWriter
@@ -320,6 +331,10 @@ func (application *halfCloseApplication) Write(value []byte) (int, error) {
 
 func (application *halfCloseApplication) CloseWrite() error {
 	return application.writer.Close()
+}
+
+func (application *halfCloseApplication) CloseInput() error {
+	return application.CloseWrite()
 }
 
 func (application *halfCloseApplication) Close() error {

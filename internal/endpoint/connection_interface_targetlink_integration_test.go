@@ -7,14 +7,19 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
@@ -33,6 +38,70 @@ func TestConnectionInterfaceOpensTargetLinkThroughTwoEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	exchangeConnectionInterfaceLink(t, fixture, ctx, link, nil)
+}
+
+func TestConnectionInterfacePreservesRequestEOFUntilServiceResponds(t *testing.T) {
+	fixture := openUserRouteCredentialFixture(t, route.IntroductionDelivered)
+	defer fixture.close()
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	link, err := targetlink.Encode(targetlink.Link{Network: fixture.network, Target: fixture.target})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const byteLimit = uint32(32)
+	publisherApplication, publisherResult, closePublisher := startTargetLinkPublisher(t, fixture, ctx, byteLimit)
+	defer closePublisher()
+	owner, err := fixture.endpoint.openConnectionInterface(connectionInterfaceConfig{Route: fixture.route,
+		Principal: [32]byte{86}, BytesEachDirection: byteLimit, Clock: func() time.Time { return fixture.now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	socket := filepath.Join(os.TempDir(), fmt.Sprintf("eof-%d.sock", time.Now().UnixNano()))
+	t.Cleanup(func() { _ = os.Remove(socket) })
+	server, err := applicationconnection.Listen(socket, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	client, err := applicationconnection.Dial(ctx, socket, link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	if _, err := client.Write([]byte("request")); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.CloseInput(); err != nil {
+		t.Fatalf("repeated input close = %v", err)
+	}
+	if _, err := client.Write([]byte("late")); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("write after input close = %v, want closed input", err)
+	}
+	request, err := io.ReadAll(publisherApplication)
+	if err != nil || string(request) != "request" {
+		t.Fatalf("publisher request before response = %q, %v", request, err)
+	}
+	if _, err := publisherApplication.Write([]byte("ok")); err != nil {
+		t.Fatal(err)
+	}
+	if err := publisherApplication.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
+	response, err := io.ReadAll(client)
+	if err != nil || string(response) != "ok" {
+		t.Fatalf("client response after input EOF = %q, %v", response, err)
+	}
+	if outcome, open := <-client.Done(); !open || outcome.Class != applicationconnection.CleanClose {
+		t.Fatalf("client outcome = %+v, open=%t", outcome, open)
+	}
+	if publisher := <-publisherResult; publisher.err != nil || publisher.result.Class != "clean service connection close" ||
+		publisher.result.AcceptedBytes >= byteLimit || publisher.result.ReceivedBytes >= byteLimit {
+		t.Fatalf("publisher result = %+v, err=%v", publisher.result, publisher.err)
+	}
 }
 
 // TestConnectionInterfaceOpensPersistedLegacyServiceLinkThroughTwoEndpoints
@@ -76,8 +145,20 @@ func exchangeConnectionInterfaceLink(t *testing.T, fixture *userRouteCredentialF
 		t.Fatal("test byte bounds are inconsistent")
 	}
 	exchange := make(chan error, 4)
-	go func() { _, err := connection.Write(toPublisher); exchange <- err }()
-	go func() { _, err := publisherApplication.Write(toCaller); exchange <- err }()
+	go func() {
+		_, err := connection.Write(toPublisher)
+		if err == nil {
+			err = connection.CloseInput()
+		}
+		exchange <- err
+	}()
+	go func() {
+		_, err := publisherApplication.Write(toCaller)
+		if err == nil {
+			err = publisherApplication.CloseInput()
+		}
+		exchange <- err
+	}()
 	go func() {
 		actual := make([]byte, len(toCaller))
 		_, err := io.ReadFull(connection, actual)
@@ -154,7 +235,7 @@ func acceptedLegacyServiceLinkFloor(t *testing.T, fixture *userRouteCredentialFi
 }
 
 func startTargetLinkPublisher(t *testing.T, fixture *userRouteCredentialFixture, ctx context.Context, byteLimit uint32,
-) (net.Conn, <-chan serviceOutcome, func()) {
+) (nativeconnection.Application, <-chan serviceOutcome, func()) {
 	t.Helper()
 	const principal = byte(91)
 	publisher, err := newEndpoint(setup{NetworkID: fixture.network, BrokerID: [32]byte{90}, AuthorityPublic: fixture.authority,
@@ -168,7 +249,7 @@ func startTargetLinkPublisher(t *testing.T, fixture *userRouteCredentialFixture,
 		_ = publisher.Close()
 		t.Fatal(err)
 	}
-	publisherEndpoint, publisherApplication := net.Pipe()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	result := make(chan serviceOutcome, 1)
 	fixture.connectionHandler = func(routeConnection net.Conn) error {
 		capability, admitErr := publisher.Admit([32]byte{principal}, broker.Connection)

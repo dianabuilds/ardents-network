@@ -181,7 +181,10 @@ func writeRefusal(writer io.Writer, cause error) error {
 	return writeTerminal(writer, refusal(cause))
 }
 
-func readFrames(reader io.Reader, application io.Writer) error {
+func readFrames(reader io.Reader, application interface {
+	io.Writer
+	CloseInput() error
+}) error {
 	var header [4]byte
 	for {
 		if _, err := io.ReadFull(reader, header[:]); err != nil {
@@ -189,7 +192,7 @@ func readFrames(reader io.Reader, application io.Writer) error {
 		}
 		length := binary.BigEndian.Uint32(header[:])
 		if length == 0 {
-			return nil
+			return application.CloseInput()
 		}
 		if length > maximumFrame {
 			return errors.New("local Application frame exceeds its bound")

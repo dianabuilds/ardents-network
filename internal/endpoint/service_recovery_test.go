@@ -29,8 +29,8 @@ func TestForgedReplacementTerminatesInsteadOfTryingAnotherProposal(t *testing.T)
 	validClient, validPublisher := net.Pipe()
 	clientAttachments := attachmentQueue(forgedClient, validClient)
 	publisherAttachments := attachmentQueue(validPublisher)
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	go serveForgedTLS(t, forgedServer)
@@ -82,8 +82,8 @@ func TestCarrierFailureRecoversSameApplicationStreams(t *testing.T) {
 	requests := make(chan observedAttachmentRequest, 2)
 	clientAttachments := recordingAttachmentQueue(requests, replacementClient)
 	publisherAttachments := recordingAttachmentQueue(requests, replacementPublisher)
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 
@@ -150,8 +150,8 @@ func TestDirectionalCarrierFailureDoesNotRequireReverseApplicationBytes(t *testi
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	initialClient, initialPublisher := net.Pipe()
 	replacementClient, replacementPublisher := net.Pipe()
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -183,6 +183,12 @@ func TestDirectionalCarrierFailureDoesNotRequireReverseApplicationBytes(t *testi
 	if err := <-writeDone; err != nil {
 		t.Fatal(err)
 	}
+	if err := clientApplication.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
+	if err := publisherApplication.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
 	for range 2 {
 		outcome := <-outcomes
 		if outcome.err != nil || outcome.result.RouteGeneration != 2 || outcome.result.RecoveryCount != 1 {
@@ -197,8 +203,8 @@ func TestExpiredWorkSafetyBlocksFreshAttachment(t *testing.T) {
 	binding.NoNewRecoveryAfter = fixture.now.Add(time.Second).Unix()
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	initialClient, initialPublisher := net.Pipe()
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	var proposals atomic.Uint32
@@ -253,8 +259,8 @@ func testNoAlternateTerminatesConnectionPromptly(t *testing.T) {
 	binding := testRecoveryBinding(fixture)
 	client, publisher, publication := connectedEndpoints(t, fixture)
 	initialClient, initialPublisher := net.Pipe()
-	clientEndpoint, clientApplication := net.Pipe()
-	publisherEndpoint, publisherApplication := net.Pipe()
+	clientEndpoint, clientApplication := newApplicationHalfClosePair()
+	publisherEndpoint, publisherApplication := newApplicationHalfClosePair()
 	defer clientApplication.Close()
 	defer publisherApplication.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
