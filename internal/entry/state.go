@@ -62,7 +62,9 @@ func (state durableState) clone() durableState {
 	return cloned
 }
 
-func (state *durableState) settleReplacements() bool {
+// settleReplacements resolves a terminal replacement. A draining predecessor
+// may be restored only when current State still authorizes it.
+func (owner *owner) settleReplacements(state *durableState) bool {
 	changed := false
 	for slot := byte(0); slot < 2; slot++ {
 		verified := -1
@@ -75,8 +77,10 @@ func (state *durableState) settleReplacements() bool {
 			if state.Records[index].Slot == slot && state.Records[index].Status == memberDraining {
 				if verified >= 0 {
 					retireMember(&state.Records[index])
-				} else {
+				} else if _, _, _, found := owner.validRecord(state.Records[index]); found {
 					state.Records[index].Status = memberActive
+				} else {
+					retireMember(&state.Records[index])
 				}
 				changed = true
 			}

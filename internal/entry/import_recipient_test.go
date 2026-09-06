@@ -172,3 +172,35 @@ func TestOpenRestoresDrainingPredecessorAfterRetiringForeignReplacement(t *testi
 		t.Fatalf("recovered replacement state = %+v", reopened.state.Records)
 	}
 }
+
+func TestTerminalReplacementRetiresInvalidDrainingPredecessor(t *testing.T) {
+	fixture := newLiveEntryFixture(t)
+	owner, err := Open(fixture.config(entryRoot(t)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	first, err := owner.Import(fixture.invite(t, fixture.candidates[0], 0, 1, nil))
+	if err != nil || first.Class != Accepted {
+		t.Fatalf("first import = %+v, %v", first, err)
+	}
+	_, _, ordinal, _, err := owner.beginAttempt(Attempt{ID: [32]byte{2}, Deadline: fixture.now.Add(time.Second)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := owner.Import(fixture.invite(t, fixture.candidates[1], 0, 2, &first.InviteID))
+	if err != nil || second.Class != Accepted {
+		t.Fatalf("replacement import = %+v, %v", second, err)
+	}
+	owner.config.Current = func() (View, error) {
+		view := fixture.view
+		view.Candidates = nil
+		return view, nil
+	}
+	if err := owner.finishContact(ordinal, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(owner.state.Records) != 2 || owner.state.Records[0].Status != memberRetired || owner.state.Records[1].Status != memberRetired {
+		t.Fatalf("invalid terminal replacement state = %+v", owner.state.Records)
+	}
+}
