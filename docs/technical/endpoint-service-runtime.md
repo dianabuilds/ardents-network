@@ -189,6 +189,20 @@ later writes in its closed input direction. Cancellation, malformed local
 input, carrier loss, and full close remain abort paths, and neither local nor
 native EOF is semantic success without the one typed terminal outcome.
 
+The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
+write's complete frames precede the zero-length input-close frame; if the
+directional close wins, the later write is rejected. Full `Close` and lifetime
+context cancellation are aborts and do not wait for that serialization lock:
+they claim `local cancellation` unless a verified remote terminal outcome was
+already published, close the owned Unix transport to interrupt any blocked
+read or write, reject later operations, and join Client-owned work before
+returning. An interrupted `Write` may report only its completed payload prefix
+plus an error and can never become clean success. Repeated and concurrent
+`Close` calls join the same cleanup and return its result. The headless `open`
+caller joins its response copier on input failure or cancellation and removes
+the partial output before returning; it neither receives nor closes the socket
+directly.
+
 Explicit publication withdrawal uses a fresh Service Administration capability
 and returns `unpublished` only for the exact Target/generation after retained
 connections drain; an established connection may therefore finish as `clean

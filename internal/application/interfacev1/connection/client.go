@@ -11,25 +11,35 @@ import (
 	"time"
 )
 
-// Client is the local Adapter side of the Connection Interface. It exposes
-// only the byte stream, its terminal outcome, and an orderly input half-close.
+// Client is the local Adapter side of the Connection Interface. Write and
+// CloseInput are serialized so the zero-length input-close frame follows every
+// accepted data frame. Close and context cancellation instead abort the owned
+// transport independently, interrupt in-flight operations, join Client-owned
+// work, and publish LocalCancellation unless a verified remote outcome already
+// won the sole Done publication. A failed Write may report only its completed
+// payload prefix and is never a clean terminal result.
 type Client interface {
 	Stream
 	CloseInput() error
 }
 
 type client struct {
-	connection  *net.UnixConn
-	stream      *io.PipeReader
-	sink        *io.PipeWriter
-	writeMu     sync.Mutex
-	done        chan Outcome
-	doneOnce    sync.Once
-	closeOnce   sync.Once
-	inputOnce   sync.Once
-	inputClosed bool
-	inputErr    error
-	stopContext func() bool
+	connection       *net.UnixConn
+	stream           *io.PipeReader
+	sink             *io.PipeWriter
+	writeMu          sync.Mutex
+	stateMu          sync.Mutex
+	outputOperations sync.WaitGroup
+	closing          bool
+	done             chan Outcome
+	receiveDone      chan struct{}
+	doneOnce         sync.Once
+	closeOnce        sync.Once
+	inputOnce        sync.Once
+	inputClosed      bool
+	inputErr         error
+	closeErr         error
+	stopContext      func() bool
 }
 
 // Dial requests one Target Link and returns no Target, State, Entry, Route,
@@ -74,8 +84,10 @@ func Dial(ctx context.Context, path, targetLink string) (Client, error) {
 	_ = connection.SetDeadline(time.Time{})
 	stream, sink := io.Pipe()
 	opened := &client{connection: connection, stream: stream, sink: sink,
-		done: make(chan Outcome, 1)}
+		done: make(chan Outcome, 1), receiveDone: make(chan struct{})}
+	opened.stateMu.Lock()
 	opened.stopContext = context.AfterFunc(ctx, func() { _ = opened.Close() })
+	opened.stateMu.Unlock()
 	go opened.receive()
 	return opened, nil
 }
@@ -96,6 +108,7 @@ func (connection *client) Read(destination []byte) (int, error) {
 }
 
 func (connection *client) receive() {
+	defer close(connection.receiveDone)
 	reader := bufio.NewReader(connection.connection)
 	var header [4]byte
 	for {
@@ -145,9 +158,7 @@ func readTerminal(reader io.Reader) (Outcome, error) {
 }
 
 func (connection *client) finishReceive(outcome Outcome, err error) {
-	if connection.stopContext != nil {
-		connection.stopContext()
-	}
+	connection.stopContextWatch()
 	if err != nil && outcome.Class == "" {
 		outcome = Outcome{Class: LocalFailure, Reason: "Endpoint Application terminal outcome was invalid"}
 	}
@@ -163,6 +174,10 @@ func (connection *client) Write(source []byte) (int, error) {
 	if connection == nil || connection.connection == nil {
 		return 0, net.ErrClosed
 	}
+	if !connection.beginOperation() {
+		return 0, net.ErrClosed
+	}
+	defer connection.outputOperations.Done()
 	connection.writeMu.Lock()
 	defer connection.writeMu.Unlock()
 	if connection.inputClosed {
@@ -197,6 +212,11 @@ func (connection *client) CloseInput() error {
 		return nil
 	}
 	connection.inputOnce.Do(func() {
+		if !connection.beginOperation() {
+			connection.inputErr = net.ErrClosed
+			return
+		}
+		defer connection.outputOperations.Done()
 		connection.writeMu.Lock()
 		defer connection.writeMu.Unlock()
 		connection.inputClosed = true
@@ -208,6 +228,25 @@ func (connection *client) CloseInput() error {
 		connection.inputErr = connection.connection.CloseWrite()
 	})
 	return connection.inputErr
+}
+
+func (connection *client) beginOperation() bool {
+	connection.stateMu.Lock()
+	defer connection.stateMu.Unlock()
+	if connection.closing {
+		return false
+	}
+	connection.outputOperations.Add(1)
+	return true
+}
+
+func (connection *client) stopContextWatch() {
+	connection.stateMu.Lock()
+	stopContext := connection.stopContext
+	connection.stateMu.Unlock()
+	if stopContext != nil {
+		stopContext()
+	}
 }
 
 func (connection *client) publishDone(outcome Outcome) {
@@ -222,16 +261,19 @@ func (connection *client) Close() error {
 	if connection == nil {
 		return nil
 	}
-	var result error
 	connection.closeOnce.Do(func() {
-		if connection.stopContext != nil {
-			connection.stopContext()
+		connection.stateMu.Lock()
+		connection.closing = true
+		stopContext := connection.stopContext
+		connection.stateMu.Unlock()
+		if stopContext != nil {
+			stopContext()
 		}
-		connection.writeMu.Lock()
-		result = connection.connection.Close()
-		connection.writeMu.Unlock()
 		connection.publishDone(Outcome{Class: LocalCancellation, Reason: "Application Adapter closed the local connection"})
+		connection.closeErr = connection.connection.Close()
 		_ = connection.stream.Close()
+		connection.outputOperations.Wait()
+		<-connection.receiveDone
 	})
-	return result
+	return connection.closeErr
 }

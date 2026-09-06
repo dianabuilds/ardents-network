@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -166,6 +168,132 @@ func TestHeadlessOpenReturnsFailureStatusAndRemovesPartialOutput(t *testing.T) {
 	}
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
 		t.Fatalf("failed Application retained output: %v", err)
+	}
+}
+
+func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testing.T) {
+	socket := filepath.Join(os.TempDir(), fmt.Sprintf("aho-cancel-%d.sock", time.Now().UnixNano()))
+	t.Cleanup(func() {
+		if err := os.Remove(socket); err != nil && !os.IsNotExist(err) {
+			t.Errorf("remove Unix socket: %v", err)
+		}
+		if _, err := os.Lstat(socket); !os.IsNotExist(err) {
+			t.Errorf("Unix socket residue: %v", err)
+		}
+	})
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socket, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	type peerSetup struct {
+		connection *net.UnixConn
+		err        error
+	}
+	peerReady := make(chan peerSetup, 1)
+	peerDone := make(chan struct{})
+	go func() {
+		defer close(peerDone)
+		defer close(peerReady)
+		connection, acceptErr := listener.AcceptUnix()
+		if acceptErr != nil {
+			peerReady <- peerSetup{err: acceptErr}
+			return
+		}
+		_ = connection.SetReadBuffer(4 << 10)
+		header := make([]byte, 6)
+		if _, err := io.ReadFull(connection, header); err != nil {
+			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
+			return
+		}
+		link := make([]byte, int(binary.BigEndian.Uint16(header[4:])))
+		if _, err := io.ReadFull(connection, link); err != nil {
+			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
+			return
+		}
+		if _, err := connection.Write([]byte{1}); err != nil {
+			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
+			return
+		}
+		response := []byte("partial response")
+		var frame [4]byte
+		binary.BigEndian.PutUint32(frame[:], uint32(len(response)))
+		if _, err := connection.Write(append(frame[:], response...)); err != nil {
+			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
+			return
+		}
+		if _, err := io.ReadFull(connection, frame[:]); err != nil {
+			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
+			return
+		}
+		length := binary.BigEndian.Uint32(frame[:])
+		if length == 0 {
+			peerReady <- peerSetup{err: errors.Join(errors.New("headless input closed before backpressure"), connection.Close())}
+			return
+		}
+		peerReady <- peerSetup{connection: connection}
+	}()
+	t.Cleanup(func() {
+		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			t.Errorf("close Unix listener: %v", err)
+		}
+		select {
+		case <-peerDone:
+		case <-time.After(time.Second):
+			t.Error("headless peer goroutine did not stop")
+		}
+	})
+	inputPath, outputPath := filepath.Join(t.TempDir(), "request"), filepath.Join(t.TempDir(), "response")
+	if err := os.WriteFile(inputPath, make([]byte, 8<<20), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		result <- runHeadlessOpen(ctx, socket, headlessTargetLink(t), inputPath, outputPath, io.Discard)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-runDone:
+		case <-time.After(time.Second):
+			t.Error("headless open goroutine did not stop")
+		}
+	})
+	var peer *net.UnixConn
+	select {
+	case setup := <-peerReady:
+		if setup.err != nil || setup.connection == nil {
+			t.Fatalf("headless peer setup: %v", setup.err)
+		}
+		peer = setup.connection
+	case <-time.After(time.Second):
+		t.Fatal("headless peer setup did not complete")
+	}
+	t.Cleanup(func() {
+		if err := peer.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			t.Errorf("close headless peer: %v", err)
+		}
+	})
+	select {
+	case err := <-result:
+		t.Fatalf("headless open completed before cancellation: %v", err)
+	default:
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("headless cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		_ = peer.Close()
+		t.Fatal("headless cancellation waited for the non-reading peer")
+	}
+	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
+		t.Fatalf("canceled headless open retained partial output: %v", err)
 	}
 }
 

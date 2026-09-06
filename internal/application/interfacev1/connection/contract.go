@@ -43,7 +43,9 @@ type Outcome struct {
 // most 16 KiB. CloseInput delivers EOF to the Service while preserving Read
 // for its response. The implementation must close the read direction and
 // publish exactly one non-empty Done result when the Service Connection
-// terminates. Close cancels only this attachment and must be safe after Done.
+// terminates. Write and CloseInput preserve their frame order, while Close may
+// run concurrently to interrupt either operation, joins the attachment's owned
+// work, and is safe to repeat after Done. The first terminal outcome is final.
 // Callers must not interpret EOF without the Done result as semantic success.
 type Stream interface {
 	io.ReadWriteCloser
