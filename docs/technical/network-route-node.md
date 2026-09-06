@@ -212,7 +212,9 @@ and confirmed removal. The operator contract is the
   supersedes their C0 Route/Entry selection,
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
   [ADR-0049](../adr/0049-defer-blocked-entry-profile.md) define the selected
-  native Route and Carrier facts. R-092 selects one measured
-  project-qualified dedicated-host Rendezvous closed-alpha profile. The
-  result does not select another duty or make public capacity, availability,
+  native Route and Carrier facts.
+- [R-092](../research/records/r-092-native-node-operating-profile.md) retains the
+  measured dedicated-host Rendezvous Functional Alpha result for its original
+  recorded candidate. That historical result does not qualify the current C0
+  candidate, select another duty, or establish public capacity, availability,
   co-resident, permissionless, or independent-operation claims.
