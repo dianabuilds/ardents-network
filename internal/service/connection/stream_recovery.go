@@ -87,6 +87,7 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 		cancel()
 		releaseTimer()
 		if err == nil {
+			stream.startSettledTerminalReplay()
 			return nil
 		}
 		last = err
@@ -128,6 +129,13 @@ func (stream *Stream) commitAttachment(failed, attachment *Attachment, peer Cont
 	}
 	if err := stream.acknowledgeLocked(peer.ReceiveNext); err != nil {
 		return err
+	}
+	// Continuity carries our ReceiveNext to the peer, so the replacement has
+	// already published every acknowledgement up to that offset. Replaying an
+	// older acknowledgement can otherwise outlive the peer's completed
+	// half-close and trigger a needless second recovery.
+	if stream.recvNext > stream.ackSent {
+		stream.ackSent = stream.recvNext
 	}
 	stream.current = attachment
 	stream.sendNext = stream.sendBase

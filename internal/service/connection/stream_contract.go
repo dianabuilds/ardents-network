@@ -130,16 +130,16 @@ type Stream struct {
 	lastProgress time.Time
 	ackSignal    chan struct{}
 
-	sendBase, sendEnd, sendNext uint64
-	sendData                    []byte
-	recvNext, recentAt          uint64
-	recent                      []byte
-	pending                     []receivedRange
-	ackPending, ackSent         uint64
-	queueMax                    uint32
-	localTerminal               bool
-	remoteTerminal              bool
-	terminalGeneration          uint64
+	sendBase, sendEnd, sendNext                                        uint64
+	sendData                                                           []byte
+	recvNext, recentAt                                                 uint64
+	recent                                                             []byte
+	pending                                                            []receivedRange
+	ackPending, ackSent                                                uint64
+	queueMax                                                           uint32
+	localTerminal, terminalSettled, terminalReplaying, terminalWriting bool
+	remoteTerminal                                                     bool
+	terminalGeneration                                                 uint64
 }
 
 type receivedRange struct {

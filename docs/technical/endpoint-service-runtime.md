@@ -197,6 +197,15 @@ later writes in its closed input direction. Cancellation, malformed local
 input, carrier loss, and full close remain abort paths, and neither local nor
 native EOF is semantic success without the one typed terminal outcome.
 
+A locally written Terminal is a directional completion obligation, not proof
+of peer receipt. If a replacement Attachment completes Continuity after that
+writer has returned, Service Connection owns replay: it first replays any
+unacknowledged Data at the carried offsets, then emits the same Terminal on the
+new generation. The peer still presents only its first verified Terminal as
+Application EOF. This preserves one logical half-close without reissuing an
+Application operation, inventing EOF on a timer, or enabling recovery in a
+headless path that did not supply an Attachment opener.
+
 The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
 write's complete frames precede the zero-length input-close frame; if the
 directional close wins, the later write is rejected. Full `Close` and lifetime

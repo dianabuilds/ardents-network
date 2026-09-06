@@ -139,9 +139,59 @@ func (stream *Stream) finishBoundedSend() error {
 			return terminal
 		}
 		if sent {
+			stream.mu.Lock()
+			stream.terminalSettled = true
+			stream.mu.Unlock()
 			return nil
 		}
 	}
+}
+
+// replaySettledTerminal preserves a completed local half-close when another
+// worker recovered its Attachment after the sender had already returned. A
+// successful local write does not prove the peer received that Terminal.
+func (stream *Stream) replaySettledTerminal() error {
+	for {
+		stream.mu.Lock()
+		replay := stream.localTerminal && stream.terminalSettled && stream.terminal == nil && stream.current != nil &&
+			stream.terminalGeneration != stream.current.generation
+		stream.mu.Unlock()
+		if !replay {
+			return nil
+		}
+		if err := stream.flushAvailable(); err != nil {
+			return err
+		}
+		if err := stream.ensureTerminal(); err != nil {
+			return err
+		}
+	}
+}
+
+// startSettledTerminalReplay keeps the receive worker available to consume the
+// peer's simultaneous terminal while this stream replays its own terminal on
+// a recovered Attachment.
+func (stream *Stream) startSettledTerminalReplay() {
+	stream.mu.Lock()
+	replay := stream.localTerminal && stream.terminalSettled && stream.terminal == nil && stream.current != nil &&
+		stream.terminalGeneration != stream.current.generation && !stream.terminalReplaying
+	if replay {
+		stream.terminalReplaying = true
+	}
+	stream.mu.Unlock()
+	if !replay {
+		return
+	}
+	go func() {
+		err := stream.replaySettledTerminal()
+		stream.mu.Lock()
+		stream.terminalReplaying = false
+		stream.cond.Broadcast()
+		stream.mu.Unlock()
+		if err != nil {
+			stream.fail(err)
+		}
+	}()
 }
 
 func (stream *Stream) ensureTerminal() error {
@@ -155,18 +205,22 @@ func (stream *Stream) ensureTerminal() error {
 		return stream.terminal
 	}
 	offset := stream.sendEnd
+	stream.terminalWriting = true
 	stream.mu.Unlock()
-	if err := stream.writeRecord(attachment, StreamRecord{Terminal: &Terminal{AttachmentGeneration: attachment.generation, Offset: offset}}); err != nil {
+	err = stream.writeRecord(attachment, StreamRecord{Terminal: &Terminal{AttachmentGeneration: attachment.generation, Offset: offset}})
+	stream.mu.Lock()
+	stream.terminalWriting = false
+	if err == nil && stream.current == attachment {
+		stream.terminalGeneration = attachment.generation
+	}
+	stream.cond.Broadcast()
+	stream.mu.Unlock()
+	if err != nil {
 		if recoverErr := stream.recoverAttachment(attachment); recoverErr != nil {
 			return errors.Join(errRecoveryTerminal, err, recoverErr)
 		}
 		return nil
 	}
-	stream.mu.Lock()
-	if stream.current == attachment {
-		stream.terminalGeneration = attachment.generation
-	}
-	stream.mu.Unlock()
 	return nil
 }
 
@@ -174,7 +228,8 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 	for {
 		stream.mu.Lock()
 		terminal := stream.terminal
-		complete := stream.remoteTerminal && stream.localTerminal && stream.sendBase == stream.sendEnd
+		complete := stream.remoteTerminal && stream.localTerminal && stream.current != nil &&
+			stream.terminalGeneration == stream.current.generation && stream.sendBase == stream.sendEnd
 		stream.mu.Unlock()
 		if terminal != nil {
 			return terminal
@@ -189,8 +244,16 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 		record, err := ReadStream(attachment.carrier)
 		if err != nil {
 			stream.mu.Lock()
-			complete = stream.remoteTerminal && stream.localTerminal && stream.sendBase == stream.sendEnd
+			for (stream.terminalReplaying || stream.terminalWriting) && stream.terminal == nil {
+				stream.cond.Wait()
+			}
+			terminal = stream.terminal
+			complete = stream.remoteTerminal && stream.localTerminal && stream.current != nil &&
+				stream.terminalGeneration == stream.current.generation && stream.sendBase == stream.sendEnd
 			stream.mu.Unlock()
+			if terminal != nil {
+				return terminal
+			}
 			if complete && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe)) {
 				return nil
 			}
