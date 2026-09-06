@@ -30,7 +30,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	}
 	if s.refreshing {
 		s.mu.Unlock()
-		return Snapshot{}, errors.New("network state refresh is already active")
+		return Snapshot{}, errRefreshActive
 	}
 	if !s.config.sourceInfo.Configured {
 		s.mu.Unlock()

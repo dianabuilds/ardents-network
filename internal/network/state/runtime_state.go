@@ -21,6 +21,7 @@ type networkState struct {
 	distribution    distributionState
 	storage         *durableRoot
 	serverDone      chan struct{}
+	automaticDone   chan struct{}
 	serverErr       error
 	automaticErr    error
 	resourceErr     error

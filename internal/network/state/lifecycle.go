@@ -3,43 +3,36 @@ package state
 import (
 	"context"
 	"errors"
-	"time"
 )
 
 // Wait reports terminal background-work failure or returns after ctx cancellation.
 func (s *networkState) Wait(ctx context.Context) error {
 	s.mu.RLock()
-	done, automatic := s.serverDone, s.config.automatic
+	serverDone, automaticDone, automatic := s.serverDone, s.automaticDone, s.config.automatic
 	s.mu.RUnlock()
-	if done == nil {
-		if automatic == 0 {
-			return errors.New("network state has no background work")
-		}
-		ticker := time.NewTicker(250 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-ticker.C:
-				if _, err := s.Current(); err != nil {
-					return err
-				}
-			}
-		}
+	if serverDone == nil && automatic == 0 {
+		return errors.New("network state has no background work")
 	}
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-done:
+	for serverDone != nil || automaticDone != nil {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-serverDone:
+			serverDone = nil
+		case <-automaticDone:
+			automaticDone = nil
+		}
 		s.mu.RLock()
-		err := errors.Join(s.serverErr, s.resourceErr)
+		err := errors.Join(s.serverErr, s.automaticErr, s.resourceErr)
 		s.mu.RUnlock()
 		if errors.Is(err, context.Canceled) {
 			return nil
 		}
-		return err
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // Close prevents further work through this Store and releases its root lease.

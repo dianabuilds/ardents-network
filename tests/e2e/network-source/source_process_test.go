@@ -66,21 +66,30 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 	defer stopFirst()
 	stopSecond := startSourceProcess(t, node, secondPlan)
 	defer stopSecond()
+	clockObservation := filepath.Join(t.TempDir(), "clock-observation")
+	now := time.Now()
+	if err := os.WriteFile(clockObservation, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(clockObservation, now, now); err != nil {
+		t.Fatal(err)
+	}
 
 	plan := map[string]any{
 		"schema": "ardents-source-plan-v1", "network_id": hex.EncodeToString(fixture.networkID[:]),
 		"local_role_state_root": endpointRoot + "-local-roles",
 		"authority_public":      []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
-		"clock_observed_at":     time.Now().UTC().Format(time.RFC3339),
+		"clock_observed_at": time.Now().UTC().Format(time.RFC3339), "clock_observation_file": clockObservation,
 		"order_seed":            hexDigest(sha256.Sum256([]byte("black-box-source-order"))),
-		"materialization_index": 0, "client_certificate": client.certificatePath, "client_key": client.keyPath,
+		"materialization_index": 0, "refresh_interval_ms": 1000,
+		"client_certificate": client.certificatePath, "client_key": client.keyPath,
 		"sources": []map[string]any{
 			processSourcePlan(firstAddress, "first-source.test", "first", firstAuthority.rootPath, firstServer.pin),
 			processSourcePlan(secondAddress, "second-source.test", "second", secondAuthority.rootPath, secondServer.pin),
 		},
 	}
 	planPath := writeProcessJSON(t, "endpoint-source-plan.json", plan)
-	command := exec.Command(ardents, "refresh-sources", "--state-root", endpointRoot, "--source-plan", planPath)
+	command := exec.Command(ardents, "refresh-sources", "--once", "--state-root", endpointRoot, "--source-plan", planPath)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("refresh source processes: %v\n%s", err, output)
