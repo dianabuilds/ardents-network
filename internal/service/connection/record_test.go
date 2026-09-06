@@ -37,7 +37,9 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 	}
 	records := []Record{{Challenge: &challenge}, {Proof: &Proof{ChallengeDigest: digest, Signature: signature}},
 		{Continuity: &continuity}, {Data: &Data{AttachmentGeneration: 2, Offset: 3, Payload: []byte{1, 2}}},
-		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 5}}, {Terminal: &Terminal{AttachmentGeneration: 2, Offset: 6}}}
+		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 5}},
+		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 6, Terminal: true}},
+		{Terminal: &Terminal{AttachmentGeneration: 2, Offset: 6}}}
 	for _, record := range records {
 		var wire bytes.Buffer
 		if err := Write(&wire, record); err != nil {
@@ -56,7 +58,7 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 			t.Fatal("Continuity kind changed")
 		case record.Data != nil && (parsed.Data == nil || !bytes.Equal(parsed.Data.Payload, record.Data.Payload)):
 			t.Fatal("Data payload changed")
-		case record.Acknowledgement != nil && parsed.Acknowledgement == nil:
+		case record.Acknowledgement != nil && (parsed.Acknowledgement == nil || parsed.Acknowledgement.Terminal != record.Acknowledgement.Terminal):
 			t.Fatal("Acknowledgement kind changed")
 		case record.Terminal != nil && parsed.Terminal == nil:
 			t.Fatal("Terminal kind changed")

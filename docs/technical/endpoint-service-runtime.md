@@ -198,10 +198,12 @@ input, carrier loss, and full close remain abort paths, and neither local nor
 native EOF is semantic success without the one typed terminal outcome.
 
 A locally written Terminal is a directional completion obligation, not proof
-of peer receipt. If a replacement Attachment completes Continuity after that
-writer has returned, Service Connection owns replay: it first replays any
-unacknowledged Data at the carried offsets, then emits the same Terminal on the
-new generation. The peer still presents only its first verified Terminal as
+of peer receipt. A Terminal Acknowledgement is the only receipt proof: it
+names the same generation and offset and is sent only after the peer verifies
+that Terminal. If a replacement Attachment completes Continuity before that
+receipt, Service Connection owns replay: it first replays any unacknowledged
+Data at the carried offsets, then emits the same Terminal on the new
+generation. The peer still presents only its first verified Terminal as
 Application EOF. This preserves one logical half-close without reissuing an
 Application operation, inventing EOF on a timer, or enabling recovery in a
 headless path that did not supply an Attachment opener.

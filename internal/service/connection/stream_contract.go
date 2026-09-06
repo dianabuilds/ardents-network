@@ -136,10 +136,12 @@ type Stream struct {
 	recent                                                             []byte
 	pending                                                            []receivedRange
 	ackPending, ackSent                                                uint64
+	terminalAckPending, terminalAckSent                                bool
 	queueMax                                                           uint32
 	localTerminal, terminalSettled, terminalReplaying, terminalWriting bool
 	remoteTerminal                                                     bool
 	terminalGeneration                                                 uint64
+	terminalAcknowledgedGeneration                                     uint64
 }
 
 type receivedRange struct {

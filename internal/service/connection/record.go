@@ -187,7 +187,11 @@ func recordPayload(record Record) (byte, []byte, error) {
 		if value.AttachmentGeneration == 0 {
 			return 0, nil, errors.New("native Acknowledgement is invalid")
 		}
-		return kindAcknowledgement, connectionOffset(value.AttachmentGeneration, value.Offset), nil
+		payload := connectionOffset(value.AttachmentGeneration, value.Offset)
+		if value.Terminal {
+			payload = append(payload, 1)
+		}
+		return kindAcknowledgement, payload, nil
 	case record.Terminal != nil:
 		value := record.Terminal
 		if value.AttachmentGeneration == 0 {
@@ -257,11 +261,16 @@ func decodeRecord(body []byte) (Record, error) {
 		}
 		return Record{Data: value}, nil
 	case kindAcknowledgement:
+		terminal := false
+		if len(payload) == 17 {
+			terminal = payload[16] == 1
+			payload = payload[:16]
+		}
 		value, err := decodeOffset(payload, "Acknowledgement")
 		if err != nil {
 			return Record{}, err
 		}
-		return Record{Acknowledgement: &Acknowledgement{AttachmentGeneration: value[0], Offset: value[1]}}, nil
+		return Record{Acknowledgement: &Acknowledgement{AttachmentGeneration: value[0], Offset: value[1], Terminal: terminal}}, nil
 	case kindTerminal:
 		value, err := decodeOffset(payload, "Terminal")
 		if err != nil {

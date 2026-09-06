@@ -89,10 +89,12 @@ type Data struct {
 	Payload              []byte
 }
 
-// Acknowledgement advances one logical send acknowledgement.
+// Acknowledgement advances one logical send acknowledgement. Terminal marks
+// that the peer also verified the directional Terminal at this same offset.
 type Acknowledgement struct {
 	AttachmentGeneration uint64
 	Offset               uint64
+	Terminal             bool
 }
 
 // Terminal closes one attachment at the exact received logical offset.
