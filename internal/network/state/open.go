@@ -10,6 +10,10 @@ import (
 
 // Open recovers one state root and verifies any current generation before use.
 func Open(input Config) (*networkState, error) {
+	return open(input, nil, nil)
+}
+
+func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (*networkState, error) {
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return nil, err
@@ -36,7 +40,7 @@ func Open(input Config) (*networkState, error) {
 	}()
 	runtime := &networkState{config: resolved, storage: storage, workContext: workContext,
 		workCancel: workCancel, resourceGuard: guard}
-	if err := runtime.recover(workContext); err != nil {
+	if err := runtime.recover(workContext, automaticTicks, automaticResults); err != nil {
 		return nil, err
 	}
 	opened = true
@@ -57,7 +61,7 @@ func openResourceGuard(profile string) (*resource.Guard, error) {
 	return guard, nil
 }
 
-func (s *networkState) recover(workContext context.Context) error {
+func (s *networkState) recover(workContext context.Context, automaticTicks <-chan time.Time, automaticResults chan<- error) error {
 	current, decision, err := loadCurrent(s.config, s.storage)
 	if err != nil {
 		return err
@@ -70,8 +74,12 @@ func (s *networkState) recover(workContext context.Context) error {
 		return err
 	}
 	if s.config.automatic > 0 {
+		s.automaticDone = make(chan struct{})
 		s.work.Add(1)
-		go s.runAutomaticRefresh(workContext)
+		go func() {
+			defer close(s.automaticDone)
+			s.runAutomaticRefresh(workContext, automaticTicks, automaticResults)
+		}()
 	}
 	if s.config.profile == "h3-s-v1" {
 		s.work.Add(1)

@@ -39,6 +39,14 @@ evidence, and refuses later admission or automatic winner selection. Reopen
 recovers the same current/pending/conflict relation before State-dependent work
 can proceed.
 
+State also owns the one active Source wave across bootstrap, caller-requested,
+and automatic refresh. An automatic tick that arrives while that wave is active
+is non-terminal and leaves the existing wave and scheduler live; it neither
+publishes a second result nor records a State failure. A completed or rejected
+wave still follows the normal availability, clock-confidence, and durable
+admission rules, and an actual terminal automatic-refresh failure remains
+visible to `Current` and `Wait`.
+
 ## Native Route profile
 
 The selected Route profile is ardents-interactive-route-v2. EntryBinding binds
