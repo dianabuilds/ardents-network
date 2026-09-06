@@ -18,9 +18,10 @@ const (
 var (
 	// ErrActiveViolation means a peer contradicted the authenticated logical
 	// stream, so the connection must fail closed rather than try another Route.
-	ErrActiveViolation   = errors.New("detected Service Connection integrity violation")
-	errRecoveryTerminal  = errors.New("service Connection recovery terminated")
-	errWorkSafetyExpired = errors.New("authenticated Work Safety expired")
+	ErrActiveViolation     = errors.New("detected Service Connection integrity violation")
+	errRecoveryTerminal    = errors.New("service Connection recovery terminated")
+	errWorkSafetyExpired   = errors.New("authenticated Work Safety expired")
+	errTerminalTailExpired = errors.New("terminal-control recovery period expired")
 )
 
 // Attachment is one already-authenticated Route byte carrier. TLS and Route
@@ -130,21 +131,27 @@ type Stream struct {
 	lastProgress time.Time
 	ackSignal    chan struct{}
 
-	sendBase, sendEnd, sendNext                                        uint64
-	sendData                                                           []byte
-	recvNext, recentAt                                                 uint64
-	recent                                                             []byte
-	pending                                                            []receivedRange
-	ackPending, ackSent                                                uint64
-	terminalAckPending, terminalAckSent                                bool
-	terminalAckPendingGeneration, terminalAckGeneration                uint64
-	queueMax                                                           uint32
-	localTerminal, terminalSettled, terminalReplaying, terminalWriting bool
-	remoteTerminal                                                     bool
-	terminalGeneration                                                 uint64
-	terminalWritingGeneration                                          uint64
-	terminalOffset                                                     uint64
-	terminalAcknowledgedGeneration                                     uint64
+	sendBase, sendEnd, sendNext                                            uint64
+	sendData                                                               []byte
+	recvNext, recentAt                                                     uint64
+	recent                                                                 []byte
+	pending                                                                []receivedRange
+	ackPending, ackSent                                                    uint64
+	terminalAckPending, terminalAckSent, terminalAckWriting                bool
+	terminalAckPendingGeneration, terminalAckGeneration, terminalAckOffset uint64
+	terminalAckWritingGeneration, terminalAckWritingOffset                 uint64
+	terminalAckConfirmedGeneration                                         uint64
+	terminalConfirmationPending, terminalConfirmationSent                  bool
+	terminalConfirmationGeneration, terminalConfirmationOffset             uint64
+	queueMax                                                               uint32
+	localTerminal, terminalSettled, terminalReplaying, terminalWriting     bool
+	remoteTerminal                                                         bool
+	terminalGeneration                                                     uint64
+	terminalWritingGeneration                                              uint64
+	terminalOffset                                                         uint64
+	terminalAcknowledgedGeneration                                         uint64
+	postClose                                                              bool
+	applicationWriting                                                     bool
 }
 
 type receivedRange struct {

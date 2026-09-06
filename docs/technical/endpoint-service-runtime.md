@@ -199,16 +199,29 @@ native EOF is semantic success without the one typed terminal outcome.
 
 A locally written Terminal is a directional completion obligation, not proof
 of peer receipt. Under the closed Service Connection v2 grammar selected by
-[ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md), a Terminal
-Acknowledgement is the only receipt proof: it names the same generation and
-offset and is sent only after the peer verifies that Terminal. If a replacement
-Attachment completes Continuity before that receipt, Service Connection owns
-replay: it first replays any unacknowledged Data at the carried offsets, then
-emits the same Terminal on the new generation. The peer still presents only
-its first verified Terminal as Application EOF. This preserves one logical
-half-close without reissuing an Application operation or inventing EOF on a
-timer. A headless path that did not supply an Attachment opener retains its
-existing orderly half-close and does not enable recovery.
+[ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md), marker `1`
+is a Terminal receipt: it names the same generation and offset and is sent only
+after the peer verifies that Terminal. Marker `2` confirms the peer observed
+that receipt; the receiving endpoint retains recovery ownership until it has
+that matching confirmation. If a replacement Attachment completes Continuity
+before either control record, Service Connection owns replay: it first replays
+any unacknowledged Data at the carried offsets, then emits the same Terminal on
+the new generation. The peer still presents only its first verified Terminal as
+Application EOF. This preserves one logical half-close without reissuing an
+Application operation or inventing EOF on a timer. A headless path that did not
+supply an Attachment opener retains its existing orderly half-close and does
+not enable recovery.
+
+The endpoint that sends marker `2` cannot learn from a finite record whether
+the peer received that final confirmation. After a successful `RunBounded`
+outcome, a recovery-enabled Service Connection therefore retains a bounded
+in-memory post-close tail until the operation Context, authenticated Work
+Safety deadline, or no-new-recovery boundary ends it. That tail owns only the
+already-settled Terminal and receipt-control replay; it accepts no Application
+Data and never presents another Application EOF. Thus the caller's completed
+Application operation is released while a returned peer can still recover the
+missing final control proof. The tail adds neither durable recovery state nor a
+headless recovery path.
 
 The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
 write's complete frames precede the zero-length input-close frame; if the

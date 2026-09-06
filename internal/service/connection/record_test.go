@@ -39,6 +39,7 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 		{Continuity: &continuity}, {Data: &Data{AttachmentGeneration: 2, Offset: 3, Payload: []byte{1, 2}}},
 		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 5}},
 		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 6, Terminal: true}},
+		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 6, Terminal: true, TerminalConfirmation: true}},
 		{Terminal: &Terminal{AttachmentGeneration: 2, Offset: 6}}}
 	for _, record := range records {
 		var wire bytes.Buffer
@@ -58,7 +59,8 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 			t.Fatal("Continuity kind changed")
 		case record.Data != nil && (parsed.Data == nil || !bytes.Equal(parsed.Data.Payload, record.Data.Payload)):
 			t.Fatal("Data payload changed")
-		case record.Acknowledgement != nil && (parsed.Acknowledgement == nil || parsed.Acknowledgement.Terminal != record.Acknowledgement.Terminal):
+		case record.Acknowledgement != nil && (parsed.Acknowledgement == nil || parsed.Acknowledgement.Terminal != record.Acknowledgement.Terminal ||
+			parsed.Acknowledgement.TerminalConfirmation != record.Acknowledgement.TerminalConfirmation):
 			t.Fatal("Acknowledgement kind changed")
 		case record.Terminal != nil && parsed.Terminal == nil:
 			t.Fatal("Terminal kind changed")
@@ -111,9 +113,19 @@ func TestNativeRecordRejectsUnknownTerminalAcknowledgementMarker(t *testing.T) {
 		t.Fatal(err)
 	}
 	encoded := append([]byte(nil), wire.Bytes()...)
-	encoded[len(encoded)-1] = 2
+	encoded[len(encoded)-1] = 3
 	if _, err := Read(bytes.NewReader(encoded)); err == nil {
 		t.Fatal("unknown Terminal Acknowledgement marker was accepted")
+	}
+}
+
+func TestNativeRecordRejectsBareTerminalAcknowledgementConfirmation(t *testing.T) {
+	var wire bytes.Buffer
+	err := Write(&wire, Record{Acknowledgement: &Acknowledgement{
+		AttachmentGeneration: 2, Offset: 6, TerminalConfirmation: true,
+	}})
+	if err == nil {
+		t.Fatal("bare Terminal Acknowledgement confirmation was accepted")
 	}
 }
 

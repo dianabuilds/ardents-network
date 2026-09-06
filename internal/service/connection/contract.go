@@ -95,6 +95,7 @@ type Acknowledgement struct {
 	AttachmentGeneration uint64
 	Offset               uint64
 	Terminal             bool
+	TerminalConfirmation bool
 }
 
 // Terminal closes one attachment at the exact received logical offset.

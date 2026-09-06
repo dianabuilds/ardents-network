@@ -12,10 +12,21 @@ import (
 // existing authenticated Terminal record at its exact logical offset; it is a
 // normal half-close rather than an exact-workload failure.
 func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error) {
-	defer close(stream.done)
 	stream.watchNameOrigin()
 	stop := context.AfterFunc(stream.ctx, func() { stream.fail(stream.ctx.Err()) })
-	defer stop()
+	var releaseSafety func()
+	tail := false
+	defer func() {
+		if tail {
+			return
+		}
+		stop()
+		if releaseSafety != nil {
+			releaseSafety()
+		}
+		close(stream.done)
+		stream.close()
+	}()
 	if err := stream.establishInitialAttachment(); err != nil {
 		stream.fail(err)
 		return stream.outcome(), err
@@ -24,27 +35,50 @@ func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error
 		remaining := time.Unix(stream.recovery.WorkSafetyNotAfter, 0).Sub(stream.authorizationTime())
 		releaseTimer := acquireResource(stream.resources, "timer")
 		safetyTimer := time.AfterFunc(remaining, func() { stream.fail(errWorkSafetyExpired) })
-		defer func() {
+		releaseSafety = func() {
 			safetyTimer.Stop()
 			releaseTimer()
-		}()
+		}
 	}
-	defer stream.close()
-	dataResults := make(chan error, 2)
+	sendResult := make(chan error, 1)
+	receiveResult := make(chan error, 1)
 	ackResult := make(chan error, 1)
-	go func() { dataResults <- stream.sendApplicationBounded(uint64(sendLimit)) }()
-	go func() { dataResults <- stream.receiveApplicationBounded(uint64(receiveLimit)) }()
+	go func() { sendResult <- stream.sendApplicationBounded(uint64(sendLimit)) }()
+	go func() {
+		err := stream.receiveApplicationBounded(uint64(receiveLimit))
+		if err != nil {
+			stream.fail(err)
+		}
+		receiveResult <- err
+	}()
 	go func() { ackResult <- stream.sendBoundedAcknowledgements() }()
-	first := <-dataResults
-	if first != nil {
-		stream.fail(first)
+	var sendErr, receiveErr, acknowledgementErr error
+	sendDone, receiveDone, acknowledgementDone := false, false, false
+	for !sendDone || !acknowledgementDone {
+		select {
+		case sendErr = <-sendResult:
+			sendDone = true
+			if sendErr != nil {
+				stream.fail(sendErr)
+			}
+		case receiveErr = <-receiveResult:
+			receiveDone = true
+			if receiveErr != nil {
+				stream.fail(receiveErr)
+			}
+		case acknowledgementErr = <-ackResult:
+			acknowledgementDone = true
+			if acknowledgementErr != nil {
+				stream.fail(acknowledgementErr)
+			}
+		}
 	}
-	second := <-dataResults
-	dataErr := errors.Join(first, second)
-	if dataErr != nil {
-		stream.fail(dataErr)
+	err := errors.Join(sendErr, receiveErr, acknowledgementErr)
+	if err != nil && !receiveDone {
+		receiveErr = <-receiveResult
+		receiveDone = true
+		err = errors.Join(sendErr, receiveErr, acknowledgementErr)
 	}
-	err := errors.Join(dataErr, <-ackResult)
 	outcome := stream.outcome()
 	if err == nil && outcome.Acknowledged != outcome.Accepted {
 		err = errors.New("bounded Application stream closed before its final bytes were acknowledged")
@@ -54,6 +88,26 @@ func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error
 		err = stream.terminal
 	}
 	stream.mu.Unlock()
+	if err == nil {
+		tailSafety := releaseSafety
+		tailReceiver := receiveResult
+		if receiveDone {
+			tailReceiver = nil
+		}
+		tail = stream.startTerminalTail(func() {
+			stop()
+			if tailSafety != nil {
+				tailSafety()
+			}
+		}, tailReceiver)
+		if tail {
+			releaseSafety = nil
+		}
+	}
+	if !tail && !receiveDone {
+		receiveErr = <-receiveResult
+		err = errors.Join(err, receiveErr)
+	}
 	return outcome, err
 }
 
@@ -152,93 +206,6 @@ func (stream *Stream) finishBoundedSend() error {
 	}
 }
 
-// replaySettledTerminal preserves a completed local half-close when another
-// worker recovered its Attachment after the sender had already returned. A
-// successful local write does not prove the peer received that Terminal.
-func (stream *Stream) replaySettledTerminal() error {
-	for {
-		stream.mu.Lock()
-		replay := stream.localTerminal && stream.terminalSettled && stream.terminalAcknowledgedGeneration == 0 &&
-			stream.terminal == nil && stream.current != nil && stream.terminalGeneration != stream.current.generation
-		stream.mu.Unlock()
-		if !replay {
-			return nil
-		}
-		if err := stream.flushAvailable(); err != nil {
-			return err
-		}
-		if err := stream.ensureTerminal(); err != nil {
-			return err
-		}
-	}
-}
-
-// startSettledTerminalReplay keeps the receive worker available to consume the
-// peer's simultaneous terminal while this stream replays its own terminal on
-// a recovered Attachment.
-func (stream *Stream) startSettledTerminalReplay() {
-	stream.mu.Lock()
-	replay := stream.localTerminal && stream.terminalSettled && stream.terminalAcknowledgedGeneration == 0 &&
-		stream.terminal == nil && stream.current != nil && stream.terminalGeneration != stream.current.generation && !stream.terminalReplaying
-	if replay {
-		stream.terminalReplaying = true
-	}
-	stream.mu.Unlock()
-	if !replay {
-		return
-	}
-	go func() {
-		err := stream.replaySettledTerminal()
-		stream.mu.Lock()
-		stream.terminalReplaying = false
-		stream.cond.Broadcast()
-		stream.mu.Unlock()
-		if err != nil {
-			stream.fail(err)
-		}
-	}()
-}
-
-func (stream *Stream) ensureTerminal() error {
-	attachment, err := stream.attachment()
-	if err != nil {
-		return err
-	}
-	stream.mu.Lock()
-	if !stream.localTerminal || stream.terminal != nil || stream.terminalGeneration == attachment.generation {
-		stream.mu.Unlock()
-		return stream.terminal
-	}
-	offset := stream.sendEnd
-	stream.terminalWriting = true
-	stream.terminalWritingGeneration = attachment.generation
-	stream.terminalOffset = offset
-	stream.mu.Unlock()
-	err = stream.writeRecord(attachment, StreamRecord{Terminal: &Terminal{AttachmentGeneration: attachment.generation, Offset: offset}})
-	if err != nil {
-		// Keep terminalWriting true until this worker has either acquired or
-		// joined recovery. A read worker that closed the failed carrier waits
-		// on that ownership boundary instead of racing a second proposal.
-		recoverErr := stream.recoverAttachment(attachment)
-		stream.mu.Lock()
-		stream.terminalWriting = false
-		stream.cond.Broadcast()
-		stream.mu.Unlock()
-		if recoverErr != nil {
-			return errors.Join(errRecoveryTerminal, err, recoverErr)
-		}
-		return nil
-	}
-	stream.mu.Lock()
-	stream.terminalWriting = false
-	if stream.current == attachment {
-		stream.terminalGeneration = attachment.generation
-	}
-	stream.cond.Broadcast()
-	stream.mu.Unlock()
-	return nil
-}
-
 func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 	for {
 		stream.mu.Lock()
@@ -296,21 +263,45 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 			return ErrActiveViolation
 		}
 		if generation != attachment.generation {
-			return ErrActiveViolation
+			return errors.Join(ErrActiveViolation, errors.New("record names a stale Service Connection Attachment"))
 		}
 		switch {
 		case record.Acknowledgement != nil:
 			stream.mu.Lock()
+			if record.Acknowledgement.TerminalConfirmation {
+				receiptSent := stream.terminalAckSent &&
+					record.Acknowledgement.AttachmentGeneration == stream.terminalAckGeneration &&
+					offset == stream.terminalAckOffset
+				receiptWriting := stream.terminalAckWriting &&
+					record.Acknowledgement.AttachmentGeneration == stream.terminalAckWritingGeneration &&
+					offset == stream.terminalAckWritingOffset
+				valid := stream.remoteTerminal && stream.terminalAckPending && (receiptSent || receiptWriting)
+				if valid {
+					stream.terminalAckConfirmedGeneration = record.Acknowledgement.AttachmentGeneration
+				}
+				stream.mu.Unlock()
+				if !valid {
+					return errors.Join(ErrActiveViolation, errors.New("Terminal receipt confirmation does not match a sent receipt"))
+				}
+				stream.signalAcknowledgement()
+				continue
+			}
 			terminalReceipt := record.Acknowledgement.Terminal && stream.localTerminal && offset == stream.terminalOffset &&
 				(record.Acknowledgement.AttachmentGeneration == stream.terminalGeneration ||
 					(stream.terminalWriting && record.Acknowledgement.AttachmentGeneration == stream.terminalWritingGeneration))
 			if record.Acknowledgement.Terminal && !terminalReceipt {
 				stream.mu.Unlock()
-				return ErrActiveViolation
+				return errors.Join(ErrActiveViolation, errors.New("Terminal receipt does not match a local Terminal"))
 			}
 			err = stream.acknowledgeLocked(offset)
 			if err == nil && terminalReceipt {
 				stream.terminalAcknowledgedGeneration = record.Acknowledgement.AttachmentGeneration
+				if stream.opener != nil {
+					stream.terminalConfirmationPending = true
+					stream.terminalConfirmationSent = false
+					stream.terminalConfirmationGeneration = record.Acknowledgement.AttachmentGeneration
+					stream.terminalConfirmationOffset = offset
+				}
 			}
 			stream.mu.Unlock()
 			stream.signalAcknowledgement()
@@ -330,11 +321,12 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 					stream.terminalAckPending = true
 					stream.terminalAckSent = false
 					stream.terminalAckPendingGeneration = attachment.generation
+					stream.terminalAckOffset = offset
 				}
 			}
 			stream.mu.Unlock()
 			if !valid {
-				return ErrActiveViolation
+				return errors.Join(ErrActiveViolation, errors.New("Terminal does not match the received logical offset"))
 			}
 			if firstTerminal {
 				if closeApplication {
@@ -384,23 +376,50 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 			stream.mu.Lock()
 			terminal := stream.terminalAckPending && !stream.terminalAckSent &&
 				stream.terminalAckPendingGeneration == attachment.generation
+			confirmation := !terminal && stream.terminalConfirmationPending && !stream.terminalConfirmationSent &&
+				stream.terminalConfirmationGeneration == attachment.generation
+			if confirmation {
+				offset = stream.terminalConfirmationOffset
+			}
+			if terminal {
+				stream.terminalAckWriting = true
+				stream.terminalAckWritingGeneration = attachment.generation
+				stream.terminalAckWritingOffset = offset
+			}
 			stream.mu.Unlock()
-			if offset <= already && !terminal {
+			if offset <= already && !terminal && !confirmation {
 				break
 			}
-			if err := stream.writeRecord(attachment, StreamRecord{Acknowledgement: &Acknowledgement{AttachmentGeneration: attachment.generation, Offset: offset, Terminal: terminal}}); err != nil {
+			if err := stream.writeRecord(attachment, StreamRecord{Acknowledgement: &Acknowledgement{
+				AttachmentGeneration: attachment.generation, Offset: offset, Terminal: terminal || confirmation,
+				TerminalConfirmation: confirmation,
+			}}); err != nil {
+				if terminal {
+					stream.mu.Lock()
+					if stream.terminalAckWritingGeneration == attachment.generation && stream.terminalAckWritingOffset == offset {
+						stream.terminalAckWriting = false
+					}
+					stream.mu.Unlock()
+				}
 				if recoverErr := stream.recoverAttachment(attachment); recoverErr != nil {
 					return errors.Join(errRecoveryTerminal, err, recoverErr)
 				}
 				continue
 			}
 			stream.mu.Lock()
-			if offset > stream.ackSent {
+			if !confirmation && offset > stream.ackSent {
 				stream.ackSent = offset
+			}
+			if terminal && stream.terminalAckWritingGeneration == attachment.generation &&
+				stream.terminalAckWritingOffset == offset {
+				stream.terminalAckWriting = false
 			}
 			if terminal && stream.current == attachment {
 				stream.terminalAckSent = true
 				stream.terminalAckGeneration = attachment.generation
+			}
+			if confirmation && stream.current == attachment {
+				stream.terminalConfirmationSent = true
 			}
 			stream.mu.Unlock()
 		}
@@ -408,11 +427,13 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 }
 
 func (stream *Stream) boundedReceiveCompleteLocked() bool {
-	return stream.remoteTerminal && stream.localTerminal && stream.sendBase == stream.sendEnd &&
-		(stream.opener == nil || stream.terminalAcknowledgedGeneration != 0)
+	return !stream.postClose && stream.remoteTerminal && stream.localTerminal && stream.sendBase == stream.sendEnd &&
+		(stream.opener == nil || stream.terminalAcknowledgedGeneration != 0) &&
+		(!stream.terminalAckPending || (stream.terminalAckSent &&
+			stream.terminalAckConfirmedGeneration == stream.terminalAckGeneration))
 }
 
 func (stream *Stream) boundedAcknowledgementCompleteLocked() bool {
 	return stream.boundedReceiveCompleteLocked() && stream.ackSent >= stream.ackPending &&
-		(!stream.terminalAckPending || stream.terminalAckSent)
+		(!stream.terminalConfirmationPending || stream.terminalConfirmationSent)
 }

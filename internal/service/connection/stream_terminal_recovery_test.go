@@ -20,6 +20,143 @@ func TestRunBoundedReplaysUnacknowledgedDataBeforeTerminalDuringConcurrentHalfCl
 	runTerminalRecoveryJourney(t, true, true, 2, 1)
 }
 
+func TestRunBoundedRecoversLostTerminalReceipt(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	clientCarrier, publisherCarrier, fault := newTerminalFaultAdapter(t, terminalFault{dropPublisherReceipt: true})
+	defer fault.Close()
+	freshClient, freshPublisher := net.Pipe()
+	defer freshClient.Close()
+	defer freshPublisher.Close()
+	clientApplication, clientUser := countingHalfClosePair()
+	publisherApplication, publisherUser := countingHalfClosePair()
+	defer clientUser.Close()
+	defer publisherUser.Close()
+	connectionContext, exporter, key := [32]byte{1}, [32]byte{2}, [32]byte{3}
+	deadline := time.Now().Add(time.Minute).Unix()
+	var clientOpened, publisherOpened atomic.Int32
+	client, err := NewStream(StreamConfig{Context: ctx, Application: clientApplication,
+		Initial:       terminalRecoveryAttachment(t, clientCarrier, 1, connectionContext, exporter),
+		ContinuityKey: key, Authorized: time.Now(), Client: true, Recovery: Recovery{NoNewRecoveryAfter: deadline},
+		OpenAttachment: func(context.Context, Recovery) (*Attachment, error) {
+			clientOpened.Add(1)
+			return terminalRecoveryAttachment(t, freshClient, 2, connectionContext, exporter), nil
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, err := NewStream(StreamConfig{Context: ctx, Application: publisherApplication,
+		Initial:       terminalRecoveryAttachment(t, publisherCarrier, 1, connectionContext, exporter),
+		ContinuityKey: key, Authorized: time.Now(), Recovery: Recovery{NoNewRecoveryAfter: deadline},
+		OpenAttachment: func(context.Context, Recovery) (*Attachment, error) {
+			publisherOpened.Add(1)
+			return terminalRecoveryAttachment(t, freshPublisher, 2, connectionContext, exporter), nil
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	type result struct {
+		name    string
+		outcome Outcome
+		err     error
+	}
+	results := make(chan result, 2)
+	go func() { outcome, runErr := client.RunBounded(64, 64); results <- result{"client", outcome, runErr} }()
+	go func() {
+		outcome, runErr := publisher.RunBounded(64, 64)
+		results <- result{"publisher", outcome, runErr}
+	}()
+	publisherRequest := make(chan struct {
+		data []byte
+		err  error
+	}, 1)
+	go func() {
+		data, readErr := io.ReadAll(publisherUser)
+		publisherRequest <- struct {
+			data []byte
+			err  error
+		}{data, readErr}
+	}()
+	response := make(chan struct {
+		data []byte
+		err  error
+	}, 1)
+	go func() {
+		data, readErr := io.ReadAll(clientUser)
+		response <- struct {
+			data []byte
+			err  error
+		}{data, readErr}
+	}()
+	publisherWrite := make(chan error, 1)
+	go writeTerminalRecoveryResponse(publisherUser, publisherWrite)
+	select {
+	case received := <-response:
+		if received.err != nil || string(received.data) != "response" {
+			t.Fatalf("client response before receipt loss = %q, %v", received.data, received.err)
+		}
+	case <-ctx.Done():
+		t.Fatal("client did not receive the publisher Terminal")
+	}
+	if err := <-publisherWrite; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-fault.terminalReceipt:
+	case <-ctx.Done():
+		t.Fatal("publisher did not receive the first Terminal receipt")
+	}
+	if _, err := clientUser.Write([]byte("request")); err != nil {
+		t.Fatal(err)
+	}
+	if err := clientUser.CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-fault.dropped:
+	case <-ctx.Done():
+		t.Fatal("fault adapter did not drop the publisher Terminal receipt")
+	}
+	select {
+	case received := <-publisherRequest:
+		if received.err != nil || string(received.data) != "request" {
+			t.Fatalf("publisher request after receipt recovery = %q, %v", received.data, received.err)
+		}
+	case <-ctx.Done():
+		t.Fatal("publisher did not receive the recovered request Terminal")
+	}
+	for range 2 {
+		select {
+		case result := <-results:
+			if result.err != nil || result.outcome.Generation != 2 || result.outcome.Recoveries != 1 {
+				t.Fatalf("%s stream result = %+v, %v; client=%s publisher=%s", result.name, result.outcome, result.err,
+					terminalRecoveryState(client), terminalRecoveryState(publisher))
+			}
+		case <-ctx.Done():
+			t.Fatalf("receipt recovery stalled: client=%s publisher=%s", terminalRecoveryState(client), terminalRecoveryState(publisher))
+		}
+	}
+	if clientOpened.Load() != 1 || publisherOpened.Load() != 1 {
+		t.Fatalf("replacement attachments = client %d publisher %d", clientOpened.Load(), publisherOpened.Load())
+	}
+	for _, stream := range []*Stream{client, publisher} {
+		stream.mu.Lock()
+		postClose := stream.postClose && stream.terminal == nil
+		stream.mu.Unlock()
+		if !postClose {
+			t.Fatalf("successful stream did not retain the terminal-control tail: %s", terminalRecoveryState(stream))
+		}
+	}
+	cancel()
+	for _, stream := range []*Stream{client, publisher} {
+		select {
+		case <-stream.done:
+		case <-t.Context().Done():
+			t.Fatalf("terminal-control tail did not release after cancellation: %s", terminalRecoveryState(stream))
+		}
+	}
+}
+
 func TestReplaySettledTerminalReplaysOutstandingDataBeforeTerminal(t *testing.T) {
 	writer, reader := net.Pipe()
 	defer writer.Close()
@@ -58,7 +195,7 @@ func runTerminalRecoveryJourney(t *testing.T, dropUnacknowledgedData, concurrent
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	clientCarrier, publisherCarrier, fault := newTerminalFaultAdapter(t, dropUnacknowledgedData)
+	clientCarrier, publisherCarrier, fault := newTerminalFaultAdapter(t, terminalFault{dropData: dropUnacknowledgedData, dropClientTerminal: true})
 	defer fault.Close()
 	freshClient, freshPublisher := net.Pipe()
 	defer freshClient.Close()
@@ -162,7 +299,8 @@ func runTerminalRecoveryJourney(t *testing.T, dropUnacknowledgedData, concurrent
 			t.Fatalf("concurrent client response = %q, %v", clientResponse, err)
 		}
 	} else if _, err := io.ReadFull(clientUser, clientResponse); err != nil || string(clientResponse) != "response" {
-		t.Fatalf("client response after recovered request EOF = %q, %v", clientResponse, err)
+		t.Fatalf("client response after recovered request EOF = %q, %v; client=%s publisher=%s", clientResponse, err,
+			terminalRecoveryState(client), terminalRecoveryState(publisher))
 	}
 	if err := <-publisherResponse; err != nil {
 		t.Fatal(err)
@@ -190,6 +328,14 @@ func runTerminalRecoveryJourney(t *testing.T, dropUnacknowledgedData, concurrent
 	if clientOpened.Load() != 1 || publisherOpened.Load() != 1 {
 		t.Fatalf("replacement attachments = client %d publisher %d", clientOpened.Load(), publisherOpened.Load())
 	}
+	cancel()
+	for _, stream := range []*Stream{client, publisher} {
+		select {
+		case <-stream.done:
+		case <-t.Context().Done():
+			t.Fatalf("recovery tail did not release after cancellation: %s", terminalRecoveryState(stream))
+		}
+	}
 }
 
 func writeTerminalRecoveryResponse(application *halfCloseApplication, result chan<- error) {
@@ -203,10 +349,12 @@ func writeTerminalRecoveryResponse(application *halfCloseApplication, result cha
 func terminalRecoveryState(stream *Stream) string {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
-	return fmt.Sprintf("base=%d end=%d received=%d acknowledgement=%d/%d terminal-ack=%t/%t receipt-generation=%d local=%t remote=%t terminal-generation=%d current=%d replaying=%t terminal=%v",
+	return fmt.Sprintf("base=%d end=%d received=%d acknowledgement=%d/%d terminal-ack=%t/%t receipt-generation=%d receipt=%d/%d writing=%t/%d terminal-confirmation=%t/%t/%d local=%t settled=%t remote=%t terminal-generation=%d current=%d recovering=%t replaying=%t terminal=%v",
 		stream.sendBase, stream.sendEnd, stream.recvNext, stream.ackSent, stream.ackPending,
-		stream.terminalAckPending, stream.terminalAckSent, stream.terminalAcknowledgedGeneration, stream.localTerminal, stream.remoteTerminal,
-		stream.terminalGeneration, stream.currentGenerationLocked(), stream.terminalReplaying, stream.terminal)
+		stream.terminalAckPending, stream.terminalAckSent, stream.terminalAcknowledgedGeneration,
+		stream.terminalAckGeneration, stream.terminalAckConfirmedGeneration, stream.terminalAckWriting, stream.terminalAckWritingGeneration,
+		stream.terminalConfirmationPending, stream.terminalConfirmationSent, stream.terminalConfirmationGeneration, stream.localTerminal, stream.terminalSettled, stream.remoteTerminal,
+		stream.terminalGeneration, stream.currentGenerationLocked(), stream.recovering, stream.terminalReplaying, stream.terminal)
 }
 
 func terminalRecoveryAttachment(t *testing.T, carrier net.Conn, generation uint64, context, exporter [32]byte) *Attachment {
@@ -236,22 +384,33 @@ func (application *countingHalfCloseApplication) CloseInput() error {
 type terminalFaultAdapter struct {
 	client, publisher      net.Conn
 	dropData               bool
+	dropClientTerminal     bool
+	dropPublisherReceipt   bool
 	forwardedData          bool
 	droppedData            bool
 	prefixAcknowledged     chan struct{}
 	prefixAcknowledgedOnce sync.Once
+	terminalReceipt        chan struct{}
+	terminalReceiptOnce    sync.Once
 	dropped                chan struct{}
 	closeOnce              sync.Once
 	done                   sync.WaitGroup
 }
 
-func newTerminalFaultAdapter(t *testing.T, dropData bool) (net.Conn, net.Conn, *terminalFaultAdapter) {
+type terminalFault struct {
+	dropData             bool
+	dropClientTerminal   bool
+	dropPublisherReceipt bool
+}
+
+func newTerminalFaultAdapter(t *testing.T, fault terminalFault) (net.Conn, net.Conn, *terminalFaultAdapter) {
 	t.Helper()
 	client, adapterClient := net.Pipe()
 	adapterPublisher, publisher := net.Pipe()
 	adapter := &terminalFaultAdapter{
-		client: adapterClient, publisher: adapterPublisher, dropData: dropData,
-		prefixAcknowledged: make(chan struct{}), dropped: make(chan struct{}),
+		client: adapterClient, publisher: adapterPublisher, dropData: fault.dropData,
+		dropClientTerminal: fault.dropClientTerminal, dropPublisherReceipt: fault.dropPublisherReceipt,
+		prefixAcknowledged: make(chan struct{}), terminalReceipt: make(chan struct{}), dropped: make(chan struct{}),
 	}
 	adapter.done.Add(2)
 	go adapter.forward(adapterClient, adapterPublisher, true)
@@ -273,7 +432,16 @@ func (adapter *terminalFaultAdapter) forward(source, destination net.Conn, clien
 			}
 			adapter.forwardedData = true
 		}
-		if clientDirection && record.Terminal != nil {
+		if clientDirection && record.Terminal != nil && adapter.dropClientTerminal {
+			close(adapter.dropped)
+			adapter.closeOnce.Do(func() {
+				_ = adapter.client.Close()
+				_ = adapter.publisher.Close()
+			})
+			return
+		}
+		if !clientDirection && record.Acknowledgement != nil && record.Acknowledgement.Terminal &&
+			!record.Acknowledgement.TerminalConfirmation && adapter.dropPublisherReceipt {
 			close(adapter.dropped)
 			adapter.closeOnce.Do(func() {
 				_ = adapter.client.Close()
@@ -283,6 +451,10 @@ func (adapter *terminalFaultAdapter) forward(source, destination net.Conn, clien
 		}
 		if err := Write(destination, record); err != nil {
 			return
+		}
+		if clientDirection && record.Acknowledgement != nil && record.Acknowledgement.Terminal &&
+			!record.Acknowledgement.TerminalConfirmation {
+			adapter.terminalReceiptOnce.Do(func() { close(adapter.terminalReceipt) })
 		}
 		if !clientDirection && adapter.dropData && record.Acknowledgement != nil && record.Acknowledgement.Offset >= uint64(MaximumDataBytes) {
 			adapter.prefixAcknowledgedOnce.Do(func() { close(adapter.prefixAcknowledged) })
