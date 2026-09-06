@@ -72,6 +72,7 @@ const (
 	Accepted            Class = "accepted"
 	AlreadyPresent      Class = "already-present"
 	Invalid             Class = "invalid"
+	WrongRecipient      Class = "wrong-recipient"
 	Incompatible        Class = "incompatible"
 	WrongDomain         Class = "wrong-domain"
 	ConflictingRole     Class = "conflicting-role"

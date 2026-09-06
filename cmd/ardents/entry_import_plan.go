@@ -27,6 +27,17 @@ type importRuntime struct {
 	close                     func() error
 }
 
+func loadEntryRecipientRoot(path string) (string, error) {
+	var raw importPlan
+	if err := decodeOperatorInput(path, 16<<10, &raw); err != nil {
+		return "", err
+	}
+	if raw.StateRoot == "" {
+		return "", errors.New("recipient plan is incomplete")
+	}
+	return raw.StateRoot, nil
+}
+
 func loadImportPlan(path string, clock func() time.Time) (importRuntime, error) {
 	var raw importPlan
 	if err := decodeOperatorInput(path, 16<<10, &raw); err != nil {

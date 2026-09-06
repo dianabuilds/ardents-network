@@ -19,11 +19,7 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	directory := t.TempDir()
 	now := time.Now().UTC().Truncate(time.Second)
 	network := prepareCommandNetwork(t, directory, now, "ardents-interactive-route-v2")
-	invite := commandInvite(network, now)
 	invitePath := filepath.Join(directory, "bridge.invite")
-	if err := os.WriteFile(invitePath, invite, 0o600); err != nil {
-		t.Fatal(err)
-	}
 	planPath := filepath.Join(directory, "import.json")
 	confidencePath := filepath.Join(directory, "time-confidence")
 	if err := os.WriteFile(confidencePath, []byte("observed\n"), 0o600); err != nil {
@@ -42,13 +38,26 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	}
 	plan := map[string]any{
 		"state_root": filepath.Join(directory, "bridge-state"), "network_state_root": network.root,
-		"invite_file": invitePath, "network_id": hex32(network.snapshot.NetworkID),
+		"invite_file": "", "network_id": hex32(network.snapshot.NetworkID),
 		"network_authorities": []string{hex.EncodeToString(network.authorityPublic)},
 		"network_threshold":   1, "network_profile": "ardents-interactive-route-v2",
 		"local_role_state_root": rolesRoot,
 		"time_confidence_file":  confidencePath,
 	}
 	rawPlan, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	recipient := commandEntryRecipient(t, planPath)
+	invite := commandInvite(network, now, recipient)
+	if err := os.WriteFile(invitePath, invite, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	plan["invite_file"] = invitePath
+	rawPlan, err = json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,6 +93,58 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	}
 	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "already-present" {
 		t.Fatalf("idempotent event = %+v, %v", event, err)
+	}
+
+	foreignRoot := filepath.Join(directory, "foreign-entry-state")
+	plan["state_root"] = foreignRoot
+	rawPlan, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_ = commandEntryRecipient(t, planPath)
+	plan["state_root"] = filepath.Join(directory, "other-entry-state")
+	rawPlan, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	foreignRecipient := commandEntryRecipient(t, planPath)
+	plan["state_root"] = foreignRoot
+	rawPlan, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(invitePath, commandInvite(network, now, foreignRecipient), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	if err := os.Chtimes(confidencePath, time.Now(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(t.Context(), []string{"entry", "import", planPath}, &output); err != nil {
+		t.Fatalf("run foreign-recipient import: %v", err)
+	}
+	if err := json.Unmarshal(output.Bytes(), &event); err != nil || event.Class != "wrong-recipient" {
+		t.Fatalf("foreign-recipient event = %+v, %v", event, err)
+	}
+	plan["state_root"] = filepath.Join(directory, "bridge-state")
+	rawPlan, err = json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, rawPlan, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(invitePath, invite, 0o600); err != nil {
+		t.Fatal(err)
 	}
 	plan["state_root"] = filepath.Join(directory, "uncertain-bridge-state")
 	if err := os.Chtimes(confidencePath, now.Add(-time.Minute), now.Add(-time.Minute)); err != nil {
@@ -139,7 +200,28 @@ func TestImportCommandUsesAuthenticatedNetworkState(t *testing.T) {
 	}
 }
 
-func commandInvite(fixture commandNetwork, now time.Time) []byte {
+func commandEntryRecipient(t *testing.T, planPath string) [32]byte {
+	t.Helper()
+	var output bytes.Buffer
+	if err := run(t.Context(), []string{"entry", "recipient", planPath}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var receipt struct {
+		RecipientPublicKey string `json:"recipient_public_key"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := hex.DecodeString(receipt.RecipientPublicKey)
+	if err != nil || len(decoded) != 32 {
+		t.Fatalf("recipient receipt = %+v, %v", receipt, err)
+	}
+	var recipient [32]byte
+	copy(recipient[:], decoded)
+	return recipient
+}
+
+func commandInvite(fixture commandNetwork, now time.Time, recipient [32]byte) []byte {
 	snapshot := fixture.snapshot
 	var body bytes.Buffer
 	_ = binary.Write(&body, binary.BigEndian, uint16(2))
@@ -147,7 +229,6 @@ func commandInvite(fixture commandNetwork, now time.Time) []byte {
 	_ = binary.Write(&body, binary.BigEndian, snapshot.Epoch)
 	body.Write(snapshot.Digest[:])
 	writeCommandBytes(&body, []byte("ardents-interactive-route-v2"), 1)
-	recipient := [32]byte{91}
 	body.Write(recipient[:])
 	candidateFacts, _ := snapshot.BridgeCandidateByKey(snapshot.Candidates[0].KeyID)
 	body.Write(candidateFacts.KeyID[:])

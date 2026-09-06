@@ -1,6 +1,7 @@
 package entry
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -15,12 +16,26 @@ import (
 // entryRoot creates the owner-only directory for an Entry state root,
 // independent of the test process umask.
 func entryRoot(t *testing.T) string {
+	return entryRootForRecipient(t, testEntryRecipientSeed())
+}
+
+func entryRootForRecipient(t *testing.T, seed []byte) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "entry-state")
 	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, rootMarkerName), []byte(rootMarker), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, recipientName), seed, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	return root
+}
+
+func testEntryRecipientSeed() []byte {
+	return bytes.Repeat([]byte{91}, ed25519.SeedSize)
 }
 
 func TestImportContactAndReopenUsesOnlyCurrentStateCandidate(t *testing.T) {
@@ -379,7 +394,9 @@ type entryFixture struct {
 func newEntryFixture(t *testing.T) entryFixture {
 	t.Helper()
 	now := time.Unix(1_750_000_000, 0).UTC()
-	fixture := entryFixture{now: now, private: map[[32]byte]ed25519.PrivateKey{}, recipient: [32]byte{91}}
+	recipient := ed25519.NewKeyFromSeed(testEntryRecipientSeed()).Public().(ed25519.PublicKey)
+	fixture := entryFixture{now: now, private: map[[32]byte]ed25519.PrivateKey{}}
+	copy(fixture.recipient[:], recipient)
 	fixture.view = View{NetworkID: [32]byte{1}, Epoch: 7, Digest: [32]byte{2}, Profile: profileID, Fresh: true}
 	for index := range 2 {
 		public, private, err := ed25519.GenerateKey(rand.Reader)

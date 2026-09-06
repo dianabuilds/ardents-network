@@ -235,7 +235,11 @@ func importRuntimeEntry(t *testing.T, root, rolesRoot, confidence string, networ
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	result, err := owner.Import(commandInvite(network, time.Now().UTC()))
+	recipient, err := owner.RecipientPublicKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := owner.Import(commandInvite(network, time.Now().UTC(), recipient))
 	if err != nil || result.Class != entry.Accepted {
 		t.Fatalf("import runtime Entry = %+v, %v", result, err)
 	}

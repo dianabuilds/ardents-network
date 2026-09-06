@@ -1,13 +1,25 @@
 package entry
 
 import (
+	"errors"
 	"net"
 	"strconv"
 )
 
 func (owner *owner) validate(raw []byte) (invite, Candidate, Class, error) {
-	return validateInvite(raw, Verification{Current: owner.config.Current, Conflict: owner.config.Conflict,
+	decoded, candidate, class, err := validateInvite(raw, Verification{Current: owner.config.Current, Conflict: owner.config.Conflict,
 		Clock: owner.config.Clock, TimeConfident: owner.config.TimeConfident})
+	if err != nil || class != Accepted {
+		return decoded, candidate, class, err
+	}
+	recipient, recipientErr := owner.RecipientPublicKey()
+	if recipientErr != nil {
+		return decoded, Candidate{}, Invalid, errors.New("read local Entry recipient identity")
+	}
+	if decoded.recipientPublicKey != recipient {
+		return decoded, Candidate{}, WrongRecipient, nil
+	}
+	return decoded, candidate, Accepted, nil
 }
 
 func candidateByKey(view View, keyID [32]byte) (Candidate, bool) {

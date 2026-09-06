@@ -73,7 +73,11 @@ func (state *durableState) settleReplacements() bool {
 		}
 		for index := range state.Records {
 			if state.Records[index].Slot == slot && state.Records[index].Status == memberDraining {
-				retireMember(&state.Records[index])
+				if verified >= 0 {
+					retireMember(&state.Records[index])
+				} else {
+					state.Records[index].Status = memberActive
+				}
 				changed = true
 			}
 		}
