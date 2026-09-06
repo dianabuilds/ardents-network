@@ -199,6 +199,19 @@ cancellation`. A verified remote terminal outcome completed by the joined
 receiver remains authoritative; transport errors induced by the abort cannot
 replace it or become a second outcome. An interrupted `Write` may report only
 its completed payload prefix plus an error and can never become clean success.
+
+`Dial` owns the Unix transport and its cancellation from the instant a socket is
+opened through request write, status, and any refusal read. A setup cancellation
+guard closes that transport immediately and returns the originating cancellation
+or deadline error; no later setup deadline or silent peer can replace it. On an
+accepted status, one locked handoff changes that same guard from setup transport
+cleanup to `Client.Close` before `Dial` returns. If cancellation won first,
+setup joins its cleanup and returns no Client; if the successful handoff won,
+the returned Client owns the remaining context watch, transport, I/O joins, and
+terminal outcome. Thus neither an error branch nor the success/cancellation race
+leaves an unowned socket or a guard that can close a successfully transferred
+Client without a cancellation.
+
 Repeated and concurrent `Close` calls join the same cleanup and return its
 result. The headless `open`
 caller joins its response copier on input failure or cancellation and removes

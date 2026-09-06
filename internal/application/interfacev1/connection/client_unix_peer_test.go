@@ -2,7 +2,6 @@ package connection
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -70,7 +69,9 @@ func dialGatedClient(t *testing.T, path, targetLink string, gatedBytes int) (Cli
 		releaseRead:     make(chan struct{}),
 		closeStarted:    make(chan struct{}),
 	}
-	return newClient(context.Background(), transport), transport
+	opened := newClientWithStop(transport, func() bool { return false })
+	go opened.receive()
+	return opened, transport
 }
 
 func terminalFrameSize(outcome Outcome) int {
