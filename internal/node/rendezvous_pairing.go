@@ -9,25 +9,36 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-func (running *rendezvous) register(leg *rendezvousLeg) bool {
+type rendezvousRegistration struct {
+	waiting *rendezvousLeg
+	pair    *rendezvousPair
+}
+
+type rendezvousPair struct {
+	first  *rendezvousLeg
+	second *rendezvousLeg
+}
+
+// register reserves an authenticated leg before its reciprocal binding is
+// written. A peer can therefore never overtake a successfully answered leg.
+// The caller starts expiry or copying only after the reciprocal write succeeds.
+func (running *rendezvous) register(leg *rendezvousLeg) (rendezvousRegistration, bool) {
 	running.mu.Lock()
 	if running.draining {
 		running.mu.Unlock()
-		return false
+		return rendezvousRegistration{}, false
 	}
 	existing := running.waiting[leg.binding.AttachmentID]
 	if existing == nil {
 		delete(running.pre, leg.pending)
 		running.waiting[leg.binding.AttachmentID] = leg
 		running.mu.Unlock()
-		running.work.Add(1)
-		go running.expire(leg)
-		return true
+		return rendezvousRegistration{waiting: leg}, true
 	}
 	if existing.binding.SenderRole == leg.binding.SenderRole {
 		running.usage.DuplicateSideRejected++
 		running.mu.Unlock()
-		return false
+		return rendezvousRegistration{}, false
 	}
 	select {
 	case running.pairs <- struct{}{}:
@@ -38,7 +49,7 @@ func (running *rendezvous) register(leg *rendezvousLeg) bool {
 		running.cleanup.record(existing.connection.Close())
 		running.usage.WaitingRefused++
 		running.mu.Unlock()
-		return false
+		return rendezvousRegistration{}, false
 	}
 	delete(running.waiting, leg.binding.AttachmentID)
 	delete(running.pre, existing.pending)
@@ -51,13 +62,37 @@ func (running *rendezvous) register(leg *rendezvousLeg) bool {
 	if len(running.pairs) == cap(running.pairs) {
 		preAdmission = running.closePreAdmissionLocked()
 	}
-	running.work.Add(1)
 	running.mu.Unlock()
 	for _, connection := range preAdmission {
 		running.cleanup.record(connection.Close())
 	}
-	go running.pump(existing, leg)
-	return true
+	return rendezvousRegistration{pair: &rendezvousPair{first: existing, second: leg}}, true
+}
+
+func (running *rendezvous) abandon(registration rendezvousRegistration) {
+	if registration.waiting != nil {
+		running.mu.Lock()
+		if running.waiting[registration.waiting.binding.AttachmentID] == registration.waiting {
+			delete(running.waiting, registration.waiting.binding.AttachmentID)
+			<-running.waitingCap
+			registration.waiting.stopDone()
+		}
+		running.mu.Unlock()
+		return
+	}
+	if registration.pair == nil {
+		return
+	}
+	pair := registration.pair
+	running.mu.Lock()
+	delete(running.active, pair.first.connection)
+	delete(running.active, pair.second.connection)
+	<-running.pairs
+	pair.first.stopDone()
+	pair.second.stopDone()
+	running.mu.Unlock()
+	running.cleanup.record(pair.first.connection.Close())
+	running.cleanup.record(pair.second.connection.Close())
 }
 
 func (running *rendezvous) expire(leg *rendezvousLeg) {

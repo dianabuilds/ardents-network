@@ -149,12 +149,15 @@ func TestRendezvousRejectsDuplicateSideWithoutDisplacingWaitingLeg(t *testing.T)
 		t.Fatal(err)
 	}
 	defer first.Close()
-	duplicate, err := openRendezvousLeg(t.Context(), config.ListenAddress, material.initiator, material.serverPublic,
-		legFor(material, [32]byte{8}, route.InitiatorRole, config.NotAfter))
-	if err != nil {
-		t.Fatal(err)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := submitRejectedLeg(ctx, config.ListenAddress, material.initiator, material.serverPublic,
+		legFor(material, [32]byte{8}, route.InitiatorRole, config.NotAfter)); err == nil {
+		t.Fatal("duplicate Rendezvous leg was accepted")
 	}
-	defer duplicate.Close()
+	awaitUsage(t, running, time.Second, func(usage rendezvousUsage) bool {
+		return usage.DuplicateSideRejected == 1 && usage.WaitingLegs == 1
+	})
 	responder, err := openRendezvousLeg(t.Context(), config.ListenAddress, material.responder, material.serverPublic,
 		legFor(material, [32]byte{8}, route.ResponderRole, config.NotAfter))
 	if err != nil {
@@ -173,8 +176,6 @@ func TestRendezvousRejectsDuplicateSideWithoutDisplacingWaitingLeg(t *testing.T)
 	if err := responder.Close(); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-	defer cancel()
 	if err := running.Drain(ctx); err != nil {
 		t.Fatal(err)
 	}
