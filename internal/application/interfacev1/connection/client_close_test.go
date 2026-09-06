@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
@@ -216,60 +217,45 @@ func TestClientVerifiedRemoteOutcomePrecedesLaterClose(t *testing.T) {
 	}
 }
 
-func TestClientReadFailureRacingClosePublishesOneTerminalOutcome(t *testing.T) {
-	for attempt := range 32 {
-		t.Run(fmt.Sprintf("attempt-%d", attempt), func(t *testing.T) {
-			path := shortClientSocketPath(t)
-			listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
-			if err != nil {
-				t.Fatal(err)
-			}
-			peerReady := startConnectedPeer(t, listener)
-			application, err := Dial(context.Background(), path, "ardents-target:v1:test")
-			if err != nil {
-				t.Fatal(err)
-			}
-			cleanupClient(t, application)
-			peer := awaitPeerSetup(t, peerReady)
-			cleanupUnixConnection(t, peer)
+func TestClientVerifiedRemoteOutcomeCompletesDuringClose(t *testing.T) {
+	path := shortClientSocketPath(t)
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	peerReady := startConnectedPeer(t, listener)
+	want := Outcome{Class: CleanClose, Reason: "remote terminal verified during Close"}
+	application, transport := dialGatedClient(t, path, "ardents-target:v1:test", terminalFrameSize(want))
+	cleanupClient(t, application)
+	peer := awaitPeerSetup(t, peerReady)
+	cleanupUnixConnection(t, peer)
 
-			start := make(chan struct{})
-			peerClosed := make(chan error, 1)
-			clientClosed := make(chan error, 1)
-			go func() {
-				<-start
-				peerClosed <- peer.Close()
-			}()
-			go func() {
-				<-start
-				clientClosed <- application.Close()
-			}()
-			close(start)
-			select {
-			case err := <-peerClosed:
-				if err != nil && !errors.Is(err, net.ErrClosed) {
-					t.Fatalf("close peer: %v", err)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("peer close did not finish")
-			}
-			select {
-			case err := <-clientClosed:
-				if err != nil {
-					t.Fatalf("Close returned %v", err)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("Close did not join the racing read failure")
-			}
-
-			outcome, open := <-application.Done()
-			if !open || outcome.Reason == "" || outcome.Class != LocalCancellation && outcome.Class != LocalFailure {
-				t.Fatalf("racing terminal outcome = %+v, open=%v", outcome, open)
-			}
-			if _, open := <-application.Done(); open {
-				t.Fatal("read failure racing Close published more than one outcome")
-			}
-		})
+	var releaseOnce sync.Once
+	t.Cleanup(func() { releaseOnce.Do(func() { close(transport.releaseRead) }) })
+	if err := writeTerminal(peer, want); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-transport.readReady:
+	case <-time.After(time.Second):
+		t.Fatal("receiver did not obtain the complete remote terminal frame")
+	}
+	closeResult := make(chan error, 1)
+	go func() { closeResult <- application.Close() }()
+	select {
+	case <-transport.closeStarted:
+	case <-time.After(time.Second):
+		t.Fatal("Client Close did not close the owned transport")
+	}
+	releaseOnce.Do(func() { close(transport.releaseRead) })
+	if err := <-closeResult; err != nil {
+		t.Fatal(err)
+	}
+	if got := <-application.Done(); got != want {
+		t.Fatalf("Done = %+v, want verified remote %+v", got, want)
+	}
+	if _, open := <-application.Done(); open {
+		t.Fatal("Close published a second terminal outcome")
 	}
 }
 
@@ -433,7 +419,15 @@ func startPeer(t *testing.T, listener *net.UnixListener, run func(*net.UnixListe
 		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			t.Errorf("close Unix listener: %v", err)
 		}
-		for range ready {
+		for result := range ready {
+			if result.err != nil {
+				t.Errorf("abandoned Unix peer setup: %v", result.err)
+			}
+			if result.connection != nil {
+				if err := result.connection.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+					t.Errorf("close abandoned Unix peer: %v", err)
+				}
+			}
 		}
 	})
 	return ready

@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -171,7 +172,7 @@ func TestHeadlessOpenReturnsFailureStatusAndRemovesPartialOutput(t *testing.T) {
 	}
 }
 
-func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testing.T) {
+func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesPartialOutput(t *testing.T) {
 	socket := filepath.Join(os.TempDir(), fmt.Sprintf("aho-cancel-%d.sock", time.Now().UnixNano()))
 	t.Cleanup(func() {
 		if err := os.Remove(socket); err != nil && !os.IsNotExist(err) {
@@ -191,6 +192,7 @@ func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testi
 	}
 	peerReady := make(chan peerSetup, 1)
 	peerDone := make(chan struct{})
+	response := []byte("partial response")
 	go func() {
 		defer close(peerDone)
 		defer close(peerReady)
@@ -217,7 +219,6 @@ func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testi
 			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
 			return
 		}
-		response := []byte("partial response")
 		var frame [4]byte
 		binary.BigEndian.PutUint32(frame[:], uint32(len(response)))
 		if _, err := connection.Write(append(frame[:], response...)); err != nil {
@@ -243,6 +244,16 @@ func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testi
 		case <-peerDone:
 		case <-time.After(time.Second):
 			t.Error("headless peer goroutine did not stop")
+		}
+		for setup := range peerReady {
+			if setup.err != nil {
+				t.Errorf("abandoned headless peer setup: %v", setup.err)
+			}
+			if setup.connection != nil {
+				if err := setup.connection.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+					t.Errorf("close abandoned headless peer: %v", err)
+				}
+			}
 		}
 	})
 	inputPath, outputPath := filepath.Join(t.TempDir(), "request"), filepath.Join(t.TempDir(), "response")
@@ -280,6 +291,7 @@ func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testi
 			t.Errorf("close headless peer: %v", err)
 		}
 	})
+	awaitPartialOutput(t, outputPath, response)
 	select {
 	case err := <-result:
 		t.Fatalf("headless open completed before cancellation: %v", err)
@@ -292,12 +304,27 @@ func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testi
 			t.Fatalf("headless cancellation = %v", err)
 		}
 	case <-time.After(time.Second):
-		_ = peer.Close()
+		if err := peer.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			t.Errorf("emergency close headless peer: %v", err)
+		}
 		t.Fatal("headless cancellation waited for the non-reading peer")
 	}
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
 		t.Fatalf("canceled headless open retained partial output: %v", err)
 	}
+}
+
+func awaitPartialOutput(t *testing.T, path string, want []byte) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		got, err := os.ReadFile(path)
+		if err == nil && bytes.Equal(got, want) {
+			return
+		}
+		runtime.Gosched()
+	}
+	t.Fatal("headless open did not write the peer response prefix")
 }
 
 func headlessTargetLink(t *testing.T) string {
