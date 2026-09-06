@@ -2,12 +2,80 @@ package connection
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"sync"
+	"testing"
 )
+
+type gatedClientTransport struct {
+	clientTransport
+	remaining    int
+	readReady    chan struct{}
+	releaseRead  chan struct{}
+	closeStarted chan struct{}
+	readOnce     sync.Once
+	closeOnce    sync.Once
+}
+
+func (transport *gatedClientTransport) Read(destination []byte) (int, error) {
+	if transport.remaining == 0 {
+		return transport.clientTransport.Read(destination)
+	}
+	length := transport.remaining
+	if length > len(destination) {
+		length = len(destination)
+	}
+	read, err := io.ReadFull(transport.clientTransport, destination[:length])
+	transport.remaining -= read
+	if transport.remaining == 0 && err == nil {
+		transport.readOnce.Do(func() { close(transport.readReady) })
+		<-transport.releaseRead
+	}
+	return read, err
+}
+
+func (transport *gatedClientTransport) Close() error {
+	transport.closeOnce.Do(func() { close(transport.closeStarted) })
+	return transport.clientTransport.Close()
+}
+
+func dialGatedClient(t *testing.T, path, targetLink string, gatedBytes int) (Client, *gatedClientTransport) {
+	t.Helper()
+	raw, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := make([]byte, len(localMagic)+2+len(targetLink))
+	copy(request, localMagic)
+	binary.BigEndian.PutUint16(request[len(localMagic):], uint16(len(targetLink)))
+	copy(request[len(localMagic)+2:], targetLink)
+	if _, err := raw.Write(request); err != nil {
+		_ = raw.Close()
+		t.Fatal(err)
+	}
+	var status [1]byte
+	if _, err := io.ReadFull(raw, status[:]); err != nil || status[0] != 1 {
+		_ = raw.Close()
+		t.Fatalf("open gated Client: status=%d, err=%v", status[0], err)
+	}
+	transport := &gatedClientTransport{
+		clientTransport: raw,
+		remaining:       gatedBytes,
+		readReady:       make(chan struct{}),
+		releaseRead:     make(chan struct{}),
+		closeStarted:    make(chan struct{}),
+	}
+	return newClient(context.Background(), transport), transport
+}
+
+func terminalFrameSize(outcome Outcome) int {
+	return 8 + len(outcome.Class) + len(outcome.Reason)
+}
 
 func acceptNonReadingPeer(listener *net.UnixListener, ready chan<- peerSetupResult) {
 	defer close(ready)

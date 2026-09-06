@@ -15,16 +15,21 @@ import (
 // CloseInput are serialized so the zero-length input-close frame follows every
 // accepted data frame. Close and context cancellation instead abort the owned
 // transport independently, interrupt in-flight operations, join Client-owned
-// work, and publish LocalCancellation unless another terminal outcome already
-// won the sole Done publication. A failed Write may report only its completed
-// payload prefix and is never a clean terminal result.
+// work, and publish LocalCancellation only after the receiver had its chance to
+// complete a verified remote outcome. A failed Write may report only its
+// completed payload prefix and is never a clean terminal result.
 type Client interface {
 	Stream
 	CloseInput() error
 }
 
+type clientTransport interface {
+	io.ReadWriteCloser
+	CloseWrite() error
+}
+
 type client struct {
-	connection       *net.UnixConn
+	connection       clientTransport
 	stream           *io.PipeReader
 	sink             *io.PipeWriter
 	writeMu          sync.Mutex
@@ -82,14 +87,18 @@ func Dial(ctx context.Context, path, targetLink string) (Client, error) {
 		return nil, errors.New(string(outcome.Class) + ": " + outcome.Reason)
 	}
 	_ = connection.SetDeadline(time.Time{})
+	return newClient(ctx, connection), nil
+}
+
+func newClient(ctx context.Context, transport clientTransport) Client {
 	stream, sink := io.Pipe()
-	opened := &client{connection: connection, stream: stream, sink: sink,
+	opened := &client{connection: transport, stream: stream, sink: sink,
 		done: make(chan Outcome, 1), receiveDone: make(chan struct{})}
 	opened.stateMu.Lock()
 	opened.stopContext = context.AfterFunc(ctx, func() { _ = opened.Close() })
 	opened.stateMu.Unlock()
 	go opened.receive()
-	return opened, nil
+	return opened
 }
 
 func readRefusal(reader io.Reader) (Outcome, error) {
@@ -159,16 +168,17 @@ func readTerminal(reader io.Reader) (Outcome, error) {
 
 func (connection *client) finishReceive(outcome Outcome, err error) {
 	connection.stopContextWatch()
-	if err != nil && outcome.Class == "" {
-		outcome = Outcome{Class: LocalFailure, Reason: "Endpoint Application terminal outcome was invalid"}
-	}
-	connection.stateMu.Lock()
-	connection.publishDone(outcome)
-	connection.stateMu.Unlock()
 	if err != nil {
+		if !connection.isClosing() {
+			if outcome.Class == "" {
+				outcome = Outcome{Class: LocalFailure, Reason: "Endpoint Application terminal outcome was invalid"}
+			}
+			connection.publishDone(outcome)
+		}
 		_ = connection.sink.CloseWithError(err)
 		return
 	}
+	connection.publishDone(outcome)
 	_ = connection.sink.Close()
 }
 
@@ -242,6 +252,12 @@ func (connection *client) beginOperation() bool {
 	return true
 }
 
+func (connection *client) isClosing() bool {
+	connection.stateMu.Lock()
+	defer connection.stateMu.Unlock()
+	return connection.closing
+}
+
 func (connection *client) stopContextWatch() {
 	connection.stateMu.Lock()
 	stopContext := connection.stopContext
@@ -267,7 +283,6 @@ func (connection *client) Close() error {
 		connection.stateMu.Lock()
 		connection.closing = true
 		stopContext := connection.stopContext
-		connection.publishDone(Outcome{Class: LocalCancellation, Reason: "Application Adapter closed the local connection"})
 		connection.stateMu.Unlock()
 		if stopContext != nil {
 			stopContext()
@@ -276,6 +291,7 @@ func (connection *client) Close() error {
 		_ = connection.stream.Close()
 		connection.outputOperations.Wait()
 		<-connection.receiveDone
+		connection.publishDone(Outcome{Class: LocalCancellation, Reason: "Application Adapter closed the local connection"})
 	})
 	return connection.closeErr
 }
