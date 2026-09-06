@@ -216,16 +216,6 @@ func (stream *Stream) queueAcknowledgement(offset uint64) {
 	stream.signalAcknowledgement()
 }
 
-func (stream *Stream) queueTerminalAcknowledgement(offset uint64) {
-	stream.mu.Lock()
-	if offset > stream.ackPending {
-		stream.ackPending = offset
-	}
-	stream.terminalAckPending = true
-	stream.mu.Unlock()
-	stream.signalAcknowledgement()
-}
-
 func (stream *Stream) signalAcknowledgement() {
 	select {
 	case stream.ackSignal <- struct{}{}:

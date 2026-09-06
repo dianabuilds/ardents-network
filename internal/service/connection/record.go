@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	connectionPrefix = "ardents-service-connection-v1\x00"
-	version          = uint16(1)
+	connectionPrefix = "ardents-service-connection-v2\x00"
+	version          = uint16(2)
 
 	kindChallenge       = byte(1)
 	kindProof           = byte(2)
@@ -263,7 +263,10 @@ func decodeRecord(body []byte) (Record, error) {
 	case kindAcknowledgement:
 		terminal := false
 		if len(payload) == 17 {
-			terminal = payload[16] == 1
+			if payload[16] != 1 {
+				return Record{}, errors.New("native Terminal Acknowledgement marker is invalid")
+			}
+			terminal = true
 			payload = payload[:16]
 		}
 		value, err := decodeOffset(payload, "Acknowledgement")

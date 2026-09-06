@@ -34,7 +34,6 @@ Current decisions:
 - [0025 — Use State-referenced Entry Invites](0025-state-referenced-entry-invites.md)
 - [0026 — Use the closed Interactive Route v1 wire](0026-interactive-route-v1-wire.md)
 - [0027 — Bind each Entry Invite to a fresh TLS attempt key](0027-entry-binding-v1.md)
-- [0028 — Use the native Service Connection v1 grammar](0028-native-service-connection-v1.md)
 - [0031 — Retire the generic live-test tree](0031-retire-generic-live-test-tree.md)
 - [0032 — Use the canonical Target Link v1 grammar](0032-target-link-v1.md)
 - [0033 — Use the closed Route RelaySetup v1 exchange](0033-route-relay-setup-v1.md)
@@ -70,6 +69,8 @@ Current decisions:
 - [0068 — Bind Transit Grant issuer roots to State generation](0068-bind-transit-issuer-roots-to-state-generation.md)
 - [0071 — Recipient-bound offline Headless enrollment](0071-recipient-bound-offline-headless-enrollment.md)
 - [0072 — Adopt offline-enrollment Route/Entry v2 for C0](0072-adopt-offline-enrollment-route-v2.md)
+- [0075 — Use Service Connection v2 Terminal receipts](0075-service-connection-v2-terminal-receipt.md)
+
 Completed retirement decisions:
 
 - [0029 — Retire Update V0 custody evidence by owned root migration](0029-retire-update-v0-custody-evidence.md)
@@ -81,6 +82,7 @@ Completed retirement decisions:
 
 Superseded or withdrawn decisions retained for provenance:
 
+- [0028 — Use the native Service Connection v1 grammar](0028-native-service-connection-v1.md)
 - [0012 — Select standalone WebTunnel for the H3 Camouflage Adapter](0012-select-webtunnel-for-h3-camouflage.md)
 - [0013 — Withdraw the initial Stage 6 cryptographic suite](0013-stage-6-cryptographic-suite.md)
 - [0016 — Bind and isolate launcher-born Application Principals](0016-bind-and-isolate-launcher-born-application-principals.md)

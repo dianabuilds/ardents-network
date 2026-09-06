@@ -86,7 +86,7 @@ func TestNativeRecordRejectsProfileKindLengthAndContinuityMutations(t *testing.T
 		at    int
 		value byte
 	}{
-		{"prefix", 0, 'x'}, {"version", len(connectionPrefix) + 2, 2},
+		{"prefix", 0, 'x'}, {"version", len(connectionPrefix) + 2, 1},
 		{"profile", len(connectionPrefix) + 2 + 4, 'x'}, {"kind", len(connectionPrefix) + 2 + 2, 99},
 	} {
 		mutated := append([]byte(nil), base...)
@@ -101,6 +101,19 @@ func TestNativeRecordRejectsProfileKindLengthAndContinuityMutations(t *testing.T
 	}
 	if _, err := Read(bytes.NewReader(append(base[:len(base)-1], []byte{}...))); err == nil {
 		t.Fatal("truncated record was accepted")
+	}
+}
+
+func TestNativeRecordRejectsUnknownTerminalAcknowledgementMarker(t *testing.T) {
+	t.Parallel()
+	var wire bytes.Buffer
+	if err := Write(&wire, Record{Acknowledgement: &Acknowledgement{AttachmentGeneration: 1, Offset: 2, Terminal: true}}); err != nil {
+		t.Fatal(err)
+	}
+	encoded := append([]byte(nil), wire.Bytes()...)
+	encoded[len(encoded)-1] = 2
+	if _, err := Read(bytes.NewReader(encoded)); err == nil {
+		t.Fatal("unknown Terminal Acknowledgement marker was accepted")
 	}
 }
 

@@ -139,9 +139,6 @@ func (stream *Stream) commitAttachment(failed, attachment *Attachment, peer Cont
 	}
 	stream.current = attachment
 	stream.sendNext = stream.sendBase
-	if stream.remoteTerminal {
-		stream.terminalAckSent = false
-	}
 	stream.recoveries++
 	stream.recovering = false
 	stream.proposals = 0

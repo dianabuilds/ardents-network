@@ -92,7 +92,7 @@ requires separate research and an ADR.
       -> immutable public record + volatile signer
       -> the participant-owned Connection boundary activates a session
       -> session authorization precedes State/Entry/issuer/Route work
-      -> exact-Instance TLS challenge/proof + Service Connection v1
+      -> exact-Instance TLS challenge/proof + Service Connection v2
       -> zero or more replacement Attachments under immutable recovery facts
       -> one terminal outcome and exactly-once session release
       -> withdraw/supersede stops acquisitions, drains references, erases private material
@@ -198,15 +198,17 @@ input, carrier loss, and full close remain abort paths, and neither local nor
 native EOF is semantic success without the one typed terminal outcome.
 
 A locally written Terminal is a directional completion obligation, not proof
-of peer receipt. A Terminal Acknowledgement is the only receipt proof: it
-names the same generation and offset and is sent only after the peer verifies
-that Terminal. If a replacement Attachment completes Continuity before that
-receipt, Service Connection owns replay: it first replays any unacknowledged
-Data at the carried offsets, then emits the same Terminal on the new
-generation. The peer still presents only its first verified Terminal as
-Application EOF. This preserves one logical half-close without reissuing an
-Application operation, inventing EOF on a timer, or enabling recovery in a
-headless path that did not supply an Attachment opener.
+of peer receipt. Under the closed Service Connection v2 grammar selected by
+[ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md), a Terminal
+Acknowledgement is the only receipt proof: it names the same generation and
+offset and is sent only after the peer verifies that Terminal. If a replacement
+Attachment completes Continuity before that receipt, Service Connection owns
+replay: it first replays any unacknowledged Data at the carried offsets, then
+emits the same Terminal on the new generation. The peer still presents only
+its first verified Terminal as Application EOF. This preserves one logical
+half-close without reissuing an Application operation or inventing EOF on a
+timer. A headless path that did not supply an Attachment opener retains its
+existing orderly half-close and does not enable recovery.
 
 The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
 write's complete frames precede the zero-length input-close frame; if the
@@ -267,7 +269,7 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
   their public Interfaces. Architecture tests forbid a second Endpoint-local
   transport owner and enforce the command dependency graphs.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md) selects the
-  native Route foundation; [ADR-0028](../adr/0028-native-service-connection-v1.md)
+  native Route foundation; [ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md)
   selects the closed Service Connection grammar.
 - The Broker is limited to its explicit generic/unqualified contract; it makes
   no platform-isolation or Application-level Endpoint Location Privacy claim.
