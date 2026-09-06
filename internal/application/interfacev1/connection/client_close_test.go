@@ -216,6 +216,63 @@ func TestClientVerifiedRemoteOutcomePrecedesLaterClose(t *testing.T) {
 	}
 }
 
+func TestClientReadFailureRacingClosePublishesOneTerminalOutcome(t *testing.T) {
+	for attempt := range 32 {
+		t.Run(fmt.Sprintf("attempt-%d", attempt), func(t *testing.T) {
+			path := shortClientSocketPath(t)
+			listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			peerReady := startConnectedPeer(t, listener)
+			application, err := Dial(context.Background(), path, "ardents-target:v1:test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			cleanupClient(t, application)
+			peer := awaitPeerSetup(t, peerReady)
+			cleanupUnixConnection(t, peer)
+
+			start := make(chan struct{})
+			peerClosed := make(chan error, 1)
+			clientClosed := make(chan error, 1)
+			go func() {
+				<-start
+				peerClosed <- peer.Close()
+			}()
+			go func() {
+				<-start
+				clientClosed <- application.Close()
+			}()
+			close(start)
+			select {
+			case err := <-peerClosed:
+				if err != nil && !errors.Is(err, net.ErrClosed) {
+					t.Fatalf("close peer: %v", err)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("peer close did not finish")
+			}
+			select {
+			case err := <-clientClosed:
+				if err != nil {
+					t.Fatalf("Close returned %v", err)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("Close did not join the racing read failure")
+			}
+
+			outcome, open := <-application.Done()
+			if !open || outcome.Reason == "" || outcome.Class != LocalCancellation && outcome.Class != LocalFailure {
+				t.Fatalf("racing terminal outcome = %+v, open=%v", outcome, open)
+			}
+			if _, open := <-application.Done(); open {
+				t.Fatal("read failure racing Close published more than one outcome")
+			}
+		})
+	}
+}
+
 func TestClientWriteAndCloseInputPreserveFrameOrder(t *testing.T) {
 	path := shortClientSocketPath(t)
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})

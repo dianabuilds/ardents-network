@@ -15,7 +15,7 @@ import (
 // CloseInput are serialized so the zero-length input-close frame follows every
 // accepted data frame. Close and context cancellation instead abort the owned
 // transport independently, interrupt in-flight operations, join Client-owned
-// work, and publish LocalCancellation unless a verified remote outcome already
+// work, and publish LocalCancellation unless another terminal outcome already
 // won the sole Done publication. A failed Write may report only its completed
 // payload prefix and is never a clean terminal result.
 type Client interface {
@@ -162,7 +162,9 @@ func (connection *client) finishReceive(outcome Outcome, err error) {
 	if err != nil && outcome.Class == "" {
 		outcome = Outcome{Class: LocalFailure, Reason: "Endpoint Application terminal outcome was invalid"}
 	}
+	connection.stateMu.Lock()
 	connection.publishDone(outcome)
+	connection.stateMu.Unlock()
 	if err != nil {
 		_ = connection.sink.CloseWithError(err)
 		return
@@ -265,11 +267,11 @@ func (connection *client) Close() error {
 		connection.stateMu.Lock()
 		connection.closing = true
 		stopContext := connection.stopContext
+		connection.publishDone(Outcome{Class: LocalCancellation, Reason: "Application Adapter closed the local connection"})
 		connection.stateMu.Unlock()
 		if stopContext != nil {
 			stopContext()
 		}
-		connection.publishDone(Outcome{Class: LocalCancellation, Reason: "Application Adapter closed the local connection"})
 		connection.closeErr = connection.connection.Close()
 		_ = connection.stream.Close()
 		connection.outputOperations.Wait()

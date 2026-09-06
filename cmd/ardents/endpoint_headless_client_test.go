@@ -199,7 +199,10 @@ func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesOutput(t *testi
 			peerReady <- peerSetup{err: acceptErr}
 			return
 		}
-		_ = connection.SetReadBuffer(4 << 10)
+		if err := connection.SetReadBuffer(4 << 10); err != nil {
+			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
+			return
+		}
 		header := make([]byte, 6)
 		if _, err := io.ReadFull(connection, header); err != nil {
 			peerReady <- peerSetup{err: errors.Join(err, connection.Close())}
