@@ -93,7 +93,7 @@ in order to carry a connection.
 | NET-04M | A Service Connection preserves the exact supplied Destination Binding. Name/Service-Link input binds authenticated Name generation/revision→Target into its Work Safety Lease: same-Target renewal or Grace may extend it, but learned Recovery Pending, Release, or rebind to another Target stops new leg/recovery work and closes by a finite deadline without silently retargeting the stream. Target/Target-Link input stays pinned and deliberately has no Name rescue. | fixed | R-003/R-006/R-024 make catastrophe recovery effective for future and live Name-origin use without violating exact-target semantics. The Application reconnects to a replacement Target; explicit Target users require external trust redistribution after root compromise. Exact deadlines remain R-013 protocol work. |
 | NET-04N | Canonical Name Leases cannot be seized, blocked, transferred, or reassigned by an administrator, project, registrar, legal claimant, trademark process, or manual dispute panel. Only a finite versioned set of Protocol-reserved Names may exist for technical safety. Local filters may refuse a name but cannot alter its canonical meaning. | fixed | R-003 P4-D6 fixes non-administrative governance and bounded Anonymous Cost, requires inspectable rules and transition evidence without query logs, and makes incompatible forks explicit. No single operator may change canonical state. If no accessible, private, convergent, and decentralized mechanism satisfies this contract, root names are redesigned or removed rather than centralized. |
 | NET-04O | Ardents protects only traffic submitted to its Application Interface. A user-visible private-site/application claim additionally requires a qualified Network-Isolated Application Boundary at both endpoint Applications: allow only scoped local IPC/loopback with Ardents; deny ordinary network ingress/listeners, DNS, and direct socket/network egress; isolate origin/cache/storage by Isolation Context; and either route each explicit secondary destination through Ardents or fail it. The current neutral Interface makes no Application-level Endpoint Location Privacy claim and has no transparent clearnet fallback. A generic HTTP/SOCKS/stream or Browser adapter is outside the maintained C0 surface. | fixed | R-002 P1-D9, R-024, and ADR-0007 close carrier-versus-Application networking gaps, including a public Publisher listener and malicious requests that provoke callback/SSRF behavior. V1 qualification uses a controlled single-response client and deterministic HTTP Service with no ordinary listener/egress. A general client or server profile becomes claim-bearing only after complete-process-tree ingress, egress, and storage-isolation tests on every supported platform. |
-| NET-04P | The supported Ardents binary is a first-class local Client/Application Adapter in both Distribution Profiles and remains usable without a browser, extension, URI registration, daemon, or mandatory SDK. It accepts only explicit Ardents destination and operation input, crosses the same Application Broker/Connection Interface seam with the same Local Grant, Isolation Context, failure, and no-fallback rules, and exposes a bounded automation-friendly result/byte-stream surface. A co-resident command invocation honestly reports principal claim `none`; it does not invent an external IPC peer or malicious-sibling isolation. No Browser companion is part of the maintained surface. | fixed | The Product Owner accepted the binary-first path and R-056 O1 topology on 2026-08-20. R-085 limits the maintained Stage 8 implementation to a generic/unqualified Broker: it selects neither a native sandbox nor a supported-platform or Application Location Privacy claim. |
+| NET-04P | The supported Ardents binary is a first-class local Client/Application Adapter in both Distribution Profiles and remains usable without a browser, extension, URI registration, daemon, or mandatory SDK. It accepts only explicit Ardents destination and operation input, crosses the same Application Broker/Connection Interface seam with the same Local Grant, Isolation Context, failure, and no-fallback rules, and exposes a bounded automation-friendly result/byte-stream surface. A co-resident command invocation honestly reports principal claim `none`; it does not invent an external IPC peer or malicious-sibling isolation. No Browser companion is part of the maintained surface. | fixed | The Product Owner accepted the binary-first path and R-056 O1 topology on 2026-08-20. The current [Endpoint contract](../technical/endpoint-service-runtime.md#local-admission) limits the Broker to generic/unqualified admission, with no native sandbox, supported-platform, or Application-level Endpoint Location Privacy claim; R-085 retains its provenance. |
 | NET-05 | The V1 Application Interface exposes one live logical Service Connection: a bidirectional, reliable, ordered byte stream without message boundaries whose lifetime may span bounded replacement of underlying Carrier Channels. Service Connection closure or failure is explicit; datagrams as an Application primitive, offline retention, exactly-once Application semantics, and automatic Application-operation replay are not provided. | fixed | R-002 P1-D2 fixes the primitive, P1-D5 its failure contract, R-023 P3-D4a fixes bounded same-connection recovery, and P1-D8 fixes its resource and backpressure boundary. |
 | NET-06 | Service Connections authenticate the intended Service Target and current Service Instance Key/Credential proof, and protect Application Data end to end from carrier Nodes, including when all carrier roles collude, while endpoints and accepted cryptography remain uncompromised during the connection. Fresh authenticated ephemeral endpoint/session and per-leg keys provide Forward Secrecy: later compromise of Service Authority, Instance Key, Node long-term keys, or recorded ciphertext does not decrypt an honestly completed connection after best-effort erasure. A connection's terminal `not-after` cannot exceed Credential validity/Work Safety Lease; learned authenticated supersession may stop new leg/recovery work earlier. The intended endpoint Applications receive plaintext by design. | fixed | R-001 P2-D3/P2-D4 require payload protection independent of anonymity failure, P2-D5 fixes endpoint limits, and P2-D6 requires fail-closed active-attack handling. R-002/R-006 define authentication and bounded Instance authority. Live endpoint compromise, memory/snapshot erasure failure, and lack of post-compromise healing inside an existing connection are explicit limitations; exact AKE/suite remains R-013. |
 | NET-06A | Target authentication, Route Profile binding, protocol freshness, control data, and Application Data integrity fail closed. Modified, injected, replayed, redirected, reordered beyond the stream contract, or downgraded data is rejected; a detected violation terminates the affected attempt or connection without silent fallback or Application Data replay. | fixed | R-001 P2-D6 fixes the invariant without selecting cryptography. Target substitution maps to target authentication failure when supported; established-stream integrity loss maps to connection loss; an indistinguishable cause remains indeterminate under R-002 P1-D5. |
@@ -200,36 +200,17 @@ in order to carry a connection.
 | Abuse | Protect shared carrier and naming capacity through bounded Anonymous Cost, finite lifetimes, local admission, and explicit overload without identity, payment, IP reputation, or a fairness claim. | Service moderation, unsolicited content, local name filtering, application policy, and application admission; none changes the canonical Name Record. |
 | Updates | Ardents endpoint, protocol, and Control Plane update integrity. | Service code, content, schema migration, and client compatibility. |
 
-## Named Unlisted Site tracer
+## Reference Application boundary
 
-This conditional Reference Application starts only after Carrier Lab retains a
-viable Route candidate. Its first slice is deliberately ordinary and controlled
-above the network boundary:
-
-1. a Developer starts a deterministic HTTP server in a controlled harness that
-   exposes only scoped local IPC/loopback and supplies no ordinary network path;
-2. the Service Publisher exposes it as a Service Target and the test fixture
-   supplies one pre-provisioned exact Service Name binding;
-3. a controlled single-response reference client inside a Network-Isolated
-   Application Boundary opens the link, resolves the exact name, and opens a
-   Service Connection;
-4. HTTP request and response bytes cross the connection unchanged;
-5. a failed path is rebuilt or reported, and an offline Service is never shown as
-   having received a request;
-6. in a later ordinary-migration slice the new host generates a private Instance
-   Key and receives a newly issued higher-generation public Credential while
-   Service Authority may remain offline, preserving both Service Target and
-   Service Name.
-
-This tests one complete controlled Target-to-Application path, not the public
-Control Plane. A generic browser or local adapter may use the same Service
-Connection, but it receives no Application-level Endpoint Location Privacy claim
-unless it independently passes the same egress and storage-isolation contract.
-The tracer does not make HTTP, a browser, static
-content replication, or decentralized hosting mandatory Ardents primitives.
-Permissionless Name claiming, leases, delegation, Recovery Policy, catastrophe
-replacement, public Namespace governance, and the full R-023 matrix remain
-later horizons rather than tracer prerequisites.
+A controlled reference Application exercises the network through the same
+Application Interface as external software. Its protocol and fixture do not
+become network primitives. HTTP, browser delivery, replication, offline
+storage, and a protected Application runtime are not implied requirements.
+The historical Named Unlisted Site tracer is retained as
+[provenance](vision.md#first-reference-application-named-unlisted-site).
+NET-14C and the related public qualification requirements still define the
+controlled site workload; they do not select a maintained C0 Browser or naming
+journey. [C0 scope](scope.md) selects the current Target Link path.
 
 ## Candidate extensions, not baseline requirements
 

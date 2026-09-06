@@ -14,7 +14,7 @@ For C0, the Network candidate includes headless commands and maintained
 Network, Endpoint, Service, naming, enrollment, Release, Custody, and Endpoint-
 owned Application Broker Modules. The neutral Application Interface is reviewed
 for shared-interface seam, privilege, artifact, and dependency correctness but
-receives no Application Location Privacy claim. The active Browser
+receives no Application-level Endpoint Location Privacy claim. The active Browser
 implementation and qualification lanes are retired; non-executable compatibility
 evidence and historical campaign implementations are outside the candidate
 corpus.
@@ -153,9 +153,9 @@ sufficiently placed collusion correlation remain explicit excluded cases rather
 than hidden passes.
 
 It does **not** claim resistance to a Broad Traffic Observer correlating timing
-and volume near both endpoints or across enough network locations. R-005 must
-first justify a concrete Application job before a delayed, padded, or
-cover-traffic-heavy profile becomes part of the product.
+and volume near both endpoints or across enough network locations. A separately selected research question must justify a concrete Application
+job before a delayed, padded, or cover-traffic-heavy profile becomes part of
+the product.
 
 ### Bridge entry
 
@@ -791,76 +791,40 @@ or privacy claim.
   Application operation. Carrier-level retransmission is allowed only to
   preserve the same reliable ordered Service Connection without duplicate byte
   presentation.
-- A malicious Node can always delay, drop, block, or shape traffic. Bounded route
-  recovery cannot prove that a failure was accidental. P3-D4a nevertheless
-  requires the same Service Connection to resume within `p95 <= 5 s` after one
-  eligible ordinary-Node or Carrier Channel failure when a qualifying alternate
-  Route remains, and to terminate explicitly by `15 s` otherwise; broader
-  availability is not guaranteed.
-- Ordinary-churn qualification repeats that eligible recovery three times in
-  one 10-minute run. Each next event strikes the current Route after the prior
-  recovery canary, while failed resources remain unavailable. Three is not a
-  runtime quota and cannot justify terminating an otherwise healthy connection.
-- One accepted overlapping-failure workload stops the current Route and then,
-  within `1 s` before recovery completes, stops a distinct resource used by the
-  in-progress replacement attempt. If a further qualifying Route remains, the
-  same connection recovers within `p95 <= 8 s` or terminates explicitly by
-  `15 s`, both measured from the first interruption. A second failure or
-  internal retry never resets the clock. Failed resources stay unavailable;
-  attacker-driven churn beyond this pair retains separate explicit limits.
-- Controlled impairment does not authorize a hidden reconnect or security
-  shortcut. With `300 ms` base RTT, independent `5%` loss in each direction,
-  and `100 ms` `p95` additional jitter but no complete interruption, the same
-  connection must retain its accepted target, Route Profile, Isolation Context,
-  ordering, and bounded queues for 10 minutes while meeting the P3-D4b2a
-  goodput and `5 s` maximum no-progress gap. A complete interruption remains a
-  recovery event rather than an impaired-live success.
-- Impairment and recovery remain inside the endpoint resource boundary. Each
-  complete client or publisher Ardents process tree keeps `p95 RSS <= 512 MiB`,
-  mean CPU `<= 50%` of one logical core, `p95` one-second CPU `<= 100%` of one
-  core, and the accepted `256 KiB` directional connection queue cap during
-  every 10-minute degraded or recovery workload. Temporary Route, Carrier
-  Channel, timer, task, handle, queued-copy, and cryptographic state cannot
-  accumulate with completed or abandoned attempts. Process splitting, hidden
-  reconnects, dropped outcomes, or weakened security cannot make a run pass.
-- Degradation and recovery cannot create unbounded endpoint traffic
-  amplification. The impaired-live carrier ratio is at most `2.0`; one recovery
-  episode adds at most `8 MiB` of endpoint traffic over a paired no-failure run;
-  and each endpoint network direction keeps `p95` one-second carrier bitrate at
-  or below `min(25 Mbit/s, 80% of its declared usable link budget)`. Parallel
-  and abandoned attempts, retransmission, control, padding, security, liveness,
-  and background bytes count. A quiet direction or episode cannot offset a
-  burst elsewhere, and required protection cannot be suppressed to pass.
-- Anonymous incomplete establishment attempts cannot evict established
-  publisher work. Under the accepted 10-minute `1,000` attempts/s and
-  `20 Mbit/s` inbound flood on a `100 Mbit/s` link, all `256` established
-  connections remain usable, the active set retains its P3-D5a useful-work
-  floors, inactive canaries succeed, and publisher RSS/CPU stay within
-  `1 GiB`/one core. Attempt state is finite and cleaned up across all 600,000
-  attempts. The defense cannot depend on IP, a global User account, or a stable
-  network-generated User identity, and cannot bypass authentication, privacy,
-  isolation, queues, or fail-closed handling.
-- The same flood cannot make finite available publisher capacity practically
-  inaccessible to ordinary anonymous Users. With `240` established connections
-  and `16` free slots, at least `95%` of `600` honest attempts authenticate the
-  exact target and pass a canary, connection latency has `p95 <= 8 s`, and every
-  attempt returns explicitly by `15 s`, while all P3-D5a floors remain active.
-  Any mandatory client admission check adds at most one logical-core CPU-second,
-  `64 MiB` peak memory, and `1 MiB` traffic and cannot require money, an account,
-  IP or source reputation, a stable identifier, or linking across Services or
-  Isolation Contexts. Full capacity may produce an explicit bounded capacity
-  result, never eviction, false success, or a hang.
+- A malicious Node can always delay, drop, block, or shape traffic. Recovery
+  cannot prove that failure was accidental. NET-14Q through NET-14V in the
+  [requirements registry](../product/functional-map.md#accepted-requirements-registry)
+  define the exact ordinary, sequential, overlapping, and impaired-live
+  workloads, deadlines, resource bounds, and amplification ceilings. Recovery
+  retains the same authenticated ordered Service Connection or terminates
+  explicitly. Later failures and internal retries never reset its deadline;
+  the sequential test count is not a runtime quota. A complete interruption
+  cannot pass as useful progress under degradation.
+- All work remains inside those budgets: parallel and abandoned attachments,
+  timers, tasks, handles, cryptographic state, queued copies, retransmission,
+  control, padding, security, liveness, and background bytes. Process splitting,
+  hidden reconnects, dropped outcomes, and suppressed protections cannot make
+  a run pass. A quiet direction or interval cannot offset a forbidden burst.
+- NET-14W and NET-14X define protection of established publisher work and
+  honest anonymous admission while finite capacity remains under an incomplete
+  establishment flood. Their exact workloads, useful-work floors, canaries,
+  admission deadlines, and client/publisher budgets apply together. Incomplete
+  attempts cannot evict established work or reach the Application as accepted
+  connections. Attempt state is finite and cleaned up across the entire run.
+  Admission cannot depend on money, an account, IP or source reputation, a
+  stable identifier, or linkage across Services or Isolation Contexts, and
+  cannot bypass authentication, privacy, isolation, queues, or fail-closed
+  handling. Full capacity may produce an explicit bounded capacity result,
+  never eviction, false success, or a hang.
 - A hostile client that completes anonymous admission is not assumed to remain
-  distinguishable from an honest client. With all `256` publisher slots split
-  between `128` honest and `128` valid admitted hostile connections, unread
-  hostile input and non-reading hostile receivers reach hard queue and
-  backpressure boundaries without breaking the honest useful-work and canary
-  floors or the `1 GiB`/one-core publisher limits. Harness labels, IP, accounts,
-  stable identities, privileged state, and cross-context linkage are forbidden
-  classifiers. While capacity remains full, an explicit capacity-unavailable
-  result by `15 s` is acceptable; eviction, false success, hang, or unbounded
-  admission queue is not. Ardents does not claim per-person fairness, creation
-  of a free slot, or Sybil-resistant new admission under this condition.
+  distinguishable from an honest client. NET-14Y defines the exact full-capacity
+  workload and bounds: unread hostile input and non-reading receivers reach
+  queue/backpressure boundaries while honest useful work and canaries remain
+  usable. Harness labels, IP, accounts, stable identities, privileged state,
+  and cross-context linkage are forbidden classifiers. An explicit bounded
+  capacity-unavailable result is allowed while full; eviction, false success,
+  hangs, and unbounded admission queues are not. This makes no per-person
+  fairness, free-slot, or Sybil-resistant new-admission claim.
 - Integrity mechanisms reject protocol-level tagging that changes authenticated
   data, but cannot promise to detect every timing-, delay-, or volume-based tag.
   Such correlation remains within the P2-D1 and P2-D4 limitations.
@@ -929,8 +893,9 @@ or privacy claim.
   performance floors, but extra capacity grants no Node role, trust, authority,
   route-selection priority, cross-context access, or security exception.
 - Automatic scale-up requires a qualified profile that increases open and active
-  connections with aggregate useful load while retaining at least `20%` of
-  every declared CPU, memory, and usable-link parent budget. The first profile
+  connections with aggregate useful load while retaining the reserve required
+  by NET-14P in the [requirements registry](../product/functional-map.md#accepted-requirements-registry)
+  for every declared CPU, memory, and usable-link parent budget. The first profile
   that misses any accepted gate or reserve is saturation and cannot be selected
   automatically for that tested envelope. An owner may cap lower; a finite
   higher experimental override is unqualified and cannot relax resource,
@@ -939,10 +904,10 @@ or privacy claim.
   metadata. Traffic and admission behavior may still permit rough capacity
   inference, which is not presented as hidden by the protocol.
 - Slow consumers cause bounded stream backpressure, not unbounded queues or
-  silent Application Data loss. Required client and publisher profiles cap
-  locally queued logical Application Data at `256 KiB` per connection and
-  direction, with `16 MiB` client and `64 MiB` publisher aggregate caps in each
-  direction. Attributable local OS/IPC buffering is inside that accounting;
+  silent Application Data loss. Required client and publisher profiles apply
+  NET-14O's per-connection and aggregate logical Application Data caps
+  independently in each direction. Attributable local OS/IPC buffering is inside
+  that accounting;
   child scopes cannot multiply it, process-resident copies remain subject to
   the whole-process-tree RSS ceiling, and non-process buffers require separate
   bounded OS-resource evidence. A full queue accepts no further bytes, does not
@@ -1007,8 +972,9 @@ or privacy claim.
   project-only development keys describe a centralized unqualified test network.
 - Updates are authenticated by role-separated, versioned, expiring metadata with
   hashes, sizes, platform bindings, rollback protection, and explicit root
-  transition. Every new public executable digest needs the `3-of-5` Targets
-  threshold and binds retained source/dependency inputs, SBOM, applicable
+  transition. Every new public executable digest needs the Targets
+  threshold in the [public release contract](../product/operating-model.md#release-trust)
+  and binds retained source/dependency inputs, SBOM, applicable
   qualification identity, and two matching build attestations from builders
   independent of each other and of the release-Targets threshold;
   snapshot/timestamp delegates cannot introduce code. Security watermarks and
@@ -1019,8 +985,9 @@ or privacy claim.
   `retired`) is separate from build safety (`current/superseded`, `vulnerable`,
   `revoked`). A normal required transition waits for qualified independent
   capacity and drain reserve in every Role Domain and required control/discovery
-  role. The `90-day` protocol overlap can be bypassed only by an expiring
-  `4-of-5` emergency for a credible exploitable flaw, compromised primitive/key,
+  role. The [protocol transition contract](../product/operating-model.md#protocol-and-build-state-machines)
+  fixes the overlap and emergency threshold. Bypassing that overlap requires
+  the expiring threshold emergency for a credible exploitable flaw, compromised primitive/key,
   or demonstrated safety incompatibility, with explicit possible unavailability;
   build revocation has no overlap entitlement.
 - Release checks/downloads carry no installation identifier, account, Service
@@ -1040,20 +1007,28 @@ or privacy claim.
 - Payload protection is not metadata protection, and independent Node IDs are
   not proof of independent control.
 
-## Open security research
+## Decisions and remaining evidence
 
-The prioritized questions live in [the network research queue](../research/questions.md).
-R-001 through R-012 and R-024 now close the product-level target, naming, route,
-failure, isolation, bootstrap, control, lifecycle, update, and privacy contracts.
-They select a route family and operating boundaries, not a production component
-or a qualified implementation.
+The current [product scope](../product/scope.md) and technical owners distinguish
+selected C0 behavior from public-product claim requirements. Go and the bounded
+native Route and TCP/TLS plus QUIC Carrier set are selected; their current
+contracts belong to [repository architecture](../development/repository-layout.md)
+and [Network, Route, and Node](../technical/network-route-node.md). This does not
+select a public protocol, storage or consensus system, or protected Application
+runtime, and does not qualify an anonymity claim.
 
-The remaining security work is evidence: R-013 must compare concrete protocols,
-cryptography, transports, storage, language, and dependency choices; R-023 must
-complete role-specific workloads and qualify the exact implementation. Hostile
-bootstrap/direct-source, clock, rollback, fork, Role Domain transition, drain,
-update, Application Principal/network isolation, anonymous admission,
-uninstall/purge, Sybil/concentration, and recovery drills plus independent
-review are public-release gates. Until those pass, the
-project is an explicitly unqualified research network and cannot claim implemented
-anonymity merely because its documents are internally consistent.
+Open questions and their selection conditions belong in the
+[research queue](../research/questions.md); C0 delivery status belongs in its
+issue tracker. Completed research identifiers are provenance, not instructions
+to repeat technology selection or an alternative task list.
+
+Public claims still require the applicable observer and hostile-behavior
+matrix above, the NET-14 qualification requirements in the
+[functional map](../product/functional-map.md#accepted-requirements-registry),
+and the public independence and lifecycle conditions in the
+[operating model](../product/operating-model.md#remaining-bottlenecks-and-stop-conditions).
+These include bootstrap/direct-source, clock, rollback, fork, Role Domain
+transition, drain, update, Application Principal/network isolation, anonymous
+admission, uninstall/purge, Sybil/concentration, and recovery drills plus
+independent review. Internal consistency and passing local tests do not
+establish implemented anonymity.

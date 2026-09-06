@@ -6,6 +6,9 @@ second product specification.
 
 ## Authorities and reader routes
 
+Use the [repository authority order](../../AGENTS.md#order-of-authority) when
+documents disagree. Reader order is not authority order.
+
 Product scope, journeys, and honest promises belong in `docs/product/`.
 Threats, protected information, adversaries, conditions, measurements, and
 limitations belong in `docs/security/`. Accepted hard-to-reverse decisions live
@@ -31,6 +34,21 @@ owner in the same change. It states normal and failure behavior, boundaries,
 compatibility/retirement conditions, and honest limitations where applicable.
 An ADR or research record remains rationale/evidence after that promotion; it
 does not become the operator manual.
+
+Retain accepted ADRs, completed research records, and immutable audit receipts
+as decision evidence. Retire superseded procedures, design templates, and
+experiment instructions to Git history after promoting unique current facts
+and repairing links. A historical path quoted in a completed record identifies
+that record's source revision; it does not promise a current procedure.
+
+Each exact requirement has one current owner. The functional map owns product
+requirement IDs and performance budgets; the operating model owns lifecycle
+and public control thresholds; the threat model owns adversaries and claim
+conditions. Journeys describe observable behavior and link to those rules.
+Vision summarizes direction. Cross-references preserve a requirement without
+copying its numbers, state machine, or qualification matrix into every reader
+route. C0 scope selects the applicable subset; a public target is not an
+implemented C0 guarantee.
 
 Stage material is transitional. Before it is deleted, its unique current fact
 is promoted to one canonical owner, inbound links are repaired, and any needed

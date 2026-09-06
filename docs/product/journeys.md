@@ -17,26 +17,6 @@ claims directly; delivery-horizon labels must not enter runtime behavior. Public
 join/contribution, Bridges, and full qualification remain later promotion
 gates unless separately selected.
 
-## J-LAB — Falsify the Route candidate
-
-**Actor:** Product Researcher
-
-**Start:** Controlled Ubuntu LTS client, publisher, and synthetic infrastructure
-fixtures; one preconfigured authenticated Target/reachability record; one active
-Service Instance; project-owned ephemeral test keys
-
-**Flow:** start the fixed topology → construct the current five-position Route
-candidate and separate Introduction → authenticate the Target/Instance → exchange
-one deterministic byte stream → capture each role's traffic and state → measure
-coarse setup, goodput, CPU, and RSS → stop one path position → observe bounded
-continuation or explicit terminal failure
-
-**Done when:** evidence shows exactly what every role learned, whether the
-Product Core knowledge boundary was violated, whether one useful stream remained
-plausible on modest hardware, and whether the candidate should continue, change,
-or stop. No Service Name, public discovery, Bridge, installer/updater, Windows
-cell, SDK, general Application sandbox, or public network claim is present.
-
 ## J-00 — Install, repair, and remove Ardents
 
 **Actor:** Endpoint Owner
@@ -259,7 +239,7 @@ guaranteed protection from a more powerful squatter.
 The carrier cannot stop an arbitrary published Application from exposing an
 ordinary-network listener or performing DNS, callbacks, webhooks, SSRF, or
 direct socket access. A generic Service remains
-compatible but receives no Application-level Service-location privacy claim. A
+compatible but receives no Application-level Endpoint Location Privacy claim. A
 claim-bearing profile contains the complete published Application/helper process
 tree in a Network-Isolated Application Boundary, exposes no ordinary listener,
 and fails external requests
@@ -271,64 +251,15 @@ Traffic Observer may correlate those roles. Standalone client/publisher capacity
 figures are not additive; a release calls simultaneous co-residence usable only
 after its combined Target Connect + Publish profile passes R-023.
 
-The required publisher reference endpoint supports at least `256` concurrently
-open incoming Service Connections, including at least `64` simultaneously active.
-This is a minimum total publisher capacity, not a Service maximum; one Service
-may use the whole budget when local policy permits. The active test keeps all `256`
-connections open while `64` share `40 Mbit/s` of delivered Application Data.
-Throughout the run, the complete Ardents process tree keeps
-`p95 resident memory <= 1 GiB` and mean CPU `<= 100%` of one logical core. The
-published Application's own work is excluded, but every connection must keep
-progressing and all Ardents publication and carrier work remains counted. Under
-the controlled equal-load benchmark, every connection averages at least
-`500 kbit/s` and has no zero-delivery interval longer than `2 s`. At the
-publisher network boundary, all Ardents bytes sent plus received remain at or
-below `1.5x` the Application Data delivered in the tested direction. The other
-`192` connections remain authenticated and usable as the same streams rather
-than being silently evicted. Ardents queues no more than `256 KiB` of logical
-Application Data per connection and direction or `64 MiB` across the publisher
-per direction. If the published Application stops consuming, receiver flow
-control propagates backpressure; Ardents does not hide the stall with loss,
-eviction, or an unbounded memory or disk queue.
-
-The same publisher also protects established work during a 10-minute anonymous
-pre-establishment flood on a symmetric `100 Mbit/s` link. With all `256`
-connections open and `64` offered the normal `40 Mbit/s` aggregate workload,
-the endpoint receives `1,000` validly framed but incomplete attempts per second
-at no more than `20 Mbit/s` inbound attacker traffic. All established streams
-remain usable; the active set delivers at least `32 Mbit/s` aggregate, every
-active stream averages at least `400 kbit/s` with no gap over `5 s`, and the
-inactive set passes unpredictable canaries without reconnecting. Publisher
-`p95 RSS` stays within `1 GiB` and mean CPU within one core. Ardents assumes no
-IP, global User account, or stable attacker identity, bounds and cleans up
-incomplete-attempt state, and never presents it to the published Application as
-an accepted Service Connection.
-
-Honest anonymous admission remains usable during that same flood when capacity
-exists. With `240` established connections and `16` free slots, one ordinary
-honest client starts an unprivileged connection attempt per second. At least
-`95%` of all `600` attempts authenticate the exact target, receive a usable
-Service Connection, and pass a canary; connection `p95` is at most `8 s`, and
-every attempt ends with an explicit result by `15 s`. Established work and the
-publisher's P3-D5a resource ceilings remain intact. Any network-required client
-check costs at most one logical-core CPU-second, `64 MiB` peak memory, and
-`1 MiB` traffic and needs no money, account, IP reputation, stable identity, or
-cross-context link. At full capacity Ardents may return an explicit capacity
-result, but cannot evict another connection or hang.
-
-If an attacker completes admission and fills ordinary Service Connections,
-Ardents still isolates established work rather than pretending it can identify
-the attacker. In the full-capacity publisher workload, `128` honest connections
-share the Service with `128` valid admitted hostile connections. The hostile
-set either sends data that the published Application does not consume or stops
-consuming data written to it. Per-stream and aggregate queues stay bounded and
-propagate backpressure; the `64` active honest streams retain the P3-D5a useful
-work floors, `64` inactive honest streams pass canaries, and publisher RSS/CPU
-remain within `1 GiB`/one core. Ardents receives no harness label, IP, account,
-or stable identity with which to favor the honest set. While all `256` slots
-remain occupied, a new User receives an explicit capacity-unavailable result by
-`15 s`; V1 does not falsely promise per-person fairness or a free slot against
-an indistinguishable admitted Sybil.
+The public publisher capacity and normal-load budgets are NET-14F and
+NET-14K through NET-14O; hostile establishment and admitted-hostile workloads
+are NET-14W through NET-14Y in the
+[requirements registry](functional-map.md#accepted-requirements-registry).
+Established connections remain usable, unread data reaches bounded
+backpressure, and incomplete attempts never reach the Application as accepted
+connections. With available capacity, honest anonymous admission must meet its
+budget. At full capacity, an explicit refusal is permitted; eviction, hangs,
+and a claim of per-person or Sybil-resistant fairness are not.
 
 ## J-04 — Integrate an Application
 
@@ -370,75 +301,21 @@ other Service, authority, or Endpoint Owner state. Grant revocation immediately
 denies new work and invalidates child sessions; custody/admin closes immediately,
 while data closes immediately unless a finite drain was explicitly selected
 first. No ephemeral bearer survives restart, and no Endpoint Owner or Local Grant
-becomes an authority over the Ardents network. The journey remains within its
-declared setup-latency, throughput,
-memory, CPU, fairness, and overload budgets under both honest and adversarial
-load. Under the normal single-connection throughput workload, the 60-second
-Application goodput in each direction has
-`p05 >= min(10 Mbit/s, 50% of paired direct-baseline goodput)`; carrier overhead
-and failed runs do not count as useful payload. A required client reference
-endpoint also supports at least `64` concurrently open outbound Service
-Connections, including at least `16` simultaneously active. This is a minimum
-total client capacity, not a maximum number of connections to one published
-Service. The active test keeps all `64` connections open while `16` share
-`10 Mbit/s` of delivered Application Data in separate runs in each direction,
-and the complete Ardents process tree keeps
-`p95 resident memory <= 512 MiB` and mean CPU
-`<= 50%` of one logical core. Under the controlled equal-load benchmark, every
-connection averages at least `500 kbit/s` and has no zero-delivery interval
-longer than `2 s`. At the client network boundary, all Ardents bytes sent plus
-received remain at or below `1.5x` the Application Data delivered in the tested
-direction. The other `48` connections remain authenticated and usable as the
-same streams rather than being silently evicted. On stronger hardware the
-endpoint may raise its finite hierarchical local budgets, while an Endpoint
-Owner may cap them. Reduced limits are exposed locally and do not qualify as the
-V1 performance floor; added capacity grants no Node role, authority, trust, or
-security exception. The required client profile queues no more than `256 KiB`
-of logical Application Data per connection and direction or `16 MiB` across the
-client per direction. At a full leaf or parent queue, a write blocks or reports
-would-block instead of accepting bytes it cannot retain. Timeout or cancellation
-affects only the unaccepted remainder; an accepted prefix is never a claim of
-remote Application delivery and is never silently discarded.
-
-A stronger endpoint automatically selects only a previously qualified profile
-compatible with its current finite resources. A claimed scale factor increases
-open connections, active connections, and aggregate delivered Application Data
-together in the same 10-minute workload while leaving at least `20%` of every
-declared CPU, memory, and usable-link parent budget free. The first failed
-profile is saturation and is not selected automatically. The Endpoint Owner may
-always cap lower; an explicit higher experimental cap remains unqualified.
+becomes an authority over the Ardents network. The journey must meet the client, single-stream, fairness, queue, and scaling
+requirements NET-14D, NET-14E, and NET-14J through NET-14P in the
+[requirements registry](functional-map.md#accepted-requirements-registry).
+A full leaf or parent queue blocks writes or reports would-block; timeout and
+cancellation affect only the unaccepted remainder. An accepted prefix is not
+remote Application delivery and is never silently discarded. Stronger hardware
+may select only a qualified profile within finite hierarchical budgets. The
+Endpoint Owner may cap lower; an experimental higher cap remains unqualified
+and grants no Node role, authority, or security exception.
 
 Creating an Application or Isolation Context cannot create a fresh Entry Set.
 The endpoint reuses only its bounded installation-and-entry-regime exposure while
 keeping every per-context channel, key, Interior, Rendezvous, destination cache,
 continuity secret, and failure history separate. Applications receive no route
 topology or raw diagnostic identifiers.
-
-## J-05 — Use the Named Unlisted Site tracer
-
-**Actors:** Developer and User
-
-**Start:** Carrier Lab retained a viable Route candidate; controlled Ubuntu
-client and publisher Applications exist; one exact Service Name and its
-Target/reachability state are pre-provisioned by the test fixture
-
-**Flow:** start the deterministic HTTP server and controlled single-response
-client in a harness that exposes only scoped local IPC/loopback and supplies no
-ordinary network path → publish the HTTP server as one Service
-Instance → privately resolve the pre-provisioned exact Name → authenticate its
-Target/Instance → exchange one nonce-bound HTTP response → stop the Service and
-observe explicit unavailability → in a separate ordinary-migration slice,
-generate a new private Instance Key and issue a higher-generation public
-Credential without moving Service Authority or changing the Target
-
-**Done when:** the controlled site opens through the generic Service Connection,
-private exact-name resolution does not expose the querying origin in a forbidden
-role view, ordinary migration preserves Target and Name, and offline/failure
-state remains visible. The slice does not implement permissionless Name claims,
-leases, delegation, Recovery Policy, catastrophe Target replacement, a public
-Namespace, a generic browser sandbox, or the full R-023 latency matrix. It
-records latency and resources as observations only. No replicated Site Bundle,
-Ardents runtime, offline delivery, or built-in application identity is required.
 
 ## J-06 — Continue through degradation or recover from a failed path
 
@@ -482,51 +359,14 @@ establishment and terminates the affected Service Connection fail-closed. An
 ordinary unavailable, expired, or newly ineligible candidate terminates only
 that attachment attempt and may be followed by another bounded safe proposal.
 
-The same journey is also qualified under three sequential eligible failures in
-one 10-minute run. Each next failure affects the current Route only after the
-previous recovery canary arrives, while the failed Node or channel instance
-remains unavailable. All three recovery canaries and a final canary arrive
-through the same still-usable Service Connection. Three is a test workload, not
-a runtime quota or a reason to close after the third successful recovery.
-
-When the Route remains live, a separate 10-minute degraded-path qualification
-uses `300 ms` base end-to-end RTT, independent `5%` packet loss in each
-direction, and `100 ms` `p95` additional per-direction jitter. In separate
-Application Data directions, the same Service Connection has no zero-delivery
-interval longer than `5 s`, and its `p05` 60-second goodput is at least
-`min(2 Mbit/s, 25% of the paired impaired direct baseline)`. It remains
-exact-target-authenticated, open, ordered, non-duplicating, and usable without
-an Application-visible reconnect or security downgrade. A complete traffic
-interruption is evaluated as recovery, not as success in this degraded-live
-profile.
-
-An overlapping-failure qualification also runs separately in each Application
-Data direction for 10 minutes. The first failure stops the current Route; within
-`1 s`, before a recovery canary arrives, the second stops a distinct ordinary
-Node or Carrier Channel used by the in-progress replacement attempt. When both
-endpoints, the same active Service Instance and target, and a further qualifying
-Route remain, the same Service Connection delivers the final recovery canary
-within `p95 <= 8 s` from the first interruption or terminates explicitly by
-`15 s` from that point. The second failure never resets the clock. Recovery
-retains stream order, uniqueness, identity, security, and Isolation Context
-without an Application-visible reconnect or Application-operation replay.
-
-Across every 10-minute impaired-live, single-failure, sequential-failure, and
-overlapping-failure run, each complete Ardents endpoint process tree stays
-within `512 MiB` `p95` RSS, `50%` mean CPU of one logical core, and `100%` `p95`
-one-second CPU of one core. The `256 KiB` per-connection and direction queue cap
-and every ancestor cap remain unchanged. Completed or abandoned recovery state
-does not accumulate across failures. These limits apply together with the
-useful-progress, deadline, and security outcomes rather than replacing them.
-
-The impaired-live run keeps total endpoint carrier bytes at or below `2.0x`
-delivered Application Data in the measured direction. Each recovery episode
-adds at most `8 MiB` per endpoint over a paired no-failure run; the overlapping
-pair is one episode. Across all impaired and recovery runs, each endpoint
-network direction keeps `p95` one-second carrier bitrate at or below
-`min(25 Mbit/s, 80% of its declared usable link budget)`. Retransmission,
-abandoned attempts, control, padding, security, liveness, and background bytes
-remain counted, so retry storms cannot hide inside a ten-minute average.
+The required sequential, degraded-live, overlapping-failure, resource, and
+traffic-amplification scenarios are NET-14R through NET-14V in the
+[requirements registry](functional-map.md#accepted-requirements-registry).
+They preserve the same authenticated ordered Service Connection. A later
+failure does not reset the recovery clock; abandoned work remains accounted
+for and is cleaned up. A complete interruption is recovery, not passing
+useful progress under degradation. Tests cannot suppress security, liveness,
+control, or retransmission traffic to meet a budget.
 
 ## J-07 — Contribute network resources
 

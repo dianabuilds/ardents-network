@@ -63,9 +63,9 @@ submission. `OpenClaimWinner` remains the proof-only verifier for other
 observers. This boundary does not
 select a Network log, transport, or shared persistence foundation. An
 incomplete or forked close must not mutate a Lease.
-Accepted R-074 records that no global-close producer is selected in Stage 8;
-root-claim current behavior is unavailable until a future Network Epoch
-protocol supplies that complete close.
+No global-close producer is selected in the maintained runtime. Root-claim
+current behavior is unavailable until a separately selected Network Epoch
+protocol supplies that complete close; R-074 retains the decision evidence.
 
 An installation captures its current-generation identity. It may publish a
 selected pending prefix together with verified claim materialization, but it
@@ -91,10 +91,10 @@ legacy raw `Store.CommitLegacy` is not the typed installation authority.
 
 The Record/container ceiling and several C0 construction limits are deliberately
 listed together because they are not a compatible product capacity contract.
-F031 must replace them with one owned compatibility table and reject a value
-before signing when it cannot persist, prove, or traverse the private exchange.
-F032 needs a separately measured scale/index decision before the 127-record
-tracer can grow.
+These individual bounds do not establish that every constructible value can
+also be persisted, proved, and carried through the private exchange. A combined compatibility contract must reject a value before signing when
+it cannot persist, prove, or traverse the private exchange. Growth beyond the
+retained tracer also requires a measured scale/index decision. Delivery and remediation status belong in the issue tracker.
 
 ## Invariants
 
@@ -146,10 +146,31 @@ ordinal/root, and issue the complete threshold-signed close before it yields a
 `ClaimWinner`. Scale, index/cache, product capacity, and supported-platform
 claims remain outside this technical contract.
 
-Functional Alpha explicitly selects no substitute: under ADR-0054, alpha
+The project-controlled alpha selects no substitute: under ADR-0054, alpha
 control cannot materialize, close, release, reclaim, or administratively
 recover a canonical Name. Its user-visible control outcome is `not-selected`;
 Target Links remain the complete current destination path.
+
+## Alpha corpus compatibility
+
+The Alpha Name Corpus remains a separately authenticated local overlay; it is
+not canonical Namespace state. The maintained
+[command reference](../reference/commands.md#ardents-control) owns the corpus
+inspection and acceptance routes. Accepted serials and control/corpus floors
+remain authoritative: an exact repeat is harmless, a higher serial may replace
+the current corpus, and lower or same-serial conflicting bytes are rejected.
+An authenticated total withdrawal makes alpha resolution unavailable without
+restoring older bytes or falling back to another destination.
+
+There is no current C0 participant intake procedure or promoted corpus download
+source. Fresh C0 Endpoint plans use Target Links; the complete historical alpha
+plan is retained only under the
+[Endpoint compatibility contract](endpoint-service-runtime.md#endpoint-process-contract).
+The deferred [intake template](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/product/closed-alpha-name-corpus.md)
+and [cohort notice](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/product/closed-alpha-name-corpus-notice-template.md)
+are archived at that revision. They must not be followed as current commands.
+Reintroduction requires an explicitly selected operator contract compatible
+with current enrollment, not reuse of an old enrollment JSON instruction.
 
 ## Verification
 

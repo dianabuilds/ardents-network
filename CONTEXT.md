@@ -2,7 +2,9 @@
 
 Ardents is a public, independently operated network for location-private
 application services. This glossary defines the network product boundary and
-contains no protocol, library, or implementation-language choices.
+contains product language only. Technical owners define cryptographic formats
+and module interfaces; [testing](docs/development/testing.md) defines evidence
+artifacts. Delivery labels and research candidates are not domain terms.
 It describes eventual product language, not current implementation status.
 [Product scope](docs/product/scope.md) names the maintained C0 audit boundary;
 that candidate is not yet a public or independently operated network.
@@ -160,16 +162,6 @@ The smallest durable Ardents information-flow and responsibility contract,
 independent of one implementation or delivery milestone.
 _Avoid_: Current backlog, complete public network, V1
 
-**Delivery Horizon**:
-An explicit promotion boundary controlling when an accepted product requirement
-may enter implementation scope. Decision maturity does not imply horizon entry.
-_Avoid_: Priority label, release version, fixed requirement
-
-**Carrier Lab**:
-The disposable Ubuntu-only controlled experiment that falsifies the current
-Interactive Route candidate before naming or public-network systems are built.
-_Avoid_: Reference Application, test network, Ardents release
-
 **Closed Test Network**:
 A persistent multi-host but project-controlled Ardents environment used to test
 later vertical slices without claiming independent or public operation.
@@ -213,11 +205,13 @@ _Avoid_: Service Authority, public credential, permanent server key
 
 **Service Instance Credential**:
 A public, bounded, monotonic Service-Authority signature binding one Service
-Target, Ed25519 Instance public key, separate X25519 Introduction recipient
-public key, exclusive generation, validity bounds, network, and allowed
+Target, Instance public key, separate Introduction recipient public key,
+exclusive generation, validity bounds, network, and allowed
 capabilities. The matching Service Instance Key permits publication and
 target-authenticated handshakes but not export or replacement of Service
 Authority. The Introduction recipient key is not derived from the Instance Key.
+Service Credential and Instance Credential are short forms of this same term;
+Credential alone is used only when the Service Instance scope is unambiguous.
 _Avoid_: Private key, Service Authority, hosting account
 
 **Authority Recovery Bundle**:
@@ -459,27 +453,12 @@ changing Application Interface or Service Connection semantics; the selected
 profile is authenticated and cannot be silently weakened.
 _Avoid_: Anonymous mode, user-tunable routing knobs, routing algorithm, silent fallback
 
-**Route Module**:
-The logical deep Module below the Service Connection boundary. Its stable
-Interface carries connection-scoped protected frames under an exact Route
-Profile and Isolation Context while hiding the routing family, hop shape,
-introduction, rendezvous, multipath, mixing, padding, and Carrier Channel
-Adapters used by its Implementation.
-_Avoid_: Application Interface, universal routing language, fixed topology
-
 **Route Qualification**:
 The evidence state of a specific implementation candidate after it passes every
 required observer, Node-role, endpoint, and active-attack falsification test for
 a Route Profile. It does not extend to excluded adversaries, untested builds, or
 later changes.
 _Avoid_: Security proof, anonymous by design, documentation-only claim
-
-**Qualification Evidence Bundle**:
-The immutable, content-addressed evidence record bound to one exact candidate
-and its qualification conditions. It contains the precommitted inputs, complete
-raw observations, invalidations, and deterministic verdict outputs needed to
-recompute its Route Qualification.
-_Avoid_: Test report, selected results, log archive
 
 **Interactive Route**:
 The low-latency Route Profile intended for live Applications. It does not
@@ -557,7 +536,10 @@ role restricted to the non-adjacent Rendezvous Domain and excluded from acting a
 the same connection's Rendezvous. One Node Identity and one honestly declared
 operator family occupy only one domain during its assignment lifetime; this
 prevents same-identity cross-leg or Entry-plus-lookup overlap but does not prove
-independent control.
+independent control. These are public-product eligibility classes. Current C0
+duty assignments and their limits are described in the
+[technical Route contract](docs/technical/network-route-node.md) and
+[private reachability](docs/technical/private-reachability.md).
 _Avoid_: Trust tier, manual allowlist, Node role chosen per connection
 
 **Role Domain Assignment**:
@@ -618,14 +600,6 @@ material and selection indices, not global completeness; threshold state and
 independent full auditors cover the global commitment. Withholding retries the
 same index elsewhere or fails explicitly and never causes silent resampling.
 _Avoid_: Personalized Candidate View, distributor-selected route, reputation
-
-**Public-control Candidate**:
-A proposed public Control Plane roster, threshold operation, Candidate View,
-package, and evidence set that can be inspected independently. It is qualified
-only after real independent custodians, builders, and full auditors corroborate
-their control boundaries; project keys, VPS, CI, Docker, and a Product Owner
-walkthrough are not such evidence.
-_Avoid_: Project multi-key, self-certified decentralization, alpha promotion
 
 **Time Confidence**:
 The endpoint's bounded evidence that freshness decisions are safe, derived from

@@ -294,8 +294,9 @@ These are responsibility boundaries, not selected binaries or APIs:
     summaries. Shards or proofs bound client cost without pretending that one
     partial client proves global completeness; independent full auditors check
     inclusion, summaries, and concentration.
-24. Official updates use separated threshold release roles, `3-of-5`
-    authorization of every new public executable digest, authenticated version
+24. Official updates use the separated threshold release roles and exact
+    authorization requirements in the [operating model](operating-model.md#release-trust),
+    covering every new public executable digest, authenticated version
     and rollback state, staged atomic replacement, separate protocol and build
     safety state machines, explicit protocol overlap, and no silent downgrade or
     privacy fallback. One-to-one project keys define only an unqualified
@@ -346,46 +347,17 @@ version, and its own Qualification Evidence Bundle.
 
 ## First Reference Application: Named Unlisted Site
 
-Named Unlisted Site followed a successful Carrier Lab and completed its bounded
-Gate C tracer. It is the first product-shaped tracer, not a production release.
-Carrier Lab deliberately
-uses a preconfigured Target/reachability fixture and no Service Name so that a
-failed Route candidate stops the project before a second distributed system is
-built.
+The completed Named Unlisted Site tracer and preceding route experiment are
+historical evidence. Their exact [experiment and tracer journeys](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/product/journeys.md#j-lab--falsify-the-route-candidate)
+and [original tracer boundary](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/product/vision.md#first-reference-application-named-unlisted-site)
+remain recoverable at that source revision. They do not select a current
+Browser, canonical naming journey, or general Application runtime.
 
-The first Reference Application proves the network chain without defining a
-general application platform:
-
-1. A Developer runs a deterministic local HTTP service whose controlled process
-   tree has no ordinary network path by harness construction and uses only
-   scoped local Ardents IPC/loopback. This is not a general sandbox product.
-2. Ardents creates a Service Target; the host generates a private Instance Key
-   and receives a bounded public Instance Credential for that key. Ardents maps
-   incoming connections to the local service and publishes reachability without
-   an ordinary public origin.
-3. The fixture supplies one pre-provisioned exact Service Name binding; public
-   claiming, lease, delegation, and recovery are not part of this slice.
-4. A User who already knows the exact name enters it in a small reference
-   controlled client. The name resolves and the current Interactive Route
-   candidate reaches the Service while remaining explicitly unqualified.
-5. HTTP bytes cross a generic Service Connection; the network does not interpret
-   pages, forms, sessions, or application identity.
-6. The journey exposes offline and route failure honestly. A later vertical
-   slice may preserve the Service Target during ordinary one-Instance migration;
-   catastrophe Target replacement belongs to the public naming lifecycle.
-
-The tracer does not require replicated Site Bundles, an Ardents application
-runtime, offline storage, a built-in Inbox, or a permanent decentralized hosting
-layer. Those are separate product hypotheses, not hidden assumptions inside the
-network.
-
-The full permissionless Namespace, Name recovery/governance, Bridges, public
-Contributor operation, production updater, and R-023 qualification matrix are
-not Reference Application prerequisites.
-
-The same tracer must also open the exact Target Link. That path is not a weaker
-Route: it removes only the optional naming operation and prevents an unfinished
-global Namespace from blocking carrier, publication, and recovery research.
+A Reference Application may demonstrate opaque bytes over a Service Connection
+without making HTTP, replicated content, offline delivery, or Application
+identity part of the network. Any Application-level Endpoint Location Privacy
+claim additionally needs the qualified isolation conditions in the threat
+model. The maintained participant journey belongs to [C0 scope](scope.md).
 
 ## Build versus adopt
 
@@ -395,12 +367,12 @@ transport primitives, secure local storage, serialization, sandboxing, and
 protocol machinery when their threat and maintenance models fit.
 
 No dependency is accepted because it is familiar, already present in `old`, or
-popular. No component is rejected merely because it was not written here. The
-first Route candidate is fixed for Carrier Lab and Go is the maintained project
-foundation under ADR-0009. The production protocol family, concrete Route
-Implementation, wire protocol, cryptographic constructions, and runtime library
-set remain open until bounded prototypes compare them against the product,
-security, and performance contracts.
+popular. No component is rejected merely because it was not written here.
+Go and the bounded C0 native Route, wire grammar, and Carrier set are already
+selected; [scope](scope.md) and its technical owners name those decisions.
+They do not commit the public product to the same implementation. A change
+that creates meaningful lock-in requires research and an accepted ADR against
+the product, security, and performance contracts.
 
 ## Explicit non-goals for the network core
 

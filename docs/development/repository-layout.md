@@ -28,7 +28,7 @@ co-location grants none of them access to another zone's authority material.
 | `tests/` | Shared fixtures, checked execution-profile manifests, cross-process end-to-end tests, and explicit live-container tests. Unit and single-Module integration tests remain beside their implementation. This zone has no second Go module. |
 | `docs/product/` | Accepted product promise, scope, functions, journeys, and operating model. |
 | `docs/security/` | Threat model, claim conditions, adversaries, and honest limitations. |
-| `docs/research/` | Active decision-relevant questions and the research template. |
+| `docs/research/` | Open decision questions, the research template, and completed records retained as provenance. |
 | `docs/adr/` | Accepted consequential decisions. Open questions and implementation progress do not belong here. |
 | `docs/development/` | Normative engineering policy, factual registries, and developer runbooks. |
 | `experiments/` | Optional disposable question-scoped research spikes and their instructions. The zone is absent when no active experiment exists and is never maintained product code. |
@@ -55,13 +55,9 @@ Exact package responsibilities and allowed project imports are authoritative in
 the [package map](package-map.md); this document states growth policy rather
 than duplicating that rapidly changing table.
 
-The first real product commands are:
-
-| Command | Stable responsibility |
-|---|---|
-| `cmd/ardents` | Adapt bounded Network State, Endpoint, Entry, and naming routes. |
-| `cmd/ardents-node` | Run one bounded Direct-Origin Source or separately keyed Node process. |
-| `cmd/ardents-custody` | Inspect a public custody envelope or verify one active encrypted record through a no-echo terminal secret boundary. |
+The [command inventory](command-surface.md#process-boundaries) owns the current
+executable set and process responsibilities; the [command reference](../reference/commands.md)
+owns syntax and behavior. This layout does not maintain a second command list.
 
 Cross-process tests live under `tests/e2e/<behavior>/`. Selected host and
 artifact qualification runners live under purpose-named directories in
@@ -196,6 +192,39 @@ Every new package, including a nested package, must arrive in one change with:
 
 Directory nesting grants no privileged dependency. The package map states the
 direction explicitly, and the architecture gate rejects any undeclared import.
+
+## Go code and review rules
+
+These rules apply to every maintained Go change and are enforced where
+possible by `internal/architecture`, Make, the Git hook, and CI.
+
+- Keep exported interfaces small and implementation details unexported.
+- Return errors with actionable context; never hide errors or use `panic` for
+  first-party control flow. First-party `panic`, `unsafe`, cgo, and implicit
+  `init` require a superseding accepted ADR and dedicated risk tests. The
+  [scoped exception register](scoped-risk-exceptions.md) owns the exact
+  admitted high-risk source bindings it covers.
+- Use `gofmt`, mandatory package comments, and thin command adapters.
+- Add behavior and failure-path tests with the owning change.
+- Prefer the standard library. Review every third-party runtime dependency in
+  [dependencies.md](dependencies.md) before changing `go.mod`.
+- Keep caches, generated evidence, credentials, and artifacts outside Git under
+  the [artifact rules](#generated-and-sensitive-artifacts).
+
+Line counts, exported-declaration counts, broad records, direct clock use,
+string outcomes, and duplication are review signals, not verdicts. Evaluate
+responsibility, caller knowledge, state/lifecycle ownership, failure and
+cleanup, format observers, and behavior evidence together. A review records
+the local invariant, why an apparent split would add caller coordination, the
+real caller/compatibility boundary, and normal and failure coverage. Do not
+split a cohesive invariant, widen a result record, or add a generic helper just
+to satisfy a superficial metric. The file-size and import rules below remain
+hard gates.
+
+The [official Go layout guidance](https://go.dev/doc/modules/layout) and
+[Go Code Review Comments](https://go.dev/wiki/CodeReviewComments) supply the
+starting conventions. Automated analysis augments design review.
+
 ## Go file ownership and size
 
 A Go file is an implementation navigation unit, not a Module. Its name states

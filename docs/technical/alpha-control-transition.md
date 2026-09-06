@@ -1,6 +1,6 @@
 # Alpha control transition contract
 
-Status: **current Functional Alpha control-transition contract.** This document describes
+Status: **current project-controlled alpha control-transition contract.** This document describes
 an inspectable project-operated alpha. It does not claim threshold governance,
 independent custody, public control, availability, or a canonical Namespace.
 
@@ -19,7 +19,7 @@ are read-only diagnostic projections; neither changes an owner root.
 | Release Safety | Enrollment-pinned Release trusted-root chain; retained Release floor and consecutive root chain; timestamp and Release Safety bounds. | Consecutive authenticated root rotation; authenticated build revocation/replacement; Endpoint-owned non-decreasing Release floor. | Stop new work or terminate at the authenticated deadline; `release unsafe`, `revoked`, `expired`, `conflicting`, or `unavailable`; exact metadata, artifact digest, Release component, and floor. |
 | Network Epoch | Enrolled Network evidence pins authority set/threshold; persisted Epoch successor; Epoch validity and Time Confidence. | Verified State successor rotates facts and withdraws expired/ineligible duties; State-owned non-decreasing Epoch root. | Refuse State-dependent new work and drain/withdraw affected duty; `network state unavailable`, `expired`, `invalid`, `replayed`, or `conflicting`; exact Epoch bytes, authority IDs/signatures, material roots, and State floor. |
 | Compatibility | Independently pinned Compatibility component; accepted Release identity plus Epoch/profile tuple; earlier bound validity limit. | Higher catalog/component generation bound to a successor tuple; revoked Release or incompatible profile invalidates it; catalog/component plus Release/State floors. | Refuse the incompatible profile, never downgrade Route; `build incompatible` or tuple unavailable/stale/forged/replayed/conflicting; exact component and all bound identities. |
-| Namespace materialization | **No authority, predecessor, or accepted input in Functional Alpha.** | No rotation, revocation, or materialization floor exists. | Do not materialize, release, or reclaim a Namespace; `Namespace materialization is unavailable`; absence of a Namespace component/authority plus ADR-0054 and this contract. |
+| Namespace materialization | **No authority, predecessor, or accepted input in project-controlled alpha.** | No rotation, revocation, or materialization floor exists. | Do not materialize, release, or reclaim a Namespace; `Namespace materialization is unavailable`; absence of a Namespace component/authority plus ADR-0054 and this contract. |
 
 ## Transition matrix
 
@@ -44,10 +44,10 @@ The maintained report classifier exercises the complete matrix. The Linux
 process test `TestAlphaControlTransitionsTwoFreshEnrolledEndpointsAgree` builds the
 exact Endpoint/control pair, starts two fresh Endpoint processes with distinct
 state roots, and demands byte-identical transition reports from two separate
-fresh reader roots. On 2026-08-29 it passed in a network-disabled Docker
-container limited to 1 vCPU, 1 GiB, and 128 PIDs. This is functional equality
-evidence only; it is not a published-release qualification, independent audit,
-or Public Beta promotion.
+fresh reader roots. The [historical run record](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/technical/alpha-control-transition.md#verification)
+retains the dated environment and outcome. This checks functional equality
+only; it is not published-release qualification, independent audit, or Public
+Beta promotion.
 
 ## Governing decisions
 

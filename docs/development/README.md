@@ -9,12 +9,10 @@ specification.
 
 - [Documentation ownership and promotion](documentation.md) defines which
   document owns a fact and how stage material is retired.
-- [Development entry gates](entry-gates.md) defines the required evidence before
-  a change enters a maintained product path.
-- [Go engineering rules](go-engineering.md) define package, file, dependency,
-  and test expectations.
-- [Repository layout and growth rules](repository-layout.md) define the factual
-  tree and permitted growth.
+- [Contributing](../../CONTRIBUTING.md) defines change prerequisites, research
+  entry, local setup, and the integration workflow.
+- [Repository layout and growth rules](repository-layout.md) define Go code
+  rules, architecture review, the factual tree, and permitted growth.
 - [Testing model](testing.md) defines the selected execution profiles.
 - [Deep audit campaign](deep-audit.md) defines the whole-codebase review,
   proof, remediation, and requalification method for an exact frozen C0
@@ -48,11 +46,12 @@ specification.
 
 ## Historical provenance
 
-Closed stage material, completed research records, and disposable experiments
-are removed after their retained facts gain a current owner. Git history is the
-provenance route; it is not a current command, package, or Qualification
-contract. Start with the routes above unless a current ADR or active research
-record explicitly needs that history.
+Completed research records and accepted ADRs remain decision evidence outside
+the normal reading route. Superseded stage procedures and disposable
+experiments are retired to Git after their unique current facts gain an owner,
+as defined by [documentation policy](documentation.md#promotion-and-retirement).
+Neither a retained record nor Git history is a current command, package, or
+Qualification contract.
 
 Completed experiment source is available from Git history and its accepted
 research record; no experiment is part of the current C0 tree.
