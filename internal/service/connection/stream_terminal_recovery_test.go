@@ -23,8 +23,7 @@ func TestReplaySettledTerminalReplaysOutstandingDataBeforeTerminal(t *testing.T)
 	stream := &Stream{current: attachment, sendData: []byte("request"), sendEnd: 7, localTerminal: true,
 		terminalSettled: true, terminalGeneration: 1}
 	stream.cond = sync.NewCond(&stream.mu)
-	result := make(chan error, 1)
-	go func() { result <- stream.replaySettledTerminal() }()
+	stream.startSettledTerminalReplay()
 	first, err := ReadStream(reader)
 	if err != nil {
 		t.Fatal(err)
@@ -33,14 +32,20 @@ func TestReplaySettledTerminalReplaysOutstandingDataBeforeTerminal(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := <-result; err != nil {
-		t.Fatal(err)
-	}
 	if first.Data == nil || first.Data.AttachmentGeneration != 2 || first.Data.Offset != 0 || string(first.Data.Payload) != "request" {
 		t.Fatalf("replayed Data = %+v", first.Data)
 	}
 	if second.Terminal == nil || second.Terminal.AttachmentGeneration != 2 || second.Terminal.Offset != 7 {
 		t.Fatalf("replayed Terminal = %+v", second.Terminal)
+	}
+	stream.mu.Lock()
+	for stream.terminalReplaying && stream.terminal == nil {
+		stream.cond.Wait()
+	}
+	settled := stream.terminalGeneration == 2 && !stream.terminalReplaying && stream.terminal == nil
+	stream.mu.Unlock()
+	if !settled {
+		t.Fatal("settled Terminal replay did not complete")
 	}
 }
 

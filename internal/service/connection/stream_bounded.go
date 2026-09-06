@@ -142,6 +142,10 @@ func (stream *Stream) finishBoundedSend() error {
 			stream.mu.Lock()
 			stream.terminalSettled = true
 			stream.mu.Unlock()
+			// Recovery may have committed between the successful write and this
+			// settlement mark. Recheck now so that the new Attachment receives
+			// the durable Terminal obligation in that interleaving as well.
+			stream.startSettledTerminalReplay()
 			return nil
 		}
 	}
