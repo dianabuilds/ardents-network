@@ -24,6 +24,21 @@ immutable snapshots only after durable publication. A source, clock, or
 resource uncertainty prevents fresh State publication rather than creating a
 fallback truth.
 
+### State transition admissibility
+
+State alone decides whether a verified Epoch can become current or pending.
+Offline acceptance, Source selection, and pending activation apply one durable
+current/pending/conflict invariant; the command and Source adapters only supply
+verified candidate bytes. A normal exact successor becomes current, a future
+successor becomes the one pending Epoch, and that exact pending digest may
+become current only in its validity window after a complete Source wave has
+retained the pending identity for comparison and rechecked trusted completion
+time. A second digest for the pending
+Epoch number records a persistent conflict, preserves the current and pending
+evidence, and refuses later admission or automatic winner selection. Reopen
+recovers the same current/pending/conflict relation before State-dependent work
+can proceed.
+
 ## Native Route profile
 
 The selected Route profile is ardents-interactive-route-v2. EntryBinding binds

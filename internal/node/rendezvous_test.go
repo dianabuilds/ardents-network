@@ -142,7 +142,7 @@ func TestRendezvousPairsExactAuthenticatedLegsOverQUIC(t *testing.T) {
 }
 
 func TestRendezvousRejectsDuplicateSideWithoutDisplacingWaitingLeg(t *testing.T) {
-	running, material, config := rendezvousFixture(t)
+	running, material, config := rendezvousFixtureWith(t, 2, 2, 1, 1<<20, 15*time.Second)
 	first, err := openRendezvousLeg(t.Context(), config.ListenAddress, material.initiator, material.serverPublic,
 		legFor(material, [32]byte{8}, route.InitiatorRole, config.NotAfter))
 	if err != nil {

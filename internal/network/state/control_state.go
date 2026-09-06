@@ -92,10 +92,16 @@ func (s *networkState) commitActiveDecision(decision candidateDecision, state di
 		return err
 	}
 	state.epochFloor, state.epochDigest = decision.epoch.number, decision.epoch.digest
+	if state.pendingDigest == decision.epoch.digest {
+		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
+	}
 	if err := s.commitDistribution(state); err != nil {
 		return err
 	}
 	snapshot := decision.snapshot
 	s.current, s.currentDecision = &snapshot, &decision
+	if s.pendingDecision != nil && s.pendingDecision.epoch.digest == decision.epoch.digest {
+		s.pendingDecision = nil
+	}
 	return persistDecision(s.storage, decision, true)
 }
