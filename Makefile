@@ -49,7 +49,7 @@ endif
 
 format:
 	go fmt ./...
-	gofmt -w ./scripts/check-tools.go ./scripts/check-deadcode.go
+	gofmt -w ./scripts/check-tools.go ./scripts/check-deadcode.go ./scripts/run-fuzz-targets.go
 
 format-check architecture:
 	go test ./internal/architecture -run TestRepositoryArchitecture -count=1
@@ -115,8 +115,7 @@ package-ubuntu-deb:
 	sh ./packaging/ubuntu-deb/build.sh
 
 fuzz:
-	go test ./internal/network/state -run '^$$' -fuzz '^FuzzCanonicalParsers$$' -fuzztime=30s
-	go test ./internal/contributor -run '^$$' -fuzz '^FuzzContributorJSONDecoders$$' -fuzztime=30s
+	go run ./scripts/run-fuzz-targets.go
 
 test: unit e2e
 

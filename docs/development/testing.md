@@ -37,7 +37,10 @@ substitute for independent review.
   checks successful parser digest/key/raw invariants; Contributor owns strict
   JSON decoding and checks its successful round trip. The command fails if
   either named target is absent or fails, and does not claim coverage of every
-  untrusted grammar.
+  untrusted grammar. The deterministic architecture profile independently
+  checks the selected inventory, its declarations, the Make entry point, and
+  the exact mutation commands. It does not mutation-fuzz under an ordinary
+  deterministic profile.
 
 Ordinary checks do not build or run Docker and never install tools implicitly.
 `make check` also verifies pinned tool versions and the dead-code inventory.
