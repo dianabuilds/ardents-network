@@ -314,6 +314,70 @@ func TestHeadlessOpenCancellationInterruptsBlockedInputAndRemovesPartialOutput(t
 	}
 }
 
+func TestHeadlessOpenCancellationInterruptsConnectionSetup(t *testing.T) {
+	socket := filepath.Join(os.TempDir(), fmt.Sprintf("aho-setup-cancel-%d.sock", time.Now().UnixNano()))
+	t.Cleanup(func() { _ = os.Remove(socket) })
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socket, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	peerReady := make(chan *net.UnixConn, 1)
+	go func() {
+		peer, acceptErr := listener.AcceptUnix()
+		if acceptErr != nil {
+			return
+		}
+		header := make([]byte, 6)
+		if _, readErr := io.ReadFull(peer, header); readErr != nil {
+			_ = peer.Close()
+			return
+		}
+		link := make([]byte, int(binary.BigEndian.Uint16(header[4:])))
+		if _, readErr := io.ReadFull(peer, link); readErr != nil {
+			_ = peer.Close()
+			return
+		}
+		peerReady <- peer
+	}()
+	inputPath, outputPath := filepath.Join(t.TempDir(), "request"), filepath.Join(t.TempDir(), "response")
+	if err := os.WriteFile(inputPath, []byte("request"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() {
+		result <- runHeadlessOpen(ctx, socket, headlessTargetLink(t), inputPath, outputPath, io.Discard)
+	}()
+	var peer *net.UnixConn
+	select {
+	case peer = <-peerReady:
+		defer peer.Close()
+	case <-time.After(time.Second):
+		t.Fatal("headless open did not send its setup request")
+	}
+	cancel()
+	select {
+	case runErr := <-result:
+		if !errors.Is(runErr, context.Canceled) {
+			t.Fatalf("headless setup cancellation = %v", runErr)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("headless open waited for setup status after cancellation")
+	}
+	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
+		t.Fatalf("canceled setup retained output: %v", err)
+	}
+	if err := peer.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var one [1]byte
+	if _, err := peer.Read(one[:]); err == nil {
+		t.Fatal("headless setup cancellation left the local transport open")
+	}
+}
+
 func awaitPartialOutput(t *testing.T, path string, want []byte) {
 	t.Helper()
 	deadline := time.Now().Add(time.Second)

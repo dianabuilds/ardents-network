@@ -47,6 +47,34 @@ type client struct {
 	stopContext      func() bool
 }
 
+// setupCancellation owns a local transport until Dial transfers that ownership
+// to a Client. The handoff and cancellation compete under one lock, so an
+// already-started cancellation cannot be lost between the accepted status and
+// the returned Client.
+type setupCancellation struct {
+	mu       sync.Mutex
+	canceled bool
+	cancel   func()
+}
+
+func (guard *setupCancellation) close() {
+	guard.mu.Lock()
+	guard.canceled = true
+	cancel := guard.cancel
+	guard.mu.Unlock()
+	cancel()
+}
+
+func (guard *setupCancellation) handoff(cancel func()) bool {
+	guard.mu.Lock()
+	defer guard.mu.Unlock()
+	if guard.canceled {
+		return false
+	}
+	guard.cancel = cancel
+	return true
+}
+
 // Dial requests one Target Link and returns no Target, State, Entry, Route,
 // credential, or administration handle.
 func Dial(ctx context.Context, path, targetLink string) (Client, error) {
@@ -57,9 +85,17 @@ func Dial(ctx context.Context, path, targetLink string) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	guard := &setupCancellation{cancel: func() { _ = raw.Close() }}
+	stopCancellation := context.AfterFunc(ctx, guard.close)
+	setupOwnsTransport := true
+	defer func() {
+		if setupOwnsTransport {
+			stopCancellation()
+			_ = raw.Close()
+		}
+	}()
 	connection, ok := raw.(*net.UnixConn)
 	if !ok {
-		_ = raw.Close()
 		return nil, errors.New("local Application attachment is not a Unix connection")
 	}
 	if deadline, available := ctx.Deadline(); available {
@@ -70,34 +106,48 @@ func Dial(ctx context.Context, path, targetLink string) (Client, error) {
 	binary.BigEndian.PutUint16(request[len(localMagic):], uint16(len(targetLink)))
 	copy(request[len(localMagic)+2:], targetLink)
 	if _, err := connection.Write(request); err != nil {
-		_ = connection.Close()
-		return nil, err
+		return nil, setupError(ctx, err)
 	}
 	var status [1]byte
 	if _, err := io.ReadFull(connection, status[:]); err != nil {
-		_ = connection.Close()
-		return nil, errors.New("local Application Connection is unavailable")
+		return nil, setupError(ctx, errors.New("local Application Connection is unavailable"))
 	}
 	if status[0] != 1 {
 		outcome, refusalErr := readRefusal(connection)
-		_ = connection.Close()
 		if refusalErr != nil {
-			return nil, errors.New("local Application Connection is unavailable")
+			return nil, setupError(ctx, errors.New("local Application Connection is unavailable"))
 		}
 		return nil, errors.New(string(outcome.Class) + ": " + outcome.Reason)
 	}
 	_ = connection.SetDeadline(time.Time{})
-	return newClient(ctx, connection), nil
+	opened := newClientWithStop(connection, stopCancellation)
+	go opened.receive()
+	if !guard.handoff(func() { _ = opened.Close() }) {
+		_ = opened.Close()
+		return nil, setupError(ctx, errors.New("local Application Connection is unavailable"))
+	}
+	if err := ctx.Err(); err != nil {
+		_ = opened.Close()
+		return nil, err
+	}
+	setupOwnsTransport = false
+	return opened, nil
 }
 
-func newClient(ctx context.Context, transport clientTransport) Client {
+func setupError(ctx context.Context, fallback error) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, available := ctx.Deadline(); available && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return fallback
+}
+
+func newClientWithStop(transport clientTransport, stopContext func() bool) *client {
 	stream, sink := io.Pipe()
 	opened := &client{connection: transport, stream: stream, sink: sink,
-		done: make(chan Outcome, 1), receiveDone: make(chan struct{})}
-	opened.stateMu.Lock()
-	opened.stopContext = context.AfterFunc(ctx, func() { _ = opened.Close() })
-	opened.stateMu.Unlock()
-	go opened.receive()
+		done: make(chan Outcome, 1), receiveDone: make(chan struct{}), stopContext: stopContext}
 	return opened
 }
 
