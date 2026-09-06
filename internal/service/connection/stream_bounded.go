@@ -20,6 +20,7 @@ func (stream *Stream) RunBounded(sendLimit, receiveLimit uint32) (Outcome, error
 		if tail {
 			return
 		}
+		stream.waitForDataReplay()
 		stop()
 		if releaseSafety != nil {
 			releaseSafety()
@@ -180,7 +181,14 @@ func (stream *Stream) sendApplicationBounded(limit uint64) error {
 func (stream *Stream) finishBoundedSend() error {
 	stream.mu.Lock()
 	stream.localTerminal = true
+	for stream.dataReplaying && stream.terminal == nil {
+		stream.cond.Wait()
+	}
+	terminal := stream.terminal
 	stream.mu.Unlock()
+	if terminal != nil {
+		return terminal
+	}
 	stream.signalAcknowledgement()
 	for {
 		if err := stream.ensureTerminal(); err != nil {

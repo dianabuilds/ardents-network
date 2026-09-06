@@ -384,9 +384,11 @@ func (application *countingHalfCloseApplication) CloseInput() error {
 type terminalFaultAdapter struct {
 	client, publisher      net.Conn
 	dropData               bool
+	dropPublisherData      bool
 	dropClientTerminal     bool
 	dropPublisherReceipt   bool
 	forwardedData          bool
+	forwardedPublisherData bool
 	droppedData            bool
 	prefixAcknowledged     chan struct{}
 	prefixAcknowledgedOnce sync.Once
@@ -399,6 +401,7 @@ type terminalFaultAdapter struct {
 
 type terminalFault struct {
 	dropData             bool
+	dropPublisherData    bool
 	dropClientTerminal   bool
 	dropPublisherReceipt bool
 }
@@ -408,7 +411,7 @@ func newTerminalFaultAdapter(t *testing.T, fault terminalFault) (net.Conn, net.C
 	client, adapterClient := net.Pipe()
 	adapterPublisher, publisher := net.Pipe()
 	adapter := &terminalFaultAdapter{
-		client: adapterClient, publisher: adapterPublisher, dropData: fault.dropData,
+		client: adapterClient, publisher: adapterPublisher, dropData: fault.dropData, dropPublisherData: fault.dropPublisherData,
 		dropClientTerminal: fault.dropClientTerminal, dropPublisherReceipt: fault.dropPublisherReceipt,
 		prefixAcknowledged: make(chan struct{}), terminalReceipt: make(chan struct{}), dropped: make(chan struct{}),
 	}
@@ -431,6 +434,13 @@ func (adapter *terminalFaultAdapter) forward(source, destination net.Conn, clien
 				continue
 			}
 			adapter.forwardedData = true
+		}
+		if !clientDirection && record.Data != nil {
+			if adapter.dropPublisherData && adapter.forwardedPublisherData {
+				adapter.droppedData = true
+				continue
+			}
+			adapter.forwardedPublisherData = true
 		}
 		if clientDirection && record.Terminal != nil && adapter.dropClientTerminal {
 			close(adapter.dropped)
@@ -456,7 +466,8 @@ func (adapter *terminalFaultAdapter) forward(source, destination net.Conn, clien
 			!record.Acknowledgement.TerminalConfirmation {
 			adapter.terminalReceiptOnce.Do(func() { close(adapter.terminalReceipt) })
 		}
-		if !clientDirection && adapter.dropData && record.Acknowledgement != nil && record.Acknowledgement.Offset >= uint64(MaximumDataBytes) {
+		if record.Acknowledgement != nil && record.Acknowledgement.Offset >= uint64(MaximumDataBytes) &&
+			((adapter.dropData && !clientDirection) || (adapter.dropPublisherData && clientDirection)) {
 			adapter.prefixAcknowledgedOnce.Do(func() { close(adapter.prefixAcknowledged) })
 		}
 	}

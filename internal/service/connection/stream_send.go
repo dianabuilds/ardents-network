@@ -134,6 +134,8 @@ func (stream *Stream) sendTerminal() {
 }
 
 func (stream *Stream) flushAvailable() error {
+	stream.flushMu.Lock()
+	defer stream.flushMu.Unlock()
 	for {
 		stream.mu.Lock()
 		if stream.terminal != nil {
@@ -177,7 +179,11 @@ func (stream *Stream) writeRecord(attachment *Attachment, record StreamRecord) e
 	defer stream.writerMu.Unlock()
 	stream.mu.Lock()
 	current := stream.current == attachment && !stream.recovering && stream.terminal == nil
+	pendingTerminalData := current && record.Terminal != nil && stream.sendNext < stream.sendEnd
 	stream.mu.Unlock()
+	if pendingTerminalData {
+		return errTerminalDataPending
+	}
 	if !current {
 		return io.ErrClosedPipe
 	}

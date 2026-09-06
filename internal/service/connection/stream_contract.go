@@ -20,6 +20,7 @@ var (
 	// stream, so the connection must fail closed rather than try another Route.
 	ErrActiveViolation     = errors.New("detected Service Connection integrity violation")
 	errRecoveryTerminal    = errors.New("service Connection recovery terminated")
+	errTerminalDataPending = errors.New("Terminal waits for accepted Data")
 	errWorkSafetyExpired   = errors.New("authenticated Work Safety expired")
 	errTerminalTailExpired = errors.New("terminal-control recovery period expired")
 )
@@ -120,6 +121,7 @@ type Stream struct {
 	mu       sync.Mutex
 	cond     *sync.Cond
 	writerMu sync.Mutex
+	flushMu  sync.Mutex
 	current  *Attachment
 
 	recovering   bool
@@ -131,27 +133,28 @@ type Stream struct {
 	lastProgress time.Time
 	ackSignal    chan struct{}
 
-	sendBase, sendEnd, sendNext                                            uint64
-	sendData                                                               []byte
-	recvNext, recentAt                                                     uint64
-	recent                                                                 []byte
-	pending                                                                []receivedRange
-	ackPending, ackSent                                                    uint64
-	terminalAckPending, terminalAckSent, terminalAckWriting                bool
-	terminalAckPendingGeneration, terminalAckGeneration, terminalAckOffset uint64
-	terminalAckWritingGeneration, terminalAckWritingOffset                 uint64
-	terminalAckConfirmedGeneration                                         uint64
-	terminalConfirmationPending, terminalConfirmationSent                  bool
-	terminalConfirmationGeneration, terminalConfirmationOffset             uint64
-	queueMax                                                               uint32
-	localTerminal, terminalSettled, terminalReplaying, terminalWriting     bool
-	remoteTerminal                                                         bool
-	terminalGeneration                                                     uint64
-	terminalWritingGeneration                                              uint64
-	terminalOffset                                                         uint64
-	terminalAcknowledgedGeneration                                         uint64
-	postClose                                                              bool
-	applicationWriting                                                     bool
+	sendBase, sendEnd, sendNext                                                       uint64
+	sendData                                                                          []byte
+	recvNext, recentAt                                                                uint64
+	recent                                                                            []byte
+	pending                                                                           []receivedRange
+	ackPending, ackSent                                                               uint64
+	terminalAckPending, terminalAckSent, terminalAckWriting                           bool
+	terminalAckPendingGeneration, terminalAckGeneration, terminalAckOffset            uint64
+	terminalAckWritingGeneration, terminalAckWritingOffset                            uint64
+	terminalAckConfirmedGeneration                                                    uint64
+	terminalConfirmationPending, terminalConfirmationSent                             bool
+	terminalConfirmationGeneration, terminalConfirmationOffset                        uint64
+	queueMax                                                                          uint32
+	localTerminal, terminalSettled, dataReplaying, terminalReplaying, terminalWriting bool
+	dataReplayDone                                                                    chan struct{}
+	remoteTerminal                                                                    bool
+	terminalGeneration                                                                uint64
+	terminalWritingGeneration                                                         uint64
+	terminalOffset                                                                    uint64
+	terminalAcknowledgedGeneration                                                    uint64
+	postClose                                                                         bool
+	applicationWriting                                                                bool
 }
 
 type receivedRange struct {
