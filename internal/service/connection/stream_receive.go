@@ -99,6 +99,10 @@ func (stream *Stream) acceptData(data *Data, limit uint64) error {
 		return ErrActiveViolation
 	}
 	stream.mu.Lock()
+	if stream.postClose {
+		stream.mu.Unlock()
+		return errors.Join(ErrActiveViolation, errors.New("received Application data after Terminal control completed"))
+	}
 	next := stream.recvNext
 	offset, payload := data.Offset, data.Payload
 	if offset < next {
@@ -123,13 +127,26 @@ func (stream *Stream) acceptData(data *Data, limit uint64) error {
 		return err
 	}
 	for len(stream.pending) > 0 && stream.pending[0].offset == stream.recvNext {
+		if stream.postClose {
+			stream.mu.Unlock()
+			return errors.Join(ErrActiveViolation, errors.New("received Application data after Terminal control completed"))
+		}
 		ready := stream.pending[0]
 		stream.pending = stream.pending[1:]
+		stream.applicationWriting = true
 		stream.mu.Unlock()
-		if err := writeAll(stream.application, ready.data); err != nil {
+		err := writeAll(stream.application, ready.data)
+		stream.mu.Lock()
+		stream.applicationWriting = false
+		if err != nil {
+			attachment, application := stream.failLocked(err)
+			stream.mu.Unlock()
+			stream.releaseFailure(attachment, application)
 			return err
 		}
-		stream.mu.Lock()
+		if stream.cond != nil {
+			stream.cond.Broadcast()
+		}
 		stream.recent = append(stream.recent, ready.data...)
 		stream.recvNext += uint64(len(ready.data))
 		stream.lastProgress = time.Now()
@@ -213,6 +230,10 @@ func (stream *Stream) queueAcknowledgement(offset uint64) {
 		stream.ackPending = offset
 	}
 	stream.mu.Unlock()
+	stream.signalAcknowledgement()
+}
+
+func (stream *Stream) signalAcknowledgement() {
 	select {
 	case stream.ackSignal <- struct{}{}:
 	default:

@@ -122,20 +122,40 @@ func (stream *Stream) fail(err error) {
 		return
 	}
 	stream.mu.Lock()
+	attachment, application := stream.failLocked(err)
+	stream.mu.Unlock()
+	stream.releaseFailure(attachment, application)
+}
+
+// failLocked publishes a terminal failure before waking workers that could
+// hand the Stream to its post-close terminal-control owner. Callers hold
+// stream.mu and must release the returned resources after unlocking.
+func (stream *Stream) failLocked(err error) (*Attachment, Application) {
+	if err == nil {
+		return nil, nil
+	}
+	var attachment *Attachment
+	var application Application
 	if stream.terminal == nil {
 		stream.terminal = err
-		if stream.current != nil {
-			stream.current.closeCarrier()
-		}
-		if deadline, ok := stream.application.(interface{ SetDeadline(time.Time) error }); ok {
-			_ = deadline.SetDeadline(time.Now())
-		} else {
-			_ = stream.application.Close()
-		}
+		attachment, application = stream.current, stream.application
 	}
 	stream.recovering = false
 	stream.cond.Broadcast()
-	stream.mu.Unlock()
+	return attachment, application
+}
+
+func (stream *Stream) releaseFailure(attachment *Attachment, application Application) {
+	if attachment != nil {
+		attachment.closeCarrier()
+	}
+	if application != nil {
+		if deadline, ok := application.(interface{ SetDeadline(time.Time) error }); ok {
+			_ = deadline.SetDeadline(time.Now())
+		} else {
+			_ = application.Close()
+		}
+	}
 	select {
 	case stream.ackSignal <- struct{}{}:
 	default:

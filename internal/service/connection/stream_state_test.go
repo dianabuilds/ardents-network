@@ -67,6 +67,60 @@ func TestStreamReceiveRangeMetadataStopsAtEightDisjointRanges(t *testing.T) {
 	}
 }
 
+func TestStreamPostCloseRejectsApplicationData(t *testing.T) {
+	t.Parallel()
+	application := &bufferApplication{}
+	stream := &Stream{application: application, ackSignal: make(chan struct{}, 1), postClose: true}
+	if err := stream.acceptData(&Data{Payload: []byte("later")}, 16); !errors.Is(err, ErrActiveViolation) {
+		t.Fatalf("post-close Application data accepted: %v", err)
+	}
+	if application.Len() != 0 {
+		t.Fatalf("post-close Application data was presented: %q", application.String())
+	}
+}
+
+func TestTerminalTailStopsAtNoNewRecoveryBoundary(t *testing.T) {
+	application, applicationPeer := halfClosePair()
+	defer applicationPeer.Close()
+	carrier, peer := net.Pipe()
+	defer peer.Close()
+	attachment, err := NewAttachment(carrier, 1, [32]byte{1}, [32]byte{2}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var timers atomic.Int32
+	now := time.Now()
+	stream := &Stream{ctx: t.Context(), application: application, current: attachment, authorized: now, started: now,
+		opener:   func(context.Context, Recovery) (*Attachment, error) { return nil, errors.New("unexpected recovery") },
+		recovery: Recovery{NoNewRecoveryAfter: time.Now().Add(-time.Second).Unix()}, localTerminal: true,
+		remoteTerminal: true, terminalConfirmationSent: true, ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
+		resources: func(kind string, change int) uint32 {
+			if kind == "timer" {
+				return uint32(timers.Add(int32(change)))
+			}
+			return 0
+		}}
+	stream.cond = sync.NewCond(&stream.mu)
+	receiver := stream.startTerminalTailReceive()
+	if !stream.startTerminalTail(func() {}, receiver) {
+		t.Fatal("eligible terminal-control tail was not started")
+	}
+	select {
+	case <-stream.done:
+	case <-t.Context().Done():
+		t.Fatal("terminal-control tail outlived NoNewRecoveryAfter")
+	}
+	stream.mu.Lock()
+	terminal := stream.terminal
+	stream.mu.Unlock()
+	if !errors.Is(terminal, errTerminalTailExpired) {
+		t.Fatalf("terminal-control tail expiry = %v", terminal)
+	}
+	if timers.Load() != 0 {
+		t.Fatalf("terminal-control tail leaked %d timer resources", timers.Load())
+	}
+}
+
 func TestStreamFullSendQueueUnblocksForReplay(t *testing.T) {
 	t.Parallel()
 	stream := &Stream{sendData: make([]byte, logicalQueueLimit), sendEnd: logicalQueueLimit, sendNext: logicalQueueLimit}
@@ -114,6 +168,40 @@ func TestStreamRecoveryExhaustionPublishesTerminalBeforeWakingWaiter(t *testing.
 	stream.mu.Unlock()
 	if terminal == nil || recovering {
 		t.Fatalf("terminal was not atomically published: terminal=%v recovering=%v", terminal, recovering)
+	}
+}
+
+func TestStreamRecoveryCancelsProposalAfterTerminalConfirmation(t *testing.T) {
+	failed := &Attachment{generation: 1}
+	opened, release := make(chan struct{}), make(chan struct{})
+	closed := make(chan struct{})
+	stream := &Stream{ctx: t.Context(), recovery: Recovery{NoNewRecoveryAfter: time.Now().Add(time.Minute).Unix()},
+		current: failed, continuity: [32]byte{1}, resources: func(string, int) uint32 { return 0 },
+		ackSignal: make(chan struct{}, 1), done: make(chan struct{}), localTerminal: true, remoteTerminal: true,
+		sendBase: 7, sendEnd: 7, terminalAcknowledgedGeneration: 1, terminalAckPending: true,
+		terminalAckSent: true, terminalAckGeneration: 1,
+		opener: func(context.Context, Recovery) (*Attachment, error) {
+			close(opened)
+			<-release
+			return &Attachment{generation: 2, close: func() { close(closed) }}, nil
+		}}
+	stream.cond = sync.NewCond(&stream.mu)
+	result := make(chan error, 1)
+	go func() { result <- stream.recoverAttachment(failed) }()
+	<-opened
+	stream.mu.Lock()
+	stream.terminalAckConfirmedGeneration = 1
+	stream.mu.Unlock()
+	close(release)
+	if err := <-result; err != nil {
+		t.Fatalf("completed Terminal control started recovery: %v", err)
+	}
+	<-closed
+	stream.mu.Lock()
+	terminal, recovering := stream.terminal, stream.recovering
+	stream.mu.Unlock()
+	if terminal != nil || recovering {
+		t.Fatalf("completed recovery remained active: terminal=%v recovering=%t", terminal, recovering)
 	}
 }
 

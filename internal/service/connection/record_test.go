@@ -37,7 +37,10 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 	}
 	records := []Record{{Challenge: &challenge}, {Proof: &Proof{ChallengeDigest: digest, Signature: signature}},
 		{Continuity: &continuity}, {Data: &Data{AttachmentGeneration: 2, Offset: 3, Payload: []byte{1, 2}}},
-		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 5}}, {Terminal: &Terminal{AttachmentGeneration: 2, Offset: 6}}}
+		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 5}},
+		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 6, Terminal: true}},
+		{Acknowledgement: &Acknowledgement{AttachmentGeneration: 2, Offset: 6, Terminal: true, TerminalConfirmation: true}},
+		{Terminal: &Terminal{AttachmentGeneration: 2, Offset: 6}}}
 	for _, record := range records {
 		var wire bytes.Buffer
 		if err := Write(&wire, record); err != nil {
@@ -56,7 +59,8 @@ func TestClosedNativeRecordRoundTrips(t *testing.T) {
 			t.Fatal("Continuity kind changed")
 		case record.Data != nil && (parsed.Data == nil || !bytes.Equal(parsed.Data.Payload, record.Data.Payload)):
 			t.Fatal("Data payload changed")
-		case record.Acknowledgement != nil && parsed.Acknowledgement == nil:
+		case record.Acknowledgement != nil && (parsed.Acknowledgement == nil || parsed.Acknowledgement.Terminal != record.Acknowledgement.Terminal ||
+			parsed.Acknowledgement.TerminalConfirmation != record.Acknowledgement.TerminalConfirmation):
 			t.Fatal("Acknowledgement kind changed")
 		case record.Terminal != nil && parsed.Terminal == nil:
 			t.Fatal("Terminal kind changed")
@@ -84,7 +88,7 @@ func TestNativeRecordRejectsProfileKindLengthAndContinuityMutations(t *testing.T
 		at    int
 		value byte
 	}{
-		{"prefix", 0, 'x'}, {"version", len(connectionPrefix) + 2, 2},
+		{"prefix", 0, 'x'}, {"version", len(connectionPrefix) + 2, 1},
 		{"profile", len(connectionPrefix) + 2 + 4, 'x'}, {"kind", len(connectionPrefix) + 2 + 2, 99},
 	} {
 		mutated := append([]byte(nil), base...)
@@ -99,6 +103,29 @@ func TestNativeRecordRejectsProfileKindLengthAndContinuityMutations(t *testing.T
 	}
 	if _, err := Read(bytes.NewReader(append(base[:len(base)-1], []byte{}...))); err == nil {
 		t.Fatal("truncated record was accepted")
+	}
+}
+
+func TestNativeRecordRejectsUnknownTerminalAcknowledgementMarker(t *testing.T) {
+	t.Parallel()
+	var wire bytes.Buffer
+	if err := Write(&wire, Record{Acknowledgement: &Acknowledgement{AttachmentGeneration: 1, Offset: 2, Terminal: true}}); err != nil {
+		t.Fatal(err)
+	}
+	encoded := append([]byte(nil), wire.Bytes()...)
+	encoded[len(encoded)-1] = 3
+	if _, err := Read(bytes.NewReader(encoded)); err == nil {
+		t.Fatal("unknown Terminal Acknowledgement marker was accepted")
+	}
+}
+
+func TestNativeRecordRejectsBareTerminalAcknowledgementConfirmation(t *testing.T) {
+	var wire bytes.Buffer
+	err := Write(&wire, Record{Acknowledgement: &Acknowledgement{
+		AttachmentGeneration: 2, Offset: 6, TerminalConfirmation: true,
+	}})
+	if err == nil {
+		t.Fatal("bare Terminal Acknowledgement confirmation was accepted")
 	}
 }
 

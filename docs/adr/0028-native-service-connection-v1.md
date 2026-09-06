@@ -1,7 +1,8 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-23
 supersedes: none
+superseded-by: ADR-0075
 ---
 
 # ADR-0028 — Use the native Service Connection v1 grammar

@@ -10,7 +10,8 @@ import (
 const contextDomain = "ardents-service-connection-context-v1\x00"
 
 // Context derives the one immutable ConnectionContext digest from the exact
-// facts selected in ADR-0028.
+// facts selected in ADR-0075. Its v1 domain label is a retained compatibility
+// obligation of the immutable ConnectionContext digest, not a grammar choice.
 func Context(input ContextInput) ([32]byte, error) {
 	if input.Network == [32]byte{} || input.Target == [32]byte{} || input.InstancePublic == [32]byte{} ||
 		input.PublicationDigest == [32]byte{} || input.InstanceGeneration == 0 {

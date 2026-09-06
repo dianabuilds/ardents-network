@@ -18,6 +18,10 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 		stream.mu.Unlock()
 		return err
 	}
+	if stream.finishRecoveryIfCompleteLocked() {
+		stream.mu.Unlock()
+		return nil
+	}
 	if stream.current != failed {
 		stream.mu.Unlock()
 		return nil
@@ -52,6 +56,10 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 			break
 		}
 		stream.mu.Lock()
+		if stream.finishRecoveryIfCompleteLocked() {
+			stream.mu.Unlock()
+			return nil
+		}
 		if stream.proposals >= proposalLimit || time.Now().After(deadline) {
 			stream.mu.Unlock()
 			break
@@ -68,6 +76,17 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 			request.Role = "publisher"
 		}
 		attachment, err := stream.opener(attempt, request)
+		stream.mu.Lock()
+		complete := stream.finishRecoveryIfCompleteLocked()
+		stream.mu.Unlock()
+		if complete {
+			if attachment != nil {
+				attachment.closeCarrier()
+			}
+			cancel()
+			releaseTimer()
+			return nil
+		}
 		if err == nil {
 			state.Role = RoleClient
 			if !stream.client {
@@ -87,6 +106,13 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 		cancel()
 		releaseTimer()
 		if err == nil {
+			stream.startSettledTerminalReplay()
+			return nil
+		}
+		stream.mu.Lock()
+		complete = stream.finishRecoveryIfCompleteLocked()
+		stream.mu.Unlock()
+		if complete {
 			return nil
 		}
 		last = err
@@ -97,8 +123,28 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 	if last == nil {
 		last = errors.New("route Attachment proposal limit or recovery deadline reached")
 	}
+	stream.mu.Lock()
+	complete := stream.finishRecoveryIfCompleteLocked()
+	stream.mu.Unlock()
+	if complete {
+		return nil
+	}
 	stream.fail(last)
 	return last
+}
+
+// finishRecoveryIfCompleteLocked retires an obsolete recovery attempt after
+// both directions have received the Terminal-control proof. Callers hold
+// stream.mu.
+func (stream *Stream) finishRecoveryIfCompleteLocked() bool {
+	if !stream.boundedReceiveCompleteLocked() {
+		return false
+	}
+	stream.recovering = false
+	stream.proposals = 0
+	stream.episodeEnd = time.Time{}
+	stream.cond.Broadcast()
+	return true
 }
 
 func recoveryEpisodeDeadline(lastProgress, detected time.Time) time.Time {
@@ -129,6 +175,13 @@ func (stream *Stream) commitAttachment(failed, attachment *Attachment, peer Cont
 	if err := stream.acknowledgeLocked(peer.ReceiveNext); err != nil {
 		return err
 	}
+	// Continuity carries our ReceiveNext to the peer, so the replacement has
+	// already published every acknowledgement up to that offset. Replaying an
+	// older acknowledgement can otherwise outlive the peer's completed
+	// half-close and trigger a needless second recovery.
+	if stream.recvNext > stream.ackSent {
+		stream.ackSent = stream.recvNext
+	}
 	stream.current = attachment
 	stream.sendNext = stream.sendBase
 	stream.recoveries++
@@ -136,5 +189,9 @@ func (stream *Stream) commitAttachment(failed, attachment *Attachment, peer Cont
 	stream.proposals = 0
 	stream.episodeEnd = time.Time{}
 	stream.cond.Broadcast()
+	select {
+	case stream.ackSignal <- struct{}{}:
+	default:
+	}
 	return nil
 }
