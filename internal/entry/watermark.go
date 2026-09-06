@@ -38,27 +38,5 @@ func replaceWatermark(root string, generation uint64, name string) error {
 	if generation == 0 || !stateName.MatchString(name) {
 		return errors.New("entry generation watermark value is invalid")
 	}
-	temporary, err := os.CreateTemp(root, ".watermark-")
-	if err != nil {
-		return err
-	}
-	path := temporary.Name()
-	defer func() { _ = os.Remove(path) }()
-	if err = temporary.Chmod(0o600); err == nil {
-		_, err = temporary.WriteString(fmt.Sprintf("%d %s\n", generation, name))
-	}
-	if err == nil {
-		err = temporary.Sync()
-	}
-	closeErr := temporary.Close()
-	if err != nil {
-		return err
-	}
-	if closeErr != nil {
-		return closeErr
-	}
-	if err := os.Rename(path, filepath.Join(root, "watermark")); err != nil {
-		return err
-	}
-	return syncDirectory(root)
+	return replaceOwnedFile(root, ".watermark-", "watermark", []byte(fmt.Sprintf("%d %s\n", generation, name)))
 }
