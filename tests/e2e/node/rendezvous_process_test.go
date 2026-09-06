@@ -13,9 +13,7 @@ import (
 	"io"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -277,49 +275,6 @@ type rendezvousStateRecord struct {
 	credentials     processCert
 }
 
-func newRendezvousStateFixture(t *testing.T, endpoint string) rendezvousStateFixture {
-	t.Helper()
-	now := time.Now().UTC().Truncate(time.Second)
-	network := sha256.Sum256([]byte("ardents-native-rendezvous-process-network"))
-	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x71}, ed25519.SeedSize))
-	certificateAuthority := makeAuthority(t, "rendezvous-node-root")
-	fixture := rendezvousStateFixture{now: now, network: network, authorityPublic: authority.Public().(ed25519.PublicKey), authorityPrivate: authority}
-	fixture.rendezvous = makeRendezvousStateRecord(t, network, 0x41, "rendezvous-family", endpoint, makeLeaf(t, certificateAuthority, "rendezvous.test", true), now)
-	fixture.initiator = makeRendezvousStateRecord(t, network, 0x42, "initiator-family", freeAddress(t), makeLeaf(t, certificateAuthority, "initiator.test", false), now)
-	fixture.responder = makeRendezvousStateRecord(t, network, 0x43, "responder-family", freeAddress(t), makeLeaf(t, certificateAuthority, "responder.test", false), now)
-	records := []rendezvousStateRecord{fixture.rendezvous, fixture.initiator, fixture.responder}
-	sort.Slice(records, func(first, second int) bool {
-		return bytes.Compare(records[first].nodeID[:], records[second].nodeID[:]) < 0
-	})
-	for index, record := range records {
-		if record.nodeID == fixture.rendezvous.nodeID {
-			fixture.rendezvousIndex = uint32(index)
-			break
-		}
-	}
-	domains := []string{"initiator", "rendezvous", "responder"}
-	var seed [32]byte
-	for marker := uint64(1); ; marker++ {
-		seed = sha256.Sum256([]byte(fmt.Sprintf("rendezvous-process-%d", marker)))
-		if rendezvousAssignments(network, 1, seed, fixture.rendezvous.family, fixture.initiator.family, fixture.responder.family) {
-			break
-		}
-	}
-	inputs, accepted := make([][]byte, len(records)), make([]Record, len(records))
-	for index, record := range records {
-		inputs[index] = record.raw
-		accepted[index] = Record{Raw: record.raw, NodeID: record.nodeID, Family: record.family, Capacity: 4}
-	}
-	built, err := BuildEpoch(EpochSpec{NetworkID: network, Number: 1, ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(10 * time.Minute),
-		Inputs: inputs, Accepted: accepted, AssignmentSeed: seed, Profile: route.Profile, Domains: domains, Authorities: []ed25519.PrivateKey{authority}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fixture.epoch = lifecycleEpoch{number: built.Number, seed: built.Seed, raw: built.Raw, digest: built.Digest, inputs: built.Inputs, materials: built.Materials}
-	fixture.rendezvousAssignment = assignment.Digest(network, 1, seed, fixture.rendezvous.family, "rendezvous")
-	return fixture
-}
-
 func makeRendezvousStateRecord(t *testing.T, network [32]byte, marker byte, family, endpoint string, certificate processCert, now time.Time) rendezvousStateRecord {
 	t.Helper()
 	public := certificate.private.Public().(ed25519.PublicKey)
@@ -350,32 +305,6 @@ func rendezvousAssignments(network [32]byte, epoch uint64, seed [32]byte, rendez
 	selectedInitiator, _ := assignment.Select(network, epoch, seed, initiator, []string{"initiator", "rendezvous", "responder"})
 	selectedResponder, _ := assignment.Select(network, epoch, seed, responder, []string{"initiator", "rendezvous", "responder"})
 	return selectedRendezvous == "rendezvous" && selectedInitiator == "initiator" && selectedResponder == "responder"
-}
-
-func acceptRendezvousEpoch(t *testing.T, binary, root string, fixture rendezvousStateFixture, materializationIndex uint32) {
-	t.Helper()
-	directory, inputs := t.TempDir(), ""
-	inputs = filepath.Join(directory, "inputs")
-	if err := os.Mkdir(inputs, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	epochPath, material := filepath.Join(directory, "epoch.bin"), filepath.Join(directory, "material.bin")
-	if err := os.WriteFile(epochPath, fixture.epoch.raw, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(material, fixture.epoch.materials[materializationIndex], 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for index, raw := range fixture.epoch.inputs {
-		if err := os.WriteFile(filepath.Join(inputs, fmt.Sprintf("%04d.bin", index)), raw, 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	arguments := []string{"accept-offline", "--state-root", root, "--network-id", hex.EncodeToString(fixture.network[:]), "--authorities", hex.EncodeToString(fixture.authorityPublic),
-		"--threshold", "1", "--at", fixture.now.Format(time.RFC3339), "--epoch", epochPath, "--inputs", inputs, "--materialization", material, "--profile", route.Profile}
-	if output, err := exec.Command(binary, arguments...).CombinedOutput(); err != nil {
-		t.Fatalf("accept native State Epoch: %v\n%s", err, output)
-	}
 }
 
 func nativeRendezvousSourcePlan(fixture rendezvousStateFixture, root, roles, address string, server processCert, clientRoot string, clientPin [32]byte) map[string]any {
