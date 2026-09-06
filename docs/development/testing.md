@@ -32,7 +32,12 @@ substitute for independent review.
   source is represented as a Git repository or as a VCS-free extraction.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
-- `make fuzz` exercises the maintained bounded parser/encoder fuzz surface.
+- `make fuzz` mutation-fuzzes the selected State and Contributor targets for a
+  bounded 30 seconds each. State owns canonical Epoch/Node Record framing and
+  checks successful parser digest/key/raw invariants; Contributor owns strict
+  JSON decoding and checks its successful round trip. The command fails if
+  either named target is absent or fails, and does not claim coverage of every
+  untrusted grammar.
 
 Ordinary checks do not build or run Docker and never install tools implicitly.
 `make check` also verifies pinned tool versions and the dead-code inventory.

@@ -2,6 +2,7 @@ package state
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -56,12 +57,36 @@ func TestFrozenAssignmentTransition(t *testing.T) {
 }
 
 func FuzzCanonicalParsers(f *testing.F) {
+	epoch := fuzzHexSeed(f, "epoch.hex")
+	record := fuzzHexSeed(f, "input-0000.hex")
+	f.Add(epoch, record)
 	f.Add([]byte("AREP"), []byte("ARNR"))
 	f.Add([]byte{}, []byte{})
 	f.Fuzz(func(t *testing.T, epoch, record []byte) {
-		_, _ = parseEpoch(epoch)
-		_, _ = parseRecord(record)
+		if parsed, err := parseEpoch(epoch); err == nil {
+			if parsed.digest == [32]byte{} {
+				t.Fatal("canonical epoch has an empty digest")
+			}
+		}
+		if parsed, err := parseRecord(record); err == nil {
+			if parsed.keyID != sha256.Sum256(parsed.publicKey) || string(parsed.raw) != string(record) {
+				t.Fatal("canonical record lost its codec invariant")
+			}
+		}
 	})
+}
+
+func fuzzHexSeed(f *testing.F, name string) []byte {
+	f.Helper()
+	raw, err := os.ReadFile(filepath.Join("testdata", name))
+	if err != nil {
+		f.Fatal(err)
+	}
+	seed, err := hex.DecodeString(string(raw[:len(raw)-1]))
+	if err != nil {
+		f.Fatal(err)
+	}
+	return seed
 }
 
 func TestEpochChainBoundMatchesRestartRetention(t *testing.T) {

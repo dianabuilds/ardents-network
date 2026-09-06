@@ -115,7 +115,8 @@ package-ubuntu-deb:
 	sh ./packaging/ubuntu-deb/build.sh
 
 fuzz:
-	go test ./internal/network/state -run '^$$' -fuzz '^FuzzCanonicalParsers$$' -fuzztime=1m
+	go test ./internal/network/state -run '^$$' -fuzz '^FuzzCanonicalParsers$$' -fuzztime=30s
+	go test ./internal/contributor -run '^$$' -fuzz '^FuzzContributorJSONDecoders$$' -fuzztime=30s
 
 test: unit e2e
 
