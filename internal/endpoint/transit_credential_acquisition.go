@@ -28,6 +28,56 @@ type transitCredentialSubmission struct {
 	finish        func(bool) error
 }
 
+type acquiredTransitCredential struct {
+	attempt transitAcquisitionAttempt
+	finish  func(bool) error
+}
+
+// acquireTransitCredentialLifecycle owns Endpoint's durable at-most-once
+// journal transaction. Callers retain their role-specific State projection and
+// exchange construction; this helper never selects peers, scopes, or journals.
+func (endpoint *endpoint) acquireTransitCredentialLifecycle(ctx context.Context, owner *transitAcquisition,
+	scope transitAcquisitionScope,
+	issue func(context.Context, credential.Request) (credential.Result, error),
+) (acquiredTransitCredential, error) {
+	attempt, err := owner.begin(scope)
+	if err != nil {
+		return acquiredTransitCredential{}, err
+	}
+	if attempt.Phase == transitPending {
+		result, err := issue(ctx, attempt.Request)
+		if err != nil {
+			if !errors.Is(err, credential.ErrExchangeUnavailable) {
+				_ = owner.fail()
+			}
+			return acquiredTransitCredential{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
+		}
+		if err := owner.commit(result); err != nil {
+			return acquiredTransitCredential{}, err
+		}
+		if result.Outcome != credential.Issued {
+			return acquiredTransitCredential{}, transitAcquisitionOutcomeError{outcome: result.Outcome}
+		}
+		attempt, err = owner.begin(scope)
+		if err != nil {
+			return acquiredTransitCredential{}, err
+		}
+	}
+	presenting, err := owner.present(scope)
+	if err != nil {
+		return acquiredTransitCredential{}, err
+	}
+	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
+	if err != nil {
+		_ = owner.finish(false)
+		return acquiredTransitCredential{}, err
+	}
+	return acquiredTransitCredential{attempt: presenting, finish: func(presented bool) error {
+		erase()
+		return owner.finish(presented)
+	}}, nil
+}
+
 // acquireUserRouteCredential is Endpoint's adapter for Route's already
 // selected membership Grant tuple. Route owns the Entry/Initiator carrier and
 // the exact User-route peers; Endpoint owns only the durable at-most-once
@@ -51,49 +101,18 @@ func (endpoint *endpoint) acquireUserRouteCredential(ctx context.Context, input 
 		IssuerNodeID: input.Issuer.NodeID, IssuerPublicKey: input.Issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(input.Issuer.Profile),
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, TransitNodeID: input.Transit.NodeID, AttachmentID: input.AttachmentID,
 		TransitRole: input.TransitRole, NotAfter: input.NotAfter}
-	attempt, err := owner.begin(scope)
-	if err != nil {
-		return route.Credential{}, err
-	}
-	if attempt.Phase == transitPending {
+	acquired, err := endpoint.acquireTransitCredentialLifecycle(ctx, owner, scope, func(issueCtx context.Context, request credential.Request) (credential.Result, error) {
 		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: input.Issuer.PublicKey, Profile: profile,
 			At: input.At, Deadline: input.NotAfter, Exchange: credential.Exchange(input.Exchange)})
 		if err != nil {
-			_ = owner.fail()
-			return route.Credential{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
+			return credential.Result{}, err
 		}
-		result, err := client.Issue(ctx, attempt.Request)
-		if err != nil {
-			if !errors.Is(err, credential.ErrExchangeUnavailable) {
-				_ = owner.fail()
-			}
-			return route.Credential{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
-		}
-		if err := owner.commit(result); err != nil {
-			return route.Credential{}, err
-		}
-		if result.Outcome != credential.Issued {
-			return route.Credential{}, transitAcquisitionOutcomeError{outcome: result.Outcome}
-		}
-		attempt, err = owner.begin(scope)
-		if err != nil {
-			return route.Credential{}, err
-		}
-	}
-	presenting, err := owner.present(scope)
+		return client.Issue(issueCtx, request)
+	})
 	if err != nil {
 		return route.Credential{}, err
 	}
-	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
-	if err != nil {
-		_ = owner.finish(false)
-		return route.Credential{}, err
-	}
-	return route.Credential{Authorization: append([]byte(nil), presenting.Grant...), ClientCertificate: presenting.Certificate,
-		Finish: func(presented bool) error {
-			erase()
-			return owner.finish(presented)
-		}}, nil
+	return route.Credential{Authorization: append([]byte(nil), acquired.attempt.Grant...), ClientCertificate: acquired.attempt.Certificate, Finish: acquired.finish}, nil
 }
 
 func validRouteTransitPeer(peer route.TransitPeer) bool {
@@ -145,51 +164,21 @@ func (endpoint *endpoint) acquireTransitCredential(ctx context.Context, view tra
 		IssuerNodeID: issuer.NodeID, IssuerPublicKey: issuer.PublicKey, IssuerProfileDigest: sha256.Sum256(issuer.Profile),
 		GrantSignerPublicKey: profile.GrantSignerPublicKey, TransitNodeID: transit.NodeID, TransitRole: role,
 		NotAfter: deadline}
-	attempt, err := owner.begin(scope)
-	if err != nil {
-		return transitCredentialSubmission{}, err
-	}
-	if attempt.Phase == transitPending {
+	acquired, err := endpoint.acquireTransitCredentialLifecycle(ctx, owner, scope, func(issueCtx context.Context, request credential.Request) (credential.Result, error) {
 		client, err := credential.OpenClient(credential.ClientConfig{NetworkID: endpoint.network, IssuerPublic: issuer.PublicKey, Profile: profile,
 			At: at, Deadline: deadline, Exchange: func(exchangeCtx context.Context, envelope []byte) ([]byte, error) {
 				return endpoint.exchangeTransitCredential(exchangeCtx, entry, epoch, initiator, issuer, carrierAttachment, deadline, envelope)
 			}})
 		if err != nil {
-			_ = owner.fail()
-			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
+			return credential.Result{}, err
 		}
-		result, err := client.Issue(ctx, attempt.Request)
-		if err != nil {
-			if !errors.Is(err, credential.ErrExchangeUnavailable) {
-				_ = owner.fail()
-			}
-			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: credential.Unavailable}
-		}
-		if err := owner.commit(result); err != nil {
-			return transitCredentialSubmission{}, err
-		}
-		if result.Outcome != credential.Issued {
-			return transitCredentialSubmission{}, transitAcquisitionOutcomeError{outcome: result.Outcome}
-		}
-		attempt, err = owner.begin(scope)
-		if err != nil {
-			return transitCredentialSubmission{}, err
-		}
-	}
-	presenting, err := owner.present(scope)
+		return client.Issue(issueCtx, request)
+	})
 	if err != nil {
 		return transitCredentialSubmission{}, err
 	}
-	erase, err := endpoint.enrollTransitClient(presenting.Grant, presenting.Certificate)
-	if err != nil {
-		_ = owner.finish(false)
-		return transitCredentialSubmission{}, err
-	}
-	return transitCredentialSubmission{authorization: presenting.Grant, attachment: presenting.Request.AttachmentID,
-		certificate: presenting.Certificate, finish: func(presented bool) error {
-			erase()
-			return owner.finish(presented)
-		}}, nil
+	return transitCredentialSubmission{authorization: acquired.attempt.Grant, attachment: acquired.attempt.Request.AttachmentID,
+		certificate: acquired.attempt.Certificate, finish: acquired.finish}, nil
 }
 
 func (endpoint *endpoint) exchangeTransitCredential(ctx context.Context, source route.EntryAcquirer, epoch state.ResolutionEpoch,
