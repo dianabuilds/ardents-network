@@ -28,19 +28,34 @@ func Request(ctx context.Context, path string, operation Operation) (Outcome, er
 	} else {
 		_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
 	}
+	stopCancellation := context.AfterFunc(ctx, func() { _ = connection.SetDeadline(time.Now()) })
+	defer stopCancellation()
 	if _, err := io.WriteString(connection, string(operation)+"\n"); err != nil {
-		return "", err
+		return "", requestError(ctx, err)
 	}
 	if err := connection.CloseWrite(); err != nil {
-		return "", err
+		return "", requestError(ctx, err)
 	}
 	response, err := io.ReadAll(io.LimitReader(connection, 64))
 	if err != nil {
-		return "", err
+		return "", requestError(ctx, err)
+	}
+	if !stopCancellation() {
+		return "", requestError(ctx, nil)
 	}
 	outcome := map[string]Outcome{"published\n": Published, "withdrawn\n": Withdrawn}[string(response)]
 	if outcome == "" {
 		return "", errors.New("local Service Administration request failed")
 	}
 	return outcome, nil
+}
+
+func requestError(ctx context.Context, err error) error {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return ctxErr
+	}
+	if deadline, available := ctx.Deadline(); available && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return err
 }

@@ -162,6 +162,14 @@ closes its exact socket paths after cancelling and joining active clients;
 external Applications use only the versioned client. No Browser client is
 selected in the maintained product.
 
+The Administration client owns its Unix socket from successful dial through the
+closed `publish` or `withdraw` response. Caller cancellation immediately
+interrupts that owned request I/O and returns the caller's cancellation or
+deadline error; a completed response wins only when its cancellation callback
+has already been stopped. This aborts local waiting, not a server operation
+already accepted by the peer: the client never invents an outcome, retry, or
+rollback for Publish or Withdraw.
+
 The `ardents-application-interface-v1` frame identity and its opaque link bytes
 remain accepted persisted-interface obligations. A runtime plan carrying the
 complete historical Alpha corpus triple is therefore a narrow migration
