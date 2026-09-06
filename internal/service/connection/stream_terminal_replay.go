@@ -52,41 +52,68 @@ func (stream *Stream) startSettledTerminalReplay() {
 }
 
 func (stream *Stream) ensureTerminal() error {
-	attachment, err := stream.attachment()
-	if err != nil {
-		return err
-	}
-	stream.mu.Lock()
-	if !stream.localTerminal || stream.terminal != nil || stream.terminalGeneration == attachment.generation {
+	for {
+		stream.waitForDataReplay()
+		stream.mu.Lock()
+		pending := stream.sendNext < stream.sendEnd
+		terminal := stream.terminal
 		stream.mu.Unlock()
-		return stream.terminal
-	}
-	offset := stream.sendEnd
-	stream.terminalWriting = true
-	stream.terminalWritingGeneration = attachment.generation
-	stream.terminalOffset = offset
-	stream.mu.Unlock()
-	err = stream.writeRecord(attachment, StreamRecord{Terminal: &Terminal{AttachmentGeneration: attachment.generation, Offset: offset}})
-	if err != nil {
-		// Keep terminalWriting true until this worker has either acquired or
-		// joined recovery. A read worker that closed the failed carrier waits
-		// on that ownership boundary instead of racing a second proposal.
-		recoverErr := stream.recoverAttachment(attachment)
+		if terminal != nil {
+			return terminal
+		}
+		if pending {
+			if err := stream.flushAvailable(); err != nil {
+				return err
+			}
+			continue
+		}
+		attachment, err := stream.attachment()
+		if err != nil {
+			return err
+		}
+		stream.mu.Lock()
+		if !stream.localTerminal || stream.terminal != nil || stream.terminalGeneration == attachment.generation {
+			stream.mu.Unlock()
+			return stream.terminal
+		}
+		if stream.sendNext < stream.sendEnd {
+			stream.mu.Unlock()
+			continue
+		}
+		offset := stream.sendEnd
+		stream.terminalWriting = true
+		stream.terminalWritingGeneration = attachment.generation
+		stream.terminalOffset = offset
+		stream.mu.Unlock()
+		err = stream.writeRecord(attachment, StreamRecord{Terminal: &Terminal{AttachmentGeneration: attachment.generation, Offset: offset}})
+		if errors.Is(err, errTerminalDataPending) {
+			stream.mu.Lock()
+			stream.terminalWriting = false
+			stream.cond.Broadcast()
+			stream.mu.Unlock()
+			continue
+		}
+		if err != nil {
+			// Keep terminalWriting true until this worker has either acquired or
+			// joined recovery. A read worker that closed the failed carrier waits
+			// on that ownership boundary instead of racing a second proposal.
+			recoverErr := stream.recoverAttachment(attachment)
+			stream.mu.Lock()
+			stream.terminalWriting = false
+			stream.cond.Broadcast()
+			stream.mu.Unlock()
+			if recoverErr != nil {
+				return errors.Join(errRecoveryTerminal, err, recoverErr)
+			}
+			return nil
+		}
 		stream.mu.Lock()
 		stream.terminalWriting = false
+		if stream.current == attachment {
+			stream.terminalGeneration = attachment.generation
+		}
 		stream.cond.Broadcast()
 		stream.mu.Unlock()
-		if recoverErr != nil {
-			return errors.Join(errRecoveryTerminal, err, recoverErr)
-		}
 		return nil
 	}
-	stream.mu.Lock()
-	stream.terminalWriting = false
-	if stream.current == attachment {
-		stream.terminalGeneration = attachment.generation
-	}
-	stream.cond.Broadcast()
-	stream.mu.Unlock()
-	return nil
 }

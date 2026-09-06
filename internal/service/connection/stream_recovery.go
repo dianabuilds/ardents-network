@@ -106,6 +106,7 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 		cancel()
 		releaseTimer()
 		if err == nil {
+			stream.startRecoveredDataReplay()
 			stream.startSettledTerminalReplay()
 			return nil
 		}

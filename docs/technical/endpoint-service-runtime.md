@@ -103,6 +103,11 @@ peer-selected profile, Publication private key, or Application IPC
 authorization. Its parser bound of 16 KiB per Data record is an allocation
 limit, not a product throughput promise.
 
+After a replacement Attachment commits, the Connection replays any accepted but
+unacknowledged Data suffix without waiting for a further local Application read,
+EOF, or Terminal. That replay remains ordered with later Application bytes and
+is joined or interrupted by the Connection's existing terminal cleanup.
+
 Publication persists public proof and its non-decreasing generation floor but
 never persists a live Instance private key. The lower-level accepted Publisher
 composition can receive one opened host Instance binding and use it as an
