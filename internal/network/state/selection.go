@@ -7,6 +7,22 @@ import (
 	"time"
 )
 
+var (
+	errPersistentStateConflict = errors.New("network state has a persistent conflict")
+	errPendingEpochConflict    = errors.New("candidate Epoch conflicts with the durable pending Epoch")
+)
+
+func (s *networkState) allowCandidateTransition(candidate candidateDecision) error {
+	if s.distribution.conflicting {
+		return errPersistentStateConflict
+	}
+	if s.pendingDecision != nil && candidate.epoch.number == s.pendingDecision.epoch.number &&
+		candidate.epoch.digest != s.pendingDecision.epoch.digest {
+		return errPendingEpochConflict
+	}
+	return nil
+}
+
 func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	state := s.distribution
 	if state.cycleActive {
@@ -81,7 +97,7 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 	return order, deadline, nil
 }
 
-func (s *networkState) completeSourceWave(now time.Time, base *Snapshot, results []sourceResult) (Snapshot, error) {
+func (s *networkState) completeSourceWave(started time.Time, base *Snapshot, results []sourceResult) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer func() { s.refreshing = false }()
@@ -93,16 +109,29 @@ func (s *networkState) completeSourceWave(now time.Time, base *Snapshot, results
 	}
 	summary := summarizeSourceWave(results)
 	if summary.collisionErr != nil {
-		if err := s.recordSourceConflict(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
+		if err := s.recordSourceConflict(started, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
 			return Snapshot{}, err
 		}
 		return Snapshot{}, summary.collisionErr
 	}
 	if sourceConflict(summary.valid) {
-		if err := s.recordSourceConflict(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
+		if err := s.recordSourceConflict(started, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
 			return Snapshot{}, err
 		}
 		return Snapshot{}, errors.New("sources exposed threshold-valid conflicting Epochs")
+	}
+	if len(summary.valid) > 0 {
+		selected := newestSourceDecision(summary.valid)
+		if err := s.allowCandidateTransition(selected); err != nil {
+			if err := s.recordSourceConflict(started, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
+				return Snapshot{}, err
+			}
+			return Snapshot{}, err
+		}
+	}
+	now, err := trustedNow(s.config, s.distribution)
+	if err != nil {
+		return Snapshot{}, err
 	}
 	if len(summary.valid) == 0 {
 		if err := s.commitSourceFailure(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
@@ -117,14 +146,14 @@ func (s *networkState) completeSourceWave(now time.Time, base *Snapshot, results
 		return Snapshot{}, errors.Join(failures...)
 	}
 	selected := newestSourceDecision(summary.valid)
-	if s.pendingDecision != nil && selected.epoch.number == s.pendingDecision.epoch.number && selected.epoch.digest != s.pendingDecision.epoch.digest {
-		if err := s.recordSourceConflict(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
-			return Snapshot{}, err
-		}
-		return Snapshot{}, errors.New("source Epoch conflicts with the durable pending Epoch")
-	}
 	if now.Before(selected.epoch.validFrom) {
 		return s.commitPendingSourceWave(now, selected, summary)
+	}
+	if !now.Before(selected.epoch.validUntil) {
+		if err := s.commitSourceFailure(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); err != nil {
+			return Snapshot{}, err
+		}
+		return Snapshot{}, errors.Join(errRefreshUnavailable, errors.New("selected Epoch expired before source wave completed"))
 	}
 	return s.commitActiveSourceWave(now, selected, summary)
 }

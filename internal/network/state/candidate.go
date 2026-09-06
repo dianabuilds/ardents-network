@@ -32,6 +32,9 @@ func (s *networkState) verifySourceBundle(bundle sourceBundle, current *Snapshot
 		return *currentDecision, nil
 	}
 	if s.pendingDecision != nil && parsed.number == s.pendingDecision.epoch.number && parsed.digest == s.pendingDecision.epoch.digest {
+		if !verification.now.Before(s.pendingDecision.epoch.validUntil) {
+			return candidateDecision{}, errors.New("pending Epoch is not strictly current")
+		}
 		if !bytes.Equal(bundle.epoch, s.pendingDecision.epochBytes) || !equalInputs(bundle.inputs, s.pendingDecision.inputs) {
 			return candidateDecision{}, errors.New("source changed bytes for the pending Epoch")
 		}

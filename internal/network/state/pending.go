@@ -3,7 +3,6 @@ package state
 import (
 	"errors"
 	"fmt"
-	"time"
 )
 
 func (s *networkState) recoverPendingState() error {
@@ -29,25 +28,5 @@ func (s *networkState) recoverPendingState() error {
 		return errors.New("pending Epoch activation time disagrees with durable state")
 	}
 	s.pendingDecision = &decision
-	return nil
-}
-
-func (s *networkState) activatePending(now time.Time) error {
-	if s.pendingDecision == nil || now.Before(s.pendingDecision.epoch.validFrom) {
-		return nil
-	}
-	if !now.Before(s.pendingDecision.epoch.validUntil) {
-		return errors.New("pending Epoch expired before activation")
-	}
-	decision := *s.pendingDecision
-	state := s.distribution
-	state.sequence++
-	state.epochFloor, state.epochDigest = decision.epoch.number, decision.epoch.digest
-	state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
-	state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
-	if err := s.commitActiveDecision(decision, state); err != nil {
-		return err
-	}
-	s.pendingDecision = nil
 	return nil
 }

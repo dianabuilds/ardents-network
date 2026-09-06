@@ -45,10 +45,6 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 		s.mu.Unlock()
 		return Snapshot{}, err
 	}
-	if err := s.activatePending(now); err != nil {
-		s.mu.Unlock()
-		return Snapshot{}, err
-	}
 	if s.distribution.nextAutomatic > now.Unix() {
 		s.mu.Unlock()
 		return Snapshot{}, fmt.Errorf("%w: retry is in durable backoff", errRefreshUnavailable)

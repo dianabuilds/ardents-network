@@ -18,11 +18,26 @@ func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte
 	if s.refreshing {
 		return Snapshot{}, errors.New("network state refresh owns the active transition")
 	}
+	if s.distribution.conflicting {
+		return Snapshot{}, errPersistentStateConflict
+	}
 	decision, err := verifyDecision(s.config, s.current, epoch, inputs, encodedMaterials, true)
 	if err != nil {
 		return Snapshot{}, err
 	}
 	if err := ctx.Err(); err != nil {
+		return Snapshot{}, err
+	}
+	if err := s.allowCandidateTransition(decision); err != nil {
+		if errors.Is(err, errPendingEpochConflict) {
+			state := s.distribution
+			state.sequence++
+			state.trustedTimeFloor = max(state.trustedTimeFloor, s.config.clock().UTC().Unix())
+			state.conflicting = true
+			if commitErr := s.commitDistribution(state); commitErr != nil {
+				return Snapshot{}, commitErr
+			}
+		}
 		return Snapshot{}, err
 	}
 	state := s.distribution
