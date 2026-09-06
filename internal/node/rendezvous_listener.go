@@ -39,6 +39,7 @@ type rendezvousLeg struct {
 	binding    route.LegBinding
 	done       chan struct{}
 	doneOnce   sync.Once
+	replied    chan error
 }
 
 // startRendezvous binds one exact State-authorized Carrier and literal
@@ -198,16 +199,30 @@ func (running *rendezvous) handle(pending route.PendingCarrier) {
 		running.mu.Unlock()
 		return
 	}
-	if err := route.WriteNodeLegBinding(connection, running.reciprocal(binding)); err != nil {
+	leg := &rendezvousLeg{pending: pending, connection: connection, binding: binding, done: make(chan struct{}), replied: make(chan error, 1)}
+	registration, accepted := running.register(leg)
+	if !accepted {
 		<-running.waitingCap
 		return
 	}
+	if err := route.WriteNodeLegBinding(connection, running.reciprocal(binding)); err != nil {
+		running.abandon(registration)
+		leg.replied <- err
+		return
+	}
+	leg.replied <- nil
 	<-running.handshakes
 	handshakeHeld = false
-	leg := &rendezvousLeg{pending: pending, connection: connection, binding: binding, done: make(chan struct{})}
-	if !running.register(leg) {
-		<-running.waitingCap
-		return
+	if registration.waiting != nil {
+		running.work.Add(1)
+		go running.expire(leg)
+	} else {
+		if err := <-registration.pair.first.replied; err != nil {
+			running.abandon(registration)
+			return
+		}
+		running.work.Add(1)
+		go running.pump(registration.pair.first, registration.pair.second)
 	}
 	owned = false
 }

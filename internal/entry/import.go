@@ -19,6 +19,9 @@ func (owner *owner) Import(raw []byte) (Result, error) {
 		return Result{}, err
 	}
 	result := Result{Class: class, InviteID: decoded.id, Slot: decoded.slot, Generation: decoded.slotGeneration}
+	if class == WrongRecipient {
+		return result, nil
+	}
 	if existing, found := owner.state.find(decoded.id); found {
 		if existing.Status != memberActive {
 			result.Class = Replay

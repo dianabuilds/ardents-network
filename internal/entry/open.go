@@ -99,7 +99,7 @@ func Open(input Config) (*owner, error) {
 		if err := owner.retireInvalidVerifiedLocked(&next); err != nil {
 			return nil, err
 		}
-		changed = next.settleReplacements() || changed
+		changed = owner.settleReplacements(&next) || changed
 	}
 	if changed {
 		if err := owner.commit(next, false); err != nil {

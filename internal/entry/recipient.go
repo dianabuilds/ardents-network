@@ -15,6 +15,43 @@ import (
 
 const recipientName = "recipient"
 
+// RecipientPublicKey opens or creates only the recipient identity for one
+// Entry root. It does not read, validate, or alter the durable Invite journal.
+func RecipientPublicKey(rootInput string) (result [32]byte, resultErr error) {
+	if rootInput == "" {
+		return result, errors.New("entry recipient root is unavailable")
+	}
+	root, err := filepath.Abs(rootInput)
+	if err != nil {
+		return result, err
+	}
+	if err := inspectRoot(root); err != nil {
+		return result, err
+	}
+	if err := verifyRootCandidate(root); err != nil {
+		return result, err
+	}
+	lease, err := acquireRootLease(root)
+	if err != nil {
+		return result, err
+	}
+	defer func() { resultErr = errors.Join(resultErr, lease.release()) }()
+	if err := verifyRootClaim(root); err != nil {
+		return result, err
+	}
+	if err := validateRootPermissions(root); err != nil {
+		return result, err
+	}
+	if err := prepareRoot(root); err != nil {
+		return result, err
+	}
+	recipient, err := entryRecipientCertificate(root)
+	if err != nil {
+		return result, err
+	}
+	return recipientKey(recipient)
+}
+
 // entryRecipientCertificate opens the owner-local recipient identity. The
 // Entry root creates it before any Invite can be imported, so an offline
 // issuer can bind an Invite to the public key without receiving the private
@@ -57,7 +94,14 @@ func (owner *owner) RecipientPublicKey() ([32]byte, error) {
 	if owner == nil || owner.recipient.Leaf == nil {
 		return [32]byte{}, errors.New("entry recipient identity is unavailable")
 	}
-	public, ok := owner.recipient.Leaf.PublicKey.(ed25519.PublicKey)
+	return recipientKey(owner.recipient)
+}
+
+func recipientKey(certificate tls.Certificate) ([32]byte, error) {
+	if certificate.Leaf == nil {
+		return [32]byte{}, errors.New("entry recipient identity is unavailable")
+	}
+	public, ok := certificate.Leaf.PublicKey.(ed25519.PublicKey)
 	if !ok || len(public) != ed25519.PublicKeySize {
 		return [32]byte{}, errors.New("entry recipient identity is invalid")
 	}

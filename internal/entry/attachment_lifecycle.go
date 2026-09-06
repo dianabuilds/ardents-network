@@ -79,7 +79,7 @@ func (owner *owner) settleClosingAttempt() error {
 	if err := owner.retireInvalidVerifiedLocked(&next); err != nil {
 		return err
 	}
-	next.settleReplacements()
+	owner.settleReplacements(&next)
 	if err := owner.commit(next, false); err != nil {
 		owner.failed = err
 		return err

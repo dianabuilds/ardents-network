@@ -27,7 +27,7 @@ and the headless command inventory under tests/profiles.
 
 | Binary | Routes | Classification |
 |---|---|---|
-| ardents | accept-offline, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/open/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry import | keep |
+| ardents | accept-offline, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/open/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback; entry recipient/import | keep |
 | ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
 | ardents | name encode/resolve/control | deepen/research: keep current evidence, but later recompose naming access behind the selected Application product boundary rather than expanding direct operator input |
 | ardents-node | source, node, issuer initialize/serve, contributor apply/diagnose/restart/drain/withdraw/remove | keep |

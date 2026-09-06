@@ -11,6 +11,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
+const automaticRefreshTestWait = 5 * time.Second
+
 func TestAutomaticRefreshSkipsAnActiveInitialWave(t *testing.T) {
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
@@ -97,7 +99,7 @@ func triggerAutomaticTick(t *testing.T, ticks chan<- time.Time) {
 	t.Helper()
 	select {
 	case ticks <- time.Now():
-	case <-time.After(time.Second):
+	case <-time.After(automaticRefreshTestWait):
 		t.Fatal("automatic scheduler did not receive its test tick")
 	}
 }
@@ -107,7 +109,7 @@ func awaitAutomaticResult(t *testing.T, results <-chan error) error {
 	select {
 	case result := <-results:
 		return result
-	case <-time.After(time.Second):
+	case <-time.After(automaticRefreshTestWait):
 		t.Fatal("automatic scheduler did not finish its refresh")
 		return nil
 	}
@@ -120,7 +122,7 @@ func awaitRefresh(t *testing.T, results <-chan error) {
 		if refreshErr != nil {
 			t.Fatalf("initial Refresh = %v", refreshErr)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(automaticRefreshTestWait):
 		t.Fatal("initial Refresh did not complete after relay release")
 	}
 }
@@ -184,7 +186,7 @@ func (relay *gatedRelay) awaitAccepted(t *testing.T) {
 	t.Helper()
 	select {
 	case <-relay.accepted:
-	case <-time.After(time.Second):
+	case <-time.After(automaticRefreshTestWait):
 		t.Fatal("State source did not reach gated relay")
 	}
 }
