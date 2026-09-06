@@ -39,13 +39,15 @@ func runHeadlessOpen(ctx context.Context, socket, serviceLink, inputPath, output
 		response <- copyErr
 	}()
 	if _, err := io.Copy(application, input); err != nil {
-		return err
+		closeErr := application.Close()
+		return errors.Join(ctx.Err(), err, closeErr, <-response)
 	}
 	if err := application.CloseInput(); err != nil {
-		return err
+		closeErr := application.Close()
+		return errors.Join(ctx.Err(), err, closeErr, <-response)
 	}
 	if err := <-response; err != nil {
-		return err
+		return errors.Join(ctx.Err(), err)
 	}
 	outcome, open := <-application.Done()
 	if !open || outcome.Class == "" {
