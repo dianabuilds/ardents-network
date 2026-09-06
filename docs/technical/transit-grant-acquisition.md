@@ -128,6 +128,10 @@ absent -> pending -> ready -> presenting -> spent
   Node presentation.
 - entering `presenting` is durable. Any completion or ambiguity becomes
   `spent` or `burned`; it never returns to `ready`.
+- every asynchronous issuer result and presentation completion carries the
+  exact originating Request ID. The journal mutates only when that ID still
+  names its current attempt; a late result receives an explicit stale-attempt
+  failure and cannot terminalize, erase, or otherwise alter a successor.
 - expiry, State successor, withdrawal, invalid response, local corruption, or
   explicit cancellation erases the key and ends the attempt.
 - the Endpoint does not automatically replay publish, open, withdraw, or

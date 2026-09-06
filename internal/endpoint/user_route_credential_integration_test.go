@@ -75,6 +75,9 @@ type userRouteCredentialFixture struct {
 	instanceSigner    ed25519.PrivateKey
 	target            [32]byte
 	entry             *userRouteCredentialEntry
+	view              userRouteCredentialState
+	resolutionRelay   func(net.Conn) error
+	credentialRelay   func(net.Conn) error
 	entryCalls        int
 	connectionHandler func(net.Conn) error
 	serverDone        <-chan error
@@ -84,7 +87,7 @@ type userRouteCredentialFixture struct {
 func openUserRouteCredentialFixture(t *testing.T, outcome byte) *userRouteCredentialFixture {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
-	deadline := now.Add(10 * time.Second)
+	deadline := now.Add(15 * time.Second)
 	network, digest := [32]byte{71}, [32]byte{72}
 	const epoch = uint64(73)
 
@@ -176,7 +179,7 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) *userRouteCreden
 	const issuerNode = byte(79)
 	receipt, err := credential.InitializeIssuerRoot(credential.IssuerRootConfig{Root: issuerRoot, NetworkID: network, NodeID: [32]byte{issuerNode},
 		IdentityKey: issuerIdentity, InitiatorNodeID: [32]byte{80}, InitiatorPublicKey: issuerInitiatorPublic,
-		AssignmentNotAfter: deadline, Budget: 2, Clock: func() time.Time { return now }})
+		AssignmentNotAfter: deadline, Budget: 3, Clock: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,9 +216,11 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) *userRouteCreden
 	var result *userRouteCredentialFixture
 	entryOwner := &userRouteCredentialEntry{contact: entry.Candidate{NodeID: [32]byte{80}, PublicKey: issuerInitiatorPublic,
 		FamilyID: sha256.Sum256([]byte("initiator-family")), Endpoint: "127.0.0.1:1"}, errs: make(chan error, 3)}
+	resolutionRelay := resolutionRelayHandler(gatewayServer.URL, gatewayServer.Client())
+	credentialRelay := credentialRelayHandler(issuerServer.URL, issuerClient)
 	entryOwner.handlers = []func(net.Conn) error{
-		resolutionRelayHandler(gatewayServer.URL, gatewayServer.Client()),
-		credentialRelayHandler(issuerServer.URL, issuerClient),
+		resolutionRelay,
+		credentialRelay,
 		func(connection net.Conn) error {
 			var handler func(net.Conn) error
 			if result != nil {
@@ -247,9 +252,9 @@ func openUserRouteCredentialFixture(t *testing.T, outcome byte) *userRouteCreden
 	if err != nil {
 		t.Fatal(err)
 	}
-	result = &userRouteCredentialFixture{route: routeOwner, endpoint: endpoint, now: now, network: network,
+	result = &userRouteCredentialFixture{route: routeOwner, endpoint: endpoint, now: now, network: network, view: view, resolutionRelay: resolutionRelay,
 		authority: authorityPublic, credential: publicationCredential, instanceSigner: instancePrivate,
-		target: current.Credential.Target, entry: entryOwner, entryCalls: len(entryOwner.handlers), close: func() {
+		target: current.Credential.Target, entry: entryOwner, credentialRelay: credentialRelay, entryCalls: len(entryOwner.handlers), close: func() {
 			_ = routeOwner.Close()
 			_ = endpoint.Close()
 			_ = listener.Close()

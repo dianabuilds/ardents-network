@@ -36,6 +36,7 @@ const (
 var (
 	errTransitAcquisitionTerminal     = errors.New("transit acquisition is terminal")
 	errInvalidTransitAcquisitionState = errors.New("transit acquisition state is invalid")
+	errTransitAcquisitionStale        = errors.New("transit acquisition completion belongs to a different attempt")
 )
 
 type transitAcquisitionPhase string
@@ -206,11 +207,14 @@ func (owner *transitAcquisition) begin(scope transitAcquisitionScope) (transitAc
 	return owner.attempt()
 }
 
-func (owner *transitAcquisition) fail() error {
+func (owner *transitAcquisition) fail(requestID [32]byte) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return err
+	}
+	if owner.state.RequestID != requestID {
+		return errTransitAcquisitionStale
 	}
 	if owner.state.Phase != transitPending && owner.state.Phase != transitReady {
 		return errors.New("transit acquisition cannot fail from its current phase")
@@ -219,11 +223,14 @@ func (owner *transitAcquisition) fail() error {
 	return owner.commitState(owner.state)
 }
 
-func (owner *transitAcquisition) commit(result credential.Result) error {
+func (owner *transitAcquisition) commit(requestID [32]byte, result credential.Result) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return err
+	}
+	if owner.state.RequestID != requestID {
+		return errTransitAcquisitionStale
 	}
 	if owner.state.Phase != transitPending {
 		return errors.New("transit acquisition is not pending")
@@ -249,11 +256,14 @@ func (owner *transitAcquisition) commit(result credential.Result) error {
 	return owner.commitState(owner.state)
 }
 
-func (owner *transitAcquisition) present(scope transitAcquisitionScope) (transitAcquisitionAttempt, error) {
+func (owner *transitAcquisition) present(requestID [32]byte, scope transitAcquisitionScope) (transitAcquisitionAttempt, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return transitAcquisitionAttempt{}, err
+	}
+	if owner.state.RequestID != requestID {
+		return transitAcquisitionAttempt{}, errTransitAcquisitionStale
 	}
 	if owner.state.Phase != transitReady || !owner.state.matches(scope) {
 		return transitAcquisitionAttempt{}, errors.New("transit acquisition is not ready for this State duty")
@@ -265,11 +275,26 @@ func (owner *transitAcquisition) present(scope transitAcquisitionScope) (transit
 	return owner.attempt()
 }
 
-func (owner *transitAcquisition) finish(presented bool) error {
+func (owner *transitAcquisition) currentAttempt(requestID [32]byte) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if err := owner.usable(); err != nil {
 		return err
+	}
+	if owner.state.RequestID != requestID {
+		return errTransitAcquisitionStale
+	}
+	return nil
+}
+
+func (owner *transitAcquisition) finish(requestID [32]byte, presented bool) error {
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if err := owner.usable(); err != nil {
+		return err
+	}
+	if owner.state.RequestID != requestID {
+		return errTransitAcquisitionStale
 	}
 	if owner.state.Phase != transitPresenting {
 		return errors.New("transit acquisition is not presenting")
