@@ -46,14 +46,20 @@ func writeGeneration(root, final string, raw []byte) error {
 }
 
 func replaceCurrent(root, name string) error {
-	temporary, err := os.CreateTemp(root, ".current-")
+	return replaceOwnedFile(root, ".current-", "current", []byte(name+"\n"))
+}
+
+// replaceOwnedFile preserves Entry's durable same-directory replacement
+// mechanics. Callers retain their own value validation and transition order.
+func replaceOwnedFile(root, temporaryPrefix, finalName string, raw []byte) error {
+	temporary, err := os.CreateTemp(root, temporaryPrefix)
 	if err != nil {
 		return err
 	}
 	path := temporary.Name()
 	defer func() { _ = os.Remove(path) }()
 	if err = temporary.Chmod(0o600); err == nil {
-		_, err = temporary.WriteString(name + "\n")
+		_, err = temporary.Write(raw)
 	}
 	if err == nil {
 		err = temporary.Sync()
@@ -65,7 +71,7 @@ func replaceCurrent(root, name string) error {
 	if closeErr != nil {
 		return closeErr
 	}
-	if err := os.Rename(path, filepath.Join(root, "current")); err != nil {
+	if err := os.Rename(path, filepath.Join(root, finalName)); err != nil {
 		return err
 	}
 	return syncDirectory(root)
