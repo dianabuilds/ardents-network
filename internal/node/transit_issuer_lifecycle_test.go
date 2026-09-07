@@ -22,6 +22,19 @@ func TestTransitIssuerCleanupReportsHTTPAndRootFailures(t *testing.T) {
 	}
 }
 
+func TestTransitIssuerStopBlocksAdmissionWithoutClosingServerListener(t *testing.T) {
+	running := &transitIssuerListener{}
+	if err := running.stopAdmission(); err != nil {
+		t.Fatal(err)
+	}
+	if !running.protect.Load() {
+		t.Fatal("Transit issuer stop left admission enabled")
+	}
+	if err := running.stopAdmission(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRunServesRootBackedTransitIssuerThenStopsOnStateSuccessor(t *testing.T) {
 	issuerCertificate, issuerPublic := rendezvousCertificate(t, 181, "transit-issuer")
 	initiatorCertificate, initiatorPublic := rendezvousCertificate(t, 182, "transit-initiator")
