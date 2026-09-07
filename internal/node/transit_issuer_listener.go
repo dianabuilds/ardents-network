@@ -15,7 +15,6 @@ import (
 )
 
 type transitIssuerListener struct {
-	listener net.Listener
 	server   *http.Server
 	issuer   *credential.Issuer
 	limit    chan struct{}
@@ -55,7 +54,7 @@ func startTransitIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer,
 	if err != nil {
 		return nil, errors.Join(err, issuer.Close())
 	}
-	running := &transitIssuerListener{listener: listener, issuer: issuer, limit: make(chan struct{}, local.ConnectionLimit), done: make(chan error, 1)}
+	running := &transitIssuerListener{issuer: issuer, limit: make(chan struct{}, local.ConnectionLimit), done: make(chan error, 1)}
 	limited := &transitIssuerLimitedListener{Listener: listener, running: running}
 	running.server = &http.Server{Handler: issuer.Handler(), ReadHeaderTimeout: time.Second, ReadTimeout: 15 * time.Second,
 		WriteTimeout: 15 * time.Second, IdleTimeout: time.Second, MaxHeaderBytes: 1024}
@@ -120,7 +119,11 @@ func (running *transitIssuerListener) usage() (uint64, uint64, uint64) {
 }
 func (running *transitIssuerListener) stopAdmission() error {
 	running.stopOnce.Do(func() {
-		running.cleanup.record(running.listener.Close())
+		// The HTTP server owns the listener close. Closing the underlying listener
+		// here races its Shutdown path: depending on Serve's timing, Shutdown can
+		// observe the same close as a role-cleanup failure. Protection rejects every
+		// newly accepted connection until Drain invokes the server-owned shutdown.
+		running.protect.Store(true)
 	})
 	return running.cleanup.result()
 }
