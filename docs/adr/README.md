@@ -70,6 +70,9 @@ Current decisions:
 - [0071 — Recipient-bound offline Headless enrollment](0071-recipient-bound-offline-headless-enrollment.md)
 - [0072 — Adopt offline-enrollment Route/Entry v2 for C0](0072-adopt-offline-enrollment-route-v2.md)
 - [0075 — Use Service Connection v2 Terminal receipts](0075-service-connection-v2-terminal-receipt.md)
+- [0077 — Evolve one common protection baseline](0077-evolve-one-common-protection-baseline.md)
+- [0078 — Select the common split-circuit privacy architecture](0078-select-common-split-circuit-privacy.md)
+- [0081 — Select the closed protected text-Service contract](0081-select-closed-protected-service-contract.md)
 
 Completed retirement decisions:
 

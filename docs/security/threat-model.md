@@ -2,7 +2,7 @@
 
 Status: **accepted claim registry and C0 audit input; no implementation qualified**
 
-Last reviewed: 2026-08-31
+Last reviewed: 2026-09-07
 
 ## Scope
 
@@ -24,9 +24,239 @@ and public-launch concentration are covered by the accepted
 [product operating model](../product/operating-model.md).
 
 It does not assume offline delivery, replicated application content, a bundled
-application runtime, a User identity system, or a second high-latency route.
+application runtime, or a User identity system.
 Those receive separate threat models only if their product contracts are later
 accepted.
+
+## Whole-system protection review
+
+[ADR-0077](../adr/0077-evolve-one-common-protection-baseline.md) and the
+[common protection baseline](../product/operating-model.md#common-protection-baseline)
+select protection in ordinary use of the whole system. The
+[product and technical workstream](../development/documentation.md#system-protection-workstream)
+must assess combined observations and powers across installation/enrollment,
+bootstrap and State/time refresh, naming and private reachability, publication,
+live traffic, idle/background work, recovery, withdrawal, diagnostics, updates
+and local Application/key execution. Passing one Module's test does not
+establish the protection of its consumers or the complete journey.
+
+Include direct and transitive dependencies and the build, release and test
+environment in that review. The
+[dependency acceptance rule](../development/dependencies.md#maintenance-and-vulnerability-acceptance)
+requires continued support and a fix or scoped non-applicability evidence for
+every known vulnerability. Runtime unreachability cannot by itself rule out
+compromise through a tool that executes during build or qualification.
+Source integrity and support checks do not assume upstream maintainers are
+incapable of compromise.
+
+The successor scheme's
+[integration and verification map](../development/privacy-anonymity-map.md)
+requires a new five-part claim and predeclared attack/cost criteria for the
+complete operation. It includes the Broad Traffic Observer, combined control
+and data observations, active correlation and sparse-population behavior.
+The existing Interactive gate's excluded correlation cases cannot supply a
+passing successor verdict. Minimum surviving assumptions and any unsupported
+case remain explicit; no stronger claim is implemented by this map.
+The [closed successor claim contract](#closed-successor-claim-contract)
+fixes those distinctions for the selected whole-operation architecture
+against the Product Owner's NET-32 bounds and NET-33 direction to minimize
+additional traffic. Selection must account for the defence's own observable
+signature and protection behavior when hosting allowances are exhausted. Its
+analysis and source screening are design evidence, not a qualified claim.
+[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) selects the
+[successor construction](../technical/common-privacy-architecture.md).
+ADR-0081 completes its bounded closed contract; the claim table below is its
+canonical observation/limitation owner.
+The Product Owner's subsequent clarification on 2026-09-07 accepts proceeding
+with the initial construction despite its stated residual traffic-correlation
+risk, without an autonomous useless-traffic generator. Broad and active
+observers remain in the assessment. Complete resistance to them is not a
+first-implementation prerequisite; no quantitative anonymity claim has been
+qualified. This does not waive protocol-field confidentiality, role
+separation, local confinement or investigation of newly discovered disclosure.
+
+For each selected change use the existing five-part claim format and
+hostile-environment premise. Declare the baseline, protected information or
+right, attacker observations and active powers, benefit/failure metric and
+complete resource cost before the experiment. Test the integrated candidate
+under ordinary load and the selected collusion, interference, overload,
+restart and incompatible-peer cases. Required protection cannot be removed to
+make a workload pass; missing evidence cannot become a trusted success flag.
+
+The current Interactive Route's correlation limitations and the generic
+Application attachment's unqualified isolation remain honest limitations of
+existing behavior. The common baseline is a development requirement, not
+evidence that these gaps are solved. A test environment supplies evidence only
+for its exact candidate and conditions; public or independent claims retain
+their own qualification gates.
+
+## Closed successor claim contract
+
+These are selected requirements for the [closed Target-Link text job](../product/protected-service-workload.md)
+under [ADR-0081](../adr/0081-select-closed-protected-service-contract.md).
+They are not passing qualification statements for existing or future bytes.
+[Qualification](../development/privacy-qualification.md#acceptance-matrix)
+owns the complete P1–P11 experiments.
+
+| Protected information or right | Adversary | Required surviving conditions | Measurement | Honest limitation |
+|---|---|---|---|---|
+| Application bytes and exact intended Target/Instance | Malicious forwarding, directory, Introduction and Rendezvous roles, including their collusion | Both Endpoint verification boundaries and required current keys/authority survive; Service TLS is completed before Application effects | P1/P2/P4 altered proof, redirect, replay, truncation and content checks | The intended Service receives its plaintext; Application content can itself identify a User. Live Endpoint compromise defeats its protection. |
+| Direct protocol-field association of Endpoint origin with queried Target or opposite origin | Any role and prescribed role combinations | Current duty/family exclusions hold, no forbidden combined placement, protected role TLS and no endpoint-origin field in forwarding | P3 complete role-state/field captures over startup, issuance, lookup, publication and data | End-to-end timing/volume correlation remains possible; all-role control cannot be called independent because keys differ. |
+| Introduction's data Rendezvous, join secret and logical Connection binding | Introduction role and later traffic/key observers | Recipient capsule encryption, fresh slots/keys and exact publication verification; required secrets are erased | P3/P4 capsule alteration, recorded traffic and later-key capture | A captured live recipient key exposes its outstanding capsules. PFS of completed TLS does not hide facts deliberately retained by an endpoint. |
+| Cross-context metadata separation | Issuer, Source, lookup/relay and diagnostic observers | Independent context/hour holder keys and permissions, channel-local identifiers, fresh logical joins, scoped caches and no stable Endpoint certificates | P3/P5 compare distinct contexts and repeated runs, including all control phases | Issuer can link requests using the same permission within its one context/hour. Offline provisioning authority knows its own allocations/recipients; timing and cohort information remain. |
+| Issuance-to-spend token serial relation and bounded admission | Malicious holders, replaying receivers, issuer compromise/flood | Reviewed blind RSA and common keys/challenges; honest receiver validates and durably spends inside its channel; exclusive journal/time boundary survives | P4/P5 vectors, altered cohorts, simultaneous spend, crash reservation and verification flood | Blindness does not create scarce public entitlement, hide timing or prevent a compromised issuer from signing extra tokens. Honest local limits bound work but cannot guarantee availability. |
+| Local network, host files, authority and cleanup outside the selected job | Malicious reader/Publisher worker, children and sibling workers | Verified installed systemd units/artifacts, separate Endpoint UID, descriptor allowlist, namespaces/seccomp/cgroup and trusted presentation boundary survive | P1/P6/P7 installed positive/negative controls, inherited handles, child/sibling attack, revoke and joined cleanup | Trusted desktop-owner, Endpoint-service, root or kernel compromise is outside confinement; a worker may lie about its allowed output. It receives its intended text/stream. |
+| Original authority and safety floors during recovery/adoption | Replay, stale distributor, conflicting State, disk failure and ordinary process crash | Current custody/State/time/Release verification, exclusive durable roots and retained continuity authority survive | P7/P10 crash every transition, late callbacks, ambiguous storage, incompatible generation and rollback | Full storage plus time/root rollback is outside a surviving-floor claim. Missing authority causes unavailability, not a replacement trust root. |
+| Participation/activity and relationship under both-end/active observation | ISP/censor, broad observer, sparse-population or chosen-traffic attacker | No invisibility or quantitative unlinkability condition is asserted | P9 diagnostic timing/volume, watermark, delay/drop, repeated/sparse sessions with stated priors | Participation and approximate activity can be visible, and correlation can succeed. No autonomous filler or quantified anonymity protection is selected. |
+
+Role observation review must include public Source access and offline
+provisioning, not just packet captures. Entry sees its Endpoint peer and next
+Interior; Interior sees its adjacent Node and requested terminal duty; the
+Descriptor duty sees its Target query; Introduction sees slots/capsules; the
+data Rendezvous sees its two adjacent legs and fresh join material; the issuer
+sees its scoped permission and blinded batch. None receives a supplied complete
+path, local Isolation Context ID, or an ordinary origin–Target field pair.
+Combining legitimate role observations, public descriptors, timings or a
+provisioner's own records may still reveal relationships. Those limits cannot
+be erased by testing each role separately.
+
+## Hostile-environment premise and residual assumptions
+
+Product Owner clarification, **2026-09-06:** any environment component can be
+hostile. This includes relays, Service endpoints, Applications, state/Name/time
+sources, bootstrap and update distribution, consensus producers, founder keys,
+cloud/ISP infrastructure, dependencies, build/release systems, and the local
+runtime, operating system, firmware/hardware, randomness and key storage. Their
+operators can collude. Neither a component class nor a majority, measured
+capacity, stable uptime, a different key, or an authenticated signer receives
+an implicit honesty exemption.
+
+Evaluate combined compromise, including all paths or all evidence providers
+available to one participant being hostile. Do not silently replace this with
+an assumption that at most one component is hostile. The existing single-Node
+privacy claim is a bounded claim for that specific case, not a restriction on
+the adversaries considered for the entire product.
+
+Adversary inclusion and a successful protection claim are different statements.
+For each protected interest, declare the minimum surviving execution, key,
+cryptographic, communication and evidence assumptions. These assumptions must
+be justified for that claim; they are not assertions that such resources or
+operators always exist. If none can be justified, withhold the claim. Correct
+local refusal and truthful diagnostics themselves require a functioning local
+verification/execution boundary; they cannot be promised from a fully
+compromised endpoint.
+
+| Protected information or interest | Adversary case | Conditions for a supported claim | Measurement / observation | Honest limitation |
+|---|---|---|---|---|
+| Application Data, peer authenticity and integrity | All selected carrier Nodes and links collude, inject, replay or drop traffic. | Selected cryptography, entropy, endpoint verification and relevant endpoint keys remain effective; the intended recipient is allowed to receive its plaintext. | Inspect adversarial carrier observations and exercise tampering/replay/substitution against the real receiving boundary. | This does not supply delivery or traffic-analysis resistance. A hostile intended recipient can disclose its own received plaintext. |
+| Endpoint location and query/context relationships | Colluding roles, controlled endpoints/probes, or a Broad Traffic Observer combine observations. | Only the exact qualified Route/Application profile conditions support a location claim. | Compare User/Service-edge and combined Node observations for the named attack, not only one process's logs. | Current Interactive claims do not cover broad timing/volume correlation or sufficiently placed collusion. These remain included adversary cases with an explicit non-claim. |
+| Current state, Name authority and fresh entry | Every reachable source supplies a mutually consistent stale or selective view, or a producer coalition censors inputs. | A correct verifier has independently justified initial identity/roots, freshness/commitment evidence and any required data/inclusion assumptions. | Exercise fresh/restarted/isolated bootstrap, withheld data, false time, conflicting histories and a valid renewal withheld through expiry/reclaim. | Signatures, agreement among sources and a valid included prefix do not alone establish latest truth, inclusion fairness or voluntary owner abandonment. The renewal-censorship outcome is a blocking successor decision. |
+| Service reachability | The attacker controls some paths, or every usable path and required source for a participant. | A success claim needs reachable functioning endpoints and sufficient independently available paths, evidence and resources under a declared attack envelope. | Measure successful connection/recovery, time to terminal refusal, and resource/privacy cost under partial interference and total isolation separately. | When all usable paths withhold delivery, the network cannot provide delivery. A functioning endpoint can stop bounded work; a compromised one need not report failure truthfully. |
+| Owner secrets and continuing authority | Application, host, hardware, key store or released executable is compromised. | Containment or future recovery needs a specifically demonstrated surviving boundary, separately protected authority, or previously authorized recovery path, plus its own availability conditions. | Record which secrets/data/rights the compromise exposes, which other owners remain unaffected, and what a later recovery can actually revoke. | No network-only confidentiality claim covers plaintext at the compromised recipient. Recovery cannot undo prior disclosure, and compromise of all relevant authority/recovery material provides no automatic safe recovery. |
+| Local resource control and network influence | One actor creates many identities, reuses capacity, rents a large allocation, or captures resource measurement. | A functioning resource owner enforces finite local work; shared influence needs a separately qualified scarcity/anti-reuse and honest-resource argument. | Measure total work and selection/production influence across identities, saturation, churn and concentration at each affected role. | Identity count is not operator independence. A bandwidth share, consensus share, and ability to isolate a client are distinct quantities; no single capture percentage is assumed. |
+
+Service Connection Forward Secrecy does not automatically cover private lookup
+traffic. The selected OHTTP construction does not itself provide Forward Secrecy
+throughout a Gateway key configuration's lifetime; evaluate key capture, rotation,
+retained ciphertext and combined Relay/Gateway observations separately. No lookup
+post-compromise guarantee follows from payload encryption. The source and
+solution boundary are recorded in
+[R-149](../research/records/r-149-autonomy-transition.md#additional-primary-evidence-for-these-proposals).
+
+No source of initial truth is magically self-authenticating. An installed
+program cannot authenticate its own first execution, nor does a timestamp or
+long signed history certify its own currentness to an isolated new participant.
+Similarly, a local signed refusal or valid key does not prove the signer's
+operator is independent or that its host will continue forwarding traffic.
+
+The concrete tasks are grouped in the
+[functional map](../product/functional-map.md#outcomes-before-mechanisms).
+[R-149](../research/records/r-149-autonomy-transition.md#outcome-first-decision-preparation)
+records source evidence and unresolved decision boundaries. This clarification
+changes neither the selected C0 mechanisms nor the qualification status of any
+claim. Public-target details remain under the accepted authority order.
+
+## Public autonomy target
+
+[ADR-0074](../adr/0074-target-non-administrative-public-operation.md) accepts a
+future public authority boundary, not an implemented security claim. Existing
+threshold-specific invariants below remain the predecessor profile's binding
+checks until their exact successor is researched, accepted, and qualified; the
+new target is not permission to bypass them.
+
+- **Protected interests:** owner authorization, ordinary public entry, and
+  continued participation without an appointed party's indispensable permission.
+- **Adversary:** disappearing or malicious founders, enrollment/time/release
+  authorities, colluding peers, resource concentration, and governance capture.
+- **Conditions:** a qualified shared-state/freshness and software-safety contract,
+  sufficient honest resources and data availability, explicit initial trust,
+  compatible implementations, and independently supported privacy/role claims.
+- **Measurement:** the founder-removal, fresh/restarted/long-offline participant,
+  invalid-majority, partition, state-withholding, release, and migration gates
+  specified in [R-149](../research/records/r-149-autonomy-transition.md).
+- **Limitation:** removing administrative commands does not prevent censorship,
+  stalling, social influence, resource capture, or incompatible voluntary forks.
+  Unknown software flaws have no guaranteed automatic cure. Missing evidence
+  can stop affected work; local simulations do not establish independence or
+  public anonymity.
+
+Owner-selected Name recovery and local resource administration remain distinct
+from network-wide administration. Consensus cannot authorize an otherwise
+invalid owner transition, install code, certify operator independence, or turn
+an audit reference into qualification. No such public claim is currently made.
+
+### No agreement-mediated disclosure
+
+The [product no-disclosure boundary](../product/operating-model.md#no-disclosure-authority-or-secret-access)
+is fixed by the Product Owner on 2026-09-07. It excludes both a disclosure
+operation and the agreement subsystem's capability to obtain the protected data.
+
+- **Protected information:** another owner's private personal data, confidential
+  Application content, private signing/decryption keys and recovery secrets.
+- **Adversary:** all committee members and agreement producers collude; malicious
+  tasks, claimed emergency powers, forged or valid unanimous certificates,
+  hostile result consumers and diagnostics attempt direct or indirect access.
+- **Conditions:** effective cryptography and relevant owner endpoints/key custody;
+  qualified separation of privileges, memory/storage and callable capabilities;
+  a closed permitted task/result contract; consumers independently preserve the
+  owner boundary. No agreement service holds the protected keys or an escrow,
+  decryption, recovery, data-read or arbitrary-execution capability over owners.
+- **Measurement:** inspect actual data flows, privileges and key custody; exercise
+  unanimous forbidden tasks, result/capability substitution, malformed evidence,
+  diagnostics and logging, storage/process access and recovery paths. An owner
+  secret marker or protected data must not become readable or leave its boundary
+  through agreement. These checks are required and not yet executed.
+- **Limitation:** no implemented or qualified agreement subsystem is claimed.
+  A fully compromised owner endpoint or an intended recipient already holding
+  plaintext remains within the hostile-environment nonclaims; lack of committee
+  authority alone does not establish endpoint security or metadata anonymity.
+  This limitation does not permit an agreement-mediated access path. An observed
+  unauthorized acquisition or disclosure blocks the affected candidate until
+  remediation and verification, regardless of vote count or claimed necessity.
+
+### Public pseudonymous voting
+
+The [voting product boundary](../product/operating-model.md#participant-selection-and-public-voting)
+permits public choices under separate Voting Pseudonyms. This is a target
+requirement, not an implemented privacy claim.
+
+- **Protected information:** real-world identity, links to ordinary Node,
+  Persona, Service and transport activity, and all owner secrets already covered
+  by the no-disclosure boundary. Individual published choices are public.
+- **Adversary:** colluding voters, admission/selection/ordering and randomness
+  providers, transport observers, hostile proposal authors, diagnostics and
+  result consumers; a captured or coerced participant is also considered.
+- **Conditions:** effective local execution/keys, no identifying enrollment or
+  implicit cross-role key reuse, minimal scoped metadata, and a qualified
+  transport/storage/diagnostic boundary for any claimed relationship protection.
+- **Measurement:** inspect actual fields, keys, custody, peer observations and
+  retained data; attempt cross-context linking and private-store access through
+  all interfaces and consumers. These integrated checks are not yet executed.
+- **Limitation:** public votes can support coercion, targeted obstruction and
+  correlation; different pseudonyms alone prevent none of these. No secret-ballot,
+  receipt-freeness, coercion-resistance or anonymous-transport claim is selected.
+  Missing protection evidence cannot justify real-identity enrollment or an
+  agreement-mediated owner-data access path.
 
 ## Protected assets
 
@@ -215,7 +445,7 @@ anonymity or indistinguishability guarantee.
 | Censor / DPI | Block known Nodes, bootstrap sources, or protocol fingerprints; probe suspected Bridges | Multiple authenticated bootstrap sources, replaceable Bridges, transport agility, bounded rotation, and explicit blocked state | No fixed protocol disguise or address remains unblockable forever |
 | Local Traffic Observer | Observe the adjacent endpoint's location, external peer addresses, timing, direction, duration, volume, retries, and long-lived patterns; attempt to classify Ardents use | Encrypt protocol and Application Data; hide the selected Service Name or Service Target, opposite endpoint location, and full Route; prohibit direct Service fallback; avoid one mandatory stable fingerprint | Ardents use may still be classified or inferred, and low-latency traffic may be correlated with observations elsewhere |
 | Malicious Direct-Origin Source | Observe requester origin/public artifact, force retries or retained-state collision, then seek a Route or Destination Resolution view | Globally separate source-only assignment; pre-contact retained/live-role exclusion; bounded installation-wide exposure set; finite endpoint-precommitted source/candidate sequences; effective post-exclusion capacity gate; explicit unavailability | First/external contact reveals origin/artifact/timing; unknown-source family and hidden common control cannot be proven; source can deny availability |
-| Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the lack of an Interactive Route correlation-resistance claim visible; measure any later stronger Route Profile separately | Interactive traffic is expected to remain timing- and volume-correlation-sensitive |
+| Broad Traffic Observer | Correlate both endpoint traffic statistically | Make the current correlation-resistance non-claim visible; measure any proposed common-baseline improvement against combined observations and complete costs under ADR-0077 | Current Interactive traffic remains timing- and volume-correlation-sensitive; a development objective is not protection evidence |
 | Malicious infrastructure Node | Combine endpoint location, Service Name or Service Target, Route, or payload knowledge; tag, modify, inject, delay, replay, drop, redirect, downgrade, bias selection, or retain metadata | Multi-hop Route Knowledge Separation; authenticated fresh protocol state; end-to-end target authentication and payload integrity; fail-closed downgrade rejection; short-lived opaque route handles; bounded retry; role separation; diversity analysis | The Node can always deny, delay, or shape traffic; timing and volume tags may aid correlation without producing a distinguishable integrity violation |
 | Active endpoint confirmation | Operate one endpoint-adjacent Node plus the opposite endpoint/probe source; generate a distinctive timing/volume pattern for a known Target and correlate it with the origin edge | Expose this combined adversary as outside the Interactive Route claim; characterize both directions in Qualification evidence; never imply a protocol field is required for successful inference | The low-latency no-cover V1 profile may reveal the endpoint origin statistically even though the Node role receives no Target-to-origin binding |
 | Correlated Control | Combine the permitted views of nominally different Nodes, especially both endpoint-adjacent roles, and correlate timing or volume | Avoid correlated route positions using operator, network, software, and jurisdiction evidence; expose uncertainty; test concentration under R-011 | V1 makes no anonymity guarantee against every pair or larger set; hidden common control cannot always be detected |

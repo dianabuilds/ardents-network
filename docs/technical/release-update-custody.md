@@ -5,6 +5,11 @@ ownership transfer is complete in this scope. This document does not claim a
 supported installer, automatic unlock, platform qualification, or a complete
 operator journey.
 
+The closed successor's [migration contract](../development/privacy-qualification.md#integration-and-migration-contract)
+and [installed worker boundary](application-confinement.md) are selected under
+ADR-0081. They define the future complete inventory/adoption change; this page
+continues to describe the currently implemented ownership and authority floors.
+
 ## Custody ownership
 
 `internal/custody` exclusively unlocks and uses Authority root material. Its

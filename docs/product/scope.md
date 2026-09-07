@@ -43,6 +43,28 @@ requirements, behavior, and lifecycle. Read their relevant sections when a C0
 surface depends on them; they are not an additional C0 checklist. The profile
 below and the linked current technical owners describe the maintained subset.
 
+The [public autonomy target](operating-model.md#public-autonomy-target) under
+[ADR-0074](../adr/0074-target-non-administrative-public-operation.md) replaces
+permanent appointed administration as the intended public end state. It does
+not expand C0 or retire its current authentication and safety checks; each
+successor mechanism and migration requires its own accepted contract and gate.
+
+The [common protection baseline](operating-model.md#common-protection-baseline)
+under [ADR-0077](../adr/0077-evolve-one-common-protection-baseline.md) makes
+security and privacy properties of ordinary system use. Its
+[product and technical workstream](../development/documentation.md#system-protection-workstream)
+covers review, design, implementation and trials of the changed system in a
+declared test environment. This selects a development direction, not an
+additional C0 implementation slice or a stronger claim for existing bytes.
+[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) selects the
+[successor privacy architecture](../technical/common-privacy-architecture.md)
+and [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) completes
+the [closed successor contract](protected-service-workload.md): Target-Link
+text publication/read, confidential control/admission, both accepted Carriers
+and confined Ubuntu workers. This is selected future implementation scope;
+the current C0 facts below remain until explicit adoption. It admits no public
+wire, canonical Name producer or quantitative anonymity claim.
+
 ## C0 Closed Alpha readiness profile
 
 This is the selected narrow delivery profile for the current C0 candidate. It
@@ -186,8 +208,8 @@ Network candidate.
 
 C0 preparation and an internal audit do not establish:
 
-- anonymity, censorship resistance, availability, traffic-correlation
-  resistance, or a Shielded Route Profile;
+- anonymity, censorship resistance, availability, or traffic-correlation
+  resistance;
 - independent operators, builders, auditors, control, or public governance;
 - supported public deployment, capacity, hostile-load, soak, VPS, or platform
   qualification;

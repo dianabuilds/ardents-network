@@ -51,6 +51,36 @@ it additionally runs `package-e2e`, which uses root to exercise `dpkg` and
 Rendezvous qualifications have their own targets and prerequisites. Local
 setup and hook installation belong in [CONTRIBUTING.md](../../CONTRIBUTING.md#local-setup).
 
+## Dependency security evidence
+
+The [dependency acceptance rule](dependencies.md#maintenance-and-vulnerability-acceptance)
+covers current and future components and their continued support.
+`make vuln` currently runs `govulncheck ./...` for the selected environment;
+it does not by itself cover every target, tests, build tool or delivered
+artifact. State exactly which of those were inspected. Review source and
+test closures for the applicable `GOOS`, `GOARCH`, `CGO_ENABLED`, build tags
+and Go version; use `-test` when assessing test dependencies. Inspect the exact
+built artifact and its package/tool/environment inventory when qualifying
+delivery. Cross-target source analysis does not execute that target's tests
+or qualify its artifacts.
+
+Record the full finding classification, including imported-package and
+module-only findings, and the dated non-applicability evidence required by the
+register. The pinned scanner's
+[official documentation](https://pkg.go.dev/golang.org/x/vuln@v1.1.4/cmd/govulncheck)
+(accessed 2026-09-07) describes build-specific coverage and limitations around
+reflection, `unsafe` and binary call information. Structured output modes can
+return success despite findings, so exit status alone is not a verdict for
+such reports. Source checks, exact-artifact inspection, primary advisory review
+and the relevant behavior tests provide complementary evidence; none proves
+the absence of unknown vulnerabilities or continued upstream maintenance.
+Required `make check` gates remain binding.
+
+The successor [privacy/anonymity map](privacy-anonymity-map.md#verification-and-test-environment-map)
+defines additional evidence obligations for a selected new scheme. These are
+design and qualification requirements; no new execution profile or automated
+anonymity verdict exists merely because the map names them.
+
 ## Reachability audit
 
 `make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained

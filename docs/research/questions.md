@@ -11,8 +11,9 @@ inside historical records are provenance only and authorize no implementation.
 
 | ID | Open question | Current status |
 |---|---|---|
-| [R-146](records/r-146-non-administrative-network-consensus.md) | Can Ardents replace appointed public control authorities with open, resource-accounted consensus without introducing discretionary network administration, a mandatory token, or a user-traffic accounting graph? | **Open; theoretical comparison completed on 2026-09-06.** Recommends minimal shared state and separate relay/consensus resource accounting; native work-only ordering is a falsification candidate, and external settlement is conditional. No public mechanism, experiment, C0 research execution, ADR replacement, or implementation slice is selected. |
-| [R-099](records/r-099-protected-application-profile.md) | Is there one narrow application job and supported platform on which an OS-enforced or brokered boundary can deny ordinary-network escape well enough to support a bounded Application-level location claim? | **Open; no profile selected.** Generic Browser and local Application adapters make no isolation or privacy claim. Work begins only after the Product Owner selects one exact job, platform, adversary, enforcement boundary, falsification matrix, and resource budget. |
+| [R-148](records/r-148-shared-resource-contributor-benefits.md) | Which concrete products using shared resources could motivate useful relay contribution, and how would people use them? | **Open; exploratory catalogue prepared on 2026-09-06.** The [product catalogue](../product/future-product-catalog.md) describes 18 user-facing concepts and possible contributor benefits without selecting priorities. Accounting, funding, privacy and recovery remain separate questions. No mechanism, experiment, C0 research execution or implementation slice selected. |
+| [R-147](records/r-147-contributor-resource-controls.md) | Which owner-controlled resource policy could make co-resident relay contribution acceptable on a personal device while preserving bounded work and useful network capacity? | **Open; theoretical comparison completed on 2026-09-06.** Recommends measured presets, editable ceilings and bounded adaptation, with optional scheduling and quota pacing. No co-resident profile, experiment, C0 research execution, or implementation slice is selected. |
+| [R-149](records/r-149-autonomy-transition.md) | How can Ardents meet its public product tasks in a potentially fully hostile environment without indispensable appointed administration or weakened owner rights? | **Open; voting-core composition assessed on 2026-09-07.** The [focused assessment](records/r-149-voting-core-design.md) records the no-cryptoasset/public-pseudonym choices, component comparison, executed conditional sampling/turnout/workload envelope and five unresolved architecture gates. A [conditional development/verification map](records/r-149-voting-work-packages.md) prepares the handoff; no task is implementation-ready or activated. Identity-splitting neutrality, actual admission/close/bootstrap and joint budgets remain unresolved. Canonical Names/View and no-disclosure remain binding; no public protocol, human authority or live network experiment selected. |
 | [R-137](records/r-137-c0-stress-test.md) | Did the pre-C0 Linux stress spike reveal a maintained-candidate defect? | **Deferred.** The partial runner isolated a test-lifecycle artefact but did not produce a clean exact-candidate stress result. Reopen only with a selected C0 Linux budget and external evidence root. |
 | R-138 | Can a bounded real-concurrency simulation validate the maintained multi-agent loop without claiming production coordination or substitute-user validation? | **Deferred outside C0.** The experiment's smoke slice and S3.6 retry logic remain unaccepted evidence; they create no C0 requirement or claim. Reopen only after a Product Owner selects this decision over C0 readiness work. |
 | R-139 | Can a coordinator constrain goal-driven agents to stable consumer identities and immutable decisions while preserving real Source acceptance and an expected invalid-State rejection? | **Deferred outside C0.** S3.6.5 locally qualifies the repaired coordinator, but four-persona concurrency and any cap-exhaustion security claim remain separately gated. Reopen only after a Product Owner selects this decision over C0 readiness work. |
@@ -62,6 +63,30 @@ v1 profile with recipient-bound Route/Entry v2, adds the offline
 receiver boundary. Its exact grammars and tests are implementation work for
 the selected C0-05 issue; neither v1 fallback nor another active research
 question is created.
+R-146 is decided for the public authority direction under ADR-0074: owner
+authorization, locally checked rules, minimal open agreement, and voluntary
+protocol adoption. Its unresolved mechanism and migration decisions now belong
+to R-149; no consensus, token, external chain, or public-operation claim follows
+from acceptance of that direction.
+
+[R-150](records/r-150-common-protection-baseline.md) is decided for one common
+protection baseline and the product/technical workstream through integrated
+implementation and test-environment trials under
+[ADR-0077](../adr/0077-evolve-one-common-protection-baseline.md). The
+[operating model](../product/operating-model.md#common-protection-baseline) and
+[engineering workflow](../development/documentation.md#system-protection-workstream)
+own the selected direction. This closes its framing question, not the security
+workstream; it selects no mechanism or C0 slice and does not activate another
+C0 research execution alongside the current R-149 design subject.
+
+[R-151](records/r-151-privacy-anonymity-integration.md) is decided for the
+successor integration map requested on 2026-09-07. Its
+[current development owner](../development/privacy-anonymity-map.md) covers
+18 areas, 10 coupled design gates, conditional implementation work and test
+evidence, including the complete current module/package inventory. It selects
+no anonymity mechanism, library or additional C0 execution; the scheme's
+decision gates remain to be resolved through separately selected research.
+
 Closed research is not a second specification. Start from current
 [product](../product/), [security](../security/), [technical](../technical/),
 [reference](../reference/), [development](../development/), and accepted

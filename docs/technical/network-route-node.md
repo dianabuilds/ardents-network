@@ -5,6 +5,15 @@ implemented closed-test-network Modules and their current Interfaces. It does
 not claim public network operation, independent operators, public discovery,
 supported Node hosting, or Route qualification.
 
+The [selected successor architecture](common-privacy-architecture.md) under
+[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) has a separate
+target contract. It does not change the maintained native protocol below.
+
+The selected generation-3 successor is defined by [ADR-0081](../adr/0081-select-closed-protected-service-contract.md)
+and the [protected forwarding contract](protected-route-protocol.md). The
+implemented behavior described here remains the migration input until its
+owning change promotes the replacement; it is not a second accepting privacy path.
+
 ## Module ownership
 
 | Module | Interface responsibility | Excluded responsibility |

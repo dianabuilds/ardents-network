@@ -115,10 +115,10 @@ claim.
   `onAuthRequired`; Firefox Manifest V3 continues to support the
   `webRequestBlocking` permission. `ProxyInfo.username/password` are for SOCKS,
   not HTTP proxy authorization.
-- Current maintained source:
-  [`packaging/firefox-alpha-browser-entry`](../../../packaging/firefox-alpha-browser-entry/),
-  [`cmd/ardents-browser-entry`](../../../cmd/ardents-browser-entry/), and
-  [`internal/browserentry`](../../../internal/browserentry/).
+- Historical source at the recorded pre-retirement revisions:
+  [`packaging/firefox-alpha-browser-entry`](https://github.com/dianabuilds/ardents-network/tree/2c46bff44286d59c8850641e63198bc74c7d2ffe/packaging/firefox-alpha-browser-entry),
+  [`cmd/ardents-browser-entry`](https://github.com/dianabuilds/ardents-network/tree/2c46bff44286d59c8850641e63198bc74c7d2ffe/cmd/ardents-browser-entry), and
+  [`internal/browserentry`](https://github.com/dianabuilds/ardents-network/tree/db921ceb394cd7c332357333d1571a9e12d14382/internal/browserentry).
 
 ### Experiment
 

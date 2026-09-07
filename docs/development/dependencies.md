@@ -2,7 +2,176 @@
 
 Every runtime dependency must be entered here before it is added to `go.mod`.
 The entry must name the need, owner, exact module, reviewed version, license,
-maintenance and security signals, alternatives considered, and removal plan.
+maintenance and security evidence, alternatives considered, and removal plan.
+Existing entries are subject to the same continuing review as new selections.
+
+## Review decisions and evidence reuse
+
+Keep three decisions distinct. **Investigation** permits a bounded research
+probe with declared inputs, privileges and external evidence; it grants no
+maintained runtime use. **Design selection** fixes the exact component, use,
+configuration and replacement path after source/support/advisory review and
+architecture-sensitive checks. It is sufficient to specify implementation
+tasks. **Candidate admission** additionally requires the actual changed source,
+build/test closure, artifacts and relevant integration evidence. A selected
+library is not an already qualified implementation. These are review terms,
+not runtime identities or an additional issue-status system.
+
+The design assistant owns the selection record; the implementing change owns
+its exact closure and candidate checks. The Product Owner and Codex are the
+available reviewers. Independent review is a separate claim-specific release
+gate, never an assumed member of this workflow.
+
+Reuse a previous source, license, support or non-applicability assessment only
+when its source identity, supported branch, use, targets, privileges and stated
+invalidation conditions still match. Link that evidence and inspect changes;
+do not repeat a historical research campaign just because its identifier is
+in this register. Recheck advisories for each integration or qualification
+candidate and reassess changed facts. A document-only change that cannot alter
+the build, behavior, dependency closure or an acceptance decision needs document
+validation, not an unrelated execution campaign.
+
+Evidence must be readable and reproducible. Record the exact command, outcome,
+source/build identity, tool/database identity and scope. A missing temporary
+capture cannot support a new admission by its former filename alone; recover
+it from the declared evidence store or reproduce it. A policy review does not
+start an automation or promise continuous staffed monitoring.
+
+## Maintenance and vulnerability acceptance
+
+[NET-30](../product/functional-map.md#common-protection-requirement) requires
+maintained dependencies and no known exploitable vulnerability in admitted use.
+This covers direct and transitive dependencies, the Go toolchain and standard
+library, and build, release, CI and test tools. Selected native libraries,
+operating-system packages and container inputs belong in the relevant build or
+environment inventory with the same review. A test-only dependency has a
+different exposure and authority boundary; absence from product binaries does
+not exempt the environment that executes it.
+
+### Evidence for continued support
+
+Each selection or renewal records dated primary evidence from upstream for
+the project and the exact chosen release or supported branch: maintenance
+status, security reporting and fix delivery, applicable end-of-support policy,
+compatibility with our toolchain and targets, and material unresolved security
+findings. A maintained project does not automatically support every old version.
+A quiet stable library is not automatically abandoned; popularity, recent
+commits or the absence of a security-policy file alone do not settle the review.
+The selected version need not be the newest when its branch remains supported
+and the relevant fixes are available in that version. Inspect newer patches
+on that branch before selecting a new candidate; explain retention of an older
+patch when the changes can affect the admitted use. An upstream project or
+major branch being supported does not mean every superseded patch receives
+separate fixes.
+
+Record exact source identity and integrity checks, license, full dependency
+closure, actual imports or executable inputs, privileges and exposed data,
+the responsible Ardents owner, review date and update/removal path. Review
+upstream and advisory evidence for the packages we use, including compiler and
+build-time exposure that a runtime call graph cannot represent. A replacement
+or supported fork requires the normal dependency and architecture review;
+maintaining a private cryptographic fork is not an assumed team capability.
+
+### Known vulnerabilities and applicability
+
+Assess every known advisory or discovered security finding for the admitted
+versions and uses, regardless of severity. Each finding must be either fixed
+in the selected version or supported by a reviewed non-applicability argument:
+the version is outside the affected range, the affected code is absent from
+the applicable build/execution closure, or the exploit prerequisites are
+enforceably impossible throughout the supported use being assessed.
+
+For each non-applicability decision, record:
+
+- advisory/finding ID, primary source and review date, exact component version,
+  source/build identity and responsible owner;
+- affected code and attack prerequisites, our import/call/input/privilege paths,
+  and the specific boundary that prevents exploitation;
+- all covered platforms, architecture, build tags, toolchain, configuration and
+  runtime or build/test roles; any uncovered case remains unresolved;
+- reproducible inspection and, where prevention depends on our behavior, a
+  regression test of the enforcing boundary, with analysis limitations;
+- invalidation conditions, including a dependency, import, feature, privilege,
+  configuration, platform or advisory change.
+
+A default-disabled feature, the lack of a public exploit, a low severity score,
+an upstream issue marked closed or a clean scanner result is insufficient
+evidence by itself. In particular, an attacker must not be able to enable or
+reach a supposedly excluded path. Reachability analysis can miss dynamic
+behavior; examine the affected mechanism and the scanner's limits.
+
+An exploitable finding or unresolved applicability blocks integration and
+release qualification of the affected use. A component without a credible
+maintenance and security-fix path also fails admission, even if no advisory is
+listed. Update, replace or remove the dependency and its affected functionality
+through the responsible owner, then repeat the relevant qualification. A
+non-applicability record is not permission to suppress or bypass a failing
+repository check. Security response and owner-controlled adoption retain their
+existing authority boundaries; this rule creates no remote shutdown power.
+
+### Revalidation through delivery
+
+Establish the dependency inventory and support evidence during the protection
+workstream, and maintain them with ordinary changes. Before integration,
+admission of a system-test candidate and release qualification, recheck the
+exact closure against current advisory data and the applicable support
+evidence. Record the scan time, database source/freshness, tool versions,
+build configuration, inspected findings and evidence location. An unavailable
+database or cache of unestablished freshness is not a passing fresh check.
+
+A new advisory, loss of upstream support or change to a decision's assumptions
+requires reassessment even when `go.mod` is unchanged. The responsible owner
+tracks remediation through the existing issue ledger. Its priority reflects
+exposure and impact; severity does not waive the acceptance condition. The
+one-human-and-Codex team must be able to sustain this update and replacement
+work; dependency selection cannot assume another maintenance or audit team.
+
+The existing `make vuln` and `make check` provide the configured Go
+reachability gate. The broader support, applicability, build/tool and artifact
+reviews above are required evidence, not a claim that all are already automated
+or complete. The successor
+[dependency disposition map](privacy-anonymity-map.md#dependency-disposition-map)
+covers retained pins, selected closed uses and their update/removal obligations.
+Design selection does not replace actual candidate admission. [Testing policy](testing.md#dependency-security-evidence) owns how
+their coverage is stated. Historical selection receipts and a successful scan
+do not establish the absence of unknown vulnerabilities or future safety.
+
+`govulncheck -json` is evidence input: inspect the complete findings and scanner
+configuration, not only its exit code. A successful JSON-mode exit may include
+findings. Source-with-tests, cross-target source inspection and binary scans
+have different coverage; none substitutes for execution on a required platform.
+Known imported-package or module-only findings still receive the scoped
+applicability decision above. Preserve unsuccessful attempts and corrections.
+
+## Selected successor design uses
+
+[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) selects an
+[architecture](../technical/common-privacy-architecture.md) built on maintained
+Go TLS/HPKE and a publicly verifiable blind-token family. The TLS component
+experiment is byte-cost evidence, not full protocol or security acceptance.
+[ADR-0081](../adr/0081-select-closed-protected-service-contract.md) selects
+CIRCL v1.6.5 ordinary blindrsa SHA384PSSDeterministic for the exact
+[admission construction](../technical/private-admission.md), beyond its retained
+HPKE use. The [R-152 assessment](../research/records/r-152-closed-scheme-contract.md)
+records dated source/support/license/advisory review, exact three-package plus
+standard-library closure, checksum verification, upstream tests and the composed
+probe. Its owner is internal/route/credential. Do not import other CIRCL schemes
+or serialize opaque blinding State. A changed use or upstream/support/advisory
+fact invalidates that evidence; update or replace within this owner, never
+maintain a private cryptographic fork.
+
+Go 1.26.8 is selected for the successor build on the supported 1.26 line.
+The current pins and component checks still use 1.26.6; the implementation
+baseline must align build/CI/tools and run fresh actual-candidate checks on the
+selected patch. Ubuntu/systemd package inventory and built-artifact inspection
+also remain candidate evidence. No documentation decision marks those checks
+already passed. Tools are installed only through make tools-install.
+
+The successor confidential control channels can replace OHTTP transport only
+with the explicit new grammar and migration. Existing OHTTP imports and their
+full closure remain subject to review for as long as any maintained use exists.
+Removal is an owner change with dependency/compatibility evidence, not an
+automatic consequence of selecting the architecture.
 
 ## Current runtime dependencies
 
@@ -32,8 +201,10 @@ by `openpcc/ohttp v0.0.80`.
 **Need and owner:** RFC 9458 is the accepted external-first Private Resolution
 shape. `internal/naming/resolution` owns the Namespace OHTTP/CIRCL Adapter and
 `internal/service/reachability` owns the separately authenticated Target
-descriptor adapter; neither is a general HTTP proxy. A change repeats R-047/R-026
-instead of allowing its cryptographic configuration to drift.
+descriptor adapter; neither is a general HTTP proxy. A change repeats the
+affected current-owner conformance, dependency and observer checks. R-047/R-026
+retain the selection evidence; they are not instructions to reopen the original
+research or a second current specification.
 
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
@@ -91,9 +262,11 @@ dependency, or Gateway key is committed.
 
 **Removal plan:** the complete closure leaves only when the product private
 resolution Adapter is removed. A changed version or
-dependency graph repeats R-047 and R-026; an unremediated reachable
-high/critical vulnerability, unacceptable license, offline-build failure, or
-broken role split selects `stop`, not a fork.
+dependency graph repeats the affected current-owner checks. An exploitable or unresolved
+vulnerability of any severity, loss of support, unacceptable license,
+offline-build failure or broken role split stops admission under the
+[acceptance rule](#maintenance-and-vulnerability-acceptance). The selection
+does not authorize a first-party fork.
 
 ## Current release-verifier closure
 
@@ -140,8 +313,12 @@ upstream tests, ten-run no-cgo resource tests, permissive-license inventory,
 and the reachable scan. The raised three-module set preserved upstream and
 profile tests. `govulncheck` reported no symbol or imported-package
 vulnerability; its remaining module-only finding is the unimported and
-unmaintained `x/crypto/openpgp` package. Integration repeats the complete root
-module scan and stops on any reachable unpatched high/critical advisory.
+unmaintained `x/crypto/openpgp` package. This is dated selection evidence;
+[the 2026-09-07 source check](../research/records/r-150-common-protection-baseline.md#dependency-baseline-observation)
+records its current bounded applicability result. Integration repeats the
+applicable scans and support review. Any exploitable or unresolved advisory,
+regardless of severity, fails the
+[acceptance rule](#maintenance-and-vulnerability-acceptance).
 
 **Alternatives and removal:** the DataDog legacy fork failed the reproducible
 maintenance/conformance criterion; first-party TUF or cryptographic primitives,
@@ -214,8 +391,11 @@ imports `internal/custody` nor constructs a credential response itself.
 **Maintenance, security, and distribution review:** the current tagged
 `v0.2.3` release was published on 2026-05-17 from a GitHub-verified commit; its
 repository has current Windows-specific fixes and documents Windows ConPTY and
-Unix PTY support. The module is pre-v1 and has no declared security policy, so
-it is not accepted into a runtime or shipped artifact. Its first-party test
+Unix PTY support. The selected use is confined to the terminal test harness;
+no runtime owner needs it. Its pre-v1 API and absence of a dedicated published
+security policy require review of its actual maintenance/fix path, not an
+automatic supported or abandoned verdict. It is not accepted into a runtime
+or shipped artifact. Its first-party test
 caller imports no `unsafe` or cgo; the dependency's platform implementation may
 use operating-system primitives internally. MIT and BSD-3-Clause permit the
 test-only source dependency. `go mod verify`, the exact process test, Windows

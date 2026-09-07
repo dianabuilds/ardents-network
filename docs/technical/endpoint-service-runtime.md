@@ -12,6 +12,12 @@ admission and session lifecycle. The sibling `interfacev1` directory has the
 distinct `application-interface-v1` owner: it freezes the local protocol used
 on both sides without owning either Network behavior or Browser presentation.
 
+The selected closed successor's [workload](../product/protected-service-workload.md),
+[confinement](application-confinement.md) and [protocol](protected-route-protocol.md)
+own its future Endpoint composition under ADR-0081. The current runtime facts
+below remain until explicit migration; generic callers do not acquire a
+qualified-launch receipt through compatibility.
+
 ## Ownership
 
 The local runtime has separate Modules and Interfaces:

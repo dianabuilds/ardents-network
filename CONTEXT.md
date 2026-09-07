@@ -451,6 +451,8 @@ cost, path behavior, observer resistance, and honest limitations of a class of
 Service Connections. It may select a different Route Implementation without
 changing Application Interface or Service Connection semantics; the selected
 profile is authenticated and cannot be silently weakened.
+The public product evolves one common protection baseline through explicitly
+adopted versions; a Route Profile is not a parallel selectable security tier.
 _Avoid_: Anonymous mode, user-tunable routing knobs, routing algorithm, silent fallback
 
 **Route Qualification**:
@@ -561,13 +563,26 @@ Ardents require active analysis or meaningful collateral blocking of ordinary
 traffic. It is not a promise of invisibility or guaranteed indistinguishability.
 _Avoid_: Invisible traffic, guaranteed HTTPS disguise
 
+**Network Autonomy**:
+Ordinary participation and continued network operation under shared rules without
+an indispensable appointed network-wide administrator, while owners retain
+control of their own devices, Services, and Names. It does not promise operation
+without sufficient participants, resources, or maintenance.
+_Avoid_: Unattended operation, automatic administration, threshold custody
+
+**Voting Pseudonym**:
+A separate public label for participation and choices in a defined voting
+context. It is distinct from real-world identity, Persona, Node identity and
+Service authority; it does not itself guarantee anonymity.
+_Avoid_: Real-world identity, universal voter account, Node identity
+
 **Control Plane**:
 The mechanisms and authorities that govern network discovery, naming,
 bootstrap, software releases, compatibility, and emergency changes.
 _Avoid_: The data path, invisible governance
 
 **Network Epoch**:
-An expiring, content-addressed, threshold-authenticated statement of shared
+An expiring, content-addressed, authenticated statement of shared
 network identity, compatibility, eligibility inputs, Role Domains, and freshness.
 Its distributors provide identical bytes but do not define their authority.
 _Avoid_: Bootstrap server response, peer list, permanent address list
@@ -596,8 +611,8 @@ _Avoid_: Downloaded peer list, Route, bootstrap peer opinion, User history
 **Candidate Materialization**:
 The deterministic shards or indexed records and inclusion proofs fetched by one
 endpoint under a Candidate View commitment. The endpoint verifies the requested
-material and selection indices, not global completeness; threshold state and
-independent full auditors cover the global commitment. Withholding retries the
+material and selection indices, not global completeness; acceptance of shared state carries a separate
+completeness requirement. Withholding retries the
 same index elsewhere or fails explicitly and never causes silent resampling.
 _Avoid_: Personalized Candidate View, distributor-selected route, reputation
 
