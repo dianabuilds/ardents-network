@@ -66,6 +66,9 @@ func writeDeployment(paths hostPaths, bundle verifiedBundle) error {
 	if err := writeBundleDirectories(bundle, paths.programCurrent, paths.configCurrent); err != nil {
 		return err
 	}
+	if err := writeFileExclusive(paths.programManagement, bundle.files["ardents-node"], 0o755); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(paths.diagnostics, 0o700); err != nil {
 		return err
 	}

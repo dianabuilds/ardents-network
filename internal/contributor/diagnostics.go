@@ -29,6 +29,9 @@ func (profile *Profile) report(ctx context.Context) (Report, error) {
 	if err := verifyInstalled(profile.paths, record); err != nil {
 		return Report{}, err
 	}
+	if err := verifyManagementExecutable(profile.paths, record); err != nil {
+		return Report{}, err
+	}
 	lifecycle, err := readLifecycle(profile.paths.lifecycle)
 	if err != nil {
 		return Report{}, err
