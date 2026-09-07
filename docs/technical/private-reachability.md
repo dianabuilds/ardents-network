@@ -9,6 +9,11 @@ companion to the Namespace-only private
 resolution contract. It implements [ADR-0036](../adr/0036-target-private-reachability-v1.md)
 and [ADR-0037](../adr/0037-private-reachability-entry-carrier.md).
 
+The selected successor [protocol](protected-route-protocol.md#terminal-payloads-and-private-reachability)
+replaces this transport and reachability payload under ADR-0081 while preserving
+proof/currentness and conflict floors. The generation-2 facts below describe
+the existing implementation, not the successor's exposed join fields.
+
 ## Purpose and boundary
 
 Given an exact, network-bound Target Link, the Endpoint obtains one

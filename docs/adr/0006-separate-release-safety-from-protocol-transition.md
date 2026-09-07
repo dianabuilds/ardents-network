@@ -5,6 +5,12 @@ date: 2026-08-08
 
 # Separate release safety from protocol transition
 
+Public-target amendment, 2026-09-06:
+[ADR-0074](0074-target-non-administrative-public-operation.md) replaces appointed
+administrative permission as the autonomous public end state. The current
+implemented profile and safety checks below remain binding until their exact
+successor is accepted and qualified; this is not wholesale supersession.
+
 This decision applies when a closed test network begins producing installable
 release candidates. Carrier Lab and early Reference Application experiments have
 no automatic updater, public threshold, or protocol-migration subsystem.

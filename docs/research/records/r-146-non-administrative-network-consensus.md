@@ -1,13 +1,13 @@
 ---
 id: R-146
-title: Non-administrative network consensus and validator weighting
-status: open
+title: Network governance, autonomy, and validator weighting
+status: decided
 owner: Product Owner and Codex
 started: 2026-09-06
 reviewed: 2026-09-06
 ---
 
-# R-146 — Can open validators replace appointed network control?
+# R-146 — Which governance model fits Ardents?
 
 ## Decision this unlocks
 
@@ -16,16 +16,52 @@ requirement that nobody holds discretionary administrative power over Ardents.
 Determine whether relay contribution, a scarce consensus resource, an external
 settlement network, or less shared state best supports that requirement.
 
-The comparison is complete; a public mechanism is not selected. The strongest
-architectural recommendation is to separate relay capacity from consensus
-influence and minimize the state that needs common ordering. Under the current
-no-token/no-mandatory-payment boundary, a native proof-of-work control log is
-the reference candidate for further falsification, not an approved protocol or
-an established feasible launch. No evaluated complete solution currently clears
-all product, security, and actual maintenance constraints.
+The expanded comparison is complete; a public mechanism is not selected. The
+recommended target combines owner authorization, fixed validation rules,
+minimal shared ordering, and voluntary protocol adoption, without privileged
+network-wide commands. This is an architecture to evaluate, not a demonstrated
+feasible launch. Native work-only ordering remains a conditional standalone
+reference, not the default winner among governance models. No evaluated complete
+solution currently clears all product, security, and maintenance constraints.
 
-This assessment does not authorize implementation or supersede an accepted ADR.
+This comparison does not authorize implementation; ADR-0074 separately records the accepted public-target amendment.
 It is not the C0 delivery ledger.
+
+## Accepted direction
+
+On 2026-09-06 the Product Owner accepted the recommended architectural direction
+and requested its migration plan. [ADR-0074](../../adr/0074-target-non-administrative-public-operation.md)
+records that authority-boundary decision. [R-149](r-149-autonomy-transition.md)
+owns the remaining detailed state, mechanism, freshness, safety, and migration
+questions. The comparison below retains its original assumptions and limits;
+acceptance does not select PoW, a chain, validator weights, fees, or a runtime.
+
+## Expanded decision scope
+
+The Product Owner subsequently requested a broader theoretical comparison:
+operation without a network administrator, decentralized governance,
+authority-signed administration, and other possible arrangements. R-146 now
+compares who defines validity, orders shared state, changes rules, authorizes
+software, admits participants, and handles failure. Signatures, consensus,
+governance, and local ownership are different dimensions.
+
+The original resource-weighting analysis below remains evidence. Its native
+work-only candidate was conditional on a standalone no-token model, not a
+selection among all governance models. The expanded comparison and recommendation
+take precedence over that earlier candidate ranking. Signed and federated
+models are evaluated as explicit alternatives even when they fail the initial
+strict absence-of-administration objective. No user acceptance of mandatory
+payments, an external chain, or permanent administrative power is inferred.
+
+- **H4:** A minimal-administration architecture can remove discretionary
+  network-wide commands while keeping private owner authorization and explicit
+  protocol adoption; its shared-state mechanism remains a separate decision.
+- **H5:** A bounded signed federation is a defensible operational compromise for
+  limited delivery, but cannot be presented as a network without administrators.
+- **H6:** Removing global agreement entirely can simplify autonomy only where
+  the product can accept local meaning, incomplete discovery, or unavailable
+  globally contested operations; it cannot silently preserve every existing
+  common-View and canonical-Name claim.
 
 ## Current contract
 
@@ -112,6 +148,11 @@ to the identified source or specification version.
 | S7 | Ethereum, [proof of stake](https://ethereum.org/developers/docs/consensus-mechanisms/pos/); [weak subjectivity](https://ethereum.org/developers/docs/consensus-mechanisms/pos/weak-subjectivity/) | Capital-backed consensus and a fresh/offline client's trusted-checkpoint issue. |
 | S8 | Namecoin, [FAQ](https://www.namecoin.org/docs/faq/) | An existing consensus-backed naming example with asset-denominated registration/transaction costs and its own lifecycle. |
 | S9 | I2P, [network database](https://www.i2p.net/en/docs/overview/network-database/), documented profile accurate for 0.9.65 | Owner-signed distributed records; explicit bootstrap, Sybil, and query-observation limits. |
+| S10 | GNUnet, [GNU Name System specification](https://lsd.gnunet.org/lsd0001/), sections 2-3 | Owner-controlled zones, key-derived global names, and local memorable petnames without one universal root. |
+| S11 | Mazieres, [The Stellar Consensus Protocol](https://stellar.org/papers/stellar-consensus-protocol.pdf), 2015, sections 3-5 | Local quorum slices; safety and progress depend on the quorum structure and faulty participants. |
+| S12 | Ethereum, [governance documentation](https://ethereum.org/governance/) | Off-chain protocol coordination and voluntary software adoption; validator consensus is a separate responsibility. |
+| S13 | Tezos, [governance documentation](https://docs.tezos.com/architecture/governance) | Explicit stake-weighted proposals, voting, testing, and protocol amendment activation. |
+| S14 | The Update Framework, [specification](https://theupdateframework.github.io/specification/latest/), sections 2.1.4 and 5.3-5.6 | Timestamp freshness and update expiration checks; these do not define a network permission-to-run policy. |
 
 ### Experiment
 
@@ -198,7 +239,151 @@ caps can reward splitting. Linear weight still permits a wealthy operator to
 buy influence, and random committee selection adds sampling risk. No arbitrary
 committee size, weight cap, or confirmation count is selected here.
 
-## Options
+## Governance comparison
+
+### Evaluation boundary
+
+The expanded comparison retains administrative models as explicit alternatives.
+It assesses actual powers; dependence on particular people or institutions;
+ordinary operation after their disappearance; protocol-change authority;
+recovery after quorum loss or a software flaw; fit with global Names and the
+common Candidate View; privacy; and maintenance by the actual team. The outcomes
+are qualitative engineering judgments, not measured scores or proven protocols.
+
+### Separate the powers before distributing them
+
+**Inference from the current contract and S10-S14:** signatures authenticate
+actions; the verifier determines their authority. An owner's signature can
+change only that owner's record. A privileged root can instead authorize the
+whole network's State or Release Safety. Signatures are needed in either model.
+The autonomy problem is the scope and indispensability of the signing power.
+
+**Sourced facts:** S12 describes off-chain protocol coordination and voluntary
+software adoption. S13 describes explicit on-chain amendment machinery.
+**Inference:** validator consensus and governance are separate design choices.
+Agreement can order valid transactions without granting a command to change
+validation rules, take somebody else's Name, or install arbitrary software.
+Resource capture can still censor or stall; users can still adopt changed
+software. Removing a formal authority does not eliminate social or economic
+power, default-client influence, or infrastructure dependence.
+
+| Decision | Sufficient authority | Ardents implication |
+|---|---|---|
+| Publish an owner's Service record or limit their device resources | Owner, within explicit credentials and ownership rules. | Retain private control; absence of network administrators does not remove owners. |
+| Validate a received record | Local verifier plus authenticated dependencies and selected rules. | A majority cannot substitute for validation. |
+| Resolve competing global Name claims or agree on a complete Candidate View | A specified common agreement/completeness mechanism. | Unrelated owner signatures alone are insufficient. Alternatively, explicitly narrow the product contract. |
+| Select a compatible software build | Local owner with an explicit update and safety policy. | Author authenticity need not give a publisher exclusive continuing permission-to-run. |
+| Adopt incompatible rules | The selected evolution policy. | Voluntary adoption permits forks; automatic amendments give a collective body defined rule-changing powers. |
+| Recover outside the consensus fault assumptions | A separately justified recovery policy. | Ordinary successful consensus does not prove autonomous recovery; no hidden rescue administrator. |
+
+### Alternatives and fit
+
+**Inference/recommendation:** these alternatives can combine. Thresholds describe
+custody; consensus describes agreement; external settlement describes placement;
+voluntary adoption describes evolution. None alone specifies the entire network.
+
+| Model | Authority and failure behavior | Fit for Ardents |
+|---|---|---|
+| Local fixed rules and owner-signed records, no global log | No continuing global administrator for owner-local facts. Serving and discovery still require peers. Conflicting global claims remain unresolved by signatures alone. | Strong fit for separable operations. A complete replacement only with researched changes to global Name/View requirements; a DHT alone is insufficient. |
+| One privileged signing authority | One party authorizes network state or permissions. Its loss blocks affected fresh operations as current evidence expires. Automating signatures preserves this power. | Lowest operational burden for project-controlled C0. Fails the stated long-term absence-of-administration goal. |
+| Fixed threshold federation | A named group jointly exercises defined powers. Losing the necessary quorum prevents progression; distributing keys does not prove independent operators. | Closest to the accepted public authority design. A bounded-administration compromise if real independent custodians become available, not an autonomous end state. |
+| Locally selected federated trust / FBA | Nodes choose trusted quorum slices. Compatible trust structures and surviving trustworthy participants govern safety and progress (S11). | Candidate for communities with explicit institutional trust. Poor default for anonymous novice entry into one canonical network without a justified trust-selection design. It need not grant arbitrary commands, but can concentrate agreement dependence. |
+| Permissionless consensus under fixed rules | Participants enter through an objective resource/admission rule; everyone validates transitions. Losing enough honest resources undermines progress or security. | Best aligned with retaining common agreement while removing appointed state signers. No suitable low-cost token-free mechanism has yet been established for Ardents. PoW/PoS are subchoices, not complete governance policies. |
+| Collective on-chain governance / DAO | A voting population can amend specified rules or parameters, within narrow or broad powers (S13). | Appropriate only if collective administration is desired. Adds capture, participation, delegation, amendment, and recovery obligations. Broad rule-changing powers fail the strict absence-of-administration target. No current requirement justifies it. |
+| Voluntary protocol adoption and explicit fork/exit | Owners choose implementations and incompatible changes. Authors retain social influence without necessarily holding an exclusive runtime authorization key (S12). | Recommended evolution layer. Does not solve daily shared ordering, automatically repair bugs, or guarantee that everyone remains on one network. |
+| Existing permissionless settlement for limited shared facts | Ardents depends on external security, inclusion, fees, availability, and verifiable data. Upgrade keys, trusted RPC, or a sole sponsor can reintroduce privileged dependence. | Strong maintenance comparison if costs and external dependence are accepted. Not self-sufficient, not selected, and not free just because users do not hold wallets. |
+| Time-limited administration with a migration path | Administrative power lasts until a qualified transition. Expiry alone cannot create replacement consensus or resources. | A delivery arrangement, not the end state. No speculative automatic sunset: qualify the replacement before retiring old authority. |
+
+**Sourced fact — S10:** GNS provides owner-controlled zones, key-derived global
+names, and locally configured memorable names, without requiring one common
+root. **Inference:** local authority is a real alternative, but does not preserve
+Ardents' canonical short Name contract by implication. This does not select GNS
+or claim that globally meaningful names necessarily require a blockchain.
+
+**Sourced fact — S11:** SCP's guarantees depend on quorum intersection and
+availability relative to faulty nodes, with locally chosen trust slices.
+**Inference:** choosing trust locally is meaningful decentralization, but does
+not make incompatible choices safe or establish independent control of a default
+recommended list.
+
+**Sourced fact — S14:** TUF rejects expired metadata during the update cycle.
+**Inference from Ardents' release owner:** using finite Release Safety evidence
+as a condition for network work is a further policy. Removing the publisher's
+exclusive ongoing permission requires an explicit replacement safety contract;
+disabling update freshness checks is not such a design.
+
+**Inference — algorithmic adaptation:** automatic tuning is another dimension,
+not evidence of absent administration. Fixed, bounded transitions can adapt to
+agreed inputs without a discretionary operator. A central scheduler, oracle,
+AI service, or automated signer still controls the network if its unverifiable
+commands are authoritative. Consensus over sensor reports does not prove their
+truth. Any adaptation needs explicit limits, manipulation resistance, and stable
+behavior under delayed or missing observations. No such controller is selected.
+
+### Outcome and conditional preference
+
+**Recommendation:** the best-fitting long-term direction combines owner
+permissions, fixed locally checked rules, minimal open agreement only for
+necessary shared facts, and voluntary protocol evolution. No designated party
+should renew the whole network's right to work, appoint all future participants,
+confiscate an owner's Name, force an upgrade, or invoke a global shutdown.
+This is a proposed authority boundary, not a change to accepted contracts.
+
+Objective finite expiry and credential checks remain where required for safety.
+If fresh evidence disappears, affected work may stop. Autonomy from an
+administrator is different from availability without evidence, resources, or
+peers. The target still requires device maintenance and accepts that people can
+disagree about changes and choose incompatible networks.
+
+This is a better answer to the expanded question than selecting PoW first.
+**Native PoW remains a conditional mechanism to test, not the recommended
+governance model.** If canonical Names and the common View remain, suitable
+shared agreement remains necessary. If fees and external dependence are
+acceptable, compare an existing system before custom consensus development.
+If those are forbidden and the no-token boundary remains, standalone honest
+work funding is still an unresolved obstacle. No established complete solution
+clears all unchanged constraints.
+
+| Product priority | Preferred direction to evaluate | Explicit cost or limitation |
+|---|---|---|
+| No appointed administrators; global Names/View retained | Minimal open agreement plus local ownership and voluntary adoption. | Sybil defense, honest resources, finality, availability, and bootstrap need qualification. |
+| No global administrators; global uniformity optional | Owner-local records and user-selected naming/trust. | The same short Name may resolve differently; global completeness needs a replacement contract. |
+| Limited maintenance; collective administrators acceptable | Bounded fixed federation using maintained components. | Explicit custodians and quorum dependence; actual independent operators are not currently available. |
+| Limited maintenance; external security dependence acceptable | Existing permissionless ordering for minimal shared facts. | Submission funding, chain assumptions, verified access, and metadata exposure. |
+| Current C0 with the actual team | Keep the explicitly project-controlled signed alpha. | It remains an alpha, not a claim of autonomous public operation. |
+
+Confidence is **high** in separating these powers and in rejecting threshold
+signatures as proof of administrator-free operation; **moderate** in the fit of
+the proposed architecture; **low** in feasibility under every unchanged product
+and staffing constraint. The strongest objection is that removing emergency
+authority makes responding to new flaws and lost consensus availability harder,
+while scarce-resource consensus can move practical power to resource owners.
+These costs must be weighed against an explicit federation's custody powers.
+
+### Additional falsification gates
+
+These conditions precede any future experiment or implementation selection:
+
+- Enumerate accepted commands. A privileged signature able to renew all work,
+  appoint arbitrary members, replace owner authority, or force activation
+  disproves the strict target even when several people must sign.
+- Remove founders and release publishers. Test state progression, new entry,
+  update provenance, and finite existing work separately; one surviving path is
+  not proof of autonomous network operation.
+- For FBA, test conflicting trust defaults, common ownership, and trusted-core
+  loss. Reject a global safety claim with no justified quorum structure.
+- For local-only operation, trace one contested Name and an omitted Candidate
+  set. Reject global-finality/completeness claims based only on owner signatures.
+  Narrowing the product is a decision, not a successful test.
+- For evolution, model an incompatible change and a critical vulnerability.
+  Reopen the model if safety depends on an undisclosed mandatory publisher,
+  emergency key, or automatic execution of arbitrary code.
+- For transition, require a qualified replacement before old authority retires.
+  A timer, key deletion, or future-volunteer assumption is insufficient.
+
+These are decision gates, not completed experiments or new C0 work items.
+
+## Consensus-resource subcomparison
 
 | Option | Product/security fit | Operational and governance dependencies | Disposition |
 |---|---|---|---|
@@ -218,7 +403,9 @@ impossible. Federated trust chosen by users can avoid a single appointed list,
 but adds trust-graph configuration and canonical-fork questions; it does not
 meet an automatic globally agreed membership requirement by default.
 
-## Recommendation
+## Conditional consensus recommendation
+
+This narrower comparison is subordinate to the governance outcome above.
 
 **Choose none of the complete mechanisms for implementation yet.** Recommend
 one architectural direction and a ranked next decision: minimal control state,
@@ -360,14 +547,15 @@ These are evaluation conditions, not scheduled work or a second task ledger.
 
 ## Disposition
 
-- The authorized theoretical comparison is complete. R-146 remains **open for
-  product/feasibility selection**; there is no running experiment or selected
-  C0 research execution after this assessment.
-- H1 has architectural support, not a protocol proof. H2 is not established by
-  the examined measurement work. H3 is conditional on product changes. H0
-  remains live because no complete option clears every current constraint.
-- Changed only this research record and the question index. No product/security
-  contract, glossary, accepted ADR, dependency, package, or runtime was changed.
-- No performance or security experiment was run. No generated artifact or
-  private material was stored in the repository. Documentation validation does
-  not qualify the proposed network.
+- The governance comparison is **decided for architectural direction** through
+  the Product Owner's acceptance and ADR-0074. Detailed feasibility/mechanism
+  work is carried by R-149; no experiment or C0 implementation is activated.
+- H1 and H4 have architectural support, not a protocol proof. H2 is not
+  established by the examined measurement work. H3 is conditional on product
+  changes. H5 is an explicit administration compromise; H6 requires a narrower
+  contract. H0 remains live for complete mechanism feasibility.
+- The operating model, scope, threat model, and glossary now distinguish the
+  accepted public target from the binding current authority-backed profile.
+  Current runtime, safety gates, dependencies, packages, and wire formats remain.
+- No performance or security experiment was run. The comparison and migration
+  plan do not qualify public operation, operator independence, or anonymity.

@@ -10,8 +10,9 @@
   under ADR-0009. Accepted ADRs also select one bounded closed-alpha native
   Route, wire grammar, and TCP/TLS plus QUIC Carrier set; those selections do
   not imply a public or long-term protocol commitment. Public transport,
-  storage, consensus, blockchain, and any protected Application runtime remain
-  unselected.
+  storage, consensus and blockchain remain unselected. ADR-0081 selects the
+  bounded closed Ubuntu text-Service successor, including its Application
+  confinement design; it is not implemented or qualified by that selection.
 - New delivery-horizon and epic labels are planning provenance only. They must
   not become runtime identities, package boundaries, wire fields, or domain
   terms. Immutable historical evidence may retain its original candidate
@@ -35,6 +36,23 @@
   or independent-security validation.
 - External users and independent reviewers may be recorded as future release
   gates, but must not be scheduled as if they are currently available.
+
+### Agreement-system design and implementation responsibilities
+
+- For the agreement-system work under R-149, the Product Owner assigns product
+  research, requirements, threat analysis, architecture and ADR preparation to
+  the design assistant in the current research task. Implementation is intended
+  for Terra (`gpt-5.6-terra`) after a bounded slice is ready. This is a division
+  of Codex work, not additional human staff or independent security review.
+- The current phase is design and requirements in this repository. Do not turn
+  the committee discussion, an open research question or a candidate brief into
+  maintained subsystem implementation. This preference does not itself start
+  another task or authorize parallel implementation work.
+- Follow the [research-to-implementation handoff](docs/development/documentation.md#research-to-implementation-handoff).
+  Terra may make routine implementation choices within the selected contract;
+  consequential product, authority, privacy or protocol gaps return to design
+  instead of being silently resolved in code. Existing authority, ownership,
+  dependency and C0 work-in-progress rules remain binding.
 
 ## Order of authority
 
@@ -116,7 +134,11 @@ historical evidence remains in the repository.
 - First-party cgo, `unsafe`, implicit `init`, and `panic` require a superseding
   accepted ADR and dedicated risk tests.
 - Prefer the standard library. Record and review every runtime dependency in
-  `docs/development/dependencies.md` before changing `go.mod`.
+  `docs/development/dependencies.md` before changing `go.mod`. Existing and new
+  direct/transitive dependencies, toolchains and build/test tools must satisfy
+  its maintenance and vulnerability acceptance rule. Every known finding needs
+  a fix or scoped, reproducible non-applicability evidence; severity alone is
+  not an exemption, and a passing scanner does not prove ongoing support.
 - Run `make quick-check` while writing code and `make check` before integration.
   Do not weaken or bypass a failing gate. Tools are installed only through the
   explicit `make tools-install` command.
@@ -156,8 +178,10 @@ historical evidence remains in the repository.
   measurement, and honest limitation.
 - Encryption of payload is not anonymity. Decentralized storage is not
   availability. Multiple nodes are not independent operators.
-- Interactive and Shielded operations may have different guarantees; never
-  silently downgrade one to the other.
+- Ordinary Ardents use evolves one common protection baseline under ADR-0077;
+  do not introduce parallel security modes or an optional stronger Route.
+  Follow the system protection workstream in `docs/development/documentation.md`.
+  Missing required protection never authorizes a weaker accepting path.
 
 ## Durable decisions
 

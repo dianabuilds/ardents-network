@@ -20,6 +20,355 @@ capability, exact Network Epoch, protocol family, and Route Profile. A test
 network may implement the same states, but it cannot claim public anonymity or
 decentralization merely because the state machine runs.
 
+## Common protection baseline
+
+**Product Owner direction, 2026-09-07**, accepted in
+[ADR-0077](../adr/0077-evolve-one-common-protection-baseline.md): ordinary
+Ardents use has one common protection baseline. Improvements become part of
+that baseline through explicit evolution. The product does not offer parallel
+ordinary and stronger security modes or a separately selected privacy Route.
+[NET-29](functional-map.md#common-protection-requirement) records the requirement.
+
+Protection covers the complete supported capability journey, including entry,
+current state, lookup, publication, connection, recovery, local execution,
+diagnostics and software lifecycle. Different owners and infrastructure roles
+retain their narrow privileges. A shared protection goal does not merge
+Custody, agreement, Node identity, Application identity or source/Route duties.
+The [threat model](../security/threat-model.md#whole-system-protection-review)
+owns adversary coverage and the required evidence.
+
+The [system protection workstream](../development/documentation.md#system-protection-workstream)
+reviews product behavior and architecture, integrates selected solutions and
+tests the resulting system on a declared test environment. Security review also
+continues in ordinary implementation work. Operational evidence can reopen any
+assumption; security design and remediation do not wait for Public Beta.
+
+The Product Owner's further direction on 2026-09-07 is to develop and implement
+a successor privacy/anonymity scheme for this ordinary use. The
+[integration map](../development/privacy-anonymity-map.md) covers the complete
+journey, current owners, component choices, design gates and system trials.
+Traffic correlation, combined control/data observations and local execution
+must be assessed together. Its selected closed contract and actual qualification have distinct owners;
+stronger quantitative claims and changed accepted budgets require new evidence.
+[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) now selects the
+[successor architecture](../technical/common-privacy-architecture.md):
+split circuits, confidential control, one-use admission and traffic driven by
+useful work. [ADR-0081](../adr/0081-select-closed-protected-service-contract.md)
+completes the [closed text-Service contract](protected-service-workload.md),
+including selected dependencies and Ubuntu confinement. Target Link comes first;
+canonical naming needs its real authority producer. Public wire and stronger
+traffic-observer claims remain unselected.
+
+**Product Owner clarification, 2026-09-07:** proceed with this initial scheme
+while retaining its stated residual traffic-correlation risk and omitting an
+autonomous generator of useless traffic. A proof of complete correlation
+resistance is not required before developing its bounded contract. This is
+not an anonymity qualification or permission to weaken the other selected
+protections. Combined observation and active attacks remain in evaluation;
+new failures of a claimed protection return to design.
+
+The Product Owner accepts materially increased delay and traffic cost for
+stronger protection only while ordinary Service work remains practically
+usable, as recorded by [NET-31](functional-map.md#common-protection-requirement).
+Protection and practical usability are joint acceptance gates. Existing
+performance targets are a comparison baseline for successor research. Compare
+the actual protection benefit, startup, cold/warm connection establishment,
+first useful response, sustained throughput, recovery, idle/use traffic and
+complete role costs separately; a fast readiness result cannot hide a long
+wait for useful data. Reject or revise a candidate whose ordinary workflow
+becomes impractically slow or costly even when its protection result passes.
+[NET-32](functional-map.md#common-protection-requirement) now fixes the Product
+Owner's successor first/repeat useful-response and daily idle-traffic bounds.
+The [workload](protected-service-workload.md) and
+[qualification owner](../development/privacy-qualification.md) fix the exact
+workload, accounting, existing budgets and confirmatory criteria; higher cost alone
+provides no stronger guarantee. Product Owner walkthrough evidence can assess
+the proposed ordinary workflow within the current team; it does not establish
+external adoption.
+
+Under [NET-33](functional-map.md#common-protection-requirement), protection cost
+is the justified addition to the same useful Service work. Useful throughput
+capacity is not a standing filler load, and the idle allowance is a ceiling
+to stay below. Compare startup, requests, sustained use and idle separately
+for the User, Publisher and forwarding Node; include the owner's hosting
+traffic allowance and the defence's own observable network pattern. The
+[qualification contract](../development/privacy-qualification.md#counting-useful-work-and-hosting-cost)
+owns that accounting. Small overhead with little loss of protection is a
+hypothesis to verify, not an accepted guarantee or zero-overhead requirement.
+
+Route Profile remains the exact versioned contract against which a candidate
+is authenticated and qualified. A successor may change internal behavior under
+the Application Interface and Service Connection contract; a consequential
+change to their semantics requires its own decision. Existing wire and durable
+identities keep their accepted compatibility obligations. Migration must select
+activation, any bounded compatibility interval, drain and retirement rules.
+An unsupported required generation yields explicit incompatibility or
+unavailability, never a permanent weaker tier or automatic security fallback.
+Protocol adoption remains voluntary under ADR-0074.
+
+Local resource limits and adaptation operate within the same accepted protection
+obligations. If required protection cannot be provided, the affected operation
+waits only within its finite bounds or reports unavailability. Existing latency,
+throughput and resource budgets remain binding until a researched decision
+changes the affected requirement. Greater complexity or traffic alone is no
+evidence of greater protection. Every release retains its measured claims and
+honest limitations; this direction selects neither a new mechanism nor a
+current Application-isolation or traffic-correlation-resistance claim.
+
+## Public autonomy target
+
+[ADR-0074](../adr/0074-target-non-administrative-public-operation.md), accepted
+2026-09-06, selects Network Autonomy as the public authority target: owners
+authorize their own actions, every participant checks the selected rules,
+necessary shared facts use open agreement, and incompatible protocol evolution
+requires explicit voluntary adoption. Agreement on valid state does not grant
+an arbitrary rule-changing, Name-seizure, forced-installation, or global
+shutdown power.
+
+No appointed founder, committee, enrollment service, time witness, or release
+publisher may remain indispensable for ordinary public entry, fresh state
+progression, or the continuing permission to use a compatible implementation.
+Private ownership, owner-selected recovery, local resource refusal, and finite
+purpose-scoped credentials remain legitimate. A signature authenticates only
+the power granted to its signer; not every signer is a network administrator.
+
+The threshold-controlled authority arrangements specified below are the
+predecessor profile to replace, not the final autonomous public design. Their
+current implemented checks remain binding until an accepted and qualified
+successor replaces each affected contract. In particular, nothing here waives
+freshness, rollback resistance, finite Work Safety, source/Route separation,
+complete-View requirements, or authenticated software activation. C0 remains
+the project-controlled profile selected by [scope](scope.md).
+
+Canonical Names and the common Candidate View remain public requirements.
+Consensus, validator weighting, fresh/long-offline bootstrap, data availability,
+release vulnerability handling, and safe authority retirement are unresolved
+mechanisms. No token, mandatory payment, external chain, automatic renewal,
+new runtime, or public-operation claim follows from this direction.
+
+Without discretionary emergency power, new flaws or failed agreement may cause
+bounded unavailability or require coordinated owner adoption and an explicit
+fork. Autonomy does not imply universal availability, automatic repair, qualified
+anonymity, independent operators, or freedom from social/resource concentration.
+[R-149](../research/records/r-149-autonomy-transition.md) records the migration
+questions and qualification gates; live implementation status stays in the tracker.
+
+### Participant selection and public voting
+
+Product Owner choices, **2026-09-07**, constrain the participant-selection and
+voting system under R-149. Participation must not depend on buying, holding or
+staking a cryptoasset, a token-weighted electorate or a cryptoasset bond. The
+design instead investigates how creating additional identities can fail to
+increase influence at the same accounted resource. A concrete resource,
+verification method, weight policy and protection against concentration remain
+unselected; absence of financial rewards is not an attack-resistance argument.
+
+Votes may be publicly checkable under separate Voting Pseudonyms. Admission
+must not require real names, email, phone, identity documents or a link to a
+Person's ordinary network activity. A Voting Pseudonym is not implicitly a
+Persona, Node identity, transport identity or Service authority. Public choice
+visibility does not authorize disclosure of another owner's data or reuse of
+their private keys. Pseudonyms alone do not qualify anonymity or unlinkability.
+
+The core produces scoped voting evidence; application scenarios later declare
+their allowed inputs and effects. Ordinary network participation creates no
+general voting right or obligation to vote. The
+[focused design assessment](../research/records/r-149-voting-core-design.md)
+records candidates and the unresolved complete-architecture gate. These product
+choices select no protocol, implementation, human exclusion authority or change
+to the current C0 contract.
+
+### No disclosure authority or secret access
+
+Product Owner clarification, **2026-09-07**, fixes the disclosure boundary in
+[NET-20](functional-map.md#autonomous-public-requirements). Agreement is never a
+source of permission to obtain or disclose another owner's private personal
+data, confidential Application content, private keys or recovery secrets. Such
+an operation is not an admissible task or result. Unanimity, a claimed emergency,
+an appeal, a temporary committee and a protocol certificate create no exception.
+
+The agreement subsystem must lack the underlying capability: no custody of
+those assets, decryption/export interface, owner-store or Application-data read
+access, escrow/recovery shares, master access key, arbitrary command execution,
+or indirect access through diagnostics, telemetry or a result consumer. It
+receives only the minimum evidence permitted for its defined task. Existing
+owner-authorized private Custody remains separate and cannot be invoked by a
+committee certificate. Merely omitting a disclosure button is insufficient.
+
+Any demonstrated unauthorized acquisition, access or disclosure path is a
+blocking vulnerability of the affected candidate, not an acceptable residual
+risk or a task class to regulate with a higher threshold. Qualification requires
+evidence at the actual execution and data boundaries under the
+[threat model](../security/threat-model.md#no-agreement-mediated-disclosure).
+This is a fixed public design requirement, not a claim that an unimplemented
+subsystem or a compromised endpoint has already met it.
+
+## Autonomous shared-state contract
+
+Status: **working successor requirements under R-149 and proposed ADR-0075.**
+[ADR-0074](../adr/0074-target-non-administrative-public-operation.md) fixes the
+authority target. This section prepares its semantics; it does not replace any
+current C0 acceptance rule. Requirement maturity is registered only in the
+[functional map](functional-map.md#autonomous-public-requirements). The
+[research record](../research/records/r-149-autonomy-transition.md#requirements-preparation-results)
+owns evidence, conformance cases, open parameters, and the first development brief.
+
+### Participation and powers
+
+Publishing a record, checking shared state, producing an ordered successor,
+distributing bytes, and carrying Application traffic are different
+responsibilities. These descriptions are not new Node Role Domains, product
+identities, package names, or an approved co-resident profile. Production may use
+an open or rotating set, but cannot require appointment by founders. A client
+need not become a producer to connect to a Service.
+
+The selected mechanism must prevent identity splitting or repeated accounting
+of one allocation from cheaply multiplying aggregate influence. Key count,
+self-reported CPU/bandwidth, per-key caps, and the absence of an internal financial
+reward do not establish that property. It must declare honest resource supply
+and the supported adversary, including one willing to fund censorship or outage.
+Production weight conveys no right over another owner's authorization. Each
+operator retains refusal and resource limits for its own host.
+
+### Minimum semantic input
+
+A profile must bind every state-changing input to the intended network/rules,
+operation class, owning object, author authorization, predecessor/generation,
+finite validity, bounded payload, and duplicate/replay identity as applicable.
+These are semantic obligations, not selected wire fields. Owner secrets, raw
+Credentials, User query/traffic history, and session routing facts are excluded.
+A locally generated identifier cannot acquire global meaning by itself.
+
+| Operation | Author and required predecessor | Effect when accepted into committed current state | Invalid or unavailable case |
+|---|---|---|---|
+| Announce a Node | Node key, possession/capability evidence, supported profile and bounded declaration. | Creates discoverability; eligibility is a separate deterministic result. | Invalid signature/profile or excessive input is refused without granting a role. |
+| Renew or change a Node declaration | Same authorized owner and an exact allowed successor to its declaration. | Replaces only the eligible declaration at the agreed boundary; no overlapping duty authority. | Exact replay adds no weight/state; conflicting successors follow the specified ordering/conflict rule. Key rotation needs its own ownership proof; a new key alone is a new declaration. |
+| Withdraw a Node | Its authorized owner and matching current declaration. | Stops new affected work and follows finite drain; expiry also limits a silent owner. | No operator may withdraw a different owner's Node. Withdrawal is not a network-wide ban. |
+| Include or reject an infrastructure input | Agreed finite admission/input prefix and deterministic validation rule. | Every item inside that prefix has one reproducible disposition; derived roots/counts cover exactly the defined domain. | Mere receipt/gossip is not guaranteed inclusion. Invalid projection or a missing admitted item prevents acceptance. |
+| Derive eligibility and Role Domain assignments | Versioned rules over committed declarations and permitted reproducible evidence. | Produces finite non-overlapping duties and known-family constraints; Endpoint still selects its own Route. | A vote or signature cannot replace missing capacity/qualification evidence or prove real operator independence. |
+| Commit and close a root Name claim | Opaque Name-owner-admitted input, authenticated ordinal, and the existing commitment/reveal relationship. | Supplies the exact eligible ordered input needed by Namespace; the lowest eligible commitment ordinal remains the current rule. | Receipt order, reveal arrival, hash grinding, or an incomplete close cannot choose a winner. |
+| Update a Name, renew its Lease, or exercise owner-selected recovery | Namespace-owned exact predecessor and its authorized signed transition or recovery proof. | Namespace derives the next Record, lineage, lease/recovery state, and current proof through its own boundary. | Shared ordering cannot sign for the owner, bypass parent lineage, or turn pending submission into a current Binding. |
+| Derive expiry, Grace, or reclaim eligibility | Committed predecessor, selected rules, and sufficient freshness evidence. | Only the lifecycle consequence already authorized by those rules becomes valid. | A local timer cannot invent a shared Released state or a winning new claim. |
+
+The Network ordering path continues to receive only the opaque Name inputs
+permitted by the naming owner. Correct Namespace state needs a separately
+specified full verification or qualified proof path; an opaque root does not
+prove its own correctness. No implementation may move plaintext Name/Authority
+records into every producer as an implicit consequence of adopting consensus.
+This is a role/data boundary, not Name secrecy: Unlisted Services are not secret
+Names, and naming participants may observe or enumerate data under the existing
+privacy limitations.
+
+### Deterministic projection and duplicate handling
+
+Working rule: process the authenticated input sequence in its agreed order
+against one exact predecessor. Semantic checks read the state produced by the
+previous accepted item, not the verifier's local arrival order. An authorized
+first successor can make a later competing successor stale; the latter receives
+a deterministic rejection and does not create two current objects. The final
+accepted/rejected/duplicate dispositions and projection must be reproducible.
+
+The profile must define its structural admission boundary. Within the admitted
+domain, an invalid owner signature or stale predecessor may be recorded as a
+rejected operation but can never change owner state. A producer claiming that
+operation succeeded makes the candidate projection invalid. A structurally
+invalid envelope, impossible commitment, or missing required input invalidates
+the candidate instead of becoming a locally guessed rejection. Thus a rejected
+operation and a rejected candidate state are different outcomes.
+
+An exact repeated owner operation has no second semantic effect, no additional
+eligibility, and no added consensus weight solely from repetition. It still
+consumes any applicable
+bounded admission/log budget; duplicate handling is not a free unlimited channel.
+A reused replay identity with different bytes is never an exact retry. The exact
+scope and lifetime of replay identities must be selected with the encoding and
+retention policy, rather than depending on an unbounded global set.
+
+Projection uses only the selected authenticated Epoch/cutoff reference and
+committed inputs. Local clock observations decide whether that already-derived
+state is usable; they do not create different shared roots or independently
+release/reclaim Names. Future-valid operations have the profile's explicit
+reject/defer disposition and never become active merely because one verifier's
+wall clock moves forward. The first profile must select one behavior per
+operation instead of an implementation-specific choice.
+
+### From submission to usable state
+
+The following are explanatory states, not new wire enums or UI strings.
+
+| Observation | What it establishes | What it does not authorize |
+|---|---|---|
+| Received | One recipient obtained bytes. | Inclusion, priority, durable acceptance, or currentness. |
+| Locally valid | The applicable author/syntax/predecessor checks succeeded for the declared context. | Global order, conflict resolution, or future acceptance after the context changes. |
+| Included | A defined input appears at a verified position under an authenticated agreed commitment. | Correctness or completeness of the derived state, or current usability. |
+| Provisional | A candidate satisfies its provisional consensus conditions. | Live role assignment, a current Name Binding, or advancement of committed safety floors. |
+| Committed | The selected validity, agreement, availability, and finality obligations are satisfied and the local committed state is durable. | Operation before activation or beyond the applicable freshness/safety bounds. |
+| Current and usable | Committed state is active, fresh, compatible, unconflicted, and usable for the exact requested capability. | Other capabilities, owner authority, unlimited work, or automatic installation. |
+
+A profile must define the authoritative admission commitment and cutoff. A local
+receipt or a producer promise is not that commitment unless the selected protocol
+proves it. Completeness concerns the specified admitted input domain, not every
+message that someone broadcast anywhere. Censorship before admission remains a
+separate failure/inclusion assumption and must be exposed.
+
+A full verifier reproduces the relevant input dispositions, deterministic
+projection, and state commitments. A bounded Endpoint consumes its separately
+qualified evidence path; inclusion in a root alone cannot replace full-state
+correctness, completeness, availability, or freshness. Every non-locally-checked
+property has an explicit assumption/proof and failure outcome. Readiness is
+reported only after the owning durable commit; commands and sources cannot
+publish an optimistic current View before it completes.
+
+### Freshness, conflict, and failure
+
+Working time convention: activation intervals are start-inclusive and
+end-exclusive. When a selected Time Confidence profile supplies a credible UTC
+interval, the whole interval must fit inside the relevant activation/validity
+bounds; overlap alone is insufficient. Monotonic elapsed time may carry a
+previous credible observation only within that profile's continuity/drift
+limits. This convention is proposed, not a change to current time formats.
+
+A committed future successor may remain pending but grants no work before its
+activation. Expired or uncertain evidence cannot authorize new work or recovery.
+Existing work remains bounded by its previously valid terminal limits and the
+current owning lifecycle; discovering uncertainty never extends a lease.
+Each capability independently combines State, compatibility, credential,
+resource, and selected software-safety requirements.
+
+An invalid rival, an unauthenticated fork allegation, or a malformed packet must
+not poison a still-valid committed state. A demonstrated conflict under the
+selected commitment rules is different: preserve bounded conflict evidence,
+retain floors, and refuse affected new authority. The profile must identify
+exactly what counts as that demonstration, and bound competing inputs/evidence.
+A valid provisional branch does not by itself become a committed contradiction.
+
+A reorganization beneath an exposed committed safety floor cannot silently
+resurrect an old Name Authority or move a resolved operation back to pending.
+Its profile must prevent that event within its fault assumptions or specify the
+explicit residual risk, conflict result, and recovery boundary before selection.
+No generic majority, longer history, owner repair button, or old administrator
+key resets the floor. A missing source/quorum gives unavailability; it is not
+proof of misconduct or permission to invent a new root.
+
+### Release and evolution boundary
+
+Protocol agreement may validate the rule set explicitly adopted by a participant;
+it grants no arbitrary amendment, package-installation, or global build-ban
+operation. Existing official-package signatures can remain evidence for that
+software channel. The public successor must let owners select a qualified
+provenance/safety policy without making one publisher's continuing heartbeat
+indispensable to compatible network work.
+
+Missing publisher metadata, an authenticated vulnerability advisory, verified
+objective protocol invalidity, and owner-approved activation are distinct
+inputs. Missing fresh update metadata cannot authorize installation of replayed
+bytes; an advisory alone cannot become an unbounded network-wide shutdown
+command. The precise local advisory policy, initial trust, finite safety limits,
+and response to a previously unknown flaw remain a required separate decision.
+The current Release Safety contract remains enforced until that decision is
+accepted and qualified. Local refusal may reduce availability; automatic repair
+and compatible universal adoption are not promised.
+
 ## Lifecycle at a glance
 
 ```mermaid
@@ -179,6 +528,11 @@ an unbounded disk queue.
 ## 2. Bootstrap, warm-up, and readiness
 
 ### Accepted bootstrap shape
+
+The threshold authentication below is the predecessor authority profile governed
+by the [public-target amendment](#public-autonomy-target); its current checks
+remain required until a specific successor is accepted and qualified.
+
 
 The endpoint accepts an expiring, content-addressed **Network Epoch** only under
 a threshold-authenticated transition from its active or last-known-good
@@ -650,6 +1004,11 @@ explicit result rather than per-person fairness.
 
 ### Control Plane roots
 
+The appointed thresholds in this subsection describe the predecessor custody
+profile. [Network Autonomy](#public-autonomy-target) replaces it as the public
+end state; these numbers do not select a future consensus quorum.
+
+
 Release, Network Epoch, Namespace, qualification, and emergency authority are
 separate roles and keys. Distribution is separate from authorization. Stable
 public operation requires threshold control, expiring online delegations,
@@ -714,6 +1073,12 @@ feasibility gate, not an assertion that implementation will pass.
 ## 6. Updates, compatibility, and withdrawal
 
 ### Release trust
+
+The following authority-backed release policy remains the current safety
+contract. The [public successor](#public-autonomy-target) must separately resolve
+software provenance, local safety choice, and continuing network work before
+exclusive publisher permission is retired.
+
 
 Official packages use a TUF-shaped metadata model: threshold offline root and
 Targets/package authorization, separate snapshot and short-lived timestamp

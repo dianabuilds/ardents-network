@@ -5,6 +5,12 @@ date: 2026-08-08
 
 # Authenticate shared epochs and separate Control Plane roots
 
+Public-target amendment, 2026-09-06:
+[ADR-0074](0074-target-non-administrative-public-operation.md) replaces appointed
+administrative permission as the autonomous public end state. The current
+implemented profile and safety checks below remain binding until their exact
+successor is accepted and qualified; this is not wholesale supersession.
+
 This is a closed-test/Public Beta Control Plane boundary, not Carrier Lab scope.
 Carrier Lab uses explicit project-owned synthetic state and makes no public
 decentralization, freshness, completeness, or auditor-independence claim.

@@ -9,6 +9,10 @@ is defined in [the product operating model](operating-model.md). What may be
 built now is controlled separately by the
 [product scope and audit boundary](scope.md).
 
+The [future product catalogue](future-product-catalog.md) collects exploratory
+product ideas and concrete usage scenarios without selecting delivery order
+or expanding this accepted contract.
+
 ## Vision
 
 Ardents is an internal application network for reaching services without making
@@ -246,7 +250,8 @@ These are responsibility boundaries, not selected binaries or APIs:
     Qualification; the claim's conditions and excluded adversaries remain
     visible to Users and Developers.
 18. The Application Interface and logical Service Connection remain stable when
-    Ardents strengthens routing. A versioned Route Profile may replace route
+    Ardents strengthens its common protection baseline. A successor versioned
+    Route Profile may replace route
     shape, introduction, rendezvous, multipath, padding, mixing, cover traffic,
     or Carrier Channel Adapters below that boundary. An unsupported exact
     profile fails explicitly; it is never silently negotiated to a weaker one,
@@ -338,12 +343,15 @@ bounded safe route recovery and otherwise returns the narrowest supported
 Connection Result, including indeterminate failure when attack and outage cannot
 be distinguished. It never silently retries an Application operation.
 
-The Interactive Route deliberately makes no Broad Traffic Observer resistance
-claim. A delayed, padded, or cover-traffic-heavy profile enters the product only
-if R-005 identifies a concrete Application job and measurable advantage. It
-must reuse the same Application Interface and Service Connection contract; it
-may require a new internal Route Adapter, descriptor capabilities, protocol
-version, and its own Qualification Evidence Bundle.
+The current Interactive Route makes no Broad Traffic Observer resistance
+claim. [ADR-0077](../adr/0077-evolve-one-common-protection-baseline.md) selects
+one [common protection baseline](operating-model.md#common-protection-baseline)
+for ordinary system use. The product and technical workstream reviews the whole
+capability journey, integrates selected improvements and tests the changed
+system. A routing change must demonstrate its benefit and complete cost,
+preserve the Application/Service Connection contract unless explicitly revised,
+and earn its own Qualification evidence. No separate stronger mode or particular
+timing, padding, mixing or cover-traffic mechanism is selected.
 
 ## First Reference Application: Named Unlisted Site
 

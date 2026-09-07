@@ -5,6 +5,11 @@ Status: **current maintained technical contract.** This document describes
 supported public Namespace, a public resolver, or a claim of independent
 Network Epoch operation.
 
+The [closed successor workload](../product/protected-service-workload.md)
+uses Target Link first. Canonical Names remain the next separately designed
+stage with a real authenticated producer. ADR-0081 does not authorize an alpha
+alias or simulated close to satisfy this boundary.
+
 ## Ownership and trust boundary
 
 `naming/namespace` owns canonical Name parsing use, Authority/lifecycle

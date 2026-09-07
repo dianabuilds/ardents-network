@@ -1,107 +1,90 @@
 ---
 id: R-099
-title: First protected application profile
-status: open
+title: One confined text-Service job on Ubuntu
+status: completed
 owner: Product Owner and Codex
 started: 2026-08-24
-reviewed: 2026-08-24
+reviewed: 2026-09-08
 ---
 
-# R-099 — Is there one narrow application job and supported platform on which an OS-enforced or brokered boundary can deny ordinary-network escape well enough to support a bounded Application-level location claim?
+# R-099 — Which bounded Application job can deny ordinary-network escape?
 
 ## Decision this unlocks
 
-Select one H4-7A Reference Application/platform experiment, or defer protected
-mode while retaining the useful generic Browser Adapter profile.
+Select one concrete job, platform and enforcement boundary before implementing
+an Application-level location protection condition. A generic Browser adapter
+or local Grant alone does not deny ordinary networking.
 
 ## Current contract
 
-- Generic local IPC/loopback and browser adapters are unqualified; they do not
-  constrain a browser/application's ordinary networking.
-- A claim-bearing boundary covers an Application Principal and complete helper
-  process tree, scoped Ardents attachment, ordinary ingress/egress denial, and
-  isolated origin/cache/storage.
-- No Windows or Ubuntu protected profile/mechanism is selected.
+The Product Owner selected publication/read of a UTF-8 text document with
+confinement on Ubuntu at both endpoints, then Target Link first.
+[ADR-0081](../../adr/0081-select-closed-protected-service-contract.md) and the
+[workload owner](../../product/protected-service-workload.md) fix that scope.
+The [confinement owner](../../technical/application-confinement.md) is the
+implementation contract. Current C0 generic adapters remain unqualified;
+their old browser path does not become the protected job.
 
 ## Hypotheses
 
-- **H1:** a deterministic one-response Reference Site/client on one platform
-  can be enclosed and falsified with an attainable maintenance burden.
-- **H2:** a native application helper is viable but a general browser is not.
-- **H0:** no claim-bearing local isolation profile is viable for the actual
-  team; protected mode must be deferred.
+- H1: distribution-maintained process isolation plus a finite inherited local
+  stream can contain the complete reader/Publisher worker tree for this job.
+- H0: a required denied path remains usable, or the permitted local stream
+  cannot operate within the selected resource and lifecycle contract.
 
 ## Evaluation criteria
 
-- exact application tree, grant, storage, allowed Ardents path and claim;
-- DNS, socket, HTTP, WebRTC, QUIC, callback/SSRF, listener, child-process,
-  malicious-sibling, cache and restart/revocation escape tests;
-- supported OS primitives, bypass/failure behavior, update burden and cleanup;
-- conditions and limitations for the claim, including endpoint compromise.
+Deny IPv4/IPv6/UDP/DNS, host files/IPC, namespace/privilege escape and inherited
+external descriptors before local authority or remote effects. Include child
+processes, malicious sibling workers, restart, revoke and complete cleanup.
+Positive controls must demonstrate the attempted forbidden operations.
+The trusted owner/UI, Endpoint, installed launcher, root and kernel are explicit
+surviving boundaries. Their complete compromise is not contained by a worker
+sandbox.
 
 ## Evidence plan
 
-### Primary sources
+Primary inputs, accessed 2026-09-07: distribution systemd 255 execution/socket
+configuration and the actual Ubuntu 24.04.4 package/kernel runtime inspected
+by the [contract probe](../../../experiments/r-152-contract-probes/README.md).
+The [R-152 assessment](r-152-closed-scheme-contract.md) records exact sources,
+commands, hashes, failures and limitations.
 
-- Official Windows and Ubuntu OS isolation, process, firewall/network namespace,
-  sandboxing, and application-launch documentation after a job is selected.
-- Current threat model, H4-7 and Application Principal contracts.
-
-### Experiment
-
-Choose one job and one platform first. Build a disposable harness that attempts
-every denied path while independently observing host networking and process
-tree. A failed escape test rejects the selected profile/claim.
-
-### Failure scenarios
-
-- A child/helper, browser component, DNS prefetch, WebRTC, callback or direct
-  socket exits the boundary.
-- A same-user sibling reaches grant/storage/loopback state.
-- Restart/revocation leaves an old process or cache authorized.
+The falsification matrix was recorded before the original probe. Full installed
+socket activation, worker IPC, snapshot import, local grants, revoke and the
+actual text journey are P1/P6/P7/P10 implementation acceptance, not evidence
+already supplied by a primitive-level probe.
 
 ## Findings
 
-- **Current-contract fact:** R-096's leading generic-browser candidate is an
-  explicit Endpoint-to-loopback handoff. It deliberately changes neither the
-  browser's ordinary network path nor its process tree, so it cannot satisfy
-  this record's ordinary-egress-denial requirement.
-- **Inference:** selecting an OS sandbox before a concrete H4-3 workload would
-  reverse the required order and create a generic isolation framework with no
-  bounded claim to test. No platform research or mechanism selection starts
-  until the Product Owner chooses a valuable, exact protected job after the
-  ordinary H4-3 path is evidenced.
-- **Current-contract fact:** H4-7A requires the complete first job, process
-  tree, storage behavior, destination set, user journey, and claim before an
-  operating-system mechanism is chosen. H4-7C separately makes a protected
-  browser conditional on evidence from both the generic browser path and a
-  narrow protected profile. [C0 Application boundary](../../product/scope.md#c0-application-and-browser-candidate)
-  (inspected 2026-08-24).
-- **Inference:** there is no present protected job: the R-096 fixture proves
-  only static rendering on a loopback origin, and it deliberately forbids the
-  scripts, helpers, external resources, and broad browser behavior that would
-  determine an isolation mechanism's attack surface. A Windows Sandbox,
-  AppContainer, Linux namespace, firewall, browser extension, or proxy
-  experiment now would therefore test an arbitrary mechanism instead of the
-  H4-7 claim.
+- **Measurement:** on WSL Ubuntu 24.04.4, systemd 255.4-1ubuntu8.14 and kernel
+  6.6.87.2, fourteen parent/child forbidden operations were denied while their
+  unconfined positive controls worked; the permitted local byte marker survived.
+- **Measurement:** the first configuration failed before Application startup
+  because WorkingDirectory was outside the confined root. The corrected profile
+  sets WorkingDirectory=/; that correction does not erase the failed attempt.
+- **Inference:** these results justify selecting the listed mechanisms for the
+  fixed worker composition. They do not qualify bare Ubuntu, the complete
+  installed Application or resistance to privileged host compromise.
 
 ## Options
 
-1. Defer protected mode; retain generic alpha compatibility.
-2. One deterministic Reference Application on one OS.
-3. General protected browser profile.
+Select installed systemd units, separate service identities and private
+worker roots for the narrow text job. Reject proxy-only enforcement because
+it cannot exclude alternate sockets/helpers. Defer a general browser,
+arbitrary launcher framework, Windows sandbox and container-daemon dependency;
+none is required by the selected first job.
 
 ## Recommendation
 
-Choose option 1 for the current alpha: retain generic Browser Adapter
-compatibility and make no Application-level location claim. H4-7A may begin
-only when the Product Owner names one valuable exact job after H4-3 evidence.
-Its record must choose one OS, enumerate the complete process tree and storage
-surface, and state the allowed local attachment before any sandbox mechanism is
-researched. Option 3 is not a default candidate.
+Choose H1's bounded engineering contract with implementation qualification
+still required. Its strongest limitation is dependence on the surviving trusted
+host and verified launch/descriptor boundary.
 
 ## Disposition
 
-Deferred behind a selected job/platform, with the generic-browser boundary
-confirmed. Promotion requires a selected job/platform and a falsifiable
-experiment; it cannot promote an OS primitive alone into a privacy claim.
+The job/platform/mechanism selection is complete; Application qualification is
+not. Current requirements live in the workload, threat, confinement and
+qualification owners. Retain the disposable probe as reproducible evidence.
+The earlier instruction to wait for a job/platform is retired because that
+choice has been made.
