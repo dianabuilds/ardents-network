@@ -83,10 +83,10 @@ containing only profile, deployment/generation and digest facts, lifecycle
 state, and active/enabled state.
 
 ```sh
-/usr/lib/ardents-contributor/current/ardents-node contributor diagnose
-/usr/lib/ardents-contributor/current/ardents-node contributor restart
-/usr/lib/ardents-contributor/current/ardents-node contributor drain
-/usr/lib/ardents-contributor/current/ardents-node contributor withdraw
+/usr/lib/ardents-contributor/ardents-node contributor diagnose
+/usr/lib/ardents-contributor/ardents-node contributor restart
+/usr/lib/ardents-contributor/ardents-node contributor drain
+/usr/lib/ardents-contributor/ardents-node contributor withdraw
 ```
 
 `diagnose` re-authenticates every managed file and the fixed unit, reads the
@@ -118,7 +118,7 @@ Removal is deliberately a two-step transition. First run `withdraw` and retain
 its exact 32-byte deployment ID. Then run:
 
 ```sh
-/usr/lib/ardents-contributor/current/ardents-node contributor remove --confirm DEPLOYMENT_ID
+/usr/lib/ardents-contributor/ardents-node contributor remove --confirm DEPLOYMENT_ID
 ```
 
 Removal is refused unless the service is inactive, disabled, and

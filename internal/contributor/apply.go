@@ -71,14 +71,43 @@ func (profile *Profile) update(ctx context.Context, bundle verifiedBundle, curre
 	if err := writeBundleDirectories(bundle, nextProgram, nextConfig); err != nil {
 		return errors.Join(err, os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
 	}
-	switched, stopAttempted := false, false
+	if err := writeJSONAtomic(profile.paths.updating, updateRecordFor(current), 0o600); err != nil {
+		return errors.Join(err, os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
+	}
+	if err := profile.replaceManagementExecutable(bundle.files["ardents-node"]); err != nil {
+		cleanupErr := errors.Join(os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
+		restoreErr := profile.restoreManagementExecutableFromCurrent()
+		result := errors.Join(err, cleanupErr, restoreErr)
+		if cleanupErr == nil && restoreErr == nil {
+			return errors.Join(result, removeIfPresent(profile.paths.updating))
+		}
+		return result
+	}
+	switched, stopAttempted, committed := false, false, false
 	defer func() {
 		if resultErr != nil {
-			resultErr = errors.Join(resultErr, os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
-			if switched {
-				resultErr = errors.Join(resultErr, profile.rollbackUpdate(previousProgram, previousConfig))
-			} else if stopAttempted {
-				resultErr = errors.Join(resultErr, profile.restartCurrentGeneration())
+			cleanupErr := errors.Join(os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
+			if committed {
+				cleanupErr = errors.Join(cleanupErr, os.RemoveAll(previousProgram), os.RemoveAll(previousConfig))
+			}
+			resultErr = errors.Join(resultErr, cleanupErr)
+			recovered := cleanupErr == nil
+			if !committed {
+				if switched {
+					err := profile.rollbackUpdate(previousProgram, previousConfig)
+					recovered = err == nil
+					resultErr = errors.Join(resultErr, err)
+				} else if stopAttempted {
+					err := profile.restartCurrentGeneration()
+					recovered = err == nil
+					resultErr = errors.Join(resultErr, err)
+				}
+				managerRestoreErr := profile.restoreManagementExecutableFromCurrent()
+				recovered = recovered && managerRestoreErr == nil
+				resultErr = errors.Join(resultErr, managerRestoreErr)
+			}
+			if committed || recovered {
+				resultErr = errors.Join(resultErr, removeIfPresent(profile.paths.updating))
 			}
 		}
 	}()
@@ -124,8 +153,24 @@ func (profile *Profile) update(ctx context.Context, bundle verifiedBundle, curre
 	if err := writeJSONAtomic(profile.paths.record, record, 0o600); err != nil {
 		return err
 	}
+	committed = true
 	switched = false
-	return errors.Join(os.RemoveAll(previousProgram), os.RemoveAll(previousConfig))
+	if err := errors.Join(os.RemoveAll(previousProgram), os.RemoveAll(previousConfig)); err != nil {
+		return err
+	}
+	return removeIfPresent(profile.paths.updating)
+}
+
+func (profile *Profile) replaceManagementExecutable(raw []byte) error {
+	return writeFileAtomic(profile.paths.programManagement, raw, 0o755)
+}
+
+func (profile *Profile) restoreManagementExecutableFromCurrent() error {
+	raw, err := readRegular(filepath.Join(profile.paths.programCurrent, "ardents-node"), 128<<20)
+	if err != nil {
+		return err
+	}
+	return profile.replaceManagementExecutable(raw)
 }
 
 func (profile *Profile) restartCurrentGeneration() error {

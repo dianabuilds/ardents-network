@@ -3,9 +3,9 @@ package contributor
 import "path/filepath"
 
 type hostPaths struct {
-	root, programRoot, programCurrent, privateRoot, configRoot, configCurrent string
-	diagnostics, lifecycle, record, unit                                      string
-	installing                                                                string
+	root, programRoot, programCurrent, programManagement, privateRoot, configRoot, configCurrent string
+	diagnostics, lifecycle, record, unit                                                         string
+	installing, updating                                                                         string
 }
 
 func newHostPaths(root string) hostPaths {
@@ -13,11 +13,12 @@ func newHostPaths(root string) hostPaths {
 	privateRoot := filepath.Join(root, "var", "lib", "private", "ardents-contributor")
 	configRoot := filepath.Join(privateRoot, "config")
 	diagnostics := filepath.Join(privateRoot, "diagnostics")
-	return hostPaths{root: root, programRoot: programRoot, programCurrent: filepath.Join(programRoot, "current"),
+	return hostPaths{root: root, programRoot: programRoot, programCurrent: filepath.Join(programRoot, "current"), programManagement: filepath.Join(programRoot, "ardents-node"),
 		privateRoot: privateRoot, configRoot: configRoot, configCurrent: filepath.Join(configRoot, "current"),
 		diagnostics: diagnostics, lifecycle: filepath.Join(diagnostics, "lifecycle.json"),
 		record:     filepath.Join(privateRoot, "installation.json"),
 		installing: filepath.Join(root, "var", "lib", "private", "ardents-contributor-installing.json"),
+		updating:   filepath.Join(privateRoot, "update.json"),
 		unit:       filepath.Join(root, "etc", "systemd", "system", "ardents-rendezvous-contributor.service")}
 }
 

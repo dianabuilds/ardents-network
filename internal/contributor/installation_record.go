@@ -41,19 +41,23 @@ func writeFileExclusive(path string, raw []byte, mode os.FileMode) error {
 	return errors.Join(writeErr, file.Sync(), file.Close())
 }
 
+func writeFileAtomic(path string, raw []byte, mode os.FileMode) error {
+	temporary := path + ".new"
+	if err := os.Remove(temporary); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := writeFileExclusive(temporary, raw, mode); err != nil {
+		return err
+	}
+	return os.Rename(temporary, path)
+}
+
 func writeJSONAtomic(path string, value any, mode os.FileMode) error {
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	temporary := path + ".new"
-	if err := os.Remove(temporary); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	if err := writeFileExclusive(temporary, append(raw, '\n'), mode); err != nil {
-		return err
-	}
-	return os.Rename(temporary, path)
+	return writeFileAtomic(path, append(raw, '\n'), mode)
 }
 
 func readInstallation(path string) (installationRecord, error) {
@@ -65,13 +69,20 @@ func readInstallation(path string) (installationRecord, error) {
 	if err := decodeStrict(raw, &record); err != nil {
 		return installationRecord{}, errors.New("contributor installation record is invalid")
 	}
+	if !validInstallationRecord(&record) {
+		return installationRecord{}, errors.New("contributor installation record is invalid")
+	}
+	return record, nil
+}
+
+func validInstallationRecord(record *installationRecord) bool {
 	normalizedProfile, knownProfile := normalizeRendezvousDedicatedHostProfile(record.Profile)
 	if record.Schema != "ardents-contributor-installation-v1" || !knownProfile || !fixedHex(record.DeploymentID, 32) || record.Generation == 0 ||
 		!fixedHex(record.ManifestDigest, 32) || len(record.InstalledFiles) != len(bundleFileSpecs) || !fixedHex(record.SystemdUnitHash, 32) {
-		return installationRecord{}, errors.New("contributor installation record is invalid")
+		return false
 	}
 	record.Profile = normalizedProfile
-	return record, nil
+	return true
 }
 
 func verifyInstalled(paths hostPaths, record installationRecord) error {
@@ -96,6 +107,18 @@ func verifyInstalled(paths hostPaths, record installationRecord) error {
 	digest := sha256.Sum256(unit)
 	if hex.EncodeToString(digest[:]) != record.SystemdUnitHash {
 		return errors.New("installed Contributor systemd unit differs from its profile")
+	}
+	return nil
+}
+
+func verifyManagementExecutable(paths hostPaths, record installationRecord) error {
+	raw, err := readRegular(paths.programManagement, 128<<20)
+	if err != nil {
+		return err
+	}
+	digest := sha256.Sum256(raw)
+	if hex.EncodeToString(digest[:]) != record.InstalledFiles["ardents-node"] {
+		return errors.New("installed Contributor management executable differs from its authenticated bundle")
 	}
 	return nil
 }

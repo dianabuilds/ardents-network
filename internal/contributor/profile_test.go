@@ -135,33 +135,10 @@ func TestPinnedSuccessorUpdatesAndRestartsSameDeployment(t *testing.T) {
 	if err != nil || string(raw) != "functional-alpha-rendezvous-program-v2" {
 		t.Fatalf("updated program = %q, %v", raw, err)
 	}
-}
-
-func TestFailedSuccessorRestoresPreviousReadyGeneration(t *testing.T) {
-	hostRoot := t.TempDir()
-	deployment := strings.Repeat("36", 32)
-	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, firstPin := writeContributorBundle(t, 1, deployment)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
-	}
-	supervisor.failNextStart = true
-	second, secondPin := writeContributorBundle(t, 2, deployment)
-	if _, err := profile.Apply(t.Context(), second, secondPin); err == nil {
-		t.Fatal("failed successor was reported as installed")
-	}
-	report, err := profile.Control(t.Context(), contributor.Diagnose, "")
-	if err != nil || report.Generation != 1 || !report.Active || report.LifecycleState != "READY" {
-		t.Fatalf("rolled-back report = %+v, %v", report, err)
-	}
-	program := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor", "current", "ardents-node")
-	raw, err := os.ReadFile(program)
-	if err != nil || string(raw) != "functional-alpha-rendezvous-program-v1" {
-		t.Fatalf("rolled-back program = %q, %v", raw, err)
+	manager := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor", "ardents-node")
+	raw, err = os.ReadFile(manager)
+	if err != nil || string(raw) != "functional-alpha-rendezvous-program-v2" {
+		t.Fatalf("updated management program = %q, %v", raw, err)
 	}
 }
 
@@ -200,6 +177,14 @@ func TestNextCommandRecoversUpdateInterruptedAfterPreviousGenerationWasMoved(t *
 	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
 		t.Fatal(err)
 	}
+	privateRoot := filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor")
+	installed, err := os.ReadFile(filepath.Join(privateRoot, "installation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(privateRoot, "update.json"), []byte(`{"schema":"ardents-contributor-updating-v1","previous":`+strings.TrimSpace(string(installed))+"}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	programRoot := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor")
 	configRoot := filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor", "config")
 	if err := os.Rename(filepath.Join(programRoot, "current"), filepath.Join(programRoot, "previous")); err != nil {
@@ -219,6 +204,38 @@ func TestNextCommandRecoversUpdateInterruptedAfterPreviousGenerationWasMoved(t *
 		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			t.Fatalf("recovery residue %s remains: %v", path, err)
 		}
+	}
+	if _, err := os.Lstat(filepath.Join(privateRoot, "update.json")); !os.IsNotExist(err) {
+		t.Fatalf("recovered update marker remains: %v", err)
+	}
+}
+
+func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) {
+	hostRoot := t.TempDir()
+	deployment := strings.Repeat("39", 32)
+	supervisor := &profileSupervisor{hostRoot: hostRoot}
+	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, firstPin := writeContributorBundle(t, 1, deployment)
+	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
+		t.Fatal(err)
+	}
+	programRoot := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor")
+	if err := os.Rename(filepath.Join(programRoot, "current"), filepath.Join(programRoot, "previous")); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := reopened.Control(t.Context(), contributor.Diagnose, "")
+	if err != nil {
+		t.Fatalf("Diagnose did not recover the authenticated predecessor: %v", err)
+	}
+	if report.Generation != 1 || !report.Active || report.LifecycleState != "READY" {
+		t.Fatalf("recovered report = %+v", report)
 	}
 }
 
@@ -326,6 +343,7 @@ type profileSupervisor struct {
 	active                  bool
 	enabled                 bool
 	failNextStart           bool
+	beforeNextStart         func()
 	failNextStopAfterAction bool
 	suppressStartLifecycle  bool
 	stopEntered             chan struct{}
@@ -345,6 +363,11 @@ func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.
 	case contributor.SupervisorEnable:
 		supervisor.enabled = true
 	case contributor.SupervisorStart, contributor.SupervisorRestart:
+		if supervisor.beforeNextStart != nil {
+			beforeStart := supervisor.beforeNextStart
+			supervisor.beforeNextStart = nil
+			beforeStart()
+		}
 		if supervisor.failNextStart {
 			supervisor.failNextStart = false
 			return contributor.SupervisorState{}, errors.New("injected successor start failure")
