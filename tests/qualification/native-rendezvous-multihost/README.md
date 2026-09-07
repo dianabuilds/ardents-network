@@ -18,7 +18,7 @@ the current `ardents-node` command to a temporary local directory. It transfers
 only those two binaries and
 ephemeral signed State, materializations, certificates, keys, plans, and a
 short runner to one exact temporary `/tmp/ardents-native-rendezvous-*` directory
-on the declared VPS. A detached `golang:1.26.6` container uses host networking
+on the declared VPS. A detached `golang:1.26.8` container uses host networking
 so the product Rendezvous listener can bind the literal public State endpoint;
 the two product State Sources bind only to remote loopback. No port is
 published through Docker and no project checkout is transferred.

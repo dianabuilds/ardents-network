@@ -37,8 +37,8 @@ esac
 if ! docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
 	invalid 'Docker daemon is unavailable to the invoking user'
 fi
-if ! docker image inspect golang:1.26.6 >/dev/null 2>&1; then
-	invalid 'required golang:1.26.6 image is unavailable'
+if ! docker image inspect golang:1.26.8 >/dev/null 2>&1; then
+	invalid 'required golang:1.26.8 image is unavailable'
 fi
 
 repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
@@ -96,5 +96,5 @@ MSYS_NO_PATHCONV=1 docker run --rm --platform linux/amd64 --network none --read-
 	--tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 --workdir /work \
 	-e TMPDIR=/tmp -e ARDENTS_E2E_PRODUCT_ARDENTS=/work/ardents \
 	-e ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY=/work/ardents-custody \
-	golang:1.26.6 /work/service-credential-response.test \
+	golang:1.26.8 /work/service-credential-response.test \
 	-test.run '^TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit$' -test.count=1 -test.v -test.timeout="$test_timeout"

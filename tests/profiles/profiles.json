@@ -89,7 +89,7 @@
       "state": "active",
       "make_target": "qualification-service-credential-response-linux",
       "surface": "unprivileged Linux/Docker Service Credential response publication",
-      "prerequisites": ["POSIX shell with id, mktemp, and rm", "unprivileged Docker client with a reachable daemon", "preinstalled golang:1.26.6 image", "local Go 1.26.6 toolchain and populated immutable module cache"],
+      "prerequisites": ["POSIX shell with id, mktemp, and rm", "unprivileged Docker client with a reachable daemon", "preinstalled golang:1.26.8 image", "local Go 1.26.8 toolchain and populated immutable module cache"],
       "invalid_environment": "the selected Linux/Docker Service Credential response profile is unavailable",
       "timeout": "2m"
     },
@@ -98,7 +98,7 @@
       "state": "active",
       "make_target": "qualification-native-rendezvous-multihost",
       "surface": "two-host native Rendezvous qualification",
-      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "free public high port and two remote-loopback Source ports", "remote Docker host networking", "pre-existing golang:1.26.6 image"],
+      "prerequisites": ["Windows host", "literal project VPS IP", "matching SSH key", "free public high port and two remote-loopback Source ports", "remote Docker host networking", "pre-existing golang:1.26.8 image"],
       "invalid_environment": "the selected Windows-to-VPS native Route qualification environment is unavailable"
     },
     {

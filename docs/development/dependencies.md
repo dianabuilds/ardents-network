@@ -160,12 +160,71 @@ or serialize opaque blinding State. A changed use or upstream/support/advisory
 fact invalidates that evidence; update or replace within this owner, never
 maintain a private cryptographic fork.
 
-Go 1.26.8 is selected for the successor build on the supported 1.26 line.
-The current pins and component checks still use 1.26.6; the implementation
-baseline must align build/CI/tools and run fresh actual-candidate checks on the
-selected patch. Ubuntu/systemd package inventory and built-artifact inspection
-also remain candidate evidence. No documentation decision marks those checks
-already passed. Tools are installed only through make tools-install.
+Go 1.26.8 is the required successor build baseline on the supported 1.26 line.
+`go.mod`, CI, active qualification containers and their declared prerequisites
+pin 1.26.8; historical component evidence retains its actual 1.26.6 identity.
+Every changed candidate still runs fresh source, test, tool, advisory and
+artifact checks on that selected patch. Ubuntu/systemd package inventory and
+built-artifact inspection also remain candidate evidence. No documentation
+decision marks those checks already passed. Tools are installed only through
+make tools-install.
+
+### Go 1.26.8 successor-baseline admission evidence
+
+Candidate evidence captured 2026-09-08 on Windows/amd64 with `CGO_ENABLED=1`,
+no build tags, `GOENV=off`, `GOTOOLCHAIN=local`, and the exact
+  `go1.26.8` binary selected by the build environment. Its SHA-256 was
+  `21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9`.
+
+- `go mod verify` and `go mod tidy -diff` passed. The direct selected module
+  identities were CIRCL `v1.6.5`
+  (`h1:O64F26HEqNhznd/hrC5KZXVKYuKM2rx4deZDTc4ihQA=`), quic-go `v0.62.0`
+  (`h1:ZHDjCk5OacATwGvs8PWE97CTvX7AqZiVoW7++ZOXTf8=`), OHTTP `v0.0.80`
+  (`h1:LsDWRCU55vfI+mes1zuMGGKDZ8MsgbnlEr9IDd6jG9Y=`), and x/crypto
+    `v0.56.0` (`h1:GUh5Ii4J5jtcseSMiRqr1jXCNHoxjeV9Fmekc2oLy6Y=`).
+    Its retained OHTTP closure was twoway `v0.0.80`
+    (`h1:pojOC5jRtsN04/ZwzZM7FIgt0qGj/rxefb388Eb1jKU=`) and bhttp `v0.0.80`
+    (`h1:Zq0FiWIZCOqzrpMBzrEV7J0Jrc+20n0rPWVXpuKqwPQ=`). The complete closure
+    was 181 `go list -m -json all` records; its exact `go.mod` SHA-256 was
+    `a5e05aceb2ec1fa5afbfd7a9ff657cfca7ff04de43095fee692af7bb48872026`
+    and its exact `go.sum` SHA-256 was
+    `5167264d35ddb70683f5b7a3fbc6cffac8fa0ec6cb15d72c1d4747a7976627a2`.
+- `make tools-install` rebuilt the pinned Staticcheck 2025.1.1,
+  govulncheck v1.1.4, and deadcode v0.48.0 binaries with Go 1.26.8;
+  `tools-check` now rejects a tool binary built by any other Go patch. Their
+  Windows/amd64 SHA-256 values were respectively
+  `e25257acb31418dac0f491c4909df49e8a359793442281407b9411b93f80bede`,
+  `6713173da52bd0b8b1e5960a6baa0eae5311f9011f52a2db77b9738fb39f2b54`,
+  and `0fb70a59d2139e4267cf0252f53439887663d0fcf78d55d66eeb87fc4c5f28e7`.
+  - CIRCL's exact `blindsign/blindrsa` package passed its upstream RFC-9474
+    vector suite under Go 1.26.8 with
+    `go test github.com/cloudflare/circl/blindsign/blindrsa -run '^TestVectors$' -count=1`.
+    The compressed upstream fixture
+    `test_vectors_rfc9474.json.gz` had SHA-256
+    `374ba388a53cd9017aecff92afd2174188c7d5c7e8f0947d8af466043f134ff7`.
+    RFC-9474's fixture supplies RSA integer inputs rather than an SPKI or key
+    ID. The credential-owner baseline therefore separately constructs and
+    parses the selected 346-byte RFC-9578 RSA-PSS SPKI, requires its SHA-256
+    key ID to survive parse/re-encode unchanged, and rejects generic RSA SPKI.
+    It uses a fresh 32-byte nonce with only `SHA384PSSDeterministic`, rejects a
+    malformed length through CIRCL, and independently verifies its finalized
+    signature with Go's `crypto/rsa.VerifyPSS`. No opaque blinding State is
+    serialized and no other CIRCL scheme is admitted.
+- `govulncheck -json ./...` used database `https://vuln.go.dev`, last modified
+  `2026-09-02T19:12:04Z`, scanner v1.1.4 and Go 1.26.8. It reported only
+    module-level `GO-2026-5932`. `go list -deps` and `go list -deps -test`
+    found zero `golang.org/x/crypto/openpgp` packages in all four selected
+    closures: Windows/amd64 with CGO disabled (367 production, 498 test
+    packages), Windows/amd64 with CGO enabled (367, 498), Linux/amd64 with CGO
+    disabled (370, 504), and Linux/amd64 with CGO enabled (371, 505). This
+    non-applicability holds only for those four closures; a new import, target,
+    build tag, x/crypto version, scanner database update, or advisory change
+    requires reassessment.
+
+This is source/tool evidence only. The required Ubuntu package inventory,
+installed-artifact inspection, and platform execution remain separate candidate
+and qualification evidence; Windows or cross-target analysis cannot replace
+them.
 
 The successor confidential control channels can replace OHTTP transport only
 with the explicit new grammar and migration. Existing OHTTP imports and their
@@ -418,7 +477,7 @@ artifact qualification runner. Any version or runtime use repeats this review.
 
 | Tool | Version | Purpose |
 |---|---:|---|
-| Go | 1.26.x; CI pins 1.26.6 | compiler, formatter, tests, vet |
+| Go | 1.26.8 | compiler, formatter, tests, vet |
 | Staticcheck | 2025.1.1 | additional correctness analysis |
 | govulncheck | v1.1.4 | reachable Go vulnerability analysis |
 | deadcode | v0.48.0 (`golang.org/x/tools`) | reachability analysis for reviewed production code and test-only code |

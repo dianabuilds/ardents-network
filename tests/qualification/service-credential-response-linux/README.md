@@ -5,10 +5,10 @@ real Linux public custody boundary for a failed Credential response write.
 
 The runner cross-builds the current `ardents` and `ardents-custody` commands
 and the selected E2E test for Linux `amd64`, then runs them as the invoking
-non-root numeric user in one disposable `golang:1.26.6` container. The
+non-root numeric user in one disposable `golang:1.26.8` container. The
 container is network-disabled, read-only outside its temporary directory, and
 capability-dropped. It needs a POSIX shell with `id`, `mktemp`, and `rm`, an
-accessible Docker daemon, the already-present `golang:1.26.6` image, a local Go
+accessible Docker daemon, the already-present `golang:1.26.8` image, a local Go
 toolchain, and the immutable module cache.
 Missing prerequisites fail the profile as an invalid environment; the runner
 never skips or pulls an image or module.

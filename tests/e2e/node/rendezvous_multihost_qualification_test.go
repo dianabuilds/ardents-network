@@ -363,7 +363,7 @@ func (remote nativeRendezvousMultiHostRemoteRendezvous) start(t *testing.T, stag
 	if output, err := remote.run(t, fmt.Sprintf(`set -eu
 if [ -e %[1]s ]; then printf 'native Rendezvous preflight: remote directory already exists\n' >&2; exit 1; fi
 if docker container inspect %[2]s >/dev/null 2>&1; then printf 'native Rendezvous preflight: generated container already exists\n' >&2; exit 1; fi
-if ! docker image inspect golang:1.26.6 >/dev/null; then printf 'native Rendezvous preflight: required golang image is unavailable\n' >&2; exit 1; fi
+if ! docker image inspect golang:1.26.8 >/dev/null; then printf 'native Rendezvous preflight: required golang image is unavailable\n' >&2; exit 1; fi
 if ss -ltnH | grep -E %[3]s >/dev/null; then printf 'native Rendezvous preflight: one selected public or State Source port is already listening\n' >&2; exit 1; fi`,
 		nativeRendezvousMultiHostShellQuote(environment.remoteDirectory), nativeRendezvousMultiHostShellQuote(environment.container), nativeRendezvousMultiHostShellQuote(ports))); err != nil {
 		t.Fatalf("native Rendezvous remote qualification environment is unavailable: %v\n%s", err, output)
@@ -371,7 +371,7 @@ if ss -ltnH | grep -E %[3]s >/dev/null; then printf 'native Rendezvous preflight
 	if err := remote.upload(t, stage); err != nil {
 		t.Fatalf("upload bounded native Rendezvous remote bundle: %v", err)
 	}
-	command := fmt.Sprintf("set -eu; docker run --detach --name %s --network host --pids-limit 128 --memory 1g --cpus 1 -v %s:/work --workdir /work golang:1.26.6 /bin/sh /work/run.sh",
+	command := fmt.Sprintf("set -eu; docker run --detach --name %s --network host --pids-limit 128 --memory 1g --cpus 1 -v %s:/work --workdir /work golang:1.26.8 /bin/sh /work/run.sh",
 		nativeRendezvousMultiHostShellQuote(environment.container), nativeRendezvousMultiHostShellQuote(environment.remoteDirectory))
 	if output, err := remote.run(t, command); err != nil {
 		t.Fatalf("start remote native Rendezvous product Rendezvous: %v\n%s", err, output)
@@ -397,7 +397,7 @@ func (remote nativeRendezvousMultiHostRemoteRendezvous) waitReady(t *testing.T) 
 
 func (remote nativeRendezvousMultiHostRemoteRendezvous) hostEnvelope(t *testing.T) string {
 	t.Helper()
-	output, err := remote.run(t, "set -eu; printf 'docker='; docker version --format '{{.Server.Version}}'; printf 'image_id='; docker image inspect golang:1.26.6 --format '{{.Id}}'; printf 'kernel='; uname -srmo; printf 'vcpus='; nproc; awk '/MemTotal:/ {printf \"memory_kib=%s\\n\", $2}' /proc/meminfo")
+	output, err := remote.run(t, "set -eu; printf 'docker='; docker version --format '{{.Server.Version}}'; printf 'image_id='; docker image inspect golang:1.26.8 --format '{{.Id}}'; printf 'kernel='; uname -srmo; printf 'vcpus='; nproc; awk '/MemTotal:/ {printf \"memory_kib=%s\\n\", $2}' /proc/meminfo")
 	if err != nil {
 		t.Fatalf("read native Rendezvous remote host envelope: %v\n%s", err, output)
 	}

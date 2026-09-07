@@ -1,6 +1,6 @@
 module github.com/dianabuilds/ardents-network
 
-go 1.26.6
+go 1.26.8
 
 require (
 	github.com/aymanbagabas/go-pty v0.2.3
