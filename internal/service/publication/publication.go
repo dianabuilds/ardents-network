@@ -125,6 +125,9 @@ func (publication *Publication) Unpublish(ctx context.Context) error {
 	}
 	publication.opMu.Lock()
 	defer publication.opMu.Unlock()
+	if err := publication.drainRetiring(ctx); err != nil {
+		return err
+	}
 	publication.root.mu.Lock()
 	if publication.root.closed || publication.root.current == nil {
 		publication.root.mu.Unlock()
@@ -133,16 +136,13 @@ func (publication *Publication) Unpublish(ctx context.Context) error {
 	current := publication.root.current
 	withdraw(current)
 	publication.root.current = nil
+	publication.root.retiring = current
 	err := publication.root.removeCurrent()
 	publication.root.mu.Unlock()
 	if err != nil {
 		return err
 	}
-	if err := waitDrained(ctx, current); err != nil {
-		return err
-	}
-	current.releaseSigner()
-	return removeGeneration(publication.root.path, current.credential.Generation)
+	return publication.drainRetiring(ctx)
 }
 
 // Close withdraws the live publication, drains retained users, erases private
@@ -154,29 +154,65 @@ func (publication *Publication) Close() error {
 	publication.opMu.Lock()
 	defer publication.opMu.Unlock()
 	publication.root.mu.Lock()
-	if publication.root.closed {
+	if publication.root.released {
 		publication.root.mu.Unlock()
 		return nil
 	}
-	publication.root.closed = true
-	current := publication.root.current
-	publication.root.current = nil
-	if current != nil {
-		withdraw(current)
+	if !publication.root.closed {
+		publication.root.closed = true
+		current := publication.root.current
+		publication.root.current = nil
+		if current != nil {
+			withdraw(current)
+			publication.root.retiring = current
+		}
 	}
 	err := publication.root.removeCurrent()
 	publication.root.mu.Unlock()
 	if err != nil {
 		return err
 	}
-	if current != nil {
-		<-current.drained
-		current.releaseSigner()
-		if err := removeGeneration(publication.root.path, current.credential.Generation); err != nil {
-			return err
-		}
+	publication.root.closeDrainOnce.Do(func() { close(publication.root.closeDrainStarted) })
+	if err := publication.drainRetiring(context.Background()); err != nil {
+		return err
 	}
-	return publication.root.lease.release()
+	err = publication.root.lease.release()
+	publication.root.mu.Lock()
+	publication.root.released = true
+	publication.root.mu.Unlock()
+	return err
+}
+
+// drainRetiring keeps ownership of an already withdrawn generation until its
+// final Lease closes, then erases its signer and immutable public record. A
+// canceled caller leaves that ownership intact for the next lifecycle action.
+func (publication *Publication) drainRetiring(ctx context.Context) error {
+	publication.root.mu.Lock()
+	retiring := publication.root.retiring
+	var removeErr error
+	if retiring != nil {
+		removeErr = publication.root.removeCurrent()
+	}
+	publication.root.mu.Unlock()
+	if removeErr != nil {
+		return removeErr
+	}
+	if err := waitDrained(ctx, retiring); err != nil {
+		return err
+	}
+	if retiring == nil {
+		return nil
+	}
+	retiring.releaseSigner()
+	if err := removeGeneration(publication.root.path, retiring.credential.Generation); err != nil {
+		return err
+	}
+	publication.root.mu.Lock()
+	if publication.root.retiring == retiring {
+		publication.root.retiring = nil
+	}
+	publication.root.mu.Unlock()
+	return nil
 }
 
 func (publication *Publication) removePersistedUnavailable() error {
@@ -201,6 +237,9 @@ func withdraw(generation *generation) {
 		return
 	}
 	generation.withdrawn = true
+	if generation.withdrawnAt != nil {
+		close(generation.withdrawnAt)
+	}
 	if generation.refs == 0 {
 		close(generation.drained)
 	}

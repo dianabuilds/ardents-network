@@ -178,6 +178,241 @@ func TestCloseWithdrawsBeforeWaitingAndRejectsConcurrentPublish(t *testing.T) {
 	}
 }
 
+func TestCanceledUnpublishRetainsCleanupForSuccessorAndClose(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	owner, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Publish(t.Context(), fixture.input(t, 1)); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := owner.Acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	unpublished := make(chan error, 1)
+	go func() { unpublished <- owner.Unpublish(ctx) }()
+	select {
+	case <-lease.generation.withdrawnAt:
+	case <-t.Context().Done():
+		t.Fatal("Unpublish did not withdraw the retained generation")
+	}
+	cancel()
+	if err := <-unpublished; !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled Unpublish = %v", err)
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Publish(t.Context(), fixture.input(t, 2)); err != nil {
+		t.Fatalf("successor Publish after canceled drain = %v", err)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "generations"))
+	if err != nil || len(entries) != 1 || entries[0].Name() != publicationGeneration(2) {
+		t.Fatalf("successor generations = %+v, %v", entries, err)
+	}
+	if err = owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatalf("Close after canceled drain left root unreopenable: %v", err)
+	}
+	if err = reopened.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCanceledSupersedingPublishRetainsCleanupOwnership(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	owner, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Publish(t.Context(), fixture.input(t, 1)); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := owner.Acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	published := make(chan error, 1)
+	go func() {
+		_, publishErr := owner.Publish(ctx, fixture.input(t, 2))
+		published <- publishErr
+	}()
+	select {
+	case <-lease.generation.withdrawnAt:
+	case <-t.Context().Done():
+		t.Fatal("superseding Publish did not withdraw the retained generation")
+	}
+	cancel()
+	if err := <-published; !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled superseding Publish = %v", err)
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Publish(t.Context(), fixture.input(t, 2)); err != nil {
+		t.Fatalf("retry Publish after canceled drain = %v", err)
+	}
+	if err = owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatalf("retry Publish left root unreopenable: %v", err)
+	}
+	if err = reopened.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCloseRetainsRootLeaseUntilCanceledDrainFinishes(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	owner, err := Open(fixture.config(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Publish(t.Context(), fixture.input(t, 1)); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := owner.Acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	unpublished := make(chan error, 1)
+	go func() { unpublished <- owner.Unpublish(ctx) }()
+	select {
+	case <-lease.generation.withdrawnAt:
+	case <-t.Context().Done():
+		t.Fatal("Unpublish did not withdraw before cancellation")
+	}
+	cancel()
+	if err := <-unpublished; !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled Unpublish = %v", err)
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- owner.Close() }()
+	closeJoined := false
+	t.Cleanup(func() {
+		_ = lease.Close()
+		if closeJoined {
+			return
+		}
+		select {
+		case closeErr := <-closed:
+			if closeErr != nil {
+				t.Errorf("Close cleanup = %v", closeErr)
+			}
+		case <-time.After(time.Second):
+			t.Error("Close cleanup did not join")
+		}
+	})
+	select {
+	case <-owner.root.closeDrainStarted:
+	case <-t.Context().Done():
+		t.Fatal("Close did not enter its retained-drain boundary")
+	}
+	select {
+	case closeErr := <-closed:
+		closeJoined = true
+		t.Fatalf("Close returned before retained Lease drained: %v", closeErr)
+	default:
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatal(err)
+	}
+	closeErr := <-closed
+	closeJoined = true
+	if closeErr != nil {
+		t.Fatal(closeErr)
+	}
+}
+
+func TestRepeatedCloseLeavesSuccessorOwnerCurrent(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	first, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = first.Publish(t.Context(), fixture.input(t, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if err = first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close()
+	if _, err = second.Publish(t.Context(), fixture.input(t, 2)); err != nil {
+		t.Fatal(err)
+	}
+	if err = first.Close(); err != nil {
+		t.Fatalf("repeated Close = %v", err)
+	}
+	pointer, exists, err := readPointer(root)
+	if err != nil || !exists || pointer != publicationGeneration(2) {
+		t.Fatalf("repeated Close changed successor pointer: %q, %t, %v", pointer, exists, err)
+	}
+	lease, err := second.Acquire(t.Context())
+	if err != nil {
+		t.Fatalf("repeated Close removed successor current: %v", err)
+	}
+	if err = lease.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUnpublishRetryRepairsPointerBeforeRetiredGeneration(t *testing.T) {
+	t.Parallel()
+	fixture := newPublicationFixture(t)
+	root := t.TempDir()
+	owner, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = owner.Publish(t.Context(), fixture.input(t, 1)); err != nil {
+		t.Fatal(err)
+	}
+	owner.root.mu.Lock()
+	current := owner.root.current
+	withdraw(current)
+	owner.root.current = nil
+	owner.root.retiring = current
+	owner.root.mu.Unlock()
+	if err = owner.Unpublish(t.Context()); err == nil {
+		t.Fatal("retry Unpublish accepted a root without a live generation")
+	}
+	if err = owner.root.lease.release(); err != nil {
+		t.Fatal(err)
+	}
+	owner.root.mu.Lock()
+	owner.root.closed = true
+	owner.root.released = true
+	owner.root.mu.Unlock()
+	reopened, err := Open(fixture.config(root))
+	if err != nil {
+		t.Fatalf("retry Unpublish left a stale durable pointer: %v", err)
+	}
+	if err = reopened.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCredentialBindsSeparateIntroductionHPKEPublic(t *testing.T) {
 	t.Parallel()
 	fixture := newPublicationFixture(t)

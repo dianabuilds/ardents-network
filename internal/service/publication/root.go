@@ -28,23 +28,28 @@ var publicationGenerationName = regexp.MustCompile(`^[0-9a-f]{16}$`)
 // durableRoot serializes one publication root and keeps all mutable root
 // checks under its lock. The lease excludes a second process owner.
 type durableRoot struct {
-	mu      sync.Mutex
-	path    string
-	lease   rootLease
-	closed  bool
-	floor   uint64
-	current *generation
+	mu                sync.Mutex
+	path              string
+	lease             rootLease
+	closed            bool
+	released          bool
+	floor             uint64
+	current           *generation
+	retiring          *generation
+	closeDrainStarted chan struct{}
+	closeDrainOnce    sync.Once
 }
 
 type generation struct {
-	credential Credential
-	record     []byte
-	digest     [32]byte
-	signer     crypto.Signer
-	release    func()
-	refs       uint32
-	withdrawn  bool
-	drained    chan struct{}
+	credential  Credential
+	record      []byte
+	digest      [32]byte
+	signer      crypto.Signer
+	release     func()
+	refs        uint32
+	withdrawn   bool
+	withdrawnAt chan struct{}
+	drained     chan struct{}
 }
 
 func (generation *generation) releaseSigner() {
@@ -84,7 +89,7 @@ func openDurableRoot(config Config) (*durableRoot, error) {
 	if err := prepareRoot(path); err != nil {
 		return nil, err
 	}
-	root := &durableRoot{path: path, lease: lease}
+	root := &durableRoot{path: path, lease: lease, closeDrainStarted: make(chan struct{})}
 	if err := root.restore(config); err != nil {
 		return nil, err
 	}

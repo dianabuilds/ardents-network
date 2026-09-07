@@ -31,6 +31,9 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 	}
 	publication.opMu.Lock()
 	defer publication.opMu.Unlock()
+	if err := publication.drainRetiring(ctx); err != nil {
+		return Current{}, err
+	}
 	if input.At.IsZero() {
 		input.At = publication.config.Clock()
 	}
@@ -62,20 +65,15 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 	if prior != nil {
 		withdraw(prior)
 		publication.root.current = nil
+		publication.root.retiring = prior
 		if err := publication.root.removeCurrent(); err != nil {
 			publication.root.mu.Unlock()
 			return Current{}, err
 		}
 	}
 	publication.root.mu.Unlock()
-	if err := waitDrained(ctx, prior); err != nil {
+	if err := publication.drainRetiring(ctx); err != nil {
 		return Current{}, err
-	}
-	if prior != nil {
-		prior.releaseSigner()
-		if err := removeGeneration(publication.root.path, prior.credential.Generation); err != nil {
-			return Current{}, err
-		}
 	}
 	if err := publication.removePersistedUnavailable(); err != nil {
 		return Current{}, err
@@ -118,7 +116,7 @@ func (publication *Publication) publish(ctx context.Context, input PublishInput,
 	}
 	retained, release := retainInstanceSigner(input.InstanceSigner)
 	current := &generation{credential: input.Credential, record: append([]byte(nil), record...), digest: digest,
-		signer: retained, release: release, drained: make(chan struct{})}
+		signer: retained, release: release, withdrawnAt: make(chan struct{}), drained: make(chan struct{})}
 	publication.root.mu.Lock()
 	if publication.root.closed {
 		publication.root.mu.Unlock()

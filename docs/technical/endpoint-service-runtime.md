@@ -125,7 +125,10 @@ User-only participant.
 AcquireAt yields an opaque Lease; the Lease can sign for its generation without
 exposing the signer. Withdrawal, supersession, expiry, or close first prevent
 new acquisition, then wait for bounded references before erasing private
-material.
+material. If the caller cancels while that drain waits, the Publication retains
+the withdrawn generation's cleanup ownership; a later publish, withdrawal, or
+close joins the same drain before it can release the root lease or expose a
+successor generation.
 
 ## Service credential and publication limit
 
