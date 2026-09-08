@@ -19,7 +19,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 2, Purpose: ClosedPurposeForwarding, Deadline: now.Add(30 * time.Second)}
-	channel, err := NewClosedForwardingChannel(lease, func(open ClosedOpen) error {
+	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}
@@ -28,6 +28,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	lease.Release()
 	body, err := EncodeClosedOpen(allowed)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +75,8 @@ func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowed := ClosedOpen{NextNodeID: [32]byte{11}, NextDutyGeneration: 12, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	channel, err := NewClosedForwardingChannel(ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation},
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	channel, err := NewClosedForwardingChannel(&lease,
 		func(open ClosedOpen) error {
 			if open != allowed {
 				return errUnexpectedForwardOpen

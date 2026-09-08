@@ -46,13 +46,17 @@ type closedForwardChild struct {
 	eof      bool
 }
 
-// NewClosedForwardingChannel creates only a class-2 forwarding owner. Control
-// and publication admission cannot silently become arbitrary forwarding.
-func NewClosedForwardingChannel(lease ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
-	if lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || lease.duty == nil || authorize == nil || clock == nil || clock().IsZero() {
+// NewClosedForwardingChannel transfers one class-2 reservation to the only
+// forwarding owner. Control and publication admission cannot silently become
+// arbitrary forwarding, and Release on the source lease cannot free a live
+// forwarding channel.
+func NewClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
+	if lease == nil || lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || lease.duty == nil || authorize == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed forwarding channel is invalid")
 	}
-	return &ClosedForwardingChannel{lease: lease, authorize: authorize, clock: clock, children: make(map[uint32]closedForwardChild)}, nil
+	channel := &ClosedForwardingChannel{lease: *lease, authorize: authorize, clock: clock, children: make(map[uint32]closedForwardChild)}
+	lease.duty = nil
+	return channel, nil
 }
 
 // Accept accounts one child frame. It returns an event only after every local
