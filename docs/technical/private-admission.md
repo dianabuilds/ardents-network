@@ -86,6 +86,16 @@ interactive Custody unlock and owner-only private input/output paths.
 Operator actions are explicit, finite closed-network provisioning, not public
 signup, a test-only validity callback or an administrative naming mechanism.
 
+The public issuer-key profile is `ARDCIP01`[8], Network[32], issuer Node[32],
+not-before u64, not-after u64, key-count u16, then sorted window-start u64,
+class u8, SPKI-length u16 and exact RSA-PSS SPKI bytes, followed by a Node
+Ed25519 signature under `ardents-closed-issuer-keys-v1\0`. It contains every
+class 1–3 for every hour in its one-to-six-hour interval. Its owner-only root
+retains corresponding PKCS#1 RSA private keys under an immutable root marker;
+reopening requires the exact Network, Node, signer and interval. State still
+accepts token keys only through the subsequently State-signed `ARDCPR03`
+profile, never by trusting this profile as a replacement State authority.
+
 ## Canonical signed permission
 
 All integers are unsigned big-endian. The signing input is the ASCII domain
