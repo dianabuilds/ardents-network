@@ -10,13 +10,14 @@ import (
 // ClosedProfileView is the narrow immutable State projection consumed by the
 // admission owner. It does not expose raw Node Records or a signing capability.
 type ClosedProfileView struct {
-	Digest, IssuanceAuthorityKey [32]byte
-	IssuerNodeID                 [32]byte
-	IssuerDutyGeneration         uint64
-	Epoch                        uint64
-	NotBefore, NotAfter          time.Time
-	TokenKeyCount                uint8
-	TokenKeys                    [maximumClosedProfileKeys]ClosedProfileTokenKey
+	NetworkID, StateGeneration, StateDigest [32]byte
+	Digest, IssuanceAuthorityKey            [32]byte
+	IssuerNodeID                            [32]byte
+	IssuerDutyGeneration                    uint64
+	Epoch                                   uint64
+	NotBefore, NotAfter                     time.Time
+	TokenKeyCount                           uint8
+	TokenKeys                               [maximumClosedProfileKeys]ClosedProfileTokenKey
 }
 
 // ClosedProfileTokenKey is one immutable public RSA-PSS key/window fact from
@@ -93,7 +94,8 @@ func (s *networkState) CurrentClosedProfile() (ClosedProfileView, error) {
 }
 
 func closedProfileView(profile closedProfile) ClosedProfileView {
-	view := ClosedProfileView{Digest: profile.digest, IssuanceAuthorityKey: profile.authorityKey, IssuerNodeID: profile.issuerNodeID,
+	view := ClosedProfileView{NetworkID: profile.networkID, StateGeneration: profile.stateGeneration, StateDigest: profile.epochDigest,
+		Digest: profile.digest, IssuanceAuthorityKey: profile.authorityKey, IssuerNodeID: profile.issuerNodeID,
 		Epoch: profile.epoch, NotBefore: profile.notBefore, NotAfter: profile.notAfter, TokenKeyCount: uint8(len(profile.keys))}
 	for _, node := range profile.nodes {
 		if node.nodeID == profile.issuerNodeID {
