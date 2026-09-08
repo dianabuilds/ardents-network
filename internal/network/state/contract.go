@@ -17,6 +17,10 @@ type Config struct {
 	NetworkID   [32]byte
 	Authorities map[[32]byte]ed25519.PublicKey
 	Threshold   int
+	// ClosedProfileAuthority is the separately selected, already pinned State
+	// signer for an ardents-route-v3 profile. It is never caller-selected at
+	// profile acceptance time.
+	ClosedProfileAuthority ed25519.PublicKey
 	// AcceptedProfile is empty for the role probe or explicitly names one
 	// selected Route profile.
 	AcceptedProfile string

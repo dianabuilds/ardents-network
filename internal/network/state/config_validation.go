@@ -80,9 +80,20 @@ func validateConfig(input Config) (config, error) {
 	if !knownProfile(acceptedProfile) {
 		return config{}, errors.New("accepted Network State profile is unsupported")
 	}
+	closedProfileAuthority := append(ed25519.PublicKey(nil), input.ClosedProfileAuthority...)
+	if acceptedProfile == closedRouteProfile {
+		if len(closedProfileAuthority) != ed25519.PublicKeySize {
+			return config{}, errors.New("closed Route profile authority is required")
+		}
+		if _, exists := authorities[sha256.Sum256(closedProfileAuthority)]; !exists {
+			return config{}, errors.New("closed Route profile authority is not pinned by State")
+		}
+	} else if len(closedProfileAuthority) != 0 {
+		return config{}, errors.New("closed Route profile authority is not valid for this State profile")
+	}
 	resolved := config{
 		root: root, networkID: input.NetworkID, authorities: authorities,
-		threshold: input.Threshold, acceptedProfile: acceptedProfile, now: initial, clock: clock,
+		threshold: input.Threshold, closedProfileAuthority: closedProfileAuthority, acceptedProfile: acceptedProfile, now: initial, clock: clock,
 		source: sourcePlan, sourceInfo: sourceInfo, observation: input.ClockObservation.UTC(), observe: observe,
 		automatic: input.AutomaticRefreshInterval, profile: input.RuntimeProfile,
 		resources:  input.ObserveResources,
