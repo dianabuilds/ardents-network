@@ -60,15 +60,13 @@ func TestDecodeClosedIssuerProfileRejectsReorderedKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile, err := DecodeClosedIssuerProfile(receipt.Profile, public)
-	if err != nil {
-		t.Fatal(err)
-	}
-	profile.Keys[0], profile.Keys[1] = profile.Keys[1], profile.Keys[0]
-	changed, err := encodeClosedIssuerProfile(profile, private)
-	if err == nil {
-		t.Fatal("encoded reordered closed issuer keys")
-	}
+	body := append([]byte(nil), receipt.Profile[:len(receipt.Profile)-ed25519.SignatureSize]...)
+	const profileHeader = 8 + 32 + 32 + 8 + 8 + 2
+	const keyEntry = 8 + 1 + 2 + 346
+	first, second := append([]byte(nil), body[profileHeader:profileHeader+keyEntry]...), append([]byte(nil), body[profileHeader+keyEntry:profileHeader+2*keyEntry]...)
+	copy(body[profileHeader:profileHeader+keyEntry], second)
+	copy(body[profileHeader+keyEntry:profileHeader+2*keyEntry], first)
+	changed := append(body, ed25519.Sign(private, closedIssuerTranscript(body))...)
 	if _, err := DecodeClosedIssuerProfile(changed, public); err == nil {
 		t.Fatal("decoded reordered closed issuer keys")
 	}
