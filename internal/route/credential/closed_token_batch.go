@@ -181,6 +181,19 @@ func (pending *PendingClosedTokenBatch) Finalize(result ClosedTokenBatchResult) 
 	return tokens, nil
 }
 
+// FinalizeEncoded decodes the fixed issuer plaintext and verifies every token
+// before returning it to the Endpoint-owned volatile stock.
+func (pending *PendingClosedTokenBatch) FinalizeEncoded(raw []byte) ([][]byte, error) {
+	result, err := DecodeClosedTokenBatchResult(raw)
+	if err != nil {
+		if pending != nil {
+			pending.Discard()
+		}
+		return nil, err
+	}
+	return pending.Finalize(result)
+}
+
 // Discard removes the Endpoint's references to all volatile request inputs
 // and CIRCL state. A later retry needs a newly provisioned right.
 func (pending *PendingClosedTokenBatch) Discard() {

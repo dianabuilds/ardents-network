@@ -77,11 +77,15 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	if _, err := issuer.privateKey(decoded); err != nil {
 		t.Fatalf("issuer key precondition: %v", err)
 	}
-	first := issuer.Issue(raw)
+	firstRaw := issuer.IssueEncoded(raw)
+	first, err := DecodeClosedTokenBatchResult(firstRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if first.Status != ClosedTokenIssued || len(first.Signatures) != 2 {
 		t.Fatalf("first issuer result = %+v", first)
 	}
-	if tokens, err := pending.Finalize(first); err != nil || len(tokens) != 2 || len(tokens[0]) != closedTokenSize {
+	if tokens, err := pending.FinalizeEncoded(firstRaw); err != nil || len(tokens) != 2 || len(tokens[0]) != closedTokenSize {
 		t.Fatalf("finalize committed batch = %d tokens / %v", len(tokens), err)
 	}
 	if err := issuer.Close(); err != nil {
@@ -93,9 +97,13 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	retried := issuer.Issue(raw)
+	retriedRaw := issuer.IssueEncoded(raw)
+	retried, err := DecodeClosedTokenBatchResult(retriedRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if retried.Status != ClosedTokenIssued || len(retried.Signatures) != len(first.Signatures) || !bytes.Equal(retried.Signatures[0], first.Signatures[0]) ||
-		!bytes.Equal(retried.Signatures[1], first.Signatures[1]) {
+		!bytes.Equal(retried.Signatures[1], first.Signatures[1]) || !bytes.Equal(retriedRaw, firstRaw) {
 		t.Fatalf("restarted issuer result = %+v", retried)
 	}
 	second, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Context: context, Permission: permission, HolderKey: holder, Count: 1, Now: now})

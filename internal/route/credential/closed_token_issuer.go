@@ -123,6 +123,17 @@ func (issuer *ClosedTokenIssuer) Issue(raw []byte) ClosedTokenBatchResult {
 	return result
 }
 
+// IssueEncoded emits the one fixed issuer plaintext shape for every outcome.
+// A coding/storage failure is rendered as the same unavailable shape.
+func (issuer *ClosedTokenIssuer) IssueEncoded(raw []byte) []byte {
+	encoded, err := EncodeClosedTokenBatchResult(issuer.Issue(raw))
+	if err == nil {
+		return encoded
+	}
+	encoded, _ = EncodeClosedTokenBatchResult(ClosedTokenBatchResult{Status: ClosedTokenUnavailable})
+	return encoded
+}
+
 // Close releases the exclusive root lease and removes in-memory private-key
 // references. The append-only reservation ledger remains the authority after
 // a restart.

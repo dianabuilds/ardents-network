@@ -244,6 +244,14 @@ exhausted, withdrawn and unavailable results. The client verifies every
 finalized token before exposing it to admission. Failure ends the batch;
 there is no automatic switch of issuer or key.
 
+Inside the protected terminal channel the canonical result is `ARDIOR01`[8],
+status u8 (`issued=1`, `exhausted=2`, `withdrawn=3`, `unavailable=4`),
+signature-count u8 and, only for `issued`, that many 256-byte blind
+signatures, followed by zero padding to exactly 16,384 bytes. All other
+statuses have count zero. A malformed count, signature or nonzero padding is
+unavailable. This fixed plaintext is not a second encryption protocol: the
+selected terminal TLS channel is its sole confidentiality boundary.
+
 CIRCL's blinding State is private, opaque and not serializable. Keep it in
 volatile Endpoint-owned memory. A same-process retry may reconcile the exact
 pending request while that state exists. After a process crash, a pending
