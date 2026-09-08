@@ -97,6 +97,20 @@ Its interval is exactly one aligned UTC hour and lies inside the duty's
 authenticated validity. Reject unknown classes, zero identities, overflow,
 noncanonical size, wrong Network/duty or unsupported public key.
 
+The Endpoint prepares the sealed public allocation request as `ARDPAR01`[8],
+admission-authority-key[32], Network[32], issuer-Node[32], duty-generation
+u64, permission-ID[32], holder-key[32], not-before u64, not-after u64, three
+u32 maxima, local allocation role u8 (`User=1`, `Publisher=2`) and holder
+Ed25519[64]. The holder signs the ASCII domain
+`ardents-admission-allocation-v1\0` followed by every preceding field. The
+complete request is exactly 269 bytes. Custody accepts only the current aligned
+UTC hour, independently confirms its SHA-256 before unlock, verifies this
+holder proof and returns a permission only from its separate encrypted
+admission root. A deterministic encrypted successor retains the exact request
+digest and consumption before acknowledgement; an identical retry returns the
+same permission, while a changed body for that permission ID fails. This is a
+fixed allocation operation, never a raw-signing interface.
+
 This is a separately scoped permission signature, not a signature on a token.
 The authority key is independently identified in the signed closed issuer
 profile. Its compromise invalidates admission scarcity; honest receivers'

@@ -14,6 +14,9 @@ type AuthorityKind string
 const (
 	AuthorityService AuthorityKind = "service"
 	AuthorityName    AuthorityKind = "name"
+	// AuthorityAdmission is the separate closed-network offline permission
+	// authority. It cannot sign State, Name, Service, or Release inputs.
+	AuthorityAdmission AuthorityKind = "admission"
 )
 
 // AuthorityBinding is the expected public commitment set for one Authority.
@@ -37,11 +40,12 @@ type Watermark struct {
 // AuthorityState is supplied only to a creation operation. RootMaterial stays
 // within custody and is never copied into a Receipt.
 type AuthorityState struct {
-	Binding      AuthorityBinding
-	RootMaterial []byte
-	Generation   uint64
-	Revision     uint64
-	Watermarks   []Watermark
+	Binding          AuthorityBinding
+	RootMaterial     []byte
+	AdmissionJournal []byte
+	Generation       uint64
+	Revision         uint64
+	Watermarks       []Watermark
 }
 
 type encodedState struct {
@@ -55,12 +59,13 @@ type encodedState struct {
 }
 
 type encodedAuthority struct {
-	Kind         AuthorityKind `json:"kind"`
-	IDCommitment string        `json:"id_commitment"`
-	RootMaterial string        `json:"root_material"`
-	Generation   uint64        `json:"generation"`
-	Revision     uint64        `json:"revision"`
-	Watermarks   []Watermark   `json:"watermarks"`
+	Kind             AuthorityKind `json:"kind"`
+	IDCommitment     string        `json:"id_commitment"`
+	RootMaterial     string        `json:"root_material"`
+	AdmissionJournal string        `json:"admission_journal,omitempty"`
+	Generation       uint64        `json:"generation"`
+	Revision         uint64        `json:"revision"`
+	Watermarks       []Watermark   `json:"watermarks"`
 }
 
 func encodeAuthorityState(purpose Purpose, state AuthorityState) ([]byte, error) {
@@ -75,12 +80,13 @@ func encodeAuthorityState(purpose Purpose, state AuthorityState) ([]byte, error)
 		Network:       hex.EncodeToString(state.Binding.Network[:]),
 		Root:          hex.EncodeToString(state.Binding.Root[:]),
 		Authority: encodedAuthority{
-			Kind:         state.Binding.Kind,
-			IDCommitment: hex.EncodeToString(state.Binding.IDCommitment[:]),
-			RootMaterial: base64.RawURLEncoding.EncodeToString(state.RootMaterial),
-			Generation:   state.Generation,
-			Revision:     state.Revision,
-			Watermarks:   append([]Watermark(nil), state.Watermarks...),
+			Kind:             state.Binding.Kind,
+			IDCommitment:     hex.EncodeToString(state.Binding.IDCommitment[:]),
+			RootMaterial:     base64.RawURLEncoding.EncodeToString(state.RootMaterial),
+			AdmissionJournal: base64.RawURLEncoding.EncodeToString(state.AdmissionJournal),
+			Generation:       state.Generation,
+			Revision:         state.Revision,
+			Watermarks:       append([]Watermark(nil), state.Watermarks...),
 		},
 	})
 }
@@ -119,15 +125,24 @@ func decodeAuthorityState(raw []byte, expectedPurpose Purpose) (AuthorityState, 
 		return AuthorityState{}, ErrInvalid
 	}
 	state.RootMaterial = root
+	if encoded.Authority.AdmissionJournal != "" {
+		journal, journalErr := decodeRawURL(encoded.Authority.AdmissionJournal)
+		if journalErr != nil || len(journal) > maximumAdmissionJournalBytes {
+			zero(root)
+			return AuthorityState{}, ErrInvalid
+		}
+		state.AdmissionJournal = journal
+	}
 	if err := validateAuthorityState(state); err != nil {
 		zero(root)
+		zero(state.AdmissionJournal)
 		return AuthorityState{}, err
 	}
 	return state, nil
 }
 
 func validateAuthorityState(state AuthorityState) error {
-	if state.Binding.Kind != AuthorityService && state.Binding.Kind != AuthorityName {
+	if state.Binding.Kind != AuthorityService && state.Binding.Kind != AuthorityName && state.Binding.Kind != AuthorityAdmission {
 		return ErrInvalid
 	}
 	if len(state.RootMaterial) == 0 || len(state.RootMaterial) > maximumRootMaterialBytes {
@@ -149,6 +164,12 @@ func validateAuthorityState(state AuthorityState) error {
 			return ErrInvalid
 		}
 	}
+	if state.Binding.Kind == AuthorityAdmission {
+		return validateAdmissionAuthorityState(state)
+	}
+	if len(state.AdmissionJournal) != 0 {
+		return ErrInvalid
+	}
 	return nil
 }
 
@@ -162,5 +183,5 @@ func isASCII(value string) bool {
 }
 
 func isZeroAuthorityState(state AuthorityState) bool {
-	return state.Binding == (AuthorityBinding{}) && len(state.RootMaterial) == 0 && state.Generation == 0 && state.Revision == 0 && len(state.Watermarks) == 0
+	return state.Binding == (AuthorityBinding{}) && len(state.RootMaterial) == 0 && len(state.AdmissionJournal) == 0 && state.Generation == 0 && state.Revision == 0 && len(state.Watermarks) == 0
 }

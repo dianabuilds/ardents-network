@@ -15,6 +15,12 @@ const (
 	// OperationCreateServiceAuthority generates one Service Authority inside a
 	// new encrypted Vault record and returns only its public identity.
 	OperationCreateServiceAuthority OperationKind = "create-service-authority"
+	// OperationCreateAdmissionAuthority generates one separate offline
+	// permission authority inside a new encrypted Vault record.
+	OperationCreateAdmissionAuthority OperationKind = "create-admission-authority"
+	// OperationIssueAdmissionPermission signs one exact holder-proof-bound
+	// allocation and atomically advances the encrypted allocation ledger.
+	OperationIssueAdmissionPermission OperationKind = "issue-admission-permission"
 	// OperationIssueServiceCredential advances one active Service Authority for
 	// an exact canonical host request and returns only its public response.
 	OperationIssueServiceCredential OperationKind = "issue-service-credential"
@@ -81,7 +87,9 @@ type Operation struct {
 	ServiceRequest []byte
 	// ServiceRequestCommitment is the exact independently transferred digest
 	// that the Custodian approved for Service Credential issuance.
-	ServiceRequestCommitment [32]byte
+	ServiceRequestCommitment   [32]byte
+	AdmissionRequest           []byte
+	AdmissionRequestCommitment [32]byte
 }
 
 // NamespaceTransition invokes one sealed Namespace signer and returns its
@@ -125,16 +133,18 @@ const (
 // Receipt contains only bounded public custody facts. In particular it never
 // includes root material, a password, a derived key, or plaintext bytes.
 type Receipt struct {
-	Operation        OperationKind
-	RecordID         string
-	Envelope         EnvelopeInfo
-	Authority        AuthorityReceipt
-	ServiceAuthority ServiceAuthorityReceipt
-	ServiceResponse  []byte
-	TestRestored     bool
-	State            RecordState
-	Proof            []byte
-	Submission       []byte
+	Operation           OperationKind
+	RecordID            string
+	Envelope            EnvelopeInfo
+	Authority           AuthorityReceipt
+	ServiceAuthority    ServiceAuthorityReceipt
+	AdmissionAuthority  AdmissionAuthorityReceipt
+	AdmissionPermission []byte
+	ServiceResponse     []byte
+	TestRestored        bool
+	State               RecordState
+	Proof               []byte
+	Submission          []byte
 }
 
 // ServiceAuthorityReceipt is the public identity created by custody. It
@@ -142,6 +152,12 @@ type Receipt struct {
 type ServiceAuthorityReceipt struct {
 	Public [32]byte
 	Target [32]byte
+}
+
+// AdmissionAuthorityReceipt identifies the public key that a signed closed
+// profile independently binds to offline issuance permissions.
+type AdmissionAuthorityReceipt struct {
+	Public [32]byte
 }
 
 // RecordState is the non-secret local lifecycle classification of a protected
