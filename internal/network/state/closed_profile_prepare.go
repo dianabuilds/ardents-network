@@ -103,6 +103,5 @@ func InspectClosedProfile(raw []byte, stateGeneration, networkID, epochDigest [3
 	if err != nil {
 		return ClosedProfileView{}, err
 	}
-	return ClosedProfileView{Digest: profile.digest, IssuanceAuthorityKey: profile.authorityKey, Epoch: profile.epoch,
-		NotBefore: profile.notBefore, NotAfter: profile.notAfter}, nil
+	return closedProfileView(profile), nil
 }
