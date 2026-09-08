@@ -195,6 +195,10 @@ func decodeClosedProfileKeys(d *decoder, profile *closedProfile) error {
 		if key.windowStart, err = d.uint64(); err != nil || key.windowStart%uint64(time.Hour.Seconds()) != 0 {
 			return errors.New("closed profile key window is invalid")
 		}
+		windowStart := time.Unix(int64(key.windowStart), 0).UTC()
+		if windowStart.Before(profile.notBefore) || windowStart.Add(time.Hour).After(profile.notAfter) {
+			return errors.New("closed profile key window is outside its validity")
+		}
 		if key.class, err = d.byte(); err != nil || key.class < 1 || key.class > 3 {
 			return errors.New("closed profile key class is invalid")
 		}

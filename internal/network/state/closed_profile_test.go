@@ -62,9 +62,9 @@ func testClosedProfile(t *testing.T, authority ed25519.PrivateKey, network, gene
 	binary.BigEndian.PutUint64(u64[:], 9)
 	body.Write(u64[:])
 	body.Write(epochDigest[:])
-	binary.BigEndian.PutUint64(u64[:], uint64(now.Add(-time.Minute).Unix()))
+	binary.BigEndian.PutUint64(u64[:], uint64(now.Truncate(time.Hour).Unix()))
 	body.Write(u64[:])
-	binary.BigEndian.PutUint64(u64[:], uint64(now.Add(time.Hour).Unix()))
+	binary.BigEndian.PutUint64(u64[:], uint64(now.Truncate(time.Hour).Add(2*time.Hour).Unix()))
 	body.Write(u64[:])
 	issuer := [32]byte{}
 	for _, node := range nodes {
