@@ -76,6 +76,7 @@ func TestClosedLaneRejectsUnknownAndWrongLaneFormsBeforeAllocation(t *testing.T)
 		{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 0}},
 		{Kind: closedFrameEOF, Lane: 1, Body: []byte{1}},
 		{Kind: closedFrameClose, Lane: 1, Body: []byte{7}},
+		{Kind: closedFrameOperation, Lane: 0, Body: make([]byte, closedSmallTerminalOperation)},
 		{Kind: closedFrameOperation, Lane: 1, Body: make([]byte, 4095)},
 		{Kind: closedFrameResult, Lane: 1, Body: make([]byte, 4096)},
 		{Kind: closedFrameKeepalive, Lane: 1},

@@ -234,10 +234,10 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 		return frame.Lane != 0 && len(frame.Body) == 1 && frame.Body[0] <= 6
 	}
 	if frame.Kind == closedFrameOperation {
-		return frame.Lane != 0 && (len(frame.Body) == closedTerminalOperationSize || len(frame.Body) == closedSmallTerminalOperation)
+		return len(frame.Body) == closedTerminalOperationSize || frame.Lane != 0 && len(frame.Body) == closedSmallTerminalOperation
 	}
 	if frame.Kind == closedFrameResult {
-		return frame.Lane != 0 && len(frame.Body) == closedTerminalOperationSize
+		return len(frame.Body) == closedTerminalOperationSize
 	}
 	if frame.Kind == closedFrameKeepalive {
 		return frame.Lane == 0 && len(frame.Body) == 0

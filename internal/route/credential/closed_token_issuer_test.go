@@ -99,6 +99,22 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	}
 	if tokens, err := pending.FinalizeTerminalOperation(nonce, firstRaw); err != nil || len(tokens) != 2 || len(tokens[0]) != closedTokenSize {
 		t.Fatalf("finalize committed batch = %d tokens / %v", len(tokens), err)
+	} else {
+		for _, token := range tokens {
+			if err := VerifyClosedToken(context, decoded.SPKI[:], token); err != nil {
+				t.Fatalf("verify finalized token: %v", err)
+			}
+		}
+		changed := append([]byte(nil), tokens[0]...)
+		changed[len(changed)-1] ^= 1
+		if err := VerifyClosedToken(context, decoded.SPKI[:], changed); err == nil {
+			t.Fatal("accepted changed finalized token")
+		}
+		wrongReceiver := context
+		wrongReceiver.ReceiverNodeID[0]++
+		if err := VerifyClosedToken(wrongReceiver, decoded.SPKI[:], tokens[0]); err == nil {
+			t.Fatal("accepted token for a different receiver")
+		}
 	}
 	if err := issuer.Close(); err != nil {
 		t.Fatal(err)
