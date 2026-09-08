@@ -12,10 +12,11 @@ const closedChannelExporterLabel = "EXPORTER-ardents-channel-v3"
 // ClosedRoleReceiver is the exact current public State projection for one
 // role TLS receiver. It authorizes no peer-selected destination or profile.
 type ClosedRoleReceiver struct {
-	NetworkID, StateGeneration, StateDigest, ProfileDigest, NodeID [32]byte
-	DutyGeneration                                                 uint64
-	NotAfter                                                       time.Time
-	AllowedPurposes                                                [8]bool
+	NetworkID, StateGeneration, StateDigest, ProfileDigest, NodeID, RecordDigest [32]byte
+	DutyGeneration                                                               uint64
+	RoleDomain, Subrole                                                          uint8
+	ExpectedPurpose                                                              ClosedPurpose
+	NotAfter                                                                     time.Time
 }
 
 // ClosedTLSExporter derives secret channel binding bytes after role TLS has
@@ -172,12 +173,13 @@ func decodeClosedAdmit(body []byte) (uint8, []byte, error) {
 func (channel *ClosedAdmissionChannel) matchesHello(hello ClosedHello) bool {
 	return hello.NetworkID == channel.receiver.NetworkID && hello.StateGeneration == channel.receiver.StateGeneration && hello.StateDigest == channel.receiver.StateDigest &&
 		hello.ProfileDigest == channel.receiver.ProfileDigest && hello.RecipientNodeID == channel.receiver.NodeID && hello.RecipientDutyGeneration == channel.receiver.DutyGeneration &&
-		channel.receiver.AllowedPurposes[hello.Purpose] && !hello.Deadline.After(channel.receiver.NotAfter) && channel.clock().UTC().Before(hello.Deadline)
+		hello.Purpose == channel.receiver.ExpectedPurpose && !hello.Deadline.After(channel.receiver.NotAfter) && channel.clock().UTC().Before(hello.Deadline)
 }
 
 func validClosedRoleReceiver(receiver ClosedRoleReceiver) bool {
 	return receiver.NetworkID != [32]byte{} && receiver.StateGeneration != [32]byte{} && receiver.StateDigest != [32]byte{} && receiver.ProfileDigest != [32]byte{} &&
-		receiver.NodeID != [32]byte{} && receiver.DutyGeneration != 0 && !receiver.NotAfter.IsZero() && receiver.NotAfter == receiver.NotAfter.UTC().Truncate(time.Second)
+		receiver.NodeID != [32]byte{} && receiver.RecordDigest != [32]byte{} && receiver.DutyGeneration != 0 &&
+		ClosedPurposePermitsDuty(receiver.ExpectedPurpose, receiver.RoleDomain, receiver.Subrole) && !receiver.NotAfter.IsZero() && receiver.NotAfter == receiver.NotAfter.UTC().Truncate(time.Second)
 }
 
 func closedClassBytes(class uint8) uint64 {

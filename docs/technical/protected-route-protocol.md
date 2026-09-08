@@ -201,7 +201,26 @@ No lane ID or nonce is copied into a different hop's identifier namespace.
 
 Purposes are issuer=1, Name=2, reachability=3, Introduction registration=4,
 Introduction submission=5, data join=6 and forwarding=7. Unknown purposes
-are rejected. The HELLO is itself protected by the recipient TLS channel.
+are rejected. For generation 3, the following is the normative purpose-to-duty
+assignment table. It checks only that a recipient assignment is eligible for a
+purpose; it is additional to the Role-Domain/known-family and role-transition
+rules, the exact accepted profile/Node Record/duty/digest match, admission and
+every resource budget. A matching subrole never independently authorizes an
+arbitrary route.
+
+| Purpose | Permitted recipient assignment |
+|---|---|
+| issuer | Rendezvous / issuance |
+| Name | Rendezvous / resolution |
+| reachability | Rendezvous / resolution |
+| Introduction registration | Introduction / Introduction delivery |
+| Introduction submission | Introduction / Introduction delivery |
+| data join | Rendezvous / data join |
+| forwarding | one of Initiator, Rendezvous or Responder / endpoint adjacency or interior forwarding |
+
+The table is an interpretation rule for the existing signed Node-entry
+Role-Domain and subrole fields; it adds no field and does not change the
+`ARDCPR03` profile grammar. The HELLO is itself protected by the recipient TLS channel.
 It binds the full channel to current verified public facts; it contains no
 Name, Target, Persona, permission ID or Isolation Context identifier.
 On Endpoint-to-role channels, before ADMIT/BOOTSTRAP permit only HELLO
@@ -218,15 +237,25 @@ forwarding, not TLS early Application Data. It is needed by the latency model.
 On a successor Node Carrier, mutual TLS verifies both exact current Node keys
 and their State-authorized duties. The dialer sends HELLO on lane zero with
 purpose=forwarding, the receiving Node/duty and the exact current State/profile
-binding; the receiver verifies every field before ACCEPT. This HELLO and the
+binding; the receiver verifies every field before ACCEPT. This outer
+`HELLO=forwarding` is its own Carrier state, not a lookup of the inner OPEN's
+recipient assignment: it may establish a bounded Carrier to an issuer or
+Introduction duty even though those duties are not forwarding destinations.
+It authorizes only bounded creation of inner channels. This HELLO and the
 TLS-authenticated public peer identities replace the old LegBinding record;
 no generation-2 LegBinding bytes or Endpoint context label cross this Carrier.
 The receiver cannot substitute a peer or return a different profile in ACCEPT.
 
 Only this authenticated outer channel may use OPEN to allocate an inner TLS
 handshake lane without an Endpoint token on the outer channel. Such an OPEN
-must name the receiving Node itself, its exact duty and an eligible terminal
-or forwarding purpose. It never authorizes that receiver to dial another Node.
+must name the receiving Node itself, its exact duty and a purpose permitted by
+the assignment table. A different Node, duty or digest is unavailable before
+dial, reuse of a ready Carrier or forwarding any bytes. It never authorizes
+that receiver to dial another Node. The fresh inner role TLS HELLO must name
+the same receiving Node/duty and the exact purpose assigned by that OPEN; a
+mismatch is unavailable before admission or bytes. The Name row does not make
+Names available: terminal Name handling remains reserved and refuses this
+generation's requests as specified below.
 Its nonce/IDs are local; its initial bytes use the same 4,096-byte handshake
 allowance and whole-Node caps, with a deadline no later than ten seconds or
 the earlier parent/authority deadline. HELLO, OPEN and initial handshake bytes

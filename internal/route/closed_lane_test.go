@@ -67,6 +67,31 @@ func TestClosedLaneRejectsGenerationTwoAndOversizedAllocation(t *testing.T) {
 	}
 }
 
+func TestClosedPurposeAssignmentTablePermitsOnlyNormativeDuties(t *testing.T) {
+	cases := []struct {
+		purpose         ClosedPurpose
+		domain, subrole uint8
+		allowed         bool
+	}{
+		{ClosedPurposeIssuer, closedRoleDomainRendezvous, closedDutyIssuance, true},
+		{ClosedPurposeName, closedRoleDomainRendezvous, closedDutyResolution, true},
+		{ClosedPurposeReachability, closedRoleDomainRendezvous, closedDutyResolution, true},
+		{ClosedPurposeIntroduction, closedRoleDomainIntroduction, closedDutyIntroduction, true},
+		{ClosedPurposeSubmission, closedRoleDomainIntroduction, closedDutyIntroduction, true},
+		{ClosedPurposeDataJoin, closedRoleDomainRendezvous, closedDutyDataJoin, true},
+		{ClosedPurposeForwarding, closedRoleDomainInitiator, closedDutyAdjacent, true},
+		{ClosedPurposeForwarding, closedRoleDomainResponder, closedDutyInterior, true},
+		{ClosedPurposeIssuer, closedRoleDomainRendezvous, closedDutyResolution, false},
+		{ClosedPurposeDataJoin, closedRoleDomainIntroduction, closedDutyIntroduction, false},
+		{ClosedPurposeForwarding, closedRoleDomainIntroduction, closedDutyIntroduction, false},
+	}
+	for _, test := range cases {
+		if got := ClosedPurposePermitsDuty(test.purpose, test.domain, test.subrole); got != test.allowed {
+			t.Fatalf("purpose %d with %d/%d allowed=%t, want %t", test.purpose, test.domain, test.subrole, got, test.allowed)
+		}
+	}
+}
+
 func TestClosedLaneRejectsUnknownAndWrongLaneFormsBeforeAllocation(t *testing.T) {
 	cases := []ClosedLaneFrame{
 		{Kind: 13, Lane: 0},

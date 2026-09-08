@@ -9,8 +9,7 @@ import (
 
 func TestClosedAdmissionChannelBindsHELLOExporterBeforeBurningToken(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
-	receiver := ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, DutyGeneration: 6, NotAfter: now.Add(time.Hour)}
-	receiver.AllowedPurposes[ClosedPurposeIssuer] = true
+	receiver := ClosedRoleReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6, RoleDomain: closedRoleDomainRendezvous, Subrole: closedDutyIssuance, ExpectedPurpose: ClosedPurposeIssuer, NotAfter: now.Add(time.Hour)}
 	spends, err := OpenClosedSpendLedger(t.TempDir(), ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		t.Fatal(err)

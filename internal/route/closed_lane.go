@@ -41,6 +41,50 @@ const (
 	ClosedPurposeForwarding   ClosedPurpose = 7
 )
 
+const (
+	closedRoleDomainInitiator    = uint8(1)
+	closedRoleDomainRendezvous   = uint8(2)
+	closedRoleDomainResponder    = uint8(3)
+	closedRoleDomainIntroduction = uint8(4)
+
+	closedDutyAdjacent     = uint8(1)
+	closedDutyInterior     = uint8(2)
+	closedDutyIntroduction = uint8(3)
+	closedDutyDataJoin     = uint8(4)
+	closedDutyResolution   = uint8(5)
+	closedDutyIssuance     = uint8(6)
+)
+
+// ClosedPurposePermitsDuty implements the generation-3 normative assignment
+// table. It is only one admission predicate: callers must still enforce the
+// accepted profile/Node Record, role transitions, family exclusions, exact
+// duty and all admission and resource limits before they dial or forward.
+func ClosedPurposePermitsDuty(purpose ClosedPurpose, domain, subrole uint8) bool {
+	switch purpose {
+	case ClosedPurposeIssuer:
+		return domain == closedRoleDomainRendezvous && subrole == closedDutyIssuance
+	case ClosedPurposeName, ClosedPurposeReachability:
+		return domain == closedRoleDomainRendezvous && subrole == closedDutyResolution
+	case ClosedPurposeIntroduction, ClosedPurposeSubmission:
+		return domain == closedRoleDomainIntroduction && subrole == closedDutyIntroduction
+	case ClosedPurposeDataJoin:
+		return domain == closedRoleDomainRendezvous && subrole == closedDutyDataJoin
+	case ClosedPurposeForwarding:
+		return (domain == closedRoleDomainInitiator || domain == closedRoleDomainRendezvous || domain == closedRoleDomainResponder) &&
+			(subrole == closedDutyAdjacent || subrole == closedDutyInterior)
+	default:
+		return false
+	}
+}
+
+func validClosedDutyAssignment(domain, subrole uint8) bool {
+	return ClosedPurposePermitsDuty(ClosedPurposeIssuer, domain, subrole) ||
+		ClosedPurposePermitsDuty(ClosedPurposeName, domain, subrole) ||
+		ClosedPurposePermitsDuty(ClosedPurposeIntroduction, domain, subrole) ||
+		ClosedPurposePermitsDuty(ClosedPurposeDataJoin, domain, subrole) ||
+		ClosedPurposePermitsDuty(ClosedPurposeForwarding, domain, subrole)
+}
+
 // ClosedLaneFrame is one bounded generation-3 ARDP frame. Lane zero is used
 // only for channel admission; lane ownership is enforced by the caller.
 type ClosedLaneFrame struct {

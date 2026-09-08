@@ -13,10 +13,10 @@ const (
 // ClosedOuterReceiver is the complete public State binding accepted by one
 // successor Node Carrier before it allocates an inner TLS handshake lane.
 type ClosedOuterReceiver struct {
-	NetworkID, StateGeneration, StateDigest, ProfileDigest, NodeID [32]byte
-	DutyGeneration                                                 uint64
-	Deadline                                                       time.Time
-	AllowedPurposes                                                [8]bool
+	NetworkID, StateGeneration, StateDigest, ProfileDigest, NodeID, RecordDigest [32]byte
+	DutyGeneration                                                               uint64
+	RoleDomain, Subrole                                                          uint8
+	Deadline                                                                     time.Time
 }
 
 // ClosedOuterHandshake accepts only the public outer HELLO and a bounded
@@ -32,6 +32,7 @@ type ClosedOuterHandshake struct {
 type closedOuterChild struct {
 	deadline time.Time
 	bytes    uint32
+	purpose  ClosedPurpose
 }
 
 // ClosedOpen names the sole receiving Node/duty for a child inner TLS
@@ -120,14 +121,32 @@ func (handshake *ClosedOuterHandshake) open(frame ClosedLaneFrame) error {
 	open, err := DecodeClosedOpen(frame.Body)
 	now := handshake.clock().UTC()
 	if err != nil || open.NextNodeID != handshake.receiver.NodeID || open.NextDutyGeneration != handshake.receiver.DutyGeneration ||
-		!handshake.receiver.AllowedPurposes[open.Purpose] || !open.Deadline.After(now) || open.Deadline.After(handshake.receiver.Deadline) ||
+		!ClosedPurposePermitsDuty(open.Purpose, handshake.receiver.RoleDomain, handshake.receiver.Subrole) || !open.Deadline.After(now) || open.Deadline.After(handshake.receiver.Deadline) ||
 		open.Deadline.After(now.Add(10*time.Second)) {
 		return errors.New("closed outer OPEN is unavailable")
 	}
 	if _, exists := handshake.children[frame.Lane]; exists {
 		return errors.New("closed outer child lane is reused")
 	}
-	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline}
+	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline, purpose: open.Purpose}
+	return nil
+}
+
+// VerifyInnerHello binds the fresh TLS channel in one allocated outer lane to
+// the exact purpose that its OPEN selected. The caller invokes it only after
+// the opaque bytes have completed a separately authenticated inner TLS
+// handshake, and still passes that HELLO to the receiving role admission.
+func (handshake *ClosedOuterHandshake) VerifyInnerHello(lane uint32, hello ClosedHello) error {
+	if handshake == nil || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
+		return errors.New("closed inner HELLO is unavailable")
+	}
+	child, exists := handshake.children[lane]
+	if !exists || !validClosedHello(hello) || hello.NetworkID != handshake.receiver.NetworkID || hello.StateGeneration != handshake.receiver.StateGeneration ||
+		hello.StateDigest != handshake.receiver.StateDigest || hello.ProfileDigest != handshake.receiver.ProfileDigest ||
+		hello.RecipientNodeID != handshake.receiver.NodeID || hello.RecipientDutyGeneration != handshake.receiver.DutyGeneration ||
+		hello.Purpose != child.purpose || !hello.Deadline.After(handshake.clock().UTC()) || hello.Deadline.After(child.deadline) {
+		return errors.New("closed inner HELLO is unavailable")
+	}
 	return nil
 }
 
@@ -143,6 +162,6 @@ func (handshake *ClosedOuterHandshake) bytes(frame ClosedLaneFrame) ([]byte, err
 
 func validClosedOuterReceiver(receiver ClosedOuterReceiver) bool {
 	return receiver.NetworkID != [32]byte{} && receiver.StateGeneration != [32]byte{} && receiver.StateDigest != [32]byte{} &&
-		receiver.ProfileDigest != [32]byte{} && receiver.NodeID != [32]byte{} && receiver.DutyGeneration != 0 &&
-		!receiver.Deadline.IsZero() && receiver.Deadline == receiver.Deadline.UTC().Truncate(time.Second)
+		receiver.ProfileDigest != [32]byte{} && receiver.NodeID != [32]byte{} && receiver.RecordDigest != [32]byte{} && receiver.DutyGeneration != 0 &&
+		validClosedDutyAssignment(receiver.RoleDomain, receiver.Subrole) && !receiver.Deadline.IsZero() && receiver.Deadline == receiver.Deadline.UTC().Truncate(time.Second)
 }

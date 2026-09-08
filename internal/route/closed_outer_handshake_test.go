@@ -31,6 +31,16 @@ func TestClosedOuterHandshakeOnlyAllocatesBoundedInnerTLS(t *testing.T) {
 	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: openBody}); err != nil || got != nil {
 		t.Fatalf("outer OPEN = %x / %v", got, err)
 	}
+	inner := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
+		Purpose: ClosedPurposeIssuer, ChannelNonce: [32]byte{9}, Deadline: receiver.Deadline}
+	if err := handshake.VerifyInnerHello(1, inner); err != nil {
+		t.Fatalf("matching inner HELLO = %v", err)
+	}
+	inner.Purpose = ClosedPurposeDataJoin
+	if err := handshake.VerifyInnerHello(1, inner); err == nil {
+		t.Fatal("outer child accepted an inner HELLO for a different purpose")
+	}
 	innerTLS := bytes.Repeat([]byte{9}, closedOuterHandshakeBytes)
 	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: innerTLS}); err != nil || !bytes.Equal(got, innerTLS) {
 		t.Fatalf("outer TLS bytes = %x / %v", got, err)
@@ -70,11 +80,18 @@ func TestClosedOuterHandshakeRefusesBootstrapAndSubstitutedRecipient(t *testing.
 	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: openBody}); err == nil {
 		t.Fatal("outer carrier accepted substituted recipient")
 	}
+	incompatible, err := EncodeClosedOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration,
+		Purpose: ClosedPurposeDataJoin, Deadline: receiver.Deadline})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 3, Body: incompatible}); err == nil {
+		t.Fatal("outer carrier accepted an incompatible issuer assignment")
+	}
 }
 
 func closedOuterHandshakeReceiver(now time.Time) ClosedOuterReceiver {
-	receiver := ClosedOuterReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
-		ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, DutyGeneration: 6, Deadline: now.Add(10 * time.Second)}
-	receiver.AllowedPurposes[ClosedPurposeIssuer] = true
-	return receiver
+	return ClosedOuterReceiver{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
+		ProfileDigest: [32]byte{4}, NodeID: [32]byte{5}, RecordDigest: [32]byte{6}, DutyGeneration: 6,
+		RoleDomain: closedRoleDomainRendezvous, Subrole: closedDutyIssuance, Deadline: now.Add(10 * time.Second)}
 }
