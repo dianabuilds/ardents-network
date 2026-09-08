@@ -76,6 +76,7 @@ func closedTokenServerName(prefix byte, node [32]byte) string {
 	if node == [32]byte{} || prefix != 'i' && prefix != 'n' {
 		return ""
 	}
-	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(node[:])
+	digest := sha256.Sum256(node[:])
+	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(digest[:])
 	return string(prefix) + "-" + strings.ToLower(encoded) + ".invalid"
 }

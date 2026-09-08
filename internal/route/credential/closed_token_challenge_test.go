@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base32"
 	"encoding/binary"
+	"strings"
 	"testing"
 	"time"
 )
@@ -30,5 +32,13 @@ func TestClosedTokenChallengeBindsOnlyPublicReceiverFacts(t *testing.T) {
 	}
 	if _, _, _, err := ClosedTokenChallenge(context, append([]byte(nil), spki[:len(spki)-1]...), nonce); err == nil {
 		t.Fatal("accepted malformed exact State SPKI")
+	}
+	issuerDigest := sha256.Sum256(context.IssuerNodeID[:])
+	receiverDigest := sha256.Sum256(context.ReceiverNodeID[:])
+	encodeName := func(prefix string, digest [32]byte) string {
+		return prefix + "-" + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(digest[:])) + ".invalid"
+	}
+	if !bytes.Contains(challenge, []byte(encodeName("i", issuerDigest))) || !bytes.Contains(challenge, []byte(encodeName("n", receiverDigest))) {
+		t.Fatalf("challenge did not use hashed Node IDs: %x", challenge)
 	}
 }
