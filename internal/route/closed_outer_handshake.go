@@ -3,6 +3,7 @@ package route
 import (
 	"encoding/binary"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type ClosedOuterReceiver struct {
 // child handshake allocation. It has no Endpoint admission, bootstrap result,
 // Target, or data-forwarding authority.
 type ClosedOuterHandshake struct {
+	mu       sync.Mutex
 	receiver ClosedOuterReceiver
 	clock    func() time.Time
 	duty     *closedDutyChannel
@@ -62,7 +64,12 @@ func NewClosedOuterHandshake(receiver ClosedOuterReceiver, limits *ClosedDutyLim
 // Close releases all child and queued-byte reservations. It is required when
 // the Node Carrier closes, expires or is withdrawn.
 func (handshake *ClosedOuterHandshake) Close() {
-	if handshake == nil || handshake.duty == nil {
+	if handshake == nil {
+		return
+	}
+	handshake.mu.Lock()
+	defer handshake.mu.Unlock()
+	if handshake.duty == nil {
 		return
 	}
 	for lane, child := range handshake.children {
@@ -79,7 +86,12 @@ func (handshake *ClosedOuterHandshake) Close() {
 // bytes. A caller must give those bytes to the separately authenticated inner
 // TLS state; this method never treats them as Application Data.
 func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, error) {
-	if handshake == nil || handshake.duty == nil || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
+	if handshake == nil {
+		return nil, errors.New("closed outer handshake is unavailable")
+	}
+	handshake.mu.Lock()
+	defer handshake.mu.Unlock()
+	if handshake.duty == nil || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
 		return nil, errors.New("closed outer handshake is unavailable")
 	}
 	if !handshake.hello {
@@ -164,7 +176,12 @@ func (handshake *ClosedOuterHandshake) open(frame ClosedLaneFrame) error {
 // the opaque bytes have completed a separately authenticated inner TLS
 // handshake, and still passes that HELLO to the receiving role admission.
 func (handshake *ClosedOuterHandshake) VerifyInnerHello(lane uint32, hello ClosedHello) error {
-	if handshake == nil || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
+	if handshake == nil {
+		return errors.New("closed inner HELLO is unavailable")
+	}
+	handshake.mu.Lock()
+	defer handshake.mu.Unlock()
+	if handshake.duty == nil || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
 		return errors.New("closed inner HELLO is unavailable")
 	}
 	child, exists := handshake.children[lane]
@@ -226,7 +243,12 @@ func (handshake *ClosedOuterHandshake) close(frame ClosedLaneFrame) error {
 // ConsumeInnerBytes releases receive credit only after the receiving inner
 // TLS/role consumer has taken the opaque bytes from its bounded lane queue.
 func (handshake *ClosedOuterHandshake) ConsumeInnerBytes(lane uint32, bytes uint32) (ClosedLaneFrame, error) {
-	if handshake == nil || handshake.duty == nil || bytes == 0 || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
+	if handshake == nil {
+		return ClosedLaneFrame{}, errors.New("closed outer lane credit is unavailable")
+	}
+	handshake.mu.Lock()
+	defer handshake.mu.Unlock()
+	if handshake.duty == nil || bytes == 0 || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
 		return ClosedLaneFrame{}, errors.New("closed outer lane credit is unavailable")
 	}
 	child, exists := handshake.children[lane]
