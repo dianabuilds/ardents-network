@@ -5,10 +5,11 @@ import "errors"
 const (
 	roleProbeProfile        = "h3-role-probe-v1"
 	interactiveRouteProfile = "ardents-interactive-route-v2"
+	closedRouteProfile      = "ardents-route-v3"
 )
 
 func knownProfile(profile string) bool {
-	return profile == roleProbeProfile || profile == interactiveRouteProfile
+	return profile == roleProbeProfile || profile == interactiveRouteProfile || profile == closedRouteProfile
 }
 
 func matchProfile(expected, actual string) error {
@@ -22,7 +23,7 @@ func matchProfile(expected, actual string) error {
 }
 
 func requiredCapability(profile string) byte {
-	if profile == interactiveRouteProfile {
+	if profile == interactiveRouteProfile || profile == closedRouteProfile {
 		return 2
 	}
 	return 1
