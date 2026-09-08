@@ -56,11 +56,11 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 
 func closedProfileGeneration(encoded string) ([32]byte, error) {
 	if len(encoded) != 64 {
-		return [32]byte{}, errors.New("State generation is invalid")
+		return [32]byte{}, errors.New("state generation is invalid")
 	}
 	decoded, err := hex.DecodeString(encoded)
 	if err != nil || hex.EncodeToString(decoded) != encoded {
-		return [32]byte{}, errors.New("State generation is invalid")
+		return [32]byte{}, errors.New("state generation is invalid")
 	}
 	var generation [32]byte
 	copy(generation[:], decoded)
