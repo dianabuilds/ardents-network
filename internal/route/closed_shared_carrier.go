@@ -195,7 +195,8 @@ func classifyClosedSharedTLS(state tls.ConnectionState, verify ClosedSharedPeerV
 	if !ok || len(public) != ed25519.PublicKeySize {
 		return ClosedSharedCarrier{}, errors.New("closed shared carrier certificate key is invalid")
 	}
-	key := identifierFromKey(public)
+	var key [32]byte
+	copy(key[:], public)
 	if !verify(key) {
 		return ClosedSharedCarrier{}, errors.New("closed shared carrier peer is unavailable")
 	}
