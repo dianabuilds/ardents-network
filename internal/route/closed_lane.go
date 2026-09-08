@@ -14,12 +14,17 @@ const (
 	closedLaneMaximum    = 16 << 10
 
 	closedFrameHello     = uint8(1)
+	closedFrameAdmit     = uint8(2)
 	closedFrameBootstrap = uint8(3)
 	closedFrameOpen      = uint8(4)
 	closedFrameAccept    = uint8(5)
 	closedFrameBytes     = uint8(6)
+	closedFrameCredit    = uint8(7)
+	closedFrameEOF       = uint8(8)
+	closedFrameClose     = uint8(9)
 	closedFrameOperation = uint8(10)
 	closedFrameResult    = uint8(11)
+	closedFrameKeepalive = uint8(12)
 )
 
 // ClosedPurpose is the one current recipient role purpose of a v3 channel.
@@ -204,6 +209,9 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 	if frame.Kind == closedFrameHello {
 		return frame.Lane == 0 && len(frame.Body) == 209
 	}
+	if frame.Kind == closedFrameAdmit {
+		return len(frame.Body) == 355
+	}
 	if frame.Kind == closedFrameBootstrap {
 		return frame.Lane == 0 && len(frame.Body) == 1
 	}
@@ -216,10 +224,25 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 	if frame.Kind == closedFrameBytes {
 		return frame.Lane != 0 && len(frame.Body) >= 1
 	}
-	if frame.Kind == closedFrameOperation || frame.Kind == closedFrameResult {
-		return frame.Lane == 0 && len(frame.Body) == closedTerminalOperationSize
+	if frame.Kind == closedFrameCredit {
+		return frame.Lane != 0 && len(frame.Body) == 4 && binary.BigEndian.Uint32(frame.Body) != 0
 	}
-	return true
+	if frame.Kind == closedFrameEOF {
+		return frame.Lane != 0 && len(frame.Body) == 0
+	}
+	if frame.Kind == closedFrameClose {
+		return frame.Lane != 0 && len(frame.Body) == 1 && frame.Body[0] <= 6
+	}
+	if frame.Kind == closedFrameOperation {
+		return frame.Lane != 0 && (len(frame.Body) == closedTerminalOperationSize || len(frame.Body) == closedSmallTerminalOperation)
+	}
+	if frame.Kind == closedFrameResult {
+		return frame.Lane != 0 && len(frame.Body) == closedTerminalOperationSize
+	}
+	if frame.Kind == closedFrameKeepalive {
+		return frame.Lane == 0 && len(frame.Body) == 0
+	}
+	return false
 }
 
 func validClosedHello(hello ClosedHello) bool {

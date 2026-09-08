@@ -66,3 +66,32 @@ func TestClosedLaneRejectsGenerationTwoAndOversizedAllocation(t *testing.T) {
 		t.Fatal("accepted an unknown bootstrap operation")
 	}
 }
+
+func TestClosedLaneRejectsUnknownAndWrongLaneFormsBeforeAllocation(t *testing.T) {
+	cases := []ClosedLaneFrame{
+		{Kind: 13, Lane: 0},
+		{Kind: closedFrameAdmit, Lane: 0, Body: make([]byte, 354)},
+		{Kind: closedFrameOpen, Lane: 0, Body: make([]byte, 49)},
+		{Kind: closedFrameBytes, Lane: 0, Body: []byte{1}},
+		{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 0}},
+		{Kind: closedFrameEOF, Lane: 1, Body: []byte{1}},
+		{Kind: closedFrameClose, Lane: 1, Body: []byte{7}},
+		{Kind: closedFrameOperation, Lane: 1, Body: make([]byte, 4095)},
+		{Kind: closedFrameResult, Lane: 1, Body: make([]byte, 4096)},
+		{Kind: closedFrameKeepalive, Lane: 1},
+	}
+	for _, frame := range cases {
+		if _, err := EncodeClosedLaneFrame(frame); err == nil {
+			t.Fatalf("accepted invalid closed frame: %+v", frame)
+		}
+	}
+	for _, frame := range []ClosedLaneFrame{
+		{Kind: closedFrameAdmit, Lane: 0, Body: make([]byte, 355)},
+		{Kind: closedFrameOperation, Lane: 1, Body: make([]byte, closedSmallTerminalOperation)},
+		{Kind: closedFrameKeepalive, Lane: 0},
+	} {
+		if _, err := EncodeClosedLaneFrame(frame); err != nil {
+			t.Fatalf("rejected valid closed frame: %+v / %v", frame, err)
+		}
+	}
+}

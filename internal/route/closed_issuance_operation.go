@@ -6,11 +6,12 @@ import (
 )
 
 const (
-	closedIssuanceOperation     = uint8(1)
-	closedTerminalOperationSize = 16 << 10
-	closedIssuancePayloadSize   = closedTerminalOperationSize - 1 - 32
-	closedIssuanceResultHeader  = 32 + 1 + 4
-	closedIssuanceResultPayload = closedTerminalOperationSize - closedIssuanceResultHeader
+	closedIssuanceOperation      = uint8(1)
+	closedSmallTerminalOperation = 4 << 10
+	closedTerminalOperationSize  = 16 << 10
+	closedIssuancePayloadSize    = closedTerminalOperationSize - 1 - 32
+	closedIssuanceResultHeader   = 32 + 1 + 4
+	closedIssuanceResultPayload  = closedTerminalOperationSize - closedIssuanceResultHeader
 )
 
 // ClosedIssuanceRequest is the target-free terminal operation that carries
