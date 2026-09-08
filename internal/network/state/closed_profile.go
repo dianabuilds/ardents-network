@@ -240,3 +240,10 @@ func validClosedProfileSPKI(encoded []byte) bool {
 	publicKey, err := x509.ParsePKCS1PublicKey(subjectPublicKeyInfo.SubjectPublicKey.Bytes)
 	return err == nil && publicKey.N.BitLen() == 2048 && publicKey.E == 65537 && publicKey.N.Sign() > 0 && publicKey.N.Bit(0) == 1 && (publicKey.N.BitLen()+7)/8 == 256
 }
+
+// ValidateClosedTokenSPKI reports whether encoded is the one selected
+// byte-exact RSA-PSS SubjectPublicKeyInfo grammar for a closed profile token
+// key. It does not accept an alternative generic RSA SPKI representation.
+func ValidateClosedTokenSPKI(encoded []byte) bool {
+	return validClosedProfileSPKI(encoded)
+}
