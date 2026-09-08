@@ -12,6 +12,7 @@ import (
 type ClosedProfileView struct {
 	Digest, IssuanceAuthorityKey [32]byte
 	IssuerNodeID                 [32]byte
+	IssuerDutyGeneration         uint64
 	Epoch                        uint64
 	NotBefore, NotAfter          time.Time
 	TokenKeyCount                uint8
@@ -67,6 +68,12 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 func closedProfileView(profile closedProfile) ClosedProfileView {
 	view := ClosedProfileView{Digest: profile.digest, IssuanceAuthorityKey: profile.authorityKey, IssuerNodeID: profile.issuerNodeID,
 		Epoch: profile.epoch, NotBefore: profile.notBefore, NotAfter: profile.notAfter, TokenKeyCount: uint8(len(profile.keys))}
+	for _, node := range profile.nodes {
+		if node.nodeID == profile.issuerNodeID {
+			view.IssuerDutyGeneration = node.generation
+			break
+		}
+	}
 	for index, key := range profile.keys {
 		view.TokenKeys[index].WindowStart = time.Unix(int64(key.windowStart), 0).UTC()
 		view.TokenKeys[index].Class = key.class

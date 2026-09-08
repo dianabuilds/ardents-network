@@ -221,6 +221,16 @@ permission-ID[32], request-ID[32], class u8, window-start u64,
 count u16 and SHA-256(concatenated blinded requests).
 A maximum of 32 means a count of tokens, not 32 unbounded nested requests.
 
+The canonical batch is `ARDIBR01`[8], the canonical Permission[228],
+request-ID[32], class u8, window-start u64, exact selected RSA-PSS SPKI[346],
+count u16, then count RFC 9578 TokenRequest values[259] and the holder
+Ed25519 signature[64]. Each TokenRequest is type 2, the least-significant
+byte of SHA-256(SPKI), and one 256-byte blinded element. The issuer obtains
+the full class/window/key binding only from this fixed framing and verifies
+the complete SPKI against its authenticated State projection before doing
+private-key work. The batch is at most 8,977 bytes; the encrypted response
+retains the separate fixed 16 KiB shape.
+
 The issuer first validates the permission, signature, exact body and current
 duty. Under one exclusive durable ledger transaction, it either returns an
 existing byte-identical committed result for the same ID/digest, or reserves

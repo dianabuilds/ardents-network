@@ -76,7 +76,7 @@ func TestPrepareSignAndInspectClosedProfileUsesOnePurposeBoundSigner(t *testing.
 		t.Fatal(err)
 	}
 	view, err := InspectClosedProfile(raw, generation, network, epochDigest, 7, signer.Public().(ed25519.PublicKey), now)
-	if err != nil || view.Epoch != 7 || view.Digest != sha256.Sum256(raw) || view.IssuerNodeID != issuer || view.TokenKeyCount != 1 ||
+	if err != nil || view.Epoch != 7 || view.Digest != sha256.Sum256(raw) || view.IssuerNodeID != issuer || view.IssuerDutyGeneration != 3 || view.TokenKeyCount != 1 ||
 		view.TokenKeys[0].WindowStart != now || view.TokenKeys[0].Class != 1 || !bytes.Equal(view.TokenKeys[0].SPKI[:], input.TokenKeys[0].SPKI) {
 		t.Fatalf("inspect closed profile = %+v / %v", view, err)
 	}
