@@ -49,6 +49,41 @@ func TestParseClosedProfileRejectsChangedStateAndNoncanonicalEntries(t *testing.
 	}
 }
 
+func TestPrepareSignAndInspectClosedProfileUsesOnePurposeBoundSigner(t *testing.T) {
+	now := time.Unix(1_800_003_600, 0).UTC()
+	signer := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
+	network := sha256.Sum256([]byte("closed profile network"))
+	generation := sha256.Sum256([]byte("closed profile generation"))
+	epochDigest := sha256.Sum256([]byte("closed profile epoch"))
+	issuer := sha256.Sum256([]byte("closed profile issuer"))
+	other := sha256.Sum256([]byte("closed profile other"))
+	nodes := []ClosedProfileNodeInput{
+		{NodeID: other, RecordDigest: sha256.Sum256([]byte("other record")), RoleDomain: 1, Subrole: 1, DutyGeneration: 2},
+		{NodeID: issuer, RecordDigest: sha256.Sum256([]byte("issuer record")), RoleDomain: 2, Subrole: 6, DutyGeneration: 3},
+	}
+	if bytes.Compare(nodes[0].NodeID[:], nodes[1].NodeID[:]) > 0 {
+		nodes[0], nodes[1] = nodes[1], nodes[0]
+	}
+	input := ClosedProfileInput{NetworkID: network, StateGeneration: generation, EpochDigest: epochDigest, Epoch: 7,
+		IssuerNodeID: issuer, IssuanceAuthorityKey: sha256.Sum256([]byte("admission authority")), NotBefore: now, NotAfter: now.Add(time.Hour),
+		Nodes: nodes, TokenKeys: []ClosedProfileTokenKeyInput{{WindowStart: now, Class: 1, SPKI: testClosedProfileSPKI(t)}}}
+	body, err := PrepareClosedProfile(input)
+	if err != nil || !bytes.HasPrefix(body, []byte(closedProfileMagic)) {
+		t.Fatalf("prepare closed profile = %x / %v", body, err)
+	}
+	raw, err := SignClosedProfile(input, signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := InspectClosedProfile(raw, generation, network, epochDigest, 7, signer.Public().(ed25519.PublicKey), now)
+	if err != nil || view.Epoch != 7 || view.Digest != sha256.Sum256(raw) {
+		t.Fatalf("inspect closed profile = %+v / %v", view, err)
+	}
+	if _, err := SignClosedProfile(input, nil); err == nil {
+		t.Fatal("signed closed profile without an authority")
+	}
+}
+
 func testClosedProfile(t *testing.T, authority ed25519.PrivateKey, network, generation, epochDigest [32]byte, now time.Time, nodes []closedProfileNode) []byte {
 	t.Helper()
 	var body bytes.Buffer

@@ -77,6 +77,14 @@ of the complete signed record. The closed State verifier owns acceptance and
 returns an immutable verified profile; credential code consumes its narrow
 issuer/key/permission projection, never an unchecked raw-profile callback.
 
+`ardents-control prepare-closed-profile` renders only this canonical unsigned
+body from a bounded public plan. `sign-closed-profile` rereads that plan, uses
+one owner-only PKCS#8 Ed25519 State-authority file, and writes a new profile
+artifact without printing the key or profile bytes. It cannot sign another
+grammar and never creates a replacement authority. `inspect-closed-profile` is
+read-only and checks the exact context and signature. A missing or malformed
+signer is unavailable; durable State acceptance remains separate.
+
 Each Node entry is Node-ID[32], SHA-256(exact signed Node Record)[32],
 Role-Domain u8, subrole u8 and duty-generation u64. Sort by Node-ID and reject
 duplicates. Domain values are Initiator=1, Rendezvous=2, Responder=3,
