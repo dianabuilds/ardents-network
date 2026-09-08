@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -42,6 +43,8 @@ func run(ctx context.Context, arguments []string, output io.Writer) (resultErr e
 	flags.StringVar(&raw.inputs, "inputs", "", "canonical input directory")
 	flags.StringVar(&raw.material, "materialization", "", "canonical materialization file")
 	flags.StringVar(&raw.profile, "profile", "", "selected Network State profile")
+	flags.StringVar(&raw.closedProfileAuthority, "closed-profile-authority", "", "pinned closed State profile signer")
+	flags.StringVar(&raw.closedProfile, "closed-profile", "", "signed ARDCPR03 profile")
 	if err := flags.Parse(arguments[1:]); err != nil {
 		return err
 	}
@@ -65,6 +68,20 @@ func run(ctx context.Context, arguments []string, output io.Writer) (resultErr e
 	if err != nil {
 		return fmt.Errorf("accept offline state: %w", err)
 	}
+	var profileDigest [32]byte
+	profileDigestText := ""
+	if raw.closedProfile != "" {
+		profile, readErr := readOperatorInput(raw.closedProfile, 64<<10)
+		if readErr != nil {
+			return fmt.Errorf("read closed profile: %w", readErr)
+		}
+		view, acceptErr := store.AcceptClosedProfile(profile)
+		if acceptErr != nil {
+			return fmt.Errorf("accept closed profile: %w", acceptErr)
+		}
+		profileDigest = view.Digest
+		profileDigestText = hex.EncodeToString(profileDigest[:])
+	}
 	encoded := json.NewEncoder(output)
 	encoded.SetEscapeHTML(false)
 	return encoded.Encode(struct {
@@ -75,8 +92,9 @@ func run(ctx context.Context, arguments []string, output io.Writer) (resultErr e
 		Epoch          uint64 `json:"epoch"`
 		ViewLength     uint32 `json:"view_length"`
 		RejectedLength uint32 `json:"rejected_length"`
+		ClosedProfile  string `json:"closed_profile_sha256,omitempty"`
 	}{
 		"ardents-state-event-v1", 1, "generation-accepted",
-		snapshot.Generation, snapshot.Epoch, snapshot.ViewLength, snapshot.RejectedLength,
+		snapshot.Generation, snapshot.Epoch, snapshot.ViewLength, snapshot.RejectedLength, profileDigestText,
 	})
 }
