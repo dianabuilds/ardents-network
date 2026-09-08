@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 )
@@ -149,6 +150,15 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	defer zero(state.RootMaterial)
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
+	}
+	if state.Binding.Kind == AuthorityAdmission {
+		zero(state.RootMaterial)
+		zero(state.AdmissionJournal)
+		state, info, err = vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
+		if err != nil {
+			return Receipt{}, err
+		}
+		return Receipt{Operation: OperationVerifyVaultRecord, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state), State: RecordActive}, nil
 	}
 	if err := vault.matchesFloor(state); err != nil {
 		return Receipt{}, err
@@ -358,6 +368,15 @@ func (vault *Vault) isEmpty() (bool, error) {
 			return false, fmt.Errorf("list vault records: %w", err)
 		}
 		if len(entries) != 0 {
+			return false, nil
+		}
+	}
+	entries, err := os.ReadDir(vault.root)
+	if err != nil {
+		return false, fmt.Errorf("list vault root: %w", err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "admission-ledger-") {
 			return false, nil
 		}
 	}

@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -79,16 +78,12 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if !request.Permission.NotBefore.Equal(now) || !request.Permission.NotAfter.Equal(now.Add(time.Hour)) {
 		return Receipt{}, ErrInvalid
 	}
-	sourceRaw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
-	if err != nil {
-		return Receipt{}, err
-	}
 	password, err := readPassword(ctx, secrets, SecretPromptVaultUnlock)
 	if err != nil {
 		return Receipt{}, err
 	}
 	defer zero(password)
-	source, _, err := openAdmissionAuthority(sourceRaw, password, operation.Expected)
+	source, _, err := vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -102,6 +97,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
+	allocations = admissionAllocationsForWindow(allocations, uint64(now.Unix()))
 	digest := sha256.Sum256(operation.AdmissionRequest)
 	for _, allocation := range allocations {
 		if allocation.id == request.Permission.PermissionID {
@@ -131,32 +127,14 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
-	floors, err := vault.readFloors()
+	info, err := vault.writeAdmissionSuccessor(operation.RecordID, source, successor, password)
 	if err != nil {
 		return Receipt{}, err
 	}
-	floor, found := floorFor(floors, source.Binding)
-	if !found {
-		return Receipt{}, ErrInvalid
-	}
-	sourceCurrent, successorCurrent := floorEqualsState(floor, source), floorEqualsState(floor, successor)
-	if !sourceCurrent && !successorCurrent {
-		return Receipt{}, ErrInvalid
-	}
-	recordID := admissionSuccessorRecordID(operation.RecordID, digest)
-	raw, info, err := vault.ensureAdmissionSuccessor(recordID, successor, password, sourceCurrent)
-	if err != nil {
+	if err := vault.advanceFloor(successor); err != nil {
 		return Receipt{}, err
 	}
-	defer zero(raw)
-	if sourceCurrent {
-		if err := vault.advanceFloor(successor); err != nil {
-			return Receipt{}, err
-		}
-	} else if err := vault.matchesFloor(successor); err != nil {
-		return Receipt{}, err
-	}
-	return Receipt{Operation: OperationIssueAdmissionPermission, RecordID: recordID, Envelope: info,
+	return Receipt{Operation: OperationIssueAdmissionPermission, RecordID: operation.RecordID, Envelope: info,
 		Authority: authorityReceipt(successor), AdmissionPermission: permission, State: RecordActive}, nil
 }
 
@@ -278,6 +256,16 @@ func withinAdmissionBudget(allocations []admissionAllocation) bool {
 	return user <= maximumUserAllocation && publisher <= maximumPublisherAllocation && issuer <= maximumIssuerAllocation
 }
 
+func admissionAllocationsForWindow(allocations []admissionAllocation, window uint64) []admissionAllocation {
+	current := make([]admissionAllocation, 0, len(allocations))
+	for _, allocation := range allocations {
+		if allocation.window == window {
+			current = append(current, allocation)
+		}
+	}
+	return current
+}
+
 func encodeAdmissionJournal(allocations []admissionAllocation) ([]byte, error) {
 	if len(allocations) > int(maximumUserAllocation+maximumPublisherAllocation) || !withinAdmissionBudget(allocations) {
 		return nil, ErrInvalid
@@ -338,47 +326,147 @@ func decodeAdmissionJournal(raw []byte) ([]admissionAllocation, error) {
 	return allocations, nil
 }
 
-func admissionSuccessorRecordID(recordID string, digest [32]byte) string {
-	record := []byte(recordID)
-	sum := sha256.Sum256(append(append([]byte("ardents-admission-authority-successor-v1\x00"), record...), digest[:]...))
-	return fmt.Sprintf("%x", sum[:16])
+// Admission journal state is deliberately a single replaceable encrypted
+// envelope. A successor vault record for every offline permission would turn
+// the selected 1,024-record vault bound into a lower, accidental allocation
+// quota. The durable floor binds this envelope's exact monotonic successor.
+func admissionLedgerPath(root, recordID string) (string, error) {
+	if !validRecordID(recordID) {
+		return "", ErrInvalid
+	}
+	return filepath.Join(root, "admission-ledger-"+recordID+".json"), nil
 }
 
-func (vault *Vault) ensureAdmissionSuccessor(recordID string, expected AuthorityState, password []byte, allowCreation bool) ([]byte, EnvelopeInfo, error) {
-	path := filepath.Join(vault.records, "record-"+recordID+".json")
+func (vault *Vault) openCurrentAdmissionAuthority(recordID string, password []byte, expected AuthorityBinding) (AuthorityState, EnvelopeInfo, error) {
+	baseRaw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+recordID+".json"))
+	if err != nil {
+		return AuthorityState{}, EnvelopeInfo{}, err
+	}
+	defer zero(baseRaw)
+	base, baseInfo, err := openAdmissionAuthority(baseRaw, password, expected)
+	if err != nil {
+		return AuthorityState{}, EnvelopeInfo{}, err
+	}
+	floors, err := vault.readFloors()
+	if err != nil {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		return AuthorityState{}, EnvelopeInfo{}, err
+	}
+	floor, found := floorFor(floors, expected)
+	if !found {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		return AuthorityState{}, EnvelopeInfo{}, ErrInvalid
+	}
+	path, err := admissionLedgerPath(vault.root, recordID)
+	if err != nil {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		return AuthorityState{}, EnvelopeInfo{}, err
+	}
+	raw, err := readEnvelopeFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		if !floorEqualsState(floor, base) {
+			zero(base.RootMaterial)
+			zero(base.AdmissionJournal)
+			return AuthorityState{}, EnvelopeInfo{}, ErrInvalid
+		}
+		return base, baseInfo, nil
+	}
+	if err != nil {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		return AuthorityState{}, EnvelopeInfo{}, err
+	}
+	defer zero(raw)
+	current, info, err := openAdmissionAuthority(raw, password, expected)
+	if err != nil {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		return AuthorityState{}, EnvelopeInfo{}, err
+	}
+	if floorEqualsState(floor, current) {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		return current, info, nil
+	}
+	if !floorEqualsState(floor, base) || !admissionLedgerFollowsFloor(current, floor) {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		zero(current.RootMaterial)
+		zero(current.AdmissionJournal)
+		return AuthorityState{}, EnvelopeInfo{}, ErrInvalid
+	}
+	if err := vault.advanceFloor(current); err != nil {
+		zero(base.RootMaterial)
+		zero(base.AdmissionJournal)
+		zero(current.RootMaterial)
+		zero(current.AdmissionJournal)
+		return AuthorityState{}, EnvelopeInfo{}, err
+	}
+	zero(base.RootMaterial)
+	zero(base.AdmissionJournal)
+	return current, info, nil
+}
+
+func admissionLedgerFollowsFloor(state AuthorityState, floor authorityFloor) bool {
+	if state.Generation != floor.Generation+1 || state.Revision != floor.Revision+1 || len(state.Watermarks) != len(floor.Watermarks) {
+		return false
+	}
+	for index := range state.Watermarks {
+		if state.Watermarks[index].Domain != floor.Watermarks[index].Domain || state.Watermarks[index].Value != floor.Watermarks[index].Value+1 {
+			return false
+		}
+	}
+	return true
+}
+
+func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected AuthorityState, password []byte) (EnvelopeInfo, error) {
+	path, err := admissionLedgerPath(vault.root, recordID)
+	if err != nil {
+		return EnvelopeInfo{}, err
+	}
 	raw, err := readEnvelopeFile(path)
 	if err == nil {
 		state, info, openErr := openAdmissionAuthority(raw, password, expected.Binding)
-		if openErr != nil || !sameAuthorityState(state, expected) {
+		if openErr == nil && sameAuthorityState(state, expected) {
+			zero(state.RootMaterial)
+			zero(state.AdmissionJournal)
+			return info, nil
+		}
+		if openErr != nil || !sameAuthorityState(state, source) {
 			zero(state.RootMaterial)
 			zero(state.AdmissionJournal)
 			zero(raw)
-			return nil, EnvelopeInfo{}, ErrInvalid
+			return EnvelopeInfo{}, ErrInvalid
 		}
 		zero(state.RootMaterial)
 		zero(state.AdmissionJournal)
-		return raw, info, nil
 	}
-	if !errors.Is(err, os.ErrNotExist) || !allowCreation {
-		return nil, EnvelopeInfo{}, ErrInvalid
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return EnvelopeInfo{}, ErrInvalid
 	}
 	plaintext, err := encodeAuthorityState(PurposeVault, expected)
 	if err != nil {
-		return nil, EnvelopeInfo{}, err
+		return EnvelopeInfo{}, err
 	}
 	defer zero(plaintext)
 	envelope, err := sealEnvelope(PurposeVault, plaintext, password)
 	if err != nil {
-		return nil, EnvelopeInfo{}, err
+		return EnvelopeInfo{}, err
 	}
-	if err := vault.writeRecord(recordID, envelope); err != nil {
+	defer zero(envelope)
+	if err := writeAtomicPrivate(path, envelope); err != nil {
 		zero(envelope)
-		return nil, EnvelopeInfo{}, err
+		return EnvelopeInfo{}, err
+	}
+	if err := verifyPersistedEnvelope(path, envelope); err != nil {
+		return EnvelopeInfo{}, err
 	}
 	info, err := inspectEnvelope(envelope)
 	if err != nil {
-		zero(envelope)
-		return nil, EnvelopeInfo{}, err
+		return EnvelopeInfo{}, err
 	}
-	return envelope, info, nil
+	return info, nil
 }

@@ -116,10 +116,14 @@ Ed25519[64]. The holder signs the ASCII domain
 complete request is exactly 269 bytes. Custody accepts only the current aligned
 UTC hour, independently confirms its SHA-256 before unlock, verifies this
 holder proof and returns a permission only from its separate encrypted
-admission root. A deterministic encrypted successor retains the exact request
-digest and consumption before acknowledgement; an identical retry returns the
-same permission, while a changed body for that permission ID fails. This is a
-fixed allocation operation, never a raw-signing interface.
+admission root. One atomically replaced encrypted allocation-ledger envelope
+holds the current authority successor and exact request digests; its monotonic
+floor is flushed only after the envelope is verified. This retains the complete
+allowed hourly reservation set without turning the vault's bounded record count
+into a smaller quota. An interrupted replacement is recovered only when it is
+the exact next floor; a restored older envelope is refused. An identical retry
+returns the same permission, while a changed body for that permission ID fails.
+This is a fixed allocation operation, never a raw-signing interface.
 
 This is a separately scoped permission signature, not a signature on a token.
 The authority key is independently identified in the signed closed issuer
