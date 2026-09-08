@@ -8,6 +8,9 @@ import (
 )
 
 func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
+	if snapshot.Profile == route.ClosedRouteProfile {
+		return startClosedIssuer(config, snapshot)
+	}
 	if snapshot.Profile != route.Profile {
 		return config.probe.startProbe(newProbeDuty(snapshot))
 	}

@@ -47,6 +47,10 @@ func runNodeRuntime(ctx context.Context, runtime nodeRuntime, output io.Writer) 
 		}
 		return view, nil
 	}
+	runtime.node.CurrentClosedProfile = func() (state.ClosedProfileView, bool) {
+		profile, currentErr := store.CurrentClosedProfile()
+		return profile, currentErr == nil
+	}
 	runtime.node.Emit = nodeEventEmitter(boundedOutput, runtime.diagnosticDirectory)
 	_, runErr := node.Run(ctx, runtime.node)
 	return errors.Join(runErr, store.Close(), stopClockObservation())

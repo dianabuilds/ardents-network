@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -110,21 +111,26 @@ type dutyAuthority struct{ ID, PublicKey [32]byte }
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
 type Config struct {
-	NetworkID          [32]byte
-	NodeID             [32]byte
-	IdentityKey        ed25519.PrivateKey
-	Current            func() (DutyView, error)
-	Probe              ProbeConfig
-	Rendezvous         RendezvousProfile
-	Initiator          InitiatorProfile
-	Introduction       IntroductionProfile
-	Responder          ResponderProfile
-	TransitIssuer      TransitIssuerProfile
-	PollInterval       time.Duration
-	Quarantine         time.Duration
-	ResourceProfile    string
-	NetworkStateRoot   string
-	LocalRoleStateRoot string
+	NetworkID     [32]byte
+	NodeID        [32]byte
+	IdentityKey   ed25519.PrivateKey
+	Current       func() (DutyView, error)
+	Probe         ProbeConfig
+	Rendezvous    RendezvousProfile
+	Initiator     InitiatorProfile
+	Introduction  IntroductionProfile
+	Responder     ResponderProfile
+	TransitIssuer TransitIssuerProfile
+	ClosedIssuer  ClosedIssuerProfile
+	// CurrentClosedProfile exposes only State's already accepted closed
+	// profile. It is unavailable instead of choosing profile bytes or a trust
+	// root from the Node plan.
+	CurrentClosedProfile func() (state.ClosedProfileView, bool)
+	PollInterval         time.Duration
+	Quarantine           time.Duration
+	ResourceProfile      string
+	NetworkStateRoot     string
+	LocalRoleStateRoot   string
 	// ResourceMeasure and CheckPlacement are behavior-test seams. Maintained
 	// runtime callers leave them nil and use ResourceProfile's platform adapter.
 	ResourceMeasure func() (resource.Sample, error)
@@ -185,6 +191,16 @@ type ResponderProfile struct {
 // certificate, and finite local reservations. State supplies the listener,
 // exact public profile, permitted Initiator, and duty lifetime.
 type TransitIssuerProfile struct {
+	Root            string
+	Certificate     tls.Certificate
+	ConnectionLimit uint16
+	DrainTimeout    time.Duration
+}
+
+// ClosedIssuerProfile contains the isolated RSA-PSS issuer root and bounded
+// direct role listener reservation. State selects its endpoint, carrier and
+// current issuer profile; this local profile cannot select a recipient.
+type ClosedIssuerProfile struct {
 	Root            string
 	Certificate     tls.Certificate
 	ConnectionLimit uint16

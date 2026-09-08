@@ -70,7 +70,8 @@ func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
 		return path
 	}
 	runtime, err := readNodePlan(write())
-	if err != nil || runtime.state.AcceptedProfile != route.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 {
+	if err != nil || runtime.state.AcceptedProfile != route.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 ||
+		runtime.node.ClosedIssuer.Root != plan.ClosedIssuer.Root || runtime.node.ClosedIssuer.ConnectionLimit != plan.ClosedIssuer.ConnectionLimit {
 		t.Fatalf("closed issuer State configuration = %+v / %v", runtime.state, err)
 	}
 	plan.ClosedProfileAuthority = strings.Repeat("ff", 32)
