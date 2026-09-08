@@ -126,7 +126,7 @@ func (ledger *closedTokenIssuerLedger) reserve(request ClosedTokenBatchRequest, 
 		return found, err
 	}
 	count := uint32(len(request.BlindedRequests))
-	var dutyUsed, permissionUsed uint32
+	var dutyUsed, permissionUsed, permissionBatches uint32
 	for _, reservation := range ledger.reservations {
 		if reservation.window == request.WindowStart {
 			dutyUsed += uint32(reservation.count)
@@ -134,8 +134,11 @@ func (ledger *closedTokenIssuerLedger) reserve(request ClosedTokenBatchRequest, 
 				permissionUsed += uint32(reservation.count)
 			}
 		}
+		if reservation.permissionID == request.Permission.PermissionID {
+			permissionBatches++
+		}
 	}
-	if dutyUsed+count > 65536 || permissionUsed+count > request.Permission.Maxima[request.Class-1] || len(ledger.reservations) == maximumClosedTokenReservations {
+	if dutyUsed+count > 65536 || permissionUsed+count > request.Permission.Maxima[request.Class-1] || permissionBatches >= 2 || len(ledger.reservations) == maximumClosedTokenReservations {
 		return false, nil
 	}
 	reservation := closedTokenIssuerReservation{requestID: request.RequestID, requestDigest: digest, permissionID: request.Permission.PermissionID,
