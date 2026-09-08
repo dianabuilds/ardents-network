@@ -29,11 +29,13 @@ type nodePlan struct {
 	DrainTimeoutMS          uint32             `json:"drain_timeout_ms"`
 	NodeResourceProfile     string             `json:"node_resource_profile,omitempty"`
 	DiagnosticDirectory     string             `json:"diagnostic_directory,omitempty"`
+	ClosedProfileAuthority  string             `json:"closed_profile_authority,omitempty"`
 	Rendezvous              *rendezvousPlan    `json:"rendezvous,omitempty"`
 	Initiator               *initiatorPlan     `json:"initiator,omitempty"`
 	Introduction            *introductionPlan  `json:"introduction,omitempty"`
 	Responder               *responderPlan     `json:"responder,omitempty"`
 	TransitIssuer           *transitIssuerPlan `json:"transit_issuer,omitempty"`
+	ClosedIssuer            *closedIssuerPlan  `json:"closed_issuer,omitempty"`
 }
 
 // rendezvousPlan contains only the local finite work bounds. State still
@@ -83,6 +85,14 @@ type transitIssuerPlan struct {
 	ConnectionLimit uint16 `json:"connection_limit"`
 	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
 }
+
+// closedIssuerPlan supplies only a local owner root and finite reservation.
+// State supplies the current closed profile, issuer Node and every recipient.
+type closedIssuerPlan struct {
+	Root            string `json:"root"`
+	ConnectionLimit uint16 `json:"connection_limit"`
+	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
+}
 type nodeSource struct {
 	Address        string `json:"address"`
 	ServerName     string `json:"server_name"`
@@ -108,7 +118,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if plan.Schema != "ardents-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
-	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil
+	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil
 	if plan.NodeResourceProfile == legacyRendezvousDedicatedHostResourceProfile {
 		plan.NodeResourceProfile = node.RendezvousDedicatedHostResourceProfile
 	}
@@ -121,7 +131,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		if plan.NodeResourceProfile != node.RendezvousDedicatedHostResourceProfile {
 			return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
 		}
-		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil {
+		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil {
 			return nodeRuntime{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
 		}
 	}
@@ -135,7 +145,15 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err := decodeOperatorFixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err
 	}
-	if nativeDuty {
+	if plan.ClosedIssuer != nil {
+		if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedProfileAuthority == "" {
+			return nodeRuntime{}, errors.New("closed issuer requires only its pinned closed profile reservation")
+		}
+		state.AcceptedProfile = route.ClosedRouteProfile
+	} else if nativeDuty {
+		if plan.ClosedProfileAuthority != "" {
+			return nodeRuntime{}, errors.New("closed profile authority requires a closed issuer reservation")
+		}
 		state.AcceptedProfile = route.Profile
 	}
 	for _, encoded := range plan.AuthorityPublic {
@@ -144,6 +162,16 @@ func readNodePlan(path string) (nodeRuntime, error) {
 			return nodeRuntime{}, err
 		}
 		state.Authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)
+	}
+	if plan.ClosedIssuer != nil {
+		public := make([]byte, ed25519.PublicKeySize)
+		if err := decodeOperatorFixedHex(plan.ClosedProfileAuthority, public); err != nil {
+			return nodeRuntime{}, err
+		}
+		if _, pinned := state.Authorities[sha256.Sum256(public)]; !pinned {
+			return nodeRuntime{}, errors.New("closed profile authority is not pinned by State")
+		}
+		state.ClosedProfileAuthority = ed25519.PublicKey(public)
 	}
 	if err := decodeOperatorFixedHex(plan.OrderSeed, state.Source.OrderSeed[:]); err != nil {
 		return nodeRuntime{}, err
