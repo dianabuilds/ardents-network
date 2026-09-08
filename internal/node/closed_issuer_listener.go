@@ -29,8 +29,19 @@ func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, 
 	if err != nil {
 		return nil, err
 	}
+	limits, err := route.NewClosedDutyLimits(config.now)
+	if err != nil {
+		return nil, errors.Join(err, issuer.Close())
+	}
+	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), snapshot.ProbeEndpoint, local.Certificate, func(key [32]byte) bool {
+		updated, currentErr := currentFacts(config)
+		return currentErr == nil && closedSharedPeerCurrent(config, updated, key, config.now())
+	}, local.ConnectionLimit)
+	if err != nil {
+		return nil, errors.Join(err, issuer.Close())
+	}
 	listener, err := credential.StartClosedTokenListener(context.Background(), credential.ClosedTokenListenerConfig{Issuer: issuer,
-		CarrierProfile: route.CarrierProfile(snapshot.CarrierProfile), Endpoint: snapshot.ProbeEndpoint, Certificate: local.Certificate,
+		SharedListener: shared, NodeHandler: closedIssuerNodeHandler(config, snapshot, local.Certificate, limits),
 		ConnectionLimit: local.ConnectionLimit, Clock: config.now})
 	if err != nil {
 		return nil, errors.Join(err, issuer.Close())

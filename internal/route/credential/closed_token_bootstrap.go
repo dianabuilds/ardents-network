@@ -23,7 +23,27 @@ func (issuer *ClosedTokenIssuer) ServeBootstrap(ctx context.Context, carrier io.
 		return err
 	}
 	hello, err := route.DecodeClosedHello(helloFrame.Body)
-	if err != nil || !issuer.acceptsBootstrapHello(hello) {
+	if err != nil {
+		return errors.New("closed issuer bootstrap HELLO is unavailable")
+	}
+	return issuer.serveBootstrapHello(ctx, carrier, controller, adjacency, hello)
+}
+
+// ServeBootstrapAfterHello continues only after an outer-lane owner has read,
+// bound and independently verified the inner HELLO. It cannot skip ordinary
+// issuer HELLO validation or turn an outer Node identity into admission.
+func (issuer *ClosedTokenIssuer) ServeBootstrapAfterHello(ctx context.Context, carrier io.ReadWriter, controller *route.ClosedBootstrapController, adjacency [32]byte, hello route.ClosedHello) error {
+	if issuer == nil || ctx == nil || carrier == nil || controller == nil || adjacency == [32]byte{} {
+		return errors.New("closed issuer bootstrap is invalid")
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return issuer.serveBootstrapHello(ctx, carrier, controller, adjacency, hello)
+}
+
+func (issuer *ClosedTokenIssuer) serveBootstrapHello(ctx context.Context, carrier io.ReadWriter, controller *route.ClosedBootstrapController, adjacency [32]byte, hello route.ClosedHello) error {
+	if !issuer.acceptsBootstrapHello(hello) {
 		return errors.New("closed issuer bootstrap HELLO is unavailable")
 	}
 	lease, err := controller.Admit(adjacency, hello.Deadline)

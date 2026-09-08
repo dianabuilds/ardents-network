@@ -184,11 +184,19 @@ func (lane *ClosedOuterBridgeLane) Write(value []byte) (int, error) {
 }
 
 func (lane *ClosedOuterBridgeLane) Close() error {
+	return lane.CloseWithStatus(1)
+}
+
+// CloseWithStatus terminates one locally owned lane and immediately releases
+// its receiver reservations without closing unrelated Carrier children.
+func (lane *ClosedOuterBridgeLane) CloseWithStatus(status byte) error {
 	if lane == nil || lane.lane == nil {
 		return nil
 	}
-	lane.lane.closeInput()
-	return nil
+	if status > 6 {
+		return errors.New("closed outer bridge close status is invalid")
+	}
+	return lane.lane.bridge.closeLocal(lane.lane, status)
 }
 
 func (lane *ClosedOuterBridgeLane) LocalAddr() net.Addr  { return closedOuterBridgeAddr{} }
@@ -223,6 +231,20 @@ func (bridge *ClosedOuterBridge) credit(frame ClosedLaneFrame) error {
 	}
 	lane.outboundCredit += bytes
 	return nil
+}
+
+func (bridge *ClosedOuterBridge) closeLocal(lane *closedOuterBridgeLane, status byte) error {
+	bridge.mu.Lock()
+	defer bridge.mu.Unlock()
+	if bridge.closed || bridge.lanes[lane.id] != lane {
+		return nil
+	}
+	if _, err := bridge.handshake.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+		return err
+	}
+	delete(bridge.lanes, lane.id)
+	lane.closeInput()
+	return bridge.write(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}})
 }
 
 func (lane *closedOuterBridgeLane) feed(value []byte) error {
