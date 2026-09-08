@@ -73,9 +73,16 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	if err != nil || view.Digest != sha256.Sum256(first) {
 		t.Fatalf("accept first closed profile = %+v, %v", view, err)
 	}
+	current, err := store.CurrentClosedProfile()
+	if err != nil || current != view {
+		t.Fatalf("current closed profile = %+v, %v", current, err)
+	}
 	second := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
 	if _, err := store.AcceptClosedProfile(second); err == nil {
 		t.Fatal("accepted a second closed profile digest")
+	}
+	if _, err := store.CurrentClosedProfile(); err == nil {
+		t.Fatal("returned a closed profile after durable conflict")
 	}
 	state, _, err := root.loadClosedProfile(generation)
 	if err != nil || state.conflict != sha256.Sum256(second) {

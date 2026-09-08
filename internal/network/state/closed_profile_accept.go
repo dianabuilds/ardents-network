@@ -65,6 +65,33 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 	return closedProfileView(profile), nil
 }
 
+// CurrentClosedProfile returns the one durably accepted profile only while it
+// still joins the current authenticated closed Route Epoch. A State successor,
+// conflict, expiry, or missing persisted profile is unavailable rather than a
+// caller-selected fallback.
+func (s *networkState) CurrentClosedProfile() (ClosedProfileView, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
+		return ClosedProfileView{}, errors.New("closed profile is unavailable")
+	}
+	generation, err := closedProfileGeneration(s.current.Generation)
+	if err != nil {
+		return ClosedProfileView{}, err
+	}
+	stored, raw, err := s.storage.loadClosedProfile(generation)
+	if err != nil || stored == (closedProfileState{}) || stored.conflict != [32]byte{} || stored.epoch != s.current.Epoch {
+		return ClosedProfileView{}, errors.New("closed profile is unavailable")
+	}
+	now := s.config.clock().UTC()
+	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
+	if err != nil || profile.digest != stored.accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
+		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.accepted) {
+		return ClosedProfileView{}, errors.New("closed profile is unavailable")
+	}
+	return closedProfileView(profile), nil
+}
+
 func closedProfileView(profile closedProfile) ClosedProfileView {
 	view := ClosedProfileView{Digest: profile.digest, IssuanceAuthorityKey: profile.authorityKey, IssuerNodeID: profile.issuerNodeID,
 		Epoch: profile.epoch, NotBefore: profile.notBefore, NotAfter: profile.notAfter, TokenKeyCount: uint8(len(profile.keys))}
