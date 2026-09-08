@@ -8,6 +8,7 @@ import (
 
 const (
 	closedOuterHandshakeBytes = 4 << 10
+	closedOuterLaneCredit     = 64 << 10
 )
 
 // ClosedOuterReceiver is the complete public State binding accepted by one
@@ -25,14 +26,16 @@ type ClosedOuterReceiver struct {
 type ClosedOuterHandshake struct {
 	receiver ClosedOuterReceiver
 	clock    func() time.Time
+	duty     *closedDutyChannel
 	hello    bool
 	children map[uint32]closedOuterChild
 }
 
 type closedOuterChild struct {
-	deadline time.Time
-	bytes    uint32
-	purpose  ClosedPurpose
+	deadline              time.Time
+	purpose               ClosedPurpose
+	bytes, credit, queued uint32
+	active, eof           bool
 }
 
 // ClosedOpen names the sole receiving Node/duty for a child inner TLS
@@ -45,18 +48,38 @@ type ClosedOpen struct {
 }
 
 // NewClosedOuterHandshake creates one unauthenticated outer state machine.
-func NewClosedOuterHandshake(receiver ClosedOuterReceiver, clock func() time.Time) (*ClosedOuterHandshake, error) {
+func NewClosedOuterHandshake(receiver ClosedOuterReceiver, limits *ClosedDutyLimits, clock func() time.Time) (*ClosedOuterHandshake, error) {
 	if clock == nil || !validClosedOuterReceiver(receiver) {
 		return nil, errors.New("closed outer handshake receiver is invalid")
 	}
-	return &ClosedOuterHandshake{receiver: receiver, clock: clock, children: make(map[uint32]closedOuterChild)}, nil
+	duty, err := limits.reserveChannel()
+	if err != nil {
+		return nil, errors.New("closed outer handshake receiver is unavailable")
+	}
+	return &ClosedOuterHandshake{receiver: receiver, clock: clock, duty: duty, children: make(map[uint32]closedOuterChild)}, nil
+}
+
+// Close releases all child and queued-byte reservations. It is required when
+// the Node Carrier closes, expires or is withdrawn.
+func (handshake *ClosedOuterHandshake) Close() {
+	if handshake == nil || handshake.duty == nil {
+		return
+	}
+	for lane, child := range handshake.children {
+		if child.queued != 0 {
+			handshake.duty.limits.dequeue(uint64(child.queued))
+		}
+		delete(handshake.children, lane)
+	}
+	handshake.duty.release()
+	handshake.duty = nil
 }
 
 // Accept consumes one frame and returns only newly accepted opaque inner TLS
 // bytes. A caller must give those bytes to the separately authenticated inner
 // TLS state; this method never treats them as Application Data.
 func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, error) {
-	if handshake == nil || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
+	if handshake == nil || handshake.duty == nil || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
 		return nil, errors.New("closed outer handshake is unavailable")
 	}
 	if !handshake.hello {
@@ -75,6 +98,10 @@ func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, er
 		return nil, handshake.open(frame)
 	case closedFrameBytes:
 		return handshake.bytes(frame)
+	case closedFrameEOF:
+		return nil, handshake.eof(frame)
+	case closedFrameClose:
+		return nil, handshake.close(frame)
 	default:
 		return nil, errors.New("closed outer frame is unavailable")
 	}
@@ -125,10 +152,10 @@ func (handshake *ClosedOuterHandshake) open(frame ClosedLaneFrame) error {
 		open.Deadline.After(now.Add(10*time.Second)) {
 		return errors.New("closed outer OPEN is unavailable")
 	}
-	if _, exists := handshake.children[frame.Lane]; exists {
+	if _, exists := handshake.children[frame.Lane]; exists || handshake.duty.reserveChild() != nil {
 		return errors.New("closed outer child lane is reused")
 	}
-	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline, purpose: open.Purpose}
+	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline, purpose: open.Purpose, credit: closedOuterLaneCredit}
 	return nil
 }
 
@@ -147,17 +174,70 @@ func (handshake *ClosedOuterHandshake) VerifyInnerHello(lane uint32, hello Close
 		hello.Purpose != child.purpose || !hello.Deadline.After(handshake.clock().UTC()) || hello.Deadline.After(child.deadline) {
 		return errors.New("closed inner HELLO is unavailable")
 	}
+	child.active = true
+	handshake.children[lane] = child
 	return nil
 }
 
 func (handshake *ClosedOuterHandshake) bytes(frame ClosedLaneFrame) ([]byte, error) {
 	child, exists := handshake.children[frame.Lane]
-	if !exists || len(frame.Body) == 0 || !handshake.clock().UTC().Before(child.deadline) || uint64(child.bytes)+uint64(len(frame.Body)) > closedOuterHandshakeBytes {
+	if !exists || len(frame.Body) == 0 || child.eof || !handshake.clock().UTC().Before(child.deadline) {
 		return nil, errors.New("closed outer handshake bytes are unavailable")
 	}
-	child.bytes += uint32(len(frame.Body))
+	bytes := uint32(len(frame.Body))
+	if !child.active {
+		if child.bytes+bytes > closedOuterHandshakeBytes {
+			return nil, errors.New("closed outer handshake bytes are unavailable")
+		}
+		child.bytes += bytes
+	} else if bytes > child.credit || child.queued+bytes > closedOuterLaneCredit || handshake.duty.limits.queue(uint64(bytes)) != nil {
+		return nil, errors.New("closed outer lane bytes are unavailable")
+	} else {
+		child.credit -= bytes
+		child.queued += bytes
+	}
 	handshake.children[frame.Lane] = child
 	return append([]byte(nil), frame.Body...), nil
+}
+
+func (handshake *ClosedOuterHandshake) eof(frame ClosedLaneFrame) error {
+	child, exists := handshake.children[frame.Lane]
+	if !exists || !child.active || child.eof || len(frame.Body) != 0 {
+		return errors.New("closed outer lane EOF is unavailable")
+	}
+	child.eof = true
+	handshake.children[frame.Lane] = child
+	return nil
+}
+
+func (handshake *ClosedOuterHandshake) close(frame ClosedLaneFrame) error {
+	child, exists := handshake.children[frame.Lane]
+	if !exists || !child.active || len(frame.Body) != 1 || frame.Body[0] > 6 {
+		return errors.New("closed outer lane close is unavailable")
+	}
+	if child.queued != 0 {
+		handshake.duty.limits.dequeue(uint64(child.queued))
+	}
+	handshake.duty.releaseChild()
+	delete(handshake.children, frame.Lane)
+	return nil
+}
+
+// ConsumeInnerBytes releases receive credit only after the receiving inner
+// TLS/role consumer has taken the opaque bytes from its bounded lane queue.
+func (handshake *ClosedOuterHandshake) ConsumeInnerBytes(lane uint32, bytes uint32) (ClosedLaneFrame, error) {
+	if handshake == nil || handshake.duty == nil || bytes == 0 || !handshake.clock().UTC().Before(handshake.receiver.Deadline) {
+		return ClosedLaneFrame{}, errors.New("closed outer lane credit is unavailable")
+	}
+	child, exists := handshake.children[lane]
+	if !exists || !child.active || child.eof || bytes > child.queued || bytes > closedOuterLaneCredit-child.credit {
+		return ClosedLaneFrame{}, errors.New("closed outer lane credit is unavailable")
+	}
+	child.queued -= bytes
+	child.credit += bytes
+	handshake.duty.limits.dequeue(uint64(bytes))
+	handshake.children[lane] = child
+	return ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane, Body: binary.BigEndian.AppendUint32(nil, bytes)}, nil
 }
 
 func validClosedOuterReceiver(receiver ClosedOuterReceiver) bool {

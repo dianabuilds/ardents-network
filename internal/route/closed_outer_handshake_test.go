@@ -9,7 +9,11 @@ import (
 func TestClosedOuterHandshakeOnlyAllocatesBoundedInnerTLS(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	receiver := closedOuterHandshakeReceiver(now)
-	handshake, err := NewClosedOuterHandshake(receiver, func() time.Time { return now })
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	handshake, err := NewClosedOuterHandshake(receiver, limits, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,6 +35,13 @@ func TestClosedOuterHandshakeOnlyAllocatesBoundedInnerTLS(t *testing.T) {
 	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: openBody}); err != nil || got != nil {
 		t.Fatalf("outer OPEN = %x / %v", got, err)
 	}
+	innerTLS := bytes.Repeat([]byte{9}, closedOuterHandshakeBytes)
+	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: innerTLS}); err != nil || !bytes.Equal(got, innerTLS) {
+		t.Fatalf("outer TLS bytes = %x / %v", got, err)
+	}
+	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
+		t.Fatal("accepted TLS handshake bytes beyond 4096 before inner HELLO")
+	}
 	inner := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
 		Purpose: ClosedPurposeIssuer, ChannelNonce: [32]byte{9}, Deadline: receiver.Deadline}
@@ -41,19 +52,30 @@ func TestClosedOuterHandshakeOnlyAllocatesBoundedInnerTLS(t *testing.T) {
 	if err := handshake.VerifyInnerHello(1, inner); err == nil {
 		t.Fatal("outer child accepted an inner HELLO for a different purpose")
 	}
-	innerTLS := bytes.Repeat([]byte{9}, closedOuterHandshakeBytes)
-	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: innerTLS}); err != nil || !bytes.Equal(got, innerTLS) {
-		t.Fatalf("outer TLS bytes = %x / %v", got, err)
+	operation := bytes.Repeat([]byte{7}, 16<<10)
+	if got, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: operation}); err != nil || !bytes.Equal(got, operation) {
+		t.Fatalf("post-TLS inner bytes = %x / %v", got, err)
 	}
-	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
-		t.Fatal("accepted TLS handshake bytes beyond 4096")
+	credit, err := handshake.ConsumeInnerBytes(1, uint32(len(operation)))
+	if err != nil || credit.Kind != closedFrameCredit || credit.Lane != 1 || !bytes.Equal(credit.Body, []byte{0, 0, 64, 0}) {
+		t.Fatalf("post-TLS credit = %+v / %v", credit, err)
+	}
+	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}); err != nil {
+		t.Fatalf("post-TLS EOF = %v", err)
+	}
+	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{7}}); err == nil {
+		t.Fatal("accepted bytes after lane EOF")
 	}
 }
 
 func TestClosedOuterHandshakeRefusesBootstrapAndSubstitutedRecipient(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	receiver := closedOuterHandshakeReceiver(now)
-	handshake, err := NewClosedOuterHandshake(receiver, func() time.Time { return now })
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	handshake, err := NewClosedOuterHandshake(receiver, limits, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
