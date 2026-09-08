@@ -14,7 +14,7 @@ func TestClosedRoleCarrierAuthenticatesDirectTCPAndQUIC(t *testing.T) {
 		t.Run(string(profile), func(t *testing.T) {
 			certificate := entryBindingCertificate(t, 151)
 			server := identifierFromKey(certificate.Leaf.PublicKey.(ed25519.PublicKey))
-			listener, err := ListenClosedRoleCarrier(profile, closedRoleCarrierTestEndpoint(t), certificate)
+			listener, err := ListenClosedRoleCarrier(profile, closedRoleCarrierTestEndpoint(t, profile), certificate)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -65,15 +65,31 @@ func TestClosedRoleCarrierAuthenticatesDirectTCPAndQUIC(t *testing.T) {
 	}
 }
 
-func closedRoleCarrierTestEndpoint(t *testing.T) string {
+func closedRoleCarrierTestEndpoint(t *testing.T, profile CarrierProfile) string {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	switch profile {
+	case ClosedCarrierTCP:
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		endpoint := listener.Addr().String()
+		if err := listener.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return endpoint
+	case ClosedCarrierQUIC:
+		listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		endpoint := listener.LocalAddr().String()
+		if err := listener.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return endpoint
+	default:
+		t.Fatal("unknown role carrier profile")
+		return ""
 	}
-	endpoint := listener.Addr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return endpoint
 }

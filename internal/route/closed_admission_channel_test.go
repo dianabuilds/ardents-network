@@ -16,9 +16,13 @@ func TestClosedAdmissionChannelBindsHELLOExporterBeforeBurningToken(t *testing.T
 		t.Fatal(err)
 	}
 	defer func() { _ = spends.Close() }()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
 	var exported, verified bool
 	var exporterContext [32]byte
-	channel, err := NewClosedAdmissionChannel(receiver, spends, func(label string, context []byte, length int) ([]byte, error) {
+	channel, err := NewClosedAdmissionChannel(receiver, spends, limits, func(label string, context []byte, length int) ([]byte, error) {
 		if label != closedChannelExporterLabel || length != 32 || len(context) != 32 {
 			t.Fatalf("exporter input = %q / %d / %d", label, length, len(context))
 		}

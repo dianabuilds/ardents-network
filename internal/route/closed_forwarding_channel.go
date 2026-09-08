@@ -40,13 +40,14 @@ type ClosedForwardingChannel struct {
 type closedForwardChild struct {
 	deadline time.Time
 	credit   uint64
+	queued   uint64
 	eof      bool
 }
 
 // NewClosedForwardingChannel creates only a class-2 forwarding owner. Control
 // and publication admission cannot silently become arbitrary forwarding.
 func NewClosedForwardingChannel(lease ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
-	if lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || authorize == nil || clock == nil || clock().IsZero() {
+	if lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || lease.duty == nil || authorize == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed forwarding channel is invalid")
 	}
 	return &ClosedForwardingChannel{lease: lease, authorize: authorize, clock: clock, children: make(map[uint32]closedForwardChild)}, nil
@@ -81,6 +82,9 @@ func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwa
 	if err != nil || !channel.clock().UTC().Before(open.Deadline) || open.Deadline.After(channel.lease.Deadline) || channel.authorize(open) != nil {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding OPEN is unavailable")
 	}
+	if err := channel.lease.duty.reserveChild(); err != nil {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding child capacity is unavailable")
+	}
 	channel.children[frame.Lane] = closedForwardChild{deadline: open.Deadline, credit: closedLaneCredit}
 	channel.lastOdd = frame.Lane
 	return ClosedForwardingEvent{Kind: closedFrameOpen, Lane: frame.Lane, Open: open}, nil
@@ -91,9 +95,14 @@ func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForw
 	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.received+uint64(len(frame.Body)) > channel.lease.Bytes {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding bytes are unavailable")
 	}
-	child.credit -= uint64(len(frame.Body))
+	bytes := uint64(len(frame.Body))
+	if err := channel.lease.duty.limits.queue(bytes); err != nil {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding queue is unavailable")
+	}
+	child.credit -= bytes
+	child.queued += bytes
 	channel.children[frame.Lane] = child
-	channel.received += uint64(len(frame.Body))
+	channel.received += bytes
 	return ClosedForwardingEvent{Kind: closedFrameBytes, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}, nil
 }
 
@@ -108,10 +117,13 @@ func (channel *ClosedForwardingChannel) eof(frame ClosedLaneFrame) (ClosedForwar
 }
 
 func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
-	if _, found := channel.children[frame.Lane]; !found {
+	child, found := channel.children[frame.Lane]
+	if !found {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding close is unavailable")
 	}
+	channel.lease.duty.limits.dequeue(child.queued)
 	delete(channel.children, frame.Lane)
+	channel.lease.duty.releaseChild()
 	return ClosedForwardingEvent{Kind: closedFrameClose, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}, nil
 }
 
@@ -125,7 +137,12 @@ func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (Close
 	if !found || child.eof || uint64(bytes) > closedLaneCredit-child.credit {
 		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
 	}
+	if uint64(bytes) > child.queued {
+		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
+	}
 	child.credit += uint64(bytes)
+	child.queued -= uint64(bytes)
+	channel.lease.duty.limits.dequeue(uint64(bytes))
 	channel.children[lane] = child
 	body := make([]byte, 4)
 	binary.BigEndian.PutUint32(body, bytes)
@@ -139,5 +156,9 @@ func (channel *ClosedForwardingChannel) Cancel() {
 		return
 	}
 	channel.terminated = true
+	for _, child := range channel.children {
+		channel.lease.duty.limits.dequeue(child.queued)
+	}
 	clear(channel.children)
+	channel.lease.duty.release()
 }

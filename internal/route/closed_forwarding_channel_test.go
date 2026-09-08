@@ -8,7 +8,15 @@ import (
 
 func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute)}
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 2, Purpose: ClosedPurposeForwarding, Deadline: now.Add(30 * time.Second)}
 	channel, err := NewClosedForwardingChannel(lease, func(open ClosedOpen) error {
 		if open != allowed {

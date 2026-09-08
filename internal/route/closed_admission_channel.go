@@ -40,6 +40,18 @@ type ClosedAdmission struct {
 	Class    uint8
 	Deadline time.Time
 	Bytes    uint64
+	duty     *closedDutyChannel
+}
+
+// Release returns an admitted channel reservation when its owner performed no
+// forwarding handoff. A forwarding channel takes the same reservation and
+// releases it from Cancel after joining all children.
+func (admission *ClosedAdmission) Release() {
+	if admission == nil {
+		return
+	}
+	admission.duty.release()
+	admission.duty = nil
 }
 
 // ClosedAdmissionChannel owns lane-zero receiver admission on one fresh
@@ -48,6 +60,7 @@ type ClosedAdmission struct {
 type ClosedAdmissionChannel struct {
 	receiver ClosedRoleReceiver
 	spends   *ClosedSpendLedger
+	limits   *ClosedDutyLimits
 	exporter ClosedTLSExporter
 	verify   ClosedAdmissionVerifier
 	clock    func() time.Time
@@ -59,11 +72,11 @@ type ClosedAdmissionChannel struct {
 // NewClosedAdmissionChannel creates one unauthenticated receiver state. The
 // caller must bind it to the just-handshaken TLS exporter; a zero or missing
 // exporter cannot fall back to an unauthenticated lane.
-func NewClosedAdmissionChannel(receiver ClosedRoleReceiver, spends *ClosedSpendLedger, exporter ClosedTLSExporter, verify ClosedAdmissionVerifier, clock func() time.Time) (*ClosedAdmissionChannel, error) {
-	if !validClosedRoleReceiver(receiver) || spends == nil || exporter == nil || verify == nil || clock == nil || clock().IsZero() {
+func NewClosedAdmissionChannel(receiver ClosedRoleReceiver, spends *ClosedSpendLedger, limits *ClosedDutyLimits, exporter ClosedTLSExporter, verify ClosedAdmissionVerifier, clock func() time.Time) (*ClosedAdmissionChannel, error) {
+	if !validClosedRoleReceiver(receiver) || spends == nil || limits == nil || exporter == nil || verify == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed admission channel is invalid")
 	}
-	return &ClosedAdmissionChannel{receiver: receiver, spends: spends, exporter: exporter, verify: verify, clock: clock}, nil
+	return &ClosedAdmissionChannel{receiver: receiver, spends: spends, limits: limits, exporter: exporter, verify: verify, clock: clock}, nil
 }
 
 // Accept processes only HELLO then initial lane-zero ADMIT. It returns an
@@ -108,12 +121,22 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 	if err != nil {
 		return ClosedAdmission{}, err
 	}
+	releaseVerification, err := channel.limits.BeginVerification()
+	if err != nil {
+		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
+	}
+	defer releaseVerification()
 	window, err := channel.verify(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.binding})
 	if err != nil || !validClosedSpendWindow(window) {
 		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
 	}
 	now := channel.clock().UTC()
+	reservation, err := channel.limits.reserveChannel()
+	if err != nil {
+		return ClosedAdmission{}, errors.New("closed admission capacity is unavailable")
+	}
 	if err := channel.spends.Spend(token, window, now); err != nil {
+		reservation.release()
 		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
 	}
 	lease := ClosedAdmission{Class: class, Bytes: closedClassBytes(class), Deadline: now.Add(closedClassLifetime(class))}
@@ -124,8 +147,10 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 		lease.Deadline = channel.receiver.NotAfter
 	}
 	if !now.Before(lease.Deadline) {
+		reservation.release()
 		return ClosedAdmission{}, errors.New("closed admission lease is unavailable")
 	}
+	lease.duty = reservation
 	channel.admitted = true
 	return lease, nil
 }
