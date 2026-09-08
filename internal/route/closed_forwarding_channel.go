@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	closedLaneCredit      = uint64(64 << 10)
-	closedForwardChildren = 256
+	closedLaneCredit       = uint64(64 << 10)
+	closedForwardChildren  = 256
+	closedPrefixQueueBytes = uint64(4 << 20)
 )
 
 // ClosedForwardingAuthorizer checks one exact next public recipient before a
@@ -36,6 +37,7 @@ type ClosedForwardingChannel struct {
 	lastOdd    uint32
 	children   map[uint32]closedForwardChild
 	received   uint64
+	queued     uint64
 	terminated bool
 }
 
@@ -103,7 +105,7 @@ func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwa
 
 func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
 	child, found := channel.children[frame.Lane]
-	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.received+uint64(len(frame.Body)) > channel.lease.Bytes {
+	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.received+uint64(len(frame.Body)) > channel.lease.Bytes || channel.queued+uint64(len(frame.Body)) > closedPrefixQueueBytes {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding bytes are unavailable")
 	}
 	bytes := uint64(len(frame.Body))
@@ -114,6 +116,7 @@ func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForw
 	child.queued += bytes
 	channel.children[frame.Lane] = child
 	channel.received += bytes
+	channel.queued += bytes
 	return ClosedForwardingEvent{Kind: closedFrameBytes, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}, nil
 }
 
@@ -133,6 +136,7 @@ func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForw
 		return ClosedForwardingEvent{}, errors.New("closed forwarding close is unavailable")
 	}
 	channel.lease.duty.limits.dequeue(child.queued)
+	channel.queued -= child.queued
 	delete(channel.children, frame.Lane)
 	channel.lease.duty.releaseChild()
 	return ClosedForwardingEvent{Kind: closedFrameClose, Lane: frame.Lane, Bytes: append([]byte(nil), frame.Body...)}, nil
@@ -159,6 +163,7 @@ func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (Close
 	child.credit += uint64(bytes)
 	child.queued -= uint64(bytes)
 	channel.lease.duty.limits.dequeue(uint64(bytes))
+	channel.queued -= uint64(bytes)
 	channel.children[lane] = child
 	body := make([]byte, 4)
 	binary.BigEndian.PutUint32(body, bytes)
@@ -176,6 +181,7 @@ func (channel *ClosedForwardingChannel) Cancel() {
 	channel.terminated = true
 	for _, child := range channel.children {
 		channel.lease.duty.limits.dequeue(child.queued)
+		channel.queued -= child.queued
 	}
 	clear(channel.children)
 	channel.lease.duty.release()

@@ -114,6 +114,53 @@ func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
 	channel.Cancel()
 }
 
+func TestClosedForwardingChannelBoundsOnePrefixQueueBeforeDutyQueue(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	allowed := ClosedOpen{NextNodeID: [32]byte{21}, NextDutyGeneration: 22, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+		if open != allowed {
+			return errUnexpectedForwardOpen
+		}
+		return nil
+	}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer channel.Cancel()
+	openBody, err := EncodeClosedOpen(allowed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame := ClosedLaneFrame{Kind: closedFrameBytes, Body: bytes.Repeat([]byte{4}, int(closedLaneCredit))}
+	for index := uint32(0); index < uint32(closedPrefixQueueBytes/closedLaneCredit); index++ {
+		lane := index*2 + 1
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: openBody}); err != nil {
+			t.Fatalf("open lane %d: %v", lane, err)
+		}
+		frame.Lane = lane
+		if _, err := channel.Accept(frame); err != nil {
+			t.Fatalf("queue lane %d: %v", lane, err)
+		}
+	}
+	lane := uint32(closedPrefixQueueBytes/closedLaneCredit)*2 + 1
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: openBody}); err != nil {
+		t.Fatal(err)
+	}
+	frame.Lane = lane
+	if _, err := channel.Accept(frame); err == nil {
+		t.Fatal("accepted bytes over the forwarding prefix queue")
+	}
+}
+
 var errUnexpectedForwardOpen = &unexpectedForwardOpen{}
 
 type unexpectedForwardOpen struct{}
