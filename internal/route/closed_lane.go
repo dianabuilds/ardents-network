@@ -15,7 +15,9 @@ const (
 
 	closedFrameHello     = uint8(1)
 	closedFrameBootstrap = uint8(3)
+	closedFrameOpen      = uint8(4)
 	closedFrameAccept    = uint8(5)
+	closedFrameBytes     = uint8(6)
 	closedFrameOperation = uint8(10)
 	closedFrameResult    = uint8(11)
 )
@@ -205,8 +207,14 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 	if frame.Kind == closedFrameBootstrap {
 		return frame.Lane == 0 && len(frame.Body) == 1
 	}
+	if frame.Kind == closedFrameOpen {
+		return frame.Lane != 0 && len(frame.Body) == 49
+	}
 	if frame.Kind == closedFrameAccept {
 		return frame.Lane == 0 && len(frame.Body) == 5
+	}
+	if frame.Kind == closedFrameBytes {
+		return frame.Lane != 0 && len(frame.Body) >= 1
 	}
 	if frame.Kind == closedFrameOperation || frame.Kind == closedFrameResult {
 		return frame.Lane == 0 && len(frame.Body) == closedTerminalOperationSize
