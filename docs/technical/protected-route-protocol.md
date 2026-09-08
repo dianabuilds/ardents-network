@@ -26,6 +26,18 @@ Endpoint-to-Entry and inner Endpoint-to-role TLS use authenticated server keys
 without stable Endpoint client certificates. The issuer authenticates an
 issuance holder only inside its confidential operation. Disable tickets,
 resumption, 0-RTT, session caches and peer-supplied certificate roots.
+
+Each literal successor endpoint has one v3 listener for both direct role TLS
+and Node Carrier TLS; a second listener, endpoint or ALPN is not implied. The
+listener requests but does not require a client certificate. After TLS and
+before an ARDP frame, exactly one current State-authorized Node certificate
+selects the outer Node-Carrier state; no client certificate selects only the
+direct Endpoint-to-role state. An unexpected, malformed, multiple, expired or
+non-current certificate is unavailable and closes before ARDP work. Direct
+role state refuses a certificate and Node-Carrier state never falls through to
+direct role handling. The shared finite TLS-handshake reservation applies
+before this classification; source identity or a rejected certificate cannot
+increase it.
 Use the exact Node/role key from authenticated State, not Web PKI or DNS.
 
 Select Go 1.26.8 for the successor build; earlier component evidence identifies
