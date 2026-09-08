@@ -59,6 +59,24 @@ type PendingClosedTokenBatch struct {
 	inputs  [][]byte
 }
 
+// ClosedTokenBatchStatus is the small issuer result vocabulary. Encrypted
+// carrier framing pads every value to the same response shape.
+type ClosedTokenBatchStatus uint8
+
+const (
+	ClosedTokenIssued ClosedTokenBatchStatus = iota + 1
+	ClosedTokenExhausted
+	ClosedTokenWithdrawn
+	ClosedTokenUnavailable
+)
+
+// ClosedTokenBatchResult carries blind signatures only for a committed
+// issuance. It has no permission, holder, or application context.
+type ClosedTokenBatchResult struct {
+	Status     ClosedTokenBatchStatus
+	Signatures [][]byte
+}
+
 // PrepareClosedTokenBatch creates one fresh 1..32-token issuance request.
 // It admits no key, authority, class, window, or holder fact outside the
 // authenticated State profile and permission.
@@ -131,6 +149,36 @@ func (pending *PendingClosedTokenBatch) Request() []byte {
 		return nil
 	}
 	return append([]byte(nil), pending.raw...)
+}
+
+// Finalize verifies every returned blind signature and returns RFC 9578
+// token bytes only for a complete issued batch. It always drops the opaque
+// CIRCL State, so a failed finalization cannot be retried after this call.
+func (pending *PendingClosedTokenBatch) Finalize(result ClosedTokenBatchResult) ([][]byte, error) {
+	if pending == nil || result.Status != ClosedTokenIssued || len(pending.states) == 0 || len(result.Signatures) != len(pending.states) {
+		if pending != nil {
+			pending.Discard()
+		}
+		return nil, errors.New("closed token batch is unavailable")
+	}
+	tokens := make([][]byte, 0, len(pending.states))
+	for index, signature := range result.Signatures {
+		if len(signature) != closedTokenBlindElementSize {
+			pending.Discard()
+			return nil, errors.New("closed token blind signature is invalid")
+		}
+		finalized, err := pending.client.Finalize(pending.states[index], signature)
+		if err != nil || pending.client.Verify(pending.inputs[index], finalized) != nil {
+			pending.Discard()
+			return nil, errors.New("closed token signature verification failed")
+		}
+		token := make([]byte, 0, closedTokenSize)
+		token = append(token, pending.inputs[index]...)
+		token = append(token, finalized...)
+		tokens = append(tokens, token)
+	}
+	pending.Discard()
+	return tokens, nil
 }
 
 // Discard removes the Endpoint's references to all volatile request inputs

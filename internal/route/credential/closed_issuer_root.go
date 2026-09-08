@@ -162,7 +162,7 @@ func openClosedIssuerRoot(root string) (string, issuerRootLease, error) {
 		return fail(err)
 	}
 	entries, err := os.ReadDir(absolute)
-	if err != nil || len(entries) > 3 {
+	if err != nil || len(entries) > 4 {
 		return fail(errors.New("closed issuer key root entries are invalid"))
 	}
 	markerPath := filepath.Join(absolute, closedIssuerRootMarkerName)
@@ -182,7 +182,7 @@ func openClosedIssuerRoot(root string) (string, issuerRootLease, error) {
 		return fail(err)
 	}
 	for _, entry := range entries {
-		if entry.IsDir() || entry.Name() != issuerRootLockName && entry.Name() != closedIssuerRootMarkerName && entry.Name() != closedIssuerMaterialName {
+		if entry.IsDir() || entry.Name() != issuerRootLockName && entry.Name() != closedIssuerRootMarkerName && entry.Name() != closedIssuerMaterialName && entry.Name() != closedTokenIssuerLedgerName {
 			return fail(errors.New("closed issuer key root has an unknown entry"))
 		}
 	}
