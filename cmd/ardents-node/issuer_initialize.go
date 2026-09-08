@@ -141,10 +141,11 @@ func runIssuerNode(ctx context.Context, path string, output io.Writer) error {
 }
 
 func validateIssuerRuntime(runtime nodeRuntime) error {
-	if runtime.node.TransitIssuer.Root == "" || runtime.node.Rendezvous.Certificate.PrivateKey != nil ||
+	transit, closed := runtime.node.TransitIssuer.Root != "", runtime.node.ClosedIssuer.Root != ""
+	if transit == closed || runtime.node.Rendezvous.Certificate.PrivateKey != nil ||
 		runtime.node.Initiator.Certificate.PrivateKey != nil || runtime.node.Introduction.Certificate.PrivateKey != nil ||
 		runtime.node.Responder.Certificate.PrivateKey != nil {
-		return errors.New("issuer serve requires only one Transit Grant issuer reservation")
+		return errors.New("issuer serve requires exactly one isolated issuer reservation")
 	}
 	return nil
 }

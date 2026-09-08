@@ -97,6 +97,16 @@ func TestIssuerServeRejectsAnyOtherLocalDutyReservation(t *testing.T) {
 	}
 }
 
+func TestIssuerServeAcceptsOneClosedIssuerReservation(t *testing.T) {
+	issuer := node.ClosedIssuerProfile{Root: filepath.Join(t.TempDir(), "closed-issuer-root")}
+	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{ClosedIssuer: issuer}}); err != nil {
+		t.Fatalf("closed issuer-only runtime rejected: %v", err)
+	}
+	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: node.TransitIssuerProfile{Root: t.TempDir()}, ClosedIssuer: issuer}}); err == nil {
+		t.Fatal("issuer serve accepted both issuer reservations")
+	}
+}
+
 func TestClosedIssuerInitializeCommandPublishesOnlySPKIProfile(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Hour)
 	nodePublic, nodePrivate, err := ed25519.GenerateKey(rand.Reader)
