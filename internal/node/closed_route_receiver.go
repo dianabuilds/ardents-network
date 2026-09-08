@@ -43,6 +43,6 @@ func closedRouteReceiver(config runtimeConfig, snapshot dutyFacts, purpose route
 func closedRouteProfileMatchesSnapshot(profile state.ClosedProfileView, snapshot dutyFacts, now time.Time) bool {
 	return profile.NetworkID == snapshot.NetworkID && profile.StateDigest == snapshot.Digest && profile.Epoch == snapshot.Epoch &&
 		profile.Digest != [32]byte{} && !profile.NotBefore.After(now) && now.Before(profile.NotAfter) &&
-		profile.NotBefore.Before(snapshot.EpochValidFrom) == false && !profile.NotAfter.After(snapshot.ValidUntil) &&
+		!profile.NotBefore.Before(snapshot.EpochValidFrom) && !profile.NotAfter.After(snapshot.ValidUntil) &&
 		!profile.NotAfter.After(snapshot.RecordValidUntil) && closedStateGenerationMatches(profile.StateGeneration, snapshot.Generation)
 }
