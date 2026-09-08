@@ -237,7 +237,7 @@ func currentFacts(config runtimeConfig) (dutyFacts, error) {
 	result := dutyFacts{Generation: view.DutyGeneration(), NetworkID: view.DutyNetworkID(), Epoch: view.DutyEpoch(),
 		Digest: view.DutyDigest(), EpochValidFrom: view.DutyEpochValidFrom(), ValidUntil: view.DutyValidUntil(),
 		Profile: view.DutyProfile(), Fresh: view.DutyFresh(), Conflicting: view.DutyConflicting(),
-		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(),
+		RecordPresent: view.DutyRecordPresent(), NodeID: view.DutyNodeID(), NodePublicKey: view.DutyNodePublicKey(), RecordGeneration: view.DutyRecordGeneration(),
 		RecordValidFrom: view.DutyRecordValidFrom(), RecordValidUntil: view.DutyRecordValidUntil(),
 		DeclaredFamily: view.DutyDeclaredFamily(), ProbeEndpoint: view.DutyProbeEndpoint(), CarrierProfile: view.DutyCarrierProfile(),
 		ProbeCapacity: view.DutyProbeCapacity(), Assignment: view.DutyAssignment(),

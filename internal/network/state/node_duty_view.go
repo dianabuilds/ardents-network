@@ -32,6 +32,7 @@ func (view NodeDutyView) DutyConflicting() bool           { return view.snapshot
 func (view NodeDutyView) DutyRecordPresent() bool         { return view.snapshot.RecordPresent }
 func (view NodeDutyView) DutyNodeID() [32]byte            { return view.snapshot.NodeID }
 func (view NodeDutyView) DutyNodePublicKey() [32]byte     { return view.snapshot.NodePublicKey }
+func (view NodeDutyView) DutyRecordGeneration() uint64    { return view.snapshot.RecordGeneration }
 func (view NodeDutyView) DutyRecordValidFrom() time.Time  { return view.snapshot.RecordValidFrom }
 func (view NodeDutyView) DutyRecordValidUntil() time.Time { return view.snapshot.RecordValidUntil }
 func (view NodeDutyView) DutyDeclaredFamily() string      { return view.snapshot.DeclaredFamily }

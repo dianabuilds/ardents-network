@@ -38,17 +38,23 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 		profile.TokenKeys[index].WindowStart, profile.TokenKeys[index].Class = key.WindowStart, uint8(key.Class)
 		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
+	recordDigest := [32]byte{45}
 	snapshot := dutyFacts{Generation: hex.EncodeToString(generation[:]), NetworkID: network, Epoch: profile.Epoch, Digest: digest,
 		EpochValidFrom: profile.NotBefore, ValidUntil: until, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true,
-		NodeID: issuerID, NodePublicKey: public, RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until,
+		NodeID: issuerID, NodePublicKey: public, RecordGeneration: profile.IssuerDutyGeneration, RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until,
 		DeclaredFamily: "closed-issuer-family", ProbeEndpoint: reserveAddress(t), CarrierProfile: string(route.ClosedCarrierTCP), Assignment: "rendezvous", AssignmentDigest: [32]byte{44}}
 	var lock sync.RWMutex
 	events := make(chan Event, 16)
 	config := Config{NetworkID: network, NodeID: issuerID, IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey),
 		Current:              func() (DutyView, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true },
-		ClosedIssuer:         ClosedIssuerProfile{Root: root, Certificate: certificate, ConnectionLimit: 1, DrainTimeout: time.Second},
-		PollInterval:         10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
+		CurrentClosedRoute: func() (state.ClosedRouteView, bool) {
+			view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
+			view.Nodes[0] = state.ClosedRouteNodeView{NodeID: issuerID, RecordDigest: recordDigest, RoleDomain: 2, Subrole: 6, DutyGeneration: profile.IssuerDutyGeneration}
+			return view, true
+		},
+		ClosedIssuer: ClosedIssuerProfile{Root: root, Certificate: certificate, ConnectionLimit: 1, DrainTimeout: time.Second},
+		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	resolved, err := resolveConfig(config)
 	if err != nil {
@@ -75,5 +81,31 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 	}
 	if err := <-runErrors; err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestClosedRouteReceiverRefusesDutyOrDigestMismatch(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	generation := [32]byte{1}
+	snapshot := dutyFacts{Generation: hex.EncodeToString(generation[:]), NetworkID: [32]byte{2}, Epoch: 3, Digest: [32]byte{4},
+		EpochValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), Profile: route.ClosedRouteProfile, Fresh: true,
+		NodeID: [32]byte{5}, RecordGeneration: 6, RecordValidUntil: now.Add(time.Hour)}
+	profile := state.ClosedProfileView{NetworkID: snapshot.NetworkID, StateGeneration: generation, StateDigest: snapshot.Digest,
+		Digest: [32]byte{7}, Epoch: snapshot.Epoch, NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute)}
+	view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
+	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: snapshot.NodeID, RecordDigest: [32]byte{8}, RoleDomain: 2, Subrole: 6, DutyGeneration: snapshot.RecordGeneration}
+	config := runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, bool) { return view, true }}}
+	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now)
+	if !available || receiver.DutyGeneration != snapshot.RecordGeneration || receiver.RecordDigest != view.Nodes[0].RecordDigest {
+		t.Fatalf("closed route receiver = %+v / %t", receiver, available)
+	}
+	view.Nodes[0].DutyGeneration++
+	if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
+		t.Fatal("accepted a mismatched closed profile duty")
+	}
+	view.Nodes[0].DutyGeneration = snapshot.RecordGeneration
+	view.Nodes[0].RecordDigest = [32]byte{}
+	if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
+		t.Fatal("accepted a missing closed profile record digest")
 	}
 }

@@ -32,6 +32,7 @@ type DutyView interface {
 	DutyRecordPresent() bool
 	DutyNodeID() [32]byte
 	DutyNodePublicKey() [32]byte
+	DutyRecordGeneration() uint64
 	DutyRecordValidFrom() time.Time
 	DutyRecordValidUntil() time.Time
 	DutyDeclaredFamily() string
@@ -76,6 +77,7 @@ type dutyFacts struct {
 	RecordPresent               bool
 	NodeID                      [32]byte
 	NodePublicKey               [32]byte
+	RecordGeneration            uint64
 	RecordValidFrom             time.Time
 	RecordValidUntil            time.Time
 	DeclaredFamily              string
@@ -126,11 +128,15 @@ type Config struct {
 	// profile. It is unavailable instead of choosing profile bytes or a trust
 	// root from the Node plan.
 	CurrentClosedProfile func() (state.ClosedProfileView, bool)
-	PollInterval         time.Duration
-	Quarantine           time.Duration
-	ResourceProfile      string
-	NetworkStateRoot     string
-	LocalRoleStateRoot   string
+	// CurrentClosedRoute exposes the same accepted profile's recipient facts.
+	// It is unavailable rather than permitting Node to manufacture a recipient
+	// digest, role-domain or duty generation.
+	CurrentClosedRoute func() (state.ClosedRouteView, bool)
+	PollInterval       time.Duration
+	Quarantine         time.Duration
+	ResourceProfile    string
+	NetworkStateRoot   string
+	LocalRoleStateRoot string
 	// ResourceMeasure and CheckPlacement are behavior-test seams. Maintained
 	// runtime callers leave them nil and use ResourceProfile's platform adapter.
 	ResourceMeasure func() (resource.Sample, error)
@@ -219,6 +225,7 @@ func (facts dutyFacts) DutyConflicting() bool           { return facts.Conflicti
 func (facts dutyFacts) DutyRecordPresent() bool         { return facts.RecordPresent }
 func (facts dutyFacts) DutyNodeID() [32]byte            { return facts.NodeID }
 func (facts dutyFacts) DutyNodePublicKey() [32]byte     { return facts.NodePublicKey }
+func (facts dutyFacts) DutyRecordGeneration() uint64    { return facts.RecordGeneration }
 func (facts dutyFacts) DutyRecordValidFrom() time.Time  { return facts.RecordValidFrom }
 func (facts dutyFacts) DutyRecordValidUntil() time.Time { return facts.RecordValidUntil }
 func (facts dutyFacts) DutyDeclaredFamily() string      { return facts.DeclaredFamily }

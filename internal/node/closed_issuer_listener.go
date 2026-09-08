@@ -68,6 +68,12 @@ func closedIssuerStateProfile(config runtimeConfig, snapshot dutyFacts, now time
 		!closedStateGenerationMatches(profile.StateGeneration, snapshot.Generation) {
 		return state.ClosedProfileView{}, false
 	}
+	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now)
+	if !available || receiver.NetworkID != profile.NetworkID || receiver.StateGeneration != profile.StateGeneration || receiver.StateDigest != profile.StateDigest ||
+		receiver.ProfileDigest != profile.Digest || receiver.NodeID != profile.IssuerNodeID || receiver.DutyGeneration != profile.IssuerDutyGeneration ||
+		receiver.NotAfter != profile.NotAfter {
+		return state.ClosedProfileView{}, false
+	}
 	return profile, true
 }
 
