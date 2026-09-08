@@ -88,4 +88,46 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	if _, err := lane.Read(make([]byte, 1)); err != io.EOF {
 		t.Fatalf("inner EOF = %v", err)
 	}
+	if err := lane.CloseWithStatus(0); err != nil {
+		t.Fatal(err)
+	}
+	if closed := <-written; closed.Kind != closedFrameClose || closed.Lane != 1 || !bytes.Equal(closed.Body, []byte{0}) {
+		t.Fatalf("local lane close = %+v", closed)
+	}
+	if replacement, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 3, Body: openBody}); err != nil || replacement == nil {
+		t.Fatalf("released child replacement = %v / %v", replacement, err)
+	}
+}
+
+func TestClosedOuterBridgeRefusesForeignOpenBeforeCreatingLane(t *testing.T) {
+	now := time.Unix(1_800_300_000, 0).UTC()
+	receiver := closedOuterHandshakeReceiver(now)
+	limits, _ := NewClosedDutyLimits(func() time.Time { return now })
+	handshake, err := NewClosedOuterHandshake(receiver, limits, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer handshake.Close()
+	bridge, err := NewClosedOuterBridge(handshake, func(ClosedLaneFrame) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest,
+		RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{21}, Deadline: receiver.Deadline}
+	body, err := EncodeClosedHello(hello)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	foreign := receiver.NodeID
+	foreign[0]++
+	body, err = EncodeClosedOpen(ClosedOpen{NextNodeID: foreign, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lane, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err == nil || lane != nil || len(bridge.lanes) != 0 {
+		t.Fatalf("foreign open created bridge work: %v / %v / %d", lane, err, len(bridge.lanes))
+	}
 }
