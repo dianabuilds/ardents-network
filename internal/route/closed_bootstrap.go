@@ -35,9 +35,25 @@ type ClosedBootstrapLease struct {
 	controller *ClosedBootstrapController
 	adjacency  [32]byte
 	deadline   time.Time
+	received   uint64
 	used       uint64
 	queued     uint64
 	released   bool
+}
+
+// Receive accounts bootstrap input before it becomes issuer or public-evidence
+// work. It shares the lane's 128 KiB total bound with no identity-based reset.
+func (lease *ClosedBootstrapLease) Receive(bytes uint64) error {
+	if bytes == 0 {
+		return errors.New("closed bootstrap input is invalid")
+	}
+	return lease.withLive(func(_ *ClosedBootstrapController) error {
+		if lease.received+lease.used+bytes > closedBootstrapLaneBytes {
+			return errors.New("closed bootstrap input is exhausted")
+		}
+		lease.received += bytes
+		return nil
+	})
 }
 
 // NewClosedBootstrapController creates the finite shared duty governor.
@@ -112,7 +128,7 @@ func (lease *ClosedBootstrapLease) Send(bytes uint64) error {
 	}
 	return lease.withLive(func(controller *ClosedBootstrapController) error {
 		controller.refill(controller.clock().UTC())
-		if lease.used+bytes > closedBootstrapLaneBytes || bytes > controller.tokens {
+		if lease.received+lease.used+bytes > closedBootstrapLaneBytes || bytes > controller.tokens {
 			return errors.New("closed bootstrap output is exhausted")
 		}
 		lease.used += bytes

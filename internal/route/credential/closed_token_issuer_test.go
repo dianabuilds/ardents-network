@@ -5,10 +5,12 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
@@ -30,7 +32,8 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	authority := ed25519.NewKeyFromSeed(bytesForClosedTokenBatch(2))
-	profile := state.ClosedProfileView{Digest: sha256.Sum256([]byte("accepted State profile")), IssuerNodeID: issuerNode,
+	profile := state.ClosedProfileView{NetworkID: network, StateGeneration: sha256.Sum256([]byte("State generation")), StateDigest: sha256.Sum256([]byte("State digest")),
+		Digest: sha256.Sum256([]byte("accepted State profile")), IssuerNodeID: issuerNode,
 		IssuerDutyGeneration: 4, NotBefore: window, NotAfter: window.Add(time.Hour), TokenKeyCount: uint8(len(issuerProfile.Keys))}
 	copy(profile.IssuanceAuthorityKey[:], authority.Public().(ed25519.PublicKey))
 	for index, key := range issuerProfile.Keys {
@@ -77,15 +80,24 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	if _, err := issuer.privateKey(decoded); err != nil {
 		t.Fatalf("issuer key precondition: %v", err)
 	}
-	firstRaw := issuer.IssueEncoded(raw)
-	first, err := DecodeClosedTokenBatchResult(firstRaw)
+	nonce := [32]byte{51}
+	operation, err := route.EncodeClosedIssuanceRequest(nonce, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
+	terminal, err := route.DecodeClosedIssuanceResult(firstRaw, nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := DecodeClosedTokenBatchResult(terminal.Payload)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if first.Status != ClosedTokenIssued || len(first.Signatures) != 2 {
 		t.Fatalf("first issuer result = %+v", first)
 	}
-	if tokens, err := pending.FinalizeEncoded(firstRaw); err != nil || len(tokens) != 2 || len(tokens[0]) != closedTokenSize {
+	if tokens, err := pending.FinalizeTerminalOperation(nonce, firstRaw); err != nil || len(tokens) != 2 || len(tokens[0]) != closedTokenSize {
 		t.Fatalf("finalize committed batch = %d tokens / %v", len(tokens), err)
 	}
 	if err := issuer.Close(); err != nil {
@@ -97,8 +109,12 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	retriedRaw := issuer.IssueEncoded(raw)
-	retried, err := DecodeClosedTokenBatchResult(retriedRaw)
+	retriedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
+	retriedTerminal, err := route.DecodeClosedIssuanceResult(retriedRaw, nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retried, err := DecodeClosedTokenBatchResult(retriedTerminal.Payload)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,4 +130,50 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	if exhausted := issuer.Issue(second.Request()); exhausted.Status != ClosedTokenExhausted {
 		t.Fatalf("permission overflow result = %+v", exhausted)
 	}
+}
+
+func serveClosedIssuerBootstrap(t *testing.T, issuer *ClosedTokenIssuer, profile state.ClosedProfileView, now time.Time, operation []byte) []byte {
+	t.Helper()
+	server, client := net.Pipe()
+	defer client.Close()
+	controller, err := route.NewClosedBootstrapController(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- issuer.ServeBootstrap(t.Context(), server, controller, [32]byte{61}) }()
+	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+		ProfileDigest: profile.Digest, RecipientNodeID: profile.IssuerNodeID, RecipientDutyGeneration: profile.IssuerDutyGeneration,
+		Purpose: route.ClosedPurposeIssuer, ChannelNonce: [32]byte{62}, Deadline: now.Add(10 * time.Second)}
+	body, err := route.EncodeClosedHello(hello)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 1, Lane: 0, Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := route.ReadClosedLaneFrame(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status, _, err := route.DecodeClosedAcceptFrame(accepted); err != nil || status != 0 {
+		t.Fatalf("bootstrap accept = %d / %v", status, err)
+	}
+	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 3, Lane: 0, Body: route.EncodeClosedBootstrap(true)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 10, Lane: 0, Body: operation}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := route.ReadClosedLaneFrame(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Kind != 11 || result.Lane != 0 || len(result.Body) != 16<<10 {
+		t.Fatalf("bootstrap result frame = %+v", result)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	return result.Body
 }

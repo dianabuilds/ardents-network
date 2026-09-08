@@ -15,6 +15,9 @@ const (
 
 	closedFrameHello     = uint8(1)
 	closedFrameBootstrap = uint8(3)
+	closedFrameAccept    = uint8(5)
+	closedFrameOperation = uint8(10)
+	closedFrameResult    = uint8(11)
 )
 
 // ClosedPurpose is the one current recipient role purpose of a v3 channel.
@@ -172,6 +175,26 @@ func DecodeClosedBootstrap(body []byte) (issuer bool, err error) {
 	return body[0] == 2, nil
 }
 
+// ClosedAcceptFrame returns the exact fixed admission acknowledgement. A
+// refusal has zero credit and exposes no detailed path-or-policy oracle.
+func ClosedAcceptFrame(status uint8, credit uint32) (ClosedLaneFrame, error) {
+	if status > 4 || status != 0 && credit != 0 {
+		return ClosedLaneFrame{}, errors.New("closed acceptance is invalid")
+	}
+	body := make([]byte, 5)
+	body[0] = status
+	binary.BigEndian.PutUint32(body[1:], credit)
+	return ClosedLaneFrame{Kind: closedFrameAccept, Lane: 0, Body: body}, nil
+}
+
+// DecodeClosedAcceptFrame accepts only a lane-zero fixed acknowledgement.
+func DecodeClosedAcceptFrame(frame ClosedLaneFrame) (status uint8, credit uint32, err error) {
+	if frame.Kind != closedFrameAccept || frame.Lane != 0 || len(frame.Body) != 5 || frame.Body[0] > 4 || frame.Body[0] != 0 && binary.BigEndian.Uint32(frame.Body[1:]) != 0 {
+		return 0, 0, errors.New("closed acceptance is invalid")
+	}
+	return frame.Body[0], binary.BigEndian.Uint32(frame.Body[1:]), nil
+}
+
 func validClosedFrame(frame ClosedLaneFrame) bool {
 	if frame.Kind == 0 || len(frame.Body) > closedLaneMaximum {
 		return false
@@ -181,6 +204,12 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 	}
 	if frame.Kind == closedFrameBootstrap {
 		return frame.Lane == 0 && len(frame.Body) == 1
+	}
+	if frame.Kind == closedFrameAccept {
+		return frame.Lane == 0 && len(frame.Body) == 5
+	}
+	if frame.Kind == closedFrameOperation || frame.Kind == closedFrameResult {
+		return frame.Lane == 0 && len(frame.Body) == closedTerminalOperationSize
 	}
 	return true
 }

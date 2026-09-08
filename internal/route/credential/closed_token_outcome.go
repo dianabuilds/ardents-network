@@ -3,13 +3,14 @@ package credential
 import "errors"
 
 const (
-	closedTokenOutcomeMagic = "ARDIOR01"
-	closedTokenOutcomeSize  = 16 << 10
+	closedTokenOutcomeMagic       = "ARDIOR01"
+	closedTokenTerminalResultSize = 16 << 10
+	closedTokenOutcomeSize        = closedTokenTerminalResultSize - 32 - 1 - 4
 )
 
-// EncodeClosedTokenBatchResult returns the fixed-size issuer plaintext for
-// every outcome. The enclosing successor terminal TLS channel provides its
-// confidentiality; this codec supplies no standalone transport or encryption.
+// EncodeClosedTokenBatchResult returns the fixed-size issuer payload for every
+// outcome. Its caller puts it in the fixed 16 KiB terminal RESULT body with
+// the protocol-owned nonce, status, and length fields.
 func EncodeClosedTokenBatchResult(result ClosedTokenBatchResult) ([]byte, error) {
 	if !validClosedTokenBatchResult(result) {
 		return nil, errors.New("closed token batch result is invalid")

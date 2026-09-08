@@ -38,6 +38,14 @@ func TestClosedLaneHELLOAndBootstrapHaveExactV3Framing(t *testing.T) {
 	if err != nil || operationErr != nil || !issuer {
 		t.Fatalf("bootstrap = %+v / %v / %v", decodedBootstrap, err, operationErr)
 	}
+	accepted, err := ClosedAcceptFrame(0, 64<<10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, credit, err := DecodeClosedAcceptFrame(accepted)
+	if err != nil || status != 0 || credit != 64<<10 {
+		t.Fatalf("accept = %d / %d / %v", status, credit, err)
+	}
 }
 
 func TestClosedLaneRejectsGenerationTwoAndOversizedAllocation(t *testing.T) {

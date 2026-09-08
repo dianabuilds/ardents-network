@@ -247,8 +247,10 @@ there is no automatic switch of issuer or key.
 Inside the protected terminal channel the canonical result is `ARDIOR01`[8],
 status u8 (`issued=1`, `exhausted=2`, `withdrawn=3`, `unavailable=4`),
 signature-count u8 and, only for `issued`, that many 256-byte blind
-signatures, followed by zero padding to exactly 16,384 bytes. All other
-statuses have count zero. A malformed count, signature or nonzero padding is
+signatures, followed by zero padding to exactly 16,347 bytes. The enclosing
+`RESULT` body adds its matching nonce[32], status u8 and result-length u32, so
+the encrypted terminal plaintext is exactly 16,384 bytes. All other statuses
+have count zero. A malformed count, signature or nonzero padding is
 unavailable. This fixed plaintext is not a second encryption protocol: the
 selected terminal TLS channel is its sole confidentiality boundary.
 
