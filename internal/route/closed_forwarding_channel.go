@@ -3,6 +3,7 @@ package route
 import (
 	"encoding/binary"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -28,6 +29,7 @@ type ClosedForwardingEvent struct {
 // ClosedForwardingChannel owns Endpoint-initiated child lanes under one
 // class-2 admission lease. It accounts peer input before yielding an event.
 type ClosedForwardingChannel struct {
+	mu         sync.Mutex
 	lease      ClosedAdmission
 	authorize  ClosedForwardingAuthorizer
 	clock      func() time.Time
@@ -57,7 +59,12 @@ func NewClosedForwardingChannel(lease ClosedAdmission, authorize ClosedForwardin
 // bound and State authorization is satisfied; a caller may then attach its
 // separately owned next Carrier without a peer-selected fallback.
 func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
-	if channel == nil || channel.terminated || !channel.clock().UTC().Before(channel.lease.Deadline) {
+	if channel == nil {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding channel is unavailable")
+	}
+	channel.mu.Lock()
+	defer channel.mu.Unlock()
+	if channel.terminated || !channel.clock().UTC().Before(channel.lease.Deadline) {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding channel is unavailable")
 	}
 	switch frame.Kind {
@@ -130,7 +137,12 @@ func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForw
 // Credit returns receive credit only after the caller's actual consumer has
 // removed bytes. It never exceeds the fixed 64 KiB window or parent lease.
 func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (ClosedLaneFrame, error) {
-	if channel == nil || channel.terminated || bytes == 0 || !channel.clock().UTC().Before(channel.lease.Deadline) {
+	if channel == nil {
+		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
+	}
+	channel.mu.Lock()
+	defer channel.mu.Unlock()
+	if channel.terminated || bytes == 0 || !channel.clock().UTC().Before(channel.lease.Deadline) {
 		return ClosedLaneFrame{}, errors.New("closed forwarding credit is unavailable")
 	}
 	child, found := channel.children[lane]
@@ -155,6 +167,8 @@ func (channel *ClosedForwardingChannel) Cancel() {
 	if channel == nil {
 		return
 	}
+	channel.mu.Lock()
+	defer channel.mu.Unlock()
 	channel.terminated = true
 	for _, child := range channel.children {
 		channel.lease.duty.limits.dequeue(child.queued)

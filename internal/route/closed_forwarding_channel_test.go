@@ -2,6 +2,7 @@ package route
 
 import (
 	"bytes"
+	"sync"
 	"testing"
 	"time"
 )
@@ -60,6 +61,55 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("accepted bytes after EOF")
 	}
+}
+
+func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	allowed := ClosedOpen{NextNodeID: [32]byte{11}, NextDutyGeneration: 12, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	channel, err := NewClosedForwardingChannel(ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation},
+		func(open ClosedOpen) error {
+			if open != allowed {
+				return errUnexpectedForwardOpen
+			}
+			return nil
+		}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := EncodeClosedOpen(allowed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var group sync.WaitGroup
+	errs := make(chan error, 2)
+	for range 2 {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			_, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body})
+			errs <- err
+		}()
+	}
+	group.Wait()
+	close(errs)
+	succeeded := 0
+	for err := range errs {
+		if err == nil {
+			succeeded++
+		}
+	}
+	if succeeded != 1 {
+		t.Fatalf("concurrent lane reuse successes = %d", succeeded)
+	}
+	channel.Cancel()
 }
 
 var errUnexpectedForwardOpen = &unexpectedForwardOpen{}

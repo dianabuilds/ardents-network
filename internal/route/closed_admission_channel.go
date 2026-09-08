@@ -3,6 +3,7 @@ package route
 import (
 	"crypto/sha256"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -58,6 +59,7 @@ func (admission *ClosedAdmission) Release() {
 // role TLS channel. It rejects every work frame until a token is verified,
 // durably burned and bounded capacity has been reserved.
 type ClosedAdmissionChannel struct {
+	mu       sync.Mutex
 	receiver ClosedRoleReceiver
 	spends   *ClosedSpendLedger
 	limits   *ClosedDutyLimits
@@ -83,7 +85,12 @@ func NewClosedAdmissionChannel(receiver ClosedRoleReceiver, spends *ClosedSpendL
 // empty admission after HELLO and a finite result after ADMIT. Any other
 // frame, duplicate HELLO or prior error is unavailable before forwarding.
 func (channel *ClosedAdmissionChannel) Accept(frame ClosedLaneFrame) (ClosedAdmission, error) {
-	if channel == nil || !channel.clock().UTC().Before(channel.receiver.NotAfter) {
+	if channel == nil {
+		return ClosedAdmission{}, errors.New("closed admission channel is unavailable")
+	}
+	channel.mu.Lock()
+	defer channel.mu.Unlock()
+	if !channel.clock().UTC().Before(channel.receiver.NotAfter) {
 		return ClosedAdmission{}, errors.New("closed admission channel is unavailable")
 	}
 	if channel.hello == (ClosedHello{}) {
