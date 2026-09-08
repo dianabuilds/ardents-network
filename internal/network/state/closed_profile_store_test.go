@@ -77,6 +77,12 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	if err != nil || current != view {
 		t.Fatalf("current closed profile = %+v, %v", current, err)
 	}
+	route, err := store.CurrentClosedRoute()
+	if err != nil || route.Profile != view || route.NodeCount != 1 || route.Nodes[0].NodeID != nodeID ||
+		route.Nodes[0].RecordDigest != node.recordDigest || route.Nodes[0].RoleDomain != node.domain ||
+		route.Nodes[0].Subrole != node.subrole || route.Nodes[0].DutyGeneration != node.generation {
+		t.Fatalf("current closed route = %+v, %v", route, err)
+	}
 	second := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
 	if _, err := store.AcceptClosedProfile(second); err == nil {
 		t.Fatal("accepted a second closed profile digest")

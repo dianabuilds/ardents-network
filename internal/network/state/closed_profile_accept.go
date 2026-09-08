@@ -20,6 +20,24 @@ type ClosedProfileView struct {
 	TokenKeys                               [maximumClosedProfileKeys]ClosedProfileTokenKey
 }
 
+// ClosedRouteNodeView is one public recipient fact already joined by State to
+// the accepted signed closed profile and exact current Node Record. It cannot
+// select an alternate recipient, supply an endpoint, or accept profile bytes.
+type ClosedRouteNodeView struct {
+	NodeID, RecordDigest [32]byte
+	RoleDomain, Subrole  uint8
+	DutyGeneration       uint64
+}
+
+// ClosedRouteView is the forwarding-owner projection of the one accepted
+// closed profile. Profile retains the issuer/key projection; Nodes preserves
+// only the signed recipient constraints required to reject arbitrary OPEN.
+type ClosedRouteView struct {
+	Profile   ClosedProfileView
+	NodeCount uint8
+	Nodes     [maximumClosedProfileNodes]ClosedRouteNodeView
+}
+
 // ClosedProfileTokenKey is one immutable public RSA-PSS key/window fact from
 // accepted State. It is not an issuer private key or a signing capability.
 type ClosedProfileTokenKey struct {
@@ -93,6 +111,33 @@ func (s *networkState) CurrentClosedProfile() (ClosedProfileView, error) {
 	return closedProfileView(profile), nil
 }
 
+// CurrentClosedRoute returns only recipient constraints from the same durable
+// accepted profile while it still joins the current closed Route Epoch. A
+// successor, conflict, expiry, or missing profile is unavailable; callers
+// cannot retain an old route projection or manufacture a recipient.
+func (s *networkState) CurrentClosedRoute() (ClosedRouteView, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
+		return ClosedRouteView{}, errors.New("closed route is unavailable")
+	}
+	generation, err := closedProfileGeneration(s.current.Generation)
+	if err != nil {
+		return ClosedRouteView{}, err
+	}
+	stored, raw, err := s.storage.loadClosedProfile(generation)
+	if err != nil || stored == (closedProfileState{}) || stored.conflict != [32]byte{} || stored.epoch != s.current.Epoch {
+		return ClosedRouteView{}, errors.New("closed route is unavailable")
+	}
+	now := s.config.clock().UTC()
+	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
+	if err != nil || profile.digest != stored.accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
+		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.accepted) {
+		return ClosedRouteView{}, errors.New("closed route is unavailable")
+	}
+	return closedRouteView(profile), nil
+}
+
 func closedProfileView(profile closedProfile) ClosedProfileView {
 	view := ClosedProfileView{NetworkID: profile.networkID, StateGeneration: profile.stateGeneration, StateDigest: profile.epochDigest,
 		Digest: profile.digest, IssuanceAuthorityKey: profile.authorityKey, IssuerNodeID: profile.issuerNodeID,
@@ -107,6 +152,15 @@ func closedProfileView(profile closedProfile) ClosedProfileView {
 		view.TokenKeys[index].WindowStart = time.Unix(int64(key.windowStart), 0).UTC()
 		view.TokenKeys[index].Class = key.class
 		copy(view.TokenKeys[index].SPKI[:], key.spki)
+	}
+	return view
+}
+
+func closedRouteView(profile closedProfile) ClosedRouteView {
+	view := ClosedRouteView{Profile: closedProfileView(profile), NodeCount: uint8(len(profile.nodes))}
+	for index, node := range profile.nodes {
+		view.Nodes[index] = ClosedRouteNodeView{NodeID: node.nodeID, RecordDigest: node.recordDigest,
+			RoleDomain: node.domain, Subrole: node.subrole, DutyGeneration: node.generation}
 	}
 	return view
 }
