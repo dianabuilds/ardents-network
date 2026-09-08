@@ -24,7 +24,7 @@ func closedIssuerNodeHandler(config runtimeConfig, snapshot dutyFacts, certifica
 		if !available {
 			return
 		}
-		deadline := config.now().UTC().Add(10 * time.Second)
+		deadline := config.now().UTC().Truncate(time.Second).Add(10 * time.Second)
 		if receiver.NotAfter.Before(deadline) {
 			deadline = receiver.NotAfter
 		}
@@ -68,6 +68,9 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 		return
 	}
 	defer secured.Close()
+	if err := lane.BeginInnerHello(); err != nil {
+		return
+	}
 	helloFrame, err := route.ReadClosedLaneFrame(secured)
 	if err != nil {
 		return

@@ -25,14 +25,15 @@ type ClosedOuterBridge struct {
 type ClosedOuterBridgeLane struct{ lane *closedOuterBridgeLane }
 
 type closedOuterBridgeLane struct {
-	bridge                 *ClosedOuterBridge
-	id                     uint32
-	mu                     sync.Mutex
-	buffer                 []byte
-	notify                 chan struct{}
-	active, inputEOF, dead bool
-	outboundCredit         uint32
-	readDeadline           time.Time
+	bridge                             *ClosedOuterBridge
+	id                                 uint32
+	mu                                 sync.Mutex
+	buffer                             []byte
+	notify                             chan struct{}
+	innerHello, active, inputEOF, dead bool
+	unaccounted                        uint32
+	outboundCredit                     uint32
+	readDeadline                       time.Time
 }
 
 // NewClosedOuterBridge binds one outer state machine to one serialized ARDP
@@ -114,6 +115,24 @@ func (lane *ClosedOuterBridgeLane) Activate(hello ClosedHello) error {
 	return nil
 }
 
+func (lane *ClosedOuterBridgeLane) BeginInnerHello() error {
+	if lane == nil || lane.lane == nil {
+		return errors.New("closed outer bridge lane is unavailable")
+	}
+	inner := lane.lane
+	inner.mu.Lock()
+	defer inner.mu.Unlock()
+	if inner.dead || inner.innerHello || inner.active {
+		return errors.New("closed outer bridge lane is unavailable")
+	}
+	if err := inner.bridge.handshake.BeginInnerHello(inner.id); err != nil {
+		return err
+	}
+	inner.innerHello = true
+	inner.unaccounted = uint32(len(inner.buffer))
+	return nil
+}
+
 func (lane *ClosedOuterBridgeLane) Read(value []byte) (int, error) {
 	if lane == nil || lane.lane == nil || len(value) == 0 {
 		return 0, errors.New("closed outer bridge read is invalid")
@@ -124,10 +143,18 @@ func (lane *ClosedOuterBridgeLane) Read(value []byte) (int, error) {
 		if len(inner.buffer) != 0 {
 			count := copy(value, inner.buffer)
 			inner.buffer = inner.buffer[count:]
-			active := inner.active
+			active := inner.innerHello
+			credited := uint32(count)
+			if credited <= inner.unaccounted {
+				inner.unaccounted -= credited
+				credited = 0
+			} else {
+				credited -= inner.unaccounted
+				inner.unaccounted = 0
+			}
 			inner.mu.Unlock()
-			if active {
-				credit, err := inner.bridge.handshake.ConsumeInnerBytes(inner.id, uint32(count))
+			if active && credited != 0 {
+				credit, err := inner.bridge.handshake.ConsumeInnerBytes(inner.id, credited)
 				if err != nil {
 					return 0, err
 				}
@@ -251,7 +278,7 @@ func (lane *closedOuterBridgeLane) feed(value []byte) error {
 	lane.mu.Lock()
 	defer lane.mu.Unlock()
 	limit := closedOuterHandshakeBytes
-	if lane.active {
+	if lane.innerHello {
 		limit = closedOuterLaneCredit
 	}
 	if lane.dead || lane.inputEOF || len(lane.buffer)+len(value) > limit {

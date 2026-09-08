@@ -42,6 +42,9 @@ func TestClosedOuterHandshakeOnlyAllocatesBoundedInnerTLS(t *testing.T) {
 	if _, err := handshake.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("accepted TLS handshake bytes beyond 4096 before inner HELLO")
 	}
+	if err := handshake.BeginInnerHello(1); err != nil {
+		t.Fatalf("begin inner HELLO = %v", err)
+	}
 	inner := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
 		Purpose: ClosedPurposeIssuer, ChannelNonce: [32]byte{9}, Deadline: receiver.Deadline}

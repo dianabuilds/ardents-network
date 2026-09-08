@@ -53,6 +53,9 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	if count, err := io.ReadFull(lane, buffer); err != nil || !bytes.Equal(buffer, []byte{1, 2, 3}) || count != 3 {
 		t.Fatalf("pre-TLS bridge read = %d / %x / %v", count, buffer, err)
 	}
+	if err := lane.BeginInnerHello(); err != nil {
+		t.Fatal(err)
+	}
 	inner := hello
 	inner.Purpose, inner.ChannelNonce = ClosedPurposeIssuer, [32]byte{20}
 	if err := lane.Activate(inner); err != nil {
