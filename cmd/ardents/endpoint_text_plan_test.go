@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -8,11 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func TestHeadlessTextPlanPreservesProtectedProfile(t *testing.T) {
 	plan := headlessTextPlanFixture(t)
+	plan.NetworkAuthorities = append([]string{strings.Repeat("09", 32)}, plan.NetworkAuthorities...)
 	decoded, err := loadHeadlessRuntimePlan(writeHeadlessTextPlan(t, plan))
 	if err != nil {
 		t.Fatal(err)
@@ -21,6 +24,17 @@ func TestHeadlessTextPlanPreservesProtectedProfile(t *testing.T) {
 	if err != nil || refresh || config.AcceptedProfile != route.ClosedRouteProfile {
 		t.Fatalf("protected Network profile changed: %q, refresh=%v, %v", config.AcceptedProfile, refresh, err)
 	}
+	if hex.EncodeToString(config.ClosedProfileAuthority) != plan.ClosedProfileAuthority {
+		t.Fatal("runtime did not preserve the explicitly selected signer")
+	}
+	owner, openErr := state.Open(config)
+	if openErr != nil {
+		t.Fatalf("ordinary text command cannot open its selected State profile: %v", openErr)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	if decoded.ReaderPermission != plan.ReaderPermission || decoded.PublisherPermission != plan.PublisherPermission || decoded.TextTokenRoot != plan.TextTokenRoot {
 		t.Fatal("permission ownership changed during plan decoding")
 	}
@@ -31,6 +45,9 @@ func TestHeadlessTextPlanRejectsIncompleteOrMixedContracts(t *testing.T) {
 		name   string
 		change func(*headlessRuntimePlan)
 	}{
+		{"missing State signer", func(p *headlessRuntimePlan) { p.ClosedProfileAuthority = "" }},
+		{"foreign State signer", func(p *headlessRuntimePlan) { p.ClosedProfileAuthority = strings.Repeat("09", 32) }},
+		{"malformed State signer", func(p *headlessRuntimePlan) { p.ClosedProfileAuthority = "not-a-key" }},
 		{"missing reader response", func(p *headlessRuntimePlan) { p.ReaderPermission.ResponsePath = "" }},
 		{"missing publisher request", func(p *headlessRuntimePlan) { p.PublisherPermission.RequestPath = "" }},
 		{"missing Instance", func(p *headlessRuntimePlan) { p.ServiceInstanceRoot = "" }},
@@ -70,7 +87,7 @@ func headlessTextPlanFixture(t *testing.T) headlessRuntimePlan {
 	root := t.TempDir()
 	path := func(name string) string { return filepath.Join(root, name) }
 	return headlessRuntimePlan{
-		Schema: "ardents-headless-runtime-v2", NetworkProfile: route.ClosedRouteProfile,
+		Schema: "ardents-headless-runtime-v2", NetworkProfile: route.ClosedRouteProfile, ClosedProfileAuthority: strings.Repeat("02", 32),
 		NetworkStateRoot: path("network"), EntryStateRoot: path("entry"), LocalRoleStateRoot: path("roles"), TextTokenRoot: path("tokens"),
 		PublicationRoot: path("publication"), ServiceInstanceRoot: path("instance"),
 		ApplicationSocket: path("application.sock"), AdministrationSocket: path("administration.sock"), TimeConfidenceFile: path("clock"),

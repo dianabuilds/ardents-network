@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -52,6 +53,7 @@ type headlessRuntimePlan struct {
 	NetworkAuthorities      []string `json:"network_authorities"`
 	NetworkThreshold        int      `json:"network_threshold"`
 	NetworkProfile          string   `json:"network_profile"`
+	ClosedProfileAuthority  string   `json:"closed_profile_authority,omitempty"`
 	AlphaCorpusAuthority    string   `json:"alpha_corpus_authority,omitempty"`
 	AlphaCohort             string   `json:"alpha_cohort,omitempty"`
 	BrokerID                string   `json:"broker_id"`
@@ -108,7 +110,7 @@ func headlessNetworkConfig(plan decodedHeadlessRuntimePlan, clock func() time.Ti
 	}
 	if plan.NetworkSourcePlan == "" {
 		return state.Config{Root: plan.NetworkStateRoot, NetworkID: plan.NetworkID, Authorities: plan.NetworkAuthorities,
-			Threshold: plan.NetworkThreshold, AcceptedProfile: plan.NetworkProfile, Clock: clock}, false, nil
+			Threshold: plan.NetworkThreshold, AcceptedProfile: plan.NetworkProfile, ClosedProfileAuthority: plan.ClosedProfileAuthority, Clock: clock}, false, nil
 	}
 	config, err := readSourcePlan(plan.NetworkStateRoot, plan.NetworkSourcePlan)
 	if err != nil {
@@ -118,6 +120,7 @@ func headlessNetworkConfig(plan decodedHeadlessRuntimePlan, clock func() time.Ti
 		return state.Config{}, false, errors.New("participant Network State source plan does not match the headless runtime")
 	}
 	config.AcceptedProfile, config.Clock = plan.NetworkProfile, clock
+	config.ClosedProfileAuthority = append(ed25519.PublicKey(nil), plan.ClosedProfileAuthority...)
 	return config, true, nil
 }
 
@@ -161,6 +164,7 @@ type decodedHeadlessRuntimePlan struct {
 	NetworkID, BrokerID, ConnectionPrincipal, AdministrationPrincipal [32]byte
 	NetworkAuthorities                                                map[[32]byte]ed25519.PublicKey
 	LegacyServiceLinkAuthority                                        ed25519.PublicKey
+	ClosedProfileAuthority                                            ed25519.PublicKey
 }
 
 func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
@@ -202,6 +206,18 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 		return decodedHeadlessRuntimePlan{}, err
 	}
 	result.NetworkAuthorities = authorities
+	if protected {
+		authority := make(ed25519.PublicKey, ed25519.PublicKeySize)
+		if err := decodeOperatorFixedHex(raw.ClosedProfileAuthority, authority); err != nil {
+			return decodedHeadlessRuntimePlan{}, fmt.Errorf("text State profile authority: %w", err)
+		}
+		if _, pinned := authorities[sha256.Sum256(authority)]; !pinned {
+			return decodedHeadlessRuntimePlan{}, errors.New("text State profile authority is not pinned by State")
+		}
+		result.ClosedProfileAuthority = authority
+	} else if raw.ClosedProfileAuthority != "" {
+		return decodedHeadlessRuntimePlan{}, errors.New("closed profile authority requires text runtime plan v2")
+	}
 	if legacyServiceLink {
 		authority := make(ed25519.PublicKey, ed25519.PublicKeySize)
 		if err := decodeOperatorFixedHex(raw.AlphaCorpusAuthority, authority); err != nil {
