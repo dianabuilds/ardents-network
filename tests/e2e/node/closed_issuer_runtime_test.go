@@ -19,7 +19,7 @@ import (
 // All State and issuer material below is accepted through product commands;
 // the Node's own runtime opens State and obtains its current duty projection.
 func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments []string, signedProfile, issuerRoot string,
-	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, exchange func(bool)) {
+	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, exchange func(bool)) {
 	t.Helper()
 	public := authority.Public().(ed25519.PublicKey)
 	clientAuthority := makeAuthority(t, "issuer-command-source-client")
@@ -72,16 +72,16 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	if ready.Epoch != 1 || ready.AssignmentDigest == [32]byte{} {
 		t.Fatalf("closed issuer has no accepted duty binding: %+v", ready)
 	}
-	for _, forwarding := range []struct {
-		id       byte
-		seed     byte
-		material uint32
-	}{{1, 6, 0}, {3, 8, 2}} {
+	live := []*nodeProcess{first}
+	for index, role := range closedTextTopologyRoles(nodeCount) {
+		if index == 1 {
+			continue
+		}
 		forwardRoot := t.TempDir()
 		forwardArgs := append([]string(nil), acceptArguments...)
 		forwardArgs[2] = forwardRoot
-		if forwarding.material != 0 {
-			forwardArgs[16] += ".2"
+		if index != 0 {
+			forwardArgs[16] += fmt.Sprintf(".%d", index)
 		}
 		forwardArgs = append(forwardArgs, "--closed-profile", signedProfile)
 		runProvisioningCommand(t, endpoint, forwardArgs...)
@@ -96,14 +96,41 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 			t.Fatal(err)
 		}
 		forwardPlan["local_role_state_root"] = forwardRoles
-		forwardPlan["node_id"], forwardPlan["materialization_index"] = identifierNode(forwarding.id), forwarding.material
-		forwardKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{forwarding.seed}, ed25519.SeedSize))
+		forwardPlan["node_id"], forwardPlan["materialization_index"] = identifierNode(byte(index+1)), index
+		forwardKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{byte(6 + index)}, ed25519.SeedSize))
 		cert, keyPath := closedIssuerListenCredential(t, forwardKey, now)
 		forwardPlan["identity_key"], forwardPlan["server_key"], forwardPlan["server_certificate"] = keyPath, keyPath, cert
-		forwardPlan["closed_forwarding"] = map[string]any{"root": t.TempDir(), "connection_limit": 2, "drain_timeout_ms": 1000}
-		process := startNodeCommand(t, node, "node", "--config", writeJSON(t, fmt.Sprintf("closed-forwarding-%d.json", forwarding.id), forwardPlan))
+		reservation := map[string]any{"connection_limit": 2, "drain_timeout_ms": 1000}
+		switch role {
+		case [2]uint8{2, 5}:
+			reservation["root"], reservation["admission_root"] = t.TempDir(), t.TempDir()
+			forwardPlan["closed_resolution"] = reservation
+		case [2]uint8{4, 3}:
+			reservation["admission_root"] = t.TempDir()
+			forwardPlan["closed_introduction"] = reservation
+		case [2]uint8{2, 4}:
+			reservation["admission_root"] = t.TempDir()
+			forwardPlan["closed_data_join"] = reservation
+		default:
+			reservation["root"] = t.TempDir()
+			forwardPlan["closed_forwarding"] = reservation
+		}
+		process := startNodeCommand(t, node, "node", "--config", writeJSON(t, fmt.Sprintf("closed-node-%d.json", index+1), forwardPlan))
 		t.Cleanup(func() { stopClosedIssuerProcess(t, process) })
 		waitNodeState(t, process, "READY", 10*time.Second)
+		live = append(live, process)
+	}
+	// Each process reached READY and must remain alive after the last Node
+	// starts. This does not prove continuous duty readiness or an Endpoint exchange.
+	for _, process := range live {
+		select {
+		case <-process.done:
+			t.Fatalf("closed topology Node exited after readiness: %v", process.terminalErr())
+		default:
+		}
+	}
+	if nodeCount != 3 {
+		return
 	}
 	exchange(false)
 	terminateLiveClosedIssuer(t, first)

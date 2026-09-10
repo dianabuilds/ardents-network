@@ -167,10 +167,7 @@ func testClosedIssuerProvisioning(t *testing.T, carrier string, nodeCount int) {
 	if retainErr != nil || closeErr != nil || retained != route {
 		t.Fatalf("reopened closed State changed: %v / %v", retainErr, closeErr)
 	}
-	if nodeCount != 3 {
-		return
-	}
-	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, func(unavailable bool) { exchange(config, unavailable) })
+	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, func(unavailable bool) { exchange(config, unavailable) })
 }
 
 func identifierNode(value byte) string {
@@ -179,7 +176,9 @@ func identifierNode(value byte) string {
 }
 
 // The complete closed text topology is accepted through real State/profile
-// commands. This cell does not start the sixteen Nodes or an ordinary Endpoint.
+// commands, then each real Node must report READY and remain alive until all
+// sixteen have started. Continuous readiness is not established by this cell.
+// This cell does not run an ordinary Endpoint exchange.
 func TestClosedTextTopologyProvisioningAcrossProcesses(t *testing.T) {
 	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
 		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 16) })
