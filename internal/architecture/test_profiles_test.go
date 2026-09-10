@@ -116,6 +116,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"fuzz":                              false,
 		"headless-network":                  false,
 		"heapdump-capture":                  false,
+		"heapdump-role-map":                 false,
 		"native-rendezvous-multihost":       false,
 		"package-e2e":                       false,
 		"process":                           false,

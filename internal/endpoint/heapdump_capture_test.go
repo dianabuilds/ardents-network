@@ -53,29 +53,9 @@ func TestHeapDumpObservation(t *testing.T) {
 }
 
 func verifyObservationInputs(root, selected string) (string, string, error) {
-	receipt, err := os.ReadFile(filepath.Join(root, "receipt.json"))
+	manifest, receiptDigest, err := verifiedObservationManifest(root, false)
 	if err != nil {
 		return "", "", err
-	}
-	var manifest struct {
-		SourceFiles []struct{ Path, SHA256 string } `json:"sourceFiles"`
-		Artifacts   []struct{ Path, SHA256 string } `json:"artifacts"`
-	}
-	if err := json.Unmarshal(receipt, &manifest); err != nil {
-		return "", "", err
-	}
-	repository, err := heapDumpRepositoryRoot()
-	if err != nil {
-		return "", "", err
-	}
-	for _, source := range manifest.SourceFiles {
-		raw, err := os.ReadFile(filepath.Join(repository, source.Path))
-		if err != nil {
-			return "", "", err
-		}
-		if actual := sha256.Sum256(raw); !strings.EqualFold(hex.EncodeToString(actual[:]), source.SHA256) {
-			return "", "", fmt.Errorf("source hash mismatch for %s", source.Path)
-		}
 	}
 	presenceRaw, err := os.ReadFile(filepath.Join(root, "target-presence.json"))
 	if err != nil {
@@ -135,11 +115,72 @@ func verifyObservationInputs(root, selected string) (string, string, error) {
 			if !strings.EqualFold(hex.EncodeToString(actual[:]), row.SHA256) {
 				return "", "", fmt.Errorf("heap hash mismatch for %s", selected)
 			}
-			receiptDigest := sha256.Sum256(receipt)
-			return hex.EncodeToString(receiptDigest[:]), hex.EncodeToString(presenceDigest[:]), nil
+			return receiptDigest, hex.EncodeToString(presenceDigest[:]), nil
 		}
 	}
 	return "", "", fmt.Errorf("selected heap missing from target-presence manifest: %s", selected)
+}
+
+type observationFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+}
+
+type observationManifest struct {
+	SourceFiles []observationFile `json:"sourceFiles"`
+	Artifacts   []observationFile `json:"artifacts"`
+}
+
+// verifiedObservationManifest binds the locally retained observation files to
+// the receipt before any report consumes their contents. allArtifacts is for
+// maps that use the full captured set rather than T01's one selected heap.
+func verifiedObservationManifest(root string, allArtifacts bool) (observationManifest, string, error) {
+	receipt, err := os.ReadFile(filepath.Join(root, "receipt.json"))
+	if err != nil {
+		return observationManifest{}, "", err
+	}
+	var manifest observationManifest
+	if err := json.Unmarshal(receipt, &manifest); err != nil {
+		return observationManifest{}, "", err
+	}
+	repository, err := heapDumpRepositoryRoot()
+	if err != nil {
+		return observationManifest{}, "", err
+	}
+	for _, source := range manifest.SourceFiles {
+		raw, err := os.ReadFile(filepath.Join(repository, source.Path))
+		if err != nil {
+			return observationManifest{}, "", err
+		}
+		if actual := sha256.Sum256(raw); !strings.EqualFold(hex.EncodeToString(actual[:]), source.SHA256) {
+			return observationManifest{}, "", fmt.Errorf("source hash mismatch for %s", source.Path)
+		}
+	}
+	if allArtifacts {
+		for _, artifact := range manifest.Artifacts {
+			path, err := observationArtifactPath(root, artifact.Path)
+			if err != nil {
+				return observationManifest{}, "", err
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				return observationManifest{}, "", err
+			}
+			if actual := sha256.Sum256(raw); !strings.EqualFold(hex.EncodeToString(actual[:]), artifact.SHA256) {
+				return observationManifest{}, "", fmt.Errorf("artifact hash mismatch for %s", artifact.Path)
+			}
+		}
+	}
+	digest := sha256.Sum256(receipt)
+	return manifest, hex.EncodeToString(digest[:]), nil
+}
+
+func observationArtifactPath(root, artifact string) (string, error) {
+	relative, err := filepath.Rel(root, artifact)
+	if err != nil || relative == "." || filepath.IsAbs(relative) || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("receipt artifact is outside observation root: %s", artifact)
+	}
+	return filepath.Join(root, relative), nil
 }
 
 func heapDumpRepositoryRoot() (string, error) {
