@@ -122,6 +122,10 @@ ten-minute watchdog. No clocks or scheduler fields are advanced.
 An explicit request through the real Administration socket withdraws publication;
 the ordinary Link command must then refuse while the same Endpoint invocation
 remains active and no Reader or Publisher worker unit remains active or stopping.
+The process collector continuously drains periodic resource samples; only
+lifecycle and non-periodic events enter its bounded event queue. This avoids
+stalling Nodes while the test waits for publication refresh, and does not
+provide resource-measurement evidence.
 This uses one Endpoint for both local roles, not two independent Endpoint hosts.
 Compilation alone does not prove this installed journey works.
 

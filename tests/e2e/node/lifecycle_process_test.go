@@ -45,6 +45,7 @@ type nodeProcess struct {
 }
 
 type nodeEvent struct {
+	Kind             string   `json:"kind"`
 	Schema           string   `json:"schema"`
 	State            string   `json:"state"`
 	Epoch            uint64   `json:"epoch"`
@@ -285,16 +286,7 @@ func startNodeCommand(t *testing.T, binary string, arguments ...string) *nodePro
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			var event nodeEvent
-			if json.Unmarshal(scanner.Bytes(), &event) == nil {
-				process.events <- event
-			}
-		}
-		close(process.events)
-	}()
+	go collectNodeEvents(stdout, process)
 	go func() {
 		err := command.Wait()
 		process.waitMu.Lock()
