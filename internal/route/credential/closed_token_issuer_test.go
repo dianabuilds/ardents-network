@@ -162,6 +162,7 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	if err != nil || exhausted.Status != ClosedTokenExhausted {
 		t.Fatalf("permission overflow result = %+v / %v", exhausted, err)
 	}
+	checkClosedIssuerSeparatePermissionObservation(t, issuer, profile, permission, authority, context, now, operation, firstRaw)
 }
 
 func serveClosedIssuerBootstrap(t *testing.T, issuer *ClosedTokenIssuer, profile state.ClosedProfileView, now time.Time, operation []byte) []byte {
