@@ -3,6 +3,7 @@
 package duty
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,4 +37,8 @@ func errorsJoin(first, second error) error {
 		return first
 	}
 	return second
+}
+
+func rootLeaseBusy(err error) bool {
+	return errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, syscall.EAGAIN)
 }

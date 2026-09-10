@@ -1,6 +1,7 @@
 package duty
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"time"
@@ -9,6 +10,12 @@ import (
 // Open claims one initialized local-role root, or creates it only when Create
 // is explicit. Every retained generation is verified before return.
 func Open(input Config) (*store, error) {
+	return open(input, nil)
+}
+func open(input Config, ctx context.Context) (*store, error) {
+	if ctx != nil && ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	if input.Root == "" || input.Clock == nil || input.Clock().IsZero() {
 		return nil, errors.New("local role configuration is incomplete")
 	}
@@ -22,7 +29,12 @@ func Open(input Config) (*store, error) {
 	if err := verifyRootCandidate(root, input.Create); err != nil {
 		return nil, err
 	}
-	lease, err := acquireRootLease(root)
+	var lease rootLease
+	if ctx == nil {
+		lease, err = acquireRootLease(root)
+	} else {
+		lease, err = acquireOperationLease(ctx, root)
+	}
 	if err != nil {
 		return nil, err
 	}

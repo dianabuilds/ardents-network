@@ -47,6 +47,17 @@ Introduction assignment are checked before accepting or returning a proof.
 Shutdown cancels children and joins handlers before releasing either root;
 a timed-out Drain leaves the roots held. No plan callback can supply a
 successful publication or bypass verification.
+Short local-role transactions coordinate with concurrent Source exposure
+retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
+for at most one second or the caller's earlier cancellation. It then verifies
+the current durable generation under that lease; a busy, corrupt, expired or
+unavailable root never becomes a no-conflict result. Source exposure updates
+and one-shot conflict reads use this bounded acquisition. The existing
+`duty.Open` remains non-waiting for retained owners. Acquisition cancellation
+does not release another owner's lease, and every successful caller still
+closes its own store. This local coordination does not extend any Route,
+permission, registration or protocol deadline.
+
 ## Module ownership
 
 | Module | Interface responsibility | Excluded responsibility |
