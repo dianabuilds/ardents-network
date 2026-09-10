@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,7 +32,7 @@ func closedProvisioningState(t *testing.T, network, issuer [32]byte, authority, 
 		}
 		record, err := BuildRecord(RecordSpec{NetworkID: network, NodeID: node, Generation: uint64(index + 1),
 			ValidFrom: now, ValidUntil: now.Add(2 * time.Hour), Family: []string{"first", "issuer", "interior"}[index],
-			Endpoint: freeAddress(t), Carrier: carrier,
+			Endpoint: closedProvisioningAddress(t, carrier), Carrier: carrier,
 			Capability: 2, Capacity: 4, PrivateKey: key})
 		if err != nil {
 			t.Fatal(err)
@@ -91,4 +92,22 @@ func runProvisioningCommand(t *testing.T, binary string, arguments ...string) {
 	if output, err := exec.CommandContext(ctx, binary, arguments...).CombinedOutput(); err != nil {
 		t.Fatalf("provisioning command %s: %v / %s", arguments[0], err, output)
 	}
+}
+
+// Windows can exclude a UDP range while allowing TCP binds to the same ports.
+// Probe the selected Carrier's socket family before signing its Node Record.
+func closedProvisioningAddress(t *testing.T, carrier string) string {
+	t.Helper()
+	if carrier != "ardents-carrier-quic-v2" {
+		return freeAddress(t)
+	}
+	listener, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.LocalAddr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return address
 }
