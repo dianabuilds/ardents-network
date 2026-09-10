@@ -124,6 +124,41 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 		t.Fatal("bad signature accepted")
 	}
 
+	// Same Principal, role, hour and maxima still create distinct contexts.
+	// A per-role or per-installation holder would pass reader/Publisher checks
+	// but would expose a cross-context identifier to the issuer.
+	otherReader := textPermissionContextFixture(t, endpoint, principal, broker.Connection)
+	otherRaw, otherDigest, err := otherReader.requestTextPermission(request.Permission.Maxima)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherRequest, err := credential.DecodePermissionRequest(otherRaw)
+	if err != nil || otherRequest.Role != request.Role || otherRequest.Permission.HolderKey == request.Permission.HolderKey ||
+		otherRequest.Permission.PermissionID == request.Permission.PermissionID || otherDigest == digest {
+		t.Fatalf("same-role contexts shared issuer identity: %v", err)
+	}
+	if err := otherReader.importTextPermission(otherDigest, approved.AdmissionPermission); err == nil {
+		t.Fatal("same-role context accepted another context's approval")
+	}
+	otherIssue := custody.Operation{Kind: custody.OperationIssueAdmissionPermission, RecordID: created.RecordID,
+		Expected: created.Authority.Binding, AdmissionRequest: otherRaw, AdmissionRequestCommitment: otherDigest}
+	otherApproval, err := vault.Execute(t.Context(), otherIssue, textPermissionSecretFixture{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := otherReader.importTextPermission(otherDigest, otherApproval.AdmissionPermission); err != nil {
+		t.Fatal(err)
+	}
+	if err := reader.importTextPermission(digest, otherApproval.AdmissionPermission); err == nil {
+		t.Fatal("original context accepted the second context's approval")
+	}
+	if err := otherReader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if retained, current, err := reader.requestTextPermission(request.Permission.Maxima); err != nil || current != digest || !bytes.Equal(retained, public) {
+		t.Fatal("closing another reader changed the surviving context's allocation")
+	}
+
 	publisher := textPermissionContextFixture(t, endpoint, principal, broker.Administration)
 	publisherRaw, publisherDigest, err := publisher.requestTextPermission([3]uint32{0, 64, 0})
 	if err != nil {
