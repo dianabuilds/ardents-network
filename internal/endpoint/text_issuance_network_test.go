@@ -38,6 +38,11 @@ func startTextRoleNetwork(t *testing.T, carrier route.CarrierProfile, resolution
 }
 
 func startTextRoleNetworkWithJoin(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
+	return startTextRoleNetworkWithRunner(t, carrier, resolution, publisher, join, nil, configure...)
+}
+
+// The optional runner isolates test observers; ordinary callers retain Node.Run.
+func startTextRoleNetworkWithRunner(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
 	t.Helper()
 	endpoint, owner, source := textSourceContextFixture(t)
 	count := 5
@@ -149,6 +154,15 @@ func startTextRoleNetworkWithJoin(t *testing.T, carrier route.CarrierProfile, re
 		// Hold every selected port until its listener is about to start, so
 		// earlier Node activity cannot allocate a later candidate's port.
 		reservations[index]()
+		if runner != nil {
+			stop := runner(t, index, config)
+			t.Cleanup(func() {
+				if err := stop(); err != nil {
+					t.Error(err)
+				}
+			})
+			continue
+		}
 		// Nodes are fixture infrastructure. testing.T cancels its Context before
 		// Cleanup, which would race an unrelated network shutdown against the
 		// Endpoint's normal cleanup. The explicit cleanup below owns each Node.
