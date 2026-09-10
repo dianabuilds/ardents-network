@@ -18,7 +18,7 @@ import (
 func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
-			issuer, profile, operation, now := closedTokenListenerIssuer(t)
+			issuer, profile, operation, now, verifyResult := closedTokenListenerIssuer(t)
 			defer func() {
 				if err := issuer.Close(); err != nil {
 					t.Error(err)
@@ -58,12 +58,13 @@ func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 			if err := <-listener.Done(); err != nil {
 				t.Fatal(err)
 			}
+			verifyResult(result)
 			checkIssuerTLSObservation(t, issuer, listener, carrier, server, observed, operation, result, before)
 		})
 	}
 }
 
-func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedProfileView, []byte, time.Time) {
+func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedProfileView, []byte, time.Time, func([]byte)) {
 	t.Helper()
 	window := time.Unix(1_800_100_000, 0).UTC().Truncate(time.Hour)
 	now := window.Add(time.Minute)
@@ -114,7 +115,21 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 	if err != nil {
 		t.Fatal(err)
 	}
-	return issuer, profile, operation, now
+	request, err := DecodeClosedTokenBatch(pending.Request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	verify := func(result []byte) {
+		t.Helper()
+		tokens, err := pending.FinalizeTerminalOperation([32]byte{71}, result)
+		if err != nil || len(tokens) != 1 {
+			t.Fatalf("finalize actual TLS issuer result: %v", err)
+		}
+		if err := VerifyClosedToken(context, request.SPKI[:], tokens[0]); err != nil {
+			t.Fatalf("verify actual TLS token: %v", err)
+		}
+	}
+	return issuer, profile, operation, now, verify
 }
 
 func closedTokenListenerBootstrap(t *testing.T, connection net.Conn, profile state.ClosedProfileView, now time.Time, operation []byte) []byte {
