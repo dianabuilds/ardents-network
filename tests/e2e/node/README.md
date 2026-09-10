@@ -53,6 +53,14 @@ command. Other platforms exercise readiness
 only. This does not establish graceful shutdown or prove that each Node
 contacted both Sources before declaring readiness.
 
+The closed text topology provisioning cell extends the same canonical command
+path to sixteen Node Records covering the Source, issuer, resolution,
+Introduction, Responder, and JOIN roles. It checks each accepted Node identity,
+Record digest, role domain, subrole, and duty generation against the signed
+plan, then checks that reopening preserves the route. Both accepted Carriers
+are exercised. This cell does not start those sixteen Nodes or run an ordinary
+Endpoint; its evidence is limited to signed topology provisioning.
+
 The closed Source cell starts two actual Source commands from independently
 accepted copies of that Epoch. A separate State owner acquires the matching
 generation through both mutually authenticated Sources. Unsupported or mixed

@@ -22,11 +22,11 @@ import (
 // use the actual command with each accepted Carrier.
 func TestClosedIssuerProfileProvisioningAcrossProcesses(t *testing.T) {
 	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
-		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier) })
+		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 3) })
 	}
 }
 
-func testClosedIssuerProvisioning(t *testing.T, carrier string) {
+func testClosedIssuerProvisioning(t *testing.T, carrier string, nodeCount int) {
 	nodeBinary, controlBinary := buildCommand(t, "ardents-node"), buildCommand(t, "ardents-control")
 	now := time.Now().UTC().Truncate(time.Hour)
 	network, issuerNode := [32]byte{1}, [32]byte{2}
@@ -70,17 +70,18 @@ func testClosedIssuerProvisioning(t *testing.T, carrier string) {
 		t.Fatalf("issuer inventory does not supply all six class/window keys: %v", err)
 	}
 	identifier := func(value byte) string { return hex.EncodeToString(bytes.Repeat([]byte{value}, 32)) }
-	config, acceptedState, records, endpointBinary, acceptArguments := closedProvisioningState(t, network, issuerNode, statePrivate, nodePrivate, now, carrier)
-	recordDigests := [3][32]byte{sha256.Sum256(records[0].Raw), sha256.Sum256(records[1].Raw), sha256.Sum256(records[2].Raw)}
+	config, acceptedState, records, endpointBinary, acceptArguments := closedProvisioningStateSize(t, network, issuerNode, statePrivate, nodePrivate, now, carrier, nodeCount)
+	roles := closedTextTopologyRoles(nodeCount)
+	nodePlans := make([]map[string]any, len(records))
+	for index, record := range records {
+		digest := sha256.Sum256(record.Raw)
+		nodePlans[index] = map[string]any{"NodeID": hex.EncodeToString(record.NodeID[:]), "RecordDigest": hex.EncodeToString(digest[:]), "RoleDomain": roles[index][0], "Subrole": roles[index][1], "DutyGeneration": index + 1}
+	}
 	plan := map[string]any{
 		"NetworkID": hex.EncodeToString(network[:]), "StateGeneration": acceptedState.Generation, "EpochDigest": hex.EncodeToString(acceptedState.Digest[:]), "Epoch": acceptedState.Epoch,
 		"IssuerNodeID": hex.EncodeToString(issuerNode[:]), "IssuanceAuthorityKey": hex.EncodeToString(admissionAuthority[:]),
 		"NotBefore": now.Format(time.RFC3339), "NotAfter": now.Add(2 * time.Hour).Format(time.RFC3339), "TokenKeys": keys,
-		"Nodes": []map[string]any{
-			{"NodeID": hex.EncodeToString(network[:]), "RecordDigest": hex.EncodeToString(recordDigests[0][:]), "RoleDomain": 1, "Subrole": 1, "DutyGeneration": 1},
-			{"NodeID": hex.EncodeToString(issuerNode[:]), "RecordDigest": hex.EncodeToString(recordDigests[1][:]), "RoleDomain": 2, "Subrole": 6, "DutyGeneration": 2},
-			{"NodeID": identifierNode(3), "RecordDigest": hex.EncodeToString(recordDigests[2][:]), "RoleDomain": 1, "Subrole": 2, "DutyGeneration": 3},
-		},
+		"Nodes": nodePlans,
 	}
 	planPath := writeJSON(t, "closed-profile-plan.json", plan)
 	preparedPath, signedPath := filepath.Join(t.TempDir(), "unsigned.profile"), filepath.Join(t.TempDir(), "signed.profile")
@@ -144,8 +145,18 @@ func testClosedIssuerProvisioning(t *testing.T, carrier string) {
 	view, profileErr := owner.CurrentClosedProfile()
 	route, routeErr := owner.CurrentClosedRoute()
 	closeErr := owner.Close()
-	if profileErr != nil || routeErr != nil || closeErr != nil || view.Digest != digest || route.NodeCount != 3 {
+	if profileErr != nil || routeErr != nil || closeErr != nil || view.Digest != digest || int(route.NodeCount) != nodeCount {
 		t.Fatalf("command profile did not join accepted State: %v / %v / %v", profileErr, routeErr, closeErr)
+	}
+	for _, node := range route.Nodes[:route.NodeCount] {
+		index := int(node.NodeID[0]) - 1
+		if index < 0 || index >= len(records) {
+			t.Fatal("accepted unexpected topology Node")
+		}
+		digest := sha256.Sum256(records[index].Raw)
+		if node.NodeID != records[index].NodeID || node.RecordDigest != digest || node.RoleDomain != roles[index][0] || node.Subrole != roles[index][1] || node.DutyGeneration != uint64(index+1) {
+			t.Fatal("accepted topology changed a signed role binding")
+		}
 	}
 	reopened, err := state.Open(config)
 	if err != nil {
@@ -156,10 +167,29 @@ func testClosedIssuerProvisioning(t *testing.T, carrier string) {
 	if retainErr != nil || closeErr != nil || retained != route {
 		t.Fatalf("reopened closed State changed: %v / %v", retainErr, closeErr)
 	}
+	if nodeCount != 3 {
+		return
+	}
 	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, func(unavailable bool) { exchange(config, unavailable) })
 }
 
 func identifierNode(value byte) string {
 	node := [32]byte{value}
 	return hex.EncodeToString(node[:])
+}
+
+// The complete closed text topology is accepted through real State/profile
+// commands. This cell does not start the sixteen Nodes or an ordinary Endpoint.
+func TestClosedTextTopologyProvisioningAcrossProcesses(t *testing.T) {
+	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
+		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 16) })
+	}
+}
+
+func closedTextTopologyRoles(count int) [][2]uint8 {
+	roles := [][2]uint8{{1, 1}, {2, 6}, {1, 2}}
+	if count == 16 {
+		roles = append(roles, [][2]uint8{{1, 1}, {1, 2}, {2, 5}, {4, 3}, {4, 1}, {4, 1}, {4, 2}, {4, 2}, {3, 1}, {3, 1}, {3, 2}, {3, 2}, {2, 4}}...)
+	}
+	return roles
 }
