@@ -99,7 +99,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			if !bytes.Equal(lookupTextPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
 				t.Fatal("receiving Store proof differs")
 			}
-			observeTextIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output)
+			observeTextIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output, string(carrier))
 			observe("published")
 			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
