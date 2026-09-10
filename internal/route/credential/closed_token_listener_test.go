@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"net"
+	"os"
 	"testing"
 	"time"
 )
@@ -23,6 +24,7 @@ func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 					t.Error(err)
 				}
 			}()
+			before := observeClosedIssuer(t, issuer, "before actual TLS issuance")
 			certificate, server := closedTokenListenerCertificate(t)
 			endpoint := closedTokenListenerEndpoint(t, carrier)
 			listener, err := StartClosedTokenListener(t.Context(), ClosedTokenListenerConfig{
@@ -39,7 +41,11 @@ func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result := closedTokenListenerBootstrap(t, connection, profile, now, operation)
+			if _, err := route.ClosedRoleTLSExporter(connection); err != nil {
+				t.Fatal(err)
+			}
+			observed := &issuerTLSObservationConn{Conn: connection}
+			result := closedTokenListenerBootstrap(t, observed, profile, now, operation)
 			if _, err := route.DecodeClosedIssuanceResult(result, [32]byte{71}); err != nil {
 				t.Fatalf("listener result: %v", err)
 			}
@@ -52,6 +58,7 @@ func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 			if err := <-listener.Done(); err != nil {
 				t.Fatal(err)
 			}
+			checkIssuerTLSObservation(t, issuer, listener, carrier, server, observed, operation, result, before)
 		})
 	}
 }
@@ -66,6 +73,9 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 	}
 	network, issuerNode := sha256.Sum256([]byte("listener network")), sha256.Sum256([]byte("listener node"))
 	root := t.TempDir()
+	if err := os.Chmod(root, 0700); err != nil {
+		t.Fatal(err)
+	}
 	receipt, err := InitializeClosedIssuerRoot(ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerNode, IdentityKey: nodePrivate,
 		NotBefore: window, NotAfter: window.Add(time.Hour), Clock: func() time.Time { return now }})
 	if err != nil {
