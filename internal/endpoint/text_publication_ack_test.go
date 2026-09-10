@@ -18,12 +18,13 @@ import (
 )
 
 // Pause the real resolution server at its State recheck after the actual
-// Store has written revision 2 and before it can emit the Descriptor RESULT.
+// Store has written the selected revision and before it emits Descriptor RESULT.
 // Concurrent resolution State polls may also wait. State facts, Store writes,
 // token admission, registration and all network replies remain real owners.
 type textDescriptorACKGate struct {
 	mu       sync.Mutex
 	root     string
+	revision uint64
 	baseline map[string]os.FileInfo
 	held     chan struct{}
 	release  chan struct{}
@@ -32,7 +33,7 @@ type textDescriptorACKGate struct {
 }
 
 func newTextDescriptorACKGate() *textDescriptorACKGate {
-	return &textDescriptorACKGate{held: make(chan struct{}), release: make(chan struct{})}
+	return &textDescriptorACKGate{revision: 2, held: make(chan struct{}), release: make(chan struct{})}
 }
 
 func (gate *textDescriptorACKGate) open() { gate.released.Do(func() { close(gate.release) }) }
@@ -89,7 +90,7 @@ func (gate *textDescriptorACKGate) committed(root string, profile state.ClosedPr
 			continue
 		}
 		proof, err := reachability.VerifyPrivatePublication(raw[2:], profile.NetworkID, profile.Digest, time.Now().UTC())
-		if err == nil && proof.Descriptor.Private.Revision == 2 {
+		if err == nil && proof.Descriptor.Private.Revision == gate.revision {
 			return true
 		}
 	}
@@ -173,7 +174,7 @@ func refuseTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, ow
 	return operation
 }
 
-// Arm only after the first publication and before forcing its replacement.
+// Arm before the selected publication; revision 1 requires an empty Store.
 // Polling the old record's contents races atomic replacement on Windows.
 func (gate *textDescriptorACKGate) arm(t *testing.T) {
 	t.Helper()
@@ -194,7 +195,11 @@ func (gate *textDescriptorACKGate) arm(t *testing.T) {
 		}
 		gate.baseline[entry.Name()] = info
 	}
-	if len(gate.baseline) != 1 {
-		t.Fatalf("expected one committed publication, got %d", len(gate.baseline))
+	expected := 1
+	if gate.revision == 1 {
+		expected = 0
+	}
+	if len(gate.baseline) != expected {
+		t.Fatalf("expected %d committed publications, got %d", expected, len(gate.baseline))
 	}
 }
