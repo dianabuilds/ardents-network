@@ -19,10 +19,11 @@ import (
 // Explicit State/qualified-launch fixtures isolate set ownership. The tests
 // use the actual Entry and local-duty roots, not enrollment/host qualification.
 type textSourceStateFixture struct {
-	issuePermission func(*testing.T, *textContext, [3]uint32)
-	mu              sync.Mutex
-	view            state.ClosedRouteView
-	snapshot        state.Snapshot
+	issuePermission    func(*testing.T, *textContext, [3]uint32)
+	issueRawPermission func(*testing.T, []byte, [32]byte) []byte
+	mu                 sync.Mutex
+	view               state.ClosedRouteView
+	snapshot           state.Snapshot
 }
 
 func (source *textSourceStateFixture) CurrentClosedProfile() (state.ClosedProfileView, error) {

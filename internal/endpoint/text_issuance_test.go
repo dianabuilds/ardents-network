@@ -67,18 +67,23 @@ func prepareTextIssuancePermissionWithIdentity(t *testing.T, owner *textContext,
 		copy(source.view.Profile.TokenKeys[index].SPKI[:], key.SPKI)
 	}
 	source.mu.Unlock()
+	source.issueRawPermission = func(t *testing.T, raw []byte, digest [32]byte) []byte {
+		t.Helper()
+
+		issued, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationIssueAdmissionPermission, RecordID: created.RecordID, Expected: created.Authority.Binding,
+			AdmissionRequest: raw, AdmissionRequestCommitment: digest}, textPermissionSecretFixture{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return issued.AdmissionPermission
+	}
 	source.issuePermission = func(t *testing.T, owner *textContext, maxima [3]uint32) {
 		t.Helper()
 		raw, digest, err := owner.requestTextPermission(maxima)
 		if err != nil {
 			t.Fatal(err)
 		}
-		issued, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationIssueAdmissionPermission, RecordID: created.RecordID, Expected: created.Authority.Binding,
-			AdmissionRequest: raw, AdmissionRequestCommitment: digest}, textPermissionSecretFixture{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := owner.importTextPermission(digest, issued.AdmissionPermission); err != nil {
+		if err := owner.importTextPermission(digest, source.issueRawPermission(t, raw, digest)); err != nil {
 			t.Fatal(err)
 		}
 	}

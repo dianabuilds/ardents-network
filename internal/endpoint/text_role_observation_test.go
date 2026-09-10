@@ -17,9 +17,13 @@ import (
 )
 
 // Same-run role memory, with a real Publisher/issuer/Store exchange. This is
-// not two Endpoint processes, authenticated Source, transient-state coverage,
+// not installed Endpoint qualification, authenticated Source, transient-state coverage,
 // or complete P3 analysis. Public State and worker qualification are fixtures.
 func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
+	if path := os.Getenv("ARDENTS_TEXT_READER_CHILD"); path != "" {
+		runTextReaderObservationChild(t, path)
+		return
+	}
 	if path := os.Getenv("ARDENTS_TEXT_ROLE_CHILD"); path != "" {
 		runTextRoleObservationChild(t, path)
 		return
@@ -88,6 +92,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			if !bytes.Equal(lookupTextPublishedProof(t, owner, published.Descriptor.Target), registration.descriptor) {
 				t.Fatal("receiving Store proof differs")
 			}
+			observeTextIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output)
 			observe("published")
 			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
