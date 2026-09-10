@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
+	"net"
 	"path/filepath"
 	"testing"
 	"time"
@@ -25,6 +26,8 @@ import (
 // admission spend and Descriptor Store are real. This does not qualify private
 // Introduction registration or Endpoint Publisher readiness.
 type resolutionNetworkFixture struct {
+	observe       func(net.Conn) net.Conn
+	admissionRoot string
 	profile       state.ClosedProfileView
 	carrier       route.CarrierProfile
 	endpoint      string
@@ -116,6 +119,7 @@ func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfil
 		t.Fatal("invalid resolution State fixture")
 	}
 	fixture := &resolutionNetworkFixture{profile: profile, carrier: carrier, endpoint: endpoint, certificate: clientCert, receiver: receiver, serverKey: serverKey, root: config.ClosedResolution.Root}
+	fixture.admissionRoot = config.ClosedIntroduction.AdmissionRoot
 	fixture.tokens = privateRecipientTokens(t, root, profile, authority, receiver, class)
 	fixture.supplementary = make(map[uint8][][]byte)
 	for _, extra := range extraClasses {

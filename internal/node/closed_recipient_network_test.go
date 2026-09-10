@@ -46,9 +46,13 @@ func (fixture *resolutionNetworkFixture) openTerminal(ctx context.Context, token
 	if err := route.WriteClosedLaneFrame(outer, route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		return nil, nil, err
 	}
-	inner, err := route.OpenClosedRoleTLS(ctx, &outerTestInnerConn{outer: outer, lane: 1}, fixture.serverKey, end)
+	secured, err := route.OpenClosedRoleTLS(ctx, &outerTestInnerConn{outer: outer, lane: 1}, fixture.serverKey, end)
 	if err != nil {
 		return nil, nil, fmt.Errorf("inner TLS: %w", err)
+	}
+	var inner net.Conn = secured
+	if fixture.observe != nil {
+		inner = fixture.observe(inner)
 	}
 	hello.Purpose = fixture.receiver.ExpectedPurpose
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
