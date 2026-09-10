@@ -1,0 +1,68 @@
+package connection
+
+import (
+	"context"
+	"errors"
+	"io"
+	"unicode/utf8"
+)
+
+const (
+	maximumOutcomeClassBytes  = 128
+	maximumOutcomeReasonBytes = 512
+)
+
+const (
+	CleanClose           OutcomeClass = "clean service connection close"
+	ServiceUnavailable   OutcomeClass = "service unavailable"
+	LocalFailure         OutcomeClass = "local attachment failure"
+	LocalCancellation    OutcomeClass = "local cancellation"
+	LocalTimeout         OutcomeClass = "local timeout or cancellation"
+	IndeterminateFailure OutcomeClass = "indeterminate failure"
+)
+
+// OutcomeClass is one bounded terminal classification. The shared constants
+// cover transport-owned results; an Endpoint implementation may add a
+// domain-owned class, but the local transport admits only 1..128 bytes.
+type OutcomeClass string
+
+// Outcome is the sole terminal Connection projection. Reason is diagnostic,
+// limited to 512 bytes by the local transport, and never carries a Target,
+// Route, peer, credential, or Application bytes.
+type Outcome struct {
+	Class  OutcomeClass
+	Reason string
+}
+
+// Stream is one authenticated opaque Application byte stream. Read and Write
+// may proceed concurrently; the transport splits writes into frames of at
+// most 16 KiB. CloseInput delivers EOF to the Service while preserving Read
+// for its response. The implementation must close the read direction and
+// publish exactly one non-empty Done result when the Service Connection
+// terminates. Write and CloseInput preserve their frame order, while Close may
+// run concurrently to interrupt either operation, joins the attachment's owned
+// work, and is safe to repeat after Done. The first terminal outcome is final.
+// Callers must not interpret EOF without the Done result as semantic success.
+type Stream interface {
+	io.ReadWriteCloser
+	CloseInput() error
+	Done() <-chan Outcome
+}
+
+// Interface opens one Target Link without accepting Network or Route facts.
+// The link is non-empty and at most 512 bytes. The context governs both setup
+// and the returned Stream lifetime. An implementation may return Refuse for a
+// classified denial; every other error is exposed as ServiceUnavailable by
+// the server Adapter. No operation retries or opens an alternate Target Link.
+type Interface interface {
+	Open(context.Context, Request) (Stream, error)
+}
+
+func validOutcome(outcome Outcome) error {
+	if len(outcome.Class) == 0 || len(outcome.Class) > maximumOutcomeClassBytes ||
+		len(outcome.Reason) > maximumOutcomeReasonBytes ||
+		!utf8.ValidString(string(outcome.Class)) || !utf8.ValidString(outcome.Reason) {
+		return errors.New("application Connection terminal outcome is invalid")
+	}
+	return nil
+}

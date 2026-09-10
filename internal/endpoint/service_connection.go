@@ -41,11 +41,17 @@ func (endpoint *endpoint) connectAuthorized(ctx context.Context, input connectio
 	releaseConnection := acquireResource(endpoint.resources, "service-connection")
 	defer releaseConnection()
 	defer input.Route.Close()
+	interruptionFinished := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {
+		defer close(interruptionFinished)
 		_ = input.Route.Close()
 		_ = input.Application.Close()
 	})
-	defer stop()
+	defer func() {
+		if !stop() {
+			<-interruptionFinished
+		}
+	}()
 	attachment, continuity, err := secureClient(ctx, input.Route, credential, connectionContext, 1)
 	if err != nil {
 		return failed("service target authentication failure", "current Service Instance TLS proof failed", err)
@@ -117,11 +123,17 @@ func (endpoint *endpoint) acceptAuthorized(ctx context.Context, input connection
 		return failed("service target authentication failure", "native Service Connection context is invalid", contextErr)
 	}
 	defer input.Route.Close()
+	interruptionFinished := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {
+		defer close(interruptionFinished)
 		_ = input.Route.Close()
 		_ = input.Application.Close()
 	})
-	defer stop()
+	defer func() {
+		if !stop() {
+			<-interruptionFinished
+		}
+	}()
 	attachment, continuity, err := securePublisher(ctx, input.Route, credential, lease, connectionContext, 1)
 	if err != nil {
 		return failed("service target authentication failure", "incoming Service Instance TLS proof failed", err)

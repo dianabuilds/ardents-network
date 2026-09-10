@@ -12,22 +12,31 @@ import (
 
 const (
 	closedTokenIssuerLedgerName       = "closed-token-ledger"
-	closedTokenIssuerLedgerMagic      = "ARDILG01"
+	closedTokenIssuerLedgerMagic      = "ARDILG02"
 	closedTokenIssuerLedgerHeaderSize = 8 + 32 + 32 + 32
-	closedTokenIssuerReservationSize  = 32 + 32 + 32 + 8 + 1 + 2 + 1
+	closedTokenIssuerReservationSize  = 32 + 32 + 32 + 8 + 1 + 1 + 2 + 1
 	maximumClosedTokenReservations    = 6 * 65536
+)
+
+type closedIssuanceKind uint8
+
+const (
+	closedIssuanceBootstrap closedIssuanceKind = 1
+	closedIssuanceAdmitted  closedIssuanceKind = 2
 )
 
 type closedTokenIssuerLedger struct {
 	root                         string
 	network, node, profileDigest [32]byte
 	reservations                 []closedTokenIssuerReservation
+	failure                      error
 }
 
 type closedTokenIssuerReservation struct {
 	requestID, requestDigest, permissionID [32]byte
 	window                                 time.Time
 	class                                  uint8
+	kind                                   closedIssuanceKind
 	count                                  uint16
 }
 
@@ -35,38 +44,73 @@ func openClosedTokenIssuerLedger(root string, network, node, profileDigest [32]b
 	if network == [32]byte{} || node == [32]byte{} || profileDigest == [32]byte{} {
 		return nil, errors.New("closed token issuer ledger binding is invalid")
 	}
+	ledger := &closedTokenIssuerLedger{root: root, network: network, node: node, profileDigest: profileDigest}
+	binding, boundErr := readIssuerFile(filepath.Join(root, closedIssuerLedgerBindingName), closedTokenIssuerLedgerHeaderSize)
+	if boundErr != nil && !errors.Is(boundErr, os.ErrNotExist) {
+		return nil, boundErr
+	}
+	if boundErr == nil && !bytes.Equal(binding, ledger.header()) {
+		return nil, errors.New("closed token issuer retained binding differs")
+	}
 	path := filepath.Join(root, closedTokenIssuerLedgerName)
 	raw, err := readIssuerFile(path, int64(closedTokenIssuerLedgerHeaderSize+maximumClosedTokenReservations*closedTokenIssuerReservationSize))
 	if errors.Is(err, os.ErrNotExist) {
-		ledger := &closedTokenIssuerLedger{root: root, network: network, node: node, profileDigest: profileDigest, reservations: []closedTokenIssuerReservation{}}
-		if err := initializeClosedTokenIssuerLedger(path, ledger); err != nil {
+		if boundErr == nil {
+			return nil, errors.New("closed token issuer retained ledger missing")
+		}
+		if err := ledger.retainBinding(); err != nil {
 			return nil, err
 		}
-		return ledger, nil
+		if err := writeIssuerExclusive(path, ledger.header()); err != nil {
+			return nil, err
+		}
+		return ledger, syncIssuerDirectory(root)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return decodeClosedTokenIssuerLedger(root, raw, network, node, profileDigest)
+	legacy := len(raw) >= 8 && string(raw[:8]) == "ARDILG01"
+	if !legacy && boundErr != nil {
+		return nil, errors.New("closed token issuer binding missing")
+	}
+	ledger, err = decodeClosedTokenIssuerLedger(root, raw, network, node, profileDigest)
+	if err != nil {
+		return nil, err
+	}
+	if legacy {
+		if boundErr != nil {
+			if err := ledger.retainBinding(); err != nil {
+				return nil, err
+			}
+		}
+		if err := ledger.promote(); err != nil {
+			return nil, err
+		}
+	}
+	if err := removeClosedIssuerLedgerStage(root); err != nil {
+		return nil, err
+	}
+	return ledger, nil
 }
 
-func initializeClosedTokenIssuerLedger(path string, ledger *closedTokenIssuerLedger) error {
-	raw := make([]byte, 0, closedTokenIssuerLedgerHeaderSize)
-	raw = append(raw, closedTokenIssuerLedgerMagic...)
+func (ledger *closedTokenIssuerLedger) header() []byte {
+	raw := append([]byte{}, closedTokenIssuerLedgerMagic...)
 	for _, value := range [][32]byte{ledger.network, ledger.node, ledger.profileDigest} {
 		raw = append(raw, value[:]...)
 	}
-	if err := writeIssuerExclusive(path, raw); err != nil {
-		return err
-	}
-	return syncIssuerDirectory(filepath.Dir(path))
+	return raw
 }
 
 func decodeClosedTokenIssuerLedger(root string, raw []byte, network, node, profileDigest [32]byte) (*closedTokenIssuerLedger, error) {
-	if len(raw) < closedTokenIssuerLedgerHeaderSize || string(raw[:8]) != closedTokenIssuerLedgerMagic {
+	if len(raw) < closedTokenIssuerLedgerHeaderSize || string(raw[:8]) != closedTokenIssuerLedgerMagic && string(raw[:8]) != "ARDILG01" {
 		return nil, errors.New("closed token issuer ledger framing is invalid")
 	}
-	ledger := &closedTokenIssuerLedger{root: root, network: network, node: node, profileDigest: profileDigest, reservations: []closedTokenIssuerReservation{}}
+	legacy := string(raw[:8]) == "ARDILG01"
+	recordSize := closedTokenIssuerReservationSize
+	if legacy {
+		recordSize--
+	}
+	ledger := &closedTokenIssuerLedger{root: root, network: network, node: node, profileDigest: profileDigest}
 	offset := 8
 	for _, value := range [][32]byte{network, node, profileDigest} {
 		if !bytes.Equal(raw[offset:offset+32], value[:]) {
@@ -74,35 +118,36 @@ func decodeClosedTokenIssuerLedger(root string, raw []byte, network, node, profi
 		}
 		offset += 32
 	}
-	complete := len(raw) - (len(raw)-offset)%closedTokenIssuerReservationSize
-	for offset < complete {
-		record := raw[offset : offset+closedTokenIssuerReservationSize]
+	seen := make(map[[32]byte]struct{})
+	for len(raw)-offset >= recordSize {
+		record := raw[offset : offset+recordSize]
 		if record[len(record)-1] == 0 {
-			if err := truncateClosedTokenIssuerLedger(filepath.Join(root, closedTokenIssuerLedgerName), int64(offset)); err != nil {
-				return nil, err
+			if len(raw)-offset != recordSize {
+				return nil, errors.New("closed token issuer uncommitted record is not the tail")
 			}
 			break
 		}
-		if record[len(record)-1] != 1 {
-			return nil, errors.New("closed token issuer ledger commit is invalid")
+		if legacy {
+			converted := append([]byte{}, record[:105]...)
+			converted = append(converted, byte(closedIssuanceBootstrap))
+			record = append(converted, record[105:]...)
 		}
 		reservation, err := decodeClosedTokenIssuerReservation(record)
 		if err != nil {
 			return nil, err
 		}
-		for _, prior := range ledger.reservations {
-			if prior.requestID == reservation.requestID {
-				return nil, errors.New("closed token issuer ledger request ID is duplicated")
-			}
+		if _, exists := seen[reservation.requestID]; exists {
+			return nil, errors.New("closed token issuer ledger request ID is duplicated")
 		}
+		seen[reservation.requestID] = struct{}{}
 		ledger.reservations = append(ledger.reservations, reservation)
 		if len(ledger.reservations) > maximumClosedTokenReservations {
 			return nil, errors.New("closed token issuer ledger exceeds reservation bound")
 		}
-		offset += closedTokenIssuerReservationSize
+		offset += recordSize
 	}
-	if complete != len(raw) {
-		if err := truncateClosedTokenIssuerLedger(filepath.Join(root, closedTokenIssuerLedgerName), int64(complete)); err != nil {
+	if offset != len(raw) {
+		if err := truncateClosedTokenIssuerLedger(filepath.Join(root, closedTokenIssuerLedgerName), int64(offset)); err != nil {
 			return nil, err
 		}
 	}
@@ -110,6 +155,9 @@ func decodeClosedTokenIssuerLedger(root string, raw []byte, network, node, profi
 }
 
 func (ledger *closedTokenIssuerLedger) find(requestID, digest [32]byte) (closedTokenIssuerReservation, bool, error) {
+	if ledger.failure != nil {
+		return closedTokenIssuerReservation{}, false, ledger.failure
+	}
 	for _, reservation := range ledger.reservations {
 		if reservation.requestID == requestID {
 			if reservation.requestDigest != digest {
@@ -121,12 +169,19 @@ func (ledger *closedTokenIssuerLedger) find(requestID, digest [32]byte) (closedT
 	return closedTokenIssuerReservation{}, false, nil
 }
 
-func (ledger *closedTokenIssuerLedger) reserve(request ClosedTokenBatchRequest, digest [32]byte) (bool, error) {
-	if _, found, err := ledger.find(request.RequestID, digest); err != nil || found {
+func (ledger *closedTokenIssuerLedger) reserve(request ClosedTokenBatchRequest, digest [32]byte, kind closedIssuanceKind) (bool, error) {
+	if kind != closedIssuanceBootstrap && kind != closedIssuanceAdmitted || request.Class < 1 || request.Class > 3 ||
+		len(request.BlindedRequests) < 1 || len(request.BlindedRequests) > maximumClosedTokenBatch {
+		return false, errors.New("closed token issuer reservation kind is invalid")
+	}
+	if prior, found, err := ledger.find(request.RequestID, digest); err != nil || found {
+		if found && prior.kind != kind {
+			return false, errors.New("closed token issuer retry changed admission kind")
+		}
 		return found, err
 	}
 	count := uint32(len(request.BlindedRequests))
-	var dutyUsed, permissionUsed, permissionBatches uint32
+	var dutyUsed, permissionUsed, bootstrapBatches uint32
 	for _, reservation := range ledger.reservations {
 		if reservation.window == request.WindowStart {
 			dutyUsed += uint32(reservation.count)
@@ -134,16 +189,18 @@ func (ledger *closedTokenIssuerLedger) reserve(request ClosedTokenBatchRequest, 
 				permissionUsed += uint32(reservation.count)
 			}
 		}
-		if reservation.permissionID == request.Permission.PermissionID {
-			permissionBatches++
+		if reservation.permissionID == request.Permission.PermissionID && reservation.kind == closedIssuanceBootstrap {
+			bootstrapBatches++
 		}
 	}
-	if dutyUsed+count > 65536 || permissionUsed+count > request.Permission.Maxima[request.Class-1] || permissionBatches >= 2 || len(ledger.reservations) == maximumClosedTokenReservations {
+	if dutyUsed+count > 65536 || permissionUsed+count > request.Permission.Maxima[request.Class-1] ||
+		kind == closedIssuanceBootstrap && bootstrapBatches >= 2 || len(ledger.reservations) == maximumClosedTokenReservations {
 		return false, nil
 	}
 	reservation := closedTokenIssuerReservation{requestID: request.RequestID, requestDigest: digest, permissionID: request.Permission.PermissionID,
-		window: request.WindowStart, class: request.Class, count: uint16(count)}
+		window: request.WindowStart, class: request.Class, kind: kind, count: uint16(count)}
 	if err := appendClosedTokenIssuerReservation(filepath.Join(ledger.root, closedTokenIssuerLedgerName), reservation); err != nil {
+		ledger.failure = err
 		return false, err
 	}
 	ledger.reservations = append(ledger.reservations, reservation)
@@ -153,7 +210,8 @@ func (ledger *closedTokenIssuerLedger) reserve(request ClosedTokenBatchRequest, 
 func encodeClosedTokenIssuerReservation(reservation closedTokenIssuerReservation) ([]byte, error) {
 	if reservation.requestID == [32]byte{} || reservation.requestDigest == [32]byte{} || reservation.permissionID == [32]byte{} ||
 		reservation.window.IsZero() || reservation.window != reservation.window.UTC() || reservation.window.Truncate(time.Hour) != reservation.window ||
-		reservation.class < 1 || reservation.class > 3 || reservation.count == 0 || reservation.count > maximumClosedTokenBatch {
+		reservation.class < 1 || reservation.class > 3 || reservation.count == 0 || reservation.count > maximumClosedTokenBatch ||
+		reservation.kind != closedIssuanceBootstrap && reservation.kind != closedIssuanceAdmitted {
 		return nil, errors.New("closed token issuer reservation is invalid")
 	}
 	raw := make([]byte, 0, closedTokenIssuerReservationSize)
@@ -161,7 +219,7 @@ func encodeClosedTokenIssuerReservation(reservation closedTokenIssuerReservation
 		raw = append(raw, value[:]...)
 	}
 	raw = binary.BigEndian.AppendUint64(raw, uint64(reservation.window.Unix()))
-	raw = append(raw, reservation.class)
+	raw = append(raw, reservation.class, byte(reservation.kind))
 	raw = binary.BigEndian.AppendUint16(raw, reservation.count)
 	return append(raw, 0), nil
 }
@@ -178,8 +236,8 @@ func decodeClosedTokenIssuerReservation(raw []byte) (closedTokenIssuerReservatio
 	}
 	value.window = time.Unix(int64(binary.BigEndian.Uint64(raw[offset:offset+8])), 0).UTC()
 	offset += 8
-	value.class = raw[offset]
-	offset++
+	value.class, value.kind = raw[offset], closedIssuanceKind(raw[offset+1])
+	offset += 2
 	value.count = binary.BigEndian.Uint16(raw[offset : offset+2])
 	committed, err := encodeClosedTokenIssuerReservation(value)
 	if err != nil || !bytes.Equal(committed[:len(committed)-1], raw[:len(raw)-1]) {
@@ -187,7 +245,6 @@ func decodeClosedTokenIssuerReservation(raw []byte) (closedTokenIssuerReservatio
 	}
 	return value, nil
 }
-
 func appendClosedTokenIssuerReservation(path string, reservation closedTokenIssuerReservation) error {
 	raw, err := encodeClosedTokenIssuerReservation(reservation)
 	if err != nil {

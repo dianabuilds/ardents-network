@@ -22,9 +22,11 @@ type ClosedCarrierKey struct {
 // supplies validate on every acquisition and invalidates changed facts; this
 // pool never independently selects, dials or retries a peer.
 type ClosedCarrierPool struct {
-	mu      sync.Mutex
-	clock   func() time.Time
-	entries map[ClosedCarrierKey]*closedCarrierEntry
+	mu       sync.Mutex
+	clock    func() time.Time
+	entries  map[ClosedCarrierKey]*closedCarrierEntry
+	closed   bool
+	closeErr error
 }
 
 type closedCarrierEntry struct {
@@ -44,6 +46,21 @@ type ClosedCarrierLease struct {
 	released bool
 }
 
+// Carrier returns the one State-validated Carrier owned by this live lease.
+// Callers may use it only while they retain the lease; Release closes an
+// unused Carrier or returns actual work to the bounded pool.
+func (lease *ClosedCarrierLease) Carrier() (Carrier, error) {
+	if lease == nil || lease.pool == nil {
+		return nil, errors.New("closed Carrier lease is unavailable")
+	}
+	lease.pool.mu.Lock()
+	defer lease.pool.mu.Unlock()
+	if lease.released || lease.pool.entries[lease.key] != lease.entry || lease.entry.carrier == nil {
+		return nil, errors.New("closed Carrier lease is unavailable")
+	}
+	return lease.entry.carrier, nil
+}
+
 // NewClosedCarrierPool creates one local Node pool with no pre-dial entries.
 func NewClosedCarrierPool(clock func() time.Time) (*ClosedCarrierPool, error) {
 	if clock == nil || clock().IsZero() {
@@ -61,12 +78,26 @@ func (pool *ClosedCarrierPool) Acquire(key ClosedCarrierKey, validate func() err
 	}
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
+	if pool.closed {
+		return nil, errors.New("closed Carrier pool is closed")
+	}
 	now := pool.clock().UTC()
-	pool.reapLocked(now)
+	if err := pool.reapLocked(now); err != nil {
+		return nil, err
+	}
 	if entry := pool.entries[key]; entry != nil {
 		entry.active++
 		entry.idleAt = time.Time{}
 		return &ClosedCarrierLease{pool: pool, key: key, entry: entry}, nil
+	}
+	for previous, entry := range pool.entries {
+		if previous.LocalNodeID == key.LocalNodeID && previous.PeerNodeID == key.PeerNodeID {
+			delete(pool.entries, previous)
+			if err := entry.carrier.Close(); err != nil {
+				pool.closed, pool.closeErr = true, err
+				return nil, err
+			}
+		}
 	}
 	if len(pool.entries) >= closedCarrierPoolMaximum {
 		return nil, errors.New("closed Carrier pool is exhausted")
@@ -75,7 +106,7 @@ func (pool *ClosedCarrierPool) Acquire(key ClosedCarrierKey, validate func() err
 	if err != nil || carrier == nil {
 		return nil, errors.New("closed Carrier acquisition is unavailable")
 	}
-	entry := &closedCarrierEntry{carrier: carrier, active: 1}
+	entry := &closedCarrierEntry{carrier: &closedCarrierRetirement{Carrier: carrier}, active: 1}
 	pool.entries[key] = entry
 	return &ClosedCarrierLease{pool: pool, key: key, entry: entry}, nil
 }
@@ -122,22 +153,6 @@ func (lease *ClosedCarrierLease) Release() error {
 	return nil
 }
 
-// Invalidate closes a changed State key even while children are active. Their
-// owned readers/writers observe the closed Carrier and must join normally.
-func (pool *ClosedCarrierPool) Invalidate(key ClosedCarrierKey) error {
-	if pool == nil {
-		return nil
-	}
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-	entry := pool.entries[key]
-	if entry == nil {
-		return nil
-	}
-	delete(pool.entries, key)
-	return entry.carrier.Close()
-}
-
 // Reap closes only idle, previously useful Carriers past the fixed retention.
 func (pool *ClosedCarrierPool) Reap() error {
 	if pool == nil {
@@ -155,12 +170,14 @@ func (pool *ClosedCarrierPool) Close() error {
 	}
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
+	pool.closed = true
 	var result error
 	for key, entry := range pool.entries {
 		delete(pool.entries, key)
 		result = errors.Join(result, entry.carrier.Close())
 	}
-	return result
+	pool.closeErr = errors.Join(pool.closeErr, result)
+	return pool.closeErr
 }
 
 func (pool *ClosedCarrierPool) reapLocked(now time.Time) error {
@@ -177,4 +194,26 @@ func (pool *ClosedCarrierPool) reapLocked(now time.Time) error {
 func validClosedCarrierKey(key ClosedCarrierKey) bool {
 	return key.NetworkID != [32]byte{} && key.ProfileDigest != [32]byte{} && key.LocalNodeID != [32]byte{} && key.PeerNodeID != [32]byte{} &&
 		key.PeerKey != [32]byte{} && key.LocalNodeID != key.PeerNodeID && (key.CarrierProfile == ClosedCarrierTCP || key.CarrierProfile == ClosedCarrierQUIC)
+}
+
+// SameCarrier compares opaque Carrier incarnations, including after the first
+// borrower's Release. It does not make either lease live or select a peer.
+func (lease *ClosedCarrierLease) SameCarrier(other *ClosedCarrierLease) bool {
+	return lease != nil && other != nil && lease.pool != nil && lease.pool == other.pool && lease.entry != nil && lease.entry == other.entry
+}
+
+// Invalidate closes only this exact incarnation. A late retained reader cannot
+// remove a replacement acquired with the same public key after Reap or Release.
+func (lease *ClosedCarrierLease) Invalidate() error {
+	if lease == nil || lease.pool == nil {
+		return nil
+	}
+	pool := lease.pool
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	if pool.entries[lease.key] != lease.entry {
+		return nil
+	}
+	delete(pool.entries, lease.key)
+	return lease.entry.carrier.Close()
 }

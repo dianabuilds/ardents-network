@@ -1,7 +1,6 @@
 package reachability
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
@@ -15,7 +14,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
 
-const storeRecordVersion = byte(1)
+const (
+	storeRecordVersion        = byte(1)
+	privateStoreRecordVersion = byte(2)
+)
 
 func (store *Store) restore() error {
 	directory := filepath.Join(store.path, storeRecords)
@@ -31,7 +33,7 @@ func (store *Store) restore() error {
 		if entry.IsDir() || len(entry.Name()) != 64 {
 			return errors.New("reachability store record name is invalid")
 		}
-		raw, err := readStoreFile(filepath.Join(directory, entry.Name()), MaximumDescriptorSize+4)
+		raw, err := readStoreFile(filepath.Join(directory, entry.Name()), MaximumPrivateDescriptorSize+4)
 		if err != nil {
 			return err
 		}
@@ -56,89 +58,63 @@ func (store *Store) write(record storedDescriptor) error {
 }
 
 func encodeStored(record storedDescriptor) ([]byte, error) {
-	if len(record.raw) == 0 || len(record.raw) > MaximumDescriptorSize || record.verified.Descriptor.Target == [32]byte{} {
+	version, maximum := storeRecordVersion, MaximumDescriptorSize
+	if record.verified.Descriptor.Version == privateDescriptorVersion {
+		version, maximum = privateStoreRecordVersion, MaximumPrivateDescriptorSize
+	}
+	if len(record.raw) == 0 || len(record.raw) > maximum || record.verified.Descriptor.Target == [32]byte{} ||
+		(version == storeRecordVersion && record.revisionConflicting) {
 		return nil, errors.New("reachability stored descriptor is incomplete")
 	}
 	flags := byte(0)
 	if record.conflicting {
-		flags = 1
+		flags |= 1
 	}
-	return append([]byte{storeRecordVersion, flags}, record.raw...), nil
+	if record.revisionConflicting {
+		flags |= 2
+	}
+	return append([]byte{version, flags}, record.raw...), nil
 }
 
 func decodeStored(raw []byte, network [32]byte) (storedDescriptor, error) {
-	if len(raw) < 2 || raw[0] != storeRecordVersion || raw[1] > 1 {
+	if len(raw) < 2 || (raw[0] != storeRecordVersion && raw[0] != privateStoreRecordVersion) ||
+		raw[1] > 3 || (raw[0] == storeRecordVersion && raw[1] > 1) {
 		return storedDescriptor{}, errors.New("reachability stored descriptor header is invalid")
 	}
-	descriptor, _, err := decode(raw[2:])
+	var descriptor Descriptor
+	var err error
+	if raw[0] == privateStoreRecordVersion {
+		descriptor, err = decodePrivateDescriptor(raw[2:])
+	} else {
+		descriptor, _, err = decode(raw[2:])
+	}
 	if err != nil {
 		return storedDescriptor{}, err
 	}
-	// A stored descriptor may be expired now, but it was valid when accepted.
-	// Its own whole-second slot expiry is within the Credential interval, so one
-	// second before it is the stable proof decision time after publication.
+	// Restore the signed floor at a time within its original validity, even
+	// when it has since expired. This does not make it currently available:
+	// lookup re-verifies against the caller's actual profile and time.
 	at := descriptor.Introduction.NotAfter.Add(-time.Second)
+	if descriptor.Version == privateDescriptorVersion {
+		at = descriptor.Private.NotAfter.Add(-time.Second)
+	}
 	current, err := publication.Decode(descriptor.Publication, ed25519.PublicKey(descriptor.AuthorityPublic[:]), network, at)
 	if err != nil || current.Credential.Target != descriptor.Target || current.Digest != descriptor.PublicationDigest {
 		return storedDescriptor{}, errors.New("reachability stored Publication is invalid")
 	}
-	verified, err := Verify(raw[2:], descriptor.Target, network, at)
+	var verified Verified
+	if descriptor.Version == privateDescriptorVersion {
+		verified, err = VerifyPrivate(raw[2:], descriptor.Target, network, descriptor.ProfileDigest, at)
+	} else {
+		verified, err = Verify(raw[2:], descriptor.Target, network, at)
+	}
 	if err != nil {
 		return storedDescriptor{}, err
 	}
-	return storedDescriptor{raw: append([]byte(nil), raw[2:]...), verified: verified, digest: sha256.Sum256(raw[2:]), conflicting: raw[1] == 1}, nil
+	return storedDescriptor{raw: append([]byte(nil), raw[2:]...), verified: verified, digest: sha256.Sum256(raw[2:]),
+		conflicting: raw[1]&1 != 0, revisionConflicting: raw[1]&2 != 0}, nil
 }
-
 func targetName(target [32]byte) string { return fmt.Sprintf("%x", target) }
-
-func prepareStoreRoot(root string) error {
-	info, err := os.Lstat(root)
-	if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(root, 0o700); err != nil {
-			return fmt.Errorf("create reachability store root: %w", err)
-		}
-	} else if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return errors.New("reachability store root is invalid")
-	}
-	if err := ensureStoreFile(filepath.Join(root, storeLockName), nil); err != nil {
-		return err
-	}
-	if err := ensureStoreFile(filepath.Join(root, storeMarkerName), []byte(storeMarker)); err != nil {
-		return err
-	}
-	if err := os.Mkdir(filepath.Join(root, storeRecords), 0o700); err != nil && !errors.Is(err, os.ErrExist) {
-		return err
-	}
-	return nil
-}
-
-func ensureStoreFile(path string, expected []byte) error {
-	info, err := os.Lstat(path)
-	if errors.Is(err, os.ErrNotExist) {
-		file, createErr := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-		if createErr != nil {
-			return createErr
-		}
-		if len(expected) > 0 {
-			_, createErr = file.Write(expected)
-		}
-		if createErr == nil {
-			createErr = file.Sync()
-		}
-		return errors.Join(createErr, file.Close())
-	}
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
-		return errors.New("reachability store root file is invalid")
-	}
-	if len(expected) == 0 {
-		return nil
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil || !bytes.Equal(raw, expected) {
-		return errors.New("reachability store marker is invalid")
-	}
-	return nil
-}
 
 func readStoreFile(path string, maximum int) ([]byte, error) {
 	info, err := os.Lstat(path)
@@ -175,6 +151,9 @@ func replaceStoreFile(root, name string, raw []byte) error {
 	}
 	if err == nil {
 		err = os.Rename(path, filepath.Join(root, name))
+	}
+	if err == nil {
+		err = syncStoreDirectory(root)
 	}
 	return err
 }

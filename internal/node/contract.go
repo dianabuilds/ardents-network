@@ -124,6 +124,13 @@ type Config struct {
 	Responder     ResponderProfile
 	TransitIssuer TransitIssuerProfile
 	ClosedIssuer  ClosedIssuerProfile
+	// ClosedForwarding supplies the isolated receiving spend journal and Node
+	// TLS key for an accepted generation-3 adjacent/interior forwarding duty.
+	// State still selects the endpoint, peer and recipient assignment.
+	ClosedForwarding   ClosedForwardingProfile
+	ClosedResolution   ClosedResolutionProfile
+	ClosedIntroduction ClosedIntroductionProfile
+	ClosedDataJoin     ClosedDataJoinProfile
 	// CurrentClosedProfile exposes only State's already accepted closed
 	// profile. It is unavailable instead of choosing profile bytes or a trust
 	// root from the Node plan.
@@ -208,6 +215,17 @@ type TransitIssuerProfile struct {
 // current issuer profile; this local profile cannot select a recipient.
 type ClosedIssuerProfile struct {
 	Root            string
+	AdmissionRoot   string
+	Certificate     tls.Certificate
+	ConnectionLimit uint16
+	DrainTimeout    time.Duration
+}
+
+// ClosedForwardingProfile contains the local material for one closed Route
+// forwarding duty. Root is exclusively owned by its current receiving duty;
+// it must not share an issuer root or survive a changed duty generation.
+type ClosedForwardingProfile struct {
+	Root            string
 	Certificate     tls.Certificate
 	ConnectionLimit uint16
 	DrainTimeout    time.Duration
@@ -225,7 +243,6 @@ func (facts dutyFacts) DutyConflicting() bool           { return facts.Conflicti
 func (facts dutyFacts) DutyRecordPresent() bool         { return facts.RecordPresent }
 func (facts dutyFacts) DutyNodeID() [32]byte            { return facts.NodeID }
 func (facts dutyFacts) DutyNodePublicKey() [32]byte     { return facts.NodePublicKey }
-func (facts dutyFacts) DutyRecordGeneration() uint64    { return facts.RecordGeneration }
 func (facts dutyFacts) DutyRecordValidFrom() time.Time  { return facts.RecordValidFrom }
 func (facts dutyFacts) DutyRecordValidUntil() time.Time { return facts.RecordValidUntil }
 func (facts dutyFacts) DutyDeclaredFamily() string      { return facts.DeclaredFamily }

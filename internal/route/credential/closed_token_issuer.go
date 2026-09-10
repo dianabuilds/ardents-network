@@ -77,10 +77,9 @@ func OpenClosedTokenIssuer(config ClosedTokenIssuerConfig) (*ClosedTokenIssuer, 
 		current: config.CurrentProfile, clock: config.Clock}, nil
 }
 
-// Issue verifies cheap request facts before the durable whole-batch debit,
-// then signs the already-reserved blinded elements. The deterministic selected
-// blind RSA primitive lets an exact post-crash retry recompute its result.
-func (issuer *ClosedTokenIssuer) Issue(raw []byte) ClosedTokenBatchResult {
+// issue verifies and durably debits the complete batch before signing.
+// An exact post-crash retry recomputes the already reserved result.
+func (issuer *ClosedTokenIssuer) issue(raw []byte, kind closedIssuanceKind) ClosedTokenBatchResult {
 	if issuer == nil {
 		return ClosedTokenBatchResult{Status: ClosedTokenUnavailable}
 	}
@@ -100,16 +99,12 @@ func (issuer *ClosedTokenIssuer) Issue(raw []byte) ClosedTokenBatchResult {
 		return ClosedTokenBatchResult{Status: ClosedTokenUnavailable}
 	}
 	digest := sha256.Sum256(raw)
-	if _, found, err := issuer.ledger.find(request.RequestID, digest); err != nil {
+	reserved, reserveErr := issuer.ledger.reserve(request, digest, kind)
+	if reserveErr != nil {
 		return ClosedTokenBatchResult{Status: ClosedTokenUnavailable}
-	} else if !found {
-		reserved, reserveErr := issuer.ledger.reserve(request, digest)
-		if reserveErr != nil {
-			return ClosedTokenBatchResult{Status: ClosedTokenUnavailable}
-		}
-		if !reserved {
-			return ClosedTokenBatchResult{Status: ClosedTokenExhausted}
-		}
+	}
+	if !reserved {
+		return ClosedTokenBatchResult{Status: ClosedTokenExhausted}
 	}
 	signer := blindrsa.NewSigner(private)
 	result := ClosedTokenBatchResult{Status: ClosedTokenIssued, Signatures: make([][]byte, 0, len(request.BlindedRequests))}
@@ -121,17 +116,6 @@ func (issuer *ClosedTokenIssuer) Issue(raw []byte) ClosedTokenBatchResult {
 		result.Signatures = append(result.Signatures, signature)
 	}
 	return result
-}
-
-// IssueEncoded emits the one fixed issuer plaintext shape for every outcome.
-// A coding/storage failure is rendered as the same unavailable shape.
-func (issuer *ClosedTokenIssuer) IssueEncoded(raw []byte) []byte {
-	encoded, err := EncodeClosedTokenBatchResult(issuer.Issue(raw))
-	if err == nil {
-		return encoded
-	}
-	encoded, _ = EncodeClosedTokenBatchResult(ClosedTokenBatchResult{Status: ClosedTokenUnavailable})
-	return encoded
 }
 
 // Close releases the exclusive root lease and removes in-memory private-key

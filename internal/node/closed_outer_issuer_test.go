@@ -1,3 +1,5 @@
+//go:build linux
+
 package node
 
 import (
@@ -7,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -23,7 +26,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	clientCertificate, clientKey := rendezvousCertificate(t, 242, "closed-outer-peer")
 	network, issuerID, peerID := [32]byte{61}, [32]byte{62}, [32]byte{63}
 	generation, digest := sha256.Sum256([]byte("outer issuer generation")), sha256.Sum256([]byte("outer issuer digest"))
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "issuer")
 	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: serverCertificate.PrivateKey.(ed25519.PrivateKey), NotBefore: now.Truncate(time.Hour), NotAfter: until, Clock: time.Now})
 	if err != nil {
@@ -52,7 +55,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 			view.Nodes[0] = state.ClosedRouteNodeView{NodeID: issuerID, RecordDigest: recordDigest, RoleDomain: 2, Subrole: 6, DutyGeneration: profile.IssuerDutyGeneration}
 			view.Nodes[1] = state.ClosedRouteNodeView{NodeID: peerID, RecordDigest: snapshot.Candidates[0].RecordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 9}
 			return view, true
-		}, ClosedIssuer: ClosedIssuerProfile{Root: root, Certificate: serverCertificate, ConnectionLimit: 2, DrainTimeout: time.Second},
+		}, ClosedIssuer: ClosedIssuerProfile{Root: root, AdmissionRoot: t.TempDir(), Certificate: serverCertificate, ConnectionLimit: 2, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil }, Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	resolved, err := resolveConfig(config)
 	if err != nil {
@@ -86,7 +89,7 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 	if accepted, err := route.ReadClosedLaneFrame(outer); err != nil || accepted.Kind != 5 {
 		t.Fatalf("outer accept = %+v / %v", accepted, err)
 	}
-	open, err := route.EncodeClosedOpen(route.ClosedOpen{NextNodeID: issuerID, NextDutyGeneration: profile.IssuerDutyGeneration, Purpose: route.ClosedPurposeIssuer, Deadline: now.Add(8 * time.Second)})
+	open, err := route.EncodeClosedNodeOpen(route.ClosedOpen{NextNodeID: issuerID, NextDutyGeneration: profile.IssuerDutyGeneration, Purpose: route.ClosedPurposeIssuer, Deadline: now.Add(8 * time.Second)}, route.ClosedChildIssuerBootstrap)
 	if err != nil {
 		t.Fatal(err)
 	}

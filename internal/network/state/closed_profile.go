@@ -174,7 +174,7 @@ func decodeClosedProfileNodes(d *decoder, profile *closedProfile) error {
 func validClosedProfileDuty(domain, subrole byte) bool {
 	switch subrole {
 	case 1, 2:
-		return domain >= 1 && domain <= 3
+		return domain == 1 || domain == 3 || domain == 4
 	case 3:
 		return domain == 4
 	case 4, 5, 6:

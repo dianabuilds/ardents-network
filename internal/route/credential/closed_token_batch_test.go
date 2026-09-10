@@ -1,3 +1,5 @@
+//go:build linux
+
 package credential
 
 import (
@@ -24,7 +26,7 @@ func TestPrepareClosedTokenBatchBindsStatePermissionAndVolatileBlindState(t *tes
 	window := time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour)
 	authority := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
 	holder := ed25519.NewKeyFromSeed(bytesForClosedTokenBatch(1))
-	profile := state.ClosedProfileView{Digest: sha256.Sum256([]byte("profile")), IssuerNodeID: sha256.Sum256([]byte("issuer")),
+	profile := state.ClosedProfileView{NetworkID: sha256.Sum256([]byte("network")), Digest: sha256.Sum256([]byte("profile")), IssuerNodeID: sha256.Sum256([]byte("issuer")),
 		IssuerDutyGeneration: 9, TokenKeyCount: 1}
 	copy(profile.IssuanceAuthorityKey[:], authority.Public().(ed25519.PublicKey))
 	profile.TokenKeys[0] = state.ClosedProfileTokenKey{WindowStart: window, Class: 2}
@@ -35,7 +37,7 @@ func TestPrepareClosedTokenBatchBindsStatePermissionAndVolatileBlindState(t *tes
 	copy(permission.Signature[:], ed25519.Sign(authority, permissionTranscript(permission)))
 	context := ClosedTokenContext{NetworkID: permission.NetworkID, ProfileDigest: profile.Digest, ReceiverNodeID: sha256.Sum256([]byte("receiver")),
 		IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: 8, Class: 2, WindowStart: window}
-	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Context: context, Permission: permission, HolderKey: holder, Count: 3, Now: window.Add(time.Minute)})
+	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context, context, context}, Permission: permission, HolderKey: holder, Now: window.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,8 +62,44 @@ func TestPrepareClosedTokenBatchBindsStatePermissionAndVolatileBlindState(t *tes
 	if pending.Request() != nil {
 		t.Fatal("discard retained a retryable request")
 	}
-	if _, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Context: context, Permission: permission, HolderKey: authority, Count: 3, Now: window.Add(time.Minute)}); err == nil {
+	if _, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context, context, context}, Permission: permission, HolderKey: authority, Now: window.Add(time.Minute)}); err == nil {
 		t.Fatal("accepted a holder key different from the permission")
+	}
+	for _, fault := range []string{"network", "profile", "issuer", "receiver", "duty", "class", "zero-class", "window", "empty", "oversize", "ambiguous-key"} {
+		t.Run(fault, func(t *testing.T) {
+			challenges := []ClosedTokenContext{context, context}
+			changedProfile := profile
+			switch fault {
+			case "network":
+				challenges[1].NetworkID[0]++
+			case "profile":
+				challenges[1].ProfileDigest[0]++
+			case "issuer":
+				challenges[1].IssuerNodeID[0]++
+			case "receiver":
+				challenges[1].ReceiverNodeID = [32]byte{}
+			case "duty":
+				challenges[1].ReceiverDutyGeneration = 0
+			case "class":
+				challenges[1].Class = 1
+			case "zero-class":
+				challenges[0].Class = 0
+			case "window":
+				challenges[1].WindowStart = window.Add(time.Hour)
+			case "empty":
+				challenges = nil
+			case "oversize":
+				challenges = make([]ClosedTokenContext, 33)
+			case "ambiguous-key":
+				changedProfile.TokenKeyCount = 2
+				changedProfile.TokenKeys[1] = changedProfile.TokenKeys[0]
+			}
+			if pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: changedProfile, Contexts: challenges,
+				Permission: permission, HolderKey: holder, Now: window.Add(time.Minute)}); err == nil {
+				pending.Discard()
+				t.Fatal("invalid batch challenge set accepted")
+			}
+		})
 	}
 }
 

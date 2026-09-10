@@ -155,3 +155,19 @@ tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
 	go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 	go install golang.org/x/tools/cmd/deadcode@v0.48.0
+
+.PHONY: text-worker-policy-check
+text-worker-policy-check:
+	sh ./tests/qualification/text-worker-policy/run-ubuntu.sh
+
+.PHONY: text-worker-lifecycle-check
+text-worker-lifecycle-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh
+
+.PHONY: text-worker-tree-check
+text-worker-tree-check:
+	sh ./tests/qualification/text-worker-tree/run-ubuntu.sh
+
+.PHONY: text-worker-network-check
+text-worker-network-check:
+	sh ./tests/qualification/text-worker-network/run-ubuntu.sh

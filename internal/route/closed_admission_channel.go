@@ -37,11 +37,14 @@ type ClosedAdmissionVerification struct {
 type ClosedAdmissionVerifier func(ClosedAdmissionVerification) (time.Time, error)
 
 // ClosedAdmission is the finite result of initial receiver admission. It
-// retains no token, holder, permission, Target or exporter bytes.
+// retains only private HELLO/exporter binding until its receiving owner transfers
+// the reservation; no token, holder, permission or Target survives admission.
 type ClosedAdmission struct {
 	Class    uint8
 	Deadline time.Time
 	Bytes    uint64
+	hello    ClosedHello
+	exporter [32]byte
 	duty     *closedDutyChannel
 }
 
@@ -147,7 +150,7 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 		reservation.release()
 		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
 	}
-	lease := ClosedAdmission{Class: class, Bytes: closedClassBytes(class), Deadline: now.Add(closedClassLifetime(class))}
+	lease := ClosedAdmission{hello: channel.hello, exporter: channel.binding, Class: class, Bytes: closedClassBytes(class), Deadline: now.Add(closedClassLifetime(class))}
 	if channel.hello.Deadline.Before(lease.Deadline) {
 		lease.Deadline = channel.hello.Deadline
 	}

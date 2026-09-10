@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"io"
-	"sync"
+	"net"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -13,7 +13,7 @@ import (
 
 // closedIssuerNodeHandler owns one State-authenticated outer Carrier. It
 // creates no peer, route or fallback: every child terminates at this issuer.
-func closedIssuerNodeHandler(config runtimeConfig, snapshot dutyFacts, certificate tls.Certificate, limits *route.ClosedDutyLimits) credential.ClosedNodeBootstrapHandler {
+func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, issuer *credential.ClosedTokenIssuer, spends *route.ClosedSpendLedger, limits *route.ClosedDutyLimits) credential.ClosedNodeBootstrapHandler {
 	return func(ctx context.Context, carrier route.ClosedSharedCarrier, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error) {
 		defer carrier.Connection.Close()
 		updated, err := currentFacts(config)
@@ -24,50 +24,42 @@ func closedIssuerNodeHandler(config runtimeConfig, snapshot dutyFacts, certifica
 		if !available {
 			return
 		}
-		deadline := config.now().UTC().Truncate(time.Second).Add(10 * time.Second)
-		if receiver.NotAfter.Before(deadline) {
-			deadline = receiver.NotAfter
-		}
+		deadline := receiver.NotAfter
 		outer, err := route.NewClosedOuterHandshake(route.ClosedOuterReceiver{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration,
 			StateDigest: receiver.StateDigest, ProfileDigest: receiver.ProfileDigest, NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest,
 			DutyGeneration: receiver.DutyGeneration, RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: deadline}, limits, config.now)
 		if err != nil {
 			return
 		}
-		defer outer.Close()
-		var writer sync.Mutex
-		bridge, err := route.NewClosedOuterBridge(outer, func(frame route.ClosedLaneFrame) error {
-			writer.Lock()
-			defer writer.Unlock()
-			return route.WriteClosedLaneFrame(carrier.Connection, frame)
+		serveClosedOuter(ctx, carrier.Connection, outer, func(childContext context.Context, lane *route.ClosedOuterBridgeLane) {
+			admitted := func(connection net.Conn, hello route.ClosedLaneFrame) error {
+				exporter, err := route.ClosedRoleTLSExporter(connection)
+				if err != nil {
+					return err
+				}
+				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, closedRoleTokenVerifier(config, receiver), config.now)
+				if err != nil {
+					return err
+				}
+				return issuer.ServeAdmittedAfterHello(childContext, connection, channel, hello, lane)
+			}
+			serveClosedIssuerInner(childContext, lane, certificate, deadline, carrier.NodeKey, serve, admitted)
 		})
-		if err != nil {
-			return
-		}
-		for {
-			frame, readErr := route.ReadClosedLaneFrame(carrier.Connection)
-			if readErr != nil {
-				return
-			}
-			lane, acceptErr := bridge.Accept(frame)
-			if acceptErr != nil {
-				return
-			}
-			if lane != nil {
-				go serveClosedIssuerInner(ctx, lane, certificate, deadline, carrier.NodeKey, serve)
-			}
-		}
 	}
 }
 
-func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error) {
+func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLane, certificate tls.Certificate, deadline time.Time, adjacency [32]byte, serve func(context.Context, io.ReadWriter, [32]byte, route.ClosedHello) error, admitted func(net.Conn, route.ClosedLaneFrame) error) {
 	status := byte(1)
 	defer func() { _ = lane.CloseWithStatus(status) }()
 	secured, err := route.AcceptClosedRoleTLS(ctx, lane, certificate, deadline)
 	if err != nil {
 		return
 	}
-	defer secured.Close()
+	defer func() {
+		if secured.CloseWrite() != nil {
+			status = 1
+		}
+	}()
 	if err := lane.BeginInnerHello(); err != nil {
 		return
 	}
@@ -75,12 +67,22 @@ func serveClosedIssuerInner(ctx context.Context, lane *route.ClosedOuterBridgeLa
 	if err != nil {
 		return
 	}
+	if helloFrame.Kind != 1 || helloFrame.Lane != 0 {
+		return
+	}
 	hello, err := route.DecodeClosedHello(helloFrame.Body)
 	if err != nil || lane.Activate(hello) != nil {
 		return
 	}
-	if serve(ctx, secured, adjacency, hello) == nil {
-		status = 0
+	switch lane.Restriction() {
+	case route.ClosedChildIssuerBootstrap:
+		if serve(ctx, secured, adjacency, hello) == nil {
+			status = 0
+		}
+	case route.ClosedChildOrdinary:
+		if admitted(secured, helloFrame) == nil {
+			status = 0
+		}
 	}
 }
 

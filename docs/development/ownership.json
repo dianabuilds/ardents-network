@@ -3,13 +3,17 @@
   "owners": [
     "network",
     "application-interface-v1",
-    "historical-evidence"
+    "historical-evidence",
+    "application-interface-v2",
+    "text-application"
   ],
   "rules": [
     {
       "id": "application-interface-v1",
       "owner": "application-interface-v1",
-      "include_prefixes": ["internal/application/interfacev1/"]
+      "include_prefixes": [
+        "internal/application/interfacev1/"
+      ]
     },
     {
       "id": "historical-evidence",
@@ -56,20 +60,102 @@
         "docs/research/",
         "experiments/",
         "internal/application/interfacev1/",
-        "tests/compatibility/"
+        "tests/compatibility/",
+        "internal/application/interfacev2/",
+        "internal/application/textdocument/",
+        "cmd/ardents-text/",
+        "packaging/text-worker/",
+        "tests/qualification/text-worker-policy/"
       ],
-      "exclude_paths": []
+      "exclude_paths": [
+        "tests/profiles/text-worker-commands.txt"
+      ]
+    },
+    {
+      "id": "application-interface-v2",
+      "owner": "application-interface-v2",
+      "include_prefixes": [
+        "internal/application/interfacev2/"
+      ]
+    },
+    {
+      "id": "text-application",
+      "owner": "text-application",
+      "include_prefixes": [
+        "internal/application/textdocument/",
+        "cmd/ardents-text/",
+        "packaging/text-worker/",
+        "tests/qualification/text-worker-policy/"
+      ],
+      "include_paths": [
+        "tests/profiles/text-worker-commands.txt"
+      ]
     }
   ],
   "qualification_lanes": [
-    {"id": "endpoint-portable-ubuntu", "owner": "network", "path": "tests/qualification/endpoint-portable-ubuntu"},
-    {"id": "endpoint-replacement-ubuntu", "owner": "network", "path": "tests/qualification/endpoint-replacement-ubuntu"},
-    {"id": "service-credential-response-linux", "owner": "network", "path": "tests/qualification/service-credential-response-linux"},
-    {"id": "native-rendezvous-multihost", "owner": "network", "path": "tests/qualification/native-rendezvous-multihost"},
-    {"id": "native-rendezvous-host", "owner": "network", "path": "tests/qualification/native-rendezvous-host"},
-    {"id": "alpha-control-two-endpoints", "owner": "network", "path": "tests/qualification/alpha-control-two-endpoints"}
+    {
+      "id": "text-worker-network",
+      "owner": "network",
+      "path": "tests/qualification/text-worker-network"
+    },
+    {
+      "id": "text-worker-tree",
+      "owner": "network",
+      "path": "tests/qualification/text-worker-tree"
+    },
+    {
+      "id": "text-worker-lifecycle",
+      "owner": "network",
+      "path": "tests/qualification/text-worker-lifecycle"
+    },
+    {
+      "id": "text-worker-policy",
+      "owner": "text-application",
+      "path": "tests/qualification/text-worker-policy"
+    },
+    {
+      "id": "endpoint-portable-ubuntu",
+      "owner": "network",
+      "path": "tests/qualification/endpoint-portable-ubuntu"
+    },
+    {
+      "id": "endpoint-replacement-ubuntu",
+      "owner": "network",
+      "path": "tests/qualification/endpoint-replacement-ubuntu"
+    },
+    {
+      "id": "service-credential-response-linux",
+      "owner": "network",
+      "path": "tests/qualification/service-credential-response-linux"
+    },
+    {
+      "id": "native-rendezvous-multihost",
+      "owner": "network",
+      "path": "tests/qualification/native-rendezvous-multihost"
+    },
+    {
+      "id": "native-rendezvous-host",
+      "owner": "network",
+      "path": "tests/qualification/native-rendezvous-host"
+    },
+    {
+      "id": "alpha-control-two-endpoints",
+      "owner": "network",
+      "path": "tests/qualification/alpha-control-two-endpoints"
+    }
   ],
   "artifact_lanes": [
-    {"id": "network-v3", "owner": "network", "commands": "tests/profiles/headless-commands.txt", "packaging": "packaging/alpha-bundle"}
+    {
+      "id": "network-v3",
+      "owner": "network",
+      "commands": "tests/profiles/headless-commands.txt",
+      "packaging": "packaging/alpha-bundle"
+    },
+    {
+      "id": "text-worker",
+      "owner": "text-application",
+      "commands": "tests/profiles/text-worker-commands.txt",
+      "packaging": "packaging/text-worker"
+    }
   ]
 }

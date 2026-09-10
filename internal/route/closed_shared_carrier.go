@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/quic-go/quic-go"
@@ -33,9 +34,13 @@ type ClosedSharedCarrier struct {
 type ClosedSharedPeerVerifier func([32]byte) bool
 
 // ClosedSharedCarrierListener accepts direct role TLS and outer Node Carrier
-// TLS from one literal endpoint. The caller owns the returned connection.
+// TLS from one literal endpoint. Accept's finite handshake duration starts
+// when a connection arrives, independently of listener idle time. The caller's
+// context also bounds authentication; Close interrupts an idle socket accept.
+// The duration is at most ten seconds and grants no ARDP authority. The caller
+// owns the returned connection.
 type ClosedSharedCarrierListener interface {
-	Accept(context.Context, time.Time) (ClosedSharedCarrier, error)
+	Accept(context.Context, time.Duration) (ClosedSharedCarrier, error)
 	Close() error
 }
 
@@ -54,11 +59,17 @@ func ListenClosedSharedCarrier(profile CarrierProfile, endpoint string, certific
 		}
 		return &closedSharedTCPListener{listener: listener, certificate: certificate, verify: verify, handshakes: make(chan struct{}, handshakeLimit)}, nil
 	case ClosedCarrierQUIC:
-		listener, err := quic.ListenAddr(endpoint, closedSharedServerTLS(certificate), closedRoleQUICServerConfig())
+		socket, err := net.ListenPacket("udp", endpoint)
 		if err != nil {
 			return nil, err
 		}
-		return &closedSharedQUICListener{listener: listener, verify: verify, handshakes: make(chan struct{}, handshakeLimit)}, nil
+		transport := &quic.Transport{Conn: socket}
+		listener, err := transport.Listen(closedSharedServerTLS(certificate), closedRoleQUICServerConfig())
+		if err != nil {
+			return nil, errors.Join(err, transport.Close(), socket.Close())
+		}
+		return &closedSharedQUICListener{listener: listener, transport: transport, socket: socket,
+			verify: verify, handshakes: make(chan struct{}, handshakeLimit)}, nil
 	default:
 		return nil, errors.New("closed shared carrier profile is unsupported")
 	}
@@ -71,8 +82,8 @@ type closedSharedTCPListener struct {
 	handshakes  chan struct{}
 }
 
-func (listener *closedSharedTCPListener) Accept(ctx context.Context, deadline time.Time) (ClosedSharedCarrier, error) {
-	if ctx == nil || deadline.IsZero() || !time.Now().Before(deadline) {
+func (listener *closedSharedTCPListener) Accept(ctx context.Context, handshakeTimeout time.Duration) (ClosedSharedCarrier, error) {
+	if ctx == nil || handshakeTimeout <= 0 || handshakeTimeout > 10*time.Second {
 		return ClosedSharedCarrier{}, errors.New("closed shared carrier acceptance is invalid")
 	}
 	var raw net.Conn
@@ -91,6 +102,7 @@ func (listener *closedSharedTCPListener) Accept(ctx context.Context, deadline ti
 		}
 	}
 admitted:
+	deadline := time.Now().Add(handshakeTimeout)
 	secured := tls.Server(raw, closedSharedServerTLS(listener.certificate))
 	if err := secured.SetDeadline(deadline); err != nil {
 		_ = raw.Close()
@@ -110,19 +122,26 @@ admitted:
 		return ClosedSharedCarrier{}, err
 	}
 	classified.Connection = secured
+	if classified.Kind == ClosedSharedNode {
+		classified.Connection = &closedTCPNodeTransport{Conn: secured}
+	}
 	return classified, nil
 }
 
 func (listener *closedSharedTCPListener) Close() error { return listener.listener.Close() }
 
 type closedSharedQUICListener struct {
+	transport  *quic.Transport
+	socket     net.PacketConn
+	closeOnce  sync.Once
+	closeErr   error
 	listener   *quic.Listener
 	verify     ClosedSharedPeerVerifier
 	handshakes chan struct{}
 }
 
-func (listener *closedSharedQUICListener) Accept(ctx context.Context, deadline time.Time) (ClosedSharedCarrier, error) {
-	if ctx == nil || deadline.IsZero() || !time.Now().Before(deadline) {
+func (listener *closedSharedQUICListener) Accept(ctx context.Context, handshakeTimeout time.Duration) (ClosedSharedCarrier, error) {
+	if ctx == nil || handshakeTimeout <= 0 || handshakeTimeout > 10*time.Second {
 		return ClosedSharedCarrier{}, errors.New("closed shared carrier acceptance is invalid")
 	}
 	var connection *quic.Conn
@@ -141,12 +160,15 @@ func (listener *closedSharedQUICListener) Accept(ctx context.Context, deadline t
 		}
 	}
 admitted:
+	deadline := time.Now().Add(handshakeTimeout)
 	classified, err := classifyClosedSharedTLS(connection.ConnectionState().TLS, listener.verify)
 	if err != nil {
 		_ = connection.CloseWithError(1, "carrier-peer-invalid")
 		return ClosedSharedCarrier{}, err
 	}
-	stream, err := connection.AcceptStream(ctx)
+	attempt, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	stream, err := connection.AcceptStream(attempt)
 	if err != nil {
 		_ = connection.CloseWithError(1, "carrier-stream-invalid")
 		return ClosedSharedCarrier{}, err
@@ -164,7 +186,15 @@ admitted:
 	return classified, nil
 }
 
-func (listener *closedSharedQUICListener) Close() error { return listener.listener.Close() }
+func (listener *closedSharedQUICListener) Close() error {
+	listener.closeOnce.Do(func() {
+		// Listener.Close alone leaves accepted connections and their UDP socket
+		// owned by quic-go. Join the transport before releasing the local socket
+		// so a completed duty can immediately reopen its State-selected address.
+		listener.closeErr = errors.Join(listener.listener.Close(), listener.transport.Close(), listener.socket.Close())
+	})
+	return listener.closeErr
+}
 
 func closedSharedServerTLS(certificate tls.Certificate) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},

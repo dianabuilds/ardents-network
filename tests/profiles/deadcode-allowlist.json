@@ -461,33 +461,18 @@
         "internal/service/reachability.Issue",
         "internal/service/reachability.NewGateway",
         "internal/service/reachability.NewRelay",
-        "internal/service/reachability.OpenStore",
         "internal/service/reachability.Relay.Handler",
         "internal/service/reachability.Relay.forward",
-        "internal/service/reachability.Store.Close",
         "internal/service/reachability.Store.Lookup",
         "internal/service/reachability.Store.Publish",
-        "internal/service/reachability.Store.restore",
-        "internal/service/reachability.Store.write",
         "internal/service/reachability.Verified.Authority",
-        "internal/service/reachability.acquireStoreLease",
-        "internal/service/reachability.compareStored",
         "internal/service/reachability.decodePrivateRequest",
-        "internal/service/reachability.decodeStored",
         "internal/service/reachability.encodeBody",
         "internal/service/reachability.encodePrivateResponse",
-        "internal/service/reachability.encodeStored",
-        "internal/service/reachability.ensureStoreFile",
-        "internal/service/reachability.prepareStoreRoot",
-        "internal/service/reachability.readStoreFile",
-        "internal/service/reachability.replaceStoreFile",
-        "internal/service/reachability.storeLease.release",
-        "internal/service/reachability.targetName",
-        "internal/service/reachability.verifiedCurrent",
         "internal/service/reachability.verifyStored"
       ],
       "classification": "unwired reachability-service tracer",
-      "rationale": "The reachability gateway/store candidate has deterministic behavior evidence but is not a selected standalone C0 command path.",
+      "rationale": "These legacy Gateway, Relay and Descriptor operations have deterministic behavior evidence but no selected standalone C0 command path. The private resolution Node now consumes the shared durable Store; its reachable functions are excluded from this allowance.",
       "owner": "Product Owner and Codex",
       "retirement": "Wire it through the accepted Route operation or remove it with the superseding service decision."
     },
@@ -532,6 +517,15 @@
   "production": {
     "linux-amd64": [],
     "windows-amd64": [
+      {
+        "symbols": [
+          "internal/service/reachability.verifiedCurrent"
+        ],
+        "classification": "unwired reachability-service tracer",
+        "rationale": "The shared publication verifier remains reachable only from the unselected legacy Descriptor issuer on Windows. Linux text publication now consumes it through IssuePrivate, so the former common allowance applies only to Windows.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Retire with the unselected Windows legacy Descriptor issuer or an accepted consuming command."
+      },
       {
         "symbols": [
           "internal/resource.cgroupV2ProcessPath",

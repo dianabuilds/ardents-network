@@ -71,3 +71,7 @@ func nodeQUICConfig() *quic.Config {
 }
 
 var _ Carrier = (*quicNodeCarrier)(nil)
+
+func (carrier *quicNodeCarrier) SetWriteDeadline(deadline time.Time) error {
+	return carrier.stream.SetWriteDeadline(deadline)
+}

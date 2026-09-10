@@ -162,7 +162,7 @@ func openClosedIssuerRoot(root string) (string, issuerRootLease, error) {
 		return fail(err)
 	}
 	entries, err := os.ReadDir(absolute)
-	if err != nil || len(entries) > 4 {
+	if err != nil || len(entries) > 6 {
 		return fail(errors.New("closed issuer key root entries are invalid"))
 	}
 	markerPath := filepath.Join(absolute, closedIssuerRootMarkerName)
@@ -182,7 +182,7 @@ func openClosedIssuerRoot(root string) (string, issuerRootLease, error) {
 		return fail(err)
 	}
 	for _, entry := range entries {
-		if entry.IsDir() || entry.Name() != issuerRootLockName && entry.Name() != closedIssuerRootMarkerName && entry.Name() != closedIssuerMaterialName && entry.Name() != closedTokenIssuerLedgerName {
+		if entry.IsDir() || entry.Name() != issuerRootLockName && entry.Name() != closedIssuerRootMarkerName && entry.Name() != closedIssuerMaterialName && entry.Name() != closedTokenIssuerLedgerName && entry.Name() != closedIssuerLedgerBindingName && entry.Name() != closedIssuerLedgerStageName {
 			return fail(errors.New("closed issuer key root has an unknown entry"))
 		}
 	}
@@ -318,7 +318,7 @@ func DecodeClosedIssuerProfile(raw []byte, nodePublic ed25519.PublicKey) (Closed
 	offset += 8
 	count := int(binary.BigEndian.Uint16(body[offset : offset+2]))
 	offset += 2
-	if profile.NetworkID == [32]byte{} || profile.NodeID == [32]byte{} || count != closedIssuerKeyCount(profile.NotBefore, profile.NotAfter) {
+	if profile.NetworkID == [32]byte{} || profile.NodeID == [32]byte{} || count == 0 || count > maximumClosedIssuerKeys || count != closedIssuerKeyCount(profile.NotBefore, profile.NotAfter) {
 		return ClosedIssuerProfile{}, errors.New("closed issuer public profile facts are invalid")
 	}
 	for index := 0; index < count; index++ {

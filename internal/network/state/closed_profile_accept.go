@@ -89,53 +89,72 @@ func (s *networkState) AcceptClosedProfile(raw []byte) (ClosedProfileView, error
 // conflict, expiry, or missing persisted profile is unavailable rather than a
 // caller-selected fallback.
 func (s *networkState) CurrentClosedProfile() (ClosedProfileView, error) {
+	if s.resourceGuard != nil {
+		if err := s.resourceGuard.Check(); err != nil {
+			return ClosedProfileView{}, err
+		}
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
-		return ClosedProfileView{}, errors.New("closed profile is unavailable")
-	}
-	generation, err := closedProfileGeneration(s.current.Generation)
+	profile, err := s.currentClosedProfileLocked()
 	if err != nil {
 		return ClosedProfileView{}, err
-	}
-	stored, raw, err := s.storage.loadClosedProfile(generation)
-	if err != nil || stored == (closedProfileState{}) || stored.conflict != [32]byte{} || stored.epoch != s.current.Epoch {
-		return ClosedProfileView{}, errors.New("closed profile is unavailable")
-	}
-	now := s.config.clock().UTC()
-	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
-	if err != nil || profile.digest != stored.accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
-		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.accepted) {
-		return ClosedProfileView{}, errors.New("closed profile is unavailable")
 	}
 	return closedProfileView(profile), nil
 }
 
 // CurrentClosedRoute returns only recipient constraints from the same durable
-// accepted profile while it still joins the current closed Route Epoch. A
-// successor, conflict, expiry, or missing profile is unavailable; callers
-// cannot retain an old route projection or manufacture a recipient.
+// accepted profile while the State owner and its verified time remain live.
+// A successor, conflict, expiry, missing profile or failed owner is unavailable.
 func (s *networkState) CurrentClosedRoute() (ClosedRouteView, error) {
+	if s.resourceGuard != nil {
+		if err := s.resourceGuard.Check(); err != nil {
+			return ClosedRouteView{}, err
+		}
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
-		return ClosedRouteView{}, errors.New("closed route is unavailable")
-	}
-	generation, err := closedProfileGeneration(s.current.Generation)
+	profile, err := s.currentClosedProfileLocked()
 	if err != nil {
 		return ClosedRouteView{}, err
 	}
+	return closedRouteView(profile), nil
+}
+
+// Both runtime projections use one guard while holding State's read lock.
+// Offline profile acceptance is separate: possession of persisted signed
+// bytes does not permit runtime use after time confidence or its owner fails.
+func (s *networkState) currentClosedProfileLocked() (closedProfile, error) {
+	if s.closed || s.current == nil || s.currentDecision == nil || s.current.Profile != closedRouteProfile || s.distribution.conflicting {
+		return closedProfile{}, errors.New("closed profile is unavailable")
+	}
+	if err := errors.Join(s.automaticErr, s.resourceErr); err != nil {
+		return closedProfile{}, err
+	}
+	if s.config.observe == nil {
+		return closedProfile{}, errClockUncertain
+	}
+	now, err := trustedNow(s.config, s.distribution)
+	if err != nil {
+		return closedProfile{}, err
+	}
+	if now.Before(s.current.EpochValidFrom) || !now.Before(s.current.ValidUntil) {
+		return closedProfile{}, errors.New("closed profile State is not current")
+	}
+	generation, err := closedProfileGeneration(s.current.Generation)
+	if err != nil {
+		return closedProfile{}, err
+	}
 	stored, raw, err := s.storage.loadClosedProfile(generation)
 	if err != nil || stored == (closedProfileState{}) || stored.conflict != [32]byte{} || stored.epoch != s.current.Epoch {
-		return ClosedRouteView{}, errors.New("closed route is unavailable")
+		return closedProfile{}, errors.New("closed profile is unavailable")
 	}
-	now := s.config.clock().UTC()
 	profile, err := parseClosedProfile(raw, generation, s.current.NetworkID, s.current.Digest, s.current.Epoch, s.config.closedProfileAuthority, now)
 	if err != nil || profile.digest != stored.accepted || profile.notBefore.Before(s.current.EpochValidFrom) || profile.notAfter.After(s.current.ValidUntil) ||
 		!matchesClosedProfileCandidates(profile, s.currentDecision.verified.accepted) {
-		return ClosedRouteView{}, errors.New("closed route is unavailable")
+		return closedProfile{}, errors.New("closed profile is unavailable")
 	}
-	return closedRouteView(profile), nil
+	return profile, nil
 }
 
 func closedProfileView(profile closedProfile) ClosedProfileView {

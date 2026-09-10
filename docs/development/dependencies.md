@@ -221,6 +221,17 @@ no build tags, `GOENV=off`, `GOTOOLCHAIN=local`, and the exact
     build tag, x/crypto version, scanner database update, or advisory change
     requires reassessment.
 
+The trusted snapshot/Administration client and Node forwarding command imports
+were reassessed on 2026-09-09 with the same Go 1.26.8, scanner v1.1.4,
+x/crypto v0.56.0 and database modification time above. A fresh
+`govulncheck -json ./...` again reported only the module-level GO-2026-5932
+finding. Fresh `go list -deps ./...` and `go list -deps -test ./...` found no
+openpgp package in any normal-build closure: Windows/amd64 CGO off/on each had
+374 production and 510 test packages; Linux/amd64 CGO off had 377/517 and CGO
+on 378/518. The scoped non-applicability argument therefore still holds for
+these changed closures. This does not cover additional build tags or qualify
+the installed worker artifact; those boundaries retain their own checks.
+
 This is source/tool evidence only. The required Ubuntu package inventory,
 installed-artifact inspection, and platform execution remain separate candidate
 and qualification evidence; Windows or cross-target analysis cannot replace
@@ -437,7 +448,7 @@ stream, first-party `unsafe`, or fixture custody command.
 | `github.com/creack/pty` | `v1.1.24` | MIT | Unix-only transitive PTY implementation |
 | `github.com/u-root/u-root` | `v0.16.0` | BSD-3-Clause | Declared transitive terminal support closure; not imported by the Windows process-test build |
 
-**Need and owner:** `tests/e2e/service` owns the dependency. The supported
+**Need and owner:** `tests/e2e/service` owns the dependency. The Node process tests and the explicitly tagged installed Endpoint qualification also use this test-only terminal ceremony to invoke the real Custody command; no maintained runtime imports it. The supported
 custody product deliberately accepts secrets only from a real no-echo terminal,
 while Windows `os/exec` cannot attach a native child to ConPTY through its
 portable public API. `go-pty` exposes one `io.ReadWriteCloser` plus an

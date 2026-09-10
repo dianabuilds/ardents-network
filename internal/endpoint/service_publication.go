@@ -20,6 +20,9 @@ func (endpoint *endpoint) unpublish(ctx context.Context, input withdrawalRequest
 	}
 	endpoint.publisherMu.Lock()
 	defer endpoint.publisherMu.Unlock()
+	if endpoint.textPublicationOwned() {
+		return withdrawalFailed("service unavailable", "text context owns publication withdrawal", errors.New("publication belongs to a text context"))
+	}
 	if endpoint.publisherSession != nil {
 		if err := endpoint.publisherSession.Close(); err != nil {
 			return withdrawalFailed("service unavailable", "Publisher Introduction slot could not be closed", err)

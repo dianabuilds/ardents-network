@@ -445,3 +445,6 @@ func drainStates(events <-chan Event) []string {
 		}
 	}
 }
+
+// Test snapshots implement the external DutyView seam; production projects authenticated State.
+func (facts dutyFacts) DutyRecordGeneration() uint64 { return facts.RecordGeneration }

@@ -73,6 +73,8 @@ Current decisions:
 - [0077 — Evolve one common protection baseline](0077-evolve-one-common-protection-baseline.md)
 - [0078 — Select the common split-circuit privacy architecture](0078-select-common-split-circuit-privacy.md)
 - [0081 — Select the closed protected text-Service contract](0081-select-closed-protected-service-contract.md)
+- [0082 — Bind issuer-bootstrap restriction to each Node child](0082-bind-bootstrap-restriction-to-node-child.md)
+- [0083 — Activate one data lane after an authenticated Rendezvous pair](0083-activate-joined-rendezvous-data-lane.md)
 
 Completed retirement decisions:
 

@@ -16,7 +16,11 @@ func BuildRecord(spec RecordSpec) (Record, error) {
 	public := spec.PrivateKey.Public().(ed25519.PublicKey)
 	buffer := new(bytes.Buffer)
 	buffer.WriteString("ARNR")
-	buffer.WriteByte(1)
+	if spec.Carrier == "" {
+		buffer.WriteByte(1)
+	} else {
+		buffer.WriteByte(2)
+	}
 	buffer.Write(spec.NetworkID[:])
 	buffer.Write(spec.NodeID[:])
 	u64(buffer, spec.Generation)
@@ -25,6 +29,9 @@ func BuildRecord(spec RecordSpec) (Record, error) {
 	text(buffer, spec.Family)
 	buffer.WriteByte(spec.Capability)
 	text(buffer, spec.Endpoint)
+	if spec.Carrier != "" {
+		text(buffer, spec.Carrier)
+	}
 	u16(buffer, spec.Capacity)
 	buffer.Write(public)
 	buffer.Write(ed25519.Sign(spec.PrivateKey, buffer.Bytes()))

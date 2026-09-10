@@ -36,7 +36,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameOpen || event.Open != allowed {
+	if event, available := channel.Next(); !available || event.Kind != closedFrameOpen || event.Open != allowed || event.Restriction != ClosedChildOrdinary {
 		t.Fatalf("scheduled open = %+v / %t", event, available)
 	}
 	bytesFrame := ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: bytes.Repeat([]byte{3}, int(closedLaneCredit))}

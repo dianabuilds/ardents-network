@@ -20,6 +20,16 @@ an Application, shell command template, container daemon or AppContainer
 implementation in this profile. Installation remains an explicit operator
 action using the verified artifact and root-owned configuration.
 
+The installed policy additionally grants only account `ardents-endpoint` the
+systemd `manage-units` action with verb `stop` for canonical instances of the
+fixed reader/Publisher families. It grants no start, restart, reload, unit-file
+editing or arbitrary helper execution. The root-owned package rule resides at
+`/usr/share/polkit-1/rules.d/50-ardents-text.rules`, mode 0644, so Endpoint can
+verify its bytes without access to the private administrator rule directory.
+Its digest is the sixth required installed-artifact entry. A missing, unreadable
+or substituted rule makes that artifact unavailable. Effective authorization
+and whole-cgroup shutdown still require their installed behavior checks.
+
 Use two installed socket/service template families: reader and Publisher.
 Their Unix sockets are in a root-owned directory, accessible only to the
 dedicated Endpoint account. Accept=yes creates one bounded worker instance
@@ -28,6 +38,15 @@ Ardents attachment inherited by that worker; StandardInput=socket and
 StandardOutput=socket connect the finite framed local exchange. StandardError
 is null. No logging, session bus, credentials, environment strings containing
 destinations, or arbitrary file-descriptor passing is available to the worker.
+
+Each worker unit has `BindsTo=ardents-endpoint.service` and an `After`
+dependency on it. The launch boundary verifies the root-owned Ubuntu 24.04 identity, amd64
+architecture and actual system-manager version 255, then verifies that the caller is that active
+service's MainPID under the dedicated Endpoint user/group, with
+`RemainAfterExit=no`, `ExitType=main` and `RestartMode=normal`. Unknown values
+or semantics that keep the parent active after its main process exits refuse
+before worker activation. This manager-owned lifetime dependency covers an
+Endpoint exit that cannot run its Go cleanup; socket EOF is insufficient.
 
 The trusted Endpoint connects the socket and verifies the installed unit,
 executable and sandbox-root identity against the selected local artifact.
@@ -57,6 +76,15 @@ required settings make the platform unavailable before Grant delivery:
 - MemoryMax=128 MiB and TasksMax=32 per worker; LimitCORE=0; no restart policy;
   KillMode=control-group; TimeoutStopSec=2 seconds. The parent Endpoint/job
   resource tree imposes its stricter aggregate limit before another worker.
+- CollectMode=inactive-or-failed releases completed socket-activated instances,
+  including failed ones, so their manager records do not accumulate across
+  jobs. Endpoint verifies this effective Unit property before Grant delivery.
+  This is manager garbage collection, not proof of cgroup cleanup or a new
+  runtime management permission. Failure outcomes remain in the journal;
+  unloaded Unit result statistics are not retained. See the selected
+  [systemd 255 socket guidance](https://github.com/systemd/systemd/blob/v255/man/systemd.socket.xml)
+  and [Unit collection semantics](https://github.com/systemd/systemd/blob/v255/man/systemd.unit.xml).
+- The fixed worker disables Go containermaxprocs/updatemaxprocs at build time, and its installed unit supplies GOMAXPROCS=2 and GOMEMLIMIT=96MiB. This avoids an ambient cgroup-file descriptor opened by the runtime before the inherited-descriptor audit; the system manager still enforces MemoryMax and TasksMax.
 - No host filesystem/bus/device mounts, network namespace joins, notify socket,
   credential mounts, writable executable paths or external networking handles.
 
@@ -85,6 +113,42 @@ original host path nor the host file tree. Publication authority and Instance
 keys stay in Endpoint/Custody; receipt of a snapshot is not permission to sign
 or publish a Service.
 
+The Linux trusted importer walks the selected absolute path through no-follow
+parent directory descriptors and opens the final file nonblocking before the
+regular-file check. It rejects oversized or invalid UTF-8 input and compares a
+second bounded read with the first, as well as file identity, size, mode,
+owner/link count and modification/change timestamps. Timestamp equality alone
+is insufficient on a filesystem with coarse change times. The returned bytes
+are a private volatile copy; subsequent host-file edits do not update a
+publication. This observed stable read is not an atomic filesystem snapshot
+against a compromised local owner that controls concurrent writes.
+
+The trusted UI may explicitly request its committed publication's Target Link
+with `ardents-text link <administration-socket>`. This read-only operation sends
+ASCII `link\n`[5] then directional EOF. An implementing Administration owner
+returns ASCII `link\n`[5], a big-endian u16 length, exactly 1 through 512 printable
+ASCII destination bytes, then directional EOF. Unsupported, uncommitted,
+withdrawn or unavailable owners return `unavailable\n`. No Target or authority
+is supplied in this request. Endpoint consumes fresh Administration authority,
+checks the retained run, registration acknowledgement and current Publication
+binding, and projects its canonical Link. The UI presents only that bounded
+response through owned interruptible terminal/pipe output; it writes no history,
+background event or ordinary diagnostic containing the destination. Retrieval
+cannot publish, refresh, retry or resurrect a Service and promises no future
+availability. Existing Publish, snapshot and Withdraw response bytes are unchanged.
+The trusted publication client uses the existing private Administration socket.
+Its bounded extension is ASCII `snapshot\n`[9], a big-endian u32 byte length,
+exact UTF-8 bytes (0 through 4 MiB), then directional EOF. There is no path,
+Target, key, Principal or Grant in this request. The transport admits at most
+one snapshot allocation/transition at a time and retains the existing finite
+receive deadline. Withdrawal remains a separate operation. Only a publication
+owner implementing the snapshot operation may commit it; `published\n` means
+that owner returned success, while unsupported owners, malformed input,
+overlap or failed publication return `unavailable\n`. Never translate this
+request into bodyless Publish. The protected Endpoint Administration owner implements this operation through actual worker qualification and Descriptor acknowledgement. Command/transport fixture tests do not prove that installed composition or worker confinement; the complete installed command journey remains a separate qualification boundary. The
+transport clears its borrowed bytes after the owner returns, so retention
+requires an owner-held copy.
+
 The reader's worker receives only its admitted Connection and bounded
 application bytes. It has no destination authority or ambient network client.
 The trusted presentation boundary independently escapes control/bidi bytes
@@ -111,6 +175,82 @@ retains only the separately authorized finite publication drain. A worker
 fork inherits all restrictions; exit of its initial PID cannot leave helpers
 alive. Failure to join cleanup is a failure result, not permission to reuse a
 Principal, socket, private root or Grant.
+
+Endpoint cleanup retains the original cgroup v2 `cgroup.events` descriptor
+before readiness. It rechecks the exact systemd InvocationID and fixed
+control-group stop policy, uses noninteractive `systemctl stop` with a finite
+join deadline, and verifies that the pinned subtree has no live processes.
+The [kernel populated field](https://docs.kernel.org/admin-guide/cgroup-v2.html#un-populated-notification)
+includes descendants. Removal is recognized only by `ENODEV` on that already
+verified core events file, including its seek operation; a missing pathname,
+zero MainPID, unchanged inode
+link count, unknown observation or failed stop does not prove cleanup. The
+[kernfs read and seek paths](https://github.com/torvalds/linux/blob/v6.8/fs/kernfs/file.c)
+and the fixed cgroup events callback explain that removal observation. Keep
+the first cleanup failure on repeated close. A cleanup owner alone does not
+prove installed stop permission or qualify a Principal/Grant; installation
+must establish that permission separately before protected admission.
+
+Socket activation may expose a loaded, inactive/dead service while its start
+job is queued. Endpoint waits only when the same manager inventory tuple has
+a nonzero start job and its matching canonical job path. It retains that one
+new candidate and the original baseline through the existing launch deadline;
+a second candidate, disappearance or substitution refuses the launch. This
+observation grants no readiness: active/running, exact invocation/process,
+effective confinement, artifact, accepted peer and INIT checks remain required.
+See the selected [socket job enqueue path](https://github.com/systemd/systemd/blob/v255/src/core/socket.c#L2176-L2207)
+and [atomic inventory fields](https://github.com/systemd/systemd/blob/v255/src/core/dbus-manager.c#L829-L855).
+
+The selected [installed lifecycle profile](../../tests/qualification/text-worker-lifecycle/README.md)
+checks both worker roles through this actual launch and cleanup owner. It pins
+the binary and temporary Endpoint unit independently, captures the exact
+systemd invocation and requires both executed role tests to pass after the
+Endpoint process terminates. A zero exit status without the required tests is
+refused. Local owner authorization is an explicit fixture; the profile neither
+substitutes for protected command adoption nor completes the hostile-worker
+or end-to-end qualification matrix.
+
+The separately pinned [hostile-tree profile](../../tests/qualification/text-worker-tree/README.md)
+uses an adversarial test artifact under those same installed restrictions. It
+requires a live child and grandchild that ignore SIGTERM and retain the local
+attachment, then proves original cgroup cleanup and continued snapshot service
+from a distinct Publisher sibling. Artifact selection is a root qualification
+installation, never a caller option. This is distinct from the ordinary worker
+artifact and from complete abrupt-crash, escape and P6/P7 qualification.
+It also observes parent exit on attachment EOF and manager-owned descendant
+cleanup before invoking Endpoint Close for the remaining local job teardown.
+
+The local context owns a reservation from the start of worker launch through
+joined cleanup, even if cancellation precedes readiness. Endpoint shutdown
+revokes every retained context before waiting for any one worker. Pending
+cleanup still occupies the finite context budget after its Broker lease is
+released. A cleanup failure closes text-job admission for this Endpoint
+generation, including previously idle contexts and late completions; creating
+another context cannot recover authority while an old cgroup may remain live.
+The original cleanup error survives context removal and repeated Endpoint
+close. The worker lifetime owner pins cleanup before INIT, closes the exact
+attachment on cancellation, joins initialization and cgroup cleanup, and
+publishes one immutable completion. This ownership is not a qualified launch
+receipt and does not supply installed stop permission or a worker Grant.
+
+The local launch composition reserves the existing context's job, serializes
+activation inventory, verifies the installed artifact and fixed socket, and
+pins cleanup before verifying the artifact again and sending INIT. After
+readiness it rechecks the exact invocation and artifact before creating a
+fresh private worker Principal and Connection Grant. That Grant delegates only
+the scoped byte exchange: Publisher administration remains with the separately
+authorized context. The worker receives no capability, key or destination
+selection input. An ambiguous activation terminalizes text admission rather
+than allowing a replacement to inherit it.
+
+The reader and Publisher consumers use this private Grant lease. Cleanup
+interrupts their attachment and joins their Service-stream I/O before reporting
+the job finished. Reader results pass both joined cleanup and an exact
+last-job/current-context check; a result cannot return after a replacement has
+started and finished. Retirement closes the worker Grant, while successful
+worker cleanup leaves the separately authorized context available for a later
+explicit job. This local composition still requires adoption by the protected
+participant runtime and the complete installed-host acceptance matrix.
 
 The maintained Broker keeps generic capability mechanics. A qualified-launch
 receipt is an opaque local owner object, never a bool supplied by an arbitrary
@@ -161,7 +301,7 @@ CREDIT=3 has one positive u32; EOF=4 has no payload; CLOSE=5 has one bounded
 terminal class byte. Each direction has 64 KiB credit, and aggregate queued
 worker bytes are at most 8 MiB. Grant credit only when the actual consumer has
 released space. Unknown kinds, wrong directions, unsolicited streams or
-credit overflow close the job and its attachment.
+credit overflow close the job and its attachment. A malformed document request is scoped to its admitted Service stream: emit one non-clean CLOSE and retain the Publisher snapshot and other streams. Stop replenishing that rejected stream; discard only already credited in-flight input until Endpoint closes it.
 
 After complete Service response validation the reader emits RESULT=6 on ID 2:
 status u8 and content-length u32, then bounded BYTES and EOF for that result.
@@ -173,6 +313,16 @@ of content: the worker may lie about its allowed job but cannot gain ambient
 network or host authority through this interface. No second remote request is
 created by result processing. Cancellation closes all streams and joins the
 whole worker cgroup; a replacement worker gets a new job and nonce.
+
+The trusted command's read client consumes AAI3 and the fixed text exchange.
+It waits for the complete UTF-8 response and clean terminal result, joins the
+local stream, and independently escapes controls before presentation. The UI
+reopens and identity-checks only its exact inherited input/output as
+separate pollable descriptions, so cancellation interrupts blocked terminal or
+pipe I/O without changing the invoking shell's shared descriptor flags. It
+initializes UI signal handling only after dispatch excludes the fixed worker
+entrypoints. This is a real local client; it does not supply a launch receipt,
+grant, authenticated State, or a replacement for protected Endpoint composition.
 
 The trusted UI imports the owner-selected file under the local owner's
 permissions and submits only its bounded snapshot through the existing

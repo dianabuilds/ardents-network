@@ -21,7 +21,7 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	}
 	defer handshake.Close()
 	written := make(chan ClosedLaneFrame, 8)
-	bridge, err := NewClosedOuterBridge(handshake, func(frame ClosedLaneFrame) error { written <- frame; return nil })
+	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(frame ClosedLaneFrame, _ func() time.Time) error { written <- frame; return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	if accepted := <-written; accepted.Kind != closedFrameAccept || accepted.Lane != 0 {
 		t.Fatalf("outer accept = %+v", accepted)
 	}
-	openBody, err := EncodeClosedOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline})
+	openBody, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,10 +58,11 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	}
 	inner := hello
 	inner.Purpose, inner.ChannelNonce = ClosedPurposeIssuer, [32]byte{20}
-	if err := lane.Activate(inner); err != nil {
+	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{4, 5}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{4, 5}}); err != nil {
+	// The sender may pipeline encrypted admission immediately after HELLO.
+	if err := lane.Activate(inner); err != nil {
 		t.Fatal(err)
 	}
 	buffer = make([]byte, 2)
@@ -108,7 +109,7 @@ func TestClosedOuterBridgeRefusesForeignOpenBeforeCreatingLane(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer handshake.Close()
-	bridge, err := NewClosedOuterBridge(handshake, func(ClosedLaneFrame) error { return nil })
+	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +124,7 @@ func TestClosedOuterBridgeRefusesForeignOpenBeforeCreatingLane(t *testing.T) {
 	}
 	foreign := receiver.NodeID
 	foreign[0]++
-	body, err = EncodeClosedOpen(ClosedOpen{NextNodeID: foreign, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline})
+	body, err = EncodeClosedNodeOpen(ClosedOpen{NextNodeID: foreign, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
 	if err != nil {
 		t.Fatal(err)
 	}

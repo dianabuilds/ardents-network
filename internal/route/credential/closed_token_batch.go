@@ -2,16 +2,13 @@ package credential
 
 import (
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+
 	"math/big"
 	"time"
-
-	"github.com/cloudflare/circl/blindsign/blindrsa"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 const (
@@ -37,28 +34,6 @@ type ClosedTokenBatchRequest struct {
 	Signature       [ed25519.SignatureSize]byte
 }
 
-// ClosedTokenBatchConfig binds a volatile Endpoint batch to one accepted
-// State profile, one offline permission, and one receiving-duty challenge.
-type ClosedTokenBatchConfig struct {
-	Profile    state.ClosedProfileView
-	Context    ClosedTokenContext
-	Permission Permission
-	HolderKey  ed25519.PrivateKey
-	Count      uint16
-	Now        time.Time
-}
-
-// PendingClosedTokenBatch retains CIRCL's opaque blinding State only in the
-// current Endpoint process. It must be discarded after a failed exchange or
-// process loss; callers cannot serialize or recreate it.
-type PendingClosedTokenBatch struct {
-	request ClosedTokenBatchRequest
-	raw     []byte
-	client  blindrsa.Client
-	states  []blindrsa.State
-	inputs  [][]byte
-}
-
 // ClosedTokenBatchStatus is the small issuer result vocabulary. Encrypted
 // carrier framing pads every value to the same response shape.
 type ClosedTokenBatchStatus uint8
@@ -75,165 +50,6 @@ const (
 type ClosedTokenBatchResult struct {
 	Status     ClosedTokenBatchStatus
 	Signatures [][]byte
-}
-
-// PrepareClosedTokenBatch creates one fresh 1..32-token issuance request.
-// It admits no key, authority, class, window, or holder fact outside the
-// authenticated State profile and permission.
-func PrepareClosedTokenBatch(config ClosedTokenBatchConfig) (*PendingClosedTokenBatch, error) {
-	key, err := validateClosedTokenBatchConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	public, err := parseClosedTokenPublicKey(key.SPKI[:])
-	if err != nil {
-		return nil, err
-	}
-	client, err := blindrsa.NewClient(blindrsa.SHA384PSSDeterministic, public)
-	if err != nil {
-		return nil, errors.New("construct closed blind token client")
-	}
-	pending := &PendingClosedTokenBatch{client: client, states: make([]blindrsa.State, 0, config.Count), inputs: make([][]byte, 0, config.Count)}
-	pending.request.Permission = config.Permission
-	pending.request.Class = config.Context.Class
-	pending.request.WindowStart = config.Context.WindowStart
-	pending.request.SPKI = key.SPKI
-	if _, err := rand.Read(pending.request.RequestID[:]); err != nil || pending.request.RequestID == [32]byte{} {
-		pending.Discard()
-		return nil, errors.New("draw closed token batch request ID")
-	}
-	keyID := sha256.Sum256(key.SPKI[:])
-	for index := uint16(0); index < config.Count; index++ {
-		var nonce [32]byte
-		if _, err := rand.Read(nonce[:]); err != nil || nonce == [32]byte{} {
-			pending.Discard()
-			return nil, errors.New("draw closed token nonce")
-		}
-		_, input, _, err := ClosedTokenChallenge(config.Context, key.SPKI[:], nonce)
-		if err != nil {
-			pending.Discard()
-			return nil, err
-		}
-		prepared, err := client.Prepare(rand.Reader, input)
-		if err != nil {
-			pending.Discard()
-			return nil, errors.New("prepare closed blind token input")
-		}
-		blinded, blindState, err := client.Blind(rand.Reader, prepared)
-		if err != nil || len(blinded) != closedTokenBlindElementSize || !validClosedTokenElement(blinded, public) {
-			pending.Discard()
-			return nil, errors.New("blind closed token input")
-		}
-		request := make([]byte, closedTokenRequestSize)
-		binary.BigEndian.PutUint16(request[:2], closedTokenType)
-		request[2] = keyID[len(keyID)-1]
-		copy(request[3:], blinded)
-		pending.request.BlindedRequests = append(pending.request.BlindedRequests, request)
-		pending.states = append(pending.states, blindState)
-		pending.inputs = append(pending.inputs, input)
-	}
-	signature := ed25519.Sign(config.HolderKey, closedTokenBatchTranscript(pending.request))
-	copy(pending.request.Signature[:], signature)
-	pending.raw, err = EncodeClosedTokenBatch(pending.request)
-	if err != nil {
-		pending.Discard()
-		return nil, err
-	}
-	return pending, nil
-}
-
-// Request returns a defensive copy of the exact signed batch for a
-// same-process retry. It never exposes CIRCL's opaque blinding State.
-func (pending *PendingClosedTokenBatch) Request() []byte {
-	if pending == nil {
-		return nil
-	}
-	return append([]byte(nil), pending.raw...)
-}
-
-// Finalize verifies every returned blind signature and returns RFC 9578
-// token bytes only for a complete issued batch. It always drops the opaque
-// CIRCL State, so a failed finalization cannot be retried after this call.
-func (pending *PendingClosedTokenBatch) Finalize(result ClosedTokenBatchResult) ([][]byte, error) {
-	if pending == nil || result.Status != ClosedTokenIssued || len(pending.states) == 0 || len(result.Signatures) != len(pending.states) {
-		if pending != nil {
-			pending.Discard()
-		}
-		return nil, errors.New("closed token batch is unavailable")
-	}
-	tokens := make([][]byte, 0, len(pending.states))
-	for index, signature := range result.Signatures {
-		if len(signature) != closedTokenBlindElementSize {
-			pending.Discard()
-			return nil, errors.New("closed token blind signature is invalid")
-		}
-		finalized, err := pending.client.Finalize(pending.states[index], signature)
-		if err != nil || pending.client.Verify(pending.inputs[index], finalized) != nil {
-			pending.Discard()
-			return nil, errors.New("closed token signature verification failed")
-		}
-		token := make([]byte, 0, closedTokenSize)
-		token = append(token, pending.inputs[index]...)
-		token = append(token, finalized...)
-		tokens = append(tokens, token)
-	}
-	pending.Discard()
-	return tokens, nil
-}
-
-// FinalizeEncoded decodes the fixed issuer plaintext and verifies every token
-// before returning it to the Endpoint-owned volatile stock.
-func (pending *PendingClosedTokenBatch) FinalizeEncoded(raw []byte) ([][]byte, error) {
-	result, err := DecodeClosedTokenBatchResult(raw)
-	if err != nil {
-		if pending != nil {
-			pending.Discard()
-		}
-		return nil, err
-	}
-	return pending.Finalize(result)
-}
-
-// Discard removes the Endpoint's references to all volatile request inputs
-// and CIRCL state. A later retry needs a newly provisioned right.
-func (pending *PendingClosedTokenBatch) Discard() {
-	if pending == nil {
-		return
-	}
-	for index := range pending.inputs {
-		clear(pending.inputs[index])
-	}
-	for index := range pending.request.BlindedRequests {
-		clear(pending.request.BlindedRequests[index])
-	}
-	clear(pending.raw)
-	pending.inputs = nil
-	pending.states = nil
-	pending.request.BlindedRequests = nil
-	pending.raw = nil
-}
-
-// EncodeClosedTokenBatch returns the canonical signed issuance batch.
-func EncodeClosedTokenBatch(request ClosedTokenBatchRequest) ([]byte, error) {
-	if err := validateClosedTokenBatchRequest(request); err != nil {
-		return nil, err
-	}
-	permission, err := EncodePermission(request.Permission)
-	if err != nil {
-		return nil, err
-	}
-	raw := make([]byte, 0, closedTokenBatchBaseSize()+len(request.BlindedRequests)*closedTokenRequestSize)
-	raw = append(raw, closedTokenBatchMagic...)
-	raw = append(raw, permission...)
-	raw = append(raw, request.RequestID[:]...)
-	raw = append(raw, request.Class)
-	raw = binary.BigEndian.AppendUint64(raw, uint64(request.WindowStart.Unix()))
-	raw = append(raw, request.SPKI[:]...)
-	raw = binary.BigEndian.AppendUint16(raw, uint16(len(request.BlindedRequests)))
-	for _, blinded := range request.BlindedRequests {
-		raw = append(raw, blinded...)
-	}
-	return append(raw, request.Signature[:]...), nil
 }
 
 // DecodeClosedTokenBatch verifies one exact signed issuance request before an
@@ -272,30 +88,6 @@ func DecodeClosedTokenBatch(raw []byte) (ClosedTokenBatchRequest, error) {
 		return ClosedTokenBatchRequest{}, err
 	}
 	return request, nil
-}
-
-func validateClosedTokenBatchConfig(config ClosedTokenBatchConfig) (state.ClosedProfileTokenKey, error) {
-	if config.Count < 1 || config.Count > maximumClosedTokenBatch || len(config.HolderKey) != ed25519.PrivateKeySize ||
-		config.Now.IsZero() || config.Now != config.Now.UTC() || config.Context.ProfileDigest != config.Profile.Digest ||
-		config.Context.IssuerNodeID != config.Profile.IssuerNodeID || config.Profile.IssuanceAuthorityKey == [32]byte{} ||
-		config.Profile.IssuerDutyGeneration == 0 || int(config.Profile.TokenKeyCount) > len(config.Profile.TokenKeys) ||
-		config.Context.WindowStart != config.Permission.NotBefore ||
-		config.Context.Class < 1 || config.Context.Class > 3 || config.Permission.HolderKey != [32]byte(config.HolderKey.Public().(ed25519.PublicKey)) ||
-		config.Permission.Maxima[config.Context.Class-1] < uint32(config.Count) ||
-		VerifyPermission(config.Permission, ed25519.PublicKey(config.Profile.IssuanceAuthorityKey[:]), config.Context.NetworkID,
-			config.Profile.IssuerNodeID, config.Profile.IssuerDutyGeneration, config.Now) != nil {
-		return state.ClosedProfileTokenKey{}, errors.New("closed token batch configuration is invalid")
-	}
-	for index := 0; index < int(config.Profile.TokenKeyCount); index++ {
-		key := config.Profile.TokenKeys[index]
-		if key.WindowStart == config.Context.WindowStart && key.Class == config.Context.Class {
-			if _, err := parseClosedTokenPublicKey(key.SPKI[:]); err != nil {
-				return state.ClosedProfileTokenKey{}, err
-			}
-			return key, nil
-		}
-	}
-	return state.ClosedProfileTokenKey{}, errors.New("closed token key is absent from State")
 }
 
 func validateClosedTokenBatchRequest(request ClosedTokenBatchRequest) error {

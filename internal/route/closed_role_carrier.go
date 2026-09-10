@@ -4,11 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/quic-go/quic-go"
 	"net"
 	"sync"
 	"time"
-
-	"github.com/quic-go/quic-go"
 )
 
 // ClosedRoleCarrierRequest names one State-selected direct role transport.
@@ -27,54 +26,28 @@ type ClosedRoleCarrierListener interface {
 	Close() error
 }
 
-// OpenClosedRoleCarrier opens exactly one State-selected TCP/TLS or QUIC role
-// channel. QUIC's TLS handshake is the role TLS; it is not wrapped in a
-// second TLS stream.
-func OpenClosedRoleCarrier(ctx context.Context, input ClosedRoleCarrierRequest) (net.Conn, error) {
-	if ctx == nil || !literalEndpoint(input.Endpoint) || input.ExpectedServer == [32]byte{} || input.Deadline.IsZero() || !time.Now().Before(input.Deadline) {
-		return nil, errors.New("closed role carrier request is invalid")
+// ClosedRoleTLSExporter returns the exporter of the already authenticated
+// direct role TLS channel.  Admission keeps the derived bytes locally; the
+// connection, its peer address, and any TLS state never become Route inputs.
+func ClosedRoleTLSExporter(connection net.Conn) (ClosedTLSExporter, error) {
+	if connection == nil {
+		return nil, errors.New("closed role TLS exporter is unavailable")
 	}
-	attempt, cancel := context.WithDeadline(ctx, input.Deadline)
-	defer cancel()
-	switch input.CarrierProfile {
-	case ClosedCarrierTCP:
-		raw, err := (&net.Dialer{}).DialContext(attempt, "tcp", input.Endpoint)
-		if err != nil {
-			return nil, err
-		}
-		secured, err := OpenClosedRoleTLS(attempt, raw, input.ExpectedServer, input.Deadline)
-		if err != nil {
-			_ = raw.Close()
-			return nil, err
-		}
-		return secured, nil
-	case ClosedCarrierQUIC:
-		connection, err := quic.DialAddr(attempt, input.Endpoint, closedRoleClientTLS(input.ExpectedServer), closedRoleQUICConfig())
-		if err != nil {
-			return nil, err
-		}
-		if err := validClosedRoleTLSState(connection.ConnectionState().TLS, input.ExpectedServer, false); err != nil {
-			_ = connection.CloseWithError(1, "role-peer-invalid")
-			return nil, err
-		}
-		stream, err := connection.OpenStreamSync(attempt)
-		if err != nil {
-			_ = connection.CloseWithError(1, "role-open-failed")
-			return nil, err
-		}
-		carrier := &closedRoleQUICCarrier{stream: stream, connection: connection}
-		if err := carrier.SetDeadline(input.Deadline); err != nil {
-			_ = carrier.Close()
-			return nil, err
-		}
-		if err := carrier.SetDeadline(time.Time{}); err != nil {
-			_ = carrier.Close()
-			return nil, err
-		}
-		return carrier, nil
+	var state tls.ConnectionState
+	switch secured := connection.(type) {
+	case *tls.Conn:
+		state = secured.ConnectionState()
+	case *closedRoleQUICCarrier:
+		state = secured.connection.ConnectionState().TLS
 	default:
-		return nil, errors.New("closed role carrier profile is unsupported")
+		return nil, errors.New("closed role TLS exporter is unavailable")
 	}
+	if state.Version != tls.VersionTLS13 || state.NegotiatedProtocol != ClosedRouteProfile {
+		return nil, errors.New("closed role TLS exporter is unavailable")
+	}
+	return func(label string, context []byte, length int) ([]byte, error) {
+		return state.ExportKeyingMaterial(label, context, length)
+	}, nil
 }
 
 // ListenClosedRoleCarrier binds one literal State-selected direct role endpoint.
@@ -136,7 +109,9 @@ func (listener *closedRoleQUICListener) Accept(ctx context.Context, deadline tim
 		_ = connection.CloseWithError(1, "role-peer-invalid")
 		return nil, err
 	}
-	stream, err := connection.AcceptStream(ctx)
+	attempt, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	stream, err := connection.AcceptStream(attempt)
 	if err != nil {
 		_ = connection.CloseWithError(1, "role-stream-invalid")
 		return nil, err

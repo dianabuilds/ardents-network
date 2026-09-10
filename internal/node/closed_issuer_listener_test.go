@@ -53,7 +53,7 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 			view.Nodes[0] = state.ClosedRouteNodeView{NodeID: issuerID, RecordDigest: recordDigest, RoleDomain: 2, Subrole: 6, DutyGeneration: profile.IssuerDutyGeneration}
 			return view, true
 		},
-		ClosedIssuer: ClosedIssuerProfile{Root: root, Certificate: certificate, ConnectionLimit: 1, DrainTimeout: time.Second},
+		ClosedIssuer: ClosedIssuerProfile{Root: root, AdmissionRoot: t.TempDir(), Certificate: certificate, ConnectionLimit: 1, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	resolved, err := resolveConfig(config)

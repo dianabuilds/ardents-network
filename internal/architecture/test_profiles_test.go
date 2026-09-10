@@ -121,6 +121,10 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"qualification":                     false,
 		"race":                              false,
 		"service-credential-response-linux": false,
+		"text-worker-network":               false,
+		"text-worker-tree":                  false,
+		"text-worker-lifecycle":             false,
+		"text-worker-policy":                false,
 	}
 	for _, profile := range registry.Profiles {
 		if _, known := required[profile.ID]; !known {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/binary"
 	"testing"
 	"time"
 
@@ -69,5 +70,20 @@ func TestDecodeClosedIssuerProfileRejectsReorderedKey(t *testing.T) {
 	changed := append(body, ed25519.Sign(private, closedIssuerTranscript(body))...)
 	if _, err := DecodeClosedIssuerProfile(changed, public); err == nil {
 		t.Fatal("decoded reordered closed issuer keys")
+	}
+}
+
+func TestDecodeClosedIssuerProfileRejectsSignedEmptyInvalidInterval(t *testing.T) {
+	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{19}, ed25519.SeedSize))
+	body := make([]byte, 8+32+32+8+8+2)
+	copy(body, closedIssuerProfileMagic)
+	body[8], body[40] = 1, 2
+	// An empty interval makes the expected key count zero; it must not make
+	// an equally empty inventory valid merely because the signature verifies.
+	binary.BigEndian.PutUint64(body[72:80], 1_800_000_000)
+	binary.BigEndian.PutUint64(body[80:88], 1_800_000_000)
+	raw := append(body, ed25519.Sign(private, closedIssuerTranscript(body))...)
+	if _, err := DecodeClosedIssuerProfile(raw, private.Public().(ed25519.PublicKey)); err == nil {
+		t.Fatal("accepted a signed empty inventory with an invalid interval")
 	}
 }

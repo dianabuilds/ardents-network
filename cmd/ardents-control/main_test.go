@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -22,7 +21,7 @@ import (
 )
 
 func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
-	const usage = "usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, or inspect-closed-profile"
+	const usage = "usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
 	for _, route := range []string{
 		"inspect",
 		"inspect-public-control",
@@ -61,18 +60,31 @@ func TestClosedProfileCommandsRoundTripWithoutKeyOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	issuerProfile, err := credential.DecodeClosedIssuerProfile(issuer.Profile, nodePrivate.Public().(ed25519.PublicKey))
+	exportPath := filepath.Join(t.TempDir(), "issuer.json")
+	export, err := json.Marshal(map[string]any{"schema": "ardents-closed-issuer-profile-v1", "profile": issuer.Profile,
+		"profile_sha256": hex.EncodeToString(issuer.ProfileDigest[:])})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if err := os.WriteFile(exportPath, export, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var inventory bytes.Buffer
+	if err := run([]string{"inspect-closed-issuer-profile", "--profile", exportPath,
+		"--network", hex.EncodeToString(network[:]), "--node", hex.EncodeToString(issuerNode[:]),
+		"--node-key", hex.EncodeToString(nodePrivate.Public().(ed25519.PublicKey))}, &inventory); err != nil {
+		t.Fatal(err)
+	}
+	var issuerPlan closedProfilePlan
+	if err := json.Unmarshal(inventory.Bytes(), &issuerPlan); err != nil || len(issuerPlan.TokenKeys) != 3 {
+		t.Fatalf("issuer inventory = %q / %v", inventory.String(), err)
 	}
 	plan := closedProfilePlan{NetworkID: hex.EncodeToString(network[:]), StateGeneration: hex.EncodeToString(bytes.Repeat([]byte{5}, 32)),
 		EpochDigest: hex.EncodeToString(bytes.Repeat([]byte{6}, 32)), Epoch: 7, IssuerNodeID: hex.EncodeToString(issuerNode[:]),
 		IssuanceAuthorityKey: hex.EncodeToString(bytes.Repeat([]byte{7}, 32)), NotBefore: now.Format(time.RFC3339), NotAfter: now.Add(time.Hour).Format(time.RFC3339),
 		Nodes: []closedProfilePlanNode{{NodeID: hex.EncodeToString(otherNode[:]), RecordDigest: hex.EncodeToString(bytes.Repeat([]byte{8}, 32)), RoleDomain: 1, Subrole: 1, DutyGeneration: 1},
 			{NodeID: hex.EncodeToString(issuerNode[:]), RecordDigest: hex.EncodeToString(bytes.Repeat([]byte{9}, 32)), RoleDomain: 2, Subrole: 6, DutyGeneration: 2}}}
-	for _, key := range issuerProfile.Keys {
-		plan.TokenKeys = append(plan.TokenKeys, closedProfilePlanKey{WindowStart: key.WindowStart.Format(time.RFC3339), Class: uint8(key.Class), SPKI: base64.RawStdEncoding.EncodeToString(key.SPKI)})
-	}
+	plan.TokenKeys = issuerPlan.TokenKeys
 	directory := t.TempDir()
 	planPath, preparedPath, signedPath, keyPath := filepath.Join(directory, "plan.json"), filepath.Join(directory, "prepared.bin"), filepath.Join(directory, "signed.bin"), filepath.Join(directory, "state.pem")
 	planRaw, err := json.Marshal(plan)

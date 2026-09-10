@@ -88,7 +88,7 @@ func TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit(t *testing
 			"-kind", "service", "-id-commitment", created.IDCommitment}
 	}
 	issueInputs := []interactiveProductInput{
-		{prompt: "service-request SHA-256 from the requesting host:", value: initialization.RequestSHA256},
+		{prompt: "service-request SHA-256 from the requesting Endpoint:", value: initialization.RequestSHA256},
 		{prompt: "vault-unlock password:", value: password, secret: true},
 	}
 	establishedResponsePath := filepath.Join(directory, "established-response.bin")

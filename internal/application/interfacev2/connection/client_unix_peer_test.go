@@ -1,0 +1,192 @@
+package connection
+
+import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"sync"
+	"testing"
+)
+
+type gatedClientTransport struct {
+	clientTransport
+	remaining    int
+	readReady    chan struct{}
+	releaseRead  chan struct{}
+	closeStarted chan struct{}
+	readOnce     sync.Once
+	closeOnce    sync.Once
+}
+
+func (transport *gatedClientTransport) Read(destination []byte) (int, error) {
+	if transport.remaining == 0 {
+		return transport.clientTransport.Read(destination)
+	}
+	length := transport.remaining
+	if length > len(destination) {
+		length = len(destination)
+	}
+	read, err := io.ReadFull(transport.clientTransport, destination[:length])
+	transport.remaining -= read
+	if transport.remaining == 0 && err == nil {
+		transport.readOnce.Do(func() { close(transport.readReady) })
+		<-transport.releaseRead
+	}
+	return read, err
+}
+
+func (transport *gatedClientTransport) Close() error {
+	transport.closeOnce.Do(func() { close(transport.closeStarted) })
+	return transport.clientTransport.Close()
+}
+
+func dialGatedClient(t *testing.T, path, targetLink string, gatedBytes int) (Client, *gatedClientTransport) {
+	t.Helper()
+	raw, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := make([]byte, len(localMagic)+3+len(targetLink))
+	copy(request, localMagic)
+	request[len(localMagic)] = byte(TargetLink)
+	binary.BigEndian.PutUint16(request[len(localMagic)+1:], uint16(len(targetLink)))
+	copy(request[len(localMagic)+3:], targetLink)
+	if _, err := raw.Write(request); err != nil {
+		_ = raw.Close()
+		t.Fatal(err)
+	}
+	var status [1]byte
+	if _, err := io.ReadFull(raw, status[:]); err != nil || status[0] != 1 {
+		_ = raw.Close()
+		t.Fatalf("open gated Client: status=%d, err=%v", status[0], err)
+	}
+	transport := &gatedClientTransport{
+		clientTransport: raw,
+		remaining:       gatedBytes,
+		readReady:       make(chan struct{}),
+		releaseRead:     make(chan struct{}),
+		closeStarted:    make(chan struct{}),
+	}
+	opened := newClientWithStop(transport, func() bool { return false })
+	go opened.receive()
+	return opened, transport
+}
+
+func terminalFrameSize(outcome Outcome) int {
+	return 8 + len(outcome.Class) + len(outcome.Reason)
+}
+
+func acceptNonReadingPeer(listener *net.UnixListener, ready chan<- peerSetupResult) {
+	defer close(ready)
+	connection, err := acceptApplicationPeer(listener)
+	if err != nil {
+		ready <- peerSetupResult{err: err}
+		return
+	}
+	if err := connection.SetReadBuffer(4 << 10); err != nil {
+		ready <- failedPeerSetup(connection, err)
+		return
+	}
+	var frame [4]byte
+	if _, err := io.ReadFull(connection, frame[:]); err != nil {
+		ready <- failedPeerSetup(connection, fmt.Errorf("read first Application frame: %w", err))
+		return
+	}
+	length := binary.BigEndian.Uint32(frame[:])
+	if length == 0 || length > maximumFrame {
+		ready <- failedPeerSetup(connection, fmt.Errorf("first Application frame length = %d", length))
+		return
+	}
+	ready <- peerSetupResult{connection: connection}
+}
+
+func acceptConnectedPeer(listener *net.UnixListener, ready chan<- peerSetupResult) {
+	defer close(ready)
+	connection, err := acceptApplicationPeer(listener)
+	if err != nil {
+		ready <- peerSetupResult{err: err}
+		return
+	}
+	ready <- peerSetupResult{connection: connection}
+}
+
+func acceptCapturingPeer(listener *net.UnixListener, received chan<- captureResult, done chan<- struct{}) {
+	defer close(done)
+	defer close(received)
+	result := captureResult{}
+	connection, err := acceptApplicationPeer(listener)
+	if err != nil {
+		result.err = err
+		received <- result
+		return
+	}
+	defer func() {
+		result.err = errors.Join(result.err, connection.Close())
+		received <- result
+	}()
+	var data bytes.Buffer
+	for {
+		var frame [4]byte
+		if _, err := io.ReadFull(connection, frame[:]); err != nil {
+			result.err = err
+			return
+		}
+		length := binary.BigEndian.Uint32(frame[:])
+		if length == 0 {
+			result.data = bytes.Clone(data.Bytes())
+			return
+		}
+		if length > maximumFrame {
+			result.err = errors.New("peer received an oversized frame")
+			return
+		}
+		if _, err := io.CopyN(&data, connection, int64(length)); err != nil {
+			result.err = err
+			return
+		}
+	}
+}
+
+func acceptApplicationPeer(listener *net.UnixListener) (*net.UnixConn, error) {
+	connection, err := listener.AcceptUnix()
+	if err != nil {
+		return nil, err
+	}
+	header := make([]byte, len(localMagic)+3)
+	if _, err := io.ReadFull(connection, header); err != nil {
+		return nil, errors.Join(err, connection.Close())
+	}
+	if string(header[:len(localMagic)]) != localMagic {
+		return nil, errors.Join(errors.New("peer received an invalid request header"), connection.Close())
+	}
+	linkLength := int(binary.BigEndian.Uint16(header[len(localMagic)+1:]))
+	if linkLength == 0 {
+		return nil, errors.Join(errors.New("peer received an empty Target Link"), connection.Close())
+	}
+	if _, err := io.CopyN(io.Discard, connection, int64(linkLength)); err != nil {
+		return nil, errors.Join(err, connection.Close())
+	}
+	if _, err := connection.Write([]byte{1}); err != nil {
+		return nil, errors.Join(err, connection.Close())
+	}
+	return connection, nil
+}
+
+func failedPeerSetup(connection *net.UnixConn, err error) peerSetupResult {
+	return peerSetupResult{err: errors.Join(err, connection.Close())}
+}
+
+// The peer fixture emits wire bytes independently of the selected Endpoint
+// server so portable client lifecycle checks do not require that server.
+func writeClientPeerTerminal(peer io.Writer, outcome Outcome) error {
+	raw := binary.BigEndian.AppendUint32(nil, terminalMarker)
+	raw = binary.BigEndian.AppendUint16(raw, uint16(len(outcome.Class)))
+	raw = binary.BigEndian.AppendUint16(raw, uint16(len(outcome.Reason)))
+	raw = append(raw, []byte(outcome.Class)...)
+	raw = append(raw, []byte(outcome.Reason)...)
+	_, err := io.Copy(peer, bytes.NewReader(raw))
+	return err
+}

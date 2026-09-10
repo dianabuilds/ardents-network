@@ -66,7 +66,8 @@ func TestClosedCarrierPoolRefusesInvalidStateAndBoundsEntries(t *testing.T) {
 		t.Fatal("opened a Carrier after State validation failed")
 	}
 	for index := 1; index <= closedCarrierPoolMaximum; index++ {
-		lease, err := pool.Acquire(closedCarrierPoolKey(byte(index)), func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil })
+		key := closedCarrierPoolKey(byte(index))
+		lease, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil })
 		if err != nil {
 			t.Fatalf("acquire %d: %v", index, err)
 		}
@@ -77,7 +78,8 @@ func TestClosedCarrierPoolRefusesInvalidStateAndBoundsEntries(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := pool.Acquire(closedCarrierPoolKey(33), func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil }); err == nil {
+	over := closedCarrierPoolKey(closedCarrierPoolMaximum + 1)
+	if _, err := pool.Acquire(over, func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil }); err == nil {
 		t.Fatal("opened a Carrier beyond the Node pool limit")
 	}
 	if err := pool.Close(); err != nil {
@@ -85,7 +87,7 @@ func TestClosedCarrierPoolRefusesInvalidStateAndBoundsEntries(t *testing.T) {
 	}
 }
 
-func TestClosedCarrierPoolInvalidatesActiveStateKey(t *testing.T) {
+func TestClosedCarrierPoolInvalidatesActiveLease(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	pool, err := NewClosedCarrierPool(func() time.Time { return now })
 	if err != nil {
@@ -96,7 +98,7 @@ func TestClosedCarrierPoolInvalidatesActiveStateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.Invalidate(key); err != nil || carrier.closes != 1 {
+	if err := lease.Invalidate(); err != nil || carrier.closes != 1 {
 		t.Fatalf("invalidate = %v / closes %d", err, carrier.closes)
 	}
 	if err := lease.MarkUsed(); err == nil {
@@ -117,3 +119,90 @@ func (*closedPoolCarrier) Read([]byte) (int, error)        { return 0, io.EOF }
 func (*closedPoolCarrier) Write(value []byte) (int, error) { return len(value), nil }
 func (*closedPoolCarrier) SetDeadline(time.Time) error     { return nil }
 func (carrier *closedPoolCarrier) Close() error            { carrier.closes++; return nil }
+
+func TestClosedCarrierPoolRetiresChangedDirectedPairAndCannotReopenAfterClose(t *testing.T) {
+	pool, err := NewClosedCarrierPool(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	first := &closedPoolCarrier{}
+	key := closedCarrierPoolKey(1)
+	old, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return first, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := key
+	changed.PeerKey[0]++
+	second := &closedPoolCarrier{}
+	current, err := pool.Acquire(changed, func() error { return nil }, func() (Carrier, error) { return second, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.closes != 1 || len(pool.entries) != 1 {
+		t.Fatal("changed pair retained two Carriers")
+	}
+	if _, err := old.Carrier(); err == nil {
+		t.Fatal("old active lease retained changed State authority")
+	}
+	if err := old.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := current.Carrier(); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.Close(); err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	if _, err := pool.Acquire(changed, func() error { return nil }, func() (Carrier, error) { called = true; return &closedPoolCarrier{}, nil }); err == nil || called {
+		t.Fatal("withdrawn pool reopened a Carrier")
+	}
+}
+
+func TestClosedCarrierLeaseLateInvalidationCannotCloseReplacement(t *testing.T) {
+	pool, err := NewClosedCarrierPool(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	key := closedCarrierPoolKey(1)
+	oldCarrier := &closedPoolCarrier{}
+	old, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return oldCarrier, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := old.Release(); err != nil {
+		t.Fatal(err)
+	}
+	replacementCarrier := &closedPoolCarrier{}
+	replacement, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return replacementCarrier, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if old.SameCarrier(replacement) {
+		t.Fatal("replacement reused retired incarnation")
+	}
+	if err := old.Invalidate(); err != nil {
+		t.Fatal(err)
+	}
+	if replacementCarrier.closes != 0 {
+		t.Fatal("late reader invalidated replacement")
+	}
+	if _, err := replacement.Carrier(); err != nil {
+		t.Fatal(err)
+	}
+	shared, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { t.Fatal("redialed shared incarnation"); return nil, nil })
+	if err != nil || !shared.SameCarrier(replacement) {
+		t.Fatal("live borrowers disagree about incarnation")
+	}
+	if err := shared.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if err := replacement.Invalidate(); err != nil {
+		t.Fatal(err)
+	}
+	if replacementCarrier.closes != 1 {
+		t.Fatal("current incarnation was not invalidated")
+	}
+}

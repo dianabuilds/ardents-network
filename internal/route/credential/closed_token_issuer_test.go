@@ -1,3 +1,5 @@
+//go:build linux
+
 package credential
 
 import (
@@ -6,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -22,6 +25,9 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	}
 	network, issuerNode := sha256.Sum256([]byte("issuer network")), sha256.Sum256([]byte("issuer node"))
 	root := t.TempDir()
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	receipt, err := InitializeClosedIssuerRoot(ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerNode, IdentityKey: nodePrivate,
 		NotBefore: window, NotAfter: window.Add(time.Hour), Clock: func() time.Time { return now }})
 	if err != nil {
@@ -47,7 +53,7 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 	copy(permission.Signature[:], ed25519.Sign(authority, permissionTranscript(permission)))
 	context := ClosedTokenContext{NetworkID: network, ProfileDigest: profile.Digest, ReceiverNodeID: sha256.Sum256([]byte("receiver")),
 		IssuerNodeID: issuerNode, ReceiverDutyGeneration: 6, Class: 1, WindowStart: window}
-	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Context: context, Permission: permission, HolderKey: holder, Count: 2, Now: now})
+	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context, context}, Permission: permission, HolderKey: holder, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,13 +144,23 @@ func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
 		!bytes.Equal(retried.Signatures[1], first.Signatures[1]) || !bytes.Equal(retriedRaw, firstRaw) {
 		t.Fatalf("restarted issuer result = %+v", retried)
 	}
-	second, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Context: context, Permission: permission, HolderKey: holder, Count: 1, Now: now})
+	second, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context}, Permission: permission, HolderKey: holder, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer second.Discard()
-	if exhausted := issuer.Issue(second.Request()); exhausted.Status != ClosedTokenExhausted {
-		t.Fatalf("permission overflow result = %+v", exhausted)
+	secondOperation, err := route.EncodeClosedIssuanceRequest(nonce, second.Request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	exhaustedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, secondOperation)
+	exhaustedTerminal, err := route.DecodeClosedIssuanceResult(exhaustedRaw, nonce)
+	if err != nil || exhaustedTerminal.Status != 2 {
+		t.Fatalf("permission overflow terminal = %d / %v", exhaustedTerminal.Status, err)
+	}
+	exhausted, err := DecodeClosedTokenBatchResult(exhaustedTerminal.Payload)
+	if err != nil || exhausted.Status != ClosedTokenExhausted {
+		t.Fatalf("permission overflow result = %+v / %v", exhausted, err)
 	}
 }
 

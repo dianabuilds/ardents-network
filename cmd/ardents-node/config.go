@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"time"
@@ -12,6 +13,8 @@ import (
 )
 
 type sourceServerPlan struct {
+	StateProfileAuthority   string   `json:"state_profile_authority,omitempty"`
+	StateProfile            string   `json:"state_profile,omitempty"`
 	Schema                  string   `json:"schema"`
 	StateRoot               string   `json:"state_root"`
 	LocalRoleStateRoot      string   `json:"local_role_state_root"`
@@ -52,6 +55,19 @@ func openSource(path string, emit func([]byte) error) (sourceStore, error) {
 		RuntimeProfile: plan.RuntimeProfile}
 	if plan.NativeRendezvousProfile {
 		config.AcceptedProfile = route.Profile
+	}
+	if plan.StateProfile != "" {
+		if plan.NativeRendezvousProfile || plan.StateProfile != route.ClosedRouteProfile {
+			return nil, errors.New("source State profile is unsupported or ambiguous")
+		}
+		config.ClosedProfileAuthority = make(ed25519.PublicKey, ed25519.PublicKeySize)
+		if err := decodeOperatorFixedHex(plan.StateProfileAuthority, config.ClosedProfileAuthority); err != nil {
+			return nil, fmt.Errorf("source State profile authority: %w", err)
+		}
+		config.AcceptedProfile = plan.StateProfile
+	}
+	if plan.StateProfile == "" && plan.StateProfileAuthority != "" {
+		return nil, errors.New("source profile authority requires an explicit State profile")
 	}
 	config.ObserveResources = emit
 	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {

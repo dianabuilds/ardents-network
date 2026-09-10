@@ -45,6 +45,9 @@ type ClosedTokenListener struct {
 	limit      chan struct{}
 	active     atomic.Uint32
 	stopOnce   sync.Once
+	stopErr    error
+	cancel     context.CancelFunc
+	drained    chan struct{}
 	done       chan error
 	stopped    chan struct{}
 	workers    sync.WaitGroup
@@ -76,11 +79,20 @@ func StartClosedTokenListener(ctx context.Context, config ClosedTokenListenerCon
 		}
 		return nil, err
 	}
+	owned, cancel := context.WithCancel(ctx)
 	running := &ClosedTokenListener{
 		issuer: config.Issuer, listener: listener, shared: config.SharedListener, node: config.NodeHandler, controller: controller, clock: config.Clock,
 		limit: make(chan struct{}, config.ConnectionLimit), done: make(chan error, 1), stopped: make(chan struct{}),
+		cancel: cancel, drained: make(chan struct{}),
 	}
-	go running.serve(ctx)
+	running.workers.Add(2) // Accept handoff and cancellation watcher both join.
+	go func() {
+		defer running.workers.Done()
+		<-owned.Done()
+		_ = running.Stop() // A blocked TCP Accept does not observe context alone.
+	}()
+	go running.serve(owned)
+	go func() { running.workers.Wait(); close(running.drained) }()
 	return running, nil
 }
 
@@ -105,29 +117,25 @@ func (listener *ClosedTokenListener) Stop() error {
 	if listener == nil {
 		return nil
 	}
-	var result error
+
 	listener.stopOnce.Do(func() {
 		close(listener.stopped)
+		listener.cancel()
 		if listener.listener != nil {
-			result = listener.listener.Close()
+			listener.stopErr = listener.listener.Close()
 		} else {
-			result = listener.shared.Close()
+			listener.stopErr = listener.shared.Close()
 		}
 	})
-	return result
+	return listener.stopErr
 }
 func (listener *ClosedTokenListener) Drain(ctx context.Context) error {
 	if listener == nil || ctx == nil {
 		return errors.New("closed token listener drain is invalid")
 	}
 	stopErr := listener.Stop()
-	done := make(chan struct{})
-	go func() {
-		listener.workers.Wait()
-		close(done)
-	}()
 	select {
-	case <-done:
+	case <-listener.drained:
 		return stopErr
 	case <-ctx.Done():
 		return errors.Join(stopErr, ctx.Err())
@@ -135,12 +143,14 @@ func (listener *ClosedTokenListener) Drain(ctx context.Context) error {
 }
 
 func (listener *ClosedTokenListener) serve(ctx context.Context) {
+	defer listener.workers.Done()
+	defer listener.Stop()
 	var terminal error
 	defer func() { listener.done <- terminal }()
 	for {
 		deadline := listener.clock().UTC().Add(10 * time.Second)
 		if listener.shared != nil {
-			accepted, err := listener.shared.Accept(ctx, deadline)
+			accepted, err := listener.shared.Accept(ctx, 10*time.Second)
 			if err != nil {
 				select {
 				case <-listener.stopped:
@@ -152,9 +162,21 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 					return
 				}
 			}
-			if accepted.Kind == route.ClosedSharedNode {
-				listener.workers.Add(1)
-				go func() { defer listener.workers.Done(); listener.node(ctx, accepted, listener.serveVerified) }()
+			if ctx.Err() != nil {
+				if accepted.Connection != nil {
+					_ = accepted.Connection.Close()
+				}
+				return
+			}
+			if accepted.Kind == route.ClosedSharedNode && accepted.Connection != nil {
+				select {
+				case listener.limit <- struct{}{}:
+					listener.active.Add(1)
+					listener.workers.Add(1)
+					go listener.serveNode(ctx, accepted)
+				default:
+					_ = accepted.Connection.Close()
+				}
 				continue
 			}
 			if accepted.Kind != route.ClosedSharedDirect || accepted.Connection == nil {
@@ -177,6 +199,10 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 				terminal = err
 				return
 			}
+		}
+		if ctx.Err() != nil {
+			_ = connection.Close()
+			return
 		}
 		listener.startDirect(ctx, connection)
 	}
@@ -202,9 +228,43 @@ func (listener *ClosedTokenListener) serveConnection(ctx context.Context, connec
 	}
 	var adjacency [32]byte
 	adjacency[0] = closedIssuerDirectAdjacency
-	_ = listener.issuer.ServeBootstrap(ctx, connection, listener.controller, adjacency)
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { defer close(interrupted); _ = connection.Close() })
+	defer func() {
+		if !stop() {
+			<-interrupted
+		}
+	}()
+	if err := listener.issuer.ServeBootstrap(ctx, connection, listener.controller, adjacency); err == nil {
+		// A QUIC Write only queues bytes. Closing the whole connection here can
+		// discard the successful result before its peer reads it. Retain this
+		// bounded direct exchange until the peer closes after consuming its
+		// response, or the existing exchange deadline/cancellation interrupts it.
+		// Any extra byte also ends this one-operation connection without effects.
+		var trailing [1]byte
+		_, _ = connection.Read(trailing[:])
+	}
 }
 
 func (listener *ClosedTokenListener) serveVerified(ctx context.Context, carrier io.ReadWriter, adjacency [32]byte, hello route.ClosedHello) error {
 	return listener.issuer.ServeBootstrapAfterHello(ctx, carrier, listener.controller, adjacency, hello)
+}
+
+func (listener *ClosedTokenListener) serveNode(ctx context.Context, carrier route.ClosedSharedCarrier) {
+	defer listener.workers.Done()
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		defer close(interrupted)
+		_ = carrier.Connection.SetDeadline(time.Now())
+		_ = carrier.Connection.Close()
+	})
+	defer func() {
+		_ = carrier.Connection.Close()
+		if !stop() {
+			<-interrupted
+		}
+		<-listener.limit
+		listener.active.Add(^uint32(0))
+	}()
+	listener.node(ctx, carrier, listener.serveVerified)
 }

@@ -31,7 +31,7 @@ func TestNetworkExtractionRehearsal(t *testing.T) {
 		return
 	}
 	root := repositoryRoot(t)
-	candidate := extractOwnedCandidate(t, root, "network", "application-interface-v1")
+	candidate := extractNetworkBuildCandidate(t, root)
 	for _, relative := range []string{"internal/browser", "cmd/ardents-browser", "cmd/ardents-browser-entry", "packaging/browser-bundle"} {
 		if _, err := os.Stat(filepath.Join(candidate, filepath.FromSlash(relative))); !os.IsNotExist(err) {
 			t.Fatalf("Network extraction retained Application implementation %s", relative)
@@ -41,6 +41,15 @@ func TestNetworkExtractionRehearsal(t *testing.T) {
 	for _, command := range strings.Fields(string(readProjectFile(t, candidate, "tests/profiles/headless-commands.txt"))) {
 		buildCandidateCommand(t, root, candidate, command, filepath.Join(t.TempDir(), filepath.Base(command)))
 	}
+}
+
+// extractNetworkBuildCandidate includes the selected Endpoint's source
+// dependencies without reclassifying their ownership or adding an artifact
+// to the independently declared four-command Network lane.
+func extractNetworkBuildCandidate(t *testing.T, root string) string {
+	t.Helper()
+	return extractOwnedCandidate(t, root, "network", "application-interface-v1",
+		"application-interface-v2", "text-application")
 }
 
 func extractOwnedCandidate(t *testing.T, root string, owners ...string) string {

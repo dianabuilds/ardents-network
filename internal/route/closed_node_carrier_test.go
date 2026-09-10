@@ -6,11 +6,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
-	"net"
 	"testing"
 	"time"
-
-	"github.com/quic-go/quic-go"
 )
 
 func TestClosedNodeCarrierUsesV3MutualTLSOverBothCarriers(t *testing.T) {
@@ -60,51 +57,57 @@ func TestClosedNodeCarrierRejectsOldProfileBeforeDial(t *testing.T) {
 
 func closedNodeCarrierTestServer(t *testing.T, profile CarrierProfile, certificate tls.Certificate, expected [32]byte) (string, func(), <-chan error) {
 	t.Helper()
-	done := make(chan error, 1)
-	if profile == ClosedCarrierTCP {
-		listener, err := net.Listen("tcp", "127.0.0.1:0")
-		if err != nil {
-			t.Fatal(err)
-		}
-		go func() {
-			raw, acceptErr := listener.Accept()
-			if acceptErr != nil {
-				done <- acceptErr
-				return
-			}
-			secured := tls.Server(raw, closedNodeServerTLS(certificate, expected))
-			if acceptErr = secured.HandshakeContext(context.Background()); acceptErr == nil {
-				buffer := make([]byte, 1)
-				if _, acceptErr = io.ReadFull(secured, buffer); acceptErr == nil {
-					_, acceptErr = secured.Write(buffer)
-				}
-			}
-			closeErr := secured.Close()
-			done <- errors.Join(acceptErr, closeErr)
-		}()
-		return listener.Addr().String(), func() { _ = listener.Close() }, done
-	}
-	listener, err := quic.ListenAddr("127.0.0.1:0", closedNodeServerTLS(certificate, expected), closedNodeQUICServerConfig())
+	listener, err := ListenClosedSharedCarrier(profile, closedRoleCarrierTestEndpoint(t, profile), certificate,
+		func(key [32]byte) bool { return key == expected }, 16)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	done, finished, release := make(chan error, 1), make(chan struct{}), make(chan struct{})
 	go func() {
-		connection, acceptErr := listener.Accept(context.Background())
-		if acceptErr == nil {
-			stream, streamErr := connection.AcceptStream(context.Background())
-			if streamErr != nil {
-				acceptErr = streamErr
-			} else {
-				buffer := make([]byte, 1)
-				if _, acceptErr = io.ReadFull(stream, buffer); acceptErr == nil {
-					_, acceptErr = stream.Write(buffer)
-				}
-				if closeErr := stream.Close(); closeErr != nil {
-					acceptErr = errors.Join(acceptErr, closeErr)
-				}
+		defer close(finished)
+		accepted, err := listener.Accept(ctx, 10*time.Second)
+		if err != nil {
+			done <- err
+			return
+		}
+		connection := accepted.Connection
+		interrupted := make(chan struct{})
+		stop := context.AfterFunc(ctx, func() { defer close(interrupted); _ = connection.SetDeadline(time.Now()) })
+		defer func() {
+			// Keep the actual Carrier alive until the client consumed the echo;
+			// a QUIC connection close may discard an unacknowledged stream tail.
+			<-release
+			if !stop() {
+				<-interrupted
+			}
+			if err := connection.Close(); err != nil {
+				t.Error(err)
+			}
+		}()
+		if accepted.Kind != ClosedSharedNode || accepted.NodeKey != expected {
+			done <- errors.New("accepted Carrier lost Node authentication")
+			return
+		}
+		if end, ok := ctx.Deadline(); ok {
+			if err := connection.SetDeadline(end); err != nil {
+				done <- err
+				return
 			}
 		}
-		done <- acceptErr
+		var body [1]byte
+		_, err = io.ReadFull(connection, body[:])
+		if err == nil {
+			_, err = connection.Write(body[:])
+		}
+		done <- err
 	}()
-	return listener.Addr().String(), func() { _ = listener.Close() }, done
+	return closedSharedCarrierEndpoint(t, listener), func() {
+		cancel()
+		close(release)
+		if err := listener.Close(); err != nil {
+			t.Error(err)
+		}
+		<-finished
+	}, done
 }

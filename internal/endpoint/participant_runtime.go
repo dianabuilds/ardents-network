@@ -143,6 +143,7 @@ func RunParticipant(ctx context.Context, config ParticipantRuntimeConfig) (runEr
 	if err != nil {
 		return fmt.Errorf("open participant Endpoint: %w", err)
 	}
+	owner.configureTextSources(network, config.EntryRoot, config.LocalRoleRoot)
 	defer func() { runErr = errors.Join(runErr, owner.Close()) }()
 	if instanceRoot != nil {
 		floor, floorErr := owner.publications.Floor()

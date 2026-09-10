@@ -304,7 +304,7 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 			err = stream.acknowledgeLocked(offset)
 			if err == nil && terminalReceipt {
 				stream.terminalAcknowledgedGeneration = record.Acknowledgement.AttachmentGeneration
-				if stream.opener != nil {
+				if stream.terminalReceipts || stream.opener != nil {
 					stream.terminalConfirmationPending = true
 					stream.terminalConfirmationSent = false
 					stream.terminalConfirmationGeneration = record.Acknowledgement.AttachmentGeneration
@@ -325,7 +325,7 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 				if offset > stream.ackPending {
 					stream.ackPending = offset
 				}
-				if stream.opener != nil && stream.terminalAckGeneration != attachment.generation {
+				if (stream.terminalReceipts || stream.opener != nil) && stream.terminalAckGeneration != attachment.generation {
 					stream.terminalAckPending = true
 					stream.terminalAckSent = false
 					stream.terminalAckPendingGeneration = attachment.generation
@@ -436,7 +436,7 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 
 func (stream *Stream) boundedReceiveCompleteLocked() bool {
 	return !stream.postClose && stream.remoteTerminal && stream.localTerminal && stream.sendBase == stream.sendEnd &&
-		(stream.opener == nil || stream.terminalAcknowledgedGeneration != 0) &&
+		(!stream.terminalReceipts && stream.opener == nil || stream.terminalAcknowledgedGeneration != 0) &&
 		(!stream.terminalAckPending || (stream.terminalAckSent &&
 			stream.terminalAckConfirmedGeneration == stream.terminalAckGeneration))
 }

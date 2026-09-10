@@ -18,6 +18,48 @@ serves an authenticated pair after those incomplete connections release their
 slots; it is not a DoS-resilience claim. Fixtures are generated in the test
 temporary directory and disappear with the run.
 
+The closed-issuer provisioning cell runs actual `ardents-node` initialization
+and restart, transfers its unchanged public JSON export to `ardents-control`
+inspection under independently supplied Node/Network pins, and uses the
+resulting token-key fields in separate prepare/sign/inspect processes. Its
+Epoch and Node Records are canonical signed fixture inputs accepted through
+the actual offline command. A signed mismatched Node digest is refused; the
+valid profile's reported digest and durable route survive reopening. This does
+not qualify installed workers or the complete
+acquire-register-publish-refresh-withdraw journey. For each accepted Carrier,
+the same cell then accepts the issuer's exact materialization and signed profile
+into a fresh Node root, starts two real Sources, and runs the actual issuer
+command to READY. After abrupt process termination and joined exit, the same
+roots return to READY with the same duty digest. Entry and Interior commands
+also start from their exact materializations. On Linux, the real Route client
+uses the accepted State to send a blinded batch through these three commands;
+the cell requires the credential owner to unblind and verify the token. After
+abrupt issuer loss, a new batch must receive a bounded transport refusal with
+no response or cleanup failure. The test retains that exact batch, Permission,
+blinding state and selected peers, restarts the issuer, and makes one explicit
+recovery attempt. It must verify the token without replacing the pending
+request. This exercises the same-process reconciliation allowed by
+[private admission](../../../docs/technical/private-admission.md), not an
+automatic retry or a promise of zero transient refusal after remote READY.
+The lost attempt occurs while the issuer is stopped, so this does not prove
+reconciliation of an already committed reservation or rollback protection.
+Custody authority creation and permission issuance use the actual command in
+a real terminal. Password input waits for echo to be disabled; the independently
+transferred request digest is entered at its separate prompt. A mismatched
+digest must refuse before vault unlock and leave no permission file. Public
+receipts are checked against the private permission file, which then supplies
+the real network exchange. The Route client is not yet the ordinary Endpoint
+command. Other platforms exercise readiness
+only. This does not establish graceful shutdown or prove that each Node
+contacted both Sources before declaring readiness.
+
+The closed Source cell starts two actual Source commands from independently
+accepted copies of that Epoch. A separate State owner acquires the matching
+generation through both mutually authenticated Sources. Unsupported or mixed
+profile selections and absent or foreign signer pins cannot produce readiness.
+This verifies distribution, not closed-profile distribution or Node duty
+readiness.
+
 Run them with `make e2e` or `go test ./tests/e2e/node`.
 
 The purpose-named `make qualification-native-rendezvous-multihost` target is separate from

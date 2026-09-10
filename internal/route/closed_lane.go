@@ -70,7 +70,7 @@ func ClosedPurposePermitsDuty(purpose ClosedPurpose, domain, subrole uint8) bool
 	case ClosedPurposeDataJoin:
 		return domain == closedRoleDomainRendezvous && subrole == closedDutyDataJoin
 	case ClosedPurposeForwarding:
-		return (domain == closedRoleDomainInitiator || domain == closedRoleDomainRendezvous || domain == closedRoleDomainResponder) &&
+		return (domain == closedRoleDomainInitiator || domain == closedRoleDomainResponder || domain == closedRoleDomainIntroduction) &&
 			(subrole == closedDutyAdjacent || subrole == closedDutyInterior)
 	default:
 		return false
@@ -86,7 +86,8 @@ func validClosedDutyAssignment(domain, subrole uint8) bool {
 }
 
 // ClosedLaneFrame is one bounded generation-3 ARDP frame. Lane zero is used
-// only for channel admission; lane ownership is enforced by the caller.
+// for channel admission and ordinary terminal operations; JOIN uses lane one.
+// Callers enforce the authenticated allocation and activation of each lane.
 type ClosedLaneFrame struct {
 	Kind uint8
 	Lane uint32
@@ -115,23 +116,6 @@ func EncodeClosedLaneFrame(frame ClosedLaneFrame) ([]byte, error) {
 	binary.BigEndian.PutUint32(raw[12:16], uint32(len(frame.Body)))
 	copy(raw[closedLaneHeaderSize:], frame.Body)
 	return raw, nil
-}
-
-// DecodeClosedLaneFrame rejects unsupported header facts before allocating a
-// body. It accepts exactly one whole frame and no trailing carrier bytes.
-func DecodeClosedLaneFrame(raw []byte) (ClosedLaneFrame, error) {
-	if len(raw) < closedLaneHeaderSize || string(raw[:4]) != closedLaneMagic || binary.BigEndian.Uint16(raw[4:6]) != closedLaneGeneration || raw[7] != 0 {
-		return ClosedLaneFrame{}, errors.New("closed lane header is invalid")
-	}
-	length := int(binary.BigEndian.Uint32(raw[12:16]))
-	if length < 0 || length > closedLaneMaximum || len(raw) != closedLaneHeaderSize+length {
-		return ClosedLaneFrame{}, errors.New("closed lane length is invalid")
-	}
-	frame := ClosedLaneFrame{Kind: raw[6], Lane: binary.BigEndian.Uint32(raw[8:12]), Body: append([]byte(nil), raw[closedLaneHeaderSize:]...)}
-	if !validClosedFrame(frame) {
-		return ClosedLaneFrame{}, errors.New("closed lane frame is invalid")
-	}
-	return frame, nil
 }
 
 // ReadClosedLaneFrame reads one bounded frame without accepting a declared
@@ -210,14 +194,6 @@ func DecodeClosedHello(body []byte) (ClosedHello, error) {
 	return hello, nil
 }
 
-// EncodeClosedBootstrap returns the lane-zero bootstrap operation body.
-func EncodeClosedBootstrap(issuer bool) []byte {
-	if issuer {
-		return []byte{2}
-	}
-	return []byte{1}
-}
-
 // DecodeClosedBootstrap accepts only public-evidence or issuer bootstrap.
 func DecodeClosedBootstrap(body []byte) (issuer bool, err error) {
 	if len(body) != 1 || body[0] < 1 || body[0] > 2 {
@@ -260,7 +236,7 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 		return frame.Lane == 0 && len(frame.Body) == 1
 	}
 	if frame.Kind == closedFrameOpen {
-		return frame.Lane != 0 && len(frame.Body) == 49
+		return frame.Lane != 0 && (len(frame.Body) == 49 || len(frame.Body) == 50)
 	}
 	if frame.Kind == closedFrameAccept {
 		return frame.Lane == 0 && len(frame.Body) == 5
@@ -278,7 +254,7 @@ func validClosedFrame(frame ClosedLaneFrame) bool {
 		return frame.Lane != 0 && len(frame.Body) == 1 && frame.Body[0] <= 6
 	}
 	if frame.Kind == closedFrameOperation {
-		return len(frame.Body) == closedTerminalOperationSize || frame.Lane != 0 && len(frame.Body) == closedSmallTerminalOperation
+		return len(frame.Body) == closedTerminalOperationSize || len(frame.Body) == closedSmallTerminalOperation
 	}
 	if frame.Kind == closedFrameResult {
 		return len(frame.Body) == closedTerminalOperationSize

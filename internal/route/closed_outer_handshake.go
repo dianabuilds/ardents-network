@@ -30,11 +30,16 @@ type ClosedOuterHandshake struct {
 	clock    func() time.Time
 	duty     *closedDutyChannel
 	hello    bool
+	lastOdd  uint32
 	children map[uint32]closedOuterChild
 }
 
 type closedOuterChild struct {
 	deadline                time.Time
+	pendingDeadline         time.Time
+	hello                   ClosedHello
+	restriction             ClosedChildRestriction
+	admitted                bool
 	purpose                 ClosedPurpose
 	bytes, credit, queued   uint32
 	innerHello, active, eof bool
@@ -102,6 +107,7 @@ func (handshake *ClosedOuterHandshake) Accept(frame ClosedLaneFrame) ([]byte, er
 		if err != nil || !handshake.matchesHello(hello) {
 			return nil, errors.New("closed outer HELLO is unavailable")
 		}
+		handshake.receiver.Deadline = hello.Deadline
 		handshake.hello = true
 		return nil, nil
 	}
@@ -150,24 +156,29 @@ func (handshake *ClosedOuterHandshake) matchesHello(hello ClosedHello) bool {
 	return hello.NetworkID == handshake.receiver.NetworkID && hello.StateGeneration == handshake.receiver.StateGeneration &&
 		hello.StateDigest == handshake.receiver.StateDigest && hello.ProfileDigest == handshake.receiver.ProfileDigest &&
 		hello.RecipientNodeID == handshake.receiver.NodeID && hello.RecipientDutyGeneration == handshake.receiver.DutyGeneration &&
-		hello.Purpose == ClosedPurposeForwarding && !hello.Deadline.After(handshake.receiver.Deadline)
+		hello.Purpose == ClosedPurposeForwarding && hello.Deadline.After(handshake.clock().UTC()) && !hello.Deadline.After(handshake.receiver.Deadline)
 }
 
 func (handshake *ClosedOuterHandshake) open(frame ClosedLaneFrame) error {
-	if frame.Lane == 0 || frame.Lane%2 == 0 {
+	if frame.Lane == 0 || frame.Lane%2 == 0 || frame.Lane <= handshake.lastOdd {
 		return errors.New("closed outer child lane is invalid")
 	}
-	open, err := DecodeClosedOpen(frame.Body)
+	open, restriction, err := DecodeClosedNodeOpen(frame.Body)
 	now := handshake.clock().UTC()
 	if err != nil || open.NextNodeID != handshake.receiver.NodeID || open.NextDutyGeneration != handshake.receiver.DutyGeneration ||
 		!ClosedPurposePermitsDuty(open.Purpose, handshake.receiver.RoleDomain, handshake.receiver.Subrole) || !open.Deadline.After(now) || open.Deadline.After(handshake.receiver.Deadline) ||
-		open.Deadline.After(now.Add(10*time.Second)) {
+		restriction == ClosedChildIssuerBootstrap && open.Deadline.After(now.Add(10*time.Second)) {
 		return errors.New("closed outer OPEN is unavailable")
 	}
 	if _, exists := handshake.children[frame.Lane]; exists || handshake.duty.reserveChild() != nil {
 		return errors.New("closed outer child lane is reused")
 	}
-	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline, purpose: open.Purpose, credit: closedOuterLaneCredit}
+	pending := now.Add(10 * time.Second)
+	if open.Deadline.Before(pending) {
+		pending = open.Deadline
+	}
+	handshake.children[frame.Lane] = closedOuterChild{deadline: open.Deadline, pendingDeadline: pending, restriction: restriction, purpose: open.Purpose, credit: closedOuterLaneCredit}
+	handshake.lastOdd = frame.Lane
 	return nil
 }
 
@@ -185,13 +196,14 @@ func (handshake *ClosedOuterHandshake) VerifyInnerHello(lane uint32, hello Close
 		return errors.New("closed inner HELLO is unavailable")
 	}
 	child, exists := handshake.children[lane]
-	if !exists || !child.innerHello || !validClosedHello(hello) || hello.NetworkID != handshake.receiver.NetworkID || hello.StateGeneration != handshake.receiver.StateGeneration ||
+	if !exists || !handshake.clock().UTC().Before(child.pendingDeadline) || !child.innerHello || !validClosedHello(hello) || hello.NetworkID != handshake.receiver.NetworkID || hello.StateGeneration != handshake.receiver.StateGeneration ||
 		hello.StateDigest != handshake.receiver.StateDigest || hello.ProfileDigest != handshake.receiver.ProfileDigest ||
 		hello.RecipientNodeID != handshake.receiver.NodeID || hello.RecipientDutyGeneration != handshake.receiver.DutyGeneration ||
 		hello.Purpose != child.purpose || !hello.Deadline.After(handshake.clock().UTC()) || hello.Deadline.After(child.deadline) {
 		return errors.New("closed inner HELLO is unavailable")
 	}
 	child.active = true
+	child.hello = hello
 	handshake.children[lane] = child
 	return nil
 }
@@ -203,7 +215,7 @@ func (handshake *ClosedOuterHandshake) BeginInnerHello(lane uint32) error {
 	handshake.mu.Lock()
 	defer handshake.mu.Unlock()
 	child, exists := handshake.children[lane]
-	if !exists || child.innerHello || child.active || child.eof || child.bytes == 0 {
+	if !exists || !handshake.clock().UTC().Before(child.pendingDeadline) || child.innerHello || child.active || child.eof || child.bytes == 0 {
 		return errors.New("closed inner HELLO is unavailable")
 	}
 	child.innerHello = true
@@ -213,7 +225,7 @@ func (handshake *ClosedOuterHandshake) BeginInnerHello(lane uint32) error {
 
 func (handshake *ClosedOuterHandshake) bytes(frame ClosedLaneFrame) ([]byte, error) {
 	child, exists := handshake.children[frame.Lane]
-	if !exists || len(frame.Body) == 0 || child.eof || !handshake.clock().UTC().Before(child.deadline) {
+	if !exists || len(frame.Body) == 0 || child.eof || !handshake.clock().UTC().Before(child.deadline) || !child.admitted && !handshake.clock().UTC().Before(child.pendingDeadline) {
 		return nil, errors.New("closed outer handshake bytes are unavailable")
 	}
 	bytes := uint32(len(frame.Body))
@@ -244,7 +256,7 @@ func (handshake *ClosedOuterHandshake) eof(frame ClosedLaneFrame) error {
 
 func (handshake *ClosedOuterHandshake) close(frame ClosedLaneFrame) error {
 	child, exists := handshake.children[frame.Lane]
-	if !exists || !child.innerHello || len(frame.Body) != 1 || frame.Body[0] > 6 {
+	if !exists || len(frame.Body) != 1 || frame.Body[0] > 6 {
 		return errors.New("closed outer lane close is unavailable")
 	}
 	if child.queued != 0 {

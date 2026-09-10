@@ -21,9 +21,14 @@ func TestRunBoundedReplaysUnacknowledgedDataBeforeTerminalDuringConcurrentHalfCl
 }
 
 func TestRunBoundedRecoversLostTerminalReceipt(t *testing.T) {
+	runTerminalReceiptRecovery(t, false)
+}
+
+func runTerminalReceiptRecovery(t *testing.T, dropConfirmation bool) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	clientCarrier, publisherCarrier, fault := newTerminalFaultAdapter(t, terminalFault{dropPublisherReceipt: true})
+	clientCarrier, publisherCarrier, fault := newTerminalFaultAdapter(t, terminalFault{dropPublisherReceipt: true, dropPublisherConfirmation: dropConfirmation})
 	defer fault.Close()
 	freshClient, freshPublisher := net.Pipe()
 	defer freshClient.Close()
@@ -382,28 +387,30 @@ func (application *countingHalfCloseApplication) CloseInput() error {
 }
 
 type terminalFaultAdapter struct {
-	client, publisher      net.Conn
-	dropData               bool
-	dropPublisherData      bool
-	dropClientTerminal     bool
-	dropPublisherReceipt   bool
-	forwardedData          bool
-	forwardedPublisherData bool
-	droppedData            bool
-	prefixAcknowledged     chan struct{}
-	prefixAcknowledgedOnce sync.Once
-	terminalReceipt        chan struct{}
-	terminalReceiptOnce    sync.Once
-	dropped                chan struct{}
-	closeOnce              sync.Once
-	done                   sync.WaitGroup
+	client, publisher         net.Conn
+	dropData                  bool
+	dropPublisherData         bool
+	dropClientTerminal        bool
+	dropPublisherConfirmation bool
+	dropPublisherReceipt      bool
+	forwardedData             bool
+	forwardedPublisherData    bool
+	droppedData               bool
+	prefixAcknowledged        chan struct{}
+	prefixAcknowledgedOnce    sync.Once
+	terminalReceipt           chan struct{}
+	terminalReceiptOnce       sync.Once
+	dropped                   chan struct{}
+	closeOnce                 sync.Once
+	done                      sync.WaitGroup
 }
 
 type terminalFault struct {
-	dropData             bool
-	dropPublisherData    bool
-	dropClientTerminal   bool
-	dropPublisherReceipt bool
+	dropData                  bool
+	dropPublisherData         bool
+	dropClientTerminal        bool
+	dropPublisherConfirmation bool
+	dropPublisherReceipt      bool
 }
 
 func newTerminalFaultAdapter(t *testing.T, fault terminalFault) (net.Conn, net.Conn, *terminalFaultAdapter) {
@@ -413,7 +420,8 @@ func newTerminalFaultAdapter(t *testing.T, fault terminalFault) (net.Conn, net.C
 	adapter := &terminalFaultAdapter{
 		client: adapterClient, publisher: adapterPublisher, dropData: fault.dropData, dropPublisherData: fault.dropPublisherData,
 		dropClientTerminal: fault.dropClientTerminal, dropPublisherReceipt: fault.dropPublisherReceipt,
-		prefixAcknowledged: make(chan struct{}), terminalReceipt: make(chan struct{}), dropped: make(chan struct{}),
+		dropPublisherConfirmation: fault.dropPublisherConfirmation,
+		prefixAcknowledged:        make(chan struct{}), terminalReceipt: make(chan struct{}), dropped: make(chan struct{}),
 	}
 	adapter.done.Add(2)
 	go adapter.forward(adapterClient, adapterPublisher, true)
@@ -458,6 +466,9 @@ func (adapter *terminalFaultAdapter) forward(source, destination net.Conn, clien
 				_ = adapter.publisher.Close()
 			})
 			return
+		}
+		if !clientDirection && record.Acknowledgement != nil && record.Acknowledgement.TerminalConfirmation && adapter.dropPublisherConfirmation {
+			continue
 		}
 		if err := Write(destination, record); err != nil {
 			return

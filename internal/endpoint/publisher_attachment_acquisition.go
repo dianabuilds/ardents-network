@@ -65,7 +65,7 @@ func (endpoint *endpoint) configurePublisher(current func() (publisherAttachment
 	credential := binding.Credential()
 	endpoint.publisherMu.Lock()
 	defer endpoint.publisherMu.Unlock()
-	if endpoint.publisherBinding != nil || endpoint.publisherSession != nil || credential.AuthorityPublic != endpoint.authority ||
+	if endpoint.publisherBinding != nil || endpoint.publisherSession != nil || endpoint.textPublicationOwned() || credential.AuthorityPublic != endpoint.authority ||
 		credential.IntroductionHPKEPublic != endpoint.introduction {
 		return errors.New("publisher composition conflicts with Endpoint ownership")
 	}

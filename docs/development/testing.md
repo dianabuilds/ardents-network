@@ -81,6 +81,19 @@ defines additional evidence obligations for a selected new scheme. These are
 design and qualification requirements; no new execution profile or automated
 anonymity verdict exists merely because the map names them.
 
+The selected installed text Endpoint and its context, token-journal, protected
+publication and read component tests compile on Linux. Run those behavior
+checks in the existing Linux deterministic/race profiles; a Windows unit pass
+does not execute or qualify them. Windows retains the pre-existing Endpoint
+journey and an explicit unsupported text-command refusal. Shared State,
+Custody, Node and protocol consumers keep their own platform contracts. The
+Endpoint-originating Route bootstrap/prefix client and its stream, credit,
+JOIN and network-issuance tests also execute in the Linux profiles. Receiving
+Node checks that do not require that client remain on both platforms. Codec
+round trips, private-capsule cryptography and network tests that construct
+Endpoint operations execute with the Linux client. Shared outer-handshake
+admission and receiving-listener address/certificate fixtures remain separately
+available to the platform-independent Node tests.
 ## Reachability audit
 
 `make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained
@@ -98,15 +111,18 @@ owner either removes it or reviews it with a concrete retirement condition.
 An absent listed symbol also fails the gate, so the registry cannot silently
 accumulate stale exemptions. `make check` includes this audit.
 
-The headless command inventory is the sole current artifact manifest under
+The headless command inventory declares the four-command Network artifact lane;
+the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
-graphs, the three-owner [`ownership.json`](ownership.json) registry, exact
+graphs, the explicit [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
 
 Canonical command builds use the non-overridable
 `-trimpath -buildvcs=false` policy. The public Make proof builds all four current
 headless artifacts from two independent normal clones, a linked worktree, and
 two independent VCS-free ownership extractions,
+including the Endpoint source dependencies owned by both Application Interfaces
+and text-application without changing their ownership or the artifact lane,
 then requires byte-identical
 outputs without implicit `vcs.*` settings. Source revision and builder
 provenance remain explicit authenticated release-metadata,
@@ -154,7 +170,17 @@ The maintained local profiles are:
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `service-credential-response-linux`;
 - `native-rendezvous-multihost`;
-- `alpha-control-two-endpoints`.
+- `alpha-control-two-endpoints`;
+- `text-worker-network`, the installed confined worker/network composition invoked
+  by `make text-worker-network-check`; requires all eight document/Carrier and elapsed-refresh cases,
+  exact invocation evidence and terminal service success. State and authority setup
+  remain explicit fixtures; ordinary command and full host qualification are separate.
+- `text-worker-policy`, the root-driven installed authorization matrix invoked
+  by `make text-worker-policy-check`; it does not qualify the complete host.
+- `text-worker-lifecycle`, the separately selected installed Endpoint launch/Grant/
+  cgroup profile invoked by `make text-worker-lifecycle-check`; its tagged test binary
+  and exact temporary unit must be independently pinned. No-tests success is
+  refused; this profile does not replace hostile-worker or Service journey tests.
 
 Profile, target, directory, build-tag, environment-variable, and test names use
 domain language. Historical wire, persisted, release, and artifact identities
@@ -251,3 +277,31 @@ decoder and canonical encoder. Race coverage is required wherever a Module owns
 goroutines, callbacks, locks, mutable admission, cancellation, or durable state,
 and must assert terminal join and state invariants in addition to race-detector
 cleanliness.
+
+The closed text Endpoint's durable Entry Set owner and its persistence and
+class-specific adjacency tests compile on Linux, matching their sole production
+consumer. Legacy Entry Invite and receiving-admission checks remain portable.
+
+Holder-request construction and its end-to-end Custody allocation tests run on
+Linux with the text Endpoint client. The shared request decoder, proof verifier,
+Custody command and authority storage remain portable; independent authority
+creation and allocation-journal tests stay in the portable profile.
+
+The closed blind-token client batch and result round-trip tests run on Linux
+with the Endpoint that retains the opaque pending state. Issuer request parsing,
+signature checks and fixed result encoding remain available to receiving Nodes.
+
+Private Descriptor issuance round trips and Store tests that produce those
+proofs run on Linux with the Publisher. Independent receiving Gateway and wire
+checks remain portable. Protected context and coalesced initial-authentication
+tests run with the Linux text Endpoint; shared stream lifecycle tests remain
+portable, including the common receipt-consumption representation.
+
+Snapshot construction/response and published-Link client round trips execute on
+Linux with their text command consumer. Shared document-read and raw published-Link
+server framing tests remain portable; their failure checks are unchanged.
+
+AAI3 server admission, lifecycle, cleanup and request round trips execute on
+Linux with the Endpoint. Portable client cancellation/close tests retain their
+independent socket peer and explicit terminal-frame fixture; they do not require
+the selected Linux server to produce a response.

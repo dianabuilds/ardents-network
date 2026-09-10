@@ -12,6 +12,7 @@ type RecordSpec struct {
 	Generation            uint64
 	ValidFrom, ValidUntil time.Time
 	Family, Endpoint      string
+	Carrier               string
 	Capability            byte
 	Capacity              uint16
 	PrivateKey            ed25519.PrivateKey

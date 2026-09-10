@@ -47,24 +47,15 @@ func TestClosedProfileStorePersistsConflictAcrossReopen(t *testing.T) {
 }
 
 func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
-	now := time.Unix(1_800_000_000, 0).UTC()
+	store, first := closedProfileStoreFixture(t)
+	now := store.config.clock()
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
 	generation := sha256.Sum256([]byte("closed profile generation"))
-	network := sha256.Sum256([]byte("closed profile network"))
-	epochDigest := sha256.Sum256([]byte("closed profile epoch"))
-	nodeID := sha256.Sum256([]byte("issuer node"))
-	record := nodeRecord{raw: []byte("authenticated schema-2 record"), nodeID: nodeID, generation: 5, carrier: closedTCPCarrierProfile}
-	root, err := openDurableRoot(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer root.close()
-	store := &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }}, storage: root,
-		current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
-			EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
-		currentDecision: &candidateDecision{verified: verifiedEpochDecision{accepted: []nodeRecord{record}}}}
+	network, epochDigest := store.current.NetworkID, store.current.Digest
+	record := store.currentDecision.verified.accepted[0]
+	nodeID := record.nodeID
 	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(record.raw), domain: 2, subrole: 6, generation: record.generation}
-	first := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
+	root := store.storage
 	parsed, parseErr := parseClosedProfile(first, generation, network, epochDigest, 9, authority.Public().(ed25519.PublicKey), now)
 	if parseErr != nil || !matchesClosedProfileCandidates(parsed, []nodeRecord{record}) {
 		t.Fatalf("closed profile parser/join = %+v, %v, join=%t", parsed, parseErr, matchesClosedProfileCandidates(parsed, []nodeRecord{record}))
@@ -94,4 +85,27 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 	if err != nil || state.conflict != sha256.Sum256(second) {
 		t.Fatalf("durable profile conflict = %+v, %v", state, err)
 	}
+}
+
+func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
+	t.Helper()
+	now := time.Unix(1_800_000_000, 0).UTC()
+	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
+	generation := sha256.Sum256([]byte("closed profile generation"))
+	network := sha256.Sum256([]byte("closed profile network"))
+	epochDigest := sha256.Sum256([]byte("closed profile epoch"))
+	nodeID := sha256.Sum256([]byte("issuer node"))
+	record := nodeRecord{raw: []byte("authenticated schema-2 record"), nodeID: nodeID, generation: 5, carrier: closedTCPCarrierProfile}
+	root, err := openDurableRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = root.close() })
+	store := &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
+		current: &Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
+			EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
+		currentDecision: &candidateDecision{verified: verifiedEpochDecision{accepted: []nodeRecord{record}}}}
+	node := closedProfileNode{nodeID: nodeID, recordDigest: sha256.Sum256(record.raw), domain: 2, subrole: 6, generation: record.generation}
+	first := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
+	return store, first
 }

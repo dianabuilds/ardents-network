@@ -57,12 +57,14 @@ type Acceptance struct {
 
 // Root is the exclusive owner of one durable Service Instance generation.
 type Root struct {
-	mu          sync.Mutex
-	path        string
-	lock        *rootLock
-	state       durableState
-	bindingOpen bool
-	closed      bool
+	privateRevision   uint64
+	privateRecipients [2]*PrivateRecipient
+	mu                sync.Mutex
+	path              string
+	lock              *rootLock
+	state             durableState
+	bindingOpen       bool
+	closed            bool
 }
 
 // Binding is the opened non-exporting Instance authority for one accepted

@@ -1,8 +1,13 @@
+//go:build linux
+
 package route
 
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
+	"io"
+	"net"
 	"testing"
 	"time"
 )
@@ -25,7 +30,7 @@ func TestClosedSharedCarrierClassifiesDirectAndCurrentNode(t *testing.T) {
 			done := make(chan error, 1)
 			go func() {
 				for range 2 {
-					carrier, acceptErr := listener.Accept(context.Background(), deadline)
+					carrier, acceptErr := listener.Accept(context.Background(), 10*time.Second)
 					if acceptErr != nil {
 						done <- acceptErr
 						return
@@ -43,6 +48,14 @@ func TestClosedSharedCarrierClassifiesDirectAndCurrentNode(t *testing.T) {
 				_ = direct.Close()
 				t.Fatal(err)
 			}
+			// QUIC announces a stream only with its first bytes. Classification
+			// must preserve those bytes for the receiving ARDP owner.
+			if _, err := direct.Write([]byte{7}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := node.Write([]byte{8}); err != nil {
+				t.Fatal(err)
+			}
 			first := <-accepted
 			second := <-accepted
 			if err := <-done; err != nil {
@@ -54,6 +67,14 @@ func TestClosedSharedCarrierClassifiesDirectAndCurrentNode(t *testing.T) {
 			for _, acceptedCarrier := range []ClosedSharedCarrier{first, second} {
 				if acceptedCarrier.Kind == ClosedSharedNode && acceptedCarrier.NodeKey != clientKey {
 					t.Fatal("shared Node carrier lost State-authorized key")
+				}
+				want := byte(7)
+				if acceptedCarrier.Kind == ClosedSharedNode {
+					want = 8
+				}
+				var firstByte [1]byte
+				if _, err := io.ReadFull(acceptedCarrier.Connection, firstByte[:]); err != nil || firstByte[0] != want {
+					t.Fatalf("classified carrier first byte = %v, %v", firstByte, err)
 				}
 				if err := acceptedCarrier.Connection.Close(); err != nil {
 					t.Fatal(err)
@@ -75,41 +96,61 @@ func TestClosedSharedCarrierRejectsUnknownNodeBeforeARPDPayload(t *testing.T) {
 			serverCertificate := entryBindingCertificate(t, 183)
 			clientCertificate := entryBindingCertificate(t, 184)
 			serverKey := identifierFromKey(serverCertificate.Leaf.PublicKey.(ed25519.PublicKey))
-			listener, err := ListenClosedSharedCarrier(profile, closedRoleCarrierTestEndpoint(t, profile), serverCertificate, func([32]byte) bool { return false }, 16)
+			clientKey := identifierFromKey(clientCertificate.Leaf.PublicKey.(ed25519.PublicKey))
+			var rejectedKey [32]byte
+			listener, err := ListenClosedSharedCarrier(profile, closedRoleCarrierTestEndpoint(t, profile), serverCertificate, func(key [32]byte) bool {
+				rejectedKey = key
+				return false
+			}, 16)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer listener.Close()
 			deadline := time.Now().Add(10 * time.Second)
+			attempt, cancel := context.WithDeadline(t.Context(), deadline)
 			accepted := make(chan error, 1)
+			finished := make(chan struct{})
 			go func() {
-				_, acceptErr := listener.Accept(context.Background(), deadline)
+				defer close(finished)
+				result, acceptErr := listener.Accept(attempt, 10*time.Second)
+				if result.Connection != nil {
+					_ = result.Connection.Close()
+				}
 				accepted <- acceptErr
 			}()
-			carrier, openErr := OpenClosedNodeCarrier(t.Context(), ClosedNodeCarrierRequest{CarrierProfile: profile, Endpoint: closedSharedCarrierEndpoint(t, listener), Certificate: clientCertificate, ExpectedPeerKey: serverKey, Deadline: deadline})
+			defer func() {
+				cancel()
+				_ = listener.Close()
+				<-finished
+			}()
+			carrier, openErr := OpenClosedNodeCarrier(attempt, ClosedNodeCarrierRequest{CarrierProfile: profile, Endpoint: closedSharedCarrierEndpoint(t, listener), Certificate: clientCertificate, ExpectedPeerKey: serverKey, Deadline: deadline})
 			if carrier != nil {
+				// Keep the peer alive until the server classifies its certificate.
+				// An early QUIC close can discard the connection before Accept.
+				defer carrier.Close()
 				_, _ = carrier.Write([]byte{1})
-				_ = carrier.Close()
 			}
-			if acceptErr := <-accepted; acceptErr == nil {
-				t.Fatal("unknown Node certificate reached ARDP state")
+			select {
+			case acceptErr := <-accepted:
+				var timeout net.Error
+				if attempt.Err() != nil || errors.Is(acceptErr, context.Canceled) ||
+					errors.Is(acceptErr, context.DeadlineExceeded) ||
+					(errors.As(acceptErr, &timeout) && timeout.Timeout()) {
+					t.Fatalf("deadline or cancellation is not a State-key refusal: %v", acceptErr)
+				}
+				if acceptErr == nil {
+					t.Fatal("unknown Node certificate reached ARDP state")
+				}
+				// The receive publishes the verifier's write. A handshake failure
+				// or a deadline alone is not evidence of State-key rejection.
+				if rejectedKey != clientKey {
+					t.Fatalf("unknown Node did not reach State-key rejection: %v", acceptErr)
+				}
+			case <-attempt.Done():
+				t.Fatal("unknown Node refusal did not complete before the deadline")
 			}
 			if openErr == nil && carrier == nil {
 				t.Fatal("Node carrier vanished without an authenticated refusal")
 			}
 		})
-	}
-}
-
-func closedSharedCarrierEndpoint(t *testing.T, listener ClosedSharedCarrierListener) string {
-	t.Helper()
-	switch value := listener.(type) {
-	case *closedSharedTCPListener:
-		return value.listener.Addr().String()
-	case *closedSharedQUICListener:
-		return value.listener.Addr().String()
-	default:
-		t.Fatal("unknown closed shared listener")
-		return ""
 	}
 }

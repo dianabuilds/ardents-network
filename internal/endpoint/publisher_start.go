@@ -17,7 +17,7 @@ func (endpoint *endpoint) startPublisher(ctx context.Context, input publisherSta
 	}
 	endpoint.publisherMu.Lock()
 	defer endpoint.publisherMu.Unlock()
-	if endpoint.publications == nil || endpoint.publisherBinding == nil || endpoint.publisherSession != nil {
+	if endpoint.publications == nil || endpoint.publisherBinding == nil || endpoint.publisherSession != nil || endpoint.textPublicationOwned() {
 		return publisherStartFailed(receipt, "service unavailable", "Publisher start owner or exclusive slot is unavailable",
 			errors.New("publisher start is unavailable"))
 	}

@@ -59,7 +59,7 @@ func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
 		ClockObservationFile: certificatePath, OrderSeed: strings.Repeat("13", 32), SourceClientCertificate: certificatePath, SourceClientKey: keyPath,
 		Sources: []nodeSource{{Address: "192.0.2.10:48010", ServerName: "source-a.test", Identity: strings.Repeat("14", 32), Family: "source-a", EndpointHandle: "source-a", RootCA: rootA, LeafKeyDigest: strings.Repeat("15", 32)},
 			{Address: "192.0.2.11:48011", ServerName: "source-b.test", Identity: strings.Repeat("16", 32), Family: "source-b", EndpointHandle: "source-b", RootCA: rootB, LeafKeyDigest: strings.Repeat("17", 32)}},
-		NodeID: nodeID, IdentityKey: keyPath, ClosedIssuer: &closedIssuerPlan{Root: t.TempDir(), ConnectionLimit: 1, DrainTimeoutMS: 1000}, ClosedProfileAuthority: strings.Repeat("12", 32)}
+		NodeID: nodeID, IdentityKey: keyPath, ClosedIssuer: &closedIssuerPlan{Root: t.TempDir(), AdmissionRoot: t.TempDir(), ConnectionLimit: 1, DrainTimeoutMS: 1000}, ClosedProfileAuthority: strings.Repeat("12", 32)}
 	write := func() string {
 		t.Helper()
 		path := filepath.Join(t.TempDir(), "node-plan.json")
@@ -71,7 +71,7 @@ func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
 	}
 	runtime, err := readNodePlan(write())
 	if err != nil || runtime.state.AcceptedProfile != route.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 ||
-		runtime.node.ClosedIssuer.Root != plan.ClosedIssuer.Root || runtime.node.ClosedIssuer.ConnectionLimit != plan.ClosedIssuer.ConnectionLimit {
+		runtime.node.ClosedIssuer.Root != plan.ClosedIssuer.Root || runtime.node.ClosedIssuer.AdmissionRoot != plan.ClosedIssuer.AdmissionRoot || runtime.node.ClosedIssuer.ConnectionLimit != plan.ClosedIssuer.ConnectionLimit {
 		t.Fatalf("closed issuer State configuration = %+v / %v", runtime.state, err)
 	}
 	plan.ClosedProfileAuthority = strings.Repeat("ff", 32)

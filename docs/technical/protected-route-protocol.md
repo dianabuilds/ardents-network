@@ -37,7 +37,11 @@ non-current certificate is unavailable and closes before ARDP work. Direct
 role state refuses a certificate and Node-Carrier state never falls through to
 direct role handling. The shared finite TLS-handshake reservation applies
 before this classification; source identity or a rejected certificate cannot
-increase it.
+increase it. The shared listener starts each bounded TLS/first-stream
+acceptance interval when that connection arrives, not when the listening duty
+begins waiting. Its maximum remains ten seconds, and caller cancellation still
+bounds the handshake. Listener idle time consumes no peer handshake allowance;
+no HELLO, admission, parent or authority deadline is extended.
 Use the exact Node/role key from authenticated State, not Web PKI or DNS.
 
 Select Go 1.26.8 for the successor build; earlier component evidence identifies
@@ -102,7 +106,7 @@ Role-Domain u8, subrole u8 and duty-generation u64. Sort by Node-ID and reject
 duplicates. Domain values are Initiator=1, Rendezvous=2, Responder=3,
 Introduction=4. Subroles are adjacent=1, interior=2, Introduction delivery=3,
 data join=4, resolution=5 and issuance=6. Adjacent/interior use one of the three
-adjacent Domains; delivery uses Introduction; data join/resolution/issuance use
+adjacent Domains Initiator (1), Responder (3) and Introduction (4); Rendezvous (2) is never adjacent. Delivery uses Introduction; data join/resolution/issuance use
 Rendezvous. The issuer entry is the sole issuance subrole. Current Node Records
 supply the exact address, Ed25519 key, family and selected Carrier; their digest,
 identity, assignment and duty must match. No address/key is duplicated in this
@@ -156,6 +160,39 @@ that owner. Reusing this outer prefix does not reuse a Gateway session or mix
 private caches. It may host concurrent child lanes for the same operation.
 Source bootstrap and Publisher Introduction/data Role Domains remain separate.
 
+The source owner serializes terminal OPEN allocation with emission order and
+retains a separate reader, credit and deadline for each child. The retained
+Entry/Interior framing reapplies its original parent deadline to its own CREDIT;
+a completed child's payload deadline cannot poison later parent consumption.
+Waiting for the physical writer or payload credit remains bounded by the exact
+payload deadline, including concurrent deadline updates. Updating a deadline
+still interrupts an already active physical frame. Cancellation removes
+unemitted work without sending a CLOSE for an unknown lane. An already emitted
+CREDIT may finish within the earlier of its original write deadline and the
+same one-second cleanup bound; later deadline updates cannot extend that bound.
+A received complete next-peer CLOSE retires queued forwarding work independently
+of downstream delivery, while physical write failures remain terminal errors.
+A local child or parent deadline also retires reverse receive authority. Late
+frames for that owner consume no new queue reservation and cannot invalidate
+other owners sharing the physical Node Carrier. The shared reader checks that
+retirement before queueing and again after a physical queue-full refusal, since
+expiry may occur while waiting for the queue lock. A live owner's exhausted
+queue or invalid frame remains a failure; expiry grants no further work.
+If a queued child CLOSE has not begun emission when its parent fails, cleanup
+joins physical retirement without replacing the original traffic error with a
+new cleanup error; a failed physical retirement remains a cleanup failure.
+If an emitted child cannot send its required terminal CLOSE within the cleanup bound, the source
+retires and joins the physical prefix; it cannot report that child as cleaned up
+while retaining a usable parent.
+A counted source lifetime worker expires idle readiness after 120 seconds.
+An admitted child's completion starts the next idle interval; rejected or
+unemitted children cannot refresh it. Live child work still obeys the original
+parent deadline. Autonomous retirement joins the source and nested readers
+through the same terminal path as explicit Close before notifying Endpoint.
+Endpoint observes that completed retirement before new private work; it keeps
+the context's source members, allocation and exact pending-batch binding.
+Retirement never creates another bootstrap allowance or starts an idle refill.
+
 Node-to-Node Carriers established by real work may be retained for 120 seconds
 after their last child closes. Key the local pool only by exact current
 Network/profile, two public Node identities and selected Carrier; at most one
@@ -168,7 +205,59 @@ verified HELLO binding or State/duty invalidate reuse. Pool queues and children 
 the same whole-Node limits. Last-child cancellation does not erase another
 child, but withdrawal/expiry joins all children before closing the Carrier.
 This is finite reuse of useful-work setup, with no reserved Service Connection.
+The pool and its session borrowers share one physical close operation and retain
+its original result; concurrent withdrawal joins that same close.
+The outer HELLO lifetime is bounded by the current signed profile and receiving
+State/duty bounds, independently of the first child's ten-second handshake.
+The initial HELLO/ACCEPT exchange and sending a new OPEN use a separate
+at-most-ten-second I/O deadline within the current authority. An ordinary
+OPEN declares its maximum child lifetime within the parent; the receiver
+independently limits pending TLS, HELLO and admission to ten seconds. Only the
+actual receiving admission may extend that child's I/O beyond the pending
+interval: class 2 for forwarding, or class 1 for the issuer or resolution
+duty's one-operation Control channel. Each remains bounded by its own lease. The receipt is matched
+to the exact inner TLS object, HELLO and exporter before the outer child accepts
+that lifetime.
+HELLO alone cannot extend a child. Restricted issuer-bootstrap OPEN and its
+entire child remain limited to ten seconds.
 
+A role writer that exhausts its child's outbound credit waits for the actual
+peer CREDIT within its current write deadline. It holds no shared Carrier
+writer while waiting. Each emitted BYTES frame fits both the available credit
+and the 16 KiB frame bound; consumption is never refunded after a failed
+physical write. Incoming credit, a changed deadline and child close wake that
+lane's waiter. Temporary backpressure alone does not retire a live channel.
+
+A child's changed write deadline updates only that child's active physical
+frame. A queued writer reads the current deadline after obtaining write
+serialization. If that deadline has already expired, the writer returns the
+timeout before attempting physical output and preserves sibling lanes. Once
+physical output starts, a failed frame still retires the Carrier, including a
+partially emitted CREDIT. Incoming child CLOSE can retire its state while a payload
+writer is blocked. A terminal CLOSE has its own one-second cleanup write
+bound after payload expiry; it grants no further payload credit or authority.
+Failure of a partially written physical frame invalidates the Carrier framing
+boundary and joins its children; ordinary child expiry does not itself close
+a healthy shared Carrier. If the lower authenticated parent has already sent
+CLOSE(0), an upper CLOSE that never began physical output is discharged by
+joined parent retirement. The retained lower framing's monotonic payload-attempt
+count must remain unchanged across the complete encoded write, with no active
+lower writer at either observation. Independently successful CREDIT does not
+count as payload output, but any failed physical write, including CREDIT,
+permanently vetoes this clean witness. This evidence spans nested TLS records; zero
+returned bytes or EOF alone is insufficient. Preserve the parent's cause and
+any retirement failure. Peer refusal, raw EOF and any started physical frame
+remain failures.
+
+For a joined stream, a late CREDIT may become unnecessary after the exact outer
+lane receives CLOSE(0). Discard only an unemitted CREDIT: the outer lane's
+monotonic physical-attempt count must be unchanged across the entire encoded
+write. An already counted outer write may finish between observations; the
+final observation requires no active writer, no local close, no parent failure,
+and no earlier failed physical write. Keep the reader and its bounded reservation alive to consume
+already accepted inner records and validate their terminal. Raw EOF, refusal,
+partial output and missing inner completion cannot become document success.
+For a wholly unemitted local JOIN CLOSE, the outer-lane cleanup witness counts all non-CREDIT physical attempts across the entire encoded write. A concurrent CREDIT may exist at the initial observation, but the final observation requires no active write, an unchanged count, actual CLOSE(0), no local close or parent failure, and no earlier failed physical write of any kind. Only then may joined parent retirement discharge that CLOSE. Refusal, partial output and failed CREDIT remain failures; cleanup grants no payload success.
 A registered Publisher may maintain one Introduction prefix and one data-role
 prefix as finite publication readiness. These count as publication background
 work; no unvisited Service is kept ready by an idle User. Publication refresh
@@ -201,7 +290,7 @@ No lane ID or nonce is copied into a different hop's identifier namespace.
 | 1 HELLO | Network[32], State-generation[32], State-digest[32], profile-digest[32], recipient-Node[32], recipient-duty-generation u64, purpose u8, fresh channel-nonce[32], absolute-deadline u64. Exactly 209 bytes; lane zero, once after TLS. |
 | 2 ADMIT | class u8, token[354]. Exactly 355 bytes; lane zero for initial admission or an existing lane for finite replenishment. |
 | 3 BOOTSTRAP | operation u8: public evidence=1 or issuer=2. Exactly one byte; lane zero only, under the finite bootstrap contract. |
-| 4 OPEN | next-Node[32], next-duty-generation u64, next-purpose u8, deadline u64. Exactly 49 bytes; fresh child lane after sufficient parent admission, or the bounded Node-Carrier handshake allocation described below. |
+| 4 OPEN | next-Node[32], next-duty-generation u64, next-purpose u8, deadline u64. Exactly 49 bytes on an Endpoint-role channel. On an authenticated Node Carrier append mandatory restriction u8 (0=no additional restriction, 1=issuer-bootstrap only), exactly 50 bytes. The authenticated channel state fixes the grammar; fresh child after the corresponding parent admission or bounded Node allocation below. |
 | 5 ACCEPT | status u8 (0 accepted, 1 unavailable, 2 exhausted, 3 stale/incompatible, 4 withdrawn), credit u32. Exactly 5 bytes; credit zero on refusal. No detailed path-conflict oracle. |
 | 6 BYTES | 1 through 16,384 bytes on an accepted lane, within current credit and parent budgets. A pending OPEN permits at most 4,096 total bytes of the next TLS handshake under the separately reserved handshake allowance; no Application Data is enabled. Until the terminal role these bytes are opaque to the forwarding role. |
 | 7 CREDIT | u32 additional byte credit, from 1 through 65,536, only for a live accepted lane. Reject overflow or credit above its fixed receive-window maximum. |
@@ -257,6 +346,26 @@ It authorizes only bounded creation of inner channels. This HELLO and the
 TLS-authenticated public peer identities replace the old LegBinding record;
 no generation-2 LegBinding bytes or Endpoint context label cross this Carrier.
 The receiver cannot substitute a peer or return a different profile in ACCEPT.
+
+[ADR-0082](../adr/0082-bind-bootstrap-restriction-to-node-child.md) amends the
+outer OPEN with a mandatory child-local restriction byte. An honest forwarding
+Node derives it from the actual incoming channel reservation: issuer bootstrap
+sets 1, ordinary admission sets 0. Value 0 grants nothing at the recipient. A
+restricted child is bound before TLS allocation, permits only forwarding or
+issuer purpose under the exact bootstrap route, and refuses private ADMIT even
+with a valid token. Every further child retains the restriction. The Endpoint's
+49-byte role OPEN cannot supply, remove or replace it. No frame or successful
+issuance relabels an existing child; private work uses fresh children after real
+admission at every required hop. Mixed restricted/ordinary children share the
+same exact Node Carrier pool without sharing authority.
+
+The former 49-byte Node-outer OPEN is explicitly retired, not decoded as an
+implicit zero. Old and revised Node peers fail closed before child effects;
+there is no fallback or changed generation 2 meaning. Adoption of this amendment
+requires the exact revised artifact and fresh signed profile/duty bindings,
+quiescence and preserved floors under the existing migration contract. Prior
+receipts do not qualify the amended bytes. The Endpoint-role OPEN remains 49
+bytes and rejects an injected restriction byte.
 
 Only this authenticated outer channel may use OPEN to allocate an inner TLS
 handshake lane without an Endpoint token on the outer channel. Such an OPEN
@@ -322,7 +431,8 @@ signature-verification budget. Retry cleanup does not erase a prior failure.
 1. A trusted local owner authorizes the job; the selected worker is confined
    before it receives an attachment or remote Application effect.
 2. Endpoint obtains current public facts and finite token stock through the
-   bootstrap/issuance contract. Upgrade any bootstrap prefix before private use.
+   bootstrap/issuance contract. Retire bootstrap channels and establish genuinely
+   admitted channels with fresh children before private use.
 3. Parse the authorized Target Link and verify its Network binding locally.
    Verify a fresh/scoped Descriptor through a confidential terminal lane.
    Canonical Name resolution is a later composition with a real authenticated
@@ -381,6 +491,15 @@ profile-digest[32], SHA-256(existing public publication proof) and those fields
 in order excluding the signature. It has no data Rendezvous or reusable join.
 Revision strictly increases within an Instance; retain its conflict floor.
 
+The maintained v3 Descriptor envelope is version u16=3, Network[32], Target[32],
+Authority[32], Publication-digest[32], profile-digest[32], the revision/recipient/
+validity fields above, publication-length u16, exact Publication bytes, then
+Instance-signature[64]. Integers are big-endian; no trailing bytes are accepted.
+The Publication digest must equal SHA-256 of those complete Publication bytes.
+The private verifier requires the current expected profile as well as Target
+and Network. Lookup and publication OPERATIONs are carried on lane zero inside
+their dedicated, already admitted terminal TLS channel; the receiving purpose
+and exact body decoder remain mandatory after generic frame validation.
 Terminal operation IDs are issue=1, Descriptor lookup=2, register=3,
 submit capsule=4, join=5, publish Descriptor=6 and withdraw slot=7. No other
 operation is accepted. One operation uses one admitted terminal channel;
@@ -405,6 +524,20 @@ Withdraw carries slot[32] and revision u64 on its owning registration channel.
 Delivery is an even recipient-initiated child carrying exactly one fixed-size
 capsule. Bound its acknowledgement and lifetime by the original registration;
 no application payload or remote-selected callback address is accepted.
+Within that already admitted registration, Introduction sends one OPERATION
+on a fresh strictly increasing even lane ID, Publisher returns exactly one
+RESULT on that ID, and Introduction terminates the child with CLOSE carrying
+the same outcome. This does not send OPEN or create a new next-hop authority.
+The OPERATION request nonce is freshly generated for this registration channel;
+the submitter's nonce is used only for its own RESULT. The sealed capsule,
+including its separate delivery nonce, is unchanged. Lane allocation and frame
+emission share one writer so concurrent submissions cannot reorder IDs.
+At most 16 deliveries, including those waiting for that writer, may be pending.
+Reserve each operation, fixed RESULT and CLOSE against the original class-3
+byte allowance before dispatch; retain owning-withdrawal capacity separately.
+Missing or invalid acknowledgement makes that delivery unavailable; if an
+expired or failed write cannot complete the child protocol, retire its
+registration channel without allowing slot reclamation.
 
 Submit carries the following outer capsule, padded to 4,096 bytes; join carries
 the JOIN body below, padded to 4,096 bytes. All ordinary operation outcomes have
@@ -427,6 +560,17 @@ profile-digest[32], Connection-nonce[32], Attachment-generation u64 and
 deadline u64, initiator-binding[32], WorkSafetyNotAfter u64,
 WorkSafetyMaximum u64 and NoNewRecoveryAfter u64. Connection-nonce is fresh CSPRNG material for the logical
 Connection and is carried only inside this capsule/Service encryption.
+The canonical plaintext is exactly 344 bytes and the selected AEAD ciphertext
+is exactly 360 bytes, including its tag. The complete outer capsule is 474
+bytes; its 4,096-byte OPERATION therefore has 3,589 zero padding bytes after
+the operation byte, channel request nonce and capsule. HPKE info is the exact
+ASCII domain `ardents-introduction-capsule-v3\0` followed by profile-digest[32].
+Associated data is that complete info followed by the exact 80-byte outer
+header (slot, revision, expiry, delivery nonce), excluding encapsulation. The
+recipient-only deadline equals the outer expiry and cannot exceed the signed
+registration or Work Safety deadline. The channel request nonce is independent
+of the capsule delivery nonce; changing either does not alter the other's
+identifier namespace. These fixed bytes have no legacy format fallback.
 Handshake-context is independent fresh 32-byte CSPRNG material per Attachment;
 no stable logical Connection label reaches Rendezvous. No candidate-provided
 IP is honored.
@@ -439,6 +583,53 @@ replace an accepted side. Expire unpaired state after 10 seconds.
 The secret is 256 random bits. Each recipient independently generates its
 admission nonce; the join secret is never an issuer input or a hop label.
 
+
+### Rendezvous JOIN data-lane transition
+
+[ADR-0083](../adr/0083-activate-joined-rendezvous-data-lane.md) selects the following
+transition for the closed candidate. Each side opens its own fresh role TLS to
+the State-selected Rendezvous through its Source or Responder prefix. Lane 0
+carries existing HELLO, class-2 ADMIT and ACCEPT with the channel-local nonce
+and TLS exporter binding. Admission alone enables no Service data.
+
+On this dedicated one-JOIN channel, the Endpoint allocates local odd lane 1
+and sends exactly one OPERATION with operation=5, a fresh request nonce and the
+canonical JOIN body/padding above. It sends no OPEN. Other child IDs and a
+second JOIN on the channel refuse. Rendezvous retains at most two live sides
+with matching secret, handshake context and profile and opposite side values.
+Duplicate/third sides or context mismatch refuse without replacing a retained
+side. Unpaired state expires at the earlier original JOIN deadline or ten
+seconds from reservation.
+
+Only after pairing may Rendezvous emit the fixed 16,384-byte RESULT on local
+lane 1 with that channel's matching request nonce, accepted status and empty
+result payload. Refusal has the same fixed size and activates nothing. The
+pairing owner maps local lanes; it never copies operation nonces or lane IDs
+between the two TLS channels.
+
+A verified accepted RESULT activates lane 1 with the existing 64-KiB receive
+credit in each direction, within the original parent reserve. Carry Service TLS
+ciphertext exclusively in existing BYTES/CREDIT/EOF/CLOSE frames on this lane;
+return credit only after bounded queue consumption. No raw Service bytes are
+written directly on role TLS. JOIN bounds setup; paired data keeps its original
+HELLO/class-2 lifetime and byte reserve, already bounded by parent, State, duty
+and Work Safety. Pairing never extends a lease or truncates a permitted data
+workload to the capsule's ten-second setup deadline.
+
+Accepted JOIN receive bytes remain readable before a subsequent transport EOF,
+within their original bounded reservation and lifetime. Without a verified inner
+CLOSE, draining those bytes still ends with an unexpected-closure error; transport
+EOF alone does not establish successful JOIN or Service completion. Cancellation,
+expiry, or consumption releases the retained bytes through joined cleanup.
+EOF closes one direction. CLOSE retires the lane and joins both directions and
+their readers/writers. Count JOIN, RESULT, frame headers, data, credit and terminal
+traffic against original admission and aggregate bounds. Reserve before
+allocation or effects; exhaustion refuses. Source JOIN and Introduction
+submission run concurrently after their independent tokens are available and
+durably marked. Source does not await JOIN acknowledgement before delivering
+the capsule. Publisher independently validates the capsule and opens its
+Responder prefix before JOIN. Existing end-to-end Service authentication must
+complete before Application data is exposed.
 Introduction keys and slots live for 600 seconds, with refresh at 300 seconds.
 The predecessor accepts already bounded capsules for at most 60 seconds after
 a replacement, never past its original signed expiry. Each delivery nonce has
@@ -513,3 +704,11 @@ The admission, publication and [qualification](../development/privacy-qualificat
 owners supply exact lifetime and resource ceilings. A valid peer that withholds
 work can force finite unavailability. No timeout detects all traffic-analysis
 attacks, authorizes weaker protection or supplies a new endpoint identity.
+
+The forwarding Node owns its retained Carrier readers through the same joined
+lifecycle as accepted handlers. Cancellation interrupts outgoing reads, writes
+and pending HELLOs before waiting for that tree. Only completed joining releases
+the receiving spend root; a bounded Drain timeout reports failure while the
+terminal owner retains the root. Physical-close and invalidation failures are
+retained through repeated Drain. Closing a descriptor alone is not evidence
+that its reader or final registry cleanup has completed.

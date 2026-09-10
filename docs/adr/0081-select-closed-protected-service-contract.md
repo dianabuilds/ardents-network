@@ -62,6 +62,10 @@ fixes its finite budgets, observer checks and migration.
   Quiesce/drain old work, preserve all authority/conflict/resource floors, and
   reject incompatible peers. A retired executable cannot reopen old protection.
 
+The Node-outer OPEN allocation is amended by
+[ADR-0082](0082-bind-bootstrap-restriction-to-node-child.md), which binds a
+mandatory issuer-bootstrap restriction and explicitly retires its former form.
+
 ## Consequences
 
 This selects one engineering contract for implementation tasks. It does not

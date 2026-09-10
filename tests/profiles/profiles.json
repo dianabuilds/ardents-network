@@ -2,6 +2,38 @@
   "schema": "ardents-test-profiles-v1",
   "profiles": [
     {
+      "id": "text-worker-network",
+      "state": "active",
+      "make_target": "text-worker-network-check",
+      "surface": "installed confined reader/publisher document exchange over both protected Carriers; State and authority provisioning remain fixtures",
+      "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "exact ordinary worker artifacts and canonical manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledTextWorkersReadTargetThroughJoinedNetwork; fifteen-minute test deadline and RuntimeMaxSec=960s; eight exact document/Carrier and elapsed-refresh cases"],
+      "invalid_environment": "the dedicated installed network qualification environment is unavailable"
+    },
+    {
+      "id": "text-worker-tree",
+      "state": "active",
+      "make_target": "text-worker-tree-check",
+      "surface": "root-pinned hostile worker child/grandchild cleanup and sibling snapshot progress; not full host qualification",
+      "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "separately built text_worker_hostile artifact and exact root manifest", "independent hostile executable, Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint test service selecting TestInstalledTextWorkerHostileTree"],
+      "invalid_environment": "the dedicated hostile installed worker qualification environment is unavailable"
+    },
+    {
+      "id": "text-worker-lifecycle",
+      "state": "active",
+      "make_target": "text-worker-lifecycle-check",
+      "surface": "installed Endpoint text-worker launch, Grant and joined cgroup lifecycle; not full host qualification",
+      "prerequisites": ["dedicated Ubuntu 24.04 x86-64 with systemd 255, cgroup v2 and active polkit", "root driver and separate ardents-endpoint account", "exact installed worker artifacts and sockets", "root-owned Endpoint qualification test binary built with text_worker_installed tag", "independent binary and temporary service-unit SHA-256 values", "fresh inactive temporary ardents-endpoint.service; no operational Endpoint"],
+      "invalid_environment": "the declared dedicated installed worker lifecycle environment is unavailable"
+    },
+    {
+      "id": "text-worker-policy",
+      "state": "active",
+      "make_target": "text-worker-policy-check",
+      "surface": "installed local text-worker stop authorization mechanism; not complete host qualification",
+      "prerequisites": ["Ubuntu 24.04 x86-64 with systemd 255 and active polkitd", "root test driver", "installed root:root mode 0644 non-symlink text-worker stop rule matching this source candidate", "distinct unprivileged ardents-endpoint and nobody accounts", "pkcheck, setpriv, stat, awk, sleep, timeout, id, systemctl, cmp, uname and dirname"],
+      "invalid_environment": "the selected installed policy-query environment is unavailable"
+    },
+    {
       "id": "developer",
       "state": "active",
       "make_target": "quick-check",

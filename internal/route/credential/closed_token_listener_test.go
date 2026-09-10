@@ -1,3 +1,5 @@
+//go:build linux
+
 package credential
 
 import (
@@ -5,16 +7,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"math/big"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
 	"net"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
@@ -27,7 +24,7 @@ func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
 				}
 			}()
 			certificate, server := closedTokenListenerCertificate(t)
-			endpoint := closedTokenListenerEndpoint(t)
+			endpoint := closedTokenListenerEndpoint(t, carrier)
 			listener, err := StartClosedTokenListener(t.Context(), ClosedTokenListenerConfig{
 				Issuer: issuer, CarrierProfile: carrier, Endpoint: endpoint, Certificate: certificate,
 				ConnectionLimit: 1, Clock: func() time.Time { return now },
@@ -94,7 +91,7 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 	copy(permission.Signature[:], ed25519.Sign(authority, permissionTranscript(permission)))
 	context := ClosedTokenContext{NetworkID: network, ProfileDigest: profile.Digest, ReceiverNodeID: sha256.Sum256([]byte("listener receiver")),
 		IssuerNodeID: issuerNode, ReceiverDutyGeneration: 6, Class: 1, WindowStart: window}
-	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Context: context, Permission: permission, HolderKey: holder, Count: 1, Now: now})
+	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context}, Permission: permission, HolderKey: holder, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,37 +105,6 @@ func closedTokenListenerIssuer(t *testing.T) (*ClosedTokenIssuer, state.ClosedPr
 		t.Fatal(err)
 	}
 	return issuer, profile, operation, now
-}
-
-func closedTokenListenerCertificate(t *testing.T) (tls.Certificate, [32]byte) {
-	t.Helper()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	template := x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "ardents closed issuer test"},
-		NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Minute), KeyUsage: x509.KeyUsageDigitalSignature}
-	der, err := x509.CreateCertificate(rand.Reader, &template, &template, public, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certificate := tls.Certificate{Certificate: [][]byte{der}, PrivateKey: private, Leaf: &template}
-	var server [32]byte
-	copy(server[:], public)
-	return certificate, server
-}
-
-func closedTokenListenerEndpoint(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	endpoint := listener.Addr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return endpoint
 }
 
 func closedTokenListenerBootstrap(t *testing.T, connection net.Conn, profile state.ClosedProfileView, now time.Time, operation []byte) []byte {

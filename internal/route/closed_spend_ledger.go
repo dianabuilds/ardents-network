@@ -33,6 +33,8 @@ type ClosedSpendBinding struct {
 // It stores only the token digest and its receiver-local expiry, never a
 // holder key, permission, Target, or Application data.
 type ClosedSpendLedger struct {
+	closed  bool
+	slots   *ClosedIntroductionSlots
 	mu      sync.Mutex
 	path    string
 	binding ClosedSpendBinding
@@ -78,6 +80,10 @@ func (ledger *ClosedSpendLedger) Close() error {
 	}
 	ledger.mu.Lock()
 	defer ledger.mu.Unlock()
+	ledger.closed = true
+	if ledger.slots != nil {
+		ledger.slots.closed = true
+	}
 	err := ledger.lease.release()
 	ledger.lease = closedSpendLease{}
 	return err
@@ -97,6 +103,9 @@ func (ledger *ClosedSpendLedger) Spend(token []byte, window, now time.Time) erro
 	digest := sha256.Sum256(token)
 	ledger.mu.Lock()
 	defer ledger.mu.Unlock()
+	if ledger.closed {
+		return errors.New("closed spend owner released")
+	}
 	if err := ledger.prune(now); err != nil {
 		return err
 	}
@@ -283,6 +292,10 @@ func replaceClosedSpendLedger(path string, binding ClosedSpendBinding, spends ma
 		record[40] = 1
 		raw = append(raw, record...)
 	}
+	return replaceClosedReplayFile(path, raw)
+}
+
+func replaceClosedReplayFile(path string, raw []byte) error {
 	root := filepath.Dir(path)
 	temporary, err := os.CreateTemp(root, ".closed-spend-")
 	if err != nil {

@@ -92,3 +92,14 @@ Closed research is not a second specification. Start from current
 [reference](../reference/), [development](../development/), and accepted
 [ADR](../adr/) owners, then consult a completed record only for decision
 provenance.
+
+R-153 is decided: [ADR-0082](../adr/0082-bind-bootstrap-restriction-to-node-child.md)
+selects authenticated child-local issuer-bootstrap restriction and its explicit
+incompatible Node OPEN disposition. The protocol owner holds the contract;
+implementation and qualification remain in the C0 tracker.
+
+R-154 asks how an admitted Rendezvous JOIN activates one bounded data lane.
+The Product Owner approved the exact transition on 2026-09-09;
+[the record](records/r-154-join-data-lane-transition.md) preserves its comparison,
+and [ADR-0083](../adr/0083-activate-joined-rendezvous-data-lane.md) selects it.
+This question is decided; implementation and qualification remain in the C0 ledger.
