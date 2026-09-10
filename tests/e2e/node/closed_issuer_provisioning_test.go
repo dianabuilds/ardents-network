@@ -27,11 +27,17 @@ func TestClosedIssuerProfileProvisioningAcrossProcesses(t *testing.T) {
 }
 
 func testClosedIssuerProvisioning(t *testing.T, carrier string, nodeCount int) {
+	t.Helper()
+	network, issuerNode := [32]byte{1}, [32]byte{2}
+	authority, exchange := prepareClosedProcessExchange(t, network, issuerNode, time.Now().UTC())
+	testClosedIssuerProvisioningParticipant(t, carrier, nodeCount, authority, exchange, nil)
+}
+
+func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeCount int, admissionAuthority [32]byte, exchange func(state.Config, bool), participant func(state.Config, string)) {
 	nodeBinary, controlBinary := buildCommand(t, "ardents-node"), buildCommand(t, "ardents-control")
 	now := time.Now().UTC().Truncate(time.Hour)
 	network, issuerNode := [32]byte{1}, [32]byte{2}
 	nodePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{4}, ed25519.SeedSize))
-	admissionAuthority, exchange := prepareClosedProcessExchange(t, network, issuerNode, now)
 	statePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{3}, ed25519.SeedSize))
 	issuerRoot := filepath.Join(t.TempDir(), "issuer-root")
 	initialize := writeJSON(t, "issuer-initialize.json", map[string]any{
@@ -167,7 +173,11 @@ func testClosedIssuerProvisioning(t *testing.T, carrier string, nodeCount int) {
 	if retainErr != nil || closeErr != nil || retained != route {
 		t.Fatalf("reopened closed State changed: %v / %v", retainErr, closeErr)
 	}
-	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, func(unavailable bool) { exchange(config, unavailable) })
+	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, func(unavailable bool) { exchange(config, unavailable) }, func() {
+		if participant != nil {
+			participant(config, endpointBinary)
+		}
+	})
 }
 
 func identifierNode(value byte) string {

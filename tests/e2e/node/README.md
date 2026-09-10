@@ -88,3 +88,30 @@ qdisc. The target does not claim a full C-2 Route, true VPS-loss recovery,
 capacity, public-path hostile-network resilience, or independent operation.
 The current project-VPS runs passed on 2026-08-26; their exact temporary
 containers and remote directories were removed after each oracle completed.
+
+## Installed ordinary text commands
+
+`TestInstalledClosedTextCommandsThroughNodeProcesses` is selected only by the
+Linux `text_worker_installed` build tag. Run its prebuilt test binary as root
+outside the Endpoint service on the dedicated preinstalled Ubuntu host, with
+`ARDENTS_TEXT_COMMAND_QUALIFICATION=1` and `ARDENTS_E2E_COMMAND_ROOT` pointing to
+independently hashed, root-owned product commands from the same candidate.
+The ordinary worker and its manifest must match that candidate. Missing setup
+is an invalid environment; the profile has no fixture fallback.
+
+The test provisions canonical State and all sixteen real Node commands, creates
+and accepts a Service Instance through Custody and Instance commands, then runs
+the ordinary `ardents endpoint headless` as the unprivileged Endpoint service's
+MainPID. It checks permission-request commitments from that exact invocation
+against the request files and uses real Custody responses. The ordinary text
+commands publish and read a 64 KiB document through this network on both Carriers.
+This uses one Endpoint for both local roles, not two independent Endpoint hosts.
+Compilation alone does not prove this installed journey works.
+
+Preserve the prior ordinary worker, manifest and existing temporary Endpoint
+unit before a run. The test requires an inactive service without drop-ins and
+restores its prior temporary unit during cleanup. An external runner must also
+restore those files after test failure or timeout and verify their hashes,
+MainPID zero and absence of live workers. Retain the candidate hashes, invocation
+journal and terminal result outside Git. This cell does not qualify elapsed
+refresh, explicit withdrawal, continuous Node readiness or full recovery.
