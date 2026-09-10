@@ -50,6 +50,14 @@
       "invalid_environment": "not applicable"
     },
     {
+      "id": "heapdump-capture",
+      "state": "active",
+      "make_target": "heapdump-capture",
+      "surface": "one captured Go heap dump structural Target locator; not a P3 verdict or host qualification",
+      "prerequisites": ["ARDENTS_HEAPDUMP_INPUT_ROOT naming the immutable composed-reader observation directory", "ARDENTS_HEAPDUMP_REPORT naming an absolute writable report path", "receipt.json, target-presence.json, reader-input.json and selected resolution published.heap with matching SHA-256 values"],
+      "invalid_environment": "the declared captured observation inputs or writable report destination are unavailable"
+    },
+    {
       "id": "process",
       "state": "active",
       "make_target": "e2e",

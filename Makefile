@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
 
 define newline
 
@@ -59,6 +59,11 @@ vet:
 
 unit:
 	go test $(UNIT_PACKAGES) -short -shuffle=on -count=1
+
+heapdump-capture:
+	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
+	@test -n "$(ARDENTS_HEAPDUMP_REPORT)" || (echo "ARDENTS_HEAPDUMP_REPORT is required"; exit 2)
+	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpObservation$$' -count=1
 
 e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
