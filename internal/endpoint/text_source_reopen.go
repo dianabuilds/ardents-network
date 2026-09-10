@@ -11,9 +11,20 @@ import (
 // explicit read or scheduled publication will consume. This uses the current admitted Source,
 // existing allocation and retained receivers, never another bootstrap allowance.
 func (owner *textContext) prepareTextSourceReopen(ctx context.Context, flight *textResolutionFlight) error {
+	release, err := owner.acquireTextSourceOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+	return owner.prepareTextSourceReopenOwned(ctx, flight)
+}
+
+// The caller owns the Source operation; a nil flight belongs to readiness,
+// which must not reserve or wait for a publication's resolution flight.
+func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flight *textResolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.resolution != flight || owner.prefix != flight.prefix || owner.permission == nil {
+	if err != nil || ctx.Err() != nil || owner.prefix == nil || flight != nil && (owner.resolution != flight || owner.prefix != flight.prefix) || owner.permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text Source reopen stock unavailable")
 	}
@@ -37,7 +48,7 @@ func (owner *textContext) prepareTextSourceReopen(ctx context.Context, flight *t
 	}
 	owner.mu.Unlock()
 	if len(missing) != 0 {
-		return owner.issueTextTokens(ctx, missing, 2)
+		return owner.issueTextTokensForOpening(ctx, missing, 2, nil, false)
 	}
 	return nil
 }

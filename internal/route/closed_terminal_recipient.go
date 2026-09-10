@@ -9,20 +9,25 @@ import (
 )
 
 func (prefix *ClosedSourcePrefix) terminalPeer(purpose ClosedPurpose) (closedBootstrapPeer, error) {
-	if purpose != ClosedPurposeReachability && purpose != ClosedPurposeIntroduction && purpose != ClosedPurposeSubmission && purpose != ClosedPurposeDataJoin {
-		return closedBootstrapPeer{}, errors.New("closed terminal purpose unavailable")
-	}
 	if prefix == nil || prefix.channels == nil {
 		return closedBootstrapPeer{}, errors.New("closed resolution prefix unavailable")
 	}
-	if err := prefix.plan.current(prefix.source, prefix.selection); err != nil {
+	return closedTerminalPeer(prefix.source, prefix.selection, prefix.plan, purpose)
+}
+
+// Resolve only current public duty facts; this function creates no channels.
+func closedTerminalPeer(source ClosedBootstrapState, selection ClosedBootstrapSelection, plan closedBootstrapPlan, purpose ClosedPurpose) (closedBootstrapPeer, error) {
+	if purpose != ClosedPurposeReachability && purpose != ClosedPurposeIntroduction && purpose != ClosedPurposeSubmission && purpose != ClosedPurposeDataJoin {
+		return closedBootstrapPeer{}, errors.New("closed terminal purpose unavailable")
+	}
+	if err := plan.current(source, selection); err != nil {
 		return closedBootstrapPeer{}, err
 	}
-	view, err := prefix.source.CurrentClosedRoute()
-	if err != nil || view.Profile != prefix.plan.profile || int(view.NodeCount) > len(view.Nodes) {
+	view, err := source.CurrentClosedRoute()
+	if err != nil || view.Profile != plan.profile || int(view.NodeCount) > len(view.Nodes) {
 		return closedBootstrapPeer{}, errors.New("closed resolution profile changed")
 	}
-	snapshot, err := prefix.source.Current()
+	snapshot, err := source.Current()
 	if err != nil || snapshot.NetworkID != view.Profile.NetworkID || snapshot.Generation != hex.EncodeToString(view.Profile.StateGeneration[:]) || snapshot.Epoch != view.Profile.Epoch || snapshot.Profile != ClosedRouteProfile || snapshot.Digest != view.Profile.StateDigest || snapshot.Freshness != "fresh" || snapshot.Conflicting || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
 		return closedBootstrapPeer{}, errors.New("closed resolution State unavailable")
 	}
@@ -59,7 +64,7 @@ func (prefix *ClosedSourcePrefix) terminalPeer(purpose ClosedPurpose) (closedBoo
 	if !found || selected.node == [32]byte{} {
 		return closedBootstrapPeer{}, errors.New("closed resolution duty absent")
 	}
-	for _, adjacent := range prefix.plan.peers[:2] {
+	for _, adjacent := range plan.peers[:2] {
 		if adjacent.node == selected.node || adjacent.key == selected.key || adjacent.family == selected.family {
 			return closedBootstrapPeer{}, errors.New("closed resolution conflicts with source")
 		}
@@ -74,13 +79,20 @@ func (prefix *ClosedSourcePrefix) DataJoinRecipient() ([32]byte, uint64, time.Ti
 	if prefix == nil || prefix.plan.domain != 1 && prefix.plan.domain != 3 {
 		return [32]byte{}, 0, time.Time{}, errors.New("closed data join requires Source or Responder ownership")
 	}
-	peer, err := prefix.terminalPeer(ClosedPurposeDataJoin)
+	if prefix.channels == nil {
+		return [32]byte{}, 0, time.Time{}, errors.New("closed resolution prefix unavailable")
+	}
+	return closedDataJoinRecipient(prefix.source, prefix.selection, prefix.plan)
+}
+
+func closedDataJoinRecipient(source ClosedBootstrapState, selection ClosedBootstrapSelection, plan closedBootstrapPlan) ([32]byte, uint64, time.Time, error) {
+	peer, err := closedTerminalPeer(source, selection, plan, ClosedPurposeDataJoin)
 	if err != nil {
 		return [32]byte{}, 0, time.Time{}, err
 	}
-	controls := []closedBootstrapPeer{prefix.plan.peers[2]}
+	controls := []closedBootstrapPeer{plan.peers[2]}
 	for _, purpose := range []ClosedPurpose{ClosedPurposeReachability, ClosedPurposeIntroduction} {
-		control, err := prefix.terminalPeer(purpose)
+		control, err := closedTerminalPeer(source, selection, plan, purpose)
 		if err != nil {
 			return [32]byte{}, 0, time.Time{}, err
 		}
@@ -92,8 +104,8 @@ func (prefix *ClosedSourcePrefix) DataJoinRecipient() ([32]byte, uint64, time.Ti
 		}
 	}
 	end := peer.notAfter
-	if prefix.plan.deadline.Before(end) {
-		end = prefix.plan.deadline
+	if plan.deadline.Before(end) {
+		end = plan.deadline
 	}
 	return peer.node, peer.generation, end, err
 }

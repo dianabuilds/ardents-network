@@ -35,7 +35,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	profile, now, err := owner.textPermissionProfileLocked()
 	registered := owner.registration
 	if err != nil || owner.surface != broker.Administration || registered == nil || owner.withdrawal != nil ||
-		owner.registrationOpening != nil || owner.permission == nil || owner.resolution != nil || owner.issuance != nil || owner.prefix == nil ||
+		owner.registrationOpening != nil || owner.permission == nil || owner.resolution != nil || owner.prefix == nil ||
 		endpoint.publisherBinding == nil || endpoint.publications == nil || endpoint.publisherSession != nil || endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner {
 		owner.mu.Unlock()
 		return verified, errors.New("text publication owner unavailable")

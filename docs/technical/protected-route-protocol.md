@@ -192,6 +192,15 @@ through the same terminal path as explicit Close before notifying Endpoint.
 Endpoint observes that completed retirement before new private work; it keeps
 the context's source members, allocation and exact pending-batch binding.
 Retirement never creates another bootstrap allowance or starts an idle refill.
+An idle Publisher checks an incoming capsule's independently selected current
+Rendezvous and control-family separation without opening a Source. Only an
+accepted capsule may prepare Source/Responder forwarding. Source readiness and
+ordinary token issuance share a cancellable context-local operation reservation;
+Descriptor acknowledgement and Service streams do not hold it. Admission,
+registration and publication revalidate their own authority after waiting for
+actual issuance instead of treating another valid issuer operation as lost
+publication authority. Existing pending batches and finite allocations remain
+unchanged. A cancelled waiter cannot release the active operation's reservation.
 During explicit reader resolution or scheduled publication, Endpoint ensures
 an unspent forwarding token is available per retained Source receiver for the
 next open, obtaining only missing tokens through the current admitted Source and

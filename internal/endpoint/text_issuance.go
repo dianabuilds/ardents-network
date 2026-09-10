@@ -38,6 +38,11 @@ type textIssuanceFlight struct {
 // retained Route members and intended receiver originate in Endpoint, never
 // on a worker attachment. There is at most one live exchange per context.
 func (owner *textContext) issueTextTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
+	release, err := owner.acquireTextSourceOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
 	return owner.issueTextTokensForOpening(ctx, receivers, class, nil, false)
 }
 

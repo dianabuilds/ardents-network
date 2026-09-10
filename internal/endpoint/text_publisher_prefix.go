@@ -34,7 +34,7 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role *tex
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || owner.prefix == nil || owner.permission == nil || owner.issuance != nil || owner.prefixOpening != nil || role.opening != nil || role.prefix != nil {
+	if err != nil || owner.surface != broker.Administration || owner.prefix == nil || owner.permission == nil || owner.prefixOpening != nil || role.opening != nil || role.prefix != nil {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher role owner unavailable")
 	}

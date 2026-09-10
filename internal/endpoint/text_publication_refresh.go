@@ -150,15 +150,12 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 		return errors.New("text publication refresh owner unavailable")
 	}
 	prefix := owner.introduction.prefix
-	missingSource := owner.prefix == nil
 	owner.mu.Unlock()
 	if prefix == nil {
 		return errors.New("text publication refresh prefix unavailable")
 	}
-	if missingSource {
-		if _, err := owner.openTextPrefix(flight.context); err != nil {
-			return err
-		}
+	if err := owner.prepareTextSourceReady(flight.context); err != nil {
+		return err
 	}
 	_, until, err := prefix.IntroductionRecipient()
 	if err != nil {

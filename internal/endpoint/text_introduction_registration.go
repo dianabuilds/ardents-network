@@ -65,7 +65,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		default:
 		}
 	}
-	if err != nil || owner.surface != broker.Administration || owner.introduction.prefix == nil || owner.introduction.opening != nil || owner.registrationOpening != nil || owner.withdrawal != nil || owner.registration != previous || previous != nil && (owner.previousRegistration != nil || owner.refresh == nil || owner.refresh.context != ctx || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || owner.issuance != nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
+	if err != nil || owner.surface != broker.Administration || owner.introduction.prefix == nil || owner.introduction.opening != nil || owner.registrationOpening != nil || owner.withdrawal != nil || owner.registration != previous || previous != nil && (owner.previousRegistration != nil || owner.refresh == nil || owner.refresh.context != ctx || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher registration owner unavailable")
 	}

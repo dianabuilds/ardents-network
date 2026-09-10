@@ -45,7 +45,7 @@ func (owner *textContext) acceptTextIntroduction(ctx context.Context, job *textJ
 	}
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.withdrawal != nil ||
 		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
-		!registered.published || registered.recipient == nil || owner.prefix == nil {
+		!registered.published || registered.recipient == nil {
 		return nil, errors.New("text Introduction registration authority unavailable")
 	}
 	if capsule.Slot != registered.request.Slot || capsule.Revision != registered.request.Revision || !now.Before(capsule.Expiry) || capsule.Expiry.After(registered.request.Expiry) {
@@ -80,7 +80,7 @@ func (owner *textContext) acceptTextIntroduction(ctx context.Context, job *textJ
 	if err != nil {
 		return nil, &textIntroductionRefusal{cause: err}
 	}
-	node, generation, until, err := owner.prefix.DataJoinRecipient()
+	node, generation, until, err := owner.textIntroductionRecipientLocked()
 	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) {
 		return nil, errors.Join(err, ctx.Err(), errors.New("text Introduction recipient authority unavailable"))
 	}

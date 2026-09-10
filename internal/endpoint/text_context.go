@@ -36,6 +36,7 @@ type textContextState struct {
 	prefixCancel          context.CancelFunc
 	prefixOpening         *textSourceFlight
 	sourceSet             *textSourceSet
+	sourceOperations      chan struct{}
 	issuance              *textIssuanceFlight
 	mu                    sync.Mutex
 	endpoint              *endpoint

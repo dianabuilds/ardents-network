@@ -22,6 +22,9 @@ func (owner *textContext) prepareTextResponder(ctx context.Context, job *textJob
 	}
 	bounded, cancel := context.WithDeadline(ctx, accepted.plaintext.Deadline)
 	defer cancel()
+	if err := owner.prepareTextResponderSource(bounded, job); err != nil {
+		return err
+	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
 	live := err == nil && owner.liveTextServiceJobLocked(job, broker.Administration)
