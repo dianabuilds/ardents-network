@@ -32,6 +32,12 @@ substitute for independent review.
   source is represented as a Git repository or as a VCS-free extraction.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
+- `make text-role-durable-state-capture` runs the Linux-only isolated Role
+  publication/lookup/withdrawal observation. It requires
+  `ARDENTS_TEXT_ROLE_OBSERVATIONS` to name a writable capture directory outside
+  Git; the test writes secret-bearing raw observations there and retains them
+  locally. A non-Linux host or missing capture directory is an invalid profile,
+  not a passing skip.
 - `make fuzz` mutation-fuzzes the selected State and Contributor targets for a
   bounded 30 seconds each. State owns canonical Epoch/Node Record framing and
   checks successful parser digest/key/raw invariants; Contributor owns strict
@@ -170,6 +176,9 @@ The maintained local profiles are:
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
 - `service-credential-response-linux`;
 - `native-rendezvous-multihost`;
+- `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
+  durable-state observation; it retains secret-bearing raw observations only in
+  an existing, writable, non-symlink directory outside the Git worktree;
 - `alpha-control-two-endpoints`;
 - `text-worker-network`, the installed confined worker/network composition invoked
   by `make text-worker-network-check`; requires all eight document/Carrier and elapsed-refresh cases,

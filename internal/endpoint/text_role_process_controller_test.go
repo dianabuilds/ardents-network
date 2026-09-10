@@ -20,9 +20,11 @@ import (
 )
 
 type textRoleProcess struct {
-	dump   func(string)
-	stop   func() error
-	output string
+	capture func(string)
+	dump    func(string)
+	stop    func() error
+	output  string
+	heap    bool
 }
 
 func startTextRoleProcess(t *testing.T, index int, config node.Config, root string) *textRoleProcess {
@@ -112,7 +114,14 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 		}
 	}
 	expect("role-ready")
-	process := &textRoleProcess{output: input.Output}
+	process := &textRoleProcess{output: input.Output, heap: true}
+	process.capture = func(phase string) {
+		t.Helper()
+		if _, err := fmt.Fprintln(stdin, "state "+phase); err != nil {
+			t.Fatal(err)
+		}
+		expect("role-state " + phase)
+	}
 	process.dump = func(phase string) {
 		t.Helper()
 		if _, err := fmt.Fprintln(stdin, phase); err != nil {
@@ -127,6 +136,7 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 		if _, err := fmt.Fprintln(stdin, "stop"); err != nil {
 			return err
 		}
+		expect("role-stopped")
 		_ = stdin.Close()
 		_, readErr := io.Copy(io.Discard, reader)
 		err := command.Wait()

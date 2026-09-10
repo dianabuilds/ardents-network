@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"testing"
 	"time"
 
@@ -114,7 +115,19 @@ func runTextRoleObservationChild(t *testing.T, path string) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("role stop timeout")
 			}
+			if err := captureTextRoleDurableState(input, path, "stopped"); err != nil {
+				t.Fatal(err)
+			}
+			fmt.Println("role-stopped")
 			return
+		}
+		if strings.HasPrefix(phase, "state ") {
+			phase = strings.TrimPrefix(phase, "state ")
+			if err := captureTextRoleDurableState(input, path, phase); err != nil {
+				t.Fatal(err)
+			}
+			fmt.Println("role-state " + phase)
+			continue
 		}
 		switch phase {
 		case "startup", "published", "withdrawn":

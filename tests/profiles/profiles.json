@@ -67,6 +67,15 @@
       "timeout": "5m"
     },
     {
+      "id": "text-role-durable-state-capture",
+      "state": "active",
+      "make_target": "text-role-durable-state-capture",
+      "surface": "Linux-only isolated text Role and Publisher durable-state observation across both selected Carriers; not a P3 verdict or host qualification",
+      "prerequisites": ["Linux host", "ARDENTS_TEXT_ROLE_OBSERVATIONS naming an existing absolute writable non-symlink directory outside the Git worktree", "exclusive local retention for secret-bearing raw observations"],
+      "invalid_environment": "the selected Linux host or external capture directory is unavailable",
+      "timeout": "4m"
+    },
+    {
       "id": "process",
       "state": "active",
       "make_target": "e2e",

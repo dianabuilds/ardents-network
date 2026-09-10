@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -181,3 +181,11 @@ text-worker-tree-check:
 .PHONY: text-worker-network-check
 text-worker-network-check:
 	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
+
+.PHONY: text-role-durable-state-capture
+text-role-durable-state-capture:
+	@test "$$(go env GOOS)" = linux || (echo "text-role-durable-state-capture requires Linux"; exit 1)
+	@test -n "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must name an absolute writable capture directory"; exit 1)
+	@test "$$(dirname "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)")" != "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must not be a filesystem root"; exit 1)
+	@test -d "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" && test -w "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" && test ! -L "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must name an existing writable non-symlink directory"; exit 1)
+	go test ./internal/endpoint -run '^TestTextPublicationIsolatedRoleObservations$$' -count=1 -timeout=4m

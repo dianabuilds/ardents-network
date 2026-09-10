@@ -32,16 +32,21 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			output := t.TempDir()
 			if root := os.Getenv("ARDENTS_TEXT_ROLE_OBSERVATIONS"); root != "" {
-				if !filepath.IsAbs(root) {
-					t.Fatal("capture root must be absolute")
-				}
 				var err error
-				output, err = os.MkdirTemp(root, string(carrier)+"-")
+				output, err = createTextRoleObservationOutput(root, string(carrier))
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				var err error
+				output, err = textRoleObservationCaptureRoot(output)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
 			var processes []*textRoleProcess
+			publisherRoot := textNetworkPrivateRoot(t)
+			publisherProcess := startTextPublisherDurableCapture(t, output, publisherRoot)
 			runner := func(t *testing.T, index int, config node.Config) func() error {
 				process := startTextRoleProcess(t, index, config, output)
 				processes = append(processes, process)
@@ -50,7 +55,9 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			endpoint, owner, source := startTextRoleNetworkWithRunner(t, carrier, true, true, false, runner)
 			observe := func(phase string) {
 				t.Helper()
+				publisherProcess.capture(phase)
 				for _, process := range processes {
+					process.capture(phase)
 					process.dump(phase)
 				}
 			}
@@ -70,7 +77,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			publisher, err := publication.Open(publication.Config{Root: textNetworkPrivateRoot(t), NetworkID: endpoint.network, Authority: public, Clock: time.Now})
+			publisher, err := publication.Open(publication.Config{Root: publisherRoot, NetworkID: endpoint.network, Authority: public, Clock: time.Now})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -105,17 +112,29 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 				if err := process.stop(); err != nil {
 					t.Fatal(err)
 				}
-				for _, phase := range []string{"startup", "published", "withdrawn"} {
-					raw, err := os.ReadFile(filepath.Join(process.output, phase+".heap"))
-					if err != nil {
-						t.Fatal(err)
-					}
-					if !bytes.HasPrefix(raw, []byte("go1.7 heap dump\n")) {
-						t.Fatal("invalid heap capture")
+				if process.heap {
+					for _, phase := range []string{"startup", "published", "withdrawn"} {
+						raw, err := os.ReadFile(filepath.Join(process.output, phase+".heap"))
+						if err != nil {
+							t.Fatal(err)
+						}
+						if !bytes.HasPrefix(raw, []byte("go1.7 heap dump\n")) {
+							t.Fatal("invalid heap capture")
+						}
 					}
 				}
+				verifyTextRoleDurableStateCapture(t, process.output, "startup", "published", "withdrawn", "stopped")
 			}
-			t.Logf("%d isolated Node roles captured in one publication/lookup/withdrawal run; incomplete P3", len(processes))
+			if err := endpoint.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := publisherProcess.stop(); err != nil {
+				t.Fatal(err)
+			}
+			verifyTextRoleDurableStateCapture(t, publisherProcess.output, "startup", "published", "withdrawn", "stopped")
+			allProcesses := append([]*textRoleProcess{publisherProcess}, processes...)
+			writeAndVerifyTextRoleDurableReceipt(t, output, string(carrier), allProcesses)
+			t.Logf("15 isolated Node roles and the Publisher durable root captured in one publication/lookup/withdrawal run; incomplete P3")
 		})
 	}
 }
