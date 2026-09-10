@@ -19,7 +19,7 @@ import (
 // All State and issuer material below is accepted through product commands;
 // the Node's own runtime opens State and obtains its current duty projection.
 func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments []string, signedProfile, issuerRoot string,
-	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, exchange func(bool), participant func()) {
+	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, exchange func(bool), participant func(string)) {
 	t.Helper()
 	public := authority.Public().(ed25519.PublicKey)
 	clientAuthority := makeAuthority(t, "issuer-command-source-client")
@@ -72,6 +72,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	if ready.Epoch != 1 || ready.AssignmentDigest == [32]byte{} {
 		t.Fatalf("closed issuer has no accepted duty binding: %+v", ready)
 	}
+	resolutionRoot := ""
 	live := []*nodeProcess{first}
 	for index, role := range closedTextTopologyRoles(nodeCount) {
 		if index == 1 {
@@ -105,6 +106,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 		case [2]uint8{2, 5}:
 			reservation["root"], reservation["admission_root"] = t.TempDir(), t.TempDir()
 			forwardPlan["closed_resolution"] = reservation
+			resolutionRoot = reservation["root"].(string)
 		case [2]uint8{4, 3}:
 			reservation["admission_root"] = t.TempDir()
 			forwardPlan["closed_introduction"] = reservation
@@ -130,7 +132,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 		}
 	}
 	if nodeCount != 3 {
-		participant()
+		participant(resolutionRoot)
 		return
 	}
 	exchange(false)

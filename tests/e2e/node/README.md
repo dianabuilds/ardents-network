@@ -105,6 +105,14 @@ the ordinary `ardents endpoint headless` as the unprivileged Endpoint service's
 MainPID. It checks permission-request commitments from that exact invocation
 against the request files and uses real Custody responses. The ordinary text
 commands publish and read a 64 KiB document through this network on both Carriers.
+The test observes the real resolution Store through bounded reads of its atomic
+public record. It verifies signatures, unchanged publication, a next revision and
+fresh slot/key after elapsed refresh, then reads again after a further 65 seconds.
+The observation allows command completion through 330 seconds after the first
+Descriptor start; it does not extend runtime validity or independently prove
+the exact ACK time, old recipient erasure or the overlap cutoff. Run the two
+Carrier cases with a twenty-minute test timeout; each Endpoint unit has a
+ten-minute watchdog. No clocks or scheduler fields are advanced.
 An explicit request through the real Administration socket withdraws publication;
 the ordinary Link command must then refuse while the same Endpoint invocation
 remains active and no Reader or Publisher worker unit remains active or stopping.
@@ -116,5 +124,4 @@ unit before a run. The test requires an inactive service without drop-ins and
 restores its prior temporary unit during cleanup. An external runner must also
 restore those files after test failure or timeout and verify their hashes,
 MainPID zero and absence of live workers. Retain the candidate hashes, invocation
-journal and terminal result outside Git. This cell does not qualify elapsed
-refresh, continuous Node readiness or full recovery.
+journal and terminal result outside Git. This cell does not qualify continuous Node readiness or full recovery.

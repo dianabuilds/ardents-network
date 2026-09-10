@@ -32,14 +32,14 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
 		t.Run(carrier, func(t *testing.T) {
 			authority := createClosedCommandAuthority(t, [32]byte{1})
-			testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary string) {
-				runInstalledClosedTextParticipant(t, config, binary, authority)
+			testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string) {
+				runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority)
 			})
 		})
 	}
 }
 
-func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary string, authority closedCommandAuthority) {
+func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority) {
 	t.Helper()
 	account, err := user.Lookup("ardents-endpoint")
 	if err != nil {
@@ -67,6 +67,15 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	path := func(name string) string { return filepath.Join(directory, name) }
 	clock := path("clock")
 	t.Cleanup(startClockObserver(t, clock))
+	stateOwner, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, viewErr := stateOwner.CurrentClosedRoute()
+	closeErr := stateOwner.Close()
+	if viewErr != nil || closeErr != nil {
+		t.Fatalf("read current profile: %v / %v", viewErr, closeErr)
+	}
 	public := config.ClosedProfileAuthority
 	plan := map[string]any{"schema": "ardents-headless-runtime-v2", "network_state_root": config.Root,
 		"entry_state_root": path("entry"), "local_role_state_root": path("roles"), "text_token_root": path("tokens"),
@@ -140,15 +149,21 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		}
 		return output
 	}
+	publicationStarted := time.Now()
 	if output := run(nil, "publish", path("publisher.sock"), document); len(output) != 0 {
 		t.Fatal("publish produced unexpected output")
 	}
+	firstPublication := readInstalledCommandDescriptor(t, resolutionRoot, view.Profile)
 	destination := run(nil, "link", path("publisher.sock"))
 	if len(destination) < 2 || bytes.Count(destination, []byte{'\n'}) != 1 || destination[len(destination)-1] != '\n' {
 		t.Fatal("invalid Link output")
 	}
 	if actual := run(destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
 		t.Fatal("ordinary command document mismatch")
+	}
+	observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted)
+	if actual := run(destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
+		t.Fatal("document changed after elapsed refresh")
 	}
 	withdrawal, cancelWithdrawal := context.WithTimeout(t.Context(), 15*time.Second)
 	outcome, withdrawalErr := administration.Request(withdrawal, path("publisher.sock"), administration.Withdraw)
@@ -218,7 +233,7 @@ func startInstalledCommandEndpoint(t *testing.T, binary, plan string) string {
 			t.Errorf("restore Endpoint unit: %v / %s", err, diagnostic)
 		}
 	})
-	content := fmt.Sprintf("[Unit]\nDescription=Ardents command qualification\n[Service]\nType=exec\nUser=ardents-endpoint\nGroup=ardents-endpoint\nExecStart=%s endpoint headless %s\nRemainAfterExit=no\nExitType=main\nRestart=no\nRestartMode=normal\nRuntimeMaxSec=300s\n", binary, plan)
+	content := fmt.Sprintf("[Unit]\nDescription=Ardents command qualification\n[Service]\nType=exec\nUser=ardents-endpoint\nGroup=ardents-endpoint\nExecStart=%s endpoint headless %s\nRemainAfterExit=no\nExitType=main\nRestart=no\nRestartMode=normal\nRuntimeMaxSec=600s\n", binary, plan)
 	if err := os.WriteFile(unit, []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
