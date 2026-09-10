@@ -35,6 +35,10 @@ func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *text
 		return nil, errors.New("text Introduction destination unavailable")
 	}
 	owner.mu.Lock()
+	if err := owner.retireTextPrefixLocked(); err != nil {
+		owner.mu.Unlock()
+		return nil, err
+	}
 	live := owner.liveTextServiceJobLocked(job, broker.Connection)
 	needPrefix := owner.prefix == nil
 	owner.mu.Unlock()

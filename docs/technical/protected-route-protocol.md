@@ -192,6 +192,11 @@ through the same terminal path as explicit Close before notifying Endpoint.
 Endpoint observes that completed retirement before new private work; it keeps
 the context's source members, allocation and exact pending-batch binding.
 Retirement never creates another bootstrap allowance or starts an idle refill.
+During explicit reader resolution or scheduled publication, Endpoint ensures
+an unspent forwarding token is available per retained Source receiver for the
+next open, obtaining only missing tokens through the current admitted Source and
+existing allocation. Observing a joined Source precedes the decision to reopen;
+no idle task replenishes stock or resets the two-batch bootstrap limit.
 
 Node-to-Node Carriers established by real work may be retained for 120 seconds
 after their last child closes. Key the local pool only by exact current

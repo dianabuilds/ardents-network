@@ -54,6 +54,9 @@ func (owner *textContext) lookupTextDescriptor(ctx context.Context, target [32]b
 		return reachability.Verified{}, err
 	}
 	flight.receiver = receiver // Fixed before the synchronous presenter is reachable.
+	if err := owner.prepareTextSourceReopen(attempt, flight); err != nil {
+		return reachability.Verified{}, err
+	}
 	if err := owner.ensureTextResolutionStock(flight); err != nil {
 		return reachability.Verified{}, err
 	}

@@ -118,7 +118,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 		return reachability.Verified{}, err
 	}
 	flight.receiver = receiver
-	if err := owner.prepareTextRefreshSource(attempt, flight); err != nil {
+	if err := owner.prepareTextSourceReopen(attempt, flight); err != nil {
 		return reachability.Verified{}, errors.Join(errors.New("text publication Source token preparation failed"), err)
 	}
 	if err := owner.ensureTextResolutionStock(flight); err != nil {
