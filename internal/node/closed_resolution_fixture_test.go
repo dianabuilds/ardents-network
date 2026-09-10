@@ -25,18 +25,19 @@ import (
 // admission spend and Descriptor Store are real. This does not qualify private
 // Introduction registration or Endpoint Publisher readiness.
 type resolutionNetworkFixture struct {
-	profile      state.ClosedProfileView
-	carrier      route.CarrierProfile
-	endpoint     string
-	certificate  tls.Certificate
-	receiver     route.ClosedRoleReceiver
-	serverKey    [32]byte
-	tokens       [][]byte
-	current      publication.Current
-	signer       ed25519.PrivateKey
-	introduction reachability.PrivateIntroduction
-	root         string
-	restart      func()
+	profile       state.ClosedProfileView
+	carrier       route.CarrierProfile
+	endpoint      string
+	certificate   tls.Certificate
+	receiver      route.ClosedRoleReceiver
+	serverKey     [32]byte
+	tokens        [][]byte
+	supplementary map[uint8][][]byte
+	current       publication.Current
+	signer        ed25519.PrivateKey
+	introduction  reachability.PrivateIntroduction
+	root          string
+	restart       func()
 }
 
 func newResolutionNetworkFixture(t *testing.T, carrier route.CarrierProfile) *resolutionNetworkFixture {
@@ -44,7 +45,7 @@ func newResolutionNetworkFixture(t *testing.T, carrier route.CarrierProfile) *re
 	return newPrivateRecipientNetworkFixture(t, carrier, route.ClosedPurposeReachability, 1)
 }
 
-func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfile, purpose route.ClosedPurpose, class uint8) *resolutionNetworkFixture {
+func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfile, purpose route.ClosedPurpose, class uint8, extraClasses ...uint8) *resolutionNetworkFixture {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	until := now.Truncate(time.Hour).Add(time.Hour)
@@ -116,6 +117,10 @@ func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfil
 	}
 	fixture := &resolutionNetworkFixture{profile: profile, carrier: carrier, endpoint: endpoint, certificate: clientCert, receiver: receiver, serverKey: serverKey, root: config.ClosedResolution.Root}
 	fixture.tokens = privateRecipientTokens(t, root, profile, authority, receiver, class)
+	fixture.supplementary = make(map[uint8][][]byte)
+	for _, extra := range extraClasses {
+		fixture.supplementary[extra] = privateRecipientTokens(t, root, profile, authority, receiver, extra)
+	}
 	if purpose == route.ClosedPurposeReachability {
 		fixture.current, fixture.signer = resolutionPublication(t, network, now, until)
 		fixture.introduction = reachability.PrivateIntroduction{Revision: 1, NodeID: introID, Slot: [32]byte{81}, RecipientKey: [32]byte{82}, NotBefore: now, NotAfter: minResolutionTime(now.Add(30*time.Second), until)}
@@ -202,7 +207,7 @@ func privateRecipientTokens(t *testing.T, root string, profile state.ClosedProfi
 	}
 	defer clear(holder)
 	permission := credential.Permission{NetworkID: profile.NetworkID, IssuerNodeID: profile.IssuerNodeID, DutyGeneration: profile.IssuerDutyGeneration,
-		PermissionID: [32]byte{83}, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, Maxima: [3]uint32{}, Signature: [64]byte{1}}
+		PermissionID: [32]byte{83, class}, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, Maxima: [3]uint32{}, Signature: [64]byte{1}}
 	permission.Maxima[class-1] = 12
 	copy(permission.HolderKey[:], public)
 	raw, err := credential.EncodePermission(permission)
