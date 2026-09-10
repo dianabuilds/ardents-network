@@ -36,6 +36,28 @@ func validateClosedIntroductionProfile(local ClosedIntroductionProfile, config r
 }
 
 func startClosedIntroduction(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
+	running, err := newClosedIntroductionServer(config, snapshot)
+	if err != nil {
+		return nil, err
+	}
+	local := config.ClosedIntroduction
+	return &probeServer{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
+		active := uint64(running.active.Load())
+		return active, active, 0
+	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {
+		_ = running.stop()
+		bounded, cancel := context.WithTimeout(ctx, local.DrainTimeout)
+		defer cancel()
+		select {
+		case <-running.drained:
+			return running.drainErr
+		case <-bounded.Done():
+			return bounded.Err()
+		}
+	}}, nil
+}
+
+func newClosedIntroductionServer(config runtimeConfig, snapshot dutyFacts) (*closedIntroductionServer, error) {
 	local := config.ClosedIntroduction
 	if err := validateClosedIntroductionProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
@@ -70,20 +92,7 @@ func startClosedIntroduction(config runtimeConfig, snapshot dutyFacts) (*probeSe
 		slots: make(map[[32]byte]*closedIntroductionSlot), slotFloor: slotFloor, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go running.run(ctx)
-	return &probeServer{Done: running.done, Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
-		active := uint64(running.active.Load())
-		return active, active, 0
-	}, Stop: func() { _ = running.stop() }, Drain: func(ctx context.Context) error {
-		_ = running.stop()
-		bounded, cancel := context.WithTimeout(ctx, local.DrainTimeout)
-		defer cancel()
-		select {
-		case <-running.drained:
-			return running.drainErr
-		case <-bounded.Done():
-			return bounded.Err()
-		}
-	}}, nil
+	return running, nil
 }
 
 type closedIntroductionServer struct {

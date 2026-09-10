@@ -50,6 +50,11 @@ func newResolutionNetworkFixture(t *testing.T, carrier route.CarrierProfile) *re
 
 func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfile, purpose route.ClosedPurpose, class uint8, extraClasses ...uint8) *resolutionNetworkFixture {
 	t.Helper()
+	return newPrivateRecipientNetworkFixtureWithStart(t, carrier, purpose, class, nil, extraClasses...)
+}
+
+func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.CarrierProfile, purpose route.ClosedPurpose, class uint8, startReceiver func(Config) (func() error, error), extraClasses ...uint8) *resolutionNetworkFixture {
+	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	until := now.Truncate(time.Hour).Add(time.Hour)
 	serverCert, serverKey := rendezvousCertificate(t, 251, "resolution")
@@ -131,7 +136,16 @@ func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfil
 	}
 	var cancel context.CancelFunc
 	var done chan error
+	var stopReceiver func() error
 	start := func() {
+		if startReceiver != nil {
+			var err error
+			stopReceiver, err = startReceiver(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
 		var ctx context.Context
 		ctx, cancel = context.WithCancel(context.Background())
 		done = make(chan error, 1)
@@ -139,6 +153,13 @@ func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfil
 		waitForStateEvent(t, events, "READY")
 	}
 	stop := func() bool {
+		if stopReceiver != nil {
+			if err := stopReceiver(); err != nil {
+				t.Error(err)
+				return false
+			}
+			return true
+		}
 		cancel()
 		select {
 		case err := <-done:

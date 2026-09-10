@@ -157,6 +157,13 @@ terminal child CLOSE before handing over the binding. Both Endpoint exchanges
 are job-scoped operations that context retirement joins; failed Source cleanup
 is retained and disables new local admission.
 
+Withdrawal disables the receiving slot and closes its completion signal; it
+retains the inactive entry to prevent slot reuse. That entry includes the
+registration request, rate and byte accounting, and the closed connection
+object. Expired entries are reaped when a later registration is reserved, or
+released when the receiver itself is discarded. Withdrawal alone is therefore
+not a claim of immediate metadata or connection-object erasure. Receiver-state
+observations must include these inactive entries as well as pending deliveries.
 The fixed format, network submission/delivery and this composition are tested
 with real issuer tokens, both Carriers, Instance HPKE and Service TLS. Data
 JOIN and the complete installed command
