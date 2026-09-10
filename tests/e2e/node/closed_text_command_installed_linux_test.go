@@ -32,14 +32,14 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
 		t.Run(carrier, func(t *testing.T) {
 			authority := createClosedCommandAuthority(t, [32]byte{1})
-			testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string) {
-				runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority)
+			testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
+				runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan)
 			})
 		})
 	}
 }
 
-func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority) {
+func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any) {
 	t.Helper()
 	account, err := user.Lookup("ardents-endpoint")
 	if err != nil {
@@ -65,6 +65,9 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		}
 	})
 	path := func(name string) string { return filepath.Join(directory, name) }
+	if err := os.Mkdir(path("tokens"), 0700); err != nil {
+		t.Fatal(err)
+	}
 	clock := path("clock")
 	t.Cleanup(startClockObserver(t, clock))
 	stateOwner, err := state.Open(config)
@@ -86,6 +89,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	for _, role := range []string{"reader", "publisher"} {
 		plan[role+"_permission"] = map[string]any{"request_path": path(role + ".request"), "response_path": path(role + ".response"), "maxima": [3]uint32{512, 512, 512}}
 	}
+	plan["network_source_plan"] = installedCommandSourcePlan(t, directory, sourcePlan)
 	raw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -139,13 +143,15 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatal(err)
 	}
 	textBinary := buildCommand(t, "ardents-text")
+	// The UI reopens stdio for polling. User-owned pipeline endpoints keep
+	// that check real; pipefail retains the actual text command exit status.
 	run := func(input []byte, args ...string) []byte {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 		defer cancel()
-		output, diagnostic, err := installedCommandExec(ctx, input, "runuser", append([]string{"-u", "ardents-endpoint", "--", textBinary}, args...)...)
+		output, diagnostic, err := installedCommandExecAs(ctx, input, uid, gid, "bash", append([]string{"-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary}, args...)...)
 		if err != nil {
-			t.Fatalf("ordinary text command failed: %v / %s", err, diagnostic)
+			t.Fatalf("ordinary text command %s failed: %v / %s", args[0], err, diagnostic)
 		}
 		return output
 	}
@@ -172,7 +178,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatalf("ordinary Endpoint withdrawal: %s, %v", outcome, withdrawalErr)
 	}
 	refused, cancelRefused := context.WithTimeout(t.Context(), 20*time.Second)
-	output, diagnostic, linkErr := installedCommandExec(refused, nil, "runuser", "-u", "ardents-endpoint", "--", textBinary, "link", path("publisher.sock"))
+	output, diagnostic, linkErr := installedCommandExecAs(refused, nil, uid, gid, "bash", "-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary, "link", path("publisher.sock"))
 	cancelRefused()
 	var exit *exec.ExitError
 	if !errors.As(linkErr, &exit) || exit.ExitCode() != 2 || len(output) != 0 || strings.TrimSpace(string(diagnostic)) != "text operation unavailable" {
@@ -300,43 +306,4 @@ func waitInstalledCommandSockets(t *testing.T, invocation string, paths ...strin
 		time.Sleep(100 * time.Millisecond)
 	}
 	t.Fatal("Endpoint command sockets deadline exceeded")
-}
-
-type installedCommandOutput struct {
-	buffer   bytes.Buffer
-	limit    int
-	cancel   context.CancelFunc
-	overflow bool
-}
-
-func (output *installedCommandOutput) Write(data []byte) (int, error) {
-	if len(data) > output.limit-output.buffer.Len() {
-		output.overflow = true
-		output.cancel()
-		return 0, errors.New("qualification output limit exceeded")
-	}
-	return output.buffer.Write(data)
-}
-func installedCommandExec(ctx context.Context, input []byte, name string, args ...string) ([]byte, []byte, error) {
-	owned, cancel := context.WithCancel(ctx)
-	defer cancel()
-	output := &installedCommandOutput{limit: 5 << 20, cancel: cancel}
-	diagnostic := &installedCommandOutput{limit: 64 << 10, cancel: cancel}
-	command := exec.CommandContext(owned, name, args...)
-	command.Stdin, command.Stdout, command.Stderr = bytes.NewReader(input), output, diagnostic
-	command.WaitDelay = 5 * time.Second
-	err := command.Run()
-	if output.overflow || diagnostic.overflow {
-		err = errors.Join(err, errors.New("qualification output overflow"))
-	}
-	return output.buffer.Bytes(), diagnostic.buffer.Bytes(), errors.Join(err, owned.Err())
-}
-
-func TestInstalledCommandOutputOverflowCancelsAndJoins(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
-	output, _, err := installedCommandExec(ctx, nil, "head", "-c", "6000000", "/dev/zero")
-	if err == nil || !strings.Contains(err.Error(), "qualification output overflow") || len(output) > 5<<20 {
-		t.Fatalf("output overflow was not bounded and joined: %d bytes, %v", len(output), err)
-	}
 }

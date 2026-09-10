@@ -19,7 +19,7 @@ import (
 // All State and issuer material below is accepted through product commands;
 // the Node's own runtime opens State and obtains its current duty projection.
 func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments []string, signedProfile, issuerRoot string,
-	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, exchange func(bool), participant func(string)) {
+	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, exchange func(bool), participant func(string, map[string]any)) {
 	t.Helper()
 	public := authority.Public().(ed25519.PublicKey)
 	clientAuthority := makeAuthority(t, "issuer-command-source-client")
@@ -132,7 +132,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 		}
 	}
 	if nodeCount != 3 {
-		participant(resolutionRoot)
+		participant(resolutionRoot, plan)
 		return
 	}
 	exchange(false)

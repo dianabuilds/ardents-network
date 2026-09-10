@@ -19,6 +19,9 @@ func acquireCommandServiceInstance(t *testing.T, endpointBinary string, network 
 	custodyBinary := buildCommand(t, "ardents-custody")
 	directory := t.TempDir()
 	rootPath := filepath.Join(t.TempDir(), "instance")
+	if err := os.Mkdir(rootPath, 0700); err != nil {
+		t.Fatal(err)
+	}
 	encode := func(value [32]byte) string { return hex.EncodeToString(value[:]) }
 	bindings := []string{"--vault-root", filepath.Join(directory, "vault"), "--environment-commitment", encode([32]byte{231}), "--network-commitment", encode(network), "--root-commitment", encode([32]byte{232})}
 	output, err := closedCustodyCommand(t, custodyBinary, []closedCustodyInput{

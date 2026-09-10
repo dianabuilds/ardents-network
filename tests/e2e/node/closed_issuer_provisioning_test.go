@@ -33,7 +33,7 @@ func testClosedIssuerProvisioning(t *testing.T, carrier string, nodeCount int) {
 	testClosedIssuerProvisioningParticipant(t, carrier, nodeCount, authority, exchange, nil)
 }
 
-func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeCount int, admissionAuthority [32]byte, exchange func(state.Config, bool), participant func(state.Config, string, string)) {
+func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeCount int, admissionAuthority [32]byte, exchange func(state.Config, bool), participant func(state.Config, string, string, map[string]any)) {
 	nodeBinary, controlBinary := buildCommand(t, "ardents-node"), buildCommand(t, "ardents-control")
 	now := time.Now().UTC().Truncate(time.Hour)
 	network, issuerNode := [32]byte{1}, [32]byte{2}
@@ -173,9 +173,9 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 	if retainErr != nil || closeErr != nil || retained != route {
 		t.Fatalf("reopened closed State changed: %v / %v", retainErr, closeErr)
 	}
-	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, func(unavailable bool) { exchange(config, unavailable) }, func(resolutionRoot string) {
+	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, func(unavailable bool) { exchange(config, unavailable) }, func(resolutionRoot string, sourcePlan map[string]any) {
 		if participant != nil {
-			participant(config, endpointBinary, resolutionRoot)
+			participant(config, endpointBinary, resolutionRoot, sourcePlan)
 		}
 	})
 }
