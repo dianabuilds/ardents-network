@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -148,6 +149,28 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	}
 	if actual := run(destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
 		t.Fatal("ordinary command document mismatch")
+	}
+	withdrawal, cancelWithdrawal := context.WithTimeout(t.Context(), 15*time.Second)
+	outcome, withdrawalErr := administration.Request(withdrawal, path("publisher.sock"), administration.Withdraw)
+	cancelWithdrawal()
+	if withdrawalErr != nil || outcome != administration.Withdrawn {
+		t.Fatalf("ordinary Endpoint withdrawal: %s, %v", outcome, withdrawalErr)
+	}
+	refused, cancelRefused := context.WithTimeout(t.Context(), 20*time.Second)
+	output, diagnostic, linkErr := installedCommandExec(refused, nil, "runuser", "-u", "ardents-endpoint", "--", textBinary, "link", path("publisher.sock"))
+	cancelRefused()
+	var exit *exec.ExitError
+	if !errors.As(linkErr, &exit) || exit.ExitCode() != 2 || len(output) != 0 || strings.TrimSpace(string(diagnostic)) != "text operation unavailable" {
+		t.Fatalf("withdrawn publication still exposed a Link or failed for another reason: %v / %s", linkErr, diagnostic)
+	}
+	active := strings.TrimSpace(string(installedCommandTool(t, "systemctl", "show", "ardents-endpoint.service", "-p", "ActiveState", "--value")))
+	retained := strings.TrimSpace(string(installedCommandTool(t, "systemctl", "show", "ardents-endpoint.service", "-p", "InvocationID", "--value")))
+	if active != "active" || retained != invocation {
+		t.Fatal("Link refusal was accompanied by Endpoint loss or replacement")
+	}
+	workers := installedCommandTool(t, "systemctl", "list-units", "--state=active,activating,deactivating", "--no-legend", "ardents-text-reader@*.service", "ardents-text-publisher@*.service")
+	if len(bytes.TrimSpace(workers)) != 0 {
+		t.Fatalf("withdrawal retained worker units: %s", workers)
 	}
 }
 

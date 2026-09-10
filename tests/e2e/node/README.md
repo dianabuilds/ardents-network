@@ -105,6 +105,9 @@ the ordinary `ardents endpoint headless` as the unprivileged Endpoint service's
 MainPID. It checks permission-request commitments from that exact invocation
 against the request files and uses real Custody responses. The ordinary text
 commands publish and read a 64 KiB document through this network on both Carriers.
+An explicit request through the real Administration socket withdraws publication;
+the ordinary Link command must then refuse while the same Endpoint invocation
+remains active and no Reader or Publisher worker unit remains active or stopping.
 This uses one Endpoint for both local roles, not two independent Endpoint hosts.
 Compilation alone does not prove this installed journey works.
 
@@ -114,4 +117,4 @@ restores its prior temporary unit during cleanup. An external runner must also
 restore those files after test failure or timeout and verify their hashes,
 MainPID zero and absence of live workers. Retain the candidate hashes, invocation
 journal and terminal result outside Git. This cell does not qualify elapsed
-refresh, explicit withdrawal, continuous Node readiness or full recovery.
+refresh, continuous Node readiness or full recovery.
