@@ -118,6 +118,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 			t.Fatal(err)
 		}
 	}
+	t.Log("completed: Service Instance acquired through commands and Endpoint inputs prepared")
 	invocation := startInstalledCommandEndpoint(t, binary, planPath)
 	for _, role := range []string{"reader", "publisher"} {
 		request := waitInstalledCommandRequest(t, invocation, path(role+".request"))
@@ -134,6 +135,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		}
 	}
 	waitInstalledCommandSockets(t, invocation, path("reader.sock"), path("publisher.sock"))
+	t.Log("completed: ordinary Endpoint started with separately issued reader/publisher permissions")
 	body := bytes.Repeat([]byte("x"), 64<<10)
 	document := path("document.txt")
 	if err := os.WriteFile(document, body, 0600); err != nil {
@@ -145,32 +147,36 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	textBinary := buildCommand(t, "ardents-text")
 	// The UI reopens stdio for polling. User-owned pipeline endpoints keep
 	// that check real; pipefail retains the actual text command exit status.
-	run := func(input []byte, args ...string) []byte {
+	run := func(stage string, input []byte, args ...string) []byte {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 		defer cancel()
 		output, diagnostic, err := installedCommandExecAs(ctx, input, uid, gid, "bash", append([]string{"-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary}, args...)...)
 		if err != nil {
-			t.Fatalf("ordinary text command %s failed: %v / %s", args[0], err, diagnostic)
+			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s", stage, args[0], err, diagnostic)
 		}
 		return output
 	}
 	publicationStarted := time.Now()
-	if output := run(nil, "publish", path("publisher.sock"), document); len(output) != 0 {
+	if output := run("publish", nil, "publish", path("publisher.sock"), document); len(output) != 0 {
 		t.Fatal("publish produced unexpected output")
 	}
 	firstPublication := readInstalledCommandDescriptor(t, resolutionRoot, view.Profile)
-	destination := run(nil, "link", path("publisher.sock"))
+	t.Log("completed: publication command and independently verified signed Descriptor")
+	destination := run("published Link", nil, "link", path("publisher.sock"))
 	if len(destination) < 2 || bytes.Count(destination, []byte{'\n'}) != 1 || destination[len(destination)-1] != '\n' {
 		t.Fatal("invalid Link output")
 	}
-	if actual := run(destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
+	if actual := run("initial read", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
 		t.Fatal("ordinary command document mismatch")
 	}
+	t.Log("completed: initial exact 64 KiB document read")
 	observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted)
-	if actual := run(destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
+	t.Log("completed: observed signed Descriptor refresh and elapsed overlap")
+	if actual := run("read after refresh", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
 		t.Fatal("document changed after elapsed refresh")
 	}
+	t.Log("completed: exact document read through the original Link after refresh")
 	withdrawal, cancelWithdrawal := context.WithTimeout(t.Context(), 15*time.Second)
 	outcome, withdrawalErr := administration.Request(withdrawal, path("publisher.sock"), administration.Withdraw)
 	cancelWithdrawal()
@@ -193,6 +199,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	if len(bytes.TrimSpace(workers)) != 0 {
 		t.Fatalf("withdrawal retained worker units: %s", workers)
 	}
+	t.Log("completed: withdrawal, exact Link refusal, same live Endpoint, and no retained workers")
 }
 
 func installedCommandTool(t *testing.T, name string, arguments ...string) []byte {
