@@ -330,7 +330,8 @@ func startInstalledCommandEndpoint(t *testing.T, binary, plan string) string {
 		// test unit after stop: the preceding test failure and its journal remain
 		// visible, while the next isolated case regains its required inactive
 		// starting state.
-		if _, diagnostic, err := installedCommandExec(ctx, nil, "systemctl", "reset-failed", "ardents-endpoint.service"); err != nil {
+		if _, diagnostic, err := installedCommandExec(ctx, nil, "systemctl", "reset-failed", "ardents-endpoint.service"); err != nil &&
+			!strings.Contains(string(diagnostic), "Unit ardents-endpoint.service not loaded.") {
 			t.Errorf("reset stopped Endpoint state: %v / %s", err, diagnostic)
 		}
 		if err := os.WriteFile(unit, previous, info.Mode().Perm()); err != nil {
