@@ -310,3 +310,14 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 		}
 	}
 }
+
+func TestTextRefreshFailureStagePreservesUnderlyingCause(t *testing.T) {
+	cause := errors.New("source preparation failed")
+	failure := textRefreshFailureAt("rotation-source", cause)
+	if textRefreshFailureStage(failure) != "rotation-source" || !errors.Is(failure, cause) {
+		t.Fatalf("refresh stage did not retain classification and cause: %v", failure)
+	}
+	if textRefreshFailureStage(cause) != "rotation" {
+		t.Fatal("uncategorized refresh failure received a fabricated stage")
+	}
+}

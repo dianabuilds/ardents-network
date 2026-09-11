@@ -19,6 +19,29 @@ type textPublicationRefresh struct {
 	err     error
 }
 
+// textRefreshFailure retains a fixed, locally reportable stage while preserving
+// the underlying error for the Endpoint's own terminal cleanup semantics.
+type textRefreshFailure struct {
+	stage string
+	cause error
+}
+
+func (failure *textRefreshFailure) Error() string { return failure.cause.Error() }
+
+func (failure *textRefreshFailure) Unwrap() error { return failure.cause }
+
+func textRefreshFailureAt(stage string, cause error) error {
+	return &textRefreshFailure{stage: stage, cause: cause}
+}
+
+func textRefreshFailureStage(cause error) string {
+	var failure *textRefreshFailure
+	if errors.As(cause, &failure) && failure.stage != "" {
+		return failure.stage
+	}
+	return "rotation"
+}
+
 // Start once after a verified publication acknowledgement. Exact retries never
 // move the original refresh time or renew the signed registration lifetime.
 func (owner *textContext) startTextRefreshLocked(registered *textIntroductionRegistration) {
@@ -110,7 +133,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		if !now.Before(refreshAt) {
 			if err := owner.rotateTextPublication(flight, registered); err != nil {
 				if flight.context.Err() == nil {
-					owner.failTextRefresh(flight, "rotation", err)
+					owner.failTextRefresh(flight, textRefreshFailureStage(err), err)
 				}
 				return
 			}
@@ -147,32 +170,35 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 	if err != nil || owner.refresh != flight || owner.registration != previous || owner.previousRegistration != nil ||
 		previous.request.Revision == ^uint64(0) || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		owner.mu.Unlock()
-		return errors.New("text publication refresh owner unavailable")
+		return textRefreshFailureAt("rotation-authority", errors.New("text publication refresh owner unavailable"))
 	}
 	prefix := owner.introduction.prefix
 	owner.mu.Unlock()
 	if prefix == nil {
-		return errors.New("text publication refresh prefix unavailable")
+		return textRefreshFailureAt("rotation-prefix", errors.New("text publication refresh prefix unavailable"))
 	}
 	if err := owner.prepareTextSourceReady(flight.context); err != nil {
-		return err
+		return textRefreshFailureAt("rotation-source", err)
 	}
 	_, until, err := prefix.IntroductionRecipient()
 	if err != nil {
-		return err
+		return textRefreshFailureAt("rotation-recipient", err)
 	}
 	expiry := now.UTC().Truncate(time.Second).Add(600 * time.Second)
 	if until.Before(expiry) {
 		expiry = until
 	}
 	if !now.Before(expiry) {
-		return errors.New("text publication refresh expired")
+		return textRefreshFailureAt("rotation-expired", errors.New("text publication refresh expired"))
 	}
 	if _, err := owner.openTextRegistration(flight.context, previous.request.Revision+1, expiry, previous); err != nil {
-		return err
+		return textRefreshFailureAt("rotation-registration", err)
 	}
 	_, err = owner.publishTextDescriptor(flight.context)
-	return err
+	if err != nil {
+		return textRefreshFailureAt("rotation-publication", err)
+	}
+	return nil
 }
 
 // Failed refresh removes accepting registration readiness. It does not grant
