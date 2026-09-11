@@ -179,6 +179,53 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 	}
 }
 
+// A permission is current only for its original hour and there is no automatic
+// renewal route. A scheduled refresh that reaches that boundary must fail
+// closed: it cannot retain an accepting registration or revive it on retry.
+func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T) {
+	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			gate := newTextDescriptorACKGate()
+			defer gate.open()
+			endpoint, owner, _, first := startTextRegisteredPublisherNetwork(t, carrier, gate)
+			if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			owner.mu.Lock()
+			refresh := owner.refresh
+			expires := owner.permission.accepted.NotAfter
+			first.refreshAt = time.Now().Add(-time.Second)
+			owner.mu.Unlock()
+			if refresh == nil || expires.IsZero() {
+				t.Fatal("published registration did not retain its refresh and permission expiry")
+			}
+			originalClock := endpoint.clock
+			endpoint.clock = func() time.Time { return expires }
+			t.Cleanup(func() { endpoint.clock = originalClock })
+			owner.mu.Lock()
+			owner.signalTextRegistrationsLocked()
+			owner.mu.Unlock()
+			select {
+			case <-refresh.done:
+			case <-time.After(10 * time.Second):
+				t.Fatal("expired permission did not finish scheduled refresh")
+			}
+			owner.mu.Lock()
+			retired := owner.registration == nil && owner.previousRegistration == nil && refresh.err != nil
+			owner.mu.Unlock()
+			if !retired {
+				t.Fatal("expired permission retained accepting refresh readiness")
+			}
+			if first.recipient.Public(time.Now()) != [32]byte{} {
+				t.Fatal("expired permission retained the current recipient key")
+			}
+			if _, err := owner.publishTextDescriptor(t.Context()); err == nil {
+				t.Fatal("expired permission revived publication through exact retry")
+			}
+		})
+	}
+}
+
 func waitTextRefreshCondition(t *testing.T, owner *textContext, condition func() bool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
