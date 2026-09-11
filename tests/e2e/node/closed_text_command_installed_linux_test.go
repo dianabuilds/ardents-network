@@ -323,6 +323,15 @@ func startInstalledCommandEndpoint(t *testing.T, binary, plan string) string {
 		if _, diagnostic, err := installedCommandExec(ctx, nil, "systemctl", "stop", "ardents-endpoint.service"); err != nil {
 			t.Errorf("stop Endpoint: %v / %s", err, diagnostic)
 		}
+		// SIGTERM cancels in-flight worker work. The command correctly retains
+		// that cancellation in its terminal error, so systemd records the
+		// deliberately stopped temporary unit as failed. Reset only this known
+		// test unit after stop: the preceding test failure and its journal remain
+		// visible, while the next isolated case regains its required inactive
+		// starting state.
+		if _, diagnostic, err := installedCommandExec(ctx, nil, "systemctl", "reset-failed", "ardents-endpoint.service"); err != nil {
+			t.Errorf("reset stopped Endpoint state: %v / %s", err, diagnostic)
+		}
 		if err := os.WriteFile(unit, previous, info.Mode().Perm()); err != nil {
 			t.Error(err)
 			return
