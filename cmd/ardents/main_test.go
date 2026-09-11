@@ -153,8 +153,17 @@ func TestNameRouteRejectsIncompleteCommand(t *testing.T) {
 func TestRootUsageListsRetainedRoutes(t *testing.T) {
 	t.Parallel()
 	err := run(t.Context(), nil, &bytes.Buffer{})
-	if err == nil || err.Error() != "usage: ardents <accept-offline|refresh-sources|endpoint|entry|name|service-instance> arguments" {
+	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|refresh-sources|endpoint|entry|name|service-instance> arguments" {
 		t.Fatalf("root usage error = %v", err)
+	}
+}
+
+func TestAcceptClosedProfileRejectsOfflineEpochInput(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	err := run(t.Context(), []string{"accept-closed-profile", "--epoch", "epoch.bin"}, &output)
+	if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") || output.Len() != 0 {
+		t.Fatalf("closed-profile command accepted offline Epoch input: %v / %q", err, output.String())
 	}
 }
 

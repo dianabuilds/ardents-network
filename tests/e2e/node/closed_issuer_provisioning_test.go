@@ -107,6 +107,54 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 	if err := json.Unmarshal(result, &report); err != nil || report.Schema != "ardents-closed-profile-inspection-v1" {
 		t.Fatalf("State profile inspection report missing: %v", err)
 	}
+	// State is already accepted by the ordinary offline command. Submit the
+	// separately signed profile through the public State command, then prove an
+	// independently valid successor digest becomes a durable conflict rather
+	// than a caller-selected replacement.
+	submissionArguments := closedProfileSubmissionArguments(acceptArguments, signedPath)
+	submitted := invoke(endpointBinary, submissionArguments...)
+	if repeated := invoke(endpointBinary, submissionArguments...); !bytes.Equal(submitted, repeated) {
+		t.Fatal("exact public closed-profile retry changed its event")
+	}
+	var submissionEvent struct {
+		Kind    string
+		Profile string `json:"closed_profile_sha256"`
+	}
+	digest := sha256.Sum256(signed)
+	if err := json.Unmarshal(submitted, &submissionEvent); err != nil || submissionEvent.Kind != "closed-profile-accepted" ||
+		submissionEvent.Profile != hex.EncodeToString(digest[:]) {
+		t.Fatalf("public profile submission result = %v / %s", err, submitted)
+	}
+	originalIssuanceAuthority := plan["IssuanceAuthorityKey"]
+	plan["IssuanceAuthorityKey"] = identifier(98)
+	conflictingPlanPath := writeJSON(t, "conflicting-closed-profile-plan.json", plan)
+	conflictingProfilePath := filepath.Join(t.TempDir(), "conflicting.profile")
+	invoke(controlBinary, "sign-closed-profile", "--plan", conflictingPlanPath,
+		"--authority-key", writePrivateKey(t, "conflicting-state.pem", statePrivate), "--output", conflictingProfilePath)
+	conflictingArguments := closedProfileSubmissionArguments(acceptArguments, conflictingProfilePath)
+	conflictContext, conflictCancel := context.WithTimeout(t.Context(), 30*time.Second)
+	conflictOutput, conflictErr := exec.CommandContext(conflictContext, endpointBinary, conflictingArguments...).CombinedOutput()
+	conflictCancel()
+	if conflictErr == nil || !bytes.Contains(conflictOutput, []byte("accept closed profile: closed profile has a durable conflict")) {
+		t.Fatalf("public submission did not durably refuse a second valid profile: %v / %s", conflictErr, conflictOutput)
+	}
+	owner, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, profileErr := owner.CurrentClosedProfile()
+	if closeErr := owner.Close(); profileErr == nil || closeErr != nil {
+		t.Fatalf("conflicting public submission left a profile available: %v / %v", profileErr, closeErr)
+	}
+	reopenedConflict, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, profileErr = reopenedConflict.CurrentClosedProfile()
+	if closeErr := reopenedConflict.Close(); profileErr == nil || closeErr != nil {
+		t.Fatalf("conflicting public submission did not survive reopen: %v / %v", profileErr, closeErr)
+	}
+	plan["IssuanceAuthorityKey"] = originalIssuanceAuthority
 	// A command-signed profile must still match the exact accepted Node bytes.
 	nodes := plan["Nodes"].([]map[string]any)
 	originalDigest := nodes[0]["RecordDigest"]
@@ -124,7 +172,7 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 	if commandErr == nil || !bytes.Contains(output, []byte("accept closed profile:")) {
 		t.Fatalf("command did not reject substituted Node Record digest at profile validation: %v / %s", commandErr, output)
 	}
-	owner, err := state.Open(config)
+	owner, err = state.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +188,7 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 		Kind    string
 		Profile string `json:"closed_profile_sha256"`
 	}
-	digest := sha256.Sum256(signed)
+	digest = sha256.Sum256(signed)
 	if err := json.Unmarshal(accepted, &event); err != nil || event.Kind != "generation-accepted" || event.Profile != hex.EncodeToString(digest[:]) {
 		t.Fatalf("command did not report accepted profile digest: %v / %s", err, accepted)
 	}
@@ -178,6 +226,17 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 			participant(config, endpointBinary, resolutionRoot, sourcePlan)
 		}
 	})
+}
+
+func closedProfileSubmissionArguments(offlineArguments []string, profilePath string) []string {
+	arguments := []string{"accept-closed-profile"}
+	for index := 1; index < len(offlineArguments); index += 2 {
+		if offlineArguments[index] == "--epoch" || offlineArguments[index] == "--inputs" || offlineArguments[index] == "--materialization" {
+			continue
+		}
+		arguments = append(arguments, offlineArguments[index], offlineArguments[index+1])
+	}
+	return append(arguments, "--closed-profile", profilePath)
 }
 
 func identifierNode(value byte) string {
