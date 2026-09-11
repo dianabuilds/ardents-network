@@ -25,6 +25,13 @@
       ]
     },
     {
+      "id": "agent-skills",
+      "owner": "network",
+      "include_prefixes": [
+        ".agents/skills/"
+      ]
+    },
+    {
       "id": "network",
       "owner": "network",
       "include_prefixes": [

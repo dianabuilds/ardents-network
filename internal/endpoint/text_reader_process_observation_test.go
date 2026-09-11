@@ -15,11 +15,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
 
@@ -31,9 +33,19 @@ type textReaderProcessInput struct {
 }
 
 type textReaderObservationEvent struct {
-	Phase                    string `json:"phase"`
-	ResponseDescriptorSHA256 string `json:"responseDescriptorSHA256,omitempty"`
-	ResponseRevision         uint64 `json:"responseRevision,omitempty"`
+	Phase                    string    `json:"phase"`
+	ResponseDescriptorSHA256 string    `json:"responseDescriptorSHA256,omitempty"`
+	ResponseRevision         uint64    `json:"responseRevision,omitempty"`
+	HolderSHA256             string    `json:"holderSHA256,omitempty"`
+	PermissionIDSHA256       string    `json:"permissionIDSHA256,omitempty"`
+	IssuanceBatches          uint8     `json:"issuanceBatches,omitempty"`
+	Reserved                 [3]uint32 `json:"reserved,omitempty"`
+	DescriptorFloorRevision  uint64    `json:"descriptorFloorRevision,omitempty"`
+}
+
+type textReaderControl struct {
+	Command    string `json:"command"`
+	Permission []byte `json:"permission,omitempty"`
 }
 
 type textReaderLiveBoundaryReceipt struct {
@@ -80,16 +92,24 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoder, decoder := json.NewEncoder(os.Stdout), json.NewDecoder(os.Stdin)
+	protocol := textReaderProtocol(t)
+	defer protocol.Close()
+	encoder, decoder := json.NewEncoder(protocol), json.NewDecoder(os.Stdin)
 	if err := encoder.Encode(request); err != nil {
 		t.Fatal(err)
 	}
-	var permission []byte
-	if err := decoder.Decode(&permission); err != nil {
-		t.Fatal(err)
-	}
-	if err := owner.importTextPermission(digest, permission); err != nil {
-		t.Fatal(err)
+	var control textReaderControl
+	for {
+		if err := decoder.Decode(&control); err != nil || control.Command != "permission" {
+			t.Fatal("reader controller did not provide permission")
+		}
+		if err := owner.importTextPermission(digest, control.Permission); err != nil {
+			if err := encoder.Encode(textReaderObservationEvent{Phase: "permission-refused"}); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		break
 	}
 	if err := encoder.Encode(textReaderObservationEvent{Phase: "permission-imported"}); err != nil {
 		t.Fatal(err)
@@ -101,77 +121,123 @@ func runTextReaderObservationChild(t *testing.T, path string) {
 	if _, err := owner.openTextPrefix(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	var command string
-	if err := decoder.Decode(&command); err != nil || command != "lookup" {
-		t.Fatal("reader controller did not start lookup")
-	}
-	paused.active.Store(true)
-	type lookupResult struct {
-		verified reachability.Verified
-		err      error
-	}
-	result := make(chan lookupResult, 1)
-	var releaseOnce sync.Once
-	release := func() { releaseOnce.Do(func() { close(paused.release) }) }
-	joined := false
-	defer func() {
-		release()
-		if !joined {
-			select {
-			case outcome := <-result:
-				if outcome.err != nil {
-					t.Error(outcome.err)
-				}
-			case <-time.After(5 * time.Second):
-				t.Error("reader lookup did not join")
-			}
+	for {
+		if err := decoder.Decode(&control); err != nil {
+			t.Fatal(err)
 		}
-	}()
-	go func() {
-		verified, err := owner.lookupTextDescriptor(t.Context(), input.Target)
-		result <- lookupResult{verified: verified, err: err}
-	}()
-	select {
-	case <-paused.entered:
-	case <-time.After(5 * time.Second):
-		t.Fatal("reader lookup did not reach active boundary")
+		switch control.Command {
+		case "lookup":
+			textReaderLookupObservation(t, owner, input, encoder, decoder, paused, true)
+		case "repeat-lookup":
+			textReaderLookupObservation(t, owner, input, encoder, decoder, paused, false)
+		case "stop":
+			if err := owner.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := endpoint.Close(); err != nil {
+				t.Fatal(err)
+			}
+			closed = true
+			return
+		default:
+			t.Fatal("reader controller sent unknown command")
+		}
 	}
-	if err := encoder.Encode(textReaderObservationEvent{Phase: "protected-lookup-active"}); err != nil {
-		t.Fatal(err)
+}
+
+func textReaderProtocol(t *testing.T) *os.File {
+	t.Helper()
+	fd, err := strconv.Atoi(os.Getenv("ARDENTS_TEXT_READER_PROTOCOL_FD"))
+	if err != nil || fd < 3 {
+		t.Fatal("reader child did not receive a private observation pipe")
 	}
-	if err := decoder.Decode(&command); err != nil || command != "release-lookup" {
-		t.Fatal("reader controller did not release lookup")
+	protocol := os.NewFile(uintptr(fd), "reader-observation")
+	if protocol == nil {
+		t.Fatal("reader child observation pipe is unavailable")
 	}
-	release()
-	outcome := <-result
-	if outcome.err != nil {
-		t.Fatal(outcome.err)
+	return protocol
+}
+
+func textReaderLookupObservation(t *testing.T, owner *textContext, input textReaderProcessInput, encoder *json.Encoder, decoder *json.Decoder, paused *textPausedResolutionState, first bool) {
+	t.Helper()
+	var verified reachability.Verified
+	if first {
+		paused.active.Store(true)
+		type lookupResult struct {
+			verified reachability.Verified
+			err      error
+		}
+		result := make(chan lookupResult, 1)
+		var releaseOnce sync.Once
+		release := func() { releaseOnce.Do(func() { close(paused.release) }) }
+		joined := false
+		defer func() {
+			release()
+			if !joined {
+				select {
+				case outcome := <-result:
+					if outcome.err != nil {
+						t.Error(outcome.err)
+					}
+				case <-time.After(5 * time.Second):
+					t.Error("reader lookup did not join")
+				}
+			}
+		}()
+		go func() {
+			outcome, err := owner.lookupTextDescriptor(t.Context(), input.Target)
+			result <- lookupResult{verified: outcome, err: err}
+		}()
+		select {
+		case <-paused.entered:
+		case <-time.After(5 * time.Second):
+			t.Fatal("reader lookup did not reach active boundary")
+		}
+		if err := encoder.Encode(textReaderObservationEvent{Phase: "protected-lookup-active"}); err != nil {
+			t.Fatal(err)
+		}
+		var control textReaderControl
+		if err := decoder.Decode(&control); err != nil || control.Command != "release-lookup" {
+			t.Fatal("reader controller did not release lookup")
+		}
+		release()
+		outcome := <-result
+		if outcome.err != nil {
+			t.Fatal(outcome.err)
+		}
+		verified, joined = outcome.verified, true
+	} else {
+		outcome, err := owner.lookupTextDescriptor(t.Context(), input.Target)
+		if err != nil {
+			t.Fatal(err)
+		}
+		verified = outcome
 	}
-	joined = true
 	expected, err := reachability.VerifyPrivate(input.Expected, input.Target, input.View.Profile.NetworkID, input.View.Profile.Digest, time.Now().UTC())
-	if err != nil || !reflect.DeepEqual(outcome.verified, expected) {
-		t.Fatalf("reader lookup result did not retain exact Store Descriptor: %#v / %v", outcome.verified, err)
+	if err != nil || !reflect.DeepEqual(verified, expected) {
+		t.Fatalf("reader lookup result did not retain exact Store Descriptor: %#v / %v", verified, err)
 	}
 	responseDigest := sha256.Sum256(input.Expected)
-	if err := encoder.Encode(textReaderObservationEvent{Phase: "response-received-before-close", ResponseDescriptorSHA256: hex.EncodeToString(responseDigest[:]), ResponseRevision: outcome.verified.Descriptor.Private.Revision}); err != nil {
+	owner.mu.Lock()
+	permission := owner.permission
+	if permission == nil || permission.accepted == (credential.Permission{}) || permission.batches == 0 {
+		owner.mu.Unlock()
+		t.Fatal("reader lookup lost its actual permission allocation")
+	}
+	holderDigest, permissionIDDigest := sha256.Sum256(permission.accepted.HolderKey[:]), sha256.Sum256(permission.accepted.PermissionID[:])
+	batches := permission.batches
+	reserved := permission.reserved
+	floor := owner.descriptorFloors[input.Target]
+	owner.mu.Unlock()
+	if err := encoder.Encode(textReaderObservationEvent{Phase: "response-received-before-close", ResponseDescriptorSHA256: hex.EncodeToString(responseDigest[:]), ResponseRevision: verified.Descriptor.Private.Revision, HolderSHA256: hex.EncodeToString(holderDigest[:]), PermissionIDSHA256: hex.EncodeToString(permissionIDDigest[:]), IssuanceBatches: batches, Reserved: reserved, DescriptorFloorRevision: floor.revision}); err != nil {
 		t.Fatal(err)
 	}
 	// This is the observer's known Store proof, accepted only after the real
 	// lookup above returned the identical verified Descriptor. The child never
-	// performs a second direct exchange to manufacture this evidence.
+	// performs a direct exchange to manufacture this evidence.
 	if err := encoder.Encode(input.Expected); err != nil {
 		t.Fatal(err)
 	}
-	if err := decoder.Decode(&command); err != nil || command != "stop" {
-		t.Fatal("reader controller ended before stop")
-	}
-	if err := owner.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := endpoint.Close(); err != nil {
-		t.Fatal(err)
-	}
-	closed = true
 }
 
 func observeTextIndependentReader(t *testing.T, source *textSourceStateFixture, target [32]byte, expected []byte, output, carrier string) {
@@ -194,18 +260,24 @@ func observeTextIndependentReader(t *testing.T, source *textSourceStateFixture, 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	command := exec.CommandContext(ctx, binary, "-test.run=^TestTextPublicationIsolatedRoleObservations$", "-test.timeout=55s")
-	command.Env = []string{"PATH=" + os.Getenv("PATH"), "ARDENTS_TEXT_READER_CHILD=" + path}
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	stdout, err := command.StdoutPipe()
+	protocolRead, protocolWrite, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer protocolRead.Close()
+	defer protocolWrite.Close()
+	command.ExtraFiles = []*os.File{protocolWrite}
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
+	command.Env = []string{"PATH=" + os.Getenv("PATH"), "ARDENTS_TEXT_READER_CHILD=" + path, "ARDENTS_TEXT_READER_PROTOCOL_FD=3"}
 	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := protocolWrite.Close(); err != nil {
 		t.Fatal(err)
 	}
 	joined := false
@@ -215,27 +287,27 @@ func observeTextIndependentReader(t *testing.T, source *textSourceStateFixture, 
 			_ = command.Wait()
 		}
 	}()
-	reader := bufio.NewReader(stdout)
+	reader := bufio.NewReader(protocolRead)
 	decoder, encoder := json.NewDecoder(reader), json.NewEncoder(stdin)
 	var request []byte
 	if err := decoder.Decode(&request); err != nil {
 		t.Fatalf("reader permission request: %v", err)
 	}
 	permission := source.issueRawPermission(t, request, sha256.Sum256(request))
-	if err := encoder.Encode(permission); err != nil {
+	if err := encoder.Encode(textReaderControl{Command: "permission", Permission: permission}); err != nil {
 		t.Fatal(err)
 	}
 	var event textReaderObservationEvent
 	if err := decoder.Decode(&event); err != nil || event.Phase != "permission-imported" {
 		t.Fatalf("reader permission import event: %#v / %v", event, err)
 	}
-	if err := encoder.Encode("lookup"); err != nil {
+	if err := encoder.Encode(textReaderControl{Command: "lookup"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := decoder.Decode(&event); err != nil || event.Phase != "protected-lookup-active" {
 		t.Fatalf("reader active lookup event: %#v / %v", event, err)
 	}
-	if err := encoder.Encode("release-lookup"); err != nil {
+	if err := encoder.Encode(textReaderControl{Command: "release-lookup"}); err != nil {
 		t.Fatal(err)
 	}
 	responseDigest := sha256.Sum256(expected)
@@ -300,7 +372,7 @@ func observeTextIndependentReader(t *testing.T, source *textSourceStateFixture, 
 	if err := json.Unmarshal(persisted, &receipt); err != nil || receipt.Carrier != carrier || receipt.InputSHA256 != hex.EncodeToString(inputDigest[:]) || receipt.ExchangeSHA256 != hex.EncodeToString(exchangeDigest[:]) || receipt.ResponseDescriptorSHA256 != event.ResponseDescriptorSHA256 || receipt.ResponseRevision != event.ResponseRevision || !reflect.DeepEqual(receipt.Boundaries, boundaries) {
 		t.Fatalf("reader boundary receipt = %#v / %v", receipt, err)
 	}
-	if err := encoder.Encode("stop"); err != nil {
+	if err := encoder.Encode(textReaderControl{Command: "stop"}); err != nil {
 		t.Fatal(err)
 	}
 	_ = stdin.Close()

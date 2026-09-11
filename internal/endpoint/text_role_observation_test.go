@@ -100,6 +100,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 				t.Fatal("receiving Store proof differs")
 			}
 			observeTextIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output, string(carrier))
+			contextEvidence, foreignPermission := observeTextIndependentReaderContexts(t, source, published.Descriptor.Target, registration.descriptor, output)
 			observe("published")
 			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
 				t.Fatal(err)
@@ -134,6 +135,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 			verifyTextRoleDurableStateCapture(t, publisherProcess.output, "startup", "published", "withdrawn", "stopped")
 			allProcesses := append([]*textRoleProcess{publisherProcess}, processes...)
 			writeAndVerifyTextRoleDurableReceipt(t, output, string(carrier), allProcesses)
+			writeAndVerifyTextReaderContextIsolation(t, output, string(carrier), contextEvidence, foreignPermission)
 			t.Logf("15 isolated Node roles and the Publisher durable root captured in one publication/lookup/withdrawal run; incomplete P3")
 		})
 	}
