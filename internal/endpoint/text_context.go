@@ -19,6 +19,7 @@ import (
 type textContextState struct {
 	publicationDraining   bool
 	refreshFailure        func(string)
+	operationFailure      func(string)
 	refresh               *textPublicationRefresh
 	previousRegistration  *textIntroductionRegistration
 	previousUntil         time.Time
@@ -51,6 +52,15 @@ type textContextState struct {
 	closed                bool
 	done                  chan struct{}
 	closeErr              error
+}
+
+func (owner *textContext) reportTextOperationFailure(failure string) {
+	owner.mu.Lock()
+	report := owner.operationFailure
+	owner.mu.Unlock()
+	if report != nil {
+		report(failure)
+	}
 }
 
 // textJobIdentity reserves one invocation through joined cleanup, including

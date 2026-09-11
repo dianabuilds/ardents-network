@@ -47,6 +47,24 @@ func TestTextConnectionRequiresSeparateAuthorityAndExactDestination(t *testing.T
 	}
 }
 
+func TestTextConnectionReportsOnlyFixedOperationCategory(t *testing.T) {
+	endpoint, principal := textContextEndpoint(t)
+	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	reported := make(chan string, 1)
+	owner.mu.Lock()
+	owner.operationFailure = func(failure string) { reported <- failure }
+	owner.mu.Unlock()
+	owner.reportTextOperationFailure("service-result")
+	select {
+	case failure := <-reported:
+		if failure != "service-result" {
+			t.Fatalf("operation failure category = %q", failure)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("operation failure category was not reported")
+	}
+}
+
 func TestTextConnectionJoinsCancelledInstalledStartup(t *testing.T) {
 	for _, ending := range []string{"caller", "context", "owner"} {
 		t.Run(ending, func(t *testing.T) {

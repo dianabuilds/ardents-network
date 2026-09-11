@@ -76,10 +76,12 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	endpoint := owner.context.endpoint
 	capability, err := endpoint.Admit(owner.context.principal, broker.Connection)
 	if err != nil {
+		owner.context.reportTextOperationFailure("admission")
 		return nil, err
 	}
 	lease, _, err := endpoint.admission.Activate(lifetime, capability, owner.context.principal, broker.Connection)
 	if err != nil {
+		owner.context.reportTextOperationFailure("activation")
 		return nil, err
 	}
 	defer func() {
@@ -89,6 +91,7 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	}()
 	worker, err := owner.context.launchTextWorker(lease.Context(), nil)
 	if err != nil {
+		owner.context.reportTextOperationFailure("worker-launch")
 		return nil, err
 	}
 	defer func() {
@@ -98,6 +101,7 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	}()
 	bounded, finish, err := worker.beginOperation(lease.Context(), broker.Connection)
 	if err != nil {
+		owner.context.reportTextOperationFailure("worker-operation")
 		return nil, err
 	}
 	defer func() {
@@ -108,18 +112,21 @@ func (owner *textConnection) Open(ctx context.Context, request connection.Reques
 	until := endpoint.clock().UTC().Add(2 * time.Minute).Unix()
 	attempt, err := owner.context.prepareTextIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
 	if err != nil {
+		owner.context.reportTextOperationFailure("introduction-preparation")
 		return nil, err
 	}
 	service, err := owner.context.openTextJoinedService(bounded, worker.job, attempt)
 	if err != nil {
+		owner.context.reportTextOperationFailure("service-join")
 		return nil, err
 	}
 	if err := lease.Context().Err(); err != nil {
+		owner.context.reportTextOperationFailure("post-join-lifetime")
 		return nil, errors.Join(err, service.Close())
 	}
 	// Open returns only after Service authentication. The fixed request and
 	// confined worker exchange follow local ACCEPT, within this same lifetime.
-	stream := newTextReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller)
+	stream := newTextReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, owner.context.reportTextOperationFailure)
 	transferred = true
 	return stream, nil
 }
@@ -166,7 +173,7 @@ type textReadResult struct {
 	err    error
 }
 
-func newTextReadResult(owner *textConnection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedTextWorker, bounded context.Context, finish func(), service *textServiceStream, joinCaller func()) *textReadResult {
+func newTextReadResult(owner *textConnection, pending chan struct{}, lease *broker.ActiveSession, cancel context.CancelFunc, worker *qualifiedTextWorker, bounded context.Context, finish func(), service *textServiceStream, joinCaller func(), report func(string)) *textReadResult {
 	request, input := io.Pipe()
 	output, response := io.Pipe()
 	result := &textReadResult{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan connection.Outcome, 1)}
@@ -188,6 +195,9 @@ func newTextReadResult(owner *textConnection, pending chan struct{}, lease *brok
 		empty, err := textdocument.NewSnapshot(nil)
 		if err == nil {
 			err = empty.Respond(io.TeeReader(request, &fixed), io.Discard)
+		}
+		if err != nil && lease.Context().Err() == nil && report != nil {
+			report("service-result")
 		}
 		var body []byte
 		if err == nil {

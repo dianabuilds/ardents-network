@@ -87,7 +87,7 @@ func openTextWorkerResultFixture(t *testing.T, ctx context.Context, worker *qual
 	pending := make(chan struct{})
 	owner.pending, owner.cancel = pending, cancel
 	owner.mu.Unlock()
-	stream := newTextReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller)
+	stream := newTextReadResult(owner, pending, lease, cancel, worker, bounded, finish, service, joinCaller, contextOwner.reportTextOperationFailure)
 	transferred = true
 	return stream, nil
 }

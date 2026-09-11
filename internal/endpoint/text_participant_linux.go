@@ -99,6 +99,15 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 			}
 			owner.mu.Unlock()
 		}
+		if role.surface == broker.Connection {
+			owner.mu.Lock()
+			owner.operationFailure = func(failure string) {
+				// The category tells a local operator which trusted boundary failed
+				// without serializing a peer, route, document, or wrapped error.
+				_ = config.Observe(context.Background(), TextParticipantEvent{Kind: "connection-operation-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
+			}
+			owner.mu.Unlock()
+		}
 	}
 	for _, owner := range contexts {
 		owner.mu.Lock()
