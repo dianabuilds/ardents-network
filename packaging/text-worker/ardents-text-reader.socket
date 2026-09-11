@@ -7,7 +7,7 @@ Accept=yes
 SocketUser=ardents-endpoint
 SocketGroup=ardents-endpoint
 SocketMode=0600
-DirectoryMode=0710
+DirectoryMode=0711
 MaxConnections=64
 RemoveOnStop=yes
 
