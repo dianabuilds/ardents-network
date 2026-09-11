@@ -60,7 +60,7 @@ func readInstalledCommandDescriptor(t *testing.T, root string, profile state.Clo
 	return *found
 }
 
-func observeInstalledCommandRefresh(t *testing.T, root string, profile state.ClosedProfileView, first reachability.Verified, commandStarted time.Time) {
+func observeInstalledCommandRefresh(t *testing.T, root string, profile state.ClosedProfileView, first reachability.Verified, commandStarted time.Time, invocation string) {
 	t.Helper()
 	original := first.Descriptor.Private
 	// Thirty seconds is an observation/command-completion allowance, not an
@@ -93,7 +93,7 @@ func observeInstalledCommandRefresh(t *testing.T, root string, profile state.Clo
 			}
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("ordinary Endpoint did not refresh its stored Descriptor; endpoint diagnostic:\n%s", installedCommandRefreshFailure(t))
+			t.Fatalf("ordinary Endpoint did not refresh its stored Descriptor; endpoint diagnostic:\n%s", installedCommandRefreshFailure(t, invocation))
 		}
 		select {
 		case <-tick.C:

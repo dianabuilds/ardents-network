@@ -172,7 +172,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatal("ordinary command document mismatch")
 	}
 	t.Log("completed: initial exact 64 KiB document read")
-	observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted)
+	observeInstalledCommandRefresh(t, resolutionRoot, view.Profile, firstPublication, publicationStarted, invocation)
 	t.Log("completed: observed signed Descriptor refresh and elapsed overlap")
 	if actual := run("read after refresh", destination, "read", path("reader.sock")); !bytes.Equal(actual, body) {
 		t.Fatal("document changed after elapsed refresh")
@@ -277,14 +277,17 @@ func installedCommandTool(t *testing.T, name string, arguments ...string) []byte
 }
 
 // installedCommandRefreshFailure stops only an already failing Endpoint and
-// returns its exact invocation journal. The refresh oracle calls it after its
+// returns that exact invocation's journal. The refresh oracle calls it after its
 // fixed observation window has elapsed, so this diagnostic cannot alter a
 // successful publication, its schedule, or predecessor validity.
-func installedCommandRefreshFailure(t *testing.T) string {
+func installedCommandRefreshFailure(t *testing.T, invocation string) string {
 	t.Helper()
+	if len(invocation) != 32 {
+		t.Fatal("missing exact Endpoint invocation for refresh diagnostic")
+	}
 	installedCommandTool(t, "systemctl", "kill", "--signal=QUIT", "ardents-endpoint.service")
 	time.Sleep(250 * time.Millisecond)
-	return string(installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "-u", "ardents-endpoint.service"))
+	return string(installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+invocation))
 }
 
 func startInstalledCommandEndpoint(t *testing.T, binary, plan string) string {
