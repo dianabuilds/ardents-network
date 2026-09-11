@@ -27,7 +27,7 @@ type textRoleProcess struct {
 	heap    bool
 }
 
-func startTextRoleProcess(t *testing.T, index int, config node.Config, root string) *textRoleProcess {
+func startTextRoleProcess(t *testing.T, index int, config node.Config, root string, testName ...string) *textRoleProcess {
 	t.Helper()
 	facts, err := config.Current()
 	if err != nil {
@@ -79,7 +79,11 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	command := exec.CommandContext(ctx, binary, "-test.run=^TestTextPublicationIsolatedRoleObservations$", "-test.timeout=110s")
+	target := "^TestTextPublicationIsolatedRoleObservations$"
+	if len(testName) == 1 {
+		target = testName[0]
+	}
+	command := exec.CommandContext(ctx, binary, "-test.run="+target, "-test.timeout=110s")
 	command.Env = []string{"PATH=" + os.Getenv("PATH"), "ARDENTS_TEXT_ROLE_CHILD=" + path}
 	stdin, err := command.StdinPipe()
 	if err != nil {

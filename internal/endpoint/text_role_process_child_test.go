@@ -130,7 +130,7 @@ func runTextRoleObservationChild(t *testing.T, path string) {
 			continue
 		}
 		switch phase {
-		case "startup", "published", "withdrawn":
+		case "startup", "published", "data", "withdrawn":
 		default:
 			t.Fatal("invalid capture phase")
 		}

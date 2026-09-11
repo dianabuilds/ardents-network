@@ -77,7 +77,7 @@ func TestCaptureTextRoleDurableStateRejectsRootInsideOutput(t *testing.T) {
 }
 
 func captureTextRoleDurableState(input textRoleProcessInput, inputPath, phase string) error {
-	if phase != "startup" && phase != "published" && phase != "withdrawn" && phase != "stopped" {
+	if phase != "startup" && phase != "published" && phase != "data" && phase != "withdrawn" && phase != "stopped" {
 		return errors.New("invalid durable state phase")
 	}
 	if filepath.Clean(inputPath) != filepath.Join(input.Output, "input.json") {
@@ -328,8 +328,11 @@ func textRoleDurablePath(output, relative string) (string, error) {
 	return path, nil
 }
 
-func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processes []*textRoleProcess) {
+func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processes []*textRoleProcess, phases ...string) {
 	t.Helper()
+	if len(phases) == 0 {
+		phases = []string{"startup", "published", "withdrawn", "stopped"}
+	}
 	receipt := textRoleDurableReceipt{Carrier: carrier}
 	for _, process := range processes {
 		inputPath := filepath.Join(process.output, "input.json")
@@ -343,7 +346,7 @@ func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, 
 		}
 		inputDigest := sha256.Sum256(input)
 		role := textRoleDurableReceiptRole{Path: filepath.Base(process.output), Role: declared.Role, InputSHA256: hex.EncodeToString(inputDigest[:])}
-		for _, phase := range []string{"startup", "published", "withdrawn", "stopped"} {
+		for _, phase := range phases {
 			path := filepath.Join(process.output, phase+".durable.json")
 			raw, err := os.ReadFile(path)
 			if err != nil {
@@ -365,8 +368,8 @@ func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, 
 		}
 		receipt.Roles = append(receipt.Roles, role)
 	}
-	if len(receipt.Roles) != 16 {
-		t.Fatalf("durable receipt roles = %d, want 16", len(receipt.Roles))
+	if len(receipt.Roles) != len(processes) {
+		t.Fatalf("durable receipt roles = %d, want %d", len(receipt.Roles), len(processes))
 	}
 	encoded, err := json.Marshal(receipt)
 	if err != nil {
@@ -376,11 +379,14 @@ func writeAndVerifyTextRoleDurableReceipt(t *testing.T, output, carrier string, 
 	if err := writeTextRoleDurableFile(path, encoded); err != nil {
 		t.Fatal(err)
 	}
-	verifyTextRoleDurableReceipt(t, output, carrier, processes)
+	verifyTextRoleDurableReceipt(t, output, carrier, processes, phases...)
 }
 
-func verifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processes []*textRoleProcess) {
+func verifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processes []*textRoleProcess, phases ...string) {
 	t.Helper()
+	if len(phases) == 0 {
+		phases = []string{"startup", "published", "withdrawn", "stopped"}
+	}
 	raw, err := os.ReadFile(filepath.Join(output, "durable-receipt.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -394,12 +400,12 @@ func verifyTextRoleDurableReceipt(t *testing.T, output, carrier string, processe
 	}
 	seen := make(map[string]bool, len(receipt.Roles))
 	for _, role := range receipt.Roles {
-		if seen[role.Path] || role.Role == "" || len(role.Phases) != 4 {
+		if seen[role.Path] || role.Role == "" || len(role.Phases) != len(phases) {
 			t.Fatalf("invalid durable receipt role %#v", role)
 		}
 		seen[role.Path] = true
-		for _, phase := range role.Phases {
-			if len(phase.Roots) == 0 || filepath.Base(phase.Manifest) != phase.Phase+".durable.json" {
+		for index, phase := range role.Phases {
+			if phase.Phase != phases[index] || len(phase.Roots) == 0 || filepath.Base(phase.Manifest) != phase.Phase+".durable.json" {
 				t.Fatalf("invalid durable receipt phase %#v", phase)
 			}
 			path, err := textRoleDurablePath(output, filepath.FromSlash(phase.Manifest))
