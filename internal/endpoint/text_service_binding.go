@@ -94,6 +94,23 @@ func (owner *textContext) bindTextServiceLocked(job *textJobIdentity, current pu
 		facts.WorkSafetyMaximum > verified.Credential.NotAfter || facts.WorkSafetyMaximum > profile.NotAfter.Unix() {
 		return nil, &textIntroductionRefusal{cause: errors.New("text Service publication or authority bounds unavailable")}
 	}
+	if owner.surface == broker.Administration {
+		if owner.endpoint.publications == nil {
+			return nil, errors.New("text Service Publisher publication unavailable")
+		}
+		lease, err := owner.endpoint.publications.AcquireAt(job.context, now)
+		if err != nil {
+			return nil, errors.New("text Service Publisher publication unavailable")
+		}
+		published := lease.Current()
+		closeErr := lease.Close()
+		if closeErr != nil {
+			return nil, errors.Join(errors.New("text Service Publisher publication unavailable"), closeErr)
+		}
+		if published.Credential != verified.Credential || published.Digest != verified.Digest {
+			return nil, &textIntroductionRefusal{cause: errors.New("text Service Publisher publication differs")}
+		}
+	}
 	if deadline, ok := job.context.Deadline(); ok && time.Unix(facts.WorkSafetyMaximum, 0).After(deadline) {
 		return nil, &textIntroductionRefusal{cause: errors.New("text Service bounds exceed local job authority")}
 	}

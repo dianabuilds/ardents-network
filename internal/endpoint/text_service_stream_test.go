@@ -188,6 +188,18 @@ func TestTextServiceRejectsForeignTupleAndExpiredLocalJob(t *testing.T) {
 	}
 }
 
+// A syntactically and cryptographically valid Publication from another
+// Endpoint must still not become this Publisher's Service binding. Mutating a
+// byte is weaker: the foreign tuple below has its own valid Instance, Target,
+// publication record and matching protected context.
+func TestTextServicePublisherRefusesIndependentValidPublicationTuple(t *testing.T) {
+	_, publisher, _ := textServiceFixture(t)
+	foreignReader, _, foreignCurrent := textServiceFixture(t)
+	if binding, err := publisher.owner.acceptTextServiceBinding(publisher.job, foreignCurrent, foreignReader.facts); err == nil || binding != nil {
+		t.Fatal("Publisher accepted another Endpoint's valid Instance and Target")
+	}
+}
+
 func TestTextServiceFreshCommitmentDoesNotExposeLocalJob(t *testing.T) {
 	client, _, current := textServiceFixture(t)
 	other, err := client.owner.newTextServiceBinding(client.job,
