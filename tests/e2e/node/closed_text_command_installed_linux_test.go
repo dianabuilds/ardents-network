@@ -164,7 +164,8 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		defer cancel()
 		output, diagnostic, err := installedCommandExecAs(ctx, input, uid, gid, "bash", append([]string{"-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary}, args...)...)
 		if err != nil {
-			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s", stage, args[0], err, diagnostic)
+			journal := installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+invocation)
+			t.Fatalf("ordinary text stage %s (%s) failed: %v / %s\nEndpoint journal:\n%s", stage, args[0], err, diagnostic, journal)
 		}
 		return output
 	}
