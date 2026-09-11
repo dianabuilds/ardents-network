@@ -26,6 +26,7 @@ func closedProvisioningState(t *testing.T, network, issuer [32]byte, authority, 
 func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string, count int) (state.Config, state.Snapshot, []Record, string, []string) {
 	t.Helper()
 	records := make([]Record, count)
+	addresses := make(map[string]struct{}, count)
 	for index := range records {
 		key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{byte(6 + index)}, ed25519.SeedSize))
 		if index == 1 {
@@ -38,9 +39,17 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 		if index >= 2 {
 			node = [32]byte{byte(index + 1)}
 		}
+		address := closedProvisioningAddress(t, carrier)
+		for {
+			if _, exists := addresses[address]; !exists {
+				addresses[address] = struct{}{}
+				break
+			}
+			address = closedProvisioningAddress(t, carrier)
+		}
 		record, err := BuildRecord(RecordSpec{NetworkID: network, NodeID: node, Generation: uint64(index + 1),
 			ValidFrom: now, ValidUntil: now.Add(2 * time.Hour), Family: fmt.Sprintf("closed-node-%d", index+1),
-			Endpoint: closedProvisioningAddress(t, carrier), Carrier: carrier,
+			Endpoint: address, Carrier: carrier,
 			Capability: 2, Capacity: 4, PrivateKey: key})
 		if err != nil {
 			t.Fatal(err)

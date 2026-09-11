@@ -118,6 +118,7 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 			t.Fatal(err)
 		}
 	}
+	assertInstalledCommandEqualSourceFamiliesRefuse(t, binary, plan, plan["network_source_plan"].(string), path("equal-family-runtime.json"), uid, gid)
 	t.Log("completed: Service Instance acquired through commands and Endpoint inputs prepared")
 	invocation := startInstalledCommandEndpoint(t, binary, planPath)
 	for _, role := range []string{"reader", "publisher"} {
@@ -200,6 +201,68 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 		t.Fatalf("withdrawal retained worker units: %s", workers)
 	}
 	t.Log("completed: withdrawal, exact Link refusal, same live Endpoint, and no retained workers")
+}
+
+// Equal Source families are forbidden before State opens or either configured
+// Source can be dialled. This runs the ordinary Endpoint command under its
+// unprivileged account against the same prepared State/time/provisioning chain
+// as the successful command journey; it does not substitute a direct fixture.
+func assertInstalledCommandEqualSourceFamiliesRefuse(t *testing.T, binary string, runtime map[string]any, sourcePath, badRuntime string, uid, gid int) {
+	t.Helper()
+	raw, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sourcePlan map[string]any
+	if err := json.Unmarshal(raw, &sourcePlan); err != nil {
+		t.Fatalf("decode prepared Source plan: %v", err)
+	}
+	sources, ok := sourcePlan["sources"].([]any)
+	if !ok || len(sources) != 2 {
+		t.Fatal("prepared Source plan has no exact Source pair")
+	}
+	firstSource, firstOK := sources[0].(map[string]any)
+	secondSource, secondOK := sources[1].(map[string]any)
+	if !firstOK || !secondOK {
+		t.Fatal("prepared Source plan entries are invalid")
+	}
+	first, second := firstSource["family"], secondSource["family"]
+	if first == nil || second == nil || first == second {
+		t.Fatal("prepared Source plan did not retain two distinct permitted families")
+	}
+	secondSource["family"] = first
+	badSource, err := json.Marshal(sourcePlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	badSourcePath := filepath.Join(filepath.Dir(sourcePath), "equal-family-sources.json")
+	if err := os.WriteFile(badSourcePath, badSource, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(badSourcePath, uid, gid); err != nil {
+		t.Fatal(err)
+	}
+	badPlan := make(map[string]any, len(runtime))
+	for name, value := range runtime {
+		badPlan[name] = value
+	}
+	badPlan["network_source_plan"] = badSourcePath
+	raw, err = json.Marshal(badPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(badRuntime, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(badRuntime, uid, gid); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	output, diagnostic, commandErr := installedCommandExecAs(ctx, nil, uid, gid, "bash", "-o", "pipefail", "-c", `cat | "$@" | cat`, "endpoint-source-plan", binary, "endpoint", "headless", badRuntime)
+	if commandErr == nil || len(output) != 0 || !strings.Contains(string(diagnostic), "source identities, families, handles, addresses, and keys must be distinct") {
+		t.Fatalf("equal Source families reached ordinary Endpoint work: output=%q diagnostic=%q err=%v", output, diagnostic, commandErr)
+	}
 }
 
 func installedCommandTool(t *testing.T, name string, arguments ...string) []byte {
