@@ -18,6 +18,7 @@ import (
 // verified launch boundary may give a worker a Principal and Grant.
 type textContextState struct {
 	publicationDraining   bool
+	refreshFailure        func(string)
 	refresh               *textPublicationRefresh
 	previousRegistration  *textIntroductionRegistration
 	previousUntil         time.Time

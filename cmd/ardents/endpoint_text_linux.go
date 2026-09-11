@@ -104,8 +104,9 @@ func writeHeadlessTextEvent(ctx context.Context, output headlessTextEventOutput,
 		Kind                 string `json:"kind"`
 		NetworkID            string `json:"network_id"`
 		Surface              string `json:"surface,omitempty"`
+		Failure              string `json:"failure,omitempty"`
 		RequestDigest        string `json:"request_digest,omitempty"`
 		ApplicationSocket    string `json:"application_socket,omitempty"`
 		AdministrationSocket string `json:"administration_socket,omitempty"`
-	}{Kind: "headless-runtime-" + event.Kind, NetworkID: hex.EncodeToString(event.NetworkID[:]), Surface: event.Surface, RequestDigest: digest, ApplicationSocket: event.ApplicationAddress, AdministrationSocket: event.AdministrationAddress})
+	}{Kind: "headless-runtime-" + event.Kind, NetworkID: hex.EncodeToString(event.NetworkID[:]), Surface: event.Surface, Failure: event.Failure, RequestDigest: digest, ApplicationSocket: event.ApplicationAddress, AdministrationSocket: event.AdministrationAddress})
 }

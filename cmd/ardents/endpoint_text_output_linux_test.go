@@ -3,7 +3,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"syscall"
@@ -12,6 +14,25 @@ import (
 
 	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 )
+
+func TestHeadlessTextRefreshFailureEventExposesOnlyFixedCategory(t *testing.T) {
+	output := &headlessTextBufferedOutput{}
+	event := endpointapi.TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: [32]byte{1}, Failure: "rotation"}
+	if err := writeHeadlessTextEvent(t.Context(), output, event); err != nil {
+		t.Fatal(err)
+	}
+	var observed struct {
+		Kind    string `json:"kind"`
+		Failure string `json:"failure"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &observed); err != nil || observed.Kind != "headless-runtime-publication-refresh-failed" || observed.Failure != "rotation" {
+		t.Fatalf("refresh event = %#v / %v", observed, err)
+	}
+}
+
+type headlessTextBufferedOutput struct{ bytes.Buffer }
+
+func (output *headlessTextBufferedOutput) SetWriteDeadline(time.Time) error { return nil }
 
 func TestHeadlessTextEventCancellationJoinsBlockedPipe(t *testing.T) {
 	testHeadlessTextCancellation(t, false)

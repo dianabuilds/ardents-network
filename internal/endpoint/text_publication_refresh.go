@@ -89,7 +89,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 			return
 		}
 		if !now.Before(expiry) {
-			owner.failTextRefresh(flight, errors.New("text publication registration expired"))
+			owner.failTextRefresh(flight, "registration-expired", errors.New("text publication registration expired"))
 			return
 		}
 		if previous != nil && !now.Before(until) {
@@ -102,7 +102,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 			}
 			owner.mu.Unlock()
 			if err != nil {
-				owner.failTextRefresh(flight, errors.Join(route.ErrClosedSourceCleanup, err))
+				owner.failTextRefresh(flight, "predecessor-retirement", errors.Join(route.ErrClosedSourceCleanup, err))
 				return
 			}
 			continue
@@ -110,7 +110,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		if !now.Before(refreshAt) {
 			if err := owner.rotateTextPublication(flight, registered); err != nil {
 				if flight.context.Err() == nil {
-					owner.failTextRefresh(flight, err)
+					owner.failTextRefresh(flight, "rotation", err)
 				}
 				return
 			}
@@ -131,7 +131,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		case <-registered.channel.Done():
 			timer.Stop()
 			if flight.context.Err() == nil {
-				owner.failTextRefresh(flight, errors.New("text publication registration ended"))
+				owner.failTextRefresh(flight, "registration-ended", errors.New("text publication registration ended"))
 			}
 			return
 		case <-flight.wake:
@@ -177,16 +177,19 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 
 // Failed refresh removes accepting registration readiness. It does not grant
 // a fallback to an older revision or erase a failed transport cleanup outcome.
-func (owner *textContext) failTextRefresh(flight *textPublicationRefresh, cause error) {
+func (owner *textContext) failTextRefresh(flight *textPublicationRefresh, failure string, cause error) {
 	owner.mu.Lock()
 	if owner.refresh != flight {
 		owner.mu.Unlock()
 		return
 	}
-	current, previous := owner.registration, owner.previousRegistration
+	current, previous, report := owner.registration, owner.previousRegistration, owner.refreshFailure
 	owner.registration, owner.previousRegistration = nil, nil
 	owner.signalTextRegistrationsLocked()
 	owner.mu.Unlock()
+	if report != nil {
+		report(failure)
+	}
 	var cleanup error
 	if errors.Is(cause, route.ErrClosedSourceCleanup) {
 		cleanup = cause

@@ -40,6 +40,7 @@ type TextParticipantEvent struct {
 	Kind                                      string
 	NetworkID                                 [32]byte
 	Surface                                   string
+	Failure                                   string
 	RequestDigest                             [32]byte
 	ApplicationAddress, AdministrationAddress string
 }

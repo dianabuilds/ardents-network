@@ -284,9 +284,19 @@ func TestTextRefreshRetainsOriginalCleanupFailure(t *testing.T) {
 	flight := &textPublicationRefresh{context: ctx, cancel: cancel, done: make(chan struct{}), wake: make(chan struct{}, 1)}
 	owner.mu.Lock()
 	owner.refresh = flight
+	reported := make(chan string, 1)
+	owner.refreshFailure = func(failure string) { reported <- failure }
 	owner.mu.Unlock()
 	failed := errors.New("predecessor cleanup did not join")
-	owner.failTextRefresh(flight, errors.Join(route.ErrClosedSourceCleanup, failed))
+	owner.failTextRefresh(flight, "predecessor-retirement", errors.Join(route.ErrClosedSourceCleanup, failed))
+	select {
+	case failure := <-reported:
+		if failure != "predecessor-retirement" {
+			t.Fatalf("refresh failure category = %q", failure)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("refresh failure did not report its fixed category")
+	}
 	close(flight.done)
 	if _, err := owner.beginJob(endpoint, broker.Administration); err == nil {
 		// Avoid leaving an unfinished fixture job behind on the failing version.
