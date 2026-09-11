@@ -16,6 +16,15 @@ case "${1-lifecycle}" in
         printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
             fail 'invalid environment: hostile artifact differs from declared candidate'
         ;;
+    escape)
+        test_root=TestInstalledTextWorkerEscapeMatrix
+        worker=/usr/lib/ardents/text-worker-root/ardents-text
+        [ -n "${ARDENTS_TEXT_ESCAPE_WORKER_SHA256-}" ] || fail 'escape worker independent digest required'
+        [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
+            fail 'invalid environment: pinned escape artifact required'
+        printf '%s  %s\n' "$ARDENTS_TEXT_ESCAPE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
+            fail 'invalid environment: escape artifact differs from declared candidate'
+        ;;
     *) fail 'unknown installed text-worker profile' ;;
 esac
 for program in systemctl journalctl sha256sum stat uname sleep grep; do

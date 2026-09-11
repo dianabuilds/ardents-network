@@ -111,6 +111,11 @@
       "path": "tests/qualification/text-worker-tree"
     },
     {
+      "id": "text-worker-escape",
+      "owner": "network",
+      "path": "tests/qualification/text-worker-escape"
+    },
+    {
       "id": "text-worker-lifecycle",
       "owner": "network",
       "path": "tests/qualification/text-worker-lifecycle"

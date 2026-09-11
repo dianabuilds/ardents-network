@@ -9,15 +9,23 @@
       "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "exact ordinary worker artifacts and canonical manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledTextWorkersReadTargetThroughJoinedNetwork; fifteen-minute test deadline and RuntimeMaxSec=960s; eight exact document/Carrier and elapsed-refresh cases"],
       "invalid_environment": "the dedicated installed network qualification environment is unavailable"
     },
-    {
-      "id": "text-worker-tree",
+      {
+        "id": "text-worker-tree",
       "state": "active",
       "make_target": "text-worker-tree-check",
       "surface": "root-pinned hostile worker child/grandchild cleanup and sibling snapshot progress; not full host qualification",
       "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "separately built text_worker_hostile artifact and exact root manifest", "independent hostile executable, Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint test service selecting TestInstalledTextWorkerHostileTree"],
-      "invalid_environment": "the dedicated hostile installed worker qualification environment is unavailable"
-    },
-    {
+        "invalid_environment": "the dedicated hostile installed worker qualification environment is unavailable"
+      },
+      {
+        "id": "text-worker-escape",
+        "state": "active",
+        "make_target": "text-worker-escape-check",
+        "surface": "installed reader/publisher P6/P7 host-access and privilege-escape matrix; not whole-host qualification",
+        "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "separately built text_worker_escape artifact and canonical root manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint test service selecting TestInstalledTextWorkerEscapeMatrix"],
+        "invalid_environment": "the dedicated installed escape-matrix qualification environment is unavailable"
+      },
+      {
       "id": "text-worker-lifecycle",
       "state": "active",
       "make_target": "text-worker-lifecycle-check",

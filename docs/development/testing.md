@@ -190,6 +190,9 @@ The maintained local profiles are:
   cgroup profile invoked by `make text-worker-lifecycle-check`; its tagged test binary
   and exact temporary unit must be independently pinned. No-tests success is
   refused; this profile does not replace hostile-worker or Service journey tests.
+- `text-worker-escape`, the separately pinned installed P6/P7 escape matrix invoked
+  by `make text-worker-escape-check`; it tests hostile worker access attempts under
+  the effective selected unit policy and does not establish whole-host qualification.
 
 Profile, target, directory, build-tag, environment-variable, and test names use
 domain language. Historical wire, persisted, release, and artifact identities

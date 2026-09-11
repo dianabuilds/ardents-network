@@ -220,6 +220,16 @@ artifact and from complete abrupt-crash, escape and P6/P7 qualification.
 It also observes parent exit on attachment EOF and manager-owned descendant
 cleanup before invoking Endpoint Close for the remaining local job teardown.
 
+The separately pinned [escape-matrix profile](../../tests/qualification/text-worker-escape/README.md)
+uses a different root-installed worker artifact to attempt host TCP/UDP, DNS,
+file and Unix-IPC access, namespace creation and uid escalation before the
+ordinary worker handshake. The Endpoint driver owns the host sentinels and
+listeners, so both a successful handshake and no observed contact are required
+for each role. Effective syscall-filter inspection retains the `bpf` denial:
+the denied syscall itself may terminate a worker and therefore cannot be a
+reliable in-process pass receipt. This remains bounded installed P6/P7 evidence,
+not a claim of whole-host or general Application confinement.
+
 The local context owns a reservation from the start of worker launch through
 joined cleanup, even if cancellation precedes readiness. Endpoint shutdown
 revokes every retained context before waiting for any one worker. Pending
