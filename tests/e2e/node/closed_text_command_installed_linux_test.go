@@ -213,6 +213,17 @@ func installedCommandTool(t *testing.T, name string, arguments ...string) []byte
 	return output
 }
 
+// installedCommandRefreshFailure stops only an already failing Endpoint and
+// returns its exact invocation journal. The refresh oracle calls it after its
+// fixed observation window has elapsed, so this diagnostic cannot alter a
+// successful publication, its schedule, or predecessor validity.
+func installedCommandRefreshFailure(t *testing.T) string {
+	t.Helper()
+	installedCommandTool(t, "systemctl", "kill", "--signal=QUIT", "ardents-endpoint.service")
+	time.Sleep(250 * time.Millisecond)
+	return string(installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "-u", "ardents-endpoint.service"))
+}
+
 func startInstalledCommandEndpoint(t *testing.T, binary, plan string) string {
 	t.Helper()
 	if strings.TrimSpace(string(installedCommandTool(t, "systemctl", "show", "ardents-endpoint.service", "-p", "ActiveState", "--value"))) != "inactive" {

@@ -93,7 +93,7 @@ func observeInstalledCommandRefresh(t *testing.T, root string, profile state.Clo
 			}
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("ordinary Endpoint did not refresh its stored Descriptor")
+			t.Fatalf("ordinary Endpoint did not refresh its stored Descriptor; endpoint diagnostic:\n%s", installedCommandRefreshFailure(t))
 		}
 		select {
 		case <-tick.C:
