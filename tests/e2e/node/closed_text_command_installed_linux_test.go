@@ -31,15 +31,26 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 	}
 	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
 		t.Run(carrier, func(t *testing.T) {
-			authority := createClosedCommandAuthority(t, [32]byte{1})
-			testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
-				runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan)
-			})
+			for _, document := range []struct {
+				name string
+				body []byte
+			}{
+				{name: "empty", body: nil},
+				{name: "64KiB", body: bytes.Repeat([]byte("x"), 64<<10)},
+				{name: "4MiB", body: bytes.Repeat([]byte("x"), 4<<20)},
+			} {
+				t.Run(document.name, func(t *testing.T) {
+					authority := createClosedCommandAuthority(t, [32]byte{1})
+					testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
+						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body)
+					})
+				})
+			}
 		})
 	}
 }
 
-func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any) {
+func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary, resolutionRoot string, authority closedCommandAuthority, sourcePlan map[string]any, body []byte) {
 	t.Helper()
 	account, err := user.Lookup("ardents-endpoint")
 	if err != nil {
@@ -137,7 +148,6 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	}
 	waitInstalledCommandSockets(t, invocation, path("reader.sock"), path("publisher.sock"))
 	t.Log("completed: ordinary Endpoint started with separately issued reader/publisher permissions")
-	body := bytes.Repeat([]byte("x"), 64<<10)
 	document := path("document.txt")
 	if err := os.WriteFile(document, body, 0600); err != nil {
 		t.Fatal(err)
