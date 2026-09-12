@@ -24,6 +24,7 @@ const (
 	escapeProbeTCP4 = "127.0.0.1:45561"
 	escapeProbeTCP6 = "[::1]:45562"
 	escapeProbeUDP4 = "127.0.0.1:45563"
+	escapeProbeDNS  = "127.0.0.1:45564"
 )
 
 // TestMain exists only in a separately pinned hostile qualification artifact.
@@ -111,7 +112,10 @@ func requireEscapeRefusals() error {
 		return err
 	}
 	if err := refuse("DNS", func() error {
-		_, err := net.DefaultResolver.LookupHost(context.Background(), "ardents-worker-escape.invalid")
+		resolver := &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "udp4", escapeProbeDNS)
+		}}
+		_, err := resolver.LookupHost(context.Background(), "ardents-worker-escape.invalid")
 		return err
 	}); err != nil {
 		return err

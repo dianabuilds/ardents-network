@@ -19,6 +19,8 @@ const (
 	installedEscapeProbeTCP4 = "127.0.0.1:45561"
 	installedEscapeProbeTCP6 = "[::1]:45562"
 	installedEscapeProbeUDP4 = "127.0.0.1:45563"
+	installedEscapeProbeDNS  = "127.0.0.1:45564"
+	escapeDNSControl         = "ardents-text-worker-escape-dns-control"
 )
 
 // TestInstalledTextWorkerEscapeMatrix uses a separately pinned adversarial
@@ -76,11 +78,14 @@ func TestInstalledTextWorkerEscapeMatrix(t *testing.T) {
 }
 
 type installedEscapeProbes struct {
-	tcp4 *net.TCPListener
-	tcp6 *net.TCPListener
-	udp4 *net.UDPConn
-	ipc  *net.UnixListener
-	seen chan string
+	tcp4    *net.TCPListener
+	tcp6    *net.TCPListener
+	udp4    *net.UDPConn
+	dns     *net.UDPConn
+	ipc     *net.UnixListener
+	seen    chan string
+	done    chan struct{}
+	control chan string
 }
 
 func startInstalledEscapeProbes(t *testing.T) *installedEscapeProbes {
@@ -115,16 +120,27 @@ func startInstalledEscapeProbes(t *testing.T) *installedEscapeProbes {
 		_ = ipc.Close()
 		t.Fatal(err)
 	}
-	probes := &installedEscapeProbes{tcp4: tcp4, tcp6: tcp6, udp4: udp4, ipc: ipc, seen: make(chan string, 4)}
+	dns, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 45564})
+	if err != nil {
+		_ = udp4.Close()
+		_ = tcp6.Close()
+		_ = tcp4.Close()
+		_ = ipc.Close()
+		t.Fatal(err)
+	}
+	probes := &installedEscapeProbes{tcp4: tcp4, tcp6: tcp6, udp4: udp4, dns: dns, ipc: ipc, seen: make(chan string, 5), done: make(chan struct{}, 5), control: make(chan string, 1)}
 	probes.watchTCP("IPv4 TCP", tcp4)
 	probes.watchTCP("IPv6 TCP", tcp6)
 	probes.watchIPC(ipc)
 	probes.watchUDP(udp4)
+	probes.watchDNS(dns)
+	probes.requireDNSControl(t)
 	return probes
 }
 
 func (probes *installedEscapeProbes) watchTCP(name string, listener *net.TCPListener) {
 	go func() {
+		defer func() { probes.done <- struct{}{} }()
 		if connection, err := listener.AcceptTCP(); err == nil {
 			_ = connection.Close()
 			probes.seen <- name
@@ -134,6 +150,7 @@ func (probes *installedEscapeProbes) watchTCP(name string, listener *net.TCPList
 
 func (probes *installedEscapeProbes) watchIPC(listener *net.UnixListener) {
 	go func() {
+		defer func() { probes.done <- struct{}{} }()
 		if connection, err := listener.AcceptUnix(); err == nil {
 			_ = connection.Close()
 			probes.seen <- "host IPC"
@@ -143,11 +160,51 @@ func (probes *installedEscapeProbes) watchIPC(listener *net.UnixListener) {
 
 func (probes *installedEscapeProbes) watchUDP(listener *net.UDPConn) {
 	go func() {
+		defer func() { probes.done <- struct{}{} }()
 		buffer := make([]byte, 128)
 		if count, _, err := listener.ReadFromUDP(buffer); err == nil && string(buffer[:count]) == "ardents-text-worker-escape-probe" {
 			probes.seen <- "IPv4 UDP"
 		}
 	}()
+}
+
+func (probes *installedEscapeProbes) watchDNS(listener *net.UDPConn) {
+	go func() {
+		defer func() { probes.done <- struct{}{} }()
+		buffer := make([]byte, 512)
+		for {
+			count, _, err := listener.ReadFromUDP(buffer)
+			if err != nil {
+				return
+			}
+			if string(buffer[:count]) == escapeDNSControl {
+				probes.control <- "DNS"
+				continue
+			}
+			probes.seen <- "DNS"
+			return
+		}
+	}()
+}
+
+func (probes *installedEscapeProbes) requireDNSControl(t *testing.T) {
+	t.Helper()
+	connection, err := net.DialTimeout("udp4", installedEscapeProbeDNS, 500*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	if _, err := connection.Write([]byte(escapeDNSControl)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case name := <-probes.control:
+		if name != "DNS" {
+			t.Fatalf("DNS positive control = %q", name)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("DNS positive control was not observed")
+	}
 }
 
 func (probes *installedEscapeProbes) requireNoContact(t *testing.T) {
@@ -161,9 +218,16 @@ func (probes *installedEscapeProbes) requireNoContact(t *testing.T) {
 
 func (probes *installedEscapeProbes) close(t *testing.T) {
 	t.Helper()
-	for _, closer := range []interface{ Close() error }{probes.tcp4, probes.tcp6, probes.udp4, probes.ipc} {
+	for _, closer := range []interface{ Close() error }{probes.tcp4, probes.tcp6, probes.udp4, probes.dns, probes.ipc} {
 		if err := closer.Close(); err != nil && !errorsIsClosedNetwork(err) {
 			t.Errorf("close escape probe: %v", err)
+		}
+	}
+	for range 5 {
+		select {
+		case <-probes.done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("escape probe watcher did not stop after listener close")
 		}
 	}
 	probes.requireNoContact(t)
