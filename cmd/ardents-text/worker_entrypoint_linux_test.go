@@ -102,7 +102,7 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 				t.Fatalf("valid inherited attachment refused: %v; worker diagnostic: %q", err, ready[:received])
 			}
 			if string(ready[:8]) != "ARDTWR01" || !bytes.Equal(ready[8:40], header[9:41]) || !bytes.Equal(ready[40:], digest[:]) {
-				t.Fatal("invalid readiness binding")
+				t.Fatalf("invalid readiness binding: %q", ready)
 			}
 			if err := command.Process.Signal(syscall.SIGTERM); err != nil {
 				t.Fatal(err)
