@@ -140,6 +140,14 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 					case <-flight.context.Done():
 						timer.Stop()
 						return
+					case <-registered.channel.Done():
+						timer.Stop()
+						if flight.context.Err() == nil {
+							owner.failTextRefresh(flight, "registration-ended-"+string(registered.channel.EndReason()), errors.New("text publication registration ended"))
+						}
+						return
+					case <-flight.wake:
+						timer.Stop()
 					case <-timer.C:
 					}
 					continue
