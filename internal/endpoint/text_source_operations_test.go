@@ -4,10 +4,22 @@ package endpoint
 
 import (
 	"context"
+	"errors"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"testing"
 	"time"
 )
+
+func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
+	cause := errors.New("opening issuance refused")
+	failure := textSourcePreparationFailureAt("issuance", cause)
+	if got := textSourcePreparationFailureStage(failure); got != "issuance" {
+		t.Fatalf("source preparation stage = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("source preparation failure lost its cause")
+	}
+}
 
 func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {

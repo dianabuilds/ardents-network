@@ -26,12 +26,12 @@ func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flig
 	profile, _, err := owner.textPermissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.prefix == nil || flight != nil && (owner.resolution != flight || owner.prefix != flight.prefix) || owner.permission == nil {
 		owner.mu.Unlock()
-		return errors.New("text Source reopen stock unavailable")
+		return textSourcePreparationFailureAt("stock", errors.New("text Source reopen stock unavailable"))
 	}
 	selection, err := owner.selectTextBootstrapLocked()
 	if err != nil {
 		owner.mu.Unlock()
-		return err
+		return textSourcePreparationFailureAt("selection", err)
 	}
 	var missing [][32]byte
 	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
@@ -48,7 +48,9 @@ func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flig
 	}
 	owner.mu.Unlock()
 	if len(missing) != 0 {
-		return owner.issueTextTokensForOpening(ctx, missing, 2, nil, false)
+		if err := owner.issueTextTokensForOpening(ctx, missing, 2, nil, false); err != nil {
+			return textSourcePreparationFailureAt("issuance", err)
+		}
 	}
 	return nil
 }
