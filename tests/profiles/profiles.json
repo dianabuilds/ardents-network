@@ -9,6 +9,14 @@
       "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "exact ordinary worker artifacts and canonical manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledTextWorkersReadTargetThroughJoinedNetwork; fifteen-minute test deadline and RuntimeMaxSec=960s; eight exact document/Carrier and elapsed-refresh cases"],
       "invalid_environment": "the dedicated installed network qualification environment is unavailable"
     },
+    {
+      "id": "text-command-network",
+      "state": "active",
+      "make_target": "text-command-network-check",
+      "surface": "installed ordinary command journey through both protected Carriers",
+      "prerequisites": ["dedicated Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "root-owned candidate commands, worker, E2E binary and temporary unit with independent SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledClosedTextCommandsThroughNodeProcesses"],
+      "invalid_environment": "the dedicated installed command-journey environment is unavailable"
+    },
       {
         "id": "text-worker-tree",
       "state": "active",

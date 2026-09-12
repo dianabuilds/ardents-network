@@ -106,6 +106,11 @@
       "path": "tests/qualification/text-worker-network"
     },
     {
+      "id": "text-command-network",
+      "owner": "network",
+      "path": "tests/qualification/text-command-network"
+    },
+    {
       "id": "text-worker-tree",
       "owner": "network",
       "path": "tests/qualification/text-worker-tree"

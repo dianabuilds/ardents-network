@@ -184,6 +184,11 @@ The maintained local profiles are:
   by `make text-worker-network-check`; requires all eight document/Carrier and elapsed-refresh cases,
   exact invocation evidence and terminal service success. State and authority setup
   remain explicit fixtures; ordinary command and full host qualification are separate.
+- `text-command-network`, the separately pinned installed ordinary-command journey
+  invoked by `make text-command-network-check`; it exercises the real `ardents`,
+  `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
+  both Carriers, with exact empty, 64 KiB and 4 MiB command cases. It is functional
+  journey evidence, not full host, privacy, hostile-network or p95 qualification.
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.
 - `text-worker-lifecycle`, the separately selected installed Endpoint launch/Grant/
