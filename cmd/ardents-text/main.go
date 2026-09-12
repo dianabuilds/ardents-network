@@ -19,6 +19,9 @@ import (
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
+		if os.Getenv("ARDENTS_TEXT_WORKER_TEST_DIAGNOSTIC") == "1" {
+			fmt.Fprintln(os.Stdout, err)
+		}
 		// Ordinary diagnostics never include document, destination or worker input.
 		fmt.Fprintln(os.Stderr, textFailure(err))
 		os.Exit(2)

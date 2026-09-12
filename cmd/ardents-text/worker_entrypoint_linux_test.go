@@ -57,6 +57,7 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 			defer cancel()
 			command := exec.CommandContext(ctx, binaryPath, "worker-publisher")
 			command.Stdin, command.Stdout, command.Stderr = child, child, null
+			command.Env = append(os.Environ(), "ARDENTS_TEXT_WORKER_TEST_DIAGNOSTIC=1")
 			if extra {
 				command.ExtraFiles = []*os.File{null}
 			}
@@ -97,8 +98,8 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 				t.Fatal(err)
 			}
 			var ready [72]byte
-			if _, err := io.ReadFull(peer, ready[:]); err != nil {
-				t.Fatalf("valid inherited attachment refused: %v", err)
+			if received, err := io.ReadFull(peer, ready[:]); err != nil {
+				t.Fatalf("valid inherited attachment refused: %v; worker diagnostic: %q", err, ready[:received])
 			}
 			if string(ready[:8]) != "ARDTWR01" || !bytes.Equal(ready[8:40], header[9:41]) || !bytes.Equal(ready[40:], digest[:]) {
 				t.Fatal("invalid readiness binding")
