@@ -63,8 +63,9 @@ func verifyWorkerDescriptors() error {
 	if !stderrOK || !nullOK || stderrStat.Rdev != nullStat.Rdev {
 		return errors.New("text worker diagnostics attachment is invalid")
 	}
-	// os.Open initializes Go's epoll/eventfd descriptors before ReadDir. Use
-	// directory syscalls here to observe only descriptors inherited at entry.
+	// Go's runtime may initialize epoll/eventfd descriptors before ReadDir.
+	// FD_CLOEXEC distinguishes those post-exec descriptors from authority that
+	// actually survived into this executable.
 	directory, err := syscall.Open("/proc/self/fd", syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return errors.New("text worker descriptor inventory is unavailable")
@@ -82,11 +83,29 @@ func verifyWorkerDescriptors() error {
 		_, _, entries := syscall.ParseDirent(buffer[:n], -1, nil)
 		for _, entry := range entries {
 			fd, err := strconv.Atoi(entry)
-			if err != nil || (fd > 2 && fd != directory) {
+			if err != nil {
+				return errors.New("text worker inherited a foreign descriptor")
+			}
+			if fd <= 2 || fd == directory {
+				continue
+			}
+			survived, err := descriptorSurvivedExec(fd)
+			if err != nil {
+				return errors.New("text worker descriptor inventory is unavailable")
+			}
+			if survived {
 				return errors.New("text worker inherited a foreign descriptor")
 			}
 		}
 	}
+}
+
+func descriptorSurvivedExec(fd int) (bool, error) {
+	flags, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), syscall.F_GETFD, 0)
+	if errno != 0 {
+		return false, errno
+	}
+	return flags&syscall.FD_CLOEXEC == 0, nil
 }
 
 type inheritedWorkerAttachment struct {
