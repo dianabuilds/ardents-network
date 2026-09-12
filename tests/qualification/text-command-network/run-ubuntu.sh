@@ -63,7 +63,7 @@ cmp -s "$command_root/ardents-text" "$worker" || fail 'invalid environment: UI a
 run_log=$(mktemp /var/tmp/ardents-text-command-network.XXXXXX) || fail 'invalid environment: command evidence log unavailable'
 trap 'rm -f "$run_log"' EXIT HUP INT TERM
 if ! ARDENTS_TEXT_COMMAND_QUALIFICATION=1 ARDENTS_E2E_COMMAND_ROOT="$command_root" \
-	timeout --signal=TERM --kill-after=30s 2100s "$binary" -test.run='^TestInstalledClosedTextCommandsThroughNodeProcesses$' -test.v -test.timeout=34m >"$run_log" 2>&1; then
+	timeout --signal=TERM --kill-after=30s 3060s "$binary" -test.run='^TestInstalledClosedTextCommandsThroughNodeProcesses$' -test.v -test.timeout=49m >"$run_log" 2>&1; then
 	cat "$run_log"
 	fail 'installed command journey test failed'
 fi

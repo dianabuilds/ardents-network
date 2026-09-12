@@ -24,3 +24,8 @@ requires exactly one root result and each empty, 64 KiB and 4 MiB subtest on
 TCP/TLS and QUIC. Preserve the complete invocation journal and artifact/host
 inventories outside Git. This is functional journey evidence, not whole-host,
 privacy, hostile-network or p95 qualification.
+
+Each of the six document/Carrier cases observes a real five-minute Descriptor
+refresh. The Go test deadline is therefore 49 minutes and the independent
+outer command limit is 51 minutes; a timeout is retained as evidence rather
+than retried or treated as a pass.

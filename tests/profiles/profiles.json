@@ -14,7 +14,7 @@
       "state": "active",
       "make_target": "text-command-network-check",
       "surface": "installed ordinary command journey through both protected Carriers",
-      "prerequisites": ["dedicated Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "root-owned candidate commands, worker, E2E binary and temporary unit with independent SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledClosedTextCommandsThroughNodeProcesses"],
+      "prerequisites": ["dedicated Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "root-owned candidate commands, worker, E2E binary and temporary unit with independent SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledClosedTextCommandsThroughNodeProcesses", "49-minute Go test deadline within an independent 51-minute outer command limit"],
       "invalid_environment": "the dedicated installed command-journey environment is unavailable"
     },
       {
