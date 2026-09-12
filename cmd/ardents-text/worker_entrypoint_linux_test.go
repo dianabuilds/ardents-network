@@ -57,7 +57,6 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 			defer cancel()
 			command := exec.CommandContext(ctx, binaryPath, "worker-publisher")
 			command.Stdin, command.Stdout, command.Stderr = child, child, null
-			command.Env = []string{"GOMAXPROCS=2", "GOMEMLIMIT=96MiB"}
 			if extra {
 				command.ExtraFiles = []*os.File{null}
 			}
