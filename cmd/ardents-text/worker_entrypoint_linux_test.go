@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"testing"
 	"time"
@@ -53,14 +54,25 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer null.Close()
+			harnessRead, harnessWrite, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer harnessRead.Close()
+			defer harnessWrite.Close()
+			harnessPipe, err := syscall.Dup(int(harnessRead.Fd()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer syscall.Close(harnessPipe)
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 			command := exec.CommandContext(ctx, binaryPath, "worker-publisher")
 			command.Stdin, command.Stdout, command.Stderr = child, child, null
-			command.Env = append(os.Environ(), "ARDENTS_TEXT_WORKER_TEST_DIAGNOSTIC=1")
 			if extra {
 				command.ExtraFiles = []*os.File{null}
 			}
+			markHarnessDescriptorsCloseOnExec(t)
 			if err := command.Start(); err != nil {
 				t.Fatal(err)
 			}
@@ -98,11 +110,11 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 				t.Fatal(err)
 			}
 			var ready [72]byte
-			if received, err := io.ReadFull(peer, ready[:]); err != nil {
-				t.Fatalf("valid inherited attachment refused: %v; worker diagnostic: %q", err, ready[:received])
+			if _, err := io.ReadFull(peer, ready[:]); err != nil {
+				t.Fatalf("valid inherited attachment refused: %v", err)
 			}
 			if string(ready[:8]) != "ARDTWR01" || !bytes.Equal(ready[8:40], header[9:41]) || !bytes.Equal(ready[40:], digest[:]) {
-				t.Fatalf("invalid readiness binding: %q", ready)
+				t.Fatal("invalid readiness binding")
 			}
 			if err := command.Process.Signal(syscall.SIGTERM); err != nil {
 				t.Fatal(err)
@@ -120,5 +132,45 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 				t.Fatal("worker cancellation failed to join blocked socket read")
 			}
 		})
+	}
+}
+
+// GitHub's go test executor can leave its result pipe without close-on-exec.
+// The installed Endpoint does not grant that pipe, so the harness must not
+// accidentally turn it into worker authority. ExtraFiles remains intentionally
+// inherited and proves that the worker rejects a real foreign descriptor.
+func markHarnessDescriptorsCloseOnExec(t *testing.T) {
+	t.Helper()
+	directory, err := syscall.Open("/proc/self/fd", syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer syscall.Close(directory)
+	var buffer [4096]byte
+	for {
+		n, err := syscall.ReadDirent(directory, buffer[:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n == 0 {
+			return
+		}
+		_, _, entries := syscall.ParseDirent(buffer[:n], -1, nil)
+		for _, entry := range entries {
+			fd, err := strconv.Atoi(entry)
+			if err != nil || fd <= 2 || fd == directory {
+				continue
+			}
+			flags, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), syscall.F_GETFD, 0)
+			if errno != 0 {
+				continue
+			}
+			if flags&syscall.FD_CLOEXEC != 0 {
+				continue
+			}
+			if _, _, errno = syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), syscall.F_SETFD, flags|syscall.FD_CLOEXEC); errno != 0 {
+				t.Fatal(errno)
+			}
+		}
 	}
 }
