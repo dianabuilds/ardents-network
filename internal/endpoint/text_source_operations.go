@@ -79,7 +79,7 @@ func (owner *textContext) prepareTextSourceReady(ctx context.Context) error {
 	}
 	if missing {
 		if _, err := owner.openTextPrefix(ctx); err != nil {
-			return textSourcePreparationFailureAt("prefix", err)
+			return textSourcePreparationFailureAt("prefix-"+textPrefixPreparationFailureStage(err), err)
 		}
 	}
 	return owner.prepareTextSourceReopenOwned(ctx, nil)

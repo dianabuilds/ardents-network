@@ -21,6 +21,17 @@ func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
 	}
 }
 
+func TestTextPrefixPreparationFailureRetainsStageAndCause(t *testing.T) {
+	cause := errors.New("source carrier refused")
+	failure := textPrefixPreparationFailureAt("opening", cause)
+	if got := textPrefixPreparationFailureStage(failure); got != "opening" {
+		t.Fatalf("prefix preparation stage = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("prefix preparation failure lost its cause")
+	}
+}
+
 func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {

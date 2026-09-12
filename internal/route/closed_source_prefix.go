@@ -37,6 +37,29 @@ type ClosedSourcePrefix struct {
 
 var ErrClosedSourceCleanup = errors.New("closed source prefix cleanup failed")
 
+type closedSourceOpenFailure struct {
+	stage string
+	cause error
+}
+
+func (failure *closedSourceOpenFailure) Error() string { return failure.cause.Error() }
+
+func (failure *closedSourceOpenFailure) Unwrap() error { return failure.cause }
+
+func closedSourceOpenFailureAt(stage string, cause error) error {
+	return &closedSourceOpenFailure{stage: stage, cause: cause}
+}
+
+// ClosedSourceOpenFailureStage returns the fixed local opening boundary while
+// preserving the underlying transport or authority error for cleanup owners.
+func ClosedSourceOpenFailureStage(cause error) string {
+	var failure *closedSourceOpenFailure
+	if errors.As(cause, &failure) && failure.stage != "" {
+		return failure.stage
+	}
+	return "unknown"
+}
+
 func OpenClosedSourcePrefix(ctx context.Context, source ClosedBootstrapState, selection ClosedBootstrapSelection, present ClosedTokenPresenter) (*ClosedSourcePrefix, error) {
 	return openClosedPrefix(ctx, source, selection, 1, present)
 }
@@ -56,17 +79,17 @@ func OpenClosedResponderPrefix(ctx context.Context, source ClosedBootstrapState,
 
 func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selection ClosedBootstrapSelection, domain uint8, present ClosedTokenPresenter) (prefix *ClosedSourcePrefix, outcome error) {
 	if ctx == nil || ctx.Err() != nil || present == nil {
-		return nil, errors.New("closed source owner unavailable")
+		return nil, closedSourceOpenFailureAt("context", errors.New("closed source owner unavailable"))
 	}
 	now := time.Now().UTC()
 	plan, err := prepareClosedPrefix(source, selection, domain, now)
 	if err != nil {
-		return nil, err
+		return nil, closedSourceOpenFailureAt("preparation", err)
 	}
 	handshakeEnd := plan.deadline
 	snapshot, err := source.Current()
 	if err != nil {
-		return nil, err
+		return nil, closedSourceOpenFailureAt("state", err)
 	}
 	end := now.Add(30 * time.Minute).Truncate(time.Second)
 	for _, limit := range []time.Time{plan.profile.NotAfter, snapshot.ValidUntil, plan.peers[0].notAfter, plan.peers[1].notAfter} {
@@ -78,7 +101,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	entry := plan.peers[0]
 	connection, err := OpenClosedRoleCarrier(ctx, ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: handshakeEnd})
 	if err != nil {
-		return nil, err
+		return nil, closedSourceOpenFailureAt("entry-carrier", err)
 	}
 	owner := &ClosedSourcePrefix{source: source, selection: selection, plan: plan, connection: connection, retirement: &closedRoleRetirement{transport: connection}, interrupted: make(chan struct{})}
 	if secured, ok := connection.(*tls.Conn); ok {
@@ -91,47 +114,51 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 		}
 	}()
 	for index := 0; index < 2; index++ {
+		role := "entry"
+		if index == 1 {
+			role = "interior"
+		}
 		if err := plan.current(source, selection); err != nil {
-			return nil, err
+			return nil, closedSourceOpenFailureAt(role+"-state", err)
 		}
 		pending := time.Now().Add(10 * time.Second)
 		if end.Before(pending) {
 			pending = end
 		}
 		if err := owner.connection.SetDeadline(pending); err != nil {
-			return nil, err
+			return nil, closedSourceOpenFailureAt(role+"-deadline", err)
 		}
-		if err := admitClosedSource(owner.connection, plan, index, present); err != nil {
+		if err := admitClosedSource(owner.connection, plan, index, role, present); err != nil {
 			return nil, err
 		}
 		if owner.child != nil {
 			if err := owner.child.activate(); err != nil {
-				return nil, err
+				return nil, closedSourceOpenFailureAt("interior-activation", err)
 			}
 		}
 		if index == 1 {
 			if err := owner.connection.SetDeadline(end); err != nil {
-				return nil, err
+				return nil, closedSourceOpenFailureAt("completion-deadline", err)
 			}
 			break
 		}
 		if err := plan.current(source, selection); err != nil {
-			return nil, err
+			return nil, closedSourceOpenFailureAt("interior-state", err)
 		}
 		if err := owner.openChild(ctx, plan.peers[1], end, pending); err != nil {
 			return nil, err
 		}
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, closedSourceOpenFailureAt("completion-context", err)
 	}
 	if err := plan.current(source, selection); err != nil {
-		return nil, err
+		return nil, closedSourceOpenFailureAt("completion-state", err)
 	}
 	owner.interruptMu.Lock()
 	if owner.interruptedEarly {
 		owner.interruptMu.Unlock()
-		return nil, errors.New("closed prefix canceled before channel ownership")
+		return nil, closedSourceOpenFailureAt("completion-interrupted", errors.New("closed prefix canceled before channel ownership"))
 	}
 	owner.channels = newClosedSourceChannelOwner(owner.connection, end, owner.retirement.close)
 	owner.channels.framing = owner.child
@@ -142,41 +169,41 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	return owner, nil
 }
 
-func admitClosedSource(connection net.Conn, plan closedBootstrapPlan, index int, present ClosedTokenPresenter) error {
+func admitClosedSource(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter) error {
 	peer := plan.peers[index]
 	hello := ClosedHello{NetworkID: plan.profile.NetworkID, StateGeneration: plan.profile.StateGeneration, StateDigest: plan.profile.StateDigest,
 		ProfileDigest: plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ClosedPurposeForwarding, Deadline: plan.deadline}
 	if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
-		return err
+		return closedSourceOpenFailureAt(role+"-nonce", err)
 	}
 	body, err := EncodeClosedHello(hello)
 	if err != nil {
-		return err
+		return closedSourceOpenFailureAt(role+"-hello", err)
 	}
 	if err := WriteClosedLaneFrame(connection, ClosedLaneFrame{Kind: closedFrameHello, Body: body}); err != nil {
-		return err
+		return closedSourceOpenFailureAt(role+"-hello-write", err)
 	}
 	token, err := present(hello, 2)
 	if err != nil {
 		clear(token)
-		return err
+		return closedSourceOpenFailureAt(role+"-token", err)
 	}
 	defer clear(token)
 	if len(token) != 354 {
-		return errors.New("closed source token invalid")
+		return closedSourceOpenFailureAt(role+"-token", errors.New("closed source token invalid"))
 	}
 	admission := append([]byte{2}, token...)
 	defer clear(admission)
 	if err := WriteClosedLaneFrame(connection, ClosedLaneFrame{Kind: closedFrameAdmit, Body: admission}); err != nil {
-		return err
+		return closedSourceOpenFailureAt(role+"-admission-write", err)
 	}
 	accepted, err := ReadClosedLaneFrame(connection)
 	if err != nil {
-		return err
+		return closedSourceOpenFailureAt(role+"-accept-read", err)
 	}
 	status, credit, err := DecodeClosedAcceptFrame(accepted)
 	if err != nil || status != 0 || credit != 64<<10 {
-		return errors.New("closed source admission refused")
+		return closedSourceOpenFailureAt(role+"-accept-refused", errors.Join(err, errors.New("closed source admission refused")))
 	}
 	return nil
 }
@@ -214,19 +241,19 @@ func (prefix *ClosedSourcePrefix) openChild(ctx context.Context, peer closedBoot
 	// OPEN emission and inner TLS share the pending interval. The longer wire
 	// deadline is a maximum lease, not permission to block opening until then.
 	if err := prefix.connection.SetDeadline(pending); err != nil {
-		return err
+		return closedSourceOpenFailureAt("interior-open-deadline", err)
 	}
 	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: peer.node, NextDutyGeneration: peer.generation, Purpose: ClosedPurposeForwarding, Deadline: end})
 	if err != nil {
-		return err
+		return closedSourceOpenFailureAt("interior-open-frame", err)
 	}
 	if err := WriteClosedLaneFrame(prefix.connection, ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
-		return err
+		return closedSourceOpenFailureAt("interior-open-write", err)
 	}
 	prefix.child = prefix.newChild(prefix.connection, end)
 	inner, err := OpenClosedRoleTLS(ctx, prefix.child, peer.key, pending)
 	if err != nil {
-		return err
+		return closedSourceOpenFailureAt("interior-tls", err)
 	}
 	prefix.connection = inner
 	return nil
