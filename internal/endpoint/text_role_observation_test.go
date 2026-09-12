@@ -100,6 +100,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 				t.Fatal("receiving Store proof differs")
 			}
 			observeTextIndependentReader(t, source, published.Descriptor.Target, registration.descriptor, output, string(carrier))
+			awaitTextReaderBootstrapRetirement(t)
 			contextEvidence, foreignPermission := observeTextIndependentReaderContexts(t, source, published.Descriptor.Target, registration.descriptor, output)
 			observe("published")
 			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {

@@ -65,10 +65,25 @@ type textReaderContextProcess struct {
 	reader                      *bufio.Reader
 	decoder                     *json.Decoder
 	encoder                     *json.Encoder
-	stderr                      bytes.Buffer
+	stdout, stderr              bytes.Buffer
 	request, permission         []byte
 	lookups                     []textReaderLookupEvidence
 	joined                      bool
+}
+
+// Reader processes create their own exact bootstrap lanes. Those lanes retain
+// their bounded ten-second admission lifetime after a reader exits, so the
+// next independent observation must not turn the intentional four-lane
+// admission ceiling into a context-isolation failure.
+func awaitTextReaderBootstrapRetirement(t *testing.T) {
+	t.Helper()
+	timer := time.NewTimer(11 * time.Second)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-t.Context().Done():
+		t.Fatal(t.Context().Err())
+	}
 }
 
 func startTextReaderContextProcess(t *testing.T, source *textSourceStateFixture, target [32]byte, expected []byte, output, id string) *textReaderContextProcess {
@@ -106,7 +121,7 @@ func startTextReaderContextProcess(t *testing.T, source *textSourceStateFixture,
 	process := &textReaderContextProcess{t: t, source: source, input: input, id: id, inputPath: inputPath, exchangePath: filepath.Join(output, prefix+"exchange.json"), command: command, stdin: stdin}
 	t.Cleanup(process.stopAfterFailure)
 	t.Cleanup(func() { _ = protocolRead.Close() })
-	command.Stderr = &process.stderr
+	command.Stdout, command.Stderr = &process.stdout, &process.stderr
 	if err := command.Start(); err != nil {
 		_ = protocolRead.Close()
 		_ = protocolWrite.Close()
@@ -178,7 +193,7 @@ func (process *textReaderContextProcess) lookup(repeat bool) {
 	if !repeat {
 		var raw json.RawMessage
 		if err := process.decoder.Decode(&raw); err != nil {
-			process.t.Fatalf("reader %s active lookup event: %v", process.id, err)
+			process.t.Fatalf("reader %s active lookup event: %s", process.id, process.childFailure(err))
 		}
 		if err := json.Unmarshal(raw, &event); err != nil || event.Phase != "protected-lookup-active" {
 			process.t.Fatalf("reader %s active lookup event: %#v / %q / %v", process.id, event, raw, err)
@@ -216,6 +231,24 @@ func (process *textReaderContextProcess) lookup(repeat bool) {
 		process.t.Fatalf("reader %s lookup did not retain its descriptor floor", process.id)
 	}
 	process.lookups = append(process.lookups, textReaderLookupEvidence{DescriptorSHA256: event.ResponseDescriptorSHA256, ResponseRevision: event.ResponseRevision, HolderSHA256: event.HolderSHA256, PermissionIDHash: event.PermissionIDSHA256, IssuanceBatches: event.IssuanceBatches, Reserved: event.Reserved, DescriptorFloorRevision: event.DescriptorFloorRevision})
+}
+
+// childFailure preserves the child test's diagnostic before the parent ends the
+// observation. A closed private pipe is otherwise reported as an unhelpful EOF.
+func (process *textReaderContextProcess) childFailure(readErr error) string {
+	process.t.Helper()
+	joined := make(chan error, 1)
+	go func() { joined <- process.command.Wait() }()
+	select {
+	case childErr := <-joined:
+		process.joined = true
+		return fmt.Sprintf("%v; child: %v; stdout: %s stderr: %s", readErr, childErr, process.stdout.String(), process.stderr.String())
+	case <-time.After(time.Second):
+		_ = process.command.Process.Kill()
+		childErr := <-joined
+		process.joined = true
+		return fmt.Sprintf("%v; child did not exit: %v; stdout: %s stderr: %s", readErr, childErr, process.stdout.String(), process.stderr.String())
+	}
 }
 
 func (process *textReaderContextProcess) stop() {
@@ -285,13 +318,13 @@ func observeTextIndependentReaderContexts(t *testing.T, source *textSourceStateF
 	defer first.stopAfterFailure()
 	first.issueAndImport()
 	first.lookup(false)
+	first.lookup(true)
+	first.stop()
 	second := startTextReaderContextProcess(t, source, target, expected, output, "second")
 	defer second.stopAfterFailure()
 	second.importPermission(first.permission, false)
 	second.issueAndImport()
 	second.lookup(false)
-	first.lookup(true)
-	first.stop()
 	second.stop()
 	firstRequest, err := credential.DecodePermissionRequest(first.request)
 	if err != nil {
