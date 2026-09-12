@@ -311,6 +311,7 @@ func cloneState(state durableState) durableState {
 }
 
 func (root *Root) replaceState(next durableState) {
+	root.closePrivateRecipientLocked()
 	root.state.erase()
 	root.state = next
 }

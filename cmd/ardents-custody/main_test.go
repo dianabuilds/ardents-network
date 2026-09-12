@@ -7,13 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/custody"
-	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
 func TestInspectEnvelopeRejectsMissingInputsBeforeCreatingCustodyState(t *testing.T) {
@@ -389,6 +388,15 @@ func (input *sequenceCommandSecrets) Confirm(context.Context, custody.Confirmati
 func (input *sequenceCommandSecrets) ReadServiceRequestCommitment(context.Context) ([32]byte, error) {
 	if len(input.commitments) == 0 {
 		return [32]byte{}, errors.New("unexpected service request commitment")
+	}
+	commitment := input.commitments[0]
+	input.commitments = input.commitments[1:]
+	return commitment, nil
+}
+
+func (input *sequenceCommandSecrets) ReadAdmissionRequestCommitment(context.Context) ([32]byte, error) {
+	if len(input.commitments) == 0 {
+		return [32]byte{}, errors.New("unexpected admission request commitment")
 	}
 	commitment := input.commitments[0]
 	input.commitments = input.commitments[1:]

@@ -10,8 +10,10 @@ import (
 const maximumRecordBytes = 32 << 10
 
 const (
-	legacyTCPCarrierProfile = "ardents-carrier-tcp-tls-v1"
-	quicCarrierProfile      = "ardents-carrier-quic-v1"
+	legacyTCPCarrierProfile  = "ardents-carrier-tcp-tls-v1"
+	quicCarrierProfile       = "ardents-carrier-quic-v1"
+	closedTCPCarrierProfile  = "ardents-carrier-tcp-tls-v2"
+	closedQUICCarrierProfile = "ardents-carrier-quic-v2"
 )
 
 type nodeRecord struct {
@@ -103,7 +105,14 @@ func parseRecord(raw []byte) (nodeRecord, error) {
 }
 
 func validCarrierProfile(profile string) bool {
-	return profile == legacyTCPCarrierProfile || profile == quicCarrierProfile
+	return profile == legacyTCPCarrierProfile || profile == quicCarrierProfile || profile == closedTCPCarrierProfile || profile == closedQUICCarrierProfile
+}
+
+func validCarrierForEpoch(profile, carrier string) bool {
+	if profile == closedRouteProfile {
+		return carrier == closedTCPCarrierProfile || carrier == closedQUICCarrierProfile
+	}
+	return validCarrierProfile(carrier)
 }
 
 func (record nodeRecord) signatureValid() bool {

@@ -13,14 +13,36 @@ func Request(ctx context.Context, path string, operation Operation) (Outcome, er
 	if ctx == nil || path == "" || (operation != Publish && operation != Withdraw) {
 		return "", errors.New("local Service Administration request is invalid")
 	}
-	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
+	return request(ctx, path, func(output io.Writer) error {
+		_, err := io.WriteString(output, string(operation)+"\n")
+		return err
+	}, map[Operation]Outcome{Publish: Published, Withdraw: Withdrawn}[operation])
+}
+
+func request(ctx context.Context, path string, write func(io.Writer) error, expected Outcome) (Outcome, error) {
+	response, err := requestBytes(ctx, path, write, 64)
 	if err != nil {
 		return "", err
+	}
+	outcome := map[string]Outcome{"published\n": Published, "withdrawn\n": Withdrawn}[string(response)]
+	if outcome != expected {
+		return "", errors.New("local Service Administration request failed")
+	}
+	return outcome, nil
+}
+
+func requestBytes(ctx context.Context, path string, write func(io.Writer) error, maximum int64) ([]byte, error) {
+	if ctx == nil || path == "" || write == nil {
+		return nil, errors.New("local Service Administration request is invalid")
+	}
+	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
+	if err != nil {
+		return nil, err
 	}
 	connection, ok := raw.(*net.UnixConn)
 	if !ok {
 		_ = raw.Close()
-		return "", errors.New("local Service Administration attachment is not a Unix connection")
+		return nil, errors.New("local Service Administration attachment is not a Unix connection")
 	}
 	defer connection.Close()
 	if deadline, available := ctx.Deadline(); available {
@@ -28,26 +50,33 @@ func Request(ctx context.Context, path string, operation Operation) (Outcome, er
 	} else {
 		_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
 	}
-	stopCancellation := context.AfterFunc(ctx, func() { _ = connection.SetDeadline(time.Now()) })
-	defer stopCancellation()
-	if _, err := io.WriteString(connection, string(operation)+"\n"); err != nil {
-		return "", requestError(ctx, err)
+	cancelled := make(chan struct{})
+	callbackStopped := false
+	stopCancellation := context.AfterFunc(ctx, func() { defer close(cancelled); _ = connection.SetDeadline(time.Now()) })
+	defer func() {
+		if !callbackStopped && !stopCancellation() {
+			<-cancelled
+		}
+	}()
+	if err := write(connection); err != nil {
+		return nil, requestError(ctx, err)
 	}
 	if err := connection.CloseWrite(); err != nil {
-		return "", requestError(ctx, err)
+		return nil, requestError(ctx, err)
 	}
-	response, err := io.ReadAll(io.LimitReader(connection, 64))
+	response, err := io.ReadAll(io.LimitReader(connection, maximum))
 	if err != nil {
-		return "", requestError(ctx, err)
+		return nil, requestError(ctx, err)
 	}
 	if !stopCancellation() {
-		return "", requestError(ctx, nil)
+		<-cancelled
+		return nil, requestError(ctx, nil)
 	}
-	outcome := map[string]Outcome{"published\n": Published, "withdrawn\n": Withdrawn}[string(response)]
-	if outcome == "" {
-		return "", errors.New("local Service Administration request failed")
+	callbackStopped = true
+	if err := requestError(ctx, nil); err != nil {
+		return nil, err
 	}
-	return outcome, nil
+	return response, nil
 }
 
 func requestError(ctx context.Context, err error) error {

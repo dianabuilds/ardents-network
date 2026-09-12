@@ -51,7 +51,27 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 		config.TransitIssuer = node.TransitIssuerProfile{Root: plan.TransitIssuer.Root, Certificate: certificate,
 			ConnectionLimit: plan.TransitIssuer.ConnectionLimit, DrainTimeout: time.Duration(plan.TransitIssuer.DrainTimeoutMS) * time.Millisecond}
 	}
-	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil {
+	if plan.ClosedIssuer != nil {
+		config.ClosedIssuer = node.ClosedIssuerProfile{Root: plan.ClosedIssuer.Root, AdmissionRoot: plan.ClosedIssuer.AdmissionRoot, Certificate: certificate,
+			ConnectionLimit: plan.ClosedIssuer.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedIssuer.DrainTimeoutMS) * time.Millisecond}
+	}
+	if plan.ClosedForwarding != nil {
+		config.ClosedForwarding = node.ClosedForwardingProfile{Root: plan.ClosedForwarding.Root, Certificate: certificate,
+			ConnectionLimit: plan.ClosedForwarding.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedForwarding.DrainTimeoutMS) * time.Millisecond}
+	}
+	if plan.ClosedResolution != nil {
+		config.ClosedResolution = node.ClosedResolutionProfile{Root: plan.ClosedResolution.Root, AdmissionRoot: plan.ClosedResolution.AdmissionRoot,
+			Certificate: certificate, ConnectionLimit: plan.ClosedResolution.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedResolution.DrainTimeoutMS) * time.Millisecond}
+	}
+	if plan.ClosedIntroduction != nil {
+		config.ClosedIntroduction = node.ClosedIntroductionProfile{AdmissionRoot: plan.ClosedIntroduction.AdmissionRoot,
+			Certificate: certificate, ConnectionLimit: plan.ClosedIntroduction.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedIntroduction.DrainTimeoutMS) * time.Millisecond}
+	}
+	if plan.ClosedDataJoin != nil {
+		config.ClosedDataJoin = node.ClosedDataJoinProfile{AdmissionRoot: plan.ClosedDataJoin.AdmissionRoot,
+			Certificate: certificate, ConnectionLimit: plan.ClosedDataJoin.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedDataJoin.DrainTimeoutMS) * time.Millisecond}
+	}
+	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
 		return config, nil
 	}
 	root, err := readOperatorInput(plan.ClientRoot, 64<<10)

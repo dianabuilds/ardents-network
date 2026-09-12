@@ -169,7 +169,7 @@ func validateFloor(floor authorityFloor) error {
 			return ErrInvalid
 		}
 	}
-	if (floor.Kind != AuthorityService && floor.Kind != AuthorityName) || !validWatermarks(floor.Watermarks) {
+	if (floor.Kind != AuthorityService && floor.Kind != AuthorityName && floor.Kind != AuthorityAdmission) || !validWatermarks(floor.Watermarks) {
 		return ErrInvalid
 	}
 	return nil

@@ -159,7 +159,7 @@ func (relay nativeRendezvousMultiHostNetemRelay) start(t *testing.T, mode string
 	if mode == nativeRendezvousMultiHostNetemDelayMode {
 		delay = " -delay 200ms"
 	}
-	command := fmt.Sprintf("set -eu; ! docker container inspect %[1]s >/dev/null 2>&1; docker run --detach --name %[1]s --cap-drop ALL --cap-add NET_ADMIN --pids-limit 64 --memory 128m --cpus 0.5 --read-only -p %[2]d:%[2]d -v %[3]s:/work:ro -v /usr/sbin/tc:/usr/sbin/tc:ro -v /lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:ro -v /lib64:/lib64:ro --workdir /work golang:1.26.6 /work/netem-relay -listen :%[2]d -target %[4]s -mode %[5]s%[6]s",
+	command := fmt.Sprintf("set -eu; ! docker container inspect %[1]s >/dev/null 2>&1; docker run --detach --name %[1]s --cap-drop ALL --cap-add NET_ADMIN --pids-limit 64 --memory 128m --cpus 0.5 --read-only -p %[2]d:%[2]d -v %[3]s:/work:ro -v /usr/sbin/tc:/usr/sbin/tc:ro -v /lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:ro -v /lib64:/lib64:ro --workdir /work golang:1.26.8 /work/netem-relay -listen :%[2]d -target %[4]s -mode %[5]s%[6]s",
 		nativeRendezvousMultiHostShellQuote(relay.container), relay.environment.port+3, nativeRendezvousMultiHostShellQuote(relay.directory),
 		nativeRendezvousMultiHostShellQuote(net.JoinHostPort(relay.environment.host, strconv.Itoa(relay.environment.port))), nativeRendezvousMultiHostShellQuote(mode), delay)
 	remote := nativeRendezvousMultiHostRemoteRendezvous{environment: relay.environment}

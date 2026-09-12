@@ -16,7 +16,7 @@ func TestCanonicalCommandBuildIsRepositoryRepresentationIndependent(t *testing.T
 		return
 	}
 	root := repositoryRoot(t)
-	source := extractOwnedCandidate(t, root, "network", "application-interface-v1")
+	source := extractNetworkBuildCandidate(t, root)
 	runProofGit(t, source, "init", "--quiet")
 	runProofGit(t, source, "config", "user.name", "Ardents build proof")
 	runProofGit(t, source, "config", "user.email", "build-proof@invalid.example")
@@ -28,8 +28,8 @@ func TestCanonicalCommandBuildIsRepositoryRepresentationIndependent(t *testing.T
 	linkedParent := t.TempDir()
 	linked := filepath.Join(linkedParent, "linked-worktree")
 	runProofGit(t, normalOne, "worktree", "add", "--quiet", "--detach", linked, "HEAD")
-	extractedOne := extractOwnedCandidate(t, root, "network", "application-interface-v1")
-	extractedTwo := extractOwnedCandidate(t, root, "network", "application-interface-v1")
+	extractedOne := extractNetworkBuildCandidate(t, root)
+	extractedTwo := extractNetworkBuildCandidate(t, root)
 
 	representations := []struct {
 		name string

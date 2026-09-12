@@ -14,6 +14,50 @@ and the [protected forwarding contract](protected-route-protocol.md). The
 implemented behavior described here remains the migration input until its
 owning change promotes the replacement; it is not a second accepting privacy path.
 
+The Node command connects an exclusive `closed_forwarding` local reservation
+to the implemented generation-3 forwarding receiver. The reservation contains
+only the existing receiving-spend root and finite connection/drain limits.
+It selects the closed State profile only with its already State-pinned signer;
+State's accepted profile and duty projection continue to select the listener,
+Carrier, adjacent/interior assignment and next peers. A legacy duty, issuer
+reservation or unrelated profile signer cannot be combined with that plan.
+This command binding does not implement the remaining Endpoint composition or
+establish whole-route qualification.
+For a generation-3 TCP Node Carrier, terminal retirement closes the owned
+physical socket once and retains its actual close result. It interrupts the
+multiplexed transport instead of initiating another TLS notification after a
+peer reset. Lane owners still join readers, writers and children before
+releasing their roots. This terminal abort is distinct from directional ARDP
+EOF and authenticated Service completion; direct role and inner TLS closure
+keep their existing semantics.
+
+The shared successor listener gives each arriving connection its own bounded
+handshake/first-stream interval. Waiting without a peer does not consume that
+interval or make the next valid peer inherit an expired deadline. Issuer, forwarding and resolution consumers use this interface; current State classification and
+subsequent HELLO/admission deadlines remain separate checks.
+
+The exclusive `closed_resolution` reservation similarly connects the selected
+resolution duty to private Descriptor publication and lookup. It supplies
+separate Descriptor and admission-spend roots plus finite connection/drain
+limits; State owns its identity, endpoint, Carrier and role. Only current
+State-authorized outer Node Carriers may open the confidential recipient
+channel. Its class-1 token is spent before the operation; the actual Store
+verifies the proof and persists its floors before success. Current profile and
+Introduction assignment are checked before accepting or returning a proof.
+Shutdown cancels children and joins handlers before releasing either root;
+a timed-out Drain leaves the roots held. No plan callback can supply a
+successful publication or bypass verification.
+Short local-role transactions coordinate with concurrent Source exposure
+retention. `duty.OpenOperation` waits only for an occupied exclusive lease,
+for at most one second or the caller's earlier cancellation. It then verifies
+the current durable generation under that lease; a busy, corrupt, expired or
+unavailable root never becomes a no-conflict result. Source exposure updates
+and one-shot conflict reads use this bounded acquisition. The existing
+`duty.Open` remains non-waiting for retained owners. Acquisition cancellation
+does not release another owner's lease, and every successful caller still
+closes its own store. This local coordination does not extend any Route,
+permission, registration or protocol deadline.
+
 ## Module ownership
 
 | Module | Interface responsibility | Excluded responsibility |
@@ -250,3 +294,62 @@ and confirmed removal. The operator contract is the
   recorded candidate. That historical result does not qualify the current C0
   candidate, select another duty, or establish public capacity, availability,
   co-resident, permissionless, or independent-operation claims.
+
+## Closed Introduction registration receiver
+
+The `closed_introduction` reservation binds one current Introduction delivery
+duty to its State-selected shared TCP/TLS or QUIC listener and separate durable
+admission-spend root. A State-authorized Node Carrier provides only bounded
+inner TLS allocation. Each registration still needs its own class-3 token,
+verified against the exact inner HELLO and TLS exporter before the receiving
+lease can extend the child's deadline.
+
+REGISTER and WITHDRAW use the selected 4,096-byte operation grammar and
+16,384-byte results. A slot belongs to the exact admitted terminal channel;
+duplicates refuse, withdrawal must match its slot/revision and use a fresh
+request nonce, and channel loss invalidates the live registration. Before a
+successful registration result, the duty durably retains the slot's SHA-256
+hash and original expiry under the same exclusive admission-root lease. The
+bounded snapshot contains at most 1,024 entries, is bound to the exact Network,
+profile, Node and duty generation, and uses file synchronization, replacement
+and directory synchronization. A fresh token after restart cannot reclaim a
+slot before that expiry; expiry permits its floor to be pruned. The snapshot
+also retains the pruning time: a clock below that floor refuses new claims,
+including after restart. No live channel
+is restored. Missing slot storage after prior admission, malformed snapshots
+and ambiguous writes refuse registration. The spend root remains held until
+all Carrier readers and handlers join; released owners cannot reopen or write
+its ledgers. The shared QUIC listener owns and joins its transport and UDP
+socket explicitly, so completed shutdown releases the selected address.
+
+A separate class-1 submission is admitted for the same Introduction duty.
+Its receiver forwards only the sealed capsule over the already owned class-3
+registration, using a fresh channel-local request nonce and ordered even child
+IDs. It reserves at most 16 pending deliveries, including writer waiters, and
+limits both admission and actual dispatch to four per second. The original
+1 MiB registration allowance includes delivery OPERATION, RESULT, CLOSE and
+reserved withdrawal; another submission token cannot enlarge it. Publisher
+acknowledgement is bounded by the capsule and original registration expiry.
+Failure that cannot finish a child retires that registration without reclaiming
+its slot. Publisher refresh and complete command publication readiness remain
+unconnected. These component checks do not qualify the complete journey.
+## Closed data JOIN receiver
+
+The exclusive `closed_data_join` reservation binds the State-selected Rendezvous
+DataJoin duty to one receiving-spend root, certificate, finite connection limit
+and drain timeout. The shared TCP/TLS or QUIC listener accepts current Node
+Carriers and fresh inner role TLS; HELLO and genuine class-2 admission precede
+exactly one lane-1 JOIN. Route rechecks the original TLS exporter before matching.
+
+The Route pairing owner retains both original admissions, matches the approved
+secret/context/profile and opposite side values, and emits each local RESULT
+only after pairing. Both result writes precede framed data forwarding. Directional
+credit is bounded to 64 KiB, EOF preserves the reverse direction, and CLOSE
+joins both readers/writers before admission and queue release. A completed JOIN
+retains its successful outer terminal status through TLS closure. Fixed request,
+result, headers, data and control traffic consume the original class-2 budget;
+parsing and stream buffers are reserved from the receiving-duty aggregate first.
+Listener drain joins handlers and timer callbacks before releasing the spend root.
+
+This receiver does not construct Source/Responder prefixes or authenticate the
+end-to-end Service session. Those remain Endpoint and Route client obligations.

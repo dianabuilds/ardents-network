@@ -12,8 +12,8 @@ import (
 )
 
 type rawConfig struct {
-	root, network, authorities, at, epoch, inputs, material, profile string
-	threshold                                                        int
+	root, network, authorities, closedProfileAuthority, at, epoch, inputs, material, profile, closedProfile string
+	threshold                                                                                               int
 }
 
 func (raw rawConfig) networkStateConfig() (state.Config, error) {
@@ -36,6 +36,13 @@ func (raw rawConfig) networkStateConfig() (state.Config, error) {
 	if err != nil {
 		return state.Config{}, fmt.Errorf("at: %w", err)
 	}
-	return state.Config{Root: raw.root, NetworkID: networkID, Authorities: authorities, Threshold: raw.threshold,
-		AcceptedProfile: raw.profile, Now: at}, nil
+	config := state.Config{Root: raw.root, NetworkID: networkID, Authorities: authorities, Threshold: raw.threshold,
+		AcceptedProfile: raw.profile, Now: at}
+	if raw.closedProfileAuthority != "" {
+		config.ClosedProfileAuthority = make(ed25519.PublicKey, ed25519.PublicKeySize)
+		if err := decodeOperatorFixedHex(raw.closedProfileAuthority, config.ClosedProfileAuthority); err != nil {
+			return state.Config{}, fmt.Errorf("closed-profile-authority: %w", err)
+		}
+	}
+	return config, nil
 }

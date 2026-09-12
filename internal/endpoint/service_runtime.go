@@ -168,6 +168,8 @@ type runtimeResult struct {
 
 // endpoint owns one broker generation's sessions and current publication.
 type endpoint struct {
+	endpointTextState
+	clock                func() time.Time
 	network, broker      [32]byte
 	authority            [32]byte
 	introduction         [32]byte
@@ -237,7 +239,7 @@ func newEndpoint(input setup) (*endpoint, error) {
 			return nil, err
 		}
 	}
-	endpoint := &endpoint{network: input.NetworkID, broker: input.BrokerID, authority: authority,
+	endpoint := &endpoint{clock: clock, network: input.NetworkID, broker: input.BrokerID, authority: authority,
 		introduction: introduction,
 		admission:    admission, resources: resources, transitClients: transitClients, transitAcquire: transitAcquire,
 		publisherBinding: input.PublisherBinding, publisherProfile: clonePublisherIntroductionProfile(input.publisherIntroductionProfile)}
@@ -276,6 +278,7 @@ func (endpoint *endpoint) Close() error {
 		return nil
 	}
 	endpoint.admission.Close()
+	textErr := errors.Join(endpoint.closeTextContexts(), endpoint.closeTextSourceRoots())
 	endpoint.publisherMu.Lock()
 	session, binding := endpoint.publisherSession, endpoint.publisherBinding
 	credentials := endpoint.publisherCredentials
@@ -292,14 +295,14 @@ func (endpoint *endpoint) Close() error {
 		finishTransitCredential(credentials.responder, false))
 	acquisitionErr := endpoint.transitAcquire.Close()
 	if endpoint.publications == nil {
-		return errors.Join(sessionErr, finishErr, acquisitionErr)
+		return errors.Join(textErr, sessionErr, finishErr, acquisitionErr)
 	}
 	publicationErr := endpoint.publications.Close()
 	var bindingErr error
 	if binding != nil {
 		bindingErr = binding.Withdraw()
 	}
-	return errors.Join(sessionErr, finishErr, acquisitionErr, publicationErr, bindingErr)
+	return errors.Join(textErr, sessionErr, finishErr, acquisitionErr, publicationErr, bindingErr)
 }
 
 // StartPublisher consumes one Administration capability and atomically binds

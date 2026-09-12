@@ -16,10 +16,13 @@ import (
 // returned by the Connection Interface. Application protocol and replay
 // semantics remain entirely caller-owned.
 type applicationConnection struct {
-	stream nativeconnection.Application
-	cancel context.CancelFunc
-	done   chan applicationconnection.Outcome
-	once   sync.Once
+	stream    nativeconnection.Application
+	cancel    context.CancelFunc
+	done      chan applicationconnection.Outcome
+	once      sync.Once
+	finished  chan struct{}
+	closeErr  error
+	finishErr error
 }
 
 // openTargetRouteApplicationConnection binds Route's opaque authenticated
@@ -47,6 +50,7 @@ func (endpoint *endpoint) openTargetRouteApplicationConnection(ctx context.Conte
 	lifetime, cancel := context.WithCancel(ctx)
 	ready := make(chan struct{})
 	done := make(chan applicationconnection.Outcome, 1)
+	finished := make(chan struct{})
 	request := connectionInput{Principal: input.Principal, Target: evidence.AuthenticatedTarget, AuthorityPublic: evidence.AuthorityPublic,
 		Publication: evidence.Publication, Route: attachment, Application: owned, BytesEachDirection: input.BytesEachDirection, At: at,
 		OnAuthenticated: func(authenticated [32]byte) error {
@@ -56,11 +60,13 @@ func (endpoint *endpoint) openTargetRouteApplicationConnection(ctx context.Conte
 			close(ready)
 			return nil
 		}}
+	connection := &applicationConnection{stream: application, cancel: cancel, done: done, finished: finished}
 	go func() {
+		defer close(finished)
 		defer session.Release()
 		result, runErr := endpoint.connectAuthorized(lifetime, request, session.receipt)
-		_ = owned.Close()
-		closeErr := attachment.Close()
+		closeErr := errors.Join(owned.Close(), attachment.Close())
+		connection.finishErr = closeErr
 		if result.Class == "" {
 			result.Class = "indeterminate failure"
 		}
@@ -73,7 +79,6 @@ func (endpoint *endpoint) openTargetRouteApplicationConnection(ctx context.Conte
 		done <- applicationconnection.Outcome{Class: applicationconnection.OutcomeClass(result.Class), Reason: result.Reason}
 		close(done)
 	}()
-	connection := &applicationConnection{stream: application, cancel: cancel, done: done}
 	select {
 	case <-ready:
 		return connection, nil
@@ -117,16 +122,18 @@ func (connection *applicationConnection) Done() <-chan applicationconnection.Out
 	return connection.done
 }
 
-// Close stops only this Application stream. It cannot withdraw a Service or
-// mutate Network, Entry, or custody state.
+// Close stops this Application stream and joins its Endpoint operation and
+// local lease release. Repeated calls retain any cleanup failure. It cannot
+// withdraw a Service or mutate Network, Entry, or custody state.
 func (connection *applicationConnection) Close() error {
 	if connection == nil {
 		return nil
 	}
-	var err error
 	connection.once.Do(func() {
 		connection.cancel()
-		err = connection.stream.Close()
+		connection.closeErr = connection.stream.Close()
+		<-connection.finished
+		connection.closeErr = errors.Join(connection.closeErr, connection.finishErr)
 	})
-	return err
+	return connection.closeErr
 }

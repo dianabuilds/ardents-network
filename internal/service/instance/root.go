@@ -114,6 +114,7 @@ func (root *Root) Close() error {
 		return ErrClosed
 	}
 	root.closed = true
+	root.closePrivateRecipientLocked()
 	root.bindingOpen = false
 	root.state.erase()
 	return root.lock.release()

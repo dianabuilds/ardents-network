@@ -39,6 +39,14 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
+	if state.Binding.Kind == AuthorityAdmission {
+		zero(state.RootMaterial)
+		zero(state.AdmissionJournal)
+		state, _, err = vault.openCurrentAdmissionAuthority(operation.RecordID, vaultPassword, operation.Expected)
+		if err != nil {
+			return Receipt{}, err
+		}
+	}
 	bundlePassword, err := readPassword(ctx, secrets, SecretPromptBundleExport)
 	if err != nil {
 		return Receipt{}, err

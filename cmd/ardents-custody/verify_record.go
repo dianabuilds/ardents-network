@@ -68,8 +68,8 @@ func commandBinding(environment, network, root, kind, identity string) (custody.
 		}
 	}
 	binding.Kind = custody.AuthorityKind(kind)
-	if binding.Kind != custody.AuthorityService && binding.Kind != custody.AuthorityName {
-		return custody.AuthorityBinding{}, errors.New("custody operation kind must be service or name")
+	if binding.Kind != custody.AuthorityService && binding.Kind != custody.AuthorityName && binding.Kind != custody.AuthorityAdmission {
+		return custody.AuthorityBinding{}, errors.New("custody operation kind must be service, name, or admission")
 	}
 	return binding, nil
 }

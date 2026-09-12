@@ -18,22 +18,28 @@ const legacyRendezvousDedicatedHostResourceProfile = "h4-5-rendezvous-alpha-v1"
 
 type nodePlan struct {
 	sourceServerPlan
-	ClockObservationFile    string             `json:"clock_observation_file"`
-	OrderSeed               string             `json:"order_seed"`
-	SourceClientCertificate string             `json:"source_client_certificate"`
-	SourceClientKey         string             `json:"source_client_key"`
-	Sources                 []nodeSource       `json:"sources"`
-	NodeID                  string             `json:"node_id"`
-	IdentityKey             string             `json:"identity_key"`
-	MaximumDutyMS           uint32             `json:"maximum_duty_ms"`
-	DrainTimeoutMS          uint32             `json:"drain_timeout_ms"`
-	NodeResourceProfile     string             `json:"node_resource_profile,omitempty"`
-	DiagnosticDirectory     string             `json:"diagnostic_directory,omitempty"`
-	Rendezvous              *rendezvousPlan    `json:"rendezvous,omitempty"`
-	Initiator               *initiatorPlan     `json:"initiator,omitempty"`
-	Introduction            *introductionPlan  `json:"introduction,omitempty"`
-	Responder               *responderPlan     `json:"responder,omitempty"`
-	TransitIssuer           *transitIssuerPlan `json:"transit_issuer,omitempty"`
+	ClockObservationFile    string                  `json:"clock_observation_file"`
+	OrderSeed               string                  `json:"order_seed"`
+	SourceClientCertificate string                  `json:"source_client_certificate"`
+	SourceClientKey         string                  `json:"source_client_key"`
+	Sources                 []nodeSource            `json:"sources"`
+	NodeID                  string                  `json:"node_id"`
+	IdentityKey             string                  `json:"identity_key"`
+	MaximumDutyMS           uint32                  `json:"maximum_duty_ms"`
+	DrainTimeoutMS          uint32                  `json:"drain_timeout_ms"`
+	NodeResourceProfile     string                  `json:"node_resource_profile,omitempty"`
+	DiagnosticDirectory     string                  `json:"diagnostic_directory,omitempty"`
+	ClosedProfileAuthority  string                  `json:"closed_profile_authority,omitempty"`
+	Rendezvous              *rendezvousPlan         `json:"rendezvous,omitempty"`
+	Initiator               *initiatorPlan          `json:"initiator,omitempty"`
+	Introduction            *introductionPlan       `json:"introduction,omitempty"`
+	Responder               *responderPlan          `json:"responder,omitempty"`
+	TransitIssuer           *transitIssuerPlan      `json:"transit_issuer,omitempty"`
+	ClosedIssuer            *closedIssuerPlan       `json:"closed_issuer,omitempty"`
+	ClosedForwarding        *closedForwardingPlan   `json:"closed_forwarding,omitempty"`
+	ClosedResolution        *closedResolutionPlan   `json:"closed_resolution,omitempty"`
+	ClosedIntroduction      *closedIntroductionPlan `json:"closed_introduction,omitempty"`
+	ClosedDataJoin          *closedDataJoinPlan     `json:"closed_data_join,omitempty"`
 }
 
 // rendezvousPlan contains only the local finite work bounds. State still
@@ -83,6 +89,33 @@ type transitIssuerPlan struct {
 	ConnectionLimit uint16 `json:"connection_limit"`
 	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
 }
+
+// closedIssuerPlan supplies only a local owner root and finite reservation.
+// State supplies the current closed profile, issuer Node and every recipient.
+type closedIssuerPlan struct {
+	AdmissionRoot   string `json:"admission_root"`
+	Root            string `json:"root"`
+	ConnectionLimit uint16 `json:"connection_limit"`
+	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
+}
+
+// closedResolutionPlan reserves separate Descriptor and admission roots.
+// Current State continues to select the only receiving duty and Carrier.
+type closedResolutionPlan struct {
+	Root            string `json:"root"`
+	AdmissionRoot   string `json:"admission_root"`
+	ConnectionLimit uint16 `json:"connection_limit"`
+	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
+}
+
+// closedForwardingPlan supplies only the local receiving spend root and finite
+// work bounds. State selects adjacent/interior duty, listener and next peers.
+type closedForwardingPlan struct {
+	Root            string `json:"root"`
+	ConnectionLimit uint16 `json:"connection_limit"`
+	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
+}
+
 type nodeSource struct {
 	Address        string `json:"address"`
 	ServerName     string `json:"server_name"`
@@ -105,10 +138,13 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err := decodeOperatorInput(path, 64<<10, &plan); err != nil {
 		return nodeRuntime{}, fmt.Errorf("decode node plan: %w", err)
 	}
+	if plan.StateProfile != "" || plan.StateProfileAuthority != "" {
+		return nodeRuntime{}, errors.New("the Node State profile is selected by its duty reservation")
+	}
 	if plan.Schema != "ardents-node-plan-v1" || plan.LocalRoleStateRoot == "" || len(plan.Sources) != 2 || len(plan.AuthorityPublic) == 0 || len(plan.AuthorityPublic) > 16 {
 		return nodeRuntime{}, errors.New("node plan is not canonical or complete")
 	}
-	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil
+	nativeDuty := plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil
 	if plan.NodeResourceProfile == legacyRendezvousDedicatedHostResourceProfile {
 		plan.NodeResourceProfile = node.RendezvousDedicatedHostResourceProfile
 	}
@@ -121,7 +157,7 @@ func readNodePlan(path string) (nodeRuntime, error) {
 		if plan.NodeResourceProfile != node.RendezvousDedicatedHostResourceProfile {
 			return nodeRuntime{}, errors.New("native Route Node resource profile is unselected")
 		}
-		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil {
+		if plan.Rendezvous == nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
 			return nodeRuntime{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
 		}
 	}
@@ -135,8 +171,24 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	if err := decodeOperatorFixedHex(plan.NetworkID, state.NetworkID[:]); err != nil {
 		return nodeRuntime{}, err
 	}
-	if nativeDuty {
-		state.AcceptedProfile = route.Profile
+	if plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
+		count := 0
+		for _, selected := range []bool{plan.ClosedIssuer != nil, plan.ClosedForwarding != nil, plan.ClosedResolution != nil, plan.ClosedIntroduction != nil, plan.ClosedDataJoin != nil} {
+			if selected {
+				count++
+			}
+		}
+		if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || count != 1 || plan.ClosedProfileAuthority == "" {
+			return nodeRuntime{}, errors.New("closed duty requires exactly one reservation and its pinned profile authority")
+		}
+		state.AcceptedProfile = route.ClosedRouteProfile
+	} else {
+		if plan.ClosedProfileAuthority != "" {
+			return nodeRuntime{}, errors.New("closed profile authority requires a closed duty reservation")
+		}
+		if nativeDuty {
+			state.AcceptedProfile = route.Profile
+		}
 	}
 	for _, encoded := range plan.AuthorityPublic {
 		public := make([]byte, ed25519.PublicKeySize)
@@ -144,6 +196,16 @@ func readNodePlan(path string) (nodeRuntime, error) {
 			return nodeRuntime{}, err
 		}
 		state.Authorities[sha256.Sum256(public)] = ed25519.PublicKey(public)
+	}
+	if plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {
+		public := make([]byte, ed25519.PublicKeySize)
+		if err := decodeOperatorFixedHex(plan.ClosedProfileAuthority, public); err != nil {
+			return nodeRuntime{}, err
+		}
+		if _, pinned := state.Authorities[sha256.Sum256(public)]; !pinned {
+			return nodeRuntime{}, errors.New("closed profile authority is not pinned by State")
+		}
+		state.ClosedProfileAuthority = ed25519.PublicKey(public)
 	}
 	if err := decodeOperatorFixedHex(plan.OrderSeed, state.Source.OrderSeed[:]); err != nil {
 		return nodeRuntime{}, err
@@ -176,4 +238,19 @@ func readNodePlan(path string) (nodeRuntime, error) {
 	}
 	return nodeRuntime{state: state, node: nodeConfig, diagnosticDirectory: plan.DiagnosticDirectory,
 		clockObservation: clockObservation}, nil
+}
+
+// closedIntroductionPlan contains local reservations only. State selects the
+// receiving Introduction duty, its identity and the Carrier endpoint.
+type closedIntroductionPlan struct {
+	AdmissionRoot   string `json:"admission_root"`
+	ConnectionLimit uint16 `json:"connection_limit"`
+	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
+}
+
+// closedDataJoinPlan reserves local resources; State selects the receiving duty.
+type closedDataJoinPlan struct {
+	AdmissionRoot   string `json:"admission_root"`
+	ConnectionLimit uint16 `json:"connection_limit"`
+	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
 }

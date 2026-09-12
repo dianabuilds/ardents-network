@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -31,6 +32,7 @@ type DutyView interface {
 	DutyRecordPresent() bool
 	DutyNodeID() [32]byte
 	DutyNodePublicKey() [32]byte
+	DutyRecordGeneration() uint64
 	DutyRecordValidFrom() time.Time
 	DutyRecordValidUntil() time.Time
 	DutyDeclaredFamily() string
@@ -75,6 +77,7 @@ type dutyFacts struct {
 	RecordPresent               bool
 	NodeID                      [32]byte
 	NodePublicKey               [32]byte
+	RecordGeneration            uint64
 	RecordValidFrom             time.Time
 	RecordValidUntil            time.Time
 	DeclaredFamily              string
@@ -110,16 +113,32 @@ type dutyAuthority struct{ ID, PublicKey [32]byte }
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
 type Config struct {
-	NetworkID          [32]byte
-	NodeID             [32]byte
-	IdentityKey        ed25519.PrivateKey
-	Current            func() (DutyView, error)
-	Probe              ProbeConfig
-	Rendezvous         RendezvousProfile
-	Initiator          InitiatorProfile
-	Introduction       IntroductionProfile
-	Responder          ResponderProfile
-	TransitIssuer      TransitIssuerProfile
+	NetworkID     [32]byte
+	NodeID        [32]byte
+	IdentityKey   ed25519.PrivateKey
+	Current       func() (DutyView, error)
+	Probe         ProbeConfig
+	Rendezvous    RendezvousProfile
+	Initiator     InitiatorProfile
+	Introduction  IntroductionProfile
+	Responder     ResponderProfile
+	TransitIssuer TransitIssuerProfile
+	ClosedIssuer  ClosedIssuerProfile
+	// ClosedForwarding supplies the isolated receiving spend journal and Node
+	// TLS key for an accepted generation-3 adjacent/interior forwarding duty.
+	// State still selects the endpoint, peer and recipient assignment.
+	ClosedForwarding   ClosedForwardingProfile
+	ClosedResolution   ClosedResolutionProfile
+	ClosedIntroduction ClosedIntroductionProfile
+	ClosedDataJoin     ClosedDataJoinProfile
+	// CurrentClosedProfile exposes only State's already accepted closed
+	// profile. It is unavailable instead of choosing profile bytes or a trust
+	// root from the Node plan.
+	CurrentClosedProfile func() (state.ClosedProfileView, bool)
+	// CurrentClosedRoute exposes the same accepted profile's recipient facts.
+	// It is unavailable rather than permitting Node to manufacture a recipient
+	// digest, role-domain or duty generation.
+	CurrentClosedRoute func() (state.ClosedRouteView, bool)
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string
@@ -185,6 +204,27 @@ type ResponderProfile struct {
 // certificate, and finite local reservations. State supplies the listener,
 // exact public profile, permitted Initiator, and duty lifetime.
 type TransitIssuerProfile struct {
+	Root            string
+	Certificate     tls.Certificate
+	ConnectionLimit uint16
+	DrainTimeout    time.Duration
+}
+
+// ClosedIssuerProfile contains the isolated RSA-PSS issuer root and bounded
+// direct role listener reservation. State selects its endpoint, carrier and
+// current issuer profile; this local profile cannot select a recipient.
+type ClosedIssuerProfile struct {
+	Root            string
+	AdmissionRoot   string
+	Certificate     tls.Certificate
+	ConnectionLimit uint16
+	DrainTimeout    time.Duration
+}
+
+// ClosedForwardingProfile contains the local material for one closed Route
+// forwarding duty. Root is exclusively owned by its current receiving duty;
+// it must not share an issuer root or survive a changed duty generation.
+type ClosedForwardingProfile struct {
 	Root            string
 	Certificate     tls.Certificate
 	ConnectionLimit uint16

@@ -22,5 +22,8 @@
 // revision; custody advances its local watermarks, durably writes the active
 // successor and floor. Service Authority creation instead generates its root
 // inside custody and returns only the public Authority and derived Target; it
-// creates neither a runtime Instance Key nor a Grant.
+// creates neither a runtime Instance Key nor a Grant. The separate closed
+// admission Authority creates its Ed25519 root in the same encrypted boundary
+// and signs only exact holder-proof-bound current-hour allocations while a
+// private successor ledger retains the consumed quota.
 package custody

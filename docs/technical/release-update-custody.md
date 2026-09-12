@@ -32,6 +32,18 @@ and a separate X25519 Introduction recipient public key. The latter is not
 derived from the Instance key. These are technical format choices; Service
 Credential is the glossary's short form for the same public credential.
 
+### Closed admission allocation
+
+`create-admission-authority` creates a distinct encrypted Ed25519 authority
+record for one closed Network. `issue-admission-permission` accepts only the
+exact holder-signed `ARDPAR01` request after the operator re-enters its
+independently transferred SHA-256 commitment. It returns a public digest
+receipt and writes the signed 228-byte permission only to the specified
+owner-only, same-directory no-replace output. The Vault record advances its
+encrypted allocation successor before acknowledgement; neither command accepts
+a private key, permission body, or password in argv, environment, or public
+output. This authority cannot sign State, Name, Service, or Release inputs.
+
 One supported Service Credential has a maximum 24-hour lifetime and a terminal
 horizon of 48 hours from issuance. The successor ledger also requires a new
 validity interval not to overlap its predecessor for the same Target. An exact

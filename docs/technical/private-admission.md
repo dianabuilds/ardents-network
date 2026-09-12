@@ -22,6 +22,12 @@ root/freshness/conflict checks. State verifies the
 [closed profile](protected-route-protocol.md#authenticated-closed-profile);
 the credential owner consumes only its authenticated admission projection.
 The signature authority and complete profile grammar are defined there.
+Runtime admission and recipient projections require the State owner's live
+verified time observation and retained time floor, including when profile
+bytes were accepted offline. Loss of that observation, automatic-refresh
+failure or resource-owner failure makes both projections unavailable before
+new Permission or network work. Persisted signatures alone do not establish
+time confidence.
 
 An offline permission has a fresh random 32-byte permission ID, Network,
 issuer-duty generation, a separate holder Ed25519 public key, a UTC hourly
@@ -86,6 +92,85 @@ interactive Custody unlock and owner-only private input/output paths.
 Operator actions are explicit, finite closed-network provisioning, not public
 signup, a test-only validity callback or an administrative naming mechanism.
 
+The public issuer-key profile is `ARDCIP01`[8], Network[32], issuer Node[32],
+not-before u64, not-after u64, key-count u16, then sorted window-start u64,
+class u8, SPKI-length u16 and exact RSA-PSS SPKI bytes, followed by a Node
+Ed25519 signature under `ardents-closed-issuer-keys-v1\0`. It contains every
+class 1–3 for every hour in its one-to-six-hour interval. Its owner-only root
+retains corresponding PKCS#1 RSA private keys under an immutable root marker;
+reopening requires the exact Network, Node, signer and interval. State still
+accepts token keys only through the subsequently State-signed `ARDCPR03`
+profile, never by trusting this profile as a replacement State authority.
+
+For offline preparation, `ardents-control inspect-closed-issuer-profile` reads
+only the public JSON initialization export. Supply `--node-key`, `--network`
+and `--node` from the independently authorized current Node/Network evidence,
+not from that export. The command verifies the export digest, Node signature,
+exact inventory grammar and identity bindings, then renders its public
+`NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` fields for
+the bounded closed-profile plan. Retain the separately authorized Epoch,
+Node Record digests, duty assignments and admission-authority key when
+preparing that plan. Inspection permits provisioning future hourly keys; it
+does not assert current Node duty or time validity and does not advance floors.
+
+The Endpoint permission owner consumes the participant's opened State owner
+and the retained local context established by a verified worker launch. The
+worker's Connection Grant does not confer its parent's Publisher authority.
+One context retains one holder and exact public request per aligned hour;
+repeating the request returns a copy, while changed allocation or State facts
+cannot replace that holder within its hour. Import matches the approved request
+digest, every requested Permission field and the current authority signature.
+Worker retirement preserves this local owner; context revocation and joined
+Endpoint shutdown erase its private holder. Expiry requires a fresh holder,
+never a refund or revival of the preceding allocation. These local ownership
+checks do not themselves authorize a network lane or establish Time Confidence.
+
+The Linux Endpoint permission-file adapter exports that exact public request
+and returns its commitment separately. It accepts only a canonical absolute
+path in an existing directory owned by the Endpoint account with mode 0700;
+regular request/response files require mode 0600, matching ownership and one
+link. Reads reject symlinks, special files, replacement, changed size/mtime and
+oversize input before importing through the same live permission owner.
+An exact export retry preserves bytes and completes file/directory sync before
+returning; cancellation, changed profile/hour or revoked context refuses. The
+response is the existing 228-byte Custody format, never a replacement holder
+or a restored context. File paths are trusted composition inputs and are not
+accepted by Application transports. This adapter has local Linux/Custody
+behavior evidence; the ordinary command's provisioning lifecycle is not yet
+connected by its presence.
+The issuance operation derives its source selection inside the context. The
+installation Entry owner commits both ordered alternatives under an exclusive
+root lease before returning either member. Its retained floor survives pointer
+repair and prevents a failed dial or missing member from drawing a replacement.
+The context separately retains its Interior pair through worker retirement;
+revocation clears that pair along with the holder, pending blind batch and stock.
+An outstanding batch pins its original challenge, count and source selection.
+The pending batch retains an ordered challenge for every token. A batch may
+use different receiving Nodes under the same authenticated class/window key:
+the recipient binding stays inside each blinded token input, and ARDIBR01
+still carries no recipient list. A cold source prefix requests its missing
+Entry and Interior class-2 tokens in one such batch, leaving the second
+bootstrap batch available for Control stock. Changing the receiver order or
+any challenge on a same-process retry is refused. One context reservation spans
+stock preparation, issuance and prefix opening, so concurrent opens cannot
+debit duplicate bootstrap batches from an obsolete stock observation.
+The reservation also excludes unrelated issuance between its bootstrap
+exchanges. The second batch can fund the selected issuer's class-1 stock.
+Ordinary issuance opens a fresh terminal TLS child under the same admitted
+prefix; its presenter checks the actual issuer HELLO and durably marks the
+Control token before returning its bytes. Each pending batch retains its
+bootstrap or exact admitted-prefix binding and reserves its whole class count
+once. A pending internal stock refill is resumed as the same batch before the
+original requested work continues. Neither a retry nor a refill creates another
+permission, refunds its allocation, or converts a bootstrap child into an
+ordinary child. Refill is driven only by current requested work.
+Finalization verifies the
+whole result before grouping tokens into the corresponding private stocks.
+Each attempt rechecks the opened State projections and local duty conflicts;
+neither imported permission bytes nor the worker can supply these facts.
+The closed Entry root has its own marker and refuses a legacy Invite root;
+that refusal is not a migration procedure.
+
 ## Canonical signed permission
 
 All integers are unsigned big-endian. The signing input is the ASCII domain
@@ -96,6 +181,24 @@ The signature is Ed25519[64]. The complete permission is 228 bytes, excluding th
 Its interval is exactly one aligned UTC hour and lies inside the duty's
 authenticated validity. Reject unknown classes, zero identities, overflow,
 noncanonical size, wrong Network/duty or unsupported public key.
+
+The Endpoint prepares the sealed public allocation request as `ARDPAR01`[8],
+admission-authority-key[32], Network[32], issuer-Node[32], duty-generation
+u64, permission-ID[32], holder-key[32], not-before u64, not-after u64, three
+u32 maxima, local allocation role u8 (`User=1`, `Publisher=2`) and holder
+Ed25519[64]. The holder signs the ASCII domain
+`ardents-admission-allocation-v1\0` followed by every preceding field. The
+complete request is exactly 269 bytes. Custody accepts only the current aligned
+UTC hour, independently confirms its SHA-256 before unlock, verifies this
+holder proof and returns a permission only from its separate encrypted
+admission root. One atomically replaced encrypted allocation-ledger envelope
+holds the current authority successor and exact request digests; its monotonic
+floor is flushed only after the envelope is verified. This retains the complete
+allowed hourly reservation set without turning the vault's bounded record count
+into a smaller quota. An interrupted replacement is recovered only when it is
+the exact next floor; a restored older envelope is refused. An identical retry
+returns the same permission, while a changed body for that permission ID fails.
+This is a fixed allocation operation, never a raw-signing interface.
 
 This is a separately scoped permission signature, not a signature on a token.
 The authority key is independently identified in the signed closed issuer
@@ -193,6 +296,16 @@ permission-ID[32], request-ID[32], class u8, window-start u64,
 count u16 and SHA-256(concatenated blinded requests).
 A maximum of 32 means a count of tokens, not 32 unbounded nested requests.
 
+The canonical batch is `ARDIBR01`[8], the canonical Permission[228],
+request-ID[32], class u8, window-start u64, exact selected RSA-PSS SPKI[346],
+count u16, then count RFC 9578 TokenRequest values[259] and the holder
+Ed25519 signature[64]. Each TokenRequest is type 2, the least-significant
+byte of SHA-256(SPKI), and one 256-byte blinded element. The issuer obtains
+the full class/window/key binding only from this fixed framing and verifies
+the complete SPKI against its authenticated State projection before doing
+private-key work. The batch is at most 8,977 bytes; the encrypted response
+retains the separate fixed 16 KiB shape.
+
 The issuer first validates the permission, signature, exact body and current
 duty. Under one exclusive durable ledger transaction, it either returns an
 existing byte-identical committed result for the same ID/digest, or reserves
@@ -201,10 +314,41 @@ for that ID is unavailable. Invalid requests occupy no permanent ledger slot.
 A crash after reservation completes only that reservation on restart.
 No partial success/refund creates additional quota.
 
+The issuer reservation journal is ARDILG02: its owner binding is Network,
+issuer Node and profile digest, and each committed reservation retains request
+ID/digest, permission ID, hour, class, issuance kind and whole-batch count.
+Both kinds debit the same permission and hourly duty quotas; only bootstrap
+reservations consume the two-batch bootstrap allowance. An exact retry must
+retain its original kind. The former ARDILG01 journal is promoted under the
+exclusive issuer lease, preserving every old debit as bootstrap. The complete
+verified successor is flushed before atomic replacement. A separate retained
+binding makes a missing journal unavailable; removing either retained file is
+not recovery. Failed or ambiguous append stops that open owner. The static
+binding does not detect replacement by an older complete journal of the same
+duty; restart/migration acceptance still requires retained monotonic authority
+floors. It is not rollback qualification.
+
+An ordinary issuer child requires a genuine class-1 ADMIT before ACCEPT and
+one fixed OPERATION/RESULT exchange. The receiver burns the token in its
+separate spend root and binds the sealed admission to the actual inner TLS
+exporter before extending the pending child lifetime. Its lease is capped at
+30 seconds and 64 KiB including admission frames. A bootstrap-restricted child
+continues only the bootstrap exchange and cannot use this admission path.
+
 Issuer responses have the same 16 KiB encrypted plaintext shape for issued,
 exhausted, withdrawn and unavailable results. The client verifies every
 finalized token before exposing it to admission. Failure ends the batch;
 there is no automatic switch of issuer or key.
+
+Inside the protected terminal channel the canonical result is `ARDIOR01`[8],
+status u8 (`issued=1`, `exhausted=2`, `withdrawn=3`, `unavailable=4`),
+signature-count u8 and, only for `issued`, that many 256-byte blind
+signatures, followed by zero padding to exactly 16,347 bytes. The enclosing
+`RESULT` body adds its matching nonce[32], status u8 and result-length u32, so
+the encrypted terminal plaintext is exactly 16,384 bytes. All other statuses
+have count zero. A malformed count, signature or nonzero padding is
+unavailable. This fixed plaintext is not a second encryption protocol: the
+selected terminal TLS channel is its sole confidentiality boundary.
 
 CIRCL's blinding State is private, opaque and not serializable. Keep it in
 volatile Endpoint-owned memory. A same-process retry may reconcile the exact
@@ -228,6 +372,33 @@ Replacing a lane uses a fresh token and the existing bounded Connection
 continuity rules; no Application-operation replay follows.
 A failed disk write or ambiguous ledger ownership means unavailable.
 
+The Endpoint's separate owner-only token-attempt root records each potential
+spend before Route receives its token bytes. It uses an exclusive process
+lease, marker ardents-token-attempts-v1, and ARDTPS01 journal header:
+Network[32] and retained UTC-time floor u64 after the eight-byte magic.
+Each 153-byte receipt contains token-SHA-256[32], profile-digest[32],
+receiver-Node[32], receiver-duty u64, window-start u64, class u8,
+attempt-nonce[32], and observed-time u64. The attempt is the fresh receiving
+channel's HELLO nonce, not a context or holder identifier.
+
+The journal holds at most 131,072 receipts. Its append is flushed before
+presentation; the selected stock item is removed before that append and is
+never returned on refusal or uncertain completion. Missing, partial, foreign
+or replaced retained state refuses further use. Compaction stores its deletion
+time as the floor in the same atomic replacement, before any later append;
+a crash between those operations cannot permit time before that deletion.
+Each receipt remains until its hour plus sixty seconds has ended.
+The installed Ubuntu journal checks file identity through its opened descriptor; a
+pathname re-resolved after replacement cannot stand for the previous file.
+The format stores no reusable token, holder, permission, Target or document.
+
+A fresh source prefix consumes distinct genuine class-2 stock for Entry and
+Interior on new authenticated channels after bootstrap retirement. The local
+context retains the opening operation and returned prefix; cancellation joins
+their physical transport and child readers before releasing the journal root.
+This transport composition does not itself provide a trusted participant
+command, terminal Service consumer, prefix idle policy or root migration.
+
 Do not replicate a receiving duty behind independent ledgers. A restored
 snapshot cannot resume an old duty; explicit fresh State/duty/key generation
 and retained authority floors are required. Complete storage/time-authority
@@ -246,9 +417,19 @@ The duty's aggregate bootstrap output ceiling is 1 MiB/minute with a 128 KiB
 burst. Fresh source addresses or keys cannot enlarge that aggregate ceiling.
 
 The issuer requires the offline permission before expensive signing.
-The client may upgrade a live target-free prefix with appropriate one-use
-forwarding tokens before any private operation. Issuance success alone does
-not authorize use of a bootstrap-only lane for private traffic.
+[ADR-0082](../adr/0082-bind-bootstrap-restriction-to-node-child.md) binds the
+issuer-bootstrap restriction to each authenticated Node-outer child. Entry
+sets it from its actual bootstrap reserve; Interior refuses private ADMIT even
+when the token is valid and propagates the restriction toward the exact issuer.
+The constraint remains immutable; an Endpoint frame cannot remove it. Ordinary
+and restricted children may share a Node Carrier, but not receiving admission.
+
+Before private work, the client obtains genuine one-use forwarding admission
+at every required hop and creates fresh children under admitted parents. The
+initial implementation retires bootstrap channels and establishes admitted
+channels; it does not relabel the old restricted child. Issuance success alone
+never upgrades a reserve. The existing finite token, byte, time and queue
+budgets include the mandatory additional Node OPEN byte.
 This bounds honest resource consumption under a flood; it cannot ensure
 availability against an adversary that monopolizes the bounded allowance.
 

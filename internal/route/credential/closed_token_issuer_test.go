@@ -1,0 +1,212 @@
+//go:build linux
+
+package credential
+
+import (
+	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/sha256"
+	"net"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/route"
+)
+
+func TestClosedTokenIssuerReconcilesCommittedBatchAfterRestart(t *testing.T) {
+	window := time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour)
+	now := window.Add(time.Minute)
+	nodePublic, nodePrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	network, issuerNode := sha256.Sum256([]byte("issuer network")), sha256.Sum256([]byte("issuer node"))
+	root := t.TempDir()
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := InitializeClosedIssuerRoot(ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerNode, IdentityKey: nodePrivate,
+		NotBefore: window, NotAfter: window.Add(time.Hour), Clock: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	issuerProfile, err := DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authority := ed25519.NewKeyFromSeed(bytesForClosedTokenBatch(2))
+	profile := state.ClosedProfileView{NetworkID: network, StateGeneration: sha256.Sum256([]byte("State generation")), StateDigest: sha256.Sum256([]byte("State digest")),
+		Digest: sha256.Sum256([]byte("accepted State profile")), IssuerNodeID: issuerNode,
+		IssuerDutyGeneration: 4, NotBefore: window, NotAfter: window.Add(time.Hour), TokenKeyCount: uint8(len(issuerProfile.Keys))}
+	copy(profile.IssuanceAuthorityKey[:], authority.Public().(ed25519.PublicKey))
+	for index, key := range issuerProfile.Keys {
+		profile.TokenKeys[index].WindowStart, profile.TokenKeys[index].Class = key.WindowStart, uint8(key.Class)
+		copy(profile.TokenKeys[index].SPKI[:], key.SPKI)
+	}
+	holder := ed25519.NewKeyFromSeed(bytesForClosedTokenBatch(3))
+	permission := Permission{NetworkID: network, IssuerNodeID: issuerNode, DutyGeneration: profile.IssuerDutyGeneration,
+		PermissionID: sha256.Sum256([]byte("issuer permission")), NotBefore: window, NotAfter: window.Add(time.Hour), Maxima: [3]uint32{2, 0, 0}}
+	copy(permission.HolderKey[:], holder.Public().(ed25519.PublicKey))
+	copy(permission.Signature[:], ed25519.Sign(authority, permissionTranscript(permission)))
+	context := ClosedTokenContext{NetworkID: network, ProfileDigest: profile.Digest, ReceiverNodeID: sha256.Sum256([]byte("receiver")),
+		IssuerNodeID: issuerNode, ReceiverDutyGeneration: 6, Class: 1, WindowStart: window}
+	pending, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context, context}, Permission: permission, HolderKey: holder, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := pending.Request()
+	current := func() (state.ClosedProfileView, bool) { return profile, true }
+	open := func() *ClosedTokenIssuer {
+		t.Helper()
+		issuer, err := OpenClosedTokenIssuer(ClosedTokenIssuerConfig{Root: root, NetworkID: network, CurrentProfile: current, Clock: func() time.Time { return now }})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return issuer
+	}
+	issuer := open()
+	defer func() {
+		if err := issuer.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	decoded, err := DecodeClosedTokenBatch(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !issuer.profileCurrent() {
+		t.Fatal("opened issuer rejected its current State profile")
+	}
+	if err := VerifyPermission(decoded.Permission, ed25519.PublicKey(profile.IssuanceAuthorityKey[:]), network, issuerNode, profile.IssuerDutyGeneration, now); err != nil {
+		t.Fatalf("issuer permission precondition: %v", err)
+	}
+	if _, err := issuer.privateKey(decoded); err != nil {
+		t.Fatalf("issuer key precondition: %v", err)
+	}
+	nonce := [32]byte{51}
+	operation, err := route.EncodeClosedIssuanceRequest(nonce, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
+	terminal, err := route.DecodeClosedIssuanceResult(firstRaw, nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := DecodeClosedTokenBatchResult(terminal.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Status != ClosedTokenIssued || len(first.Signatures) != 2 {
+		t.Fatalf("first issuer result = %+v", first)
+	}
+	if tokens, err := pending.FinalizeTerminalOperation(nonce, firstRaw); err != nil || len(tokens) != 2 || len(tokens[0]) != closedTokenSize {
+		t.Fatalf("finalize committed batch = %d tokens / %v", len(tokens), err)
+	} else {
+		for _, token := range tokens {
+			if err := VerifyClosedToken(context, decoded.SPKI[:], token); err != nil {
+				t.Fatalf("verify finalized token: %v", err)
+			}
+		}
+		changed := append([]byte(nil), tokens[0]...)
+		changed[len(changed)-1] ^= 1
+		if err := VerifyClosedToken(context, decoded.SPKI[:], changed); err == nil {
+			t.Fatal("accepted changed finalized token")
+		}
+		wrongReceiver := context
+		wrongReceiver.ReceiverNodeID[0]++
+		if err := VerifyClosedToken(wrongReceiver, decoded.SPKI[:], tokens[0]); err == nil {
+			t.Fatal("accepted token for a different receiver")
+		}
+	}
+	if err := issuer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	issuer = open()
+	defer func() {
+		if err := issuer.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	retriedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, operation)
+	retriedTerminal, err := route.DecodeClosedIssuanceResult(retriedRaw, nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retried, err := DecodeClosedTokenBatchResult(retriedTerminal.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retried.Status != ClosedTokenIssued || len(retried.Signatures) != len(first.Signatures) || !bytes.Equal(retried.Signatures[0], first.Signatures[0]) ||
+		!bytes.Equal(retried.Signatures[1], first.Signatures[1]) || !bytes.Equal(retriedRaw, firstRaw) {
+		t.Fatalf("restarted issuer result = %+v", retried)
+	}
+	second, err := PrepareClosedTokenBatch(ClosedTokenBatchConfig{Profile: profile, Contexts: []ClosedTokenContext{context}, Permission: permission, HolderKey: holder, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Discard()
+	secondOperation, err := route.EncodeClosedIssuanceRequest(nonce, second.Request())
+	if err != nil {
+		t.Fatal(err)
+	}
+	exhaustedRaw := serveClosedIssuerBootstrap(t, issuer, profile, now, secondOperation)
+	exhaustedTerminal, err := route.DecodeClosedIssuanceResult(exhaustedRaw, nonce)
+	if err != nil || exhaustedTerminal.Status != 2 {
+		t.Fatalf("permission overflow terminal = %d / %v", exhaustedTerminal.Status, err)
+	}
+	exhausted, err := DecodeClosedTokenBatchResult(exhaustedTerminal.Payload)
+	if err != nil || exhausted.Status != ClosedTokenExhausted {
+		t.Fatalf("permission overflow result = %+v / %v", exhausted, err)
+	}
+	checkClosedIssuerSeparatePermissionObservation(t, issuer, profile, permission, authority, context, now, operation, firstRaw)
+}
+
+func serveClosedIssuerBootstrap(t *testing.T, issuer *ClosedTokenIssuer, profile state.ClosedProfileView, now time.Time, operation []byte) []byte {
+	t.Helper()
+	server, client := net.Pipe()
+	defer client.Close()
+	controller, err := route.NewClosedBootstrapController(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- issuer.ServeBootstrap(t.Context(), server, controller, [32]byte{61}) }()
+	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+		ProfileDigest: profile.Digest, RecipientNodeID: profile.IssuerNodeID, RecipientDutyGeneration: profile.IssuerDutyGeneration,
+		Purpose: route.ClosedPurposeIssuer, ChannelNonce: [32]byte{62}, Deadline: now.Add(10 * time.Second)}
+	body, err := route.EncodeClosedHello(hello)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 1, Lane: 0, Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := route.ReadClosedLaneFrame(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status, _, err := route.DecodeClosedAcceptFrame(accepted); err != nil || status != 0 {
+		t.Fatalf("bootstrap accept = %d / %v", status, err)
+	}
+	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 3, Lane: 0, Body: route.EncodeClosedBootstrap(true)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := route.WriteClosedLaneFrame(client, route.ClosedLaneFrame{Kind: 10, Lane: 0, Body: operation}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := route.ReadClosedLaneFrame(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Kind != 11 || result.Lane != 0 || len(result.Body) != 16<<10 {
+		t.Fatalf("bootstrap result frame = %+v", result)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	return result.Body
+}

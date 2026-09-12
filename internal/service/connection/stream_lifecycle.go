@@ -57,6 +57,21 @@ func (stream *Stream) establishInitialAttachment() error {
 		return ErrActiveViolation
 	}
 	attachment := stream.current
+	if verified := stream.initialAuthentication; verified != nil {
+		stream.initialAuthentication = nil
+		valid := stream.ctx.Err() == nil && stream.terminal == nil && verified.attachment == attachment && attachment.generation == 1 &&
+			stream.sendBase == 0 && stream.sendEnd == 0 && stream.recvNext == 0 &&
+			verified.peer.LocalNonce != [32]byte{} && verified.peer.PeerNonce != [32]byte{} &&
+			verified.peer.LocalNonce != verified.peer.PeerNonce
+		if valid {
+			stream.established = true
+		}
+		stream.mu.Unlock()
+		if !valid {
+			return ErrActiveViolation
+		}
+		return nil
+	}
 	state := ContinuityExchange{Key: stream.continuity, Generation: attachment.generation,
 		SendBase: stream.sendBase, SendEnd: stream.sendEnd, ReceiveNext: stream.recvNext,
 		Context: attachment.context, ExporterCommitment: attachment.exporterCommitment, Role: RoleClient}

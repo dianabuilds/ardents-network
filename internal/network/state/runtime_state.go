@@ -36,21 +36,22 @@ type networkState struct {
 }
 
 type config struct {
-	root            string
-	networkID       [32]byte
-	authorities     map[[32]byte]ed25519.PublicKey
-	threshold       int
-	acceptedProfile string
-	now             time.Time
-	clock           func() time.Time
-	source          *source.Plan
-	sourceInfo      source.Details
-	observation     time.Time
-	observe         func() time.Time
-	automatic       time.Duration
-	profile         string
-	resources       func([]byte) error
-	localRoles      string
-	anchorWall      time.Time
-	anchorMono      time.Time
+	root                   string
+	networkID              [32]byte
+	authorities            map[[32]byte]ed25519.PublicKey
+	threshold              int
+	closedProfileAuthority ed25519.PublicKey
+	acceptedProfile        string
+	now                    time.Time
+	clock                  func() time.Time
+	source                 *source.Plan
+	sourceInfo             source.Details
+	observation            time.Time
+	observe                func() time.Time
+	automatic              time.Duration
+	profile                string
+	resources              func([]byte) error
+	localRoles             string
+	anchorWall             time.Time
+	anchorMono             time.Time
 }

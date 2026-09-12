@@ -37,6 +37,22 @@
 - External users and independent reviewers may be recorded as future release
   gates, but must not be scheduled as if they are currently available.
 
+### Closed text-Service execution with Astra
+
+- For the already authorized closed text-Service work under issue #50, the
+  Product Owner selected Astra for the continuation. This does not reassign or
+  authorize implementation of the separate R-149 agreement-system research.
+- Follow [agent execution and handoff](docs/development/agent-execution.md).
+  Use one active implementation slice with an observable acceptance boundary.
+  Record other prepared work as paused, locally verified, or awaiting integration.
+- Preserve the existing branch, staged changes and untracked implementation.
+  A fresh agent session is not a reason to restart from main or discard work.
+- Keep GitHub Issues as the execution ledger and give the Product Owner concise
+  progress in the active conversation. Distinguish component readiness, full
+  issue acceptance and integration; no test-only reachability or gate waiver.
+- Do not start implementation agents or parallel branches merely to accelerate
+  this work. A skill-required review may use read-only reviewers of one bounded
+  delta; it is not independent security validation or another implementation.
 ### Agreement-system design and implementation responsibilities
 
 - For the agreement-system work under R-149, the Product Owner assigns product

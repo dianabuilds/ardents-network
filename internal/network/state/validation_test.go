@@ -111,3 +111,27 @@ func TestConfigRejectsUnboundedAutomaticAcquisition(t *testing.T) {
 		})
 	}
 }
+
+func TestClosedRouteProfileRequiresPinnedProfileAuthority(t *testing.T) {
+	value := newFixture(t)
+	base := state.Config{Root: t.TempDir(), NetworkID: value.networkID,
+		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic}, Threshold: 1,
+		Now: time.Unix(value.now, 0), AcceptedProfile: "ardents-route-v3"}
+	if store, err := state.Open(base); err == nil {
+		_ = store.Close()
+		t.Fatal("closed route state accepted no profile authority")
+	}
+	base.ClosedProfileAuthority = ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize)).Public().(ed25519.PublicKey)
+	if store, err := state.Open(base); err == nil {
+		_ = store.Close()
+		t.Fatal("closed route state accepted an unpinned profile authority")
+	}
+	base.ClosedProfileAuthority = value.authorityPublic
+	store, err := state.Open(base)
+	if err != nil {
+		t.Fatalf("open closed route state with pinned authority: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close closed route state: %v", err)
+	}
+}

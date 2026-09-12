@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/naming/namespace/authority"
 )
@@ -33,17 +34,28 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		return Receipt{}, err
 	}
 	defer func() { resultErr = errors.Join(resultErr, operationLock.release()) }()
-	if operation.Kind != OperationIssueServiceCredential &&
+	if operation.Kind != OperationIssueServiceCredential && operation.Kind != OperationIssueAdmissionPermission &&
 		(len(operation.ServiceRequest) != 0 || operation.ServiceRequestCommitment != ([32]byte{})) {
+		return Receipt{}, ErrInvalid
+	}
+	if operation.Kind != OperationIssueAdmissionPermission &&
+		(len(operation.AdmissionRequest) != 0 || operation.AdmissionRequestCommitment != ([32]byte{})) {
 		return Receipt{}, ErrInvalid
 	}
 	switch operation.Kind {
 	case OperationCreateVaultRecord:
+		if operation.Authority.Binding.Kind == AuthorityAdmission {
+			return Receipt{}, ErrInvalid
+		}
 		return vault.createRecord(ctx, operation, secrets)
 	case OperationCreateServiceAuthority:
 		return vault.createServiceAuthority(ctx, operation, secrets)
+	case OperationCreateAdmissionAuthority:
+		return vault.createAdmissionAuthority(ctx, operation, secrets)
 	case OperationIssueServiceCredential:
 		return vault.issueServiceCredential(ctx, operation, secrets)
+	case OperationIssueAdmissionPermission:
+		return vault.issueAdmissionPermission(ctx, operation, secrets)
 	case OperationVerifyVaultRecord:
 		return vault.verifyRecord(ctx, operation, secrets)
 	case OperationExportRecoveryBundle:
@@ -138,6 +150,15 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	defer zero(state.RootMaterial)
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
+	}
+	if state.Binding.Kind == AuthorityAdmission {
+		zero(state.RootMaterial)
+		zero(state.AdmissionJournal)
+		state, info, err = vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
+		if err != nil {
+			return Receipt{}, err
+		}
+		return Receipt{Operation: OperationVerifyVaultRecord, RecordID: operation.RecordID, Envelope: info, Authority: authorityReceipt(state), State: RecordActive}, nil
 	}
 	if err := vault.matchesFloor(state); err != nil {
 		return Receipt{}, err
@@ -347,6 +368,15 @@ func (vault *Vault) isEmpty() (bool, error) {
 			return false, fmt.Errorf("list vault records: %w", err)
 		}
 		if len(entries) != 0 {
+			return false, nil
+		}
+	}
+	entries, err := os.ReadDir(vault.root)
+	if err != nil {
+		return false, fmt.Errorf("list vault root: %w", err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "admission-ledger-") {
 			return false, nil
 		}
 	}

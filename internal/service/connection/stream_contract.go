@@ -124,14 +124,16 @@ type Stream struct {
 	flushMu  sync.Mutex
 	current  *Attachment
 
-	recovering   bool
-	established  bool
-	terminal     error
-	recoveries   uint32
-	proposals    int
-	episodeEnd   time.Time
-	lastProgress time.Time
-	ackSignal    chan struct{}
+	recovering            bool
+	established           bool
+	initialAuthentication *initialAuthentication
+	terminalReceipts      bool // Coalesced authenticated streams require receipts even without recovery.
+	terminal              error
+	recoveries            uint32
+	proposals             int
+	episodeEnd            time.Time
+	lastProgress          time.Time
+	ackSignal             chan struct{}
 
 	sendBase, sendEnd, sendNext                                                       uint64
 	sendData                                                                          []byte

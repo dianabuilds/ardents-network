@@ -115,12 +115,20 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"endpoint-replacement-ubuntu":       false,
 		"fuzz":                              false,
 		"headless-network":                  false,
+		"heapdump-capture":                  false,
+		"heapdump-role-map":                 false,
+		"text-role-durable-state-capture":   false,
 		"native-rendezvous-multihost":       false,
 		"package-e2e":                       false,
 		"process":                           false,
 		"qualification":                     false,
 		"race":                              false,
 		"service-credential-response-linux": false,
+		"text-worker-network":               false,
+		"text-worker-tree":                  false,
+		"text-worker-escape":                false,
+		"text-worker-lifecycle":             false,
+		"text-worker-policy":                false,
 	}
 	for _, profile := range registry.Profiles {
 		if _, known := required[profile.ID]; !known {

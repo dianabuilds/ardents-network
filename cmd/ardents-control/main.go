@@ -26,7 +26,7 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile")
 	}
 	switch arguments[0] {
 	case "inspect-bundle":
@@ -37,8 +37,16 @@ func run(arguments []string, output io.Writer) error {
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
 		return acceptAlphaCorpus(arguments[1:], output)
+	case "prepare-closed-profile":
+		return prepareClosedProfile(arguments[1:], output)
+	case "sign-closed-profile":
+		return signClosedProfile(arguments[1:], output)
+	case "inspect-closed-issuer-profile":
+		return inspectClosedIssuerProfile(arguments[1:], output)
+	case "inspect-closed-profile":
+		return inspectClosedProfile(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, or accept-alpha-corpus")
+		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile")
 	}
 }
 

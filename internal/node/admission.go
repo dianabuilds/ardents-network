@@ -49,7 +49,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		}
 	}
 	if probePlan == nil && input.Rendezvous.Certificate.PrivateKey == nil && input.Initiator.Certificate.PrivateKey == nil && input.Introduction.Certificate.PrivateKey == nil &&
-		input.Responder.Certificate.PrivateKey == nil && input.TransitIssuer.Certificate.PrivateKey == nil {
+		input.Responder.Certificate.PrivateKey == nil && input.TransitIssuer.Certificate.PrivateKey == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil && input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
 	enforcePressure := input.ResourceProfile != ""
@@ -58,7 +58,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		case "h3-np1-v1", "h3-s-v1", "h3-s-v1-strong":
 		case resource.RendezvousDedicatedHostProfile:
 			if probePlan != nil || input.Rendezvous.Certificate.PrivateKey == nil || input.Initiator.Certificate.PrivateKey != nil ||
-				input.Introduction.Certificate.PrivateKey != nil || input.Responder.Certificate.PrivateKey != nil || input.TransitIssuer.Certificate.PrivateKey != nil {
+				input.Introduction.Certificate.PrivateKey != nil || input.Responder.Certificate.PrivateKey != nil || input.TransitIssuer.Certificate.PrivateKey != nil || input.ClosedIssuer.Certificate.PrivateKey != nil || input.ClosedForwarding.Certificate.PrivateKey != nil || input.ClosedResolution.Certificate.PrivateKey != nil || input.ClosedIntroduction.Certificate.PrivateKey != nil || input.ClosedDataJoin.Certificate.PrivateKey != nil {
 				return runtimeConfig{}, errors.New("functional-alpha resource profile requires only one Rendezvous duty")
 			}
 		default:
@@ -95,6 +95,39 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 		return admission{kind: admissionFailed, reason: "local Node identity or key does not match verified state"}
 	}
 	now := config.now()
+	if snapshot.Profile == route.ClosedRouteProfile {
+		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
+			if err := validateClosedIssuerProfile(config.ClosedIssuer, config, snapshot, now); err != nil {
+				return admission{kind: admissionPrepared, reason: err.Error()}
+			}
+		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeForwarding, now); available {
+			if err := validateClosedForwardingProfile(config.ClosedForwarding, config, snapshot, now); err != nil {
+				return admission{kind: admissionPrepared, reason: err.Error()}
+			}
+		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeReachability, now); available {
+			if err := validateClosedResolutionProfile(config.ClosedResolution, config, snapshot, now); err != nil {
+				return admission{kind: admissionPrepared, reason: err.Error()}
+			}
+		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIntroduction, now); available {
+			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, config, snapshot, now); err != nil {
+				return admission{kind: admissionPrepared, reason: err.Error()}
+			}
+		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeDataJoin, now); available {
+			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, config, snapshot, now); err != nil {
+				return admission{kind: admissionPrepared, reason: err.Error()}
+			}
+		} else {
+			return admission{kind: admissionPrepared, reason: "closed Route assignment is not locally implemented"}
+		}
+		if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) || now.Before(snapshot.RecordValidFrom) ||
+			!now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
+			return admission{kind: admissionPrepared, reason: "freshness or validity is not satisfied"}
+		}
+		if err := config.CheckPlacement(); err != nil {
+			return admission{kind: admissionPrepared, reason: "resource placement is not ready: " + boundedReason(err)}
+		}
+		return admission{kind: admissionReady}
+	}
 	if snapshot.Profile == route.Profile {
 		if err := validateNativeDutyProfile(config, snapshot); err != nil {
 			return admission{kind: admissionPrepared, reason: err.Error()}

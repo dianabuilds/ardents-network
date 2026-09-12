@@ -125,7 +125,7 @@ func evaluateInputs(config epochPolicy, epoch epochEnvelope, inputs [][]byte) ([
 			evaluated[index].code = rejectProfile
 		case record.capacity == 0 || record.capacity > 1024:
 			evaluated[index].code = rejectCapacity
-		case !validCarrierProfile(record.carrier):
+		case !validCarrierForEpoch(epoch.profile, record.carrier):
 			evaluated[index].code = rejectCarrier
 		case authorityOwnsKey(config, record.keyID):
 			evaluated[index].code = rejectSourceCollision

@@ -18,6 +18,49 @@ own its future Endpoint composition under ADR-0081. The current runtime facts
 below remain until explicit migration; generic callers do not acquire a
 qualified-launch receipt through compatibility.
 
+The successor text Publisher context independently owns its Introduction and
+Responder prefixes and its Introduction registration. It consumes the existing accepted Instance binding to commit
+an Instance-signed private Descriptor through the actual resolution duty. The
+Instance owns a fresh volatile recipient and its monotonic revision floor;
+registration loss erases the recipient, and context loss joins operations before
+withdrawing Publication and Instance. A committed Publication retains cleanup
+ownership even when cancellation prevents Lease handover. Failed withdrawal
+retains its binding and original error until cleanup completes. This tested
+composition consumes real recipient-confidential capsule delivery before opening
+its separate Responder-domain forwarding prefix. Both Publisher prefixes obtain
+genuine tokens through Source and share admission/cleanup code while retaining
+separate selections and transports. Known Node/key/family overlaps across live
+domains or subroles are excluded before selection and issuance; losing a member
+cannot resample a retained set. A final handover rechecks the exact live
+Responder owner. Worker loss preserves a surviving context's allocation, while
+context loss joins both prefixes. Its refresh scheduler retains the old
+published registration while the replacement Descriptor awaits acknowledgement;
+the new registration cannot accept a capsule until that acknowledgement is
+verified against its still-live context, Instance, channel and profile. Network
+publication does not hold the shared Publisher mutex: a checked context
+reservation retains exclusive Instance ownership against legacy publication
+operations. Only the first successful switch bounds predecessor overlap to
+60 seconds or its earlier signed expiry; exact retries retain that cutoff.
+Scheduler timing is tested with accelerated events, not a wall-clock lifetime
+qualification. These module paths do not establish complete command exposure
+or installed-worker qualification.
+
+The closed text-Service composition retains a bounded job-owned exchange through
+JOIN and the authenticated Service transport's final cleanup. It prepares the
+independent Rendezvous class-2 and Introduction class-1 stocks before concurrent
+Source JOIN and capsule submission; each exact HELLO still requires its own
+durable token transfer. Publisher JOIN consumes its independently accepted capsule
+and current Responder prefix. The worker receives no raw JOIN stream: the existing
+Service TLS and native Instance authentication precede Application I/O.
+
+A clean JOIN peer CLOSE may precede consumption of the final authenticated
+Service record. The client retains those bounded received bytes and their original
+queue reservation until consumed, explicitly closed, cancelled, or expired under
+the original data lifetime. Only a clean transport EOF permits that drain; later
+protocol failures remain failures. Role TLS EOF alone is not successful outer
+completion: joined retirement waits for the peer's successful outer terminal,
+retains refusal/transport errors, and joins cleanup before releasing ownership.
+
 ## Ownership
 
 The local runtime has separate Modules and Interfaces:
@@ -103,11 +146,125 @@ requires separate research and an ADR.
       -> one terminal outcome and exactly-once session release
       -> withdraw/supersede stops acquisitions, drains references, erases private material
 
-Service Connection accepts only the closed ardents-interactive-route-v2
-profile. It has no H3 reader, profile negotiation, direct fallback,
-peer-selected profile, Publication private key, or Application IPC
-authorization. Its parser bound of 16 KiB per Data record is an allocation
-limit, not a product throughput promise.
+The Service Connection record grammar retains ardents-interactive-route-v2,
+including in the selected successor; the protected Route changes its context
+and Attachment composition, not those record bytes. There is no H3 reader,
+record-profile negotiation, direct fallback, Publication private key, or
+Application IPC authorization. The parser bound of 16 KiB per Data record is
+an allocation limit, not a product throughput promise.
+
+The Connection owner implements the successor's coalesced initial
+InstanceChallenge/Continuity request and InstanceProof/Continuity response.
+NewAuthenticatedStream verifies both proofs against the independently supplied
+publication identity and authenticated TLS Attachment before returning a stream.
+The Publisher verifies initial Continuity before invoking its opaque Instance
+signer. The private initial-state receipt binds the exact Attachment, has zero
+Application offsets, and is consumed once by the stream lifecycle without a
+second Continuity flight. Cancellation joins the owned transport close and
+prevents later receipt consumption. NewStream retains the preceding sequential
+composition.
+
+The Endpoint text-Service binding retains the exact verified worker job and
+independently checks the signed publication against its live State profile
+and local authority bounds. Its Initiator creates a fresh Connection nonce and
+salted commitment to the private local context; the local context and salt do
+not leave Endpoint. Both roles derive the selected immutable logical context,
+while each Attachment derives its separate exporter context from the capsule
+digest and generation. TLS 1.3 permits only the selected X25519MLKEM768 and
+X25519 groups. Publisher TLS and Instance proof use the currently acquired
+opaque publication lease.
+
+The initial text-Service stream invokes that real TLS/native Connection path
+and retains its opaque job binding. The reader holds its worker operation
+through authentication and document exchange. Publisher accepts only streams
+belonging to its exact job and context before transferring bytes to its one
+worker; a foreign or retired binding is closed and joined. Cancellation joins
+accepted stream forwarding and native I/O before releasing the worker operation
+and installed cleanup. A successful document remains conditional on current
+context ownership after cleanup.
+
+The installed worker/network profile exercises the initial-attachment composition
+with the real installed launcher, Introduction/Route producers, Service authentication
+and confined worker protocols for empty, 64-KiB and 4-MiB documents on both Carriers.
+Its State, Authority/Instance provisioning and registration scheduling remain explicit
+fixtures; this does not qualify the complete protected journey or hostile host.
+
+The Endpoint's text Publisher network producer retains one qualified worker
+across independent reads and owns Introduction receipt, JOIN and authenticated
+Service-stream handover. It uses an unbuffered handover; cancellation joins the
+producer, bridge and worker. A refused malformed, unauthenticated or rate-limited
+capsule can leave the snapshot available only when the refusal acknowledgement
+succeeds and no cancellation or cleanup failure accompanies it.
+The Publisher startup owner qualifies the worker before opening its Source and
+Introduction prefixes, creates the initial registration, and waits for verified
+Descriptor publication before returning its Link. The returned owner retains
+the network producer under the job lifetime, independently of the completed
+startup request. Startup failure joins worker/context cleanup. Its Close is an
+abort. Its separate withdrawal operation stops new Introduction acceptance before
+network withdrawal and joins scheduled refresh before withdrawing the final
+registration. Previously admitted reads retain their original lifetimes with an
+additional five-second drain bound. Repeated withdrawal cannot extend that bound.
+Producer drain preserves cancellation and cleanup failures, and context cleanup
+waits for withdrawal ownership to finish. This composition still requires full
+network lifecycle qualification and ordinary command adoption.
+For a new authorized text context, the permission provisioning owner first uses
+the installed launcher with an empty initialization and joins that preparation
+worker before exporting any request. It opens no Service stream and publishes
+no document. Cancellation or failed qualification cannot export a request;
+a previously verified context still undergoes the current authority checks.
+The text permission provisioning owner exports the exact public request and
+reports its digest before waiting for an actual Custody response file. The
+observer cannot grant authority. Waiting ends with caller/context cancellation
+or the original request's hour boundary; malformed, partial or mismatched
+responses fail without being retried into success. Only a verified import can
+complete provisioning. The protected participant supplies trusted owner-only paths and consumes this owner before exposing its commands.
+The text Administration owner retains that separately authorized context and
+its original local Principal. Each snapshot publication and withdrawal consumes
+a fresh Administration capability. Snapshot publication launches the installed
+worker and returns success only after the real Descriptor acknowledgement;
+bodyless publication cannot invent a document. Withdrawal can cancel and join
+pending startup, while a committed publication delegates to the finite drain.
+Shutdown aborts the context and joins startup and the retained run. The installed
+network profile now exercises snapshot and withdrawal through the real local
+Administration transport; that updated profile still requires execution on the
+qualified host. Local refusal tests do not establish installed publication.
+An explicit `ardents-text link` request consumes fresh Administration authority
+and projects the committed publication's canonical Target Link through that
+private local transport. Projection requires the current retained worker,
+acknowledged live registration and current publication Credential with the same
+Network and Target. Pending, withdrawn, expired or disconnected publications
+return unavailable. The request cannot publish, retry or refresh, and the Link
+is not a promise of future availability. The command joins cancellation of its
+bounded output; ordinary runtime diagnostics do not contain the destination.
+The text Connection owner consumes a fresh local Reader lease, launches the
+installed worker, and completes Service authentication before returning its
+AAI3 stream. It then validates the fixed local request, forwards the single
+Service exchange through the confined worker, and joins worker retirement
+before projecting its bounded RESULT through the local document grammar. This
+projection creates no second remote request. Caller or original-context loss
+interrupts both setup and local result I/O; owner shutdown joins the pending
+read. One retained Reader context admits one read through result completion.
+Local network tests exercise this result projection with explicit qualification
+fixtures. The installed profile uses the actual AAI3 owner and launcher, but
+that revised profile still requires execution on its qualified host.
+The protected `RunTextParticipant` composition opens the accepted closed State,
+Entry sets, token journal and existing Instance binding. It qualifies and
+provisions both retained text contexts before opening the AAI3 Connection and
+snapshot Administration transports, rechecks permission currentness before
+exposure, and joins servers, contexts and persistent owners on shutdown.
+`endpoint headless` selects this composition through an explicit v2 plan;
+missing permissions or mixed legacy fields fail without selecting another
+runtime. Persisted v1 plans retain `RunParticipant` compatibility. The protected
+composition still requires installed command and full network lifecycle
+qualification. No caller-supplied Target, permission file or local context
+identifier may bypass these owners.
+The coalesced authenticated stream requires its directional Terminal receipt
+and peer confirmation even when only the initial Attachment is available.
+Missing confirmation cannot yield a successful bounded outcome. This does not
+create a replacement source: recovery and its retained post-close replay tail
+remain separate required integration, not a readiness claim supplied by the
+installed network profile. The preceding sequential headless stream retains
+its existing orderly half-close behavior.
 
 After a replacement Attachment commits, the Connection replays any accepted but
 unacknowledged Data suffix without waiting for a further local Application read,

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 func TestNodePlanReaderNormalizesDedicatedHostProfile(t *testing.T) {
@@ -45,6 +47,41 @@ func TestNodePlanReaderNormalizesDedicatedHostProfile(t *testing.T) {
 				t.Fatalf("normalized runtime profile = %q", runtime.node.ResourceProfile)
 			}
 		})
+	}
+}
+
+func TestNodePlanSelectsClosedProfileOnlyForPinnedClosedIssuer(t *testing.T) {
+	certificatePath, keyPath, nodeID := writeRendezvousListenCredential(t)
+	rootA := writeNodeProfileInput(t, "source-a.pem", "source A root")
+	rootB := writeNodeProfileInput(t, "source-b.pem", "source B root")
+	plan := nodePlan{sourceServerPlan: sourceServerPlan{Schema: "ardents-node-plan-v1", StateRoot: t.TempDir(), LocalRoleStateRoot: t.TempDir(),
+		NetworkID: strings.Repeat("11", 32), AuthorityPublic: []string{strings.Repeat("12", 32)}, Threshold: 1, ServerCertificate: certificatePath, ServerKey: keyPath},
+		ClockObservationFile: certificatePath, OrderSeed: strings.Repeat("13", 32), SourceClientCertificate: certificatePath, SourceClientKey: keyPath,
+		Sources: []nodeSource{{Address: "192.0.2.10:48010", ServerName: "source-a.test", Identity: strings.Repeat("14", 32), Family: "source-a", EndpointHandle: "source-a", RootCA: rootA, LeafKeyDigest: strings.Repeat("15", 32)},
+			{Address: "192.0.2.11:48011", ServerName: "source-b.test", Identity: strings.Repeat("16", 32), Family: "source-b", EndpointHandle: "source-b", RootCA: rootB, LeafKeyDigest: strings.Repeat("17", 32)}},
+		NodeID: nodeID, IdentityKey: keyPath, ClosedIssuer: &closedIssuerPlan{Root: t.TempDir(), AdmissionRoot: t.TempDir(), ConnectionLimit: 1, DrainTimeoutMS: 1000}, ClosedProfileAuthority: strings.Repeat("12", 32)}
+	write := func() string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "node-plan.json")
+		raw, err := json.Marshal(plan)
+		if err != nil || os.WriteFile(path, raw, 0o600) != nil {
+			t.Fatal("write closed issuer node plan")
+		}
+		return path
+	}
+	runtime, err := readNodePlan(write())
+	if err != nil || runtime.state.AcceptedProfile != route.ClosedRouteProfile || len(runtime.state.ClosedProfileAuthority) == 0 ||
+		runtime.node.ClosedIssuer.Root != plan.ClosedIssuer.Root || runtime.node.ClosedIssuer.AdmissionRoot != plan.ClosedIssuer.AdmissionRoot || runtime.node.ClosedIssuer.ConnectionLimit != plan.ClosedIssuer.ConnectionLimit {
+		t.Fatalf("closed issuer State configuration = %+v / %v", runtime.state, err)
+	}
+	plan.ClosedProfileAuthority = strings.Repeat("ff", 32)
+	if _, err := readNodePlan(write()); err == nil {
+		t.Fatal("accepted closed authority outside State pins")
+	}
+	plan.ClosedProfileAuthority = strings.Repeat("12", 32)
+	plan.ClosedIssuer = nil
+	if _, err := readNodePlan(write()); err == nil {
+		t.Fatal("accepted closed profile authority without issuer reservation")
 	}
 }
 

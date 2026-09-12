@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map mod-check package-e2e package-ubuntu-deb prepare-native-rendezvous-host qualification qualification-alpha-control-two-endpoints qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-native-rendezvous-multihost qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -58,7 +58,17 @@ vet:
 	go vet ./...
 
 unit:
-	go test $(UNIT_PACKAGES) -short -shuffle=on -count=1
+	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1
+
+heapdump-capture:
+	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
+	@test -n "$(ARDENTS_HEAPDUMP_REPORT)" || (echo "ARDENTS_HEAPDUMP_REPORT is required"; exit 2)
+	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpObservation$$' -count=1
+
+heapdump-role-map:
+	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
+	@test -n "$(ARDENTS_HEAPDUMP_ROLE_MAP)" || (echo "ARDENTS_HEAPDUMP_ROLE_MAP is required"; exit 2)
+	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpRoleMapObservation$$' -count=1 -timeout=5m
 
 e2e:
 	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
@@ -120,7 +130,7 @@ fuzz:
 test: unit e2e
 
 test-race:
-	$(RACE_TEST_PREFIX) go test $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
+	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
 
 build:
 	go build ./...
@@ -155,3 +165,30 @@ tools-install:
 	go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
 	go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 	go install golang.org/x/tools/cmd/deadcode@v0.48.0
+
+.PHONY: text-worker-policy-check
+text-worker-policy-check:
+	sh ./tests/qualification/text-worker-policy/run-ubuntu.sh
+
+.PHONY: text-worker-lifecycle-check
+text-worker-lifecycle-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh
+
+.PHONY: text-worker-tree-check
+text-worker-tree-check:
+	sh ./tests/qualification/text-worker-tree/run-ubuntu.sh
+
+.PHONY: text-worker-network-check text-worker-escape-check
+text-worker-network-check:
+	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
+
+text-worker-escape-check:
+	sh ./tests/qualification/text-worker-escape/run-ubuntu.sh
+
+.PHONY: text-role-durable-state-capture
+text-role-durable-state-capture:
+	@test "$$(go env GOOS)" = linux || (echo "text-role-durable-state-capture requires Linux"; exit 1)
+	@test -n "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must name an absolute writable capture directory"; exit 1)
+	@test "$$(dirname "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)")" != "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must not be a filesystem root"; exit 1)
+	@test -d "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" && test -w "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" && test ! -L "$(ARDENTS_TEXT_ROLE_OBSERVATIONS)" || (echo "ARDENTS_TEXT_ROLE_OBSERVATIONS must name an existing writable non-symlink directory"; exit 1)
+	go test ./internal/endpoint -run '^TestTextPublicationIsolatedRoleObservations$$' -count=1 -timeout=4m

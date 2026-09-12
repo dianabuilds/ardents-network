@@ -334,7 +334,11 @@ func recordingAttachmentQueue(requests chan<- observedAttachmentRequest,
 	}
 	return func(ctx context.Context, request routeRecovery) (net.Conn, error) {
 		if requests != nil {
-			requests <- observedAttachmentRequest{request}
+			select {
+			case requests <- observedAttachmentRequest{request}:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 		}
 		select {
 		case connection := <-queue:

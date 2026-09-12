@@ -88,7 +88,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		"-root-commitment", hex.EncodeToString(authorityRoot[:]),
 		"-kind", "service", "-id-commitment", created.IDCommitment}
 	issuedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: initialization.RequestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: initialization.RequestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments...)
 	if bytes.Contains(issuedTerminal, []byte(password)) {
 		t.Fatal("custody artifact echoed its unlock password")
@@ -109,7 +109,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		t.Fatalf("custody response file differs from receipt: %v", err)
 	}
 	repeatedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: initialization.RequestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: initialization.RequestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments...)
 	var repeated struct {
 		RecordID string `json:"record_id"`
@@ -212,7 +212,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	failedTerminal, err := runInteractiveProductCommandResult(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: blocked.requestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(blocked.requestPath, conflictingResponsePath)...)
 	assertTerminalPasswordHidden(t, failedTerminal, password)
 	if err == nil || !bytes.Contains(failedTerminal, []byte("service Credential response destination conflicts")) {
@@ -224,7 +224,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 
 	recoveredResponsePath := filepath.Join(directory, "recovered-response.bin")
 	recoveredTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: blocked.requestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
 	assertTerminalPasswordHidden(t, recoveredTerminal, password)
 	var recovered struct {
@@ -242,7 +242,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 		t.Fatalf("recovered public response differs from receipt: %v", readErr)
 	}
 	repeatedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: blocked.requestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: blocked.requestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(blocked.requestPath, recoveredResponsePath)...)
 	assertTerminalPasswordHidden(t, repeatedTerminal, password)
 	var repeated struct {
@@ -259,7 +259,7 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	conflicting := initialize("conflicting-instance")
 	conflictingPublicationPath := filepath.Join(directory, "second-response.bin")
 	secondTerminal, secondErr := runInteractiveProductCommandResult(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting host:", value: conflicting.requestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: conflicting.requestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments(conflicting.requestPath, conflictingPublicationPath)...)
 	assertTerminalPasswordHidden(t, secondTerminal, password)
 	if secondErr == nil {

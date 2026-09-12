@@ -1,0 +1,15 @@
+[Unit]
+Description=Ardents fixed text reader activation
+
+[Socket]
+ListenStream=/run/ardents-text/reader.sock
+Accept=yes
+SocketUser=ardents-endpoint
+SocketGroup=ardents-endpoint
+SocketMode=0600
+DirectoryMode=0711
+MaxConnections=64
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

@@ -54,6 +54,8 @@ type Descriptor struct {
 	Publication       []byte
 	PublicationDigest [32]byte
 	Introduction      Introduction
+	ProfileDigest     [32]byte
+	Private           PrivateIntroduction
 	Signature         [64]byte
 }
 

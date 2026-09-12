@@ -1,0 +1,45 @@
+[Unit]
+Description=Ardents fixed text reader worker
+
+BindsTo=ardents-endpoint.service
+After=ardents-endpoint.service
+CollectMode=inactive-or-failed
+
+[Service]
+Type=exec
+ExecStart=/ardents-text worker-reader
+RootDirectory=/usr/lib/ardents/text-worker-root
+WorkingDirectory=/
+Environment=GOMAXPROCS=2 GOMEMLIMIT=96MiB
+DynamicUser=yes
+User=ardtxt-r-%i
+SupplementaryGroups=
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+PrivateNetwork=yes
+PrivateIPC=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=yes
+SystemCallFilter=~io_uring_setup io_uring_enter io_uring_register bpf ptrace process_vm_readv process_vm_writev perf_event_open keyctl add_key request_key userfaultfd @mount @module @reboot @swap @raw-io
+MemoryMax=128M
+TasksMax=32
+LimitCORE=0
+Restart=no
+KillMode=control-group
+TimeoutStopSec=2s
+StandardInput=socket
+StandardOutput=socket
+StandardError=null

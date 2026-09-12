@@ -1,7 +1,8 @@
 # Privacy and anonymity implementation path
 
 Status: **selected closed design and dependency order** under
-[ADR-0081](../adr/0081-select-closed-protected-service-contract.md).
+[ADR-0081](../adr/0081-select-closed-protected-service-contract.md) and its
+[authenticated child restriction amendment](../adr/0082-bind-bootstrap-restriction-to-node-child.md).
 GitHub Issues in the C0 Closed Alpha milestone owns execution and status.
 This document is the reader route and coverage map, not a second task ledger.
 
@@ -64,7 +65,7 @@ only in GitHub and the C0 Closed Alpha milestone.
 | Integrate the selected closed privacy design and retire conflicting guidance | [#51](https://github.com/dianabuilds/ardents-network/issues/51) | — |
 | Admit the selected Go and cryptographic dependency baseline for the successor | [#52](https://github.com/dianabuilds/ardents-network/issues/52) | [#51](https://github.com/dianabuilds/ardents-network/issues/51) |
 | Provision and verify the finite closed State profile and scoped issuance permissions | [#53](https://github.com/dianabuilds/ardents-network/issues/53) | [#52](https://github.com/dianabuilds/ardents-network/issues/52) |
-| Issue blind tokens through bounded confidential bootstrap on both Carriers | [#54](https://github.com/dianabuilds/ardents-network/issues/54) | [#53](https://github.com/dianabuilds/ardents-network/issues/53) |
+| Issue blind tokens through bounded confidential bootstrap on both Carriers | [#54](https://github.com/dianabuilds/ardents-network/issues/54) | [#53](https://github.com/dianabuilds/ardents-network/issues/53), tested local ownership foundation from [#56](https://github.com/dianabuilds/ardents-network/issues/56) |
 | Enforce receiver-local one-use admission and bounded protected lane forwarding | [#55](https://github.com/dianabuilds/ardents-network/issues/55) | [#54](https://github.com/dianabuilds/ardents-network/issues/54) |
 | Install and bind confined Ubuntu text workers to Endpoint-owned local authority | [#56](https://github.com/dianabuilds/ardents-network/issues/56) | [#52](https://github.com/dianabuilds/ardents-network/issues/52) |
 | Publish and refresh private reachability through protected Introduction channels | [#57](https://github.com/dianabuilds/ardents-network/issues/57) | [#55](https://github.com/dianabuilds/ardents-network/issues/55) |
@@ -83,12 +84,64 @@ design choice passed to an executor.
 |---|---|---|---|
 | 1 | Reviewable, integrated design bundle and current toolchain/dependency baseline | Documentation, build, dependencies | Owner links, ADR identities, exact inventory, fresh findings and required checks |
 | 2 | Operator provisions and State accepts one real closed profile and finite permissions | State/Source, Credential, existing commands | Pin/authority separation, canonical bytes, conflict/expiry, durable allocation and restart |
-| 3 | An Endpoint privately obtains and spends tokens through bounded forwarding on either Carrier | Entry/Route/Node, Credential, Resource | No token cycle; role/receiver binding; duplicate spend and reservation ambiguity; finite flood/refusal |
-| 4 | Real installed reader/Publisher workers exchange a bounded local job with Endpoint | Application, Broker, Endpoint, install | Verified launch before Grant, descriptor audit, malicious child/sibling and joined revoke/cleanup |
-| 5 | Owner publishes and User reads the intended text by Target Link over both legs | Instance/Publication, Reachability, Route, Service Connection, Endpoint | Recipient-only join, exact Target/content, first/warm access, withdrawal, no worker escape |
-| 6 | Sustained and concurrent Service streams retain authority, fairness and bounded recovery | Route/Connection, Node, Resource, Endpoint | 64/256 open and 16/64 active, real byte replenishment, immutable context, fresh attachments, no request replay |
-| 7 | One complete candidate migrates/adopts without resurrecting old state or accepting an older path | Release/install and every persistent owner | Interrupted conversion, rollback restrictions, tombstones/floors, owned worker inventory |
-| 8 | The installed complete journey passes its declared system trials | Existing test/operations owners | P1–P11, both Carriers, real Ubuntu, hostile/cost/idle/overlap cases and complete evidence |
+| 3 | Endpoint owns each authorized Isolation Context and Publisher role before issuance | Endpoint, Broker | Exact local authorization and verified Principal/Grant binding; worker loss preserves a surviving context; revoke, replacement and Endpoint loss reject stale use |
+| 4 | An Endpoint privately obtains and spends tokens through bounded forwarding on either Carrier | Entry/Route/Node, Credential, Resource | Tested local owner from #56; no token cycle; role/receiver binding; duplicate spend and reservation ambiguity; finite flood/refusal |
+| 5 | Real installed reader/Publisher workers exchange a bounded local job with Endpoint | Application, Broker, Endpoint, install | Verified launch before Grant, descriptor audit, malicious child/sibling and joined revoke/cleanup |
+| 6 | Owner publishes and User reads the intended text by Target Link over both legs | Instance/Publication, Reachability, Route, Service Connection, Endpoint | Recipient-only join, exact Target/content, first/warm access, withdrawal, no worker escape |
+| 7 | Sustained and concurrent Service streams retain authority, fairness and bounded recovery | Route/Connection, Node, Resource, Endpoint | 64/256 open and 16/64 active, real byte replenishment, immutable context, fresh attachments, no request replay |
+| 8 | One complete candidate migrates/adopts without resurrecting old state or accepting an older path | Release/install and every persistent owner | Interrupted conversion, rollback restrictions, tombstones/floors, owned worker inventory |
+| 9 | The installed complete journey passes its declared system trials | Existing test/operations owners | P1–P11, both Carriers, real Ubuntu, hostile/cost/idle/overlap cases and complete evidence |
+
+Implementation starts with #52, #53, the local ownership foundation from #56,
+then #54 and #55. Installed-host checks from #56 consume that local foundation.
+Its full acceptance also requires real command consumers and the complete
+repository gate: the Publisher consumer needs #57's protected registration and
+Descriptor publication, and the protected read consumer needs #58's complete
+Attachment, including the independent Responder-domain forwarding owner and
+actual Rendezvous pairing; a delivered capsule alone is not that Attachment.
+Those already selected integration dependencies may therefore be
+implemented before reporting full #56 acceptance; they do not create a second
+in-progress issue or new authority. #59 through #62 follow the complete read.
+#56 depends on #52; #54 also consumes its tested local ownership capability.
+Capability readiness is distinct from full installed-host acceptance of #56.
+The ordinary issuance integration depends on the retained source prefix and
+its terminal-channel owner, plus Endpoint stock and journal consumption; a
+receiving issuer implementation alone does not satisfy that dependency.
+The #54 integration joins the context-owned pending batch and retained source
+Entry/Interior sets to the real issuer exchange; #55 consumes the resulting
+one-use stock on fresh admitted channels. Ordinary issuance consumes a genuine
+class-1 token at the issuer through those admitted parents; its receiver spend
+root and signing reservation root stay owned until listener shutdown joins.
+The Node command supplies the forwarding receiver's local reservation through
+its exclusive closed-duty plan; the accepted State projection supplies its
+actual role, listener and recipients. Configuring this consumer is distinct
+from qualifying a complete Endpoint-to-Service journey.
+This enables issuance beyond the two bootstrap batches without enlarging any
+permission or duty quota. Bootstrap network tests alone do not complete that
+ownership and admission chain. A receiving implementation and its network tests
+also do not replace the Endpoint's retained terminal-channel consumer.
+The trusted text client consumes AAI3 and independently escaped presentation.
+Its local conformance does not satisfy the separate Endpoint runtime dependency:
+permission provisioning must retain the live authorized context, and reader/
+Publisher work must consume that context through verified worker launch and
+the actual protected Service path. That composition retains the Service record
+grammar while supplying the successor's immutable context and fresh Attachment
+exporter. Its initial Instance and Continuity checks are one flight and yield
+only the Connection owner's private initial-state receipt; tested record or
+handshake mechanics do not substitute for this Endpoint consumer. The private
+text-Service binding connects those contexts and authentication to actual
+worker exchanges while retaining exact job ownership. It consumes an already
+admitted Route transport and verified capsule digest; it cannot replace the
+private Introduction producer or make a standalone stream test an end-to-end
+read. The trusted Publisher client imports its selected file and transfers only
+the stable bounded snapshot through Administration; that transport requires an
+implementing publication owner and cannot substitute for Endpoint publication.
+Endpoint AAI3 admission, snapshot publication ownership and installed-host
+confinement remain separate required dependencies before full acceptance.
+Preserve unfinished branch work while connecting the real consumers; a failing
+quality gate remains a failure. Reordering admitted implementation to match
+these existing owners introduces no new authority. Live status belongs only in
+the linked issues under #50.
 
 The retained network capacity workload is broader than the 4 MiB text job.
 Its declared harness is a test input using real Service streams, never a

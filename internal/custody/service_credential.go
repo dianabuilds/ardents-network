@@ -1,6 +1,7 @@
 package custody
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
@@ -220,5 +221,6 @@ func floorEqualsState(floor authorityFloor, state AuthorityState) bool {
 
 func sameAuthorityState(left, right AuthorityState) bool {
 	return left.Binding == right.Binding && left.Generation == right.Generation && left.Revision == right.Revision &&
-		equalWatermarks(left.Watermarks, right.Watermarks) && string(left.RootMaterial) == string(right.RootMaterial)
+		equalWatermarks(left.Watermarks, right.Watermarks) && bytes.Equal(left.RootMaterial, right.RootMaterial) &&
+		bytes.Equal(left.AdmissionJournal, right.AdmissionJournal)
 }

@@ -3,9 +3,12 @@
 package duty
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"syscall"
+
+	"golang.org/x/sys/windows"
 )
 
 type rootLease struct{ handle syscall.Handle }
@@ -29,3 +32,5 @@ func (lease rootLease) release() error {
 	}
 	return syscall.CloseHandle(lease.handle)
 }
+
+func rootLeaseBusy(err error) bool { return errors.Is(err, windows.ERROR_SHARING_VIOLATION) }

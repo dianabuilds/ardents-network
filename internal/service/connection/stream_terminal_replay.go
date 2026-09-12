@@ -5,11 +5,13 @@ import "errors"
 // replaySettledTerminal preserves a completed local half-close when another
 // worker recovered its Attachment after the sender had already returned. A
 // successful local write does not prove the peer received that Terminal.
+// Even a received receipt cannot settle the old confirmation on a replacement:
+// replay renews that control exchange for this Attachment without rereading
+// Application bytes. terminalGeneration bounds replay to once per Attachment.
 func (stream *Stream) replaySettledTerminal() error {
 	for {
 		stream.mu.Lock()
 		replay := stream.localTerminal && stream.terminalSettled &&
-			(stream.terminalAcknowledgedGeneration == 0 || stream.postClose) &&
 			stream.terminal == nil && stream.current != nil && stream.terminalGeneration != stream.current.generation
 		stream.mu.Unlock()
 		if !replay {
@@ -30,7 +32,6 @@ func (stream *Stream) replaySettledTerminal() error {
 func (stream *Stream) startSettledTerminalReplay() {
 	stream.mu.Lock()
 	replay := stream.localTerminal && stream.terminalSettled &&
-		(stream.terminalAcknowledgedGeneration == 0 || stream.postClose) &&
 		stream.terminal == nil && stream.current != nil && stream.terminalGeneration != stream.current.generation && !stream.terminalReplaying
 	if replay {
 		stream.terminalReplaying = true

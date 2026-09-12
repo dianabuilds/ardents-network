@@ -96,3 +96,55 @@ func TestIssuerServeRejectsAnyOtherLocalDutyReservation(t *testing.T) {
 		t.Fatal("issuer serve accepted an Initiator reservation")
 	}
 }
+
+func TestIssuerServeAcceptsOneClosedIssuerReservation(t *testing.T) {
+	issuer := node.ClosedIssuerProfile{Root: filepath.Join(t.TempDir(), "closed-issuer-root")}
+	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{ClosedIssuer: issuer}}); err != nil {
+		t.Fatalf("closed issuer-only runtime rejected: %v", err)
+	}
+	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: node.TransitIssuerProfile{Root: t.TempDir()}, ClosedIssuer: issuer}}); err == nil {
+		t.Fatal("issuer serve accepted both issuer reservations")
+	}
+}
+
+func TestClosedIssuerInitializeCommandPublishesOnlySPKIProfile(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Hour)
+	nodePublic, nodePrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	privateDER, err := x509.MarshalPKCS8PrivateKey(nodePrivate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	identityPath := filepath.Join(directory, "node-identity.pem")
+	if err := os.WriteFile(identityPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	network, nodeID := [32]byte{91}, [32]byte{92}
+	planPath := filepath.Join(directory, "closed-issuer-initialize.json")
+	plan := map[string]any{"schema": "ardents-closed-issuer-initialize-v1", "root": filepath.Join(directory, "closed-issuer-root"),
+		"network_id": hex.EncodeToString(network[:]), "node_id": hex.EncodeToString(nodeID[:]), "identity_key": identityPath,
+		"not_before": now.Format(time.RFC3339), "not_after": now.Add(time.Hour).Format(time.RFC3339)}
+	raw, err := json.Marshal(plan)
+	if err != nil || os.WriteFile(planPath, raw, 0o600) != nil {
+		t.Fatal("write closed issuer initialization plan")
+	}
+	var output bytes.Buffer
+	if err := run(context.Background(), []string{"issuer", "initialize", "--config", planPath}, &output); err != nil {
+		t.Fatal(err)
+	}
+	var receipt struct {
+		Schema  string `json:"schema"`
+		Profile []byte `json:"profile"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	profile, err := credential.DecodeClosedIssuerProfile(receipt.Profile, nodePublic)
+	if err != nil || receipt.Schema != "ardents-closed-issuer-profile-v1" || profile.NetworkID != network || profile.NodeID != nodeID || len(profile.Keys) != 3 ||
+		bytes.Contains(output.Bytes(), privateDER) {
+		t.Fatalf("closed issuer initialization receipt/profile = %+v, %+v, %v", receipt, profile, err)
+	}
+}

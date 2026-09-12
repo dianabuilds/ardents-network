@@ -19,16 +19,17 @@ type Server interface {
 }
 
 type server struct {
-	path     string
-	listener *net.UnixListener
-	ctx      context.Context
-	cancel   context.CancelFunc
-	work     sync.WaitGroup
-	mu       sync.Mutex
-	clients  map[*net.UnixConn]struct{}
-	once     sync.Once
-	err      error
-	owner    Interface
+	path      string
+	listener  *net.UnixListener
+	ctx       context.Context
+	cancel    context.CancelFunc
+	work      sync.WaitGroup
+	mu        sync.Mutex
+	clients   map[*net.UnixConn]struct{}
+	once      sync.Once
+	err       error
+	owner     Interface
+	snapshots chan struct{}
 }
 
 // Listen exposes owner on one explicit absolute Unix-socket path.
@@ -51,7 +52,7 @@ func Listen(path string, owner Interface) (Server, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	server := &server{path: path, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
-		clients: make(map[*net.UnixConn]struct{})}
+		clients: make(map[*net.UnixConn]struct{}), snapshots: make(chan struct{}, 1)}
 	server.work.Add(1)
 	go server.serve()
 	return server, nil
@@ -65,6 +66,11 @@ func (server *server) serve() {
 			return
 		}
 		server.mu.Lock()
+		if server.ctx.Err() != nil {
+			server.err = errors.Join(server.err, connection.Close())
+			server.mu.Unlock()
+			return
+		}
 		server.clients[connection] = struct{}{}
 		server.mu.Unlock()
 		server.work.Add(1)
@@ -72,7 +78,10 @@ func (server *server) serve() {
 			defer server.work.Done()
 			defer func() {
 				server.mu.Lock()
-				delete(server.clients, connection)
+				if _, owned := server.clients[connection]; owned {
+					server.err = errors.Join(server.err, connection.Close())
+					delete(server.clients, connection)
+				}
 				server.mu.Unlock()
 			}()
 			server.handle(connection)
@@ -81,11 +90,20 @@ func (server *server) serve() {
 }
 
 func (server *server) handle(connection *net.UnixConn) {
-	defer connection.Close()
 	_ = connection.SetDeadline(time.Now().Add(15 * time.Second))
-	raw, err := io.ReadAll(io.LimitReader(connection, int64(maximumRequest+1)))
-	if err != nil || len(raw) > maximumRequest {
+	raw, err := io.ReadAll(io.LimitReader(connection, int64(maximumRequest)))
+	if err == nil && string(raw) == snapshotRequest {
+		server.handleSnapshot(connection)
+		return
+	}
+	var trailing [1]byte
+	n, tailErr := connection.Read(trailing[:])
+	if err != nil || n != 0 || tailErr != io.EOF {
 		writeResponse(connection, "unavailable\n")
+		return
+	}
+	if string(raw) == "link\n" {
+		server.handlePublishedLink(connection)
 		return
 	}
 	var operation func(context.Context) error
@@ -119,10 +137,12 @@ func (server *server) Close() error {
 	}
 	server.once.Do(func() {
 		server.cancel()
-		server.err = server.listener.Close()
+		listenerErr := server.listener.Close()
 		server.mu.Lock()
+		server.err = errors.Join(server.err, listenerErr)
 		for client := range server.clients {
 			server.err = errors.Join(server.err, client.Close())
+			delete(server.clients, client)
 		}
 		server.mu.Unlock()
 		server.work.Wait()

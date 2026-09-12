@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"time"
@@ -9,7 +10,7 @@ import (
 )
 
 func (s *networkState) retainSourceExposures(notAfter time.Time) error {
-	roles, err := duty.Open(duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
 	if err != nil {
 		return err
 	}
@@ -36,7 +37,7 @@ func (s *networkState) retainSourceServer() error {
 	if s.current == nil {
 		return errors.New("direct Source server has no current identity")
 	}
-	roles, err := duty.Open(duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (s *networkState) releaseSourceServer() error {
 	if !s.config.sourceInfo.Serving {
 		return nil
 	}
-	roles, err := duty.Open(duty.Config{Root: s.config.localRoles, Clock: s.config.clock})
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock})
 	if err != nil {
 		return err
 	}
