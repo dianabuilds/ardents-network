@@ -32,19 +32,30 @@ func TestWorkerEntrypointAuditsDescriptorsAndJoinsCancellation(t *testing.T) {
 			name = "foreign-descriptor"
 		}
 		t.Run(name, func(t *testing.T) {
-			fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.SOCK_CLOEXEC, 0)
+			listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: filepath.Join(t.TempDir(), "worker.sock"), Net: "unix"})
 			if err != nil {
 				t.Fatal(err)
 			}
-			child := os.NewFile(uintptr(fds[0]), "worker-attachment")
-			defer child.Close()
-			parent := os.NewFile(uintptr(fds[1]), "endpoint-attachment")
-			peer, err := net.FileConn(parent)
-			_ = parent.Close()
+			defer listener.Close()
+			peer, err := net.DialUnix("unix", nil, listener.Addr().(*net.UnixAddr))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer peer.Close()
+			accepted, err := listener.AcceptUnix()
+			if err != nil {
+				t.Fatal(err)
+			}
+			child, err := accepted.File()
+			if err != nil {
+				_ = accepted.Close()
+				t.Fatal(err)
+			}
+			if err := accepted.Close(); err != nil {
+				_ = child.Close()
+				t.Fatal(err)
+			}
+			defer child.Close()
 			if err := peer.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
 				t.Fatal(err)
 			}
