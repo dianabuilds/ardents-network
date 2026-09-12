@@ -11,6 +11,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+const textRefreshContentionRetryDelay = 100 * time.Millisecond
+
 type textPublicationRefresh struct {
 	context context.Context
 	cancel  context.CancelFunc
@@ -132,6 +134,16 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		}
 		if !now.Before(refreshAt) {
 			if err := owner.rotateTextPublication(flight, registered); err != nil {
+				if flight.context.Err() == nil && textRefreshSourceContention(err) {
+					timer := time.NewTimer(textRefreshContentionRetryDelay)
+					select {
+					case <-flight.context.Done():
+						timer.Stop()
+						return
+					case <-timer.C:
+					}
+					continue
+				}
 				if flight.context.Err() == nil {
 					owner.failTextRefresh(flight, textRefreshFailureStage(err), err)
 				}
@@ -162,6 +174,10 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		case <-timer.C:
 		}
 	}
+}
+
+func textRefreshSourceContention(cause error) bool {
+	return errors.Is(cause, context.DeadlineExceeded) && textRoleMemberFailureStage(cause) == "conflict-read"
 }
 
 func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, previous *textIntroductionRegistration) error {

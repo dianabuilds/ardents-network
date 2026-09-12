@@ -9,10 +9,70 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
+
+func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
+	gate := newTextDescriptorACKGate()
+	gate.open()
+	endpoint, owner, _, first := startTextRegisteredPublisherNetwork(t, route.ClosedCarrierQUIC, gate)
+	if _, err := owner.publishTextDescriptor(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	owner.mu.Lock()
+	oldSource, refresh := owner.prefix, owner.refresh
+	owner.mu.Unlock()
+	if oldSource == nil || refresh == nil {
+		t.Fatal("published registration has no Source or refresh owner")
+	}
+	if err := oldSource.Close(); err != nil {
+		t.Fatal(err)
+	}
+	writer, err := duty.Open(duty.Config{Root: endpoint.closedRoleRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner.mu.Lock()
+	first.refreshAt = time.Now().Add(-time.Second)
+	owner.signalTextRegistrationsLocked()
+	owner.mu.Unlock()
+	timer := time.NewTimer(1200 * time.Millisecond)
+	select {
+	case <-refresh.done:
+		timer.Stop()
+		_ = writer.Close()
+		t.Fatalf("transient local-role commit ended refresh: %v", refresh.err)
+	case <-timer.C:
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	waitTextRefreshCondition(t, owner, func() bool {
+		return owner.registration != nil && owner.registration != first && owner.previousRegistration == first
+	})
+}
+
+func TestTextPublicationRefreshRetriesOnlyConflictReadTimeout(t *testing.T) {
+	contention := textRoleMemberFailureAt("conflict-read", context.DeadlineExceeded)
+	for name, test := range map[string]struct {
+		cause error
+		want  bool
+	}{
+		"contention":       {contention, true},
+		"other role stage": {textRoleMemberFailureAt("binding", context.DeadlineExceeded), false},
+		"other cause":      {textRoleMemberFailureAt("conflict-read", errors.New("corrupt generation")), false},
+		"bare timeout":     {context.DeadlineExceeded, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := textRefreshSourceContention(test.cause); got != test.want {
+				t.Fatalf("retry classification = %t", got)
+			}
+		})
+	}
+}
 
 // Only timer scheduling, accepted State and worker qualification are fixtures.
 // Both key generations, issuance, registration, publication and capsule delivery

@@ -62,11 +62,18 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	defer writer.Close()
 
 	attempt, cancel := context.WithCancel(t.Context())
-	defer cancel()
+	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
-	owner.prefixOpening = &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	owner.prefixOpening = flight
 	profile := owner.permission.profile
 	owner.mu.Unlock()
+	defer func() {
+		owner.mu.Lock()
+		owner.prefixOpening = nil
+		owner.mu.Unlock()
+		cancel()
+		close(flight.done)
+	}()
 	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
 		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: source.view.Nodes[0].DutyGeneration,
 		Purpose: route.ClosedPurposeForwarding, Deadline: time.Now().Add(10 * time.Second), ChannelNonce: fixtureID(199)}

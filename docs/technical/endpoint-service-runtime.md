@@ -204,6 +204,12 @@ abort. Its separate withdrawal operation stops new Introduction acceptance befor
 network withdrawal and joins scheduled refresh before withdrawing the final
 registration. Previously admitted reads retain their original lifetimes with an
 additional five-second drain bound. Repeated withdrawal cannot extend that bound.
+Scheduled publication refresh retries only a Source membership recheck whose
+one-second local-role transaction ended because a concurrent producer still
+held the lease. The failed opening publishes no token or registration; every
+retry repeats current authority, State, selection and admission checks after a
+fixed local delay. Other Source, Route, journal and cleanup failures remain
+terminal, and retry never extends the registration, permission or Route expiry.
 Producer drain preserves cancellation and cleanup failures, and context cleanup
 waits for withdrawal ownership to finish. This composition still requires full
 network lifecycle qualification and ordinary command adoption.
