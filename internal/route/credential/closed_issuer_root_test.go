@@ -5,11 +5,24 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/binary"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
+
+// closedIssuerFixtureRoot makes the private-root precondition explicit rather
+// than depending on a platform's temporary-directory defaults.
+func closedIssuerFixtureRoot(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "closed-issuer")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
 
 func TestInitializeClosedIssuerRootPublishesExactSPKIInventory(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
@@ -17,7 +30,7 @@ func TestInitializeClosedIssuerRootPublishesExactSPKIInventory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := ClosedIssuerRootConfig{Root: t.TempDir(), NetworkID: credentialID(1), NodeID: credentialID(2), IdentityKey: private,
+	config := ClosedIssuerRootConfig{Root: closedIssuerFixtureRoot(t), NetworkID: credentialID(1), NodeID: credentialID(2), IdentityKey: private,
 		NotBefore: now, NotAfter: now.Add(time.Hour), Clock: func() time.Time { return now.Add(time.Minute) }}
 	first, err := InitializeClosedIssuerRoot(config)
 	if err != nil || len(first.Profile) == 0 {
@@ -55,7 +68,7 @@ func TestDecodeClosedIssuerProfileRejectsReorderedKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := ClosedIssuerRootConfig{Root: t.TempDir(), NetworkID: credentialID(11), NodeID: credentialID(12), IdentityKey: private,
+	config := ClosedIssuerRootConfig{Root: closedIssuerFixtureRoot(t), NetworkID: credentialID(11), NodeID: credentialID(12), IdentityKey: private,
 		NotBefore: now, NotAfter: now.Add(time.Hour), Clock: func() time.Time { return now.Add(time.Minute) }}
 	receipt, err := InitializeClosedIssuerRoot(config)
 	if err != nil {

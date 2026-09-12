@@ -21,7 +21,7 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 	certificate, public := rendezvousCertificate(t, 211, "closed-issuer")
 	network, issuerID := [32]byte{41}, [32]byte{42}
 	generation, digest := sha256.Sum256([]byte("closed node generation")), sha256.Sum256([]byte("closed node digest"))
-	root := t.TempDir()
+	root := closedIssuerFixtureRoot(t)
 	receipt, err := credential.InitializeClosedIssuerRoot(credential.ClosedIssuerRootConfig{Root: root, NetworkID: network, NodeID: issuerID,
 		IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey), NotBefore: now.Truncate(time.Hour), NotAfter: now.Truncate(time.Hour).Add(time.Hour), Clock: time.Now})
 	if err != nil {
