@@ -58,7 +58,7 @@ vet:
 	go vet ./...
 
 unit:
-	go test $(UNIT_PACKAGES) -short -shuffle=on -count=1
+	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1
 
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
@@ -130,7 +130,7 @@ fuzz:
 test: unit e2e
 
 test-race:
-	$(RACE_TEST_PREFIX) go test $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
+	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
 
 build:
 	go build ./...
