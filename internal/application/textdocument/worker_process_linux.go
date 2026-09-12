@@ -5,6 +5,7 @@ package textdocument
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -94,7 +95,12 @@ func verifyWorkerDescriptors() error {
 				return errors.New("text worker descriptor inventory is unavailable")
 			}
 			if survived {
-				return errors.New("text worker inherited a foreign descriptor")
+				var target [256]byte
+				n, targetErr := syscall.Readlink("/proc/self/fd/"+entry, target[:])
+				if targetErr != nil {
+					return errors.New("text worker descriptor inventory is unavailable")
+				}
+				return fmt.Errorf("text worker inherited a foreign descriptor fd=%d target=%q", fd, target[:n])
 			}
 		}
 	}
