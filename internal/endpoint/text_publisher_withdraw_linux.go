@@ -51,5 +51,12 @@ func (run *textPublisherRun) Withdraw(ctx context.Context) error {
 	}
 	boundedErr := bounded.Err()
 	cancel()
+	if withdrawalErr != nil {
+		owner.reportTextWithdrawalFailure("registration")
+	} else if run.err != nil {
+		owner.reportTextWithdrawalFailure("publisher-drain")
+	} else if boundedErr != nil {
+		owner.reportTextWithdrawalFailure("deadline")
+	}
 	return errors.Join(withdrawalErr, run.err, boundedErr)
 }
