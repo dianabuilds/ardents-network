@@ -12,19 +12,33 @@ import (
 // their original bounds, with an additional five-second maximum. Only the first
 // withdrawal owns this transition; repeated calls cannot extend its deadline.
 func (run *textPublisherRun) Withdraw(ctx context.Context) error {
-	if run == nil || ctx == nil || ctx.Err() != nil {
+	if run == nil {
+		return errors.New("text publication withdrawal unavailable")
+	}
+	if ctx == nil || ctx.Err() != nil {
+		run.owner.reportTextWithdrawalFailure("caller-context")
 		return errors.New("text publication withdrawal unavailable")
 	}
 	run.mu.Lock()
 	if run.ending || run.withdrawDone != nil {
 		run.mu.Unlock()
+		run.owner.reportTextWithdrawalFailure("publisher-ended")
 		return errors.New("text publication already ending")
 	}
 	owner := run.owner
 	owner.mu.Lock()
-	if owner.publicationDraining || owner.registration == nil || !owner.liveLocked(owner.endpoint, owner.surface) {
+	failure := ""
+	if owner.publicationDraining {
+		failure = "publication-draining"
+	} else if owner.registration == nil {
+		failure = "registration-absent"
+	} else if !owner.liveLocked(owner.endpoint, owner.surface) {
+		failure = "publisher-not-live"
+	}
+	if failure != "" {
 		owner.mu.Unlock()
 		run.mu.Unlock()
+		owner.reportTextWithdrawalFailure(failure)
 		return errors.New("text publication withdrawal owner unavailable")
 	}
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -53,9 +67,11 @@ func (run *textPublisherRun) Withdraw(ctx context.Context) error {
 	cancel()
 	if withdrawalErr != nil {
 		owner.reportTextWithdrawalFailure("registration")
-	} else if run.err != nil {
+	}
+	if run.err != nil {
 		owner.reportTextWithdrawalFailure("publisher-drain")
-	} else if boundedErr != nil {
+	}
+	if boundedErr != nil {
 		owner.reportTextWithdrawalFailure("deadline")
 	}
 	return errors.Join(withdrawalErr, run.err, boundedErr)
