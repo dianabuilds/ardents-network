@@ -17,6 +17,7 @@ import (
 // under the same lock before releasing the descriptor.
 type headlessTextSocketOutput struct {
 	mu       sync.Mutex
+	writeMu  sync.Mutex
 	fd       int
 	closed   bool
 	deadline time.Time
@@ -63,6 +64,11 @@ func (output *headlessTextSocketOutput) SetWriteDeadline(deadline time.Time) err
 }
 
 func (output *headlessTextSocketOutput) Write(value []byte) (int, error) {
+	// One call is one JSON event. The state lock stays short so cancellation
+	// and Close can wake a bounded retry, while this lock keeps partial sends
+	// from two events from interleaving on the journal socket.
+	output.writeMu.Lock()
+	defer output.writeMu.Unlock()
 	total := 0
 	for total < len(value) {
 		output.mu.Lock()

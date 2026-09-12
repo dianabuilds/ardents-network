@@ -63,16 +63,51 @@ func ListenClosedSharedCarrier(profile CarrierProfile, endpoint string, certific
 		if err != nil {
 			return nil, err
 		}
-		transport := &quic.Transport{Conn: socket}
+		handshakes := make(chan struct{}, handshakeLimit)
+		transport := &quic.Transport{Conn: socket, ConnContext: closedSharedQUICHandshakeContext(handshakes)}
 		listener, err := transport.Listen(closedSharedServerTLS(certificate), closedRoleQUICServerConfig())
 		if err != nil {
 			return nil, errors.Join(err, transport.Close(), socket.Close())
 		}
-		return &closedSharedQUICListener{listener: listener, transport: transport, socket: socket,
-			verify: verify, handshakes: make(chan struct{}, handshakeLimit)}, nil
+		return &closedSharedQUICListener{listener: listener, transport: transport, socket: socket, verify: verify}, nil
 	default:
 		return nil, errors.New("closed shared carrier profile is unsupported")
 	}
+}
+
+type closedSharedQUICHandshakeContextKey struct{}
+
+type closedSharedQUICHandshakeReservation struct {
+	slots    chan struct{}
+	stop     func() bool
+	released chan struct{}
+	once     sync.Once
+}
+
+func closedSharedQUICHandshakeContext(slots chan struct{}) func(context.Context, *quic.ClientInfo) (context.Context, error) {
+	return func(ctx context.Context, _ *quic.ClientInfo) (context.Context, error) {
+		select {
+		case slots <- struct{}{}:
+			reservation := &closedSharedQUICHandshakeReservation{slots: slots, released: make(chan struct{})}
+			reservation.stop = context.AfterFunc(ctx, reservation.releaseSlot)
+			return context.WithValue(ctx, closedSharedQUICHandshakeContextKey{}, reservation), nil
+		default:
+			return nil, errors.New("closed shared carrier handshake capacity is unavailable")
+		}
+	}
+}
+
+func (reservation *closedSharedQUICHandshakeReservation) release() {
+	if reservation != nil && reservation.stop != nil && reservation.stop() {
+		reservation.releaseSlot()
+	}
+}
+
+func (reservation *closedSharedQUICHandshakeReservation) releaseSlot() {
+	reservation.once.Do(func() {
+		<-reservation.slots
+		close(reservation.released)
+	})
 }
 
 type closedSharedTCPListener struct {
@@ -131,13 +166,12 @@ admitted:
 func (listener *closedSharedTCPListener) Close() error { return listener.listener.Close() }
 
 type closedSharedQUICListener struct {
-	transport  *quic.Transport
-	socket     net.PacketConn
-	closeOnce  sync.Once
-	closeErr   error
-	listener   *quic.Listener
-	verify     ClosedSharedPeerVerifier
-	handshakes chan struct{}
+	transport *quic.Transport
+	socket    net.PacketConn
+	closeOnce sync.Once
+	closeErr  error
+	listener  *quic.Listener
+	verify    ClosedSharedPeerVerifier
 }
 
 func (listener *closedSharedQUICListener) Accept(ctx context.Context, handshakeTimeout time.Duration) (ClosedSharedCarrier, error) {
@@ -151,13 +185,13 @@ func (listener *closedSharedQUICListener) Accept(ctx context.Context, handshakeT
 		if err != nil {
 			return ClosedSharedCarrier{}, err
 		}
-		select {
-		case listener.handshakes <- struct{}{}:
-			defer func() { <-listener.handshakes }()
-			goto admitted
-		default:
+		reservation, _ := connection.Context().Value(closedSharedQUICHandshakeContextKey{}).(*closedSharedQUICHandshakeReservation)
+		if reservation == nil {
 			_ = connection.CloseWithError(1, "handshake-capacity-unavailable")
+			continue
 		}
+		defer reservation.release()
+		goto admitted
 	}
 admitted:
 	deadline := time.Now().Add(handshakeTimeout)

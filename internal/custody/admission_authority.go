@@ -97,7 +97,11 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
-	allocations = admissionAllocationsForWindow(allocations, uint64(now.Unix()))
+	window := uint64(now.Unix())
+	if admissionAllocationWindowRegressed(allocations, window) {
+		return Receipt{}, ErrInvalid
+	}
+	allocations = admissionAllocationsForWindow(allocations, window)
 	digest := sha256.Sum256(operation.AdmissionRequest)
 	for _, allocation := range allocations {
 		if allocation.id == request.Permission.PermissionID {
@@ -264,6 +268,18 @@ func admissionAllocationsForWindow(allocations []admissionAllocation, window uin
 		}
 	}
 	return current
+}
+
+// admissionAllocationWindowRegressed rejects an issuance request behind the
+// newest committed hourly reservation. Dropping that reservation on a wall
+// clock rollback would make its original hour allocatable again on recovery.
+func admissionAllocationWindowRegressed(allocations []admissionAllocation, window uint64) bool {
+	for _, allocation := range allocations {
+		if allocation.window > window {
+			return true
+		}
+	}
+	return false
 }
 
 func encodeAdmissionJournal(allocations []admissionAllocation) ([]byte, error) {

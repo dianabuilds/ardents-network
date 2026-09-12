@@ -5,10 +5,53 @@ package custody
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
+	"errors"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 	"testing"
 	"time"
 )
+
+func TestIssueAdmissionPermissionRejectsWallClockRollback(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	vault, err := Open(VaultConfig{Root: t.TempDir(), Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = vault.Close() })
+	binding := AuthorityBinding{Environment: [32]byte{1}, Network: [32]byte{2}, Root: [32]byte{3}, Kind: AuthorityAdmission}
+	password := []byte("admission rollback custody password")
+	created, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateAdmissionAuthority,
+		Authority: AuthorityState{Binding: binding}}, &sequenceSecrets{values: [][]byte{password, password}})
+	if err != nil {
+		t.Fatalf("create admission authority: %v", err)
+	}
+	issue := func(at time.Time, maxima [3]uint32) error {
+		request, holder, requestErr := credential.PreparePermissionRequest(created.AdmissionAuthority.Public, binding.Network, [32]byte{4}, 5,
+			credential.AllocationUser, at, maxima)
+		if requestErr != nil {
+			return requestErr
+		}
+		defer zero(holder)
+		raw, requestErr := credential.EncodePermissionRequest(request)
+		if requestErr != nil {
+			return requestErr
+		}
+		_, requestErr = vault.Execute(t.Context(), Operation{Kind: OperationIssueAdmissionPermission, RecordID: created.RecordID,
+			Expected: created.Authority.Binding, AdmissionRequest: raw, AdmissionRequestCommitment: sha256.Sum256(raw)}, &sequenceSecrets{values: [][]byte{password}})
+		return requestErr
+	}
+	if err := issue(now, [3]uint32{uint32(maximumUserAllocation), 0, 0}); err != nil {
+		t.Fatalf("consume current hourly allocation: %v", err)
+	}
+	now = now.Add(-time.Hour)
+	if err := issue(now, [3]uint32{1, 0, 0}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("clock rollback issuance = %v, want invalid", err)
+	}
+	now = now.Add(time.Hour)
+	if err := issue(now, [3]uint32{1, 0, 0}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("recovered hour reallocated consumed budget: %v", err)
+	}
+}
 
 func TestIssueAdmissionPermissionAdvancesEncryptedAllocationLedger(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
