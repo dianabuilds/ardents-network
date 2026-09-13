@@ -130,7 +130,7 @@ fuzz:
 test: unit e2e
 
 test-race:
-	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
+	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) -short -race -shuffle=on -count=1 -timeout=15m
 
 build:
 	go build ./...

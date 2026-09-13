@@ -32,6 +32,10 @@ substitute for independent review.
   source is represented as a Git repository or as a VCS-free extraction.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. It is the pre-integration gate.
+- Its serial race inventory gives each package an explicit 15-minute terminal
+  timeout. This keeps the race-instrumented Linux Endpoint's cryptographic
+  fixtures inside the checked profile without inheriting Go's shorter default;
+  exceeding the bound remains a failure with the runtime's goroutine dump.
 - `make text-role-durable-state-capture` runs the Linux-only isolated Role
   publication/lookup/withdrawal observation. It requires
   `ARDENTS_TEXT_ROLE_OBSERVATIONS` to name a writable capture directory outside
