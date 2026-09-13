@@ -5,6 +5,7 @@ package route
 import (
 	"errors"
 	"io"
+	"net"
 	"os"
 	"testing"
 )
@@ -21,6 +22,7 @@ func TestClosedIntroductionRegistrationEndReasonReportsOnlyFixedCategories(t *te
 	}{
 		{name: "nil", want: ClosedIntroductionEndUnknown},
 		{name: "local cancellation", stop: localCancel, want: ClosedIntroductionEndLocalCancel},
+		{name: "local cancellation closes transport", outcome: net.ErrClosed, stop: localCancel, want: ClosedIntroductionEndLocalCancel},
 		{name: "peer EOF", outcome: io.EOF, want: ClosedIntroductionEndPeerEOF},
 		{name: "deadline", outcome: os.ErrDeadlineExceeded, want: ClosedIntroductionEndDeadline},
 		{name: "source cleanup", outcome: errors.Join(ErrClosedSourceCleanup, errors.New("private detail")), want: ClosedIntroductionEndSourceCleanup},

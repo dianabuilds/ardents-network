@@ -254,15 +254,15 @@ func (owner *ClosedIntroductionRegistration) EndReason() ClosedIntroductionEndRe
 	if errors.Is(outcome, io.EOF) {
 		return ClosedIntroductionEndPeerEOF
 	}
-	if outcome != nil {
-		return ClosedIntroductionEndProtocol
-	}
 	select {
 	case <-owner.interrupted:
 		return ClosedIntroductionEndLocalCancel
 	default:
-		return ClosedIntroductionEndUnknown
 	}
+	if outcome != nil {
+		return ClosedIntroductionEndProtocol
+	}
+	return ClosedIntroductionEndUnknown
 }
 
 func (owner *ClosedIntroductionRegistration) Close() error {
