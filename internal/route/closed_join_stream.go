@@ -99,7 +99,11 @@ func (side *ClosedJoinSide) Serve(ctx context.Context, connection net.Conn) (out
 			<-peerDone
 		}
 		if closeAfterIO {
-			outcome = errors.Join(outcome, connection.Close())
+			deadline := time.Now().Add(time.Second)
+			if side.wallDeadline.Before(deadline) {
+				deadline = side.wallDeadline
+			}
+			outcome = errors.Join(outcome, connection.SetWriteDeadline(deadline), connection.Close())
 		}
 		owner.limits.dequeue(closedJoinStreamQueue)
 		side.release()

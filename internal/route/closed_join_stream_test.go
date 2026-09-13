@@ -347,6 +347,30 @@ func (connection *closedJoinObservedClose) Close() error {
 	return connection.Conn.Close()
 }
 
+type closedJoinCloseDeadlineProbe struct {
+	*closedJoinHeldWriter
+	mu             sync.Mutex
+	writeDeadlines int
+}
+
+func (connection *closedJoinCloseDeadlineProbe) SetWriteDeadline(deadline time.Time) error {
+	connection.mu.Lock()
+	connection.writeDeadlines++
+	connection.mu.Unlock()
+	return connection.Conn.SetWriteDeadline(deadline)
+}
+
+func (connection *closedJoinCloseDeadlineProbe) Close() error {
+	connection.mu.Lock()
+	refreshed := connection.writeDeadlines >= 2
+	connection.mu.Unlock()
+	err := connection.Conn.Close()
+	if !refreshed {
+		err = errors.Join(err, context.DeadlineExceeded)
+	}
+	return err
+}
+
 func TestClosedJoinGracefulCloseJoinsOppositeWriterBeforeTransport(t *testing.T) {
 	entered, release, closed := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	var once sync.Once
@@ -373,5 +397,39 @@ func TestClosedJoinGracefulCloseJoinsOppositeWriterBeforeTransport(t *testing.T)
 	case <-closed:
 	default:
 		t.Fatal("joined pair retained physical transport")
+	}
+}
+
+// The first graceful write deadline bounds the writer being joined. TLS.Close
+// happens only after that join and needs a fresh bounded deadline of its own;
+// otherwise scheduler delay can turn an already successful JOIN into cleanup
+// failure before close_notify is attempted.
+func TestClosedJoinGracefulCloseRefreshesDeadlineAfterWriterJoin(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	releaseWriter := func() { once.Do(func() { close(release) }) }
+	defer releaseWriter()
+	var probe *closedJoinCloseDeadlineProbe
+	f := newClosedJoinStreamWithConnection(t, func(connection net.Conn) net.Conn {
+		probe = &closedJoinCloseDeadlineProbe{closedJoinHeldWriter: &closedJoinHeldWriter{
+			Conn: connection, entered: entered, release: release,
+		}}
+		return probe
+	})
+	f.transfer(t, 1, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("held completion")})
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("writer not reached")
+	}
+	f.transfer(t, 0, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	releaseWriter()
+	for _, result := range f.results {
+		if err := <-result; errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("graceful close reused its writer-join deadline: %v", err)
+		}
+	}
+	if probe == nil {
+		t.Fatal("deadline probe was not installed")
 	}
 }
