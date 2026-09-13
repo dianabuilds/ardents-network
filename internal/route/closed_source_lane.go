@@ -374,7 +374,7 @@ func (lane *closedSourceLane) Close() error {
 		owner.mu.Lock()
 		unemitted := owner.terminal != nil && (terminal == nil || !terminal.attempted || terminal.unwritten)
 		owner.mu.Unlock()
-		if lane.closeErr != nil && (unemitted || errors.Is(lane.closeErr, errClosedSourceStopped)) {
+		if lane.closeErr != nil && (unemitted || errors.Is(lane.closeErr, ErrClosedSourceStopped)) {
 			// Existing traffic errors remain at their operation/parent owner;
 			// actual physical retirement failures remain cleanup failures.
 			<-owner.done
@@ -382,7 +382,7 @@ func (lane *closedSourceLane) Close() error {
 		}
 		// Check the retained CREDIT even if its failure ended the parent before
 		// CLOSE could be queued. Whole-parent intentional stop remains distinct.
-		if creditErr != nil && !errors.Is(creditErr, errClosedSourceStopped) {
+		if creditErr != nil && !errors.Is(creditErr, ErrClosedSourceStopped) {
 			lane.closeErr = errors.Join(lane.closeErr, errors.Join(errors.New("closed source in-flight CREDIT write failed"), creditErr))
 		}
 		if lane.closeErr != nil {

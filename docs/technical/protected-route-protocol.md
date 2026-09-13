@@ -649,6 +649,9 @@ The predecessor accepts already bounded capsules for at most 60 seconds after
 a replacement, never past its original signed expiry. Each delivery nonce has
 a replay entry until that expiry plus 60 seconds. Reject replay, wrong
 publication/revision, malformed capsule or invalid role before Publisher dial.
+Recovery after that overlap resolves the original Target and advances to the
+current Introduction recipient only when its Descriptor is a monotonic revision
+under the Connection's unchanged Publication and profile.
 
 The current Service Connection wire records, ordered offsets, EOF,
 acknowledgement and bounded continuity remain authoritative. The successor

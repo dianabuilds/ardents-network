@@ -232,7 +232,7 @@ func exchangeTextCapsuleService(t *testing.T, reader, publisher *textIntroductio
 	}
 	done := make(chan error, 1)
 	go func() {
-		stream, err := publisher.binding.openTextServiceStream(ctx, server, publisher.digest)
+		stream, err := publisher.binding.openTextServiceStreamWithRecovery(ctx, server, publisher.digest, nil)
 		if err != nil {
 			done <- err
 			return
@@ -249,7 +249,7 @@ func exchangeTextCapsuleService(t *testing.T, reader, publisher *textIntroductio
 		}
 		done <- errors.Join(err, stream.Close())
 	}()
-	stream, err := reader.binding.openTextServiceStream(ctx, client, reader.digest)
+	stream, err := reader.binding.openTextServiceStreamWithRecovery(ctx, client, reader.digest, nil)
 	if err != nil {
 		cancel()
 		_ = client.Close()

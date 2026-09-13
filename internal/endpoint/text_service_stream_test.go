@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"net"
 	"strconv"
@@ -115,7 +116,7 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 			}
 			publisherDone := make(chan error, 1)
 			go func() {
-				stream, err := publisherBinding.openTextServiceStream(ctx, publisherRoute, fixtureID(51))
+				stream, err := publisherBinding.openTextServiceStreamWithRecovery(ctx, publisherRoute, fixtureID(51), nil)
 				if err != nil {
 					publisherDone <- err
 					return
@@ -132,7 +133,7 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 				}
 				publisherDone <- errors.Join(err, stream.Close())
 			}()
-			stream, err := clientBinding.openTextServiceStream(ctx, clientRoute, fixtureID(51))
+			stream, err := clientBinding.openTextServiceStreamWithRecovery(ctx, clientRoute, fixtureID(51), nil)
 			if err != nil {
 				cancel()
 				t.Fatalf("client setup: %v; Publisher: %v", err, <-publisherDone)
@@ -229,14 +230,14 @@ func TestTextServiceDifferentCapsuleCannotAuthenticateSameTLS(t *testing.T) {
 	defer cancel()
 	finished := make(chan error, 1)
 	go func() {
-		stream, err := publisher.openTextServiceStream(ctx, right, fixtureID(61))
+		stream, err := publisher.openTextServiceStreamWithRecovery(ctx, right, fixtureID(61), nil)
 		if stream != nil {
 			_ = stream.Close()
 			err = errors.New("foreign Attachment exposed Publisher stream")
 		}
 		finished <- err
 	}()
-	stream, err := client.openTextServiceStream(ctx, left, fixtureID(62))
+	stream, err := client.openTextServiceStreamWithRecovery(ctx, left, fixtureID(62), nil)
 	if err == nil || stream != nil {
 		t.Fatal("different capsule yielded an authenticated stream")
 	}
@@ -258,6 +259,14 @@ func TestTextServiceProtectedContextSeparatesAttachmentFromLogicalIdentity(t *te
 	logical, err := nativeconnection.ProtectedContext(client.facts)
 	if err != nil || logical != client.logical || first == second || first == logical || second == logical {
 		t.Fatal("Attachment replacement changed or collapsed logical context")
+	}
+	spelling, err := targetlink.Encode(targetlink.Link{Network: client.facts.Network, Target: client.facts.Target})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recovery := client.textServiceRecovery()
+	if expected := sha256.Sum256([]byte(spelling)); recovery.DestinationBinding != expected || recovery.DestinationBinding == client.facts.Target {
+		t.Fatal("recovery did not retain the original Target-Link destination commitment")
 	}
 }
 

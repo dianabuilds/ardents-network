@@ -66,7 +66,10 @@ cannot take that reservation. The prior published registration remains usable
 until that switch, bounded by its original signed expiry. The registration retains the time of its first verified publication acknowledgement;
 an exact retry cannot replace this local transition receipt. The switch shortens
 its remaining acceptance to at most 60 seconds; an exact retry cannot extend
-the cutoff. Unacknowledged replacements cannot accept capsules. Withdrawal and
+the cutoff. A live Connection recovery resolves the same Target again and can
+replace only its retained Introduction recipient with a monotonic revision
+bound to the same Publication and profile; this changes no logical Connection
+authority or work deadline. Unacknowledged replacements cannot accept capsules. Withdrawal and
 context loss cancel and join the scheduler, registrations and recipient erasure.
 
 These paths have real Node-network coverage on both Carriers, including old

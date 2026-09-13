@@ -10,6 +10,14 @@
       "invalid_environment": "the dedicated installed network qualification environment is unavailable"
     },
     {
+      "id": "text-worker-recovery",
+      "state": "active",
+      "make_target": "text-worker-recovery-check",
+      "surface": "installed confined reader/publisher single-recovery smoke over both protected Carriers; not NET-14 percentile or traffic qualification",
+      "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "exact ordinary worker and Service command artifacts with canonical manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; five-minute test deadline and RuntimeMaxSec=360s; exact TCP/TLS and QUIC cases"],
+      "invalid_environment": "the dedicated installed recovery smoke environment is unavailable"
+    },
+    {
       "id": "text-command-network",
       "state": "active",
       "make_target": "text-command-network-check",

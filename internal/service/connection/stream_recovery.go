@@ -60,6 +60,11 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 			stream.mu.Unlock()
 			return nil
 		}
+		if err := stream.ctx.Err(); err != nil {
+			last = err
+			stream.mu.Unlock()
+			break
+		}
 		if stream.proposals >= proposalLimit || time.Now().After(deadline) {
 			stream.mu.Unlock()
 			break
@@ -68,6 +73,12 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 		stream.mu.Unlock()
 		releaseTimer := acquireResource(stream.resources, "timer")
 		attempt, cancel := context.WithDeadline(stream.ctx, deadline)
+		if err := attempt.Err(); err != nil {
+			last = err
+			cancel()
+			releaseTimer()
+			break
+		}
 		request := stream.recovery
 		request.Generation, request.Deadline, request.NetworkID = generation, deadline, stream.networkID
 		if stream.client {
@@ -93,9 +104,17 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 				state.Role = RolePublisher
 			}
 			state.Context, state.ExporterCommitment = attachment.context, attachment.exporterCommitment
+			stopContinuity := context.AfterFunc(attempt, attachment.closeCarrier)
 			peer, exchangeErr := ExchangeContinuity(attempt, attachment.carrier, state)
-			if exchangeErr != nil {
-				err = ErrActiveViolation
+			if !stopContinuity() {
+				// Join a cancellation callback that may still own the proposed
+				// carrier before deciding whether this Attachment can transfer.
+				attachment.closeCarrier()
+			}
+			if attemptErr := attempt.Err(); attemptErr != nil {
+				err = attemptErr
+			} else if exchangeErr != nil {
+				err = errors.Join(ErrActiveViolation, exchangeErr)
 			} else {
 				err = stream.commitAttachment(failed, attachment, peer)
 			}
@@ -166,12 +185,22 @@ func recoveryEpisodeStart(lastProgress, detected time.Time) time.Time {
 func (stream *Stream) commitAttachment(failed, attachment *Attachment, peer ContinuityPeer) error {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
-	if stream.current != failed || attachment.generation <= failed.generation ||
-		peer.ReceiveNext < stream.sendBase || peer.ReceiveNext > stream.sendEnd || peer.SendEnd < stream.recvNext {
-		return ErrActiveViolation
+	switch {
+	case stream.terminal != nil:
+		return stream.terminal
+	case stream.ctx != nil && stream.ctx.Err() != nil:
+		return stream.ctx.Err()
+	case stream.current != failed:
+		return errors.Join(ErrActiveViolation, errors.New("replacement no longer owns the failed Attachment"))
+	case attachment.generation <= failed.generation:
+		return errors.Join(ErrActiveViolation, errors.New("replacement Attachment generation did not advance"))
+	case peer.ReceiveNext < stream.sendBase || peer.ReceiveNext > stream.sendEnd:
+		return errors.Join(ErrActiveViolation, errors.New("replacement peer acknowledgement is outside the retained send range"))
+	case peer.SendEnd < stream.recvNext:
+		return errors.Join(ErrActiveViolation, errors.New("replacement peer forgot already delivered bytes"))
 	}
 	if peer.PeerNonce == [32]byte{} || peer.LocalNonce == [32]byte{} || peer.PeerNonce == peer.LocalNonce {
-		return ErrActiveViolation
+		return errors.Join(ErrActiveViolation, errors.New("replacement continuity nonce is invalid"))
 	}
 	if err := stream.acknowledgeLocked(peer.ReceiveNext); err != nil {
 		return err

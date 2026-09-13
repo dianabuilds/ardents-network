@@ -13,7 +13,10 @@ import (
 	"time"
 )
 
-var errClosedSourceStopped = errors.Join(net.ErrClosed, errors.New("closed source owner stopped"))
+// ErrClosedSourceStopped identifies intentional whole-prefix retirement. It is
+// distinct from a child refusal or a physical cleanup failure so a higher
+// owner can preserve cancellation without hiding an unrelated joined cause.
+var ErrClosedSourceStopped = errors.Join(net.ErrClosed, errors.New("closed source owner stopped"))
 
 // closedSourceChannels owns the Interior channel's reader and serialized
 // writer. Lanes carry opaque TLS; only the caller selecting an authenticated
@@ -92,7 +95,7 @@ func (owner *closedSourceChannels) fail(err error) {
 }
 
 // stop records intentional whole-parent retirement before interrupting physical I/O.
-func (owner *closedSourceChannels) stop() { owner.fail(errClosedSourceStopped) }
+func (owner *closedSourceChannels) stop() { owner.fail(ErrClosedSourceStopped) }
 
 func (owner *closedSourceChannels) Close() error {
 	owner.closeOnce.Do(func() {
@@ -321,8 +324,8 @@ func (owner *closedSourceChannels) write() {
 		owner.mu.Lock()
 		// A committed whole-parent stop owns concurrent write completion; an earlier
 		// published failure is never replaced by that stop.
-		if err != nil && owner.terminal == errClosedSourceStopped {
-			err = errors.Join(errClosedSourceStopped, err)
+		if err != nil && owner.terminal == ErrClosedSourceStopped {
+			err = errors.Join(ErrClosedSourceStopped, err)
 		}
 		if attempted && err != nil {
 			request.lane.physicalWriteFailed = true

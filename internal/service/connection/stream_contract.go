@@ -33,6 +33,7 @@ type Attachment struct {
 	generation                  uint64
 	context, exporterCommitment [32]byte
 	close                       func()
+	closeOnce                   sync.Once
 }
 
 // NewAttachment admits one authenticated carrier for a fixed attachment
@@ -50,8 +51,12 @@ func NewAttachment(carrier io.ReadWriteCloser, generation uint64, connectionCont
 }
 
 func (attachment *Attachment) closeCarrier() {
-	if attachment != nil && attachment.close != nil {
-		attachment.close()
+	if attachment != nil {
+		attachment.closeOnce.Do(func() {
+			if attachment.close != nil {
+				attachment.close()
+			}
+		})
 	}
 }
 

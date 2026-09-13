@@ -17,41 +17,89 @@ import (
 // owner has joined its physical transport. Finishing setup must not cancel it.
 type textJoinedTransport struct {
 	net.Conn
-	once   sync.Once
-	stop   context.CancelFunc
-	finish func(error) error
-	err    error
+	once    sync.Once
+	revoked context.Context
+	stop    context.CancelFunc
+	finish  func(error) error
+	err     error
 }
 
 func (transport *textJoinedTransport) Close() error {
 	transport.once.Do(func() {
-		transport.err = transport.Conn.Close()
+		retirement := transport.Conn.Close()
+		if transport.revoked != nil && transport.revoked.Err() != nil && textRouteStopOnly(retirement) {
+			retirement = nil
+		}
 		transport.stop()
-		transport.err = transport.finish(transport.err)
+		transport.err = transport.finish(retirement)
 	})
 	return transport.err
 }
 
-// openTextJoinedService consumes one locally prepared or independently accepted
-// capsule. Source submission and JOIN run concurrently; neither grants Service
-// authority. Only the existing Service authentication can expose Application I/O.
+func textRouteStopOnly(err error) bool {
+	if err == nil || err == route.ErrClosedSourceStopped {
+		return true
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !textRouteStopOnly(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped := errors.Unwrap(err); wrapped != nil {
+		return textRouteStopOnly(wrapped)
+	}
+	return errors.Is(err, net.ErrClosed)
+}
+
+// openTextJoinedService consumes the initial protected Route and installs its
+// bounded replacement owner before Application bytes become reachable.
 func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textServiceStream, outcome error) {
+	transport, err := owner.openTextJoinedTransport(ctx, job, attempt)
+	if err != nil {
+		return nil, err
+	}
+	return attempt.binding.openTextServiceStreamWithRecovery(ctx, transport, attempt.digest,
+		owner.textServiceRouteRecoveryOpener(job, attempt.binding))
+}
+
+// openTextJoinedTransport consumes one locally prepared or independently
+// accepted capsule. Source submission and JOIN run concurrently; neither
+// grants Service authority. Its returned transport joins the complete Route
+// exchange when the Service Attachment releases it.
+func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textJoinedTransport, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil || attempt.binding.owner != owner || attempt.binding.job != job {
 		return nil, errors.New("text JOIN owner unavailable")
 	}
 	if err := attempt.binding.current(); err != nil {
 		return nil, err
 	}
-	lifetime, finish, err := owner.beginTextIntroductionExchange(ctx, job, owner.surface)
+	// The caller owns only this opening attempt. Once the joined transport is
+	// transferred, job loss stops Service work while the transport's retained
+	// cleanup owner remains able to send terminal control and join the Route.
+	lifetime, flight, detachCaller, finish, err := owner.beginTextServiceTransportExchange(ctx, job, owner.surface)
 	if err != nil {
 		return nil, err
 	}
 	joining, stop := context.WithCancel(lifetime)
 	transferred := false
+	var raw *route.ClosedJoinedStream
 	defer func() {
 		if !transferred {
+			if raw != nil {
+				outcome = errors.Join(outcome, raw.Close())
+			}
 			stop()
 			outcome = finish(outcome)
+			if attempt.plaintext.AttachmentGeneration == 1 {
+				outcome = errors.Join(outcome, attempt.binding.releaseTextIntroductionRecovery())
+			}
 		}
 	}()
 	owner.mu.Lock()
@@ -74,7 +122,11 @@ func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJo
 	}
 	if owner.surface == broker.Connection {
 		bounded, cancel := context.WithDeadline(joining, attempt.plaintext.Deadline)
-		_, _, err := owner.prepareTextSubmissionStock(bounded, prefix)
+		prepare := owner.prepareTextSubmissionStock
+		if attempt.plaintext.AttachmentGeneration > 1 {
+			prepare = owner.prepareTextRecoverySubmissionStock
+		}
+		_, _, err := prepare(bounded, prefix)
 		cancel()
 		if err != nil {
 			return nil, err
@@ -95,7 +147,6 @@ func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJo
 	} else {
 		submitted <- nil
 	}
-	var raw *route.ClosedJoinedStream
 	for range 2 {
 		select {
 		case result := <-joined:
@@ -111,16 +162,20 @@ func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJo
 		}
 	}
 	if outcome != nil {
-		if raw != nil {
-			outcome = errors.Join(outcome, raw.Close())
-		}
 		return nil, outcome
 	}
-	transport := &textJoinedTransport{Conn: raw, stop: stop, finish: finish}
+	if !detachCaller() {
+		return nil, errors.Join(ctx.Err(), errors.New("text JOIN caller ended before stream transfer"))
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if !owner.retainTextServiceTransportExchange(job, flight) {
+		return nil, errors.New("text JOIN owner ended before stream transfer")
+	}
+	transport := &textJoinedTransport{Conn: raw, revoked: job.context, stop: stop, finish: finish}
 	transferred = true
-	// Keep the caller context independent of exchange cleanup: a normal transport
-	// close must not relabel a completed Service as caller cancellation.
-	return attempt.binding.openTextServiceStream(ctx, transport, attempt.digest)
+	return transport, nil
 }
 
 func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *textIntroductionAttempt, prefix *route.ClosedSourcePrefix) error {
@@ -142,7 +197,11 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	}
 	owner.mu.Unlock()
 	if err == nil && !stocked {
-		err = owner.issueTextTokens(bounded, [][32]byte{node}, 2)
+		if attempt.plaintext.AttachmentGeneration > 1 {
+			err = owner.issueTextRecoveryTokens(bounded, [][32]byte{node}, 2)
+		} else {
+			err = owner.issueTextTokens(bounded, [][32]byte{node}, 2)
+		}
 	}
 	cancel()
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJobIdentity, prepared *textIntroductionAttempt) (outcome error) {
@@ -63,8 +64,43 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 // receiveTextIntroduction consumes one delivery from the actual channel owned
 // by this Publisher, then acknowledges only after independent local acceptance.
 func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *textJobIdentity) (prepared *textIntroductionAttempt, outcome error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil {
+	return owner.receiveTextIntroductionWith(ctx, job, textIntroductionDeliveryKey{generation: 1}, nil,
+		owner.acceptDispatchedTextIntroduction)
+}
+
+func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
+	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
+	if ctx == nil {
+		return nil, errors.New("text recovery receiver context unavailable")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if binding == nil || binding.owner != owner || binding.job != job {
+		return nil, errors.New("text recovery receiver unavailable")
+	}
+	if err := binding.validateTextServiceRecovery(request); err != nil {
+		return nil, err
+	}
+	want := textIntroductionDeliveryKey{connection: binding.facts.ConnectionNonce, generation: request.Generation}
+	return owner.receiveTextIntroductionWith(ctx, job, want, binding, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
+		return owner.acceptDispatchedTextRecovery(ctx, job, operation, binding, request)
+	})
+}
+
+type textIntroductionAcceptor func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error)
+
+func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *textJobIdentity,
+	want textIntroductionDeliveryKey, binding *textServiceBinding,
+	accept textIntroductionAcceptor) (prepared *textIntroductionAttempt, outcome error) {
+	if owner == nil || ctx == nil {
 		return nil, errors.New("text Introduction receiver unavailable")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if accept == nil {
+		return nil, errors.New("text Introduction acceptance owner unavailable")
 	}
 	owner.mu.Lock()
 	if owner.publicationDraining {
@@ -80,27 +116,39 @@ func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *text
 	if err != nil {
 		return nil, err
 	}
+	var retainedBinding *textServiceBinding
 	defer func() {
 		outcome = finish(outcome)
+		if outcome != nil && retainedBinding != nil {
+			outcome = errors.Join(outcome, retainedBinding.releaseTextIntroductionRecovery())
+		}
 		if outcome != nil {
 			prepared = nil
 		}
 	}()
-	delivery, err := owner.nextTextIntroductionDelivery(lifetime)
+	delivery, err := owner.dispatchTextIntroductionDelivery(lifetime, job, want, binding)
 	if err != nil {
 		return nil, err
 	}
-	operation := delivery.Operation()
+	operation := delivery.delivery.Operation()
 	defer clear(operation)
-	prepared, outcome = owner.acceptTextIntroduction(lifetime, job, operation)
+	prepared, outcome = accept(lifetime, job, operation)
 	if outcome == nil {
 		outcome = owner.prepareTextResponder(lifetime, job, prepared)
+	}
+	if outcome == nil && want.generation == 1 {
+		outcome = owner.retainTextIntroductionRecovery(prepared.binding)
+		if outcome == nil {
+			retainedBinding = prepared.binding
+		}
 	}
 	status := uint8(0)
 	if outcome != nil {
 		status = 1
 	}
-	if err := delivery.Complete(lifetime, status); err != nil {
+	// The registration owns the terminal RESULT after routing. A recovery
+	// attempt may be canceled after local refusal without stranding its lane.
+	if err := owner.completeTextIntroductionDelivery(delivery.delivery, delivery.expires, status); err != nil {
 		return nil, errors.Join(outcome, err)
 	}
 	if prepared != nil && !owner.endpoint.clock().Before(prepared.plaintext.Deadline) {
@@ -110,6 +158,16 @@ func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *text
 }
 
 func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix *route.ClosedSourcePrefix) ([32]byte, state.ClosedProfileView, error) {
+	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, false)
+}
+
+func (owner *textContext) prepareTextRecoverySubmissionStock(ctx context.Context,
+	prefix *route.ClosedSourcePrefix) ([32]byte, state.ClosedProfileView, error) {
+	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, true)
+}
+
+func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context.Context, prefix *route.ClosedSourcePrefix,
+	discardCanceled bool) ([32]byte, state.ClosedProfileView, error) {
 	receiver, err := prefix.SubmissionRecipient()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err
@@ -130,7 +188,11 @@ func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}
 	if !stocked {
-		if err := owner.issueTextTokens(ctx, [][32]byte{receiver}, 1); err != nil {
+		issue := owner.issueTextTokens
+		if discardCanceled {
+			issue = owner.issueTextRecoveryTokens
+		}
+		if err := issue(ctx, [][32]byte{receiver}, 1); err != nil {
 			return [32]byte{}, state.ClosedProfileView{}, err
 		}
 	}

@@ -5,6 +5,8 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -180,5 +182,35 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 	}
 	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), errors.Join(context.Canceled, context.Canceled))) {
 		t.Fatal("exact cancellation wrapper refused")
+	}
+}
+
+func TestTextRouteStopOnlyRejectsJoinedPhysicalFailure(t *testing.T) {
+	fault := errors.New("physical retirement failed")
+	for _, err := range []error{nil, route.ErrClosedSourceStopped, errors.Join(route.ErrClosedSourceStopped, net.ErrClosed)} {
+		if !textRouteStopOnly(err) {
+			t.Fatalf("intentional Source stop refused: %v", err)
+		}
+	}
+	for _, err := range []error{fault, errors.Join(route.ErrClosedSourceStopped, fault)} {
+		if textRouteStopOnly(err) {
+			t.Fatalf("physical failure hidden as Source stop: %v", err)
+		}
+	}
+}
+
+func TestTextRecoveryTestCleanupOnlyRejectsJoinedPhysicalFailure(t *testing.T) {
+	fault := errors.New("physical cleanup failed")
+	for _, err := range []error{nil, context.Canceled, context.DeadlineExceeded, net.ErrClosed,
+		io.ErrClosedPipe, route.ErrClosedSourceStopped, errors.Join(context.Canceled, net.ErrClosed)} {
+		if !textRecoveryTestCleanupOnly(err) {
+			t.Fatalf("intentional cleanup refused: %v", err)
+		}
+	}
+	for _, err := range []error{fault, errors.Join(context.Canceled, fault),
+		errors.Join(errors.New("text Service cleanup failed"), context.Canceled, fault)} {
+		if textRecoveryTestCleanupOnly(err) {
+			t.Fatalf("physical failure hidden as cleanup: %v", err)
+		}
 	}
 }

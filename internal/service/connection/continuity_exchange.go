@@ -68,9 +68,14 @@ func ExchangeContinuity(ctx context.Context, carrier io.ReadWriter, input Contin
 			err = Write(carrier, Record{Continuity: &local})
 		}
 	}
-	if err != nil || record.Continuity == nil ||
-		VerifyContinuity(input.Key, *record.Continuity, peerRole, input.Generation, input.Context, input.ExporterCommitment) != nil {
-		return ContinuityPeer{}, ErrContinuityViolation
+	if err != nil {
+		return ContinuityPeer{}, errors.Join(ErrContinuityViolation, err)
+	}
+	if record.Continuity == nil {
+		return ContinuityPeer{}, errors.Join(ErrContinuityViolation, errors.New("peer sent no Continuity record"))
+	}
+	if err := VerifyContinuity(input.Key, *record.Continuity, peerRole, input.Generation, input.Context, input.ExporterCommitment); err != nil {
+		return ContinuityPeer{}, errors.Join(ErrContinuityViolation, err)
 	}
 	peer := record.Continuity
 	return ContinuityPeer{SendBase: peer.SendBase, SendEnd: peer.SendEnd, ReceiveNext: peer.ReceiveNext,
