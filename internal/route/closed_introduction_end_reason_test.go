@@ -15,6 +15,7 @@ func TestClosedIntroductionRegistrationEndReasonReportsOnlyFixedCategories(t *te
 	for _, test := range []struct {
 		name    string
 		outcome error
+		cleanup error
 		stop    chan struct{}
 		want    ClosedIntroductionEndReason
 	}{
@@ -23,10 +24,11 @@ func TestClosedIntroductionRegistrationEndReasonReportsOnlyFixedCategories(t *te
 		{name: "peer EOF", outcome: io.EOF, want: ClosedIntroductionEndPeerEOF},
 		{name: "deadline", outcome: os.ErrDeadlineExceeded, want: ClosedIntroductionEndDeadline},
 		{name: "source cleanup", outcome: errors.Join(ErrClosedSourceCleanup, errors.New("private detail")), want: ClosedIntroductionEndSourceCleanup},
+		{name: "source cleanup after peer EOF", outcome: io.EOF, cleanup: errors.Join(ErrClosedSourceCleanup, errors.New("private cleanup detail")), want: ClosedIntroductionEndSourceCleanup},
 		{name: "other", outcome: errors.New("private detail"), want: ClosedIntroductionEndProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			registration := &ClosedIntroductionRegistration{outcome: test.outcome, interrupted: make(chan struct{})}
+			registration := &ClosedIntroductionRegistration{outcome: test.outcome, cleanup: test.cleanup, interrupted: make(chan struct{})}
 			if test.stop != nil {
 				registration.interrupted = test.stop
 			}

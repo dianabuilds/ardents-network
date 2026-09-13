@@ -243,7 +243,7 @@ func (owner *ClosedIntroductionRegistration) EndReason() ClosedIntroductionEndRe
 		return ClosedIntroductionEndUnknown
 	}
 	owner.mu.Lock()
-	outcome := owner.outcome
+	outcome := errors.Join(owner.outcome, owner.cleanup)
 	owner.mu.Unlock()
 	if errors.Is(outcome, ErrClosedSourceCleanup) {
 		return ClosedIntroductionEndSourceCleanup
