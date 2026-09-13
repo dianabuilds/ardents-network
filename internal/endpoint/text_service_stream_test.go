@@ -116,7 +116,7 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 			}
 			publisherDone := make(chan error, 1)
 			go func() {
-				stream, err := publisherBinding.openTextServiceStream(ctx, publisherRoute, fixtureID(51))
+				stream, err := publisherBinding.openTextServiceStreamWithRecovery(ctx, publisherRoute, fixtureID(51), nil)
 				if err != nil {
 					publisherDone <- err
 					return
@@ -133,7 +133,7 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 				}
 				publisherDone <- errors.Join(err, stream.Close())
 			}()
-			stream, err := clientBinding.openTextServiceStream(ctx, clientRoute, fixtureID(51))
+			stream, err := clientBinding.openTextServiceStreamWithRecovery(ctx, clientRoute, fixtureID(51), nil)
 			if err != nil {
 				cancel()
 				t.Fatalf("client setup: %v; Publisher: %v", err, <-publisherDone)
@@ -230,14 +230,14 @@ func TestTextServiceDifferentCapsuleCannotAuthenticateSameTLS(t *testing.T) {
 	defer cancel()
 	finished := make(chan error, 1)
 	go func() {
-		stream, err := publisher.openTextServiceStream(ctx, right, fixtureID(61))
+		stream, err := publisher.openTextServiceStreamWithRecovery(ctx, right, fixtureID(61), nil)
 		if stream != nil {
 			_ = stream.Close()
 			err = errors.New("foreign Attachment exposed Publisher stream")
 		}
 		finished <- err
 	}()
-	stream, err := client.openTextServiceStream(ctx, left, fixtureID(62))
+	stream, err := client.openTextServiceStreamWithRecovery(ctx, left, fixtureID(62), nil)
 	if err == nil || stream != nil {
 		t.Fatal("different capsule yielded an authenticated stream")
 	}

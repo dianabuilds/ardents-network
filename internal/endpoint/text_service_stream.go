@@ -58,10 +58,6 @@ func (transport *textServiceTransport) Close() error {
 // and generation-3 native Service Connection. It owns raw on every return.
 // Recovery Attachments require the separate retained continuity owner; this
 // initial attachment never retries, changes a Target or repeats a document.
-func (binding *textServiceBinding) openTextServiceStream(ctx context.Context, raw net.Conn, capsuleDigest [32]byte) (_ *textServiceStream, resultErr error) {
-	return binding.openTextServiceStreamWithRecovery(ctx, raw, capsuleDigest, nil)
-}
-
 func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context.Context, raw net.Conn, capsuleDigest [32]byte,
 	open textServiceAttachmentOpener) (_ *textServiceStream, resultErr error) {
 	if raw == nil {

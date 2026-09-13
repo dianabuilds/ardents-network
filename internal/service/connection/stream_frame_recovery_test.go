@@ -129,6 +129,18 @@ func TestRunBoundedRecoversLostDataAcknowledgementWithoutReplay(t *testing.T) {
 	}
 }
 
+func TestPendingTerminalReceiptUsesExactRemoteTerminalOffset(t *testing.T) {
+	attachment := &Attachment{generation: 2}
+	stream := &Stream{ackPending: 0, ackSent: 0, terminalAckPending: true,
+		terminalAckPendingGeneration: 2, terminalAckOffset: 8}
+	stream.mu.Lock()
+	offset, already, terminal, confirmation := stream.pendingAcknowledgementLocked(attachment)
+	stream.mu.Unlock()
+	if offset != 8 || already != 0 || !terminal || confirmation {
+		t.Fatalf("pending Terminal receipt = offset %d already %d terminal %t confirmation %t", offset, already, terminal, confirmation)
+	}
+}
+
 type terminalFaultAdapter struct {
 	client, publisher         net.Conn
 	dropData                  bool

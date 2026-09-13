@@ -46,7 +46,7 @@ func TestTextServiceTLSOnlySelectedGroups(t *testing.T) {
 				}
 				done := make(chan error, 1)
 				go func() {
-					stream, err := binding.openTextServiceStream(ctx, local, fixtureID(81))
+					stream, err := binding.openTextServiceStreamWithRecovery(ctx, local, fixtureID(81), nil)
 					if stream != nil {
 						_ = stream.Close()
 					}

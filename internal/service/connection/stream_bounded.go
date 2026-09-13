@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 )
@@ -298,8 +299,11 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 				(record.Acknowledgement.AttachmentGeneration == stream.terminalGeneration ||
 					(stream.terminalWriting && record.Acknowledgement.AttachmentGeneration == stream.terminalWritingGeneration))
 			if record.Acknowledgement.Terminal && !terminalReceipt {
+				detail := fmt.Errorf("received generation %d offset %d; local generation %d offset %d; writing %t generation %d",
+					record.Acknowledgement.AttachmentGeneration, offset, stream.terminalGeneration, stream.terminalOffset,
+					stream.terminalWriting, stream.terminalWritingGeneration)
 				stream.mu.Unlock()
-				return errors.Join(ErrActiveViolation, errors.New("Terminal receipt does not match a local Terminal"))
+				return errors.Join(ErrActiveViolation, errors.New("Terminal receipt does not match a local Terminal"), detail)
 			}
 			err = stream.acknowledgeLocked(offset)
 			if err == nil && terminalReceipt {
@@ -374,21 +378,12 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 			return stream.ctx.Err()
 		}
 		for {
-			stream.mu.Lock()
-			offset, already := stream.ackPending, stream.ackSent
-			stream.mu.Unlock()
 			attachment, err := stream.attachment()
 			if err != nil {
 				return err
 			}
 			stream.mu.Lock()
-			terminal := stream.terminalAckPending && !stream.terminalAckSent &&
-				stream.terminalAckPendingGeneration == attachment.generation
-			confirmation := !terminal && stream.terminalConfirmationPending && !stream.terminalConfirmationSent &&
-				stream.terminalConfirmationGeneration == attachment.generation
-			if confirmation {
-				offset = stream.terminalConfirmationOffset
-			}
+			offset, already, terminal, confirmation := stream.pendingAcknowledgementLocked(attachment)
 			if terminal {
 				stream.terminalAckWriting = true
 				stream.terminalAckWritingGeneration = attachment.generation
@@ -432,6 +427,20 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 			stream.mu.Unlock()
 		}
 	}
+}
+
+func (stream *Stream) pendingAcknowledgementLocked(attachment *Attachment) (uint64, uint64, bool, bool) {
+	offset, already := stream.ackPending, stream.ackSent
+	terminal := stream.terminalAckPending && !stream.terminalAckSent &&
+		stream.terminalAckPendingGeneration == attachment.generation
+	confirmation := !terminal && stream.terminalConfirmationPending && !stream.terminalConfirmationSent &&
+		stream.terminalConfirmationGeneration == attachment.generation
+	if terminal {
+		offset = stream.terminalAckOffset
+	} else if confirmation {
+		offset = stream.terminalConfirmationOffset
+	}
+	return offset, already, terminal, confirmation
 }
 
 func (stream *Stream) boundedReceiveCompleteLocked() bool {

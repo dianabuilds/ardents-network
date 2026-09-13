@@ -86,7 +86,7 @@ func (worker *qualifiedTextWorker) readService(ctx context.Context, binding *tex
 	if err != nil {
 		return nil, errors.Join(err, closeTextServiceInput(raw))
 	}
-	stream, err := binding.openTextServiceStream(bounded, raw, capsuleDigest)
+	stream, err := binding.openTextServiceStreamWithRecovery(bounded, raw, capsuleDigest, nil)
 	return worker.completeServiceRead(ctx, bounded, finish, stream, err)
 }
 

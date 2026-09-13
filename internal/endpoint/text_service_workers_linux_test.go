@@ -82,7 +82,7 @@ func TestTextServiceQualifiedWorkersUseActualEndpointStreams(t *testing.T) {
 	local, remote := net.Pipe()
 	opened := make(chan error, 1)
 	go func() {
-		stream, err := publisher.openTextServiceStream(ctx, remote, fixtureID(93))
+		stream, err := publisher.openTextServiceStreamWithRecovery(ctx, remote, fixtureID(93), nil)
 		if err == nil {
 			select {
 			case incoming <- stream:
@@ -121,7 +121,7 @@ func TestTextServicePublisherRefusesAnotherJobsStream(t *testing.T) {
 	left, right := net.Pipe()
 	opened := make(chan error, 1)
 	go func() {
-		stream, err := publicationOwner.openTextServiceStream(ctx, right, fixtureID(95))
+		stream, err := publicationOwner.openTextServiceStreamWithRecovery(ctx, right, fixtureID(95), nil)
 		if err == nil {
 			select {
 			case incoming <- stream:
@@ -132,7 +132,7 @@ func TestTextServicePublisherRefusesAnotherJobsStream(t *testing.T) {
 		close(incoming)
 		opened <- err
 	}()
-	stream, err := client.openTextServiceStream(ctx, left, fixtureID(95))
+	stream, err := client.openTextServiceStreamWithRecovery(ctx, left, fixtureID(95), nil)
 	if err != nil {
 		cancel()
 		t.Fatalf("client setup: %v; Publisher setup: %v; worker: %v", err, <-opened, <-hostDone)
