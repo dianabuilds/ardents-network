@@ -142,7 +142,7 @@ func (link *closedForwardingLink) copyReverse() {
 			break
 		}
 		frame.Lane = link.localLane
-		size := uint64(16 + len(frame.Body))
+		reserved := frame
 		var err error
 		if frame.Kind == 7 {
 			if len(frame.Body) != 4 {
@@ -154,7 +154,7 @@ func (link *closedForwardingLink) copyReverse() {
 		if err == nil {
 			err = link.write(frame)
 		}
-		link.channel.ReleaseReverse(link.localLane, size)
+		link.channel.ReleaseReverse(reserved)
 		if err != nil {
 			if errors.Is(err, route.ErrClosedForwardingChildRetired) {
 				return

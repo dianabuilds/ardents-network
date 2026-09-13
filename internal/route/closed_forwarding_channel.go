@@ -49,16 +49,17 @@ type ClosedForwardingChannel struct {
 }
 
 type closedForwardChild struct {
-	deadline      time.Time
-	credit        uint64
-	reverseCredit uint64
-	reverseQueued uint64
-	queued        uint64
-	delivered     uint64
-	frames        [][]byte
-	ready         bool
-	eof           bool
-	eofSent       bool
+	deadline             time.Time
+	credit               uint64
+	reverseCredit        uint64
+	reverseQueued        uint64
+	reverseControlQueued uint64
+	queued               uint64
+	delivered            uint64
+	frames               [][]byte
+	ready                bool
+	eof                  bool
+	eofSent              bool
 }
 
 // NewClosedForwardingChannel transfers one class-2 reservation to the only
@@ -178,6 +179,7 @@ func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForw
 		return ClosedForwardingEvent{}, errors.New("closed forwarding control queue is unavailable")
 	}
 	channel.releaseQueue(child.queued + child.reverseQueued)
+	channel.releaseControlQueue(child.reverseControlQueued)
 	channel.queued -= child.queued + child.reverseQueued
 	delete(channel.children, frame.Lane)
 	channel.duty.releaseChild()
@@ -233,7 +235,7 @@ func (channel *ClosedForwardingChannel) Next() (ClosedForwardingEvent, bool) {
 		event := channel.controls[0]
 		channel.controls = channel.controls[1:]
 		channel.controlBytes -= closedForwardControlSize(event)
-		channel.releaseQueue(uint64(closedLaneHeaderSize + closedForwardControlSize(event)))
+		channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
 		return event, true
 	}
 	for len(channel.ready) > 0 {
@@ -274,10 +276,10 @@ func (channel *ClosedForwardingChannel) Next() (ClosedForwardingEvent, bool) {
 
 func (channel *ClosedForwardingChannel) queueControl(event ClosedForwardingEvent) bool {
 	size := closedForwardControlSize(event)
-	if size > 16<<10 || channel.controlBytes+size > 16<<10 {
+	if size > closedChannelControlBytes || channel.controlBytes+size > closedChannelControlBytes {
 		return false
 	}
-	if err := channel.reserveQueue(uint64(closedLaneHeaderSize + size)); err != nil {
+	if err := channel.reserveControlQueue(uint64(size)); err != nil {
 		return false
 	}
 	channel.controls = append(channel.controls, event)
@@ -287,9 +289,9 @@ func (channel *ClosedForwardingChannel) queueControl(event ClosedForwardingEvent
 
 func closedForwardControlSize(event ClosedForwardingEvent) uint32 {
 	if event.Kind == closedFrameOpen {
-		return 50
+		return closedLaneHeaderSize + 50
 	}
-	return uint32(len(event.Bytes))
+	return closedLaneHeaderSize + uint32(len(event.Bytes))
 }
 
 // Cancel terminates every child before a caller joins its owned carriers.
@@ -303,11 +305,12 @@ func (channel *ClosedForwardingChannel) Cancel() {
 	channel.terminated = true
 	for _, child := range channel.children {
 		channel.releaseQueue(child.queued + child.reverseQueued)
+		channel.releaseControlQueue(child.reverseControlQueued)
 		channel.queued -= child.queued + child.reverseQueued
 	}
 	clear(channel.children)
 	for _, event := range channel.controls {
-		channel.releaseQueue(uint64(closedLaneHeaderSize + closedForwardControlSize(event)))
+		channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
 	}
 	channel.controls = nil
 	channel.ready = nil

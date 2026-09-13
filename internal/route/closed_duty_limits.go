@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	closedDutyChannels      = 1024
-	closedDutyChildren      = 1024
-	closedDutyQueueBytes    = 64 << 20
-	closedVerifyPerSecond   = 128
-	closedVerifyConcurrency = 4
+	closedDutyChannels        = 1024
+	closedDutyChildren        = 1024
+	closedDutyQueueBytes      = 64 << 20
+	closedChannelControlBytes = 16 << 10
+	closedVerifyPerSecond     = 128
+	closedVerifyConcurrency   = 4
 )
 
 // ClosedDutyLimits owns aggregate receiving-duty reservations. It admits no
@@ -21,15 +22,16 @@ type ClosedDutyLimits struct {
 	mu                       sync.Mutex
 	clock                    func() time.Time
 	channels, children       uint16
-	queued                   uint64
+	queued                   uint64 // Data; each live channel separately reserves control within the same total.
 	verificationWindow       time.Time
 	verifications, verifying uint16
 }
 
 type closedDutyChannel struct {
-	limits   *ClosedDutyLimits
-	children uint16
-	released bool
+	limits        *ClosedDutyLimits
+	children      uint16
+	controlQueued uint64 // Protected by limits.mu, inside the channel's admission reserve.
+	released      bool
 }
 
 // NewClosedDutyLimits creates the finite governor for one exact receiver
@@ -70,7 +72,7 @@ func (limits *ClosedDutyLimits) reserveChannel() (*closedDutyChannel, error) {
 	}
 	limits.mu.Lock()
 	defer limits.mu.Unlock()
-	if limits.channels >= closedDutyChannels {
+	if limits.channels >= closedDutyChannels || limits.queued > closedDutyQueueBytes-uint64(limits.channels+1)*closedChannelControlBytes {
 		return nil, errors.New("closed duty channels are exhausted")
 	}
 	limits.channels++
@@ -127,7 +129,8 @@ func (limits *ClosedDutyLimits) queue(bytes uint64) error {
 	}
 	limits.mu.Lock()
 	defer limits.mu.Unlock()
-	if limits.queued+bytes > closedDutyQueueBytes {
+	available := uint64(closedDutyQueueBytes) - uint64(limits.channels)*closedChannelControlBytes - limits.queued
+	if bytes > available {
 		return errors.New("closed duty queue is exhausted")
 	}
 	limits.queued += bytes

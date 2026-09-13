@@ -73,3 +73,23 @@ func (channel *ClosedForwardingChannel) releaseQueue(size uint64) {
 		_ = channel.bootstrap.Dequeue(size)
 	}
 }
+
+func (channel *ClosedForwardingChannel) reserveControlQueue(size uint64) error {
+	if err := channel.duty.queueControl(size); err != nil {
+		return err
+	}
+	if channel.bootstrap != nil {
+		if err := channel.bootstrap.Queue(size); err != nil {
+			channel.duty.dequeueControl(size)
+			return err
+		}
+	}
+	return nil
+}
+
+func (channel *ClosedForwardingChannel) releaseControlQueue(size uint64) {
+	channel.duty.dequeueControl(size)
+	if channel.bootstrap != nil {
+		_ = channel.bootstrap.Dequeue(size)
+	}
+}
