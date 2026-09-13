@@ -97,26 +97,32 @@ func (gate *textDescriptorACKGate) committed(root string, profile state.ClosedPr
 	return false
 }
 
-func deliverTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) {
+func deliverTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, reader, publisher *textContext, readerJob, publisherJob *textJobIdentity, prepared *textIntroductionAttempt) *textIntroductionAttempt {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	received, sent := make(chan error, 1), make(chan error, 1)
+	type receivedIntroduction struct {
+		attempt *textIntroductionAttempt
+		err     error
+	}
+	received, sent := make(chan receivedIntroduction, 1), make(chan error, 1)
 	go func() {
 		accepted, err := publisher.receiveTextIntroduction(ctx, publisherJob)
 		if err == nil && (accepted.digest != prepared.digest || accepted.plaintext != prepared.plaintext) {
 			err = fmt.Errorf("accepted capsule changed")
 		}
-		received <- err
+		received <- receivedIntroduction{attempt: accepted, err: err}
 	}()
 	go func() { sent <- reader.submitTextIntroduction(ctx, readerJob, prepared) }()
+	var accepted *textIntroductionAttempt
 	select {
-	case err := <-received:
-		if err != nil {
+	case result := <-received:
+		if result.err != nil {
 			gate.open()
 			<-sent
-			t.Fatalf("old capsule before Descriptor ACK: %v", err)
+			t.Fatalf("old capsule before Descriptor ACK: %v", result.err)
 		}
+		accepted = result.attempt
 	case <-ctx.Done():
 		// Release before joining the failing implementation's blocked mutex.
 		gate.open()
@@ -127,6 +133,7 @@ func deliverTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, r
 	if err := <-sent; err != nil {
 		t.Fatal(err)
 	}
+	return accepted
 }
 
 // A hostile submitter can see the committed public Descriptor before its

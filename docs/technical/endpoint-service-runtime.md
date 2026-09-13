@@ -41,6 +41,9 @@ publication does not hold the shared Publisher mutex: a checked context
 reservation retains exclusive Instance ownership against legacy publication
 operations. Only the first successful switch bounds predecessor overlap to
 60 seconds or its earlier signed expiry; exact retries retain that cutoff.
+An established Connection does not extend that overlap: each recovery resolves
+the Target again and may advance only to a monotonic Descriptor revision under
+the same immutable Publication and profile before sealing its fresh capsule.
 Scheduler timing is tested with accelerated events, not a wall-clock lifetime
 qualification. These module paths do not establish complete command exposure
 or installed-worker qualification.

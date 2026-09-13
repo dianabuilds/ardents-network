@@ -159,7 +159,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 				ackTimer.Stop()
 				t.Fatal(t.Context().Err())
 			}
-			deliverTextBeforeDescriptorACK(t, gate, reader, owner, readerJob, publisherJob, oldAttempt)
+			oldAccepted := deliverTextBeforeDescriptorACK(t, gate, reader, owner, readerJob, publisherJob, oldAttempt)
 			pendingOperation := refuseTextBeforeDescriptorACK(t, gate, owner, publisherJob, oldAttempt)
 			switchEarliest := time.Now().UTC().Truncate(time.Second)
 			gate.open()
@@ -223,6 +223,38 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 			}
 			if first.recipient.Public(time.Now()) != [32]byte{} || second.recipient.Public(time.Now()) == [32]byte{} {
 				t.Fatal("retirement did not independently erase the predecessor")
+			}
+			// An established Connection can outlive the 60-second predecessor
+			// overlap. Recovery must resolve and seal to the acknowledged current
+			// recipient without changing its immutable logical authority.
+			clientRecovery := oldAttempt.binding.textServiceRecovery()
+			clientRecovery.Generation, clientRecovery.Role = 2, "client"
+			clientRecovery.Deadline = time.Now().UTC().Add(8 * time.Second).Truncate(time.Second)
+			publisherRecovery := oldAccepted.binding.textServiceRecovery()
+			publisherRecovery.Generation, publisherRecovery.Role = 2, "publisher"
+			publisherRecovery.Deadline = clientRecovery.Deadline
+			recovery, err := reader.prepareTextRecovery(t.Context(), readerJob, oldAttempt.binding, clientRecovery)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer clear(recovery.operation)
+			type recoveryResult struct {
+				attempt *textIntroductionAttempt
+				err     error
+			}
+			receivedRecovery := make(chan recoveryResult, 1)
+			go func() {
+				attempt, receiveErr := owner.receiveTextRecovery(t.Context(), publisherJob, oldAccepted.binding, publisherRecovery)
+				receivedRecovery <- recoveryResult{attempt: attempt, err: receiveErr}
+			}()
+			if err := reader.submitTextIntroduction(t.Context(), readerJob, recovery); err != nil {
+				t.Fatal(err)
+			}
+			acceptedRecovery := <-receivedRecovery
+			if acceptedRecovery.err != nil || recovery.plaintext.Revision != second.request.Revision ||
+				acceptedRecovery.attempt == nil || acceptedRecovery.attempt.plaintext.Revision != second.request.Revision {
+				t.Fatalf("recovery did not advance to current Introduction recipient: client revision=%d Publisher=%v: %v",
+					recovery.plaintext.Revision, acceptedRecovery.attempt, acceptedRecovery.err)
 			}
 			if err := owner.withdrawTextIntroduction(t.Context()); err != nil {
 				t.Fatal(err)

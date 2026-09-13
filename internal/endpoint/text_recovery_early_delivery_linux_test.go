@@ -4,6 +4,7 @@ package endpoint
 
 import (
 	"context"
+	"errors"
 	"runtime"
 	"testing"
 	"time"
@@ -123,6 +124,75 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatalf("retired logical Connection retained %d recovery owners", retained)
 	}
 	stopInitial()
+}
+
+// A matched recovery delivery is already owned by the shared registration.
+// Canceling the individual attempt during local refusal must not prevent its
+// terminal RESULT or kill every other Connection using that registration.
+func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
+	reader, publisher, destination := textJoinedNetworkFixture(t, route.ClosedCarrierTCP)
+	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
+	defer cancel()
+	now := time.Now().UTC()
+	bounds := [3]int64{now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix()}
+	initial, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(initial.operation)
+	type receivedIntroduction struct {
+		attempt *textIntroductionAttempt
+		err     error
+	}
+	initialReceived := make(chan receivedIntroduction, 1)
+	go func() {
+		attempt, receiveErr := publisher.receiveTextIntroduction(ctx, publisherJob)
+		initialReceived <- receivedIntroduction{attempt: attempt, err: receiveErr}
+	}()
+	if err := reader.submitTextIntroduction(ctx, readerJob, initial); err != nil {
+		t.Fatal(err)
+	}
+	remote := <-initialReceived
+	if remote.err != nil {
+		t.Fatal(remote.err)
+	}
+
+	request := initial.binding.textServiceRecovery()
+	request.Generation, request.Role, request.Deadline = 2, "client", now.Add(6*time.Second)
+	recovery, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(recovery.operation)
+	want := textIntroductionDeliveryKey{connection: remote.attempt.binding.facts.ConnectionNonce, generation: 2}
+	attemptContext, cancelAttempt := context.WithCancel(ctx)
+	refused := errors.New("forced matched recovery refusal")
+	received := make(chan error, 1)
+	go func() {
+		_, receiveErr := publisher.receiveTextIntroductionWith(attemptContext, publisherJob, want, remote.attempt.binding,
+			func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error) {
+				cancelAttempt()
+				return nil, refused
+			})
+		received <- receiveErr
+	}()
+	submitted := make(chan error, 1)
+	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, recovery) }()
+	if receiveErr := <-received; !errors.Is(receiveErr, refused) {
+		t.Fatalf("matched recovery refusal = %v", receiveErr)
+	}
+	if submitErr := <-submitted; submitErr == nil {
+		t.Fatal("matched recovery refusal was accepted")
+	}
+	publisher.mu.Lock()
+	registrationDone := publisher.registration.channel.Done()
+	publisher.mu.Unlock()
+	select {
+	case <-registrationDone:
+		t.Fatal("canceled recovery attempt ended the shared Publisher registration")
+	default:
+	}
 }
 
 // Once the shared registration claims a capsule, refusal belongs to that

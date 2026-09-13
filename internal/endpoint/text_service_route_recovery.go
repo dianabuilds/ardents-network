@@ -55,9 +55,9 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 	}
 }
 
-// prepareTextRecovery reuses only the initial Target-Link recipient and the
-// context-owned selected prefix. It creates fresh per-Attachment secrets while
-// retaining the original logical authority and non-resetting deadline.
+// prepareTextRecovery resolves the current recipient for the original Target
+// and accepts it only under the Connection's immutable Publication authority.
+// It creates fresh per-Attachment secrets without resetting any work deadline.
 func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
 	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
 	if owner == nil || ctx == nil || binding == nil || binding.owner != owner || binding.job != job ||
@@ -70,22 +70,29 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err
 	}
+	verified, err := owner.lookupTextDescriptor(ctx, binding.facts.Target)
+	if err != nil {
+		return nil, err
+	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	prefix := owner.prefix
-	recipient := binding.introduction
+	recipient := verified.Descriptor.Private
 	floor := owner.descriptorFloors[binding.facts.Target]
 	if attemptErr := ctx.Err(); attemptErr != nil {
 		return nil, attemptErr
 	}
 	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
+		!binding.matchesPublication(verified.Current) || verified.Descriptor.ProfileDigest != binding.facts.ProfileDigest ||
 		profile.Digest != binding.facts.ProfileDigest || floor.publicationConflict || floor.revisionConflict ||
-		floor.publication != binding.facts.PublicationDigest || floor.revision < recipient.Revision ||
+		floor.publication != binding.facts.PublicationDigest || floor.revision != recipient.Revision ||
+		recipient.Revision < binding.introduction.Revision ||
 		recipient.Revision == 0 || recipient.Slot == [32]byte{} || recipient.RecipientKey == [32]byte{} ||
 		now.Before(recipient.NotBefore) || !now.Before(recipient.NotAfter) {
 		return nil, errors.Join(err, errors.New("text recovery recipient or authority unavailable"))
 	}
+	binding.introduction = recipient
 	node, generation, until, err := prefix.DataJoinRecipient()
 	if err != nil {
 		return nil, err

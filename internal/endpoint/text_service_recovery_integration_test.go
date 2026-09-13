@@ -407,11 +407,11 @@ func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]b
 		nonces[attempt.attempt] = struct{}{}
 		classes[attempt.class]++
 	}
-	// Three class-1 attempts replenish the exhausted class-1/class-2 stocks;
-	// the remaining class-1 attempt submits the capsule, and two class-2
-	// attempts admit the independently opened JOIN legs.
-	if len(recovered) != len(initial)+6 || len(nonces) != 6 || classes[1] != 4 || classes[2] != 2 || classes[3] != 0 {
-		t.Fatalf("recovery token receipts = %d; class-1:%d class-2:%d class-3:%d distinct attempts:%d; want 6, 4, 2, 0, 6",
+	// Fresh resolution adds two class-1 attempts before capsule submission;
+	// the other class-1 attempts replenish the exhausted Route stocks and two
+	// class-2 attempts admit the independently opened JOIN legs.
+	if len(recovered) != len(initial)+8 || len(nonces) != 8 || classes[1] != 6 || classes[2] != 2 || classes[3] != 0 {
+		t.Fatalf("recovery token receipts = %d; class-1:%d class-2:%d class-3:%d distinct attempts:%d; want 8, 6, 2, 0, 8",
 			len(recovered)-len(initial), classes[1], classes[2], classes[3], len(nonces))
 	}
 }

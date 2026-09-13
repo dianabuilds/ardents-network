@@ -130,7 +130,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	if err != nil {
 		return nil, err
 	}
-	operation := delivery.Operation()
+	operation := delivery.delivery.Operation()
 	defer clear(operation)
 	prepared, outcome = accept(lifetime, job, operation)
 	if outcome == nil {
@@ -146,7 +146,9 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	if outcome != nil {
 		status = 1
 	}
-	if err := delivery.Complete(lifetime, status); err != nil {
+	// The registration owns the terminal RESULT after routing. A recovery
+	// attempt may be canceled after local refusal without stranding its lane.
+	if err := owner.completeTextIntroductionDelivery(delivery.delivery, delivery.expires, status); err != nil {
 		return nil, errors.Join(outcome, err)
 	}
 	if prepared != nil && !owner.endpoint.clock().Before(prepared.plaintext.Deadline) {

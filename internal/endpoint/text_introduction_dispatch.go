@@ -48,28 +48,28 @@ type textIntroductionRecoveryOwner struct {
 // directly to an already registered waiter; unmatched inputs are refused while
 // completion is still possible and never occupy registration capacity.
 func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, job *textJobIdentity,
-	want textIntroductionDeliveryKey, binding *textServiceBinding) (delivery *route.ClosedIntroductionDelivery, outcome error) {
+	want textIntroductionDeliveryKey, binding *textServiceBinding) (delivery textIntroductionRoutedDelivery, outcome error) {
 	waiter, gate, err := owner.registerTextIntroductionWaiter(ctx, job, want, binding)
 	if err != nil {
-		return nil, err
+		return textIntroductionRoutedDelivery{}, err
 	}
 	defer func() {
 		outcome = errors.Join(outcome, owner.releaseTextIntroductionWaiter(waiter))
 		if outcome != nil {
-			delivery = nil
+			delivery = textIntroductionRoutedDelivery{}
 		}
 	}()
 	for {
 		select {
 		case routed := <-waiter.delivery:
-			return routed.delivery, nil
+			return routed, nil
 		default:
 		}
 		select {
 		case routed := <-waiter.delivery:
-			return routed.delivery, nil
+			return routed, nil
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return textIntroductionRoutedDelivery{}, ctx.Err()
 		case <-gate:
 		}
 		// Another consumer may have assigned this waiter immediately before it
@@ -77,14 +77,14 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 		select {
 		case routed := <-waiter.delivery:
 			gate <- struct{}{}
-			return routed.delivery, nil
+			return routed, nil
 		default:
 		}
 		for {
 			claimed, key, expires, err := owner.claimTextIntroductionDelivery(ctx, job)
 			if err != nil {
 				gate <- struct{}{}
-				return nil, err
+				return textIntroductionRoutedDelivery{}, err
 			}
 			routed := textIntroductionRoutedDelivery{delivery: claimed, key: key, expires: expires}
 			owner.mu.Lock()
@@ -101,7 +101,7 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 			owner.mu.Unlock()
 			if target == waiter {
 				gate <- struct{}{}
-				return claimed, nil
+				return routed, nil
 			}
 			if target != nil {
 				continue
@@ -113,7 +113,7 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 			// retaining a claimed lane until Complete can no longer answer it.
 			gate <- struct{}{}
 			if err := owner.refuseTextIntroductionDelivery(claimed, expires); err != nil {
-				return nil, err
+				return textIntroductionRoutedDelivery{}, err
 			}
 			break
 		}
@@ -351,16 +351,21 @@ func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context,
 }
 
 func (owner *textContext) refuseTextIntroductionDelivery(delivery *route.ClosedIntroductionDelivery, expires time.Time) error {
+	return owner.completeTextIntroductionDelivery(delivery, expires, 1)
+}
+
+func (owner *textContext) completeTextIntroductionDelivery(delivery *route.ClosedIntroductionDelivery,
+	expires time.Time, status uint8) error {
 	if owner == nil || delivery == nil {
-		return errors.New("text Introduction refusal owner unavailable")
+		return errors.New("text Introduction completion owner unavailable")
 	}
 	lifetime := owner.lease.Context()
 	if expires.IsZero() {
-		return delivery.Complete(lifetime, 1)
+		return delivery.Complete(lifetime, status)
 	}
 	bounded, cancel := context.WithDeadline(lifetime, expires)
 	defer cancel()
-	return delivery.Complete(bounded, 1)
+	return delivery.Complete(bounded, status)
 }
 
 // inspectTextIntroductionDelivery decrypts only enough capsule state to route
