@@ -125,6 +125,79 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	stopInitial()
 }
 
+// Once the shared registration claims a capsule, refusal belongs to that
+// registration rather than to the individual waiter whose cancellation may
+// have raced with inspection.
+func TestTextIntroductionOrphanRefusalOutlivesCanceledWaiter(t *testing.T) {
+	reader, publisher, destination := textJoinedNetworkFixture(t, route.ClosedCarrierTCP)
+	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)
+	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
+	defer cancel()
+	now := time.Now().UTC()
+	bounds := [3]int64{now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix(), now.Add(7 * time.Second).Unix()}
+	attempt, err := reader.prepareTextIntroduction(ctx, readerJob, destination, bounds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(attempt.operation)
+	request, capsule, err := route.DecodeClosedIntroductionSubmission(attempt.operation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher.mu.Lock()
+	recipient := publisher.registration.recipient.Public(time.Now().UTC())
+	publisher.mu.Unlock()
+	facts := attempt.plaintext
+	facts.AttachmentGeneration = 9
+	clear(capsule.Ciphertext)
+	capsule.Ciphertext = nil
+	capsule.Encapsulation = [32]byte{}
+	capsule, _, err = route.SealClosedIntroduction(capsule, recipient, facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt.operation, err = route.EncodeClosedIntroductionSubmission(request, capsule)
+	clear(capsule.Ciphertext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	submitted := make(chan error, 1)
+	go func() { submitted <- reader.submitTextIntroduction(ctx, readerJob, attempt) }()
+	delivery, err := publisher.nextTextIntroductionDelivery(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, expires, err := publisher.inspectTextIntroductionDelivery(ctx, publisherJob, delivery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key.generation != 9 {
+		t.Fatalf("orphan generation = %d", key.generation)
+	}
+	waiter, stopWaiter := context.WithCancel(ctx)
+	stopWaiter()
+	if waiter.Err() == nil {
+		t.Fatal("waiter cancellation precondition missing")
+	}
+	if err := delivery.Complete(waiter, 1); err == nil {
+		t.Fatal("canceled waiter unexpectedly completed the orphan delivery")
+	}
+	if err := publisher.refuseTextIntroductionDelivery(delivery, expires); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-submitted; err == nil {
+		t.Fatal("orphan delivery was accepted")
+	}
+	publisher.mu.Lock()
+	registrationDone := publisher.registration.channel.Done()
+	publisher.mu.Unlock()
+	select {
+	case <-registrationDone:
+		t.Fatal("canceled waiter ended the shared Publisher registration")
+	default:
+	}
+}
+
 func waitTextIntroductionOpening(t *testing.T, ctx context.Context, owner *textContext, before time.Time) {
 	t.Helper()
 	for {

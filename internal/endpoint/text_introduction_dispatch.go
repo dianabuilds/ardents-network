@@ -112,7 +112,7 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 			// No local recovery owns this identity. Refuse it now instead of
 			// retaining a claimed lane until Complete can no longer answer it.
 			gate <- struct{}{}
-			if err := claimed.Complete(ctx, 1); err != nil {
+			if err := owner.refuseTextIntroductionDelivery(claimed, expires); err != nil {
 				return nil, err
 			}
 			break
@@ -344,10 +344,23 @@ func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context,
 	}
 	key, expires, err := owner.inspectTextIntroductionDelivery(ctx, job, delivery)
 	if err != nil {
-		completeErr := delivery.Complete(ctx, 1)
+		completeErr := owner.refuseTextIntroductionDelivery(delivery, expires)
 		return nil, textIntroductionDeliveryKey{}, time.Time{}, errors.Join(err, completeErr)
 	}
 	return delivery, key, expires, nil
+}
+
+func (owner *textContext) refuseTextIntroductionDelivery(delivery *route.ClosedIntroductionDelivery, expires time.Time) error {
+	if owner == nil || delivery == nil {
+		return errors.New("text Introduction refusal owner unavailable")
+	}
+	lifetime := owner.lease.Context()
+	if expires.IsZero() {
+		return delivery.Complete(lifetime, 1)
+	}
+	bounded, cancel := context.WithDeadline(lifetime, expires)
+	defer cancel()
+	return delivery.Complete(bounded, 1)
 }
 
 // inspectTextIntroductionDelivery decrypts only enough capsule state to route
@@ -379,26 +392,26 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 		!endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.published || registered.recipient == nil ||
 		capsule.Slot != registered.request.Slot || capsule.Revision != registered.request.Revision ||
-		!now.Before(capsule.Expiry) || capsule.Expiry.After(registered.request.Expiry) {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch input unavailable")}
+		!now.Add(textIntroductionExpiryReserve).Before(capsule.Expiry) || capsule.Expiry.After(registered.request.Expiry) {
+		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch input unavailable")}
 	}
 	select {
 	case <-registered.channel.Done():
-		return textIntroductionDeliveryKey{}, time.Time{}, errors.New("text Introduction registration ended")
+		return textIntroductionDeliveryKey{}, capsule.Expiry, errors.New("text Introduction registration ended")
 	default:
 	}
 	if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: err}
+		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}
 	plaintext, _, err := route.OpenClosedIntroduction(capsule, profile.Digest, registered.recipient, now)
 	if err != nil {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: err}
+		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: err}
 	}
 	key := textIntroductionDeliveryKey{connection: plaintext.ConnectionNonce, generation: plaintext.AttachmentGeneration}
 	clear(plaintext.JoinSecret[:])
 	clear(plaintext.HandshakeContext[:])
 	if key.connection == [32]byte{} || key.generation == 0 {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch identity unavailable")}
+		return textIntroductionDeliveryKey{}, capsule.Expiry, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch identity unavailable")}
 	}
 	return key, capsule.Expiry, nil
 }
