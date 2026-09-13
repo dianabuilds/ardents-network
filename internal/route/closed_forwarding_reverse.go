@@ -104,10 +104,11 @@ func (channel *ClosedForwardingChannel) AccountOutput(frame ClosedLaneFrame) err
 	if channel.bootstrap != nil {
 		return channel.bootstrap.Send(uint64(closedLaneHeaderSize + len(frame.Body)))
 	}
-	if uint64(len(frame.Body)) > channel.byteLimit-channel.received {
+	size := uint64(closedLaneHeaderSize + len(frame.Body))
+	if size > channel.byteLimit-channel.usedBytes {
 		return errors.New("closed forwarding output exhausted")
 	}
-	channel.received += uint64(len(frame.Body))
+	channel.usedBytes += size
 	return nil
 }
 

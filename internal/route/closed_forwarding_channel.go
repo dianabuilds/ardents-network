@@ -43,7 +43,7 @@ type ClosedForwardingChannel struct {
 	ready        []uint32
 	controls     []ClosedForwardingEvent
 	controlBytes uint32
-	received     uint64
+	usedBytes    uint64
 	queued       uint64
 	terminated   bool
 }
@@ -70,7 +70,7 @@ func NewClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardi
 	if lease == nil || lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || lease.duty == nil || authorize == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed forwarding channel is invalid")
 	}
-	channel := &ClosedForwardingChannel{duty: lease.duty, deadline: lease.Deadline, byteLimit: lease.Bytes, authorize: authorize, clock: clock, children: make(map[uint32]closedForwardChild)}
+	channel := &ClosedForwardingChannel{duty: lease.duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: closedAdmissionFrameBytes, authorize: authorize, clock: clock, children: make(map[uint32]closedForwardChild)}
 	lease.duty = nil
 	return channel, nil
 }
@@ -87,10 +87,18 @@ func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedFor
 	if channel.terminated || !channel.clock().UTC().Before(channel.deadline) {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding channel is unavailable")
 	}
+	size := uint64(closedLaneHeaderSize + len(frame.Body))
 	if channel.bootstrap != nil {
-		if err := channel.bootstrap.Receive(uint64(closedLaneHeaderSize + len(frame.Body))); err != nil {
+		if err := channel.bootstrap.Receive(size); err != nil {
 			return ClosedForwardingEvent{}, err
 		}
+	} else {
+		if size > channel.byteLimit-channel.usedBytes {
+			return ClosedForwardingEvent{}, errors.New("closed forwarding input exhausted")
+		}
+		// The complete frame has already arrived. A later semantic refusal
+		// cannot refund its ingress or let control bypass the parent budget.
+		channel.usedBytes += size
 	}
 	switch frame.Kind {
 	case closedFrameOpen:
@@ -139,7 +147,7 @@ func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwa
 
 func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
 	child, found := channel.children[frame.Lane]
-	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.received+uint64(len(frame.Body)) > channel.byteLimit || channel.queued+uint64(len(frame.Body)) > closedPrefixQueueBytes {
+	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.queued+uint64(len(frame.Body)) > closedPrefixQueueBytes {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding bytes are unavailable")
 	}
 	bytes := uint64(len(frame.Body))
@@ -154,7 +162,6 @@ func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForw
 		channel.ready = append(channel.ready, frame.Lane)
 	}
 	channel.children[frame.Lane] = child
-	channel.received += bytes
 	channel.queued += bytes
 	return ClosedForwardingEvent{}, nil
 }

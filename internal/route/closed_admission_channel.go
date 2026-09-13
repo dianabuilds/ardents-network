@@ -9,6 +9,9 @@ import (
 
 const closedChannelExporterLabel = "EXPORTER-ardents-channel-v3"
 
+// HELLO and ADMIT have already arrived when their admission is transferred.
+const closedAdmissionFrameBytes = 2*closedLaneHeaderSize + 209 + 355
+
 // ClosedRoleReceiver is the exact current public State projection for one
 // role TLS receiver. It authorizes no peer-selected destination or profile.
 type ClosedRoleReceiver struct {

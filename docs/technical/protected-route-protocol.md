@@ -440,6 +440,12 @@ available bytes for at most 1 ms, never wait to manufacture traffic.
 A peer exceeding credit, frame bounds or the channel's ownership closes that
 channel; accepted Service bytes are never silently dropped.
 
+The forwarding and Source owners debit initial HELLO/ADMIT/ACCEPT and every
+complete ARDP input/output frame, including control, from the channel byte
+allowance. A semantic refusal after receipt or failed attempted output does
+not refund that debit. Carrier/TLS and whole-interface costs additionally
+belong to the complete hosting and qualification accounting.
+
 A child cannot extend its parent's deadline or byte reserve. Child cancellation
 joins its reader/writer/next-Carrier cleanup. EOF preserves the reverse
 direction; terminal CLOSE prevents more data and joins both directions.

@@ -161,6 +161,8 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 		return nil, closedSourceOpenFailureAt("completion-interrupted", errors.New("closed prefix canceled before channel ownership"))
 	}
 	owner.channels = newClosedSourceChannelOwner(owner.connection, end, owner.retirement.close)
+	// HELLO, ADMIT and ACCEPT already consumed this admitted channel's budget.
+	owner.channels.transferred = closedAdmissionFrameBytes + closedLaneHeaderSize + 5
 	owner.channels.framing = owner.child
 	owner.channels.start()
 	owner.interruptMu.Unlock()
