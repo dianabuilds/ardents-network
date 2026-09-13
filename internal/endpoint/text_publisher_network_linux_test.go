@@ -98,6 +98,27 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			// The three adversarial openings above intentionally consume the
+			// Publisher's real four-per-second cryptographic-opening allowance.
+			// Start the two independent valid reads in the next rate window so a
+			// faster CI runner cannot turn the fifth opening into the test oracle.
+			publisherOwner.mu.Lock()
+			resumeAt := publisherOwner.introductionOpenings[3].Add(time.Second + 10*time.Millisecond)
+			publisherOwner.mu.Unlock()
+			if wait := time.Until(resumeAt); wait > 0 {
+				timer := time.NewTimer(wait)
+				select {
+				case <-timer.C:
+				case <-ctx.Done():
+					if !timer.Stop() {
+						select {
+						case <-timer.C:
+						default:
+						}
+					}
+					t.Fatal(ctx.Err())
+				}
+			}
 			for range 2 {
 				readerJob := liveTextCapsuleJob(t, readerOwner)
 				reader := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: readerJob}, nil)

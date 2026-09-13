@@ -30,6 +30,7 @@ type textServiceBinding struct {
 	// introduction is the already verified recipient selected for this
 	// Target-Link Connection. It remains client-local and finite.
 	introduction reachability.PrivateIntroduction
+	recovery     *textIntroductionRecoveryOwner
 }
 
 // newTextServiceBinding is the Initiator's local owner operation after

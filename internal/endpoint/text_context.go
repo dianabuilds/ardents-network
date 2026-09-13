@@ -27,6 +27,7 @@ type textContextState struct {
 	registrationChanged   chan struct{}
 	introductionDelivery  chan struct{}
 	introductionWaiters   map[*textIntroductionWaiter]struct{}
+	introductionRecovery  map[*textIntroductionRecoveryOwner]struct{}
 	introductionExchanges map[*textIntroductionExchange]struct{}
 	introductionReplays   map[[32]byte]time.Time
 	introductionOpenings  [4]time.Time
@@ -240,6 +241,8 @@ func (owner *textContext) closeAfterAuthorization() {
 	owner.registration = nil
 	clear(owner.introductionWaiters)
 	owner.introductionWaiters = nil
+	clear(owner.introductionRecovery)
+	owner.introductionRecovery = nil
 	clear(owner.introductionReplays)
 	owner.introductionReplays = nil
 	owner.introductionOpenings = [4]time.Time{}

@@ -17,9 +17,23 @@ type textIntroductionDeliveryKey struct {
 	generation uint64
 }
 
+type textIntroductionRoutedDelivery struct {
+	delivery *route.ClosedIntroductionDelivery
+	key      textIntroductionDeliveryKey
+}
+
 type textIntroductionWaiter struct {
 	want     textIntroductionDeliveryKey
-	delivery chan *route.ClosedIntroductionDelivery
+	delivery chan textIntroductionRoutedDelivery
+}
+
+// textIntroductionRecoveryOwner exists from initial acceptance until the
+// Publisher Service stream retires. It can therefore own the next valid
+// recovery capsule before the native Connection detects the failed Carrier.
+type textIntroductionRecoveryOwner struct {
+	binding    *textServiceBinding
+	generation uint64
+	delivery   chan textIntroductionRoutedDelivery
 }
 
 // dispatchTextIntroductionDelivery registers the exact local owner before it
@@ -27,8 +41,8 @@ type textIntroductionWaiter struct {
 // directly to an already registered waiter; unmatched inputs are refused while
 // completion is still possible and never occupy registration capacity.
 func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, job *textJobIdentity,
-	want textIntroductionDeliveryKey) (delivery *route.ClosedIntroductionDelivery, outcome error) {
-	waiter, gate, err := owner.registerTextIntroductionWaiter(ctx, job, want)
+	want textIntroductionDeliveryKey, binding *textServiceBinding) (delivery *route.ClosedIntroductionDelivery, outcome error) {
+	waiter, gate, err := owner.registerTextIntroductionWaiter(ctx, job, want, binding)
 	if err != nil {
 		return nil, err
 	}
@@ -40,13 +54,13 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 	}()
 	for {
 		select {
-		case delivery = <-waiter.delivery:
-			return delivery, nil
+		case routed := <-waiter.delivery:
+			return routed.delivery, nil
 		default:
 		}
 		select {
-		case delivery = <-waiter.delivery:
-			return delivery, nil
+		case routed := <-waiter.delivery:
+			return routed.delivery, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-gate:
@@ -54,9 +68,9 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 		// Another consumer may have assigned this waiter immediately before it
 		// released the gate. Do not block the assigned owner behind a fresh take.
 		select {
-		case delivery = <-waiter.delivery:
+		case routed := <-waiter.delivery:
 			gate <- struct{}{}
-			return delivery, nil
+			return routed.delivery, nil
 		default:
 		}
 		for {
@@ -67,8 +81,14 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 			}
 			owner.mu.Lock()
 			target := owner.selectTextIntroductionWaiterLocked(key)
+			recovery := (*textIntroductionRecoveryOwner)(nil)
+			if target == nil {
+				recovery = owner.selectTextIntroductionRecoveryLocked(key)
+			}
 			if target != nil && target != waiter {
-				target.delivery <- claimed
+				target.delivery <- textIntroductionRoutedDelivery{delivery: claimed, key: key}
+			} else if recovery != nil {
+				recovery.delivery <- textIntroductionRoutedDelivery{delivery: claimed, key: key}
 			}
 			owner.mu.Unlock()
 			if target == waiter {
@@ -76,6 +96,9 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 				return claimed, nil
 			}
 			if target != nil {
+				continue
+			}
+			if recovery != nil {
 				continue
 			}
 			// No local recovery owns this identity. Refuse it now instead of
@@ -90,7 +113,7 @@ func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, 
 }
 
 func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, job *textJobIdentity,
-	want textIntroductionDeliveryKey) (*textIntroductionWaiter, chan struct{}, error) {
+	want textIntroductionDeliveryKey, binding *textServiceBinding) (*textIntroductionWaiter, chan struct{}, error) {
 	if owner == nil || ctx == nil || want.generation == 0 {
 		return nil, nil, errors.New("text Introduction dispatch unavailable")
 	}
@@ -102,6 +125,19 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 	if len(owner.introductionWaiters) >= maximumTextIntroductionWaiters {
 		return nil, nil, errors.New("text Introduction dispatch capacity unavailable")
 	}
+	var recovery *textIntroductionRecoveryOwner
+	if want.generation > 1 {
+		if binding == nil || binding.owner != owner || binding.job != job || binding.recovery == nil {
+			return nil, nil, errors.New("text Introduction recovery owner unavailable")
+		}
+		recovery = binding.recovery
+		if recovery.binding != binding || want.generation < recovery.generation || want.generation > recovery.generation+1 {
+			return nil, nil, errors.New("text Introduction recovery generation unavailable")
+		}
+		if want.generation > recovery.generation {
+			recovery.generation = want.generation
+		}
+	}
 	if owner.introductionDelivery == nil {
 		owner.introductionDelivery = make(chan struct{}, 1)
 		owner.introductionDelivery <- struct{}{}
@@ -109,8 +145,19 @@ func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, jo
 	if owner.introductionWaiters == nil {
 		owner.introductionWaiters = make(map[*textIntroductionWaiter]struct{})
 	}
-	waiter := &textIntroductionWaiter{want: want, delivery: make(chan *route.ClosedIntroductionDelivery, 1)}
+	waiter := &textIntroductionWaiter{want: want, delivery: make(chan textIntroductionRoutedDelivery, 1)}
 	owner.introductionWaiters[waiter] = struct{}{}
+	if recovery != nil {
+		select {
+		case routed := <-recovery.delivery:
+			if textIntroductionDeliveryMatches(routed.key, want) {
+				waiter.delivery <- routed
+			} else {
+				recovery.delivery <- routed
+			}
+		default:
+		}
+	}
 	return waiter, owner.introductionDelivery, nil
 }
 
@@ -123,17 +170,17 @@ func (owner *textContext) releaseTextIntroductionWaiter(waiter *textIntroduction
 	}
 	owner.mu.Lock()
 	delete(owner.introductionWaiters, waiter)
-	var delivery *route.ClosedIntroductionDelivery
+	var routed textIntroductionRoutedDelivery
 	select {
-	case delivery = <-waiter.delivery:
+	case routed = <-waiter.delivery:
 	default:
 	}
 	lifetime := owner.lease.Context()
 	owner.mu.Unlock()
-	if delivery == nil || lifetime.Err() != nil {
+	if routed.delivery == nil || lifetime.Err() != nil {
 		return nil
 	}
-	return delivery.Complete(lifetime, 1)
+	return routed.delivery.Complete(lifetime, 1)
 }
 
 func (owner *textContext) selectTextIntroductionWaiterLocked(key textIntroductionDeliveryKey) *textIntroductionWaiter {
@@ -143,6 +190,63 @@ func (owner *textContext) selectTextIntroductionWaiterLocked(key textIntroductio
 		}
 	}
 	return nil
+}
+
+func (owner *textContext) selectTextIntroductionRecoveryLocked(key textIntroductionDeliveryKey) *textIntroductionRecoveryOwner {
+	for recovery := range owner.introductionRecovery {
+		if recovery.binding != nil && recovery.binding.recovery == recovery && len(recovery.delivery) == 0 &&
+			recovery.binding.facts.ConnectionNonce == key.connection && key.generation >= recovery.generation &&
+			key.generation <= recovery.generation+1 {
+			return recovery
+		}
+	}
+	return nil
+}
+
+func (owner *textContext) retainTextIntroductionRecovery(binding *textServiceBinding) error {
+	if owner == nil || binding == nil || binding.owner != owner || binding.job == nil {
+		return errors.New("text Introduction recovery owner unavailable")
+	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if !owner.liveTextServiceJobLocked(binding.job, broker.Administration) || binding.recovery != nil ||
+		len(owner.introductionRecovery) >= maximumTextIntroductionWaiters {
+		return errors.New("text Introduction recovery owner capacity unavailable")
+	}
+	if owner.introductionRecovery == nil {
+		owner.introductionRecovery = make(map[*textIntroductionRecoveryOwner]struct{})
+	}
+	recovery := &textIntroductionRecoveryOwner{binding: binding, generation: 2,
+		delivery: make(chan textIntroductionRoutedDelivery, 1)}
+	binding.recovery = recovery
+	owner.introductionRecovery[recovery] = struct{}{}
+	return nil
+}
+
+func (binding *textServiceBinding) releaseTextIntroductionRecovery() error {
+	if binding == nil || binding.owner == nil {
+		return nil
+	}
+	owner := binding.owner
+	owner.mu.Lock()
+	recovery := binding.recovery
+	if recovery == nil || recovery.binding != binding {
+		owner.mu.Unlock()
+		return nil
+	}
+	delete(owner.introductionRecovery, recovery)
+	binding.recovery = nil
+	var routed textIntroductionRoutedDelivery
+	select {
+	case routed = <-recovery.delivery:
+	default:
+	}
+	lifetime := owner.lease.Context()
+	owner.mu.Unlock()
+	if routed.delivery == nil || lifetime.Err() != nil {
+		return nil
+	}
+	return routed.delivery.Complete(lifetime, 1)
 }
 
 func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context,

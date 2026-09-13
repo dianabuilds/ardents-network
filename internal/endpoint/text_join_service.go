@@ -97,6 +97,9 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 			}
 			stop()
 			outcome = finish(outcome)
+			if attempt.plaintext.AttachmentGeneration == 1 {
+				outcome = errors.Join(outcome, attempt.binding.releaseTextIntroductionRecovery())
+			}
 		}
 	}()
 	owner.mu.Lock()

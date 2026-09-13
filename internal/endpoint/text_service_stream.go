@@ -60,6 +60,12 @@ func (transport *textServiceTransport) Close() error {
 // initial attachment never retries, changes a Target or repeats a document.
 func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context.Context, raw net.Conn, capsuleDigest [32]byte,
 	open textServiceAttachmentOpener) (_ *textServiceStream, resultErr error) {
+	recoveryTransferred := false
+	defer func() {
+		if !recoveryTransferred {
+			resultErr = errors.Join(resultErr, binding.releaseTextIntroductionRecovery())
+		}
+	}()
 	if raw == nil {
 		return nil, errors.New("text Service transport unavailable")
 	}
@@ -101,7 +107,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		if !stopLifetime() {
 			<-interrupted
 		}
-		cleanupErr := errors.Join(owned.Close(), transport.Close())
+		cleanupErr := errors.Join(owned.Close(), transport.Close(), binding.releaseTextIntroductionRecovery())
 		if lease != nil {
 			cleanupErr = errors.Join(cleanupErr, lease.Close())
 		}
@@ -231,6 +237,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		send, receive = receive, send
 	}
 	transferred = true
+	recoveryTransferred = true
 	go func() {
 		_, runErr := stream.RunBounded(send, receive)
 		runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), binding.current())
