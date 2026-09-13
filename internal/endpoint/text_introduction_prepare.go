@@ -81,6 +81,7 @@ func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *text
 	if err != nil {
 		return nil, err
 	}
+	binding.introduction = verified.Descriptor.Private
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()

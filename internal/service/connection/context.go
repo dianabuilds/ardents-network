@@ -85,10 +85,21 @@ func VerifyContinuity(key [32]byte, value Continuity, expectedRole Role, generat
 	context, exporter [32]byte) error {
 	expectedNonce := continuityNonce(key, expectedRole, generation, exporter)
 	expectedMAC := continuityMAC(key, value)
-	if value.Role != expectedRole || value.AttachmentGeneration != generation || value.SendBase > value.SendEnd ||
-		value.Context != context || value.ExporterCommitment != exporter ||
-		!hmac.Equal(value.Nonce[:], expectedNonce[:]) || !hmac.Equal(value.MAC[:], expectedMAC[:]) {
-		return errors.New("native continuity record is invalid")
+	switch {
+	case value.Role != expectedRole:
+		return errors.New("native continuity role is invalid")
+	case value.AttachmentGeneration != generation:
+		return errors.New("native continuity generation is invalid")
+	case value.SendBase > value.SendEnd:
+		return errors.New("native continuity offsets are invalid")
+	case value.Context != context:
+		return errors.New("native continuity logical context is invalid")
+	case value.ExporterCommitment != exporter:
+		return errors.New("native continuity Attachment exporter is invalid")
+	case !hmac.Equal(value.Nonce[:], expectedNonce[:]):
+		return errors.New("native continuity nonce is invalid")
+	case !hmac.Equal(value.MAC[:], expectedMAC[:]):
+		return errors.New("native continuity authentication is invalid")
 	}
 	return nil
 }

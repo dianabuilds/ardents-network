@@ -205,6 +205,29 @@ func TestStreamRecoveryCancelsProposalAfterTerminalConfirmation(t *testing.T) {
 	}
 }
 
+func TestStreamRecoveryDoesNotCallOpenerAfterContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	now := time.Now()
+	failed := &Attachment{generation: 1}
+	var proposals atomic.Int32
+	stream := &Stream{ctx: ctx, authorized: now, started: now,
+		recovery: Recovery{NoNewRecoveryAfter: now.Add(time.Minute).Unix()},
+		current:  failed, continuity: [32]byte{1}, resources: func(string, int) uint32 { return 0 },
+		ackSignal: make(chan struct{}, 1), done: make(chan struct{}),
+		opener: func(context.Context, Recovery) (*Attachment, error) {
+			proposals.Add(1)
+			return nil, errors.New("canceled recovery invoked its opener")
+		}}
+	stream.cond = sync.NewCond(&stream.mu)
+	if err := stream.recoverAttachment(failed); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled recovery returned %v", err)
+	}
+	if proposals.Load() != 0 {
+		t.Fatalf("canceled recovery invoked %d proposals", proposals.Load())
+	}
+}
+
 func TestStreamExchangesInitialContinuityBeforeBidirectionalData(t *testing.T) {
 	clientCarrier, publisherCarrier := net.Pipe()
 	clientApplication, clientUser := halfClosePair()

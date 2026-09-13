@@ -32,6 +32,13 @@ type ClosedJoinedStream struct {
 }
 
 func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSourceLane, release func()) *ClosedJoinedStream {
+	// A successful JOIN result accepted the outer Source operation. From this
+	// point its terminal status describes retirement of an admitted stream, not
+	// refusal of an unopened child. Commit that transition before cancellation
+	// can start the nested owner and retire the outer lane.
+	lane.owner.mu.Lock()
+	lane.closeStatus = 0
+	lane.owner.mu.Unlock()
 	owner := newClosedSourceChannelOwner(parent, lane.end, nil)
 	owner.last = 1
 	owner.chargeTerminal = true

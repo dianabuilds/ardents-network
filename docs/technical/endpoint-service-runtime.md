@@ -266,11 +266,21 @@ qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
 The coalesced authenticated stream requires its directional Terminal receipt
 and peer confirmation even when only the initial Attachment is available.
-Missing confirmation cannot yield a successful bounded outcome. This does not
-create a replacement source: recovery and its retained post-close replay tail
-remain separate required integration, not a readiness claim supplied by the
-installed network profile. The preceding sequential headless stream retains
-its existing orderly half-close behavior.
+Missing confirmation cannot yield a successful bounded outcome. The protected
+text-Service owner now installs a Route-backed replacement source before
+Application bytes are exposed. It retains the verified Introduction recipient,
+selected Source or Responder prefix, original job, Candidate View, logical
+tuple and Work Safety bounds. Every proposed generation uses a fresh capsule,
+JOIN secret, handshake context, delivery and request nonces, token presentation,
+Service TLS exporter and Attachment context. Client and Publisher recheck their
+current job, State, publication or registration, and local recovery deadline
+before transfer and after asynchronous opening. A successful proposal transfers
+the Route lifetime from its bounded opening attempt to the Service Connection,
+so normal attempt cancellation cannot retire the accepted Attachment.
+
+This is maintained component integration, not installed-host P7 or NET-14
+qualification. A path that supplies no Attachment opener retains its existing
+orderly half-close behavior and cannot recover.
 
 After a replacement Attachment commits, the Connection replays any accepted but
 unacknowledged Data suffix without waiting for a further local Application read,
@@ -398,7 +408,10 @@ already-settled Terminal and receipt-control replay; it accepts no Application
 Data and never presents another Application EOF. Thus the caller's completed
 Application operation is released while a returned peer can still recover the
 missing final control proof. The tail adds neither durable recovery state nor a
-headless recovery path.
+headless recovery path. The Endpoint may publish that completed Application
+outcome before the tail ends, but explicit text-stream close cancels and joins
+the native tail, its current Attachment and the owning Introduction exchange
+before releasing the stream owner.
 
 The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
 write's complete frames precede the zero-length input-close frame; if the

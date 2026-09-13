@@ -67,3 +67,62 @@ func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T
 		t.Fatalf("Endpoint Close lost failure: %v", err)
 	}
 }
+
+func TestTextServiceTransportExchangeRetainsCleanupAfterJobLoss(t *testing.T) {
+	endpoint, principal := textContextEndpoint(t)
+	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	job := liveTextCapsuleJob(t, owner)
+	lifetime, flight, detach, finish, err := owner.beginTextServiceTransportExchange(t.Context(), job, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finished := false
+	defer func() {
+		if !finished {
+			finish(nil)
+		}
+	}()
+	if !detach() || !owner.retainTextServiceTransportExchange(job, flight) {
+		t.Fatal("accepted transport did not transfer its cleanup lifetime")
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- owner.Close() }()
+	select {
+	case <-job.context.Done():
+	case <-time.After(time.Second):
+		t.Fatal("Close did not revoke job authority")
+	}
+	deadline := time.Now().Add(time.Second)
+	for {
+		owner.mu.Lock()
+		retired := job.retired
+		owner.mu.Unlock()
+		if retired {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("Close did not retire job ownership")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	select {
+	case <-lifetime.Done():
+		t.Fatal("job revocation interrupted retained transport cleanup")
+	default:
+	}
+	if outcome := finish(nil); !errors.Is(outcome, context.Canceled) {
+		t.Fatalf("transport cleanup lost revoked job outcome: %v", outcome)
+	}
+	finished = true
+	if err := owner.finishJobCleanup(job, nil); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Close did not join retained transport cleanup")
+	}
+}

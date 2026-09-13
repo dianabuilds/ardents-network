@@ -189,6 +189,16 @@ func (stream *Stream) authorizationTime() time.Time {
 	return stream.authorized.Add(time.Since(stream.started))
 }
 
+// Done closes after all native data and terminal-control workers have stopped
+// and the current Attachment has been released. RunBounded may return earlier
+// after a successful Application outcome while its bounded control tail lives.
+func (stream *Stream) Done() <-chan struct{} {
+	if stream == nil {
+		return nil
+	}
+	return stream.done
+}
+
 func (stream *Stream) continuityCommitment() [32]byte {
 	return sha256.Sum256(append([]byte("ardents-service-connection-continuity-commitment-v1\x00"), stream.continuity[:]...))
 }

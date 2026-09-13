@@ -86,6 +86,16 @@ func TestClosedJoinedClientCancellationJoinsBlockedCreditWriter(t *testing.T) {
 	}
 }
 
+func TestClosedJoinedClientAcceptsOuterLaneBeforeTransfer(t *testing.T) {
+	stream, _, _, _, _ := joinedClientStreamFixture(t)
+	stream.outer.owner.mu.Lock()
+	status := stream.outer.closeStatus
+	stream.outer.owner.mu.Unlock()
+	if status != 0 {
+		t.Fatalf("accepted JOIN retained refusal status %d", status)
+	}
+}
+
 func TestClosedJoinedClientCloseCannotExceedAdmissionBudget(t *testing.T) {
 	stream, _, released, frames, _ := joinedClientStreamFixture(t)
 	stream.channels.mu.Lock()

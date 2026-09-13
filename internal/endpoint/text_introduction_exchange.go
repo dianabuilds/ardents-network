@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 )
 
 func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJobIdentity, prepared *textIntroductionAttempt) (outcome error) {
@@ -63,8 +64,31 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 // receiveTextIntroduction consumes one delivery from the actual channel owned
 // by this Publisher, then acknowledges only after independent local acceptance.
 func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *textJobIdentity) (prepared *textIntroductionAttempt, outcome error) {
+	return owner.receiveTextIntroductionWith(ctx, job, owner.acceptTextIntroduction)
+}
+
+func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
+	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
+	if binding == nil || binding.owner != owner || binding.job != job {
+		return nil, errors.New("text recovery receiver unavailable")
+	}
+	if err := binding.validateTextServiceRecovery(request); err != nil {
+		return nil, err
+	}
+	return owner.receiveTextIntroductionWith(ctx, job, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
+		return owner.acceptTextRecovery(ctx, job, operation, binding, request)
+	})
+}
+
+type textIntroductionAcceptor func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error)
+
+func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *textJobIdentity,
+	accept textIntroductionAcceptor) (prepared *textIntroductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction receiver unavailable")
+	}
+	if accept == nil {
+		return nil, errors.New("text Introduction acceptance owner unavailable")
 	}
 	owner.mu.Lock()
 	if owner.publicationDraining {
@@ -92,7 +116,7 @@ func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *text
 	}
 	operation := delivery.Operation()
 	defer clear(operation)
-	prepared, outcome = owner.acceptTextIntroduction(lifetime, job, operation)
+	prepared, outcome = accept(lifetime, job, operation)
 	if outcome == nil {
 		outcome = owner.prepareTextResponder(lifetime, job, prepared)
 	}

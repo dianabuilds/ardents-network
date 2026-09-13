@@ -11,7 +11,8 @@ import (
 
 // The protected Service profile fixes both supported key-exchange groups.
 // The preceding runtime keeps its own compatibility TLS configuration.
-func secureTextClient(ctx context.Context, raw net.Conn, credential publicationCredential, exporterContext [32]byte) (*securedAttachment, [32]byte, error) {
+func secureTextClient(ctx context.Context, raw net.Conn, credential publicationCredential, exporterContext [32]byte,
+	generation uint64) (*securedAttachment, [32]byte, error) {
 	config := &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
 		CurvePreferences:   []tls.CurveID{tls.X25519MLKEM768, tls.X25519},
 		InsecureSkipVerify: true, SessionTicketsDisabled: true, VerifyConnection: verifyInstance(credential.InstancePublic)}
@@ -20,10 +21,11 @@ func secureTextClient(ctx context.Context, raw net.Conn, credential publicationC
 		_ = raw.Close()
 		return nil, [32]byte{}, err
 	}
-	return exportedAttachment(connection, exporterContext, 1)
+	return exportedAttachment(connection, exporterContext, generation)
 }
 
-func secureTextPublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer, exporterContext [32]byte) (*securedAttachment, [32]byte, error) {
+func secureTextPublisher(ctx context.Context, raw net.Conn, credential publicationCredential, signer crypto.Signer,
+	exporterContext [32]byte, generation uint64) (*securedAttachment, [32]byte, error) {
 	certificate, err := instanceCertificate(credential, signer)
 	if err != nil {
 		_ = raw.Close()
@@ -37,5 +39,5 @@ func secureTextPublisher(ctx context.Context, raw net.Conn, credential publicati
 		_ = raw.Close()
 		return nil, [32]byte{}, err
 	}
-	return exportedAttachment(connection, exporterContext, 1)
+	return exportedAttachment(connection, exporterContext, generation)
 }

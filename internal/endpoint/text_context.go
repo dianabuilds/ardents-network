@@ -219,7 +219,9 @@ func (owner *textContext) closeAfterAuthorization() {
 	owner.signalTextRegistrationsLocked()
 	exchanges := make([]*textIntroductionExchange, 0, len(owner.introductionExchanges))
 	for flight := range owner.introductionExchanges {
-		flight.cancel()
+		if !flight.retained {
+			flight.cancel()
+		}
 		exchanges = append(exchanges, flight)
 	}
 	withdrawal := owner.withdrawal

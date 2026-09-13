@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"net"
 	"strconv"
@@ -258,6 +259,14 @@ func TestTextServiceProtectedContextSeparatesAttachmentFromLogicalIdentity(t *te
 	logical, err := nativeconnection.ProtectedContext(client.facts)
 	if err != nil || logical != client.logical || first == second || first == logical || second == logical {
 		t.Fatal("Attachment replacement changed or collapsed logical context")
+	}
+	spelling, err := targetlink.Encode(targetlink.Link{Network: client.facts.Network, Target: client.facts.Target})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recovery := client.textServiceRecovery()
+	if expected := sha256.Sum256([]byte(spelling)); recovery.DestinationBinding != expected || recovery.DestinationBinding == client.facts.Target {
+		t.Fatal("recovery did not retain the original Target-Link destination commitment")
 	}
 }
 

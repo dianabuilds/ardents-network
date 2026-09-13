@@ -22,6 +22,22 @@ const maximumTextIntroductionReplays = 4 * (600 + 60)
 // own registration, non-exporting Instance, current Publication and State; the
 // returned binding is usable only by this current qualified Publisher job.
 func (owner *textContext) acceptTextIntroduction(ctx context.Context, job *textJobIdentity, operation []byte) (attempt *textIntroductionAttempt, outcome error) {
+	return owner.acceptTextIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{})
+}
+
+func (owner *textContext) acceptTextRecovery(ctx context.Context, job *textJobIdentity, operation []byte,
+	original *textServiceBinding, request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
+	if original == nil || original.owner != owner || original.job != job {
+		return nil, errors.New("text recovery binding unavailable")
+	}
+	if err := original.validateTextServiceRecovery(request); err != nil {
+		return nil, err
+	}
+	return owner.acceptTextIntroductionGeneration(ctx, job, operation, original, request.Generation, request.Deadline)
+}
+
+func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, job *textJobIdentity, operation []byte,
+	original *textServiceBinding, expectedGeneration uint64, recoveryDeadline time.Time) (attempt *textIntroductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
 	}
@@ -85,7 +101,8 @@ func (owner *textContext) acceptTextIntroduction(ctx context.Context, job *textJ
 		return nil, errors.Join(err, ctx.Err(), errors.New("text Introduction recipient authority unavailable"))
 	}
 	if node != plaintext.RendezvousNode || generation != plaintext.RendezvousDutyGeneration || plaintext.Deadline.After(until) ||
-		plaintext.Network != profile.NetworkID || plaintext.Target != current.Credential.Target || plaintext.PublicationDigest != current.Digest || plaintext.AttachmentGeneration != 1 {
+		plaintext.Network != profile.NetworkID || plaintext.Target != current.Credential.Target || plaintext.PublicationDigest != current.Digest ||
+		plaintext.AttachmentGeneration != expectedGeneration || !recoveryDeadline.IsZero() && plaintext.Deadline.After(recoveryDeadline) {
 		return nil, &textIntroductionRefusal{cause: errors.New("text Introduction recipient facts unavailable")}
 	}
 	facts := nativeconnection.ProtectedContextInput{Network: plaintext.Network, Target: plaintext.Target, PublicationDigest: plaintext.PublicationDigest,
@@ -95,6 +112,13 @@ func (owner *textContext) acceptTextIntroduction(ctx context.Context, job *textJ
 	binding, err := owner.bindTextServiceLocked(job, current, facts)
 	if err != nil {
 		return nil, err
+	}
+	if original != nil {
+		if binding.logical != original.logical || binding.facts != original.facts || binding.credential != original.credential ||
+			binding.candidateView != original.candidateView {
+			return nil, &textIntroductionRefusal{cause: errors.New("text recovery changed logical Service authority")}
+		}
+		binding = original
 	}
 	select {
 	case <-registered.channel.Done():

@@ -39,6 +39,11 @@ type textServiceTransport struct {
 	err  error
 }
 
+// textServiceAttachmentOpener returns one already authorized protected Route
+// transport and its exact fresh capsule digest. The native Connection owns TLS,
+// exporter and retained-continuity verification before committing it.
+type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery) (net.Conn, [32]byte, error)
+
 func (transport *textServiceTransport) Close() error {
 	transport.once.Do(func() {
 		transport.err = transport.Conn.Close()
@@ -54,6 +59,11 @@ func (transport *textServiceTransport) Close() error {
 // Recovery Attachments require the separate retained continuity owner; this
 // initial attachment never retries, changes a Target or repeats a document.
 func (binding *textServiceBinding) openTextServiceStream(ctx context.Context, raw net.Conn, capsuleDigest [32]byte) (_ *textServiceStream, resultErr error) {
+	return binding.openTextServiceStreamWithRecovery(ctx, raw, capsuleDigest, nil)
+}
+
+func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context.Context, raw net.Conn, capsuleDigest [32]byte,
+	open textServiceAttachmentOpener) (_ *textServiceStream, resultErr error) {
 	if raw == nil {
 		return nil, errors.New("text Service transport unavailable")
 	}
@@ -112,7 +122,7 @@ func (binding *textServiceBinding) openTextServiceStream(ctx context.Context, ra
 	var secured *securedAttachment
 	var continuity [32]byte
 	if client {
-		secured, continuity, err = secureTextClient(lifetime, transport, binding.credential, exporterContext)
+		secured, continuity, err = secureTextClient(lifetime, transport, binding.credential, exporterContext, 1)
 	} else {
 		if binding.owner.endpoint.publications == nil {
 			return nil, errors.New("text Publisher publication owner unavailable")
@@ -125,7 +135,7 @@ func (binding *textServiceBinding) openTextServiceStream(ctx context.Context, ra
 			return nil, errors.New("text Publisher publication changed")
 		}
 		identity.Signer = lease
-		secured, continuity, err = secureTextPublisher(lifetime, transport, binding.credential, lease, exporterContext)
+		secured, continuity, err = secureTextPublisher(lifetime, transport, binding.credential, lease, exporterContext, 1)
 	}
 	defer clear(continuity[:])
 	if err != nil {
@@ -138,11 +148,78 @@ func (binding *textServiceBinding) openTextServiceStream(ctx context.Context, ra
 	if err != nil {
 		return nil, err
 	}
+	recovery := nativeconnection.Recovery{WorkSafetyNotAfter: binding.facts.WorkSafetyNotAfter,
+		WorkSafetyMaximum: binding.facts.WorkSafetyMaximum, NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter}
+	if open != nil {
+		recovery = binding.textServiceRecovery()
+		if err := nativeconnection.ValidateRecovery(true, recovery, binding.owner.endpoint.clock().UTC().Unix(), binding.credential.NotAfter); err != nil {
+			return nil, err
+		}
+	}
+	var opener nativeconnection.AttachmentOpener
+	if open != nil {
+		opener = func(attempt context.Context, request nativeconnection.Recovery) (_ *nativeconnection.Attachment, outcome error) {
+			if err := binding.validateTextServiceRecovery(request); err != nil {
+				return nil, err
+			}
+			replacementRaw, replacementDigest, err := open(attempt, request)
+			if err != nil {
+				return nil, err
+			}
+			if replacementRaw == nil || replacementDigest == [32]byte{} {
+				if replacementRaw != nil {
+					_ = replacementRaw.Close()
+				}
+				return nil, errors.New("text Service recovery Attachment is incomplete")
+			}
+			ownedRaw := true
+			defer func() {
+				if ownedRaw {
+					outcome = errors.Join(outcome, replacementRaw.Close())
+				}
+			}()
+			if err := errors.Join(attempt.Err(), binding.current()); err != nil {
+				return nil, err
+			}
+			freshContext, err := nativeconnection.ProtectedAttachmentContext(binding.logical, replacementDigest, request.Generation)
+			if err != nil {
+				return nil, err
+			}
+			var replacement *securedAttachment
+			var freshContinuity [32]byte
+			if client {
+				replacement, freshContinuity, err = secureTextClient(attempt, replacementRaw, binding.credential, freshContext, request.Generation)
+			} else {
+				if lease == nil || !binding.matchesPublication(lease.Current()) {
+					return nil, errors.New("text Publisher publication changed before recovery")
+				}
+				replacement, freshContinuity, err = secureTextPublisher(attempt, replacementRaw, binding.credential, lease, freshContext, request.Generation)
+			}
+			defer clear(freshContinuity[:])
+			if err != nil {
+				ownedRaw = false // TLS setup owns and closes raw on every failure.
+				return nil, err
+			}
+			ownedRaw = false
+			if err := errors.Join(attempt.Err(), binding.current()); err != nil || !client && !binding.matchesPublication(lease.Current()) {
+				replacement.close()
+				return nil, errors.Join(err, errors.New("text Service authority changed during recovery"))
+			}
+			// The exporter was derived from the fresh Attachment context; native
+			// Continuity continues to authenticate the immutable logical context.
+			replacement.context = binding.logical
+			attached, err := nativeAttachment(replacement)
+			if err != nil {
+				replacement.close()
+				return nil, err
+			}
+			return attached, nil
+		}
+	}
 	stream, err := nativeconnection.NewAuthenticatedStream(nativeconnection.StreamConfig{
 		Context: lifetime, Application: owned, NetworkID: binding.facts.Network, Initial: first,
 		ContinuityKey: continuity, Authorized: binding.owner.endpoint.clock().UTC(), Client: client,
-		Recovery: nativeconnection.Recovery{WorkSafetyNotAfter: binding.facts.WorkSafetyNotAfter,
-			WorkSafetyMaximum: binding.facts.WorkSafetyMaximum, NoNewRecoveryAfter: binding.facts.NoNewRecoveryAfter},
+		Recovery: recovery, OpenAttachment: opener,
 		Resources: binding.owner.endpoint.resources}, identity)
 	if err != nil {
 		return nil, err
@@ -159,13 +236,20 @@ func (binding *textServiceBinding) openTextServiceStream(ctx context.Context, ra
 	}
 	transferred = true
 	go func() {
-		defer close(connection.finished)
 		_, runErr := stream.RunBounded(send, receive)
 		runErr = errors.Join(runErr, ctx.Err(), lifetime.Err(), binding.current())
 		connection.runErr = runErr
-		connection.finishErr = cleanup()
-		if connection.finishErr != nil {
-			connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
+		nativeFinished := false
+		select {
+		case <-stream.Done():
+			nativeFinished = true
+		default:
+		}
+		if nativeFinished {
+			connection.finishErr = cleanup()
+			if connection.finishErr != nil {
+				connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
+			}
 		}
 		outcome := applicationconnection.Outcome{Class: applicationconnection.CleanClose}
 		if runErr != nil || connection.finishErr != nil {
@@ -178,6 +262,14 @@ func (binding *textServiceBinding) openTextServiceStream(ctx context.Context, ra
 		}
 		connection.done <- outcome
 		close(connection.done)
+		if !nativeFinished {
+			<-stream.Done()
+			connection.finishErr = cleanup()
+			if connection.finishErr != nil {
+				connection.finishErr = errors.Join(errors.New("text Service cleanup failed"), connection.finishErr)
+			}
+		}
+		close(connection.finished)
 	}()
 	if admissionErr != nil {
 		return nil, errors.Join(admissionErr, connection.Close())
