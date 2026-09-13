@@ -104,8 +104,16 @@ func (stream *Stream) recoverAttachment(failed *Attachment) error {
 				state.Role = RolePublisher
 			}
 			state.Context, state.ExporterCommitment = attachment.context, attachment.exporterCommitment
+			stopContinuity := context.AfterFunc(attempt, attachment.closeCarrier)
 			peer, exchangeErr := ExchangeContinuity(attempt, attachment.carrier, state)
-			if exchangeErr != nil {
+			if !stopContinuity() {
+				// Join a cancellation callback that may still own the proposed
+				// carrier before deciding whether this Attachment can transfer.
+				attachment.closeCarrier()
+			}
+			if attemptErr := attempt.Err(); attemptErr != nil {
+				err = attemptErr
+			} else if exchangeErr != nil {
 				err = errors.Join(ErrActiveViolation, exchangeErr)
 			} else {
 				err = stream.commitAttachment(failed, attachment, peer)
@@ -178,6 +186,10 @@ func (stream *Stream) commitAttachment(failed, attachment *Attachment, peer Cont
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 	switch {
+	case stream.terminal != nil:
+		return stream.terminal
+	case stream.ctx != nil && stream.ctx.Err() != nil:
+		return stream.ctx.Err()
 	case stream.current != failed:
 		return errors.Join(ErrActiveViolation, errors.New("replacement no longer owns the failed Attachment"))
 	case attachment.generation <= failed.generation:
