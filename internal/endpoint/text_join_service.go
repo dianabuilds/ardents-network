@@ -119,7 +119,11 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 	}
 	if owner.surface == broker.Connection {
 		bounded, cancel := context.WithDeadline(joining, attempt.plaintext.Deadline)
-		_, _, err := owner.prepareTextSubmissionStock(bounded, prefix)
+		prepare := owner.prepareTextSubmissionStock
+		if attempt.plaintext.AttachmentGeneration > 1 {
+			prepare = owner.prepareTextRecoverySubmissionStock
+		}
+		_, _, err := prepare(bounded, prefix)
 		cancel()
 		if err != nil {
 			return nil, err
@@ -190,7 +194,11 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	}
 	owner.mu.Unlock()
 	if err == nil && !stocked {
-		err = owner.issueTextTokens(bounded, [][32]byte{node}, 2)
+		if attempt.plaintext.AttachmentGeneration > 1 {
+			err = owner.issueTextRecoveryTokens(bounded, [][32]byte{node}, 2)
+		} else {
+			err = owner.issueTextTokens(bounded, [][32]byte{node}, 2)
+		}
 	}
 	cancel()
 	if err != nil {

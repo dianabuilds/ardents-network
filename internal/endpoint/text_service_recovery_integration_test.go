@@ -190,7 +190,12 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				cancel()
 				t.Fatal(remote.err)
 			}
-			initialTokens := textTokenAttemptSnapshot(t, reader.endpoint)
+			stopInitialReceiver := holdTextInitialIntroductionReceiver(t, ctx, publisher, publisherJob)
+			journal, err := reader.endpoint.textTokenJournal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			initialTokens := textTokenJournalSnapshot(journal)
 
 			body := bytes.Repeat([]byte("network recovery\n"), 4096)
 			snapshot, err := textdocument.NewSnapshot(body)
@@ -239,6 +244,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 					clientRecovery.outcome(), publisherRecovery.outcome())
 			}
 			cancel()
+			stopInitialReceiver()
 			if err := errors.Join(clientStream.Close(), remote.stream.Close()); err != nil {
 				t.Fatalf("recovered Route cleanup: %v", err)
 			}
@@ -251,7 +257,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				t.Fatalf("recovery cleanup revived a Route instead of joining cancellation: client=%v Publisher=%v",
 					clientRecovery.outcome(), publisherRecovery.outcome())
 			}
-			if afterCleanup := textTokenAttemptSnapshot(t, reader.endpoint); !sameTextTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
+			if afterCleanup := textTokenJournalSnapshot(journal); !sameTextTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
 				t.Fatal("recovery cleanup spent another receiver token")
 			}
 			for _, owner := range []*textContext{reader, publisher} {
@@ -369,6 +375,10 @@ func textTokenAttemptSnapshot(t *testing.T, current *endpoint) map[[32]byte]text
 	if err != nil {
 		t.Fatal(err)
 	}
+	return textTokenJournalSnapshot(journal)
+}
+
+func textTokenJournalSnapshot(journal *textTokenJournal) map[[32]byte]textTokenAttempt {
 	journal.mu.Lock()
 	defer journal.mu.Unlock()
 	retained := make(map[[32]byte]textTokenAttempt, len(journal.records))

@@ -38,17 +38,34 @@ type textIssuanceFlight struct {
 // retained Route members and intended receiver originate in Endpoint, never
 // on a worker attachment. There is at most one live exchange per context.
 func (owner *textContext) issueTextTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
+	return owner.issueTextTokensWithCancellation(ctx, receivers, class, false)
+}
+
+// A canceled recovery proposal cannot be retried by its completed logical
+// stream. Burn its already-reserved allocation and erase only the batch that
+// this proposal created, so it cannot block a later independent Service job.
+func (owner *textContext) issueTextRecoveryTokens(ctx context.Context, receivers [][32]byte, class uint8) error {
+	return owner.issueTextTokensWithCancellation(ctx, receivers, class, true)
+}
+
+func (owner *textContext) issueTextTokensWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
+	discardCanceled bool) error {
 	release, err := owner.acquireTextSourceOperation(ctx)
 	if err != nil {
 		return err
 	}
 	defer release()
-	return owner.issueTextTokensForOpening(ctx, receivers, class, nil, false)
+	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, nil, false, discardCanceled)
 }
 
 // A non-nil opening must be the exact retained prefix transition. Keeping it
 // across both bootstrap flights prevents unrelated issuance stealing its slot.
 func (owner *textContext) issueTextTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textSourceFlight, refill bool) error {
+	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, opening, refill, false)
+}
+
+func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
+	opening *textSourceFlight, refill bool, discardCanceled bool) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")
 	}
@@ -174,6 +191,10 @@ func (owner *textContext) issueTextTokensForOpening(ctx context.Context, receive
 
 	if err := ctx.Err(); err != nil {
 		clear(result.Body)
+		if discardCanceled && permission.pending == batch {
+			batch.pending.Discard()
+			permission.pending = nil
+		}
 		return err
 	}
 	if exchangeErr != nil {

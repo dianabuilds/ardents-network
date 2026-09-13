@@ -255,14 +255,11 @@ func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T
 			refresh := owner.refresh
 			expires := owner.permission.accepted.NotAfter
 			first.refreshAt = time.Now().Add(-time.Second)
-			owner.mu.Unlock()
 			if refresh == nil || expires.IsZero() {
+				owner.mu.Unlock()
 				t.Fatal("published registration did not retain its refresh and permission expiry")
 			}
-			originalClock := endpoint.clock
 			endpoint.clock = func() time.Time { return expires }
-			t.Cleanup(func() { endpoint.clock = originalClock })
-			owner.mu.Lock()
 			owner.signalTextRegistrationsLocked()
 			owner.mu.Unlock()
 			select {

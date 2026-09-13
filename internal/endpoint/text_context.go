@@ -25,6 +25,8 @@ type textContextState struct {
 	previousRegistration  *textIntroductionRegistration
 	previousUntil         time.Time
 	registrationChanged   chan struct{}
+	introductionDelivery  chan struct{}
+	introductionPending   map[textIntroductionDeliveryKey][]textIntroductionPendingDelivery
 	introductionExchanges map[*textIntroductionExchange]struct{}
 	introductionReplays   map[[32]byte]time.Time
 	introductionOpenings  [4]time.Time
@@ -236,6 +238,8 @@ func (owner *textContext) closeAfterAuthorization() {
 		registrationOpening.cancel()
 	}
 	owner.registration = nil
+	clear(owner.introductionPending)
+	owner.introductionPending = nil
 	clear(owner.introductionReplays)
 	owner.introductionReplays = nil
 	owner.introductionOpenings = [4]time.Time{}

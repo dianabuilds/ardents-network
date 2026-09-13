@@ -64,7 +64,7 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 // receiveTextIntroduction consumes one delivery from the actual channel owned
 // by this Publisher, then acknowledges only after independent local acceptance.
 func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *textJobIdentity) (prepared *textIntroductionAttempt, outcome error) {
-	return owner.receiveTextIntroductionWith(ctx, job, owner.acceptTextIntroduction)
+	return owner.receiveTextIntroductionWith(ctx, job, textIntroductionDeliveryKey{generation: 1}, owner.acceptDispatchedTextIntroduction)
 }
 
 func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
@@ -81,15 +81,16 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err
 	}
-	return owner.receiveTextIntroductionWith(ctx, job, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
-		return owner.acceptTextRecovery(ctx, job, operation, binding, request)
+	want := textIntroductionDeliveryKey{connection: binding.facts.ConnectionNonce, generation: request.Generation}
+	return owner.receiveTextIntroductionWith(ctx, job, want, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
+		return owner.acceptDispatchedTextRecovery(ctx, job, operation, binding, request)
 	})
 }
 
 type textIntroductionAcceptor func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error)
 
 func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *textJobIdentity,
-	accept textIntroductionAcceptor) (prepared *textIntroductionAttempt, outcome error) {
+	want textIntroductionDeliveryKey, accept textIntroductionAcceptor) (prepared *textIntroductionAttempt, outcome error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("text Introduction receiver unavailable")
 	}
@@ -119,7 +120,7 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 			prepared = nil
 		}
 	}()
-	delivery, err := owner.nextTextIntroductionDelivery(lifetime)
+	delivery, err := owner.dispatchTextIntroductionDelivery(lifetime, job, want)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +144,16 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 }
 
 func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix *route.ClosedSourcePrefix) ([32]byte, state.ClosedProfileView, error) {
+	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, false)
+}
+
+func (owner *textContext) prepareTextRecoverySubmissionStock(ctx context.Context,
+	prefix *route.ClosedSourcePrefix) ([32]byte, state.ClosedProfileView, error) {
+	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, true)
+}
+
+func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context.Context, prefix *route.ClosedSourcePrefix,
+	discardCanceled bool) ([32]byte, state.ClosedProfileView, error) {
 	receiver, err := prefix.SubmissionRecipient()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err
@@ -163,7 +174,11 @@ func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}
 	if !stocked {
-		if err := owner.issueTextTokens(ctx, [][32]byte{receiver}, 1); err != nil {
+		issue := owner.issueTextTokens
+		if discardCanceled {
+			issue = owner.issueTextRecoveryTokens
+		}
+		if err := issue(ctx, [][32]byte{receiver}, 1); err != nil {
 			return [32]byte{}, state.ClosedProfileView{}, err
 		}
 	}

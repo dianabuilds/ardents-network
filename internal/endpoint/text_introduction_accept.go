@@ -18,14 +18,12 @@ import (
 // context; failed/forged opening cannot clear accepted replay history.
 const maximumTextIntroductionReplays = 4 * (600 + 60)
 
-// acceptTextIntroduction is the Publisher's pre-dial boundary. It consumes its
-// own registration, non-exporting Instance, current Publication and State; the
-// returned binding is usable only by this current qualified Publisher job.
-func (owner *textContext) acceptTextIntroduction(ctx context.Context, job *textJobIdentity, operation []byte) (attempt *textIntroductionAttempt, outcome error) {
-	return owner.acceptTextIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{})
+func (owner *textContext) acceptDispatchedTextIntroduction(ctx context.Context, job *textJobIdentity,
+	operation []byte) (*textIntroductionAttempt, error) {
+	return owner.acceptTextIntroductionGeneration(ctx, job, operation, nil, 1, time.Time{}, true)
 }
 
-func (owner *textContext) acceptTextRecovery(ctx context.Context, job *textJobIdentity, operation []byte,
+func (owner *textContext) acceptDispatchedTextRecovery(ctx context.Context, job *textJobIdentity, operation []byte,
 	original *textServiceBinding, request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
 	if original == nil || original.owner != owner || original.job != job {
 		return nil, errors.New("text recovery binding unavailable")
@@ -33,11 +31,12 @@ func (owner *textContext) acceptTextRecovery(ctx context.Context, job *textJobId
 	if err := original.validateTextServiceRecovery(request); err != nil {
 		return nil, err
 	}
-	return owner.acceptTextIntroductionGeneration(ctx, job, operation, original, request.Generation, request.Deadline)
+	return owner.acceptTextIntroductionGeneration(ctx, job, operation, original, request.Generation, request.Deadline, true)
 }
 
 func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, job *textJobIdentity, operation []byte,
-	original *textServiceBinding, expectedGeneration uint64, recoveryDeadline time.Time) (attempt *textIntroductionAttempt, outcome error) {
+	original *textServiceBinding, expectedGeneration uint64, recoveryDeadline time.Time,
+	openingReserved bool) (attempt *textIntroductionAttempt, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Introduction caller unavailable")
 	}
@@ -72,8 +71,10 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 		return nil, errors.New("text Introduction registration ended")
 	default:
 	}
-	if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {
-		return nil, &textIntroductionRefusal{cause: err}
+	if !openingReserved {
+		if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {
+			return nil, &textIntroductionRefusal{cause: err}
+		}
 	}
 	lease, err := endpoint.publications.AcquireAt(ctx, now)
 	if err != nil {
