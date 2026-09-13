@@ -63,3 +63,30 @@ func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *test
 		t.Fatal("incoming control bypassed exhausted complete-byte allowance")
 	}
 }
+
+func TestClosedForwardingSemanticRefusalDoesNotRefundReceivedFrame(t *testing.T) {
+	_, _, lease, now := closedOuterAdmissionFixture(t)
+	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(channel.Cancel)
+	// This well-framed CREDIT names no live child. Its receipt still consumes
+	// the remaining allowance even though no child effect may be admitted.
+	channel.usedBytes = channel.byteLimit - 20
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}); err == nil {
+		t.Fatal("unallocated child CREDIT accepted")
+	}
+	accepted, err := ClosedAcceptFrame(0, 64<<10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Use a 16-byte otherwise permitted output to distinguish the consumed
+	// 20-byte input from a merely rejected semantic operation.
+	if err := channel.AccountOutput(ClosedLaneFrame{Kind: closedFrameEOF}); err == nil {
+		t.Fatal("refused input restored allowance for output")
+	}
+	if err := channel.AccountOutput(accepted); err == nil {
+		t.Fatal("exhausted channel accepted another response")
+	}
+}

@@ -23,7 +23,6 @@ var ErrClosedSourceStopped = errors.Join(net.ErrClosed, errors.New("closed sourc
 // role may create one. No lane owns or changes the parent's read deadline.
 type closedSourceChannels struct {
 	retainClosedRead                  bool // Joined clients drain received bytes before releasing their reservation.
-	chargeTerminal                    bool // Joined class-2 admission counts terminal frames too.
 	parent                            net.Conn
 	framing                           *closedRoleChildStream
 	framedParent                      *closedSourceLane
@@ -183,12 +182,13 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 	if owner.terminal != nil {
 		return owner.terminal
 	}
-	if frame.Lane == 0 || frame.Lane%2 == 0 || frame.Lane > owner.last {
-		return errors.New("closed source peer used unallocated lane")
-	}
+	// Receipt consumes the complete frame even when its lane is refused below.
 	owner.transferred += uint64(16 + len(frame.Body))
 	if owner.transferred > 32<<20 {
 		return errors.New("closed source parent byte reserve exhausted")
+	}
+	if frame.Lane == 0 || frame.Lane%2 == 0 || frame.Lane > owner.last {
+		return errors.New("closed source peer used unallocated lane")
 	}
 	lane := owner.lanes[frame.Lane]
 	if lane == nil || (lane.closed && !(owner.retainClosedRead && frame.Kind == closedFrameClose)) {
@@ -265,7 +265,7 @@ func (owner *closedSourceChannels) write() {
 		}
 		if err == nil {
 			owner.transferred += uint64(16 + len(request.frame.Body))
-			if owner.transferred > 32<<20 && (owner.chargeTerminal || request.frame.Kind != closedFrameClose) {
+			if owner.transferred > 32<<20 {
 				err = errors.New("closed source parent byte reserve exhausted")
 			} else {
 				err = owner.parent.SetWriteDeadline(deadline)

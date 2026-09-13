@@ -41,7 +41,6 @@ func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSou
 	lane.owner.mu.Unlock()
 	owner := newClosedSourceChannelOwner(parent, lane.end, nil)
 	owner.last = 1
-	owner.chargeTerminal = true
 	owner.retainClosedRead = true
 	owner.framedParent = lane
 	owner.transferred = 3*closedLaneHeaderSize + 209 + 355 + 5 + closedLaneHeaderSize + 4096 + closedLaneHeaderSize + closedTerminalOperationSize
