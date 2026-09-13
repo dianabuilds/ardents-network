@@ -79,6 +79,10 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 			}
 		}
 	}
+	if reservation, err := limits.reserveChannel(); err == nil {
+		reservation.release()
+		t.Fatal("admitted a channel without room for its control reserve")
+	}
 	for _, channel := range channels {
 		if err := channel.QueueReverse(ClosedLaneFrame{Kind: closedFrameClose, Lane: 3, Body: []byte{0}}); err != nil {
 			t.Fatalf("data consumed reverse termination reserve: %v", err)
@@ -90,4 +94,110 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 			t.Fatal("termination did not precede queued data")
 		}
 	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal("released data capacity could not admit a channel reserve")
+	}
+	reservation.release()
+}
+
+func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
+	_, _, lease, now := closedOuterAdmissionFixture(t)
+	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(channel.Cancel)
+	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for lane := uint32(1); lane <= 199; lane += 2 {
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	credit := ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}
+	// 100 outgoing Node OPEN frames use 6,600 bytes. Another 489 reverse
+	// CREDIT frames use 9,780 bytes: 16,380 together, leaving only four.
+	for range 489 {
+		if err := channel.QueueReverse(credit); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := channel.QueueReverse(credit); err == nil {
+		t.Fatal("forward and reverse controls multiplied the 16 KiB reserve")
+	}
+	if event, ok := channel.Next(); !ok || event.Kind != closedFrameOpen {
+		t.Fatal("control pressure lost admitted OPEN")
+	}
+	// Releasing one 66-byte OPEN makes room for three 20-byte credits.
+	for range 3 {
+		if err := channel.QueueReverse(credit); err != nil {
+			t.Fatal("forward consumption did not release shared control capacity")
+		}
+	}
+	if err := channel.QueueReverse(credit); err == nil {
+		t.Fatal("control release returned more than its complete frame size")
+	}
+}
+
+func TestClosedForwardingLateControlReleaseCannotDebitSibling(t *testing.T) {
+	_, _, lease, now := closedOuterAdmissionFixture(t)
+	limits := lease.duty.limits
+	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(channel.Cancel)
+	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lane := range []uint32{1, 3} {
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := channel.Next(); !ok {
+			t.Fatal("missing OPEN")
+		}
+	}
+	retired := ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}
+	if err := channel.QueueReverse(retired); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := channel.Accept(retired); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := channel.Next(); !ok {
+		t.Fatal("missing CLOSE")
+	}
+	credit := ClosedLaneFrame{Kind: closedFrameCredit, Lane: 3, Body: []byte{0, 0, 0, 1}}
+	for range 819 {
+		if err := channel.QueueReverse(credit); err != nil {
+			t.Fatal(err)
+		}
+	}
+	channel.ReleaseReverse(retired)
+	if err := channel.QueueReverse(credit); err == nil {
+		t.Fatal("late closed-lane writer released sibling control capacity")
+	}
+	channel.ReleaseReverse(credit)
+	if err := channel.QueueReverse(credit); err != nil {
+		t.Fatal("live writer did not release its control capacity")
+	}
+	channel.Cancel()
+	channel.Cancel()
+	channel.ReleaseReverse(credit)
+	// Only the fixture's outer channel survives. Cancel must return this
+	// channel's complete reservation, including its outstanding controls.
+	if err := limits.queue((64 << 20) - (16 << 10)); err != nil {
+		t.Fatal("cancel retained control capacity in the ancestor")
+	}
+	limits.dequeue((64 << 20) - (16 << 10))
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal("released capacity could not admit a successor channel")
+	}
+	reservation.release()
 }
