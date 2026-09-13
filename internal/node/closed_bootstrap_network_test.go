@@ -76,6 +76,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 		Epoch: profile.Epoch, Digest: profile.StateDigest, EpochValidFrom: profile.NotBefore, ValidUntil: profile.NotAfter,
 		Profile: route.ClosedRouteProfile, Freshness: "fresh", CandidateCount: 3}
 	snapshots := [3]dutyFacts{}
+	reservedEndpoints := make(map[string]struct{}, len(snapshots))
 	for index := 0; index < 3; index++ {
 		id, record := [32]byte{byte(31 + index)}, [32]byte{byte(41 + index)}
 		family := fmt.Sprintf("bootstrap-family-%d", index)
@@ -87,7 +88,14 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 		candidate := &fixture.snapshot.Candidates[index]
 		candidate.NodeID, candidate.PublicKey, candidate.RecordDigest = id, keys[index], record
 		candidate.Family, candidate.FamilyID = family, sha256.Sum256([]byte(family))
-		candidate.Endpoint, candidate.CarrierProfile, candidate.Capacity = reserveClosedBootstrapAddress(t, carrier), string(carrier), 16
+		for {
+			candidate.Endpoint = reserveClosedBootstrapAddress(t, carrier)
+			if _, exists := reservedEndpoints[candidate.Endpoint]; !exists {
+				reservedEndpoints[candidate.Endpoint] = struct{}{}
+				break
+			}
+		}
+		candidate.CarrierProfile, candidate.Capacity = string(carrier), 16
 		candidate.ValidFrom, candidate.ValidUntil, candidate.AssignmentNotAfter = window, profile.NotAfter, profile.NotAfter
 		snapshots[index] = dutyFacts{Generation: fixture.snapshot.Generation, NetworkID: profile.NetworkID, Epoch: profile.Epoch, Digest: profile.StateDigest,
 			EpochValidFrom: window, ValidUntil: profile.NotAfter, Profile: route.ClosedRouteProfile, Fresh: true, RecordPresent: true,
