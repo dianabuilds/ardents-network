@@ -233,12 +233,13 @@ func (owner *textContext) bufferTextIntroductionRecoveryLocked(recovery *textInt
 	done := make(chan struct{})
 	recovery.delivery <- routed
 	recovery.expiryStop, recovery.expiryDone = stop, done
-	go owner.expireTextIntroductionRecovery(lifetime, recovery, routed, done)
+	go owner.expireTextIntroductionRecovery(lifetime, stop, recovery, routed, done)
 	return true
 }
 
-func (owner *textContext) expireTextIntroductionRecovery(ctx context.Context, recovery *textIntroductionRecoveryOwner,
-	routed textIntroductionRoutedDelivery, done chan struct{}) {
+func (owner *textContext) expireTextIntroductionRecovery(ctx context.Context, stop context.CancelFunc,
+	recovery *textIntroductionRecoveryOwner, routed textIntroductionRoutedDelivery, done chan struct{}) {
+	defer stop()
 	defer func() {
 		owner.mu.Lock()
 		if recovery.expiryDone == done {
