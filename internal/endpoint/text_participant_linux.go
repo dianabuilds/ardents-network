@@ -97,6 +97,11 @@ func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextPart
 				// exposes neither a wrapped transport error nor private route data.
 				_ = config.Observe(context.Background(), TextParticipantEvent{Kind: "publication-refresh-failed", NetworkID: endpoint.network, Failure: failure})
 			}
+			owner.withdrawalFailure = func(failure string) {
+				// The category identifies the trusted local boundary that rejected an
+				// administrative withdrawal without exposing a wrapped error or data.
+				_ = config.Observe(context.Background(), TextParticipantEvent{Kind: "publication-withdrawal-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
+			}
 			owner.mu.Unlock()
 		}
 		if role.surface == broker.Connection {

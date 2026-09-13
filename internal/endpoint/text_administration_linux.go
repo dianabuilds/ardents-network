@@ -104,11 +104,13 @@ func (owner *textAdministration) PublishSnapshot(ctx context.Context, snapshot [
 // existing five-second drain; repeated calls cannot start another drain.
 func (owner *textAdministration) Withdraw(ctx context.Context) error {
 	if err := owner.authorize(ctx); err != nil {
+		owner.context.reportTextWithdrawalFailure("authorization")
 		return err
 	}
 	owner.mu.Lock()
 	if owner.closed || owner.ending || owner.pending == nil && owner.run == nil {
 		owner.mu.Unlock()
+		owner.context.reportTextWithdrawalFailure("publication-state")
 		return errors.New("text publication already ending")
 	}
 	owner.ending = true
@@ -121,6 +123,7 @@ func (owner *textAdministration) Withdraw(ctx context.Context) error {
 		<-pending
 	}
 	if run == nil {
+		owner.context.reportTextWithdrawalFailure("publication-handover")
 		return errors.New("text publication was not committed")
 	}
 	return run.Withdraw(ctx)

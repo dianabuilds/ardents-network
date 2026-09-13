@@ -130,7 +130,7 @@ fuzz:
 test: unit e2e
 
 test-race:
-	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) -short -race -shuffle=on -count=1
+	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) -short -race -shuffle=on -count=1 -timeout=15m
 
 build:
 	go build ./...
@@ -178,9 +178,12 @@ text-worker-lifecycle-check:
 text-worker-tree-check:
 	sh ./tests/qualification/text-worker-tree/run-ubuntu.sh
 
-.PHONY: text-worker-network-check text-worker-escape-check
+.PHONY: text-worker-network-check text-command-network-check text-worker-escape-check
 text-worker-network-check:
 	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
+
+text-command-network-check:
+	sh ./tests/qualification/text-command-network/run-ubuntu.sh
 
 text-worker-escape-check:
 	sh ./tests/qualification/text-worker-escape/run-ubuntu.sh

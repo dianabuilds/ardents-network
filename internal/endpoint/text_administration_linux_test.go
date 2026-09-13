@@ -29,6 +29,10 @@ func TestTextAdministrationRequiresCurrentSeparateAuthority(t *testing.T) {
 	if err := administration.Publish(t.Context()); err == nil {
 		t.Fatal("bodyless publication accepted an implicit document")
 	}
+	withdrawalFailures := make(chan string, 1)
+	publisher.mu.Lock()
+	publisher.withdrawalFailure = func(failure string) { withdrawalFailures <- failure }
+	publisher.mu.Unlock()
 	if err := endpoint.admission.Revoke(principal, broker.Administration); err != nil {
 		t.Fatal(err)
 	}
@@ -37,6 +41,14 @@ func TestTextAdministrationRequiresCurrentSeparateAuthority(t *testing.T) {
 	}
 	if err := administration.Withdraw(t.Context()); err == nil {
 		t.Fatal("revoked Administration withdrew")
+	}
+	select {
+	case failure := <-withdrawalFailures:
+		if failure != "authorization" {
+			t.Fatalf("withdrawal failure category = %q", failure)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("revoked Administration did not report withdrawal category")
 	}
 	if err := administration.Close(); err != nil {
 		t.Fatal(err)

@@ -193,7 +193,9 @@ func runInstalledClosedTextParticipant(t *testing.T, config state.Config, binary
 	outcome, withdrawalErr := administration.Request(withdrawal, path("publisher.sock"), administration.Withdraw)
 	cancelWithdrawal()
 	if withdrawalErr != nil || outcome != administration.Withdrawn {
-		t.Fatalf("ordinary Endpoint withdrawal: %s, %v", outcome, withdrawalErr)
+		journal := installedCommandTool(t, "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+invocation)
+		state := strings.TrimSpace(string(installedCommandTool(t, "systemctl", "show", "ardents-endpoint.service", "-p", "ActiveState", "-p", "SubState", "-p", "MainPID", "--no-page")))
+		t.Fatalf("ordinary Endpoint withdrawal: %s, %v\nEndpoint state:\n%s\nEndpoint journal:\n%s", outcome, withdrawalErr, state, journal)
 	}
 	refused, cancelRefused := context.WithTimeout(t.Context(), 20*time.Second)
 	output, diagnostic, linkErr := installedCommandExecAs(refused, nil, uid, gid, "bash", "-o", "pipefail", "-c", `cat | "$@" | cat`, "ardents-text-command", textBinary, "link", path("publisher.sock"))

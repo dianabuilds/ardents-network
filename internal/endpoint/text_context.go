@@ -19,6 +19,7 @@ import (
 type textContextState struct {
 	publicationDraining   bool
 	refreshFailure        func(string)
+	withdrawalFailure     func(string)
 	operationFailure      func(string)
 	refresh               *textPublicationRefresh
 	previousRegistration  *textIntroductionRegistration
@@ -57,6 +58,17 @@ type textContextState struct {
 func (owner *textContext) reportTextOperationFailure(failure string) {
 	owner.mu.Lock()
 	report := owner.operationFailure
+	owner.mu.Unlock()
+	if report != nil {
+		report(failure)
+	}
+}
+
+// reportTextWithdrawalFailure exposes one fixed local operational category.
+// It never serializes a wrapped error, peer, route, document, or authority.
+func (owner *textContext) reportTextWithdrawalFailure(failure string) {
+	owner.mu.Lock()
+	report := owner.withdrawalFailure
 	owner.mu.Unlock()
 	if report != nil {
 		report(failure)

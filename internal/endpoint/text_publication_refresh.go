@@ -11,6 +11,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+const textRefreshContentionRetryDelay = 100 * time.Millisecond
+
 type textPublicationRefresh struct {
 	context context.Context
 	cancel  context.CancelFunc
@@ -132,6 +134,24 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		}
 		if !now.Before(refreshAt) {
 			if err := owner.rotateTextPublication(flight, registered); err != nil {
+				if flight.context.Err() == nil && textRefreshSourceContention(err) {
+					timer := time.NewTimer(textRefreshContentionRetryDelay)
+					select {
+					case <-flight.context.Done():
+						timer.Stop()
+						return
+					case <-registered.channel.Done():
+						timer.Stop()
+						if flight.context.Err() == nil {
+							owner.failTextRefresh(flight, "registration-ended-"+string(registered.channel.EndReason()), errors.New("text publication registration ended"))
+						}
+						return
+					case <-flight.wake:
+						timer.Stop()
+					case <-timer.C:
+					}
+					continue
+				}
 				if flight.context.Err() == nil {
 					owner.failTextRefresh(flight, textRefreshFailureStage(err), err)
 				}
@@ -154,7 +174,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		case <-registered.channel.Done():
 			timer.Stop()
 			if flight.context.Err() == nil {
-				owner.failTextRefresh(flight, "registration-ended", errors.New("text publication registration ended"))
+				owner.failTextRefresh(flight, "registration-ended-"+string(registered.channel.EndReason()), errors.New("text publication registration ended"))
 			}
 			return
 		case <-flight.wake:
@@ -162,6 +182,10 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 		case <-timer.C:
 		}
 	}
+}
+
+func textRefreshSourceContention(cause error) bool {
+	return errors.Is(cause, context.DeadlineExceeded) && textRoleMemberFailureStage(cause) == "conflict-read"
 }
 
 func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, previous *textIntroductionRegistration) error {
@@ -178,7 +202,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 		return textRefreshFailureAt("rotation-prefix", errors.New("text publication refresh prefix unavailable"))
 	}
 	if err := owner.prepareTextSourceReady(flight.context); err != nil {
-		return textRefreshFailureAt("rotation-source", err)
+		return textRefreshFailureAt("rotation-source-"+textSourcePreparationFailureStage(err), err)
 	}
 	_, until, err := prefix.IntroductionRecipient()
 	if err != nil {

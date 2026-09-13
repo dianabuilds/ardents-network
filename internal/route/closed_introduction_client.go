@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"time"
 )
@@ -36,6 +37,20 @@ type ClosedIntroductionRegistration struct {
 	withdraw         [32]byte
 	outcome, cleanup error
 }
+
+// ClosedIntroductionEndReason is the fixed local category of a terminal
+// registration reader outcome. It intentionally excludes peer, route, token,
+// and wrapped transport details.
+type ClosedIntroductionEndReason string
+
+const (
+	ClosedIntroductionEndUnknown       ClosedIntroductionEndReason = "unknown"
+	ClosedIntroductionEndLocalCancel   ClosedIntroductionEndReason = "local-cancel"
+	ClosedIntroductionEndPeerEOF       ClosedIntroductionEndReason = "peer-eof"
+	ClosedIntroductionEndDeadline      ClosedIntroductionEndReason = "deadline"
+	ClosedIntroductionEndSourceCleanup ClosedIntroductionEndReason = "source-cleanup"
+	ClosedIntroductionEndProtocol      ClosedIntroductionEndReason = "protocol"
+)
 
 // IntroductionRecipient returns current public duty facts for token issuance.
 // The caller gets no unverified address, transport key or arbitrary peer choice.
@@ -220,6 +235,35 @@ func (owner *ClosedIntroductionRegistration) closeTransport() error {
 func (owner *ClosedIntroductionRegistration) Receipt() [32]byte { return owner.receipt }
 
 func (owner *ClosedIntroductionRegistration) Done() <-chan struct{} { return owner.done }
+
+// EndReason returns only a fixed terminal category after Done. It is an
+// operational observation, not a remote error report or an admission result.
+func (owner *ClosedIntroductionRegistration) EndReason() ClosedIntroductionEndReason {
+	if owner == nil {
+		return ClosedIntroductionEndUnknown
+	}
+	owner.mu.Lock()
+	outcome := errors.Join(owner.outcome, owner.cleanup)
+	owner.mu.Unlock()
+	if errors.Is(outcome, ErrClosedSourceCleanup) {
+		return ClosedIntroductionEndSourceCleanup
+	}
+	if errors.Is(outcome, os.ErrDeadlineExceeded) {
+		return ClosedIntroductionEndDeadline
+	}
+	if errors.Is(outcome, io.EOF) {
+		return ClosedIntroductionEndPeerEOF
+	}
+	select {
+	case <-owner.interrupted:
+		return ClosedIntroductionEndLocalCancel
+	default:
+	}
+	if outcome != nil {
+		return ClosedIntroductionEndProtocol
+	}
+	return ClosedIntroductionEndUnknown
+}
 
 func (owner *ClosedIntroductionRegistration) Close() error {
 	if owner == nil {

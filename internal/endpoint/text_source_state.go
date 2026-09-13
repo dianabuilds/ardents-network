@@ -18,17 +18,38 @@ type textRoleMember struct {
 	subrole uint8
 }
 
+type textRoleMemberFailure struct {
+	stage string
+	cause error
+}
+
+func (failure *textRoleMemberFailure) Error() string { return failure.cause.Error() }
+
+func (failure *textRoleMemberFailure) Unwrap() error { return failure.cause }
+
+func textRoleMemberFailureAt(stage string, cause error) error {
+	return &textRoleMemberFailure{stage: stage, cause: cause}
+}
+
+func textRoleMemberFailureStage(cause error) string {
+	var failure *textRoleMemberFailure
+	if errors.As(cause, &failure) && failure.stage != "" {
+		return failure.stage
+	}
+	return "unknown"
+}
+
 // closedTextRoleMembers joins two live projections from the opened State
 // owner. The worker and permission response cannot provide these bindings.
 func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []textRoleMember, time.Time, error) {
 	source, ok := endpoint.closedState.(route.ClosedBootstrapState)
 	if !ok || endpoint.clock == nil || endpoint.closedRoleRoot == "" {
-		return state.ClosedProfileView{}, nil, time.Time{}, errors.New("text State owner unavailable")
+		return state.ClosedProfileView{}, nil, time.Time{}, textRoleMemberFailureAt("owner", errors.New("text State owner unavailable"))
 	}
 	now := endpoint.clock().UTC()
 	view, err := source.CurrentClosedRoute()
 	if err != nil {
-		return state.ClosedProfileView{}, nil, now, err
+		return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("route", err)
 	}
 	snapshot, err := source.Current()
 	profile := view.Profile
@@ -36,29 +57,29 @@ func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []te
 		snapshot.Freshness != "fresh" || snapshot.Conflicting || snapshot.Digest != profile.StateDigest || snapshot.Epoch != profile.Epoch ||
 		snapshot.Generation != hex.EncodeToString(profile.StateGeneration[:]) || now.Before(profile.NotBefore) || !now.Before(profile.NotAfter) ||
 		now.Before(snapshot.EpochValidFrom) || !now.Before(snapshot.ValidUntil) || view.NodeCount == 0 || int(view.NodeCount) > len(view.Nodes) || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
-		return state.ClosedProfileView{}, nil, now, errors.New("text State binding unavailable")
+		return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("binding", errors.Join(err, errors.New("text State binding unavailable")))
 	}
 	issuerIndex := -1
 	for index, candidate := range snapshot.Candidates[:snapshot.CandidateCount] {
 		if candidate.NodeID == profile.IssuerNodeID {
 			if issuerIndex >= 0 {
-				return state.ClosedProfileView{}, nil, now, errors.New("text issuer ambiguous")
+				return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("issuer", errors.New("text issuer ambiguous"))
 			}
 			issuerIndex = index
 		}
 	}
 	if issuerIndex < 0 {
-		return state.ClosedProfileView{}, nil, now, errors.New("text issuer unavailable")
+		return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("issuer", errors.New("text issuer unavailable"))
 	}
 	issuer := snapshot.Candidates[issuerIndex]
 	if issuer.PublicKey == [32]byte{} || issuer.FamilyID == [32]byte{} {
-		return state.ClosedProfileView{}, nil, now, errors.New("text issuer unavailable")
+		return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("issuer", errors.New("text issuer unavailable"))
 	}
 	var members []textRoleMember
 	seen := make(map[[32]byte]bool)
 	for _, role := range view.Nodes[:view.NodeCount] {
 		if seen[role.NodeID] {
-			return state.ClosedProfileView{}, nil, now, errors.New("text role ambiguous")
+			return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("role-ambiguity", errors.New("text role ambiguous"))
 		}
 		seen[role.NodeID] = true
 		if !route.ClosedPurposePermitsDuty(route.ClosedPurposeForwarding, role.RoleDomain, role.Subrole) {
@@ -70,7 +91,7 @@ func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []te
 				continue
 			}
 			if found {
-				return state.ClosedProfileView{}, nil, now, errors.New("text Node Record ambiguous")
+				return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("record-ambiguity", errors.New("text Node Record ambiguous"))
 			}
 			found = true
 			if candidate.RecordDigest != role.RecordDigest || role.DutyGeneration == 0 || candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} ||
@@ -83,7 +104,7 @@ func (endpoint *endpoint) closedTextRoleMembers() (state.ClosedProfileView, []te
 			}
 			conflict, err := duty.ReadConflict(endpoint.closedRoleRoot, endpoint.clock, candidate.NodeID, candidate.FamilyID)
 			if err != nil {
-				return state.ClosedProfileView{}, nil, now, err
+				return state.ClosedProfileView{}, nil, now, textRoleMemberFailureAt("conflict-read", err)
 			}
 			if conflict {
 				continue

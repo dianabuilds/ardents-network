@@ -9,6 +9,17 @@ import (
 	"time"
 )
 
+func TestClosedSourceOpenFailureRetainsStageAndCause(t *testing.T) {
+	cause := errors.New("interior admission refused")
+	failure := closedSourceOpenFailureAt("interior-admission", cause)
+	if got := ClosedSourceOpenFailureStage(failure); got != "interior-admission" {
+		t.Fatalf("closed Source open stage = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("closed Source open failure lost its cause")
+	}
+}
+
 func TestClosedSourcePrefixOpenEmissionUsesPendingDeadline(t *testing.T) {
 	local, remote := net.Pipe()
 	defer local.Close()

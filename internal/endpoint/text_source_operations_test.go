@@ -4,10 +4,88 @@ package endpoint
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
+
+func TestTextSourcePreparationFailureRetainsStageAndCause(t *testing.T) {
+	cause := errors.New("opening issuance refused")
+	failure := textSourcePreparationFailureAt("issuance", cause)
+	if got := textSourcePreparationFailureStage(failure); got != "issuance" {
+		t.Fatalf("source preparation stage = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("source preparation failure lost its cause")
+	}
+}
+
+func TestTextPrefixPreparationFailureRetainsStageAndCause(t *testing.T) {
+	cause := errors.New("source carrier refused")
+	failure := textPrefixPreparationFailureAt("opening", cause)
+	if got := textPrefixPreparationFailureStage(failure); got != "opening" {
+		t.Fatalf("prefix preparation stage = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("prefix preparation failure lost its cause")
+	}
+}
+
+func TestTextTokenPresentationFailureRetainsNestedStageAndCause(t *testing.T) {
+	cause := errors.New("local role conflict read unavailable")
+	role := textRoleMemberFailureAt("conflict-read", cause)
+	selection := textSourceSelectionFailureAt("role-members-"+textRoleMemberFailureStage(role), role)
+	failure := textTokenPresentationFailureAt("selection-"+textSourceSelectionFailureStage(selection), selection)
+	if got := textTokenPresentationFailureStage(failure); got != "selection-role-members-conflict-read" {
+		t.Fatalf("token presentation stage = %q", got)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatal("token presentation failure lost its cause")
+	}
+	transfer := textTokenTransferFailureAt("journal", cause)
+	if got := textTokenTransferFailureStage(transfer); got != "journal" || !errors.Is(transfer, cause) {
+		t.Fatalf("token transfer failure = %q, %v", got, transfer)
+	}
+}
+
+func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
+	endpoint, owner, source := textSourceContextFixture(t)
+	prepareTextIssuancePermission(t, owner, source)
+	selection := selectTextSource(t, owner)
+	writer, err := duty.Open(duty.Config{Root: endpoint.closedRoleRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Close()
+
+	attempt, cancel := context.WithCancel(t.Context())
+	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	owner.mu.Lock()
+	owner.prefixOpening = flight
+	profile := owner.permission.profile
+	owner.mu.Unlock()
+	defer func() {
+		owner.mu.Lock()
+		owner.prefixOpening = nil
+		owner.mu.Unlock()
+		cancel()
+		close(flight.done)
+	}()
+	hello := route.ClosedHello{NetworkID: profile.NetworkID, StateGeneration: profile.StateGeneration, StateDigest: profile.StateDigest,
+		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: source.view.Nodes[0].DutyGeneration,
+		Purpose: route.ClosedPurposeForwarding, Deadline: time.Now().Add(10 * time.Second), ChannelNonce: fixtureID(199)}
+	started := time.Now()
+	_, err = owner.presentTextToken(selection, hello, 2)
+	if got := textTokenPresentationFailureStage(err); got != "selection-role-members-conflict-read" {
+		t.Fatalf("concurrent role commit stage = %q: %v", got, err)
+	}
+	if elapsed := time.Since(started); elapsed < 900*time.Millisecond || elapsed > 2*time.Second {
+		t.Fatalf("bounded conflict read took %s", elapsed)
+	}
+}
 
 func TestTextRefreshWaitsForActualSourceUse(t *testing.T) {
 	for _, carrier := range []route.CarrierProfile{route.ClosedCarrierTCP, route.ClosedCarrierQUIC} {
