@@ -19,6 +19,15 @@ import (
 )
 
 func TestTextServiceRecoveryRejectsLateAttachmentAfterJobRetirement(t *testing.T) {
+	runTextServiceRecoveryRejectsLateAuthority(t, false)
+}
+
+func TestTextServiceRecoveryJoinsConcurrentCloseAndRevoke(t *testing.T) {
+	runTextServiceRecoveryRejectsLateAuthority(t, true)
+}
+
+func runTextServiceRecoveryRejectsLateAuthority(t *testing.T, closeAndRevoke bool) {
+	t.Helper()
 	client, publisher, _ := textServiceFixture(t)
 	initialClient, initialPublisher := net.Pipe()
 	replacementClient, replacementPublisher := net.Pipe()
@@ -103,8 +112,36 @@ func TestTextServiceRecoveryRejectsLateAttachmentAfterJobRetirement(t *testing.T
 			t.Fatalf("both recovery openers did not start: %v", roles)
 		}
 	}
-	client.owner.retireJob(client.job)
-	publisher.owner.retireJob(publisher.job)
+	bindings := []*textServiceBinding{client, publisher}
+	var closeResults chan error
+	var finishOnce sync.Once
+	finishJobs := func() {
+		finishOnce.Do(func() {
+			for _, binding := range bindings {
+				binding.owner.retireJob(binding.job)
+				_ = binding.owner.finishJobCleanup(binding.job, nil)
+			}
+		})
+	}
+	if closeAndRevoke {
+		closeResults = make(chan error, len(bindings))
+		for _, binding := range bindings {
+			go func() { closeResults <- binding.owner.Close() }()
+			if err := binding.owner.endpoint.admission.Revoke(binding.owner.principal, binding.owner.surface); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-binding.owner.lease.Context().Done():
+			case <-time.After(time.Second):
+				t.Fatal("close/revoke did not cancel recovery authority")
+			}
+		}
+		t.Cleanup(finishJobs)
+	} else {
+		for _, binding := range bindings {
+			binding.owner.retireJob(binding.job)
+		}
+	}
 	releaseOnce.Do(func() { close(release) })
 
 	result := <-readDone
@@ -116,6 +153,19 @@ func TestTextServiceRecoveryRejectsLateAttachmentAfterJobRetirement(t *testing.T
 	}
 	if !roles["client"] || !roles["publisher"] {
 		t.Fatalf("recovery did not reach both late callback boundaries: %v", roles)
+	}
+	if closeAndRevoke {
+		finishJobs()
+		for range bindings {
+			select {
+			case err := <-closeResults:
+				if err != nil {
+					t.Fatalf("joined close/revoke = %v", err)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("close/revoke did not join worker and recovery cleanup")
+			}
+		}
 	}
 	for _, connection := range []net.Conn{replacementClient, replacementPublisher} {
 		if err := connection.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
