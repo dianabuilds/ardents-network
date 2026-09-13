@@ -5,99 +5,158 @@ package endpoint
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-const maximumTextIntroductionPending = 16
+const maximumTextIntroductionWaiters = 16
 
 type textIntroductionDeliveryKey struct {
 	connection [32]byte
 	generation uint64
 }
 
-type textIntroductionPendingDelivery struct {
-	delivery *route.ClosedIntroductionDelivery
-	expires  time.Time
+type textIntroductionWaiter struct {
+	want     textIntroductionDeliveryKey
+	delivery chan *route.ClosedIntroductionDelivery
 }
 
-// dispatchTextIntroductionDelivery is the only owner that claims a Publisher
-// registration delivery. Callers may wait concurrently, but the one-token gate
-// serializes the actual channel consumer and the pending map transfers a
-// mismatched generation to its initial or recovery owner without completing it.
+// dispatchTextIntroductionDelivery registers the exact local owner before it
+// competes for the one consumer gate. The consumer routes each claimed capsule
+// directly to an already registered waiter; unmatched inputs are refused while
+// completion is still possible and never occupy registration capacity.
 func (owner *textContext) dispatchTextIntroductionDelivery(ctx context.Context, job *textJobIdentity,
-	want textIntroductionDeliveryKey) (*route.ClosedIntroductionDelivery, error) {
-	if owner == nil || ctx == nil || want.generation == 0 {
-		return nil, errors.New("text Introduction dispatch unavailable")
+	want textIntroductionDeliveryKey) (delivery *route.ClosedIntroductionDelivery, outcome error) {
+	waiter, gate, err := owner.registerTextIntroductionWaiter(ctx, job, want)
+	if err != nil {
+		return nil, err
 	}
+	defer func() {
+		outcome = errors.Join(outcome, owner.releaseTextIntroductionWaiter(waiter))
+		if outcome != nil {
+			delivery = nil
+		}
+	}()
 	for {
-		owner.mu.Lock()
-		if !owner.liveTextServiceJobLocked(job, broker.Administration) || ctx.Err() != nil {
-			owner.mu.Unlock()
-			return nil, errors.Join(ctx.Err(), errors.New("text Introduction dispatch owner retired"))
-		}
-		if pending, ok := owner.takePendingTextIntroductionLocked(want, owner.endpoint.clock()); ok {
-			owner.mu.Unlock()
-			return pending.delivery, nil
-		}
-		if owner.introductionDelivery == nil {
-			owner.introductionDelivery = make(chan struct{}, 1)
-			owner.introductionDelivery <- struct{}{}
-		}
-		gate := owner.introductionDelivery
-		owner.mu.Unlock()
-
 		select {
+		case delivery = <-waiter.delivery:
+			return delivery, nil
+		default:
+		}
+		select {
+		case delivery = <-waiter.delivery:
+			return delivery, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-gate:
 		}
-		delivery, key, expires, err := owner.claimTextIntroductionDelivery(ctx, job, want)
-		gate <- struct{}{}
-		if err != nil {
-			return nil, err
-		}
-		if textIntroductionDeliveryMatches(key, want) {
+		// Another consumer may have assigned this waiter immediately before it
+		// released the gate. Do not block the assigned owner behind a fresh take.
+		select {
+		case delivery = <-waiter.delivery:
+			gate <- struct{}{}
 			return delivery, nil
+		default:
 		}
-		owner.mu.Lock()
-		owner.pruneTextIntroductionPendingLocked(owner.endpoint.clock())
-		if owner.textIntroductionPendingCountLocked() >= maximumTextIntroductionPending {
+		for {
+			claimed, key, err := owner.claimTextIntroductionDelivery(ctx, job)
+			if err != nil {
+				gate <- struct{}{}
+				return nil, err
+			}
+			owner.mu.Lock()
+			target := owner.selectTextIntroductionWaiterLocked(key)
+			if target != nil && target != waiter {
+				target.delivery <- claimed
+			}
 			owner.mu.Unlock()
-			completeErr := delivery.Complete(ctx, 1)
-			return nil, errors.Join(&textIntroductionRefusal{cause: errors.New("text Introduction dispatch capacity unavailable")}, completeErr)
+			if target == waiter {
+				gate <- struct{}{}
+				return claimed, nil
+			}
+			if target != nil {
+				continue
+			}
+			// No local recovery owns this identity. Refuse it now instead of
+			// retaining a claimed lane until Complete can no longer answer it.
+			gate <- struct{}{}
+			if err := claimed.Complete(ctx, 1); err != nil {
+				return nil, err
+			}
+			break
 		}
-		if owner.introductionPending == nil {
-			owner.introductionPending = make(map[textIntroductionDeliveryKey][]textIntroductionPendingDelivery)
-		}
-		owner.introductionPending[key] = append(owner.introductionPending[key], textIntroductionPendingDelivery{
-			delivery: delivery,
-			expires:  expires,
-		})
-		owner.mu.Unlock()
 	}
 }
 
-func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context, job *textJobIdentity,
-	want textIntroductionDeliveryKey) (*route.ClosedIntroductionDelivery, textIntroductionDeliveryKey, time.Time, error) {
-	owner.mu.Lock()
-	if pending, ok := owner.takePendingTextIntroductionLocked(want, owner.endpoint.clock()); ok {
-		owner.mu.Unlock()
-		return pending.delivery, want, pending.expires, nil
+func (owner *textContext) registerTextIntroductionWaiter(ctx context.Context, job *textJobIdentity,
+	want textIntroductionDeliveryKey) (*textIntroductionWaiter, chan struct{}, error) {
+	if owner == nil || ctx == nil || want.generation == 0 {
+		return nil, nil, errors.New("text Introduction dispatch unavailable")
 	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if !owner.liveTextServiceJobLocked(job, broker.Administration) || ctx.Err() != nil {
+		return nil, nil, errors.Join(ctx.Err(), errors.New("text Introduction dispatch owner retired"))
+	}
+	if len(owner.introductionWaiters) >= maximumTextIntroductionWaiters {
+		return nil, nil, errors.New("text Introduction dispatch capacity unavailable")
+	}
+	if owner.introductionDelivery == nil {
+		owner.introductionDelivery = make(chan struct{}, 1)
+		owner.introductionDelivery <- struct{}{}
+	}
+	if owner.introductionWaiters == nil {
+		owner.introductionWaiters = make(map[*textIntroductionWaiter]struct{})
+	}
+	waiter := &textIntroductionWaiter{want: want, delivery: make(chan *route.ClosedIntroductionDelivery, 1)}
+	owner.introductionWaiters[waiter] = struct{}{}
+	return waiter, owner.introductionDelivery, nil
+}
+
+// releaseTextIntroductionWaiter joins ownership of a delivery assigned at the
+// same instant its waiter was canceled. A live context refuses that capsule;
+// terminal context cleanup instead closes the whole registration owner.
+func (owner *textContext) releaseTextIntroductionWaiter(waiter *textIntroductionWaiter) error {
+	if owner == nil || waiter == nil {
+		return nil
+	}
+	owner.mu.Lock()
+	delete(owner.introductionWaiters, waiter)
+	var delivery *route.ClosedIntroductionDelivery
+	select {
+	case delivery = <-waiter.delivery:
+	default:
+	}
+	lifetime := owner.lease.Context()
 	owner.mu.Unlock()
+	if delivery == nil || lifetime.Err() != nil {
+		return nil
+	}
+	return delivery.Complete(lifetime, 1)
+}
+
+func (owner *textContext) selectTextIntroductionWaiterLocked(key textIntroductionDeliveryKey) *textIntroductionWaiter {
+	for waiter := range owner.introductionWaiters {
+		if len(waiter.delivery) == 0 && textIntroductionDeliveryMatches(key, waiter.want) {
+			return waiter
+		}
+	}
+	return nil
+}
+
+func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context,
+	job *textJobIdentity) (*route.ClosedIntroductionDelivery, textIntroductionDeliveryKey, error) {
 	delivery, err := owner.nextTextIntroductionDelivery(ctx)
 	if err != nil {
-		return nil, textIntroductionDeliveryKey{}, time.Time{}, err
+		return nil, textIntroductionDeliveryKey{}, err
 	}
-	key, expires, err := owner.inspectTextIntroductionDelivery(ctx, job, delivery)
+	key, err := owner.inspectTextIntroductionDelivery(ctx, job, delivery)
 	if err != nil {
 		completeErr := delivery.Complete(ctx, 1)
-		return nil, textIntroductionDeliveryKey{}, time.Time{}, errors.Join(err, completeErr)
+		return nil, textIntroductionDeliveryKey{}, errors.Join(err, completeErr)
 	}
-	return delivery, key, expires, nil
+	return delivery, key, nil
 }
 
 // inspectTextIntroductionDelivery decrypts only enough capsule state to route
@@ -105,12 +164,12 @@ func (owner *textContext) claimTextIntroductionDelivery(ctx context.Context, job
 // before decryption; acceptance repeats every other authority, publication,
 // replay and bound check before acknowledging success.
 func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, job *textJobIdentity,
-	delivery *route.ClosedIntroductionDelivery) (textIntroductionDeliveryKey, time.Time, error) {
+	delivery *route.ClosedIntroductionDelivery) (textIntroductionDeliveryKey, error) {
 	operation := delivery.Operation()
 	defer clear(operation)
 	_, capsule, err := route.DecodeClosedIntroductionSubmission(operation)
 	if err != nil {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: err}
+		return textIntroductionDeliveryKey{}, &textIntroductionRefusal{cause: err}
 	}
 	defer clear(capsule.Ciphertext)
 	endpoint := owner.endpoint
@@ -130,71 +189,29 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 		!registered.published || registered.recipient == nil ||
 		capsule.Slot != registered.request.Slot || capsule.Revision != registered.request.Revision ||
 		!now.Before(capsule.Expiry) || capsule.Expiry.After(registered.request.Expiry) {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch input unavailable")}
+		return textIntroductionDeliveryKey{}, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch input unavailable")}
 	}
 	select {
 	case <-registered.channel.Done():
-		return textIntroductionDeliveryKey{}, time.Time{}, errors.New("text Introduction registration ended")
+		return textIntroductionDeliveryKey{}, errors.New("text Introduction registration ended")
 	default:
 	}
 	if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: err}
+		return textIntroductionDeliveryKey{}, &textIntroductionRefusal{cause: err}
 	}
 	plaintext, _, err := route.OpenClosedIntroduction(capsule, profile.Digest, registered.recipient, now)
 	if err != nil {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: err}
+		return textIntroductionDeliveryKey{}, &textIntroductionRefusal{cause: err}
 	}
 	key := textIntroductionDeliveryKey{connection: plaintext.ConnectionNonce, generation: plaintext.AttachmentGeneration}
 	clear(plaintext.JoinSecret[:])
 	clear(plaintext.HandshakeContext[:])
 	if key.connection == [32]byte{} || key.generation == 0 {
-		return textIntroductionDeliveryKey{}, time.Time{}, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch identity unavailable")}
+		return textIntroductionDeliveryKey{}, &textIntroductionRefusal{cause: errors.New("text Introduction dispatch identity unavailable")}
 	}
-	return key, capsule.Expiry, nil
+	return key, nil
 }
 
 func textIntroductionDeliveryMatches(key, want textIntroductionDeliveryKey) bool {
 	return key.generation == want.generation && (want.generation == 1 || key.connection == want.connection)
-}
-
-func (owner *textContext) takePendingTextIntroductionLocked(want textIntroductionDeliveryKey,
-	now time.Time) (textIntroductionPendingDelivery, bool) {
-	owner.pruneTextIntroductionPendingLocked(now)
-	for key, pending := range owner.introductionPending {
-		if !textIntroductionDeliveryMatches(key, want) || len(pending) == 0 {
-			continue
-		}
-		delivery := pending[0]
-		if len(pending) == 1 {
-			delete(owner.introductionPending, key)
-		} else {
-			owner.introductionPending[key] = pending[1:]
-		}
-		return delivery, true
-	}
-	return textIntroductionPendingDelivery{}, false
-}
-
-func (owner *textContext) pruneTextIntroductionPendingLocked(now time.Time) {
-	for key, pending := range owner.introductionPending {
-		kept := pending[:0]
-		for _, item := range pending {
-			if now.Before(item.expires) {
-				kept = append(kept, item)
-			}
-		}
-		if len(kept) == 0 {
-			delete(owner.introductionPending, key)
-		} else {
-			owner.introductionPending[key] = kept
-		}
-	}
-}
-
-func (owner *textContext) textIntroductionPendingCountLocked() int {
-	total := 0
-	for _, pending := range owner.introductionPending {
-		total += len(pending)
-	}
-	return total
 }

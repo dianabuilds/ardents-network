@@ -37,7 +37,9 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 			})
 			// A syntactically valid capsule with broken authentication must be
 			// refused without terminating this snapshot's receive loop.
-			for _, wrongTarget := range []bool{false, true} {
+			for _, fault := range []struct {
+				wrongTarget, unknownGeneration bool
+			}{{}, {wrongTarget: true}, {unknownGeneration: true}} {
 				refusedJob := liveTextCapsuleJob(t, readerOwner)
 				refusedWorker := textServiceWorkerFixture(t, &textServiceBinding{owner: readerOwner, job: refusedJob}, nil)
 				refusalUntil := time.Now().UTC().Add(2 * time.Minute).Unix()
@@ -52,12 +54,17 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if wrongTarget {
+				if fault.wrongTarget || fault.unknownGeneration {
 					publisherOwner.mu.Lock()
 					recipient := publisherOwner.registration.recipient.Public(time.Now().UTC())
 					publisherOwner.mu.Unlock()
 					facts := refused.plaintext
-					facts.Target = fixtureID(190)
+					if fault.wrongTarget {
+						facts.Target = fixtureID(190)
+					}
+					if fault.unknownGeneration {
+						facts.AttachmentGeneration = 9
+					}
 					clear(capsule.Ciphertext)
 					capsule.Ciphertext = nil
 					capsule.Encapsulation = [32]byte{}
