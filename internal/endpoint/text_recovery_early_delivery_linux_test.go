@@ -80,11 +80,11 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 		t.Fatal(err)
 	}
 
-	// A later capsule buffered during stream retirement is still owned: normal
-	// logical-Connection cleanup must refuse it while the registration can
-	// answer, rather than leaving one of its sixteen deliveries stranded.
+	// A speculative later capsule is still owned: its deadline must refuse it
+	// while the registration can answer, rather than leaving one of the sixteen
+	// claimed deliveries stranded when no local recovery waiter appears.
 	nextRequest := initial.binding.textServiceRecovery()
-	nextRequest.Generation, nextRequest.Deadline, nextRequest.Role = 3, now.Add(6*time.Second), "client"
+	nextRequest.Generation, nextRequest.Deadline, nextRequest.Role = 3, time.Now().UTC().Add(2*time.Second), "client"
 	next, err := reader.prepareTextRecovery(ctx, readerJob, initial.binding, nextRequest)
 	if err != nil {
 		t.Fatal(err)
@@ -96,11 +96,25 @@ func TestTextRecoveryDeliveryMayArriveBeforePublisherFailureDetection(t *testing
 	nextSubmitted := make(chan error, 1)
 	go func() { nextSubmitted <- reader.submitTextIntroduction(ctx, readerJob, next) }()
 	waitTextIntroductionOpening(t, ctx, publisher, before)
+	if err := <-nextSubmitted; err == nil {
+		t.Fatal("expired buffered recovery delivery was accepted")
+	}
+	publisher.mu.Lock()
+	buffered := len(remote.attempt.binding.recovery.delivery)
+	publisher.mu.Unlock()
+	if buffered != 0 {
+		t.Fatalf("expired recovery owner retained %d deliveries", buffered)
+	}
+	publisher.mu.Lock()
+	registrationDone := publisher.registration.channel.Done()
+	publisher.mu.Unlock()
+	select {
+	case <-registrationDone:
+		t.Fatal("expired recovery delivery ended the shared Publisher registration")
+	default:
+	}
 	if err := remote.attempt.binding.releaseTextIntroductionRecovery(); err != nil {
 		t.Fatal(err)
-	}
-	if err := <-nextSubmitted; err == nil {
-		t.Fatal("retired recovery owner accepted its buffered delivery")
 	}
 	publisher.mu.Lock()
 	retained := len(publisher.introductionRecovery)
