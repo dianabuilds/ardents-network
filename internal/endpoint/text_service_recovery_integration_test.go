@@ -190,6 +190,7 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				cancel()
 				t.Fatal(remote.err)
 			}
+			initialTokens := textTokenAttemptSnapshot(t, reader.endpoint)
 
 			body := bytes.Repeat([]byte("network recovery\n"), 4096)
 			snapshot, err := textdocument.NewSnapshot(body)
@@ -211,20 +212,24 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 						err = errors.New("protected-route Publisher stream did not close cleanly")
 					}
 				}
-				publisherDone <- errors.Join(err, remote.stream.Close())
+				// Keep the terminal-control tail alive through observation. Closing
+				// either side here would introduce a second physical failure into
+				// this one-failure recovery test; separate tests own tail loss.
+				publisherDone <- err
 			})
 
 			received, readErr := textdocument.Read(ctx, clientStream)
-			closeErr := clientStream.Close()
-			if readErr != nil || closeErr != nil {
+			if readErr != nil {
 				cancel()
 			}
 			publisherErr := <-publisherDone
-			if err := errors.Join(readErr, closeErr, publisherErr); err != nil || !bytes.Equal(received, body) {
+			if err := errors.Join(readErr, publisherErr); err != nil || !bytes.Equal(received, body) {
 				t.Fatalf("recovered protected Route document=%d/%d: %v; client route=%v native=%v cleanup=%v; Publisher route=%v native=%v cleanup=%v",
 					len(received), len(body), err, clientRecovery.outcome(), clientStream.runErr, clientStream.finishErr,
 					publisherRecovery.outcome(), remote.stream.runErr, remote.stream.finishErr)
 			}
+			recoveredTokens := textTokenAttemptSnapshot(t, reader.endpoint)
+			assertFreshRecoveryTokenAttempts(t, initialTokens, recoveredTokens)
 			clientAttempts, clientDigests, clientRouteErr := clientRecovery.observation()
 			publisherAttempts, publisherDigests, publisherRouteErr := publisherRecovery.observation()
 			if clientAttempts != 1 || publisherAttempts != 1 || len(clientDigests) != 1 || len(publisherDigests) != 1 ||
@@ -232,6 +237,22 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 				clientDigests[0] == prepared.digest || publisherDigests[0] == remoteJoined.attempt.digest {
 				t.Fatalf("recovery did not use one matching fresh Route: client=%v Publisher=%v",
 					clientRecovery.outcome(), publisherRecovery.outcome())
+			}
+			cancel()
+			if err := errors.Join(clientStream.Close(), remote.stream.Close()); err != nil {
+				t.Fatalf("recovered Route cleanup: %v", err)
+			}
+			clientAttempts, clientDigests, clientRouteErr = clientRecovery.observation()
+			publisherAttempts, publisherDigests, publisherRouteErr = publisherRecovery.observation()
+			if clientAttempts < 1 || clientAttempts > 2 || publisherAttempts < 1 || publisherAttempts > 2 ||
+				len(clientDigests) != 1 || len(publisherDigests) != 1 ||
+				clientRouteErr != nil && !errors.Is(clientRouteErr, context.Canceled) ||
+				publisherRouteErr != nil && !errors.Is(publisherRouteErr, context.Canceled) {
+				t.Fatalf("recovery cleanup revived a Route instead of joining cancellation: client=%v Publisher=%v",
+					clientRecovery.outcome(), publisherRecovery.outcome())
+			}
+			if afterCleanup := textTokenAttemptSnapshot(t, reader.endpoint); !sameTextTokenAttemptSnapshot(recoveredTokens, afterCleanup) {
+				t.Fatal("recovery cleanup spent another receiver token")
 			}
 			for _, owner := range []*textContext{reader, publisher} {
 				owner.mu.Lock()
@@ -340,6 +361,61 @@ func TestTextServiceRecoveryRefusesChangedImmutableRequest(t *testing.T) {
 type openedTextService struct {
 	stream *textServiceStream
 	err    error
+}
+
+func textTokenAttemptSnapshot(t *testing.T, current *endpoint) map[[32]byte]textTokenAttempt {
+	t.Helper()
+	journal, err := current.textTokenJournal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	journal.mu.Lock()
+	defer journal.mu.Unlock()
+	retained := make(map[[32]byte]textTokenAttempt, len(journal.records))
+	for digest, attempt := range journal.records {
+		retained[digest] = attempt
+	}
+	return retained
+}
+
+func assertFreshRecoveryTokenAttempts(t *testing.T, initial, recovered map[[32]byte]textTokenAttempt) {
+	t.Helper()
+	classes := [4]int{}
+	nonces := make(map[[32]byte]struct{}, len(recovered)-len(initial))
+	for digest, attempt := range recovered {
+		if _, existed := initial[digest]; existed {
+			continue
+		}
+		for _, prior := range initial {
+			if attempt.attempt == prior.attempt {
+				t.Fatal("recovery reused an initial Route token attempt")
+			}
+		}
+		if _, repeated := nonces[attempt.attempt]; repeated {
+			t.Fatal("recovery reused a token attempt across fresh Route legs")
+		}
+		nonces[attempt.attempt] = struct{}{}
+		classes[attempt.class]++
+	}
+	// Three class-1 attempts replenish the exhausted class-1/class-2 stocks;
+	// the remaining class-1 attempt submits the capsule, and two class-2
+	// attempts admit the independently opened JOIN legs.
+	if len(recovered) != len(initial)+6 || len(nonces) != 6 || classes[1] != 4 || classes[2] != 2 || classes[3] != 0 {
+		t.Fatalf("recovery token receipts = %d; class-1:%d class-2:%d class-3:%d distinct attempts:%d; want 6, 4, 2, 0, 6",
+			len(recovered)-len(initial), classes[1], classes[2], classes[3], len(nonces))
+	}
+}
+
+func sameTextTokenAttemptSnapshot(left, right map[[32]byte]textTokenAttempt) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for digest, attempt := range left {
+		if right[digest] != attempt {
+			return false
+		}
+	}
+	return true
 }
 
 type observedTextServiceOpener struct {

@@ -131,6 +131,25 @@ func TestTextServiceRecoveryRejectsLateAttachmentAfterJobRetirement(t *testing.T
 	}
 }
 
+func TestTextServiceRecoveryOpenersPreserveCancellationBeforeSideEffects(t *testing.T) {
+	client, publisher, _ := textServiceFixture(t)
+	for name, binding := range map[string]*textServiceBinding{"client": client, "publisher": publisher} {
+		t.Run(name, func(t *testing.T) {
+			request := binding.textServiceRecovery()
+			request.Generation = 2
+			request.Role = name
+			request.Deadline = time.Now().Add(time.Second).UTC()
+			opener := binding.owner.textServiceRouteRecoveryOpener(binding.job, binding)
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			connection, digest, err := opener(ctx, request)
+			if connection != nil || digest != [32]byte{} || !errors.Is(err, context.Canceled) {
+				t.Fatalf("cancelled recovery opener = %v %x %v", connection, digest, err)
+			}
+		})
+	}
+}
+
 func TestTextRecoveryPublisherRejectsCapsuleBeyondLocalAttemptDeadline(t *testing.T) {
 	reader, publisher, destination := textJoinedNetworkFixture(t, route.ClosedCarrierTCP)
 	readerJob, publisherJob := liveTextCapsuleJob(t, reader), liveTextCapsuleJob(t, publisher)

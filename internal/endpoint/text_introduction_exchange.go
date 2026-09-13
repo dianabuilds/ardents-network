@@ -69,6 +69,12 @@ func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *text
 
 func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
 	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
+	if ctx == nil {
+		return nil, errors.New("text recovery receiver context unavailable")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if binding == nil || binding.owner != owner || binding.job != job {
 		return nil, errors.New("text recovery receiver unavailable")
 	}
@@ -84,8 +90,11 @@ type textIntroductionAcceptor func(context.Context, *textJobIdentity, []byte) (*
 
 func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *textJobIdentity,
 	accept textIntroductionAcceptor) (prepared *textIntroductionAttempt, outcome error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil {
+	if owner == nil || ctx == nil {
 		return nil, errors.New("text Introduction receiver unavailable")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	if accept == nil {
 		return nil, errors.New("text Introduction acceptance owner unavailable")

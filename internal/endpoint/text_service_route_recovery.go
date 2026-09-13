@@ -24,6 +24,12 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 		return nil
 	}
 	return func(ctx context.Context, request nativeconnection.Recovery) (net.Conn, [32]byte, error) {
+		if ctx == nil {
+			return nil, [32]byte{}, errors.New("text recovery context unavailable")
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, [32]byte{}, err
+		}
 		if err := binding.validateTextServiceRecovery(request); err != nil {
 			return nil, [32]byte{}, err
 		}
@@ -54,9 +60,12 @@ func (owner *textContext) textServiceRouteRecoveryOpener(job *textJobIdentity,
 // retaining the original logical authority and non-resetting deadline.
 func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
 	request nativeconnection.Recovery) (*textIntroductionAttempt, error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil || binding == nil || binding.owner != owner || binding.job != job ||
+	if owner == nil || ctx == nil || binding == nil || binding.owner != owner || binding.job != job ||
 		owner.surface != broker.Connection {
 		return nil, errors.New("text recovery preparation unavailable")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	if err := binding.validateTextServiceRecovery(request); err != nil {
 		return nil, err
@@ -67,7 +76,10 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	prefix := owner.prefix
 	recipient := binding.introduction
 	floor := owner.descriptorFloors[binding.facts.Target]
-	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil ||
+	if attemptErr := ctx.Err(); attemptErr != nil {
+		return nil, attemptErr
+	}
+	if err != nil || prefix == nil || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
 		profile.Digest != binding.facts.ProfileDigest || floor.publicationConflict || floor.revisionConflict ||
 		floor.publication != binding.facts.PublicationDigest || floor.revision < recipient.Revision ||
 		recipient.Revision == 0 || recipient.Slot == [32]byte{} || recipient.RecipientKey == [32]byte{} ||
@@ -109,7 +121,11 @@ func (owner *textContext) prepareTextRecovery(ctx context.Context, job *textJobI
 	if err != nil {
 		return nil, err
 	}
-	if ctx.Err() != nil || owner.prefix != prefix || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
+	if attemptErr := ctx.Err(); attemptErr != nil {
+		clear(operation)
+		return nil, attemptErr
+	}
+	if owner.prefix != prefix || !owner.liveTextServiceJobLocked(job, broker.Connection) ||
 		!owner.endpoint.clock().UTC().Before(deadline) {
 		clear(operation)
 		return nil, errors.New("text recovery authority ended during sealing")
