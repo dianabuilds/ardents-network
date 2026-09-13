@@ -7,6 +7,7 @@ maximum_polls=1500
 case "${1-lifecycle}" in
     lifecycle) test_root=TestInstalledTextWorkerLifecycle ;;
     network) test_root=TestInstalledTextWorkersReadTargetThroughJoinedNetwork; maximum_polls=10000 ;;
+    recovery) test_root=TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; maximum_polls=3600 ;;
     tree)
         test_root=TestInstalledTextWorkerHostileTree
         worker=/usr/lib/ardents/text-worker-root/ardents-text
@@ -81,6 +82,12 @@ if [ "$test_root" = TestInstalledTextWorkersReadTargetThroughJoinedNetwork ]; th
         for size in empty reference maximum refresh; do
             set -- "$@" "$test_root/$carrier/$size"
         done
+    done
+fi
+if [ "$test_root" = TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork ]; then
+    set -- "$test_root"
+    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+        set -- "$@" "$test_root/$carrier"
     done
 fi
 for test do
