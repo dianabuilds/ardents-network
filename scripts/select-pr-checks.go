@@ -67,7 +67,7 @@ func changedPaths(base, head string) ([]string, error) {
 	if base == "" || head == "" {
 		return nil, errors.New("base and head are required")
 	}
-	output, err := exec.Command("git", "diff", "--name-only", base+"..."+head).Output()
+	output, err := exec.Command("git", "diff", "--name-only", base, head).Output()
 	if err != nil {
 		return nil, fmt.Errorf("read pull-request diff: %w", err)
 	}
