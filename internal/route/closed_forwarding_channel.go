@@ -72,14 +72,6 @@ type closedForwardChild struct {
 	eofSent              bool
 }
 
-// NewClosedForwardingChannel transfers one class-2 reservation to the only
-// forwarding owner. Control and publication admission cannot silently become
-// arbitrary forwarding, and Release on the source lease cannot free a live
-// forwarding channel.
-func NewClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
-	return newClosedForwardingChannel(lease, authorize, nil, clock)
-}
-
 // NewReplenishableClosedForwardingChannel creates the one forwarding parent
 // that can receive later lane-zero class-2 replenishment ADMIT frames.
 func NewReplenishableClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, replenish ClosedForwardingReplenisher, clock func() time.Time) (*ClosedForwardingChannel, error) {

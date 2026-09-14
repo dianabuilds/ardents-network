@@ -7,7 +7,7 @@ import (
 
 func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *testing.T) {
 	_, _, lease, now := closedOuterAdmissionFixture(t)
-	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *test
 
 func TestClosedForwardingSemanticRefusalDoesNotRefundReceivedFrame(t *testing.T) {
 	_, _, lease, now := closedOuterAdmissionFixture(t)
-	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}

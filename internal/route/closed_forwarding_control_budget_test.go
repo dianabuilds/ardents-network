@@ -8,7 +8,7 @@ import (
 
 func TestClosedForwardingControlQueueCountsCompleteFrames(t *testing.T) {
 	_, _, lease, now := closedOuterAdmissionFixture(t)
-	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 			t.Fatal(err)
 		}
 		lease := &ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
-		channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return now })
+		channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return now })
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,7 +103,7 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 
 func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 	_, _, lease, now := closedOuterAdmissionFixture(t)
-	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 func TestClosedForwardingLateControlReleaseCannotDebitSibling(t *testing.T) {
 	_, _, lease, now := closedOuterAdmissionFixture(t)
 	limits := lease.duty.limits
-	channel, err := NewClosedForwardingChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
+	channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}

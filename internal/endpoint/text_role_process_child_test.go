@@ -18,16 +18,17 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 type textRoleProcessInput struct {
-	Snapshot                                     state.Snapshot
-	View                                         state.ClosedRouteView
-	Key                                          ed25519.PrivateKey
-	Certificates                                 [][]byte
-	Role, Root, AdmissionRoot, StateRoot, Output string
-	Limit                                        uint16
-	Drain                                        time.Duration
+	Snapshot                                                  state.Snapshot
+	View                                                      state.ClosedRouteView
+	Key                                                       ed25519.PrivateKey
+	Certificates                                              [][]byte
+	Role, Root, AdmissionRoot, HostingRoot, StateRoot, Output string
+	Limit                                                     uint16
+	Drain                                                     time.Duration
 }
 
 func textRoleProcessConfig(input textRoleProcessInput) node.Config {
@@ -47,7 +48,7 @@ func textRoleProcessConfig(input textRoleProcessInput) node.Config {
 	case "join":
 		config.ClosedDataJoin = node.ClosedDataJoinProfile{AdmissionRoot: input.AdmissionRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain}
 	case "forwarding":
-		config.ClosedForwarding = node.ClosedForwardingProfile{Root: input.Root, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain}
+		config.ClosedForwarding = node.ClosedForwardingProfile{Root: input.Root, HostingRoot: input.HostingRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain, AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
 	}
 	return config
 }

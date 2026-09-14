@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+func newForwardingTestChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
+	return NewReplenishableClosedForwardingChannel(lease, authorize, func(ClosedAdmissionVerification) (func() error, error) { return nil, nil }, clock)
+}
 func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	limits, err := NewClosedDutyLimits(func() time.Time { return now })
@@ -19,7 +22,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 2, Purpose: ClosedPurposeForwarding, Deadline: now.Add(30 * time.Second)}
-	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}
@@ -88,7 +91,7 @@ func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
 	}
 	allowed := ClosedOpen{NextNodeID: [32]byte{11}, NextDutyGeneration: 12, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
-	channel, err := NewClosedForwardingChannel(&lease,
+	channel, err := newForwardingTestChannel(&lease,
 		func(open ClosedOpen) error {
 			if open != allowed {
 				return errUnexpectedForwardOpen
@@ -138,7 +141,7 @@ func TestClosedForwardingChannelBoundsOnePrefixQueueBeforeDutyQueue(t *testing.T
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{21}, NextDutyGeneration: 22, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}
@@ -185,7 +188,7 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{31}, NextDutyGeneration: 32, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}
@@ -248,7 +251,7 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{41}, NextDutyGeneration: 42, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}

@@ -57,7 +57,7 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 		input.Role, input.AdmissionRoot, input.Certificates, input.Limit, input.Drain = "join", v.AdmissionRoot, v.Certificate.Certificate, v.ConnectionLimit, v.DrainTimeout
 	case config.ClosedForwarding.Root != "":
 		v := config.ClosedForwarding
-		input.Role, input.Root, input.Certificates, input.Limit, input.Drain = "forwarding", v.Root, v.Certificate.Certificate, v.ConnectionLimit, v.DrainTimeout
+		input.Role, input.Root, input.HostingRoot, input.Certificates, input.Limit, input.Drain = "forwarding", v.Root, v.HostingRoot, v.Certificate.Certificate, v.ConnectionLimit, v.DrainTimeout
 	default:
 		t.Fatal("missing observed role")
 	}

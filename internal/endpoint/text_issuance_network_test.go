@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -145,8 +147,9 @@ func startTextRoleNetworkWithRunner(t *testing.T, carrier route.CarrierProfile, 
 			config.ClosedIssuer = node.ClosedIssuerProfile{Root: issuerRoot, AdmissionRoot: textNetworkPrivateRoot(t),
 				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
 		} else {
-			config.ClosedForwarding = node.ClosedForwardingProfile{Root: textNetworkPrivateRoot(t),
-				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
+			config.ClosedForwarding = node.ClosedForwardingProfile{Root: textNetworkPrivateRoot(t), HostingRoot: textNetworkHostingRoot(t),
+				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second,
+				AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
 		}
 		for _, apply := range configure {
 			apply(index, &config)
@@ -205,6 +208,17 @@ func startTextRoleNetworkWithRunner(t *testing.T, carrier route.CarrierProfile, 
 	return endpoint, owner, source
 }
 
+func textNetworkHostingRoot(t *testing.T) string {
+	t.Helper()
+	now := time.Now().UTC().Truncate(time.Second)
+	root := filepath.Join(t.TempDir(), "hosting")
+	policy := resource.HostingPolicy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: 1,
+		Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20}
+	if err := resource.InitializeHosting(root, policy); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
 func textNetworkPrivateRoot(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

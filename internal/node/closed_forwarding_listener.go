@@ -110,10 +110,6 @@ type closedForwardingServer struct {
 	reapErr     error
 }
 
-func newClosedForwardingServer(config runtimeConfig, snapshot dutyFacts, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, spends *route.ClosedSpendLedger, limits *route.ClosedDutyLimits, pool *route.ClosedCarrierPool, bootstrap *route.ClosedBootstrapController, limit uint16) *closedForwardingServer {
-	return newClosedForwardingServerWithHost(config, snapshot, certificate, listener, spends, limits, pool, bootstrap, nil, limit)
-}
-
 func newClosedForwardingServerWithHost(config runtimeConfig, snapshot dutyFacts, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, spends *route.ClosedSpendLedger, limits *route.ClosedDutyLimits, pool *route.ClosedCarrierPool, bootstrap *route.ClosedBootstrapController, host closedForwardingHost, limit uint16) *closedForwardingServer {
 	ctx, cancel := context.WithCancel(context.Background())
 	running := &closedForwardingServer{config: config, snapshot: snapshot, certificate: certificate, listener: listener, spends: spends, limits: limits, pool: pool, bootstrap: bootstrap,
