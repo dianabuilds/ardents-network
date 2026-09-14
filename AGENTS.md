@@ -37,11 +37,21 @@
 - External users and independent reviewers may be recorded as future release
   gates, but must not be scheduled as if they are currently available.
 
-### Closed text-Service execution with Astra
+### Closed text-Service execution and review
 
-- For the already authorized closed text-Service work under issue #50, the
-  Product Owner selected Astra for the continuation. This does not reassign or
-  authorize implementation of the separate R-149 agreement-system research.
+- For the already authorized closed text-Service work under issue #50, Terra
+  (`gpt-5.6-terra`) is the sole implementation executor. Astra handles bounded
+  read-only review of completed changes and consequential unresolved design
+  questions. This does not reassign or authorize implementation of the separate
+  R-149 agreement-system research.
+- Terra independently reads current owners and code, diagnoses failures, makes
+  routine implementation choices within the accepted contract, runs checks, and
+  manages authorized Git and PR work. Do not request Astra's approval for each
+  step, test failure, or choice Terra can resolve from available evidence.
+- Escalate a consequential contract gap only after checking its current owners;
+  provide the exact contradiction, evidence and a concrete proposal. Complexity
+  alone is not an escalation reason. Review completed bounded changes rather
+  than repeatedly reviewing unfinished implementation.
 - Follow [agent execution and handoff](docs/development/agent-execution.md).
   Use one active implementation slice with an observable acceptance boundary.
   Record other prepared work as paused, locally verified, or awaiting integration.
