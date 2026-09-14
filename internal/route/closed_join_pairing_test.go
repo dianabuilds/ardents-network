@@ -77,7 +77,11 @@ func (f *closedJoinFixture) admission(t *testing.T, class uint8) *ClosedAdmissio
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(lease.Release)
+	t.Cleanup(func() {
+		if err := lease.Release(); err != nil {
+			t.Error(err)
+		}
+	})
 	return &lease
 }
 

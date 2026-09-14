@@ -24,7 +24,10 @@ type HostingPolicy struct {
 // HostingTraffic keeps ingress and egress separate until the actual provider's
 // counted directions are applied. It describes an upper reservation, not a
 // measurement of useful Application bytes or an admission token's authority.
-type HostingTraffic struct{ Tx, Rx uint64 }
+type HostingTraffic struct {
+	Tx uint64 `json:"tx"`
+	Rx uint64 `json:"rx"`
+}
 
 // HostingObservation reports a shared host's durable period accounting.
 // Resource decides pressure; the consuming Node or Endpoint owns shutdown.
