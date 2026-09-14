@@ -35,9 +35,18 @@ type ClosedAdmissionVerification struct {
 	Class    uint8
 	Token    []byte
 	Exporter [32]byte
+	Deadline time.Time
 }
 
-type ClosedAdmissionVerifier func(ClosedAdmissionVerification) (time.Time, error)
+// ClosedAdmissionApproval contains the verified token hour plus an optional
+// release for capacity reserved before Route spends that token. Route calls
+// the release when it cannot transfer the admission to its resulting owner.
+type ClosedAdmissionApproval struct {
+	Window  time.Time
+	Release func() error
+}
+
+type ClosedAdmissionVerifier func(ClosedAdmissionVerification) (ClosedAdmissionApproval, error)
 
 // ClosedAdmission is the finite result of initial receiver admission. It
 // retains only private HELLO/exporter binding until its receiving owner transfers
@@ -49,17 +58,24 @@ type ClosedAdmission struct {
 	hello    ClosedHello
 	exporter [32]byte
 	duty     *closedDutyChannel
+	release  func() error
 }
 
 // Release returns an admitted channel reservation when its owner performed no
 // forwarding handoff. A forwarding channel takes the same reservation and
 // releases it from Cancel after joining all children.
-func (admission *ClosedAdmission) Release() {
+func (admission *ClosedAdmission) Release() error {
 	if admission == nil {
-		return
+		return nil
 	}
 	admission.duty.release()
 	admission.duty = nil
+	if admission.release == nil {
+		return nil
+	}
+	release := admission.release
+	admission.release = nil
+	return release()
 }
 
 // ClosedAdmissionChannel owns lane-zero receiver admission on one fresh
@@ -140,28 +156,39 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
 	}
 	defer releaseVerification()
-	window, err := channel.verify(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.binding})
-	if err != nil || !validClosedSpendWindow(window) {
+	now := channel.clock().UTC()
+	deadline := now.Add(closedClassLifetime(class))
+	if channel.hello.Deadline.Before(deadline) {
+		deadline = channel.hello.Deadline
+	}
+	if channel.receiver.NotAfter.Before(deadline) {
+		deadline = channel.receiver.NotAfter
+	}
+	approval, err := channel.verify(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.binding, Deadline: deadline})
+	if err != nil || !validClosedSpendWindow(approval.Window) {
 		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
 	}
-	now := channel.clock().UTC()
+	releaseApproval := func() error {
+		if approval.Release == nil {
+			return nil
+		}
+		return approval.Release()
+	}
+	now = channel.clock().UTC()
 	reservation, err := channel.limits.reserveChannel()
 	if err != nil {
+		_ = releaseApproval()
 		return ClosedAdmission{}, errors.New("closed admission capacity is unavailable")
 	}
-	if err := channel.spends.Spend(token, window, now); err != nil {
+	if err := channel.spends.Spend(token, approval.Window, now); err != nil {
 		reservation.release()
+		_ = releaseApproval()
 		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
 	}
-	lease := ClosedAdmission{hello: channel.hello, exporter: channel.binding, Class: class, Bytes: closedClassBytes(class), Deadline: now.Add(closedClassLifetime(class))}
-	if channel.hello.Deadline.Before(lease.Deadline) {
-		lease.Deadline = channel.hello.Deadline
-	}
-	if channel.receiver.NotAfter.Before(lease.Deadline) {
-		lease.Deadline = channel.receiver.NotAfter
-	}
+	lease := ClosedAdmission{hello: channel.hello, exporter: channel.binding, Class: class, Bytes: closedClassBytes(class), Deadline: deadline, release: releaseApproval}
 	if !now.Before(lease.Deadline) {
 		reservation.release()
+		_ = releaseApproval()
 		return ClosedAdmission{}, errors.New("closed admission lease is unavailable")
 	}
 	lease.duty = reservation

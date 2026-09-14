@@ -12,7 +12,7 @@ func TestClosedForwardingControlQueueCountsCompleteFrames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(channel.Cancel)
+	t.Cleanup(func() { _ = channel.Cancel() })
 	open := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
 	body, err := EncodeClosedOpen(open)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(channel.Cancel)
+		t.Cleanup(func() { _ = channel.Cancel() })
 		channels = append(channels, channel)
 	}
 	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
@@ -107,7 +107,7 @@ func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(channel.Cancel)
+	t.Cleanup(func() { _ = channel.Cancel() })
 	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
@@ -149,7 +149,7 @@ func TestClosedForwardingLateControlReleaseCannotDebitSibling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(channel.Cancel)
+	t.Cleanup(func() { _ = channel.Cancel() })
 	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)

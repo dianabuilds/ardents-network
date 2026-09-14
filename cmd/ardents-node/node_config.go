@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -111,9 +112,12 @@ type closedResolutionPlan struct {
 // closedForwardingPlan supplies only the local receiving spend root and finite
 // work bounds. State selects adjacent/interior duty, listener and next peers.
 type closedForwardingPlan struct {
-	Root            string `json:"root"`
-	ConnectionLimit uint16 `json:"connection_limit"`
-	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`
+	Root               string                  `json:"root"`
+	ConnectionLimit    uint16                  `json:"connection_limit"`
+	DrainTimeoutMS     uint32                  `json:"drain_timeout_ms"`
+	HostingRoot        string                  `json:"hosting_root"`
+	AdmissionTraffic   resource.HostingTraffic `json:"admission_traffic"`
+	TerminationTraffic resource.HostingTraffic `json:"termination_traffic"`
 }
 
 type nodeSource struct {

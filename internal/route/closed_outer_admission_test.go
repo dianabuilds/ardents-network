@@ -90,7 +90,9 @@ func closedOuterAdmissionFixtureFor(t *testing.T, purpose ClosedPurpose, class u
 		DutyGeneration: receiver.DutyGeneration, RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, ExpectedPurpose: purpose, NotAfter: receiver.Deadline}
 	admission, err := NewClosedAdmissionChannel(role, spends, limits,
 		func(string, []byte, int) ([]byte, error) { return bytes.Repeat([]byte{1}, 32), nil },
-		func(ClosedAdmissionVerification) (time.Time, error) { return now.Truncate(time.Hour), nil }, func() time.Time { return now })
+		func(ClosedAdmissionVerification) (ClosedAdmissionApproval, error) {
+			return ClosedAdmissionApproval{Window: now.Truncate(time.Hour)}, nil
+		}, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +107,7 @@ func closedOuterAdmissionFixtureFor(t *testing.T, purpose ClosedPurpose, class u
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(lease.Release)
+	t.Cleanup(func() { _ = lease.Release() })
 	return lane, bridge, &lease, &now
 }
 

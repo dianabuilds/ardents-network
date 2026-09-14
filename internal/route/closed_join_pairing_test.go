@@ -57,7 +57,9 @@ func (f *closedJoinFixture) admission(t *testing.T, class uint8) *ClosedAdmissio
 	clock := func() time.Time { return time.Unix(f.clock.Load(), 0).UTC() }
 	channel, err := NewClosedAdmissionChannel(f.receiver, f.spends, f.limits,
 		func(string, []byte, int) ([]byte, error) { return bytes.Repeat([]byte{9}, 32), nil },
-		func(ClosedAdmissionVerification) (time.Time, error) { return clock().Truncate(time.Hour), nil }, clock)
+		func(ClosedAdmissionVerification) (ClosedAdmissionApproval, error) {
+			return ClosedAdmissionApproval{Window: clock().Truncate(time.Hour)}, nil
+		}, clock)
 	if err != nil {
 		t.Fatal(err)
 	}

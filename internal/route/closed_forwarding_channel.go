@@ -18,6 +18,12 @@ const (
 // after this check succeeds.
 type ClosedForwardingAuthorizer func(ClosedOpen) error
 
+// ClosedForwardingReplenisher verifies and durably spends a fresh class-2
+// token after the complete parent ADMIT frame was charged to the old reserve.
+// It returns an optional host-capacity release retained until the parent and
+// all of its children have joined.
+type ClosedForwardingReplenisher func(ClosedAdmissionVerification) (func() error, error)
+
 // ClosedForwardingEvent describes bounded work already admitted by the local
 // channel state. It intentionally has no carrier, endpoint or Target input.
 type ClosedForwardingEvent struct {
@@ -37,6 +43,10 @@ type ClosedForwardingChannel struct {
 	byteLimit    uint64
 	bootstrap    *ClosedBootstrapLease
 	authorize    ClosedForwardingAuthorizer
+	replenish    ClosedForwardingReplenisher
+	hello        ClosedHello
+	exporter     [32]byte
+	releases     []func() error
 	clock        func() time.Time
 	lastOdd      uint32
 	children     map[uint32]closedForwardChild
@@ -67,11 +77,29 @@ type closedForwardChild struct {
 // arbitrary forwarding, and Release on the source lease cannot free a live
 // forwarding channel.
 func NewClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
+	return newClosedForwardingChannel(lease, authorize, nil, clock)
+}
+
+// NewReplenishableClosedForwardingChannel creates the one forwarding parent
+// that can receive later lane-zero class-2 replenishment ADMIT frames.
+func NewReplenishableClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, replenish ClosedForwardingReplenisher, clock func() time.Time) (*ClosedForwardingChannel, error) {
+	if replenish == nil {
+		return nil, errors.New("closed forwarding replenishment is unavailable")
+	}
+	return newClosedForwardingChannel(lease, authorize, replenish, clock)
+}
+
+func newClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, replenish ClosedForwardingReplenisher, clock func() time.Time) (*ClosedForwardingChannel, error) {
 	if lease == nil || lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || lease.duty == nil || authorize == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed forwarding channel is invalid")
 	}
-	channel := &ClosedForwardingChannel{duty: lease.duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: closedAdmissionFrameBytes, authorize: authorize, clock: clock, children: make(map[uint32]closedForwardChild)}
+	channel := &ClosedForwardingChannel{duty: lease.duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: closedAdmissionFrameBytes,
+		authorize: authorize, replenish: replenish, hello: lease.hello, exporter: lease.exporter, clock: clock, children: make(map[uint32]closedForwardChild)}
+	if lease.release != nil {
+		channel.releases = append(channel.releases, lease.release)
+	}
 	lease.duty = nil
+	lease.release = nil
 	return channel, nil
 }
 
@@ -111,9 +139,36 @@ func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedFor
 		return channel.eof(frame)
 	case closedFrameClose:
 		return channel.close(frame)
+	case closedFrameAdmit:
+		return channel.admit(frame)
 	default:
 		return ClosedForwardingEvent{}, errors.New("closed forwarding frame is unavailable")
 	}
+}
+
+func (channel *ClosedForwardingChannel) admit(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+	if frame.Lane != 0 || channel.replenish == nil {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	class, token, err := decodeClosedAdmit(frame.Body)
+	if err != nil || class != 2 {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	release, err := channel.replenish(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.exporter, Deadline: channel.deadline})
+	if err != nil {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	if channel.usedBytes > ^uint64(0)-(32<<20) {
+		if release != nil {
+			_ = release()
+		}
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	channel.byteLimit = channel.usedBytes + 32<<20
+	if release != nil {
+		channel.releases = append(channel.releases, release)
+	}
+	return ClosedForwardingEvent{}, nil
 }
 
 func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
@@ -303,9 +358,9 @@ func closedForwardControlSize(event ClosedForwardingEvent) uint32 {
 
 // Cancel terminates every child before a caller joins its owned carriers.
 // It is idempotent and makes future OPEN/bytes unavailable.
-func (channel *ClosedForwardingChannel) Cancel() {
+func (channel *ClosedForwardingChannel) Cancel() error {
 	if channel == nil {
-		return
+		return nil
 	}
 	channel.mu.Lock()
 	defer channel.mu.Unlock()
@@ -323,7 +378,13 @@ func (channel *ClosedForwardingChannel) Cancel() {
 	channel.ready = nil
 	channel.controlBytes = 0
 	channel.duty.release()
+	var result error
+	for _, release := range channel.releases {
+		result = errors.Join(result, release())
+	}
+	channel.releases = nil
 	if channel.bootstrap != nil {
 		channel.bootstrap.Release()
 	}
+	return result
 }

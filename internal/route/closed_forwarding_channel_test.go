@@ -287,6 +287,47 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 	}
 }
 
+func TestClosedForwardingChannelRefillDebitsOldReserveAndRetainsHostRelease(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), hello: ClosedHello{ChannelNonce: [32]byte{9}}, exporter: [32]byte{8}, duty: reservation}
+	called, released := 0, 0
+	channel, err := NewReplenishableClosedForwardingChannel(&lease, func(ClosedOpen) error { return nil }, func(input ClosedAdmissionVerification) (func() error, error) {
+		called++
+		if input.Class != 2 || input.Deadline != now.Add(time.Minute) || input.Hello.ChannelNonce != [32]byte{9} || input.Exporter != [32]byte{8} {
+			t.Fatalf("refill binding differs: %+v", input)
+		}
+		return func() error { released++; return nil }, nil
+	}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialLimit := channel.byteLimit
+	admit := ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{2}, bytes.Repeat([]byte{7}, 354)...)}
+	if _, err := channel.Accept(admit); err != nil {
+		t.Fatal(err)
+	}
+	if called != 1 || channel.byteLimit-channel.usedBytes != 32<<20 || channel.byteLimit <= initialLimit {
+		t.Fatalf("refill did not set one exact remaining reserve: called=%d limit=%d used=%d", called, channel.byteLimit, channel.usedBytes)
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Lane: 1, Body: admit.Body}); err == nil {
+		t.Fatal("child lane replenishment was accepted")
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{1}, bytes.Repeat([]byte{7}, 354)...)}); err == nil {
+		t.Fatal("non-forward token replenished parent")
+	}
+	if err := channel.Cancel(); err != nil || released != 1 {
+		t.Fatalf("parent release = %v / %d", err, released)
+	}
+}
+
 var errUnexpectedForwardOpen = &unexpectedForwardOpen{}
 
 type unexpectedForwardOpen struct{}

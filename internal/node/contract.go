@@ -229,6 +229,12 @@ type ClosedForwardingProfile struct {
 	Certificate     tls.Certificate
 	ConnectionLimit uint16
 	DrainTimeout    time.Duration
+	// HostingRoot names the installed shared provider-period ledger. It is
+	// local operator configuration, never State or token material.
+	HostingRoot        string
+	AdmissionTraffic   resource.HostingTraffic
+	TerminationTraffic resource.HostingTraffic
+	host               closedForwardingHost
 }
 
 func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }

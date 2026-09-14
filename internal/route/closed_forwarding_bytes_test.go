@@ -11,7 +11,7 @@ func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(channel.Cancel)
+	t.Cleanup(func() { _ = channel.Cancel() })
 	body, err := EncodeClosedOpen(ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)})
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +70,7 @@ func TestClosedForwardingSemanticRefusalDoesNotRefundReceivedFrame(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(channel.Cancel)
+	t.Cleanup(func() { _ = channel.Cancel() })
 	// This well-framed CREDIT names no live child. Its receipt still consumes
 	// the remaining allowance even though no child effect may be admitted.
 	channel.usedBytes = channel.byteLimit - 20
