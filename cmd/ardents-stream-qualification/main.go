@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -35,5 +36,13 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return streamqualification.WriteReady(output, init.Nonce)
+	if err := streamqualification.WriteReady(output, init.Nonce); err != nil {
+		return err
+	}
+	return streamqualification.RunWorker(context.Background(), streamReadWriter{Reader: input, Writer: output}, init)
+}
+
+type streamReadWriter struct {
+	io.Reader
+	io.Writer
 }
