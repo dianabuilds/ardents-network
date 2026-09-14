@@ -329,6 +329,6 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	if err := channel.AccountOutput(frame); err != nil {
 		t.Fatal(err)
 	}
-	channel.ReleaseReverse(3, uint64(16+len(frame.Body)))
+	channel.ReleaseReverse(frame)
 	session.retire(5)
 }

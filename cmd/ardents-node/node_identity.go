@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
@@ -57,7 +58,10 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 	}
 	if plan.ClosedForwarding != nil {
 		config.ClosedForwarding = node.ClosedForwardingProfile{Root: plan.ClosedForwarding.Root, Certificate: certificate,
-			ConnectionLimit: plan.ClosedForwarding.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedForwarding.DrainTimeoutMS) * time.Millisecond}
+			ConnectionLimit: plan.ClosedForwarding.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedForwarding.DrainTimeoutMS) * time.Millisecond,
+			HostingRoot:        plan.ClosedForwarding.HostingRoot,
+			AdmissionTraffic:   resource.HostingTraffic{Tx: plan.ClosedForwarding.AdmissionTraffic.Tx, Rx: plan.ClosedForwarding.AdmissionTraffic.Rx},
+			TerminationTraffic: resource.HostingTraffic{Tx: plan.ClosedForwarding.TerminationTraffic.Tx, Rx: plan.ClosedForwarding.TerminationTraffic.Rx}}
 	}
 	if plan.ClosedResolution != nil {
 		config.ClosedResolution = node.ClosedResolutionProfile{Root: plan.ClosedResolution.Root, AdmissionRoot: plan.ClosedResolution.AdmissionRoot,

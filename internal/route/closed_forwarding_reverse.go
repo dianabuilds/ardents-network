@@ -27,47 +27,62 @@ func (channel *ClosedForwardingChannel) QueueReverse(frame ClosedLaneFrame) erro
 	if channel.terminated || !now.Before(channel.deadline) || !now.Before(child.deadline) {
 		return ErrClosedForwardingChildRetired
 	}
-	if channel.queued+size > closedPrefixQueueBytes {
-		return errors.New("closed forwarding reverse queue is unavailable")
-	}
 	switch frame.Kind {
 	case closedFrameAccept, closedFrameCredit, closedFrameEOF, closedFrameClose:
-	case closedFrameBytes:
-		if uint64(len(frame.Body)) > child.reverseCredit {
-			return errors.New("closed forwarding reverse credit exceeded")
+		if err := channel.reserveControlQueue(size); err != nil {
+			return err
 		}
+		child.reverseControlQueued += size
+	case closedFrameBytes:
+		if uint64(len(frame.Body)) > child.reverseCredit || size > closedPrefixQueueBytes-channel.queued {
+			return errors.New("closed forwarding reverse credit or queue exceeded")
+		}
+		if err := channel.reserveQueue(size); err != nil {
+			return err
+		}
+		child.reverseCredit -= uint64(len(frame.Body))
+		child.reverseQueued += size
+		channel.queued += size
 	default:
 		return errors.New("closed forwarding reverse frame is unavailable")
 	}
-	if err := channel.reserveQueue(size); err != nil {
-		return err
-	}
-	if frame.Kind == closedFrameBytes {
-		child.reverseCredit -= uint64(len(frame.Body))
-	}
-	child.reverseQueued += size
-	channel.queued += size
 	channel.children[frame.Lane] = child
 	return nil
 }
 
-// ReleaseReverse releases only work whose writer has returned. A terminated
-// child has already released its complete reservation and cannot be revived by
-// a late completion from the shared Carrier reader.
-func (channel *ClosedForwardingChannel) ReleaseReverse(lane uint32, size uint64) {
+// ReleaseReverse releases the original queued frame only after its writer has
+// returned. Its kind keeps control and data reservations distinct, including
+// failed writes. Child retirement already releases both classes; a late writer
+// cannot release another child's reserve or revive the retired lane.
+func (channel *ClosedForwardingChannel) ReleaseReverse(frame ClosedLaneFrame) {
 	if channel == nil {
 		return
 	}
 	channel.mu.Lock()
 	defer channel.mu.Unlock()
-	child, found := channel.children[lane]
-	if !found || size == 0 || size > child.reverseQueued {
+	child, found := channel.children[frame.Lane]
+	if !found {
 		return
 	}
-	child.reverseQueued -= size
-	channel.queued -= size
-	channel.releaseQueue(size)
-	channel.children[lane] = child
+	size := uint64(closedLaneHeaderSize + len(frame.Body))
+	switch frame.Kind {
+	case closedFrameAccept, closedFrameCredit, closedFrameEOF, closedFrameClose:
+		if size > child.reverseControlQueued {
+			return
+		}
+		child.reverseControlQueued -= size
+		channel.releaseControlQueue(size)
+	case closedFrameBytes:
+		if size > child.reverseQueued {
+			return
+		}
+		child.reverseQueued -= size
+		channel.queued -= size
+		channel.releaseQueue(size)
+	default:
+		return
+	}
+	channel.children[frame.Lane] = child
 }
 
 // AccountOutput charges actual framed output before the serialized writer.
@@ -89,10 +104,11 @@ func (channel *ClosedForwardingChannel) AccountOutput(frame ClosedLaneFrame) err
 	if channel.bootstrap != nil {
 		return channel.bootstrap.Send(uint64(closedLaneHeaderSize + len(frame.Body)))
 	}
-	if uint64(len(frame.Body)) > channel.byteLimit-channel.received {
+	size := uint64(closedLaneHeaderSize + len(frame.Body))
+	if size > channel.byteLimit-channel.usedBytes {
 		return errors.New("closed forwarding output exhausted")
 	}
-	channel.received += uint64(len(frame.Body))
+	channel.usedBytes += size
 	return nil
 }
 

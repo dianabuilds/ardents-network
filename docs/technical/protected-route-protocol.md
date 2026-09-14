@@ -281,8 +281,12 @@ A forwarding-channel admission reserves its own aggregate byte/time budget
 and permits at most 256 simultaneous work lanes and two reserved control lanes
 within that reserve. Each
 child has its own next-recipient admission. An additional child cannot multiply
-its parent's allowance. Replenishment changes only the remaining byte reserve,
-never the peer, purpose, context or original terminal deadline.
+its parent's allowance. Under
+[ADR-0085](../adr/0085-bound-forwarding-replenishment.md), replenishment
+changes only the parent's remaining byte reserve: after the complete
+post-initial ADMIT has been debited, it becomes exactly 32 MiB rather than an
+additional allowance. It never changes the peer, purpose, context, child
+allocation or original terminal deadline.
 
 ## Bounded lane framing
 
@@ -293,16 +297,19 @@ All integers are unsigned big-endian; there is no varint, optional field,
 compression, trailing data or extension negotiation. Header length is 16.
 Reject an unsupported generation/kind/flags/length before allocation.
 
-Lane zero is reserved for one channel admission handshake. Endpoint-initiated
+Lane zero carries the one HELLO and initial admission handshake. Under
+[ADR-0085](../adr/0085-bound-forwarding-replenishment.md), an already admitted
+forwarding parent may subsequently receive a class-2 replenishment ADMIT only
+on lane zero; it is parent control and creates no child. Endpoint-initiated
 child lanes use monotonically increasing odd IDs; role-initiated lanes use
 even IDs only for already authorized publication delivery. IDs are local to
-one TLS channel and never reused there. Exhaustion closes the channel.
-No lane ID or nonce is copied into a different hop's identifier namespace.
+one TLS channel and never reused there. Exhaustion closes the channel. No lane
+ID or nonce is copied into a different hop's identifier namespace.
 
 | Kind | Body and valid use |
 |---|---|
 | 1 HELLO | Network[32], State-generation[32], State-digest[32], profile-digest[32], recipient-Node[32], recipient-duty-generation u64, purpose u8, fresh channel-nonce[32], absolute-deadline u64. Exactly 209 bytes; lane zero, once after TLS. |
-| 2 ADMIT | class u8, token[354]. Exactly 355 bytes; lane zero for initial admission or an existing lane for finite replenishment. |
+| 2 ADMIT | class u8, token[354]. Exactly 355 bytes; lane zero once for initial admission. A later ADMIT is permitted only on lane zero of its already admitted forwarding parent, is class 2, and performs the finite replenishment selected by ADR-0085. It is forbidden on child lanes and every other channel type. |
 | 3 BOOTSTRAP | operation u8: public evidence=1 or issuer=2. Exactly one byte; lane zero only, under the finite bootstrap contract. |
 | 4 OPEN | next-Node[32], next-duty-generation u64, next-purpose u8, deadline u64. Exactly 49 bytes on an Endpoint-role channel. On an authenticated Node Carrier append mandatory restriction u8 (0=no additional restriction, 1=issuer-bootstrap only), exactly 50 bytes. The authenticated channel state fixes the grammar; fresh child after the corresponding parent admission or bounded Node allocation below. |
 | 5 ACCEPT | status u8 (0 accepted, 1 unavailable, 2 exhausted, 3 stale/incompatible, 4 withdrawn), credit u32. Exactly 5 bytes; credit zero on refusal. No detailed path-conflict oracle. |
@@ -429,10 +436,25 @@ A slow lane cannot block reading another lane's bounded control/termination.
 
 Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve
 a separate 16 KiB/channel control queue and service it before data, with
-control-rate admission to prevent priority flooding. Coalesce already
+control-rate admission to prevent priority flooding.
+The receiving-duty governor reserves that 16 KiB for each admitted channel
+inside its existing 64 MiB total before admitting data. Forward and reverse
+control frames share this reservation, including their complete headers;
+data cannot borrow it. Another channel must fit its control reservation
+before admission. Retirement releases it with the owning channel, and late
+reverse-writer completion cannot release another lane's capacity. Coalesce already
 available bytes for at most 1 ms, never wait to manufacture traffic.
 A peer exceeding credit, frame bounds or the channel's ownership closes that
 channel; accepted Service bytes are never silently dropped.
+
+The forwarding and Source owners debit initial HELLO/ADMIT/ACCEPT and every
+complete ARDP input/output frame, including control, from the channel byte
+allowance. A later parent replenishment ADMIT is first debited from the old
+remaining reserve; only a verified, durably spent class-2 token with the
+required host reservation then restores remaining reserve to exactly 32 MiB.
+A semantic refusal after receipt or failed attempted output does not refund a
+debit. Carrier/TLS and whole-interface costs additionally belong to the
+complete hosting and qualification accounting.
 
 A child cannot extend its parent's deadline or byte reserve. Child cancellation
 joins its reader/writer/next-Carrier cleanup. EOF preserves the reverse

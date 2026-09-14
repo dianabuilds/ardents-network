@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -24,7 +25,7 @@ func TestClosedForwardingStopDrainsIdleAuthenticatedCarrier(t *testing.T) {
 	fixture.snapshot.Candidates[0].PublicKey = peerKey
 	fixture.config.now = func() time.Time { return fixture.now }
 	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
-	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: filepath.Join(t.TempDir(), "spends"), Certificate: certificate, ConnectionLimit: 2, DrainTimeout: 2 * time.Second}
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: filepath.Join(t.TempDir(), "spends"), Certificate: certificate, ConnectionLimit: 2, DrainTimeout: 2 * time.Second, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: closedForwardingHostingRoot(t)}
 	if err := os.MkdirAll(fixture.config.ClosedForwarding.Root, 0o700); err != nil {
 		t.Fatal(err)
 	}

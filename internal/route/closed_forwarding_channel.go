@@ -18,6 +18,12 @@ const (
 // after this check succeeds.
 type ClosedForwardingAuthorizer func(ClosedOpen) error
 
+// ClosedForwardingReplenisher verifies and durably spends a fresh class-2
+// token after the complete parent ADMIT frame was charged to the old reserve.
+// It returns an optional host-capacity release retained until the parent and
+// all of its children have joined.
+type ClosedForwardingReplenisher func(ClosedAdmissionVerification) (func() error, error)
+
 // ClosedForwardingEvent describes bounded work already admitted by the local
 // channel state. It intentionally has no carrier, endpoint or Target input.
 type ClosedForwardingEvent struct {
@@ -37,40 +43,55 @@ type ClosedForwardingChannel struct {
 	byteLimit    uint64
 	bootstrap    *ClosedBootstrapLease
 	authorize    ClosedForwardingAuthorizer
+	replenish    ClosedForwardingReplenisher
+	hello        ClosedHello
+	exporter     [32]byte
+	releases     []func() error
 	clock        func() time.Time
 	lastOdd      uint32
 	children     map[uint32]closedForwardChild
 	ready        []uint32
 	controls     []ClosedForwardingEvent
 	controlBytes uint32
-	received     uint64
+	usedBytes    uint64
 	queued       uint64
 	terminated   bool
 }
 
 type closedForwardChild struct {
-	deadline      time.Time
-	credit        uint64
-	reverseCredit uint64
-	reverseQueued uint64
-	queued        uint64
-	delivered     uint64
-	frames        [][]byte
-	ready         bool
-	eof           bool
-	eofSent       bool
+	deadline             time.Time
+	credit               uint64
+	reverseCredit        uint64
+	reverseQueued        uint64
+	reverseControlQueued uint64
+	queued               uint64
+	delivered            uint64
+	frames               [][]byte
+	ready                bool
+	eof                  bool
+	eofSent              bool
 }
 
-// NewClosedForwardingChannel transfers one class-2 reservation to the only
-// forwarding owner. Control and publication admission cannot silently become
-// arbitrary forwarding, and Release on the source lease cannot free a live
-// forwarding channel.
-func NewClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
+// NewReplenishableClosedForwardingChannel creates the one forwarding parent
+// that can receive later lane-zero class-2 replenishment ADMIT frames.
+func NewReplenishableClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, replenish ClosedForwardingReplenisher, clock func() time.Time) (*ClosedForwardingChannel, error) {
+	if replenish == nil {
+		return nil, errors.New("closed forwarding replenishment is unavailable")
+	}
+	return newClosedForwardingChannel(lease, authorize, replenish, clock)
+}
+
+func newClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, replenish ClosedForwardingReplenisher, clock func() time.Time) (*ClosedForwardingChannel, error) {
 	if lease == nil || lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || lease.duty == nil || authorize == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed forwarding channel is invalid")
 	}
-	channel := &ClosedForwardingChannel{duty: lease.duty, deadline: lease.Deadline, byteLimit: lease.Bytes, authorize: authorize, clock: clock, children: make(map[uint32]closedForwardChild)}
+	channel := &ClosedForwardingChannel{duty: lease.duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: closedAdmissionFrameBytes,
+		authorize: authorize, replenish: replenish, hello: lease.hello, exporter: lease.exporter, clock: clock, children: make(map[uint32]closedForwardChild)}
+	if lease.release != nil {
+		channel.releases = append(channel.releases, lease.release)
+	}
 	lease.duty = nil
+	lease.release = nil
 	return channel, nil
 }
 
@@ -86,10 +107,18 @@ func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedFor
 	if channel.terminated || !channel.clock().UTC().Before(channel.deadline) {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding channel is unavailable")
 	}
+	size := uint64(closedLaneHeaderSize + len(frame.Body))
 	if channel.bootstrap != nil {
-		if err := channel.bootstrap.Receive(uint64(closedLaneHeaderSize + len(frame.Body))); err != nil {
+		if err := channel.bootstrap.Receive(size); err != nil {
 			return ClosedForwardingEvent{}, err
 		}
+	} else {
+		if size > channel.byteLimit-channel.usedBytes {
+			return ClosedForwardingEvent{}, errors.New("closed forwarding input exhausted")
+		}
+		// The complete frame has already arrived. A later semantic refusal
+		// cannot refund its ingress or let control bypass the parent budget.
+		channel.usedBytes += size
 	}
 	switch frame.Kind {
 	case closedFrameOpen:
@@ -102,9 +131,36 @@ func (channel *ClosedForwardingChannel) Accept(frame ClosedLaneFrame) (ClosedFor
 		return channel.eof(frame)
 	case closedFrameClose:
 		return channel.close(frame)
+	case closedFrameAdmit:
+		return channel.admit(frame)
 	default:
 		return ClosedForwardingEvent{}, errors.New("closed forwarding frame is unavailable")
 	}
+}
+
+func (channel *ClosedForwardingChannel) admit(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
+	if frame.Lane != 0 || channel.replenish == nil {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	class, token, err := decodeClosedAdmit(frame.Body)
+	if err != nil || class != 2 {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	release, err := channel.replenish(ClosedAdmissionVerification{Hello: channel.hello, Class: class, Token: token, Exporter: channel.exporter, Deadline: channel.deadline})
+	if err != nil {
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	if channel.usedBytes > ^uint64(0)-(32<<20) {
+		if release != nil {
+			_ = release()
+		}
+		return ClosedForwardingEvent{}, errors.New("closed forwarding replenishment is unavailable")
+	}
+	channel.byteLimit = channel.usedBytes + 32<<20
+	if release != nil {
+		channel.releases = append(channel.releases, release)
+	}
+	return ClosedForwardingEvent{}, nil
 }
 
 func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
@@ -138,7 +194,7 @@ func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwa
 
 func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForwardingEvent, error) {
 	child, found := channel.children[frame.Lane]
-	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.received+uint64(len(frame.Body)) > channel.byteLimit || channel.queued+uint64(len(frame.Body)) > closedPrefixQueueBytes {
+	if !found || child.eof || !channel.clock().UTC().Before(child.deadline) || uint64(len(frame.Body)) > child.credit || channel.queued+uint64(len(frame.Body)) > closedPrefixQueueBytes {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding bytes are unavailable")
 	}
 	bytes := uint64(len(frame.Body))
@@ -153,7 +209,6 @@ func (channel *ClosedForwardingChannel) bytes(frame ClosedLaneFrame) (ClosedForw
 		channel.ready = append(channel.ready, frame.Lane)
 	}
 	channel.children[frame.Lane] = child
-	channel.received += bytes
 	channel.queued += bytes
 	return ClosedForwardingEvent{}, nil
 }
@@ -178,6 +233,7 @@ func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForw
 		return ClosedForwardingEvent{}, errors.New("closed forwarding control queue is unavailable")
 	}
 	channel.releaseQueue(child.queued + child.reverseQueued)
+	channel.releaseControlQueue(child.reverseControlQueued)
 	channel.queued -= child.queued + child.reverseQueued
 	delete(channel.children, frame.Lane)
 	channel.duty.releaseChild()
@@ -233,7 +289,7 @@ func (channel *ClosedForwardingChannel) Next() (ClosedForwardingEvent, bool) {
 		event := channel.controls[0]
 		channel.controls = channel.controls[1:]
 		channel.controlBytes -= closedForwardControlSize(event)
-		channel.releaseQueue(uint64(closedLaneHeaderSize + closedForwardControlSize(event)))
+		channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
 		return event, true
 	}
 	for len(channel.ready) > 0 {
@@ -274,10 +330,10 @@ func (channel *ClosedForwardingChannel) Next() (ClosedForwardingEvent, bool) {
 
 func (channel *ClosedForwardingChannel) queueControl(event ClosedForwardingEvent) bool {
 	size := closedForwardControlSize(event)
-	if size > 16<<10 || channel.controlBytes+size > 16<<10 {
+	if size > closedChannelControlBytes || channel.controlBytes+size > closedChannelControlBytes {
 		return false
 	}
-	if err := channel.reserveQueue(uint64(closedLaneHeaderSize + size)); err != nil {
+	if err := channel.reserveControlQueue(uint64(size)); err != nil {
 		return false
 	}
 	channel.controls = append(channel.controls, event)
@@ -287,33 +343,40 @@ func (channel *ClosedForwardingChannel) queueControl(event ClosedForwardingEvent
 
 func closedForwardControlSize(event ClosedForwardingEvent) uint32 {
 	if event.Kind == closedFrameOpen {
-		return 50
+		return closedLaneHeaderSize + 50
 	}
-	return uint32(len(event.Bytes))
+	return closedLaneHeaderSize + uint32(len(event.Bytes))
 }
 
 // Cancel terminates every child before a caller joins its owned carriers.
 // It is idempotent and makes future OPEN/bytes unavailable.
-func (channel *ClosedForwardingChannel) Cancel() {
+func (channel *ClosedForwardingChannel) Cancel() error {
 	if channel == nil {
-		return
+		return nil
 	}
 	channel.mu.Lock()
 	defer channel.mu.Unlock()
 	channel.terminated = true
 	for _, child := range channel.children {
 		channel.releaseQueue(child.queued + child.reverseQueued)
+		channel.releaseControlQueue(child.reverseControlQueued)
 		channel.queued -= child.queued + child.reverseQueued
 	}
 	clear(channel.children)
 	for _, event := range channel.controls {
-		channel.releaseQueue(uint64(closedLaneHeaderSize + closedForwardControlSize(event)))
+		channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
 	}
 	channel.controls = nil
 	channel.ready = nil
 	channel.controlBytes = 0
 	channel.duty.release()
+	var result error
+	for _, release := range channel.releases {
+		result = errors.Join(result, release())
+	}
+	channel.releases = nil
 	if channel.bootstrap != nil {
 		channel.bootstrap.Release()
 	}
+	return result
 }

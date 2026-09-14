@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+func newForwardingTestChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, clock func() time.Time) (*ClosedForwardingChannel, error) {
+	return NewReplenishableClosedForwardingChannel(lease, authorize, func(ClosedAdmissionVerification) (func() error, error) { return nil, nil }, clock)
+}
 func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	limits, err := NewClosedDutyLimits(func() time.Time { return now })
@@ -19,7 +22,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 2, Purpose: ClosedPurposeForwarding, Deadline: now.Add(30 * time.Second)}
-	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}
@@ -88,7 +91,7 @@ func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
 	}
 	allowed := ClosedOpen{NextNodeID: [32]byte{11}, NextDutyGeneration: 12, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
-	channel, err := NewClosedForwardingChannel(&lease,
+	channel, err := newForwardingTestChannel(&lease,
 		func(open ClosedOpen) error {
 			if open != allowed {
 				return errUnexpectedForwardOpen
@@ -138,7 +141,7 @@ func TestClosedForwardingChannelBoundsOnePrefixQueueBeforeDutyQueue(t *testing.T
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{21}, NextDutyGeneration: 22, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}
@@ -185,7 +188,7 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 	}
 	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
 	allowed := ClosedOpen{NextNodeID: [32]byte{31}, NextDutyGeneration: 32, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
 			return errUnexpectedForwardOpen
 		}
@@ -233,6 +236,98 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 	}
 	if event, available := channel.Next(); !available || event.Kind != closedFrameClose || event.Lane != 1 || len(event.Bytes) != 1 || event.Bytes[0] != 5 {
 		t.Fatalf("scheduled close = %+v / %t", event, available)
+	}
+}
+
+func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	allowed := ClosedOpen{NextNodeID: [32]byte{41}, NextDutyGeneration: 42, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
+		if open != allowed {
+			return errUnexpectedForwardOpen
+		}
+		return nil
+	}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer channel.Cancel()
+	open, err := EncodeClosedOpen(allowed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: open}); err != nil {
+			t.Fatalf("open lane %d: %v", lane, err)
+		}
+		event, available := channel.Next()
+		if !available || event.Kind != closedFrameOpen || event.Lane != lane {
+			t.Fatalf("open schedule for lane %d = %+v / %t", lane, event, available)
+		}
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 2*closedForwardChildren + 1, Body: open}); err == nil {
+		t.Fatal("accepted a 257th forwarding lane")
+	}
+	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: lane, Body: []byte{byte(lane)}}); err != nil {
+			t.Fatalf("queue lane %d: %v", lane, err)
+		}
+	}
+	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+		event, available := channel.Next()
+		if !available || event.Kind != closedFrameBytes || event.Lane != lane || len(event.Bytes) != 1 || event.Bytes[0] != byte(lane) {
+			t.Fatalf("data schedule for lane %d = %+v / %t", lane, event, available)
+		}
+	}
+}
+
+func TestClosedForwardingChannelRefillDebitsOldReserveAndRetainsHostRelease(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), hello: ClosedHello{ChannelNonce: [32]byte{9}}, exporter: [32]byte{8}, duty: reservation}
+	called, released := 0, 0
+	channel, err := NewReplenishableClosedForwardingChannel(&lease, func(ClosedOpen) error { return nil }, func(input ClosedAdmissionVerification) (func() error, error) {
+		called++
+		if input.Class != 2 || input.Deadline != now.Add(time.Minute) || input.Hello.ChannelNonce != [32]byte{9} || input.Exporter != [32]byte{8} {
+			t.Fatalf("refill binding differs: %+v", input)
+		}
+		return func() error { released++; return nil }, nil
+	}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialLimit := channel.byteLimit
+	admit := ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{2}, bytes.Repeat([]byte{7}, 354)...)}
+	if _, err := channel.Accept(admit); err != nil {
+		t.Fatal(err)
+	}
+	if called != 1 || channel.byteLimit-channel.usedBytes != 32<<20 || channel.byteLimit <= initialLimit {
+		t.Fatalf("refill did not set one exact remaining reserve: called=%d limit=%d used=%d", called, channel.byteLimit, channel.usedBytes)
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Lane: 1, Body: admit.Body}); err == nil {
+		t.Fatal("child lane replenishment was accepted")
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameAdmit, Body: append([]byte{1}, bytes.Repeat([]byte{7}, 354)...)}); err == nil {
+		t.Fatal("non-forward token replenished parent")
+	}
+	if err := channel.Cancel(); err != nil || released != 1 {
+		t.Fatalf("parent release = %v / %d", err, released)
 	}
 }
 

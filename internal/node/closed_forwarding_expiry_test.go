@@ -108,7 +108,7 @@ func TestClosedForwardingExpiredParentCannotRetireSharedCarrier(t *testing.T) {
 			if err := channels[1].AccountOutput(frame); err != nil {
 				t.Fatal(err)
 			}
-			channels[1].ReleaseReverse(1, uint64(16+len(frame.Body)))
+			channels[1].ReleaseReverse(frame)
 		})
 	}
 }

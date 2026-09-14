@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -24,8 +25,9 @@ func TestNodePlanConnectsClosedForwardingToStateOwnedRuntime(t *testing.T) {
 		t.Fatal("forwarding did not retain exact pinned closed State")
 	}
 	local := runtime.node.ClosedForwarding
-	if local.Root != plan.ClosedForwarding.Root || local.ConnectionLimit != 2 ||
-		local.DrainTimeout != 2*time.Second || local.Certificate.PrivateKey == nil ||
+	if local.Root != plan.ClosedForwarding.Root || local.HostingRoot != plan.ClosedForwarding.HostingRoot ||
+		local.AdmissionTraffic != plan.ClosedForwarding.AdmissionTraffic || local.TerminationTraffic != plan.ClosedForwarding.TerminationTraffic ||
+		local.ConnectionLimit != 2 || local.DrainTimeout != 2*time.Second || local.Certificate.PrivateKey == nil ||
 		runtime.node.Probe.ListenAddress != "" || runtime.node.ClosedIssuer.Root != "" {
 		t.Fatal("forwarding reservation did not reach the Node owner unchanged")
 	}
@@ -113,7 +115,7 @@ func forwardingNodePlan(t *testing.T) nodePlan {
 			{Address: "192.0.2.11:48011", ServerName: "b.test", Identity: strings.Repeat("16", 32), Family: "b", EndpointHandle: "b", RootCA: rootB, LeafKeyDigest: strings.Repeat("17", 32)},
 		},
 		ClosedProfileAuthority: strings.Repeat("12", 32),
-		ClosedForwarding:       &closedForwardingPlan{Root: t.TempDir(), ConnectionLimit: 2, DrainTimeoutMS: 2000},
+		ClosedForwarding:       &closedForwardingPlan{Root: t.TempDir(), ConnectionLimit: 2, DrainTimeoutMS: 2000, HostingRoot: t.TempDir(), AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}},
 	}
 }
 func writeForwardingNodePlan(t *testing.T, plan nodePlan) string {

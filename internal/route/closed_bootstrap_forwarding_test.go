@@ -47,13 +47,13 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: 4, Lane: 1, Body: open}); err != nil {
 		t.Fatal(err)
 	}
-	if governor.queued == 0 || limits.queued == 0 {
+	if governor.queued == 0 || channel.duty.controlQueued == 0 {
 		t.Fatal("OPEN control queue is unaccounted")
 	}
 	if event, ok := channel.Next(); !ok || event.Restriction != ClosedChildIssuerBootstrap {
 		t.Fatal("OPEN missing")
 	}
-	if governor.queued != 0 || limits.queued != 0 {
+	if governor.queued != 0 || channel.duty.controlQueued != 0 {
 		t.Fatal("consumed OPEN retained queue")
 	}
 	frame := ClosedLaneFrame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{1}, 16<<10)}
@@ -63,7 +63,7 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 	if err := channel.AccountOutput(frame); err != nil {
 		t.Fatal(err)
 	}
-	channel.ReleaseReverse(1, uint64(16+len(frame.Body)))
+	channel.ReleaseReverse(frame)
 	credit := ClosedLaneFrame{Kind: 7, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, uint32(len(frame.Body)))}
 	if _, err := channel.Accept(credit); err != nil {
 		t.Fatal(err)
