@@ -55,8 +55,7 @@ func newPrivateRecipientNetworkFixture(t *testing.T, carrier route.CarrierProfil
 
 func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.CarrierProfile, purpose route.ClosedPurpose, class uint8, startReceiver func(Config) (func() error, error), extraClasses ...uint8) *resolutionNetworkFixture {
 	t.Helper()
-	now := time.Now().UTC().Truncate(time.Second)
-	until := now.Truncate(time.Hour).Add(time.Hour)
+	now, until := privateRecipientFixtureStart(t)
 	serverCert, serverKey := rendezvousCertificate(t, 251, "resolution")
 	clientCert, clientKey := rendezvousCertificate(t, 252, "resolution-peer")
 	authorityPublic, authority, err := ed25519.GenerateKey(rand.Reader)
