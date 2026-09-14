@@ -1,31 +1,23 @@
+//go:build linux
+
 package node
 
 import (
-	"context"
-	"errors"
+	"path/filepath"
+	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// testClosedForwardingHost supplies the bounded local provider owner needed by
-// listener fixtures. Production profiles must instead open an initialized
-// provider-period ledger from HostingRoot.
-type testClosedForwardingHost struct{}
-
-type testClosedForwardingReservation struct{}
-
-func (testClosedForwardingHost) Observe(context.Context) (resource.HostingObservation, error) {
-	return resource.HostingObservation{}, nil
-}
-
-func (testClosedForwardingHost) Reserve(_ context.Context, work, termination resource.HostingTraffic, end time.Time) (closedForwardingHostReservation, error) {
-	if work.Tx == 0 && work.Rx == 0 || termination.Tx == 0 && termination.Rx == 0 || end.IsZero() {
-		return nil, errors.New("test forwarding host reservation is invalid")
+func closedForwardingHostingRoot(t *testing.T) string {
+	t.Helper()
+	now := time.Now().UTC().Truncate(time.Second)
+	root := filepath.Join(t.TempDir(), "hosting")
+	policy := resource.HostingPolicy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: 1,
+		Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20}
+	if err := resource.InitializeHosting(root, policy); err != nil {
+		t.Fatal(err)
 	}
-	return testClosedForwardingReservation{}, nil
+	return root
 }
-
-func (testClosedForwardingHost) Close() error { return nil }
-
-func (testClosedForwardingReservation) Release(context.Context) error { return nil }

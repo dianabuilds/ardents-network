@@ -124,7 +124,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 			if err := os.MkdirAll(root, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, host: testClosedForwardingHost{}}
+			config.ClosedForwarding = ClosedForwardingProfile{Root: root, Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second, AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}, HostingRoot: closedForwardingHostingRoot(t)}
 			server, err = startClosedForwarding(config, snapshot)
 		}
 		if err != nil {
