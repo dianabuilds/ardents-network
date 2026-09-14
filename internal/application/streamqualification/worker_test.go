@@ -16,7 +16,11 @@ func TestSenderUsesOnlyEndpointOpenedCreditedStreams(t *testing.T) {
 	go func() {
 		done <- RunWorker(ctx, worker, Init{Role: ReaderRole, Profile: ClientToPublisher, Nonce: [32]byte{1}, Seed: [32]byte{2}})
 	}()
-	for index := uint32(0); index < 16; index++ {
+	schedule, err := ClientToPublisher.Definition(ReaderRole)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index := uint32(0); index < uint32(schedule.OpenConnections); index++ {
 		id := 1 + 2*index
 		writeFrame(t, endpoint, workerFrame{kind: frameOpen, id: id})
 		var credit [4]byte

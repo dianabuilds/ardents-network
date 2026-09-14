@@ -35,6 +35,9 @@ func main() {
 		fail(err)
 	}
 	checks := selectChecks(paths)
+	if len(checks) == 0 {
+		fail(errors.New("pull-request diff has no selected quality owner"))
+	}
 	fmt.Printf("pr-check-selection base=%s head=%s\n", *base, *head)
 	for _, path := range paths {
 		fmt.Printf("changed %s\n", path)

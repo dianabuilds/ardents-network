@@ -72,7 +72,7 @@ func RunWorker(ctx context.Context, attachment io.ReadWriter, init Init) error {
 			if err := acceptWorkerFrame(attachment, streams, &order, &lastID, init, schedule, sender, input.frame); err != nil {
 				return err
 			}
-			if started.IsZero() && len(order) >= int(schedule.ActiveConnections) {
+			if started.IsZero() && qualificationWorkloadReady(streams, order, schedule) {
 				started = time.Now()
 			}
 		case now := <-ticker.C:
@@ -90,6 +90,19 @@ func RunWorker(ctx context.Context, attachment io.ReadWriter, init Init) error {
 			}
 		}
 	}
+}
+
+func qualificationWorkloadReady(streams map[uint32]*workerStream, order []uint32, schedule Schedule) bool {
+	if len(order) != int(schedule.OpenConnections) {
+		return false
+	}
+	for index := 0; index < int(schedule.ActiveConnections); index++ {
+		stream := streams[order[index]]
+		if stream == nil || !stream.opened || stream.sendCredit == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func acceptWorkerFrame(attachment io.Writer, streams map[uint32]*workerStream, order *[]uint32, lastID *uint32, init Init, schedule Schedule, sender bool, frame workerFrame) error {
