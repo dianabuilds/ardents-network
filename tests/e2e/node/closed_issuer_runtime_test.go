@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -72,6 +73,10 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	if ready.Epoch != 1 || ready.AssignmentDigest == [32]byte{} {
 		t.Fatalf("closed issuer has no accepted duty binding: %+v", ready)
 	}
+	forwardingHostingRoot := ""
+	if runtime.GOOS == "linux" {
+		forwardingHostingRoot = initializeClosedForwardingHosting(t, node)
+	}
 	resolutionRoot := ""
 	live := []*nodeProcess{first}
 	for index, role := range closedTextTopologyRoles(nodeCount) {
@@ -115,6 +120,11 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 			forwardPlan["closed_data_join"] = reservation
 		default:
 			reservation["root"] = t.TempDir()
+			if forwardingHostingRoot != "" {
+				reservation["hosting_root"] = forwardingHostingRoot
+				reservation["admission_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
+				reservation["termination_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
+			}
 			forwardPlan["closed_forwarding"] = reservation
 		}
 		process := startNodeCommand(t, node, "node", "--config", writeJSON(t, fmt.Sprintf("closed-node-%d.json", index+1), forwardPlan))
@@ -147,6 +157,32 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	exchange(false)
 	terminateLiveClosedIssuer(t, restarted)
 
+}
+
+// initializeClosedForwardingHosting uses the public one-time command so every
+// simulated forwarding Node opens the same host-period owner it would use in a
+// real co-resident deployment. The fixture policy exists only for this E2E
+// process topology; it does not represent a provider tariff or qualification.
+func initializeClosedForwardingHosting(t *testing.T, node string) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "hosting")
+	now := time.Now().UTC().Truncate(time.Second)
+	plan := map[string]any{
+		"schema": "ardents-hosting-initialization-v1",
+		"root":   root,
+		"policy": map[string]any{
+			"provider":            "e2e fixture",
+			"start":               now.Add(-time.Hour).Format(time.RFC3339),
+			"end":                 now.Add(24 * time.Hour).Format(time.RFC3339),
+			"unit":                "GiB",
+			"quantity":            1,
+			"directions":          "tx+rx",
+			"interfaces":          []string{"lo"},
+			"low_watermark_bytes": 1 << 20,
+		},
+	}
+	runProvisioningCommand(t, node, "hosting", "initialize", "--config", writeJSON(t, "forwarding-hosting.json", plan))
+	return root
 }
 
 func closedIssuerListenCredential(t *testing.T, key ed25519.PrivateKey, now time.Time) (string, string) {
