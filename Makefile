@@ -71,7 +71,7 @@ heapdump-role-map:
 	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpRoleMapObservation$$' -count=1 -timeout=5m
 
 e2e:
-	go test $(PROCESS_PACKAGES) -shuffle=on -count=1
+	go test -p 1 $(PROCESS_PACKAGES) -shuffle=on -count=1
 
 package-e2e:
 	sudo env "PATH=$$PATH" "GOTOOLCHAIN=$(GOTOOLCHAIN)" "GOENV=$(GOENV)" "GOFLAGS=$(GOFLAGS)" "GOCACHE=$(GOCACHE)" "GOMODCACHE=$(GOMODCACHE)" go test -tags packagee2e ./tests/e2e/endpoint -run '^TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes$$' -shuffle=on -count=1
