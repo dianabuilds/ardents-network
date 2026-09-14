@@ -125,10 +125,13 @@ No favorable direction, quiet interval or successful retry offsets a failure.
 
 The resource owner configures actual provider period, byte units, counted
 directions and allowance locally. Reserve live admitted work plus termination
-capacity. At the low watermark stop new work; drain only within existing
-deadlines/reserves and explicitly close before required protection is lost.
-Restart does not reset period accounting. Unsolicited incoming traffic and
-other host processes can affect an invoice outside Ardents's control.
+capacity. Under [ADR-0085](../adr/0085-bound-forwarding-replenishment.md),
+before spending a forwarding replenishment token it reserves the added parent
+allowance and any termination capacity not already held; a missing reservation
+refuses the refill. At the low watermark stop new work; drain only within
+existing deadlines/reserves and explicitly close before required protection is
+lost. Restart does not reset period accounting. Unsolicited incoming traffic
+and other host processes can affect an invoice outside Ardents's control.
 
 ## Before-task evidence versus implementation evidence
 

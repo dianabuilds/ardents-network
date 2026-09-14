@@ -259,10 +259,13 @@ acceptance is confined to the exact token window and receiver duty.
 | 3 Publication | One Introduction registration for at most 600 seconds and 1 MiB of capsule/control traffic | One slot, at most 16 pending capsules, delivery rate at most 4/s |
 
 These are work maxima, not bytes the implementation should generate.
-A fresh class-2 token can replenish the same live lane's byte reserve before
-exhaustion, within its original deadline and every aggregate parent/host limit.
-It cannot resurrect a closed lane, extend its time or change its peer.
-Only actual work can request replenishment.
+Under [ADR-0085](../adr/0085-bound-forwarding-replenishment.md), a fresh
+class-2 token can replenish only the already admitted forwarding parent on
+lane zero before exhaustion, within its original deadline and every aggregate
+parent/host limit. It restores that parent's *remaining* reserve to exactly
+32 MiB; it does not accumulate a second allowance, refund earlier debits,
+resurrect a closed lane, extend time or change its peer. Only actual work can
+request replenishment.
 
 The token's hourly window bounds redemption, not an extension of a live lease.
 At successful redemption fix the lease end to the earliest of admission plus

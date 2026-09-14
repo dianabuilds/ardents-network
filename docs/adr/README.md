@@ -75,6 +75,7 @@ Current decisions:
 - [0081 — Select the closed protected text-Service contract](0081-select-closed-protected-service-contract.md)
 - [0082 — Bind issuer-bootstrap restriction to each Node child](0082-bind-bootstrap-restriction-to-node-child.md)
 - [0083 — Activate one data lane after an authenticated Rendezvous pair](0083-activate-joined-rendezvous-data-lane.md)
+- [0084 — Bound forwarding replenishment to the admitted parent channel](0085-bound-forwarding-replenishment.md)
 
 Completed retirement decisions:
 
