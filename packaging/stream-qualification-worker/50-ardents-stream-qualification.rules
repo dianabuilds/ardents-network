@@ -1,0 +1,17 @@
+// Installed by the verified qualification artifact, owned by root and mode 0644.
+// The Endpoint account may only stop an exact socket-activated stream worker.
+polkit.addRule(function(action, subject) {
+    if (action.id !== "org.freedesktop.systemd1.manage-units" ||
+        subject.user !== "ardents-endpoint") {
+        return polkit.Result.NOT_HANDLED;
+    }
+    var unit = action.lookup("unit");
+    var match = typeof unit === "string" &&
+        /^ardents-stream-qualification-(?:reader|publisher)@(0|[1-9][0-9]{0,9})-([1-9][0-9]{0,9})-([1-9][0-9]{0,9})\.service$/.exec(unit);
+    if (action.lookup("verb") === "stop" && match && match[0] === unit &&
+        Number(match[1]) <= 4294967295 && Number(match[2]) <= 4294967295 &&
+        Number(match[3]) <= 4294967295) {
+        return polkit.Result.YES;
+    }
+    return polkit.Result.NO;
+});

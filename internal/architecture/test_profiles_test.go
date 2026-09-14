@@ -46,6 +46,14 @@ func TestEndToEndPackageProfileMembershipIsComplete(t *testing.T) {
 	}
 }
 
+func TestProcessProfileSerializesPackagesSharingLoopbackResources(t *testing.T) {
+	root := repositoryRoot(t)
+	makefile := string(readProjectFile(t, root, "Makefile"))
+	if !strings.Contains(makefile, "e2e:\n\tgo test -p 1 $(PROCESS_PACKAGES) -shuffle=on -count=1") {
+		t.Fatal("process profile does not serialize packages that allocate loopback listener addresses")
+	}
+}
+
 func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	root := repositoryRoot(t)
 	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...")
