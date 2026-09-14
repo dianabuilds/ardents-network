@@ -147,22 +147,28 @@ func sendScheduledBytes(attachment io.Writer, streams map[uint32]*workerStream, 
 		*cursor = 0
 	}
 	budget := int(schedule.AggregateBits / 8 / uint32(time.Second/scheduleTick))
-	for checked := 0; checked < active && budget > 0; checked++ {
-		id := order[*cursor]
-		*cursor = (*cursor + 1) % active
-		stream := streams[id]
+	share, remainder := budget/active, budget%active
+	for index := 0; index < active; index++ {
+		stream := streams[order[index]]
 		if stream == nil || stream.sentEOF || stream.sendCredit == 0 {
 			continue
 		}
-		size := min(frameLimit, budget, int(stream.sendCredit))
+		size := share
+		if (index-*cursor+active)%active < remainder {
+			size++
+		}
+		size = min(frameLimit, size, int(stream.sendCredit))
+		if size == 0 {
+			continue
+		}
 		body := scheduledBytes(seed, stream.id, stream.offset, size)
 		if err := writeWorkerFrame(attachment, workerFrame{kind: frameBytes, id: stream.id, body: body}); err != nil {
 			return err
 		}
 		stream.offset += uint64(size)
 		stream.sendCredit -= uint32(size)
-		budget -= size
 	}
+	*cursor = (*cursor + remainder) % active
 	return nil
 }
 func closeScheduledStreams(attachment io.Writer, streams map[uint32]*workerStream, order []uint32, active uint16) error {

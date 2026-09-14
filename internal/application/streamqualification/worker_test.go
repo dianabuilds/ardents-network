@@ -82,7 +82,7 @@ func TestScheduleGivesEveryActiveStreamUsefulBytes(t *testing.T) {
 		}
 		var output bytes.Buffer
 		cursor := 0
-		for tick := 0; tick < 50; tick++ {
+		for tick := 0; tick < 400; tick++ {
 			for _, stream := range streams {
 				stream.sendCredit = frameCreditWindow
 			}
@@ -91,9 +91,13 @@ func TestScheduleGivesEveryActiveStreamUsefulBytes(t *testing.T) {
 			}
 			output.Reset()
 		}
+		elapsed := 400 * scheduleTick
 		for index, id := range order {
-			if index < int(schedule.ActiveConnections) && streams[id].offset == 0 {
-				t.Fatalf("role %d left active stream %d without useful bytes", role, id)
+			if index < int(schedule.ActiveConnections) {
+				bitrate := uint64(streams[id].offset) * 8 * uint64(time.Second) / uint64(elapsed)
+				if bitrate < 500_000 {
+					t.Fatalf("role %d active stream %d useful bitrate = %d bit/s", role, id, bitrate)
+				}
 			}
 			if index >= int(schedule.ActiveConnections) && streams[id].offset != 0 {
 				t.Fatalf("role %d used canary stream %d as workload", role, id)
