@@ -79,6 +79,14 @@ func startTextRoleNetworkWithJoin(t *testing.T, carrier route.CarrierProfile, re
 func startTextRoleNetworkWithRunner(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
 	t.Helper()
 	waitTextNetworkFixtureStart(t)
+	return startTextRoleNetworkWithReservedFixtureWindow(t, carrier, resolution, publisher, join, runner, configure...)
+}
+
+// startTextRoleNetworkWithReservedFixtureWindow is for a child test process
+// whose parent selected the same two-minute Permission window before imposing
+// its own timeout. It must only run the bounded carrier episode.
+func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
+	t.Helper()
 	endpoint, owner, source := textSourceContextFixture(t)
 	count := 5
 	if resolution {
