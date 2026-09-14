@@ -23,6 +23,38 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+// A complete carrier episode may create sixteen Nodes (each with a five-second
+// readiness bound) and then use the twenty-second joined-Service deadline.
+// Keep that bounded episode inside one Permission hour instead of creating a
+// valid request that expires while its matching Custody response is imported.
+const textNetworkFixtureMinimumWindow = 2 * time.Minute
+
+func textNetworkFixtureWindow(now time.Time) (time.Time, time.Time) {
+	start := now
+	if now.Truncate(time.Hour).Add(time.Hour).Sub(now) <= textNetworkFixtureMinimumWindow {
+		start = now.Truncate(time.Hour).Add(time.Hour)
+	}
+	return start, start.Truncate(time.Hour).Add(time.Hour)
+}
+
+func waitTextNetworkFixtureStart(t *testing.T) {
+	t.Helper()
+	for {
+		now := time.Now().UTC()
+		start, _ := textNetworkFixtureWindow(now)
+		if !start.After(now) {
+			return
+		}
+		timer := time.NewTimer(time.Until(start))
+		select {
+		case <-t.Context().Done():
+			timer.Stop()
+			t.Fatal("text network fixture window canceled")
+		case <-timer.C:
+		}
+	}
+}
+
 // The qualified-worker and accepted-State seams are explicit fixtures. The
 // five Node runtimes, Custody allocation, issuer keys, Endpoint stock/journal,
 // source selection, forwarding and nested role TLS are production consumers.
@@ -46,6 +78,7 @@ func startTextRoleNetworkWithJoin(t *testing.T, carrier route.CarrierProfile, re
 // The optional runner isolates test observers; ordinary callers retain Node.Run.
 func startTextRoleNetworkWithRunner(t *testing.T, carrier route.CarrierProfile, resolution, publisher, join bool, runner func(*testing.T, int, node.Config) func() error, configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
 	t.Helper()
+	waitTextNetworkFixtureStart(t)
 	endpoint, owner, source := textSourceContextFixture(t)
 	count := 5
 	if resolution {

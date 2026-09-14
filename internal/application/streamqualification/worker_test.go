@@ -1,6 +1,7 @@
 package streamqualification
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"net"
@@ -63,5 +64,58 @@ func writeFrame(t *testing.T, writer net.Conn, frame workerFrame) {
 	_ = writer.SetWriteDeadline(time.Now().Add(time.Second))
 	if err := writeWorkerFrame(writer, frame); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestScheduleGivesEveryActiveStreamUsefulBytes(t *testing.T) {
+	for _, role := range []Role{ReaderRole, PublisherRole} {
+		schedule, err := ClientToPublisher.Definition(role)
+		if err != nil {
+			t.Fatal(err)
+		}
+		streams := make(map[uint32]*workerStream, schedule.OpenConnections)
+		order := make([]uint32, 0, schedule.OpenConnections)
+		for index := uint16(0); index < schedule.OpenConnections; index++ {
+			id := uint32(index)*2 + 1
+			streams[id] = &workerStream{id: id}
+			order = append(order, id)
+		}
+		var output bytes.Buffer
+		cursor := 0
+		for tick := 0; tick < 50; tick++ {
+			for _, stream := range streams {
+				stream.sendCredit = frameCreditWindow
+			}
+			if err := sendScheduledBytes(&output, streams, order, &cursor, [32]byte{2}, schedule); err != nil {
+				t.Fatal(err)
+			}
+			output.Reset()
+		}
+		for index, id := range order {
+			if index < int(schedule.ActiveConnections) && streams[id].offset == 0 {
+				t.Fatalf("role %d left active stream %d without useful bytes", role, id)
+			}
+			if index >= int(schedule.ActiveConnections) && streams[id].offset != 0 {
+				t.Fatalf("role %d used canary stream %d as workload", role, id)
+			}
+		}
+	}
+}
+
+func TestScheduledStreamAcceptsReadFragmentation(t *testing.T) {
+	init := Init{Role: ReaderRole, Profile: PublisherToClient, Nonce: [32]byte{1}, Seed: [32]byte{2}}
+	schedule, err := init.Profile.Definition(init.Role)
+	if err != nil {
+		t.Fatal(err)
+	}
+	streams := map[uint32]*workerStream{1: {id: 1, receiveCredit: frameCreditWindow}}
+	order := []uint32{1}
+	lastID := uint32(1)
+	var output bytes.Buffer
+	body := scheduledBytes(init.Seed, 1, 0, 100)
+	for _, part := range [][]byte{body[:13], body[13:]} {
+		if err := acceptWorkerFrame(&output, streams, &order, &lastID, init, schedule, false, workerFrame{kind: frameBytes, id: 1, body: part}); err != nil {
+			t.Fatalf("valid ordered bytes were rejected after %d bytes: %v", streams[1].offset, err)
+		}
 	}
 }

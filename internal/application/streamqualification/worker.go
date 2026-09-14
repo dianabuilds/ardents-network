@@ -56,6 +56,7 @@ func RunWorker(ctx context.Context, attachment io.ReadWriter, init Init) error {
 	var order []uint32
 	var lastID uint32
 	var started time.Time
+	var scheduleCursor int
 	sender := (init.Role == ReaderRole) == (init.Profile == ClientToPublisher)
 	for {
 		select {
@@ -84,7 +85,7 @@ func RunWorker(ctx context.Context, attachment io.ReadWriter, init Init) error {
 				}
 				continue
 			}
-			if err := sendScheduledBytes(attachment, streams, order, init.Seed, schedule); err != nil {
+			if err := sendScheduledBytes(attachment, streams, order, &scheduleCursor, init.Seed, schedule); err != nil {
 				return err
 			}
 		}
@@ -137,12 +138,18 @@ func acceptWorkerFrame(attachment io.Writer, streams map[uint32]*workerStream, o
 	return nil
 }
 
-func sendScheduledBytes(attachment io.Writer, streams map[uint32]*workerStream, order []uint32, seed [32]byte, schedule Schedule) error {
+func sendScheduledBytes(attachment io.Writer, streams map[uint32]*workerStream, order []uint32, cursor *int, seed [32]byte, schedule Schedule) error {
+	active := min(int(schedule.ActiveConnections), len(order))
+	if cursor == nil || active == 0 {
+		return errors.New("qualification worker schedule is unavailable")
+	}
+	if *cursor < 0 || *cursor >= active {
+		*cursor = 0
+	}
 	budget := int(schedule.AggregateBits / 8 / uint32(time.Second/scheduleTick))
-	for _, id := range order {
-		if budget == 0 {
-			break
-		}
+	for checked := 0; checked < active && budget > 0; checked++ {
+		id := order[*cursor]
+		*cursor = (*cursor + 1) % active
 		stream := streams[id]
 		if stream == nil || stream.sentEOF || stream.sendCredit == 0 {
 			continue
@@ -158,7 +165,6 @@ func sendScheduledBytes(attachment io.Writer, streams map[uint32]*workerStream, 
 	}
 	return nil
 }
-
 func closeScheduledStreams(attachment io.Writer, streams map[uint32]*workerStream, order []uint32, active uint16) error {
 	for index, id := range order {
 		if index >= int(active) {
@@ -178,17 +184,19 @@ func closeScheduledStreams(attachment io.Writer, streams map[uint32]*workerStrea
 
 func scheduledBytes(seed [32]byte, id uint32, offset uint64, size int) []byte {
 	body := make([]byte, size)
-	for start := 0; start < len(body); {
+	for written := 0; written < len(body); {
 		var input [44]byte
 		copy(input[:32], seed[:])
 		binary.BigEndian.PutUint32(input[32:36], id)
-		binary.BigEndian.PutUint64(input[36:44], offset+uint64(start))
+		binary.BigEndian.PutUint64(input[36:44], offset/sha256.Size)
 		digest := sha256.Sum256(input[:])
-		start += copy(body[start:], digest[:])
+		start := int(offset % sha256.Size)
+		copied := copy(body[written:], digest[start:])
+		written += copied
+		offset += uint64(copied)
 	}
 	return body
 }
-
 func matchesScheduledBytes(seed [32]byte, id uint32, offset uint64, body []byte) bool {
 	if len(body) == 0 || len(body) > frameLimit {
 		return false
