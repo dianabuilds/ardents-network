@@ -236,6 +236,57 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 	}
 }
 
+func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	allowed := ClosedOpen{NextNodeID: [32]byte{41}, NextDutyGeneration: 42, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	channel, err := NewClosedForwardingChannel(&lease, func(open ClosedOpen) error {
+		if open != allowed {
+			return errUnexpectedForwardOpen
+		}
+		return nil
+	}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer channel.Cancel()
+	open, err := EncodeClosedOpen(allowed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: open}); err != nil {
+			t.Fatalf("open lane %d: %v", lane, err)
+		}
+		event, available := channel.Next()
+		if !available || event.Kind != closedFrameOpen || event.Lane != lane {
+			t.Fatalf("open schedule for lane %d = %+v / %t", lane, event, available)
+		}
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 2*closedForwardChildren + 1, Body: open}); err == nil {
+		t.Fatal("accepted a 257th forwarding lane")
+	}
+	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: lane, Body: []byte{byte(lane)}}); err != nil {
+			t.Fatalf("queue lane %d: %v", lane, err)
+		}
+	}
+	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
+		event, available := channel.Next()
+		if !available || event.Kind != closedFrameBytes || event.Lane != lane || len(event.Bytes) != 1 || event.Bytes[0] != byte(lane) {
+			t.Fatalf("data schedule for lane %d = %+v / %t", lane, event, available)
+		}
+	}
+}
+
 var errUnexpectedForwardOpen = &unexpectedForwardOpen{}
 
 type unexpectedForwardOpen struct{}
