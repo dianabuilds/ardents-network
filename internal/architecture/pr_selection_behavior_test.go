@@ -155,14 +155,14 @@ func TestPRSelectionMapsQualificationFixturesToBoundedOwners(t *testing.T) {
 	run("git", "add", ".")
 	commit()
 	matrixPath := filepath.Join(fixture, "matrix.json")
-	run("go", "run", filepath.Join(root, "scripts", "select-pr-checks.go"), filepath.Join(root, "scripts", "select-pr-check-registry.go"), "--base", base, "--head", "HEAD", "--matrix", matrixPath)
+	powershellPath := filepath.Join(fixture, "powershell.txt")
+	run("go", "run", filepath.Join(root, "scripts", "select-pr-checks.go"), filepath.Join(root, "scripts", "select-pr-check-registry.go"), "--base", base, "--head", "HEAD", "--matrix", matrixPath, "--powershell", powershellPath)
 	body, err := os.ReadFile(matrixPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var matrix struct {
-		Include    []struct{ Package, Run string }
-		PowerShell bool
+		Include []struct{ Package, Run string }
 	}
 	if err := json.Unmarshal(body, &matrix); err != nil {
 		t.Fatal(err)
@@ -171,7 +171,11 @@ func TestPRSelectionMapsQualificationFixturesToBoundedOwners(t *testing.T) {
 	for _, selected := range matrix.Include {
 		joined += selected.Package + " " + selected.Run + "\n"
 	}
-	if !matrix.PowerShell {
+	powershellBody, err := os.ReadFile(powershellPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(powershellBody)) != "true" {
 		t.Error("qualification PowerShell change did not select parser gate")
 	}
 	for _, wanted := range []string{"TestQualificationEvidence", "TestFailedNET14VEvidence", "TestQualificationStream", "TestClosedHosting", "TestRepositoryArchitecture",

@@ -52,6 +52,7 @@ func main() {
 	base := flag.String("base", "origin/main", "base ref")
 	head := flag.String("head", "HEAD", "head ref")
 	matrixPath := flag.String("matrix", "", "write bounded GitHub job matrix")
+	powershellPath := flag.String("powershell", "", "write whether qualification PowerShell changed")
 	execute := flag.Bool("execute", false, "run affected checks")
 	flag.Parse()
 	checks, powershell, err := selectChecks(*base, *head)
@@ -62,7 +63,12 @@ func main() {
 		fmt.Printf("selected package=%s race=%t run=%q reason=%s\n", check.pkg, check.race, check.run, check.reason)
 	}
 	if *matrixPath != "" {
-		if err := writeMatrix(*matrixPath, checks, powershell); err != nil {
+		if err := writeMatrix(*matrixPath, checks); err != nil {
+			fail(err)
+		}
+	}
+	if *powershellPath != "" {
+		if err := os.WriteFile(*powershellPath, []byte(fmt.Sprintf("%t\n", powershell)), 0600); err != nil {
 			fail(err)
 		}
 	}
@@ -383,7 +389,7 @@ func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 	return declarations, race, nil
 }
 
-func writeMatrix(path string, checks []check, powershell bool) error {
+func writeMatrix(path string, checks []check) error {
 	type entry struct {
 		ID      int    `json:"id"`
 		Package string `json:"package"`
@@ -410,9 +416,8 @@ func writeMatrix(path string, checks []check, powershell bool) error {
 		return errors.New("affected test groups exceed GitHub matrix capacity")
 	}
 	body, err := json.Marshal(struct {
-		Include    []entry `json:"include"`
-		PowerShell bool    `json:"powershell"`
-	}{entries, powershell})
+		Include []entry `json:"include"`
+	}{entries})
 	if err != nil {
 		return err
 	}

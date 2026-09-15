@@ -37,7 +37,7 @@ jobs:
         env:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json"
+          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --powershell "$RUNNER_TEMP/powershell.txt"
           python3 - <<'PY'
           import json, os
           with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
@@ -45,7 +45,8 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("matrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
               output.write("count=" + str(len(matrix["include"])) + "\n")
-              output.write("powershell=" + str(matrix["powershell"]).lower() + "\n")
+              with open(os.environ["RUNNER_TEMP"] + "/powershell.txt") as marker:
+                  output.write("powershell=" + marker.read().strip() + "\n")
           PY
   qualification-scripts:
     needs: select
