@@ -114,6 +114,10 @@ For `net14-recovery`, the runner starts the manifest's fixed failure schedule
 after measured stream progress begins. Faults run in bounded transient units,
 may overlap, restore the exact declared netem class, and retain actual start and
 stop times. A missing, late or unclean recovery scheduler fails the attempt.
+If the workload fails after relays start, the runner captures their last sampled
+class counters and recovery journals before cleanup. The candidate verifier then
+requires a conservative eight-MiB absolute bound for every completed failure
+window; missing samples or an incomplete schedule remain a failed verdict.
 This runner records an installed normal/impaired/recovery attempt. A controlled
 network manifest and its separately isolated relay are still required to claim
 NET-14AD or NET-14V; the script never changes a production host interface or
@@ -136,7 +140,7 @@ Example authority inventory (public fields only):
 }
 ```
 
-Run from Windows PowerShell with the two host addresses, private-key path,
+Run from PowerShell 7 (`pwsh`) with the two host addresses, private-key path,
 candidate binaries, both plan paths, authority inventory and a fresh external
 evidence directory. The outer attempt is limited to 22 minutes. Any missing
 terminal record, failed service, incomplete cleanup, changed artifact, custody

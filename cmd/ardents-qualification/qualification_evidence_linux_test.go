@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,11 +24,12 @@ func TestQualificationNodeResultsRequireEveryBoundedRouteOwner(t *testing.T) {
 	inputs := qualificationNodeInputs(t, ids)
 	sources := qualificationSourceInputs(t)
 	inventory := strings.Repeat("ef", 32)
+	ownerSlices := qualificationOwnerSliceInputs()
 	owners := map[streamqualification.Role]ownerNetworkVerdict{
 		streamqualification.ReaderRole:    {Started: time.Unix(1000, 0).UTC(), Stopped: time.Unix(1597, 0).UTC(), P95RSSBytes: 64 << 20, MeanCPUPercent: 5},
 		streamqualification.PublisherRole: {Started: time.Unix(1000, 0).UTC(), Stopped: time.Unix(1597, 0).UTC(), P95RSSBytes: 128 << 20, MeanCPUPercent: 10},
 	}
-	path := writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, Nodes: inputs, Sources: sources})
+	path := writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, OwnerSlices: ownerSlices, Nodes: inputs, Sources: sources})
 	verdict, criteria, err := readNodeResults(path, manifest, inventory, owners)
 	if err != nil || !streamqualification.CriteriaPassed(criteria) || len(verdict.Nodes) != 16 {
 		t.Fatalf("complete Node owner evidence refused: verdict=%+v criteria=%+v err=%v", verdict, criteria, err)
@@ -35,18 +37,18 @@ func TestQualificationNodeResultsRequireEveryBoundedRouteOwner(t *testing.T) {
 	if _, criteria, err := readNodeResults(path, manifest, strings.Repeat("de", 32), owners); err == nil || streamqualification.CriteriaPassed(criteria) {
 		t.Fatal("Node owner evidence accepted under a different inventory digest")
 	}
-	missingPath := writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, Nodes: inputs[:15], Sources: sources})
+	missingPath := writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, OwnerSlices: ownerSlices, Nodes: inputs[:15], Sources: sources})
 	if _, criteria, err := readNodeResults(missingPath, manifest, inventory, owners); err == nil || streamqualification.CriteriaPassed(criteria) {
 		t.Fatal("Node owner evidence accepted without the sixteenth owner")
 	}
-	missingSourcePath := writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, Nodes: inputs, Sources: sources[:1]})
+	missingSourcePath := writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, OwnerSlices: ownerSlices, Nodes: inputs, Sources: sources[:1]})
 	if _, criteria, err := readNodeResults(missingSourcePath, manifest, inventory, owners); err == nil || streamqualification.CriteriaPassed(criteria) {
 		t.Fatal("Node owner evidence accepted without both live State Sources")
 	}
 	for owner := 0; owner < 3; owner++ {
 		setQualificationNodeRSS(t, &inputs[owner], 160<<20)
 	}
-	path = writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, Nodes: inputs, Sources: sources})
+	path = writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, OwnerSlices: ownerSlices, Nodes: inputs, Sources: sources})
 	if _, criteria, err := readNodeResults(path, manifest, inventory, owners); err == nil || streamqualification.CriteriaPassed(criteria) {
 		t.Fatal("aggregate User owner RSS accepted above its whole-owner limit")
 	}
@@ -58,7 +60,7 @@ func TestQualificationNodeResultsRequireEveryBoundedRouteOwner(t *testing.T) {
 			inputs[owner].Samples[index].CPUUsageNSec = uint64(index) * 80_000_000
 		}
 	}
-	path = writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, Nodes: inputs, Sources: sources})
+	path = writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, OwnerSlices: ownerSlices, Nodes: inputs, Sources: sources})
 	if _, criteria, err := readNodeResults(path, manifest, inventory, owners); err == nil || streamqualification.CriteriaPassed(criteria) {
 		t.Fatal("aggregate Publisher owner CPU accepted above its whole-owner limit")
 	}
@@ -70,7 +72,7 @@ func TestQualificationNodeResultsRequireEveryBoundedRouteOwner(t *testing.T) {
 	for index := range inputs[0].Samples {
 		inputs[0].Samples[index].MemoryCurrent = 513 << 20
 	}
-	path = writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, Nodes: inputs, Sources: sources})
+	path = writeQualificationJSON(t, nodeResultsInput{InventorySHA256: inventory, OwnerSlices: ownerSlices, Nodes: inputs, Sources: sources})
 	if _, criteria, err := readNodeResults(path, manifest, inventory, owners); err == nil || streamqualification.CriteriaPassed(criteria) {
 		t.Fatal("over-budget User-side Node owner accepted")
 	}
@@ -139,6 +141,28 @@ func TestQualificationNET14VReusesPassedNormalEvidence(t *testing.T) {
 		t.Fatal("NET-14V accepted a redundant non-normal baseline")
 	}
 }
+func qualificationOwnerSliceInputs() []ownerSliceResultInput {
+	origin := time.Unix(1000, 0).UTC()
+	inputs := make([]ownerSliceResultInput, 0, 2)
+	for index, host := range []string{"reader", "publisher"} {
+		quota, cpuMax, memoryMax := "50%", "50000 100000", uint64(512<<20)
+		cpuStep := uint64(2_000_000)
+		if host == "publisher" {
+			quota, cpuMax, memoryMax, cpuStep = "100%", "100000 100000", uint64(1<<30), uint64(4_000_000)
+		}
+		input := ownerSliceResultInput{Host: host, Unit: qualificationOwnerSlice, CPUQuota: quota, CPUMax: cpuMax, MemoryMax: memoryMax,
+			Receipt: []string{"ActiveState=active", "ControlGroup=" + qualificationOwnerControlGroup, "CPU_MAX=" + cpuMax,
+				"MEMORY_MAX=" + strconv.FormatUint(memoryMax, 10), "IPAccounting=yes", "DropInPaths=/run/systemd/system.control/ardents-qualification-owner.slice.d/50-CPUQuota.conf"}}
+		for second := 0; second < 598; second++ {
+			input.Samples = append(input.Samples, nodeOwnerSampleInput{At: origin.Add(time.Duration(second) * time.Second),
+				MemoryCurrent: uint64(64+index*64) << 20, CPUUsageNSec: uint64(second) * cpuStep,
+				IPIngressBytes: uint64(second) * 10_000, IPEgressBytes: uint64(second) * 20_000})
+		}
+		inputs = append(inputs, input)
+	}
+	return inputs
+}
+
 func qualificationNodeInputs(t *testing.T, ids []string) []nodeResultInput {
 	t.Helper()
 	origin := time.Unix(1000, 0).UTC()
@@ -150,7 +174,7 @@ func qualificationNodeInputs(t *testing.T, ids []string) []nodeResultInput {
 		if index < 3 {
 			host = "reader"
 		}
-		input := nodeResultInput{ID: id, Host: host, PlanSHA256: fmt.Sprintf("%064x", index+1), InvocationID: fmt.Sprintf("%032x", index+1), BinarySHA256: strings.Repeat("ab", 32), ActiveState: "inactive", Result: "success"}
+		input := nodeResultInput{ID: id, Host: host, PlanSHA256: fmt.Sprintf("%064x", index+1), InvocationID: fmt.Sprintf("%032x", index+1), BinarySHA256: strings.Repeat("ab", 32), ActiveState: "inactive", Result: "success", Slice: qualificationOwnerSlice}
 		ready, _ := json.Marshal(node.Event{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "READY", At: origin})
 		input.Journal = append(input.Journal, string(ready))
 		for second := 0; second < 598; second++ {
@@ -174,7 +198,7 @@ func qualificationSourceInputs(t *testing.T) []nodeResultInput {
 	for index, host := range []string{"reader", "publisher"} {
 		input := nodeResultInput{ID: fmt.Sprintf("%064x", 17+index), Host: host, PlanSHA256: fmt.Sprintf("%064x", 17+index),
 			InvocationID: fmt.Sprintf("%032x", 17+index), BinarySHA256: strings.Repeat("ab", 32),
-			ActiveState: "inactive", Result: "success"}
+			ActiveState: "inactive", Result: "success", Slice: qualificationOwnerSlice}
 		ready, _ := json.Marshal(map[string]any{"schema": "ardents-source-event-v1", "kind": "source-ready"})
 		input.Journal = append(input.Journal, string(ready))
 		for second := 0; second < 598; second++ {

@@ -31,7 +31,12 @@ substitute for independent review.
   also proves that canonical command bytes are unchanged when the same owned
   source is represented as a Git repository or as a VCS-free extraction.
 - `make check` runs unit, process, race, command build, formatting,
-  Staticcheck, and vulnerability checks. It is the pre-integration gate.
+  Staticcheck, and vulnerability checks. It is the pre-integration gate. Pull
+  request CI uses `scripts/select-pr-checks.go` to run the changed Go owners,
+  their imported consumers, and explicitly registered non-Go fixture owners;
+  independent selected jobs all finish and report their failures. The exact
+  candidate must still pass `make check` before integration, and a push to
+  `main` repeats that complete gate.
 - Focused Linux race checks retain raw command, stdout, stderr, and exit status
   outside Git. They may compose existing owner tests for a bounded lifecycle
   fact, but do not turn that composition into an end-to-end qualification.

@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 param(
     [Parameter(Mandatory = $true)][string]$PublisherHost,
     [Parameter(Mandatory = $true)][string]$ReaderHost,
@@ -58,9 +59,49 @@ function Convert-Digest([object]$Value, [string]$Name) {
     Assert-Hex $hex $Name
     return $hex
 }
-function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label) {
-    & $Program @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+function Save-NativeFailure([string]$Label, [string]$Detail) {
+    if (-not $script:evidence -or -not (Test-Path -LiteralPath $script:evidence -PathType Container)) { return }
+    $safe = ($Label -replace '[^A-Za-z0-9._-]', '-').Trim('-')
+    if ($safe.Length -gt 80) { $safe = $safe.Substring(0, 80) }
+    Write-Utf8 (Join-Path $script:evidence "native-failure-$safe-$([Guid]::NewGuid().ToString('N')).txt") ($Detail + [Environment]::NewLine)
+}
+function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label, [int]$TimeoutSeconds = 180, [switch]$Interactive) {
+    $start = [Diagnostics.ProcessStartInfo]::new()
+    $start.FileName = $Program
+    $start.UseShellExecute = $false
+    $start.RedirectStandardOutput = -not $Interactive
+    $start.RedirectStandardError = -not $Interactive
+    foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $start
+    if (-not $process.Start()) { throw "$Label did not start." }
+    if (-not $Interactive) {
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+    }
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill($true)
+        $process.WaitForExit()
+        $detail = "$Label exceeded its $TimeoutSeconds-second local deadline."
+        if (-not $Interactive) {
+            $captured = $stdout.Result + $stderr.Result
+            if ($captured.Length -gt 65536) { $captured = $captured.Substring($captured.Length - 65536) }
+            if (-not [string]::IsNullOrWhiteSpace($captured)) { $detail += [Environment]::NewLine + $captured }
+        }
+        Save-NativeFailure $Label $detail
+        throw $detail
+    }
+    if ($Interactive) {
+        if ($process.ExitCode -ne 0) { throw "$Label failed with exit code $($process.ExitCode)." }
+        return @()
+    }
+    $output = @((($stdout.Result + $stderr.Result) -split "`r?`n") | Where-Object { $_ -ne '' })
+    if ($process.ExitCode -ne 0) {
+        $detail = "$Label failed with exit code $($process.ExitCode): $($output -join [Environment]::NewLine)"
+        Save-NativeFailure $Label $detail
+        throw $detail
+    }
+    return $output
 }
 
 Assert-Host $PublisherHost 'PublisherHost'
@@ -286,9 +327,7 @@ Write-Utf8 (Join-Path $evidence 'input-digests.json') (([ordered]@{ Schema='arde
 
 function Remote([string]$HostName) { return "$User@$HostName" }
 function Invoke-SSH([string]$HostName, [string]$Command, [string]$Label) {
-    $output = & $ssh @sshOptions -n (Remote $HostName) $Command 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed: $($output -join [Environment]::NewLine)" }
-    return @($output)
+    return @(Invoke-Native $ssh ($sshOptions + @('-n', (Remote $HostName), $Command)) $Label)
 }
 function Send-File([string]$Source, [string]$HostName, [string]$Destination, [string]$Label) {
     Invoke-Native $scp ($scpOptions + @($Source, "$(Remote $HostName):$Destination")) $Label
@@ -353,6 +392,47 @@ function Relay-Host([string]$Role) {
     if ($Role -ceq 'publisher') { return $PublisherHost }
     throw 'Verified relay has an unknown host role.'
 }
+function Configure-OwnerSlices {
+    foreach ($role in @('reader', 'publisher')) {
+        $hostName = Relay-Host $role
+        $quota = if ($role -ceq 'reader') { '50%' } else { '100%' }
+        $cpuMax = if ($role -ceq 'reader') { '50000 100000' } else { '100000 100000' }
+        $memoryMax = if ($role -ceq 'reader') { [uint64](512MB) } else { [uint64](1GB) }
+        $unit = 'ardents-qualification-owner.slice'
+        $samplerUnit = "ardents-qualification-owner-sample-$attempt-$role"
+        $command = "systemctl stop '$unit' 2>/dev/null || :; systemctl revert '$unit' 2>/dev/null || :; systemctl set-property --runtime '$unit' 'CPUQuota=$quota' 'MemoryMax=$memoryMax' IPAccounting=yes; group=`$(systemctl show '$unit' -p ControlGroup --value); systemctl show '$unit' -p ActiveState -p ControlGroup -p CPUQuotaPerSecUSec -p MemoryMax -p IPAccounting -p DropInPaths; printf 'CPU_MAX='; cat `"/sys/fs/cgroup`$group/cpu.max`"; printf 'MEMORY_MAX='; cat `"/sys/fs/cgroup`$group/memory.max`""
+        $owner = [ordered]@{ Host=$role; Machine=$hostName; Unit=$unit; SamplerUnit=$samplerUnit; CPUQuota=$quota; CPUMax=$cpuMax; MemoryMax=$memoryMax; Receipt=@() }
+        $script:ownerSlices += $owner
+        $receipt = @((Invoke-SSH $hostName $command "configure $role whole-owner slice"))
+        $owner.Receipt = @($receipt)
+        $values = @{}
+        foreach ($line in $receipt) { if ($line -match '^([^=]+)=(.*)$') { $values[$Matches[1]] = $Matches[2] } }
+        if ([string]$values.ActiveState -cne 'active' -or [string]$values.ControlGroup -cne '/ardents.slice/ardents-qualification.slice/ardents-qualification-owner.slice' -or
+            [string]$values.CPU_MAX -cne $cpuMax -or [string]$values.MEMORY_MAX -cne [string]$memoryMax -or
+            [string]$values.IPAccounting -cne 'yes' -or [string]::IsNullOrWhiteSpace([string]$values.DropInPaths)) {
+            throw "$role whole-owner slice does not expose the fixed effective limits."
+        }
+        [void](Invoke-SSH $hostName "chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$samplerUnit' --property Type=exec --property NoNewPrivileges=yes --property MemoryMax=32M --property TasksMax=16 --property RuntimeMaxSec=22min python3 '$remoteRoot/node_owner_samples.py' '$unit'" "start $role whole-owner sampler")
+    }
+}
+function Stop-OwnerSlices {
+    $records = @()
+    foreach ($owner in $ownerSlices) {
+        [void](Invoke-SSH ([string]$owner.Machine) "timeout 5s systemctl stop '$($owner.SamplerUnit)'" "stop $($owner.Host) whole-owner sampler")
+        $sampleLines = @(Invoke-SSH ([string]$owner.Machine) "journalctl -u '$($owner.SamplerUnit)' --no-pager -o cat" "collect $($owner.Host) whole-owner samples")
+        $samples = @()
+        foreach ($line in $sampleLines) {
+            try {
+                $sample = $line | ConvertFrom-Json -ErrorAction Stop
+                if ($sample.PSObject.Properties['At'] -and $sample.PSObject.Properties['MemoryCurrent'] -and
+                    $sample.PSObject.Properties['CPUUsageNSec'] -and $sample.PSObject.Properties['IPIngressBytes'] -and
+                    $sample.PSObject.Properties['IPEgressBytes']) { $samples += $sample }
+            } catch {}
+        }
+        $records += [ordered]@{ Host=[string]$owner.Host; Unit=[string]$owner.Unit; CPUQuota=[string]$owner.CPUQuota; CPUMax=[string]$owner.CPUMax; MemoryMax=[uint64]$owner.MemoryMax; Receipt=@($owner.Receipt); Samples=@($samples) }
+    }
+    $script:ownerSliceRecords = @($records)
+}
 function Start-ClockObservers {
     $declared = @{
         reader = [string]$readerPlanObject.Participants[0].Participant.Network.ClockObservationFile
@@ -399,7 +479,7 @@ function Start-StateSources {
         Send-File ([string]$item.Plan) $hostName $planRemote "upload State Source $index plan"
         $unit = "ardents-qualification-source-$attempt-$index"
         $samplerUnit = "ardents-qualification-source-sample-$attempt-$index"
-        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --property Type=exec --property NoNewPrivileges=yes --property MemoryMax=128M --property 'CPUQuota=25%' --property IPAccounting=yes --property TasksMax=64 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' source --config '$planRemote'"
+        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property NoNewPrivileges=yes --property MemoryMax=128M --property IPAccounting=yes --property TasksMax=64 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' source --config '$planRemote'"
         [void](Invoke-SSH $hostName $command "start State Source $index")
         $invocation = ''
         for ($poll = 0; $poll -lt 50; $poll++) {
@@ -434,19 +514,19 @@ function Stop-StateSources {
             if ($samplerState -eq 'inactive' -or $samplerState -eq 'failed') { break }
             Start-Sleep -Milliseconds 250
         }
-        $statusLines = @(Invoke-SSH ([string]$started.Machine) "systemctl show '$($started.Unit)' -p ActiveState -p Result -p ExecMainStatus" 'read terminal State Source state')
+        $statusLines = @(Invoke-SSH ([string]$started.Machine) "systemctl show '$($started.Unit)' -p ActiveState -p Result -p ExecMainStatus -p Slice" 'read terminal State Source state')
         $status = @{}
         foreach ($line in $statusLines) { if ($line -match '^([^=]+)=(.*)$') { $status[$Matches[1]] = $Matches[2] } }
         $journal = @(Invoke-SSH ([string]$started.Machine) "journalctl _SYSTEMD_INVOCATION_ID=$($started.InvocationID) --no-pager -o cat" 'collect State Source journal')
         $sampleLines = @(Invoke-SSH ([string]$started.Machine) "journalctl -u '$($started.SamplerUnit)' --no-pager -o cat" 'collect State Source owner samples')
         $samples = @()
         foreach ($line in $sampleLines) { try { $sample = $line | ConvertFrom-Json -ErrorAction Stop; if ($sample.PSObject.Properties['At'] -and $sample.PSObject.Properties['MemoryCurrent'] -and $sample.PSObject.Properties['CPUUsageNSec'] -and $sample.PSObject.Properties['IPIngressBytes'] -and $sample.PSObject.Properties['IPEgressBytes']) { $samples += $sample } } catch {} }
-        $records += [ordered]@{ ID=[string]$started.ID; Host=[string]$started.Host; PlanSHA256=[string]$started.PlanSHA256; InvocationID=[string]$started.InvocationID; BinarySHA256=[string]$inputFiles.node; ActiveState=[string]$status.ActiveState; Result=[string]$status.Result; ExecMainStatus=[int]$status.ExecMainStatus; Journal=@($journal); Samples=@($samples) }
+        $records += [ordered]@{ ID=[string]$started.ID; Host=[string]$started.Host; PlanSHA256=[string]$started.PlanSHA256; InvocationID=[string]$started.InvocationID; BinarySHA256=[string]$inputFiles.node; ActiveState=[string]$status.ActiveState; Result=[string]$status.Result; ExecMainStatus=[int]$status.ExecMainStatus; Slice=[string]$status.Slice; Journal=@($journal); Samples=@($samples) }
     }
     $script:sourceRecords = @($records)
 }
 function Write-NodeAndSourceResults {
-    Write-Utf8 (Join-Path $evidence 'node-results.json') (([ordered]@{ InventorySHA256=[string]$inputFiles.node_inventory; Nodes=@($script:nodeRecords); Sources=@($script:sourceRecords) } | ConvertTo-Json -Depth 15 -Compress) + [Environment]::NewLine)
+    Write-Utf8 (Join-Path $evidence 'node-results.json') (([ordered]@{ InventorySHA256=[string]$inputFiles.node_inventory; OwnerSlices=@($script:ownerSliceRecords); Nodes=@($script:nodeRecords); Sources=@($script:sourceRecords) } | ConvertTo-Json -Depth 15 -Compress) + [Environment]::NewLine)
 }
 function Start-RouteNodes {
     for ($index = 0; $index -lt $inventoryNodes.Count; $index++) {
@@ -457,7 +537,7 @@ function Start-RouteNodes {
         $unit = "ardents-qualification-node-$attempt-$index"
         $samplerUnit = "ardents-qualification-sample-$attempt-$index"
         $memoryMax = if ([string]$item.Host -ceq 'reader') { '512M' } else { '1G' }
-        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --property Type=exec --property NoNewPrivileges=yes --property 'MemoryMax=$memoryMax' --property 'CPUQuota=100%' --property IPAccounting=yes --property TasksMax=256 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' node --config '$planRemote'"
+        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property NoNewPrivileges=yes --property IPAccounting=yes --property TasksMax=256 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' node --config '$planRemote'"
         [void](Invoke-SSH $hostName $command "start Route Node $index")
         $invocation = ''
         for ($poll = 0; $poll -lt 50; $poll++) {
@@ -493,14 +573,14 @@ function Stop-RouteNodes {
             if ($samplerState -eq 'inactive' -or $samplerState -eq 'failed') { break }
             Start-Sleep -Milliseconds 250
         }
-        $statusLines = @(Invoke-SSH ([string]$started.Machine) "systemctl show '$($started.Unit)' -p ActiveState -p Result -p ExecMainStatus" 'read terminal Route Node state')
+        $statusLines = @(Invoke-SSH ([string]$started.Machine) "systemctl show '$($started.Unit)' -p ActiveState -p Result -p ExecMainStatus -p Slice" 'read terminal Route Node state')
         $status = @{}
         foreach ($line in $statusLines) { if ($line -match '^([^=]+)=(.*)$') { $status[$Matches[1]] = $Matches[2] } }
         $journal = @(Invoke-SSH ([string]$started.Machine) "journalctl _SYSTEMD_INVOCATION_ID=$($started.InvocationID) --no-pager -o cat" 'collect Route Node journal')
         $sampleLines = @(Invoke-SSH ([string]$started.Machine) "journalctl -u '$($started.SamplerUnit)' --no-pager -o cat" 'collect Route Node owner samples')
         $samples = @()
         foreach ($line in $sampleLines) { try { $sample = $line | ConvertFrom-Json -ErrorAction Stop; if ($sample.PSObject.Properties['At'] -and $sample.PSObject.Properties['MemoryCurrent'] -and $sample.PSObject.Properties['CPUUsageNSec'] -and $sample.PSObject.Properties['IPIngressBytes'] -and $sample.PSObject.Properties['IPEgressBytes']) { $samples += $sample } } catch {} }
-        $records += [ordered]@{ ID=[string]$started.ID; Host=[string]$started.Host; PlanSHA256=[string]$started.PlanSHA256; InvocationID=[string]$started.InvocationID; BinarySHA256=[string]$inputFiles.node; ActiveState=[string]$status.ActiveState; Result=[string]$status.Result; ExecMainStatus=[int]$status.ExecMainStatus; Journal=@($journal); Samples=@($samples) }
+        $records += [ordered]@{ ID=[string]$started.ID; Host=[string]$started.Host; PlanSHA256=[string]$started.PlanSHA256; InvocationID=[string]$started.InvocationID; BinarySHA256=[string]$inputFiles.node; ActiveState=[string]$status.ActiveState; Result=[string]$status.Result; ExecMainStatus=[int]$status.ExecMainStatus; Slice=[string]$status.Slice; Journal=@($journal); Samples=@($samples) }
     }
     $script:nodeRecords = @($records)
 }
@@ -579,6 +659,29 @@ function Stop-NetworkRelays {
         $records += [ordered]@{ ID=[string]$relay[0].ID; Host=[string]$started.Host; Container=[string]$started.Container; UpstreamSegment=[string]$relay[0].UpstreamSegment; ClientSegment=[string]$relay[0].ClientSegment; BinarySHA256=[string]$inputFiles.relay; UpstreamBytes=[uint64]$result[0].upstream_bytes; ClientBytes=[uint64]$result[0].client_bytes; TrafficControl=@($trafficControl); Samples=@($samples); Logs=@($logs) }
     }
     Write-Utf8 (Join-Path $evidence 'relay-results.json') (($records | ConvertTo-Json -Depth 12 -Compress) + "`n")
+}
+function Capture-FailedNetworkRelays {
+    $records = @()
+    foreach ($started in $startedRelays) {
+        $relay = @($networkManifestObject.Relays | Where-Object { [string]$_.Container -ceq [string]$started.Container })
+        if ($relay.Count -ne 1) { continue }
+        $sampleLines = @(Invoke-SSH $started.Host "journalctl -u '$($started.SamplerUnit)' --no-pager -o cat" "retain failed relay samples $($started.Container)")
+        $samples = @()
+        foreach ($line in $sampleLines) {
+            try {
+                $sample = $line | ConvertFrom-Json -ErrorAction Stop
+                if ($sample.PSObject.Properties['At'] -and $sample.PSObject.Properties['UpstreamBytes'] -and $sample.PSObject.Properties['ClientBytes']) { $samples += $sample }
+            } catch { continue }
+        }
+        $trafficControl = @(Invoke-SSH $started.Host "docker exec '$($started.Container)' /usr/sbin/tc -s -j qdisc show dev eth0; docker exec '$($started.Container)' /usr/sbin/tc -s -j class show dev eth0; docker exec '$($started.Container)' /usr/sbin/tc -s -j filter show dev eth0" "retain failed relay counters $($started.Container)")
+        $logs = @(Invoke-SSH $started.Host "docker logs '$($started.Container)' 2>&1 || :" "retain failed relay logs $($started.Container)")
+        $records += [ordered]@{ ID=[string]$relay[0].ID; Host=[string]$started.Host; Container=[string]$started.Container; UpstreamSegment=[string]$relay[0].UpstreamSegment; ClientSegment=[string]$relay[0].ClientSegment; BinarySHA256=[string]$inputFiles.relay; TrafficControl=@($trafficControl); Samples=@($samples); Logs=@($logs); Complete=$false }
+    }
+    Write-Utf8 (Join-Path $evidence 'relay-results.failed.json') (($records | ConvertTo-Json -Depth 12 -Compress) + "`n")
+    foreach ($scheduled in $recoveryUnits) {
+        $status = @(Invoke-SSH $scheduled.Host "systemctl show '$($scheduled.Unit)' -p ActiveState -p Result -p ExecMainStatus; journalctl -u '$($scheduled.Unit)' --no-pager -o cat" "retain failed recovery scheduler $($scheduled.Role)")
+        Write-Utf8 (Join-Path $evidence "recovery-$($scheduled.Role).failed.jsonl") (($status -join "`n") + "`n")
+    }
 }
 function Start-Owner([string]$HostName) {
     [void](Invoke-SSH $HostName 'systemctl start --no-block ardents-endpoint.service' 'start Endpoint')
@@ -682,8 +785,7 @@ function Issue-Permission([string]$EndpointHost, [object]$Files, [string]$Digest
             '--environment-commitment', $authority.EnvironmentCommitment, '--network-commitment', $authority.NetworkCommitment,
             '--root-commitment', $authority.RootCommitment, '--kind', 'admission', '--id-commitment', $authority.IDCommitment)
         $quoted = ($args | ForEach-Object { "'$($_)'" }) -join ' '
-        & $ssh @sshOptions -tt (Remote ([string]$authority.Host)) "'$($authority.Binary)' $quoted"
-        if ($LASTEXITCODE -ne 0) { throw "$Label custody issuance failed." }
+        [void](Invoke-Native $ssh ($sshOptions + @('-tt', (Remote ([string]$authority.Host)), "'$($authority.Binary)' $quoted")) "$Label custody issuance" 900 -Interactive)
         Receive-File ([string]$authority.Host) $authorityPermission $permissionLocal "download $Label permission"
         if ((Get-Item -LiteralPath $permissionLocal).Length -ne 228) { throw "$Label permission has the wrong size." }
         Send-File $permissionLocal $EndpointHost "$remoteRoot/$Label.permission" "upload $Label permission"
@@ -715,7 +817,12 @@ $nodeRecords = @()
 $sourceRecords = @()
 $recoveryUnits = @()
 $clockUnits = @()
+$ownerSlices = @()
+$ownerSliceRecords = @()
 $readerPlanPath = Join-Path $evidence 'reader-plan.installed.json'
+$deployedOwners = @()
+$runFailure = $null
+$cleanupFailures = [Collections.Generic.List[string]]::new()
 try {
     foreach ($hostName in @($PublisherHost, $ReaderHost) | Select-Object -Unique) {
         $hostEnvelope = Invoke-SSH $hostName "uname -a; cat /etc/os-release; systemctl --version; stat -fc %T /sys/fs/cgroup; docker version --format 'docker-client={{.Client.Version}} docker-server={{.Server.Version}}'; /usr/sbin/tc -Version" 'capture host envelope'
@@ -729,10 +836,13 @@ try {
         Send-File $networkManifestPath $hostName "$remoteRoot/network-manifest.json" 'upload network manifest'
         Send-File $recoveryFaultPath $hostName "$remoteRoot/recovery_faults.py" 'upload recovery scheduler'
     }
+    Configure-OwnerSlices
     Start-ClockObservers
     Deploy-Owner $PublisherHost $publisherPlanPath
+    $deployedOwners += $PublisherHost
     $publisherPreflight = Invoke-OwnerPreflight $PublisherHost ([string]$inputFiles.publisher_plan) 1 'publisher-preflight.json'
     Deploy-Owner $ReaderHost $readerTemplatePath
+    $deployedOwners += $ReaderHost
     $readerPreflight = Invoke-OwnerPreflight $ReaderHost ([string]$inputFiles.reader_plan_template) 4 'reader-preflight.json'
     Assert-RetainedManifestPath $publisherPreflight $readerPreflight
     Verify-NetworkManifest $PublisherHost 'publisher-network-manifest-verdict.json'
@@ -791,12 +901,31 @@ try {
     }
     Stop-RouteNodes
     Stop-StateSources
+    Stop-OwnerSlices
     Write-NodeAndSourceResults
     Stop-NetworkRelays
     $readerJournal = (Journal $ReaderHost $readerInvocation) -join "`n"
     $publisherJournal = (Journal $PublisherHost $publisherInvocation) -join "`n"
     Write-Utf8 (Join-Path $evidence 'reader.jsonl') ($readerJournal + "`n")
     Write-Utf8 (Join-Path $evidence 'publisher.jsonl') ($publisherJournal + "`n")
+    $cleanupRecords = @()
+    foreach ($entry in @(@{ Role='publisher'; Host=$PublisherHost }, @{ Role='reader'; Host=$ReaderHost })) {
+        $cleanup = @(Invoke-SSH ([string]$entry.Host) "systemctl show ardents-endpoint.service -p ActiveState -p MainPID -p Result -p ExecMainStatus; systemctl list-units 'ardents-stream-qualification-*@*.service' --state=active,activating,deactivating --plain --no-legend" 'verify installed cleanup')
+        Write-Utf8 (Join-Path $evidence "$($entry.Host)-cleanup.txt") (($cleanup -join "`n") + "`n")
+        $values = @{}
+        $activeWorkers = @()
+        foreach ($line in $cleanup) {
+            if ($line -match '^([^=]+)=(.*)$') { $values[$Matches[1]] = $Matches[2] }
+            elseif (-not [string]::IsNullOrWhiteSpace([string]$line)) { $activeWorkers += [string]$line }
+        }
+        $clean = [string]$values.ActiveState -ceq 'inactive' -and [string]$values.MainPID -ceq '0' -and $activeWorkers.Count -eq 0
+        if ($SmokeSeconds -eq 0) {
+            $clean = $clean -and [string]$values.Result -ceq 'success' -and [string]$values.ExecMainStatus -ceq '0'
+        }
+        $cleanupRecords += [ordered]@{ Role=[string]$entry.Role; ActiveState=[string]$values.ActiveState; MainPID=[uint64]$values.MainPID; Result=[string]$values.Result; ExecMainStatus=[int]$values.ExecMainStatus; ActiveWorkers=@($activeWorkers); Passed=$clean }
+        if (-not $clean) { throw "Installed cleanup failed on $($entry.Host)." }
+    }
+    Write-Utf8 (Join-Path $evidence 'cleanup-results.json') (([ordered]@{ Schema='ardents-qualification-cleanup-v1'; Owners=@($cleanupRecords) } | ConvertTo-Json -Depth 5 -Compress) + "`n")
     if ($SmokeSeconds -gt 0) {
         Write-Utf8 (Join-Path $evidence 'smoke-verdict.json') (([ordered]@{ Schema='ardents-qualification-two-host-smoke-verdict-v1'; Seconds=$SmokeSeconds; Participants=$smokeSummaries; Passed=$true } | ConvertTo-Json -Depth 6 -Compress) + "`n")
     } else {
@@ -804,55 +933,73 @@ try {
         Send-File (Join-Path $evidence 'publisher.jsonl') $PublisherHost "$remoteRoot/publisher.jsonl" 'upload Publisher evidence for pair verification'
         Send-File (Join-Path $evidence 'relay-results.json') $PublisherHost "$remoteRoot/relay-results.json" 'upload relay counters for pair verification'
         Send-File (Join-Path $evidence 'node-results.json') $PublisherHost "$remoteRoot/node-results.json" 'upload Node owner evidence for pair verification'
-        $paired = Invoke-SSH $PublisherHost "/usr/lib/ardents/qualification/ardents-qualification verify-pair '$remoteRoot/reader.jsonl' '$remoteRoot/publisher.jsonl' '$remoteRoot/network-manifest.json' '$remoteRoot/relay-results.json' '$remoteRoot/node-results.json' '$($inputFiles.node_inventory)'" 'verify paired evidence'
+        Send-File (Join-Path $evidence 'cleanup-results.json') $PublisherHost "$remoteRoot/cleanup-results.json" 'upload joined cleanup evidence for pair verification'
+        $paired = Invoke-SSH $PublisherHost "/usr/lib/ardents/qualification/ardents-qualification verify-pair '$remoteRoot/reader.jsonl' '$remoteRoot/publisher.jsonl' '$remoteRoot/network-manifest.json' '$remoteRoot/relay-results.json' '$remoteRoot/node-results.json' '$($inputFiles.node_inventory)' '$remoteRoot/cleanup-results.json'" 'verify paired evidence'
         Write-Utf8 (Join-Path $evidence 'paired-verdict.json') (($paired -join "`n") + "`n")
-    }    foreach ($hostName in @($PublisherHost, $ReaderHost)) {
-        $cleanup = Invoke-SSH $hostName "systemctl show ardents-endpoint.service -p ActiveState -p MainPID -p Result -p ExecMainStatus; systemctl list-units 'ardents-stream-qualification-*@*.service' --state=active,activating,deactivating --plain --no-legend" 'verify installed cleanup'
-        Write-Utf8 (Join-Path $evidence "$hostName-cleanup.txt") (($cleanup -join "`n") + "`n")
-        $cleanupText = $cleanup -join "`n"
-        $badCleanup = $cleanupText -notmatch 'ActiveState=inactive' -or $cleanupText -notmatch 'MainPID=0' -or $cleanupText -match 'ardents-stream-qualification-.*@.*\.service'
-        if ($SmokeSeconds -eq 0) {
-            $badCleanup = $badCleanup -or $cleanupText -notmatch 'Result=success' -or $cleanupText -notmatch 'ExecMainStatus=0'
-        }
-        if ($badCleanup) { throw "Installed cleanup failed on $hostName." }
     }
-    Write-Utf8 (Join-Path $evidence 'attempt.json') (([ordered]@{ Schema=$attemptSchema; Mode=$attemptMode; SmokeSeconds=$SmokeSeconds; PublisherHost=$PublisherHost; ReaderHost=$ReaderHost; Profile=$profile; Condition=$condition; Seed=$seed; SourceCommit=$SourceCommit; PublisherInvocation=$publisherInvocation; ReaderInvocation=$readerInvocation; Passed=$true; CompletedAt=[DateTime]::UtcNow.ToString('o') } | ConvertTo-Json -Compress) + "`n")
 } catch {
-    $failure = $_.Exception.Message
-    Write-Utf8 (Join-Path $evidence 'failure.txt') ($failure + "`n")
+    $runFailure = $_.Exception
     foreach ($entry in @(@{ Host=$PublisherHost; Invocation=$publisherInvocation; Name='publisher' }, @{ Host=$ReaderHost; Invocation=$readerInvocation; Name='reader' })) {
         if ($entry.Invocation -match '^[0-9a-f]{32}$') {
-            try { Write-Utf8 (Join-Path $evidence "$($entry.Name).failed.jsonl") (((Journal $entry.Host $entry.Invocation) -join "`n") + "`n") } catch {}
-            try { Write-Utf8 (Join-Path $evidence "$($entry.Name).failed-status.txt") (((Invoke-SSH $entry.Host 'systemctl show ardents-endpoint.service -p ActiveState -p MainPID -p Result -p ExecMainStatus' 'read failed Endpoint status') -join "`n") + "`n") } catch {}
+            try { Write-Utf8 (Join-Path $evidence "$($entry.Name).failed.jsonl") (((Journal $entry.Host $entry.Invocation) -join "`n") + "`n") }
+            catch { $cleanupFailures.Add("retain $($entry.Name) failed journal: $($_.Exception.Message)") }
+            try { Write-Utf8 (Join-Path $evidence "$($entry.Name).failed-status.txt") (((Invoke-SSH $entry.Host 'systemctl show ardents-endpoint.service -p ActiveState -p MainPID -p Result -p ExecMainStatus' 'read failed Endpoint status') -join "`n") + "`n") }
+            catch { $cleanupFailures.Add("retain $($entry.Name) failed status: $($_.Exception.Message)") }
         }
     }
-    Write-Utf8 (Join-Path $evidence 'attempt.json') (([ordered]@{ Schema=$attemptSchema; Mode=$attemptMode; SmokeSeconds=$SmokeSeconds; PublisherHost=$PublisherHost; ReaderHost=$ReaderHost; Profile=$profile; Condition=$condition; Seed=$seed; SourceCommit=$SourceCommit; PublisherInvocation=$publisherInvocation; ReaderInvocation=$readerInvocation; Passed=$false; Failure=$failure; CompletedAt=[DateTime]::UtcNow.ToString('o') } | ConvertTo-Json -Compress) + "`n")
-    throw
+    if ($startedRelays.Count -ne 0) {
+        try { Capture-FailedNetworkRelays }
+        catch { $cleanupFailures.Add("retain failed relay/recovery evidence: $($_.Exception.Message)") }
+    }
 } finally {
-    foreach ($hostName in @($PublisherHost, $ReaderHost) | Select-Object -Unique) {
-        try { [void](Invoke-SSH $hostName 'systemctl stop ardents-endpoint.service 2>/dev/null || :; systemctl reset-failed ardents-endpoint.service' 'stop Endpoint attempt') } catch {}
+    foreach ($hostName in @($deployedOwners) | Select-Object -Unique) {
+        try { [void](Invoke-SSH $hostName "timeout 30s systemctl stop ardents-endpoint.service; systemctl reset-failed ardents-endpoint.service; test `"`$(systemctl show ardents-endpoint.service -p ActiveState --value)`" = inactive; test -z `"`$(systemctl list-units 'ardents-stream-qualification-*@*.service' --state=active,activating,deactivating --plain --no-legend)`"" 'stop and verify Endpoint attempt') }
+        catch { $cleanupFailures.Add("Endpoint cleanup on ${hostName}: $($_.Exception.Message)") }
     }
     for ($clockIndex = $clockUnits.Count - 1; $clockIndex -ge 0; $clockIndex--) {
         $clock = $clockUnits[$clockIndex]
-        try { [void](Invoke-SSH ([string]$clock.Host) "systemctl stop '$($clock.Unit)' 2>/dev/null || :; systemctl reset-failed '$($clock.Unit)'" 'stop clock observer attempt') } catch {}
+        try { [void](Invoke-SSH ([string]$clock.Host) "timeout 5s systemctl stop '$($clock.Unit)'; systemctl reset-failed '$($clock.Unit)'; test `"`$(systemctl show '$($clock.Unit)' -p ActiveState --value)`" = inactive" 'stop and verify clock observer attempt') }
+        catch { $cleanupFailures.Add("clock observer $($clock.Unit): $($_.Exception.Message)") }
     }
     for ($nodeIndex = $startedNodes.Count - 1; $nodeIndex -ge 0; $nodeIndex--) {
         $started = $startedNodes[$nodeIndex]
-        try { [void](Invoke-SSH ([string]$started.Machine) "systemctl stop '$($started.SamplerUnit)' '$($started.Unit)' 2>/dev/null || :; systemctl reset-failed '$($started.SamplerUnit)' '$($started.Unit)'" 'stop Route Node attempt') } catch {}
+        try { [void](Invoke-SSH ([string]$started.Machine) "timeout 30s systemctl stop '$($started.SamplerUnit)' '$($started.Unit)'; systemctl reset-failed '$($started.SamplerUnit)' '$($started.Unit)'; test `"`$(systemctl show '$($started.SamplerUnit)' -p ActiveState --value)`" = inactive; test `"`$(systemctl show '$($started.Unit)' -p ActiveState --value)`" = inactive" 'stop and verify Route Node attempt') }
+        catch { $cleanupFailures.Add("Route Node $($started.ID): $($_.Exception.Message)") }
     }
     for ($sourceIndex = $startedSources.Count - 1; $sourceIndex -ge 0; $sourceIndex--) {
         $started = $startedSources[$sourceIndex]
-        try { [void](Invoke-SSH ([string]$started.Machine) "systemctl stop '$($started.SamplerUnit)' '$($started.Unit)' 2>/dev/null || :; systemctl reset-failed '$($started.SamplerUnit)' '$($started.Unit)'" 'stop State Source attempt') } catch {}
+        try { [void](Invoke-SSH ([string]$started.Machine) "timeout 30s systemctl stop '$($started.SamplerUnit)' '$($started.Unit)'; systemctl reset-failed '$($started.SamplerUnit)' '$($started.Unit)'; test `"`$(systemctl show '$($started.SamplerUnit)' -p ActiveState --value)`" = inactive; test `"`$(systemctl show '$($started.Unit)' -p ActiveState --value)`" = inactive" 'stop and verify State Source attempt') }
+        catch { $cleanupFailures.Add("State Source $($started.ID): $($_.Exception.Message)") }
+    }
+    for ($ownerIndex = $ownerSlices.Count - 1; $ownerIndex -ge 0; $ownerIndex--) {
+        $owner = $ownerSlices[$ownerIndex]
+        try {
+            [void](Invoke-SSH ([string]$owner.Machine) "timeout 5s systemctl stop '$($owner.SamplerUnit)'; timeout 30s systemctl stop '$($owner.Unit)'; systemctl revert '$($owner.Unit)'; systemctl daemon-reload; test `"`$(systemctl show '$($owner.Unit)' -p ActiveState --value)`" = inactive; test -z `"`$(systemctl show '$($owner.Unit)' -p DropInPaths --value)`"" 'remove and verify whole-owner slice')
+        } catch {
+            $cleanupFailures.Add("whole-owner slice on $($owner.Host): $($_.Exception.Message)")
+        }
     }
     foreach ($scheduled in $recoveryUnits) {
-        try { [void](Invoke-SSH ([string]$scheduled.Host) "systemctl stop '$($scheduled.Unit)' 2>/dev/null || :; systemctl reset-failed '$($scheduled.Unit)'" 'stop recovery scheduler') } catch {}
+        try { [void](Invoke-SSH ([string]$scheduled.Host) "timeout 15s systemctl stop '$($scheduled.Unit)'; systemctl reset-failed '$($scheduled.Unit)'; test `"`$(systemctl show '$($scheduled.Unit)' -p ActiveState --value)`" = inactive" 'stop and verify recovery scheduler') }
+        catch { $cleanupFailures.Add("recovery scheduler $($scheduled.Unit): $($_.Exception.Message)") }
     }
     for ($relayIndex = $startedRelays.Count - 1; $relayIndex -ge 0; $relayIndex--) {
         $relay = $startedRelays[$relayIndex]
-        try { [void](Invoke-SSH ([string]$relay.Host) "systemctl stop '$($relay.SamplerUnit)' 2>/dev/null || :; systemctl reset-failed '$($relay.SamplerUnit)'" 'stop relay sampler') } catch {}
-        try { [void](Invoke-SSH ([string]$relay.Host) "docker rm -f '$($relay.Container)' >/dev/null 2>&1 || :; ! docker container inspect '$($relay.Container)' >/dev/null 2>&1" 'remove isolated relay') } catch {}
+        try { [void](Invoke-SSH ([string]$relay.Host) "timeout 5s systemctl stop '$($relay.SamplerUnit)'; systemctl reset-failed '$($relay.SamplerUnit)'; test `"`$(systemctl show '$($relay.SamplerUnit)' -p ActiveState --value)`" = inactive" 'stop and verify relay sampler') }
+        catch { $cleanupFailures.Add("relay sampler $($relay.SamplerUnit): $($_.Exception.Message)") }
+        try { [void](Invoke-SSH ([string]$relay.Host) "docker rm -f '$($relay.Container)' >/dev/null; ! docker container inspect '$($relay.Container)' >/dev/null 2>&1" 'remove and verify isolated relay') }
+        catch { $cleanupFailures.Add("relay $($relay.Container): $($_.Exception.Message)") }
     }
     foreach ($hostName in @($PublisherHost, $ReaderHost, [string]$authority.Host) | Select-Object -Unique) {
-        try { [void](Invoke-SSH $hostName "case '$remoteRoot' in /var/tmp/ardents-qualification-[0-9a-f]*) rm -rf -- '$remoteRoot';; *) exit 64;; esac" 'remove bounded remote staging') } catch {}
+        try { [void](Invoke-SSH $hostName "case '$remoteRoot' in /var/tmp/ardents-qualification-[0-9a-f]*) rm -rf -- '$remoteRoot' && test ! -e '$remoteRoot';; *) exit 64;; esac" 'remove and verify bounded remote staging') }
+        catch { $cleanupFailures.Add("remote staging on ${hostName}: $($_.Exception.Message)") }
     }
 }
+$failureMessages = [Collections.Generic.List[string]]::new()
+if ($null -ne $runFailure) { $failureMessages.Add($runFailure.Message) }
+foreach ($cleanupFailure in $cleanupFailures) { $failureMessages.Add("cleanup/evidence: $cleanupFailure") }
+$passed = $failureMessages.Count -eq 0
+$failure = if ($passed) { '' } else { $failureMessages -join [Environment]::NewLine }
+if (-not $passed) { Write-Utf8 (Join-Path $evidence 'failure.txt') ($failure + "`n") }
+Write-Utf8 (Join-Path $evidence 'attempt.json') (([ordered]@{ Schema=$attemptSchema; Mode=$attemptMode; SmokeSeconds=$SmokeSeconds; PublisherHost=$PublisherHost; ReaderHost=$ReaderHost; Profile=$profile; Condition=$condition; Seed=$seed; SourceCommit=$SourceCommit; PublisherInvocation=$publisherInvocation; ReaderInvocation=$readerInvocation; Passed=$passed; Failure=$failure; CompletedAt=[DateTime]::UtcNow.ToString('o') } | ConvertTo-Json -Compress) + "`n")
+if (-not $passed) { throw $failure }

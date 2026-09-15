@@ -24,7 +24,7 @@ type nodeOwnerSampleInput struct {
 
 type nodeResultInput struct {
 	ID, Host, PlanSHA256, InvocationID, BinarySHA256 string
-	ActiveState, Result                              string
+	ActiveState, Result, Slice                       string
 	ExecMainStatus                                   int
 	Journal                                          []string
 	Samples                                          []nodeOwnerSampleInput
@@ -60,12 +60,14 @@ type nodeOwnersVerdict struct {
 	Nodes                         []nodeOwnerEvidence
 	Sources                       []sourceOwnerEvidence
 	Hosts                         []nodeHostEvidence
+	OwnerSlices                   []ownerSliceEvidence
 }
 
 type nodeResultsInput struct {
 	InventorySHA256 string
 	Nodes           []nodeResultInput
 	Sources         []nodeResultInput
+	OwnerSlices     []ownerSliceResultInput
 }
 
 func readNodeResults(path string, manifest qualificationNetworkManifest, inventorySHA256 string, owners map[streamqualification.Role]ownerNetworkVerdict) (nodeOwnersVerdict, []streamqualification.Criterion, error) {
@@ -120,6 +122,9 @@ func readNodeResults(path string, manifest qualificationNetworkManifest, invento
 	hosts, hostCriteria := evaluateNodeHostResources(inputs, sources, owners)
 	verdict.Hosts = hosts
 	criteria = append(criteria, hostCriteria...)
+	ownerSlices, sliceCriteria := evaluateOwnerSlices(inputSet.OwnerSlices, owners)
+	verdict.OwnerSlices = ownerSlices
+	criteria = append(criteria, sliceCriteria...)
 	verdict.BinarySHA256 = binaryIdentity
 	add("route-node-owner-set", float64(len(verdict.Nodes)), "=", 16, clean && len(verdict.Nodes) == 16)
 	add("state-source-owner-set", float64(len(verdict.Sources)), "=", 2, clean && len(verdict.Sources) == 2)
@@ -130,7 +135,7 @@ func readNodeResults(path string, manifest qualificationNetworkManifest, invento
 }
 
 func validOwnerResultIdentity(input nodeResultInput, seen map[string]bool, binaryIdentity *string) bool {
-	if _, err := decodeIdentity(input.ID); err != nil || seen[input.ID] || input.Host != "reader" && input.Host != "publisher" {
+	if _, err := decodeIdentity(input.ID); err != nil || seen[input.ID] || input.Host != "reader" && input.Host != "publisher" || input.Slice != qualificationOwnerSlice {
 		return false
 	}
 	seen[input.ID] = true

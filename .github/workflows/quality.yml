@@ -2,6 +2,8 @@ name: quality
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -13,11 +15,13 @@ concurrency:
 
 jobs:
   select:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.selection.outputs.matrix }}
       count: ${{ steps.selection.outputs.count }}
+      powershell: ${{ steps.selection.outputs.powershell }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -31,9 +35,9 @@ jobs:
       - name: Select affected tests and consumers
         id: selection
         env:
-          PR_BASE: ${{ github.event.pull_request.base.sha || 'HEAD^' }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          go run ./scripts/select-pr-checks.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json"
+          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json"
           python3 - <<'PY'
           import json, os
           with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
@@ -41,7 +45,30 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("matrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
               output.write("count=" + str(len(matrix["include"])) + "\n")
+              output.write("powershell=" + str(matrix["powershell"]).lower() + "\n")
           PY
+  qualification-scripts:
+    needs: select
+    if: needs.select.outputs.powershell == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Parse affected qualification PowerShell surface
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem tests/qualification -Recurse -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [void][Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
+            foreach ($error in $errors) {
+              Write-Error "$($_.FullName):$($error.Extent.StartLineNumber):$($error.Extent.StartColumnNumber): $($error.Message)"
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
   affected:
     needs: select
     if: needs.select.outputs.count != '0'
@@ -69,16 +96,43 @@ jobs:
           args=(-json -count=1 -timeout=90s -run "$TEST_RUN")
           if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
           timeout --signal=QUIT --kill-after=10s 240s go test "${args[@]}" "$TEST_PACKAGE"
+  full:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.8
+          cache: true
+      - name: Install pinned quality tools
+        run: make tools-install
+      - name: Run the complete maintained gate
+        run: make check
   go:
     if: always()
-    needs: [select, affected]
+    needs: [select, qualification-scripts, affected, full]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
-      - name: Require every selected group to complete successfully
+      - name: Require the event's quality gate to complete successfully
         env:
           SELECTION: ${{ needs.select.result }}
           GROUP_RESULT: ${{ needs.affected.result }}
+          POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
+          FULL_RESULT: ${{ needs.full.result }}
+          EVENT: ${{ github.event_name }}
         run: |
-          test "$SELECTION" = success
-          test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped
+          if [[ "$EVENT" == pull_request ]]; then
+            test "$SELECTION" = success
+            test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped
+            test "$POWERSHELL_RESULT" = success || test "$POWERSHELL_RESULT" = skipped
+            test "$FULL_RESULT" = skipped
+          else
+            test "$SELECTION" = skipped
+            test "$GROUP_RESULT" = skipped
+            test "$FULL_RESULT" = success
+          fi

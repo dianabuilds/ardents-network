@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 param(
     [Parameter(Mandatory = $true)][string]$PublisherHost,
     [Parameter(Mandatory = $true)][string]$SSHKey,
@@ -25,15 +26,34 @@ function Assert-Host([string]$Value, [string]$Label) {
 function Write-Utf8([string]$Path, [string]$Body) {
     [IO.File]::WriteAllText($Path, $Body, [Text.UTF8Encoding]::new($false))
 }
-function Remote([string]$HostName) { return "$User@$HostName" }
-function Invoke-SSH([string]$Command, [string]$Label) {
-    $lines = @(& $script:ssh @script:sshOptions -n (Remote $PublisherHost) $Command 2>&1)
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed: $($lines -join [Environment]::NewLine)" }
+function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label, [int]$TimeoutSeconds = 180) {
+    $start = [Diagnostics.ProcessStartInfo]::new()
+    $start.FileName = $Program
+    $start.UseShellExecute = $false
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $start
+    if (-not $process.Start()) { throw "$Label did not start." }
+    $stdout = $process.StandardOutput.ReadToEndAsync()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill($true); $process.WaitForExit()
+        $captured = $stdout.Result + $stderr.Result
+        if ($captured.Length -gt 65536) { $captured = $captured.Substring($captured.Length - 65536) }
+        throw "$Label exceeded its $TimeoutSeconds-second local deadline: $captured"
+    }
+    $lines = @((($stdout.Result + $stderr.Result) -split "`r?`n") | Where-Object { $_ -ne '' })
+    if ($process.ExitCode -ne 0) { throw "$Label failed with exit code $($process.ExitCode): $($lines -join [Environment]::NewLine)" }
     return $lines
 }
+function Remote([string]$HostName) { return "$User@$HostName" }
+function Invoke-SSH([string]$Command, [string]$Label) {
+    return @(Invoke-Native $script:ssh ($script:sshOptions + @('-n', (Remote $PublisherHost), $Command)) $Label)
+}
 function Send-File([string]$Local, [string]$RemotePath, [string]$Label) {
-    & $script:scp @script:scpOptions $Local "$(Remote $PublisherHost):$RemotePath"
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+    [void](Invoke-Native $script:scp ($script:scpOptions + @($Local, "$(Remote $PublisherHost):$RemotePath")) $Label)
 }
 
 Assert-Host $PublisherHost 'PublisherHost'
@@ -56,18 +76,20 @@ $eventAttempt = Get-Content -LiteralPath (Resolve-File (Join-Path $episode 'atte
 $baseManifest = Resolve-File (Join-Path $baseline 'network-manifest.json') 'baseline manifest'
 $eventManifest = Resolve-File (Join-Path $episode 'network-manifest.json') 'episode manifest'
 $baseVerdict = Resolve-File (Join-Path $baseline 'paired-verdict.json') 'baseline paired verdict'
-$eventVerdict = Resolve-File (Join-Path $episode 'paired-verdict.json') 'episode paired verdict'
+$eventPassed = [bool]$eventAttempt.Passed
+$eventVerdict = if ($eventPassed) { Resolve-File (Join-Path $episode 'paired-verdict.json') 'episode paired verdict' } else { Resolve-File (Join-Path $episode 'relay-results.failed.json') 'failed episode relay evidence' }
 $baseInputs = Get-Content -LiteralPath (Resolve-File (Join-Path $baseline 'input-digests.json') 'baseline inputs') -Raw | ConvertFrom-Json
 $eventInputs = Get-Content -LiteralPath (Resolve-File (Join-Path $episode 'input-digests.json') 'episode inputs') -Raw | ConvertFrom-Json
-$recoveries = @(Get-ChildItem -LiteralPath $episode -Filter 'recovery-*.jsonl' -File | Sort-Object Name)
+$recoveryPattern = if ($eventPassed) { 'recovery-*.jsonl' } else { 'recovery-*.failed.jsonl' }
+$recoveries = @(Get-ChildItem -LiteralPath $episode -Filter $recoveryPattern -File | Sort-Object Name)
 if ($recoveries.Count -lt 1 -or $recoveries.Count -gt 2) { throw 'Episode must contain one or two recovery journals.' }
-if (-not [bool]$baseAttempt.Passed -or -not [bool]$eventAttempt.Passed -or
+if (-not [bool]$baseAttempt.Passed -or
     [int]$baseAttempt.Condition -ne 1 -or [int]$eventAttempt.Condition -ne 3 -or
     [int]$baseAttempt.Profile -ne [int]$eventAttempt.Profile -or
     [string]$baseAttempt.Seed -cne [string]$eventAttempt.Seed -or
     [string]$baseAttempt.SourceCommit -cnotmatch '^[0-9a-f]{40}$' -or
     [string]$baseAttempt.SourceCommit -cne [string]$eventAttempt.SourceCommit) {
-    throw 'NET-14V inputs are not a passed normal/recovery pair.'
+    throw 'NET-14V inputs are not one candidate-bound normal/recovery pair.'
 }
 $baseManifestObject = Get-Content -LiteralPath $baseManifest -Raw | ConvertFrom-Json
 $eventManifestObject = Get-Content -LiteralPath $eventManifest -Raw | ConvertFrom-Json
@@ -107,19 +129,22 @@ try {
         Send-File $recoveries[$index].FullName $remote 'upload recovery evidence'
         $remoteRecovery += "'$remote'"
     }
-    $command = "'$remoteRoot/runner' verify-net14v '$remoteRoot/baseline-manifest.json' " +
+    $verification = if ($eventPassed) { 'verify-net14v' } else { 'verify-failed-net14v' }
+    $command = "'$remoteRoot/runner' $verification '$remoteRoot/baseline-manifest.json' " +
         "'$remoteRoot/episode-manifest.json' '$remoteRoot/baseline-verdict.json' " +
         "'$remoteRoot/episode-verdict.json' " + ($remoteRecovery -join ' ')
     $result = (Invoke-SSH "chmod 700 '$remoteRoot/runner'; $command" 'verify NET-14V pair') -join [Environment]::NewLine
-    Write-Utf8 (Join-Path $output 'net14v-verdict.json') ($result + [Environment]::NewLine)
+    $verdictName = if ($eventPassed) { 'net14v-verdict.json' } else { 'failed-net14v-verdict.json' }
+    Write-Utf8 (Join-Path $output $verdictName) ($result + [Environment]::NewLine)
     $verdict = $result | ConvertFrom-Json
-    if ([string]$verdict.Kind -cne 'net14v' -or @($verdict.Criteria).Count -eq 0 -or
+    $expectedKind = if ($eventPassed) { 'net14v' } else { 'failed-net14v' }
+    if ([string]$verdict.Kind -cne $expectedKind -or @($verdict.Criteria).Count -eq 0 -or
         @($verdict.Criteria | Where-Object { -not [bool]$_.Passed }).Count -ne 0) {
         throw 'NET-14V verifier returned an incomplete or failing verdict.'
     }
     $receipt = [ordered]@{ Schema='ardents-net14v-attempt-v1'; Host=$PublisherHost
         Carrier=[string]$eventManifestObject.Carrier; Profile=[int]$eventAttempt.Profile
-        Seed=[string]$eventAttempt.Seed; SourceCommit=[string]$eventAttempt.SourceCommit; RunnerSHA256=$runnerHash; Passed=$true
+        Seed=[string]$eventAttempt.Seed; SourceCommit=[string]$eventAttempt.SourceCommit; RunnerSHA256=$runnerHash; WorkloadPassed=$eventPassed; Passed=$true
         CompletedAt=[DateTimeOffset]::UtcNow.ToString('o') }
     Write-Utf8 (Join-Path $output 'attempt.json') (($receipt | ConvertTo-Json -Compress) + [Environment]::NewLine)
 } catch {

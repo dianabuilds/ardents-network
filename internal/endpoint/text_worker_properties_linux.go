@@ -76,6 +76,9 @@ func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name
 			return errors.New("text worker inherited resources are unavailable")
 		}
 	}
+	if inventoryOfUnit(name) == streamInventory && !service.exact("Slice", "s", "ardents-qualification-owner.slice") {
+		return errors.New("qualification worker owner slice is unavailable")
+	}
 	if !service.exact("Environment", "as", []string{"GOMAXPROCS=2", "GOMEMLIMIT=96MiB"}) ||
 		!service.exact("SystemCallArchitectures", "as", []string{"native"}) ||
 		!service.exact("RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_UNIX"}}) {

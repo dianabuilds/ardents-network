@@ -1,8 +1,5 @@
 //go:build ignore
 
-// Command select-pr-checks follows changed Go symbols through production and
-// test helpers, including imported consumers. It prints the selection reasons
-// and retains all independent failures before returning an unsuccessful result.
 package main
 
 import (
@@ -57,7 +54,7 @@ func main() {
 	matrixPath := flag.String("matrix", "", "write bounded GitHub job matrix")
 	execute := flag.Bool("execute", false, "run affected checks")
 	flag.Parse()
-	checks, err := selectChecks(*base, *head)
+	checks, powershell, err := selectChecks(*base, *head)
 	if err != nil {
 		fail(err)
 	}
@@ -65,7 +62,7 @@ func main() {
 		fmt.Printf("selected package=%s race=%t run=%q reason=%s\n", check.pkg, check.race, check.run, check.reason)
 	}
 	if *matrixPath != "" {
-		if err := writeMatrix(*matrixPath, checks); err != nil {
+		if err := writeMatrix(*matrixPath, checks, powershell); err != nil {
 			fail(err)
 		}
 	}
@@ -94,32 +91,39 @@ func main() {
 }
 func fail(err error)                          { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
 func git(arguments ...string) ([]byte, error) { return exec.Command("git", arguments...).Output() }
-
-func selectChecks(base, head string) ([]check, error) {
+func selectChecks(base, head string) ([]check, bool, error) {
 	merged, err := git("merge-base", base, head)
 	if err != nil {
-		return nil, fmt.Errorf("merge base: %w", err)
+		return nil, false, fmt.Errorf("merge base: %w", err)
 	}
 	base = strings.TrimSpace(string(merged))
 	diff, err := git("diff", "--name-only", base, head)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	fmt.Printf("pr-check-selection base=%s head=%s\n", base, head)
 	changedPaths := strings.Split(strings.TrimSpace(string(diff)), "\n")
 	root, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	listArguments := []string{"list", "-json", "./cmd/...", "./internal/...", "./tests/e2e/..."}
-	for _, extra := range []string{"tests/epochfixture/network", "tests/qualification/stream-network-two-host/fixturecommand/qualification-network"} {
-		if info, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(extra))); statErr == nil && info.IsDir() {
-			listArguments = append(listArguments, "./"+extra)
+	mappings, err := loadPRCheckMappings(root)
+	if err != nil {
+		return nil, false, fmt.Errorf("load PR check ownership: %w", err)
+	}
+	listArguments := []string{"list", "-e", "-json", "./cmd/...", "./internal/...", "./tests/..."}
+	listed := map[string]bool{"./cmd/...": true, "./internal/...": true, "./tests/...": true}
+	for _, mapping := range mappings {
+		for _, owner := range mapping.Owners {
+			argument := "./" + owner.Package
+			if !listed[argument] {
+				listArguments, listed[argument] = append(listArguments, argument), true
+			}
 		}
 	}
 	output, err := exec.Command("go", listArguments...).Output()
 	if err != nil {
-		return nil, fmt.Errorf("load current package owners: %w", err)
+		return nil, false, fmt.Errorf("load current package owners: %w", err)
 	}
 	owners := map[string]*owner{}
 	directories := map[string]*owner{}
@@ -129,7 +133,10 @@ func selectChecks(base, head string) ([]check, error) {
 		if err := decoder.Decode(&info); err == io.EOF {
 			break
 		} else if err != nil {
-			return nil, err
+			return nil, false, err
+		}
+		if info.Error != nil && !strings.HasPrefix(info.Error.Err, "build constraints exclude all Go files") {
+			return nil, false, fmt.Errorf("load package owner %s: %s", info.ImportPath, info.Error.Err)
 		}
 		current := &owner{packageInfo: info, changed: map[string]bool{}, reasons: map[string]bool{}}
 		owners[info.ImportPath], directories[filepath.Clean(info.Dir)] = current, current
@@ -137,18 +144,20 @@ func selectChecks(base, head string) ([]check, error) {
 		for _, name := range files {
 			body, err := os.ReadFile(filepath.Join(info.Dir, name))
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			declarations, _, err := parseDeclarations(name, body)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			current.declarations = append(current.declarations, declarations...)
 		}
 	}
 	architecture := directories[filepath.Join(root, "internal", "architecture")]
+	powershell := false
 	for _, path := range changedPaths {
 		fmt.Printf("changed %s\n", path)
+		powershell = powershell || strings.HasPrefix(path, "tests/qualification/") && strings.HasSuffix(path, ".ps1")
 		if path == "go.mod" || path == "go.sum" {
 			for _, current := range owners {
 				current.compile = true
@@ -174,66 +183,12 @@ func selectChecks(base, head string) ([]check, error) {
 					current.reasons[path] = true
 				}
 			}
-			if strings.HasPrefix(path, "packaging/stream-qualification-worker/") {
-				for _, directory := range []string{"cmd/ardents-qualification", "cmd/ardents-stream-qualification", "internal/application/streamqualification"} {
-					current := directories[filepath.Join(root, filepath.FromSlash(directory))]
-					if current == nil {
-						continue
-					}
-					current.compile = true
-					current.race = true
-					current.reasons[path] = true
-					for _, decl := range current.declarations {
-						if decl.test {
-							current.changed[decl.name] = true
-						}
-					}
-				}
-			}
 		}
 		if !strings.HasSuffix(path, ".go") {
-			qualificationDirectories := []string{}
-			if strings.HasPrefix(path, "tests/qualification/stream-network-two-host/") {
-				qualificationDirectories = []string{"cmd/ardents-qualification", "tests/e2e/node/fixturecommand/netem-relay",
-					"tests/epochfixture/network", "tests/qualification/stream-network-two-host/fixturecommand/qualification-network",
-					"internal/endpoint", "internal/node"}
-			} else if strings.HasPrefix(path, "tests/qualification/net32-idle-one-host/") {
-				qualificationDirectories = []string{"cmd/ardents-qualification", "internal/endpoint"}
+			if err := applyPRCheckMappings(root, path, mappings, directories); err != nil {
+				return nil, false, err
 			}
-			for _, directory := range qualificationDirectories {
-				current := directories[filepath.Join(root, filepath.FromSlash(directory))]
-				if current == nil {
-					continue
-				}
-				current.compile, current.race = true, true
-				current.reasons[path] = true
-				for _, decl := range current.declarations {
-					if !decl.test {
-						continue
-					}
-					switch directory {
-					case "cmd/ardents-qualification":
-						if !strings.Contains(decl.name, "Qualification") && !strings.Contains(decl.name, "ResourceVerdict") {
-							continue
-						}
-					case "tests/e2e/node/fixturecommand/netem-relay":
-						if !strings.Contains(decl.name, "RelayConfiguration") && !strings.HasPrefix(decl.name, "TestCopyRelayDirection") && !strings.HasPrefix(decl.name, "TestQualificationNetworkCells") {
-							continue
-						}
-					case "internal/endpoint":
-						if !strings.Contains(decl.name, "Qualification") && !strings.Contains(decl.name, "Stream") {
-							continue
-						}
-					case "internal/node":
-						if !strings.Contains(decl.name, "Closed") && !strings.Contains(decl.name, "Hosting") {
-							continue
-						}
-					}
-					current.changed[decl.name] = true
-				}
-			}
-			// Embedded files and shared fixtures affect their owning package.
-			if strings.HasPrefix(path, "internal/") || strings.HasPrefix(path, "cmd/") || strings.HasPrefix(path, "tests/e2e/") {
+			if strings.HasPrefix(path, "internal/") || strings.HasPrefix(path, "cmd/") || strings.HasPrefix(path, "tests/") {
 				for directory := filepath.Dir(filepath.Join(root, filepath.FromSlash(path))); directory != root; directory = filepath.Dir(directory) {
 					if current := directories[directory]; current != nil {
 						current.compile, current.race = true, true
@@ -259,13 +214,17 @@ func selectChecks(base, head string) ([]check, error) {
 			if strings.HasPrefix(path, "scripts/") && architecture != nil {
 				architecture.compile = true
 				architecture.changed["TestRepositoryArchitecture"] = true
+				for _, decl := range architecture.declarations {
+					if decl.test && strings.HasPrefix(decl.name, "TestPRSelection") {
+						architecture.changed[decl.name] = true
+					}
+				}
 				architecture.reasons[path] = true
 			}
 			continue
 		}
 		current.compile = true
 		current.reasons[path] = true
-		// Include removed declarations as well, so deletion follows old consumers.
 		for _, previous := range []bool{false, true} {
 			var body []byte
 			if previous {
@@ -278,7 +237,7 @@ func selectChecks(base, head string) ([]check, error) {
 			}
 			declarations, race, err := parseDeclarations(path, body)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			current.race = current.race || race
 			for _, decl := range declarations {
@@ -291,8 +250,6 @@ func selectChecks(base, head string) ([]check, error) {
 		for _, current := range owners {
 			for _, decl := range current.declarations {
 				if current.changed[decl.name] {
-					// A changed method changes the behavior of values produced by
-					// constructors, including methods called through an interface.
 					if decl.receiver != "" && !current.changed[decl.receiver] {
 						current.changed[decl.receiver] = true
 						changed = true
@@ -354,9 +311,8 @@ func selectChecks(base, head string) ([]check, error) {
 	if len(checks) == 0 {
 		fmt.Println("No executable behavior changed; no runtime tests selected.")
 	}
-	return checks, nil
+	return checks, powershell, nil
 }
-
 func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 	file, err := parser.ParseFile(token.NewFileSet(), name, body, 0)
 	if err != nil {
@@ -427,9 +383,7 @@ func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 	return declarations, race, nil
 }
 
-// A large affected package is divided into independent bounded groups. A timeout
-// cannot suppress later groups, and each selected top-level test appears once.
-func writeMatrix(path string, checks []check) error {
+func writeMatrix(path string, checks []check, powershell bool) error {
 	type entry struct {
 		ID      int    `json:"id"`
 		Package string `json:"package"`
@@ -456,8 +410,9 @@ func writeMatrix(path string, checks []check) error {
 		return errors.New("affected test groups exceed GitHub matrix capacity")
 	}
 	body, err := json.Marshal(struct {
-		Include []entry `json:"include"`
-	}{entries})
+		Include    []entry `json:"include"`
+		PowerShell bool    `json:"powershell"`
+	}{entries, powershell})
 	if err != nil {
 		return err
 	}

@@ -75,6 +75,7 @@ $cells = @($spec.Cells)
 if ($cells.Count -ne $expected.Count) { $validation.Add("matrix has $($cells.Count) cells; expected $($expected.Count)") }
 $seen = @{}
 $validated = @{}
+$sharedBinding = $null
 foreach ($cell in $cells) {
     $key = Cell-Key ([string]$cell.Carrier) ([string]$cell.Cell) ([string]$cell.Profile)
     $errors = [Collections.Generic.List[string]]::new()
@@ -85,6 +86,15 @@ foreach ($cell in $cells) {
         $inputs = Get-Content -LiteralPath $inputsPath -Raw | ConvertFrom-Json
         if ([string]$inputs.Schema -cne 'ardents-qualification-prepared-inputs-v1') { $errors.Add('prepared input schema is invalid') }
         if ([string]$inputs.SourceCommit -cne $sourceCommit) { $errors.Add('prepared input SourceCommit differs from matrix') }
+        foreach ($field in @('ReaderHost','PublisherHost','Seed','At','HostingRoot','ReaderHostingPolicySHA256','PublisherHostingPolicySHA256','EnvironmentCommitment')) {
+            if (-not $inputs.PSObject.Properties[$field] -or [string]::IsNullOrWhiteSpace([string]$inputs.$field)) { $errors.Add("prepared input lacks $field") }
+        }
+        $binding = [ordered]@{ ReaderHost=[string]$inputs.ReaderHost; PublisherHost=[string]$inputs.PublisherHost; Seed=[string]$inputs.Seed; At=[string]$inputs.At;
+            HostingRoot=[string]$inputs.HostingRoot; ReaderHostingPolicySHA256=[string]$inputs.ReaderHostingPolicySHA256;
+            PublisherHostingPolicySHA256=[string]$inputs.PublisherHostingPolicySHA256; EnvironmentCommitment=[string]$inputs.EnvironmentCommitment }
+        $bindingJSON = $binding | ConvertTo-Json -Compress
+        if ($null -eq $sharedBinding) { $sharedBinding = $bindingJSON }
+        elseif ($bindingJSON -cne $sharedBinding) { $errors.Add('prepared input differs from the matrix host/seed/period binding') }
         $manifestPath = Resolve-File ([string]$inputs.NetworkManifest) "$key NetworkManifest"
         $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
         if ([string]$manifest.Carrier -cne [string]$cell.Carrier -or [string]$manifest.Cell -cne [string]$cell.Cell) { $errors.Add('network manifest identity differs from cell') }
@@ -110,6 +120,10 @@ try {
     $net32InputsPath = Resolve-ReferencedFile ([string]$spec.Net32Inputs) 'NET-32 prepared inputs'
     $net32Inputs = Get-Content -LiteralPath $net32InputsPath -Raw | ConvertFrom-Json
     if ([string]$net32Inputs.Schema -cne 'ardents-qualification-prepared-inputs-v1' -or [string]$net32Inputs.SourceCommit -cne $sourceCommit) { $validation.Add('NET-32 prepared inputs differ from matrix candidate') }
+    $net32Binding = [ordered]@{ ReaderHost=[string]$net32Inputs.ReaderHost; PublisherHost=[string]$net32Inputs.PublisherHost; Seed=[string]$net32Inputs.Seed; At=[string]$net32Inputs.At;
+        HostingRoot=[string]$net32Inputs.HostingRoot; ReaderHostingPolicySHA256=[string]$net32Inputs.ReaderHostingPolicySHA256;
+        PublisherHostingPolicySHA256=[string]$net32Inputs.PublisherHostingPolicySHA256; EnvironmentCommitment=[string]$net32Inputs.EnvironmentCommitment }
+    if (($net32Binding | ConvertTo-Json -Compress) -cne $sharedBinding) { $validation.Add('NET-32 input differs from the matrix host/seed/period binding') }
     [void](Resolve-File ([string]$net32Inputs.Net32Plan) 'NET-32 plan')
     [void](Resolve-File ([string]$net32Inputs.AuthorityInventory) 'NET-32 authority inventory')
 } catch { $validation.Add($_.Exception.Message) }
@@ -117,6 +131,7 @@ try {
 foreach ($errorText in $validation) { Emit ([ordered]@{ Kind='validation'; Passed=$false; Failure=$errorText }) }
 if ($validation.Count -ne 0) { throw "Matrix validation found $($validation.Count) independent failures; see $reportPath" }
 Emit ([ordered]@{ Kind='validation'; Passed=$true; Cells=$expected.Count; SourceCommit=$sourceCommit; Mode=$Mode })
+Emit ([ordered]@{ Kind='infrastructure-binding'; Passed=$true; Binding=($sharedBinding | ConvertFrom-Json) })
 
 $results = @{}
 $failures = 0
@@ -134,6 +149,21 @@ foreach ($key in $expected) {
     if ($Mode -ceq 'smoke') { $arguments.SmokeSeconds = $SmokeSeconds }
     try {
         & $runScript @arguments
+        if ($Mode -ceq 'acceptance') {
+            $pairedPath = Join-Path $cellEvidence 'paired-verdict.json'
+            $pairedVerdict = Get-Content -LiteralPath (Resolve-File $pairedPath "$key paired verdict") -Raw | ConvertFrom-Json
+            $assurance = @($pairedVerdict.Assurance)
+            $ids = @($assurance | ForEach-Object { [string]$_.ID } | Sort-Object)
+            if ([string]$pairedVerdict.Kind -cne 'paired-workload' -or $assurance.Count -ne 3 -or ($ids -join ',') -cne 'P5,P7,P8') {
+                throw "$key did not emit the exact P5/P7/P8 issue-60 assurance set."
+            }
+            foreach ($verdict in $assurance) {
+                $criteria = @($verdict.Criteria)
+                $passed = [bool]$verdict.Passed -and $criteria.Count -gt 0 -and @($criteria | Where-Object { -not [bool]$_.Passed }).Count -eq 0
+                Emit ([ordered]@{ Kind='assurance'; Cell=$key; ID=[string]$verdict.ID; Scope=[string]$verdict.Scope; Passed=$passed; Evidence=@($verdict.Evidence); Criteria=$criteria })
+                if (-not $passed) { throw "$key assurance $($verdict.ID) failed." }
+            }
+        }
         $results[$key] = [ordered]@{ Passed=$true; Evidence=$cellEvidence }
         Emit ([ordered]@{ Kind='cell'; Cell=$key; Mode=$Mode; Passed=$true; Evidence=$cellEvidence })
     } catch {
@@ -150,9 +180,9 @@ if ($Mode -ceq 'acceptance') {
             $episodeKey = Cell-Key $carrier 'net14-recovery' $profile
             $name = "$carrier|net14v|$profile"
             $net14vEvidence = Join-Path $evidence "$carrier-net14v-$profile"
-            if (-not $results[$baseKey].Passed -or -not $results[$episodeKey].Passed) {
+            if (-not $results[$baseKey].Passed) {
                 $failures++
-                Emit ([ordered]@{ Kind='net14v'; Cell=$name; Passed=$false; Failure='normal or recovery source cell failed' })
+                Emit ([ordered]@{ Kind='net14v'; Cell=$name; Passed=$false; Failure='normal source cell failed' })
                 continue
             }
             try {

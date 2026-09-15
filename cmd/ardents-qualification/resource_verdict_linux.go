@@ -21,18 +21,22 @@ type resourceObservation struct {
 type resourceMeasurements struct{ samples []resourceObservation }
 
 type ownerNetworkVerdict struct {
-	Started, Stopped                   time.Time
-	InterfaceTx, InterfaceRx           uint64
-	CountedBytes, HostingLedgerDelta   uint64
-	UsefulTx, UsefulRx                 uint64
-	DirectionalWire, DirectionalUseful uint64
-	DirectionalOverhead                uint64
-	DirectionalCarrierRatio            float64
-	TxP95BitsPerSecond                 float64
-	RxP95BitsPerSecond                 float64
-	OneSecondSampleCount               int
-	P95RSSBytes                        uint64
-	MeanCPUPercent                     float64
+	Started, Stopped                                         time.Time
+	InterfaceTx, InterfaceRx                                 uint64
+	CountedBytes, HostingLedgerDelta                         uint64
+	UsefulTx, UsefulRx                                       uint64
+	DirectionalWire, DirectionalUseful                       uint64
+	DirectionalOverhead                                      uint64
+	DirectionalCarrierRatio                                  float64
+	TxP95BitsPerSecond                                       float64
+	RxP95BitsPerSecond                                       float64
+	OneSecondSampleCount                                     int
+	P95RSSBytes                                              uint64
+	MeanCPUPercent                                           float64
+	HostingProvider                                          string
+	HostingPeriodStart, HostingPeriodEnd                     time.Time
+	HostingUnit, HostingDirections                           string
+	HostingQuantity, HostingInitialUsed, HostingLowWatermark uint64
 }
 
 func (series *resourceMeasurements) observe(event endpoint.StreamQualificationEvent) {
@@ -147,6 +151,11 @@ func evaluateOwnerNetwork(series []*resourceMeasurements, reports []streamqualif
 		complete = false
 	}
 	verdict.CountedBytes, verdict.HostingLedgerDelta = counted, usedDelta
+	verdict.HostingProvider = before.Policy.Provider
+	verdict.HostingPeriodStart, verdict.HostingPeriodEnd = before.Policy.Start, before.Policy.End
+	verdict.HostingUnit, verdict.HostingDirections = before.Policy.Unit, before.Policy.Directions
+	verdict.HostingQuantity, verdict.HostingInitialUsed = before.Policy.Quantity, before.Policy.InitialUsedBytes
+	verdict.HostingLowWatermark = before.Policy.LowWatermarkBytes
 	add("owner-hosting-ledger-bytes", float64(usedDelta), "= interface policy bytes", float64(counted), complete && usedDelta == counted)
 	sender := role == streamqualification.ReaderRole && profile == streamqualification.ClientToPublisher || role == streamqualification.PublisherRole && profile == streamqualification.PublisherToClient
 	useful := usefulRx

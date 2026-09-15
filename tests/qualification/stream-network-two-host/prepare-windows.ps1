@@ -317,6 +317,9 @@ foreach ($role in @('reader','publisher')) {
 }
 
 $runInputs = [ordered]@{ Schema='ardents-qualification-prepared-inputs-v1'; ReaderHost=$ReaderHost; PublisherHost=$PublisherHost;
+    Seed=[string]$provision.Seed; At=[string]$provision.At; HostingRoot=[string]$provision.HostingRoot;
+    ReaderHostingPolicySHA256=(Get-FileHash -LiteralPath (Join-Path $prepared 'hosting-reader.json') -Algorithm SHA256).Hash.ToLowerInvariant();
+    PublisherHostingPolicySHA256=(Get-FileHash -LiteralPath (Join-Path $prepared 'hosting-publisher.json') -Algorithm SHA256).Hash.ToLowerInvariant();
     FixtureRoot=$fixture; ReaderPlanTemplate=(Join-Path $fixture ([string]$provision.ReaderPlanTemplate));
     PublisherPlan=(Join-Path $fixture ([string]$provision.PublisherPlan)); Net32Plan=(Join-Path $fixture ([string]$provision.Net32Plan));
     NodeInventory=(Join-Path $fixture ([string]$provision.NodeInventory));

@@ -22,13 +22,14 @@ type pairedWorkloadVerdict struct {
 	Relay                               relayTrafficVerdict
 	NodeOwners                          nodeOwnersVerdict
 	Criteria                            []streamqualification.Criterion
+	Assurance                           []issue60EvidenceVerdict
 }
 
-// verifyPair consumes the unedited local runner outputs. It does not convert
-// successful workload evidence into a NET-14V, P5, P7 or P8 acceptance claim.
+// verifyPair consumes the unedited local runner outputs and emits narrowly
+// scoped P5/P7/P8 verdicts for the issue-60 obligations those inputs prove.
 func verifyPair(paths []string, output io.Writer) error {
-	if len(paths) != 6 {
-		return errors.New("usage: ardents-qualification verify-pair <reader-jsonl> <publisher-jsonl> <network-manifest.json> <relay-results.json> <node-results.json> <node-inventory-sha256>")
+	if len(paths) != 7 {
+		return errors.New("usage: ardents-qualification verify-pair <reader-jsonl> <publisher-jsonl> <network-manifest.json> <relay-results.json> <node-results.json> <node-inventory-sha256> <cleanup-results.json>")
 	}
 	manifest, manifestHash, manifestErr := readNetworkManifest(paths[2])
 	criteria := []streamqualification.Criterion{{
@@ -48,6 +49,7 @@ func verifyPair(paths []string, output io.Writer) error {
 			var record struct {
 				Seed, BinarySHA256, PlanSHA256, Kind, Failure string
 				EndpointArtifact                              qualificationEndpointArtifact
+				Environment                                   candidateEnvironment
 				Role                                          streamqualification.Role
 				Profile                                       streamqualification.Profile
 				Condition                                     streamqualification.NetworkCondition
@@ -60,6 +62,9 @@ func verifyPair(paths []string, output io.Writer) error {
 				return err
 			}
 			if record.Kind == "candidate" {
+				if !inQualificationEndpointCgroup(record.Environment.Cgroup) {
+					return errors.New("runner Endpoint is outside the whole-owner slice")
+				}
 				if _, err := decodeIdentity(record.BinarySHA256); err != nil {
 					return err
 				}
@@ -162,7 +167,10 @@ func verifyPair(paths []string, output io.Writer) error {
 			streamqualification.Criterion{Name: "node-owner-evidence", Relation: "blocked by network manifest", Passed: false},
 		)
 	}
-	verdict := pairedWorkloadVerdict{Kind: "paired-workload", CandidateSHA256: binaryIdentity, EndpointUnitSHA256: unitIdentity, Profile: profile, Condition: condition, ReaderNetwork: ownerNetworks[streamqualification.ReaderRole], PublisherNetwork: ownerNetworks[streamqualification.PublisherRole], Relay: relay, NodeOwners: nodeOwners, Criteria: criteria}
+	cleanupCriteria, cleanupErr := readCleanupResults(paths[6])
+	criteria = append(criteria, cleanupCriteria...)
+	assurance := issue60Evidence(criteria)
+	verdict := pairedWorkloadVerdict{Kind: "paired-workload", CandidateSHA256: binaryIdentity, EndpointUnitSHA256: unitIdentity, Profile: profile, Condition: condition, ReaderNetwork: ownerNetworks[streamqualification.ReaderRole], PublisherNetwork: ownerNetworks[streamqualification.PublisherRole], Relay: relay, NodeOwners: nodeOwners, Criteria: criteria, Assurance: assurance}
 	if err := json.NewEncoder(output).Encode(verdict); err != nil {
 		return err
 	}
@@ -170,7 +178,13 @@ func verifyPair(paths []string, output io.Writer) error {
 	if !streamqualification.CriteriaPassed(criteria) {
 		outcome = errors.Join(outcome, errors.New("paired workload criteria failed"))
 	}
-	return errors.Join(outcome, relayErr, nodeErr)
+	for _, verdict := range assurance {
+		if !verdict.Passed {
+			outcome = errors.Join(outcome, errors.New("issue-60 assurance evidence is incomplete"))
+			break
+		}
+	}
+	return errors.Join(outcome, relayErr, nodeErr, cleanupErr)
 }
 
 func evaluatePairedOwnerNetwork(reports streamqualification.PairedReports, profile streamqualification.Profile, condition streamqualification.NetworkCondition, owners map[streamqualification.Role]ownerNetworkVerdict, relay relayTrafficVerdict) []streamqualification.Criterion {
@@ -200,8 +214,18 @@ func evaluatePairedOwnerNetwork(reports streamqualification.PairedReports, profi
 		return owner.UsefulTx == tx && owner.UsefulRx == rx && owner.InterfaceTx+owner.InterfaceRx == owner.DirectionalWire &&
 			owner.CountedBytes == owner.HostingLedgerDelta && owner.OneSecondSampleCount >= 598
 	}
+	validProviderPeriod := func(owner ownerNetworkVerdict) bool {
+		limit, limitOK := hostingLimitBytes(owner.HostingUnit, owner.HostingQuantity)
+		return owner.HostingProvider != "" && limitOK &&
+			(owner.HostingDirections == "tx" || owner.HostingDirections == "rx" || owner.HostingDirections == "tx+rx") &&
+			!owner.HostingPeriodStart.After(owner.Started) && !owner.HostingPeriodEnd.Before(owner.Stopped) &&
+			owner.HostingPeriodStart.Before(owner.HostingPeriodEnd) && limit > owner.HostingInitialUsed &&
+			owner.HostingLowWatermark <= limit-owner.HostingInitialUsed && owner.HostingLedgerDelta > 0
+	}
 	readerValid := conditionErr == nil && readerPresent && validHost(reader, readerTx, readerRx)
 	publisherValid := conditionErr == nil && publisherPresent && validHost(publisher, publisherTx, publisherRx)
+	readerPeriodValid := readerValid && validProviderPeriod(reader)
+	publisherPeriodValid := publisherValid && validProviderPeriod(publisher)
 	readerUseful, publisherUseful := readerRx, publisherTx
 	if profile == streamqualification.ClientToPublisher {
 		readerUseful, publisherUseful = readerTx, publisherRx
@@ -223,6 +247,8 @@ func evaluatePairedOwnerNetwork(reports streamqualification.PairedReports, profi
 	readerEndpoint, readerRatio, readerEndpointValid := endpoint(userEndpoint, readerUseful)
 	publisherEndpoint, publisherRatio, publisherEndpointValid := endpoint(publisherEndpoint, publisherUseful)
 	return []streamqualification.Criterion{
+		{Name: "reader-provider-period-bound", Observed: boolNumber(readerPeriodValid), Relation: "=", Bound: 1, Passed: readerPeriodValid},
+		{Name: "publisher-provider-period-bound", Observed: boolNumber(publisherPeriodValid), Relation: "=", Bound: 1, Passed: publisherPeriodValid},
 		{Name: "reader-owner-hosting-reconciliation", Observed: float64(reader.HostingLedgerDelta), Relation: "= host interface policy bytes", Bound: float64(reader.CountedBytes), Passed: readerValid},
 		{Name: "publisher-owner-hosting-reconciliation", Observed: float64(publisher.HostingLedgerDelta), Relation: "= host interface policy bytes", Bound: float64(publisher.CountedBytes), Passed: publisherValid},
 		{Name: "reader-endpoint-carrier-ratio", Observed: readerRatio, Relation: "<=", Bound: ratioLimit, Passed: readerEndpointValid},
@@ -232,6 +258,15 @@ func evaluatePairedOwnerNetwork(reports streamqualification.PairedReports, profi
 		{Name: "paired-directional-useful-bytes", Observed: float64(readerUseful), Relation: "= peer", Bound: float64(publisherUseful), Passed: readerUseful != 0 && readerUseful == publisherUseful},
 		{Name: fmt.Sprintf("profile-%d-owner-network", profile), Observed: float64(len(owners)), Relation: "=", Bound: 2, Passed: len(owners) == 2},
 	}
+}
+
+func hostingLimitBytes(unit string, quantity uint64) (uint64, bool) {
+	multipliers := map[string]uint64{"B": 1, "MB": 1_000_000, "MiB": 1 << 20, "GB": 1_000_000_000, "GiB": 1 << 30, "TB": 1_000_000_000_000, "TiB": 1 << 40}
+	multiplier, ok := multipliers[unit]
+	if !ok || quantity == 0 || quantity > math.MaxUint64/multiplier {
+		return 0, false
+	}
+	return quantity * multiplier, true
 }
 func relayWindowCriteria(relay relayTrafficVerdict, started, stopped time.Time) []streamqualification.Criterion {
 	complete := !started.IsZero() && started.Before(stopped) && len(relay.Segments) == 12

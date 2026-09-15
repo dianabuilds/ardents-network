@@ -24,6 +24,16 @@ type candidateEnvironment struct {
 	LogicalCPUs  int
 }
 
+func inQualificationEndpointCgroup(observation string) bool {
+	expected := "0::" + qualificationOwnerControlGroup + "/ardents-endpoint.service"
+	for _, record := range strings.Split(observation, "\n") {
+		if strings.TrimSpace(record) == expected {
+			return true
+		}
+	}
+	return false
+}
+
 func readCandidateEnvironment(ctx context.Context) (candidateEnvironment, error) {
 	var environment candidateEnvironment
 	var err error

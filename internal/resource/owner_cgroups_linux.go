@@ -19,7 +19,7 @@ func MeasureOwnerCgroups(workers []string) (Sample, error) {
 	}
 	paths := []string{current}
 	for _, worker := range workers {
-		if !strings.HasPrefix(worker, "/system.slice/") || filepath.Clean(worker) != worker || strings.ContainsAny(worker, "\x00\r\n") {
+		if !validOwnerWorkerCgroup(worker) {
 			return Sample{}, errors.New("worker cgroup path invalid")
 		}
 		path := filepath.Join("/sys/fs/cgroup", worker)

@@ -50,11 +50,14 @@ func run(ctx context.Context, arguments []string, output io.Writer) (outcome err
 	if len(arguments) > 0 && arguments[0] == "verify-net14v" {
 		return verifyNET14V(arguments[1:], output)
 	}
+	if len(arguments) > 0 && arguments[0] == "verify-failed-net14v" {
+		return verifyFailedNET14V(arguments[1:], output)
+	}
 	if len(arguments) > 0 && arguments[0] == "verify-run" {
 		return verifyCompletedRun(arguments[1:], output)
 	}
 	if len(arguments) != 1 {
-		return errors.New("usage: ardents-qualification <local-plan.json> | preflight <local-plan.json> | verify-run <runner-jsonl> | verify-pair <reader-jsonl> <publisher-jsonl> <network-manifest.json> <relay-results.json> <node-results.json> <node-inventory-sha256> | verify-network-manifest <manifest.json> | verify-net14v <baseline-manifest.json> <episode-manifest.json> <baseline-verdict.json> <episode-verdict.json> <recovery-evidence.jsonl> [recovery-evidence.jsonl]")
+		return errors.New("usage: ardents-qualification <local-plan.json> | preflight <local-plan.json> | verify-run <runner-jsonl> | verify-pair <reader-jsonl> <publisher-jsonl> <network-manifest.json> <relay-results.json> <node-results.json> <node-inventory-sha256> <cleanup-results.json> | verify-network-manifest <manifest.json> | verify-net14v <baseline-manifest.json> <episode-manifest.json> <baseline-verdict.json> <episode-verdict.json> <recovery-evidence.jsonl> [recovery-evidence.jsonl] | verify-failed-net14v <baseline-manifest.json> <episode-manifest.json> <baseline-verdict.json> <failed-relay-results.json> <recovery-evidence.jsonl> [recovery-evidence.jsonl]")
 	}
 	journal := newEvidenceJournal(output)
 	emit := journal.emit

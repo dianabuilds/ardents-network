@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 param(
     [Parameter(Mandatory = $true)][string]$EndpointHost,
     [Parameter(Mandatory = $true)][string]$SSHKey,
@@ -36,9 +37,37 @@ function Convert-Digest([object]$Value, [string]$Name) {
     Assert-Hex $hex $Name
     return $hex
 }
-function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label) {
-    & $Program @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+function Save-NativeFailure([string]$Label, [string]$Detail) {
+    if (-not $script:evidence -or -not (Test-Path -LiteralPath $script:evidence -PathType Container)) { return }
+    $safe = ($Label -replace '[^A-Za-z0-9._-]', '-').Trim('-')
+    if ($safe.Length -gt 80) { $safe = $safe.Substring(0, 80) }
+    Write-Utf8 (Join-Path $script:evidence "native-failure-$safe-$([Guid]::NewGuid().ToString('N')).txt") ($Detail + [Environment]::NewLine)
+}
+function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label, [int]$TimeoutSeconds = 180, [switch]$Interactive) {
+    $start = [Diagnostics.ProcessStartInfo]::new()
+    $start.FileName = $Program
+    $start.UseShellExecute = $false
+    $start.RedirectStandardOutput = -not $Interactive
+    $start.RedirectStandardError = -not $Interactive
+    foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $start
+    if (-not $process.Start()) { throw "$Label did not start." }
+    if (-not $Interactive) { $stdout = $process.StandardOutput.ReadToEndAsync(); $stderr = $process.StandardError.ReadToEndAsync() }
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill($true); $process.WaitForExit()
+        $detail = "$Label exceeded its $TimeoutSeconds-second local deadline."
+        if (-not $Interactive) {
+            $captured = $stdout.Result + $stderr.Result
+            if ($captured.Length -gt 65536) { $captured = $captured.Substring($captured.Length - 65536) }
+            if (-not [string]::IsNullOrWhiteSpace($captured)) { $detail += [Environment]::NewLine + $captured }
+        }
+        Save-NativeFailure $Label $detail; throw $detail
+    }
+    if ($Interactive) { if ($process.ExitCode -ne 0) { throw "$Label failed with exit code $($process.ExitCode)." }; return @() }
+    $output = @((($stdout.Result + $stderr.Result) -split "`r?`n") | Where-Object { $_ -ne '' })
+    if ($process.ExitCode -ne 0) { $detail = "$Label failed with exit code $($process.ExitCode): $($output -join [Environment]::NewLine)"; Save-NativeFailure $Label $detail; throw $detail }
+    return $output
 }
 
 Assert-Host $EndpointHost 'EndpointHost'
@@ -82,9 +111,7 @@ $remoteRoot = "/var/tmp/ardents-net32-$attempt"
 Assert-RemotePath $remoteRoot 'remote attempt root'
 function Remote([string]$HostName) { return "$User@$HostName" }
 function Invoke-SSH([string]$HostName, [string]$Command, [string]$Label) {
-    $output = & $ssh @sshOptions -n (Remote $HostName) $Command 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed: $($output -join [Environment]::NewLine)" }
-    return @($output)
+    return @(Invoke-Native $ssh ($sshOptions + @('-n', (Remote $HostName), $Command)) $Label)
 }
 function Send-File([string]$Source, [string]$HostName, [string]$Destination, [string]$Label) {
     Invoke-Native $scp ($scpOptions + @($Source, "$(Remote $HostName):$Destination")) $Label
@@ -123,8 +150,7 @@ function Issue-Permission([object]$Files, [string]$Digest) {
         Write-Host "Enter this independently observed admission request commitment when custody asks: $Digest"
         $args = @('issue-admission-permission', '--vault-root', $authority.VaultRoot, '--record', $authority.RecordID, '--request', $authorityRequest, '--permission-output', $authorityPermission, '--environment-commitment', $authority.EnvironmentCommitment, '--network-commitment', $authority.NetworkCommitment, '--root-commitment', $authority.RootCommitment, '--kind', 'admission', '--id-commitment', $authority.IDCommitment)
         $quoted = ($args | ForEach-Object { "'$($_)'" }) -join ' '
-        & $ssh @sshOptions -tt (Remote ([string]$authority.Host)) "'$($authority.Binary)' $quoted"
-        if ($LASTEXITCODE -ne 0) { throw 'Reader custody issuance failed.' }
+        [void](Invoke-Native $ssh ($sshOptions + @('-tt', (Remote ([string]$authority.Host)), "'$($authority.Binary)' $quoted")) 'Reader custody issuance' 900 -Interactive)
         Receive-File ([string]$authority.Host) $authorityPermission $permissionLocal 'download Reader permission'
         if ((Get-Item -LiteralPath $permissionLocal).Length -ne 228) { throw 'Reader permission has the wrong size.' }
         Send-File $permissionLocal $EndpointHost "$remoteRoot/reader.permission" 'upload Reader permission'
@@ -137,6 +163,8 @@ function Issue-Permission([object]$Files, [string]$Digest) {
 }
 
 $invocation = $null
+$runFailure = $null
+$cleanupFailures = [Collections.Generic.List[string]]::new()
 try {
     [IO.File]::Copy($planPath, (Join-Path $evidence 'plan.installed.json'))
     [IO.File]::Copy($authorityPath, (Join-Path $evidence 'authority-public-inventory.json'))
@@ -174,23 +202,33 @@ try {
     Send-File $journalPath $EndpointHost "$remoteRoot/endpoint.jsonl" 'upload NET-32 evidence for verification'
     $verified = Invoke-SSH $EndpointHost "/usr/lib/ardents/qualification/ardents-qualification verify-run '$remoteRoot/endpoint.jsonl'" 'verify completed NET-32 evidence'
     Write-Utf8 (Join-Path $evidence 'completed-verdict.json') (($verified -join "`n") + "`n")
-    Write-Utf8 (Join-Path $evidence 'attempt.json') (([ordered]@{ Schema='ardents-net32-short-projection-attempt-v1'; Host=$EndpointHost; Invocation=$invocation; ObservedMinutes=10; Observed24Hours=$false; SourceCommit=$SourceCommit; Passed=$true; CompletedAt=[DateTime]::UtcNow.ToString('o') } | ConvertTo-Json -Compress) + "`n")
 } catch {
-    $failure = $_.Exception.Message
-    Write-Utf8 (Join-Path $evidence 'failure.txt') ($failure + "`n")
-    if ($invocation -match '^[0-9a-f]{32}$') { try { Write-Utf8 (Join-Path $evidence 'endpoint.failed.jsonl') (((Journal $EndpointHost $invocation) -join "`n") + "`n") } catch {} }
-    Write-Utf8 (Join-Path $evidence 'attempt.json') (([ordered]@{ Schema='ardents-net32-short-projection-attempt-v1'; Host=$EndpointHost; Invocation=$invocation; ObservedMinutes=10; Observed24Hours=$false; SourceCommit=$SourceCommit; Passed=$false; Failure=$failure; CompletedAt=[DateTime]::UtcNow.ToString('o') } | ConvertTo-Json -Compress) + "`n")
-    throw
+    $runFailure = $_.Exception
+    if ($invocation -match '^[0-9a-f]{32}$') {
+        try { Write-Utf8 (Join-Path $evidence 'endpoint.failed.jsonl') (((Journal $EndpointHost $invocation) -join "`n") + "`n") }
+        catch { $cleanupFailures.Add("retain failed Endpoint journal: $($_.Exception.Message)") }
+    }
 } finally {
-    try { [void](Invoke-SSH $EndpointHost 'systemctl stop ardents-endpoint.service 2>/dev/null || :; systemctl reset-failed ardents-endpoint.service' 'stop bounded NET-32 Endpoint') } catch {}
+    try {
+        [void](Invoke-SSH $EndpointHost 'timeout 30s systemctl stop ardents-endpoint.service 2>/dev/null || :; systemctl reset-failed ardents-endpoint.service; test "$(systemctl show ardents-endpoint.service -p ActiveState --value)" = inactive; test "$(systemctl show ardents-endpoint.service -p MainPID --value)" = 0; test -z "$(systemctl list-units ''ardents-stream-qualification-*@*.service'' --state=active,activating,deactivating --plain --no-legend)"' 'stop and verify NET-32 Endpoint')
+    } catch { $cleanupFailures.Add("Endpoint cleanup: $($_.Exception.Message)") }
     foreach ($hostName in @($EndpointHost, [string]$authority.Host) | Select-Object -Unique) {
-        try { [void](Invoke-SSH $hostName "case '$remoteRoot' in /var/tmp/ardents-net32-[0-9a-f]*) rm -rf -- '$remoteRoot';; *) exit 64;; esac" 'remove bounded NET-32 staging') } catch {}
+        try { [void](Invoke-SSH $hostName "case '$remoteRoot' in /var/tmp/ardents-net32-[0-9a-f]*) rm -rf -- '$remoteRoot' && test ! -e '$remoteRoot';; *) exit 64;; esac" 'remove and verify bounded NET-32 staging') }
+        catch { $cleanupFailures.Add("remote staging on ${hostName}: $($_.Exception.Message)") }
     }
-    $inventory = foreach ($file in Get-ChildItem -LiteralPath $evidence -Recurse -File | Where-Object Name -ne 'evidence-sha256.txt' | Sort-Object FullName) {
-        $relative = $file.FullName.Substring($evidence.Length).TrimStart('\', '/').Replace('\', '/')
-        "{0}  {1}" -f ((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()), $relative
-    }
-    Write-Utf8 (Join-Path $evidence 'evidence-sha256.txt') (($inventory -join "`n") + "`n")
 }
+$failureMessages = [Collections.Generic.List[string]]::new()
+if ($null -ne $runFailure) { $failureMessages.Add($runFailure.Message) }
+foreach ($cleanupFailure in $cleanupFailures) { $failureMessages.Add("cleanup/evidence: $cleanupFailure") }
+$passed = $failureMessages.Count -eq 0
+$failure = if ($passed) { '' } else { $failureMessages -join [Environment]::NewLine }
+if (-not $passed) { Write-Utf8 (Join-Path $evidence 'failure.txt') ($failure + "`n") }
+Write-Utf8 (Join-Path $evidence 'attempt.json') (([ordered]@{ Schema='ardents-net32-short-projection-attempt-v1'; Host=$EndpointHost; Invocation=$invocation; ObservedMinutes=10; Observed24Hours=$false; SourceCommit=$SourceCommit; Passed=$passed; Failure=$failure; CompletedAt=[DateTime]::UtcNow.ToString('o') } | ConvertTo-Json -Compress) + "`n")
+$inventory = foreach ($file in Get-ChildItem -LiteralPath $evidence -Recurse -File | Where-Object Name -ne 'evidence-sha256.txt' | Sort-Object FullName) {
+    $relative = $file.FullName.Substring($evidence.Length).TrimStart('\', '/').Replace('\', '/')
+    "{0}  {1}" -f ((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()), $relative
+}
+Write-Utf8 (Join-Path $evidence 'evidence-sha256.txt') (($inventory -join "`n") + "`n")
+if (-not $passed) { throw $failure }
 
 Write-Output "Installed NET-32 short projection passed; evidence: $evidence"

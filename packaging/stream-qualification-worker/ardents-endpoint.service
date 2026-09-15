@@ -5,6 +5,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
+Slice=ardents-qualification-owner.slice
 Type=exec
 User=ardents-endpoint
 Group=ardents-endpoint

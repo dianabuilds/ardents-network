@@ -211,3 +211,28 @@ publication/Connection composition -> qualified local job/install integration
 -> complete migration and system trials. Each layer uses the already selected
 contract of its dependencies. This is a design dependency graph, not issues,
 assigned work or authorization to start multiple C0 slices.
+
+## Consolidation verification
+
+[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+preserves this entire acceptance contract for the changed consolidated candidate.
+Each bounded refactor/retirement includes its affected behavior checks and owner
+documents. Do not defer them into the final system campaign. Before removing
+AAI2, demonstrate the retained binary-stream, fragmentation, half-close,
+cancellation and terminal cases through AAI3 with strict version refusal.
+
+Final qualification separates ordinary installed TCP/TLS and QUIC journeys,
+durable admission/adoption failures (P5/P7/P10), wire/volatile lifecycle (P2/P7),
+resource cost and floods (P5/P8), confinement/worker loss (P6/P7), complete role
+observations and honest correlation diagnostics (P3/P9), cryptographic bindings
+(P4), and exact supply-chain closure (P11). P1 is exercised by the installed
+journeys. Every applicable case and numeric bound above remains required;
+splitting execution into issues never waives a case. Bind all results to the
+same declared source/build candidate and invalidate affected evidence after
+changes. Historical results do not automatically qualify the new composition.
+
+Existing lifecycle tests should exercise real owners through their consumer
+seams. A retirement replaces a supported old positive path only after its
+contract change, with explicit negative entrypoint tests and retained required
+migration evidence. Architecture/profile/deadcode inventories change with the
+owning implementation, not by excluding a failing required path.
