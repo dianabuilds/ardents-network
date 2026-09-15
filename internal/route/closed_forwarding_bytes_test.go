@@ -19,7 +19,7 @@ func TestClosedForwardingByteAllowanceIncludesAdmissionHeadersAndControl(t *test
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := channel.Next(); !ok {
+	if _, ok := channel.NextAvailable(nil); !ok {
 		t.Fatal("missing OPEN")
 	}
 	accepted, err := ClosedAcceptFrame(0, 64<<10)

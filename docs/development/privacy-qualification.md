@@ -87,6 +87,8 @@ across long runs. No test-only issuer, unlimited quota, clock rollback or
 ledger reset may manufacture enough successful samples. Failures count even
 when a later retry succeeds. Run each seed on both selected Carriers.
 
+For issue #60, NET-32 uses a declared ten-minute observation and conservative 24-hour projection; no 24-hour campaign is part of this issue. The receipt states both durations and cannot be treated as an observed-day result.
+
 User-idle measurement starts after explicit enrollment/bootstrap, with no
 Application job or publication active, and includes required State/time refresh,
 cleanup, failed refresh and any bounded preparation. Report startup separately.

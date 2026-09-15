@@ -14,12 +14,15 @@ const textWorkerRoot = "/usr/lib/ardents/text-worker-root"
 // verifyTextWorkerProperties is only one input to a qualified launch receipt.
 // The caller must separately establish the pinned artifact, accepted socket's
 // kernel credentials, live process/cgroup identity and joined cleanup owner.
-func verifyTextWorkerProperties(unit, service textManagerProperties, name, role, cgroup string, pid uint32) error {
+func verifyTextWorkerPropertiesVersion(unit, service textManagerProperties, name, role, cgroup string, pid uint32, version uint16) error {
+	if version != 249 && version != 255 {
+		return errors.New("worker manager version unavailable")
+	}
 	if !textWorkerCgroupPath(cgroup, name, role) || pid == 0 {
 		return errors.New("text worker process binding is invalid")
 	}
 	for key, want := range map[string]string{"Id": name, "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
-		"FragmentPath": "/etc/systemd/system/ardents-text-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
+		"FragmentPath": "/etc/systemd/system/" + inventoryOfUnit(name).prefix() + "-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
 		// ControlGroup is a Service property; Unit owns the remaining identity.
 		properties := unit
 		if key == "ControlGroup" {
@@ -41,12 +44,12 @@ func verifyTextWorkerProperties(unit, service textManagerProperties, name, role,
 			return errors.New("text worker required hardening is unavailable")
 		}
 	}
-	userPrefix := "ardtxt-r-"
+	userPrefix := inventoryOfUnit(name).user("reader")
 	if role == "publisher" {
-		userPrefix = "ardtxt-p-"
+		userPrefix = inventoryOfUnit(name).user("publisher")
 	}
-	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, "ardents-text-"+role+"@"), ".service")
-	for key, want := range map[string]string{"User": user, "Group": user, "RootDirectory": textWorkerRoot, "WorkingDirectory": "/",
+	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, inventoryOfUnit(name).prefix()+"-"+role+"@"), ".service")
+	for key, want := range map[string]string{"User": user, "Group": user, "RootDirectory": inventoryOfUnit(name).root(), "WorkingDirectory": "/",
 		"ProtectSystem": "strict", "ProtectHome": "yes", "Restart": "no", "KillMode": "control-group",
 		"StandardInput": "socket", "StandardOutput": "socket", "StandardError": "null", "NotifyAccess": "none",
 		"RootImage": "", "NetworkNamespacePath": "", "IPCNamespacePath": "", "PAMName": ""} {
@@ -65,6 +68,10 @@ func verifyTextWorkerProperties(unit, service textManagerProperties, name, role,
 		"SetCredential": "a(say)", "SetCredentialEncrypted": "a(say)", "ImportCredential": "as", "EnvironmentFiles": "a(sb)",
 		"PassEnvironment": "as", "ExecStartPre": "a(sasbttttuii)", "ExecStartPost": "a(sasbttttuii)",
 		"ExecStop": "a(sasbttttuii)", "ExecStopPost": "a(sasbttttuii)", "ExecCondition": "a(sasbttttuii)", "ExecReload": "a(sasbttttuii)"} {
+		_, present := service[key]
+		if !present && version == 249 && (key == "LoadCredentialEncrypted" || key == "SetCredentialEncrypted" || key == "ImportCredential") {
+			continue
+		}
 		if !service.exact(key, signature, []any{}) {
 			return errors.New("text worker inherited resources are unavailable")
 		}
@@ -74,13 +81,13 @@ func verifyTextWorkerProperties(unit, service textManagerProperties, name, role,
 		!service.exact("RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_UNIX"}}) {
 		return errors.New("text worker execution policy is unavailable")
 	}
-	if err := verifyTextWorkerExec(service, role, pid); err != nil {
+	if err := verifyInstalledWorkerExec(service, role, pid, inventoryOfUnit(name)); err != nil {
 		return err
 	}
 	return verifyTextWorkerSyscalls(service)
 }
 
-func verifyTextWorkerExec(service textManagerProperties, role string, pid uint32) error {
+func verifyInstalledWorkerExec(service textManagerProperties, role string, pid uint32, inventory workerInventory) error {
 	value, ok := service["ExecStartEx"]
 	var entries [][]json.RawMessage
 	if !ok || value.Type != "a(sasasttttuii)" || json.Unmarshal(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
@@ -90,7 +97,7 @@ func verifyTextWorkerExec(service textManagerProperties, role string, pid uint32
 	var program string
 	var arguments []string
 	var observedPID uint32
-	if json.Unmarshal(parts[0], &program) != nil || program != "/ardents-text" || json.Unmarshal(parts[1], &arguments) != nil ||
+	if json.Unmarshal(parts[0], &program) != nil || program != "/"+inventory.prefix() || json.Unmarshal(parts[1], &arguments) != nil ||
 		len(arguments) != 2 || arguments[0] != program || arguments[1] != "worker-"+role ||
 		strings.TrimSpace(string(parts[2])) != "[]" || json.Unmarshal(parts[7], &observedPID) != nil || observedPID != pid {
 		return errors.New("text worker executable binding is unavailable")

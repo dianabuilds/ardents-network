@@ -52,7 +52,7 @@ func (handshake *ClosedOuterHandshake) admit(lane uint32, lease *ClosedAdmission
 	child, exists := handshake.children[lane]
 	now := handshake.clock().UTC()
 	if handshake.duty == nil || !exists || !child.active || child.admitted || child.eof ||
-		child.restriction != ClosedChildOrdinary || lease.duty == nil || lease.hello != child.hello ||
+		child.restriction != ClosedChildOrdinary || !lease.claim.live() || lease.hello != child.hello ||
 		!closedOuterAdmissionClass(lease) || lease.Bytes != closedClassBytes(lease.Class) || !now.Before(child.pendingDeadline) ||
 		!now.Before(lease.Deadline) || lease.Deadline.After(child.deadline) || lease.Deadline.After(handshake.receiver.Deadline) {
 		return errors.New("closed outer admission does not match live child")

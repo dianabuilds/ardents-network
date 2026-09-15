@@ -39,3 +39,7 @@ func (host installedClosedForwardingHost) Reserve(ctx context.Context, work, ter
 }
 
 func (host installedClosedForwardingHost) Close() error { return host.owner.Close() }
+
+func (host installedClosedForwardingHost) Sample(ctx context.Context) (resource.HostingSample, error) {
+	return host.owner.Sample(ctx)
+}

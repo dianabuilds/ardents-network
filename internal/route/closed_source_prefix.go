@@ -19,6 +19,8 @@ type ClosedTokenPresenter func(ClosedHello, uint8) ([]byte, error)
 // ClosedSourcePrefix owns a fresh admitted Entry/Interior tree. Its stream
 // carries the Interior role protocol, never a direct Application Connection.
 type ClosedSourcePrefix struct {
+	refillMu         sync.Mutex
+	hellos           [2]ClosedHello
 	interruptMu      sync.Mutex
 	interruptedEarly bool
 	source           ClosedBootstrapState
@@ -128,7 +130,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 		if err := owner.connection.SetDeadline(pending); err != nil {
 			return nil, closedSourceOpenFailureAt(role+"-deadline", err)
 		}
-		if err := admitClosedSource(owner.connection, plan, index, role, present); err != nil {
+		if err := admitClosedSourceObserved(owner.connection, plan, index, role, present, &owner.hellos[index]); err != nil {
 			return nil, err
 		}
 		if owner.child != nil {
@@ -171,7 +173,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	return owner, nil
 }
 
-func admitClosedSource(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter) error {
+func admitClosedSourceObserved(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter, observation *ClosedHello) error {
 	peer := plan.peers[index]
 	hello := ClosedHello{NetworkID: plan.profile.NetworkID, StateGeneration: plan.profile.StateGeneration, StateDigest: plan.profile.StateDigest,
 		ProfileDigest: plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ClosedPurposeForwarding, Deadline: plan.deadline}
@@ -206,6 +208,9 @@ func admitClosedSource(connection net.Conn, plan closedBootstrapPlan, index int,
 	status, credit, err := DecodeClosedAcceptFrame(accepted)
 	if err != nil || status != 0 || credit != 64<<10 {
 		return closedSourceOpenFailureAt(role+"-accept-refused", errors.Join(err, errors.New("closed source admission refused")))
+	}
+	if observation != nil {
+		*observation = hello
 	}
 	return nil
 }

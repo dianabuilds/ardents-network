@@ -52,6 +52,10 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		input.Responder.Certificate.PrivateKey == nil && input.TransitIssuer.Certificate.PrivateKey == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil && input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
+	if input.ClosedForwarding.CarrierRelayEndpoint != "" &&
+		(input.ClosedForwarding.Certificate.PrivateKey == nil || !validClosedCarrierEndpoint(input.ClosedForwarding.CarrierRelayEndpoint)) {
+		return runtimeConfig{}, errors.New("closed forwarding Carrier relay endpoint is invalid")
+	}
 	enforcePressure := input.ResourceProfile != ""
 	if enforcePressure {
 		switch input.ResourceProfile {

@@ -4,8 +4,11 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -160,5 +163,138 @@ func TestHostingCancellationPreventsReservation(t *testing.T) {
 	got, err := owner.Observe(t.Context())
 	if err != nil || got.ReservedBytes != 0 {
 		t.Fatalf("cancellation changed reserve: %+v / %v", got, err)
+	}
+}
+
+func TestHostingCanceledReleaseRetriesOnlyBeforeMutation(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	first, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 100}, HostingTraffic{Rx: 20}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 50}, HostingTraffic{Rx: 10}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := first.Release(canceled); err == nil {
+		t.Fatal("canceled release mutated the reservation")
+	}
+	reading.Interfaces[0].Tx += 40
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var group sync.WaitGroup
+	for range 2 {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			errs <- first.Release(t.Context())
+		}()
+	}
+	close(start)
+	group.Wait()
+	close(errs)
+	for releaseErr := range errs {
+		if releaseErr != nil {
+			t.Fatalf("live retry after pre-mutation cancellation = %v", releaseErr)
+		}
+	}
+	if err := first.Release(t.Context()); err != nil {
+		t.Fatalf("repeated release = %v", err)
+	}
+	got, err := owner.Observe(t.Context())
+	if err != nil || got.UsedBytes != 140 || got.ReservedBytes != 60 {
+		t.Fatalf("retry changed observed traffic or another reservation: %+v / %v", got, err)
+	}
+	if err := other.Release(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHostingReleaseAfterCallbackRefusalStaysUnresolved(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	first, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 100}, HostingTraffic{Rx: 20}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 50}, HostingTraffic{Rx: 10}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.bytes = 1000
+	if err := first.Release(t.Context()); err == nil {
+		t.Fatal("callback refusal released a reservation")
+	}
+	if err := first.Release(t.Context()); err == nil {
+		t.Fatal("callback refusal retried a potentially committed release")
+	}
+	got, err := owner.Observe(t.Context())
+	if err != nil || got.ReservedBytes != 180 {
+		t.Fatalf("callback refusal refunded capacity: %+v / %v", got, err)
+	}
+	if err := other.Release(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	state := filepath.Join(root, "period.json")
+	saved := state + ".saved"
+	fault := false
+	owner, err := openHosting(root, func([]string) (hostingReading, error) {
+		if fault {
+			fault = false
+			if err := os.Rename(state, saved); err != nil {
+				return hostingReading{}, err
+			}
+			if err := os.Mkdir(state, 0o700); err != nil {
+				return hostingReading{}, err
+			}
+		}
+		return *reading, nil
+	}, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	first, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 100}, HostingTraffic{Rx: 20}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := owner.Reserve(t.Context(), HostingTraffic{Tx: 50}, HostingTraffic{Rx: 10}, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fault = true
+	if err = first.Release(t.Context()); !errors.Is(err, syscall.EEXIST) {
+		t.Fatalf("post-callback persistence failure = %v, want EEXIST", err)
+	}
+	firstErr := err
+	if !first.released {
+		t.Fatal("post-callback persistence failure left the handle retryable")
+	}
+	if err = os.Remove(state); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Rename(saved, state); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Remove(filepath.Join(root, "period.pending")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
+	if err = first.Release(t.Context()); err != firstErr {
+		t.Fatalf("persistence failure retried after filesystem recovery = %v, want cached %v", err, firstErr)
+	}
+	got, err := owner.Observe(t.Context())
+	if err != nil || got.ReservedBytes != 180 {
+		t.Fatalf("persistence failure refunded a reservation: %+v / %v", got, err)
+	}
+	if err = other.Release(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 }

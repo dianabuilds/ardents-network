@@ -276,7 +276,10 @@ still live. This separates spend-ledger expiry from the lifetime of already
 authorized work. The longer class-2 lease allows a complete ten-minute network
 workload after setup; the text Application's own job deadline remains 600 s.
 
-A receiving duty has at most 1,024 live role channels and 1,024 child lanes,
+A copied admitted handle shares one private claim: exactly one forwarding or
+JOIN owner may take its channel and optional host reservation, and every stale
+copy becomes unable to release that live owner. A receiving duty has at most
+1,024 live role channels and 1,024 child lanes,
 64 MiB queued ciphertext and
 65,536 spent-token entries per hour. Control and pre-admission work use separate
 smaller counters so an Application stream cannot consume termination capacity.
@@ -375,6 +378,26 @@ Replacing a lane uses a fresh token and the existing bounded Connection
 continuity rules; no Application-operation replay follows.
 A failed disk write or ambiguous ledger ownership means unavailable.
 
+If verification has already reserved the receiving host envelope but initial
+admission then refuses for duty capacity, a duplicate or failed durable Spend,
+or an expired lease, Route releases only that failed attempt's reservation.
+The receiving Node preserves the bounded refusal and joins a failed release
+with it for its local owner result. After admission, a refused outer-lane
+handoff or failed forwarding-owner construction follows the same rule until
+the handoff succeeds; the successor forwarding owner then exclusively cancels
+the reservation. A clean release leaves the ordinary refusal
+unchanged. It neither refunds another live admission, resets the spend root,
+nor exposes storage or peer detail through Application IPC. Once admission has
+returned its owner handle, that handle's transfer and cleanup lifecycle is a
+separate boundary.
+
+The local hosting reservation records three Release phases. A context rejected
+before its state-change callback starts leaves that one handle retryable. On
+callback entry, including a continuity refusal, the handle becomes terminal:
+any later storage outcome can follow a committed release and is not retried.
+Observed interface consumption is always retained independently of a released
+reservation.
+
 The Endpoint's separate owner-only token-attempt root records each potential
 spend before Route receives its token bytes. It uses an exclusive process
 lease, marker ardents-token-attempts-v1, and ARDTPS01 journal header:
@@ -452,3 +475,23 @@ the closed permission format cannot become a permanent public administrator.
 
 Evidence and limitations are in the
 [R-152 contract research](../research/records/r-152-closed-scheme-contract.md).
+
+## Spend journal failure containment
+
+The accepted [consolidation decision](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+clarifies the required failure boundary: any error from a mutating spend-ledger
+operation terminalizes that open owner's admission until close and verified
+reopen. Preserve the first storage failure; subsequent Spend calls must not
+write or admit work. Include modifying pruning as well as append/sync/close.
+The protocol caller returns its existing unavailable outcome, without an
+automatic reopen/retry in the same request. This is a required correction,
+not a statement that the current implementation already satisfies it.
+
+Recovery may truncate exactly once, and only a valid final incomplete tail: a
+final zero commit marker or bytes short of one record after committed records.
+A nonzero/non-commit marker, or any bytes after an incomplete record, makes
+recovery unsafe. Refuse receiver startup without mutating that journal rather
+than discard a potentially acknowledged Spend. A truncate or sync failure also
+refuses startup. Previously committed Spend remains unavailable after safe
+recovery. Keep the existing token and journal encodings; introduce no generic
+persistence engine, new root or authority to repair an ambiguous journal.

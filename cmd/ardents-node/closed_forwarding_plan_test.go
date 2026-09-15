@@ -26,6 +26,8 @@ func TestNodePlanConnectsClosedForwardingToStateOwnedRuntime(t *testing.T) {
 	}
 	local := runtime.node.ClosedForwarding
 	if local.Root != plan.ClosedForwarding.Root || local.HostingRoot != plan.ClosedForwarding.HostingRoot ||
+		runtime.node.ClosedListenOverride != "172.17.0.1:49127" ||
+		local.CarrierRelayEndpoint != "198.51.100.7:49128" ||
 		local.AdmissionTraffic != plan.ClosedForwarding.AdmissionTraffic || local.TerminationTraffic != plan.ClosedForwarding.TerminationTraffic ||
 		local.ConnectionLimit != 2 || local.DrainTimeout != 2*time.Second || local.Certificate.PrivateKey == nil ||
 		runtime.node.Probe.ListenAddress != "" || runtime.node.ClosedIssuer.Root != "" {
@@ -50,6 +52,7 @@ func TestNodePlanRefusesMixedOrUnpinnedClosedForwarding(t *testing.T) {
 		{"responder", func(plan *nodePlan) { plan.Responder = &responderPlan{} }},
 		{"transit", func(plan *nodePlan) { plan.TransitIssuer = &transitIssuerPlan{} }},
 		{"resource profile", func(plan *nodePlan) { plan.NodeResourceProfile = "ardents-rendezvous-dedicated-host-v1" }},
+		{"invalid Carrier relay", func(plan *nodePlan) { plan.ClosedForwarding.CarrierRelayEndpoint = "relay.invalid:1234" }},
 		{"pin without duty", func(plan *nodePlan) { plan.ClosedForwarding = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -115,7 +118,8 @@ func forwardingNodePlan(t *testing.T) nodePlan {
 			{Address: "192.0.2.11:48011", ServerName: "b.test", Identity: strings.Repeat("16", 32), Family: "b", EndpointHandle: "b", RootCA: rootB, LeafKeyDigest: strings.Repeat("17", 32)},
 		},
 		ClosedProfileAuthority: strings.Repeat("12", 32),
-		ClosedForwarding:       &closedForwardingPlan{Root: t.TempDir(), ConnectionLimit: 2, DrainTimeoutMS: 2000, HostingRoot: t.TempDir(), AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}},
+		ClosedListenOverride:   "172.17.0.1:49127",
+		ClosedForwarding:       &closedForwardingPlan{Root: t.TempDir(), ConnectionLimit: 2, DrainTimeoutMS: 2000, HostingRoot: t.TempDir(), CarrierRelayEndpoint: "198.51.100.7:49128", AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}},
 	}
 }
 func writeForwardingNodePlan(t *testing.T, plan nodePlan) string {

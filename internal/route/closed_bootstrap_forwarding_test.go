@@ -50,7 +50,7 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 	if governor.queued == 0 || channel.duty.controlQueued == 0 {
 		t.Fatal("OPEN control queue is unaccounted")
 	}
-	if event, ok := channel.Next(); !ok || event.Restriction != ClosedChildIssuerBootstrap {
+	if event, ok := channel.NextAvailable(nil); !ok || event.Restriction != ClosedChildIssuerBootstrap {
 		t.Fatal("OPEN missing")
 	}
 	if governor.queued != 0 || channel.duty.controlQueued != 0 {
@@ -68,7 +68,7 @@ func TestClosedBootstrapForwardingOwnsRealReservationAndRefusesPrivateUpgrade(t 
 	if _, err := channel.Accept(credit); err != nil {
 		t.Fatal(err)
 	}
-	if event, ok := channel.Next(); !ok || event.Kind != 7 {
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != 7 {
 		t.Fatal("consumed reverse credit not forwarded")
 	}
 	if _, err := channel.Accept(credit); err == nil {
@@ -109,7 +109,7 @@ func TestClosedBootstrapForwardingSharesQueueAcrossBothDirectionsAndDuties(t *te
 		if _, err := channel.Accept(ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
 			t.Fatal(err)
 		}
-		channel.Next()
+		channel.NextAvailable(nil)
 		if _, err := channel.Accept(ClosedLaneFrame{Kind: 6, Lane: 1, Body: bytes.Repeat([]byte{1}, 32<<10)}); err != nil {
 			t.Fatal(err)
 		}

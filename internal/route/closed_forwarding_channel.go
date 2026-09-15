@@ -59,6 +59,7 @@ type ClosedForwardingChannel struct {
 }
 
 type closedForwardChild struct {
+	reservedControl      bool
 	deadline             time.Time
 	credit               uint64
 	reverseCredit        uint64
@@ -82,16 +83,18 @@ func NewReplenishableClosedForwardingChannel(lease *ClosedAdmission, authorize C
 }
 
 func newClosedForwardingChannel(lease *ClosedAdmission, authorize ClosedForwardingAuthorizer, replenish ClosedForwardingReplenisher, clock func() time.Time) (*ClosedForwardingChannel, error) {
-	if lease == nil || lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || lease.duty == nil || authorize == nil || clock == nil || clock().IsZero() {
+	if lease == nil || lease.Class != 2 || lease.Bytes != 32<<20 || lease.Deadline.IsZero() || !lease.claim.live() || authorize == nil || clock == nil || clock().IsZero() {
 		return nil, errors.New("closed forwarding channel is invalid")
 	}
-	channel := &ClosedForwardingChannel{duty: lease.duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: closedAdmissionFrameBytes,
-		authorize: authorize, replenish: replenish, hello: lease.hello, exporter: lease.exporter, clock: clock, children: make(map[uint32]closedForwardChild)}
-	if lease.release != nil {
-		channel.releases = append(channel.releases, lease.release)
+	duty, release, transferred := lease.claim.transfer()
+	if !transferred {
+		return nil, errors.New("closed forwarding channel is unavailable")
 	}
-	lease.duty = nil
-	lease.release = nil
+	channel := &ClosedForwardingChannel{duty: duty, deadline: lease.Deadline, byteLimit: lease.Bytes, usedBytes: closedAdmissionFrameBytes,
+		authorize: authorize, replenish: replenish, hello: lease.hello, exporter: lease.exporter, clock: clock, children: make(map[uint32]closedForwardChild)}
+	if release != nil {
+		channel.releases = append(channel.releases, release)
+	}
 	return channel, nil
 }
 
@@ -179,14 +182,15 @@ func (channel *ClosedForwardingChannel) open(frame ClosedLaneFrame) (ClosedForwa
 			return ClosedForwardingEvent{}, err
 		}
 	}
-	if err := channel.duty.reserveChild(); err != nil {
+	reservedControl, err := channel.duty.reserveChildCapacity(closedControlPurpose(open.Purpose))
+	if err != nil {
 		return ClosedForwardingEvent{}, errors.New("closed forwarding child capacity is unavailable")
 	}
-	channel.children[frame.Lane] = closedForwardChild{deadline: open.Deadline, credit: closedLaneCredit, reverseCredit: closedLaneCredit}
+	channel.children[frame.Lane] = closedForwardChild{reservedControl: reservedControl, deadline: open.Deadline, credit: closedLaneCredit, reverseCredit: closedLaneCredit}
 	channel.lastOdd = frame.Lane
 	if !channel.queueControl(ClosedForwardingEvent{Kind: closedFrameOpen, Lane: frame.Lane, Open: open, Restriction: restriction}) {
 		delete(channel.children, frame.Lane)
-		channel.duty.releaseChild()
+		channel.duty.releaseChildCapacity(reservedControl)
 		return ClosedForwardingEvent{}, errors.New("closed forwarding control queue is unavailable")
 	}
 	return ClosedForwardingEvent{}, nil
@@ -236,7 +240,7 @@ func (channel *ClosedForwardingChannel) close(frame ClosedLaneFrame) (ClosedForw
 	channel.releaseControlQueue(child.reverseControlQueued)
 	channel.queued -= child.queued + child.reverseQueued
 	delete(channel.children, frame.Lane)
-	channel.duty.releaseChild()
+	channel.duty.releaseChildCapacity(child.reservedControl)
 	return ClosedForwardingEvent{}, nil
 }
 
@@ -272,11 +276,9 @@ func (channel *ClosedForwardingChannel) Credit(lane uint32, bytes uint32) (Close
 	return ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane, Body: body}, nil
 }
 
-// Next returns one already queued control or data frame for the actual
-// consumer. Control is serviced first; data uses round-robin lanes and never
-// waits to manufacture coalesced traffic. CREDIT remains unavailable until a
-// returned data frame has reached that consumer.
-func (channel *ClosedForwardingChannel) Next() (ClosedForwardingEvent, bool) {
+// NextAvailable returns bounded work whose consumer is currently available.
+// Rejected work remains in this channel's accounted control or prefix queue.
+func (channel *ClosedForwardingChannel) NextAvailable(available func(ClosedForwardingEvent) bool) (ClosedForwardingEvent, bool) {
 	if channel == nil {
 		return ClosedForwardingEvent{}, false
 	}
@@ -285,23 +287,30 @@ func (channel *ClosedForwardingChannel) Next() (ClosedForwardingEvent, bool) {
 	if channel.terminated || !channel.clock().UTC().Before(channel.deadline) {
 		return ClosedForwardingEvent{}, false
 	}
-	if len(channel.controls) > 0 {
-		event := channel.controls[0]
-		channel.controls = channel.controls[1:]
+	for index, event := range channel.controls {
+		if available != nil && !available(event) {
+			continue
+		}
+		channel.controls = append(channel.controls[:index], channel.controls[index+1:]...)
 		channel.controlBytes -= closedForwardControlSize(event)
 		channel.releaseControlQueue(uint64(closedForwardControlSize(event)))
 		return event, true
 	}
-	for len(channel.ready) > 0 {
+	ready := len(channel.ready)
+	for range ready {
 		lane := channel.ready[0]
 		channel.ready = channel.ready[1:]
 		child, found := channel.children[lane]
 		if !found || len(child.frames) == 0 {
 			continue
 		}
-		bytes := child.frames[0]
+		event := ClosedForwardingEvent{Kind: closedFrameBytes, Lane: lane, Bytes: child.frames[0]}
+		if available != nil && !available(event) {
+			channel.ready = append(channel.ready, lane)
+			continue
+		}
 		child.frames = child.frames[1:]
-		child.delivered += uint64(len(bytes))
+		child.delivered += uint64(len(event.Bytes))
 		if len(child.frames) > 0 {
 			channel.ready = append(channel.ready, lane)
 		} else {
@@ -316,13 +325,17 @@ func (channel *ClosedForwardingChannel) Next() (ClosedForwardingEvent, bool) {
 			}
 		}
 		channel.children[lane] = child
-		return ClosedForwardingEvent{Kind: closedFrameBytes, Lane: lane, Bytes: bytes}, true
+		return event, true
 	}
 	for lane, child := range channel.children {
 		if child.eof && !child.eofSent {
+			event := ClosedForwardingEvent{Kind: closedFrameEOF, Lane: lane}
+			if available != nil && !available(event) {
+				continue
+			}
 			child.eofSent = true
 			channel.children[lane] = child
-			return ClosedForwardingEvent{Kind: closedFrameEOF, Lane: lane}, true
+			return event, true
 		}
 	}
 	return ClosedForwardingEvent{}, false

@@ -16,28 +16,29 @@ import (
 // Terminal children below the admitted Interior belong to closedSourceChannels.
 // This adapter's Close retires its parent and joins its reader.
 type closedRoleChildStream struct {
-	writeDeadline         time.Time
-	physicalWriting       bool
-	payloadFrames         uint64
-	physicalWriteFailed   bool
-	cleanPeerClose        bool
-	onTerminal            func(error)
-	inputEOF              bool
-	retire                func() error
-	active                bool
-	consumed              uint32
-	parent                net.Conn
-	deadline              time.Time
-	writer                chan struct{}
-	writeChanged          chan struct{}
-	mu                    sync.Mutex
-	changed               *sync.Cond
-	buffer                []byte
-	credit, receiveCredit uint32
-	terminal              error
-	done                  chan struct{}
-	closeOnce             sync.Once
-	closeErr              error
+	transferred, refillBase uint64
+	writeDeadline           time.Time
+	physicalWriting         bool
+	payloadFrames           uint64
+	physicalWriteFailed     bool
+	cleanPeerClose          bool
+	onTerminal              func(error)
+	inputEOF                bool
+	retire                  func() error
+	active                  bool
+	consumed                uint32
+	parent                  net.Conn
+	deadline                time.Time
+	writer                  chan struct{}
+	writeChanged            chan struct{}
+	mu                      sync.Mutex
+	changed                 *sync.Cond
+	buffer                  []byte
+	credit, receiveCredit   uint32
+	terminal                error
+	done                    chan struct{}
+	closeOnce               sync.Once
+	closeErr                error
 }
 
 func newClosedRoleChildStream(parent net.Conn, deadline time.Time, retire func() error, onTerminal func(error)) *closedRoleChildStream {
@@ -78,6 +79,7 @@ func (stream *closedRoleChildStream) readFrames() {
 			return
 		}
 		stream.mu.Lock()
+		stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
 		switch frame.Kind {
 		case closedFrameBytes:
 			if stream.inputEOF || uint32(len(frame.Body)) > stream.receiveCredit {
@@ -252,6 +254,7 @@ func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bo
 	err := stream.terminal
 	attempted := err == nil
 	if attempted {
+		stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
 		stream.physicalWriting = true
 		if !credit {
 			stream.payloadFrames++

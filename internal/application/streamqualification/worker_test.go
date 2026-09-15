@@ -22,6 +22,9 @@ func TestSenderUsesOnlyEndpointOpenedCreditedStreams(t *testing.T) {
 	}
 	for index := uint32(0); index < uint32(schedule.OpenConnections); index++ {
 		id := 1 + 2*index
+		if index >= 16 {
+			id = 129 + 2*(index-16)
+		}
 		writeFrame(t, endpoint, workerFrame{kind: frameOpen, id: id})
 		var credit [4]byte
 		binary.BigEndian.PutUint32(credit[:], frameCreditWindow)
@@ -29,6 +32,9 @@ func TestSenderUsesOnlyEndpointOpenedCreditedStreams(t *testing.T) {
 	}
 	_ = endpoint.SetReadDeadline(time.Now().Add(time.Second))
 	frame, err := readWorkerFrame(endpoint)
+	for err == nil && frame.id > 127 {
+		frame, err = readWorkerFrame(endpoint)
+	}
 	if err != nil || frame.kind != frameBytes || frame.id == 0 || !matchesScheduledBytes([32]byte{2}, frame.id, 0, frame.body) {
 		t.Fatalf("scheduled bytes: %#v / %v", frame, err)
 	}
@@ -85,12 +91,11 @@ func TestScheduleGivesEveryActiveStreamUsefulBytes(t *testing.T) {
 			order = append(order, id)
 		}
 		var output bytes.Buffer
-		cursor := 0
 		for tick := 0; tick < 400; tick++ {
 			for _, stream := range streams {
 				stream.sendCredit = frameCreditWindow
 			}
-			if err := sendScheduledBytes(&output, streams, order, &cursor, [32]byte{2}, schedule); err != nil {
+			if err := sendScheduledElapsed(&output, streams, order, [32]byte{2}, schedule, time.Duration(tick+1)*scheduleTick); err != nil {
 				t.Fatal(err)
 			}
 			output.Reset()

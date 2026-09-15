@@ -1,0 +1,37 @@
+# Managed by Ardents qualification Endpoint installer.
+[Unit]
+Description=Ardents explicit stream qualification Endpoint
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ardents-endpoint
+Group=ardents-endpoint
+ExecStart=/usr/lib/ardents/qualification/ardents-qualification /etc/ardents/qualification-plan.json
+WorkingDirectory=/var/lib/ardents/endpoint
+Environment=GOMAXPROCS=2
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryAccounting=yes
+CPUAccounting=yes
+TasksAccounting=yes
+LimitCORE=0
+Restart=no
+RemainAfterExit=no
+KillMode=control-group
+TimeoutStartSec=15s
+TimeoutStopSec=30s
+RuntimeMaxSec=21min
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ardents-qualification

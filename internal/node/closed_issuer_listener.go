@@ -17,6 +17,10 @@ func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, 
 	if err := validateClosedIssuerProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
 	}
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	if err != nil {
+		return nil, err
+	}
 	current := func() (state.ClosedProfileView, bool) {
 		updated, err := currentFacts(config)
 		if err != nil {
@@ -42,7 +46,7 @@ func startClosedIssuer(config runtimeConfig, snapshot dutyFacts) (*probeServer, 
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), issuer.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), snapshot.ProbeEndpoint, local.Certificate, func(key [32]byte) bool {
+	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate, func(key [32]byte) bool {
 		updated, currentErr := currentFacts(config)
 		return currentErr == nil && closedSharedPeerCurrent(config, updated, key, config.now())
 	}, local.ConnectionLimit)

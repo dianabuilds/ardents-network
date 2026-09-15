@@ -41,7 +41,7 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 	if !ok {
 		t.Fatal("missing profile")
 	}
-	input := textRoleProcessInput{Snapshot: fixture.snapshot, View: view, Key: config.IdentityKey, StateRoot: config.LocalRoleStateRoot}
+	input := textRoleProcessInput{HostingRoot: config.HostingRoot, Snapshot: fixture.snapshot, View: view, Key: config.IdentityKey, StateRoot: config.LocalRoleStateRoot}
 	switch {
 	case config.ClosedIssuer.Root != "":
 		v := config.ClosedIssuer
@@ -54,6 +54,7 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 		input.Role, input.AdmissionRoot, input.Certificates, input.Limit, input.Drain = "introduction", v.AdmissionRoot, v.Certificate.Certificate, v.ConnectionLimit, v.DrainTimeout
 	case config.ClosedDataJoin.AdmissionRoot != "":
 		v := config.ClosedDataJoin
+		input.HostingRoot = v.HostingRoot
 		input.Role, input.AdmissionRoot, input.Certificates, input.Limit, input.Drain = "join", v.AdmissionRoot, v.Certificate.Certificate, v.ConnectionLimit, v.DrainTimeout
 	case config.ClosedForwarding.Root != "":
 		v := config.ClosedForwarding

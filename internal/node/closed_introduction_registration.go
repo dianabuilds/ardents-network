@@ -82,7 +82,7 @@ func (server *closedIntroductionServer) serveAdmitted(ctx context.Context, conne
 		return errors.New("closed Introduction purpose unavailable")
 	}
 	channel, err := route.NewClosedAdmissionChannel(receiver, server.spends, server.limits, exporter,
-		closedRoleTokenVerifier(server.config, receiver), server.config.now)
+		closedControlTokenVerifier(server.config, receiver), server.config.now)
 	if err != nil {
 		return err
 	}

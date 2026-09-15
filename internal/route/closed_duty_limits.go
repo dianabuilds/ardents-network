@@ -28,10 +28,11 @@ type ClosedDutyLimits struct {
 }
 
 type closedDutyChannel struct {
-	limits        *ClosedDutyLimits
-	children      uint16
-	controlQueued uint64 // Protected by limits.mu, inside the channel's admission reserve.
-	released      bool
+	limits                  *ClosedDutyLimits
+	reservedControlChildren uint16
+	children                uint16
+	controlQueued           uint64 // Protected by limits.mu, inside the channel's admission reserve.
+	released                bool
 }
 
 // NewClosedDutyLimits creates the finite governor for one exact receiver
@@ -80,31 +81,51 @@ func (limits *ClosedDutyLimits) reserveChannel() (*closedDutyChannel, error) {
 }
 
 func (channel *closedDutyChannel) reserveChild() error {
+	_, err := channel.reserveChildCapacity(false)
+	return err
+}
+
+// Control uses ordinary capacity first; only two additional reservations may
+// survive when the 256 work positions are occupied.
+func (channel *closedDutyChannel) reserveChildCapacity(control bool) (bool, error) {
 	if channel == nil || channel.limits == nil {
-		return errors.New("closed duty child is unavailable")
+		return false, errors.New("closed duty child unavailable")
 	}
 	limits := channel.limits
 	limits.mu.Lock()
 	defer limits.mu.Unlock()
-	if channel.released || channel.children >= closedForwardChildren || limits.children >= closedDutyChildren {
-		return errors.New("closed duty children are exhausted")
+	reserved := channel.children-channel.reservedControlChildren >= closedForwardChildren
+	if channel.released || limits.children >= closedDutyChildren || reserved && (!control || channel.reservedControlChildren >= 2) {
+		return false, errors.New("closed duty children exhausted")
 	}
 	channel.children++
 	limits.children++
-	return nil
+	if reserved {
+		channel.reservedControlChildren++
+	}
+	return reserved, nil
 }
 
-func (channel *closedDutyChannel) releaseChild() {
+func (channel *closedDutyChannel) releaseChild() { channel.releaseChildCapacity(false) }
+
+func (channel *closedDutyChannel) releaseChildCapacity(reserved bool) {
 	if channel == nil || channel.limits == nil {
 		return
 	}
 	limits := channel.limits
 	limits.mu.Lock()
 	defer limits.mu.Unlock()
-	if channel.children > 0 {
-		channel.children--
-		limits.children--
+	if channel.released || channel.children == 0 {
+		return
 	}
+	if reserved {
+		if channel.reservedControlChildren == 0 {
+			return
+		}
+		channel.reservedControlChildren--
+	}
+	channel.children--
+	limits.children--
 }
 
 func (channel *closedDutyChannel) release() {
@@ -119,6 +140,7 @@ func (channel *closedDutyChannel) release() {
 	}
 	limits.children -= channel.children
 	channel.children = 0
+	channel.reservedControlChildren = 0
 	limits.channels--
 	channel.released = true
 }

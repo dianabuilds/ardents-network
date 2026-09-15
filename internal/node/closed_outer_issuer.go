@@ -37,7 +37,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 				if err != nil {
 					return err
 				}
-				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, closedRoleTokenVerifier(config, receiver), config.now)
+				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, closedControlTokenVerifier(config, receiver), config.now)
 				if err != nil {
 					return err
 				}

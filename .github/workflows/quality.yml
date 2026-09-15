@@ -2,8 +2,7 @@ name: quality
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,27 +12,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go:
+  select:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.selection.outputs.matrix }}
+      count: ${{ steps.selection.outputs.count }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 1.26.8
           cache: true
-      - name: Select pull-request checks
-        if: github.event_name == 'pull_request'
+      - name: Select affected tests and consumers
+        id: selection
         env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
-        run: go run ./scripts/select-pr-checks.go --base "$PR_BASE" --head HEAD --execute
-      - name: Install pinned quality tools
-        if: github.event_name == 'push'
-        run: make tools-install
-      - name: Run mandatory quality gate
-        if: github.event_name == 'push'
-        run: make check
+          PR_BASE: ${{ github.event.pull_request.base.sha || 'HEAD^' }}
+        run: |
+          go run ./scripts/select-pr-checks.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json"
+          python3 - <<'PY'
+          import json, os
+          with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
+              matrix = json.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("matrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
+              output.write("count=" + str(len(matrix["include"])) + "\n")
+          PY
+  affected:
+    needs: select
+    if: needs.select.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+    name: affected-${{ matrix.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.8
+          cache: true
+      - name: Run selected group with bounded timeout
+        env:
+          TEST_PACKAGE: ${{ matrix.package }}
+          TEST_RUN: ${{ matrix.run }}
+          TEST_RACE: ${{ matrix.race }}
+        run: |
+          args=(-json -count=1 -timeout=90s -run "$TEST_RUN")
+          if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
+          timeout --signal=QUIT --kill-after=10s 240s go test "${args[@]}" "$TEST_PACKAGE"
+  go:
+    if: always()
+    needs: [select, affected]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Require every selected group to complete successfully
+        env:
+          SELECTION: ${{ needs.select.result }}
+          GROUP_RESULT: ${{ needs.affected.result }}
+        run: |
+          test "$SELECTION" = success
+          test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped

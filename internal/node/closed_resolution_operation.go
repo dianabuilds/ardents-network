@@ -71,7 +71,7 @@ func (server *closedResolutionServer) serveAdmitted(ctx context.Context, connect
 		return err
 	}
 	channel, err := route.NewClosedAdmissionChannel(server.receiver, server.spends, server.limits, exporter,
-		closedRoleTokenVerifier(server.config, server.receiver), server.config.now)
+		closedControlTokenVerifier(server.config, server.receiver), server.config.now)
 	if err != nil {
 		return err
 	}
