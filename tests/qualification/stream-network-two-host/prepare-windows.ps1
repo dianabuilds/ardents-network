@@ -150,6 +150,7 @@ Assert-RemotePath ([string]$provision.HostingRoot) 'HostingRoot'
 $remoteRoot = [string]$provision.RemoteRoot
 $at = Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'At'
 $notAfter = Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'NotAfter'
+$atText = $at.ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
 $readerPeriodFrom = [DateTimeOffset]::ParseExact($ReaderPeriodStart, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
 $readerPeriodUntil = [DateTimeOffset]::ParseExact($ReaderPeriodEnd, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
 $publisherPeriodFrom = [DateTimeOffset]::ParseExact($PublisherPeriodStart, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
@@ -253,7 +254,7 @@ foreach ($state in @($provision.State)) {
     Assert-RemotePath ([string]$state.Materialization) 'State materialization'
     $hostName = Host-Address ([string]$state.Host)
     $arguments = @('accept-offline','--state-root',[string]$state.Root,'--network-id',[string]$provision.NetworkID,
-        '--authorities',[string]$provision.AuthorityPublic,'--threshold','1','--at',[string]$provision.At,
+        '--authorities',[string]$provision.AuthorityPublic,'--threshold','1','--at',$atText,
         '--epoch',[string]$provision.Epoch,'--inputs',[string]$provision.Inputs,'--materialization',[string]$state.Materialization,
         '--profile','ardents-route-v3','--closed-profile-authority',[string]$provision.AuthorityPublic)
     [void](Invoke-Product $hostName $binaryPaths.ardents $arguments "accept State for $($state.Owner)")
@@ -282,7 +283,7 @@ Send-File $profilePlanPath $PublisherHost $profilePlanRemote 'upload closed prof
 [void](Invoke-Product $PublisherHost $binaryPaths.control @('sign-closed-profile','--plan',$profilePlanRemote,
     '--authority-key',[string]$provision.AuthorityKey,'--output',$signedProfileRemote) 'sign closed profile')
 [void](Invoke-Product $PublisherHost $binaryPaths.control @('inspect-closed-profile','--plan',$profilePlanRemote,
-    '--profile',$signedProfileRemote,'--authority',[string]$provision.AuthorityPublic,'--at',[string]$provision.At) 'inspect closed profile')
+    '--profile',$signedProfileRemote,'--authority',[string]$provision.AuthorityPublic,'--at',$atText) 'inspect closed profile')
 $signedProfileLocal = Join-Path $prepared 'closed.profile'
 Receive-File $PublisherHost $signedProfileRemote $signedProfileLocal 'download signed closed profile'
 Send-File $signedProfileLocal $ReaderHost $signedProfileRemote 'upload signed closed profile to reader'
@@ -291,7 +292,7 @@ foreach ($state in @($provision.State)) {
     $hostName = Host-Address ([string]$state.Host)
     [void](Invoke-Product $hostName $binaryPaths.ardents @('accept-closed-profile','--state-root',[string]$state.Root,
         '--network-id',[string]$provision.NetworkID,'--authorities',[string]$provision.AuthorityPublic,'--threshold','1',
-        '--at',[string]$provision.At,'--profile','ardents-route-v3','--closed-profile-authority',[string]$provision.AuthorityPublic,
+        '--at',$atText,'--profile','ardents-route-v3','--closed-profile-authority',[string]$provision.AuthorityPublic,
         '--closed-profile',$signedProfileRemote) "accept closed profile for $($state.Owner)")
 }
 
@@ -338,7 +339,7 @@ foreach ($role in @('reader','publisher')) {
 }
 
 $runInputs = [ordered]@{ Schema='ardents-qualification-prepared-inputs-v1'; ReaderHost=$ReaderHost; PublisherHost=$PublisherHost;
-    Seed=[string]$provision.Seed; At=[string]$provision.At; HostingRoot=[string]$provision.HostingRoot;
+    Seed=[string]$provision.Seed; At=$atText; HostingRoot=[string]$provision.HostingRoot;
     ReaderHostingPolicySHA256=(Get-FileHash -LiteralPath (Join-Path $prepared 'hosting-reader.json') -Algorithm SHA256).Hash.ToLowerInvariant();
     PublisherHostingPolicySHA256=(Get-FileHash -LiteralPath (Join-Path $prepared 'hosting-publisher.json') -Algorithm SHA256).Hash.ToLowerInvariant();
     FixtureRoot=$fixture; ReaderPlanTemplate=(Join-Path $fixture ([string]$provision.ReaderPlanTemplate));

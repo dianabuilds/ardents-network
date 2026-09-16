@@ -24,10 +24,14 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 		". (Join-Path $PSScriptRoot 'canonical-json-instant.ps1')",
 		"Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'At'",
 		"Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'NotAfter'",
+		"$atText = $at.ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)",
 	} {
 		if !strings.Contains(string(preparer), required) {
 			t.Fatalf("qualification preparer lacks %q", required)
 		}
+	}
+	if strings.Contains(string(preparer), "[string]$provision.At") {
+		t.Fatal("qualification preparer reuses PowerShell's culture-sensitive JSON date conversion")
 	}
 
 	pwsh := "pwsh"
