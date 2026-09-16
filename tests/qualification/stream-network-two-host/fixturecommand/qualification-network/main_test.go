@@ -42,27 +42,28 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	if provision.Schema != "ardents-qualification-provisioning-v1" || provision.Seed != seed {
 		t.Fatalf("provisioning inventory lost fixture identity: %+v", provision)
 	}
-	type expectedStateOwner struct{ host, stateRoot, localRoleStateRoot string }
+	type expectedStateOwner struct{ host, stateRoot, localRoleStateRoot, dutyRoot string }
 	expectedState := make(map[string]expectedStateOwner, 23)
 	for index, item := range bundle.Nodes {
 		owner := fourDigits(index)[2:]
 		expectedState["node-"+owner] = expectedStateOwner{item.Host,
-			path.Join(bundle.RemoteRoot, "state", "node-"+owner), path.Join(bundle.RemoteRoot, "roles", "node-"+owner)}
+			path.Join(bundle.RemoteRoot, "state", "node-"+owner), path.Join(bundle.RemoteRoot, "roles", "node-"+owner),
+			path.Join(bundle.RemoteRoot, "duty", item.ID)}
 	}
 	for _, item := range bundle.Participants {
 		expectedState[item.Name] = expectedStateOwner{item.Host,
-			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "state-roles", item.Name)}
+			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "state-roles", item.Name), ""}
 	}
 	for _, item := range bundle.Sources {
 		expectedState[item.Name] = expectedStateOwner{item.Host,
-			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "roles", item.Name)}
+			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "roles", item.Name), ""}
 	}
 	if len(expectedState) != 23 || len(provision.State) != 23 {
 		t.Fatalf("runtime State owner inventory is incomplete: expected=%d actual=%d", len(expectedState), len(provision.State))
 	}
 	for _, item := range provision.State {
 		want, ok := expectedState[item.Owner]
-		if !ok || item.Host != want.host || item.Root != want.stateRoot || item.LocalRoleStateRoot != want.localRoleStateRoot {
+		if !ok || item.Host != want.host || item.Root != want.stateRoot || item.LocalRoleStateRoot != want.localRoleStateRoot || item.DutyRoot != want.dutyRoot {
 			t.Fatalf("runtime State owner %q does not bind its exact writable roots: got=%+v want=%+v", item.Owner, item, want)
 		}
 		delete(expectedState, item.Owner)

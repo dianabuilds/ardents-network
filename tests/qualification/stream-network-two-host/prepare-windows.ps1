@@ -261,6 +261,7 @@ foreach ($state in @($provision.State)) {
     Assert-Name ([string]$state.Owner) 'State owner'
     Assert-RemotePath ([string]$state.Root) 'State root'
     Assert-RemotePath ([string]$state.LocalRoleStateRoot) 'State local role root'
+    if (-not [string]::IsNullOrWhiteSpace([string]$state.DutyRoot)) { Assert-RemotePath ([string]$state.DutyRoot) 'State duty root' }
     Assert-RemotePath ([string]$state.Materialization) 'State materialization'
     $hostName = Host-Address ([string]$state.Host)
     $arguments = @('accept-offline','--state-root',[string]$state.Root,'--network-id',[string]$provision.NetworkID,
@@ -373,10 +374,12 @@ foreach ($role in @('reader','publisher')) {
     $participantNames = @($provision.Services | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Owner })
     $stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })
     $localRoleRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.LocalRoleStateRoot })
+    $dutyRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role -and -not [string]::IsNullOrWhiteSpace([string]$_.DutyRoot) } | ForEach-Object { [string]$_.DutyRoot })
     foreach ($stateRoot in $stateRoots) { Assert-RemotePath $stateRoot 'State owner root' }
     foreach ($localRoleRoot in $localRoleRoots) { Assert-RemotePath $localRoleRoot 'State owner local role root' }
+    foreach ($dutyRoot in $dutyRoots) { Assert-RemotePath $dutyRoot 'State owner duty root' }
     [void](Invoke-SSH $hostName "install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/endpoint' '$remoteRoot/service'; chmod 755 '$remoteRoot/bundle' '$remoteRoot/bundle/entry-templates'" "prepare $role Endpoint parents")
-    $paths = @($stateRoots + $localRoleRoots)
+    $paths = @($stateRoots + $localRoleRoots + $dutyRoots)
     $paths += @([string]$provision.HostingRoot, "$remoteRoot/handover", "$remoteRoot/clock")
     foreach ($name in $participantNames) {
         $paths += @("$remoteRoot/state-roles/$name", "$remoteRoot/endpoint/$name",

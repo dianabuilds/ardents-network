@@ -86,7 +86,8 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 	text := string(body)
 	stateRoots := strings.Index(text, "$stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })")
 	localRoleRoots := strings.Index(text, "$localRoleRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.LocalRoleStateRoot })")
-	ownerPaths := strings.Index(text, "$paths = @($stateRoots + $localRoleRoots)")
+	dutyRoots := strings.Index(text, "$dutyRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role -and -not [string]::IsNullOrWhiteSpace([string]$_.DutyRoot) } | ForEach-Object { [string]$_.DutyRoot })")
+	ownerPaths := strings.Index(text, "$paths = @($stateRoots + $localRoleRoots + $dutyRoots)")
 	assignment := -1
 	writableCheck := -1
 	if ownerPaths >= 0 {
@@ -97,7 +98,7 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 			writableCheck = ownerPaths + offset
 		}
 	}
-	if stateRoots < 0 || localRoleRoots < stateRoots || ownerPaths < localRoleRoots || assignment < ownerPaths || writableCheck < ownerPaths {
+	if stateRoots < 0 || localRoleRoots < stateRoots || dutyRoots < localRoleRoots || ownerPaths < dutyRoots || assignment < ownerPaths || writableCheck < ownerPaths {
 		t.Fatal("qualification preparer does not assign every host State and local role root to the shared runtime owner")
 	}
 
@@ -108,7 +109,9 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 	provisioning := string(provisioningBody)
 	for _, required := range []string{
 		"LocalRoleStateRoot",
+		"DutyRoot",
 		`path.Join(result.RemoteRoot, "roles", fmt.Sprintf("node-%02d", index))`,
+		`path.Join(result.RemoteRoot, "duty", item.ID)`,
 		`path.Join(result.RemoteRoot, "state-roles", item.Name)`,
 		`path.Join(result.RemoteRoot, "roles", item.Name)`,
 	} {

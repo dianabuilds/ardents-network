@@ -20,8 +20,8 @@ type provisioningDocument struct {
 	EntryRoots                                                                []provisioningEntryRoot
 }
 type provisioningState struct {
-	Owner, Host, Root, LocalRoleStateRoot, Materialization string
-	MaterializationIndex                                   uint64
+	Owner, Host, Root, LocalRoleStateRoot, DutyRoot, Materialization string
+	MaterializationIndex                                             uint64
 }
 type provisioningService struct {
 	Owner, Host, Root, Plan, Request string
@@ -43,6 +43,7 @@ func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex
 		document.State = append(document.State, provisioningState{Owner: fmt.Sprintf("node-%02d", index), Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", fmt.Sprintf("node-%02d", index)),
 			LocalRoleStateRoot:   path.Join(result.RemoteRoot, "roles", fmt.Sprintf("node-%02d", index)),
+			DutyRoot:             path.Join(result.RemoteRoot, "duty", item.ID),
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 	}
