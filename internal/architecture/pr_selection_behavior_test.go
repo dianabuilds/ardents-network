@@ -46,8 +46,15 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 	for i := range 20 {
 		tests += fmt.Sprintf("func TestAffected%02d(t *testing.T){if ReadValue()==0 {t.Fatal(\"zero\")}}\n", i)
 	}
+	tests += "func TestTextPublicationIsolatedRoleObservations(t *testing.T){if ReadValue()==0 {t.Fatal(\"zero\")}}\n"
 	tests += "func TestUnrelated(t *testing.T){if ReadStable()!=42 {t.Fatal(\"stable\")}}\n"
 	write("internal/consumer/read_test.go", tests)
+	write("internal/endpoint/read.go", "package endpoint\nimport \"example.com/selection/internal/source\"\nfunc ReadValue() int {return source.Value()}\n")
+	endpointTests := "package endpoint\nimport \"testing\"\n"
+	for i := range 5 {
+		endpointTests += fmt.Sprintf("func TestTextPublicationFixture%02d(t *testing.T){if ReadValue()==0 {t.Fatal(\"zero\")}}\n", i)
+	}
+	write("internal/endpoint/read_test.go", endpointTests)
 	write("internal/architecture/architecture_test.go", "package architecture\nimport \"testing\"\nfunc TestRepositoryArchitecture(t *testing.T){}\nfunc TestPRSelectionSelf(t *testing.T){}\nfunc TestArchitectureUnrelated(t *testing.T){}\n")
 	write("scripts/select-pr-checks.go", "package main\n")
 	write("tests/e2e/probe/probe_test.go", "package probe\nimport \"testing\"\nfunc TestIndependent(t *testing.T){}\n")
@@ -76,10 +83,24 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 	}
 	selected := make(map[string]int)
 	consumerGroups := 0
+	endpointSelected := make(map[string]int)
+	endpointGroups := 0
+	dedicated := false
 	selectionSelf, repositoryArchitecture := false, false
 	for _, entry := range matrix.Include {
 		if strings.Contains(entry.Run, "TestUnrelated") || strings.Contains(entry.Package, "tests/e2e") {
 			t.Fatalf("unrelated check selected: %+v", entry)
+		}
+		if strings.HasSuffix(entry.Package, "/endpoint") {
+			endpointGroups++
+			names := strings.Split(strings.TrimSuffix(strings.TrimPrefix(entry.Run, "^("), ")$"), "|")
+			if len(names) > 2 {
+				t.Fatalf("endpoint PR check group contains %d tests, want at most 2: %s", len(names), entry.Run)
+			}
+			for _, name := range names {
+				endpointSelected[name]++
+			}
+			continue
 		}
 		if !strings.HasSuffix(entry.Package, "/consumer") {
 			selectionSelf = selectionSelf || strings.Contains(entry.Run, "TestPRSelectionSelf")
@@ -87,19 +108,34 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 			continue
 		}
 		consumerGroups++
-		for _, name := range strings.Split(strings.TrimSuffix(strings.TrimPrefix(entry.Run, "^("), ")$"), "|") {
+		if entry.Run == "^(TestTextPublicationIsolatedRoleObservations)$" {
+			dedicated = true
+		}
+		names := strings.Split(strings.TrimSuffix(strings.TrimPrefix(entry.Run, "^("), ")$"), "|")
+		if len(names) > 16 {
+			t.Fatalf("PR check group contains %d tests, want at most 16: %s", len(names), entry.Run)
+		}
+		for _, name := range names {
 			selected[name]++
 		}
 	}
 	if !selectionSelf || !repositoryArchitecture {
 		t.Fatalf("selector change omitted its own behavior or repository test: %+v", matrix.Include)
 	}
-	if consumerGroups != 2 || len(selected) != 20 {
+	if consumerGroups != 3 || len(selected) != 21 || !dedicated {
 		t.Fatalf("bounded groups=%d selected=%v", consumerGroups, selected)
+	}
+	if endpointGroups != 3 || len(endpointSelected) != 5 {
+		t.Fatalf("endpoint groups=%d selected=%v", endpointGroups, endpointSelected)
 	}
 	for name, count := range selected {
 		if count != 1 {
 			t.Errorf("test %s selected %d times", name, count)
+		}
+	}
+	for name, count := range endpointSelected {
+		if count != 1 {
+			t.Errorf("endpoint test %s selected %d times", name, count)
 		}
 	}
 }

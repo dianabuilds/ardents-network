@@ -24,6 +24,7 @@ type introductionHeapInput struct {
 	View                            state.ClosedRouteView
 	Certificates                    [][]byte
 	PrivateKey                      ed25519.PrivateKey
+	HostingRoot                     string
 	AdmissionRoot, RoleRoot, Output string
 }
 
@@ -41,7 +42,7 @@ func runIntroductionHeapChild(t *testing.T, path string) {
 	}
 	clear(raw)
 	events := make(chan Event, 32)
-	config := Config{NetworkID: input.Snapshot.NetworkID, NodeID: input.Snapshot.NodeID, IdentityKey: input.PrivateKey,
+	config := Config{HostingRoot: input.HostingRoot, NetworkID: input.Snapshot.NetworkID, NodeID: input.Snapshot.NodeID, IdentityKey: input.PrivateKey,
 		Current:              func() (DutyView, error) { return input.Snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return input.View.Profile, true },
 		CurrentClosedRoute:   func() (state.ClosedRouteView, bool) { return input.View, true },

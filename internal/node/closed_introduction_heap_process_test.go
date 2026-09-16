@@ -40,7 +40,7 @@ func startIntroductionHeapProcess(t *testing.T, config Config, output string) (*
 	if !ok {
 		return nil, errors.New("missing role State fixture")
 	}
-	input := introductionHeapInput{snapshot, view, config.ClosedIntroduction.Certificate.Certificate, config.IdentityKey, config.ClosedIntroduction.AdmissionRoot, config.LocalRoleStateRoot, output}
+	input := introductionHeapInput{snapshot, view, config.ClosedIntroduction.Certificate.Certificate, config.IdentityKey, config.HostingRoot, config.ClosedIntroduction.AdmissionRoot, config.LocalRoleStateRoot, output}
 	raw, err := json.Marshal(input)
 	if err != nil {
 		return nil, err

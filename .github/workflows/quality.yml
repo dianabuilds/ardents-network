@@ -94,7 +94,12 @@ jobs:
           TEST_RUN: ${{ matrix.run }}
           TEST_RACE: ${{ matrix.race }}
         run: |
-          args=(-json -count=1 -timeout=90s -run "$TEST_RUN")
+          if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" ]]; then
+            export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
+            mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
+            go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-control
+          fi
+          args=(-json -count=1 -timeout=180s -run "$TEST_RUN")
           if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
           timeout --signal=QUIT --kill-after=10s 240s go test "${args[@]}" "$TEST_PACKAGE"
   full:

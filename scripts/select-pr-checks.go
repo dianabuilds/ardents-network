@@ -390,6 +390,8 @@ func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 }
 
 func writeMatrix(path string, checks []check) error {
+	const maxChecksPerJob = 16
+
 	type entry struct {
 		ID      int    `json:"id"`
 		Package string `json:"package"`
@@ -397,6 +399,10 @@ func writeMatrix(path string, checks []check) error {
 		Race    bool   `json:"race"`
 	}
 	entries := make([]entry, 0)
+	appendEntry := func(selected check, names []string) {
+		pattern := "^(" + strings.Join(names, "|") + ")$"
+		entries = append(entries, entry{len(entries), selected.pkg, pattern, selected.race})
+	}
 	for _, selected := range checks {
 		names := []string{}
 		if selected.run != "^$" {
@@ -405,12 +411,35 @@ func writeMatrix(path string, checks []check) error {
 		if len(names) == 0 {
 			entries = append(entries, entry{len(entries), selected.pkg, "^$", false})
 		}
-		for len(names) > 0 {
-			count := min(16, len(names))
-			pattern := "^(" + strings.Join(names[:count], "|") + ")$"
-			entries = append(entries, entry{len(entries), selected.pkg, pattern, selected.race})
-			names = names[count:]
+		group := make([]string, 0, maxChecksPerJob)
+		groupLimit := maxChecksPerJob
+		flush := func() {
+			if len(group) == 0 {
+				return
+			}
+			appendEntry(selected, group)
+			group = group[:0]
 		}
+		for _, name := range names {
+			if dedicatedPRCheck(name) {
+				flush()
+				appendEntry(selected, []string{name})
+				continue
+			}
+			limit := maxChecksPerJob
+			if expensiveEndpointPRCheck(selected.pkg, name) {
+				limit = 2
+			}
+			if len(group) > 0 && limit != groupLimit {
+				flush()
+			}
+			groupLimit = limit
+			group = append(group, name)
+			if len(group) == groupLimit {
+				flush()
+			}
+		}
+		flush()
 	}
 	if len(entries) > 256 {
 		return errors.New("affected test groups exceed GitHub matrix capacity")
@@ -422,4 +451,23 @@ func writeMatrix(path string, checks []check) error {
 		return err
 	}
 	return os.WriteFile(path, append(body, '\n'), 0600)
+}
+
+// This evidence cell owns multiple isolated role processes, heap captures and
+// a fixed bootstrap-retirement interval. Keep it independently bounded so its
+// deliberate runtime cannot consume the budget of unrelated affected tests.
+func dedicatedPRCheck(name string) bool {
+	return name == "TestTextPublicationIsolatedRoleObservations"
+}
+
+// These Endpoint families construct real role topologies and perform custody
+// derivation under the race detector. Their measured cost is bounded in pairs;
+// ordinary unit families retain the wider default group.
+func expensiveEndpointPRCheck(pkg, name string) bool {
+	if !strings.HasSuffix(pkg, "/internal/endpoint") {
+		return false
+	}
+	return strings.HasPrefix(name, "TestTextPublication") ||
+		strings.HasPrefix(name, "TestTextPublisher") ||
+		strings.HasPrefix(name, "TestTextRecovery")
 }

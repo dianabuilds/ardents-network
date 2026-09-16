@@ -20,20 +20,23 @@ func observedIntroductionStart(observed **closedIntroductionServer) func(Config)
 		if err != nil {
 			return nil, err
 		}
+		if err := resolved.openClosedHosting(); err != nil {
+			return nil, err
+		}
 		snapshot, err := currentFacts(resolved)
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(err, resolved.host.Close())
 		}
 		server, err := newClosedIntroductionServer(resolved, snapshot)
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(err, resolved.host.Close())
 		}
 		*observed = server
 		return func() error {
 			stopErr := server.stop()
 			select {
 			case <-server.drained:
-				return errors.Join(stopErr, server.drainErr)
+				return errors.Join(stopErr, server.drainErr, resolved.host.Close())
 			case <-time.After(testLifecycleWait):
 				return errors.New("observed Introduction receiver did not drain")
 			}
