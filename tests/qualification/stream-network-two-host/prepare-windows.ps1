@@ -30,6 +30,7 @@ $ErrorActionPreference = 'Stop'
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
 $fixture = [IO.Path]::GetFullPath($FixtureRoot)
 $prepared = [IO.Path]::GetFullPath($PreparedOutput)
+. (Join-Path $PSScriptRoot 'canonical-json-instant.ps1')
 
 function Resolve-File([string]$Path, [string]$Label) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "$Label is absent." }
@@ -119,7 +120,8 @@ if ($fixture.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [String
 }
 if (Test-Path -LiteralPath $prepared) { throw 'PreparedOutput must be a new directory.' }
 [IO.Directory]::CreateDirectory($prepared) | Out-Null
-$provision = Get-Content -LiteralPath $inventoryPath -Raw | ConvertFrom-Json
+$inventoryJSON = Get-Content -LiteralPath $inventoryPath -Raw
+$provision = $inventoryJSON | ConvertFrom-Json
 if ([string]$provision.Schema -cne 'ardents-qualification-provisioning-v1' -or @($provision.State).Count -ne 23 -or
     @($provision.Services).Count -ne 5 -or @($provision.EntryRoots).Count -ne 5) {
     throw 'Provisioning inventory is incomplete.'
@@ -129,8 +131,8 @@ Assert-Hex ([string]$provision.AuthorityPublic) 'State authority'
 Assert-RemotePath ([string]$provision.RemoteRoot) 'RemoteRoot'
 Assert-RemotePath ([string]$provision.HostingRoot) 'HostingRoot'
 $remoteRoot = [string]$provision.RemoteRoot
-$at = [DateTimeOffset]::ParseExact([string]$provision.At, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
-$notAfter = [DateTimeOffset]::ParseExact([string]$provision.NotAfter, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
+$at = Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'At'
+$notAfter = Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'NotAfter'
 $readerPeriodFrom = [DateTimeOffset]::ParseExact($ReaderPeriodStart, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
 $readerPeriodUntil = [DateTimeOffset]::ParseExact($ReaderPeriodEnd, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
 $publisherPeriodFrom = [DateTimeOffset]::ParseExact($PublisherPeriodStart, 'yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
