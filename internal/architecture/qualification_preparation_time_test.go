@@ -88,17 +88,18 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 	localRoleRoots := strings.Index(text, "$localRoleRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.LocalRoleStateRoot })")
 	dutyRoots := strings.Index(text, "$dutyRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role -and -not [string]::IsNullOrWhiteSpace([string]$_.DutyRoot) } | ForEach-Object { [string]$_.DutyRoot })")
 	ownerPaths := strings.Index(text, "$paths = @($stateRoots + $localRoleRoots + $dutyRoots)")
+	traversableParents := strings.Index(text, `install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/roles' '$remoteRoot/duty' '$remoteRoot/endpoint' '$remoteRoot/service'`)
 	assignment := -1
 	writableCheck := -1
 	if ownerPaths >= 0 {
 		if offset := strings.Index(text[ownerPaths:], "; chown -R ardents-endpoint:ardents-endpoint "); offset >= 0 {
 			assignment = ownerPaths + offset
 		}
-		if offset := strings.Index(text[ownerPaths:], `$verificationCommand = 'for path in ' + $pathList + '; do runuser -u ardents-endpoint -- test -d "$path"; runuser -u ardents-endpoint -- test -w "$path"; done'`); offset >= 0 {
+		if offset := strings.Index(text[ownerPaths:], `$verificationCommand = 'set -eu; for path in ' + $pathList + '; do runuser -u ardents-endpoint -- test -d "$path"; runuser -u ardents-endpoint -- test -w "$path"; done'`); offset >= 0 {
 			writableCheck = ownerPaths + offset
 		}
 	}
-	if stateRoots < 0 || localRoleRoots < stateRoots || dutyRoots < localRoleRoots || ownerPaths < dutyRoots || assignment < ownerPaths || writableCheck < assignment || strings.Contains(text, "$writableChecks =") {
+	if stateRoots < 0 || localRoleRoots < stateRoots || dutyRoots < localRoleRoots || ownerPaths < dutyRoots || traversableParents < dutyRoots || assignment < ownerPaths || writableCheck < assignment || strings.Contains(text, "$writableChecks =") {
 		t.Fatal("qualification preparer does not assign every host State and local role root to the shared runtime owner")
 	}
 

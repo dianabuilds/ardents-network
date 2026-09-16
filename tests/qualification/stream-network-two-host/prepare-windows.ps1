@@ -378,7 +378,7 @@ foreach ($role in @('reader','publisher')) {
     foreach ($stateRoot in $stateRoots) { Assert-RemotePath $stateRoot 'State owner root' }
     foreach ($localRoleRoot in $localRoleRoots) { Assert-RemotePath $localRoleRoot 'State owner local role root' }
     foreach ($dutyRoot in $dutyRoots) { Assert-RemotePath $dutyRoot 'State owner duty root' }
-    [void](Invoke-SSH $hostName "install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/endpoint' '$remoteRoot/service'; chmod 755 '$remoteRoot/bundle' '$remoteRoot/bundle/entry-templates'" "prepare $role Endpoint parents")
+    [void](Invoke-SSH $hostName "install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/roles' '$remoteRoot/duty' '$remoteRoot/endpoint' '$remoteRoot/service'; chmod 755 '$remoteRoot/bundle' '$remoteRoot/bundle/entry-templates'" "prepare $role Endpoint parents")
     $paths = @($stateRoots + $localRoleRoots + $dutyRoots)
     $paths += @([string]$provision.HostingRoot, "$remoteRoot/handover", "$remoteRoot/clock")
     foreach ($name in $participantNames) {
@@ -389,7 +389,7 @@ foreach ($role in @('reader','publisher')) {
     $pathList = $quoted -join ' '
     [void](Invoke-SSH $hostName ("install -d -o ardents-endpoint -g ardents-endpoint -m 700 " + $pathList +
         "; chown -R ardents-endpoint:ardents-endpoint " + $pathList + "; chmod 755 '$remoteRoot'") "assign $role Endpoint roots")
-    $verificationCommand = 'for path in ' + $pathList + '; do runuser -u ardents-endpoint -- test -d "$path"; runuser -u ardents-endpoint -- test -w "$path"; done'
+    $verificationCommand = 'set -eu; for path in ' + $pathList + '; do runuser -u ardents-endpoint -- test -d "$path"; runuser -u ardents-endpoint -- test -w "$path"; done'
     [void](Invoke-SSH $hostName $verificationCommand "verify $role Endpoint roots")
 }
 
