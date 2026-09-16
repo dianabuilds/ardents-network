@@ -33,3 +33,14 @@ func (owner *closedSourceChannels) releaseQueuedLocked(size uint64) {
 		parent.mu.Unlock()
 	}
 }
+
+func (owner *closedSourceChannels) queueParentEnded() bool {
+	parent := owner.queueParent
+	if parent == nil {
+		return false
+	}
+	parent.mu.Lock()
+	ended := parent.terminal != nil
+	parent.mu.Unlock()
+	return ended
+}

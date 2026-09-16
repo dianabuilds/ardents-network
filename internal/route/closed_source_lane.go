@@ -32,6 +32,8 @@ type closedSourceLane struct {
 	closeErr                          error
 }
 
+var errClosedSourceOutputQueueFull = errors.New("closed source output queue full")
+
 // A verified peer CLOSE makes a later, unemitted CREDIT unnecessary. This
 // witness never treats a raw EOF, local close, or failed parent as peer success.
 func (lane *closedSourceLane) writeWitness() (uint64, bool, bool) {
@@ -79,7 +81,7 @@ func (lane *closedSourceLane) enqueueLocked(frame ClosedLaneFrame, cleanup time.
 	}
 	control := frame.Kind != closedFrameBytes
 	if control && owner.controlsSize+size > 16<<10 || !owner.reserveQueuedLocked(size, control) {
-		return nil, errors.New("closed source output queue full")
+		return nil, errClosedSourceOutputQueueFull
 	}
 	request := &closedSourceWrite{lane: lane, frame: frame, end: cleanup, done: make(chan struct{})}
 	request.frame.Body = append([]byte(nil), frame.Body...)
@@ -372,6 +374,12 @@ func (lane *closedSourceLane) Close() error {
 			terminal, lane.closeErr = lane.enqueueLocked(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{lane.closeStatus}}, cleanupEnd)
 		}
 		owner.mu.Unlock()
+		if terminal == nil && errors.Is(lane.closeErr, errClosedSourceOutputQueueFull) && owner.retainClosedRead && owner.queueParentEnded() {
+			// The outer joined owner already published retirement. Its cause is
+			// returned by the joined stream; an inner CLOSE can no longer enter
+			// that parent's queue and must not invent a local cleanup failure.
+			lane.closeErr = nil
+		}
 		if terminal != nil {
 			lane.closeErr = owner.awaitWrite(terminal)
 			if lane.closeErr != nil {
