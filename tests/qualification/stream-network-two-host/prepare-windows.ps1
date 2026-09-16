@@ -267,8 +267,24 @@ $issuerCommand = "'$($binaryPaths.node)' issuer initialize --config '$issuerPlan
 $issuer = $provision.IssuerNode
 $inspectLines = Invoke-Product $ReaderHost $binaryPaths.control @('inspect-closed-issuer-profile','--profile',$issuerPublicRemote,
     '--network',[string]$provision.NetworkID,'--node',[string]$issuer.ID,'--node-key',[string]$issuer.PublicKey) 'inspect closed issuer'
-$issuerInspection = (($inspectLines -join [Environment]::NewLine) | ConvertFrom-Json)
-if (@($issuerInspection.TokenKeys).Count -ne 6) { throw 'Closed issuer inspection did not return six class/window keys.' }
+$issuerInspectionJSON = $inspectLines -join [Environment]::NewLine
+$issuerInspection = $issuerInspectionJSON | ConvertFrom-Json
+$issuerFrom = Read-CanonicalJSONInstant -JSON $issuerInspectionJSON -Property 'NotBefore'
+$issuerUntil = Read-CanonicalJSONInstant -JSON $issuerInspectionJSON -Property 'NotAfter'
+$expectedIssuerKeys = foreach ($offset in 0..5) {
+    $window = $at.AddHours($offset).ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
+    foreach ($class in 1..3) { "$window|$class" }
+}
+$actualIssuerKeys = foreach ($keyRecord in @($issuerInspection.TokenKeys)) {
+    $window = ([DateTimeOffset]$keyRecord.WindowStart).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
+    if ([string]::IsNullOrWhiteSpace([string]$keyRecord.SPKI)) { throw 'Closed issuer inspection returned an empty public key.' }
+    "$window|$([int]$keyRecord.Class)"
+}
+if ([string]$issuerInspection.Schema -cne 'ardents-closed-issuer-inspection-v1' -or
+    $issuerFrom -ne $at -or $issuerUntil -ne $notAfter -or
+    ($actualIssuerKeys -join ',') -cne ($expectedIssuerKeys -join ',')) {
+    throw 'Closed issuer inspection did not return the exact six-window, three-class key inventory.'
+}
 Write-Utf8 (Join-Path $prepared 'issuer-inspection.json') (($issuerInspection | ConvertTo-Json -Depth 12 -Compress) + [Environment]::NewLine)
 
 $profileTemplatePath = Resolve-File (Join-Path $fixture ([string]$provision.ClosedProfileTemplate)) 'closed profile template'

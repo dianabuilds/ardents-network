@@ -25,6 +25,8 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 		"Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'At'",
 		"Read-CanonicalJSONInstant -JSON $inventoryJSON -Property 'NotAfter'",
 		"$atText = $at.ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)",
+		"foreach ($class in 1..3)",
+		"the exact six-window, three-class key inventory",
 	} {
 		if !strings.Contains(string(preparer), required) {
 			t.Fatalf("qualification preparer lacks %q", required)
