@@ -20,7 +20,8 @@ same seed, start instant and host pair for the complete matrix. Variants for one
 Carrier share their durable State and participant roots; both Carriers share
 the same seed-bound hosting-period root, so changing Carrier cannot reset the
 owner's provider allowance. The fixture validity window is six hours and the
-preparer refuses to start unless at least four hours remain.
+start instant must be aligned to a UTC hour so the closed issuer owns the same
+six-hour window. The preparer refuses to start unless at least four hours remain.
 
     .\tests\qualification\stream-network-two-host\generate-windows.ps1 `
       -Output C:\private\issue60-tcp-normal-up `

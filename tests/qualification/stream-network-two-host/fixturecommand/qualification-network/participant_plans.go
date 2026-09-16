@@ -105,7 +105,7 @@ func writeParticipantPlans(config fixtureConfig, result *generatedPlanIndex, net
 	if err := writeJSON(config.Output, result.IssuerInitialization, map[string]any{
 		"schema": "ardents-closed-issuer-initialize-v1", "root": path.Join(result.RemoteRoot, "duty", issuer.ID, "issuer"),
 		"network_id": networkID, "node_id": issuer.ID, "identity_key": remoteArtifact(result.RemoteRoot, issuer.Key),
-		"not_before": config.At.Add(-5 * time.Minute).Format(time.RFC3339),
+		"not_before": config.At.Format(time.RFC3339),
 		"not_after":  config.At.Add(6 * time.Hour).Format(time.RFC3339),
 	}); err != nil {
 		return err

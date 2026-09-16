@@ -39,8 +39,8 @@ func run(arguments []string) error {
 	var err error
 	config.At, err = time.Parse(time.RFC3339, at)
 	if err != nil || config.At.Format(time.RFC3339) != at || config.At.Location() != time.UTC ||
-		config.At.Nanosecond() != 0 {
-		return errors.New("fixture time must be canonical UTC RFC3339")
+		config.At.Nanosecond() != 0 || config.At.Truncate(time.Hour) != config.At {
+		return errors.New("fixture time must be an hour-aligned canonical UTC RFC3339 instant")
 	}
 	seed, err := hex.DecodeString(config.Seed)
 	if err != nil || len(seed) != 32 || hex.EncodeToString(seed) != config.Seed {

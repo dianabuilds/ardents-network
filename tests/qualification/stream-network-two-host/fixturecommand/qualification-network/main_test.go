@@ -70,6 +70,19 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 			t.Fatalf("runtime plan %s is absent: %v", relative, err)
 		}
 	}
+	var issuerPlan struct {
+		Schema      string `json:"schema"`
+		Root        string `json:"root"`
+		NetworkID   string `json:"network_id"`
+		NodeID      string `json:"node_id"`
+		IdentityKey string `json:"identity_key"`
+		NotBefore   string `json:"not_before"`
+		NotAfter    string `json:"not_after"`
+	}
+	readFixtureJSON(t, filepath.Join(output, bundle.IssuerInitialization), &issuerPlan)
+	if issuerPlan.NotBefore != "2026-09-15T10:00:00Z" || issuerPlan.NotAfter != "2026-09-15T16:00:00Z" {
+		t.Fatalf("closed issuer window is not an accepted six-hour boundary: %+v", issuerPlan)
+	}
 	duties := map[string]int{}
 	privateOverrides, carrierRelays := 0, 0
 	for _, relative := range bundle.NodePlans {
@@ -144,6 +157,15 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	}
 	if err := run([]string{"-output", output}); err == nil {
 		t.Fatal("generator replaced an existing private fixture")
+	}
+}
+
+func TestRunRejectsNonHourAlignedFixtureTime(t *testing.T) {
+	err := run([]string{"-output", filepath.Join(t.TempDir(), "fixture"), "-reader-host", "192.0.2.10",
+		"-publisher-host", "192.0.2.20", "-carrier", "tcp-tls", "-cell", "net14ad",
+		"-profile", "client-to-publisher", "-seed", strings.Repeat("12", 32), "-at", "2026-09-15T10:01:00Z"})
+	if err == nil || !strings.Contains(err.Error(), "hour-aligned") {
+		t.Fatalf("non-hour fixture time error = %v", err)
 	}
 }
 
