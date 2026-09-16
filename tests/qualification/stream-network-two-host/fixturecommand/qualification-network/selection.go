@@ -3,11 +3,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
@@ -45,6 +47,9 @@ func selectRoute(root string, networkID [32]byte, domain uint8, members []routeM
 			interiors = append(interiors, member.ClosedSetMember)
 		}
 	}
+	slices.SortFunc(interiors, func(first, second entry.ClosedSetMember) int {
+		return bytes.Compare(first.NodeID[:], second.NodeID[:])
+	})
 	var pairs [][2]entry.ClosedSetMember
 	for _, first := range interiors {
 		for _, second := range interiors {

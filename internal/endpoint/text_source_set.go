@@ -3,9 +3,11 @@
 package endpoint
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
@@ -97,6 +99,9 @@ func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetM
 			eligible = append(eligible, member.ClosedSetMember)
 		}
 	}
+	slices.SortFunc(eligible, func(first, second entry.ClosedSetMember) int {
+		return bytes.Compare(first.NodeID[:], second.NodeID[:])
+	})
 	var pairs [][2]entry.ClosedSetMember
 	for _, first := range eligible {
 		for _, second := range eligible {
