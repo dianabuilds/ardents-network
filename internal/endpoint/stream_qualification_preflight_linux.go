@@ -5,8 +5,11 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"os"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -15,6 +18,22 @@ import (
 type StreamQualificationPreflight struct {
 	Role                        streamqualification.Role
 	EntryNodeID, InteriorNodeID [32]byte
+}
+
+func prepareStreamQualificationParticipantRoots(config TextParticipantConfig) (outcome error) {
+	clock := config.Clock
+	if clock == nil {
+		clock = time.Now
+	}
+	roles, err := duty.Open(duty.Config{Root: config.LocalRoleRoot, Clock: clock, Create: true})
+	if err != nil {
+		return err
+	}
+	defer func() { outcome = errors.Join(outcome, roles.Close()) }()
+	if err := os.Mkdir(config.TokenRoot, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+		return err
+	}
+	return nil
 }
 
 // PreflightStreamQualification validates one installed participant without
@@ -51,11 +70,14 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 	if _, err := hosting.Sample(ctx); err != nil {
 		return result, err
 	}
+	if err := prepareStreamQualificationParticipantRoots(config.Participant); err != nil {
+		return result, err
+	}
 	// Preflight must not create a refresh wave. The already accepted State and
 	// its live clock observation are checked by the normal participant owner.
 	config.Participant.Network.AutomaticRefreshInterval = 0
 	result.Role = config.Role
-	return result, withTextParticipant(ctx, config.Participant, func(endpoint *endpoint) error {
+	return result, inspectTextParticipant(ctx, config.Participant, func(endpoint *endpoint) error {
 		domain := uint8(1)
 		if config.Role == streamqualification.PublisherRole {
 			domain = 3

@@ -10,6 +10,20 @@ import (
 	"testing"
 )
 
+func isolatedFixtureEnvironment() []string {
+	blocked := map[string]bool{
+		"GIT_DIR": true, "GIT_WORK_TREE": true, "GIT_INDEX_FILE": true, "GIT_COMMON_DIR": true,
+		"GIT_OBJECT_DIRECTORY": true, "GIT_ALTERNATE_OBJECT_DIRECTORIES": true, "GIT_PREFIX": true,
+	}
+	environment := make([]string, 0, len(os.Environ()))
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if !blocked[strings.ToUpper(key)] {
+			environment = append(environment, entry)
+		}
+	}
+	return environment
+}
 func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -30,6 +44,7 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 		t.Helper()
 		cmd := exec.Command(name, arguments...)
 		cmd.Dir = fixture
+		cmd.Env = isolatedFixtureEnvironment()
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("%s: %v\n%s", name, err, output)
@@ -158,6 +173,7 @@ func TestPRSelectionMapsQualificationFixturesToBoundedOwners(t *testing.T) {
 	run := func(name string, arguments ...string) []byte {
 		command := exec.Command(name, arguments...)
 		command.Dir = fixture
+		command.Env = isolatedFixtureEnvironment()
 		output, err := command.CombinedOutput()
 		if err != nil {
 			t.Fatalf("%s: %v\n%s", name, err, output)
@@ -253,6 +269,7 @@ func TestPRSelectionRejectsStaleRegistryMappings(t *testing.T) {
 			run := func(arguments ...string) []byte {
 				command := exec.Command(arguments[0], arguments[1:]...)
 				command.Dir = fixture
+				command.Env = isolatedFixtureEnvironment()
 				output, err := command.CombinedOutput()
 				if err != nil {
 					t.Fatalf("%s: %v\n%s", arguments[0], err, output)
@@ -279,6 +296,7 @@ func TestPRSelectionRejectsStaleRegistryMappings(t *testing.T) {
 			commit()
 			command := exec.Command("go", "run", filepath.Join(root, "scripts", "select-pr-checks.go"), filepath.Join(root, "scripts", "select-pr-check-registry.go"), "--base", base, "--head", "HEAD")
 			command.Dir = fixture
+			command.Env = isolatedFixtureEnvironment()
 			output, err := command.CombinedOutput()
 			if err == nil || !strings.Contains(string(output), test.want) {
 				t.Fatalf("stale registry result = %v\n%s; want %q", err, output, test.want)

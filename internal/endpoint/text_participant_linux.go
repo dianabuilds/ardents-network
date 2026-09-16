@@ -19,7 +19,15 @@ func runTextParticipant(ctx context.Context, config TextParticipantConfig) error
 	return withTextParticipant(ctx, config, func(owner *endpoint) error { return owner.runTextInterfaces(ctx, config) })
 }
 
-func withTextParticipant(ctx context.Context, config TextParticipantConfig, run func(*endpoint) error) (outcome error) {
+func withTextParticipant(ctx context.Context, config TextParticipantConfig, run func(*endpoint) error) error {
+	return useTextParticipant(ctx, config, true, run)
+}
+
+func inspectTextParticipant(ctx context.Context, config TextParticipantConfig, run func(*endpoint) error) error {
+	return useTextParticipant(ctx, config, false, run)
+}
+
+func useTextParticipant(ctx context.Context, config TextParticipantConfig, withdrawBinding bool, run func(*endpoint) error) (outcome error) {
 	clock := config.Clock
 	if clock == nil {
 		clock = time.Now
@@ -63,6 +71,15 @@ func withTextParticipant(ctx context.Context, config TextParticipantConfig, run 
 		return err
 	}
 	owner.publisherBinding = binding
+	if !withdrawBinding {
+		defer func() {
+			owner.publisherMu.Lock()
+			if owner.publisherBinding == binding {
+				owner.publisherBinding = nil
+			}
+			owner.publisherMu.Unlock()
+		}()
+	}
 	if _, err := owner.textTokenJournal(); err != nil {
 		return err
 	}

@@ -10,11 +10,11 @@ import (
 )
 
 type generatedPlanIndex struct {
-	RemoteRoot, NodeInventory, HostingRoot, ClockObservationFile    string
-	NodePlans, SourcePlans                                          []string
-	ReaderPlanTemplate, PublisherPlan, Net32Plan, ClosedProfilePlan string
-	IssuerInitialization, PreparationInventory                      string
-	ServiceInitializationPlans                                      []string
+	RemoteRoot, NodeInventory, HostingRoot, ClockObservationFile           string
+	NodePlans, SourcePlans                                                 []string
+	ReaderPlanTemplate, PublisherPlan, Net32Plan, ClosedProfilePlan        string
+	IssuerInitialization, PreparationInventory, Net32ServiceInitialization string
+	ServiceInitializationPlans                                             []string
 }
 
 type sourcePlanDocument struct {
@@ -58,7 +58,7 @@ func writeRuntimePlans(config fixtureConfig, networkID, authority string, nodes 
 	if len(nodes) != 16 || len(sources) != 2 || len(manifest.Relays) != 6 {
 		return generatedPlanIndex{}, errors.New("runtime plan input is incomplete")
 	}
-	remoteRoot := "/var/lib/ardents/qualification/issue60-" + config.Seed[:12] + "-" + config.Carrier
+	remoteRoot := "/var/lib/ardents/qualification/issue60-" + config.Seed[:12] + "-" + config.Carrier + "-" + config.Cell + "-" + config.Profile
 	hostingRoot := path.Join("/var/lib/ardents/qualification", "issue60-"+config.Seed[:12]+"-hosting")
 	clockFile := path.Join(remoteRoot, "clock", "observation")
 	result := generatedPlanIndex{RemoteRoot: remoteRoot, NodeInventory: "node-inventory.json",

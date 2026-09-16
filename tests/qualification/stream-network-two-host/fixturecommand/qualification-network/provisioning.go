@@ -57,13 +57,18 @@ func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex
 		document.EntryRoots = append(document.EntryRoots, provisioningEntryRoot{Owner: item.Name, Host: item.Host,
 			Source: remoteArtifact(result.RemoteRoot, item.EntryRoot), Destination: remoteArtifact(result.RemoteRoot, item.EntryRoot)})
 	}
+	net32Owner := "net32-reader"
+	document.Services = append(document.Services, provisioningService{Owner: net32Owner, Host: "reader",
+		Root:    path.Join(result.RemoteRoot, "service", net32Owner),
+		Plan:    path.Join(result.RemoteRoot, "bundle", result.Net32ServiceInitialization),
+		Request: path.Join(result.RemoteRoot, "handover", net32Owner+"-service.request")})
 	for _, item := range sources {
 		document.State = append(document.State, provisioningState{Owner: item.Name, Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", item.Name),
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 	}
-	if len(document.State) != 23 || len(document.Services) != 5 || len(document.EntryRoots) != 5 {
+	if len(document.State) != 23 || len(document.Services) != 6 || len(document.EntryRoots) != 5 {
 		return fmt.Errorf("provisioning owner inventory is incomplete")
 	}
 	result.PreparationInventory = "provisioning-inventory.json"

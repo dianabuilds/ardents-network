@@ -140,7 +140,7 @@ if (Test-Path -LiteralPath $prepared) { throw 'PreparedOutput must be a new dire
 $inventoryJSON = Get-Content -LiteralPath $inventoryPath -Raw
 $provision = $inventoryJSON | ConvertFrom-Json
 if ([string]$provision.Schema -cne 'ardents-qualification-provisioning-v1' -or @($provision.State).Count -ne 23 -or
-    @($provision.Services).Count -ne 5 -or @($provision.EntryRoots).Count -ne 5) {
+    @($provision.Services).Count -ne 6 -or @($provision.EntryRoots).Count -ne 5) {
     throw 'Provisioning inventory is incomplete.'
 }
 Assert-Hex ([string]$provision.NetworkID) 'NetworkID'

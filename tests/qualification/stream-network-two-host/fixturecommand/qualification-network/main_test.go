@@ -27,11 +27,12 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 		bundle.PublisherInterior == "" || bundle.DataJoin != bundle.Nodes[15].ID || bundle.NotAfter != "2026-09-15T16:00:00Z" {
 		t.Fatalf("fixture bundle is incomplete: %+v", bundle)
 	}
-	if bundle.RemoteRoot == "" || bundle.HostingRoot != "/var/lib/ardents/qualification/issue60-121212121212-hosting" ||
+	if bundle.RemoteRoot != "/var/lib/ardents/qualification/issue60-121212121212-tcp-tls-net14ad-client-to-publisher" ||
+		bundle.HostingRoot != "/var/lib/ardents/qualification/issue60-121212121212-hosting" ||
 		bundle.NodeInventory != "node-inventory.json" || len(bundle.NodePlans) != 16 ||
 		len(bundle.SourcePlans) != 2 || bundle.HostingRoot == "" || bundle.ClockObservationFile == "" ||
 		bundle.ReaderPlanTemplate == "" || bundle.PublisherPlan == "" || bundle.Net32Plan == "" || bundle.ClosedProfilePlan == "" ||
-		bundle.IssuerInitialization == "" || bundle.PreparationInventory == "" || len(bundle.ServiceInitializationPlans) != 5 {
+		bundle.IssuerInitialization == "" || bundle.PreparationInventory == "" || len(bundle.ServiceInitializationPlans) != 6 {
 		t.Fatalf("fixture runtime plans are incomplete: %+v", bundle)
 	}
 	var provision provisioningDocument
