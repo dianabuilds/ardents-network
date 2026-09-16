@@ -80,7 +80,7 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	}
 	for _, item := range provision.State {
 		want, ok := expectedState[item.Owner]
-		if !ok || item.Host != want.host || item.Root != want.stateRoot || item.LocalRoleStateRoot != want.localRoleStateRoot ||
+		if !ok || item.DutyRoots == nil || item.Host != want.host || item.Root != want.stateRoot || item.LocalRoleStateRoot != want.localRoleStateRoot ||
 			strings.Join(item.DutyRoots, "\x00") != strings.Join(want.dutyRoots, "\x00") {
 			t.Fatalf("runtime State owner %q does not bind its exact writable roots: got=%+v want=%+v", item.Owner, item, want)
 		}

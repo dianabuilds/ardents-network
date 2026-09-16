@@ -52,6 +52,7 @@ func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex
 		document.State = append(document.State, provisioningState{Owner: item.Name, Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", item.Name),
 			LocalRoleStateRoot:   path.Join(result.RemoteRoot, "state-roles", item.Name),
+			DutyRoots:            []string{},
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 		document.Services = append(document.Services, provisioningService{Owner: item.Name, Host: item.Host,
@@ -70,6 +71,7 @@ func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex
 		document.State = append(document.State, provisioningState{Owner: item.Name, Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", item.Name),
 			LocalRoleStateRoot:   path.Join(result.RemoteRoot, "roles", item.Name),
+			DutyRoots:            []string{},
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 	}
