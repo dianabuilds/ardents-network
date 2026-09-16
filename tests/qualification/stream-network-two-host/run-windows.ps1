@@ -403,7 +403,7 @@ function Configure-OwnerSlices {
         $memoryMax = if ($role -ceq 'reader') { [uint64](512MB) } else { [uint64](1GB) }
         $unit = 'ardents-qualification-owner.slice'
         $samplerUnit = "ardents-qualification-owner-sample-$attempt-$role"
-        $command = "systemctl stop '$unit' 2>/dev/null || :; systemctl revert '$unit' 2>/dev/null || :; systemctl set-property --runtime '$unit' 'CPUQuota=$quota' 'MemoryMax=$memoryMax' IPAccounting=yes; group=`$(systemctl show '$unit' -p ControlGroup --value); systemctl show '$unit' -p ActiveState -p ControlGroup -p CPUQuotaPerSecUSec -p MemoryMax -p IPAccounting -p DropInPaths; printf 'CPU_MAX='; cat `"/sys/fs/cgroup`$group/cpu.max`"; printf 'MEMORY_MAX='; cat `"/sys/fs/cgroup`$group/memory.max`""
+        $command = "systemctl stop '$unit' 2>/dev/null || :; systemctl revert '$unit' 2>/dev/null || :; systemctl set-property --runtime '$unit' 'CPUQuota=$quota' 'MemoryMax=$memoryMax' IPAccounting=yes; systemctl start '$unit'; group=`$(systemctl show '$unit' -p ControlGroup --value); systemctl show '$unit' -p ActiveState -p ControlGroup -p CPUQuotaPerSecUSec -p MemoryMax -p IPAccounting -p DropInPaths; printf 'CPU_MAX='; cat `"/sys/fs/cgroup`$group/cpu.max`"; printf 'MEMORY_MAX='; cat `"/sys/fs/cgroup`$group/memory.max`""
         $owner = [ordered]@{ Host=$role; Machine=$hostName; Unit=$unit; SamplerUnit=$samplerUnit; CPUQuota=$quota; CPUMax=$cpuMax; MemoryMax=$memoryMax; Receipt=@() }
         $script:ownerSlices += $owner
         $receipt = @((Invoke-SSH $hostName $command "configure $role whole-owner slice"))

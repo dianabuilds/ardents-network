@@ -102,3 +102,21 @@ func TestQualificationCustodyDoesNotBlockOnOperatorInput(t *testing.T) {
 		}
 	}
 }
+
+func TestQualificationActivatesOwnerSliceBeforeInspectingLimits(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "run-windows.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	setProperty := strings.Index(text, "systemctl set-property --runtime '$unit'")
+	start := strings.Index(text, "systemctl start '$unit'")
+	inspect := strings.Index(text, "group=`$(systemctl show '$unit' -p ControlGroup --value)")
+	if setProperty < 0 || start < setProperty || inspect < start {
+		t.Fatal("qualification runner inspects owner slice limits before activating its cgroup")
+	}
+}
