@@ -260,6 +260,7 @@ Write-HostingPlan 'publisher' $PublisherProvider $PublisherUnit $PublisherInterf
 foreach ($state in @($provision.State)) {
     Assert-Name ([string]$state.Owner) 'State owner'
     Assert-RemotePath ([string]$state.Root) 'State root'
+    Assert-RemotePath ([string]$state.LocalRoleStateRoot) 'State local role root'
     Assert-RemotePath ([string]$state.Materialization) 'State materialization'
     $hostName = Host-Address ([string]$state.Host)
     $arguments = @('accept-offline','--state-root',[string]$state.Root,'--network-id',[string]$provision.NetworkID,
@@ -371,17 +372,21 @@ foreach ($role in @('reader','publisher')) {
     $hostName = Host-Address $role
     $participantNames = @($provision.Services | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Owner })
     $stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })
+    $localRoleRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.LocalRoleStateRoot })
     foreach ($stateRoot in $stateRoots) { Assert-RemotePath $stateRoot 'State owner root' }
+    foreach ($localRoleRoot in $localRoleRoots) { Assert-RemotePath $localRoleRoot 'State owner local role root' }
     [void](Invoke-SSH $hostName "install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/endpoint' '$remoteRoot/service'; chmod 755 '$remoteRoot/bundle' '$remoteRoot/bundle/entry-templates'" "prepare $role Endpoint parents")
-    $paths = @($stateRoots)
+    $paths = @($stateRoots + $localRoleRoots)
     $paths += @([string]$provision.HostingRoot, "$remoteRoot/handover", "$remoteRoot/clock")
     foreach ($name in $participantNames) {
         $paths += @("$remoteRoot/state-roles/$name", "$remoteRoot/endpoint/$name",
             "$remoteRoot/service/$name", "$remoteRoot/bundle/entry-templates/$name")
     }
     $quoted = $paths | ForEach-Object { Assert-RemotePath $_ 'Endpoint owner path'; "'$_'" }
+    $writableChecks = $quoted | ForEach-Object { "runuser -u ardents-endpoint -- test -d $_; runuser -u ardents-endpoint -- test -w $_" }
     [void](Invoke-SSH $hostName ("install -d -o ardents-endpoint -g ardents-endpoint -m 700 " + ($quoted -join ' ') +
-        "; chown -R ardents-endpoint:ardents-endpoint " + ($quoted -join ' ') + "; chmod 755 '$remoteRoot'") "assign $role Endpoint roots")
+        "; chown -R ardents-endpoint:ardents-endpoint " + ($quoted -join ' ') + "; chmod 755 '$remoteRoot'; " +
+        ($writableChecks -join '; ')) "assign and verify $role Endpoint roots")
 }
 
 $runInputs = [ordered]@{ Schema='ardents-qualification-prepared-inputs-v1'; ReaderHost=$ReaderHost; PublisherHost=$PublisherHost;

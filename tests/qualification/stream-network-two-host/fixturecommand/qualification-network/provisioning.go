@@ -20,8 +20,8 @@ type provisioningDocument struct {
 	EntryRoots                                                                []provisioningEntryRoot
 }
 type provisioningState struct {
-	Owner, Host, Root, Materialization string
-	MaterializationIndex               uint64
+	Owner, Host, Root, LocalRoleStateRoot, Materialization string
+	MaterializationIndex                                   uint64
 }
 type provisioningService struct {
 	Owner, Host, Root, Plan, Request string
@@ -42,12 +42,14 @@ func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex
 	for index, item := range nodes {
 		document.State = append(document.State, provisioningState{Owner: fmt.Sprintf("node-%02d", index), Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", fmt.Sprintf("node-%02d", index)),
+			LocalRoleStateRoot:   path.Join(result.RemoteRoot, "roles", fmt.Sprintf("node-%02d", index)),
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 	}
 	for _, item := range participants {
 		document.State = append(document.State, provisioningState{Owner: item.Name, Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", item.Name),
+			LocalRoleStateRoot:   path.Join(result.RemoteRoot, "state-roles", item.Name),
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 		document.Services = append(document.Services, provisioningService{Owner: item.Name, Host: item.Host,
@@ -65,6 +67,7 @@ func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex
 	for _, item := range sources {
 		document.State = append(document.State, provisioningState{Owner: item.Name, Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", item.Name),
+			LocalRoleStateRoot:   path.Join(result.RemoteRoot, "roles", item.Name),
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 	}

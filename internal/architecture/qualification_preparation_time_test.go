@@ -85,15 +85,36 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 	}
 	text := string(body)
 	stateRoots := strings.Index(text, "$stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })")
-	ownerPaths := strings.Index(text, "$paths = @($stateRoots)")
+	localRoleRoots := strings.Index(text, "$localRoleRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.LocalRoleStateRoot })")
+	ownerPaths := strings.Index(text, "$paths = @($stateRoots + $localRoleRoots)")
 	assignment := -1
+	writableCheck := -1
 	if ownerPaths >= 0 {
 		if offset := strings.Index(text[ownerPaths:], "; chown -R ardents-endpoint:ardents-endpoint "); offset >= 0 {
 			assignment = ownerPaths + offset
 		}
+		if offset := strings.Index(text[ownerPaths:], "runuser -u ardents-endpoint -- test -w"); offset >= 0 {
+			writableCheck = ownerPaths + offset
+		}
 	}
-	if stateRoots < 0 || ownerPaths < stateRoots || assignment < ownerPaths {
-		t.Fatal("qualification preparer does not assign every host State root to the shared runtime owner")
+	if stateRoots < 0 || localRoleRoots < stateRoots || ownerPaths < localRoleRoots || assignment < ownerPaths || writableCheck < ownerPaths {
+		t.Fatal("qualification preparer does not assign every host State and local role root to the shared runtime owner")
+	}
+
+	provisioningBody, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "fixturecommand", "qualification-network", "provisioning.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	provisioning := string(provisioningBody)
+	for _, required := range []string{
+		"LocalRoleStateRoot",
+		`path.Join(result.RemoteRoot, "roles", fmt.Sprintf("node-%02d", index))`,
+		`path.Join(result.RemoteRoot, "state-roles", item.Name)`,
+		`path.Join(result.RemoteRoot, "roles", item.Name)`,
+	} {
+		if !strings.Contains(provisioning, required) {
+			t.Fatalf("qualification provisioning omits runtime-owned local role root %q", required)
+		}
 	}
 }
 

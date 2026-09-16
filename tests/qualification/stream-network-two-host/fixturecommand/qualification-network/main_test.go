@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/netip"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -40,6 +41,34 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	readFixtureJSON(t, filepath.Join(output, bundle.PreparationInventory), &provision)
 	if provision.Schema != "ardents-qualification-provisioning-v1" || provision.Seed != seed {
 		t.Fatalf("provisioning inventory lost fixture identity: %+v", provision)
+	}
+	type expectedStateOwner struct{ host, stateRoot, localRoleStateRoot string }
+	expectedState := make(map[string]expectedStateOwner, 23)
+	for index, item := range bundle.Nodes {
+		owner := fourDigits(index)[2:]
+		expectedState["node-"+owner] = expectedStateOwner{item.Host,
+			path.Join(bundle.RemoteRoot, "state", "node-"+owner), path.Join(bundle.RemoteRoot, "roles", "node-"+owner)}
+	}
+	for _, item := range bundle.Participants {
+		expectedState[item.Name] = expectedStateOwner{item.Host,
+			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "state-roles", item.Name)}
+	}
+	for _, item := range bundle.Sources {
+		expectedState[item.Name] = expectedStateOwner{item.Host,
+			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "roles", item.Name)}
+	}
+	if len(expectedState) != 23 || len(provision.State) != 23 {
+		t.Fatalf("runtime State owner inventory is incomplete: expected=%d actual=%d", len(expectedState), len(provision.State))
+	}
+	for _, item := range provision.State {
+		want, ok := expectedState[item.Owner]
+		if !ok || item.Host != want.host || item.Root != want.stateRoot || item.LocalRoleStateRoot != want.localRoleStateRoot {
+			t.Fatalf("runtime State owner %q does not bind its exact writable roots: got=%+v want=%+v", item.Owner, item, want)
+		}
+		delete(expectedState, item.Owner)
+	}
+	if len(expectedState) != 0 {
+		t.Fatalf("runtime State owners are absent from provisioning: %+v", expectedState)
 	}
 	materializations := make(map[string]uint64, 23)
 	for _, item := range bundle.Nodes {
