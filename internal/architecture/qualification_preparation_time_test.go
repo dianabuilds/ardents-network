@@ -120,3 +120,33 @@ func TestQualificationActivatesOwnerSliceBeforeInspectingLimits(t *testing.T) {
 		t.Fatal("qualification runner inspects owner slice limits before activating its cgroup")
 	}
 }
+
+func TestQualificationResetsOnlyFailedEndpointUnit(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{
+		filepath.Join(root, "tests", "qualification", "stream-network-two-host", "run-windows.ps1"),
+		filepath.Join(root, "tests", "qualification", "net32-idle-one-host", "run-windows.ps1"),
+	}
+	for _, path := range paths {
+		body, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		text := string(body)
+		failFast := strings.Index(text, "set -eu; chmod 700")
+		if failFast < 0 {
+			t.Fatalf("%s does not fail fast during Endpoint installation", path)
+		}
+		command := text[failFast:]
+		state := strings.Index(command, "systemctl show ardents-endpoint.service -p ActiveState --value")
+		conditional := strings.Index(command, "if test")
+		reset := strings.Index(command, "systemctl reset-failed ardents-endpoint.service")
+		inactive := strings.Index(command, "= inactive; fi")
+		if state < 0 || conditional < state || reset < conditional || inactive < reset {
+			t.Fatalf("%s does not conditionally reset only a failed Endpoint unit", path)
+		}
+	}
+}

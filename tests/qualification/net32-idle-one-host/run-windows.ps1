@@ -182,7 +182,7 @@ try {
     Send-File $installPath $EndpointHost "$remoteRoot/package/install.py" 'upload installer helper'
     Send-File $endpointInstallPath $EndpointHost "$remoteRoot/package/install_endpoint.py" 'upload Endpoint installer'
     Send-File $unitPath $EndpointHost "$remoteRoot/package/ardents-endpoint.service" 'upload Endpoint unit'
-    [void](Invoke-SSH $EndpointHost "chmod 700 '$remoteRoot/package/install.py' '$remoteRoot/package/install_endpoint.py'; systemctl stop ardents-endpoint.service 2>/dev/null || :; python3 '$remoteRoot/package/install_endpoint.py' '$remoteRoot/runner' '$remoteRoot/plan.json'; systemctl reset-failed ardents-endpoint.service; systemctl start --no-block ardents-endpoint.service" 'install and start Endpoint')
+    [void](Invoke-SSH $EndpointHost "set -eu; chmod 700 '$remoteRoot/package/install.py' '$remoteRoot/package/install_endpoint.py'; systemctl stop ardents-endpoint.service 2>/dev/null || :; python3 '$remoteRoot/package/install_endpoint.py' '$remoteRoot/runner' '$remoteRoot/plan.json'; systemctl daemon-reload; state=`$(systemctl show ardents-endpoint.service -p ActiveState --value); if test `"`$state`" = failed; then systemctl reset-failed ardents-endpoint.service; else test `"`$state`" = inactive; fi; systemctl start --no-block ardents-endpoint.service" 'install and start Endpoint')
     for ($poll = 0; $poll -lt 30; $poll++) {
         $invocation = ((Invoke-SSH $EndpointHost 'systemctl show ardents-endpoint.service -p InvocationID --value' 'read Endpoint invocation') -join '').Trim()
         if ($invocation -match '^[0-9a-f]{32}$') { break }

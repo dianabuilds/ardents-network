@@ -346,7 +346,7 @@ function Deploy-Owner([string]$HostName, [string]$PlanPath) {
     Send-File $PlanPath $HostName "$remoteRoot/plan.json" 'upload plan'
     Send-File $networkManifestPath $HostName "$remoteRoot/network-manifest.json" 'upload network manifest'
     foreach ($name in $requiredPackage) { Send-File (Join-Path $packageRoot $name) $HostName "$remoteRoot/package/$name" "upload $name" }
-    $command = "chmod 700 '$remoteRoot/package/install.py' '$remoteRoot/package/install_endpoint.py'; systemctl stop ardents-endpoint.service 2>/dev/null || :; python3 '$remoteRoot/package/install_endpoint.py' '$remoteRoot/runner' '$remoteRoot/plan.json'; python3 '$remoteRoot/package/install.py' '$remoteRoot/worker'; systemctl reset-failed ardents-endpoint.service"
+    $command = "set -eu; chmod 700 '$remoteRoot/package/install.py' '$remoteRoot/package/install_endpoint.py'; systemctl stop ardents-endpoint.service 2>/dev/null || :; python3 '$remoteRoot/package/install_endpoint.py' '$remoteRoot/runner' '$remoteRoot/plan.json'; python3 '$remoteRoot/package/install.py' '$remoteRoot/worker'; systemctl daemon-reload; state=`$(systemctl show ardents-endpoint.service -p ActiveState --value); if test `"`$state`" = failed; then systemctl reset-failed ardents-endpoint.service; else test `"`$state`" = inactive; fi"
     [void](Invoke-SSH $HostName $command 'install owner artifacts')
 }
 function Verify-NetworkManifest([string]$HostName, [string]$EvidenceName) {
