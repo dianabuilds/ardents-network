@@ -65,35 +65,32 @@ function Save-NativeFailure([string]$Label, [string]$Detail) {
     if ($safe.Length -gt 80) { $safe = $safe.Substring(0, 80) }
     Write-Utf8 (Join-Path $script:evidence "native-failure-$safe-$([Guid]::NewGuid().ToString('N')).txt") ($Detail + [Environment]::NewLine)
 }
-function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label, [int]$TimeoutSeconds = 180, [switch]$Interactive) {
+function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label, [int]$TimeoutSeconds = 180, [string[]]$InputLines = $null) {
     $start = [Diagnostics.ProcessStartInfo]::new()
     $start.FileName = $Program
     $start.UseShellExecute = $false
-    $start.RedirectStandardOutput = -not $Interactive
-    $start.RedirectStandardError = -not $Interactive
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.RedirectStandardInput = $null -ne $InputLines
     foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $start
     if (-not $process.Start()) { throw "$Label did not start." }
-    if (-not $Interactive) {
-        $stdout = $process.StandardOutput.ReadToEndAsync()
-        $stderr = $process.StandardError.ReadToEndAsync()
+    $stdout = $process.StandardOutput.ReadToEndAsync()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    if ($null -ne $InputLines) {
+        $process.StandardInput.WriteLine(($InputLines -join "`n"))
+        $process.StandardInput.Close()
     }
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
         $process.Kill($true)
         $process.WaitForExit()
         $detail = "$Label exceeded its $TimeoutSeconds-second local deadline."
-        if (-not $Interactive) {
-            $captured = $stdout.Result + $stderr.Result
-            if ($captured.Length -gt 65536) { $captured = $captured.Substring($captured.Length - 65536) }
-            if (-not [string]::IsNullOrWhiteSpace($captured)) { $detail += [Environment]::NewLine + $captured }
-        }
+        $captured = $stdout.Result + $stderr.Result
+        if ($captured.Length -gt 65536) { $captured = $captured.Substring($captured.Length - 65536) }
+        if (-not [string]::IsNullOrWhiteSpace($captured)) { $detail += [Environment]::NewLine + $captured }
         Save-NativeFailure $Label $detail
         throw $detail
-    }
-    if ($Interactive) {
-        if ($process.ExitCode -ne 0) { throw "$Label failed with exit code $($process.ExitCode)." }
-        return @()
     }
     $output = @((($stdout.Result + $stderr.Result) -split "`r?`n") | Where-Object { $_ -ne '' })
     if ($process.ExitCode -ne 0) {
@@ -121,6 +118,12 @@ $nodeInventoryPath = Resolve-InputFile $NodeInventory 'NodeInventory'
 $publisherPlanPath = Resolve-InputFile $PublisherPlan 'PublisherPlan'
 $readerTemplatePath = Resolve-InputFile $ReaderPlanTemplate 'ReaderPlanTemplate'
 $authorityPath = Resolve-InputFile $AuthorityInventory 'AuthorityInventory'
+$secretPath = Resolve-InputFile (Join-Path (Split-Path -Parent $authorityPath) 'admission-secret.dpapi') 'protected admission secret'
+$protectedSecret = [IO.File]::ReadAllBytes($secretPath)
+$plainSecret = [Security.Cryptography.ProtectedData]::Unprotect(
+    $protectedSecret, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+try { $admissionSecret = [Text.Encoding]::UTF8.GetString($plainSecret) }
+finally { [Array]::Clear($plainSecret, 0, $plainSecret.Length) }
 $networkManifestPath = Resolve-InputFile $NetworkManifest 'NetworkManifest'
 foreach ($name in $requiredPackage) { [void](Resolve-InputFile (Join-Path $packageRoot $name) "package/$name") }
 [void](Resolve-InputFile $recoveryFaultPath 'recovery_faults.py')
@@ -779,13 +782,13 @@ function Issue-Permission([string]$EndpointHost, [object]$Files, [string]$Digest
         if ($actual -cne $Digest) { throw "$Label request differs from independently observed commitment." }
         [void](Invoke-SSH ([string]$authority.Host) "install -d -m 700 '$remoteRoot'" 'create authority staging')
         Send-File $requestLocal ([string]$authority.Host) $authorityRequest "upload $Label request to custody"
-        Write-Host "Enter this independently observed admission request commitment when custody asks: $Digest"
         $args = @('issue-admission-permission', '--vault-root', $authority.VaultRoot, '--record', $authority.RecordID,
             '--request', $authorityRequest, '--permission-output', $authorityPermission,
             '--environment-commitment', $authority.EnvironmentCommitment, '--network-commitment', $authority.NetworkCommitment,
             '--root-commitment', $authority.RootCommitment, '--kind', 'admission', '--id-commitment', $authority.IDCommitment)
         $quoted = ($args | ForEach-Object { "'$($_)'" }) -join ' '
-        [void](Invoke-Native $ssh ($sshOptions + @('-tt', (Remote ([string]$authority.Host)), "'$($authority.Binary)' $quoted")) "$Label custody issuance" 900 -Interactive)
+        $custodyCommand = "set +e; stty -echo; '$($authority.Binary)' $quoted; status=`$?; stty echo; exit `$status"
+        [void](Invoke-Native $ssh ($sshOptions + @('-tt', (Remote ([string]$authority.Host)), $custodyCommand)) "$Label custody issuance" 900 @($Digest, $admissionSecret))
         Receive-File ([string]$authority.Host) $authorityPermission $permissionLocal "download $Label permission"
         if ((Get-Item -LiteralPath $permissionLocal).Length -ne 228) { throw "$Label permission has the wrong size." }
         Send-File $permissionLocal $EndpointHost "$remoteRoot/$Label.permission" "upload $Label permission"

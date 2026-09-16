@@ -45,3 +45,47 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 		t.Fatalf("canonical instant = %q", output)
 	}
 }
+
+func TestQualificationCustodyDoesNotBlockOnOperatorInput(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{
+		filepath.Join(root, "tests", "qualification", "stream-network-two-host", "prepare-windows.ps1"),
+		filepath.Join(root, "tests", "qualification", "stream-network-two-host", "run-windows.ps1"),
+		filepath.Join(root, "tests", "qualification", "net32-idle-one-host", "run-windows.ps1"),
+	}
+	for _, path := range paths {
+		body, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		text := string(body)
+		for _, forbidden := range []string{"Read-Host", "-Interactive", "Enter this independently observed"} {
+			if strings.Contains(text, forbidden) {
+				t.Fatalf("%s retains operator-blocking custody input %q", path, forbidden)
+			}
+		}
+		if !strings.Contains(text, "stty -echo") {
+			t.Fatalf("%s does not suppress terminal echo around custody input", path)
+		}
+	}
+	preparer, err := os.ReadFile(paths[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(preparer), "ProtectedData]::Protect") ||
+		!strings.Contains(string(preparer), "admission-secret.dpapi") {
+		t.Fatal("qualification preparer does not retain the admission secret as account-bound ciphertext")
+	}
+	for _, path := range paths[1:] {
+		body, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !strings.Contains(string(body), "ProtectedData]::Unprotect") {
+			t.Fatalf("%s does not consume the account-bound custody secret", path)
+		}
+	}
+}

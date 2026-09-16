@@ -32,20 +32,24 @@ preparer refuses to start unless at least four hours remain.
 prepare-windows.ps1 consumes the generated provisioning-inventory.json,
 the four static Linux command binaries, exact provider-period bounds,
 original provider units and quantities, and already-consumed byte floors. It uploads the private bundle, creates the
-admission and Service authorities through interactive custody, accepts all 23
+admission and Service authorities through terminal-confined custody, accepts all 23
 State roots, initializes the closed issuer and five Service Instances, signs
 and accepts the closed profile, and initializes the shared hosting owner on
 each machine. It retains only public receipts and the signed profile in a new
-external preparation directory. The Product Owner enters custody secrets and
-independently displayed request commitments directly into the remote terminal.
+external preparation directory. Preparation generates separate admission and
+Service secrets. The reusable admission secret is retained only as a DPAPI
+ciphertext bound to the current Windows account; the Service secret remains
+in the preparation process. Both are delivered through an SSH pseudo-terminal
+with echo disabled, never through process arguments, environment variables, or
+evidence. Request commitments are computed from independently downloaded public
+request files and supplied through the same terminal channel.
 The script never infers provider period dates or consumed traffic.
 The two plans must reference already provisioned current State, Service
 Instance, role/token/publication roots and one existing provider hosting period.
 The script neither creates authority nor resets those durable roots. The
 authority inventory names an existing `ardents-custody` vault and its exact
-public binding; the password is entered only in the remote interactive terminal.
-For every request the script displays the independently observed SHA-256 value,
-and custody requires the operator to enter it before asking for the password.
+public binding. The runner resolves the adjacent protected secret and can only
+decrypt it under the Windows account that performed preparation.
 
 The reader plan is an immutable template with an empty `Link` on each of its
 four participants. The script fills all four with the one Publisher-emitted

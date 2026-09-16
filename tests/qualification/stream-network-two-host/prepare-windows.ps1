@@ -68,9 +68,26 @@ function Invoke-SSH([string]$HostName, [string]$Command, [string]$Label) {
     if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
     return $lines
 }
-function Invoke-Custody([string]$Command, [string]$Label) {
-    & ssh @script:sshOptions -tt (Remote $PublisherHost) $Command
+function Invoke-Custody([string]$Command, [string[]]$InputLines, [string]$Label) {
+    if ($InputLines.Count -eq 0 -or @($InputLines | Where-Object { [string]::IsNullOrEmpty($_) }).Count -ne 0) {
+        throw "$Label requires non-empty custody input."
+    }
+    $wrapped = "set +e; stty -echo; $Command; status=`$?; stty echo; exit `$status"
+    ($InputLines -join "`n") | & ssh @script:sshOptions -tt (Remote $PublisherHost) $wrapped
     if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+}
+function New-CustodySecret() {
+    return [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLowerInvariant()
+}
+function Save-ProtectedSecret([string]$Path, [string]$Secret) {
+    $plain = [Text.Encoding]::UTF8.GetBytes($Secret)
+    try {
+        $protected = [Security.Cryptography.ProtectedData]::Protect(
+            $plain, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+        [IO.File]::WriteAllBytes($Path, $protected)
+    } finally {
+        [Array]::Clear($plain, 0, $plain.Length)
+    }
 }
 function Send-File([string]$Local, [string]$HostName, [string]$RemotePath, [string]$Label) {
     & scp @script:scpOptions $Local (RemoteTarget $HostName $RemotePath)
@@ -187,12 +204,15 @@ $serviceRootCommitment = Hash-Text $serviceVault
 foreach ($vault in @($admissionVault, $serviceVault)) {
     [void](Invoke-SSH $PublisherHost "install -d -m 700 '$vault'" 'create custody vault')
 }
+$admissionSecret = New-CustodySecret
+$serviceSecret = New-CustodySecret
+Save-ProtectedSecret (Join-Path $prepared 'admission-secret.dpapi') $admissionSecret
 
-function New-Authority([string]$Kind, [string]$Vault, [string]$RootCommitment) {
+function New-Authority([string]$Kind, [string]$Vault, [string]$RootCommitment, [string]$Secret) {
     $receiptRemote = "$remoteRoot/handover/$Kind-authority.json"
     $receiptLocal = Join-Path $prepared "$Kind-authority.json"
     $command = "'$($binaryPaths.custody)' create-$Kind-authority --vault-root '$Vault' --environment-commitment '$environment' --network-commitment '$networkCommitment' --root-commitment '$RootCommitment' > '$receiptRemote'"
-    Invoke-Custody $command "create $Kind authority"
+    Invoke-Custody $command @($Secret, $Secret) "create $Kind authority"
     Receive-File $PublisherHost $receiptRemote $receiptLocal "download $Kind authority receipt"
     $receipt = Get-Content -LiteralPath $receiptLocal -Raw | ConvertFrom-Json
     Assert-Name ([string]$receipt.record_id) "$Kind authority record"
@@ -200,8 +220,8 @@ function New-Authority([string]$Kind, [string]$Vault, [string]$RootCommitment) {
     Assert-Hex ([string]$receipt.authority_public) "$Kind authority public key"
     return $receipt
 }
-$admissionAuthority = New-Authority 'admission' $admissionVault $admissionRootCommitment
-$serviceAuthority = New-Authority 'service' $serviceVault $serviceRootCommitment
+$admissionAuthority = New-Authority 'admission' $admissionVault $admissionRootCommitment $admissionSecret
+$serviceAuthority = New-Authority 'service' $serviceVault $serviceRootCommitment $serviceSecret
 
 function Write-HostingPlan([string]$Role, [string]$Provider, [string]$Unit, [string]$Interface, [string]$Start, [string]$End, [UInt64]$Quantity, [UInt64]$InitialUsed, [UInt64]$LowWatermark) {
     $planPath = Join-Path $prepared "hosting-$Role.json"
@@ -282,13 +302,12 @@ foreach ($service in @($provision.Services)) {
     $requestLocal = Join-Path $prepared "$($service.Owner)-service.request"
     Receive-File $hostName ([string]$service.Request) $requestLocal "download $($service.Owner) Service request"
     $requestDigest = (Get-FileHash -LiteralPath $requestLocal -Algorithm SHA256).Hash.ToLowerInvariant()
-    Write-Host "Approve Service request $($service.Owner): $requestDigest"
     $requestAuthority = "$remoteRoot/handover/$($service.Owner)-authority.request"
     $responseAuthority = "$remoteRoot/handover/$($service.Owner)-authority.response"
     Send-File $requestLocal $PublisherHost $requestAuthority "upload $($service.Owner) Service request to custody"
     $receiptRemote = "$remoteRoot/handover/$($service.Owner)-service-receipt.json"
     $command = "'$($binaryPaths.custody)' issue-service-credential --vault-root '$serviceVault' --record '$($serviceAuthority.record_id)' --request '$requestAuthority' --response '$responseAuthority' --environment-commitment '$environment' --network-commitment '$networkCommitment' --root-commitment '$serviceRootCommitment' --kind service --id-commitment '$($serviceAuthority.id_commitment)' > '$receiptRemote'"
-    Invoke-Custody $command "issue $($service.Owner) Service credential"
+    Invoke-Custody $command @($requestDigest, $serviceSecret) "issue $($service.Owner) Service credential"
     $responseLocal = Join-Path $prepared "$($service.Owner)-service.response"
     Receive-File $PublisherHost $responseAuthority $responseLocal "download $($service.Owner) Service response"
     $responseOwner = "$remoteRoot/handover/$($service.Owner)-service.response"
