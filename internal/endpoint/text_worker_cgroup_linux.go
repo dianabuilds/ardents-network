@@ -11,7 +11,10 @@ import (
 	"syscall"
 )
 
-const textCgroup2Magic = 0x63677270
+const (
+	textCgroup2Magic       = 0x63677270
+	streamWorkerCgroupRoot = "/ardents.slice/ardents-qualification.slice/ardents-qualification-owner.slice/"
+)
 
 // pinTextWorkerCgroup retains the kernel events object of the observed unit.
 // A later pathname lookup cannot substitute another invocation's cgroup.
@@ -55,9 +58,14 @@ func pinTextWorkerCgroup(instance textWorkerInstance) (*os.File, error) {
 }
 
 func textWorkerCgroupPath(group, name, role string) bool {
-	return textWorkerUnit(name, role) && len(group) <= 4096 &&
-		strings.HasPrefix(group, "/system.slice/") && strings.HasSuffix(group, "/"+name) &&
-		filepath.Clean(group) == group && !strings.ContainsAny(group, "\x00\r\n")
+	if !textWorkerUnit(name, role) || len(group) > 4096 || !strings.HasSuffix(group, "/"+name) ||
+		filepath.Clean(group) != group || strings.ContainsAny(group, "\x00\r\n") {
+		return false
+	}
+	if inventoryOfUnit(name) == streamInventory {
+		return strings.HasPrefix(group, streamWorkerCgroupRoot) && !strings.Contains(strings.TrimPrefix(group, streamWorkerCgroupRoot), "/")
+	}
+	return strings.HasPrefix(group, "/system.slice/") && !strings.Contains(strings.TrimPrefix(group, "/system.slice/"), "/")
 }
 
 // readTextWorkerCgroup accepts ENODEV only on the already-pinned cgroup v2

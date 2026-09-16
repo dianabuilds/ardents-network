@@ -1,3 +1,5 @@
+//go:build linux
+
 package node
 
 import (
@@ -45,7 +47,7 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 		DeclaredFamily: "closed-issuer-family", ProbeEndpoint: reserveAddress(t), CarrierProfile: string(route.ClosedCarrierTCP), Assignment: "rendezvous", AssignmentDigest: [32]byte{44}}
 	var lock sync.RWMutex
 	events := make(chan Event, 16)
-	config := Config{NetworkID: network, NodeID: issuerID, IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey),
+	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: issuerID, IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey),
 		Current:              func() (DutyView, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true },
 		CurrentClosedRoute: func() (state.ClosedRouteView, bool) {

@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -22,12 +23,17 @@ type ClosedCarrierKey struct {
 // supplies validate on every acquisition and invalidates changed facts; this
 // pool never independently selects, dials or retries a peer.
 type ClosedCarrierPool struct {
-	mu       sync.Mutex
-	clock    func() time.Time
-	entries  map[ClosedCarrierKey]*closedCarrierEntry
-	closed   bool
-	closeErr error
+	mu         sync.Mutex
+	clock      func() time.Time
+	entries    map[ClosedCarrierKey]*closedCarrierEntry
+	operations map[closedCarrierPair]*closedCarrierOperation
+	closed     bool
+	closeErr   error
 }
+
+type closedCarrierPair struct{ local, peer [32]byte }
+
+type closedCarrierOperation struct{ done chan struct{} }
 
 type closedCarrierEntry struct {
 	carrier Carrier
@@ -55,7 +61,7 @@ func (lease *ClosedCarrierLease) Carrier() (Carrier, error) {
 	}
 	lease.pool.mu.Lock()
 	defer lease.pool.mu.Unlock()
-	if lease.released || lease.pool.entries[lease.key] != lease.entry || lease.entry.carrier == nil {
+	if lease.released || lease.pool.closed || lease.pool.entries[lease.key] != lease.entry || lease.entry.carrier == nil {
 		return nil, errors.New("closed Carrier lease is unavailable")
 	}
 	return lease.entry.carrier, nil
@@ -66,49 +72,119 @@ func NewClosedCarrierPool(clock func() time.Time) (*ClosedCarrierPool, error) {
 	if clock == nil || clock().IsZero() {
 		return nil, errors.New("closed Carrier pool clock is invalid")
 	}
-	return &ClosedCarrierPool{clock: clock, entries: make(map[ClosedCarrierKey]*closedCarrierEntry)}, nil
+	return &ClosedCarrierPool{clock: clock, entries: make(map[ClosedCarrierKey]*closedCarrierEntry), operations: make(map[closedCarrierPair]*closedCarrierOperation)}, nil
 }
 
-// Acquire validates current State facts before using a retained Carrier or
-// calling open. The caller supplies the one exact State-selected dial attempt;
-// open is never called to refill an idle pool.
-func (pool *ClosedCarrierPool) Acquire(key ClosedCarrierKey, validate func() error, open func() (Carrier, error)) (*ClosedCarrierLease, error) {
-	if pool == nil || !validClosedCarrierKey(key) || validate == nil || open == nil || validate() != nil {
+// AcquireContext waits for an existing dial of this exact key without blocking
+// unrelated directed pairs. The caller's context bounds that wait and dial; it
+// does not create a retry or a speculative dial.
+func (pool *ClosedCarrierPool) AcquireContext(ctx context.Context, key ClosedCarrierKey, validate func() error, open func() (Carrier, error)) (*ClosedCarrierLease, error) {
+	if pool == nil || ctx == nil || !validClosedCarrierKey(key) || validate == nil || open == nil {
+		return nil, errors.New("closed Carrier acquisition is unavailable")
+	}
+	for {
+		// A caller can wait behind another exact-key dial. Recheck before
+		// borrowing its result, and before starting any replacement dial.
+		if ctx.Err() != nil || validate() != nil {
+			return nil, errors.New("closed Carrier acquisition is unavailable")
+		}
+		pool.mu.Lock()
+		if pool.closed {
+			pool.mu.Unlock()
+			return nil, errors.New("closed Carrier pool is closed")
+		}
+		pair := key.pair()
+		if operation := pool.operations[pair]; operation != nil {
+			pool.mu.Unlock()
+			select {
+			case <-operation.done:
+				continue
+			case <-ctx.Done():
+				return nil, errors.New("closed Carrier acquisition is unavailable")
+			}
+		}
+		if entry := pool.entries[key]; entry != nil && (entry.idleAt.IsZero() || pool.clock().UTC().Before(entry.idleAt.Add(closedCarrierRetention))) {
+			if ctx.Err() != nil {
+				pool.mu.Unlock()
+				return nil, errors.New("closed Carrier acquisition is unavailable")
+			}
+			entry.active++
+			entry.idleAt = time.Time{}
+			pool.mu.Unlock()
+			return &ClosedCarrierLease{pool: pool, key: key, entry: entry}, nil
+		}
+		var retired Carrier
+		for previous, entry := range pool.entries {
+			if previous.pair() == pair {
+				delete(pool.entries, previous)
+				retired = entry.carrier
+			}
+		}
+		if retired == nil && len(pool.entries)+len(pool.operations) >= closedCarrierPoolMaximum {
+			pool.mu.Unlock()
+			return nil, errors.New("closed Carrier pool is exhausted")
+		}
+		operation := &closedCarrierOperation{done: make(chan struct{})}
+		pool.operations[pair] = operation
+		pool.mu.Unlock()
+		return pool.openForPair(ctx, key, pair, operation, retired, validate, open)
+	}
+}
+
+func (pool *ClosedCarrierPool) openForPair(ctx context.Context, key ClosedCarrierKey, pair closedCarrierPair, operation *closedCarrierOperation, retired Carrier, validate func() error, open func() (Carrier, error)) (*ClosedCarrierLease, error) {
+	if retired != nil {
+		if err := retired.Close(); err != nil {
+			pool.finishOperation(pair, operation, err)
+			return nil, err
+		}
+	}
+	if ctx.Err() != nil || validate() != nil {
+		pool.finishOperation(pair, operation, nil)
 		return nil, errors.New("closed Carrier acquisition is unavailable")
 	}
 	pool.mu.Lock()
-	defer pool.mu.Unlock()
-	if pool.closed {
+	closed := pool.closed
+	pool.mu.Unlock()
+	if closed {
+		pool.finishOperation(pair, operation, nil)
 		return nil, errors.New("closed Carrier pool is closed")
 	}
-	now := pool.clock().UTC()
-	if err := pool.reapLocked(now); err != nil {
-		return nil, err
-	}
-	if entry := pool.entries[key]; entry != nil {
-		entry.active++
-		entry.idleAt = time.Time{}
-		return &ClosedCarrierLease{pool: pool, key: key, entry: entry}, nil
-	}
-	for previous, entry := range pool.entries {
-		if previous.LocalNodeID == key.LocalNodeID && previous.PeerNodeID == key.PeerNodeID {
-			delete(pool.entries, previous)
-			if err := entry.carrier.Close(); err != nil {
-				pool.closed, pool.closeErr = true, err
-				return nil, err
-			}
-		}
-	}
-	if len(pool.entries) >= closedCarrierPoolMaximum {
-		return nil, errors.New("closed Carrier pool is exhausted")
-	}
 	carrier, err := open()
-	if err != nil || carrier == nil {
+	if err != nil || carrier == nil || ctx.Err() != nil || validate() != nil {
+		var closeErr error
+		if carrier != nil {
+			closeErr = carrier.Close()
+		}
+		pool.finishOperation(pair, operation, closeErr)
 		return nil, errors.New("closed Carrier acquisition is unavailable")
 	}
-	entry := &closedCarrierEntry{carrier: &closedCarrierRetirement{Carrier: carrier}, active: 1}
-	pool.entries[key] = entry
-	return &ClosedCarrierLease{pool: pool, key: key, entry: entry}, nil
+	pool.mu.Lock()
+	closed = pool.closed || ctx.Err() != nil
+	if !closed {
+		entry := &closedCarrierEntry{carrier: &closedCarrierRetirement{Carrier: carrier}, active: 1}
+		pool.entries[key] = entry
+		delete(pool.operations, pair)
+		close(operation.done)
+		pool.mu.Unlock()
+		return &ClosedCarrierLease{pool: pool, key: key, entry: entry}, nil
+	}
+	pool.mu.Unlock()
+	pool.finishOperation(pair, operation, carrier.Close())
+	return nil, errors.New("closed Carrier pool is closed")
+}
+
+func (pool *ClosedCarrierPool) finishOperation(pair closedCarrierPair, operation *closedCarrierOperation, result error) {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	if pool.operations[pair] != operation {
+		return
+	}
+	delete(pool.operations, pair)
+	if result != nil {
+		pool.closed = true
+		pool.closeErr = errors.Join(pool.closeErr, result)
+	}
+	close(operation.done)
 }
 
 // MarkUsed records that this lease carried actual work. An opened but unused
@@ -119,7 +195,7 @@ func (lease *ClosedCarrierLease) MarkUsed() error {
 	}
 	lease.pool.mu.Lock()
 	defer lease.pool.mu.Unlock()
-	if lease.released || lease.pool.entries[lease.key] != lease.entry {
+	if lease.released || lease.pool.closed || lease.pool.entries[lease.key] != lease.entry {
 		return errors.New("closed Carrier lease is unavailable")
 	}
 	lease.used, lease.entry.used = true, true
@@ -147,7 +223,9 @@ func (lease *ClosedCarrierLease) Release() error {
 	}
 	if !lease.entry.used {
 		delete(lease.pool.entries, lease.key)
-		return lease.entry.carrier.Close()
+		err := lease.entry.carrier.Close()
+		lease.pool.closeErr = errors.Join(lease.pool.closeErr, err)
+		return err
 	}
 	lease.entry.idleAt = lease.pool.clock().UTC()
 	return nil
@@ -159,8 +237,36 @@ func (pool *ClosedCarrierPool) Reap() error {
 		return nil
 	}
 	pool.mu.Lock()
-	defer pool.mu.Unlock()
-	return pool.reapLocked(pool.clock().UTC())
+	if pool.closed {
+		result := pool.closeErr
+		pool.mu.Unlock()
+		return result
+	}
+	var retired []struct {
+		pair      closedCarrierPair
+		operation *closedCarrierOperation
+		carrier   Carrier
+	}
+	for key, entry := range pool.entries {
+		if entry.active == 0 && !entry.idleAt.IsZero() && !pool.clock().UTC().Before(entry.idleAt.Add(closedCarrierRetention)) {
+			delete(pool.entries, key)
+			operation := &closedCarrierOperation{done: make(chan struct{})}
+			pool.operations[key.pair()] = operation
+			retired = append(retired, struct {
+				pair      closedCarrierPair
+				operation *closedCarrierOperation
+				carrier   Carrier
+			}{key.pair(), operation, entry.carrier})
+		}
+	}
+	pool.mu.Unlock()
+	var result error
+	for _, item := range retired {
+		err := item.carrier.Close()
+		pool.finishOperation(item.pair, item.operation, err)
+		result = errors.Join(result, err)
+	}
+	return result
 }
 
 // Close releases every retained or active Carrier during Node withdrawal.
@@ -169,8 +275,17 @@ func (pool *ClosedCarrierPool) Close() error {
 		return nil
 	}
 	pool.mu.Lock()
-	defer pool.mu.Unlock()
 	pool.closed = true
+	operations := make([]*closedCarrierOperation, 0, len(pool.operations))
+	for _, operation := range pool.operations {
+		operations = append(operations, operation)
+	}
+	pool.mu.Unlock()
+	for _, operation := range operations {
+		<-operation.done
+	}
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
 	var result error
 	for key, entry := range pool.entries {
 		delete(pool.entries, key)
@@ -180,20 +295,13 @@ func (pool *ClosedCarrierPool) Close() error {
 	return pool.closeErr
 }
 
-func (pool *ClosedCarrierPool) reapLocked(now time.Time) error {
-	var result error
-	for key, entry := range pool.entries {
-		if entry.active == 0 && !entry.idleAt.IsZero() && !now.Before(entry.idleAt.Add(closedCarrierRetention)) {
-			delete(pool.entries, key)
-			result = errors.Join(result, entry.carrier.Close())
-		}
-	}
-	return result
-}
-
 func validClosedCarrierKey(key ClosedCarrierKey) bool {
 	return key.NetworkID != [32]byte{} && key.ProfileDigest != [32]byte{} && key.LocalNodeID != [32]byte{} && key.PeerNodeID != [32]byte{} &&
 		key.PeerKey != [32]byte{} && key.LocalNodeID != key.PeerNodeID && (key.CarrierProfile == ClosedCarrierTCP || key.CarrierProfile == ClosedCarrierQUIC)
+}
+
+func (key ClosedCarrierKey) pair() closedCarrierPair {
+	return closedCarrierPair{local: key.LocalNodeID, peer: key.PeerNodeID}
 }
 
 // SameCarrier compares opaque Carrier incarnations, including after the first
@@ -215,5 +323,7 @@ func (lease *ClosedCarrierLease) Invalidate() error {
 		return nil
 	}
 	delete(pool.entries, lease.key)
-	return lease.entry.carrier.Close()
+	err := lease.entry.carrier.Close()
+	pool.closeErr = errors.Join(pool.closeErr, err)
+	return err
 }

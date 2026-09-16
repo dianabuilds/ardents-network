@@ -138,7 +138,7 @@ func TestClosedBootstrapEntryExportsOnlyRestrictedInteriorChild(t *testing.T) {
 	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	event, ok := channel.Next()
+	event, ok := channel.NextAvailable(nil)
 	if !ok || event.Restriction != route.ClosedChildIssuerBootstrap {
 		t.Fatalf("Entry did not propagate actual bootstrap reservation: %+v", event)
 	}

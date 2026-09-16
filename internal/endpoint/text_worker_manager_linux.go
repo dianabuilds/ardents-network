@@ -27,7 +27,7 @@ func textWorkerUnit(unit, role string) bool {
 	if role != "reader" && role != "publisher" {
 		return false
 	}
-	prefix := "ardents-text-" + role + "@"
+	prefix := inventoryOfUnit(unit).prefix() + "-" + role + "@"
 	if !strings.HasPrefix(unit, prefix) || !strings.HasSuffix(unit, ".service") {
 		return false
 	}

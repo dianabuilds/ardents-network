@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"net"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
 // startClosedForwarding materializes one State-selected adjacent/interior
@@ -20,6 +18,10 @@ import (
 func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 	local := config.ClosedForwarding
 	if err := validateClosedForwardingProfile(local, config, snapshot, config.now()); err != nil {
+		return nil, err
+	}
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	if err != nil {
 		return nil, err
 	}
 	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeForwarding, config.now())
@@ -51,7 +53,7 @@ func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServ
 	if err != nil {
 		return nil, errors.Join(err, spends.Close(), host.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), snapshot.ProbeEndpoint, local.Certificate,
+	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
 		func(key [32]byte) bool {
 			updated, readErr := currentFacts(config)
 			return readErr == nil && closedSharedPeerCurrent(config, updated, key, config.now())
@@ -343,12 +345,44 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 		return route.WriteClosedLaneFrame(connection, frame)
 	}
 	links := make(map[uint32]*closedForwardingLink)
+	completed := make(chan struct{}, 1)
+	wakeParent := func() {
+		select {
+		case completed <- struct{}{}:
+		default:
+		}
+	}
+	openings := newClosedForwardingOpenings(ctx, wakeParent)
+	type parentRead struct {
+		frame route.ClosedLaneFrame
+		err   error
+	}
+	reads := make(chan parentRead, 1)
+	stopReader := make(chan struct{})
+	readerDone := make(chan struct{})
+	go func() {
+		defer close(readerDone)
+		for {
+			frame, err := route.ReadClosedLaneFrame(connection)
+			select {
+			case reads <- parentRead{frame: frame, err: err}:
+			case <-stopReader:
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}()
 	defer func() {
+		close(stopReader)
 		_ = connection.SetDeadline(time.Now())
 		_ = connection.Close()
+		<-readerDone
 		for _, link := range links {
 			_ = link.close()
 		}
+		result = errors.Join(result, openings.close(links))
 		if forwarding != nil {
 			result = errors.Join(result, forwarding.Cancel())
 		}
@@ -390,8 +424,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 			}
 			if outerLane != nil {
 				if err := outerLane.Admit(&lease, connection); err != nil {
-					lease.Release()
-					return err
+					return errors.Join(err, lease.Release())
 				}
 			}
 			forwarding, admitErr = route.NewReplenishableClosedForwardingChannel(&lease, func(open route.ClosedOpen) error {
@@ -403,8 +436,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				return readErr
 			}, closedForwardingReplenisher(server.config, receiver, server.host, server.spends, server.config.ClosedForwarding), server.clock)
 			if admitErr != nil {
-				lease.Release()
-				return admitErr
+				return errors.Join(admitErr, lease.Release())
 			}
 			if err := connection.SetDeadline(lease.Deadline); err != nil {
 				return errors.Join(err, forwarding.Cancel())
@@ -436,7 +468,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				return frameErr
 			}
 		}
-		return server.drainForwarding(ctx, forwarding, links, write, func() { _ = connection.Close() })
+		return server.drainForwarding(ctx, forwarding, links, openings, write, func() { _ = connection.Close() })
 	}
 	if first != nil {
 		if err := accept(*first); err != nil {
@@ -444,40 +476,20 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 		}
 	}
 	for {
-		frame, readErr := route.ReadClosedLaneFrame(connection)
-		if readErr != nil {
-			return readErr
-		}
-		if err := accept(frame); err != nil {
-			return err
-		}
-	}
-}
-
-func closedRoleTokenVerifier(config runtimeConfig, receiver route.ClosedRoleReceiver) route.ClosedAdmissionVerifier {
-	return func(input route.ClosedAdmissionVerification) (route.ClosedAdmissionApproval, error) {
-		if len(input.Token) != 354 || input.Class < 1 || input.Class > 3 || config.CurrentClosedProfile == nil {
-			return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
-		}
-		profile, available := config.CurrentClosedProfile()
-		now := config.now().UTC()
-		if !available || profile.NetworkID != receiver.NetworkID || profile.StateGeneration != receiver.StateGeneration || profile.StateDigest != receiver.StateDigest ||
-			profile.Digest != receiver.ProfileDigest || profile.NotBefore.After(now) || !now.Before(profile.NotAfter) {
-			return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
-		}
-		var keyID [32]byte
-		copy(keyID[:], input.Token[66:98])
-		for index := uint8(0); index < profile.TokenKeyCount; index++ {
-			key := profile.TokenKeys[index]
-			if key.Class != input.Class || key.WindowStart != now.Truncate(time.Hour) || sha256.Sum256(key.SPKI[:]) != keyID {
-				continue
+		select {
+		case input := <-reads:
+			if input.err != nil {
+				return input.err
 			}
-			context := credential.ClosedTokenContext{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID,
-				IssuerNodeID: profile.IssuerNodeID, ReceiverDutyGeneration: receiver.DutyGeneration, Class: input.Class, WindowStart: key.WindowStart}
-			if credential.VerifyClosedToken(context, key.SPKI[:], input.Token) == nil {
-				return route.ClosedAdmissionApproval{Window: key.WindowStart}, nil
+			if err := accept(input.frame); err != nil {
+				return err
 			}
+		case <-completed:
+			if err := server.drainForwarding(ctx, forwarding, links, openings, write, func() { _ = connection.Close() }); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-		return route.ClosedAdmissionApproval{}, errors.New("closed forwarding token is unavailable")
 	}
 }

@@ -101,7 +101,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 		view.Nodes[0].RoleDomain, view.Nodes[0].Subrole = 2, 4
 	}
 	events := make(chan Event, 32)
-	config := Config{NetworkID: network, NodeID: nodeID, IdentityKey: serverCert.PrivateKey.(ed25519.PrivateKey), Current: func() (DutyView, error) { return snapshot, nil },
+	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: nodeID, IdentityKey: serverCert.PrivateKey.(ed25519.PrivateKey), Current: func() (DutyView, error) { return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true }, CurrentClosedRoute: func() (state.ClosedRouteView, bool) { return view, true },
 		ClosedResolution: ClosedResolutionProfile{Root: t.TempDir(), AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 2, DrainTimeout: time.Second},
 		PollInterval:     10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
@@ -112,7 +112,7 @@ func newPrivateRecipientNetworkFixtureWithStart(t *testing.T, carrier route.Carr
 	}
 	if purpose == route.ClosedPurposeDataJoin {
 		config.ClosedResolution = ClosedResolutionProfile{}
-		config.ClosedDataJoin = ClosedDataJoinProfile{AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 8, DrainTimeout: time.Second}
+		config.ClosedDataJoin = ClosedDataJoinProfile{HostingRoot: config.HostingRoot, AdmissionRoot: t.TempDir(), Certificate: serverCert, ConnectionLimit: 8, DrainTimeout: time.Second}
 	}
 	resolved, err := resolveConfig(config)
 	if err != nil {

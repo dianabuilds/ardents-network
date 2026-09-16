@@ -32,7 +32,7 @@ type textRoleProcessInput struct {
 }
 
 func textRoleProcessConfig(input textRoleProcessInput) node.Config {
-	config := node.Config{NetworkID: input.Snapshot.NetworkID, NodeID: input.Snapshot.NodeID, IdentityKey: input.Key,
+	config := node.Config{HostingRoot: input.HostingRoot, NetworkID: input.Snapshot.NetworkID, NodeID: input.Snapshot.NodeID, IdentityKey: input.Key,
 		Current:              func() (node.DutyView, error) { return textNetworkDutyFixture{snapshot: input.Snapshot}, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return input.View.Profile, true },
 		CurrentClosedRoute:   func() (state.ClosedRouteView, bool) { return input.View, true },
@@ -46,7 +46,7 @@ func textRoleProcessConfig(input textRoleProcessInput) node.Config {
 	case "introduction":
 		config.ClosedIntroduction = node.ClosedIntroductionProfile{AdmissionRoot: input.AdmissionRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain}
 	case "join":
-		config.ClosedDataJoin = node.ClosedDataJoinProfile{AdmissionRoot: input.AdmissionRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain}
+		config.ClosedDataJoin = node.ClosedDataJoinProfile{HostingRoot: input.HostingRoot, AdmissionRoot: input.AdmissionRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain}
 	case "forwarding":
 		config.ClosedForwarding = node.ClosedForwardingProfile{Root: input.Root, HostingRoot: input.HostingRoot, Certificate: certificate, ConnectionLimit: input.Limit, DrainTimeout: input.Drain, AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
 	}

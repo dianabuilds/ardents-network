@@ -236,6 +236,9 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	if !client {
 		send, receive = receive, send
 	}
+	if binding.job.qualification != nil {
+		send, receive = 64<<20, 64<<20
+	}
 	transferred = true
 	recoveryTransferred = true
 	go func() {

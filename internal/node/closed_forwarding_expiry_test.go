@@ -47,7 +47,7 @@ func TestClosedForwardingExpiredParentCannotRetireSharedCarrier(t *testing.T) {
 				if _, err := channels[index].Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
 					t.Fatal(err)
 				}
-				if _, ok := channels[index].Next(); !ok {
+				if _, ok := channels[index].NextAvailable(nil); !ok {
 					t.Fatal("opening was not scheduled")
 				}
 			}

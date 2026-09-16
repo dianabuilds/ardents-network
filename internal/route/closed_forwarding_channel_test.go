@@ -20,7 +20,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 	allowed := ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 2, Purpose: ClosedPurposeForwarding, Deadline: now.Add(30 * time.Second)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
@@ -39,7 +39,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameOpen || event.Open != allowed || event.Restriction != ClosedChildOrdinary {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != closedFrameOpen || event.Open != allowed || event.Restriction != ClosedChildOrdinary {
 		t.Fatalf("scheduled open = %+v / %t", event, available)
 	}
 	bytesFrame := ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: bytes.Repeat([]byte{3}, int(closedLaneCredit))}
@@ -49,7 +49,7 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
 		t.Fatal("accepted bytes beyond fixed credit")
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameBytes || len(event.Bytes) != int(closedLaneCredit) {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != closedFrameBytes || len(event.Bytes) != int(closedLaneCredit) {
 		t.Fatalf("scheduled bytes = %+v / %t", event, available)
 	}
 	credit, err := channel.Credit(1, 1)
@@ -68,10 +68,10 @@ func TestClosedForwardingChannelBoundsAuthorizedOddChild(t *testing.T) {
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1}); err != nil {
 		t.Fatal(err)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameBytes || len(event.Bytes) != 1 {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != closedFrameBytes || len(event.Bytes) != 1 {
 		t.Fatalf("scheduled trailing bytes = %+v / %t", event, available)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameEOF {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != closedFrameEOF {
 		t.Fatalf("scheduled EOF = %+v / %t", event, available)
 	}
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err == nil {
@@ -90,7 +90,7 @@ func TestClosedForwardingChannelSerializesConcurrentLaneReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowed := ClosedOpen{NextNodeID: [32]byte{11}, NextDutyGeneration: 12, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 	channel, err := newForwardingTestChannel(&lease,
 		func(open ClosedOpen) error {
 			if open != allowed {
@@ -139,7 +139,7 @@ func TestClosedForwardingChannelBoundsOnePrefixQueueBeforeDutyQueue(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 	allowed := ClosedOpen{NextNodeID: [32]byte{21}, NextDutyGeneration: 22, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
@@ -186,7 +186,7 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 	allowed := ClosedOpen{NextNodeID: [32]byte{31}, NextDutyGeneration: 32, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
@@ -208,7 +208,7 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 		}
 	}
 	for _, lane := range []uint32{1, 3} {
-		event, available := channel.Next()
+		event, available := channel.NextAvailable(nil)
 		if !available || event.Kind != closedFrameOpen || event.Lane != lane {
 			t.Fatalf("control schedule = %+v / %t", event, available)
 		}
@@ -226,7 +226,7 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 		lane  uint32
 		value byte
 	}{{1, 1}, {3, 3}, {1, 2}} {
-		event, available := channel.Next()
+		event, available := channel.NextAvailable(nil)
 		if !available || event.Kind != closedFrameBytes || event.Lane != want.lane || len(event.Bytes) != 1 || event.Bytes[0] != want.value {
 			t.Fatalf("round-robin schedule = %+v / %t", event, available)
 		}
@@ -234,8 +234,61 @@ func TestClosedForwardingChannelSchedulesControlThenRoundRobinData(t *testing.T)
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{5}}); err != nil {
 		t.Fatal(err)
 	}
-	if event, available := channel.Next(); !available || event.Kind != closedFrameClose || event.Lane != 1 || len(event.Bytes) != 1 || event.Bytes[0] != 5 {
+	if event, available := channel.NextAvailable(nil); !available || event.Kind != closedFrameClose || event.Lane != 1 || len(event.Bytes) != 1 || event.Bytes[0] != 5 {
 		t.Fatalf("scheduled close = %+v / %t", event, available)
+	}
+}
+
+func TestClosedForwardingChannelKeepsSkippedLaneAccounted(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := limits.reserveChannel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
+	open := ClosedOpen{NextNodeID: [32]byte{51}, NextDutyGeneration: 52, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
+	channel, err := newForwardingTestChannel(&lease, func(value ClosedOpen) error {
+		if value != open {
+			return errUnexpectedForwardOpen
+		}
+		return nil
+	}, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer channel.Cancel()
+	body, err := EncodeClosedOpen(open)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lane := range []uint32{1, 3} {
+		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
+			t.Fatal(err)
+		}
+		channel.NextAvailable(nil)
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 3, Body: []byte{3}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if event, ok := channel.NextAvailable(func(event ClosedForwardingEvent) bool { return event.Lane != 1 }); !ok || event.Kind != closedFrameBytes || event.Lane != 3 || event.Bytes[0] != 3 {
+		t.Fatalf("allowed B bytes = %+v / %t", event, ok)
+	}
+	if _, err := channel.Credit(3, 1); err != nil {
+		t.Fatal(err)
+	}
+	if channel.queued != 1 {
+		t.Fatalf("skipped A bytes lost accounting: %d", channel.queued)
+	}
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != closedFrameBytes || event.Lane != 1 || event.Bytes[0] != 1 {
+		t.Fatalf("skipped A bytes = %+v / %t", event, ok)
 	}
 }
 
@@ -249,7 +302,7 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 	allowed := ClosedOpen{NextNodeID: [32]byte{41}, NextDutyGeneration: 42, Purpose: ClosedPurposeForwarding, Deadline: now.Add(time.Minute)}
 	channel, err := newForwardingTestChannel(&lease, func(open ClosedOpen) error {
 		if open != allowed {
@@ -269,7 +322,7 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: open}); err != nil {
 			t.Fatalf("open lane %d: %v", lane, err)
 		}
-		event, available := channel.Next()
+		event, available := channel.NextAvailable(nil)
 		if !available || event.Kind != closedFrameOpen || event.Lane != lane {
 			t.Fatalf("open schedule for lane %d = %+v / %t", lane, event, available)
 		}
@@ -283,7 +336,7 @@ func TestClosedForwardingChannelRetains256ReadyLanesInRoundRobin(t *testing.T) {
 		}
 	}
 	for lane := uint32(1); lane <= 2*closedForwardChildren-1; lane += 2 {
-		event, available := channel.Next()
+		event, available := channel.NextAvailable(nil)
 		if !available || event.Kind != closedFrameBytes || event.Lane != lane || len(event.Bytes) != 1 || event.Bytes[0] != byte(lane) {
 			t.Fatalf("data schedule for lane %d = %+v / %t", lane, event, available)
 		}
@@ -300,7 +353,7 @@ func TestClosedForwardingChannelRefillDebitsOldReserveAndRetainsHostRelease(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), hello: ClosedHello{ChannelNonce: [32]byte{9}}, exporter: [32]byte{8}, duty: reservation}
+	lease := ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), hello: ClosedHello{ChannelNonce: [32]byte{9}}, exporter: [32]byte{8}, claim: newClosedAdmissionClaim(reservation, nil)}
 	called, released := 0, 0
 	channel, err := NewReplenishableClosedForwardingChannel(&lease, func(ClosedOpen) error { return nil }, func(input ClosedAdmissionVerification) (func() error, error) {
 		called++

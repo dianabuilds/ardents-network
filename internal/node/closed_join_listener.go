@@ -10,12 +10,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 // ClosedDataJoinProfile reserves only the local durable spend
 // root. Current State supplies the receiving identity, role and Carrier.
 type ClosedDataJoinProfile struct {
+	HostingRoot     string
 	AdmissionRoot   string
 	Certificate     tls.Certificate
 	ConnectionLimit uint16
@@ -23,7 +25,7 @@ type ClosedDataJoinProfile struct {
 }
 
 func validateClosedDataJoinProfile(local ClosedDataJoinProfile, config runtimeConfig, snapshot dutyFacts, now time.Time) error {
-	if local.AdmissionRoot == "" ||
+	if local.HostingRoot == "" || !filepath.IsAbs(local.HostingRoot) || filepath.Clean(local.HostingRoot) != local.HostingRoot || local.AdmissionRoot == "" ||
 		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
 		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 16 ||
 		local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute || !literalNodeEndpoint(snapshot.ProbeEndpoint) ||
@@ -41,6 +43,10 @@ func startClosedDataJoin(config runtimeConfig, snapshot dutyFacts) (*probeServer
 	if err := validateClosedDataJoinProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
 	}
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	if err != nil {
+		return nil, err
+	}
 	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeDataJoin, config.now())
 	if !available {
 		return nil, errors.New("closed JOIN State changed before reservation")
@@ -54,20 +60,24 @@ func startClosedDataJoin(config runtimeConfig, snapshot dutyFacts) (*probeServer
 	if err != nil {
 		return nil, errors.Join(err, spends.Close())
 	}
-	pairs, err := route.NewClosedJoinPairs(receiver, limits)
+	host, err := openClosedForwardingHost(local.HostingRoot)
 	if err != nil {
 		return nil, errors.Join(err, spends.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), snapshot.ProbeEndpoint, local.Certificate,
+	pairs, err := route.NewReplenishableClosedJoinPairs(receiver, limits, closedForwardingReplenisher(config, receiver, host, spends, closedJoinHostingEnvelope()))
+	if err != nil {
+		return nil, errors.Join(err, spends.Close(), host.Close())
+	}
+	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
 		func(key [32]byte) bool {
 			updated, err := currentFacts(config)
 			return err == nil && closedSharedPeerCurrent(config, updated, key, config.now())
 		}, local.ConnectionLimit)
 	if err != nil {
-		return nil, errors.Join(err, spends.Close())
+		return nil, errors.Join(err, spends.Close(), host.Close())
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	running := &closedDataJoinServer{config: config, receiver: receiver, certificate: local.Certificate, listener: shared,
+	running := &closedDataJoinServer{host: host, config: config, receiver: receiver, certificate: local.Certificate, listener: shared,
 		pairs: pairs, spends: spends, limits: limits, capacity: make(chan struct{}, local.ConnectionLimit), cancel: cancel,
 		done: make(chan error, 1), drained: make(chan struct{})}
 	go running.run(ctx)
@@ -88,6 +98,7 @@ func startClosedDataJoin(config runtimeConfig, snapshot dutyFacts) (*probeServer
 }
 
 type closedDataJoinServer struct {
+	host        closedForwardingHost
 	pairs       *route.ClosedJoinPairs
 	config      runtimeConfig
 	receiver    route.ClosedRoleReceiver
@@ -117,13 +128,32 @@ func (server *closedDataJoinServer) stop() error {
 }
 
 func (server *closedDataJoinServer) run(ctx context.Context) {
+	monitor := make(chan error, 1)
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				monitor <- nil
+				return
+			case <-ticker.C:
+				observation, err := server.host.Observe(ctx)
+				if err != nil || observation.Drain {
+					monitor <- errors.Join(err, errors.New("JOIN host allowance requires drain"))
+					_ = server.stop()
+					return
+				}
+			}
+		}
+	}()
 	err := server.accept(ctx)
 	stopErr := server.stop()
 	server.done <- err
 	server.workers.Wait()
 	server.pairs.Close()
 	// No timeout releases roots while a child still owns a commit or reply.
-	server.drainErr = errors.Join(stopErr, server.cleanupErr, server.spends.Close())
+	server.drainErr = errors.Join(stopErr, server.cleanupErr, server.spends.Close(), <-monitor, server.host.Close())
 	close(server.drained)
 }
 
@@ -165,4 +195,10 @@ func (server *closedDataJoinServer) closeCarrier(connection net.Conn) {
 	server.cleanupMu.Lock()
 	server.cleanupErr = errors.Join(server.cleanupErr, err)
 	server.cleanupMu.Unlock()
+}
+
+// The envelope includes both directions and transport/control overhead; the
+// installed policy chooses which directions the actual provider charges.
+func closedJoinHostingEnvelope() ClosedForwardingProfile {
+	return ClosedForwardingProfile{AdmissionTraffic: resource.HostingTraffic{Tx: 64 << 20, Rx: 64 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 1 << 20, Rx: 1 << 20}}
 }

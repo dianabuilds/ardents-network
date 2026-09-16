@@ -6,6 +6,7 @@ After=ardents-endpoint.service
 CollectMode=inactive-or-failed
 
 [Service]
+Slice=ardents-qualification-owner.slice
 Type=exec
 ExecStart=/ardents-stream-qualification worker-reader
 RootDirectory=/usr/lib/ardents/network-stream-worker-root

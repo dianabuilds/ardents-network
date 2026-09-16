@@ -16,6 +16,8 @@ import (
 // textJoinedTransport retains the bounded Endpoint exchange until the Service
 // owner has joined its physical transport. Finishing setup must not cancel it.
 type textJoinedTransport struct {
+	job    *textJobIdentity
+	joined *route.ClosedJoinedStream
 	net.Conn
 	once    sync.Once
 	revoked context.Context
@@ -26,6 +28,12 @@ type textJoinedTransport struct {
 
 func (transport *textJoinedTransport) Close() error {
 	transport.once.Do(func() {
+		if transport.job != nil {
+			owner := transport.job.owner
+			owner.mu.Lock()
+			delete(transport.job.qualificationJoins, transport.joined)
+			owner.mu.Unlock()
+		}
 		retirement := transport.Conn.Close()
 		if transport.revoked != nil && transport.revoked.Err() != nil && textRouteStopOnly(retirement) {
 			retirement = nil
@@ -173,7 +181,15 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 	if !owner.retainTextServiceTransportExchange(job, flight) {
 		return nil, errors.New("text JOIN owner ended before stream transfer")
 	}
-	transport := &textJoinedTransport{Conn: raw, revoked: job.context, stop: stop, finish: finish}
+	owner.mu.Lock()
+	if job.qualification != nil {
+		if job.qualificationJoins == nil {
+			job.qualificationJoins = make(map[*route.ClosedJoinedStream]struct{})
+		}
+		job.qualificationJoins[raw] = struct{}{}
+	}
+	owner.mu.Unlock()
+	transport := &textJoinedTransport{job: job, joined: raw, Conn: raw, revoked: job.context, stop: stop, finish: finish}
 	transferred = true
 	return transport, nil
 }

@@ -42,12 +42,18 @@ func assertQualityWiring(t *testing.T, root string) {
 	}
 	workflow := readProjectFile(t, root, ".github/workflows/quality.yml")
 	goVersion := moduleGoVersion(t, root)
-	for _, required := range []string{"contents: read", "go-version: " + goVersion, "cache: true", "run: go run ./scripts/select-pr-checks.go --base", "run: make check"} {
+	for _, required := range []string{"contents: read", "go-version: " + goVersion, "cache: true", "go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base", "fail-fast: false", "-timeout=90s", "fetch-depth: 0", "qualification-scripts:", "Management.Automation.Language.Parser", "needs.select.outputs.powershell == 'true'", "workflow_dispatch:", "push:", "branches: [main]", "run: make check"} {
 		if !bytes.Contains(workflow, []byte(required)) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}
 	}
 	assertPinnedActions(t, workflow)
+	selection := readProjectFile(t, root, "docs/development/ownership.json")
+	for _, owner := range []string{"cmd/ardents-qualification", "cmd/ardents-stream-qualification", "internal/application/streamqualification"} {
+		if !bytes.Contains(selection, []byte(owner)) {
+			t.Errorf("PR ownership registry omits qualification packaging consumer %s", owner)
+		}
+	}
 }
 
 func moduleGoVersion(t *testing.T, root string) string {

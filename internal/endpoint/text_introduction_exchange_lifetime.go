@@ -21,7 +21,7 @@ type textIntroductionExchange struct {
 // joins these exchanges even when the worker's own cleanup has already ended.
 func (owner *textContext) beginTextIntroductionExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, func(error) error, error) {
 	owner.mu.Lock()
-	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || len(owner.introductionExchanges) >= 16 {
+	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || len(owner.introductionExchanges) >= owner.streamExchangeLimitLocked() {
 		owner.mu.Unlock()
 		return nil, nil, errors.New("text Introduction exchange owner unavailable")
 	}
@@ -62,7 +62,7 @@ func (owner *textContext) beginTextIntroductionExchange(caller context.Context, 
 // alive only long enough for its owner to send terminal control and join it.
 func (owner *textContext) beginTextServiceTransportExchange(caller context.Context, job *textJobIdentity, surface broker.Surface) (context.Context, *textIntroductionExchange, func() bool, func(error) error, error) {
 	owner.mu.Lock()
-	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || len(owner.introductionExchanges) >= 16 {
+	if caller == nil || caller.Err() != nil || !owner.liveTextServiceJobLocked(job, surface) || len(owner.introductionExchanges) >= owner.streamExchangeLimitLocked() {
 		owner.mu.Unlock()
 		return nil, nil, nil, nil, errors.New("text Introduction exchange owner unavailable")
 	}

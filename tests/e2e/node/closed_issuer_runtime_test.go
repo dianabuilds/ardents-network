@@ -1,3 +1,5 @@
+//go:build linux
+
 package state_test
 
 import (
@@ -12,7 +14,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 )
@@ -59,8 +60,10 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	t.Cleanup(startClockObserver(t, clock))
 	certificate, key := closedIssuerListenCredential(t, identity, now)
 	order := sha256.Sum256([]byte("issuer-command-source-order"))
+	forwardingHostingRoot := initializeClosedForwardingHosting(t, node)
 	plan := map[string]any{"schema": "ardents-node-plan-v1", "state_root": root, "local_role_state_root": roleRoot,
-		"network_id": hex.EncodeToString(network[:]), "authority_public": []string{hex.EncodeToString(public)}, "threshold": 1,
+		"hosting_root": forwardingHostingRoot,
+		"network_id":   hex.EncodeToString(network[:]), "authority_public": []string{hex.EncodeToString(public)}, "threshold": 1,
 		"closed_profile_authority": hex.EncodeToString(public), "server_certificate": certificate, "server_key": key,
 		"node_id": hex.EncodeToString(issuer[:]), "identity_key": key, "clock_observation_file": clock,
 		"materialization_index": 1, "order_seed": hex.EncodeToString(order[:]), "sources": sources,
@@ -73,11 +76,8 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	if ready.Epoch != 1 || ready.AssignmentDigest == [32]byte{} {
 		t.Fatalf("closed issuer has no accepted duty binding: %+v", ready)
 	}
-	forwardingHostingRoot := ""
-	if runtime.GOOS == "linux" {
-		forwardingHostingRoot = initializeClosedForwardingHosting(t, node)
-	}
 	resolutionRoot := ""
+
 	live := []*nodeProcess{first}
 	for index, role := range closedTextTopologyRoles(nodeCount) {
 		if index == 1 {
@@ -116,15 +116,14 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 			reservation["admission_root"] = t.TempDir()
 			forwardPlan["closed_introduction"] = reservation
 		case [2]uint8{2, 4}:
+			reservation["hosting_root"] = forwardingHostingRoot
 			reservation["admission_root"] = t.TempDir()
 			forwardPlan["closed_data_join"] = reservation
 		default:
 			reservation["root"] = t.TempDir()
-			if forwardingHostingRoot != "" {
-				reservation["hosting_root"] = forwardingHostingRoot
-				reservation["admission_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
-				reservation["termination_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
-			}
+			reservation["hosting_root"] = forwardingHostingRoot
+			reservation["admission_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
+			reservation["termination_traffic"] = map[string]uint64{"tx": 1, "rx": 1}
 			forwardPlan["closed_forwarding"] = reservation
 		}
 		process := startNodeCommand(t, node, "node", "--config", writeJSON(t, fmt.Sprintf("closed-node-%d.json", index+1), forwardPlan))

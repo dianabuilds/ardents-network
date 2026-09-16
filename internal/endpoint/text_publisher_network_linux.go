@@ -20,7 +20,9 @@ func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, deli
 	draining := false
 	// Each joined Service retains an Introduction exchange. Reserve space
 	// before receiving the next delivery, including its temporary exchange.
-	slots := make(chan struct{}, 16)
+	owner.mu.Lock()
+	slots := make(chan struct{}, owner.streamConnectionLimitLocked())
+	owner.mu.Unlock()
 	defer func() {
 		if !draining {
 			cancel()

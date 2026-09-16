@@ -54,6 +54,5 @@ func WriteReady(writer io.Writer, nonce [32]byte) error {
 	body := make([]byte, readyBytes)
 	copy(body, readyMagic)
 	copy(body[len(readyMagic):], nonce[:])
-	_, err := writer.Write(body)
-	return err
+	return writeWorkerBytes(writer, body)
 }
