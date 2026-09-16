@@ -66,15 +66,11 @@ func writeRuntimePlans(config fixtureConfig, networkID, authority string, nodes 
 	inventory := nodeInventoryDocument{Schema: "ardents-qualification-node-inventory-v2"}
 
 	for _, item := range sources {
-		listen := ":47000"
-		if item.Host == "publisher" {
-			listen = ":47001"
-		}
 		planFile := fmt.Sprintf("plans/source-%s.json", strings.TrimPrefix(item.Name, "source-"))
 		plan := sourcePlanDocument{Schema: "ardents-source-server-v1",
 			StateRoot: path.Join(remoteRoot, "state", item.Name), LocalRoleStateRoot: path.Join(remoteRoot, "roles", item.Name),
 			NetworkID: networkID, AuthorityPublic: []string{authority}, Threshold: 1, At: config.At.Format("2006-01-02T15:04:05Z"),
-			Listen: listen, ServerCertificate: remoteArtifact(remoteRoot, item.ServerCertificate),
+			Listen: item.Endpoint, ServerCertificate: remoteArtifact(remoteRoot, item.ServerCertificate),
 			ServerKey: remoteArtifact(remoteRoot, item.ServerKey), ClientRoot: remoteArtifact(remoteRoot, item.ClientRootCA),
 			ClientKeyDigests: []string{item.ClientKeyDigest}, MaterializationIndex: item.MaterializationIndex,
 			StateProfile: "ardents-route-v3", StateProfileAuthority: authority}

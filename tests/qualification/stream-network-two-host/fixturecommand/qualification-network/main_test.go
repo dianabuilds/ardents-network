@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"sort"
@@ -67,6 +68,16 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	readFixtureJSON(t, filepath.Join(output, bundle.NodeInventory), &inventory)
 	if inventory.Schema != "ardents-qualification-node-inventory-v2" || len(inventory.Nodes) != 16 || len(inventory.Sources) != 2 {
 		t.Fatalf("runtime inventory is incomplete: %+v", inventory)
+	}
+	for _, source := range inventory.Sources {
+		var plan sourcePlanDocument
+		readFixtureJSON(t, filepath.Join(output, filepath.FromSlash(source.Plan)), &plan)
+		if plan.Listen != source.Endpoint {
+			t.Fatalf("source plan listens on %q, want inventory endpoint %q", plan.Listen, source.Endpoint)
+		}
+		if _, err := netip.ParseAddrPort(plan.Listen); err != nil {
+			t.Fatalf("source plan listen %q is not a literal IP and port: %v", plan.Listen, err)
+		}
 	}
 	runtimePlans := append(append([]string{}, bundle.NodePlans...), bundle.SourcePlans...)
 	runtimePlans = append(runtimePlans, bundle.ServiceInitializationPlans...)

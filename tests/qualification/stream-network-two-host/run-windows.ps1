@@ -501,7 +501,10 @@ function Start-StateSources {
             }
             if ($ready) { break }
             $active = ((Invoke-SSH $hostName "systemctl show '$unit' -p ActiveState --value" "read State Source $index state") -join '').Trim()
-            if ($active -eq 'inactive' -or $active -eq 'failed') { throw "State Source $index stopped before readiness." }
+            if ($active -eq 'inactive' -or $active -eq 'failed') {
+                $detail = @(($journal -split [Environment]::NewLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 8) -join ' | '
+                throw "State Source $index stopped before readiness (state=$active): $detail"
+            }
             Start-Sleep -Milliseconds 200
         }
         if (-not $ready) { throw "State Source $index readiness exceeded 15 seconds." }
