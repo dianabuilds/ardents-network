@@ -386,10 +386,11 @@ foreach ($role in @('reader','publisher')) {
             "$remoteRoot/service/$name", "$remoteRoot/bundle/entry-templates/$name")
     }
     $quoted = $paths | ForEach-Object { Assert-RemotePath $_ 'Endpoint owner path'; "'$_'" }
-    $writableChecks = $quoted | ForEach-Object { "runuser -u ardents-endpoint -- test -d $_; runuser -u ardents-endpoint -- test -w $_" }
-    [void](Invoke-SSH $hostName ("install -d -o ardents-endpoint -g ardents-endpoint -m 700 " + ($quoted -join ' ') +
-        "; chown -R ardents-endpoint:ardents-endpoint " + ($quoted -join ' ') + "; chmod 755 '$remoteRoot'; " +
-        ($writableChecks -join '; ')) "assign and verify $role Endpoint roots")
+    $pathList = $quoted -join ' '
+    [void](Invoke-SSH $hostName ("install -d -o ardents-endpoint -g ardents-endpoint -m 700 " + $pathList +
+        "; chown -R ardents-endpoint:ardents-endpoint " + $pathList + "; chmod 755 '$remoteRoot'") "assign $role Endpoint roots")
+    $verificationCommand = 'for path in ' + $pathList + '; do runuser -u ardents-endpoint -- test -d "$path"; runuser -u ardents-endpoint -- test -w "$path"; done'
+    [void](Invoke-SSH $hostName $verificationCommand "verify $role Endpoint roots")
 }
 
 $runInputs = [ordered]@{ Schema='ardents-qualification-prepared-inputs-v1'; ReaderHost=$ReaderHost; PublisherHost=$PublisherHost;

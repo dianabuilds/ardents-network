@@ -94,11 +94,11 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 		if offset := strings.Index(text[ownerPaths:], "; chown -R ardents-endpoint:ardents-endpoint "); offset >= 0 {
 			assignment = ownerPaths + offset
 		}
-		if offset := strings.Index(text[ownerPaths:], "runuser -u ardents-endpoint -- test -w"); offset >= 0 {
+		if offset := strings.Index(text[ownerPaths:], `$verificationCommand = 'for path in ' + $pathList + '; do runuser -u ardents-endpoint -- test -d "$path"; runuser -u ardents-endpoint -- test -w "$path"; done'`); offset >= 0 {
 			writableCheck = ownerPaths + offset
 		}
 	}
-	if stateRoots < 0 || localRoleRoots < stateRoots || dutyRoots < localRoleRoots || ownerPaths < dutyRoots || assignment < ownerPaths || writableCheck < ownerPaths {
+	if stateRoots < 0 || localRoleRoots < stateRoots || dutyRoots < localRoleRoots || ownerPaths < dutyRoots || assignment < ownerPaths || writableCheck < assignment || strings.Contains(text, "$writableChecks =") {
 		t.Fatal("qualification preparer does not assign every host State and local role root to the shared runtime owner")
 	}
 
