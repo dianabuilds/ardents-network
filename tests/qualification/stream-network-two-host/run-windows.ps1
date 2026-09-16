@@ -240,7 +240,7 @@ foreach ($item in @($nodeInventoryObject.Sources)) {
     $resolvedPlan = Resolve-InputFile $candidatePlan "State Source $id plan"
     $planObject = Get-Content -LiteralPath $resolvedPlan -Raw | ConvertFrom-Json
     if ([string]$planObject.schema -cne 'ardents-source-server-v1' -or [string]$planObject.state_profile -cne 'ardents-route-v3' -or
-        [string]$planObject.listen -cne ":$port") {
+        [string]$planObject.listen -cne $endpoint) {
         throw "State Source $id plan is not the exact closed Route source binding."
     }
     $inventorySources += [ordered]@{ ID=$id; Host=$role; Endpoint=$endpoint; Plan=$resolvedPlan; PlanSHA256=(Get-FileHash -LiteralPath $resolvedPlan -Algorithm SHA256).Hash.ToLowerInvariant() }
