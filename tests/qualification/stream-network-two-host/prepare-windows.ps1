@@ -209,9 +209,9 @@ $admissionSecret = New-CustodySecret
 $serviceSecret = New-CustodySecret
 Save-ProtectedSecret (Join-Path $prepared 'admission-secret.dpapi') $admissionSecret
 
-function New-Authority([string]$Kind, [string]$Vault, [string]$RootCommitment, [string]$Secret) {
-    $receiptRemote = "$remoteRoot/handover/$Kind-authority.json"
-    $receiptLocal = Join-Path $prepared "$Kind-authority.json"
+function New-Authority([string]$Kind, [string]$Vault, [string]$RootCommitment, [string]$Secret, [string]$ReceiptLabel) {
+    $receiptRemote = "$remoteRoot/handover/$ReceiptLabel-authority.json"
+    $receiptLocal = Join-Path $prepared "$ReceiptLabel-authority.json"
     $command = "'$($binaryPaths.custody)' create-$Kind-authority --vault-root '$Vault' --environment-commitment '$environment' --network-commitment '$networkCommitment' --root-commitment '$RootCommitment' > '$receiptRemote'"
     Invoke-Custody $command @($Secret, $Secret) "create $Kind authority"
     Receive-File $PublisherHost $receiptRemote $receiptLocal "download $Kind authority receipt"
@@ -221,8 +221,7 @@ function New-Authority([string]$Kind, [string]$Vault, [string]$RootCommitment, [
     Assert-Hex ([string]$receipt.authority_public) "$Kind authority public key"
     return $receipt
 }
-$admissionAuthority = New-Authority 'admission' $admissionVault $admissionRootCommitment $admissionSecret
-$serviceAuthority = New-Authority 'service' $serviceVault $serviceRootCommitment $serviceSecret
+$admissionAuthority = New-Authority 'admission' $admissionVault $admissionRootCommitment $admissionSecret 'admission'
 
 function Write-HostingPlan([string]$Role, [string]$Provider, [string]$Unit, [string]$Interface, [string]$Start, [string]$End, [UInt64]$Quantity, [UInt64]$InitialUsed, [UInt64]$LowWatermark) {
     $planPath = Join-Path $prepared "hosting-$Role.json"
@@ -325,6 +324,7 @@ foreach ($service in @($provision.Services)) {
     Assert-Name ([string]$service.Owner) 'Service owner'
     $hostName = Host-Address ([string]$service.Host)
     [void](Invoke-Product $hostName $binaryPaths.ardents @('service-instance','initialize','--config',[string]$service.Plan) "initialize Service Instance $($service.Owner)")
+    $serviceAuthority = New-Authority 'service' $serviceVault $serviceRootCommitment $serviceSecret "$($service.Owner)-service"
     $requestLocal = Join-Path $prepared "$($service.Owner)-service.request"
     Receive-File $hostName ([string]$service.Request) $requestLocal "download $($service.Owner) Service request"
     $requestDigest = (Get-FileHash -LiteralPath $requestLocal -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -334,6 +334,14 @@ foreach ($service in @($provision.Services)) {
     $receiptRemote = "$remoteRoot/handover/$($service.Owner)-service-receipt.json"
     $command = "'$($binaryPaths.custody)' issue-service-credential --vault-root '$serviceVault' --record '$($serviceAuthority.record_id)' --request '$requestAuthority' --response '$responseAuthority' --environment-commitment '$environment' --network-commitment '$networkCommitment' --root-commitment '$serviceRootCommitment' --kind service --id-commitment '$($serviceAuthority.id_commitment)' > '$receiptRemote'"
     Invoke-Custody $command @($requestDigest, $serviceSecret) "issue $($service.Owner) Service credential"
+    $credentialReceiptLocal = Join-Path $prepared "$($service.Owner)-service-receipt.json"
+    Receive-File $PublisherHost $receiptRemote $credentialReceiptLocal "download $($service.Owner) Service receipt"
+    $credentialReceipt = Get-Content -LiteralPath $credentialReceiptLocal -Raw | ConvertFrom-Json
+    Assert-Name ([string]$credentialReceipt.record_id) 'Service credential successor'
+    if ([string]$credentialReceipt.schema -cne 'ardents-service-credential-response-v1' -or
+        [UInt64]$credentialReceipt.generation -ne 1) {
+        throw "$($service.Owner) Service credential did not create its first authority generation."
+    }
     $responseLocal = Join-Path $prepared "$($service.Owner)-service.response"
     Receive-File $PublisherHost $responseAuthority $responseLocal "download $($service.Owner) Service response"
     $responseOwner = "$remoteRoot/handover/$($service.Owner)-service.response"

@@ -27,6 +27,7 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 		"$atText = $at.ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)",
 		"foreach ($class in 1..3)",
 		"the exact six-window, three-class key inventory",
+		"$serviceAuthority = New-Authority 'service'",
 	} {
 		if !strings.Contains(string(preparer), required) {
 			t.Fatalf("qualification preparer lacks %q", required)
@@ -37,8 +38,9 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 	}
 	rootPreparation := strings.Index(string(preparer), "foreach ($role in @('reader','publisher')) {")
 	serviceInitialization := strings.Index(string(preparer), "foreach ($service in @($provision.Services)) {")
-	if rootPreparation < 0 || serviceInitialization < 0 || rootPreparation > serviceInitialization {
-		t.Fatal("qualification preparer initializes Service Instances before their roots exist")
+	serviceAuthority := strings.Index(string(preparer), "$serviceAuthority = New-Authority 'service'")
+	if rootPreparation < 0 || serviceInitialization < 0 || rootPreparation > serviceInitialization || serviceAuthority < serviceInitialization {
+		t.Fatal("qualification preparer orders Service roots and per-owner authorities incorrectly")
 	}
 
 	pwsh := "pwsh"
