@@ -49,7 +49,7 @@ func prepareTextWorkerSocket(connection *net.UnixConn) error {
 }
 
 func (attachment *textWorkerAttachment) Read(body []byte) (int, error) {
-	if attachment == nil || attachment.connection == nil || attachment.pid == 0 || attachment.uid == 0 {
+	if attachment == nil || attachment.connection == nil || attachment.pid == 0 {
 		return 0, errors.New("text worker attachment is unavailable")
 	}
 	if len(body) == 0 {

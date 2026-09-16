@@ -69,7 +69,7 @@ func (server *closedDataJoinServer) serveAdmitted(ctx context.Context, connectio
 		return err
 	}
 	channel, err := route.NewClosedAdmissionChannel(server.receiver, server.spends, server.limits, exporter,
-		closedRoleTokenVerifier(server.config, server.receiver), server.config.now)
+		closedForwardingAdmissionVerifier(server.config, server.receiver, server.host, closedJoinHostingEnvelope()), server.config.now)
 	if err != nil {
 		return err
 	}

@@ -33,13 +33,23 @@ type ClosedSpendBinding struct {
 // It stores only the token digest and its receiver-local expiry, never a
 // holder key, permission, Target, or Application data.
 type ClosedSpendLedger struct {
-	closed  bool
-	slots   *ClosedIntroductionSlots
-	mu      sync.Mutex
-	path    string
-	binding ClosedSpendBinding
-	spent   map[[32]byte]time.Time
-	lease   closedSpendLease
+	closed         bool
+	failure        error
+	slots          *ClosedIntroductionSlots
+	mu             sync.Mutex
+	path           string
+	binding        ClosedSpendBinding
+	spent          map[[32]byte]time.Time
+	lease          closedSpendLease
+	openAppendFile func(string) (closedSpendAppendFile, error)
+}
+
+type closedSpendAppendFile interface {
+	io.Seeker
+	io.Writer
+	Sync() error
+	WriteAt([]byte, int64) (int, error)
+	Close() error
 }
 
 // OpenClosedSpendLedger opens one exclusive receiving-duty spend journal.
@@ -86,7 +96,7 @@ func (ledger *ClosedSpendLedger) Close() error {
 	}
 	err := ledger.lease.release()
 	ledger.lease = closedSpendLease{}
-	return err
+	return errors.Join(ledger.failure, err)
 }
 
 // Spend durably records a token digest before granting the caller work. A
@@ -106,7 +116,11 @@ func (ledger *ClosedSpendLedger) Spend(token []byte, window, now time.Time) erro
 	if ledger.closed {
 		return errors.New("closed spend owner released")
 	}
+	if ledger.failure != nil {
+		return ledger.failure
+	}
 	if err := ledger.prune(now); err != nil {
+		ledger.failure = err
 		return err
 	}
 	if _, found := ledger.spent[digest]; found {
@@ -115,7 +129,8 @@ func (ledger *ClosedSpendLedger) Spend(token []byte, window, now time.Time) erro
 	if len(ledger.spent) >= maximumClosedSpends {
 		return errors.New("closed token spend journal is exhausted")
 	}
-	if err := appendClosedSpendRecord(ledger.path, digest, window); err != nil {
+	if err := ledger.appendRecord(digest, window); err != nil {
+		ledger.failure = err
 		return err
 	}
 	ledger.spent[digest] = window
@@ -139,6 +154,14 @@ func (ledger *ClosedSpendLedger) prune(now time.Time) error {
 	return nil
 }
 
+func (ledger *ClosedSpendLedger) appendRecord(digest [32]byte, window time.Time) error {
+	openFile := ledger.openAppendFile
+	if openFile == nil {
+		openFile = func(path string) (closedSpendAppendFile, error) { return os.OpenFile(path, os.O_RDWR, 0) }
+	}
+	return appendClosedSpendRecord(openFile, ledger.path, digest, window)
+}
+
 func validClosedSpendBinding(binding ClosedSpendBinding) bool {
 	return binding.NetworkID != [32]byte{} && binding.ProfileDigest != [32]byte{} && binding.ReceiverNodeID != [32]byte{} && binding.ReceiverDutyGeneration != 0
 }
@@ -157,18 +180,29 @@ func encodeClosedSpendHeader(binding ClosedSpendBinding) []byte {
 }
 
 func decodeClosedSpendLedger(path string, binding ClosedSpendBinding, raw []byte) (*ClosedSpendLedger, error) {
+	return decodeClosedSpendLedgerWithRepair(path, binding, raw, truncateClosedSpendLedger)
+}
+
+// decodeClosedSpendLedgerWithRepair accepts only one final crash tail. A
+// complete record after an incomplete one is ambiguous and must remain intact
+// for operator investigation rather than silently discarding a spent token.
+func decodeClosedSpendLedgerWithRepair(path string, binding ClosedSpendBinding, raw []byte, repair func(string, int64) error) (*ClosedSpendLedger, error) {
 	if len(raw) < closedSpendLedgerHeaderSize || !bytes.Equal(raw[:8], []byte(closedSpendLedgerMagic)) || !bytes.Equal(raw[:closedSpendLedgerHeaderSize], encodeClosedSpendHeader(binding)) {
 		return nil, errors.New("closed spend ledger cannot be rebound")
 	}
 	ledger := &ClosedSpendLedger{path: path, binding: binding, spent: make(map[[32]byte]time.Time)}
 	offset := closedSpendLedgerHeaderSize
 	complete := len(raw) - (len(raw)-offset)%closedSpendRecordSize
+	repairAt := -1
 	for offset < complete {
 		digest, window, committed := decodeClosedSpendRecord(raw[offset : offset+closedSpendRecordSize])
 		if !committed {
-			if err := truncateClosedSpendLedger(path, int64(offset)); err != nil {
-				return nil, err
+			// A zero marker is written before the commit byte. It is recoverable
+			// only when this is the exact final record, with no later bytes.
+			if raw[offset+closedSpendRecordSize-1] != 0 || offset+closedSpendRecordSize != len(raw) {
+				return nil, errors.New("closed spend ledger recovery is ambiguous")
 			}
+			repairAt = offset
 			break
 		}
 		if !validClosedSpendWindow(window) || digest == [32]byte{} || ledger.spent[digest] != (time.Time{}) || len(ledger.spent) >= maximumClosedSpends {
@@ -177,8 +211,11 @@ func decodeClosedSpendLedger(path string, binding ClosedSpendBinding, raw []byte
 		ledger.spent[digest] = window
 		offset += closedSpendRecordSize
 	}
-	if complete != len(raw) {
-		if err := truncateClosedSpendLedger(path, int64(complete)); err != nil {
+	if repairAt < 0 && complete != len(raw) {
+		repairAt = complete
+	}
+	if repairAt >= 0 {
+		if err := repair(path, int64(repairAt)); err != nil {
 			return nil, err
 		}
 	}
@@ -194,11 +231,11 @@ func decodeClosedSpendRecord(raw []byte) ([32]byte, time.Time, bool) {
 	return digest, time.Unix(int64(binary.BigEndian.Uint64(raw[32:40])), 0).UTC(), raw[40] == 1
 }
 
-func appendClosedSpendRecord(path string, digest [32]byte, window time.Time) error {
+func appendClosedSpendRecord(openFile func(string) (closedSpendAppendFile, error), path string, digest [32]byte, window time.Time) error {
 	raw := make([]byte, closedSpendRecordSize)
 	copy(raw[:32], digest[:])
 	binary.BigEndian.PutUint64(raw[32:40], uint64(window.Unix()))
-	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	file, err := openFile(path)
 	if err != nil {
 		return err
 	}

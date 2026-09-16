@@ -3,9 +3,9 @@
 package endpoint
 
 import (
-	"crypto/rand"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
-	"math/big"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/entry"
@@ -108,11 +108,19 @@ func chooseTextInteriorSet(members []textRoleMember, entries [2]entry.ClosedSetM
 	if len(pairs) == 0 {
 		return textSourceSet{}, errors.New("two eligible source Interior members unavailable")
 	}
-	selected, err := rand.Int(rand.Reader, big.NewInt(int64(len(pairs))))
-	if err != nil {
-		return textSourceSet{}, err
+	// The adjacent pair is already a private, durably random installation
+	// choice. Deriving the Interior pair from that retained choice keeps every
+	// context and process on the same route without exposing a caller-selected
+	// Node or drawing a second route after restart.
+	digestInput := make([]byte, 0, 1+4*len(entries[0].NodeID))
+	digestInput = append(digestInput, domain)
+	for _, member := range entries {
+		digestInput = append(digestInput, member.NodeID[:]...)
+		digestInput = append(digestInput, member.PublicKey[:]...)
 	}
-	set := textSourceSet{chosen: now, notAfter: now.Add(30 * time.Minute), interior: pairs[selected.Int64()]}
+	digest := sha256.Sum256(digestInput)
+	selected := binary.BigEndian.Uint64(digest[:8]) % uint64(len(pairs))
+	set := textSourceSet{chosen: now, notAfter: now.Add(30 * time.Minute), interior: pairs[selected]}
 	for _, member := range set.interior {
 		if member.NotAfter.Before(set.notAfter) {
 			set.notAfter = member.NotAfter

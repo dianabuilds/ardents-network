@@ -35,6 +35,28 @@ func TestClosedSourceParentTerminalBeforeCloseEmission(t *testing.T) {
 	}
 }
 
+func TestClosedSourceNestedCloseJoinsFailedQueueParent(t *testing.T) {
+	owner, peer, end := sourceChannelsFixture(t)
+	parent := &closedSourceChannels{changed: make(chan struct{})}
+	owner.queueParent = parent
+	owner.retainClosedRead = true
+	opened := make(chan error, 1)
+	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-opened; err != nil {
+		t.Fatal(err)
+	}
+	parent.mu.Lock()
+	parent.terminal = ErrClosedSourceStopped
+	parent.mu.Unlock()
+	if err := lane.Close(); err != nil {
+		t.Fatalf("failed outer queue became inner cleanup failure: %v", err)
+	}
+}
+
 func checkSourceCloseBoundary(t *testing.T, mode string) {
 	local, peer := net.Pipe()
 	defer peer.Close()

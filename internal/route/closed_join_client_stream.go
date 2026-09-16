@@ -11,16 +11,17 @@ import (
 	"time"
 )
 
-// The single joined lane can retain at most its 64KiB receive window, one
-// maximum read frame and one encoded write. Reserve 128KiB in the original
-// Source/Responder owner before handshake or allocation and hold it to join.
-const closedJoinedQueue = 128 << 10
+// Reserve bounded per-JOIN bookkeeping before handshake. Actual receive and
+// write queues additionally debit the original Source/Responder as they grow.
+const closedJoinedQueue = 4 << 10
 
 // ClosedJoinedStream is the admitted framed stream returned only after JOIN.
 // Endpoint may carry its independent Service TLS here; this is not Service
 // authentication. The retained Source/Responder prefix owns its parent route.
 type ClosedJoinedStream struct {
 	*closedSourceLane
+	hello               ClosedHello
+	refillMu            sync.Mutex
 	channels            *closedSourceChannels
 	outer               *closedSourceLane
 	context             context.Context
@@ -40,6 +41,7 @@ func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSou
 	lane.closeStatus = 0
 	lane.owner.mu.Unlock()
 	owner := newClosedSourceChannelOwner(parent, lane.end, nil)
+	owner.queueParent = lane.owner
 	owner.last = 1
 	owner.retainClosedRead = true
 	owner.framedParent = lane

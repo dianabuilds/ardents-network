@@ -351,12 +351,12 @@ func TestClosedJoinPairingRefusalRetainsOriginalAdmission(t *testing.T) {
 			case "expired":
 				f.clock.Store(f.now.Add(10 * time.Second).Unix())
 			}
-			original := lease.duty
+			original := lease.claim.duty
 			if side, err := f.pairs.Reserve(lease, frame); err == nil {
 				side.Close()
 				t.Fatal("invalid reservation accepted")
 			}
-			if lease.duty != original || original.released {
+			if lease.claim.duty != original || original.released {
 				t.Fatal("refusal consumed caller admission")
 			}
 			if reason != "expired" {

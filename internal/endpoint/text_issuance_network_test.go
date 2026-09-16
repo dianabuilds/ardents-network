@@ -156,7 +156,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 			t.Fatal(err)
 		}
 		ready := make(chan struct{}, 1)
-		config := node.Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID,
+		config := node.Config{HostingRoot: textNetworkHostingRoot(t), NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID,
 			IdentityKey: certificates[index].PrivateKey.(ed25519.PrivateKey),
 			Current:     func() (node.DutyView, error) { return textNetworkDutyFixture{snapshot: snapshot}, nil },
 			CurrentClosedProfile: func() (state.ClosedProfileView, bool) {
@@ -179,7 +179,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 			},
 		}
 		if index == 15 {
-			config.ClosedDataJoin = node.ClosedDataJoinProfile{AdmissionRoot: textNetworkPrivateRoot(t), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
+			config.ClosedDataJoin = node.ClosedDataJoinProfile{HostingRoot: config.HostingRoot, AdmissionRoot: textNetworkPrivateRoot(t), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
 		} else if index == 6 {
 			config.ClosedIntroduction = node.ClosedIntroductionProfile{AdmissionRoot: textNetworkPrivateRoot(t), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
 		} else if index == 5 {
@@ -188,7 +188,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 			config.ClosedIssuer = node.ClosedIssuerProfile{Root: issuerRoot, AdmissionRoot: textNetworkPrivateRoot(t),
 				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
 		} else {
-			config.ClosedForwarding = node.ClosedForwardingProfile{Root: textNetworkPrivateRoot(t), HostingRoot: textNetworkHostingRoot(t),
+			config.ClosedForwarding = node.ClosedForwardingProfile{Root: textNetworkPrivateRoot(t), HostingRoot: config.HostingRoot,
 				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second,
 				AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
 		}

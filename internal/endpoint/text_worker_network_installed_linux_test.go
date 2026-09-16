@@ -148,7 +148,7 @@ func exchangeInstalledTextAdministration(t *testing.T, carrier route.CarrierProf
 // trusted UI mode. CommandContext and WaitDelay bound and join child/pipes.
 func runInstalledTextCommand(t *testing.T, ctx context.Context, input []byte, arguments ...string) []byte {
 	t.Helper()
-	if _, err := loadTextWorkerArtifact(); err != nil {
+	if _, err := loadInstalledWorkerArtifact(textInventory); err != nil {
 		t.Fatalf("installed command artifact: %v", err)
 	}
 	bounded, cancel := context.WithTimeout(ctx, 35*time.Second)

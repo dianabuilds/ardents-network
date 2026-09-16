@@ -28,7 +28,7 @@ func TestClosedForwardingControlQueueCountsCompleteFrames(t *testing.T) {
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 497, Body: body}); err == nil {
 		t.Fatal("control queue admitted more than 16 KiB of complete frames")
 	}
-	if event, ok := channel.Next(); !ok || event.Kind != closedFrameOpen || event.Lane != 1 {
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != closedFrameOpen || event.Lane != 1 {
 		t.Fatal("control pressure lost previously admitted work")
 	}
 	if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 499, Body: body}); err != nil {
@@ -50,7 +50,7 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		lease := &ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), duty: reservation}
+		lease := &ClosedAdmission{Class: 2, Bytes: 32 << 20, Deadline: now.Add(time.Minute), claim: newClosedAdmissionClaim(reservation, nil)}
 		channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return now })
 		if err != nil {
 			t.Fatal(err)
@@ -68,7 +68,7 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 			if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
 				t.Fatalf("admit control during data pressure: %v", err)
 			}
-			if event, ok := channel.Next(); !ok || event.Kind != closedFrameOpen || event.Lane != lane {
+			if event, ok := channel.NextAvailable(nil); !ok || event.Kind != closedFrameOpen || event.Lane != lane {
 				t.Fatal("data pressure prevented control progress")
 			}
 			for range 4 {
@@ -90,7 +90,7 @@ func TestClosedForwardingDataPressurePreservesEveryChannelControl(t *testing.T) 
 		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
 			t.Fatalf("data consumed an admitted channel's termination reserve: %v", err)
 		}
-		if event, ok := channel.Next(); !ok || event.Kind != closedFrameClose || event.Lane != 1 {
+		if event, ok := channel.NextAvailable(nil); !ok || event.Kind != closedFrameClose || event.Lane != 1 {
 			t.Fatal("termination did not precede queued data")
 		}
 	}
@@ -128,7 +128,7 @@ func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 	if err := channel.QueueReverse(credit); err == nil {
 		t.Fatal("forward and reverse controls multiplied the 16 KiB reserve")
 	}
-	if event, ok := channel.Next(); !ok || event.Kind != closedFrameOpen {
+	if event, ok := channel.NextAvailable(nil); !ok || event.Kind != closedFrameOpen {
 		t.Fatal("control pressure lost admitted OPEN")
 	}
 	// Releasing one 66-byte OPEN makes room for three 20-byte credits.
@@ -144,7 +144,7 @@ func TestClosedForwardingControlDirectionsShareOneBound(t *testing.T) {
 
 func TestClosedForwardingLateControlReleaseCannotDebitSibling(t *testing.T) {
 	_, _, lease, now := closedOuterAdmissionFixture(t)
-	limits := lease.duty.limits
+	limits := lease.claim.duty.limits
 	channel, err := newForwardingTestChannel(lease, func(ClosedOpen) error { return nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
@@ -158,7 +158,7 @@ func TestClosedForwardingLateControlReleaseCannotDebitSibling(t *testing.T) {
 		if _, err := channel.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: lane, Body: body}); err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := channel.Next(); !ok {
+		if _, ok := channel.NextAvailable(nil); !ok {
 			t.Fatal("missing OPEN")
 		}
 	}
@@ -169,7 +169,7 @@ func TestClosedForwardingLateControlReleaseCannotDebitSibling(t *testing.T) {
 	if _, err := channel.Accept(retired); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := channel.Next(); !ok {
+	if _, ok := channel.NextAvailable(nil); !ok {
 		t.Fatal("missing CLOSE")
 	}
 	credit := ClosedLaneFrame{Kind: closedFrameCredit, Lane: 3, Body: []byte{0, 0, 0, 1}}

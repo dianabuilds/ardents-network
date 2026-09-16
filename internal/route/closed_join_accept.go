@@ -14,7 +14,7 @@ import (
 // reading, and transfers successful matching into the joined stream lifecycle.
 // The caller retains the connection and admission if this transfer is refused.
 func (owner *ClosedJoinPairs) AcceptStream(ctx context.Context, lease *ClosedAdmission, connection net.Conn) (outcome error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil || lease == nil || connection == nil || lease.duty == nil || lease.Class != 2 {
+	if owner == nil || ctx == nil || ctx.Err() != nil || lease == nil || connection == nil || !lease.claim.live() || lease.Class != 2 {
 		return errors.New("closed JOIN receiving admission unavailable")
 	}
 	body, err := EncodeClosedHello(lease.hello)
@@ -74,7 +74,7 @@ func (owner *ClosedJoinPairs) AcceptStream(ctx context.Context, lease *ClosedAdm
 		}
 		return err
 	}
-	defer side.Close()
+	defer func() { side.Close(); outcome = errors.Join(outcome, side.cleanupErr) }()
 	clear(frame.Body)
 	frame.Body = nil
 	owner.limits.dequeue(closedJoinStreamQueue)

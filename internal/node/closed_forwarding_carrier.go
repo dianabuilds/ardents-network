@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"sync"
@@ -15,8 +16,17 @@ import (
 type closedForwardingSessions struct {
 	mu         sync.Mutex
 	sessions   map[route.ClosedCarrierKey]*closedForwardingSession
+	pending    map[route.ClosedCarrierKey]*closedForwardingSessionPending
 	workers    *sync.WaitGroup
 	cleanupErr error
+}
+
+// closedForwardingSessionPending gives one caller ownership of a new outer
+// handshake. It publishes its terminal result before waking same-key waiters.
+type closedForwardingSessionPending struct {
+	done    chan struct{}
+	session *closedForwardingSession
+	err     error
 }
 
 type closedForwardingSession struct {
@@ -36,11 +46,11 @@ type closedForwardingSession struct {
 }
 
 func newClosedForwardingSessions(workers *sync.WaitGroup) *closedForwardingSessions {
-	return &closedForwardingSessions{sessions: make(map[route.ClosedCarrierKey]*closedForwardingSession), workers: workers}
+	return &closedForwardingSessions{sessions: make(map[route.ClosedCarrierKey]*closedForwardingSession), pending: make(map[route.ClosedCarrierKey]*closedForwardingSessionPending), workers: workers}
 }
 
-func (sessions *closedForwardingSessions) acquire(key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, deadline time.Time, hello func() (route.ClosedHello, error)) (*closedForwardingSession, error) {
-	if sessions == nil || sessions.workers == nil || binding == nil || hello == nil {
+func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, deadline time.Time, hello func() (route.ClosedHello, error)) (*closedForwardingSession, error) {
+	if sessions == nil || sessions.workers == nil || ctx == nil || binding == nil || hello == nil {
 		return nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
 	carrier, err := binding.Carrier()
@@ -51,7 +61,30 @@ func (sessions *closedForwardingSessions) acquire(key route.ClosedCarrierKey, bi
 		sessions.mu.Lock()
 		existing := sessions.sessions[key]
 		if existing == nil {
-			break
+			if pending := sessions.pending[key]; pending != nil {
+				sessions.mu.Unlock()
+				select {
+				case <-pending.done:
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+				if pending.session != nil {
+					pending.session.mu.Lock()
+					current := !pending.session.closed && pending.session.binding.SameCarrier(binding)
+					pending.session.mu.Unlock()
+					if current {
+						return pending.session, nil
+					}
+				}
+				if pending.err != nil {
+					return nil, pending.err
+				}
+				continue
+			}
+			pending := &closedForwardingSessionPending{done: make(chan struct{})}
+			sessions.pending[key] = pending
+			sessions.mu.Unlock()
+			return sessions.open(ctx, key, binding, carrier, deadline, hello, pending)
 		}
 		existing.mu.Lock()
 		current := !existing.closed && existing.binding.SameCarrier(binding)
@@ -64,46 +97,105 @@ func (sessions *closedForwardingSessions) acquire(key route.ClosedCarrierKey, bi
 		sessions.mu.Unlock()
 		existing.fail()
 	}
-	defer sessions.mu.Unlock()
+
+	// The new-session owner performs all outer HELLO I/O without sessions.mu.
+	// Only exact-key waiters join its published terminal result.
+}
+
+func (sessions *closedForwardingSessions) open(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, carrier route.Carrier, deadline time.Time, hello func() (route.ClosedHello, error), pending *closedForwardingSessionPending) (returned *closedForwardingSession, returnedErr error) {
+	var result *closedForwardingSession
+	var resultErr error
+	var cancelErr error
+	cancelDone := make(chan struct{})
+	stopCancel := context.AfterFunc(ctx, func() {
+		defer close(cancelDone)
+		cancelErr = carrier.Close()
+	})
+	defer func() {
+		if !stopCancel() {
+			<-cancelDone
+		}
+		if cancelErr != nil || ctx.Err() != nil {
+			if result != nil && ctx.Err() != nil {
+				resultErr = errors.Join(ctx.Err(), resultErr, cancelErr, result.invalidate())
+				result = nil
+			} else if result == nil && ctx.Err() != nil {
+				resultErr = errors.Join(ctx.Err(), resultErr, cancelErr)
+			}
+		}
+		if result != nil {
+			if _, err := binding.Carrier(); err != nil {
+				resultErr = errors.Join(err, result.carrier.Close(), result.invalidate())
+				result = nil
+			}
+		}
+		sessions.mu.Lock()
+		if result != nil {
+			sessions.sessions[key] = result
+		}
+		pending.session, pending.err = result, resultErr
+		delete(sessions.pending, key)
+		close(pending.done)
+		sessions.mu.Unlock()
+		returned, returnedErr = result, resultErr
+		if result != nil {
+			sessions.workers.Add(1)
+			go func() {
+				defer sessions.workers.Done()
+				result.copyReverse()
+			}()
+		}
+	}()
 	if _, err := binding.Carrier(); err != nil {
-		return nil, err
+		resultErr = err
+		return nil, resultErr
 	}
 	value, err := hello()
 	if err != nil {
-		return nil, err
+		resultErr = err
+		return nil, resultErr
 	}
 	body, err := route.EncodeClosedHello(value)
 	if err != nil {
-		return nil, err
+		resultErr = err
+		return nil, resultErr
 	}
 	if value.Deadline.Before(deadline) {
 		deadline = value.Deadline
 	}
 	if err := carrier.SetDeadline(deadline); err != nil {
-		return nil, err
+		resultErr = err
+		return nil, resultErr
 	}
 	if err := route.WriteClosedLaneFrame(carrier, route.ClosedLaneFrame{Kind: 1, Lane: 0, Body: body}); err != nil {
-		return nil, err
+		if ctx.Err() != nil {
+			resultErr = ctx.Err()
+			return nil, resultErr
+		}
+		resultErr = err
+		return nil, resultErr
 	}
 	accepted, err := route.ReadClosedLaneFrame(carrier)
 	if err != nil {
-		return nil, err
+		if ctx.Err() != nil {
+			resultErr = ctx.Err()
+			return nil, resultErr
+		}
+		resultErr = err
+		return nil, resultErr
 	}
 	status, _, err := route.DecodeClosedAcceptFrame(accepted)
 	if err != nil || status != 0 {
-		return nil, errors.New("closed forwarding outer HELLO is unavailable")
+		resultErr = errors.New("closed forwarding outer HELLO is unavailable")
+		return nil, resultErr
 	}
 	if err := carrier.SetDeadline(time.Time{}); err != nil {
-		return nil, err
+		resultErr = err
+		return nil, resultErr
 	}
 	session := &closedForwardingSession{owner: sessions, key: key, carrier: carrier, binding: binding, invalidate: binding.Invalidate, children: make(map[uint32]*closedForwardingQueue), retired: make(map[uint32]struct{})}
-	sessions.sessions[key] = session
-	sessions.workers.Add(1)
-	go func() {
-		defer sessions.workers.Done()
-		session.copyReverse()
-	}()
-	return session, nil
+	result = session
+	return result, nil
 }
 
 func (session *closedForwardingSession) attach(open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(route.ClosedLaneFrame) error, retired func() bool) (uint32, *closedForwardingQueue, error) {

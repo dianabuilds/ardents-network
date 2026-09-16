@@ -16,7 +16,7 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 	if err != nil {
 		return node.Config{}, err
 	}
-	config := node.Config{NetworkID: networkID, IdentityKey: identity,
+	config := node.Config{HostingRoot: plan.HostingRoot, ClosedListenOverride: plan.ClosedListenOverride, NetworkID: networkID, IdentityKey: identity,
 		LocalRoleStateRoot: plan.LocalRoleStateRoot,
 		PollInterval:       100 * time.Millisecond,
 		Quarantine:         time.Second, Now: time.Now, ResourceProfile: plan.NodeResourceProfile}
@@ -59,9 +59,10 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 	if plan.ClosedForwarding != nil {
 		config.ClosedForwarding = node.ClosedForwardingProfile{Root: plan.ClosedForwarding.Root, Certificate: certificate,
 			ConnectionLimit: plan.ClosedForwarding.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedForwarding.DrainTimeoutMS) * time.Millisecond,
-			HostingRoot:        plan.ClosedForwarding.HostingRoot,
-			AdmissionTraffic:   resource.HostingTraffic{Tx: plan.ClosedForwarding.AdmissionTraffic.Tx, Rx: plan.ClosedForwarding.AdmissionTraffic.Rx},
-			TerminationTraffic: resource.HostingTraffic{Tx: plan.ClosedForwarding.TerminationTraffic.Tx, Rx: plan.ClosedForwarding.TerminationTraffic.Rx}}
+			HostingRoot:          plan.ClosedForwarding.HostingRoot,
+			CarrierRelayEndpoint: plan.ClosedForwarding.CarrierRelayEndpoint,
+			AdmissionTraffic:     resource.HostingTraffic{Tx: plan.ClosedForwarding.AdmissionTraffic.Tx, Rx: plan.ClosedForwarding.AdmissionTraffic.Rx},
+			TerminationTraffic:   resource.HostingTraffic{Tx: plan.ClosedForwarding.TerminationTraffic.Tx, Rx: plan.ClosedForwarding.TerminationTraffic.Rx}}
 	}
 	if plan.ClosedResolution != nil {
 		config.ClosedResolution = node.ClosedResolutionProfile{Root: plan.ClosedResolution.Root, AdmissionRoot: plan.ClosedResolution.AdmissionRoot,
@@ -72,7 +73,7 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 			Certificate: certificate, ConnectionLimit: plan.ClosedIntroduction.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedIntroduction.DrainTimeoutMS) * time.Millisecond}
 	}
 	if plan.ClosedDataJoin != nil {
-		config.ClosedDataJoin = node.ClosedDataJoinProfile{AdmissionRoot: plan.ClosedDataJoin.AdmissionRoot,
+		config.ClosedDataJoin = node.ClosedDataJoinProfile{HostingRoot: plan.ClosedDataJoin.HostingRoot, AdmissionRoot: plan.ClosedDataJoin.AdmissionRoot,
 			Certificate: certificate, ConnectionLimit: plan.ClosedDataJoin.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedDataJoin.DrainTimeoutMS) * time.Millisecond}
 	}
 	if plan.Rendezvous != nil || plan.Initiator != nil || plan.Introduction != nil || plan.Responder != nil || plan.TransitIssuer != nil || plan.ClosedIssuer != nil || plan.ClosedForwarding != nil || plan.ClosedResolution != nil || plan.ClosedIntroduction != nil || plan.ClosedDataJoin != nil {

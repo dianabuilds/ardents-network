@@ -109,7 +109,7 @@ func TestInstalledTextWorkerLifecycle(t *testing.T) {
 
 func installedTextWorkerInstance(t *testing.T, ctx context.Context, worker *qualifiedTextWorker, role string) textWorkerInstance {
 	t.Helper()
-	listing, err := listTextWorkerInstances(ctx, role)
+	listing, err := listInstalledWorkerInstances(ctx, role, textInventory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func requireInstalledTextWorkerCollected(t *testing.T, parent context.Context, n
 	tick := time.NewTicker(25 * time.Millisecond)
 	defer tick.Stop()
 	for {
-		listing, err := listTextWorkerInstances(ctx, role)
+		listing, err := listInstalledWorkerInstances(ctx, role, textInventory)
 		if err != nil {
 			t.Fatalf("retired worker inventory: %v", err)
 		}
@@ -153,12 +153,16 @@ func requireInstalledTextWorkerCollected(t *testing.T, parent context.Context, n
 
 func requireInstalledTextWorkerCollectionPolicy(t *testing.T, ctx context.Context, instance textWorkerInstance) {
 	t.Helper()
+	version, err := installedTextManagerVersion(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	unit, service, err := readTextWorkerProperties(ctx, instance.name, instance.role)
 	if err != nil {
 		t.Fatal(err)
 	}
 	verify := func() error {
-		return verifyTextWorkerProperties(unit, service, instance.name, instance.role, instance.cgroup, instance.pid)
+		return verifyTextWorkerPropertiesVersion(unit, service, instance.name, instance.role, instance.cgroup, instance.pid, version)
 	}
 	if err := verify(); err != nil {
 		t.Fatalf("installed property positive control: %v", err)

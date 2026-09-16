@@ -135,6 +135,12 @@ func (side *ClosedJoinSide) Serve(ctx context.Context, connection net.Conn) (out
 		if err != nil {
 			return err
 		}
+		if frame.Kind == closedFrameAdmit {
+			if err := side.replenish(frame); err != nil {
+				return err
+			}
+			continue
+		}
 		peer, err := side.forwardFrame(frame)
 		if err != nil {
 			return err
@@ -175,7 +181,7 @@ func (side *ClosedJoinSide) account(size uint64) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	owner.expireLocked(side.pair, owner.limits.clock().UTC(), time.Now())
-	if side.closed || side.pair.stopped || size > closedClassBytes(2)-side.used {
+	if side.closed || side.pair.stopped || side.used > side.byteLimit || size > side.byteLimit-side.used {
 		return errors.New("closed JOIN traffic exhausted")
 	}
 	side.used += size

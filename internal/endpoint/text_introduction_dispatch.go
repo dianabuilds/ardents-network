@@ -289,7 +289,7 @@ func (owner *textContext) retainTextIntroductionRecovery(binding *textServiceBin
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if !owner.liveTextServiceJobLocked(binding.job, broker.Administration) || binding.recovery != nil ||
-		len(owner.introductionRecovery) >= maximumTextIntroductionWaiters {
+		len(owner.introductionRecovery) >= owner.streamConnectionLimitLocked() {
 		return errors.New("text Introduction recovery owner capacity unavailable")
 	}
 	if owner.introductionRecovery == nil {

@@ -1,0 +1,199 @@
+//go:build linux
+
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
+)
+
+func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "fixture")
+	seed := strings.Repeat("12", 32)
+	if err := run([]string{"-output", output, "-reader-host", "192.0.2.10",
+		"-publisher-host", "192.0.2.20", "-carrier", "tcp-tls", "-cell", "net14ad",
+		"-profile", "client-to-publisher", "-seed", seed, "-at", "2026-09-15T10:00:00Z"}); err != nil {
+		t.Fatal(err)
+	}
+	var bundle fixtureBundle
+	readFixtureJSON(t, filepath.Join(output, "fixture.json"), &bundle)
+	if bundle.Schema != "ardents-qualification-network-fixture-v1" || bundle.Seed != seed ||
+		len(bundle.Nodes) != 16 || len(bundle.Participants) != 5 || len(bundle.Sources) != 2 ||
+		bundle.ReaderEntry == "" || bundle.ReaderInterior == "" || bundle.PublisherEntry == "" ||
+		bundle.PublisherInterior == "" || bundle.DataJoin != bundle.Nodes[15].ID || bundle.NotAfter != "2026-09-15T16:00:00Z" {
+		t.Fatalf("fixture bundle is incomplete: %+v", bundle)
+	}
+	if bundle.RemoteRoot == "" || bundle.HostingRoot != "/var/lib/ardents/qualification/issue60-121212121212-hosting" ||
+		bundle.NodeInventory != "node-inventory.json" || len(bundle.NodePlans) != 16 ||
+		len(bundle.SourcePlans) != 2 || bundle.HostingRoot == "" || bundle.ClockObservationFile == "" ||
+		bundle.ReaderPlanTemplate == "" || bundle.PublisherPlan == "" || bundle.Net32Plan == "" || bundle.ClosedProfilePlan == "" ||
+		bundle.IssuerInitialization == "" || bundle.PreparationInventory == "" || len(bundle.ServiceInitializationPlans) != 5 {
+		t.Fatalf("fixture runtime plans are incomplete: %+v", bundle)
+	}
+	materializations := make(map[string]uint64, 23)
+	for _, item := range bundle.Nodes {
+		materializations[item.ID] = item.MaterializationIndex
+	}
+	for _, item := range bundle.Participants {
+		materializations[item.ID] = item.MaterializationIndex
+	}
+	for _, item := range bundle.Sources {
+		materializations[item.StateNodeID] = item.MaterializationIndex
+	}
+	orderedIDs := make([]string, 0, len(materializations))
+	for id := range materializations {
+		orderedIDs = append(orderedIDs, id)
+	}
+	sort.Strings(orderedIDs)
+	if len(orderedIDs) != 23 {
+		t.Fatalf("materialization owner set has %d identities", len(orderedIDs))
+	}
+	for index, id := range orderedIDs {
+		if materializations[id] != uint64(index) {
+			t.Fatalf("materialization for sorted owner %s = %d, want %d", id, materializations[id], index)
+		}
+	}
+	var inventory nodeInventoryDocument
+	readFixtureJSON(t, filepath.Join(output, bundle.NodeInventory), &inventory)
+	if inventory.Schema != "ardents-qualification-node-inventory-v2" || len(inventory.Nodes) != 16 || len(inventory.Sources) != 2 {
+		t.Fatalf("runtime inventory is incomplete: %+v", inventory)
+	}
+	runtimePlans := append(append([]string{}, bundle.NodePlans...), bundle.SourcePlans...)
+	runtimePlans = append(runtimePlans, bundle.ServiceInitializationPlans...)
+	runtimePlans = append(runtimePlans, bundle.ReaderPlanTemplate, bundle.PublisherPlan, bundle.Net32Plan, bundle.ClosedProfilePlan, bundle.IssuerInitialization, bundle.PreparationInventory)
+	for _, relative := range runtimePlans {
+		if info, err := os.Stat(filepath.Join(output, filepath.FromSlash(relative))); err != nil || info.Size() == 0 {
+			t.Fatalf("runtime plan %s is absent: %v", relative, err)
+		}
+	}
+	duties := map[string]int{}
+	privateOverrides, carrierRelays := 0, 0
+	for _, relative := range bundle.NodePlans {
+		var plan map[string]json.RawMessage
+		readFixtureJSON(t, filepath.Join(output, filepath.FromSlash(relative)), &plan)
+		selected := 0
+		for _, duty := range []string{"closed_forwarding", "closed_issuer", "closed_resolution", "closed_introduction", "closed_data_join"} {
+			if _, ok := plan[duty]; ok {
+				duties[duty]++
+				selected++
+			}
+		}
+		if selected != 1 {
+			t.Fatalf("node plan %s selected %d duties", relative, selected)
+		}
+		if _, ok := plan["closed_listen_private_override"]; ok {
+			privateOverrides++
+		}
+		var forwarding map[string]json.RawMessage
+		if body, ok := plan["closed_forwarding"]; ok {
+			if err := json.Unmarshal(body, &forwarding); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := forwarding["carrier_relay_endpoint"]; ok {
+				carrierRelays++
+			}
+		}
+	}
+	if duties["closed_forwarding"] != 12 || duties["closed_issuer"] != 1 || duties["closed_resolution"] != 1 ||
+		duties["closed_introduction"] != 1 || duties["closed_data_join"] != 1 || privateOverrides != 5 || carrierRelays != 1 {
+		t.Fatalf("runtime topology mismatch: duties=%v private_overrides=%d carrier_relays=%d", duties, privateOverrides, carrierRelays)
+	}
+	var readerPlan, publisherPlan qualificationOwnerDocument
+	readFixtureJSON(t, filepath.Join(output, bundle.ReaderPlanTemplate), &readerPlan)
+	readFixtureJSON(t, filepath.Join(output, bundle.PublisherPlan), &publisherPlan)
+	if len(readerPlan.Participants) != 4 || len(publisherPlan.Participants) != 1 ||
+		readerPlan.Participants[0].Profile != 1 || publisherPlan.Participants[0].Profile != 1 {
+		t.Fatalf("owner plans do not select the complete workload: %+v / %+v", readerPlan, publisherPlan)
+	}
+	var net32 qualificationOwnerDocument
+	readFixtureJSON(t, filepath.Join(output, bundle.Net32Plan), &net32)
+	if net32.Mode != "net32-idle" || len(net32.Participants) != 1 || net32.Participants[0].Role != 1 ||
+		net32.Participants[0].Profile != 1 || net32.Participants[0].Condition != 1 || net32.Participants[0].Link != "" {
+		t.Fatalf("NET-32 plan is not the fixed User projection: %+v", net32)
+	}
+	var profile closedProfileTemplate
+	readFixtureJSON(t, filepath.Join(output, bundle.ClosedProfilePlan), &profile)
+	if profile.IssuanceAuthorityKey != "REPLACE_WITH_ADMISSION_AUTHORITY" || len(profile.Nodes) != 16 || len(profile.TokenKeys) != 0 {
+		t.Fatalf("closed profile template lost its explicit late bindings: %+v", profile)
+	}
+	var manifest networkManifest
+	readFixtureJSON(t, filepath.Join(output, bundle.NetworkManifest), &manifest)
+	if manifest.Version != 1 || manifest.Cell != "net14ad" || manifest.Carrier != "tcp-tls" ||
+		len(manifest.Paths) != 2 || len(manifest.Relays) != 6 || len(manifest.Failures) != 0 {
+		t.Fatalf("network manifest is incomplete: %+v", manifest)
+	}
+	for index := 0; index < 23; index++ {
+		for _, relative := range []string{
+			filepath.Join("state", "inputs", fourDigits(index)+".bin"),
+			filepath.Join("state", "materializations", fourDigits(index)+".bin"),
+		} {
+			if info, err := os.Stat(filepath.Join(output, relative)); err != nil || info.Size() == 0 {
+				t.Fatalf("fixture artifact %s is absent: %v", relative, err)
+			}
+		}
+	}
+	for _, participant := range bundle.Participants {
+		entries, err := os.ReadDir(filepath.Join(output, participant.EntryRoot))
+		if err != nil || len(entries) < 4 {
+			t.Fatalf("participant Entry root %s is incomplete: %v", participant.EntryRoot, err)
+		}
+	}
+	if err := run([]string{"-output", output}); err == nil {
+		t.Fatal("generator replaced an existing private fixture")
+	}
+}
+
+func TestRunRejectsRedundantRecoveryBaselineCell(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "baseline")
+	if err := run([]string{"-output", output, "-reader-host", "192.0.2.10",
+		"-publisher-host", "192.0.2.20", "-carrier", "tcp-tls", "-cell", "net14-recovery-baseline",
+		"-profile", "client-to-publisher", "-seed", strings.Repeat("33", 32), "-at", "2026-09-15T10:00:00Z"}); err == nil {
+		t.Fatal("generator accepted a duplicate recovery baseline instead of reusing NET-14AD")
+	}
+}
+
+func TestRunCreatesRecoveryScheduleAndRejectsAmbiguousHosts(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "recovery")
+	if err := run([]string{"-output", output, "-reader-host", "192.0.2.10",
+		"-publisher-host", "192.0.2.20", "-carrier", "quic", "-cell", "net14-recovery",
+		"-profile", "publisher-to-client", "-seed", strings.Repeat("34", 32), "-at", "2026-09-15T10:00:00Z"}); err != nil {
+		t.Fatal(err)
+	}
+	var manifest networkManifest
+	readFixtureJSON(t, filepath.Join(output, "network-manifest.json"), &manifest)
+	if manifest.Carrier != "quic" || len(manifest.Failures) != 3 {
+		t.Fatalf("recovery fixture has no exact schedule: %+v", manifest)
+	}
+	for _, relay := range manifest.Relays {
+		if relay.Network != "udp" {
+			t.Fatal("QUIC fixture emitted a non-UDP relay")
+		}
+	}
+	if err := run([]string{"-output", filepath.Join(t.TempDir(), "invalid"),
+		"-reader-host", "192.0.2.10", "-publisher-host", "192.0.2.10", "-carrier", "quic",
+		"-cell", "net14ad", "-profile", "client-to-publisher", "-seed", strings.Repeat("56", 32), "-at", "2026-09-15T10:00:00Z"}); err == nil {
+		t.Fatal("fixture accepted one machine as both owners")
+	}
+}
+
+func readFixtureJSON(t *testing.T, path string, destination any) {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(body)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(destination); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func fourDigits(value int) string {
+	const digits = "0123456789"
+	return string([]byte{digits[value/1000%10], digits[value/100%10], digits[value/10%10], digits[value%10]})
+}

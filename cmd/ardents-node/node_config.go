@@ -18,6 +18,8 @@ import (
 const legacyRendezvousDedicatedHostResourceProfile = "h4-5-rendezvous-alpha-v1"
 
 type nodePlan struct {
+	HostingRoot          string `json:"hosting_root,omitempty"`
+	ClosedListenOverride string `json:"closed_listen_private_override,omitempty"`
 	sourceServerPlan
 	ClockObservationFile    string                  `json:"clock_observation_file"`
 	OrderSeed               string                  `json:"order_seed"`
@@ -112,12 +114,13 @@ type closedResolutionPlan struct {
 // closedForwardingPlan supplies only the local receiving spend root and finite
 // work bounds. State selects adjacent/interior duty, listener and next peers.
 type closedForwardingPlan struct {
-	Root               string                  `json:"root"`
-	ConnectionLimit    uint16                  `json:"connection_limit"`
-	DrainTimeoutMS     uint32                  `json:"drain_timeout_ms"`
-	HostingRoot        string                  `json:"hosting_root"`
-	AdmissionTraffic   resource.HostingTraffic `json:"admission_traffic"`
-	TerminationTraffic resource.HostingTraffic `json:"termination_traffic"`
+	Root                 string                  `json:"root"`
+	ConnectionLimit      uint16                  `json:"connection_limit"`
+	DrainTimeoutMS       uint32                  `json:"drain_timeout_ms"`
+	HostingRoot          string                  `json:"hosting_root"`
+	CarrierRelayEndpoint string                  `json:"carrier_relay_endpoint,omitempty"`
+	AdmissionTraffic     resource.HostingTraffic `json:"admission_traffic"`
+	TerminationTraffic   resource.HostingTraffic `json:"termination_traffic"`
 }
 
 type nodeSource struct {
@@ -231,6 +234,9 @@ func readNodePlan(path string) (nodeRuntime, error) {
 			return nodeRuntime{}, err
 		}
 	}
+	if err := validatePlanCarrierRelayEndpoint(plan); err != nil {
+		return nodeRuntime{}, err
+	}
 	nodeConfig, err := loadNodeIdentity(plan, state.NetworkID)
 	if err != nil {
 		return nodeRuntime{}, err
@@ -254,6 +260,7 @@ type closedIntroductionPlan struct {
 
 // closedDataJoinPlan reserves local resources; State selects the receiving duty.
 type closedDataJoinPlan struct {
+	HostingRoot     string `json:"hosting_root"`
 	AdmissionRoot   string `json:"admission_root"`
 	ConnectionLimit uint16 `json:"connection_limit"`
 	DrainTimeoutMS  uint32 `json:"drain_timeout_ms"`

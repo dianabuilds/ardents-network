@@ -30,11 +30,26 @@ peer reset. Lane owners still join readers, writers and children before
 releasing their roots. This terminal abort is distinct from directional ARDP
 EOF and authenticated Service completion; direct role and inner TLS closure
 keep their existing semantics.
+On State loss or an accepted successor, the Node lifecycle stops the old
+forwarding duty, closes its listener and outgoing pool, and waits for every
+accepted handler and retained session reader before releasing the spend root.
+While one child is pending downstream HELLO/ACCEPT, the parent reader still
+serves lane-zero control and independently selected children. A pending child's
+frames remain in Route's bounded accounted queues; CLOSE cancels and joins only
+that child opener before its reservation is released.
+An old reader can invalidate only its exact Carrier lease incarnation, so a
+late terminal result cannot close a replacement with the same public key.
 
 The shared successor listener gives each arriving connection its own bounded
 handshake/first-stream interval. Waiting without a peer does not consume that
 interval or make the next valid peer inherit an expired deadline. Issuer, forwarding and resolution consumers use this interface; current State classification and
 subsequent HELLO/admission deadlines remain separate checks.
+For a retained forwarding Carrier, one exact-key creator owns outer HELLO/ACCEPT
+I/O; same-key callers wait for that terminal result and receive the same live
+session only when their leases name the same incarnation. A blocked creator
+does not hold the session map lock, so an unrelated ready Carrier continues to
+open and carry child work. A waiter can cancel without canceling that creator;
+the creator publishes only after its cancellation close callback has joined.
 
 The exclusive `closed_resolution` reservation similarly connects the selected
 resolution duty to private Descriptor publication and lookup. It supplies
@@ -150,14 +165,14 @@ candidate's profile. `OpenNodeLeg` and `ListenNodeCarrier` accept exactly one
 profile and never race or fall back. A State successor drains and withdraws the
 old duty; it does not rewrite an active attachment.
 
-One optional Rendezvous-only operational seam admits a literal loopback listen
-address on the same numeric port as that signed candidate. It exists so a
-host-owned, byte-transparent Carrier relay can bind the State-advertised
-address while the exact product Rendezvous binds loopback behind it. The seam
-cannot change any advertised candidate, Node identity, State digest or Epoch,
-or Carrier profile; hostname, unspecified, public, and port-divergent overrides
-fail before listener startup. With no override, Rendezvous binds the State
-endpoint exactly as before.
+One qualification-only operational seam admits a literal loopback or private
+IPv4 listen address for a State-selected closed Route duty. A host-owned,
+byte-transparent Carrier relay binds the public State endpoint and forwards to
+that private address. One forwarding duty may likewise dial a declared relay
+address while authenticating the exact peer, key, Carrier and duty selected by
+State. These adapters change socket placement only; they cannot select a Route
+peer or create a second network identity. With no adapter, the Node binds and
+dials the State endpoints exactly as before.
 
 ## TLS material boundaries
 
@@ -251,6 +266,9 @@ and confirmed removal. The operator contract is the
   cover durable reopen, corruption, replay, invitation replacement, successor-
   State admission rejection, active attachment cancellation and exactly-once
   cleanup, pressure, listener drain, cleanup fault propagation, and withdrawal.
+  Linux race checks additionally exercise State-successor drain, forwarding
+  Stop/root retention, cancellation racing a late outer ACCEPT, and late
+  Carrier invalidation against a replacement incarnation.
 - The maintained Carrier cells cover exact TCP/TLS and QUIC peer/binding
   authentication, pending-admission reservation before QUIC authentication,
   signed v1/v2 State projection and unknown-profile rejection, both directions

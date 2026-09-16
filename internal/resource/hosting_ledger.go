@@ -123,14 +123,19 @@ func (reservation *HostingReservation) Release(ctx context.Context) error {
 	if reservation.released {
 		return reservation.err
 	}
-	reservation.released = true
+	mutating := false
 	_, reservation.err = reservation.owner.transact(ctx, func(state *hostingState, _ time.Time) error {
+		mutating = true
 		if reservation.bytes > state.Reserved {
 			return errors.New("hosting reservation continuity is unavailable")
 		}
 		state.Reserved -= reservation.bytes
 		return nil
 	})
+	// A rejected context before this callback has not started a mutation and
+	// leaves this handle retryable. Once the callback starts, a later storage
+	// failure may follow a committed refund, so the handle remains unresolved.
+	reservation.released = mutating
 	return reservation.err
 }
 

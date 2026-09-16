@@ -1,7 +1,9 @@
 package node
 
 import (
+	"context"
 	"encoding/binary"
+	"errors"
 	"net"
 	"sync"
 	"testing"
@@ -34,7 +36,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 4, Lane: 1, Body: body}); err != nil {
 		t.Fatal(err)
 	}
-	channel.Next() // The already selected next hop is the explicit pipe fixture below.
+	channel.NextAvailable(nil) // The already selected next hop is the explicit pipe fixture below.
 	local, peer := net.Pipe()
 	defer local.Close()
 	defer peer.Close()
@@ -48,7 +50,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	defer pool.Close()
 	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3},
 		PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
-	lease, err := pool.Acquire(key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +133,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 		if _, err := channel.Accept(frame); err != nil {
 			t.Fatal(err)
 		}
-		event, available := channel.Next()
+		event, available := channel.NextAvailable(nil)
 		if !available || event.Kind != frame.Kind {
 			t.Fatal("outbound event missing")
 		}
@@ -157,7 +159,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 		links := map[uint32]*closedForwardingLink{1: link}
 		finished := make(chan error, 1)
 		go func() {
-			finished <- (&closedForwardingServer{}).drainForwarding(t.Context(), channel, links, link.write, link.abort)
+			finished <- (&closedForwardingServer{}).drainForwarding(t.Context(), channel, links, nil, link.write, link.abort)
 		}()
 		select {
 		case err := <-finished:
@@ -195,7 +197,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 		}
 		finished := make(chan error, 1)
 		go func() {
-			finished <- (&closedForwardingServer{}).drainForwarding(t.Context(), channel, map[uint32]*closedForwardingLink{1: link}, link.write, link.abort)
+			finished <- (&closedForwardingServer{}).drainForwarding(t.Context(), channel, map[uint32]*closedForwardingLink{1: link}, nil, link.write, link.abort)
 		}()
 		select {
 		case err := <-finished:
@@ -235,7 +237,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	}
 	links := map[uint32]*closedForwardingLink{1: link}
 	server := &closedForwardingServer{}
-	if err := server.drainForwarding(t.Context(), channel, links, link.write, link.abort); err != nil {
+	if err := server.drainForwarding(t.Context(), channel, links, nil, link.write, link.abort); err != nil {
 		t.Fatalf("completed child cleanup poisoned retained prefix: %v", err)
 	}
 	if len(links) != 0 {
@@ -262,7 +264,7 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 		if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 4, Lane: lane, Body: body}); err != nil {
 			t.Fatal(err)
 		}
-		channel.Next()
+		channel.NextAvailable(nil)
 	}
 	local, peer := net.Pipe()
 	defer local.Close()
@@ -270,11 +272,11 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	pool, _ := route.NewClosedCarrierPool(clock)
 	defer pool.Close()
 	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3}, PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
-	lease, err := pool.Acquire(key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	sibling, err := pool.Acquire(key, func() error { return nil }, func() (route.Carrier, error) { t.Fatal("redialed live pair"); return nil, nil })
+	sibling, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { t.Fatal("redialed live pair"); return nil, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +297,7 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	if _, err := channel.Accept(route.ClosedLaneFrame{Kind: 9, Lane: 1, Body: []byte{1}}); err != nil {
 		t.Fatal(err)
 	}
-	channel.Next()
+	channel.NextAvailable(nil)
 	// Reproduce both windows: the reader sees retirement before session.stop,
 	// and one already queued output completes after the same retirement.
 	if !session.deliverReverse(late) || len(first.frames) != 4 {
@@ -331,4 +333,50 @@ func TestClosedForwardingRetiredReverseCannotAbortSiblingOrSharedCarrier(t *test
 	}
 	channel.ReleaseReverse(frame)
 	session.retire(5)
+}
+
+func TestClosedForwardingOpeningsCancelLaneRetainsEarlierSuccess(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, aCancel := context.WithCancel(ctx)
+	_, bCancel := context.WithCancel(ctx)
+	openings := &closedForwardingOpenings{ctx: ctx, cancel: cancel, results: make(chan closedForwardingOpenResult, 2), pending: map[uint32]context.CancelFunc{1: aCancel, 3: bCancel}}
+	links := make(map[uint32]*closedForwardingLink)
+	openings.results <- closedForwardingOpenResult{lane: 3}
+	openings.results <- closedForwardingOpenResult{lane: 1}
+	if err := openings.cancelLane(1, links); err != nil {
+		t.Fatal(err)
+	}
+	if _, pending := openings.pending[1]; pending {
+		t.Fatal("canceled lane remained pending")
+	}
+	if link, found := links[3]; !found || link != nil {
+		t.Fatalf("earlier B success lost: %t / %v", found, link)
+	}
+}
+
+func TestClosedForwardingOpeningsCloseRetainsPhysicalErrorAlongsideCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, laneCancel := context.WithCancel(ctx)
+	physical := errors.New("physical disposal failed")
+	openings := &closedForwardingOpenings{ctx: ctx, cancel: cancel, results: make(chan closedForwardingOpenResult, 1), pending: map[uint32]context.CancelFunc{1: laneCancel}}
+	openings.results <- closedForwardingOpenResult{lane: 1, err: errors.Join(context.Canceled, physical)}
+	if err := openings.close(nil); !errors.Is(err, physical) {
+		t.Fatalf("physical cancellation cleanup error lost: %v", err)
+	}
+}
+
+func TestClosedForwardingBlockedLaneCloseLeavesIndependentOpenAvailable(t *testing.T) {
+	links := map[uint32]*closedForwardingLink{1: {forwarding: true}}
+	if closedForwardingEventAvailable(route.ClosedForwardingEvent{Kind: 9, Lane: 1}, links) {
+		t.Fatal("blocked child CLOSE became available")
+	}
+	if !closedForwardingEventAvailable(route.ClosedForwardingEvent{Kind: 4, Lane: 3}, links) {
+		t.Fatal("independent child OPEN was hidden by blocked lane")
+	}
+	links[1].forwarding = false
+	if !closedForwardingEventAvailable(route.ClosedForwardingEvent{Kind: 9, Lane: 1}, links) {
+		t.Fatal("CLOSE did not become available after child writer completed")
+	}
 }

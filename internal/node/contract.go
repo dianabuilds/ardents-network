@@ -113,17 +113,23 @@ type dutyAuthority struct{ ID, PublicKey [32]byte }
 
 // Config binds one local identity, authenticated duty facts, and private role-probe listener.
 type Config struct {
-	NetworkID     [32]byte
-	NodeID        [32]byte
-	IdentityKey   ed25519.PrivateKey
-	Current       func() (DutyView, error)
-	Probe         ProbeConfig
-	Rendezvous    RendezvousProfile
-	Initiator     InitiatorProfile
-	Introduction  IntroductionProfile
-	Responder     ResponderProfile
-	TransitIssuer TransitIssuerProfile
-	ClosedIssuer  ClosedIssuerProfile
+	// HostingRoot is the single installed provider period shared by all closed duties on this host.
+	HostingRoot string
+	// ClosedListenOverride is an optional private local bind address behind an
+	// operator-owned relay. State remains authoritative for the advertised
+	// endpoint used by every peer.
+	ClosedListenOverride string
+	NetworkID            [32]byte
+	NodeID               [32]byte
+	IdentityKey          ed25519.PrivateKey
+	Current              func() (DutyView, error)
+	Probe                ProbeConfig
+	Rendezvous           RendezvousProfile
+	Initiator            InitiatorProfile
+	Introduction         IntroductionProfile
+	Responder            ResponderProfile
+	TransitIssuer        TransitIssuerProfile
+	ClosedIssuer         ClosedIssuerProfile
 	// ClosedForwarding supplies the isolated receiving spend journal and Node
 	// TLS key for an accepted generation-3 adjacent/interior forwarding duty.
 	// State still selects the endpoint, peer and recipient assignment.
@@ -231,10 +237,14 @@ type ClosedForwardingProfile struct {
 	DrainTimeout    time.Duration
 	// HostingRoot names the installed shared provider-period ledger. It is
 	// local operator configuration, never State or token material.
-	HostingRoot        string
-	AdmissionTraffic   resource.HostingTraffic
-	TerminationTraffic resource.HostingTraffic
-	host               closedForwardingHost
+	HostingRoot string
+	// CarrierRelayEndpoint is an optional operator-owned transparent relay
+	// address for this forwarding Node's State-selected next Carrier. It cannot
+	// change the selected Node identity, key, duty, profile, or TLS verification.
+	CarrierRelayEndpoint string
+	AdmissionTraffic     resource.HostingTraffic
+	TerminationTraffic   resource.HostingTraffic
+	host                 closedForwardingHost
 }
 
 func (facts dutyFacts) DutyGeneration() string          { return facts.Generation }
@@ -359,17 +369,19 @@ func (facts dutyFacts) DutyAuthorityPublicKey(index uint8) [32]byte {
 
 // Event is one bounded external observation of Node lifecycle state.
 type Event struct {
-	Schema           string           `json:"schema"`
-	Kind             string           `json:"kind"`
-	State            string           `json:"state"`
-	At               time.Time        `json:"at"`
-	Epoch            uint64           `json:"epoch,omitempty"`
-	Generation       string           `json:"generation,omitempty"`
-	Assignment       string           `json:"assignment,omitempty"`
-	CarrierProfile   string           `json:"carrier_profile,omitempty"`
-	AssignmentDigest [32]byte         `json:"assignment_digest,omitempty"`
-	Reason           string           `json:"reason,omitempty"`
-	Resource         *resource.Sample `json:"resource,omitempty"`
+	Elapsed          time.Duration           `json:"elapsed,omitempty"`
+	Hosting          *resource.HostingSample `json:"hosting,omitempty"`
+	Schema           string                  `json:"schema"`
+	Kind             string                  `json:"kind"`
+	State            string                  `json:"state"`
+	At               time.Time               `json:"at"`
+	Epoch            uint64                  `json:"epoch,omitempty"`
+	Generation       string                  `json:"generation,omitempty"`
+	Assignment       string                  `json:"assignment,omitempty"`
+	CarrierProfile   string                  `json:"carrier_profile,omitempty"`
+	AssignmentDigest [32]byte                `json:"assignment_digest,omitempty"`
+	Reason           string                  `json:"reason,omitempty"`
+	Resource         *resource.Sample        `json:"resource,omitempty"`
 }
 
 // Result describes the observed terminal lifecycle outcome. FAILED may report
@@ -384,6 +396,12 @@ type Result struct {
 }
 
 type runtimeConfig struct {
+	measurementOrigin time.Time
+	hostingSample     *resource.HostingSample
+	hostingUsage      resource.Sample
+	host              closedForwardingHost
+	hostingNext       time.Time
+	hostingLevel      pressureLevel
 	Config
 	now      func() time.Time
 	probe    *probePlan

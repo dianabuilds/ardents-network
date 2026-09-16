@@ -23,17 +23,23 @@ type textWorkerUnitState struct {
 	pendingStart bool
 }
 
-func listTextWorkerInstances(ctx context.Context, role string) (textWorkerListing, error) {
+func listInstalledWorkerInstances(ctx context.Context, role string, inventory workerInventory) (textWorkerListing, error) {
 	if role != "reader" && role != "publisher" || os.Getpid() <= 0 || os.Geteuid() <= 0 {
 		return nil, errors.New("text worker activation owner is unavailable")
 	}
 	suffix := "-" + strconv.Itoa(os.Getpid()) + "-" + strconv.Itoa(os.Geteuid()) + ".service"
 	answer, err := textManagerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
-		"ListUnitsByPatterns", "asas", "0", "1", "ardents-text-"+role+"@*"+suffix)
+		"ListUnitsByPatterns", "asas", "0", "1", inventory.prefix()+"-"+role+"@*"+suffix)
 	if err != nil {
 		return nil, err
 	}
-	return decodeTextWorkerInstances(answer, role, suffix)
+	listing, err := decodeTextWorkerInstances(answer, role, suffix)
+	for name := range listing {
+		if inventoryOfUnit(name) != inventory {
+			return nil, errors.New("worker inventory differs")
+		}
+	}
+	return listing, err
 }
 
 func decodeTextWorkerInstances(answer textManagerValue, role, suffix string) (textWorkerListing, error) {
@@ -119,17 +125,21 @@ func observeTextWorkerInstance(ctx context.Context, name, role string) (textWork
 		!idOK || !decodeTextWorkerInvocation(id, &observed.invocation) {
 		return textWorkerInstance{}, errors.New("text worker invocation is unavailable")
 	}
-	if observed.invocation == [16]byte{} || !unit.exact("TriggeredBy", "as", []string{"ardents-text-" + role + ".socket"}) {
+	if observed.invocation == [16]byte{} || !unit.exact("TriggeredBy", "as", []string{inventoryOfUnit(name).prefix() + "-" + role + ".socket"}) {
 		return textWorkerInstance{}, errors.New("text worker socket activation is unavailable")
 	}
-	if err := verifyTextWorkerProperties(unit, service, name, role, observed.cgroup, observed.pid); err != nil {
+	version, err := installedTextManagerVersion(ctx)
+	if err != nil {
 		return textWorkerInstance{}, err
 	}
-	userPrefix := "ardtxt-r-"
-	if role == "publisher" {
-		userPrefix = "ardtxt-p-"
+	if err := verifyTextWorkerPropertiesVersion(unit, service, name, role, observed.cgroup, observed.pid, version); err != nil {
+		return textWorkerInstance{}, err
 	}
-	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, "ardents-text-"+role+"@"), ".service")
+	userPrefix := inventoryOfUnit(name).user("reader")
+	if role == "publisher" {
+		userPrefix = inventoryOfUnit(name).user("publisher")
+	}
+	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, inventoryOfUnit(name).prefix()+"-"+role+"@"), ".service")
 	answer, err := textManagerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "LookupDynamicUserByName", "s", user)
 	var users []uint32
 	if err != nil || answer.Type != "u" || json.Unmarshal(answer.Data, &users) != nil || len(users) != 1 || users[0] < 61184 || users[0] > 65519 || users[0] == uint32(os.Geteuid()) {

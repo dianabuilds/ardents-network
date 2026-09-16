@@ -15,7 +15,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
-func runTextParticipant(ctx context.Context, config TextParticipantConfig) (outcome error) {
+func runTextParticipant(ctx context.Context, config TextParticipantConfig) error {
+	return withTextParticipant(ctx, config, func(owner *endpoint) error { return owner.runTextInterfaces(ctx, config) })
+}
+
+func withTextParticipant(ctx context.Context, config TextParticipantConfig, run func(*endpoint) error) (outcome error) {
 	clock := config.Clock
 	if clock == nil {
 		clock = time.Now
@@ -65,7 +69,7 @@ func runTextParticipant(ctx context.Context, config TextParticipantConfig) (outc
 	if _, err := owner.textEntrySets(); err != nil {
 		return err
 	}
-	return owner.runTextInterfaces(ctx, config)
+	return run(owner)
 }
 
 func (endpoint *endpoint) runTextInterfaces(ctx context.Context, config TextParticipantConfig) (outcome error) {
