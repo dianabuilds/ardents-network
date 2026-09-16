@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path"
+	"sort"
 	"time"
 )
 
@@ -118,6 +119,7 @@ func writeParticipantPlans(config fixtureConfig, result *generatedPlanIndex, net
 		template.Nodes = append(template.Nodes, closedProfileNode{NodeID: item.ID, RecordDigest: item.RecordSHA256,
 			RoleDomain: item.RoleDomain, Subrole: item.Subrole, DutyGeneration: item.DutyGeneration})
 	}
+	sort.Slice(template.Nodes, func(i, j int) bool { return template.Nodes[i].NodeID < template.Nodes[j].NodeID })
 	return writeJSON(config.Output, result.ClosedProfilePlan, template)
 }
 

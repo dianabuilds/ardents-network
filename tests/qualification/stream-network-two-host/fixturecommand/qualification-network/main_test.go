@@ -133,6 +133,11 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	if profile.IssuanceAuthorityKey != "REPLACE_WITH_ADMISSION_AUTHORITY" || len(profile.Nodes) != 16 || len(profile.TokenKeys) != 0 {
 		t.Fatalf("closed profile template lost its explicit late bindings: %+v", profile)
 	}
+	for index := 1; index < len(profile.Nodes); index++ {
+		if profile.Nodes[index-1].NodeID >= profile.Nodes[index].NodeID {
+			t.Fatalf("closed profile nodes are not canonical: %s then %s", profile.Nodes[index-1].NodeID, profile.Nodes[index].NodeID)
+		}
+	}
 	var manifest networkManifest
 	readFixtureJSON(t, filepath.Join(output, bundle.NetworkManifest), &manifest)
 	if manifest.Version != 1 || manifest.Cell != "net14ad" || manifest.Carrier != "tcp-tls" ||
