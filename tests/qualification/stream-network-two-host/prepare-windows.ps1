@@ -198,10 +198,11 @@ foreach ($hostName in @($ReaderHost, $PublisherHost)) {
     Send-File $control $hostName $binaryPaths.control 'upload ardents-control'
     Send-File $custody $hostName $binaryPaths.custody 'upload ardents-custody'
     [void](Invoke-SSH $hostName "chmod 755 '$remoteRoot/commands/'*; id -u ardents-endpoint >/dev/null 2>&1 || useradd --system --user-group --home-dir /var/lib/ardents/endpoint --shell /usr/sbin/nologin ardents-endpoint" 'install qualification command identities')
-    $privateRoot = "$remoteRoot/bundle/private"
+    $bundleRoot = "$remoteRoot/bundle"
+    $privateRoot = "$bundleRoot/private"
     $nodePrivate = "$privateRoot/nodes"
     $sourcePrivate = "$privateRoot/source"
-    $bindPrivate = "set -eu; test -d '$nodePrivate'; test -d '$sourcePrivate'; test -z `"`$(find '$nodePrivate' '$sourcePrivate' -type l -print -quit)`"; chown root:ardents-endpoint '$privateRoot'; chmod 710 '$privateRoot'; chown -R ardents-endpoint:ardents-endpoint '$nodePrivate' '$sourcePrivate'; find '$nodePrivate' '$sourcePrivate' -type d -exec chmod 700 '{}' +; find '$nodePrivate' '$sourcePrivate' -type f -exec chmod 600 '{}' +; test -z `"`$(runuser -u ardents-endpoint -- find '$nodePrivate' '$sourcePrivate' -type f ! -readable -print -quit)`"; runuser -u ardents-endpoint -- test -r '$nodePrivate/00-key.pem'; runuser -u ardents-endpoint -- test -r '$sourcePrivate/0-cert.pem'; runuser -u ardents-endpoint -- test -r '$sourcePrivate/client-key.pem'"
+    $bindPrivate = "set -eu; cd /; test -d '$nodePrivate'; test -d '$sourcePrivate'; test -z `"`$(find '$nodePrivate' '$sourcePrivate' -type l -print -quit)`"; chown root:ardents-endpoint '$bundleRoot' '$privateRoot'; chmod 710 '$bundleRoot' '$privateRoot'; find '$privateRoot' -maxdepth 1 -type f -exec chown root:root '{}' +; find '$privateRoot' -maxdepth 1 -type f -exec chmod 600 '{}' +; chown -R ardents-endpoint:ardents-endpoint '$nodePrivate' '$sourcePrivate'; find '$nodePrivate' '$sourcePrivate' -type d -exec chmod 700 '{}' +; find '$nodePrivate' '$sourcePrivate' -type f -exec chmod 600 '{}' +; test -z `"`$(runuser -u ardents-endpoint -- find '$nodePrivate' '$sourcePrivate' -type f ! -readable -print -quit)`"; runuser -u ardents-endpoint -- test -r '$nodePrivate/00-key.pem'; runuser -u ardents-endpoint -- test -r '$sourcePrivate/0-cert.pem'; runuser -u ardents-endpoint -- test -r '$sourcePrivate/client-key.pem'; ! runuser -u ardents-endpoint -- test -r '$privateRoot/state-authority.pem'"
     [void](Invoke-SSH $hostName $bindPrivate 'bind qualification runtime credentials')
 }
 
