@@ -34,6 +34,11 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 		bundle.IssuerInitialization == "" || bundle.PreparationInventory == "" || len(bundle.ServiceInitializationPlans) != 5 {
 		t.Fatalf("fixture runtime plans are incomplete: %+v", bundle)
 	}
+	var provision provisioningDocument
+	readFixtureJSON(t, filepath.Join(output, bundle.PreparationInventory), &provision)
+	if provision.Schema != "ardents-qualification-provisioning-v1" || provision.Seed != seed {
+		t.Fatalf("provisioning inventory lost fixture identity: %+v", provision)
+	}
 	materializations := make(map[string]uint64, 23)
 	for _, item := range bundle.Nodes {
 		materializations[item.ID] = item.MaterializationIndex

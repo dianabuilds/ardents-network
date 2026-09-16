@@ -144,6 +144,7 @@ if ([string]$provision.Schema -cne 'ardents-qualification-provisioning-v1' -or @
     throw 'Provisioning inventory is incomplete.'
 }
 Assert-Hex ([string]$provision.NetworkID) 'NetworkID'
+Assert-Hex ([string]$provision.Seed) 'Seed'
 Assert-Hex ([string]$provision.AuthorityPublic) 'State authority'
 Assert-RemotePath ([string]$provision.RemoteRoot) 'RemoteRoot'
 Assert-RemotePath ([string]$provision.HostingRoot) 'HostingRoot'

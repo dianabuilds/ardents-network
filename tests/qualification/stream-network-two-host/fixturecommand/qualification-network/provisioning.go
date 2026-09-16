@@ -10,6 +10,7 @@ import (
 
 type provisioningDocument struct {
 	Schema, RemoteRoot, HostingRoot, NetworkID, AuthorityPublic, AuthorityKey string
+	Seed                                                                      string
 	At, NotAfter, Epoch, Inputs, ClosedProfileTemplate                        string
 	ReaderPlanTemplate, PublisherPlan, Net32Plan, NodeInventory               string
 	IssuerInitialization                                                      string
@@ -31,7 +32,7 @@ type provisioningEntryRoot struct {
 
 func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex, networkID, authority string,
 	nodes []fixtureNode, sources []fixtureSource, participants []fixtureParticipant) error {
-	document := provisioningDocument{Schema: "ardents-qualification-provisioning-v1", RemoteRoot: result.RemoteRoot, HostingRoot: result.HostingRoot,
+	document := provisioningDocument{Schema: "ardents-qualification-provisioning-v1", RemoteRoot: result.RemoteRoot, HostingRoot: result.HostingRoot, Seed: config.Seed,
 		NetworkID: networkID, AuthorityPublic: authority, AuthorityKey: remoteArtifact(result.RemoteRoot, "private/state-authority.pem"),
 		At: config.At.Format("2006-01-02T15:04:05Z"), NotAfter: config.At.Add(6 * time.Hour).Format("2006-01-02T15:04:05Z"),
 		Epoch: remoteArtifact(result.RemoteRoot, "state/epoch.bin"), Inputs: remoteArtifact(result.RemoteRoot, "state/inputs"),
