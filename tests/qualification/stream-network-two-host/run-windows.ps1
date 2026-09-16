@@ -349,6 +349,15 @@ function Deploy-Owner([string]$HostName, [string]$PlanPath) {
     $command = "set -eu; chmod 700 '$remoteRoot/package/install.py' '$remoteRoot/package/install_endpoint.py'; systemctl stop ardents-endpoint.service 2>/dev/null || :; python3 '$remoteRoot/package/install_endpoint.py' '$remoteRoot/runner' '$remoteRoot/plan.json'; python3 '$remoteRoot/package/install.py' '$remoteRoot/worker'; systemctl daemon-reload; state=`$(systemctl show ardents-endpoint.service -p ActiveState --value); if test `"`$state`" = failed; then systemctl reset-failed ardents-endpoint.service; else test `"`$state`" = inactive; fi"
     [void](Invoke-SSH $HostName $command 'install owner artifacts')
 }
+function Assert-TransientOwner([string]$HostName, [string]$Unit, [string]$Label) {
+    $properties = @{}
+    foreach ($line in @(Invoke-SSH $HostName "systemctl show '$Unit' -p User -p Group" "verify $Label owner")) {
+        if ($line -match '^([^=]+)=(.*)$') { $properties[$Matches[1]] = $Matches[2] }
+    }
+    if ([string]$properties.User -cne 'ardents-endpoint' -or [string]$properties.Group -cne 'ardents-endpoint') {
+        throw "$Label does not run as the shared qualification owner."
+    }
+}
 function Verify-NetworkManifest([string]$HostName, [string]$EvidenceName) {
     $lines = @(Invoke-SSH $HostName "chmod 700 '$remoteRoot/runner'; '$remoteRoot/runner' verify-network-manifest '$remoteRoot/network-manifest.json'" 'verify immutable network manifest')
     if ($lines.Count -ne 1) { throw 'Network manifest verifier returned an invalid evidence record.' }
@@ -482,7 +491,7 @@ function Start-StateSources {
         Send-File ([string]$item.Plan) $hostName $planRemote "upload State Source $index plan"
         $unit = "ardents-qualification-source-$attempt-$index"
         $samplerUnit = "ardents-qualification-source-sample-$attempt-$index"
-        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property NoNewPrivileges=yes --property MemoryMax=128M --property IPAccounting=yes --property TasksMax=64 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' source --config '$planRemote'"
+        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property User=ardents-endpoint --property Group=ardents-endpoint --property NoNewPrivileges=yes --property MemoryMax=128M --property IPAccounting=yes --property TasksMax=64 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' source --config '$planRemote'"
         [void](Invoke-SSH $hostName $command "start State Source $index")
         $invocation = ''
         for ($poll = 0; $poll -lt 50; $poll++) {
@@ -491,6 +500,7 @@ function Start-StateSources {
             Start-Sleep -Milliseconds 200
         }
         if ($invocation -notmatch '^[0-9a-f]{32}$') { throw "State Source $index published no invocation identity." }
+        Assert-TransientOwner $hostName $unit "State Source $index"
         $script:startedSources += [ordered]@{ ID=[string]$item.ID; Host=[string]$item.Host; Machine=$hostName; PlanSHA256=[string]$item.PlanSHA256; Unit=$unit; SamplerUnit=$samplerUnit; InvocationID=$invocation }
         $ready = $false
         for ($poll = 0; $poll -lt 75; $poll++) {
@@ -543,7 +553,7 @@ function Start-RouteNodes {
         $unit = "ardents-qualification-node-$attempt-$index"
         $samplerUnit = "ardents-qualification-sample-$attempt-$index"
         $memoryMax = if ([string]$item.Host -ceq 'reader') { '512M' } else { '1G' }
-        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property NoNewPrivileges=yes --property IPAccounting=yes --property TasksMax=256 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' node --config '$planRemote'"
+        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property User=ardents-endpoint --property Group=ardents-endpoint --property NoNewPrivileges=yes --property IPAccounting=yes --property TasksMax=256 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' node --config '$planRemote'"
         [void](Invoke-SSH $hostName $command "start Route Node $index")
         $invocation = ''
         for ($poll = 0; $poll -lt 50; $poll++) {
@@ -552,6 +562,7 @@ function Start-RouteNodes {
             Start-Sleep -Milliseconds 200
         }
         if ($invocation -notmatch '^[0-9a-f]{32}$') { throw "Route Node $index published no invocation identity." }
+        Assert-TransientOwner $hostName $unit "Route Node $index"
         $script:startedNodes += [ordered]@{ ID=[string]$item.ID; Host=[string]$item.Host; Machine=$hostName; PlanSHA256=[string]$item.PlanSHA256; Unit=$unit; SamplerUnit=$samplerUnit; InvocationID=$invocation }
         $ready = $false
         for ($poll = 0; $poll -lt 150; $poll++) {
@@ -559,11 +570,17 @@ function Start-RouteNodes {
             foreach ($line in $journal -split [Environment]::NewLine) {
                 try { $event = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
                 if ([string]$event.schema -ceq 'ardents-node-event-v1' -and [string]$event.kind -ceq 'lifecycle' -and [string]$event.state -ceq 'READY') { $ready = $true; break }
-                if ([string]$event.schema -ceq 'ardents-node-event-v1' -and [string]$event.kind -ceq 'lifecycle' -and [string]$event.state -ceq 'FAILED') { throw "Route Node $index failed before readiness." }
+                if ([string]$event.schema -ceq 'ardents-node-event-v1' -and [string]$event.kind -ceq 'lifecycle' -and [string]$event.state -ceq 'FAILED') {
+                    $detail = @(($journal -split [Environment]::NewLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 8) -join ' | '
+                    throw "Route Node $index failed before readiness: $detail"
+                }
             }
             if ($ready) { break }
             $active = ((Invoke-SSH $hostName "systemctl show '$unit' -p ActiveState --value" "read Route Node $index state") -join '').Trim()
-            if ($active -eq 'inactive' -or $active -eq 'failed') { throw "Route Node $index stopped before readiness." }
+            if ($active -eq 'inactive' -or $active -eq 'failed') {
+                $detail = @(($journal -split [Environment]::NewLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 8) -join ' | '
+                throw "Route Node $index stopped before readiness (state=$active): $detail"
+            }
             Start-Sleep -Milliseconds 200
         }
         if (-not $ready) { throw "Route Node $index readiness exceeded 30 seconds." }
@@ -841,6 +858,7 @@ try {
         Send-File $clockObserverPath $hostName "$remoteRoot/clock_observer.py" 'upload clock observer'
         Send-File $networkManifestPath $hostName "$remoteRoot/network-manifest.json" 'upload network manifest'
         Send-File $recoveryFaultPath $hostName "$remoteRoot/recovery_faults.py" 'upload recovery scheduler'
+        [void](Invoke-SSH $hostName "chown ardents-endpoint:ardents-endpoint '$remoteRoot'; chmod 700 '$remoteRoot'" 'bind staging to qualification owner')
     }
     Configure-OwnerSlices
     Start-ClockObservers
