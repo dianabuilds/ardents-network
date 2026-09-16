@@ -42,28 +42,46 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	if provision.Schema != "ardents-qualification-provisioning-v1" || provision.Seed != seed {
 		t.Fatalf("provisioning inventory lost fixture identity: %+v", provision)
 	}
-	type expectedStateOwner struct{ host, stateRoot, localRoleStateRoot, dutyRoot string }
+	type expectedStateOwner struct {
+		host, stateRoot, localRoleStateRoot string
+		dutyRoots                           []string
+	}
 	expectedState := make(map[string]expectedStateOwner, 23)
 	for index, item := range bundle.Nodes {
 		owner := fourDigits(index)[2:]
+		base := path.Join(bundle.RemoteRoot, "duty", item.ID)
+		var dutyRoots []string
+		switch {
+		case item.RoleDomain == 2 && item.Subrole == 6:
+			dutyRoots = []string{path.Join(base, "issuer"), path.Join(base, "admission")}
+		case item.RoleDomain == 2 && item.Subrole == 5:
+			dutyRoots = []string{path.Join(base, "descriptors"), path.Join(base, "admission")}
+		case item.RoleDomain == 4 && item.Subrole == 3:
+			dutyRoots = []string{path.Join(base, "admission")}
+		case item.RoleDomain == 2 && item.Subrole == 4:
+			dutyRoots = []string{path.Join(base, "admission")}
+		default:
+			dutyRoots = []string{path.Join(base, "spends")}
+		}
 		expectedState["node-"+owner] = expectedStateOwner{item.Host,
 			path.Join(bundle.RemoteRoot, "state", "node-"+owner), path.Join(bundle.RemoteRoot, "roles", "node-"+owner),
-			path.Join(bundle.RemoteRoot, "duty", item.ID)}
+			dutyRoots}
 	}
 	for _, item := range bundle.Participants {
 		expectedState[item.Name] = expectedStateOwner{item.Host,
-			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "state-roles", item.Name), ""}
+			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "state-roles", item.Name), nil}
 	}
 	for _, item := range bundle.Sources {
 		expectedState[item.Name] = expectedStateOwner{item.Host,
-			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "roles", item.Name), ""}
+			path.Join(bundle.RemoteRoot, "state", item.Name), path.Join(bundle.RemoteRoot, "roles", item.Name), nil}
 	}
 	if len(expectedState) != 23 || len(provision.State) != 23 {
 		t.Fatalf("runtime State owner inventory is incomplete: expected=%d actual=%d", len(expectedState), len(provision.State))
 	}
 	for _, item := range provision.State {
 		want, ok := expectedState[item.Owner]
-		if !ok || item.Host != want.host || item.Root != want.stateRoot || item.LocalRoleStateRoot != want.localRoleStateRoot || item.DutyRoot != want.dutyRoot {
+		if !ok || item.Host != want.host || item.Root != want.stateRoot || item.LocalRoleStateRoot != want.localRoleStateRoot ||
+			strings.Join(item.DutyRoots, "\x00") != strings.Join(want.dutyRoots, "\x00") {
 			t.Fatalf("runtime State owner %q does not bind its exact writable roots: got=%+v want=%+v", item.Owner, item, want)
 		}
 		delete(expectedState, item.Owner)

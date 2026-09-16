@@ -123,31 +123,57 @@ func writeRuntimePlans(config fixtureConfig, networkID, authority string, nodes 
 	return result, nil
 }
 
-func addClosedDuty(plan map[string]any, item fixtureNode, remoteRoot, hostingRoot string, manifest networkManifest) {
+type closedDutyLayout struct {
+	name, root, admissionRoot string
+}
+
+func (layout closedDutyLayout) writableRoots() []string {
+	roots := make([]string, 0, 2)
+	if layout.root != "" {
+		roots = append(roots, layout.root)
+	}
+	if layout.admissionRoot != "" {
+		roots = append(roots, layout.admissionRoot)
+	}
+	return roots
+}
+
+func selectedClosedDutyLayout(item fixtureNode, remoteRoot string) closedDutyLayout {
 	base := path.Join(remoteRoot, "duty", item.ID)
-	limits := map[string]any{"connection_limit": 16, "drain_timeout_ms": 5000}
 	switch {
 	case item.RoleDomain == 2 && item.Subrole == 6:
-		limits["root"], limits["admission_root"] = path.Join(base, "issuer"), path.Join(base, "admission")
-		plan["closed_issuer"] = limits
+		return closedDutyLayout{name: "closed_issuer", root: path.Join(base, "issuer"), admissionRoot: path.Join(base, "admission")}
 	case item.RoleDomain == 2 && item.Subrole == 5:
-		limits["root"], limits["admission_root"] = path.Join(base, "descriptors"), path.Join(base, "admission")
-		plan["closed_resolution"] = limits
+		return closedDutyLayout{name: "closed_resolution", root: path.Join(base, "descriptors"), admissionRoot: path.Join(base, "admission")}
 	case item.RoleDomain == 4 && item.Subrole == 3:
-		limits["admission_root"] = path.Join(base, "admission")
-		plan["closed_introduction"] = limits
+		return closedDutyLayout{name: "closed_introduction", admissionRoot: path.Join(base, "admission")}
 	case item.RoleDomain == 2 && item.Subrole == 4:
-		limits["hosting_root"], limits["admission_root"] = hostingRoot, path.Join(base, "admission")
-		plan["closed_data_join"] = limits
+		return closedDutyLayout{name: "closed_data_join", admissionRoot: path.Join(base, "admission")}
 	default:
-		limits["root"], limits["hosting_root"] = path.Join(base, "spends"), hostingRoot
+		return closedDutyLayout{name: "closed_forwarding", root: path.Join(base, "spends")}
+	}
+}
+
+func addClosedDuty(plan map[string]any, item fixtureNode, remoteRoot, hostingRoot string, manifest networkManifest) {
+	layout := selectedClosedDutyLayout(item, remoteRoot)
+	limits := map[string]any{"connection_limit": 16, "drain_timeout_ms": 5000}
+	if layout.root != "" {
+		limits["root"] = layout.root
+	}
+	if layout.admissionRoot != "" {
+		limits["admission_root"] = layout.admissionRoot
+	}
+	if layout.name == "closed_forwarding" || layout.name == "closed_data_join" {
+		limits["hosting_root"] = hostingRoot
+	}
+	if layout.name == "closed_forwarding" {
 		limits["admission_traffic"] = map[string]uint64{"tx": 64 << 20, "rx": 64 << 20}
 		limits["termination_traffic"] = map[string]uint64{"tx": 1 << 20, "rx": 1 << 20}
 		if item.ID == manifest.Paths[0].Segments[4].From {
 			limits["carrier_relay_endpoint"] = manifest.Relays[3].PublicEndpoint
 		}
-		plan["closed_forwarding"] = limits
 	}
+	plan[layout.name] = limits
 }
 
 func privateListenTarget(manifest networkManifest, publicEndpoint string) string {

@@ -86,7 +86,7 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 	text := string(body)
 	stateRoots := strings.Index(text, "$stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })")
 	localRoleRoots := strings.Index(text, "$localRoleRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.LocalRoleStateRoot })")
-	dutyRoots := strings.Index(text, "$dutyRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role -and -not [string]::IsNullOrWhiteSpace([string]$_.DutyRoot) } | ForEach-Object { [string]$_.DutyRoot })")
+	dutyRoots := strings.Index(text, "$dutyRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { foreach ($dutyRoot in @($_.DutyRoots)) { [string]$dutyRoot } })")
 	ownerPaths := strings.Index(text, "$paths = @($stateRoots + $localRoleRoots + $dutyRoots)")
 	traversableParents := strings.Index(text, `install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/roles' '$remoteRoot/duty' '$remoteRoot/endpoint' '$remoteRoot/service'`)
 	assignment := -1
@@ -107,12 +107,19 @@ func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	provisioning := string(provisioningBody)
+	runtimePlansBody, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "fixturecommand", "qualification-network", "runtime_plans.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	provisioning := string(provisioningBody) + string(runtimePlansBody)
 	for _, required := range []string{
 		"LocalRoleStateRoot",
-		"DutyRoot",
+		"DutyRoots",
 		`path.Join(result.RemoteRoot, "roles", fmt.Sprintf("node-%02d", index))`,
-		`path.Join(result.RemoteRoot, "duty", item.ID)`,
+		`path.Join(base, "spends")`,
+		`path.Join(base, "issuer")`,
+		`path.Join(base, "descriptors")`,
+		`path.Join(base, "admission")`,
 		`path.Join(result.RemoteRoot, "state-roles", item.Name)`,
 		`path.Join(result.RemoteRoot, "roles", item.Name)`,
 	} {
