@@ -74,6 +74,29 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 	}
 }
 
+func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "prepare-windows.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	stateRoots := strings.Index(text, "$stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })")
+	ownerPaths := strings.Index(text, "$paths = @($stateRoots)")
+	assignment := -1
+	if ownerPaths >= 0 {
+		if offset := strings.Index(text[ownerPaths:], "; chown -R ardents-endpoint:ardents-endpoint "); offset >= 0 {
+			assignment = ownerPaths + offset
+		}
+	}
+	if stateRoots < 0 || ownerPaths < stateRoots || assignment < ownerPaths {
+		t.Fatal("qualification preparer does not assign every host State root to the shared runtime owner")
+	}
+}
+
 func TestQualificationCustodyDoesNotBlockOnOperatorInput(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

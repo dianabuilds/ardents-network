@@ -370,10 +370,13 @@ Write-Utf8 $authorityInventoryPath (($authorityInventory | ConvertTo-Json -Depth
 foreach ($role in @('reader','publisher')) {
     $hostName = Host-Address $role
     $participantNames = @($provision.Services | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Owner })
+    $stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })
+    foreach ($stateRoot in $stateRoots) { Assert-RemotePath $stateRoot 'State owner root' }
     [void](Invoke-SSH $hostName "install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/endpoint' '$remoteRoot/service'; chmod 755 '$remoteRoot/bundle' '$remoteRoot/bundle/entry-templates'" "prepare $role Endpoint parents")
-    $paths = @([string]$provision.HostingRoot, "$remoteRoot/handover", "$remoteRoot/clock")
+    $paths = @($stateRoots)
+    $paths += @([string]$provision.HostingRoot, "$remoteRoot/handover", "$remoteRoot/clock")
     foreach ($name in $participantNames) {
-        $paths += @("$remoteRoot/state/$name", "$remoteRoot/state-roles/$name", "$remoteRoot/endpoint/$name",
+        $paths += @("$remoteRoot/state-roles/$name", "$remoteRoot/endpoint/$name",
             "$remoteRoot/service/$name", "$remoteRoot/bundle/entry-templates/$name")
     }
     $quoted = $paths | ForEach-Object { Assert-RemotePath $_ 'Endpoint owner path'; "'$_'" }
