@@ -28,6 +28,13 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 		"foreach ($class in 1..3)",
 		"the exact six-window, three-class key inventory",
 		"$serviceAuthority = New-Authority 'service'",
+		"RemoteRoot is outside the fixed issue-60 fixture namespace.",
+		"chown root:ardents-endpoint '$privateRoot'; chmod 710 '$privateRoot'",
+		"chown -R ardents-endpoint:ardents-endpoint '$nodePrivate' '$sourcePrivate'",
+		"runuser -u ardents-endpoint -- find '$nodePrivate' '$sourcePrivate' -type f ! -readable -print -quit",
+		"find '$nodePrivate' '$sourcePrivate' -type d -exec chmod 700 '{}' +",
+		"find '$nodePrivate' '$sourcePrivate' -type f -exec chmod 600 '{}' +",
+		"runuser -u ardents-endpoint -- test -r '$sourcePrivate/0-cert.pem'",
 	} {
 		if !strings.Contains(string(preparer), required) {
 			t.Fatalf("qualification preparer lacks %q", required)
@@ -41,6 +48,12 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 	serviceAuthority := strings.Index(string(preparer), "$serviceAuthority = New-Authority 'service'")
 	if rootPreparation < 0 || serviceInitialization < 0 || rootPreparation > serviceInitialization || serviceAuthority < serviceInitialization {
 		t.Fatal("qualification preparer orders Service roots and per-owner authorities incorrectly")
+	}
+	accountInstallation := strings.Index(string(preparer), "install qualification command identities")
+	privateBinding := strings.Index(string(preparer), "bind qualification runtime credentials")
+	stateAcceptance := strings.Index(string(preparer), "foreach ($state in @($provision.State))")
+	if accountInstallation < 0 || privateBinding < accountInstallation || stateAcceptance < privateBinding {
+		t.Fatal("qualification preparer does not bind runtime credentials after creating the Endpoint account and before State acceptance")
 	}
 
 	pwsh := "pwsh"
