@@ -312,6 +312,15 @@ foreach ($state in @($provision.State)) {
         '--closed-profile',$signedProfileRemote) "accept closed profile for $($state.Owner)")
 }
 
+foreach ($role in @('reader','publisher')) {
+    $hostName = Host-Address $role
+    $serviceRoots = @($provision.Services | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object {
+        Assert-RemotePath ([string]$_.Root) 'Service root'
+        "'$([string]$_.Root)'"
+    })
+    [void](Invoke-SSH $hostName ("install -d -m 755 '$remoteRoot/service'; install -d -o root -g root -m 700 " +
+        ($serviceRoots -join ' ')) "prepare $role Service roots")
+}
 foreach ($service in @($provision.Services)) {
     Assert-Name ([string]$service.Owner) 'Service owner'
     $hostName = Host-Address ([string]$service.Host)

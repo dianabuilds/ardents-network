@@ -35,6 +35,11 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 	if strings.Contains(string(preparer), "[string]$provision.At") {
 		t.Fatal("qualification preparer reuses PowerShell's culture-sensitive JSON date conversion")
 	}
+	rootPreparation := strings.Index(string(preparer), "foreach ($role in @('reader','publisher')) {")
+	serviceInitialization := strings.Index(string(preparer), "foreach ($service in @($provision.Services)) {")
+	if rootPreparation < 0 || serviceInitialization < 0 || rootPreparation > serviceInitialization {
+		t.Fatal("qualification preparer initializes Service Instances before their roots exist")
+	}
 
 	pwsh := "pwsh"
 	if runtime.GOOS == "windows" {
