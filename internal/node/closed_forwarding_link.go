@@ -21,7 +21,7 @@ type closedForwardingLink struct {
 	lease       *route.ClosedCarrierLease
 	write       func(route.ClosedLaneFrame) error
 	forward     sync.Mutex
-	forwardDone sync.WaitGroup
+	forwardDone chan struct{}
 	deadline    time.Time
 	once        sync.Once
 	channel     *route.ClosedForwardingChannel
@@ -30,6 +30,7 @@ type closedForwardingLink struct {
 	abort       func()
 	stopErr     error
 	forwarding  bool
+	stopping    bool
 	forwardErr  error
 }
 
@@ -168,21 +169,27 @@ func (openings *closedForwardingOpenings) cancelLane(lane uint32, links map[uint
 func (link *closedForwardingLink) availableForForwarding() bool {
 	link.forward.Lock()
 	defer link.forward.Unlock()
-	return !link.forwarding
+	return !link.forwarding && !link.stopping
+}
+
+func (link *closedForwardingLink) availableForClose() bool {
+	link.forward.Lock()
+	defer link.forward.Unlock()
+	return link.stopping || !link.forwarding
 }
 
 func (link *closedForwardingLink) startForwarding(event route.ClosedForwardingEvent, wake func(), abort func()) bool {
 	link.forward.Lock()
-	if link.forwarding {
+	if link.forwarding || link.stopping {
 		link.forward.Unlock()
 		return false
 	}
 	link.forwarding = true
-	link.forwardDone.Add(1)
+	done := make(chan struct{})
+	link.forwardDone = done
 	link.forward.Unlock()
 	frame := route.ClosedLaneFrame{Kind: event.Kind, Lane: link.remoteLane, Body: append([]byte(nil), event.Bytes...)}
 	go func() {
-		defer link.forwardDone.Done()
 		written, err := link.session.writeChildFrame(frame, link.deadline, link.reverse)
 		if err == nil && event.Kind == 6 && written {
 			err = link.lease.MarkUsed()
@@ -190,6 +197,7 @@ func (link *closedForwardingLink) startForwarding(event route.ClosedForwardingEv
 		link.forward.Lock()
 		link.forwardErr = errors.Join(link.forwardErr, err)
 		link.forwarding = false
+		close(done)
 		link.forward.Unlock()
 		if err != nil {
 			if abort != nil {
@@ -220,6 +228,9 @@ func closedForwardingEventAvailable(event route.ClosedForwardingEvent, links map
 		return true
 	}
 	link := links[event.Lane]
+	if event.Kind == 9 && link != nil {
+		return link.availableForClose()
+	}
 	return link != nil && link.availableForForwarding()
 }
 
@@ -423,8 +434,14 @@ func (link *closedForwardingLink) copyReverse() {
 func (link *closedForwardingLink) stop() {
 	link.once.Do(func() {
 		close(link.stopped)
+		link.forward.Lock()
+		link.stopping = true
+		done := link.forwardDone
+		link.forward.Unlock()
 		link.session.retire(link.remoteLane)
-		link.forwardDone.Wait()
+		if done != nil {
+			<-done
+		}
 		link.stopErr = link.lease.Release()
 	})
 }

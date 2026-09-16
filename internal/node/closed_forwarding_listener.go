@@ -315,7 +315,6 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	if err := connection.SetDeadline(initialDeadline); err != nil {
 		return err
 	}
-	parentDeadline := initialDeadline
 	exporter, err := route.ClosedRoleTLSExporter(connection)
 	if err != nil {
 		return err
@@ -352,12 +351,34 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 		case completed <- struct{}{}:
 		default:
 		}
-		_ = connection.SetReadDeadline(time.Now())
 	}
 	openings := newClosedForwardingOpenings(ctx, wakeParent)
+	type parentRead struct {
+		frame route.ClosedLaneFrame
+		err   error
+	}
+	reads := make(chan parentRead, 1)
+	stopReader := make(chan struct{})
+	readerDone := make(chan struct{})
+	go func() {
+		defer close(readerDone)
+		for {
+			frame, err := route.ReadClosedLaneFrame(connection)
+			select {
+			case reads <- parentRead{frame: frame, err: err}:
+			case <-stopReader:
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}()
 	defer func() {
+		close(stopReader)
 		_ = connection.SetDeadline(time.Now())
 		_ = connection.Close()
+		<-readerDone
 		for _, link := range links {
 			_ = link.close()
 		}
@@ -386,7 +407,6 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				if err := connection.SetDeadline(deadline); err != nil {
 					return err
 				}
-				parentDeadline = deadline
 				accepted, err := route.ClosedAcceptFrame(0, 64<<10)
 				if err != nil {
 					return err
@@ -421,7 +441,6 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 			if err := connection.SetDeadline(lease.Deadline); err != nil {
 				return errors.Join(err, forwarding.Cancel())
 			}
-			parentDeadline = lease.Deadline
 			accepted, frameErr := route.ClosedAcceptFrame(0, 64<<10)
 			if frameErr != nil {
 				return frameErr
@@ -457,25 +476,20 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 		}
 	}
 	for {
-		frame, readErr := route.ReadClosedLaneFrame(connection)
-		if readErr != nil {
-			if timedOut, ok := readErr.(net.Error); ok && timedOut.Timeout() {
-				select {
-				case <-completed:
-					if err := connection.SetDeadline(parentDeadline); err != nil {
-						return err
-					}
-					if err := server.drainForwarding(ctx, forwarding, links, openings, write, func() { _ = connection.Close() }); err != nil {
-						return err
-					}
-					continue
-				default:
-				}
+		select {
+		case input := <-reads:
+			if input.err != nil {
+				return input.err
 			}
-			return readErr
-		}
-		if err := accept(frame); err != nil {
-			return err
+			if err := accept(input.frame); err != nil {
+				return err
+			}
+		case <-completed:
+			if err := server.drainForwarding(ctx, forwarding, links, openings, write, func() { _ = connection.Close() }); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 }
