@@ -176,6 +176,9 @@ func (server *closedForwardingServer) serve(ctx context.Context) {
 				}
 				return
 			default:
+				if route.IsClosedSharedPeerFailure(err) {
+					continue
+				}
 				terminal = err
 				return
 			}

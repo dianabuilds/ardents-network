@@ -164,6 +164,9 @@ func (server *closedDataJoinServer) accept(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
+			if route.IsClosedSharedPeerFailure(err) {
+				continue
+			}
 			return err
 		}
 		if ctx.Err() != nil || carrier.Kind != route.ClosedSharedNode {
