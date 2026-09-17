@@ -449,8 +449,9 @@ queues remain within the admission owner's 64 MiB ceiling.
 A slow lane cannot block reading another lane's bounded control/termination.
 
 Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve
-a separate 16 KiB/channel control queue and service it before data, with
-control-rate admission to prevent priority flooding.
+a separate 16 KiB/channel control queue. Give a newly available control frame
+first service, then one already queued data frame before another control frame,
+with control-rate admission to prevent priority flooding or data starvation.
 The receiving-duty governor reserves that 16 KiB for each admitted channel
 inside its existing 64 MiB total before admitting data. Forward and reverse
 control frames share this reservation, including their complete headers;

@@ -33,6 +33,7 @@ type closedSourceChannels struct {
 	idleUntil                         time.Time
 	mu                                sync.Mutex
 	changed                           chan struct{}
+	dataDue                           bool
 	lanes                             map[uint32]*closedSourceLane
 	last                              uint32
 	queued, controlsSize, transferred uint64
@@ -234,6 +235,26 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 	return nil
 }
 
+// nextWriteLocked gives a newly available control frame first service, then
+// requires one already queued data frame before another control frame. This
+// keeps admission and retirement responsive without allowing a sustained,
+// admitted control stream to starve an issuer or other bounded child payload.
+func (owner *closedSourceChannels) nextWriteLocked() (*closedSourceWrite, bool) {
+	if len(owner.controls) > 0 && (len(owner.data) == 0 || !owner.dataDue) {
+		request := owner.controls[0]
+		owner.controls = owner.controls[1:]
+		owner.dataDue = true
+		return request, true
+	}
+	if len(owner.data) > 0 {
+		request := owner.data[0]
+		owner.data = owner.data[1:]
+		owner.dataDue = false
+		return request, false
+	}
+	return nil, false
+}
+
 func (owner *closedSourceChannels) write() {
 	defer owner.workers.Done()
 	for {
@@ -242,13 +263,7 @@ func (owner *closedSourceChannels) write() {
 			owner.mu.Unlock()
 			return
 		}
-		var request *closedSourceWrite
-		control := len(owner.controls) > 0
-		if control {
-			request, owner.controls = owner.controls[0], owner.controls[1:]
-		} else if len(owner.data) > 0 {
-			request, owner.data = owner.data[0], owner.data[1:]
-		}
+		request, control := owner.nextWriteLocked()
 		if request == nil {
 			changed := owner.changed
 			owner.mu.Unlock()
