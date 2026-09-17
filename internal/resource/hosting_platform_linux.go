@@ -18,6 +18,14 @@ type hostingLease struct{ file *os.File }
 func hostingPlatform() error { return nil }
 
 func acquireHostingLease(ctx context.Context, root *os.Root) (*hostingLease, error) {
+	return acquireHostingLeaseMode(ctx, root, syscall.LOCK_EX)
+}
+
+func acquireHostingReadLease(ctx context.Context, root *os.Root) (*hostingLease, error) {
+	return acquireHostingLeaseMode(ctx, root, syscall.LOCK_SH)
+}
+
+func acquireHostingLeaseMode(ctx context.Context, root *os.Root, mode int) (*hostingLease, error) {
 	before, err := root.Lstat("period.lock")
 	if err != nil || !before.Mode().IsRegular() {
 		return nil, errors.New("hosting lock is unavailable")
@@ -37,7 +45,7 @@ func acquireHostingLease(ctx context.Context, root *os.Root) (*hostingLease, err
 		if err := wait.Err(); err != nil {
 			return nil, errors.Join(err, file.Close())
 		}
-		err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		err := syscall.Flock(int(file.Fd()), mode|syscall.LOCK_NB)
 		if err == nil {
 			return &hostingLease{file: file}, nil
 		}

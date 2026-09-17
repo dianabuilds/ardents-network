@@ -89,8 +89,9 @@ the same provider hosting root as its Endpoint owner. Before any relay or Node
 starts, the installed candidate preflights the complete owner inventory,
 accepted State/profile, live clock observation, Service Instance, publication
 and token roots, fixed worker artifact, and actual hosting period. The
-orchestrator then starts each real Node in a separate systemd cgroup,
-waits for READY, enables systemd IP accounting, and records one-second
+orchestrator then uploads every Node plan before starting the complete Route
+group, runs each real Node in a separate systemd cgroup, requires every Node's
+current lifecycle state to be READY, enables systemd IP accounting, and records one-second
 memory/CPU, per-process tx/rx, and Node hosting samples, then requires
 WITHDRAWN and a clean exit. The pair verifier adds the colocated Node aggregate
 to the Endpoint and worker owner measurement. The complete User owner is bounded

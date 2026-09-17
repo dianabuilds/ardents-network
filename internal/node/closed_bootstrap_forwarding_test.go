@@ -3,12 +3,16 @@
 package node
 
 import (
+	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
@@ -55,6 +59,39 @@ func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
 	fixture.open = route.ClosedOpen{NextNodeID: profile.IssuerNodeID, NextDutyGeneration: profile.IssuerDutyGeneration,
 		Purpose: route.ClosedPurposeIssuer, Deadline: fixture.now.Add(time.Second)}
 	return fixture
+}
+
+func TestClosedAdmissionUsesOneConsistentRouteProjection(t *testing.T) {
+	fixture := newClosedBootstrapFixture(t)
+	identity := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
+	copy(fixture.snapshot.NodePublicKey[:], identity.Public().(ed25519.PublicKey))
+	fixture.snapshot.RecordPresent = true
+	fixture.snapshot.RecordValidFrom = fixture.now
+	fixture.snapshot.ProbeEndpoint = "127.0.0.1:41000"
+	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
+	fixture.config.NetworkID = fixture.snapshot.NetworkID
+	fixture.config.NodeID = fixture.snapshot.NodeID
+	fixture.config.IdentityKey = identity
+	fixture.config.CheckPlacement = func() error { return nil }
+	fixture.config.now = func() time.Time { return fixture.now }
+	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: t.TempDir(), HostingRoot: t.TempDir(),
+		Certificate: tlsCertificate(identity), ConnectionLimit: 1, DrainTimeout: time.Second,
+		AdmissionTraffic: resource.HostingTraffic{Tx: 1}, TerminationTraffic: resource.HostingTraffic{Tx: 1}}
+	calls := 0
+	fixture.config.CurrentClosedRoute = func() (state.ClosedRouteView, error) {
+		calls++
+		if calls > 1 {
+			return state.ClosedRouteView{}, errors.New("second Route projection read")
+		}
+		return fixture.view, nil
+	}
+	if got := assessAdmission(fixture.config, fixture.snapshot); got.kind != admissionReady || calls != 1 {
+		t.Fatalf("closed admission did not retain one Route projection: %+v calls=%d", got, calls)
+	}
+}
+
+func tlsCertificate(identity ed25519.PrivateKey) tls.Certificate {
+	return tls.Certificate{PrivateKey: identity}
 }
 
 func TestClosedBootstrapRecipientRequiresCurrentAdjacentAndExactIssuer(t *testing.T) {

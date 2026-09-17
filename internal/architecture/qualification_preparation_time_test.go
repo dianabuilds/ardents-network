@@ -212,6 +212,31 @@ func TestQualificationActivatesOwnerSliceBeforeInspectingLimits(t *testing.T) {
 	}
 }
 
+func TestQualificationStartsRouteNodesAsOnePreparedGroup(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "run-windows.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	start := strings.Index(text, "function Start-RouteNodes")
+	stop := strings.Index(text, "function Stop-RouteNodes")
+	if start < 0 || stop <= start {
+		t.Fatal("qualification runner has no bounded Route Node start function")
+	}
+	function := text[start:stop]
+	prepared := strings.Index(function, "$preparedNodes +=")
+	grouped := strings.Index(function, "$preparedNodes | Group-Object Machine")
+	started := strings.Index(function, "systemd-run --no-block --unit '$unit'")
+	ready := strings.Index(function, "read Route Node $index journal")
+	if prepared < 0 || grouped < prepared || started < grouped || ready < started {
+		t.Fatal("qualification runner does not prepare every Route Node before group start and readiness")
+	}
+}
+
 func TestQualificationResetsOnlyFailedEndpointUnit(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

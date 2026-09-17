@@ -544,6 +544,7 @@ function Write-NodeAndSourceResults {
     Write-Utf8 (Join-Path $evidence 'node-results.json') (([ordered]@{ InventorySHA256=[string]$inputFiles.node_inventory; OwnerSlices=@($script:ownerSliceRecords); Nodes=@($script:nodeRecords); Sources=@($script:sourceRecords) } | ConvertTo-Json -Depth 15 -Compress) + [Environment]::NewLine)
 }
 function Start-RouteNodes {
+    $preparedNodes = @()
     for ($index = 0; $index -lt $inventoryNodes.Count; $index++) {
         $item = $inventoryNodes[$index]
         $hostName = Relay-Host ([string]$item.Host)
@@ -551,9 +552,21 @@ function Start-RouteNodes {
         Send-File ([string]$item.Plan) $hostName $planRemote "upload Node $index plan"
         $unit = "ardents-qualification-node-$attempt-$index"
         $samplerUnit = "ardents-qualification-sample-$attempt-$index"
-        $memoryMax = if ([string]$item.Host -ceq 'reader') { '512M' } else { '1G' }
-        $command = "chmod 755 '$remoteRoot/ardents-node'; chmod 700 '$remoteRoot/node_owner_samples.py'; systemd-run --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property User=ardents-endpoint --property Group=ardents-endpoint --property NoNewPrivileges=yes --property IPAccounting=yes --property TasksMax=256 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' node --config '$planRemote'"
-        [void](Invoke-SSH $hostName $command "start Route Node $index")
+        $preparedNodes += [ordered]@{ Index=$index; ID=[string]$item.ID; Host=[string]$item.Host; Machine=$hostName; PlanRemote=$planRemote; PlanSHA256=[string]$item.PlanSHA256; Unit=$unit; SamplerUnit=$samplerUnit }
+    }
+    foreach ($group in @($preparedNodes | Group-Object Machine)) {
+        $commands = @("set -eu", "chmod 755 '$remoteRoot/ardents-node'", "chmod 700 '$remoteRoot/node_owner_samples.py'")
+        foreach ($prepared in @($group.Group)) {
+            $unit = [string]$prepared.Unit
+            $planRemote = [string]$prepared.PlanRemote
+            $commands += "systemd-run --no-block --unit '$unit' --slice ardents-qualification-owner.slice --property Type=exec --property User=ardents-endpoint --property Group=ardents-endpoint --property NoNewPrivileges=yes --property IPAccounting=yes --property TasksMax=256 --property RuntimeMaxSec=22min '$remoteRoot/ardents-node' node --config '$planRemote'"
+        }
+        [void](Invoke-SSH ([string]$group.Name) ($commands -join '; ') "start Route Node group on $($group.Name)")
+    }
+    foreach ($prepared in $preparedNodes) {
+        $index = [int]$prepared.Index
+        $hostName = [string]$prepared.Machine
+        $unit = [string]$prepared.Unit
         $invocation = ''
         for ($poll = 0; $poll -lt 50; $poll++) {
             $invocation = ((Invoke-SSH $hostName "systemctl show '$unit' -p InvocationID --value" "read Route Node $index invocation") -join '').Trim()
@@ -562,19 +575,27 @@ function Start-RouteNodes {
         }
         if ($invocation -notmatch '^[0-9a-f]{32}$') { throw "Route Node $index published no invocation identity." }
         Assert-TransientOwner $hostName $unit "Route Node $index"
-        $script:startedNodes += [ordered]@{ ID=[string]$item.ID; Host=[string]$item.Host; Machine=$hostName; PlanSHA256=[string]$item.PlanSHA256; Unit=$unit; SamplerUnit=$samplerUnit; InvocationID=$invocation }
+        $script:startedNodes += [ordered]@{ Index=$index; ID=[string]$prepared.ID; Host=[string]$prepared.Host; Machine=$hostName; PlanSHA256=[string]$prepared.PlanSHA256; Unit=$unit; SamplerUnit=[string]$prepared.SamplerUnit; InvocationID=$invocation }
+    }
+    foreach ($started in $script:startedNodes) {
+        $index = [int]$started.Index
+        $hostName = [string]$started.Machine
+        $unit = [string]$started.Unit
+        $invocation = [string]$started.InvocationID
         $ready = $false
         for ($poll = 0; $poll -lt 150; $poll++) {
             $journal = (Invoke-SSH $hostName "journalctl _SYSTEMD_INVOCATION_ID=$invocation --no-pager -o cat" "read Route Node $index journal") -join [Environment]::NewLine
+            $lifecycle = @()
             foreach ($line in $journal -split [Environment]::NewLine) {
                 try { $event = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
-                if ([string]$event.schema -ceq 'ardents-node-event-v1' -and [string]$event.kind -ceq 'lifecycle' -and [string]$event.state -ceq 'READY') { $ready = $true; break }
-                if ([string]$event.schema -ceq 'ardents-node-event-v1' -and [string]$event.kind -ceq 'lifecycle' -and [string]$event.state -ceq 'FAILED') {
-                    $detail = @(($journal -split [Environment]::NewLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 8) -join ' | '
-                    throw "Route Node $index failed before readiness: $detail"
-                }
+                if ([string]$event.schema -ceq 'ardents-node-event-v1' -and [string]$event.kind -ceq 'lifecycle') { $lifecycle += $event }
             }
-            if ($ready) { break }
+            $latest = @($lifecycle | Select-Object -Last 1)
+            if ($latest.Count -eq 1 -and [string]$latest[0].state -ceq 'READY') { $ready = $true; break }
+            if ($latest.Count -eq 1 -and @('FAILED', 'DRAINING', 'WITHDRAWN') -ccontains [string]$latest[0].state) {
+                $detail = @(($journal -split [Environment]::NewLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 8) -join ' | '
+                throw "Route Node $index terminated before group readiness: $detail"
+            }
             $active = ((Invoke-SSH $hostName "systemctl show '$unit' -p ActiveState --value" "read Route Node $index state") -join '').Trim()
             if ($active -eq 'inactive' -or $active -eq 'failed') {
                 $detail = @(($journal -split [Environment]::NewLine) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 8) -join ' | '
@@ -583,7 +604,18 @@ function Start-RouteNodes {
             Start-Sleep -Milliseconds 200
         }
         if (-not $ready) { throw "Route Node $index readiness exceeded 30 seconds." }
-        [void](Invoke-SSH $hostName "systemd-run --unit '$samplerUnit' --property Type=exec --property NoNewPrivileges=yes --property MemoryMax=32M --property TasksMax=16 --property RuntimeMaxSec=22min python3 '$remoteRoot/node_owner_samples.py' '$unit.service'" "start Route Node $index owner sampler")
+    }
+    foreach ($group in @($script:startedNodes | Group-Object Machine)) {
+        $commands = @("set -eu")
+        $activeUnits = @()
+        foreach ($started in @($group.Group)) {
+            $unit = [string]$started.Unit
+            $samplerUnit = [string]$started.SamplerUnit
+            $commands += "systemd-run --unit '$samplerUnit' --property Type=exec --property NoNewPrivileges=yes --property MemoryMax=32M --property TasksMax=16 --property RuntimeMaxSec=22min python3 '$remoteRoot/node_owner_samples.py' '$unit.service'"
+            $activeUnits += "'$unit'"
+        }
+        $commands += "systemctl is-active $($activeUnits -join ' ')"
+        [void](Invoke-SSH ([string]$group.Name) ($commands -join '; ') "start samplers and verify Route Node group on $($group.Name)")
     }
 }
 function Stop-RouteNodes {

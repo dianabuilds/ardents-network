@@ -68,7 +68,7 @@ func openHosting(path string, measure func([]string) (hostingReading, error), no
 	owner := &Hosting{root: root, measure: measure, now: now}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if _, err := owner.Observe(ctx); err != nil {
+	if _, err := owner.Sample(ctx, time.Second); err != nil {
 		return nil, errors.Join(err, owner.Close())
 	}
 	return owner, nil

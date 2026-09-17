@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -100,27 +101,31 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 	}
 	now := config.now()
 	if snapshot.Profile == route.ClosedRouteProfile {
-		if _, err := currentClosedRoute(config, snapshot, now); err != nil {
+		closedRoute, err := currentClosedRoute(config, snapshot, now)
+		if err != nil {
 			return admission{kind: admissionPrepared, reason: "closed Route State is unavailable: " + boundedReason(err)}
 		}
-		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
-			if err := validateClosedIssuerProfile(config.ClosedIssuer, config, snapshot, now); err != nil {
+		stableConfig := config
+		stableConfig.CurrentClosedRoute = func() (state.ClosedRouteView, error) { return closedRoute, nil }
+		stableConfig.CurrentClosedProfile = func() (state.ClosedProfileView, bool) { return closedRoute.Profile, true }
+		if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeIssuer, now); available {
+			if err := validateClosedIssuerProfile(config.ClosedIssuer, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeForwarding, now); available {
-			if err := validateClosedForwardingProfile(config.ClosedForwarding, config, snapshot, now); err != nil {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeForwarding, now); available {
+			if err := validateClosedForwardingProfile(config.ClosedForwarding, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeReachability, now); available {
-			if err := validateClosedResolutionProfile(config.ClosedResolution, config, snapshot, now); err != nil {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeReachability, now); available {
+			if err := validateClosedResolutionProfile(config.ClosedResolution, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIntroduction, now); available {
-			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, config, snapshot, now); err != nil {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeIntroduction, now); available {
+			if err := validateClosedIntroductionProfile(config.ClosedIntroduction, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
-		} else if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeDataJoin, now); available {
-			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, config, snapshot, now); err != nil {
+		} else if _, available := closedRouteReceiver(stableConfig, snapshot, route.ClosedPurposeDataJoin, now); available {
+			if err := validateClosedDataJoinProfile(config.ClosedDataJoin, stableConfig, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}
 			}
 		} else {

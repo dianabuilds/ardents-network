@@ -103,6 +103,36 @@ func TestHostingSampleSharesOneRecentCommittedObservation(t *testing.T) {
 	}
 }
 
+func TestHostingSampleDoesNotJoinExclusiveLeaseQueueForRecentCommit(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	measurements := 0
+	owner, err := openHosting(root, func([]string) (hostingReading, error) {
+		measurements++
+		return *reading, nil
+	}, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+
+	lock, err := os.OpenFile(filepath.Join(root, "period.lock"), os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = lock.Close() })
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_SH); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = syscall.Flock(int(lock.Fd()), syscall.LOCK_UN) })
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	shared, err := owner.Sample(ctx, time.Second)
+	if err != nil || measurements != 0 || shared.At != *now || shared.Observation.UsedBytes != 100 {
+		t.Fatalf("recent sample joined the exclusive lease queue: %+v measurements=%d err=%v", shared, measurements, err)
+	}
+}
+
 func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
