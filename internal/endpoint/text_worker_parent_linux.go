@@ -9,12 +9,43 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // The calling Endpoint must be the installed system service's main process.
 // BindsTo plus After ties each worker to loss of this service, including an
 // uncatchable Endpoint exit. Socket EOF alone cannot terminate a hostile fork.
 func verifyTextEndpointService(ctx context.Context) error {
+	if ctx == nil {
+		return errors.New("text worker Endpoint service is unavailable")
+	}
+	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	return awaitTextEndpointServiceObservation(bounded, observeTextEndpointService)
+}
+
+func awaitTextEndpointServiceObservation(ctx context.Context, observe func(context.Context) error) error {
+	if ctx == nil || observe == nil {
+		return errors.New("text worker Endpoint service is unavailable")
+	}
+	ticker := time.NewTicker(25 * time.Millisecond)
+	defer ticker.Stop()
+	var last error
+	for {
+		if err := observe(ctx); err == nil {
+			return nil
+		} else {
+			last = err
+		}
+		select {
+		case <-ctx.Done():
+			return errors.Join(last, ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func observeTextEndpointService(ctx context.Context) error {
 	if err := verifyTextWorkerPlatform(ctx); err != nil {
 		return err
 	}
