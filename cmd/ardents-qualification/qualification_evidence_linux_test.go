@@ -90,7 +90,7 @@ func TestQualificationRelayResultsBindAllDirectionalSegments(t *testing.T) {
 		}
 		inputs = append(inputs, relayResultInput{ID: relay.ID, Host: relay.Host, Container: relay.Container,
 			UpstreamSegment: relay.UpstreamSegment, ClientSegment: relay.ClientSegment, BinarySHA256: binary,
-			UpstreamBytes: 90, ClientBytes: 80, Samples: samples, TrafficControl: []string{`[{"kind":"htb","handle":"1:10","bytes":100},{"kind":"htb","handle":"1:20","stats":{"bytes":100}}]`}})
+			UpstreamBytes: 90, ClientBytes: 80, Samples: samples, TrafficControl: []string{`[{"kind":"netem","handle":"10:","parent":"1:10","bytes":100},{"kind":"netem","handle":"20:","parent":"1:20","stats":{"bytes":100}}]`}})
 	}
 	path := writeQualificationJSON(t, inputs)
 	verdict, criteria, err := readRelayResults(path, manifest, strings.Repeat("cd", 32))

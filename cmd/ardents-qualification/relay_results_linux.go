@@ -145,23 +145,33 @@ func readRelayResults(path string, manifest qualificationNetworkManifest, manife
 
 func relayClassBytes(lines []string) (map[string]uint64, error) {
 	classes := make(map[string]uint64, 2)
+	qdiscs := make(map[string]uint64, 2)
 	for _, line := range lines {
 		var records []trafficControlRecord
 		if json.Unmarshal([]byte(line), &records) != nil {
 			continue
 		}
 		for _, record := range records {
-			if record.Kind == "htb" && (record.Handle == "1:10" || record.Handle == "1:20") {
-				if _, exists := classes[record.Handle]; exists {
+			target, key := classes, record.Handle
+			if record.Kind == "netem" {
+				target, key = qdiscs, record.Parent
+			} else if record.Kind != "htb" {
+				continue
+			}
+			if key == "1:10" || key == "1:20" {
+				if _, exists := target[key]; exists {
 					return nil, errors.New("relay class counter is duplicated")
 				}
 				bytes := record.Bytes
 				if bytes == 0 {
 					bytes = record.Stats.Bytes
 				}
-				classes[record.Handle] = bytes
+				target[key] = bytes
 			}
 		}
+	}
+	if len(qdiscs) == 2 {
+		return qdiscs, nil
 	}
 	if len(classes) != 2 {
 		return nil, errors.New("relay class counters are incomplete")

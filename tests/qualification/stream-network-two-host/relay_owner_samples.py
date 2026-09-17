@@ -18,17 +18,17 @@ def stop(_signal, _frame):
 
 def classes(container):
     output = subprocess.run(
-        ["docker", "exec", container, "/usr/sbin/tc", "-s", "-j", "class", "show", "dev", "eth0"],
+        ["docker", "exec", container, "/usr/sbin/tc", "-s", "-j", "qdisc", "show", "dev", "eth0"],
         check=True, capture_output=True, text=True, timeout=10,
     ).stdout
     values = {}
     for record in json.loads(output):
-        if record.get("kind") != "htb" or record.get("handle") not in ("1:10", "1:20"):
+        if record.get("kind") != "netem" or record.get("parent") not in ("1:10", "1:20"):
             continue
         value = record.get("bytes", record.get("stats", {}).get("bytes"))
-        if not isinstance(value, int) or value < 0 or record["handle"] in values:
+        if not isinstance(value, int) or value < 0 or record["parent"] in values:
             raise RuntimeError("relay class counter is invalid")
-        values[record["handle"]] = value
+        values[record["parent"]] = value
     if set(values) != {"1:10", "1:20"}:
         raise RuntimeError("relay class counters are incomplete")
     return values
