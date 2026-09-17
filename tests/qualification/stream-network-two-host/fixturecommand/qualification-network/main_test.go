@@ -187,10 +187,19 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 		readerPlan.Participants[0].Profile != 1 || publisherPlan.Participants[0].Profile != 1 {
 		t.Fatalf("owner plans do not select the complete workload: %+v / %+v", readerPlan, publisherPlan)
 	}
+	var readerPermissionTotal uint64
+	for _, participant := range readerPlan.Participants {
+		readerPermissionTotal += qualificationPermissionTotal(t, participant, "ReaderPermission")
+	}
+	if readerPermissionTotal != 4096 || qualificationPermissionTotal(t, publisherPlan.Participants[0], "PublisherPermission") != 16384 {
+		t.Fatalf("owner plans multiply the installation permission budget: reader=%d publisher=%d", readerPermissionTotal,
+			qualificationPermissionTotal(t, publisherPlan.Participants[0], "PublisherPermission"))
+	}
 	var net32 qualificationOwnerDocument
 	readFixtureJSON(t, filepath.Join(output, bundle.Net32Plan), &net32)
 	if net32.Mode != "net32-idle" || len(net32.Participants) != 1 || net32.Participants[0].Role != 1 ||
-		net32.Participants[0].Profile != 1 || net32.Participants[0].Condition != 1 || net32.Participants[0].Link != "" {
+		net32.Participants[0].Profile != 1 || net32.Participants[0].Condition != 1 || net32.Participants[0].Link != "" ||
+		qualificationPermissionTotal(t, net32.Participants[0], "ReaderPermission") != 4096 {
 		t.Fatalf("NET-32 plan is not the fixed User projection: %+v", net32)
 	}
 	var profile closedProfileTemplate
@@ -228,6 +237,19 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	if err := run([]string{"-output", output}); err == nil {
 		t.Fatal("generator replaced an existing private fixture")
 	}
+}
+
+func qualificationPermissionTotal(t *testing.T, participant qualificationOwnerParticipant, name string) uint64 {
+	t.Helper()
+	body, err := json.Marshal(participant.Participant[name])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var permission struct{ Maxima [3]uint32 }
+	if err := json.Unmarshal(body, &permission); err != nil {
+		t.Fatal(err)
+	}
+	return uint64(permission.Maxima[0]) + uint64(permission.Maxima[1]) + uint64(permission.Maxima[2])
 }
 
 func TestRunRejectsNonHourAlignedFixtureTime(t *testing.T) {

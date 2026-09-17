@@ -112,8 +112,8 @@ func writeParticipantPlans(config fixtureConfig, result *generatedPlanIndex, net
 	participant["BrokerID"] = derivedArray(config.Seed, net32Owner+"-broker")
 	participant["ConnectionPrincipal"] = derivedArray(config.Seed, net32Owner+"-connection")
 	participant["AdministrationPrincipal"] = derivedArray(config.Seed, net32Owner+"-administration")
-	participant["ReaderPermission"] = permissionFiles(result.RemoteRoot, net32Owner, "reader", [3]uint32{1365, 1365, 1366})
-	participant["PublisherPermission"] = permissionFiles(result.RemoteRoot, net32Owner, "publisher", [3]uint32{5461, 5461, 5462})
+	participant["ReaderPermission"] = permissionFiles(result.RemoteRoot, net32Owner, "reader", splitPermissionMaxima(4096))
+	participant["PublisherPermission"] = permissionFiles(result.RemoteRoot, net32Owner, "publisher", splitPermissionMaxima(16384))
 	net32 := qualificationOwnerDocument{Mode: "net32-idle", Participants: []qualificationOwnerParticipant{{
 		Participant: participant, Role: 1, Profile: 1, Condition: 1, Seed: config.Seed,
 		ReaderIndex: base.ReaderIndex, HostingRoot: result.HostingRoot,
@@ -172,10 +172,15 @@ func participantPlan(config fixtureConfig, result *generatedPlanIndex, item fixt
 		"BrokerID":                derivedArray(config.Seed, name+"-broker"),
 		"ConnectionPrincipal":     derivedArray(config.Seed, name+"-connection"),
 		"AdministrationPrincipal": derivedArray(config.Seed, name+"-administration"),
-		"ReaderPermission":        permissionFiles(result.RemoteRoot, name, "reader", [3]uint32{1365, 1365, 1366}),
-		"PublisherPermission":     permissionFiles(result.RemoteRoot, name, "publisher", [3]uint32{5461, 5461, 5462}),
+		"ReaderPermission":        permissionFiles(result.RemoteRoot, name, "reader", splitPermissionMaxima(1024)),
+		"PublisherPermission":     permissionFiles(result.RemoteRoot, name, "publisher", splitPermissionMaxima(16384)),
 	}
 	return participant
+}
+
+func splitPermissionMaxima(total uint32) [3]uint32 {
+	base := total / 3
+	return [3]uint32{base, base, total - 2*base}
 }
 
 func permissionFiles(root, name, role string, maxima [3]uint32) map[string]any {
