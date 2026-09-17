@@ -37,8 +37,17 @@ $temporary = Join-Path ([IO.Path]::GetTempPath()) ("ardents-issue60-generator-" 
 $binary = Join-Path $temporary 'qualification-network'
 $remoteRoot = "/var/tmp/ardents-issue60-generate-$($Seed.Substring(0,12))-$([guid]::NewGuid().ToString('N'))"
 $sshOptions = @('-i', $key, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new')
-$scpOptions = @('-i', $key, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new')
+$scpOptions = @('-i', $key, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ConnectionAttempts=3', '-o', 'StrictHostKeyChecking=accept-new')
 $remote = "$User@$ReaderHost"
+
+function Invoke-SCP([string[]]$Arguments, [string]$Label) {
+    foreach ($attempt in 1..3) {
+        & scp @scpOptions @Arguments
+        if ($LASTEXITCODE -eq 0) { return }
+        if ($attempt -lt 3) { Start-Sleep -Seconds $attempt }
+    }
+    throw "$Label failed after three bounded attempts."
+}
 
 try {
     $priorGOOS, $priorGOARCH, $priorCGO = $env:GOOS, $env:GOARCH, $env:CGO_ENABLED
@@ -51,14 +60,12 @@ try {
     }
     & ssh @sshOptions $remote "set -eu; test ! -e '$remoteRoot'; install -d -m 700 '$remoteRoot'"
     if ($LASTEXITCODE -ne 0) { throw 'Create remote generator root failed.' }
-    & scp @scpOptions $binary "$($remote):$remoteRoot/qualification-network"
-    if ($LASTEXITCODE -ne 0) { throw 'Upload fixture generator failed.' }
+    Invoke-SCP @($binary, "$($remote):$remoteRoot/qualification-network") 'Upload fixture generator'
     $command = "chmod 700 '$remoteRoot/qualification-network'; '$remoteRoot/qualification-network' -output '$remoteRoot/output' -reader-host '$ReaderHost' -publisher-host '$PublisherHost' -carrier '$Carrier' -cell '$Cell' -profile '$Profile' -seed '$Seed' -at '$At'"
     & ssh @sshOptions $remote $command
     if ($LASTEXITCODE -ne 0) { throw 'Remote fixture generation failed.' }
     [IO.Directory]::CreateDirectory($outputRoot) | Out-Null
-    & scp @scpOptions -r "$($remote):$remoteRoot/output/." $outputRoot
-    if ($LASTEXITCODE -ne 0) { throw 'Download generated private fixture failed.' }
+    Invoke-SCP @('-r', "$($remote):$remoteRoot/output/.", $outputRoot) 'Download generated private fixture'
     $bundlePath = Join-Path $outputRoot 'fixture.json'
     if (-not (Test-Path -LiteralPath $bundlePath -PathType Leaf)) { throw 'Downloaded fixture is incomplete.' }
     $bundle = Get-Content -LiteralPath $bundlePath -Raw | ConvertFrom-Json

@@ -90,12 +90,18 @@ function Save-ProtectedSecret([string]$Path, [string]$Secret) {
     }
 }
 function Send-File([string]$Local, [string]$HostName, [string]$RemotePath, [string]$Label) {
-    & scp @script:scpOptions $Local (RemoteTarget $HostName $RemotePath)
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+    Invoke-SCP @($Local, (RemoteTarget $HostName $RemotePath)) $Label
 }
 function Receive-File([string]$HostName, [string]$RemotePath, [string]$Local, [string]$Label) {
-    & scp @script:scpOptions (RemoteTarget $HostName $RemotePath) $Local
-    if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+    Invoke-SCP @((RemoteTarget $HostName $RemotePath), $Local) $Label
+}
+function Invoke-SCP([string[]]$Arguments, [string]$Label) {
+    foreach ($attempt in 1..3) {
+        & scp @script:scpOptions @Arguments
+        if ($LASTEXITCODE -eq 0) { return }
+        if ($attempt -lt 3) { Start-Sleep -Seconds $attempt }
+    }
+    throw "$Label failed after three bounded attempts."
 }
 function Host-Address([string]$Role) {
     if ($Role -ceq 'reader') { return $ReaderHost }
@@ -184,15 +190,14 @@ if ($ReaderInitialUsedBytes -ge $readerLimit -or $PublisherInitialUsedBytes -ge 
 }
 
 $script:sshOptions = @('-i', $key, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new')
-$script:scpOptions = @('-i', $key, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new')
+$script:scpOptions = @('-i', $key, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ConnectionAttempts=3', '-o', 'StrictHostKeyChecking=accept-new')
 $binaryPaths = @{ ardents="$remoteRoot/commands/ardents"; node="$remoteRoot/commands/ardents-node";
     control="$remoteRoot/commands/ardents-control"; custody="$remoteRoot/commands/ardents-custody" }
 foreach ($value in $binaryPaths.Values) { Assert-RemotePath $value 'remote command path' }
 
 foreach ($hostName in @($ReaderHost, $PublisherHost)) {
     [void](Invoke-SSH $hostName "set -eu; test ! -e '$remoteRoot'; install -d -m 755 '$remoteRoot' '$remoteRoot/bundle' '$remoteRoot/commands' '$remoteRoot/handover' '$remoteRoot/clock'" 'create new qualification root')
-    & scp @script:scpOptions -r "$fixture\." (RemoteTarget $hostName "$remoteRoot/bundle/")
-    if ($LASTEXITCODE -ne 0) { throw "upload private fixture to $hostName failed." }
+    Invoke-SCP @('-r', "$fixture\.", (RemoteTarget $hostName "$remoteRoot/bundle/")) "upload private fixture to $hostName"
     Send-File $ardents $hostName $binaryPaths.ardents 'upload ardents'
     Send-File $node $hostName $binaryPaths.node 'upload ardents-node'
     Send-File $control $hostName $binaryPaths.control 'upload ardents-control'

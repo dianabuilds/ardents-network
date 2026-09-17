@@ -74,6 +74,25 @@ func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversio
 	}
 }
 
+func TestQualificationPrivateFixtureTransfersHaveBoundedRetries(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"generate-windows.ps1", "prepare-windows.ps1"} {
+		path := filepath.Join(root, "tests", "qualification", "stream-network-two-host", name)
+		body, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		for _, required := range []string{"function Invoke-SCP", "foreach ($attempt in 1..3)", "Start-Sleep -Seconds $attempt", "failed after three bounded attempts"} {
+			if !strings.Contains(string(body), required) {
+				t.Fatalf("%s lacks bounded idempotent transfer retry %q", name, required)
+			}
+		}
+	}
+}
+
 func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
