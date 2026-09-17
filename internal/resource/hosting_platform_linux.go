@@ -32,6 +32,7 @@ func acquireHostingLease(ctx context.Context, root *os.Root) (*hostingLease, err
 	}
 	wait, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
+	retryDelay := time.Millisecond
 	for {
 		if err := wait.Err(); err != nil {
 			return nil, errors.Join(err, file.Close())
@@ -43,11 +44,14 @@ func acquireHostingLease(ctx context.Context, root *os.Root) (*hostingLease, err
 		if err != syscall.EWOULDBLOCK && err != syscall.EAGAIN {
 			return nil, errors.Join(err, file.Close())
 		}
-		timer := time.NewTimer(time.Millisecond)
+		timer := time.NewTimer(retryDelay)
 		select {
 		case <-wait.Done():
 			timer.Stop()
 		case <-timer.C:
+		}
+		if retryDelay < 32*time.Millisecond {
+			retryDelay *= 2
 		}
 	}
 }
