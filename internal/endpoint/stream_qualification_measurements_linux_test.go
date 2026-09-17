@@ -6,7 +6,31 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
+
+func TestQualificationIntroductionPacerSpacesSharedParticipants(t *testing.T) {
+	owner, err := NewStreamQualificationMeasurements(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := time.Unix(1000, 0)
+	for index := 0; index < 8; index++ {
+		scheduled, err := owner.reserveIntroductionOpening(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := base.Add(time.Duration(index) * streamQualificationIntroductionSpacing)
+		if !scheduled.Equal(want) {
+			t.Fatalf("opening %d scheduled at %v, want %v", index, scheduled, want)
+		}
+	}
+	catchUp := base.Add(time.Minute)
+	scheduled, err := owner.reserveIntroductionOpening(catchUp)
+	if err != nil || !scheduled.Equal(catchUp) {
+		t.Fatalf("idle pacer did not resume immediately: %v, %v", scheduled, err)
+	}
+}
 
 func TestQualificationOwnerBarrierRequiresEveryParticipant(t *testing.T) {
 	owner, err := NewStreamQualificationMeasurements(2)

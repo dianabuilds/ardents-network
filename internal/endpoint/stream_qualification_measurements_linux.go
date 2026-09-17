@@ -11,6 +11,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
+// Publisher admits at most four new Introduction openings in a rolling second.
+// Qualification uses one opening every 300 ms so scheduling and shaped-network
+// jitter cannot compress the shared four-Reader cohort into a remote refusal.
+const streamQualificationIntroductionSpacing = 300 * time.Millisecond
+
 // StreamQualificationMeasurements owns the complete local runner process and
 // every verified worker launched by that runner. Sharing it across participants
 // prevents a Reader observation from silently omitting sibling worker processes.
@@ -20,13 +25,51 @@ import (
 // usable; overlapping windows must finish before any sibling is retired.
 type StreamQualificationMeasurements struct {
 	mu, sampleMu       sync.Mutex
+	openingMu          sync.Mutex
 	workers            map[string]bool
 	retired            bool
 	expected, finished int
 	ready              chan struct{}
+	nextOpening        time.Time
 	sampledAt          time.Time
 	hostSample         resource.HostingSample
 	usageSample        resource.Sample
+}
+
+func (owner *StreamQualificationMeasurements) reserveIntroductionOpening(now time.Time) (time.Time, error) {
+	if owner == nil || now.IsZero() {
+		return time.Time{}, errors.New("qualification Introduction pacer unavailable")
+	}
+	owner.openingMu.Lock()
+	defer owner.openingMu.Unlock()
+	scheduled := now
+	if owner.nextOpening.After(scheduled) {
+		scheduled = owner.nextOpening
+	}
+	owner.nextOpening = scheduled.Add(streamQualificationIntroductionSpacing)
+	return scheduled, nil
+}
+
+func (owner *StreamQualificationMeasurements) acquireIntroductionOpening(ctx context.Context) error {
+	if ctx == nil || ctx.Err() != nil {
+		return errors.New("qualification Introduction pacing canceled")
+	}
+	scheduled, err := owner.reserveIntroductionOpening(time.Now())
+	if err != nil {
+		return err
+	}
+	wait := time.Until(scheduled)
+	if wait <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return errors.Join(errors.New("qualification Introduction pacing canceled"), ctx.Err())
+	}
 }
 
 func (owner *StreamQualificationMeasurements) sample(ctx context.Context, host *resource.Hosting) (resource.HostingSample, resource.Sample, error) {

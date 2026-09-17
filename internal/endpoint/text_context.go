@@ -82,21 +82,22 @@ func (owner *textContext) reportTextWithdrawalFailure(failure string) {
 // textJobIdentity reserves one invocation through joined cleanup, including
 // cancellation during launch. Possession is not a qualified-launch receipt.
 type textJobIdentity struct {
-	qualificationStopSampling func() error
-	qualificationJoins        map[*route.ClosedJoinedStream]struct{}
-	qualification             *streamqualification.Init
-	qualificationObserve      func(context.Context, streamqualification.Report) error
-	qualificationReport       *streamqualification.Report
-	owner                     *textContext
-	nonce                     [32]byte
-	context                   context.Context
-	cancel                    context.CancelFunc
-	done                      chan struct{}
-	retired                   bool
-	bound                     bool
-	finished                  bool
-	cleanupErr                error
-	workerGrant               *broker.Broker
+	qualificationAcquireIntroduction func(context.Context) error
+	qualificationStopSampling        func() error
+	qualificationJoins               map[*route.ClosedJoinedStream]struct{}
+	qualification                    *streamqualification.Init
+	qualificationObserve             func(context.Context, streamqualification.Report) error
+	qualificationReport              *streamqualification.Report
+	owner                            *textContext
+	nonce                            [32]byte
+	context                          context.Context
+	cancel                           context.CancelFunc
+	done                             chan struct{}
+	retired                          bool
+	bound                            bool
+	finished                         bool
+	cleanupErr                       error
+	workerGrant                      *broker.Broker
 }
 
 // beginTextContext consumes existing local authority before any worker launch
