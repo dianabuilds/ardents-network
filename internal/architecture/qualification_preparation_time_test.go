@@ -290,6 +290,49 @@ func TestQualificationClockObserverAdvancesObservationContent(t *testing.T) {
 	t.Fatalf("clock observation content remained %q", first)
 }
 
+func TestQualificationWaitsBeforeConsumingAClosingAdmissionWindow(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	helper := filepath.Join(root, "tests", "qualification", "stream-network-two-host", "admission-window.ps1")
+	runnerPath := filepath.Join(root, "tests", "qualification", "stream-network-two-host", "run-windows.ps1")
+	runner, err := os.ReadFile(runnerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(runner)
+	for _, required := range []string{
+		". (Join-Path $PSScriptRoot 'admission-window.ps1')",
+		"Get-QualificationAdmissionWindowDelay -Now ([DateTimeOffset]::UtcNow) -MinimumRemaining ([TimeSpan]::FromMinutes(15))",
+		"Start-Sleep -Seconds $delaySeconds",
+	} {
+		if !strings.Contains(text, required) {
+			t.Fatalf("qualification runner lacks admission-window guard %q", required)
+		}
+	}
+	guard := strings.LastIndex(text, "Get-QualificationAdmissionWindowDelay -Now")
+	remoteWork := strings.Index(text, "try {\n    foreach ($hostName")
+	if guard < 0 || remoteWork < guard {
+		t.Fatal("qualification runner starts remote work before the admission-window guard")
+	}
+
+	pwsh := "pwsh"
+	if runtime.GOOS == "windows" {
+		pwsh = "pwsh.exe"
+	}
+	command := exec.Command(pwsh, "-NoProfile", "-Command",
+		". $env:ARDENTS_ADMISSION_WINDOW_SCRIPT; $open = Get-QualificationAdmissionWindowDelay -Now ([DateTimeOffset]::Parse('2026-09-17T14:30:00Z')) -MinimumRemaining ([TimeSpan]::FromMinutes(15)); $closing = Get-QualificationAdmissionWindowDelay -Now ([DateTimeOffset]::Parse('2026-09-17T14:55:00Z')) -MinimumRemaining ([TimeSpan]::FromMinutes(15)); [Console]::Write(('{0},{1}' -f [int]$open.TotalSeconds, [int]$closing.TotalSeconds))")
+	command.Env = append(os.Environ(), "ARDENTS_ADMISSION_WINDOW_SCRIPT="+helper)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("admission-window helper failed: %v\n%s", err, output)
+	}
+	if string(output) != "0,302" {
+		t.Fatalf("admission-window delays = %q, want 0,302", output)
+	}
+}
+
 func TestQualificationResetsOnlyFailedEndpointUnit(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

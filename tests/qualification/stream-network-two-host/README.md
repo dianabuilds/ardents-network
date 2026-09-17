@@ -8,6 +8,11 @@ that Link, completes all four handovers, and retains both invocation journals.
 It then runs `verify-pair` against those unedited journals, terminal relay
 counters and sixteen Route Node owner records on the installed Linux candidate.
 
+Before its first remote mutation, the runner requires at least fifteen minutes
+in the current hourly admission window. When less remains, it waits through the
+hour boundary instead of consuming a one-use Service generation with requests
+that Custody can no longer issue in the next window.
+
 Every preparation and attempt requires the full lowercase `SourceCommit` to
 equal the clean checked-out HEAD. The attempt and input receipts retain it, and
 the NET-14V verifier refuses evidence from different source commits.

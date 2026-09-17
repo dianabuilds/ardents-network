@@ -20,6 +20,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
+. (Join-Path $PSScriptRoot 'admission-window.ps1')
 $packageRoot = Join-Path $repository 'packaging\stream-qualification-worker'
 $recoveryFaultPath = Join-Path $PSScriptRoot 'recovery_faults.py'
 $nodeSamplerPath = Join-Path $PSScriptRoot 'node_owner_samples.py'
@@ -877,6 +878,12 @@ $readerPlanPath = Join-Path $evidence 'reader-plan.installed.json'
 $deployedOwners = @()
 $runFailure = $null
 $cleanupFailures = [Collections.Generic.List[string]]::new()
+$admissionDelay = Get-QualificationAdmissionWindowDelay -Now ([DateTimeOffset]::UtcNow) -MinimumRemaining ([TimeSpan]::FromMinutes(15))
+if ($admissionDelay -gt [TimeSpan]::Zero) {
+    $delaySeconds = [int][Math]::Ceiling($admissionDelay.TotalSeconds)
+    Write-Host "Waiting $delaySeconds seconds for a complete admission handover window."
+    Start-Sleep -Seconds $delaySeconds
+}
 try {
     foreach ($hostName in @($PublisherHost, $ReaderHost) | Select-Object -Unique) {
         $hostEnvelope = Invoke-SSH $hostName "uname -a; cat /etc/os-release; systemctl --version; stat -fc %T /sys/fs/cgroup; docker version --format 'docker-client={{.Client.Version}} docker-server={{.Server.Version}}'; /usr/sbin/tc -Version" 'capture host envelope'
