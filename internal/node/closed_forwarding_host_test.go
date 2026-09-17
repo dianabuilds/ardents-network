@@ -73,7 +73,8 @@ func TestClosedForwardingReaperSharesRecentHostingSample(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &closedForwardingServer{host: host, listener: listener, pool: pool, stopped: make(chan struct{})}
+	_, cancel := context.WithCancel(context.Background())
+	server := &closedForwardingServer{host: host, listener: listener, pool: pool, stopped: make(chan struct{}), cancel: cancel}
 	server.workers.Add(1)
 	joined := make(chan struct{})
 	go func() {
