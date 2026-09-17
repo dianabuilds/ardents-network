@@ -37,9 +37,9 @@ func startTextRoleProcess(t *testing.T, index int, config node.Config, root stri
 	if !ok {
 		t.Fatal("unexpected public State seam")
 	}
-	view, ok := config.CurrentClosedRoute()
-	if !ok {
-		t.Fatal("missing profile")
+	view, err := config.CurrentClosedRoute()
+	if err != nil {
+		t.Fatalf("missing profile: %v", err)
 	}
 	input := textRoleProcessInput{HostingRoot: config.HostingRoot, Snapshot: fixture.snapshot, View: view, Key: config.IdentityKey, StateRoot: config.LocalRoleStateRoot}
 	switch {

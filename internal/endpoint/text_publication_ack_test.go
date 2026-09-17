@@ -46,16 +46,16 @@ func (gate *textDescriptorACKGate) configure(t *testing.T) func(int, *node.Confi
 		current := config.CurrentClosedRoute
 		root := config.ClosedResolution.Root
 		gate.root = root
-		config.CurrentClosedRoute = func() (state.ClosedRouteView, bool) {
-			view, ok := current()
-			if ok && gate.committed(root, view.Profile) {
+		config.CurrentClosedRoute = func() (state.ClosedRouteView, error) {
+			view, err := current()
+			if err == nil && gate.committed(root, view.Profile) {
 				gate.once.Do(func() { close(gate.held) })
 				select {
 				case <-gate.release:
 				case <-t.Context().Done():
 				}
 			}
-			return view, ok
+			return view, err
 		}
 	}
 }

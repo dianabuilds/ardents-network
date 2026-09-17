@@ -17,6 +17,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
+// The installed sockets and their PID/UID instance namespace belong to the
+// process, not to one Endpoint value. Keep the inventory baseline, activation
+// and identity observation serial across every Endpoint in this process.
+var textWorkerLaunchGate = make(chan struct{}, 1)
+
 // launchTextWorker owns a local job from reservation through verified readiness.
 // No caller supplies a worker identity, artifact digest, isolation flag, socket,
 // executable, Principal or Grant. All of those observations are obtained here.
@@ -159,19 +164,13 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 }
 
 func (endpoint *endpoint) acquireTextLaunch(ctx context.Context) (func(), error) {
-	endpoint.textMu.Lock()
-	if endpoint.textMu.launch == nil {
-		endpoint.textMu.launch = make(chan struct{}, 1)
-	}
-	gate := endpoint.textMu.launch
-	endpoint.textMu.Unlock()
 	select {
-	case gate <- struct{}{}:
+	case textWorkerLaunchGate <- struct{}{}:
 		if ctx.Err() != nil || !endpoint.textAvailable() {
-			<-gate
+			<-textWorkerLaunchGate
 			return nil, errors.New("text worker activation is unavailable")
 		}
-		return func() { <-gate }, nil
+		return func() { <-textWorkerLaunchGate }, nil
 	case <-ctx.Done():
 		return nil, errors.New("text worker activation was cancelled")
 	}

@@ -163,9 +163,8 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 				profile, err := source.CurrentClosedProfile()
 				return profile, err == nil
 			},
-			CurrentClosedRoute: func() (state.ClosedRouteView, bool) {
-				view, err := source.CurrentClosedRoute()
-				return view, err == nil
+			CurrentClosedRoute: func() (state.ClosedRouteView, error) {
+				return source.CurrentClosedRoute()
 			},
 			LocalRoleStateRoot: root, PollInterval: 20 * time.Millisecond, CheckPlacement: func() error { return nil },
 			Emit: func(_ context.Context, event node.Event) error {
