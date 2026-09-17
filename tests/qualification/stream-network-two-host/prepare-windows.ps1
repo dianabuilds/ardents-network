@@ -261,6 +261,7 @@ foreach ($state in @($provision.State)) {
     Assert-Name ([string]$state.Owner) 'State owner'
     Assert-RemotePath ([string]$state.Root) 'State root'
     Assert-RemotePath ([string]$state.LocalRoleStateRoot) 'State local role root'
+    if (-not [string]::IsNullOrWhiteSpace([string]$state.DutyParent)) { Assert-RemotePath ([string]$state.DutyParent) 'State duty parent' }
     foreach ($dutyRoot in @($state.DutyRoots)) { Assert-RemotePath ([string]$dutyRoot) 'State duty root' }
     Assert-RemotePath ([string]$state.Materialization) 'State materialization'
     $hostName = Host-Address ([string]$state.Host)
@@ -375,10 +376,14 @@ foreach ($role in @('reader','publisher')) {
     $stateRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.Root })
     $localRoleRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { [string]$_.LocalRoleStateRoot })
     $dutyRoots = @($provision.State | Where-Object { [string]$_.Host -ceq $role } | ForEach-Object { foreach ($dutyRoot in @($_.DutyRoots)) { [string]$dutyRoot } })
+    $dutyParents = @($provision.State | Where-Object { [string]$_.Host -ceq $role -and -not [string]::IsNullOrWhiteSpace([string]$_.DutyParent) } | ForEach-Object { [string]$_.DutyParent })
     foreach ($stateRoot in $stateRoots) { Assert-RemotePath $stateRoot 'State owner root' }
     foreach ($localRoleRoot in $localRoleRoots) { Assert-RemotePath $localRoleRoot 'State owner local role root' }
     foreach ($dutyRoot in $dutyRoots) { Assert-RemotePath $dutyRoot 'State owner duty root' }
-    [void](Invoke-SSH $hostName "install -d -m 755 '$remoteRoot/state' '$remoteRoot/state-roles' '$remoteRoot/roles' '$remoteRoot/duty' '$remoteRoot/endpoint' '$remoteRoot/service'; chmod 755 '$remoteRoot/bundle' '$remoteRoot/bundle/entry-templates'" "prepare $role Endpoint parents")
+    foreach ($dutyParent in $dutyParents) { Assert-RemotePath $dutyParent 'State owner duty parent' }
+    $parentPaths = @("$remoteRoot/state", "$remoteRoot/state-roles", "$remoteRoot/roles", "$remoteRoot/duty", "$remoteRoot/endpoint", "$remoteRoot/service") + $dutyParents
+    $parentList = @($parentPaths | ForEach-Object { Assert-RemotePath $_ 'Endpoint traversable parent'; "'$_'" }) -join ' '
+    [void](Invoke-SSH $hostName ("install -d -m 755 " + $parentList + "; chmod 755 '$remoteRoot/bundle' '$remoteRoot/bundle/entry-templates'") "prepare $role Endpoint parents")
     $paths = @($stateRoots + $localRoleRoots + $dutyRoots)
     $paths += @([string]$provision.HostingRoot, "$remoteRoot/handover", "$remoteRoot/clock")
     foreach ($name in $participantNames) {

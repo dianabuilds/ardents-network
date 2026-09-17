@@ -20,9 +20,9 @@ type provisioningDocument struct {
 	EntryRoots                                                                []provisioningEntryRoot
 }
 type provisioningState struct {
-	Owner, Host, Root, LocalRoleStateRoot, Materialization string
-	DutyRoots                                              []string
-	MaterializationIndex                                   uint64
+	Owner, Host, Root, LocalRoleStateRoot, DutyParent, Materialization string
+	DutyRoots                                                          []string
+	MaterializationIndex                                               uint64
 }
 type provisioningService struct {
 	Owner, Host, Root, Plan, Request string
@@ -41,10 +41,12 @@ func writeProvisioningInventory(config fixtureConfig, result *generatedPlanIndex
 		PublisherPlan: result.PublisherPlan, Net32Plan: result.Net32Plan, NodeInventory: result.NodeInventory,
 		IssuerInitialization: result.IssuerInitialization, IssuerNode: nodes[1]}
 	for index, item := range nodes {
+		layout := selectedClosedDutyLayout(item, result.RemoteRoot)
 		document.State = append(document.State, provisioningState{Owner: fmt.Sprintf("node-%02d", index), Host: item.Host,
 			Root:                 path.Join(result.RemoteRoot, "state", fmt.Sprintf("node-%02d", index)),
 			LocalRoleStateRoot:   path.Join(result.RemoteRoot, "roles", fmt.Sprintf("node-%02d", index)),
-			DutyRoots:            selectedClosedDutyLayout(item, result.RemoteRoot).writableRoots(),
+			DutyParent:           layout.parent,
+			DutyRoots:            layout.writableRoots(),
 			Materialization:      remoteArtifact(result.RemoteRoot, fmt.Sprintf("state/materializations/%04d.bin", item.MaterializationIndex)),
 			MaterializationIndex: item.MaterializationIndex})
 	}

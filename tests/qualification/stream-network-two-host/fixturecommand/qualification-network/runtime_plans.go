@@ -124,7 +124,7 @@ func writeRuntimePlans(config fixtureConfig, networkID, authority string, nodes 
 }
 
 type closedDutyLayout struct {
-	name, root, admissionRoot string
+	name, parent, root, admissionRoot string
 }
 
 func (layout closedDutyLayout) writableRoots() []string {
@@ -142,15 +142,15 @@ func selectedClosedDutyLayout(item fixtureNode, remoteRoot string) closedDutyLay
 	base := path.Join(remoteRoot, "duty", item.ID)
 	switch {
 	case item.RoleDomain == 2 && item.Subrole == 6:
-		return closedDutyLayout{name: "closed_issuer", root: path.Join(base, "issuer"), admissionRoot: path.Join(base, "admission")}
+		return closedDutyLayout{name: "closed_issuer", parent: base, root: path.Join(base, "issuer"), admissionRoot: path.Join(base, "admission")}
 	case item.RoleDomain == 2 && item.Subrole == 5:
-		return closedDutyLayout{name: "closed_resolution", root: path.Join(base, "descriptors"), admissionRoot: path.Join(base, "admission")}
+		return closedDutyLayout{name: "closed_resolution", parent: base, root: path.Join(base, "descriptors"), admissionRoot: path.Join(base, "admission")}
 	case item.RoleDomain == 4 && item.Subrole == 3:
-		return closedDutyLayout{name: "closed_introduction", admissionRoot: path.Join(base, "admission")}
+		return closedDutyLayout{name: "closed_introduction", parent: base, admissionRoot: path.Join(base, "admission")}
 	case item.RoleDomain == 2 && item.Subrole == 4:
-		return closedDutyLayout{name: "closed_data_join", admissionRoot: path.Join(base, "admission")}
+		return closedDutyLayout{name: "closed_data_join", parent: base, admissionRoot: path.Join(base, "admission")}
 	default:
-		return closedDutyLayout{name: "closed_forwarding", root: path.Join(base, "spends")}
+		return closedDutyLayout{name: "closed_forwarding", parent: base, root: path.Join(base, "spends")}
 	}
 }
 
