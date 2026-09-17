@@ -930,7 +930,10 @@ try {
     $smokeSummaries = @()
     if ($SmokeSeconds -gt 0) {
         $initial = @()
-        $smokeDeadline = [DateTime]::UtcNow.AddSeconds(60)
+        # Each Reader deliberately opens 64 retained connections at one per
+        # 1.25 seconds. Allow that roughly 80-second qualified setup to finish
+        # before applying the shorter useful-progress observation window.
+        $smokeDeadline = [DateTime]::UtcNow.AddMinutes(2)
         for ($index = 0; $index -lt 4; $index++) {
             $initial += Wait-SmokeProgress $ReaderHost $readerInvocation $index 64 16 $smokeDeadline
         }
