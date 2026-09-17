@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
@@ -90,9 +91,9 @@ func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
 	}
 }
 
-func textJoinedNetworkFixture(t *testing.T, carrier route.CarrierProfile) (*textContext, *textContext, targetlink.Link) {
+func textJoinedNetworkFixture(t *testing.T, carrier route.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext, targetlink.Link) {
 	t.Helper()
-	reader, publisher := textUnpublishedNetworkFixture(t, carrier)
+	reader, publisher := textUnpublishedNetworkFixture(t, carrier, configure...)
 	endpoint := publisher.endpoint
 	now := time.Now().UTC().Truncate(time.Second)
 	if _, err := publisher.openTextPrefix(t.Context()); err != nil {
@@ -111,7 +112,7 @@ func textJoinedNetworkFixture(t *testing.T, carrier route.CarrierProfile) (*text
 	return reader, publisher, targetlink.Link{Network: endpoint.network, Target: descriptor.Descriptor.Target}
 }
 
-func textUnpublishedNetworkFixture(t *testing.T, carrier route.CarrierProfile) (*textContext, *textContext) {
+func textUnpublishedNetworkFixture(t *testing.T, carrier route.CarrierProfile, configure ...func(int, *node.Config)) (*textContext, *textContext) {
 	t.Helper()
 	return textUnpublishedNetworkWithInstance(t, carrier, func(network [32]byte, now, until time.Time) (*instance.Root, *instance.Binding) {
 		_, authority, err := ed25519.GenerateKey(rand.Reader)
@@ -120,12 +121,20 @@ func textUnpublishedNetworkFixture(t *testing.T, carrier route.CarrierProfile) (
 		}
 		defer clear(authority)
 		return acceptedInstanceBinding(t, serviceInstanceFixtureRoot(t), network, authority, now, until)
-	})
+	}, configure...)
 }
 
-func textUnpublishedNetworkWithInstance(t *testing.T, carrier route.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding)) (*textContext, *textContext) {
+func textUnpublishedNetworkWithInstance(t *testing.T, carrier route.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
 	t.Helper()
-	endpoint, publisher, source := startTextRoleNetworkWithJoin(t, carrier, true, true, true)
+	endpoint, publisher, source := textPublisherNetworkWithInstance(t, carrier, acquire, configure...)
+	reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
+	return reader, publisher
+}
+
+func textPublisherNetworkWithInstance(t *testing.T, carrier route.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*endpoint, *textContext, *textSourceStateFixture) {
+	t.Helper()
+	endpoint, publisher, source := startTextRoleNetworkWithJoin(t, carrier, true, true, true, configure...)
 	now := time.Now().UTC().Truncate(time.Second)
 	root, binding := acquire(endpoint.network, now.Add(-time.Second), source.view.Profile.NotAfter)
 	credential, err := root.Credential()
@@ -143,7 +152,5 @@ func textUnpublishedNetworkWithInstance(t *testing.T, carrier route.CarrierProfi
 		t.Fatal(err)
 	}
 	endpoint.publisherBinding, endpoint.publications, endpoint.authority = binding, publications, [32]byte(public)
-	reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
-	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
-	return reader, publisher
+	return endpoint, publisher, source
 }

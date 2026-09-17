@@ -198,10 +198,10 @@ Service-stream handover. It uses an unbuffered handover; cancellation joins the
 producer, bridge and worker. A refused malformed, unauthenticated or rate-limited
 capsule can leave the snapshot available only when the refusal acknowledgement
 succeeds and no cancellation or cleanup failure accompanies it.
-The Publisher startup owner qualifies the worker before opening its Source and
-Introduction prefixes, creates the initial registration, and waits for verified
-Descriptor publication before returning its Link. The returned owner retains
-the network producer under the job lifetime, independently of the completed
+The Publisher startup owner qualifies the worker before opening its Source,
+Introduction, and Responder prefixes, creates the initial registration, and
+waits for verified Descriptor publication before returning its Link. The
+returned owner retains the network producer under the job lifetime, independently of the completed
 startup request. Startup failure joins worker/context cleanup. Its Close is an
 abort. Its separate withdrawal operation stops new Introduction acceptance before
 network withdrawal and joins scheduled refresh before withdrawing the final
