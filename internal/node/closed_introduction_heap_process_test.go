@@ -36,8 +36,8 @@ func startIntroductionHeapProcess(t *testing.T, config Config, output string) (*
 	if err != nil {
 		return nil, err
 	}
-	view, ok := config.CurrentClosedRoute()
-	if !ok {
+	view, err := config.CurrentClosedRoute()
+	if err != nil {
 		return nil, errors.New("missing role State fixture")
 	}
 	input := introductionHeapInput{snapshot, view, config.ClosedIntroduction.Certificate.Certificate, config.IdentityKey, config.HostingRoot, config.ClosedIntroduction.AdmissionRoot, config.LocalRoleStateRoot, output}

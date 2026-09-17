@@ -100,6 +100,9 @@ func assessAdmission(config runtimeConfig, snapshot dutyFacts) admission {
 	}
 	now := config.now()
 	if snapshot.Profile == route.ClosedRouteProfile {
+		if _, err := currentClosedRoute(config, snapshot, now); err != nil {
+			return admission{kind: admissionPrepared, reason: "closed Route State is unavailable: " + boundedReason(err)}
+		}
 		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now); available {
 			if err := validateClosedIssuerProfile(config.ClosedIssuer, config, snapshot, now); err != nil {
 				return admission{kind: admissionPrepared, reason: err.Error()}

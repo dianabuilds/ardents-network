@@ -115,7 +115,7 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 		config := runtimeConfig{Config: Config{NetworkID: profile.NetworkID, NodeID: snapshot.NodeID,
 			Current:              func() (DutyView, error) { return snapshot, nil },
 			CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true },
-			CurrentClosedRoute:   func() (state.ClosedRouteView, bool) { return fixture.view, true }}, now: time.Now}
+			CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return fixture.view, nil }}, now: time.Now}
 		var server *probeServer
 		if index == 2 {
 			config.HostingRoot = closedForwardingHostingRoot(t)

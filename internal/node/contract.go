@@ -144,7 +144,7 @@ type Config struct {
 	// CurrentClosedRoute exposes the same accepted profile's recipient facts.
 	// It is unavailable rather than permitting Node to manufacture a recipient
 	// digest, role-domain or duty generation.
-	CurrentClosedRoute func() (state.ClosedRouteView, bool)
+	CurrentClosedRoute func() (state.ClosedRouteView, error)
 	PollInterval       time.Duration
 	Quarantine         time.Duration
 	ResourceProfile    string

@@ -45,7 +45,7 @@ func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
 			FamilyID: [32]byte{byte(41 + index)}, Endpoint: "127.0.0.1:41000", CarrierProfile: string(route.ClosedCarrierTCP), ValidFrom: fixture.now,
 			ValidUntil: profile.NotAfter, AssignmentNotAfter: profile.NotAfter}
 	}
-	fixture.config = runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, bool) { return fixture.view, true }}}
+	fixture.config = runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return fixture.view, nil }}}
 	var available bool
 	fixture.receiver, available = closedRouteReceiver(fixture.config, fixture.snapshot, route.ClosedPurposeForwarding, fixture.now)
 	if !available {

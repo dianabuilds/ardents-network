@@ -17,8 +17,8 @@ func closedBootstrapRecipient(config runtimeConfig, snapshot dutyFacts, receiver
 	if config.CurrentClosedRoute == nil || snapshot.DeclaredFamily == "" || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
 		return errors.New("closed bootstrap current route is unavailable")
 	}
-	view, available := config.CurrentClosedRoute()
-	if !available || int(view.NodeCount) > len(view.Nodes) || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) || view.Profile.Digest != receiver.ProfileDigest ||
+	view, err := config.CurrentClosedRoute()
+	if err != nil || int(view.NodeCount) > len(view.Nodes) || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) || view.Profile.Digest != receiver.ProfileDigest ||
 		view.Profile.StateGeneration != receiver.StateGeneration || receiver.NodeID != snapshot.NodeID || receiver.DutyGeneration != snapshot.RecordGeneration {
 		return errors.New("closed bootstrap receiver changed")
 	}

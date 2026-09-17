@@ -90,8 +90,8 @@ func closedSharedPeerCurrent(config runtimeConfig, snapshot dutyFacts, key [32]b
 	if key == [32]byte{} || config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
 		return false
 	}
-	view, available := config.CurrentClosedRoute()
-	if !available || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+	view, err := config.CurrentClosedRoute()
+	if err != nil || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
 		return false
 	}
 	matched := false

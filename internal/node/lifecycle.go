@@ -93,7 +93,12 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	if err != nil {
 		return fail(config, machine, nil, "persistent Network State is unavailable", err)
 	}
-	if assessAdmission(config, current).kind != admissionReady || !sameDuty(snapshot, current) {
+	currentAdmission := assessAdmission(config, current)
+	if currentAdmission.kind != admissionReady {
+		reason := "assignment lost readiness during quarantine: " + currentAdmission.reason
+		return fail(config, machine, nil, reason, errors.New(reason))
+	}
+	if !sameDuty(snapshot, current) {
 		return fail(config, machine, nil, "assignment changed during quarantine", errors.New("assignment changed during quarantine"))
 	}
 	server, err := startDuty(config, current)

@@ -45,7 +45,7 @@ func runIntroductionHeapChild(t *testing.T, path string) {
 	config := Config{HostingRoot: input.HostingRoot, NetworkID: input.Snapshot.NetworkID, NodeID: input.Snapshot.NodeID, IdentityKey: input.PrivateKey,
 		Current:              func() (DutyView, error) { return input.Snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return input.View.Profile, true },
-		CurrentClosedRoute:   func() (state.ClosedRouteView, bool) { return input.View, true },
+		CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return input.View, nil },
 		ClosedIntroduction:   ClosedIntroductionProfile{AdmissionRoot: input.AdmissionRoot, Certificate: tls.Certificate{Certificate: input.Certificates, PrivateKey: input.PrivateKey}, ConnectionLimit: 8, DrainTimeout: time.Second},
 		PollInterval:         10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: input.RoleRoot, CheckPlacement: func() error { return nil },
 		Emit: func(_ context.Context, event Event) error { events <- event; return nil }}

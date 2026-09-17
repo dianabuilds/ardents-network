@@ -159,8 +159,8 @@ func (server *closedResolutionServer) currentIntroduction(introduction reachabil
 	if err != nil {
 		return false
 	}
-	view, ok := server.config.CurrentClosedRoute()
-	if !ok || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+	view, err := server.config.CurrentClosedRoute()
+	if err != nil || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
 		return false
 	}
 	matches := 0

@@ -50,10 +50,10 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: issuerID, IdentityKey: certificate.PrivateKey.(ed25519.PrivateKey),
 		Current:              func() (DutyView, error) { lock.RLock(); defer lock.RUnlock(); return snapshot, nil },
 		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true },
-		CurrentClosedRoute: func() (state.ClosedRouteView, bool) {
+		CurrentClosedRoute: func() (state.ClosedRouteView, error) {
 			view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
 			view.Nodes[0] = state.ClosedRouteNodeView{NodeID: issuerID, RecordDigest: recordDigest, RoleDomain: 2, Subrole: 6, DutyGeneration: profile.IssuerDutyGeneration}
-			return view, true
+			return view, nil
 		},
 		ClosedIssuer: ClosedIssuerProfile{Root: root, AdmissionRoot: t.TempDir(), Certificate: certificate, ConnectionLimit: 1, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil },
@@ -96,7 +96,7 @@ func TestClosedRouteReceiverRefusesDutyOrDigestMismatch(t *testing.T) {
 		Digest: [32]byte{7}, Epoch: snapshot.Epoch, NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute)}
 	view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
 	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: snapshot.NodeID, RecordDigest: [32]byte{8}, RoleDomain: 2, Subrole: 6, DutyGeneration: snapshot.RecordGeneration}
-	config := runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, bool) { return view, true }}}
+	config := runtimeConfig{Config: Config{CurrentClosedRoute: func() (state.ClosedRouteView, error) { return view, nil }}}
 	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, now)
 	if !available || receiver.DutyGeneration != snapshot.RecordGeneration || receiver.RecordDigest != view.Nodes[0].RecordDigest {
 		t.Fatalf("closed route receiver = %+v / %t", receiver, available)
