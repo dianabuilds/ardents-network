@@ -554,7 +554,7 @@ function Start-RouteNodes {
         $samplerUnit = "ardents-qualification-sample-$attempt-$index"
         $preparedNodes += [ordered]@{ Index=$index; ID=[string]$item.ID; Host=[string]$item.Host; Machine=$hostName; PlanRemote=$planRemote; PlanSHA256=[string]$item.PlanSHA256; Unit=$unit; SamplerUnit=$samplerUnit }
     }
-    foreach ($group in @($preparedNodes | Group-Object Machine)) {
+    foreach ($group in @($preparedNodes | Group-Object { [string]$_.Machine })) {
         $commands = @("set -eu", "chmod 755 '$remoteRoot/ardents-node'", "chmod 700 '$remoteRoot/node_owner_samples.py'")
         foreach ($prepared in @($group.Group)) {
             $unit = [string]$prepared.Unit
@@ -605,7 +605,7 @@ function Start-RouteNodes {
         }
         if (-not $ready) { throw "Route Node $index readiness exceeded 30 seconds." }
     }
-    foreach ($group in @($script:startedNodes | Group-Object Machine)) {
+    foreach ($group in @($script:startedNodes | Group-Object { [string]$_.Machine })) {
         $commands = @("set -eu")
         $activeUnits = @()
         foreach ($started in @($group.Group)) {

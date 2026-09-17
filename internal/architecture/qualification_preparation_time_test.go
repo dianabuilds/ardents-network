@@ -229,11 +229,14 @@ func TestQualificationStartsRouteNodesAsOnePreparedGroup(t *testing.T) {
 	}
 	function := text[start:stop]
 	prepared := strings.Index(function, "$preparedNodes +=")
-	grouped := strings.Index(function, "$preparedNodes | Group-Object Machine")
+	grouped := strings.Index(function, "$preparedNodes | Group-Object { [string]$_.Machine }")
 	started := strings.Index(function, "systemd-run --no-block --unit '$unit'")
 	ready := strings.Index(function, "read Route Node $index journal")
 	if prepared < 0 || grouped < prepared || started < grouped || ready < started {
 		t.Fatal("qualification runner does not prepare every Route Node before group start and readiness")
+	}
+	if strings.Contains(function, "Group-Object Machine") {
+		t.Fatal("qualification runner groups ordered dictionaries by a property name that PowerShell resolves as empty")
 	}
 }
 
