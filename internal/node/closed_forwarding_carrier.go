@@ -290,7 +290,11 @@ func (session *closedForwardingSession) retire(lane uint32) {
 	delete(session.children, lane)
 	delete(session.queues, lane)
 	delete(session.retirements, lane)
-	if !session.closed {
+	// A peer CLOSE delivered while the child copier was still live is already
+	// the terminal witness. Creating a tombstone after that CLOSE would leave
+	// it permanently resident: no later frame exists to remove it.
+	peerClosed := channel != nil && channel.peerClosed()
+	if !session.closed && !peerClosed {
 		session.retired[lane] = struct{}{}
 	}
 	if channel != nil {

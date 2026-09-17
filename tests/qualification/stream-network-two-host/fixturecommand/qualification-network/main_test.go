@@ -189,6 +189,9 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 	}
 	var readerPermissionTotal uint64
 	for _, participant := range readerPlan.Participants {
+		if maxima := qualificationPermissionMaxima(t, participant, "ReaderPermission"); maxima != [3]uint32{512, 512, 0} {
+			t.Fatalf("Reader permission maxima = %v, want [512 512 0]", maxima)
+		}
 		readerPermissionTotal += qualificationPermissionTotal(t, participant, "ReaderPermission")
 	}
 	if readerPermissionTotal != 4096 || qualificationPermissionTotal(t, publisherPlan.Participants[0], "PublisherPermission") != 16384 {
@@ -240,6 +243,11 @@ func TestRunCreatesCompleteBoundedNetworkFixture(t *testing.T) {
 }
 
 func qualificationPermissionTotal(t *testing.T, participant qualificationOwnerParticipant, name string) uint64 {
+	maxima := qualificationPermissionMaxima(t, participant, name)
+	return uint64(maxima[0]) + uint64(maxima[1]) + uint64(maxima[2])
+}
+
+func qualificationPermissionMaxima(t *testing.T, participant qualificationOwnerParticipant, name string) [3]uint32 {
 	t.Helper()
 	body, err := json.Marshal(participant.Participant[name])
 	if err != nil {
@@ -249,7 +257,7 @@ func qualificationPermissionTotal(t *testing.T, participant qualificationOwnerPa
 	if err := json.Unmarshal(body, &permission); err != nil {
 		t.Fatal(err)
 	}
-	return uint64(permission.Maxima[0]) + uint64(permission.Maxima[1]) + uint64(permission.Maxima[2])
+	return permission.Maxima
 }
 
 func TestRunRejectsNonHourAlignedFixtureTime(t *testing.T) {

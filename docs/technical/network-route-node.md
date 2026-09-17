@@ -344,8 +344,8 @@ A separate class-1 submission is admitted for the same Introduction duty.
 Its receiver forwards only the sealed capsule over the already owned class-3
 registration, using a fresh channel-local request nonce and ordered even child
 IDs. It reserves at most 16 pending deliveries, including writer waiters, and
-limits both admission and actual dispatch to four per second. The original
-1 MiB registration allowance includes delivery OPERATION, RESULT, CLOSE and
+limits both admission and actual dispatch to four per second. The bounded
+8 MiB registration allowance includes delivery OPERATION, RESULT, CLOSE and
 reserved withdrawal; another submission token cannot enlarge it. Publisher
 acknowledgement is bounded by the capsule and original registration expiry.
 Failure that cannot finish a child retires that registration without reclaiming

@@ -98,7 +98,7 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 		t.Fatal("17th pending delivery accepted")
 	}
 	owner = newOwner()
-	owner.used = 1<<20 - closedIntroductionDeliveryCost
+	owner.used = ClosedIntroductionRegistrationByteLimit - closedIntroductionDeliveryCost
 	if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 2, Body: valid}); err != nil {
 		t.Fatal(err)
 	}
@@ -115,5 +115,34 @@ func TestClosedIntroductionDeliveryRejectsForeignReusedAndOverBudgetChildren(t *
 	}
 	if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 10, Body: valid}); err == nil {
 		t.Fatal("fifth delivery in one second accepted")
+	}
+}
+
+func TestClosedIntroductionRegistrationBudgetAdmitsRetainedPublisherSet(t *testing.T) {
+	owner := &ClosedIntroductionRegistration{request: ClosedRegistrationRequest{Slot: [32]byte{1}, Revision: 1, Expiry: time.Now().Add(time.Minute)},
+		deliveries: make(chan *ClosedIntroductionDelivery, 16), pending: make(map[uint32]*ClosedIntroductionDelivery)}
+	owner.used = ClosedIntroductionRegistrationByteLimit - 256*closedIntroductionDeliveryCost
+	end := time.Now().UTC().Add(8 * time.Second).Truncate(time.Second)
+	operation := func() []byte {
+		body, err := EncodeClosedIntroductionSubmission([32]byte{3}, ClosedIntroductionCapsule{Slot: owner.request.Slot, Revision: 1,
+			Expiry: end, DeliveryNonce: [32]byte{2}, Encapsulation: [32]byte{4}, Ciphertext: make([]byte, 360)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return body
+	}
+	for index := uint32(1); index <= 256; index++ {
+		owner.openings = [4]time.Time{}
+		lane := 2 * index
+		if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: lane, Body: operation()}); err != nil {
+			t.Fatalf("retained delivery %d: %v", index, err)
+		}
+		delivery := <-owner.deliveries
+		delete(owner.pending, lane)
+		clear(delivery.operation)
+	}
+	owner.openings = [4]time.Time{}
+	if err := owner.receiveDelivery(ClosedLaneFrame{Kind: closedFrameOperation, Lane: 514, Body: operation()}); err == nil {
+		t.Fatal("delivery beyond retained Publisher set escaped registration budget")
 	}
 }

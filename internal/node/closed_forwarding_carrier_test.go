@@ -412,6 +412,22 @@ func TestClosedForwardingRetirementRacesReverseDeliveryWithoutClosedChannelSend(
 	}
 }
 
+func TestClosedForwardingRetirementDoesNotRetainTombstoneAfterPeerClose(t *testing.T) {
+	session := &closedForwardingSession{children: make(map[uint32]*closedForwardingQueue), retired: make(map[uint32]struct{})}
+	for index := uint32(0); index < 512; index++ {
+		lane := index*2 + 1
+		frames := newClosedForwardingQueue(68)
+		session.children[lane] = frames
+		if !session.deliverReverse(route.ClosedLaneFrame{Kind: 9, Lane: lane, Body: []byte{0}}) {
+			t.Fatalf("peer CLOSE %d was refused", index)
+		}
+		session.retire(lane)
+	}
+	if len(session.children) != 0 || len(session.retired) != 0 {
+		t.Fatalf("terminal children retained: children=%d retired=%d", len(session.children), len(session.retired))
+	}
+}
+
 func TestClosedForwardingQueueExhaustionTerminatesCarrierAndAllChildren(t *testing.T) {
 	local, peer := net.Pipe()
 	defer local.Close()

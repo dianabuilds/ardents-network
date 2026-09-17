@@ -21,13 +21,10 @@ func (prefix *ClosedSourcePrefix) Replenish(ctx context.Context, present ClosedT
 	if prefix.channels == nil {
 		return errors.New("forwarding refill channels unavailable")
 	}
-	prefix.channels.mu.Lock()
-	active := len(prefix.channels.lanes) != 0
-	prefix.channels.mu.Unlock()
-	// An unused retained prefix never renews authority or stock on a timer.
-	if !active {
-		return nil
-	}
+	// Completed child work can cross the refill threshold immediately before
+	// its lane retires. The accounted bytes, rather than a coincident live lane,
+	// decide whether this retained prefix needs more authority. An unused prefix
+	// remains below the threshold and therefore spends no token below.
 	if err := prefix.plan.current(prefix.source, prefix.selection); err != nil {
 		return err
 	}
@@ -44,13 +41,8 @@ func (prefix *ClosedSourcePrefix) Replenish(ctx context.Context, present ClosedT
 			if err != nil {
 				return err
 			}
-			if err := child.acquireWriter(true); err != nil {
-				clear(frame.Body)
-				return err
-			}
-			err = child.writeFrame(frame, true)
+			err = child.replenish(ctx, frame)
 			clear(frame.Body)
-			<-child.writer
 			if err != nil {
 				return err
 			}
@@ -95,9 +87,37 @@ func (owner *closedSourceChannels) replenish(ctx context.Context, hello ClosedHe
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	result := make(chan error, 1)
+	owner.mu.Lock()
+	if owner.terminal != nil || owner.refill != nil {
+		err := owner.terminal
+		owner.mu.Unlock()
+		return errors.Join(err, errors.New("closed source refill is unavailable"))
+	}
+	owner.refill = result
+	owner.mu.Unlock()
 	control := &closedSourceLane{owner: owner, id: 0, end: owner.end, writeEnd: owner.end, opened: true, active: true}
 	if err := control.send(frame, time.Time{}); err != nil {
+		owner.mu.Lock()
+		if owner.refill == result {
+			owner.refill = nil
+		}
+		owner.mu.Unlock()
 		return err
+	}
+	select {
+	case err := <-result:
+		if err != nil {
+			return err
+		}
+	case <-ctx.Done():
+		owner.fail(ctx.Err())
+		return ctx.Err()
+	case <-owner.done:
+		owner.mu.Lock()
+		err := owner.terminal
+		owner.mu.Unlock()
+		return errors.Join(err, errors.New("closed source refill ended"))
 	}
 	owner.mu.Lock()
 	// In-flight receipt after this snapshot stays charged conservatively.

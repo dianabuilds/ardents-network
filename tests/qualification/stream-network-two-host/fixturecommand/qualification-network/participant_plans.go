@@ -172,8 +172,10 @@ func participantPlan(config fixtureConfig, result *generatedPlanIndex, item fixt
 		"BrokerID":                derivedArray(config.Seed, name+"-broker"),
 		"ConnectionPrincipal":     derivedArray(config.Seed, name+"-connection"),
 		"AdministrationPrincipal": derivedArray(config.Seed, name+"-administration"),
-		"ReaderPermission":        permissionFiles(result.RemoteRoot, name, "reader", splitPermissionMaxima(1024)),
-		"PublisherPermission":     permissionFiles(result.RemoteRoot, name, "publisher", splitPermissionMaxima(16384)),
+		// Reader qualification consumes only classes one and two. Keep the
+		// installed 1,024 total while making all 64 retained streams reachable.
+		"ReaderPermission":    permissionFiles(result.RemoteRoot, name, "reader", [3]uint32{512, 512, 0}),
+		"PublisherPermission": permissionFiles(result.RemoteRoot, name, "publisher", splitPermissionMaxima(16384)),
 	}
 	return participant
 }

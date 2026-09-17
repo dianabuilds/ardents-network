@@ -33,6 +33,7 @@ type closedSourceChannels struct {
 	idleUntil                         time.Time
 	mu                                sync.Mutex
 	changed                           chan struct{}
+	refill                            chan error
 	dataDue                           bool
 	lanes                             map[uint32]*closedSourceLane
 	last                              uint32
@@ -190,6 +191,24 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 	owner.transferred += uint64(16 + len(frame.Body))
 	if owner.transferred-owner.refillBase > 32<<20 {
 		return errors.New("closed source parent byte reserve exhausted")
+	}
+	if frame.Lane == 0 {
+		refill := owner.refill
+		var err error
+		if refill == nil || frame.Kind != closedFrameAccept {
+			err = errors.New("closed source refill response is unavailable")
+		} else {
+			status, credit, decodeErr := DecodeClosedAcceptFrame(frame)
+			if decodeErr != nil || status != 0 || credit != 64<<10 {
+				err = errors.Join(decodeErr, errors.New("closed source refill refused"))
+			}
+		}
+		owner.refill = nil
+		if refill != nil {
+			refill <- err
+			close(refill)
+		}
+		return err
 	}
 	if frame.Lane == 0 || frame.Lane%2 == 0 || frame.Lane > owner.last {
 		return errors.New("closed source peer used unallocated lane")

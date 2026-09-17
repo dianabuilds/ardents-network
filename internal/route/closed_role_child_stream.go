@@ -3,6 +3,7 @@
 package route
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -30,6 +31,7 @@ type closedRoleChildStream struct {
 	parent                  net.Conn
 	deadline                time.Time
 	writer                  chan struct{}
+	refill                  chan error
 	writeChanged            chan struct{}
 	mu                      sync.Mutex
 	changed                 *sync.Cond
@@ -73,6 +75,30 @@ func (stream *closedRoleChildStream) readFrames() {
 		if err != nil {
 			stream.finish(err)
 			return
+		}
+		if frame.Lane == 0 {
+			stream.mu.Lock()
+			stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
+			refill := stream.refill
+			if refill == nil || frame.Kind != closedFrameAccept {
+				err = errors.New("closed bootstrap refill response is unavailable")
+			} else {
+				status, credit, decodeErr := DecodeClosedAcceptFrame(frame)
+				if decodeErr != nil || status != 0 || credit != 64<<10 {
+					err = errors.Join(decodeErr, errors.New("closed bootstrap refill refused"))
+				}
+			}
+			stream.refill = nil
+			stream.mu.Unlock()
+			if refill != nil {
+				refill <- err
+				close(refill)
+			}
+			if err != nil {
+				stream.finish(err)
+				return
+			}
+			continue
 		}
 		if frame.Lane != 1 {
 			stream.finish(errors.New("closed bootstrap unexpected lane"))
@@ -200,6 +226,50 @@ func (stream *closedRoleChildStream) Write(value []byte) (int, error) {
 	}
 	return written, nil
 }
+
+// replenish serializes the parent forwarding channel's lane-zero ADMIT and
+// consumes its one lane-zero ACCEPT. The same reader continues to own lane-one
+// child frames, so no second physical reader or protocol layer is introduced.
+func (stream *closedRoleChildStream) replenish(ctx context.Context, frame ClosedLaneFrame) error {
+	if frame.Kind != closedFrameAdmit || frame.Lane != 0 {
+		return errors.New("closed bootstrap refill frame is unavailable")
+	}
+	if err := stream.acquireWriter(true); err != nil {
+		return err
+	}
+	defer func() { <-stream.writer }()
+	result := make(chan error, 1)
+	stream.mu.Lock()
+	if stream.terminal != nil || stream.refill != nil {
+		err := stream.terminal
+		stream.mu.Unlock()
+		return errors.Join(err, errors.New("closed bootstrap refill is unavailable"))
+	}
+	stream.refill = result
+	stream.mu.Unlock()
+	if err := stream.writeFrame(frame, true); err != nil {
+		stream.mu.Lock()
+		if stream.refill == result {
+			stream.refill = nil
+		}
+		stream.mu.Unlock()
+		stream.finish(err)
+		return err
+	}
+	select {
+	case err := <-result:
+		return err
+	case <-ctx.Done():
+		stream.finish(ctx.Err())
+		return ctx.Err()
+	case <-stream.done:
+		stream.mu.Lock()
+		err := stream.terminal
+		stream.mu.Unlock()
+		return errors.Join(err, errors.New("closed bootstrap refill ended"))
+	}
+}
+
 func (stream *closedRoleChildStream) Close() error {
 	stream.closeOnce.Do(func() {
 		stream.finish(net.ErrClosed)

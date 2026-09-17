@@ -124,7 +124,10 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 		maxima[0] = 64
 	}
 	if publisher {
-		maxima = [3]uint32{64, 64, 16}
+		// Match the bounded Publisher permission used by the installed
+		// qualification. The retained-set fixture spends substantially more than
+		// the single-journey stock while remaining inside the real 16,384 total.
+		maxima = [3]uint32{5461, 5461, 5462}
 	}
 	issuerRoot := prepareTextIssuancePermissionWithIdentity(t, owner, source, certificates[4].PrivateKey.(ed25519.PrivateKey), maxima)
 	endpoint.closedTokenRoot = textNetworkPrivateRoot(t)
@@ -249,10 +252,14 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 }
 
 func textNetworkHostingRoot(t *testing.T) string {
+	return textNetworkHostingRootWithQuantity(t, 1)
+}
+
+func textNetworkHostingRootWithQuantity(t *testing.T, quantity uint64) string {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	root := filepath.Join(t.TempDir(), "hosting")
-	policy := resource.HostingPolicy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: 1,
+	policy := resource.HostingPolicy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: quantity,
 		Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20}
 	if err := resource.InitializeHosting(root, policy); err != nil {
 		t.Fatal(err)

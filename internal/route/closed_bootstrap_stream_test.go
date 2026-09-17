@@ -10,6 +10,44 @@ import (
 	"time"
 )
 
+func TestClosedBootstrapStreamConsumesParentRefillAccept(t *testing.T) {
+	local, peer := net.Pipe()
+	deadline := time.Now().Add(3 * time.Second)
+	if err := local.SetDeadline(deadline); err != nil {
+		t.Fatal(err)
+	}
+	if err := peer.SetDeadline(deadline); err != nil {
+		t.Fatal(err)
+	}
+	stream := newClosedRoleChildStream(local, deadline, local.Close, nil)
+	body := make([]byte, 355)
+	body[0] = 2
+	refill := ClosedLaneFrame{Kind: closedFrameAdmit, Lane: 0, Body: body}
+	served := make(chan error, 1)
+	go func() {
+		request, err := ReadClosedLaneFrame(peer)
+		if err == nil && (request.Kind != closedFrameAdmit || request.Lane != 0) {
+			err = io.ErrUnexpectedEOF
+		}
+		if err == nil {
+			var accepted ClosedLaneFrame
+			accepted, err = ClosedAcceptFrame(0, 64<<10)
+			if err == nil {
+				err = WriteClosedLaneFrame(peer, accepted)
+			}
+		}
+		served <- err
+	}()
+	if err := stream.replenish(t.Context(), refill); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-served; err != nil {
+		t.Fatal(err)
+	}
+	_ = peer.Close()
+	_ = stream.Close()
+}
+
 func TestClosedBootstrapStreamEOFKeepsReverseCreditAlive(t *testing.T) {
 	local, peer := net.Pipe()
 	defer local.Close()

@@ -17,6 +17,31 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
+// Four qualification Readers share the Publisher's four-openings-per-second
+// dispatch ceiling. A 1.25-second per-Reader interval, phase-shifted below,
+// yields 3.2 openings per second and completes the 64-opening setup in about
+// 80 seconds, within the retained Source lifetime. Forwarding byte authority
+// is replenished from actual accounted traffic rather than reduced opening
+// frequency.
+const qualificationIntroductionInterval = 1250 * time.Millisecond
+
+func qualificationReaderOpeningDelay(reader int) time.Duration {
+	return time.Duration(reader) * qualificationIntroductionInterval / 4
+}
+
+func waitQualificationIntroductionOpening(ctx context.Context, next time.Time) error {
+	if wait := time.Until(next); wait > 0 {
+		timer := time.NewTimer(wait)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
+}
+
 func (owner *textContext) streamConnectionLimitLocked() int {
 	if owner.job != nil && owner.job.qualification != nil {
 		schedule, err := owner.job.qualification.Profile.Definition(owner.job.qualification.Role)
@@ -71,7 +96,20 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 	// Setup has its own finite budget; it does not consume the ten-minute useful
 	// workload interval and cannot extend the immutable forwarding lease.
 	until := owner.endpoint.clock().UTC().Add(15 * time.Minute).Unix()
+	// Keep the four independent Readers out of phase. Without this offset they
+	// exhaust and replenish their issuer stocks together, turning an otherwise
+	// bounded two-openings-per-second workload into a bootstrap refill herd.
+	// Reader validation above keeps the four phases evenly distributed within
+	// each qualification interval.
+	nextOpening := time.Now().Add(qualificationReaderOpeningDelay(reader))
 	for index := 0; index < 64; index++ {
+		// Four independent Readers share the Publisher's four-per-second
+		// cryptographic-opening allowance. A per-Reader interval greater than one
+		// second bounds every sliding second to at most one opening per Reader,
+		// without weakening the Publisher's hostile-input rate limit.
+		if err := waitQualificationIntroductionOpening(bounded, nextOpening); err != nil {
+			return report, err
+		}
 		attempt, err := owner.prepareTextIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
 		if err != nil {
 			return report, err
@@ -85,6 +123,13 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 		if _, err := service.Write(qualificationHello(worker.job.qualification.Profile, worker.job.qualification.Seed, id)); err != nil {
 			return report, err
 		}
+		// Setup traffic consumes the same finite forwarding allowances as the
+		// measured workload. Refill at this completed-operation boundary so the
+		// initial 32 MiB authority cannot expire before the retained set exists.
+		if err := worker.replenishStreams(bounded); err != nil {
+			return report, err
+		}
+		nextOpening = time.Now().Add(qualificationIntroductionInterval)
 	}
 	for _, bound := range streams {
 		var ready [1]byte
@@ -140,6 +185,9 @@ func (worker *qualifiedTextWorker) serveQualification(ctx, bounded context.Conte
 			}
 			seen[id] = true
 			streams = append(streams, streamqualification.BoundStream{ID: id, Stream: stream})
+			if err := worker.replenishStreams(network); err != nil {
+				return err
+			}
 		case <-network.Done():
 			return network.Err()
 		}

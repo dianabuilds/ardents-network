@@ -124,8 +124,14 @@ func TestTextIntroductionDeliversFourConcurrentReaders(t *testing.T) {
 	}
 }
 
-func independentTextReaderFixture(t *testing.T, network [32]byte, source *textSourceStateFixture) *textContext {
+func independentTextReaderFixture(t *testing.T, network [32]byte, source *textSourceStateFixture, requested ...[3]uint32) *textContext {
 	t.Helper()
+	maxima := [3]uint32{64, 64, 0}
+	if len(requested) == 1 {
+		maxima = requested[0]
+	} else if len(requested) != 0 {
+		t.Fatal("independent Reader fixture maxima are ambiguous")
+	}
 	endpoint, principal := textContextEndpoint(t)
 	endpoint.clock, endpoint.network, endpoint.closedState = time.Now, network, source
 	endpoint.closedEntryRoot, endpoint.closedRoleRoot, endpoint.closedTokenRoot = t.TempDir(), t.TempDir(), textNetworkPrivateRoot(t)
@@ -147,6 +153,6 @@ func independentTextReaderFixture(t *testing.T, network [32]byte, source *textSo
 		}
 	})
 	reader := textPermissionContextFixture(t, endpoint, principal, broker.Connection)
-	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
+	source.issuePermission(t, reader, maxima)
 	return reader
 }

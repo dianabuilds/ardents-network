@@ -52,7 +52,7 @@ func closedControlTokenVerifier(config runtimeConfig, receiver route.ClosedRoleR
 		case 1:
 			admitted = 64 << 10
 		case 3:
-			admitted = 1 << 20
+			admitted = route.ClosedIntroductionRegistrationByteLimit
 		default:
 			return route.ClosedAdmissionApproval{}, errors.New("control duty cannot admit forwarding class")
 		}
