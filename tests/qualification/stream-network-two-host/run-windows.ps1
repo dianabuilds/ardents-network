@@ -342,7 +342,6 @@ function Deploy-Owner([string]$HostName, [string]$PlanPath) {
     [void](Invoke-SSH $HostName "install -d -m 700 '$remoteRoot' '$remoteRoot/package'" 'create remote staging')
     Send-File $runnerPath $HostName "$remoteRoot/runner" 'upload runner'
     Send-File $workerPath $HostName "$remoteRoot/worker" 'upload worker'
-    Send-File $relayPath $HostName "$remoteRoot/netem-relay" 'upload relay'
     Send-File $PlanPath $HostName "$remoteRoot/plan.json" 'upload plan'
     Send-File $networkManifestPath $HostName "$remoteRoot/network-manifest.json" 'upload network manifest'
     foreach ($name in $requiredPackage) { Send-File (Join-Path $packageRoot $name) $HostName "$remoteRoot/package/$name" "upload $name" }
