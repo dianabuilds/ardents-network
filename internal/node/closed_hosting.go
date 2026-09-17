@@ -82,7 +82,7 @@ func (config *runtimeConfig) hostingPressure() (pressureLevel, error) {
 	var observation resource.HostingObservation
 	var err error
 	if installed, ok := config.host.(installedClosedForwardingHost); ok {
-		sample, sampleErr := installed.Sample(ctx)
+		sample, sampleErr := installed.Sample(ctx, time.Second)
 		config.hostingSample = &sample
 		config.hostingUsage, err = resource.MeasureOwnerCgroups(nil)
 		err = errors.Join(err, sampleErr)

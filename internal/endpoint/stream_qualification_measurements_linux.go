@@ -54,7 +54,7 @@ func (owner *StreamQualificationMeasurements) sampleFresh(ctx context.Context, h
 }
 
 func (owner *StreamQualificationMeasurements) sampleLocked(ctx context.Context, host *resource.Hosting) error {
-	hostSample, hostErr := host.Sample(ctx)
+	hostSample, hostErr := host.Sample(ctx, 0)
 	usageSample, usageErr := owner.measure()
 	if err := errors.Join(hostErr, usageErr); err != nil {
 		return err

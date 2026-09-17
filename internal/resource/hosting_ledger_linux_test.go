@@ -68,6 +68,41 @@ func TestHostingReservationsShareOneDurablePeriod(t *testing.T) {
 	}
 }
 
+func TestHostingSampleSharesOneRecentCommittedObservation(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	measurements := 0
+	measure := func([]string) (hostingReading, error) {
+		measurements++
+		return *reading, nil
+	}
+	first, err := openHosting(root, measure, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = first.Close() })
+	second, err := openHosting(root, measure, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = second.Close() })
+	opened := measurements
+	reading.Interfaces[0].Tx += 40
+	*now = now.Add(500 * time.Millisecond)
+	shared, err := first.Sample(t.Context(), time.Second)
+	if err != nil || measurements != opened || shared.At != now.Add(-500*time.Millisecond) || shared.Interfaces[0].Tx != reading.Interfaces[0].Tx-40 {
+		t.Fatalf("recent committed sample was not shared: %+v measurements=%d opened=%d err=%v", shared, measurements, opened, err)
+	}
+	*now = now.Add(501 * time.Millisecond)
+	refreshed, err := first.Sample(t.Context(), time.Second)
+	if err != nil || measurements != opened+1 || refreshed.At != *now || refreshed.Interfaces[0].Tx != reading.Interfaces[0].Tx {
+		t.Fatalf("expired sample was not refreshed: %+v measurements=%d opened=%d err=%v", refreshed, measurements, opened, err)
+	}
+	shared, err = second.Sample(t.Context(), time.Second)
+	if err != nil || measurements != opened+1 || shared.At != refreshed.At || shared.Observation != refreshed.Observation {
+		t.Fatalf("second owner did not share refreshed sample: %+v measurements=%d err=%v", shared, measurements, err)
+	}
+}
+
 func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)

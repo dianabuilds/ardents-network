@@ -67,7 +67,7 @@ func PreflightStreamQualification(ctx context.Context, config StreamQualificatio
 		return result, err
 	}
 	defer func() { outcome = errors.Join(outcome, hosting.Close()) }()
-	if _, err := hosting.Sample(ctx); err != nil {
+	if _, err := hosting.Sample(ctx, 0); err != nil {
 		return result, err
 	}
 	if err := prepareStreamQualificationParticipantRoots(config.Participant); err != nil {
