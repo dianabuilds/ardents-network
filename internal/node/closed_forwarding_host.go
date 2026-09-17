@@ -11,7 +11,7 @@ import (
 // concrete production adapter opens only the already initialized local root;
 // tests may provide a bounded owner without selecting provider facts.
 type closedForwardingHost interface {
-	Observe(context.Context) (resource.HostingObservation, error)
+	Sample(context.Context, time.Duration) (resource.HostingSample, error)
 	Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (closedForwardingHostReservation, error)
 	Close() error
 }
@@ -28,10 +28,6 @@ func openClosedForwardingHost(root string) (closedForwardingHost, error) {
 		return nil, err
 	}
 	return installedClosedForwardingHost{owner: owner}, nil
-}
-
-func (host installedClosedForwardingHost) Observe(ctx context.Context) (resource.HostingObservation, error) {
-	return host.owner.Observe(ctx)
 }
 
 func (host installedClosedForwardingHost) Reserve(ctx context.Context, work, termination resource.HostingTraffic, end time.Time) (closedForwardingHostReservation, error) {

@@ -88,7 +88,9 @@ func (config *runtimeConfig) hostingPressure() (pressureLevel, error) {
 		err = errors.Join(err, sampleErr)
 		observation = sample.Observation
 	} else {
-		observation, err = config.host.Observe(ctx)
+		sample, sampleErr := config.host.Sample(ctx, time.Second)
+		err = sampleErr
+		observation = sample.Observation
 	}
 	if err != nil || observation.Drain {
 		config.hostingLevel = pressureDrain

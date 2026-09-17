@@ -205,9 +205,9 @@ func (server *closedForwardingServer) reap() {
 		case <-ticker.C:
 			if server.host != nil {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				observation, err := server.host.Observe(ctx)
+				sample, err := server.host.Sample(ctx, time.Second)
 				cancel()
-				if err != nil || observation.Drain {
+				if err != nil || sample.Observation.Drain {
 					if err == nil {
 						err = errors.New("closed forwarding host allowance requires drain")
 					}

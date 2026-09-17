@@ -138,8 +138,8 @@ func (server *closedDataJoinServer) run(ctx context.Context) {
 				monitor <- nil
 				return
 			case <-ticker.C:
-				observation, err := server.host.Observe(ctx)
-				if err != nil || observation.Drain {
+				sample, err := server.host.Sample(ctx, time.Second)
+				if err != nil || sample.Observation.Drain {
 					monitor <- errors.Join(err, errors.New("JOIN host allowance requires drain"))
 					_ = server.stop()
 					return

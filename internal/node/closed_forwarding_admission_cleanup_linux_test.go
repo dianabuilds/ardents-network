@@ -28,8 +28,8 @@ type cleanupFailureHost struct {
 	afterReserve func()
 }
 
-func (host *cleanupFailureHost) Observe(context.Context) (resource.HostingObservation, error) {
-	return resource.HostingObservation{}, nil
+func (host *cleanupFailureHost) Sample(context.Context, time.Duration) (resource.HostingSample, error) {
+	return resource.HostingSample{}, nil
 }
 func (host *cleanupFailureHost) Close() error { return nil }
 func (host *cleanupFailureHost) Reserve(context.Context, resource.HostingTraffic, resource.HostingTraffic, time.Time) (closedForwardingHostReservation, error) {
