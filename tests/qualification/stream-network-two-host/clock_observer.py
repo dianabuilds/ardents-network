@@ -19,22 +19,21 @@ def stop(_signum, _frame):
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 os.makedirs(os.path.dirname(destination), mode=0o755, exist_ok=True)
-stamp = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 temporary = destination + ".pending"
-with open(temporary, "w", encoding="ascii", newline=chr(10)) as stream:
-    stream.write(stamp + chr(10))
-    stream.flush()
-    os.fsync(stream.fileno())
-os.chmod(temporary, 0o644)
-os.replace(temporary, destination)
 
-descriptor = os.open(destination, os.O_RDONLY | os.O_NOFOLLOW)
-try:
-    if not stat.S_ISREG(os.fstat(descriptor).st_mode):
-        raise SystemExit("clock observation must be one regular file")
-    while running:
-        observed = time.time_ns()
-        os.utime(descriptor, ns=(observed, observed))
-        time.sleep(0.5)
-finally:
-    os.close(descriptor)
+while running:
+    stamp = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(temporary, flags, 0o644)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise SystemExit("clock observation must be one regular file")
+        os.write(descriptor, (stamp + chr(10)).encode("ascii"))
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    os.chmod(temporary, 0o644)
+    os.replace(temporary, destination)
+    time.sleep(0.5)

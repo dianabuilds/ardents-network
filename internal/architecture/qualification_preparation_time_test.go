@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestQualificationPreparationReadsCanonicalInstantsBeforePowerShellConversion(t *testing.T) {
@@ -238,6 +239,55 @@ func TestQualificationStartsRouteNodesAsOnePreparedGroup(t *testing.T) {
 	if strings.Contains(function, "Group-Object Machine") {
 		t.Fatal("qualification runner groups ordered dictionaries by a property name that PowerShell resolves as empty")
 	}
+}
+
+func TestQualificationClockObserverAdvancesObservationContent(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	python := "python3"
+	if runtime.GOOS == "windows" {
+		python = "python"
+	}
+	if _, err := exec.LookPath(python); err != nil {
+		t.Fatalf("qualification clock observer requires %s: %v", python, err)
+	}
+	observation := filepath.Join(t.TempDir(), "clock", "observation")
+	command := exec.Command(python,
+		filepath.Join(root, "tests", "qualification", "stream-network-two-host", "clock_observer.py"), observation)
+	if output, err := command.StdoutPipe(); err != nil || output == nil {
+		t.Fatalf("clock observer stdout: %v", err)
+	}
+	if output, err := command.StderrPipe(); err != nil || output == nil {
+		t.Fatalf("clock observer stderr: %v", err)
+	}
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+	})
+
+	var first string
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		body, readErr := os.ReadFile(observation)
+		if readErr == nil {
+			current := strings.TrimSpace(string(body))
+			if _, parseErr := time.Parse(time.RFC3339, current); parseErr != nil {
+				t.Fatalf("clock observation %q: %v", current, parseErr)
+			}
+			if first == "" {
+				first = current
+			} else if current != first {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("clock observation content remained %q", first)
 }
 
 func TestQualificationResetsOnlyFailedEndpointUnit(t *testing.T) {
