@@ -125,9 +125,11 @@ func verifyTextWorkerSyscalls(service textManagerProperties) error {
 	for _, name := range names {
 		denied[name] = true
 	}
-	// systemd 255's selected deny groups are checked after expansion. Merely
-	// finding a group name in a unit file is not evidence of effective seccomp.
-	for _, name := range strings.Fields("add_key bpf chroot delete_module finit_module fsconfig fsmount fsopen fspick init_module io_uring_enter io_uring_register io_uring_setup ioperm iopl kexec_file_load kexec_load keyctl mount mount_setattr move_mount open_tree pciconfig_iobase pciconfig_read pciconfig_write perf_event_open pivot_root process_vm_readv process_vm_writev ptrace reboot request_key s390_pci_mmio_read s390_pci_mmio_write swapoff swapon umount umount2 userfaultfd") {
+	// The selected deny groups are checked after systemd expands them for the
+	// native architecture. Merely finding a group name in a unit file is not
+	// evidence of effective seccomp. Do not require foreign-architecture-only
+	// syscalls: systemd 249 correctly omits s390 PCI calls from amd64 output.
+	for _, name := range strings.Fields("add_key bpf chroot delete_module finit_module fsconfig fsmount fsopen fspick init_module io_uring_enter io_uring_register io_uring_setup ioperm iopl kexec_file_load kexec_load keyctl mount mount_setattr move_mount open_tree pciconfig_iobase pciconfig_read pciconfig_write perf_event_open pivot_root process_vm_readv process_vm_writev ptrace reboot request_key swapoff swapon umount umount2 userfaultfd") {
 		if !denied[name] {
 			return errors.New("text worker syscall denial is unavailable")
 		}
