@@ -82,7 +82,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	for index, owner := range readers {
 		go func(index int, owner *textContext, job *textJobIdentity) {
 			result := readerResult{index: index}
-			worker := &qualifiedTextWorker{job: job}
+			worker := &qualifiedTextWorker{job: job, qualificationReader: index}
 			until := time.Now().UTC().Add(15 * time.Minute).Unix()
 			nextOpening := time.Now().Add(qualificationReaderOpeningDelay(index))
 			for streamIndex := 0; streamIndex < streamsPerReader; streamIndex++ {
@@ -219,7 +219,7 @@ func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) 
 	if before >= qualificationIssuerReserve {
 		t.Fatalf("could not reach qualification issuer refill boundary: %d", before)
 	}
-	if err := owner.ensureQualificationIssuerReserve(t.Context()); err != nil {
+	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualificationIssuerReserve); err != nil {
 		t.Fatal(err)
 	}
 	if after := ready(); after < qualificationIssuerReserve || after <= before {

@@ -11,14 +11,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// Keep enough Publisher issuer admissions outside the next Introduction's
-// ten-second wire lifetime. The Publisher spends one to prepare each JOIN
-// stock. Refilling at this completed-stream boundary retains the exact
-// permission and durable-spend rules without putting a 32-token refill in the
-// capsule's latency-critical path. Readers remain phase-paced independently;
-// eagerly refilling all four would recreate the refill herd this schedule
-// deliberately avoids.
-const qualificationIssuerReserve = 8
+// Keep issuer admissions outside the next Introduction's ten-second wire
+// lifetime. Refilling at this completed-stream boundary retains the exact
+// permission and durable-spend rules without putting a large refill in the
+// capsule's latency-critical path. Reader reserves are deliberately separated
+// by nine tokens, so their three-token-per-opening paths do not recreate the
+// refill herd that their opening phases avoid. Each refill is capped to eight
+// tokens so one CPU can continue sampling every Node during issuance.
+const qualificationIssuerReserve, qualificationIssuerRefill = 8, 8
 
 func (worker *qualifiedTextWorker) runQualifiedStreams(ctx context.Context, streams []streamqualification.BoundStream) (report streamqualification.Report, outcome error) {
 	bounded, cancel := context.WithCancel(ctx)
@@ -65,10 +65,12 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 		joins = append(joins, joined)
 	}
 	owner.mu.Unlock()
-	if worker.job.qualification.Role == streamqualification.PublisherRole {
-		if err := owner.ensureQualificationIssuerReserve(ctx); err != nil {
-			return err
-		}
+	issuerReserve := qualificationIssuerReserve
+	if worker.job.qualification.Role == streamqualification.ReaderRole {
+		issuerReserve += (3 - worker.qualificationReader) * 9
+	}
+	if err := owner.ensureQualificationIssuerReserve(ctx, issuerReserve); err != nil {
+		return err
 	}
 	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
@@ -94,7 +96,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	return nil
 }
 
-func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context) error {
+func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.permission == nil || owner.prefix == nil || ctx.Err() != nil {
@@ -112,10 +114,10 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context) 
 	}
 	remaining := owner.permission.accepted.Maxima[0] - owner.permission.reserved[0]
 	owner.mu.Unlock()
-	if ready >= qualificationIssuerReserve || remaining == 0 {
+	if ready >= minimum || remaining == 0 {
 		return nil
 	}
-	count := min(remaining, uint32(32))
+	count := min(remaining, uint32(qualificationIssuerRefill))
 	receivers := make([][32]byte, count)
 	for index := range receivers {
 		receivers[index] = profile.IssuerNodeID

@@ -82,6 +82,7 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 	if worker == nil || worker.job == nil || worker.job.qualification == nil || reader < 0 || reader >= 4 {
 		return report, errors.New("qualification Reader unavailable")
 	}
+	worker.qualificationReader = reader
 	bounded, finish, err := worker.beginOperation(ctx, broker.Connection)
 	if err != nil {
 		return report, err
