@@ -120,10 +120,13 @@ func TestHostingSampleDoesNotJoinExclusiveLeaseQueueForRecentCommit(t *testing.T
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = lock.Close() })
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_SH); err != nil {
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = syscall.Flock(int(lock.Fd()), syscall.LOCK_UN) })
+	if err := os.WriteFile(filepath.Join(root, "period.pending"), []byte("in-flight replacement"), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
