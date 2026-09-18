@@ -10,6 +10,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 // Endpoint returns a token only after verifying its challenge and durably
@@ -93,12 +95,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	if err != nil {
 		return nil, closedSourceOpenFailureAt("state", err)
 	}
-	end := now.Add(30 * time.Minute).Truncate(time.Second)
-	for _, limit := range []time.Time{plan.profile.NotAfter, snapshot.ValidUntil, plan.peers[0].notAfter, plan.peers[1].notAfter} {
-		if limit.Before(end) {
-			end = limit
-		}
-	}
+	end := closedSourcePrefixEnd(plan, snapshot, now)
 	plan.deadline = end
 	entry := plan.peers[0]
 	connection, err := OpenClosedRoleCarrier(ctx, ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: handshakeEnd})
@@ -171,6 +168,16 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	owner.done = make(chan struct{})
 	go owner.finishAfterChannels()
 	return owner, nil
+}
+
+func closedSourcePrefixEnd(plan closedBootstrapPlan, snapshot state.Snapshot, now time.Time) time.Time {
+	end := now.Add(closedClassLifetime(2)).Truncate(time.Second)
+	for _, limit := range []time.Time{plan.profile.NotAfter, snapshot.ValidUntil, plan.peers[0].notAfter, plan.peers[1].notAfter} {
+		if limit.Before(end) {
+			end = limit
+		}
+	}
+	return end
 }
 
 func admitClosedSourceObserved(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter, observation *ClosedHello) error {

@@ -67,7 +67,7 @@ func prepareClosedPrefix(source ClosedBootstrapState, selection ClosedBootstrapS
 		view.NodeCount == 0 || int(view.NodeCount) > len(view.Nodes) || int(snapshot.CandidateCount) > len(snapshot.Candidates) {
 		return closedBootstrapPlan{}, errors.New("closed bootstrap State is unavailable")
 	}
-	plan := closedBootstrapPlan{domain: adjacentDomain, profile: profile, deadline: now.Add(closedClassLifetime(2)).Truncate(time.Second)}
+	plan := closedBootstrapPlan{domain: adjacentDomain, profile: profile, deadline: now.Add(10 * time.Second)}
 	for _, limit := range []time.Time{profile.NotAfter, snapshot.ValidUntil} {
 		if limit.Before(plan.deadline) {
 			plan.deadline = limit.Truncate(time.Second)

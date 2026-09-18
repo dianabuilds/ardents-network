@@ -47,16 +47,21 @@ func sourceResolutionSelectionFixture(t *testing.T) (*ClosedSourcePrefix, *resol
 	if err != nil {
 		t.Fatal(err)
 	}
+	plan.deadline = closedSourcePrefixEnd(plan, source.snapshot, now)
 	// No transport exists in this selection test; invalid State must stop before
 	// any OPEN or presenter. Actual networking has its separate Endpoint test.
 	return &ClosedSourcePrefix{source: source, selection: selection, plan: plan, channels: &closedSourceChannels{}}, source
 }
 
-func TestClosedSourcePrefixRetainsClassTwoLifetimeBeyondPendingHandshake(t *testing.T) {
+func TestClosedBootstrapPlanRetainsOnlyPendingHandshakeWindow(t *testing.T) {
 	prefix, _ := sourceResolutionSelectionFixture(t)
-	remaining := time.Until(prefix.plan.deadline)
-	if remaining < 29*time.Minute || remaining > 30*time.Minute {
-		t.Fatalf("forwarding parent lifetime = %s, want the bounded 1,800-second class-2 lease", remaining)
+	plan, err := prepareClosedBootstrap(prefix.source, prefix.selection, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	remaining := time.Until(plan.deadline)
+	if remaining < 9*time.Second || remaining > 10*time.Second {
+		t.Fatalf("bootstrap plan lifetime = %s, want the bounded 10-second pending window", remaining)
 	}
 }
 
