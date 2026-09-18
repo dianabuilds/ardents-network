@@ -422,8 +422,11 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(runner), "$smokeDeadline = [DateTime]::UtcNow.AddMinutes(3)") {
+	if !strings.Contains(string(runner), "$smokeDeadline = [DateTime]::UtcNow.AddMinutes(6)") {
 		t.Fatal("qualification smoke deadline cannot contain the measured retained Reader setup")
+	}
+	if !strings.Contains(string(runner), "$deadline = [DateTime]::UtcNow.AddMinutes($(if ($SmokeSeconds -gt 0) { 10 } else { 22 }))") {
+		t.Fatal("qualification smoke owner deadline cannot contain setup and observation")
 	}
 }
 

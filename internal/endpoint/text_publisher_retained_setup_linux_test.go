@@ -187,3 +187,42 @@ func TestQualificationReaderOpeningDelayStaggersFourReaders(t *testing.T) {
 		}
 	}
 }
+
+func TestQualificationRefillsPublisherIssuerReserveBetweenStreams(t *testing.T) {
+	endpoint, owner, source := startTextIssuanceNetwork(t, route.ClosedCarrierTCP)
+	defer func() {
+		if err := endpoint.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if _, err := owner.openTextPrefix(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	selection := selectTextSource(t, owner)
+	ready := func() int {
+		owner.mu.Lock()
+		defer owner.mu.Unlock()
+		count := 0
+		for _, stock := range owner.permission.stock {
+			if stock.challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.challenge.Class == 1 {
+				count += len(stock.tokens)
+			}
+		}
+		return count
+	}
+	for attempts := 0; ready() >= qualificationIssuerReserve && attempts < 64; attempts++ {
+		if err := owner.issueTextTokens(t.Context(), [][32]byte{selection.EntryNodeID}, 2); err != nil {
+			t.Fatal(err)
+		}
+	}
+	before := ready()
+	if before >= qualificationIssuerReserve {
+		t.Fatalf("could not reach qualification issuer refill boundary: %d", before)
+	}
+	if err := owner.ensureQualificationIssuerReserve(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if after := ready(); after < qualificationIssuerReserve || after <= before {
+		t.Fatalf("qualification issuer reserve = %d after %d", after, before)
+	}
+}

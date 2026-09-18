@@ -11,6 +11,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+// Keep enough Publisher issuer admissions outside the next Introduction's
+// ten-second wire lifetime. The Publisher spends one to prepare each JOIN
+// stock. Refilling at this completed-stream boundary retains the exact
+// permission and durable-spend rules without putting a 32-token refill in the
+// capsule's latency-critical path. Readers remain phase-paced independently;
+// eagerly refilling all four would recreate the refill herd this schedule
+// deliberately avoids.
+const qualificationIssuerReserve = 8
+
 func (worker *qualifiedTextWorker) runQualifiedStreams(ctx context.Context, streams []streamqualification.BoundStream) (report streamqualification.Report, outcome error) {
 	bounded, cancel := context.WithCancel(ctx)
 	stopped := make(chan error, 1)
@@ -56,6 +65,11 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 		joins = append(joins, joined)
 	}
 	owner.mu.Unlock()
+	if worker.job.qualification.Role == streamqualification.PublisherRole {
+		if err := owner.ensureQualificationIssuerReserve(ctx); err != nil {
+			return err
+		}
+	}
 	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
 	}
@@ -78,6 +92,35 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context) error {
+	owner.mu.Lock()
+	profile, _, err := owner.textPermissionProfileLocked()
+	if err != nil || owner.permission == nil || owner.prefix == nil || ctx.Err() != nil {
+		owner.mu.Unlock()
+		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
+	}
+	ready := 0
+	for _, stock := range owner.permission.stock {
+		if stock.challenge.ReceiverNodeID == profile.IssuerNodeID &&
+			stock.challenge.ReceiverDutyGeneration == profile.IssuerDutyGeneration &&
+			stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 1 &&
+			stock.challenge.WindowStart == owner.permission.accepted.NotBefore {
+			ready += len(stock.tokens)
+		}
+	}
+	remaining := owner.permission.accepted.Maxima[0] - owner.permission.reserved[0]
+	owner.mu.Unlock()
+	if ready >= qualificationIssuerReserve || remaining == 0 {
+		return nil
+	}
+	count := min(remaining, uint32(32))
+	receivers := make([][32]byte, count)
+	for index := range receivers {
+		receivers[index] = profile.IssuerNodeID
+	}
+	return owner.issueTextTokens(ctx, receivers, 1)
 }
 
 func (owner *textContext) presentQualifiedRefill(ctx context.Context, job *textJobIdentity, hello route.ClosedHello, class uint8) ([]byte, error) {

@@ -912,7 +912,7 @@ try {
     Start-NetworkRelays
     Start-RouteNodes
     $publisherInvocation = Start-Owner $PublisherHost
-    $deadline = [DateTime]::UtcNow.AddMinutes($(if ($SmokeSeconds -gt 0) { 5 } else { 22 }))
+    $deadline = [DateTime]::UtcNow.AddMinutes($(if ($SmokeSeconds -gt 0) { 10 } else { 22 }))
     $publisherPermission = $publisherPlanObject.Participants[0].Participant.PublisherPermission
     $event = Wait-Event $PublisherHost $publisherInvocation 'permission-required' 0 $deadline
     Issue-Permission $PublisherHost $publisherPermission (Convert-Digest $event.RequestDigest 'publisher request digest') 'publisher'
@@ -931,10 +931,10 @@ try {
     if ($SmokeSeconds -gt 0) {
         $initial = @()
         # Each Reader deliberately opens 64 retained connections at one per
-        # 1.25 seconds. The full four-Reader setup has measured above two
-        # minutes on the selected one-CPU host, so retain a bounded margin
+        # 1.25 seconds. The full four-Reader setup has measured 225 seconds on
+        # the selected one-CPU host, so retain a bounded margin
         # before applying the shorter useful-progress observation window.
-        $smokeDeadline = [DateTime]::UtcNow.AddMinutes(3)
+        $smokeDeadline = [DateTime]::UtcNow.AddMinutes(6)
         for ($index = 0; $index -lt 4; $index++) {
             $initial += Wait-SmokeProgress $ReaderHost $readerInvocation $index 64 16 $smokeDeadline
         }
