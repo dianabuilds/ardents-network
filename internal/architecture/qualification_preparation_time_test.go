@@ -94,6 +94,20 @@ func TestQualificationPrivateFixtureTransfersHaveBoundedRetries(t *testing.T) {
 	}
 }
 
+func TestQualificationFixtureGeneratorBuildsFromItsRepository(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "generate-windows.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "& go -C $repository build -trimpath") {
+		t.Fatal("qualification fixture generator builds from the caller's working directory")
+	}
+}
+
 func TestQualificationPreparationAssignsEveryStateRootToRuntimeOwner(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

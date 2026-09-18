@@ -53,7 +53,7 @@ try {
     $priorGOOS, $priorGOARCH, $priorCGO = $env:GOOS, $env:GOARCH, $env:CGO_ENABLED
     try {
         $env:GOOS, $env:GOARCH, $env:CGO_ENABLED = 'linux', 'amd64', '0'
-        & go build -trimpath -o $binary ./tests/qualification/stream-network-two-host/fixturecommand/qualification-network
+        & go -C $repository build -trimpath -o $binary ./tests/qualification/stream-network-two-host/fixturecommand/qualification-network
         if ($LASTEXITCODE -ne 0) { throw 'Cross-build qualification fixture generator failed.' }
     } finally {
         $env:GOOS, $env:GOARCH, $env:CGO_ENABLED = $priorGOOS, $priorGOARCH, $priorCGO
