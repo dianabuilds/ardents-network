@@ -52,20 +52,38 @@ func (owner *Hosting) recentHostingState(ctx context.Context, maximumAge time.Du
 	if owner.closed || ctx.Err() != nil {
 		return empty, unavailable, false, errors.New("hosting owner is unavailable")
 	}
-	lease, err := acquireHostingReadLease(ctx, owner.root)
+	lease, available, err := tryAcquireHostingReadLease(ctx, owner.root)
 	if err != nil {
 		return empty, unavailable, false, err
 	}
-	state, err := readHostingState(owner.root)
+	var state hostingState
+	if available {
+		state, err = readHostingState(owner.root)
+	} else {
+		// A current exclusive writer proves period.pending belongs to an
+		// in-flight transaction. The atomically replaced period.json remains
+		// the last complete committed observation and may be shared only while
+		// it still satisfies the caller's existing freshness bound.
+		state, err = readCommittedHostingState(owner.root)
+	}
 	if err != nil {
-		return empty, unavailable, false, errors.Join(err, lease.close())
+		if available {
+			err = errors.Join(err, lease.close())
+		}
+		return empty, unavailable, false, err
 	}
 	now := owner.now()
 	if now.Before(state.Observed) {
-		return empty, unavailable, false, errors.Join(errors.New("hosting observation continuity is unavailable"), lease.close())
-	}
-	if err := lease.close(); err != nil {
+		err = errors.New("hosting observation continuity is unavailable")
+		if available {
+			err = errors.Join(err, lease.close())
+		}
 		return empty, unavailable, false, err
+	}
+	if available {
+		if err := lease.close(); err != nil {
+			return empty, unavailable, false, err
+		}
 	}
 	return state, state.observation(now), now.Sub(state.Observed) <= maximumAge, nil
 }
