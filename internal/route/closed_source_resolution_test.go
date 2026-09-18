@@ -63,6 +63,9 @@ func TestClosedBootstrapPlanRetainsOnlyPendingHandshakeWindow(t *testing.T) {
 	if remaining < 9*time.Second || remaining > 10*time.Second {
 		t.Fatalf("bootstrap plan lifetime = %s, want the bounded 10-second pending window", remaining)
 	}
+	if plan.deadline != plan.deadline.UTC().Truncate(time.Second) {
+		t.Fatalf("bootstrap deadline = %s, want canonical whole-second precision", plan.deadline)
+	}
 }
 
 func TestClosedSourceResolutionRequiresUniqueCurrentStateRecipient(t *testing.T) {
