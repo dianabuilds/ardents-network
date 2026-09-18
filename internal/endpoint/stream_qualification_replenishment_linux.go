@@ -59,7 +59,6 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 		owner.mu.Unlock()
 		return nil
 	}
-	prefixes := []*route.ClosedSourcePrefix{owner.prefix, owner.introduction.prefix, owner.responder.prefix}
 	joins := make([]*route.ClosedJoinedStream, 0, len(worker.job.qualificationJoins))
 	for joined := range worker.job.qualificationJoins {
 		joins = append(joins, joined)
@@ -72,6 +71,12 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	if err := owner.ensureQualificationIssuerReserve(ctx, issuerReserve); err != nil {
 		return err
 	}
+	// Observe the prefixes after reserve inspection: a Source prefix retired
+	// on its finite post-work interval may have just been reopened by that
+	// inspection. Snapshotting before it would replenish a known-dead parent.
+	owner.mu.Lock()
+	prefixes := []*route.ClosedSourcePrefix{owner.prefix, owner.introduction.prefix, owner.responder.prefix}
+	owner.mu.Unlock()
 	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
 	}
@@ -99,7 +104,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.permission == nil || owner.prefix == nil || ctx.Err() != nil {
+	if err != nil || owner.permission == nil || ctx.Err() != nil {
 		owner.mu.Unlock()
 		return errors.Join(err, ctx.Err(), errors.New("qualification issuer reserve unavailable"))
 	}
@@ -113,9 +118,27 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		}
 	}
 	remaining := owner.permission.accepted.Maxima[0] - owner.permission.reserved[0]
+	prefixLive := owner.prefix != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
+		// No new admission is due here, so a Source prefix retired on its
+		// finite post-work interval must not fail the retained connection set.
 		return nil
+	}
+	if !prefixLive {
+		// Fresh issuer stock is new private work: reopen the Source prefix
+		// through the same retained-member bootstrap that opened it at job
+		// start. A concurrent opening or issuance flight already owns the
+		// refill; the next completed-stream boundary observes its result.
+		if _, openErr := owner.openTextPrefix(ctx); openErr != nil {
+			owner.mu.Lock()
+			inProgress := owner.prefix != nil || owner.prefixOpening != nil || owner.issuance != nil
+			owner.mu.Unlock()
+			if !inProgress {
+				return errors.Join(openErr, errors.New("qualification issuer prefix rebirth failed"))
+			}
+			return nil
+		}
 	}
 	count := min(remaining, uint32(qualificationIssuerRefill))
 	receivers := make([][32]byte, count)

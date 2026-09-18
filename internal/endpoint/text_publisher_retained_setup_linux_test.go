@@ -193,6 +193,78 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	}
 }
 
+func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
+	endpoint, owner, source := startTextIssuanceNetwork(t, route.ClosedCarrierTCP)
+	defer func() {
+		if err := endpoint.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	prefix, err := owner.openTextPrefix(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Fund the retained members' class-2 admission stock, as the participant
+	// bootstrap does, so a prefix rebirth can open from finalized stock.
+	selection := selectTextSource(t, owner)
+	for _, receiver := range [][32]byte{selection.EntryNodeID, selection.InteriorNodeID} {
+		if err := owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 2); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ready := func() int {
+		owner.mu.Lock()
+		defer owner.mu.Unlock()
+		count := 0
+		for _, stock := range owner.permission.stock {
+			if stock.challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.challenge.Class == 1 {
+				count += len(stock.tokens)
+			}
+		}
+		return count
+	}
+	// Ensure once while the prefix is live so the finalized class-1 reserve
+	// exists, then spend it deterministically.
+	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualificationIssuerReserve); err != nil {
+		t.Fatal(err)
+	}
+	// Spend the finalized class-1 reserve down to four
+	// tokens: above the two-token prefix-open admission floor and below the
+	// qualification refill boundary.
+	for ready() > 4 {
+		owner.mu.Lock()
+		for slot := range owner.permission.stock {
+			stock := &owner.permission.stock[slot]
+			if stock.challenge.ReceiverNodeID == source.view.Profile.IssuerNodeID && stock.challenge.Class == 1 && len(stock.tokens) > 0 {
+				clear(stock.tokens[0])
+				stock.tokens = stock.tokens[1:]
+				break
+			}
+		}
+		owner.mu.Unlock()
+	}
+	// Retire the Source prefix on its joined terminal path, as the finite
+	// post-work interval does inside a long retained setup.
+	if err := prefix.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before := ready()
+	if err := owner.ensureQualificationIssuerReserve(t.Context(), qualificationIssuerReserve); err != nil {
+		t.Fatalf("retired Source prefix failed the issuer reserve: %v", err)
+	}
+	owner.mu.Lock()
+	reopened := owner.prefix
+	owner.mu.Unlock()
+	if reopened == nil || reopened == prefix {
+		t.Fatalf("issuer reserve did not reopen the retired Source prefix: %p", reopened)
+	}
+	// Repeated completed-stream boundaries converge on the reserve; one
+	// boundary may only fund part of it while the hour allocation remains.
+	if after := ready(); after <= before {
+		t.Fatalf("qualification issuer reserve = %d after %d", after, before)
+	}
+}
+
 func TestQualificationReaderOpeningDelayStaggersFourReaders(t *testing.T) {
 	want := []time.Duration{0, 312500 * time.Microsecond, 625 * time.Millisecond, 937500 * time.Microsecond}
 	for reader, expected := range want {
