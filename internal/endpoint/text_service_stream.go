@@ -47,6 +47,15 @@ type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery
 func (transport *textServiceTransport) Close() error {
 	transport.once.Do(func() {
 		transport.err = transport.Conn.Close()
+		// A retirement attempt after an upstream cancellation has already torn
+		// down TLS is not a separate cleanup failure. Without this guard the
+		// per-stream Join cascade reproduces "text Service transport retirement
+		// failed" once per stream and the workload criteria never see a quiet
+		// shutdown.
+		if transport.err != nil && (errors.Is(transport.err, net.ErrClosed) ||
+			transport.err.Error() == "use of closed network connection") {
+			transport.err = nil
+		}
 		if transport.err != nil {
 			transport.err = errors.Join(errors.New("text Service transport retirement failed"), transport.err)
 		}
