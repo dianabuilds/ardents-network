@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"sort"
 	"time"
@@ -108,26 +109,26 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 		// second bounds every sliding second to at most one opening per Reader,
 		// without weakening the Publisher's hostile-input rate limit.
 		if err := waitQualificationIntroductionOpening(bounded, nextOpening); err != nil {
-			return report, err
+			return report, fmt.Errorf("qualification Reader %d stream %d pacing: %w", reader, index, err)
 		}
 		attempt, err := owner.prepareTextIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
 		if err != nil {
-			return report, err
+			return report, fmt.Errorf("qualification Reader %d stream %d preparation: %w", reader, index, err)
 		}
 		service, err := owner.openTextJoinedService(bounded, worker.job, attempt)
 		if err != nil {
-			return report, err
+			return report, fmt.Errorf("qualification Reader %d stream %d join: %w", reader, index, err)
 		}
 		id := qualificationStreamID(reader, index)
 		streams = append(streams, streamqualification.BoundStream{ID: id, Stream: service})
 		if _, err := service.Write(qualificationHello(worker.job.qualification.Profile, worker.job.qualification.Seed, id)); err != nil {
-			return report, err
+			return report, fmt.Errorf("qualification Reader %d stream %d hello: %w", reader, index, err)
 		}
 		// Setup traffic consumes the same finite forwarding allowances as the
 		// measured workload. Refill at this completed-operation boundary so the
 		// initial 32 MiB authority cannot expire before the retained set exists.
 		if err := worker.replenishStreams(bounded); err != nil {
-			return report, err
+			return report, fmt.Errorf("qualification Reader %d stream %d replenishment: %w", reader, index, err)
 		}
 		nextOpening = time.Now().Add(qualificationIntroductionInterval)
 	}
@@ -163,7 +164,7 @@ func (worker *qualifiedTextWorker) serveQualification(ctx, bounded context.Conte
 		select {
 		case stream, ok := <-delivered:
 			if !ok {
-				return errors.New("qualification Publisher producer ended before full set")
+				return qualificationPublisherIncompleteError(len(streams))
 			}
 			// A connected peer must supply the fixed workload binding promptly.
 			helloCtx, stop := context.WithTimeout(network, 10*time.Second)
@@ -203,6 +204,10 @@ func (worker *qualifiedTextWorker) serveQualification(ctx, bounded context.Conte
 		*worker.job.qualificationReport = report
 	}
 	return err
+}
+
+func qualificationPublisherIncompleteError(streams int) error {
+	return fmt.Errorf("qualification Publisher producer ended at %d/256 streams", streams)
 }
 
 func qualificationCancellationOnly(err error) bool {
