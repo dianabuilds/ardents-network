@@ -130,3 +130,60 @@ func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *text
 	}
 	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, operation: operation, digest: digest}, nil
 }
+
+// refreshTextIntroduction starts the capsule lifetime only after the local
+// JOIN and submission admission stock is ready. None of that prerequisite
+// work has exposed the earlier sealed bytes, so replacing them cannot create a
+// second wire attempt or weaken replay ownership.
+func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *textJobIdentity,
+	attempt *textIntroductionAttempt, prefix *route.ClosedSourcePrefix) error {
+	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil ||
+		attempt.binding.owner != owner || attempt.binding.job != job || prefix == nil ||
+		attempt.plaintext.AttachmentGeneration != 1 || attempt.submitted {
+		return errors.New("text Introduction refresh unavailable")
+	}
+	node, generation, until, err := prefix.DataJoinRecipient()
+	if err != nil {
+		return err
+	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	profile, now, err := owner.textPermissionProfileLocked()
+	introduction := attempt.binding.introduction
+	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || owner.prefix != prefix ||
+		ctx.Err() != nil || profile.Digest != attempt.plaintext.ProfileDigest ||
+		node != attempt.plaintext.RendezvousNode || generation != attempt.plaintext.RendezvousDutyGeneration ||
+		introduction.Slot == [32]byte{} || introduction.RecipientKey == [32]byte{} ||
+		introduction.Revision != attempt.plaintext.Revision {
+		return errors.Join(err, ctx.Err(), errors.New("text Introduction refresh authority changed"))
+	}
+	deadline := now.Add(10 * time.Second).UTC().Truncate(time.Second)
+	for _, bound := range []time.Time{until, introduction.NotAfter, time.Unix(attempt.binding.facts.WorkSafetyNotAfter, 0)} {
+		if bound.Before(deadline) {
+			deadline = bound.UTC().Truncate(time.Second)
+		}
+	}
+	if !now.Before(deadline) {
+		return errors.New("text Introduction refresh deadline unavailable")
+	}
+	plaintext := attempt.plaintext
+	plaintext.Deadline = deadline
+	capsule := route.ClosedIntroductionCapsule{Slot: introduction.Slot, Revision: introduction.Revision, Expiry: deadline}
+	var requestNonce [32]byte
+	for _, value := range []*[32]byte{&capsule.DeliveryNonce, &requestNonce} {
+		if _, err := rand.Read(value[:]); err != nil {
+			return err
+		}
+	}
+	capsule, digest, err := route.SealClosedIntroduction(capsule, introduction.RecipientKey, plaintext)
+	if err != nil {
+		return err
+	}
+	operation, err := route.EncodeClosedIntroductionSubmission(requestNonce, capsule)
+	if err != nil {
+		return err
+	}
+	clear(attempt.operation)
+	attempt.plaintext, attempt.operation, attempt.digest = plaintext, operation, digest
+	return nil
+}

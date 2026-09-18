@@ -140,6 +140,16 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 			return nil, err
 		}
 	}
+	if attempt.plaintext.AttachmentGeneration == 1 && owner.surface == broker.Connection {
+		if job.qualificationAcquireIntroduction != nil {
+			if err := job.qualificationAcquireIntroduction(joining); err != nil {
+				return nil, err
+			}
+		}
+		if err := owner.refreshTextIntroduction(joining, job, attempt, prefix); err != nil {
+			return nil, err
+		}
+	}
 	type joinedResult struct {
 		stream *route.ClosedJoinedStream
 		err    error

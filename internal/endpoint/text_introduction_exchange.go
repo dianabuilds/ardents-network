@@ -38,11 +38,6 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 	if err != nil {
 		return err
 	}
-	if job.qualificationAcquireIntroduction != nil {
-		if err := job.qualificationAcquireIntroduction(bounded); err != nil {
-			return err
-		}
-	}
 	status, err := prefix.SubmitIntroduction(bounded, func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
