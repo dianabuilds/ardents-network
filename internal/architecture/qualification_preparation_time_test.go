@@ -304,6 +304,59 @@ func TestQualificationClockObserverAdvancesObservationContent(t *testing.T) {
 	t.Fatalf("clock observation content remained %q", first)
 }
 
+func TestQualificationClockObserverStaysCurrentWhenDurableSyncIsSlow(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	python := "python3"
+	if runtime.GOOS == "windows" {
+		python = "python"
+	}
+	if _, err := exec.LookPath(python); err != nil {
+		t.Fatalf("qualification clock observer requires %s: %v", python, err)
+	}
+
+	injection := t.TempDir()
+	if err := os.WriteFile(filepath.Join(injection, "sitecustomize.py"), []byte(
+		"import os\nimport time\n_original_fsync = os.fsync\ndef slow_fsync(fd):\n    time.sleep(3)\n    return _original_fsync(fd)\nos.fsync = slow_fsync\n",
+	), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	observation := filepath.Join(t.TempDir(), "clock", "observation")
+	command := exec.Command(python,
+		filepath.Join(root, "tests", "qualification", "stream-network-two-host", "clock_observer.py"), observation)
+	command.Env = append(os.Environ(), "PYTHONPATH="+injection)
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+	})
+
+	var first time.Time
+	firstDeadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(firstDeadline) {
+		if info, statErr := os.Stat(observation); statErr == nil {
+			first = info.ModTime()
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if first.IsZero() {
+		t.Fatal("clock observer published no initial observation")
+	}
+	advanceDeadline := time.Now().Add(2500 * time.Millisecond)
+	for time.Now().Before(advanceDeadline) {
+		if info, statErr := os.Stat(observation); statErr == nil && info.ModTime().After(first) && time.Since(info.ModTime()) < 2*time.Second {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("clock observation did not remain inside the two-second confidence bound while durable sync was slow")
+}
+
 func TestQualificationWaitsBeforeConsumingAClosingAdmissionWindow(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

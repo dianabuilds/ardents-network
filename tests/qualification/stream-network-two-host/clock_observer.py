@@ -31,7 +31,9 @@ while running:
         if not stat.S_ISREG(os.fstat(descriptor).st_mode):
             raise SystemExit("clock observation must be one regular file")
         os.write(descriptor, (stamp + chr(10)).encode("ascii"))
-        os.fsync(descriptor)
+        # This is a live confidence signal, not durable State. Waiting for
+        # storage sync can make a healthy observer stale under unrelated host
+        # I/O; atomic replacement still keeps every reader on a complete value.
     finally:
         os.close(descriptor)
     os.chmod(temporary, 0o644)
