@@ -53,6 +53,14 @@ func acquireHostingLeaseMode(ctx context.Context, root *os.Root, mode int) (*hos
 }
 
 func tryAcquireHostingReadLease(ctx context.Context, root *os.Root) (*hostingLease, bool, error) {
+	return tryAcquireHostingLease(ctx, root, syscall.LOCK_SH)
+}
+
+func tryAcquireHostingWriteLease(ctx context.Context, root *os.Root) (*hostingLease, bool, error) {
+	return tryAcquireHostingLease(ctx, root, syscall.LOCK_EX)
+}
+
+func tryAcquireHostingLease(ctx context.Context, root *os.Root, mode int) (*hostingLease, bool, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, false, err
 	}
@@ -60,7 +68,7 @@ func tryAcquireHostingReadLease(ctx context.Context, root *os.Root) (*hostingLea
 	if err != nil {
 		return nil, false, err
 	}
-	err = syscall.Flock(int(file.Fd()), syscall.LOCK_SH|syscall.LOCK_NB)
+	err = syscall.Flock(int(file.Fd()), mode|syscall.LOCK_NB)
 	if err == nil {
 		return &hostingLease{file: file}, true, nil
 	}

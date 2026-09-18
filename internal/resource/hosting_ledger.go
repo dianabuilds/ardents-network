@@ -14,7 +14,7 @@ import (
 // The runtime adapter reads the named host interfaces, including control,
 // retransmission and other processes; these totals are not Application bytes.
 type Hosting struct {
-	mu       sync.Mutex
+	gate     chan struct{}
 	root     *os.Root
 	measure  func([]string) (hostingReading, error)
 	now      func() time.Time
@@ -65,7 +65,8 @@ func openHosting(path string, measure func([]string) (hostingReading, error), no
 	if err != nil {
 		return nil, err
 	}
-	owner := &Hosting{root: root, measure: measure, now: now}
+	owner := &Hosting{gate: make(chan struct{}, 1), root: root, measure: measure, now: now}
+	owner.gate <- struct{}{}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if _, err := owner.Sample(ctx, time.Second); err != nil {
@@ -145,8 +146,8 @@ func (owner *Hosting) Close() error {
 	if owner == nil {
 		return nil
 	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
+	<-owner.gate
+	defer func() { owner.gate <- struct{}{} }()
 	if !owner.closed {
 		owner.closed = true
 		owner.closeErr = owner.root.Close()
@@ -161,8 +162,10 @@ func (owner *Hosting) transact(ctx context.Context, maximumAge time.Duration,
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return empty, unavailable, errors.New("hosting operation is unavailable")
 	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
+	if err := owner.enter(ctx); err != nil {
+		return empty, unavailable, err
+	}
+	defer owner.leave()
 	if owner.closed || ctx.Err() != nil {
 		return empty, unavailable, errors.New("hosting owner is unavailable")
 	}
@@ -206,3 +209,14 @@ func (owner *Hosting) transact(ctx context.Context, maximumAge time.Duration,
 	}
 	return state, state.observation(now), refusal
 }
+
+func (owner *Hosting) enter(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-owner.gate:
+		return nil
+	}
+}
+
+func (owner *Hosting) leave() { owner.gate <- struct{}{} }

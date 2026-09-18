@@ -136,6 +136,98 @@ func TestHostingSampleDoesNotJoinExclusiveLeaseQueueForRecentCommit(t *testing.T
 	}
 }
 
+func TestHostingSampleWaitsForAnotherWriterWithoutJoiningItsExclusiveQueue(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	*now = now.Add(2 * time.Second)
+
+	lock, err := os.OpenFile(filepath.Join(root, "period.lock"), os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = lock.Close() })
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = syscall.Flock(int(lock.Fd()), syscall.LOCK_UN) })
+
+	ctx, cancel := context.WithTimeout(t.Context(), 250*time.Millisecond)
+	defer cancel()
+	result := make(chan error, 1)
+	go func() {
+		_, sampleErr := owner.Sample(ctx, time.Second)
+		result <- sampleErr
+	}()
+	// Let Sample observe the expired commit while this writer owns the lease,
+	// then publish the writer's fresh atomic replacement without releasing it.
+	time.Sleep(25 * time.Millisecond)
+	state, err := readCommittedHostingState(owner.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.Observed = *now
+	if err := writeHostingState(owner.root, state); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatalf("sample did not share the active writer's fresh commit: %v", err)
+		}
+	case <-ctx.Done():
+		t.Fatal("sample joined the active writer's exclusive lease queue")
+	}
+}
+
+func TestHostingSampleLocalGateHonorsContext(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	entered, release := make(chan struct{}), make(chan struct{})
+	block := false
+	owner, err := openHosting(root, func([]string) (hostingReading, error) {
+		if block {
+			close(entered)
+			<-release
+		}
+		return *reading, nil
+	}, func() time.Time { return *now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	*now = now.Add(2 * time.Second)
+	block = true
+	first := make(chan error, 1)
+	go func() {
+		_, sampleErr := owner.Sample(t.Context(), time.Second)
+		first <- sampleErr
+	}()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("first sample did not enter measurement")
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	second := make(chan error, 1)
+	go func() {
+		_, sampleErr := owner.Sample(ctx, time.Second)
+		second <- sampleErr
+	}()
+	select {
+	case err := <-second:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("contending local sample = %v, want context deadline", err)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("contending local sample ignored its context")
+	}
+	close(release)
+	if err := <-first; err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
