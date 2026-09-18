@@ -52,6 +52,14 @@ func sourceResolutionSelectionFixture(t *testing.T) (*ClosedSourcePrefix, *resol
 	return &ClosedSourcePrefix{source: source, selection: selection, plan: plan, channels: &closedSourceChannels{}}, source
 }
 
+func TestClosedSourcePrefixRetainsClassTwoLifetimeBeyondPendingHandshake(t *testing.T) {
+	prefix, _ := sourceResolutionSelectionFixture(t)
+	remaining := time.Until(prefix.plan.deadline)
+	if remaining < 29*time.Minute || remaining > 30*time.Minute {
+		t.Fatalf("forwarding parent lifetime = %s, want the bounded 1,800-second class-2 lease", remaining)
+	}
+}
+
 func TestClosedSourceResolutionRequiresUniqueCurrentStateRecipient(t *testing.T) {
 	prefix, source := sourceResolutionSelectionFixture(t)
 	if node, err := prefix.ResolutionRecipient(); err != nil || node != source.view.Nodes[3].NodeID {
