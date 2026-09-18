@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"strconv"
 	"time"
 )
 
@@ -120,7 +121,11 @@ func (prefix *ClosedSourcePrefix) exchangeControl(ctx context.Context, purpose C
 	// another TLS record after its terminal CLOSE has retired that channel.
 	var trailing [1]byte
 	if count, err := secured.Read(trailing[:]); count != 0 || !errors.Is(err, io.EOF) {
-		return nil, errors.Join(errors.New("closed source Control did not terminate its operation"), err)
+		// The trailing byte count distinguishes an extra record from the
+		// recipient (count > 0) from an early transport error (count == 0)
+		// without weakening the terminal-close requirement.
+		return nil, errors.Join(
+			errors.New("closed source Control did not terminate its operation: trailing bytes="+strconv.Itoa(count)), err)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err

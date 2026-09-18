@@ -149,7 +149,21 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			}
 			publisherStreams = append(publisherStreams, stream)
 			if err := publisherWorker.replenishStreams(ctx); err != nil {
-				setupErr = errors.Join(setupErr, fmt.Errorf("Publisher setup refill %d: %w", len(publisherStreams)-1, err))
+				publisher.mu.Lock()
+				state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
+					publisher.prefix != nil, publisher.resolution != nil, publisher.prefixOpening != nil, publisher.issuance != nil,
+					publisher.permission != nil, publisher.closed)
+				prefix := publisher.prefix
+				publisher.mu.Unlock()
+				prefixDone := prefix == nil
+				if !prefixDone {
+					select {
+					case <-prefix.Done():
+						prefixDone = true
+					default:
+					}
+				}
+				setupErr = errors.Join(setupErr, fmt.Errorf("Publisher setup refill %d (%s prefixDone=%t): %w", len(publisherStreams)-1, state, prefixDone, err))
 			}
 		case err := <-producerDone:
 			publisher.mu.Lock()

@@ -368,7 +368,11 @@ func TestQualificationWaitsBeforeConsumingAClosingAdmissionWindow(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := string(runner)
+	// The repository checks out PowerShell files with CRLF endings
+	// (.gitattributes: *.ps1 text eol=crlf). The ordering asserted below is a
+	// statement about program order, not about byte-level line terminators,
+	// so normalize the runner text before any multiline search.
+	text := strings.ReplaceAll(string(runner), "\r\n", "\n")
 	for _, required := range []string{
 		". (Join-Path $PSScriptRoot 'admission-window.ps1')",
 		"Get-QualificationAdmissionWindowDelay -Now ([DateTimeOffset]::UtcNow) -MinimumRemaining ([TimeSpan]::FromMinutes(15))",
