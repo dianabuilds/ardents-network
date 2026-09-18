@@ -62,6 +62,13 @@ func (stream *applicationHalfClose) Close() error {
 	}
 	stream.closeOnce.Do(func() {
 		stream.closeErr = errors.Join(stream.CloseInput(), stream.reader.Close())
+		// A retirement attempt after the bounded context has already torn the
+		// pipe down is not a separate cleanup failure. Without this guard the
+		// per-stream Join cascade reproduces "text Service cleanup failed" once
+		// per stream and the workload criteria never see a quiet shutdown.
+		if errors.Is(stream.closeErr, io.ErrClosedPipe) {
+			stream.closeErr = nil
+		}
 	})
 	return stream.closeErr
 }
