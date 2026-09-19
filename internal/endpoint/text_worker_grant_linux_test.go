@@ -102,7 +102,7 @@ func TestEndpointMainExitCannotLeaveItsUnitLogicallyActive(t *testing.T) {
 		"ExitType":        {Type: "s", Data: json.RawMessage(`"main"`)},
 		"RestartMode":     {Type: "s", Data: json.RawMessage(`"normal"`)},
 	}
-	if !textEndpointStopsWithMain(valid) {
+	if !textEndpointStopsWithMainVersion(valid, 255) {
 		t.Fatal("selected Endpoint lifetime refused")
 	}
 	for _, test := range []struct {
@@ -117,7 +117,7 @@ func TestEndpointMainExitCannotLeaveItsUnitLogicallyActive(t *testing.T) {
 	} {
 		previous := valid[test.name]
 		valid[test.name] = test.value
-		if textEndpointStopsWithMain(valid) {
+		if textEndpointStopsWithMainVersion(valid, 255) {
 			t.Errorf("accepted parent lifetime %s=%s", test.name, test.value.Data)
 		}
 		valid[test.name] = previous

@@ -33,8 +33,20 @@ func TestTextWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 			t.Fatalf("foreign cgroup path accepted: %q", group)
 		}
 	}
-	if !textWorkerCgroupPath("/system.slice/system-ardents\\x2dtext\\x2dreader.slice/"+name, name, "reader") {
-		t.Fatal("installed worker slice path refused")
+	if !textWorkerCgroupPath("/system.slice/"+name, name, "reader") {
+		t.Fatal("installed worker cgroup path refused")
+	}
+	if textWorkerCgroupPath("/system.slice/foreign.scope/"+name, name, "reader") {
+		t.Fatal("nested foreign text worker cgroup accepted")
+	}
+	streamName := "ardents-stream-qualification-reader@0-12-997.service"
+	if !textWorkerCgroupPath(streamWorkerCgroupRoot+streamName, streamName, "reader") {
+		t.Fatal("qualification owner slice path refused")
+	}
+	for _, group := range []string{"/system.slice/" + streamName, "/foreign" + streamWorkerCgroupRoot + streamName, streamWorkerCgroupRoot + "nested/" + streamName} {
+		if textWorkerCgroupPath(group, streamName, "reader") {
+			t.Fatalf("foreign qualification cgroup path accepted: %q", group)
+		}
 	}
 }
 

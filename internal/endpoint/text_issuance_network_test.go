@@ -124,7 +124,10 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 		maxima[0] = 64
 	}
 	if publisher {
-		maxima = [3]uint32{64, 64, 16}
+		// Match the bounded Publisher permission used by the installed
+		// qualification. The retained-set fixture spends substantially more than
+		// the single-journey stock while remaining inside the real 16,384 total.
+		maxima = [3]uint32{5461, 5461, 5462}
 	}
 	issuerRoot := prepareTextIssuancePermissionWithIdentity(t, owner, source, certificates[4].PrivateKey.(ed25519.PrivateKey), maxima)
 	endpoint.closedTokenRoot = textNetworkPrivateRoot(t)
@@ -156,16 +159,15 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 			t.Fatal(err)
 		}
 		ready := make(chan struct{}, 1)
-		config := node.Config{NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID,
+		config := node.Config{HostingRoot: textNetworkHostingRoot(t), NetworkID: snapshot.NetworkID, NodeID: snapshot.NodeID,
 			IdentityKey: certificates[index].PrivateKey.(ed25519.PrivateKey),
 			Current:     func() (node.DutyView, error) { return textNetworkDutyFixture{snapshot: snapshot}, nil },
 			CurrentClosedProfile: func() (state.ClosedProfileView, bool) {
 				profile, err := source.CurrentClosedProfile()
 				return profile, err == nil
 			},
-			CurrentClosedRoute: func() (state.ClosedRouteView, bool) {
-				view, err := source.CurrentClosedRoute()
-				return view, err == nil
+			CurrentClosedRoute: func() (state.ClosedRouteView, error) {
+				return source.CurrentClosedRoute()
 			},
 			LocalRoleStateRoot: root, PollInterval: 20 * time.Millisecond, CheckPlacement: func() error { return nil },
 			Emit: func(_ context.Context, event node.Event) error {
@@ -179,7 +181,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 			},
 		}
 		if index == 15 {
-			config.ClosedDataJoin = node.ClosedDataJoinProfile{AdmissionRoot: textNetworkPrivateRoot(t), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
+			config.ClosedDataJoin = node.ClosedDataJoinProfile{HostingRoot: config.HostingRoot, AdmissionRoot: textNetworkPrivateRoot(t), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
 		} else if index == 6 {
 			config.ClosedIntroduction = node.ClosedIntroductionProfile{AdmissionRoot: textNetworkPrivateRoot(t), Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
 		} else if index == 5 {
@@ -188,7 +190,7 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 			config.ClosedIssuer = node.ClosedIssuerProfile{Root: issuerRoot, AdmissionRoot: textNetworkPrivateRoot(t),
 				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second}
 		} else {
-			config.ClosedForwarding = node.ClosedForwardingProfile{Root: textNetworkPrivateRoot(t), HostingRoot: textNetworkHostingRoot(t),
+			config.ClosedForwarding = node.ClosedForwardingProfile{Root: textNetworkPrivateRoot(t), HostingRoot: config.HostingRoot,
 				Certificate: certificates[index], ConnectionLimit: 8, DrainTimeout: 2 * time.Second,
 				AdmissionTraffic: resource.HostingTraffic{Tx: 32 << 20, Rx: 32 << 20}, TerminationTraffic: resource.HostingTraffic{Tx: 64 << 10, Rx: 64 << 10}}
 		}
@@ -250,10 +252,14 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 }
 
 func textNetworkHostingRoot(t *testing.T) string {
+	return textNetworkHostingRootWithQuantity(t, 1)
+}
+
+func textNetworkHostingRootWithQuantity(t *testing.T, quantity uint64) string {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	root := filepath.Join(t.TempDir(), "hosting")
-	policy := resource.HostingPolicy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: 1,
+	policy := resource.HostingPolicy{Provider: "test fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "GiB", Quantity: quantity,
 		Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1 << 20}
 	if err := resource.InitializeHosting(root, policy); err != nil {
 		t.Fatal(err)

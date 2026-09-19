@@ -15,6 +15,12 @@ func Run(ctx context.Context, input Config) (result Result, runErr error) {
 	if err != nil {
 		return Result{}, err
 	}
+	if err := config.openClosedHosting(); err != nil {
+		return Result{}, err
+	}
+	if config.host != nil {
+		defer func() { runErr = errors.Join(runErr, config.host.Close()) }()
+	}
 	machine := stateMachine{current: stateAbsent}
 	retained := false
 	defer func() {
@@ -87,7 +93,12 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 	if err != nil {
 		return fail(config, machine, nil, "persistent Network State is unavailable", err)
 	}
-	if assessAdmission(config, current).kind != admissionReady || !sameDuty(snapshot, current) {
+	currentAdmission := assessAdmission(config, current)
+	if currentAdmission.kind != admissionReady {
+		reason := "assignment lost readiness during quarantine: " + currentAdmission.reason
+		return fail(config, machine, nil, reason, errors.New(reason))
+	}
+	if !sameDuty(snapshot, current) {
 		return fail(config, machine, nil, "assignment changed during quarantine", errors.New("assignment changed during quarantine"))
 	}
 	server, err := startDuty(config, current)
@@ -166,7 +177,11 @@ func runDuty(ctx context.Context, config runtimeConfig, machine *stateMachine, s
 func emitResourceDiagnostic(config runtimeConfig, snapshot dutyFacts, at time.Time, sample resource.Sample) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	return config.Emit(ctx, Event{Schema: eventSchema, Kind: "resource-sample", State: "OBSERVED", At: at,
+	elapsed := time.Duration(0)
+	if !config.measurementOrigin.IsZero() {
+		elapsed = time.Since(config.measurementOrigin)
+	}
+	return config.Emit(ctx, Event{Elapsed: elapsed, Hosting: config.hostingSample, Schema: eventSchema, Kind: "resource-sample", State: "OBSERVED", At: at,
 		Epoch: snapshot.Epoch, Generation: snapshot.Generation, Assignment: snapshot.Assignment,
 		CarrierProfile: selectedDutyCarrier(snapshot), AssignmentDigest: snapshot.AssignmentDigest, Resource: &sample})
 }

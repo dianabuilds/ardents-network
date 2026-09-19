@@ -14,6 +14,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -251,6 +252,24 @@ func TestRunFailsBeforeReadinessOnKeyMismatch(t *testing.T) {
 		if state == "READY" {
 			t.Fatalf("key-mismatched Node reached READY: %v", states)
 		}
+	}
+}
+
+func TestRunReportsReadinessLossDuringQuarantine(t *testing.T) {
+	fixture := newLifecycleFixture(t)
+	fixture.config.Quarantine = 10 * time.Millisecond
+	var calls atomic.Int32
+	fixture.config.Current = func() (DutyView, error) {
+		snapshot := fixture.snapshot
+		if calls.Add(1) > 1 {
+			snapshot.ProbeCapacity = 0
+		}
+		return snapshot, nil
+	}
+	fixture.config.Emit = func(context.Context, Event) error { return nil }
+	result, err := Run(context.Background(), fixture.config)
+	if err == nil || result.State != "FAILED" || !strings.Contains(result.Reason, "assignment lost readiness during quarantine: profile or deterministic assignment is inactive") {
+		t.Fatalf("quarantine readiness result = %+v, %v", result, err)
 	}
 }
 

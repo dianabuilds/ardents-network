@@ -42,6 +42,10 @@ func startClosedResolution(config runtimeConfig, snapshot dutyFacts) (*probeServ
 	if err := validateClosedResolutionProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
 	}
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	if err != nil {
+		return nil, err
+	}
 	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeReachability, config.now())
 	if !available {
 		return nil, errors.New("closed resolution State changed before reservation")
@@ -59,7 +63,7 @@ func startClosedResolution(config runtimeConfig, snapshot dutyFacts) (*probeServ
 	if err != nil {
 		return nil, errors.Join(err, store.Close(), spends.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), snapshot.ProbeEndpoint, local.Certificate,
+	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
 		func(key [32]byte) bool {
 			updated, err := currentFacts(config)
 			return err == nil && closedSharedPeerCurrent(config, updated, key, config.now())
@@ -131,6 +135,9 @@ func (server *closedResolutionServer) accept(ctx context.Context) error {
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
+			}
+			if route.IsClosedSharedPeerFailure(err) {
+				continue
 			}
 			return err
 		}

@@ -186,7 +186,7 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 		}
 		allowed := make(map[string]bool)
 		for _, match := range inlineCode.FindAllStringSubmatch(cells[3], -1) {
-			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") {
+			if strings.HasPrefix(match[1], "cmd/") || strings.HasPrefix(match[1], "internal/") || strings.HasPrefix(match[1], "tests/") {
 				allowed[match[1]] = true
 			}
 		}

@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+// ClosedIntroductionRegistrationByteLimit is the complete bidirectional
+// protocol allowance of one admitted Publication registration. It covers the
+// registration exchange, retained delivery frames and reserved withdrawal.
+// Eight MiB admits the fixed 256-Connection closed-alpha Publisher workload
+// while keeping every registration finite and independently accounted.
+const ClosedIntroductionRegistrationByteLimit = uint64(8 << 20)
+
 const closedChannelExporterLabel = "EXPORTER-ardents-channel-v3"
 
 // HELLO and ADMIT have already arrived when their admission is transferred.
@@ -57,8 +64,69 @@ type ClosedAdmission struct {
 	Bytes    uint64
 	hello    ClosedHello
 	exporter [32]byte
-	duty     *closedDutyChannel
-	release  func() error
+	claim    *closedAdmissionClaim
+}
+
+// closedAdmissionClaim is the one-use private reservation shared by every
+// copied admission handle. It belongs either to one Release caller or to one
+// forwarding owner, never to both.
+type closedAdmissionClaim struct {
+	mu      sync.Mutex
+	duty    *closedDutyChannel
+	release func() error
+}
+
+func newClosedAdmissionClaim(duty *closedDutyChannel, release func() error) *closedAdmissionClaim {
+	return &closedAdmissionClaim{duty: duty, release: release}
+}
+
+func (claim *closedAdmissionClaim) live() bool {
+	if claim == nil {
+		return false
+	}
+	claim.mu.Lock()
+	defer claim.mu.Unlock()
+	return claim.duty != nil
+}
+
+func (claim *closedAdmissionClaim) transfer() (*closedDutyChannel, func() error, bool) {
+	if claim == nil {
+		return nil, nil, false
+	}
+	claim.mu.Lock()
+	defer claim.mu.Unlock()
+	if claim.duty == nil {
+		return nil, nil, false
+	}
+	duty, release := claim.duty, claim.release
+	claim.duty, claim.release = nil, nil
+	return duty, release, true
+}
+
+func (claim *closedAdmissionClaim) transferChildFor(limits *ClosedDutyLimits) (*closedDutyChannel, func() error, bool) {
+	if claim == nil || limits == nil {
+		return nil, nil, false
+	}
+	claim.mu.Lock()
+	defer claim.mu.Unlock()
+	if claim.duty == nil || claim.duty.limits != limits || claim.duty.reserveChild() != nil {
+		return nil, nil, false
+	}
+	duty, release := claim.duty, claim.release
+	claim.duty, claim.release = nil, nil
+	return duty, release, true
+}
+
+func (claim *closedAdmissionClaim) releaseReservation() error {
+	duty, release, transferred := claim.transfer()
+	if !transferred {
+		return nil
+	}
+	duty.release()
+	if release == nil {
+		return nil
+	}
+	return release()
 }
 
 // Release returns an admitted channel reservation when its owner performed no
@@ -68,14 +136,10 @@ func (admission *ClosedAdmission) Release() error {
 	if admission == nil {
 		return nil
 	}
-	admission.duty.release()
-	admission.duty = nil
-	if admission.release == nil {
+	if admission.claim == nil {
 		return nil
 	}
-	release := admission.release
-	admission.release = nil
-	return release()
+	return admission.claim.releaseReservation()
 }
 
 // ClosedAdmissionChannel owns lane-zero receiver admission on one fresh
@@ -177,21 +241,18 @@ func (channel *ClosedAdmissionChannel) acceptInitialAdmit(body []byte) (ClosedAd
 	now = channel.clock().UTC()
 	reservation, err := channel.limits.reserveChannel()
 	if err != nil {
-		_ = releaseApproval()
-		return ClosedAdmission{}, errors.New("closed admission capacity is unavailable")
+		return ClosedAdmission{}, errors.Join(errors.New("closed admission capacity is unavailable"), releaseApproval())
 	}
 	if err := channel.spends.Spend(token, approval.Window, now); err != nil {
 		reservation.release()
-		_ = releaseApproval()
-		return ClosedAdmission{}, errors.New("closed admission token is unavailable")
+		return ClosedAdmission{}, errors.Join(errors.New("closed admission token is unavailable"), releaseApproval())
 	}
-	lease := ClosedAdmission{hello: channel.hello, exporter: channel.binding, Class: class, Bytes: closedClassBytes(class), Deadline: deadline, release: releaseApproval}
+	lease := ClosedAdmission{hello: channel.hello, exporter: channel.binding, Class: class, Bytes: closedClassBytes(class), Deadline: deadline}
 	if !now.Before(lease.Deadline) {
 		reservation.release()
-		_ = releaseApproval()
-		return ClosedAdmission{}, errors.New("closed admission lease is unavailable")
+		return ClosedAdmission{}, errors.Join(errors.New("closed admission lease is unavailable"), releaseApproval())
 	}
-	lease.duty = reservation
+	lease.claim = newClosedAdmissionClaim(reservation, releaseApproval)
 	channel.admitted = true
 	return lease, nil
 }
@@ -222,7 +283,7 @@ func closedClassBytes(class uint8) uint64 {
 	case 2:
 		return 32 << 20
 	case 3:
-		return 1 << 20
+		return ClosedIntroductionRegistrationByteLimit
 	}
 	return 0
 }

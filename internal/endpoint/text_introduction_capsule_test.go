@@ -98,6 +98,15 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
+			agedDeadline := time.Now().UTC().Add(time.Second).Truncate(time.Second)
+			attempt.plaintext.Deadline = agedDeadline
+			oldOperation := append([]byte(nil), attempt.operation...)
+			if err := reader.refreshTextIntroduction(t.Context(), readerJob, attempt, reader.prefix); err != nil {
+				t.Fatal(err)
+			}
+			if !attempt.plaintext.Deadline.After(agedDeadline) || bytes.Equal(attempt.operation, oldOperation) {
+				t.Fatal("prepared stock did not receive a fresh on-wire capsule lifetime")
+			}
 			_, sealed, err := route.DecodeClosedIntroductionSubmission(attempt.operation)
 			if err != nil || len(attempt.operation) != 4096 {
 				t.Fatalf("capsule operation: %v", err)

@@ -25,6 +25,7 @@ type textServiceStream struct {
 	cancel    context.CancelFunc
 	done      chan applicationconnection.Outcome
 	finished  chan struct{}
+	waitClose func(<-chan struct{}) bool
 	once      sync.Once
 	closeErr  error
 	finishErr error
@@ -47,6 +48,15 @@ type textServiceAttachmentOpener func(context.Context, nativeconnection.Recovery
 func (transport *textServiceTransport) Close() error {
 	transport.once.Do(func() {
 		transport.err = transport.Conn.Close()
+		// A retirement attempt after an upstream cancellation has already torn
+		// down TLS is not a separate cleanup failure. Without this guard the
+		// per-stream Join cascade reproduces "text Service transport retirement
+		// failed" once per stream and the workload criteria never see a quiet
+		// shutdown.
+		if transport.err != nil && (errors.Is(transport.err, net.ErrClosed) ||
+			transport.err.Error() == "use of closed network connection") {
+			transport.err = nil
+		}
 		if transport.err != nil {
 			transport.err = errors.Join(errors.New("text Service transport retirement failed"), transport.err)
 		}
@@ -91,7 +101,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	stopCaller := context.AfterFunc(ctx, func() { defer close(callerDone); cancel() })
 	owned, application := newApplicationHalfClosePair()
 	connection := &textServiceStream{applicationHalfClose: application, binding: binding, cancel: cancel,
-		done: make(chan applicationconnection.Outcome, 1), finished: make(chan struct{})}
+		done: make(chan applicationconnection.Outcome, 1), finished: make(chan struct{}), waitClose: waitTextServiceClose}
 	var lease *publication.Lease
 	interrupted := make(chan struct{})
 	stopLifetime := context.AfterFunc(lifetime, func() {
@@ -236,6 +246,9 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	if !client {
 		send, receive = receive, send
 	}
+	if binding.job.qualification != nil {
+		send, receive = 64<<20, 64<<20
+	}
 	transferred = true
 	recoveryTransferred = true
 	go func() {
@@ -289,10 +302,32 @@ func (connection *textServiceStream) Close() error {
 		return nil
 	}
 	connection.once.Do(func() {
+		connection.closeErr = connection.applicationHalfClose.CloseInput()
+		// Let the native stream turn application EOF into its authenticated
+		// terminal while the opposite direction remains readable. A missing peer
+		// remains bounded and is interrupted by the same lifetime.
+		wait := connection.waitClose
+		if wait == nil {
+			wait = waitTextServiceClose
+		}
+		if !wait(connection.finished) {
+			connection.cancel()
+			<-connection.finished
+		}
 		connection.cancel()
-		connection.closeErr = connection.applicationHalfClose.Close()
-		<-connection.finished
+		connection.closeErr = errors.Join(connection.closeErr, connection.applicationHalfClose.Close())
 		connection.closeErr = errors.Join(connection.closeErr, connection.finishErr)
 	})
 	return connection.closeErr
+}
+
+func waitTextServiceClose(finished <-chan struct{}) bool {
+	timer := time.NewTimer(time.Second)
+	defer timer.Stop()
+	select {
+	case <-finished:
+		return true
+	case <-timer.C:
+		return false
+	}
 }

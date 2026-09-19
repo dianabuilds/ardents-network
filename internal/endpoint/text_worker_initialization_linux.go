@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
@@ -39,8 +40,20 @@ func initializeTextWorker(ctx context.Context, attachment *textWorkerAttachment,
 	if err := attachment.connection.SetDeadline(deadline); err != nil {
 		return errors.New("text worker initialization deadline is unavailable")
 	}
-	if err := textdocument.InitializeWorker(bounded, attachment, mode, nonce, snapshot); err != nil {
-		return err
+	var initializationErr error
+	if job.qualification != nil {
+		if inventoryOfUnit(instance.name) != streamInventory || job.qualification.Nonce != nonce {
+			return errors.New("qualification worker inventory or invocation differs")
+		}
+		initializationErr = streamqualification.InitializeWorker(attachment, *job.qualification)
+	} else {
+		if inventoryOfUnit(instance.name) != textInventory {
+			return errors.New("text worker inventory differs")
+		}
+		initializationErr = textdocument.InitializeWorker(bounded, attachment, mode, nonce, snapshot)
+	}
+	if initializationErr != nil {
+		return initializationErr
 	}
 	if bounded.Err() != nil || !owner.currentJob(owner.endpoint, surface, job, nonce) {
 		return errors.New("text worker readiness belongs to a retired job")

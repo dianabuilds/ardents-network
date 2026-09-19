@@ -11,16 +11,17 @@ import (
 	"time"
 )
 
-// The single joined lane can retain at most its 64KiB receive window, one
-// maximum read frame and one encoded write. Reserve 128KiB in the original
-// Source/Responder owner before handshake or allocation and hold it to join.
-const closedJoinedQueue = 128 << 10
+// Reserve bounded per-JOIN bookkeeping before handshake. Actual receive and
+// write queues additionally debit the original Source/Responder as they grow.
+const closedJoinedQueue = 4 << 10
 
 // ClosedJoinedStream is the admitted framed stream returned only after JOIN.
 // Endpoint may carry its independent Service TLS here; this is not Service
 // authentication. The retained Source/Responder prefix owns its parent route.
 type ClosedJoinedStream struct {
 	*closedSourceLane
+	hello               ClosedHello
+	refillMu            sync.Mutex
 	channels            *closedSourceChannels
 	outer               *closedSourceLane
 	context             context.Context
@@ -40,6 +41,7 @@ func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSou
 	lane.closeStatus = 0
 	lane.owner.mu.Unlock()
 	owner := newClosedSourceChannelOwner(parent, lane.end, nil)
+	owner.queueParent = lane.owner
 	owner.last = 1
 	owner.retainClosedRead = true
 	owner.framedParent = lane
@@ -47,7 +49,10 @@ func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSou
 	joined := &closedSourceLane{owner: owner, id: 1, end: lane.end, readEnd: lane.end, writeEnd: lane.end, credit: 64 << 10, receiveCredit: 64 << 10, opened: true, active: true, closeStatus: 0}
 	owner.lanes[1] = joined
 	stream := &ClosedJoinedStream{closedSourceLane: joined, channels: owner, outer: lane, context: ctx, finished: make(chan struct{})}
-	owner.retire = stream.retireOuter
+	// A clean transport EOF must leave the outer lane live until the admitted
+	// child's terminal cleanup is joined below. Every actual failure still
+	// retires the outer lane immediately so it interrupts blocked physical I/O.
+	owner.retire = stream.retireOuterOnFailure
 	owner.start()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); owner.stop() })
@@ -72,7 +77,11 @@ func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSou
 			}
 			timer.Stop()
 		}
-		stream.finishErr = owner.Close()
+		// Join the admitted lane before retiring its outer transport. A clean
+		// peer CLOSE can finish the reader concurrently with the caller's Close;
+		// both paths share lane.closeOnce, so neither can tear down the parent
+		// underneath the other's terminal cleanup.
+		stream.finishErr = errors.Join(joined.Close(), owner.Close(), stream.retireOuter())
 		if !stop() {
 			<-interrupted
 		}
@@ -174,4 +183,15 @@ func (stream *ClosedJoinedStream) retireOuter() error {
 		stream.retireErr = errors.Join(stream.retireErr, stream.outer.Close())
 	})
 	return stream.retireErr
+}
+
+func (stream *ClosedJoinedStream) retireOuterOnFailure() error {
+	stream.channels.mu.Lock()
+	cause := stream.channels.terminal
+	cleanPeerClose := cause == io.EOF && stream.closedSourceLane.remoteClosed && stream.closedSourceLane.failure == io.EOF
+	stream.channels.mu.Unlock()
+	if cause == nil || cleanPeerClose {
+		return nil
+	}
+	return stream.retireOuter()
 }

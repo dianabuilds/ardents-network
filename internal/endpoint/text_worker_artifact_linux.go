@@ -18,16 +18,17 @@ const textWorkerArtifactPath = "/etc/ardents/text-worker-artifact.json"
 const textWorkerStopRulePath = "/usr/share/polkit-1/rules.d/50-ardents-text.rules"
 
 type textWorkerArtifact struct {
-	files      map[string][32]byte
-	rootDevice uint64
-	rootInode  uint64
+	manifestDigest [32]byte
+	inventory      workerInventory
+	files          map[string][32]byte
+	rootDevice     uint64
+	rootInode      uint64
 }
 
-// loadTextWorkerArtifact reads only the root-installed local artifact reference.
-// It is never populated from AAI3, worker readiness, a remote response or an
-// Application-supplied digest. Root installation is the selected trust boundary.
-func loadTextWorkerArtifact() (*textWorkerArtifact, error) {
-	body, err := readTextInstalledFile(textWorkerArtifactPath, 16<<10)
+// loadInstalledWorkerArtifact reads only the root-installed local artifact
+// reference. Application input can neither select an inventory nor supply a digest.
+func loadInstalledWorkerArtifact(inventory workerInventory) (*textWorkerArtifact, error) {
+	body, err := readTextInstalledFile(inventory.manifest(), 16<<10)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +38,7 @@ func loadTextWorkerArtifact() (*textWorkerArtifact, error) {
 	}
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&manifest) != nil || manifest.Schema != "ardents-text-worker-artifact-v1" || len(manifest.Files) != 6 {
+	if decoder.Decode(&manifest) != nil || manifest.Schema != inventory.schema() || len(manifest.Files) != 6 {
 		return nil, errors.New("text worker artifact reference is invalid")
 	}
 	canonical, err := json.Marshal(manifest)
@@ -48,10 +49,10 @@ func loadTextWorkerArtifact() (*textWorkerArtifact, error) {
 	if decoder.Decode(&extra) != io.EOF {
 		return nil, errors.New("text worker artifact reference has trailing data")
 	}
-	artifact := &textWorkerArtifact{files: make(map[string][32]byte, 6)}
-	paths := []string{textWorkerRoot + "/ardents-text", textWorkerStopRulePath}
+	artifact := &textWorkerArtifact{manifestDigest: sha256.Sum256(body), inventory: inventory, files: make(map[string][32]byte, 6)}
+	paths := []string{inventory.root() + "/" + inventory.prefix(), inventory.rule()}
 	for _, role := range []string{"reader", "publisher"} {
-		paths = append(paths, "/etc/systemd/system/ardents-text-"+role+"@.service", "/etc/systemd/system/ardents-text-"+role+".socket")
+		paths = append(paths, "/etc/systemd/system/"+inventory.prefix()+"-"+role+"@.service", "/etc/systemd/system/"+inventory.prefix()+"-"+role+".socket")
 	}
 	for _, path := range paths {
 		encoded, ok := manifest.Files[path]
@@ -76,7 +77,7 @@ func (artifact *textWorkerArtifact) verify() error {
 	if artifact == nil || len(artifact.files) != 6 {
 		return errors.New("text worker artifact is unavailable")
 	}
-	root, err := textInstalledPath(textWorkerRoot, true)
+	root, err := textInstalledPath(artifact.inventory.root(), true)
 	if err != nil || root.Mode().Perm() != 0555 {
 		return errors.New("text worker immutable root is unavailable")
 	}
@@ -87,12 +88,12 @@ func (artifact *textWorkerArtifact) verify() error {
 	if artifact.rootInode != 0 && (artifact.rootDevice != uint64(identity.Dev) || artifact.rootInode != identity.Ino) {
 		return errors.New("text worker private root was substituted")
 	}
-	if err := verifyTextWorkerRootInventory(); err != nil {
+	if err := verifyInstalledWorkerRootInventory(artifact.inventory); err != nil {
 		return err
 	}
 	for path, digest := range artifact.files {
 		limit := int64(64 << 10)
-		if path == textWorkerRoot+"/ardents-text" {
+		if path == artifact.inventory.root()+"/"+artifact.inventory.prefix() {
 			limit = 64 << 20
 		}
 		body, err := readTextInstalledFile(path, limit)
@@ -154,26 +155,25 @@ func readTextInstalledFile(path string, maximum int64) ([]byte, error) {
 	return body, nil
 }
 
-// These are empty base mount points required by systemd 255's selected
-// ProtectSystem/ProtectHome/PrivateTmp/API-filesystem mounts. No host data or
-// arbitrary subtree is admitted into the immutable base image.
-func verifyTextWorkerRootInventory() error {
+// These are empty base mount points required by the selected systemd
+// confinement. No host data or arbitrary subtree is admitted into the image.
+func verifyInstalledWorkerRootInventory(inventory workerInventory) error {
 	directories := map[string]bool{"dev": true, "proc": true, "sys": true, "run": true, "tmp": true,
 		"etc": true, "root": true, "usr": true, "var": true, "var/tmp": true}
 	seen := 0
-	err := filepath.WalkDir(textWorkerRoot, func(path string, entry os.DirEntry, walkErr error) error {
+	err := filepath.WalkDir(inventory.root(), func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return errors.New("text worker root inventory is unavailable")
 		}
-		if path == textWorkerRoot {
+		if path == inventory.root() {
 			return nil
 		}
-		relative, err := filepath.Rel(textWorkerRoot, path)
+		relative, err := filepath.Rel(inventory.root(), path)
 		if err != nil {
 			return errors.New("text worker root path is invalid")
 		}
 		directory := directories[relative]
-		if !directory && relative != "ardents-text" {
+		if !directory && relative != inventory.prefix() {
 			return errors.New("text worker root contains an extra resource")
 		}
 		info, err := textInstalledPath(path, directory)

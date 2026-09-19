@@ -1,6 +1,8 @@
 package node
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -11,12 +13,8 @@ import (
 // accepted closed profile. It never accepts a plan-supplied digest, role or
 // duty, and a State successor makes the receiver unavailable before dial.
 func closedRouteReceiver(config runtimeConfig, snapshot dutyFacts, purpose route.ClosedPurpose, now time.Time) (route.ClosedRoleReceiver, bool) {
-	if config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting ||
-		snapshot.NodeID == [32]byte{} || snapshot.RecordGeneration == 0 || !now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
-		return route.ClosedRoleReceiver{}, false
-	}
-	view, available := config.CurrentClosedRoute()
-	if !available || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+	view, err := currentClosedRoute(config, snapshot, now)
+	if err != nil {
 		return route.ClosedRoleReceiver{}, false
 	}
 	var recipient state.ClosedRouteNodeView
@@ -38,6 +36,23 @@ func closedRouteReceiver(config runtimeConfig, snapshot dutyFacts, purpose route
 		StateDigest: view.Profile.StateDigest, ProfileDigest: view.Profile.Digest, NodeID: recipient.NodeID,
 		RecordDigest: recipient.RecordDigest, DutyGeneration: recipient.DutyGeneration, RoleDomain: recipient.RoleDomain,
 		Subrole: recipient.Subrole, ExpectedPurpose: purpose, NotAfter: view.Profile.NotAfter}, true
+}
+
+func currentClosedRoute(config runtimeConfig, snapshot dutyFacts, now time.Time) (state.ClosedRouteView, error) {
+	if config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || snapshot.NodeID == [32]byte{} || snapshot.RecordGeneration == 0 {
+		return state.ClosedRouteView{}, errors.New("closed Route snapshot prerequisites are not satisfied")
+	}
+	view, err := config.CurrentClosedRoute()
+	if err != nil {
+		return state.ClosedRouteView{}, fmt.Errorf("read current closed Route: %w", err)
+	}
+	if !snapshot.Fresh || snapshot.Conflicting || !now.Before(snapshot.ValidUntil) || !now.Before(snapshot.RecordValidUntil) {
+		return state.ClosedRouteView{}, errors.New("closed Route snapshot prerequisites are not satisfied")
+	}
+	if !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+		return state.ClosedRouteView{}, errors.New("current closed Route does not match the duty snapshot")
+	}
+	return view, nil
 }
 
 func closedRouteProfileMatchesSnapshot(profile state.ClosedProfileView, snapshot dutyFacts, now time.Time) bool {

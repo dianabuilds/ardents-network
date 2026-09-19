@@ -7,6 +7,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 func TestClosedSourceOpenFailureRetainsStageAndCause(t *testing.T) {
@@ -47,5 +49,19 @@ func TestClosedSourcePrefixOpenEmissionUsesPendingDeadline(t *testing.T) {
 		_ = local.Close()
 		<-done
 		t.Fatal("OPEN waited beyond pending interval")
+	}
+}
+
+func TestClosedSourcePrefixLifetimeExtendsBeyondBootstrapWindow(t *testing.T) {
+	now := time.Now().UTC()
+	plan := closedBootstrapPlan{deadline: now.Add(10 * time.Second), profile: state.ClosedProfileView{NotAfter: now.Add(time.Hour)}}
+	plan.peers[0].notAfter = now.Add(time.Hour)
+	plan.peers[1].notAfter = now.Add(time.Hour)
+	snapshot := state.Snapshot{ValidUntil: now.Add(time.Hour)}
+
+	end := closedSourcePrefixEnd(plan, snapshot, now)
+	remaining := end.Sub(now)
+	if remaining < 29*time.Minute || remaining > 30*time.Minute {
+		t.Fatalf("retained source prefix lifetime = %s, want the bounded 1,800-second class-2 lease", remaining)
 	}
 }

@@ -188,3 +188,26 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 		t.Fatalf("clean outer closure poisoned retained prefix: %v", failure)
 	}
 }
+
+func TestClosedJoinedCloseWitnessRejectsLocalRetirement(t *testing.T) {
+	owner := &closedSourceChannels{}
+	lane := &closedSourceLane{owner: owner, remoteClosed: true, failure: io.EOF}
+	emissions, active, clean := lane.closeWriteWitness()
+	if emissions != 0 || active || !clean {
+		t.Fatalf("live peer witness = emissions %d, active %t, clean %t", emissions, active, clean)
+	}
+	lane.physicalWriteFailed = true
+	if _, _, clean := lane.closeWriteWitness(); clean {
+		t.Fatal("failed physical write retained clean witness")
+	}
+	lane.physicalWriteFailed = false
+	lane.closed = true
+	if _, _, clean := lane.closeWriteWitness(); clean {
+		t.Fatal("local lane close retained clean witness")
+	}
+	lane.closed = false
+	owner.terminal = ErrClosedSourceStopped
+	if _, _, clean := lane.closeWriteWitness(); clean {
+		t.Fatal("intentional parent retirement became a peer witness")
+	}
+}

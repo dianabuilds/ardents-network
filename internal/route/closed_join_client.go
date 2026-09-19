@@ -183,6 +183,7 @@ func (prefix *ClosedSourcePrefix) Join(ctx context.Context, present ClosedTokenP
 	}
 	handshakeStopped = true
 	stream := newClosedJoinedStream(ctx, secured, lane, release)
+	stream.hello = hello
 	transferred = true
 	return stream, nil
 }

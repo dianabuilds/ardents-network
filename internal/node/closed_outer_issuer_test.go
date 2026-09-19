@@ -49,12 +49,12 @@ func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.
 		RecordValidFrom: now.Add(-time.Second), RecordValidUntil: until, DeclaredFamily: "closed-issuer-family", ProbeEndpoint: endpoint, CarrierProfile: string(route.ClosedCarrierTCP), Assignment: "rendezvous",
 		CandidateCount: 1, Candidates: [64]dutyCandidate{{NodeID: peerID, PublicKey: clientKey, RecordDigest: [32]byte{66}, Endpoint: "127.0.0.1:41001", CarrierProfile: string(route.ClosedCarrierTCP), ValidUntil: until, AssignmentNotAfter: until}}}
 	events := make(chan Event, 16)
-	config := Config{NetworkID: network, NodeID: issuerID, IdentityKey: serverCertificate.PrivateKey.(ed25519.PrivateKey), Current: func() (DutyView, error) { return snapshot, nil },
-		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true }, CurrentClosedRoute: func() (state.ClosedRouteView, bool) {
+	config := Config{HostingRoot: closedForwardingHostingRoot(t), NetworkID: network, NodeID: issuerID, IdentityKey: serverCertificate.PrivateKey.(ed25519.PrivateKey), Current: func() (DutyView, error) { return snapshot, nil },
+		CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return profile, true }, CurrentClosedRoute: func() (state.ClosedRouteView, error) {
 			view := state.ClosedRouteView{Profile: profile, NodeCount: 2}
 			view.Nodes[0] = state.ClosedRouteNodeView{NodeID: issuerID, RecordDigest: recordDigest, RoleDomain: 2, Subrole: 6, DutyGeneration: profile.IssuerDutyGeneration}
 			view.Nodes[1] = state.ClosedRouteNodeView{NodeID: peerID, RecordDigest: snapshot.Candidates[0].RecordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 9}
-			return view, true
+			return view, nil
 		}, ClosedIssuer: ClosedIssuerProfile{Root: root, AdmissionRoot: t.TempDir(), Certificate: serverCertificate, ConnectionLimit: 2, DrainTimeout: time.Second},
 		PollInterval: 10 * time.Millisecond, Quarantine: time.Millisecond, LocalRoleStateRoot: localRoleStateRoot(t), CheckPlacement: func() error { return nil }, Emit: func(_ context.Context, event Event) error { events <- event; return nil }}
 	resolved, err := resolveConfig(config)

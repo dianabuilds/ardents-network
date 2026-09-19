@@ -11,6 +11,7 @@ import (
 // Reservations remain held until each handler joins its I/O and closes its side.
 // Close cancels all sides, then waits for those explicit ownership returns.
 type ClosedJoinPairs struct {
+	replenish ClosedForwardingReplenisher
 	mu        sync.Mutex
 	receiver  ClosedRoleReceiver
 	limits    *ClosedDutyLimits
@@ -34,10 +35,16 @@ type closedJoinPair struct {
 // Result is local to this side. ConfirmResult follows a successful write of that
 // RESULT; WaitData prevents forwarding until both sides confirm their writes.
 type ClosedJoinSide struct {
+	controlMu                      sync.Mutex
 	owner                          *ClosedJoinPairs
 	pair                           *closedJoinPair
 	duty                           *closedDutyChannel
 	stream                         *closedJoinStream
+	hello                          ClosedHello
+	exporter                       [32]byte
+	byteLimit                      uint64
+	releases                       []func() error
+	cleanupErr                     error
 	used                           uint64
 	nonce                          [32]byte
 	deadline, wallDeadline         time.Time
@@ -68,7 +75,7 @@ func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ClosedLaneFr
 	defer owner.mu.Unlock()
 	now, wall := owner.limits.clock().UTC(), time.Now()
 	r, h := owner.receiver, lease.hello
-	if owner.closed || lease.duty == nil || lease.duty.limits != owner.limits || lease.Class != 2 || lease.Bytes != closedClassBytes(2) ||
+	if owner.closed || !lease.claim.live() || lease.Class != 2 || lease.Bytes != closedClassBytes(2) ||
 		h.Purpose != ClosedPurposeDataJoin || h.NetworkID != r.NetworkID || h.StateGeneration != r.StateGeneration || h.StateDigest != r.StateDigest ||
 		h.ProfileDigest != r.ProfileDigest || h.RecipientNodeID != r.NodeID || h.RecipientDutyGeneration != r.DutyGeneration ||
 		!now.Before(lease.Deadline) || lease.Deadline.After(r.NotAfter) || !now.Before(request.Deadline) || request.Deadline.After(lease.Deadline) {
@@ -83,8 +90,9 @@ func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ClosedLaneFr
 	} else if len(owner.entries) >= closedDutyChannels {
 		return nil, errors.New("closed JOIN capacity exhausted")
 	}
-	if err := lease.duty.reserveChild(); err != nil {
-		return nil, err
+	duty, release, transferred := lease.claim.transferChildFor(owner.limits)
+	if !transferred {
+		return nil, errors.New("closed JOIN admission unavailable")
 	}
 	if pair == nil {
 		end := now.Add(10 * time.Second)
@@ -102,8 +110,10 @@ func (owner *ClosedJoinPairs) Reserve(lease *ClosedAdmission, frame ClosedLaneFr
 			}
 		})
 	}
-	side := &ClosedJoinSide{owner: owner, pair: pair, duty: lease.duty, nonce: request.Nonce, used: 3*closedLaneHeaderSize + 209 + 355 + 5 + closedLaneHeaderSize + 4096, deadline: lease.Deadline, wallDeadline: wall.Add(lease.Deadline.Sub(now))}
-	lease.duty = nil
+	side := &ClosedJoinSide{owner: owner, pair: pair, hello: lease.hello, exporter: lease.exporter, byteLimit: lease.Bytes, duty: duty, nonce: request.Nonce, used: 3*closedLaneHeaderSize + 209 + 355 + 5 + closedLaneHeaderSize + 4096, deadline: lease.Deadline, wallDeadline: wall.Add(lease.Deadline.Sub(now))}
+	if release != nil {
+		side.releases = append(side.releases, release)
+	}
 	pair.sides[request.Side-1] = side
 	side.timer = owner.schedule(side.deadline.Sub(now), func() { owner.mu.Lock(); defer owner.mu.Unlock(); owner.stopLocked(pair) })
 	if pair.sides[0] != nil && pair.sides[1] != nil {
@@ -239,13 +249,26 @@ func (side *ClosedJoinSide) release() {
 	if side == nil {
 		return
 	}
+	side.controlMu.Lock()
+	defer side.controlMu.Unlock()
 	owner := side.owner
 	owner.mu.Lock()
-	defer owner.mu.Unlock()
 	if side.closed {
+		owner.mu.Unlock()
 		return
 	}
 	owner.stopLocked(side.pair)
+	releases := side.releases
+	side.releases = nil
+	owner.mu.Unlock()
+	// Durable host I/O must not stop admission or cancellation of unrelated JOINs.
+	var cleanupErr error
+	for _, release := range releases {
+		cleanupErr = errors.Join(cleanupErr, release())
+	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	side.cleanupErr = errors.Join(side.cleanupErr, cleanupErr)
 	side.closed = true
 	side.duty.release()
 	side.duty = nil

@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,10 +115,14 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 		config := runtimeConfig{Config: Config{NetworkID: profile.NetworkID, NodeID: snapshot.NodeID,
 			Current:              func() (DutyView, error) { return snapshot, nil },
 			CurrentClosedProfile: func() (state.ClosedProfileView, bool) { return fixture.view.Profile, true },
-			CurrentClosedRoute:   func() (state.ClosedRouteView, bool) { return fixture.view, true }}, now: time.Now}
+			CurrentClosedRoute:   func() (state.ClosedRouteView, error) { return fixture.view, nil }}, now: time.Now}
 		var server *probeServer
 		if index == 2 {
+			config.HostingRoot = closedForwardingHostingRoot(t)
 			config.ClosedIssuer = ClosedIssuerProfile{Root: issuerRoot, AdmissionRoot: t.TempDir(), Certificate: certificates[index], ConnectionLimit: 4, DrainTimeout: 2 * time.Second}
+			if err := config.openClosedHosting(); err != nil {
+				t.Fatal(err)
+			}
 			server, err = startClosedIssuer(config, snapshot)
 		} else {
 			root := filepath.Join(t.TempDir(), "spends")
@@ -128,6 +133,9 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 			server, err = startClosedForwarding(config, snapshot)
 		}
 		if err != nil {
+			if config.host != nil {
+				err = errors.Join(err, config.host.Close())
+			}
 			t.Fatalf("start role %d: %v", index, err)
 		}
 		t.Cleanup(func() {
@@ -136,6 +144,11 @@ func newClosedBootstrapNetwork(t *testing.T, carrier route.CarrierProfile) *clos
 			defer cancel()
 			if err := server.Drain(ctx); err != nil {
 				t.Error(err)
+			}
+			if config.host != nil {
+				if err := config.host.Close(); err != nil {
+					t.Error(err)
+				}
 			}
 		})
 	}

@@ -168,7 +168,7 @@ func (owner *ClosedIntroductionRegistration) receiveDelivery(frame ClosedLaneFra
 		return nil
 	}
 	if frame.Kind != closedFrameOperation || frame.Lane == 0 || frame.Lane%2 != 0 || frame.Lane <= owner.lastDelivery ||
-		owner.withdraw != [32]byte{} || len(owner.pending) >= 16 || owner.used+closedIntroductionDeliveryCost > 1<<20 {
+		owner.withdraw != [32]byte{} || len(owner.pending) >= 16 || owner.used+closedIntroductionDeliveryCost > ClosedIntroductionRegistrationByteLimit {
 		return errors.New("closed Introduction delivery lane or budget invalid")
 	}
 	nonce, capsule, err := DecodeClosedIntroductionSubmission(frame.Body)

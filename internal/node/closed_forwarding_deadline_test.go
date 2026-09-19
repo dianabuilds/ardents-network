@@ -85,7 +85,7 @@ func TestClosedForwardingInitialAcceptKeepsOperationDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	lease, err := pool.Acquire(key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return local, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestClosedForwardingInitialAcceptKeepsOperationDeadline(t *testing.T) {
 	}
 	result := make(chan error, 1)
 	go func() {
-		_, err := newClosedForwardingSessions(&sync.WaitGroup{}).acquire(key, lease, time.Now().Add(100*time.Millisecond), hello)
+		_, err := newClosedForwardingSessions(&sync.WaitGroup{}).acquire(context.Background(), key, lease, time.Now().Add(100*time.Millisecond), hello)
 		result <- err
 	}()
 	if err := <-read; err != nil {

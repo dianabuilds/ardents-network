@@ -37,7 +37,7 @@ func closedIssuerNodeHandler(config runtimeConfig, certificate tls.Certificate, 
 				if err != nil {
 					return err
 				}
-				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, closedRoleTokenVerifier(config, receiver), config.now)
+				channel, err := route.NewClosedAdmissionChannel(receiver, spends, limits, exporter, closedControlTokenVerifier(config, receiver), config.now)
 				if err != nil {
 					return err
 				}
@@ -90,8 +90,8 @@ func closedSharedPeerCurrent(config runtimeConfig, snapshot dutyFacts, key [32]b
 	if key == [32]byte{} || config.CurrentClosedRoute == nil || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
 		return false
 	}
-	view, available := config.CurrentClosedRoute()
-	if !available || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+	view, err := config.CurrentClosedRoute()
+	if err != nil || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
 		return false
 	}
 	matched := false

@@ -43,6 +43,9 @@ func TestClosedSharedCarrierBoundsSilentTCP(t *testing.T) {
 			// finite handshake reservation nor cancellation may wait for it.
 			select {
 			case err := <-finished:
+				if !IsClosedSharedPeerFailure(err) {
+					t.Fatalf("silent peer failure is not classified as connection-local: %v", err)
+				}
 				if canceled {
 					if !errors.Is(err, context.Canceled) {
 						t.Fatalf("canceled handshake = %v", err)

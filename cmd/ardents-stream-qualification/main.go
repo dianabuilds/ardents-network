@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
+	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 )
@@ -39,10 +41,29 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	if err := streamqualification.WriteReady(output, init.Nonce); err != nil {
 		return err
 	}
-	return streamqualification.RunWorker(context.Background(), streamReadWriter{Reader: input, Writer: output}, init)
+	return streamqualification.RunWorker(context.Background(), &streamReadWriter{Reader: input, Writer: output}, init)
 }
 
 type streamReadWriter struct {
+	once sync.Once
+	err  error
 	io.Reader
 	io.Writer
+}
+
+// Closing inherited descriptors interrupts both directions and lets the worker
+// join its reader. In-memory bounded command fixtures have no OS descriptor.
+func (stream *streamReadWriter) Close() error {
+	stream.once.Do(func() {
+		var outcome error
+		if closer, ok := stream.Reader.(io.Closer); ok {
+			outcome = errors.Join(outcome, closer.Close())
+		}
+		same := stream.Reader != nil && reflect.TypeOf(stream.Reader).Comparable() && any(stream.Reader) == any(stream.Writer)
+		if closer, ok := stream.Writer.(io.Closer); ok && !same {
+			outcome = errors.Join(outcome, closer.Close())
+		}
+		stream.err = outcome
+	})
+	return stream.err
 }

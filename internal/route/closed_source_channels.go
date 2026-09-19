@@ -22,6 +22,8 @@ var ErrClosedSourceStopped = errors.Join(net.ErrClosed, errors.New("closed sourc
 // writer. Lanes carry opaque TLS; only the caller selecting an authenticated
 // role may create one. No lane owns or changes the parent's read deadline.
 type closedSourceChannels struct {
+	queueParent                       *closedSourceChannels
+	refillBase                        uint64
 	retainClosedRead                  bool // Joined clients drain received bytes before releasing their reservation.
 	parent                            net.Conn
 	framing                           *closedRoleChildStream
@@ -31,6 +33,8 @@ type closedSourceChannels struct {
 	idleUntil                         time.Time
 	mu                                sync.Mutex
 	changed                           chan struct{}
+	refill                            chan error
+	dataDue                           bool
 	lanes                             map[uint32]*closedSourceLane
 	last                              uint32
 	queued, controlsSize, transferred uint64
@@ -78,7 +82,7 @@ func (owner *closedSourceChannels) fail(err error) {
 			for _, request := range queue {
 				request.err = err
 				close(request.done)
-				owner.queued -= uint64(16 + len(request.frame.Body))
+				owner.releaseQueuedLocked(uint64(16 + len(request.frame.Body)))
 			}
 		}
 		owner.controls, owner.data = nil, nil
@@ -103,7 +107,7 @@ func (owner *closedSourceChannels) Close() error {
 		owner.closeErr = owner.retire()
 		owner.mu.Lock()
 		for _, lane := range owner.lanes {
-			owner.queued -= uint64(len(lane.buffer))
+			owner.releaseQueuedLocked(uint64(len(lane.buffer)))
 			clear(lane.buffer)
 			lane.buffer = nil
 		}
@@ -124,8 +128,9 @@ func (owner *closedSourceChannels) open(ctx context.Context, open ClosedOpen, pe
 		owner.mu.Unlock()
 		return nil, errors.Join(errors.New("closed source parent failed before child open"), cause)
 	}
-	if !time.Now().Before(pending) || pending.After(open.Deadline) ||
-		open.Deadline.After(owner.end) || len(owner.lanes) == 0 && !time.Now().Before(owner.idleUntil) || len(owner.lanes) >= 256 || owner.last > ^uint32(0)-2 {
+	reservedControl, capacity := owner.childCapacityLocked(open.Purpose)
+	if !capacity || !time.Now().Before(pending) || pending.After(open.Deadline) ||
+		open.Deadline.After(owner.end) || len(owner.lanes) == 0 && !time.Now().Before(owner.idleUntil) || owner.last > ^uint32(0)-2 {
 		owner.mu.Unlock()
 		return nil, errors.New("closed source child unavailable")
 	}
@@ -134,7 +139,7 @@ func (owner *closedSourceChannels) open(ctx context.Context, open ClosedOpen, pe
 		id = 1
 	}
 	owner.last = id
-	lane := &closedSourceLane{owner: owner, id: id, end: open.Deadline,
+	lane := &closedSourceLane{reservedControl: reservedControl, owner: owner, id: id, end: open.Deadline,
 		readEnd: pending, writeEnd: pending, closeStatus: 5, credit: 64 << 10, receiveCredit: 64 << 10}
 	owner.lanes[id] = lane
 	// Assign the monotonic ID and queue its OPEN under the same lock. A
@@ -184,8 +189,26 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 	}
 	// Receipt consumes the complete frame even when its lane is refused below.
 	owner.transferred += uint64(16 + len(frame.Body))
-	if owner.transferred > 32<<20 {
+	if owner.transferred-owner.refillBase > 32<<20 {
 		return errors.New("closed source parent byte reserve exhausted")
+	}
+	if frame.Lane == 0 {
+		refill := owner.refill
+		var err error
+		if refill == nil || frame.Kind != closedFrameAccept {
+			err = errors.New("closed source refill response is unavailable")
+		} else {
+			status, credit, decodeErr := DecodeClosedAcceptFrame(frame)
+			if decodeErr != nil || status != 0 || credit != 64<<10 {
+				err = errors.Join(decodeErr, errors.New("closed source refill refused"))
+			}
+		}
+		owner.refill = nil
+		if refill != nil {
+			refill <- err
+			close(refill)
+		}
+		return err
 	}
 	if frame.Lane == 0 || frame.Lane%2 == 0 || frame.Lane > owner.last {
 		return errors.New("closed source peer used unallocated lane")
@@ -199,12 +222,11 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 	switch frame.Kind {
 	case closedFrameBytes:
 		size := uint64(len(frame.Body))
-		if lane.eof || lane.remoteClosed || size > uint64(lane.receiveCredit) || owner.queued+size > 4<<20 {
+		if lane.eof || lane.remoteClosed || size > uint64(lane.receiveCredit) || !owner.reserveQueuedLocked(size, false) {
 			return errors.New("closed source receive allowance exceeded")
 		}
 		lane.receiveCredit -= uint32(size)
 		lane.buffer = append(lane.buffer, frame.Body...)
-		owner.queued += size
 	case closedFrameCredit:
 		increment := binary.BigEndian.Uint32(frame.Body)
 		if increment == 0 || increment > 64<<10-lane.credit {
@@ -232,6 +254,26 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 	return nil
 }
 
+// nextWriteLocked gives a newly available control frame first service, then
+// requires one already queued data frame before another control frame. This
+// keeps admission and retirement responsive without allowing a sustained,
+// admitted control stream to starve an issuer or other bounded child payload.
+func (owner *closedSourceChannels) nextWriteLocked() (*closedSourceWrite, bool) {
+	if len(owner.controls) > 0 && (len(owner.data) == 0 || !owner.dataDue) {
+		request := owner.controls[0]
+		owner.controls = owner.controls[1:]
+		owner.dataDue = true
+		return request, true
+	}
+	if len(owner.data) > 0 {
+		request := owner.data[0]
+		owner.data = owner.data[1:]
+		owner.dataDue = false
+		return request, false
+	}
+	return nil, false
+}
+
 func (owner *closedSourceChannels) write() {
 	defer owner.workers.Done()
 	for {
@@ -240,13 +282,7 @@ func (owner *closedSourceChannels) write() {
 			owner.mu.Unlock()
 			return
 		}
-		var request *closedSourceWrite
-		control := len(owner.controls) > 0
-		if control {
-			request, owner.controls = owner.controls[0], owner.controls[1:]
-		} else if len(owner.data) > 0 {
-			request, owner.data = owner.data[0], owner.data[1:]
-		}
+		request, control := owner.nextWriteLocked()
 		if request == nil {
 			changed := owner.changed
 			owner.mu.Unlock()
@@ -265,7 +301,7 @@ func (owner *closedSourceChannels) write() {
 		}
 		if err == nil {
 			owner.transferred += uint64(16 + len(request.frame.Body))
-			if owner.transferred > 32<<20 {
+			if owner.transferred-owner.refillBase > 32<<20 {
 				err = errors.New("closed source parent byte reserve exhausted")
 			} else {
 				err = owner.parent.SetWriteDeadline(deadline)
@@ -339,7 +375,7 @@ func (owner *closedSourceChannels) write() {
 			}
 		}
 		size := uint64(16 + len(request.frame.Body))
-		owner.queued -= size
+		owner.releaseQueuedLocked(size)
 		if control {
 			owner.controlsSize -= size
 		}

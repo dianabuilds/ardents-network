@@ -84,7 +84,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	})
 	key := route.ClosedCarrierKey{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, LocalNodeID: [32]byte{3},
 		PeerNodeID: [32]byte{4}, PeerKey: [32]byte{5}, CarrierProfile: route.ClosedCarrierTCP}
-	lease, err := pool.Acquire(key, func() error { return nil }, func() (route.Carrier, error) { return blocked, nil })
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (route.Carrier, error) { return blocked, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		handshake <- err
 	}()
 	end := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
-	_, err = server.sessions.acquire(key, lease, time.Now().Add(time.Second), func() (route.ClosedHello, error) {
+	_, err = server.sessions.acquire(context.Background(), key, lease, time.Now().Add(time.Second), func() (route.ClosedHello, error) {
 		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
 			ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 1,
 			Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{6}, Deadline: end}, nil
