@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -130,6 +131,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	var readerStreams []*textServiceStream
 	var publisherStreams []connection.Stream
 	readersFinished := 0
+	producerFinished := false
 	var setupErr error
 	wanted := readerCount * streamsPerReader
 	for setupErr == nil && (readersFinished < len(readers) || len(publisherStreams) < wanted) {
@@ -166,6 +168,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 				setupErr = errors.Join(setupErr, fmt.Errorf("Publisher setup refill %d (%s prefixDone=%t): %w", len(publisherStreams)-1, state, prefixDone, err))
 			}
 		case err := <-producerDone:
+			producerFinished = true
 			publisher.mu.Lock()
 			registration := publisher.registration
 			publisher.mu.Unlock()
@@ -178,12 +181,48 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			setupErr = errors.Join(setupErr, ctx.Err())
 		}
 	}
-	cancel()
+	if setupErr != nil {
+		cancel()
+		for readersFinished < len(readers) {
+			result := <-readerDone
+			readersFinished++
+			readerStreams = append(readerStreams, result.streams...)
+			setupErr = errors.Join(setupErr, result.err)
+		}
+		for !producerFinished {
+			select {
+			case stream := <-delivered:
+				if stream != nil {
+					publisherStreams = append(publisherStreams, stream)
+				}
+			case <-producerDone:
+				producerFinished = true
+			}
+		}
+	}
+	var cleanup sync.WaitGroup
+	cleanupErrors := make(chan error, len(publisherStreams)+len(readerStreams))
 	for _, stream := range publisherStreams {
-		_ = stream.Close()
+		cleanup.Go(func() { cleanupErrors <- stream.Close() })
 	}
 	for _, stream := range readerStreams {
-		_ = stream.Close()
+		cleanup.Go(func() { cleanupErrors <- stream.Close() })
+	}
+	cleanup.Wait()
+	close(cleanupErrors)
+	for err := range cleanupErrors {
+		setupErr = errors.Join(setupErr, err)
+	}
+	cancel()
+	for !producerFinished {
+		select {
+		case stream := <-delivered:
+			if stream != nil {
+				setupErr = errors.Join(setupErr, stream.Close())
+			}
+		case <-producerDone:
+			producerFinished = true
+		}
 	}
 	if setupErr != nil {
 		t.Fatalf("retained setup reached %d Publisher and %d Reader streams: %v", len(publisherStreams), len(readerStreams), setupErr)

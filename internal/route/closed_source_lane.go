@@ -34,29 +34,6 @@ type closedSourceLane struct {
 
 var errClosedSourceOutputQueueFull = errors.New("closed source output queue full")
 
-// A verified peer CLOSE makes a later, unemitted CREDIT unnecessary. This
-// witness never treats a raw EOF, local close, or failed parent as peer success.
-func (lane *closedSourceLane) writeWitness() (uint64, bool, bool) {
-	owner := lane.owner
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	busy := owner.active != nil && owner.active.lane == lane
-	clean := !lane.closed && lane.remoteClosed && lane.failure == io.EOF && owner.terminal == nil && !lane.physicalWriteFailed
-	return lane.emissions, busy, clean
-}
-
-// Cleanup can overlap an independently successful CREDIT. Count every other
-// physical attempt; require all output joined and no failed physical write at
-// the final clean observation. This does not relax the data/CREDIT witness.
-func (lane *closedSourceLane) closeWriteWitness() (uint64, bool, bool) {
-	owner := lane.owner
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	active := owner.active != nil && owner.active.lane == lane
-	payload := active && owner.active.frame.Kind != closedFrameCredit
-	clean := !active && !lane.closed && lane.remoteClosed && lane.failure == io.EOF && owner.terminal == nil && !lane.physicalWriteFailed
-	return lane.closePayloadEmissions, payload, clean
-}
 func (lane *closedSourceLane) writeErrorLocked(terminal bool) error {
 	if lane.owner.terminal != nil {
 		return lane.owner.terminal
@@ -393,11 +370,21 @@ func (lane *closedSourceLane) Close() error {
 		}
 		owner.mu.Lock()
 		unemitted := owner.terminal != nil && (terminal == nil || !terminal.attempted || terminal.unwritten)
+		joinedPeerEnd := owner.retainClosedRead && terminal != nil && owner.terminal == io.EOF &&
+			lane.remoteClosed && lane.failure == io.EOF && owner.framedParent != nil
 		owner.mu.Unlock()
-		if lane.closeErr != nil && (unemitted || errors.Is(lane.closeErr, ErrClosedSourceStopped)) {
+		joinedLower := false
+		if lane.closeErr != nil && joinedPeerEnd {
+			<-owner.done
+			_, active, clean := owner.framedParent.closeWriteWitness()
+			joinedLower = !active && clean
+		}
+		if lane.closeErr != nil && (unemitted || joinedLower || errors.Is(lane.closeErr, ErrClosedSourceStopped)) {
 			// Existing traffic errors remain at their operation/parent owner;
 			// actual physical retirement failures remain cleanup failures.
-			<-owner.done
+			if !joinedPeerEnd {
+				<-owner.done
+			}
 			lane.closeErr = owner.retire()
 		}
 		// Check the retained CREDIT even if its failure ended the parent before

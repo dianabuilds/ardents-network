@@ -12,11 +12,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
+	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
+
+func textUnpublishedNetworkWithInstance(t *testing.T, carrier route.CarrierProfile, acquire func([32]byte, time.Time, time.Time) (*instance.Root, *instance.Binding), configure ...func(int, *node.Config)) (*textContext, *textContext) {
+	t.Helper()
+	endpoint, publisher, source := textPublisherNetworkWithInstance(t, carrier, acquire, configure...)
+	reader := textPermissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)
+	source.issuePermission(t, reader, [3]uint32{64, 64, 0})
+	return reader, publisher
+}
 
 // Uses the installed launch verifier and actual confined worker processes.
 // State/authority provisioning is the network fixture, not a command ceremony.

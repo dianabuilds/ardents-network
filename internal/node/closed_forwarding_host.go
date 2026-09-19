@@ -106,47 +106,45 @@ func (host *installedClosedForwardingHost) Sample(ctx context.Context, maximumAg
 	if maximumAge <= 0 {
 		return host.owner.Sample(ctx, maximumAge)
 	}
-	for {
-		host.sampler.mu.Lock()
-		now := time.Now()
-		if cached := host.sampler.cachedSample; cached != nil &&
-			now.Sub(host.sampler.cachedAt) <= maximumAge &&
-			now.Sub(host.sampler.cachedAt) <= sharedForwardingCacheMaxTTL {
-			sample := cached.sample
-			err := cached.err
-			host.sampler.mu.Unlock()
-			return sample, err
-		}
-		if active := host.sampler.active; active != nil {
-			host.sampler.mu.Unlock()
-			select {
-			case <-ctx.Done():
-				return resource.HostingSample{}, ctx.Err()
-			case <-active.done:
-				return active.sample, active.err
-			}
-		}
-		active := &closedForwardingSample{done: make(chan struct{})}
-		active.startInvalidations = host.sampler.invalidations
-		host.sampler.active = active
-		host.sampler.mu.Unlock()
-
-		sample, err := host.owner.Sample(ctx, maximumAge)
-		host.sampler.mu.Lock()
-		active.sample = sample
-		active.err = err
-		// Cache only when no Reserve/Release happened during the flight; the
-		// observed ReservedBytes would otherwise still reflect the pre-reserve
-		// state and violate the invalidation contract on the next Sample.
-		if err == nil && host.sampler.invalidations == active.startInvalidations {
-			host.sampler.cachedSample = active
-			host.sampler.cachedAt = now
-		}
-		host.sampler.active = nil
-		close(active.done)
+	host.sampler.mu.Lock()
+	now := time.Now()
+	if cached := host.sampler.cachedSample; cached != nil &&
+		now.Sub(host.sampler.cachedAt) <= maximumAge &&
+		now.Sub(host.sampler.cachedAt) <= sharedForwardingCacheMaxTTL {
+		sample := cached.sample
+		err := cached.err
 		host.sampler.mu.Unlock()
 		return sample, err
 	}
+	if active := host.sampler.active; active != nil {
+		host.sampler.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return resource.HostingSample{}, ctx.Err()
+		case <-active.done:
+			return active.sample, active.err
+		}
+	}
+	active := &closedForwardingSample{done: make(chan struct{})}
+	active.startInvalidations = host.sampler.invalidations
+	host.sampler.active = active
+	host.sampler.mu.Unlock()
+
+	sample, err := host.owner.Sample(ctx, maximumAge)
+	host.sampler.mu.Lock()
+	active.sample = sample
+	active.err = err
+	// Cache only when no Reserve/Release happened during the flight; the
+	// observed ReservedBytes would otherwise still reflect the pre-reserve
+	// state and violate the invalidation contract on the next Sample.
+	if err == nil && host.sampler.invalidations == active.startInvalidations {
+		host.sampler.cachedSample = active
+		host.sampler.cachedAt = now
+	}
+	host.sampler.active = nil
+	close(active.done)
+	host.sampler.mu.Unlock()
+	return sample, err
 }
 
 // invalidate drops the cached Sample and bumps the invalidation counter so an

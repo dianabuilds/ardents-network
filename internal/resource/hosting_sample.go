@@ -56,38 +56,45 @@ func (owner *Hosting) recentHostingState(ctx context.Context, maximumAge time.Du
 	if owner.closed || ctx.Err() != nil {
 		return empty, unavailable, false, errors.New("hosting owner is unavailable")
 	}
-	lease, available, err := tryAcquireHostingReadLease(ctx, owner.root)
-	if err != nil {
-		return empty, unavailable, false, err
-	}
 	var state hostingState
-	if available {
-		state, err = readHostingState(owner.root)
-	} else {
+	retryDelay := time.Millisecond
+	for {
+		lease, available, err := tryAcquireHostingReadLease(ctx, owner.root)
+		if err != nil {
+			return empty, unavailable, false, err
+		}
+		if available {
+			state, err = readHostingState(owner.root)
+			if err != nil {
+				return empty, unavailable, false, errors.Join(err, lease.close())
+			}
+			if err := lease.close(); err != nil {
+				return empty, unavailable, false, err
+			}
+			break
+		}
 		// A current exclusive writer proves period.pending belongs to an
 		// in-flight transaction. The atomically replaced period.json remains
-		// the last complete committed observation and may be shared only while
-		// it still satisfies the caller's existing freshness bound.
+		// a complete committed observation. Retry an Lstat/Open generation
+		// crossing while that writer is still the sole replacement authority.
 		state, err = readCommittedHostingState(owner.root)
-	}
-	if err != nil {
-		if available {
-			err = errors.Join(err, lease.close())
+		if err == nil {
+			break
 		}
-		return empty, unavailable, false, err
+		timer := time.NewTimer(retryDelay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return empty, unavailable, false, errors.Join(err, ctx.Err())
+		case <-timer.C:
+		}
+		if retryDelay < 32*time.Millisecond {
+			retryDelay *= 2
+		}
 	}
 	now := owner.now()
 	if now.Before(state.Observed) {
-		err = errors.New("hosting observation continuity is unavailable")
-		if available {
-			err = errors.Join(err, lease.close())
-		}
-		return empty, unavailable, false, err
-	}
-	if available {
-		if err := lease.close(); err != nil {
-			return empty, unavailable, false, err
-		}
+		return empty, unavailable, false, errors.New("hosting observation continuity is unavailable")
 	}
 	return state, state.observation(now), now.Sub(state.Observed) <= maximumAge, nil
 }
