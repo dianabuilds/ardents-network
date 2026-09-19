@@ -10,6 +10,8 @@ current backlog. [ADR-0008](0008-stage-research-before-public-network.md) and
 
 Current decisions:
 
+- [0086 — Consolidate the protected network and retire predecessor runtimes](0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+
 - [0001 — Public carrier with application-controlled services](0001-public-carrier-private-services.md)
 - [0002 — Restart main as a greenfield research workspace](0002-greenfield-main.md)
 - [0003 — Delegate bounded credentials to online Service Instances](0003-bounded-service-instance-credentials.md)
@@ -75,7 +77,7 @@ Current decisions:
 - [0081 — Select the closed protected text-Service contract](0081-select-closed-protected-service-contract.md)
 - [0082 — Bind issuer-bootstrap restriction to each Node child](0082-bind-bootstrap-restriction-to-node-child.md)
 - [0083 — Activate one data lane after an authenticated Rendezvous pair](0083-activate-joined-rendezvous-data-lane.md)
-- [0084 — Bound forwarding replenishment to the admitted parent channel](0085-bound-forwarding-replenishment.md)
+- [0085 — Bound forwarding replenishment to the admitted parent channel](0085-bound-forwarding-replenishment.md)
 
 Completed retirement decisions:
 
@@ -99,3 +101,5 @@ ADR-0015 was accepted for the stopped Stage 7 work but remains the current
 release/update ownership decision. New ADRs use the next unreserved four-digit
 number and should remain short. When a decision is superseded, retain the
 original record and link the replacement.
+
+- [ADR-0087: Bound data-JOIN replenishment to its admitted channel](0087-bound-data-join-replenishment.md) � accepted.

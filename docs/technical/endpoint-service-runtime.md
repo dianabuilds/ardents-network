@@ -479,3 +479,35 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
   selects the closed Service Connection grammar.
 - The Broker is limited to its explicit generic/unqualified contract; it makes
   no platform-isolation or Application-level Endpoint Location Privacy claim.
+
+## Selected consolidation ownership
+
+[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+selects the following follow-on ownership within the existing Endpoint package.
+This is the target for bounded refactors, not a claim that the current
+textContext has already been split.
+
+| Private owner | Sole mutable responsibility | Retained boundary |
+|---|---|---|
+| Authorized context | Broker lease, surface, admission stop and joined child shutdown | No direct mutation of child flights/maps |
+| Issuance | One permission/token flight, cancellation, exact handoff and outcome | Existing durable wallet, authority and formats |
+| Reader prefixes | Source/Entry/Interior acquisition, retained selections and retirement | No failure-triggered replacement or renewed allowance |
+| Publisher prefixes | Introduction/Responder prefix acquisition and lifetime | No independent current publication decision |
+| Publication and registration | One current pair, previous overlap, refresh and withdrawal | Existing Instance/Custody and monotonic floors |
+| Job | Invocation reservation, qualified launch, worker Grant and exchanges | Context budgets, replay/floors and selections outlive worker loss |
+
+Each owner refuses acquisition after stop, retains admitted work through its
+single successful handoff or cancellation, disposes of late results and joins
+cleanup once. Stop does not wait on another owner while holding its mutex.
+Context first stops admission and signals children, then joins job/exchanges,
+publication/registration, prefixes/issuance and finally releases authorization.
+A failed cleanup cannot become successful payload completion or fresh authority.
+
+Publication and registration have one atomic visibility point and retain the
+original finite overlap deadline across recovery. The stream composition takes
+trusted directional byte/lifetime bounds; it neither parses Application content
+nor lets the Application enlarge those bounds. The text codec and trusted output
+validation remain required. Keep the already shared half-close pipe and native
+Service Connection; preserve needed AAI2 semantic cases in AAI3 before retirement.
+Administration v1 remains in use. The old participant/AAI2 Connection path retires
+only after the accepted migration and successor acceptance.

@@ -371,3 +371,24 @@ Listener drain joins handlers and timer callbacks before releasing the spend roo
 
 This receiver does not construct Source/Responder prefixes or authenticate the
 end-to-end Service session. Those remain Endpoint and Route client obligations.
+
+## Selected forwarding ownership
+
+[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+selects a bounded follow-on forwarding receiving owner inside Route. It first
+owns the related spend ledger, duty limits and bootstrap lifecycle, then the
+existing Carrier pool/listener and joined sessions. A failed initialization
+releases every acquired resource; late admission after stop creates no work.
+Node supplies verified receiver facts, bounded local settings and the narrow
+current-State projection, retaining duty withdrawal, process pressure and stop
+policy. Route does not receive authority to invent State, peers or a new quota.
+Other role-specific stores and semantics are not moved into a universal handler.
+
+After the accepted cutover, remove the predecessor duties/Transit issuer and
+native Source-profile accepting selectors, with explicit refusal before network
+or root-creation effects. Preserve Source transport and required signed-State
+history/migration verification. Do not remove shared successor code by matching
+legacy or v2 in a symbol or wire identity. Contributor diagnosis/retirement follows
+its [selected retirement control](../reference/rendezvous-contributor.md#selected-retirement-control).
+These are selected future changes; current implementation facts above remain
+until their owning changes and evidence land.

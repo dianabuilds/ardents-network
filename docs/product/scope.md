@@ -271,3 +271,14 @@ accepted ADR where it creates consequential lock-in.
 | Release, replacement, and custody | [Release and update custody](../technical/release-update-custody.md) |
 | Commands, packages, and checks | [command reference](../reference/commands.md), [package map](../development/package-map.md), [testing](../development/testing.md) |
 | Audit method | [Deep audit campaign](../development/deep-audit.md) |
+
+## Accepted predecessor retirement
+
+[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+selects consolidation after complete installed-successor acceptance and explicit
+local adoption. The [architecture owner](../technical/common-privacy-architecture.md#accepted-consolidation)
+defines the retiring entrypoints and preserved mechanisms. Their currently
+implemented behavior below remains a migration input until its owning change
+lands; approval of the retirement is not evidence that it has executed.
+The selected user job remains the confined Ubuntu text-Service. No generic
+Application, public Name producer, DSL or alternate protection tier is added.

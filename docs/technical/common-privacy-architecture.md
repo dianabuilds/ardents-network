@@ -130,3 +130,49 @@ closed scope. Required protection inside the selected scope cannot be deferred
 to an implementer's judgment. The design is selected; actual component updates, full wire vectors,
 whole-system measurements and installed-product
 qualification require the eventual implementation and belong to its acceptance.
+
+## Accepted consolidation
+
+Status: selected follow-on architecture under
+[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md),
+accepted by the Product Owner on 2026-09-14. Implementation and installed
+acceptance remain distinct. Complete the existing successor acceptance and
+adoption before retiring its predecessor entrypoints; urgent correctness
+repairs retain the existing one-slice execution rule.
+
+The final maintained runtime accepts only the adopted protected generation.
+Retire Endpoint v1/AAI2 Connection, alpha-corpus intake/destination adapters,
+predecessor Node duties and Transit issuance, the native-profile Source
+selector, and the former networked Name resolve/control command adapters.
+Keep authenticated history/migration readers and explicit refusals without
+preserving old dial/listen/forward engines. The dedicated Rendezvous Contributor
+keeps only identity-bound diagnosis and retirement control, never apply/restart
+or recovery that resumes old work. Adoption does not force another installation
+to update or stop. Necessary authority/conflict/resource/adoption floors survive.
+
+Preserve AAI3 and the already shared ordered byte stream, half-close pipe,
+Service Instance/Continuity authentication, bounded replay and terminal outcome.
+A retained native Service profile containing v2 remains a compatibility identity,
+not an instruction to remove that shared protocol. Administration v1, canonical
+Namespace verification and required Browser historical evidence remain.
+No Name/alpha/DNS/direct fallback fills a missing protected path.
+
+Application chooses content framing and interpretation; trusted host composition
+supplies the existing workload bounds. Keep the text codec and trusted display
+checks at their Application boundary. Verify arbitrary bytes through the already
+selected confined qualification Application, without a generic-worker bypass.
+No universal content codec, DSL, datagram engine or new Carrier is selected.
+
+The [Endpoint owner](endpoint-service-runtime.md#selected-consolidation-ownership)
+defines private lifecycle boundaries; the
+[Node/Route owner](network-route-node.md#selected-forwarding-ownership)
+defines the narrowed receiving seam. They use existing packages and the same
+whole-owner resource accounting. Do not make a facade around caller-assembled
+ledgers/pools, or split publication and registration into competing current owners.
+
+Retire accepting entrypoints before deleting exclusive implementations. Preserve
+useful old stream cases in successor tests first. Every change switches its real
+caller and updates its owning documentation and inventories together. The
+[qualification rule](../development/privacy-qualification.md#consolidation-verification)
+keeps all applicable system checks bound to exact changed candidates. GitHub owns
+execution; this page is neither a schedule nor a second acceptance ledger.

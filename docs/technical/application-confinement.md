@@ -371,3 +371,15 @@ revocation and complete installed-artifact journey still need the
 [qualification tests](../development/privacy-qualification.md). In particular,
 a root owner or kernel that defeats these restrictions is not contained.
 Do not claim protection from privileged host or microarchitectural compromise.
+
+## Consolidation boundary
+
+The accepted [consolidation](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+keeps the installed launch/Principal/Grant checks before all Application effects.
+A private Job owner may take over the existing lifecycle but cannot equate a
+nonce or an attachment with a qualified-launch receipt. Context authorization,
+permissions, selections and floors must not reset with a worker invocation.
+Generic byte-stream conformance belongs to AAI3; installed binary-payload
+verification uses only the already selected pinned qualification Application.
+The ordinary text worker, snapshot/RESULT validation and trusted presentation
+keep their current content contract. No arbitrary Application is admitted.

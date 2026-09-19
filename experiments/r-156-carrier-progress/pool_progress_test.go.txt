@@ -1,0 +1,53 @@
+package route
+
+import (
+    "fmt"
+    "testing"
+    "time"
+)
+
+// Research probe of the exported pool contract on ba5fb8e0.
+// No network, no production edits; the fake blocks only the supplied dial.
+func TestR156PoolIndependentProgress(t *testing.T) {
+    pool, err := NewClosedCarrierPool(time.Now)
+    if err != nil { t.Fatal(err) }
+    defer pool.Close()
+    healthy := closedCarrierPoolKey(1)
+    lease, err := pool.Acquire(healthy, func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil })
+    if err != nil { t.Fatal(err) }
+    defer lease.Release()
+    if _, err := lease.Carrier(); err != nil { t.Fatal(err) }
+
+    entered, release := make(chan struct{}), make(chan struct{})
+    slowDone := make(chan error, 1)
+    go func() {
+        _, err := pool.Acquire(closedCarrierPoolKey(2), func() error { return nil }, func() (Carrier, error) {
+            close(entered)
+            <-release
+            return nil, fmt.Errorf("controlled failed dial")
+        })
+        slowDone <- err
+    }()
+    <-entered
+    started, ready := make(chan struct{}), make(chan error, 1)
+    go func() {
+        close(started)
+        _, err := lease.Carrier()
+        ready <- err
+    }()
+    <-started
+    progressed := false
+    var healthyErr error
+    select {
+    case healthyErr = <-ready:
+        progressed = true
+    case <-time.After(500 * time.Millisecond):
+    }
+    close(release)
+    if err := <-slowDone; err == nil { t.Fatal("controlled dial unexpectedly succeeded") }
+    if !progressed { healthyErr = <-ready }
+    if healthyErr != nil { t.Fatalf("healthy lease failed after release: %v", healthyErr) }
+    if !progressed {
+        t.Fatal("independent healthy lease could not return its existing Carrier until the unrelated dial was released")
+    }
+}

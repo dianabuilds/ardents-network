@@ -194,3 +194,15 @@ recorded by [ADR-0017](../adr/0017-authenticated-name-claim-ordering.md),
 [ADR-0023](../adr/0023-pending-signed-namespace-successors.md). Historical
 research dossiers were retired after their decisions and behavior were
 promoted here, into ADRs, and into tests.
+
+## Selected retirement of predecessor adapters
+
+[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+selects removal, after the accepted successor cutover, of active alpha-corpus
+intake/destination adapters and the former networked Name resolve/control command
+adapters. Until their implementation changes land, the compatibility and command
+facts above remain current. After retirement those inputs refuse before network
+or authority effects; canonical encode, Namespace lifecycle/proof/Custody and
+required authenticated history/floor verification remain. No alpha alias fills
+the protected Name boundary and no new public Gateway/Resolver is selected.
+The archived .ard Browser adapter stays non-executable evidence under ADR-0069.

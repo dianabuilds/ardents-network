@@ -302,6 +302,12 @@ post-initial ADMIT has been debited, it becomes exactly 32 MiB rather than an
 additional allowance. It never changes the peer, purpose, context, child
 allocation or original terminal deadline.
 
+[ADR-0087](../adr/0087-bound-data-join-replenishment.md) applies the same bounded
+operation to an already paired data-JOIN channel. Only its own lane-zero ADMIT
+can refill its side; the lane-1 JOIN, counterpart and all ancestor allowances
+remain unchanged. Unpaired, expired, revoked or closed sides cannot refill.
+
+
 ## Bounded lane framing
 
 Every TLS channel terminating at an Ardents role carries the same lane grammar.
@@ -323,7 +329,7 @@ ID or nonce is copied into a different hop's identifier namespace.
 | Kind | Body and valid use |
 |---|---|
 | 1 HELLO | Network[32], State-generation[32], State-digest[32], profile-digest[32], recipient-Node[32], recipient-duty-generation u64, purpose u8, fresh channel-nonce[32], absolute-deadline u64. Exactly 209 bytes; lane zero, once after TLS. |
-| 2 ADMIT | class u8, token[354]. Exactly 355 bytes; lane zero once for initial admission. A later ADMIT is permitted only on lane zero of its already admitted forwarding parent, is class 2, and performs the finite replenishment selected by ADR-0085. It is forbidden on child lanes and every other channel type. |
+| 2 ADMIT | class u8, token[354]. Exactly 355 bytes; lane zero once for initial admission. A later ADMIT is permitted only on lane zero of its already admitted forwarding parent (ADR-0085) or data-JOIN channel (ADR-0087), is class 2, and sets that channel's remaining reserve to exactly 32 MiB after charging the complete frame, host reservation and durable token spend. Original bindings and deadlines remain fixed. It is forbidden on child lanes and every other channel type. |
 | 3 BOOTSTRAP | operation u8: public evidence=1 or issuer=2. Exactly one byte; lane zero only, under the finite bootstrap contract. |
 | 4 OPEN | next-Node[32], next-duty-generation u64, next-purpose u8, deadline u64. Exactly 49 bytes on an Endpoint-role channel. On an authenticated Node Carrier append mandatory restriction u8 (0=no additional restriction, 1=issuer-bootstrap only), exactly 50 bytes. The authenticated channel state fixes the grammar; fresh child after the corresponding parent admission or bounded Node allocation below. |
 | 5 ACCEPT | status u8 (0 accepted, 1 unavailable, 2 exhausted, 3 stale/incompatible, 4 withdrawn), credit u32. Exactly 5 bytes; credit zero on refusal. No detailed path-conflict oracle. |

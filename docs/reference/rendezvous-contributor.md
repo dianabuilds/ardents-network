@@ -140,3 +140,21 @@ command error, bounded diagnostics, journal slice, and host observations as a
 failed qualification attempt. This profile was accepted by the frozen
 declared-host matrix; ordinary lifecycle success alone would not have qualified
 it.
+
+## Selected retirement control
+
+[ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
+selects a retirement-only successor to this dedicated Rendezvous control after
+complete protected-candidate acceptance and explicit adoption. Current commands
+above remain implementation facts until that owning change lands; approval does
+not stop a running installation or claim migration has happened.
+
+The changed command refuses new apply/restart before installation or process
+start. It retains Diagnose/Drain/Withdraw/Remove only for its authenticated
+managed deployment, under the existing root lease and identity checks. Recovery
+before diagnosis must not start/restart a predecessor generation; ambiguous
+interrupted-update state yields bounded refusal without relabelling identity.
+Drain/withdraw affect only the proven owned unit. Remove keeps the existing
+explicit deployment confirmation and prior withdrawal, while required adoption,
+authority/conflict/resource floors remain protected. No arbitrary systemd
+control or automatic conversion to a closed duty is selected.
