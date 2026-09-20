@@ -405,13 +405,19 @@ func (lane *closedSourceLane) Close() error {
 		joinedPeerEnd := owner.retainClosedRead && owner.terminal == io.EOF &&
 			lane.remoteClosed && lane.failure == io.EOF && owner.framedParent != nil
 		owner.mu.Unlock()
-		joinedLower := false
+		joinedLowerClose, joinedLowerCredit := false, false
 		if (lane.closeErr != nil || creditErr != nil) && joinedPeerEnd {
 			<-owner.done
-			_, active, clean := owner.framedParent.closeWriteWitness()
-			joinedLower = !active && clean
+			if lane.closeErr != nil {
+				_, active, clean := owner.framedParent.closeWriteWitness()
+				joinedLowerClose = !active && clean
+			}
+			if creditErr != nil && errors.Is(creditErr, io.EOF) {
+				_, active, clean := owner.framedParent.writeWitness()
+				joinedLowerCredit = !active && clean
+			}
 		}
-		if lane.closeErr != nil && (unemitted || joinedLower || errors.Is(lane.closeErr, ErrClosedSourceStopped)) {
+		if lane.closeErr != nil && (unemitted || joinedLowerClose || errors.Is(lane.closeErr, ErrClosedSourceStopped)) {
 			// Existing traffic errors remain at their operation/parent owner;
 			// actual physical retirement failures remain cleanup failures.
 			if !joinedPeerEnd {
@@ -421,7 +427,7 @@ func (lane *closedSourceLane) Close() error {
 		}
 		// Check the retained CREDIT even if its failure ended the parent before
 		// CLOSE could be queued. Whole-parent intentional stop remains distinct.
-		if creditErr != nil && !joinedLower && !errors.Is(creditErr, ErrClosedSourceStopped) {
+		if creditErr != nil && !joinedLowerCredit && !errors.Is(creditErr, ErrClosedSourceStopped) {
 			lane.closeErr = errors.Join(lane.closeErr, errors.Join(errors.New("closed source in-flight CREDIT write failed"), creditErr))
 		}
 		if lane.closeErr != nil {

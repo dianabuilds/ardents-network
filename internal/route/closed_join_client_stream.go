@@ -15,6 +15,10 @@ import (
 // write queues additionally debit the original Source/Responder as they grow.
 const closedJoinedQueue = 4 << 10
 
+// ErrClosedJoinPeerCleanupDeadline reports that the bounded wait for the
+// peer's outer JOIN retirement expired after local inner cleanup completed.
+var ErrClosedJoinPeerCleanupDeadline = errors.New("closed JOIN peer cleanup deadline exceeded")
+
 // ClosedJoinedStream is the admitted framed stream returned only after JOIN.
 // Endpoint may carry its independent Service TLS here; this is not Service
 // authentication. The retained Source/Responder prefix owns its parent route.
@@ -181,7 +185,7 @@ func (stream *ClosedJoinedStream) waitPeerClose() error {
 			timer.Stop()
 			return nil
 		case <-timer.C:
-			return errors.New("closed JOIN peer cleanup deadline exceeded")
+			return ErrClosedJoinPeerCleanupDeadline
 		}
 		timer.Stop()
 	}

@@ -13,6 +13,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/route"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -203,9 +205,17 @@ func newTextReadResult(owner *textConnection, pending chan struct{}, lease *brok
 		if err == nil {
 			body, err = worker.completeServiceRead(lease.Context(), bounded, finish, service, nil)
 		} else {
-			err = errors.Join(err, service.Close())
+			lifetimeErr := lease.Context().Err()
+			serviceErr := service.Close()
 			finish()
-			err = errors.Join(err, worker.Close())
+			cleanupErr := errors.Join(serviceErr, worker.Close())
+			if lifetimeErr != nil && textCanceledBeforeRequestCleanupOnly(cleanupErr) {
+				// No local request was admitted. A native active-protocol abort is
+				// therefore a consequence of our cancellation, not peer evidence.
+				err = lifetimeErr
+			} else {
+				err = errors.Join(err, cleanupErr)
+			}
 		}
 		if err == nil {
 			var snapshot *textdocument.Snapshot
@@ -231,6 +241,37 @@ func newTextReadResult(owner *textConnection, pending chan struct{}, lease *brok
 		close(result.done)
 	}()
 	return result
+}
+
+func textCanceledBeforeRequestCleanupOnly(err error) bool {
+	if err == nil || err == context.Canceled || err == nativeconnection.ErrActiveViolation {
+		return true
+	}
+	if errors.Is(err, route.ErrClosedJoinPeerCleanupDeadline) {
+		return true
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		if len(causes) > 1 {
+			switch causes[0].Error() {
+			case "text Service cleanup failed", "text Service transport retirement failed":
+				causes = causes[1:]
+			}
+		}
+		for _, cause := range causes {
+			if !textCanceledBeforeRequestCleanupOnly(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped := errors.Unwrap(err); wrapped != nil {
+		return textCanceledBeforeRequestCleanupOnly(wrapped)
+	}
+	return false
 }
 
 func (stream *textReadResult) Read(body []byte) (int, error)   { return stream.output.Read(body) }

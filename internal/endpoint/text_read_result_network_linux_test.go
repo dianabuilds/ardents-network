@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -182,6 +183,18 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 	}
 	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), errors.Join(context.Canceled, context.Canceled))) {
 		t.Fatal("exact cancellation wrapper refused")
+	}
+	localAbort := errors.Join(
+		errors.New("text Service cleanup failed"),
+		nativeconnection.ErrActiveViolation,
+		errors.Join(errors.New("text Service transport retirement failed"), context.Canceled,
+			route.ErrClosedJoinPeerCleanupDeadline),
+	)
+	if !textCanceledBeforeRequestCleanupOnly(localAbort) {
+		t.Fatal("known cancellation-induced native abort refused")
+	}
+	if textCanceledBeforeRequestCleanupOnly(errors.Join(localAbort, fault)) {
+		t.Fatal("additional cleanup failure was suppressed")
 	}
 }
 

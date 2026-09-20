@@ -169,7 +169,12 @@ func startTextRoleNetworkWithReservedFixtureWindow(t *testing.T, carrier route.C
 			CurrentClosedRoute: func() (state.ClosedRouteView, error) {
 				return source.CurrentClosedRoute()
 			},
-			LocalRoleStateRoot: root, PollInterval: 20 * time.Millisecond, CheckPlacement: func() error { return nil },
+			// The fixture starts up to sixteen full Nodes in one process. A 20 ms
+			// poll would force hundreds of process/cgroup pressure samples per
+			// second and can starve the fail-closed one-second hosting observation
+			// on a shared race runner. State changes remain bounded well inside the
+			// fixture's five-second readiness window at this cadence.
+			LocalRoleStateRoot: root, PollInterval: 200 * time.Millisecond, CheckPlacement: func() error { return nil },
 			Emit: func(_ context.Context, event node.Event) error {
 				if event.State == "READY" {
 					select {

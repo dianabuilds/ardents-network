@@ -205,6 +205,9 @@ func TestClosedJoinedCloseWitnessRejectsLocalRetirement(t *testing.T) {
 	if _, _, clean := lane.closeWriteWitness(); clean {
 		t.Fatal("local lane close retained clean witness")
 	}
+	if _, active, clean := lane.writeWitness(); active || !clean {
+		t.Fatal("verified peer close stopped witnessing an in-flight CREDIT after local retirement")
+	}
 	lane.closed = false
 	owner.terminal = ErrClosedSourceStopped
 	if _, _, clean := lane.closeWriteWitness(); clean {
