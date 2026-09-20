@@ -64,8 +64,12 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 // receiveTextIntroduction consumes one delivery from the actual channel owned
 // by this Publisher, then acknowledges only after independent local acceptance.
 func (owner *textContext) receiveTextIntroduction(ctx context.Context, job *textJobIdentity) (prepared *textIntroductionAttempt, outcome error) {
+	return owner.receiveTextIntroductionAfterDelivery(ctx, job, nil)
+}
+
+func (owner *textContext) receiveTextIntroductionAfterDelivery(ctx context.Context, job *textJobIdentity, deliveryReceived func()) (prepared *textIntroductionAttempt, outcome error) {
 	return owner.receiveTextIntroductionWith(ctx, job, textIntroductionDeliveryKey{generation: 1}, nil,
-		owner.acceptDispatchedTextIntroduction)
+		owner.acceptDispatchedTextIntroduction, deliveryReceived)
 }
 
 func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobIdentity, binding *textServiceBinding,
@@ -85,14 +89,14 @@ func (owner *textContext) receiveTextRecovery(ctx context.Context, job *textJobI
 	want := textIntroductionDeliveryKey{connection: binding.facts.ConnectionNonce, generation: request.Generation}
 	return owner.receiveTextIntroductionWith(ctx, job, want, binding, func(ctx context.Context, job *textJobIdentity, operation []byte) (*textIntroductionAttempt, error) {
 		return owner.acceptDispatchedTextRecovery(ctx, job, operation, binding, request)
-	})
+	}, nil)
 }
 
 type textIntroductionAcceptor func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error)
 
 func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *textJobIdentity,
 	want textIntroductionDeliveryKey, binding *textServiceBinding,
-	accept textIntroductionAcceptor) (prepared *textIntroductionAttempt, outcome error) {
+	accept textIntroductionAcceptor, deliveryReceived func()) (prepared *textIntroductionAttempt, outcome error) {
 	if owner == nil || ctx == nil {
 		return nil, errors.New("text Introduction receiver unavailable")
 	}
@@ -129,6 +133,9 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	delivery, err := owner.dispatchTextIntroductionDelivery(lifetime, job, want, binding)
 	if err != nil {
 		return nil, err
+	}
+	if deliveryReceived != nil {
+		deliveryReceived()
 	}
 	operation := delivery.delivery.Operation()
 	defer clear(operation)

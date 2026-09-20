@@ -221,6 +221,13 @@ child, but withdrawal/expiry joins all children before closing the Carrier.
 This is finite reuse of useful-work setup, with no reserved Service Connection.
 The pool and its session borrowers share one physical close operation and retain
 its original result; concurrent withdrawal joins that same close.
+An in-flight dial occupies the same finite pool bound as a retained Carrier.
+One opening or retirement operation may own a directed pair; a caller for the
+same key waits with its own cancellation context, while unrelated ready keys
+may acquire and release. A changed binding waits for that pair operation, then
+revalidates before replacing its prior incarnation. The dial and State revalidation run outside the pool mutex. A changed binding,
+withdrawal, failed revalidation, or late result closes the unpublishable
+Carrier; Close waits for owned in-flight dials before its retained close result.
 The outer HELLO lifetime is bounded by the current signed profile and receiving
 State/duty bounds, independently of the first child's ten-second handshake.
 The initial HELLO/ACCEPT exchange and sending a new OPEN use a separate
@@ -267,8 +274,11 @@ For a joined stream, a late CREDIT may become unnecessary after the exact outer
 lane receives CLOSE(0). Discard only an unemitted CREDIT: the outer lane's
 monotonic physical-attempt count must be unchanged across the entire encoded
 write. An already counted outer write may finish between observations; the
-final observation requires no active writer, no local close, no parent failure,
-and no earlier failed physical write. Keep the reader and its bounded reservation alive to consume
+final observation requires no active writer, no parent failure and no earlier
+failed physical write. A concurrent local close may appear only after this
+attempted CREDIT itself returned EOF from the already authenticated CLOSE(0);
+the caller checks that exact result. A local close before the attempt returns
+its own closure error and cannot become peer success. Keep the reader and its bounded reservation alive to consume
 already accepted inner records and validate their terminal. Raw EOF, refusal,
 partial output and missing inner completion cannot become document success.
 For a wholly unemitted local JOIN CLOSE, the outer-lane cleanup witness counts all non-CREDIT physical attempts across the entire encoded write. A concurrent CREDIT may exist at the initial observation, but the final observation requires no active write, an unchanged count, actual CLOSE(0), no local close or parent failure, and no earlier failed physical write of any kind. Only then may joined parent retirement discharge that CLOSE. Refusal, partial output and failed CREDIT remain failures; cleanup grants no payload success.
@@ -282,6 +292,13 @@ and permits at most 256 simultaneous work lanes and two reserved control lanes
 within that reserve. Each
 child has its own next-recipient admission. An additional child cannot multiply
 its parent's allowance. Under
+
+While a selected child waits for downstream HELLO/ACCEPT, its BYTES, CREDIT,
+EOF and CLOSE stay in the parent's existing bounded queue accounting. The
+reader may serve lane-zero control and another eligible child; no unaccounted
+asynchronous forwarding queue exists. CLOSE cancels and joins that pending
+child only before releasing its lane reservation.
+
 [ADR-0085](../adr/0085-bound-forwarding-replenishment.md), replenishment
 changes only the parent's remaining byte reserve: after the complete
 post-initial ADMIT has been debited, it becomes exactly 32 MiB rather than an
@@ -435,8 +452,14 @@ queues remain within the admission owner's 64 MiB ceiling.
 A slow lane cannot block reading another lane's bounded control/termination.
 
 Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve
-a separate 16 KiB/channel control queue and service it before data, with
-control-rate admission to prevent priority flooding.
+a separate 16 KiB/channel control queue. Give a newly available control frame
+first service, then one already queued data frame before another control frame,
+with control-rate admission to prevent priority flooding or data starvation.
+An authenticated terminal that becomes ready while another control is already
+physically active may take the next service before queued data so the active
+frame cannot strand teardown. That terminal consumes the one priority turn:
+one queued data frame precedes every further terminal or control frame. This is
+scheduling only and changes neither wire kind nor control/data accounting.
 The receiving-duty governor reserves that 16 KiB for each admitted channel
 inside its existing 64 MiB total before admitting data. Forward and reverse
 control frames share this reservation, including their complete headers;

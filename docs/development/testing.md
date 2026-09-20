@@ -31,7 +31,15 @@ substitute for independent review.
   also proves that canonical command bytes are unchanged when the same owned
   source is represented as a Git repository or as a VCS-free extraction.
 - `make check` runs unit, process, race, command build, formatting,
-  Staticcheck, and vulnerability checks. It is the pre-integration gate.
+  Staticcheck, and vulnerability checks. It is the pre-integration gate. Pull
+  request CI uses `scripts/select-pr-checks.go` to run the changed Go owners,
+  their imported consumers, and explicitly registered non-Go fixture owners;
+  independent selected jobs all finish and report their failures. The exact
+  candidate must still pass `make check` before integration, and a push to
+  `main` repeats that complete gate.
+- Focused Linux race checks retain raw command, stdout, stderr, and exit status
+  outside Git. They may compose existing owner tests for a bounded lifecycle
+  fact, but do not turn that composition into an end-to-end qualification.
 - Its serial race inventory gives each package an explicit 15-minute terminal
   timeout. This keeps the race-instrumented Linux Endpoint's cryptographic
   fixtures inside the checked profile without inheriting Go's shorter default;
@@ -104,6 +112,15 @@ round trips, private-capsule cryptography and network tests that construct
 Endpoint operations execute with the Linux client. Shared outer-handshake
 admission and receiving-listener address/certificate fixtures remain separately
 available to the platform-independent Node tests.
+The Linux Node deterministic/race checks run actual TCP/TLS and QUIC forwarding
+open success, refusal, cancellation, and concurrent same-key one-HELLO cases.
+The Linux parent-reader regression holds one downstream HELLO, then proves a
+distinct selected TCP child and lane-zero control progress; its pending CLOSE
+variant observes the first carrier close before accepting that result. Route
+queue bound and Node Stop/invalidation tests remain separate owner evidence,
+not one end-to-end lifecycle qualification.
+Portable session checks retain blocked-HELLO/ready-unrelated progress and
+independent waiter/creator cancellation ownership.
 ## Reachability audit
 
 `make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained

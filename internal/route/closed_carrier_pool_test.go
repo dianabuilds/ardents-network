@@ -1,8 +1,12 @@
 package route
 
 import (
+	"context"
 	"errors"
 	"io"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -17,7 +21,7 @@ func TestClosedCarrierPoolRetainsOnlyActualWorkForFixedWindow(t *testing.T) {
 	carrier := &closedPoolCarrier{}
 	opens := 0
 	open := func() (Carrier, error) { opens++; return carrier, nil }
-	lease, err := pool.Acquire(key, func() error { return nil }, open)
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, open)
 	if err != nil || opens != 1 {
 		t.Fatalf("first acquisition = %v / opens %d", err, opens)
 	}
@@ -27,7 +31,7 @@ func TestClosedCarrierPoolRetainsOnlyActualWorkForFixedWindow(t *testing.T) {
 	if err := lease.Release(); err != nil {
 		t.Fatal(err)
 	}
-	lease, err = pool.Acquire(key, func() error { return nil }, open)
+	lease, err = pool.AcquireContext(context.Background(), key, func() error { return nil }, open)
 	if err != nil || opens != 1 {
 		t.Fatalf("retained acquisition = %v / opens %d", err, opens)
 	}
@@ -43,7 +47,7 @@ func TestClosedCarrierPoolRetainsOnlyActualWorkForFixedWindow(t *testing.T) {
 		t.Fatalf("expiry reap = %v / closes %d", err, carrier.closes)
 	}
 	unused := &closedPoolCarrier{}
-	lease, err = pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return unused, nil })
+	lease, err = pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { return unused, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +63,7 @@ func TestClosedCarrierPoolRefusesInvalidStateAndBoundsEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err := pool.Acquire(closedCarrierPoolKey(1), func() error { return errors.New("state changed") }, func() (Carrier, error) {
+	if _, err := pool.AcquireContext(context.Background(), closedCarrierPoolKey(1), func() error { return errors.New("state changed") }, func() (Carrier, error) {
 		called = true
 		return &closedPoolCarrier{}, nil
 	}); err == nil || called {
@@ -67,7 +71,7 @@ func TestClosedCarrierPoolRefusesInvalidStateAndBoundsEntries(t *testing.T) {
 	}
 	for index := 1; index <= closedCarrierPoolMaximum; index++ {
 		key := closedCarrierPoolKey(byte(index))
-		lease, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil })
+		lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil })
 		if err != nil {
 			t.Fatalf("acquire %d: %v", index, err)
 		}
@@ -79,7 +83,7 @@ func TestClosedCarrierPoolRefusesInvalidStateAndBoundsEntries(t *testing.T) {
 		}
 	}
 	over := closedCarrierPoolKey(closedCarrierPoolMaximum + 1)
-	if _, err := pool.Acquire(over, func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil }); err == nil {
+	if _, err := pool.AcquireContext(context.Background(), over, func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil }); err == nil {
 		t.Fatal("opened a Carrier beyond the Node pool limit")
 	}
 	if err := pool.Close(); err != nil {
@@ -94,7 +98,7 @@ func TestClosedCarrierPoolInvalidatesActiveLease(t *testing.T) {
 		t.Fatal(err)
 	}
 	key, carrier := closedCarrierPoolKey(1), &closedPoolCarrier{}
-	lease, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return carrier, nil })
+	lease, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { return carrier, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,14 +132,14 @@ func TestClosedCarrierPoolRetiresChangedDirectedPairAndCannotReopenAfterClose(t 
 	defer pool.Close()
 	first := &closedPoolCarrier{}
 	key := closedCarrierPoolKey(1)
-	old, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return first, nil })
+	old, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { return first, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	changed := key
 	changed.PeerKey[0]++
 	second := &closedPoolCarrier{}
-	current, err := pool.Acquire(changed, func() error { return nil }, func() (Carrier, error) { return second, nil })
+	current, err := pool.AcquireContext(context.Background(), changed, func() error { return nil }, func() (Carrier, error) { return second, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +159,7 @@ func TestClosedCarrierPoolRetiresChangedDirectedPairAndCannotReopenAfterClose(t 
 		t.Fatal(err)
 	}
 	called := false
-	if _, err := pool.Acquire(changed, func() error { return nil }, func() (Carrier, error) { called = true; return &closedPoolCarrier{}, nil }); err == nil || called {
+	if _, err := pool.AcquireContext(context.Background(), changed, func() error { return nil }, func() (Carrier, error) { called = true; return &closedPoolCarrier{}, nil }); err == nil || called {
 		t.Fatal("withdrawn pool reopened a Carrier")
 	}
 }
@@ -168,7 +172,7 @@ func TestClosedCarrierLeaseLateInvalidationCannotCloseReplacement(t *testing.T) 
 	defer pool.Close()
 	key := closedCarrierPoolKey(1)
 	oldCarrier := &closedPoolCarrier{}
-	old, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return oldCarrier, nil })
+	old, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { return oldCarrier, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +180,7 @@ func TestClosedCarrierLeaseLateInvalidationCannotCloseReplacement(t *testing.T) 
 		t.Fatal(err)
 	}
 	replacementCarrier := &closedPoolCarrier{}
-	replacement, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { return replacementCarrier, nil })
+	replacement, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { return replacementCarrier, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +196,7 @@ func TestClosedCarrierLeaseLateInvalidationCannotCloseReplacement(t *testing.T) 
 	if _, err := replacement.Carrier(); err != nil {
 		t.Fatal(err)
 	}
-	shared, err := pool.Acquire(key, func() error { return nil }, func() (Carrier, error) { t.Fatal("redialed shared incarnation"); return nil, nil })
+	shared, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { t.Fatal("redialed shared incarnation"); return nil, nil })
 	if err != nil || !shared.SameCarrier(replacement) {
 		t.Fatal("live borrowers disagree about incarnation")
 	}
@@ -204,5 +208,237 @@ func TestClosedCarrierLeaseLateInvalidationCannotCloseReplacement(t *testing.T) 
 	}
 	if replacementCarrier.closes != 1 {
 		t.Fatal("current incarnation was not invalidated")
+	}
+}
+
+func TestClosedCarrierPoolBlockedDialDoesNotBlockOtherKeyOrCancelledWaiter(t *testing.T) {
+	pool, err := NewClosedCarrierPool(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked, opened := make(chan struct{}), make(chan struct{})
+	firstDone := make(chan error, 1)
+	workerDone := make(chan struct{})
+	var unblockOnce sync.Once
+	unblock := func() { unblockOnce.Do(func() { close(blocked) }) }
+	defer pool.Close()
+	defer func() { <-workerDone }()
+	defer unblock()
+	key := closedCarrierPoolKey(1)
+	go func() {
+		defer close(workerDone)
+		_, err := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) { close(opened); <-blocked; return &closedPoolCarrier{}, nil })
+		firstDone <- err
+	}()
+	<-opened
+	ready, err := pool.AcquireContext(context.Background(), closedCarrierPoolKey(2), func() error { return nil }, func() (Carrier, error) { return &closedPoolCarrier{}, nil })
+	if err != nil {
+		t.Fatalf("ready peer blocked: %v", err)
+	}
+	if err := ready.Release(); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := pool.AcquireContext(ctx, key, func() error { return nil }, func() (Carrier, error) { t.Fatal("same key redialed"); return nil, nil }); err == nil {
+		t.Fatal("cancelled same-key waiter acquired")
+	}
+	unblock()
+	if err := <-firstDone; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestClosedCarrierPoolSharesOneExactKeyOpening(t *testing.T) {
+	pool, err := NewClosedCarrierPool(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	opening, releaseDial, waiterValidated := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var validations atomic.Int32
+	validate := func() error {
+		if validations.Add(1) == 2 {
+			close(waiterValidated)
+		}
+		return nil
+	}
+	var opens atomic.Int32
+	open := func() (Carrier, error) {
+		opens.Add(1)
+		close(opening)
+		<-releaseDial
+		return &closedPoolCarrier{}, nil
+	}
+	key := closedCarrierPoolKey(1)
+	firstDone, secondDone := make(chan *ClosedCarrierLease, 1), make(chan *ClosedCarrierLease, 1)
+	go func() { lease, _ := pool.AcquireContext(context.Background(), key, validate, open); firstDone <- lease }()
+	<-opening
+	go func() {
+		lease, _ := pool.AcquireContext(context.Background(), key, validate, open)
+		secondDone <- lease
+	}()
+	<-waiterValidated
+	close(releaseDial)
+	first, second := <-firstDone, <-secondDone
+	if first == nil || second == nil || !first.SameCarrier(second) || opens.Load() != 1 {
+		t.Fatalf("exact-key opening leases = %v / %v, opens %d", first, second, opens.Load())
+	}
+	if err := first.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.Release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type closedCarrierPoolWaitContext struct {
+	context.Context
+	waiting chan struct{}
+	once    sync.Once
+}
+
+func (ctx *closedCarrierPoolWaitContext) Done() <-chan struct{} {
+	ctx.once.Do(func() { close(ctx.waiting) })
+	return ctx.Context.Done()
+}
+
+func TestClosedCarrierPoolRevalidatesAfterExactKeyWait(t *testing.T) {
+	pool, err := NewClosedCarrierPool(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := closedCarrierPoolKey(1)
+	opened, releaseDial := make(chan struct{}), make(chan struct{})
+	ownerDone := make(chan *ClosedCarrierLease, 1)
+	ownerWorkerDone := make(chan struct{})
+	var releaseDialOnce sync.Once
+	unblockOwner := func() { releaseDialOnce.Do(func() { close(releaseDial) }) }
+	defer pool.Close()
+	defer func() { <-ownerWorkerDone }()
+	defer unblockOwner()
+	go func() {
+		defer close(ownerWorkerDone)
+		lease, _ := pool.AcquireContext(context.Background(), key, func() error { return nil }, func() (Carrier, error) {
+			close(opened)
+			<-releaseDial
+			return &closedPoolCarrier{}, nil
+		})
+		ownerDone <- lease
+	}()
+	<-opened
+	waiterWaiting := make(chan struct{})
+	waiterContext := &closedCarrierPoolWaitContext{Context: context.Background(), waiting: waiterWaiting}
+	var stateChanged atomic.Bool
+	var validations atomic.Int32
+	waiterDone := make(chan error, 1)
+	waiterWorkerDone := make(chan struct{})
+	defer func() { <-waiterWorkerDone }()
+	defer unblockOwner()
+	go func() {
+		defer close(waiterWorkerDone)
+		_, err := pool.AcquireContext(waiterContext, key, func() error {
+			if validations.Add(1) == 1 {
+				return nil
+			}
+			if !stateChanged.Load() {
+				return errors.New("State revalidated before the test changed it")
+			}
+			return errors.New("State changed while waiting")
+		}, func() (Carrier, error) { return nil, errors.New("waiter redialed") })
+		waiterDone <- err
+	}()
+	<-waiterWaiting
+	stateChanged.Store(true)
+	unblockOwner()
+	owner := <-ownerDone
+	if owner == nil {
+		t.Fatal("opening owner did not acquire")
+	}
+	defer owner.Release()
+	if err := <-waiterDone; err == nil {
+		t.Fatal("waiter acquired after State changed")
+	}
+	if got := validations.Load(); got != 2 {
+		t.Fatalf("waiter validations = %d, want 2", got)
+	}
+	if err := owner.Release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type closedCarrierPoolLateCloseCarrier struct {
+	closeEntered chan struct{}
+	allowClose   chan struct{}
+}
+
+func (*closedCarrierPoolLateCloseCarrier) Read([]byte) (int, error)        { return 0, io.EOF }
+func (*closedCarrierPoolLateCloseCarrier) Write(value []byte) (int, error) { return len(value), nil }
+func (*closedCarrierPoolLateCloseCarrier) SetDeadline(time.Time) error     { return nil }
+func (carrier *closedCarrierPoolLateCloseCarrier) Close() error {
+	close(carrier.closeEntered)
+	<-carrier.allowClose
+	return nil
+}
+
+func TestClosedCarrierPoolCloseWaitsForLateDialCarrierDisposal(t *testing.T) {
+	pool, err := NewClosedCarrierPool(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opening, releaseDial := make(chan struct{}), make(chan struct{})
+	carrier := &closedCarrierPoolLateCloseCarrier{closeEntered: make(chan struct{}), allowClose: make(chan struct{})}
+	acquireDone := make(chan error, 1)
+	acquireWorkerDone := make(chan struct{})
+	var releaseDialOnce, allowCloseOnce sync.Once
+	unblockDial := func() { releaseDialOnce.Do(func() { close(releaseDial) }) }
+	finishCarrierClose := func() { allowCloseOnce.Do(func() { close(carrier.allowClose) }) }
+	defer pool.Close()
+	defer finishCarrierClose()
+	defer func() { <-acquireWorkerDone }()
+	defer unblockDial()
+	go func() {
+		defer close(acquireWorkerDone)
+		_, err := pool.AcquireContext(context.Background(), closedCarrierPoolKey(1), func() error { return nil }, func() (Carrier, error) {
+			close(opening)
+			<-releaseDial
+			return carrier, nil
+		})
+		acquireDone <- err
+	}()
+	<-opening
+	closeDone := make(chan error, 1)
+	closeWorkerDone := make(chan struct{})
+	defer func() {
+		unblockDial()
+		finishCarrierClose()
+		<-closeWorkerDone
+	}()
+	go func() {
+		defer close(closeWorkerDone)
+		closeDone <- pool.Close()
+	}()
+	for {
+		pool.mu.Lock()
+		closed := pool.closed
+		pool.mu.Unlock()
+		if closed {
+			break
+		}
+		runtime.Gosched()
+	}
+	unblockDial()
+	<-carrier.closeEntered
+	select {
+	case err := <-closeDone:
+		t.Fatalf("Close returned before late Carrier disposal completed: %v", err)
+	case <-time.After(250 * time.Millisecond):
+	}
+	finishCarrierClose()
+	if err := <-acquireDone; err == nil {
+		t.Fatal("late dial was accepted after pool withdrawal")
+	}
+	if err := <-closeDone; err != nil {
+		t.Fatal(err)
 	}
 }

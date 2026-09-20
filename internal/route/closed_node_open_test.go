@@ -49,7 +49,7 @@ func TestClosedNodeOpenRequiresAuthenticatedExactGrammar(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer outer.Close()
-	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time) error { return nil })
+	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}

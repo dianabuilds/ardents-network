@@ -10,6 +10,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 // Endpoint returns a token only after verifying its challenge and durably
@@ -19,6 +21,8 @@ type ClosedTokenPresenter func(ClosedHello, uint8) ([]byte, error)
 // ClosedSourcePrefix owns a fresh admitted Entry/Interior tree. Its stream
 // carries the Interior role protocol, never a direct Application Connection.
 type ClosedSourcePrefix struct {
+	refillMu         sync.Mutex
+	hellos           [2]ClosedHello
 	interruptMu      sync.Mutex
 	interruptedEarly bool
 	source           ClosedBootstrapState
@@ -91,12 +95,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	if err != nil {
 		return nil, closedSourceOpenFailureAt("state", err)
 	}
-	end := now.Add(30 * time.Minute).Truncate(time.Second)
-	for _, limit := range []time.Time{plan.profile.NotAfter, snapshot.ValidUntil, plan.peers[0].notAfter, plan.peers[1].notAfter} {
-		if limit.Before(end) {
-			end = limit
-		}
-	}
+	end := closedSourcePrefixEnd(plan, snapshot, now)
 	plan.deadline = end
 	entry := plan.peers[0]
 	connection, err := OpenClosedRoleCarrier(ctx, ClosedRoleCarrierRequest{CarrierProfile: entry.carrier, Endpoint: entry.endpoint, ExpectedServer: entry.key, Deadline: handshakeEnd})
@@ -128,7 +127,7 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 		if err := owner.connection.SetDeadline(pending); err != nil {
 			return nil, closedSourceOpenFailureAt(role+"-deadline", err)
 		}
-		if err := admitClosedSource(owner.connection, plan, index, role, present); err != nil {
+		if err := admitClosedSourceObserved(owner.connection, plan, index, role, present, &owner.hellos[index]); err != nil {
 			return nil, err
 		}
 		if owner.child != nil {
@@ -171,7 +170,17 @@ func openClosedPrefix(ctx context.Context, source ClosedBootstrapState, selectio
 	return owner, nil
 }
 
-func admitClosedSource(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter) error {
+func closedSourcePrefixEnd(plan closedBootstrapPlan, snapshot state.Snapshot, now time.Time) time.Time {
+	end := now.Add(closedClassLifetime(2)).Truncate(time.Second)
+	for _, limit := range []time.Time{plan.profile.NotAfter, snapshot.ValidUntil, plan.peers[0].notAfter, plan.peers[1].notAfter} {
+		if limit.Before(end) {
+			end = limit
+		}
+	}
+	return end
+}
+
+func admitClosedSourceObserved(connection net.Conn, plan closedBootstrapPlan, index int, role string, present ClosedTokenPresenter, observation *ClosedHello) error {
 	peer := plan.peers[index]
 	hello := ClosedHello{NetworkID: plan.profile.NetworkID, StateGeneration: plan.profile.StateGeneration, StateDigest: plan.profile.StateDigest,
 		ProfileDigest: plan.profile.Digest, RecipientNodeID: peer.node, RecipientDutyGeneration: peer.generation, Purpose: ClosedPurposeForwarding, Deadline: plan.deadline}
@@ -206,6 +215,9 @@ func admitClosedSource(connection net.Conn, plan closedBootstrapPlan, index int,
 	status, credit, err := DecodeClosedAcceptFrame(accepted)
 	if err != nil || status != 0 || credit != 64<<10 {
 		return closedSourceOpenFailureAt(role+"-accept-refused", errors.Join(err, errors.New("closed source admission refused")))
+	}
+	if observation != nil {
+		*observation = hello
 	}
 	return nil
 }

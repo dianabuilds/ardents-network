@@ -81,6 +81,9 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *tex
 	if err != nil {
 		return nil, err
 	}
+	if _, err := owner.openTextPublisherPrefix(ctx, &owner.responder, 3); err != nil {
+		return nil, err
+	}
 	_, until, err := prefix.IntroductionRecipient()
 	if err != nil {
 		return nil, err

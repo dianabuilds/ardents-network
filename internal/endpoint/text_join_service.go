@@ -16,6 +16,8 @@ import (
 // textJoinedTransport retains the bounded Endpoint exchange until the Service
 // owner has joined its physical transport. Finishing setup must not cancel it.
 type textJoinedTransport struct {
+	job    *textJobIdentity
+	joined *route.ClosedJoinedStream
 	net.Conn
 	once    sync.Once
 	revoked context.Context
@@ -24,8 +26,19 @@ type textJoinedTransport struct {
 	err     error
 }
 
+func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
+	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
+	return ok && witness.AuthenticatedPeerRetired()
+}
+
 func (transport *textJoinedTransport) Close() error {
 	transport.once.Do(func() {
+		if transport.job != nil {
+			owner := transport.job.owner
+			owner.mu.Lock()
+			delete(transport.job.qualificationJoins, transport.joined)
+			owner.mu.Unlock()
+		}
 		retirement := transport.Conn.Close()
 		if transport.revoked != nil && transport.revoked.Err() != nil && textRouteStopOnly(retirement) {
 			retirement = nil
@@ -61,7 +74,11 @@ func textRouteStopOnly(err error) bool {
 // openTextJoinedService consumes the initial protected Route and installs its
 // bounded replacement owner before Application bytes become reachable.
 func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textServiceStream, outcome error) {
-	transport, err := owner.openTextJoinedTransport(ctx, job, attempt)
+	return owner.openTextJoinedServiceAfterSetup(ctx, job, attempt, nil)
+}
+
+func (owner *textContext) openTextJoinedServiceAfterSetup(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, setupComplete func()) (_ *textServiceStream, outcome error) {
+	transport, err := owner.openTextJoinedTransportAfterSetup(ctx, job, attempt, setupComplete)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +91,10 @@ func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJo
 // grants Service authority. Its returned transport joins the complete Route
 // exchange when the Service Attachment releases it.
 func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textJoinedTransport, outcome error) {
+	return owner.openTextJoinedTransportAfterSetup(ctx, job, attempt, nil)
+}
+
+func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, setupComplete func()) (_ *textJoinedTransport, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil || attempt.binding.owner != owner || attempt.binding.job != job {
 		return nil, errors.New("text JOIN owner unavailable")
 	}
@@ -132,6 +153,19 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 			return nil, err
 		}
 	}
+	if attempt.plaintext.AttachmentGeneration == 1 && owner.surface == broker.Connection {
+		if job.qualificationAcquireIntroduction != nil {
+			if err := job.qualificationAcquireIntroduction(joining); err != nil {
+				return nil, err
+			}
+		}
+		if err := owner.refreshTextIntroduction(joining, job, attempt, prefix); err != nil {
+			return nil, err
+		}
+	}
+	if setupComplete != nil {
+		setupComplete()
+	}
 	type joinedResult struct {
 		stream *route.ClosedJoinedStream
 		err    error
@@ -173,7 +207,15 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 	if !owner.retainTextServiceTransportExchange(job, flight) {
 		return nil, errors.New("text JOIN owner ended before stream transfer")
 	}
-	transport := &textJoinedTransport{Conn: raw, revoked: job.context, stop: stop, finish: finish}
+	owner.mu.Lock()
+	if job.qualification != nil {
+		if job.qualificationJoins == nil {
+			job.qualificationJoins = make(map[*route.ClosedJoinedStream]struct{})
+		}
+		job.qualificationJoins[raw] = struct{}{}
+	}
+	owner.mu.Unlock()
+	transport := &textJoinedTransport{job: job, joined: raw, Conn: raw, revoked: job.context, stop: stop, finish: finish}
 	transferred = true
 	return transport, nil
 }

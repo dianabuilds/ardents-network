@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
@@ -170,5 +171,35 @@ func TestTextSourceRejectsCrossProjectionStateBeforeSelection(t *testing.T) {
 	owner.mu.Unlock()
 	if err == nil || owner.sourceSet != nil || endpoint.closedEntries != nil {
 		t.Fatal("mixed State projections created selection owner")
+	}
+}
+
+func TestTextInteriorSelectionIgnoresStateMemberOrder(t *testing.T) {
+	now := time.Date(2026, 9, 16, 13, 0, 0, 0, time.UTC)
+	entryMember := func(id byte) entry.ClosedSetMember {
+		return entry.ClosedSetMember{NodeID: fixtureID(id), PublicKey: fixtureID(id + 20), FamilyID: fixtureID(id + 40),
+			RecordDigest: fixtureID(id + 60), DutyGeneration: uint64(id), Domain: 1, NotAfter: now.Add(time.Hour)}
+	}
+	entries := [2]entry.ClosedSetMember{entryMember(1), entryMember(2)}
+	members := []textRoleMember{
+		{ClosedSetMember: entryMember(10), subrole: 2},
+		{ClosedSetMember: entryMember(11), subrole: 2},
+		{ClosedSetMember: entryMember(12), subrole: 2},
+		{ClosedSetMember: entryMember(13), subrole: 2},
+	}
+	baseline, err := chooseTextInteriorSet(members, entries, now, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for shift := 1; shift < len(members); shift++ {
+		rotated := append([]textRoleMember(nil), members[shift:]...)
+		rotated = append(rotated, members[:shift]...)
+		selected, err := chooseTextInteriorSet(rotated, entries, now, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if selected != baseline {
+			t.Fatalf("State order changed Interior selection: shift %d", shift)
+		}
 	}
 }

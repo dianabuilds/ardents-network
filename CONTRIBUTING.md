@@ -49,7 +49,10 @@ qualification. C0 work selection and work-in-progress limits remain in
 Use the repository's pinned Go toolchain and explicitly run `make tools-install`
 when the pinned quality tools are missing. Checks never install tools
 implicitly. Run `bash ./scripts/install-git-hooks.sh` once per clone to enable
-the local pre-commit gate; CI independently runs `make check`. The hook is not
+the local pre-commit gate. Pull requests run the affected package, consumer,
+and fixture checks selected by the maintained ownership registry. The exact
+candidate still runs `make check` before integration, and CI repeats that full
+gate after a push to `main`. The hook is not
 the security boundary.
 
 Keep dependency caches, build outputs, and test evidence outside the repository.

@@ -62,6 +62,10 @@ func newClosedIntroductionServer(config runtimeConfig, snapshot dutyFacts) (*clo
 	if err := validateClosedIntroductionProfile(local, config, snapshot, config.now()); err != nil {
 		return nil, err
 	}
+	listen, err := closedListenAddress(snapshot.ProbeEndpoint, config.ClosedListenOverride)
+	if err != nil {
+		return nil, err
+	}
 	receiver, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIntroduction, config.now())
 	if !available {
 		return nil, errors.New("closed Introduction State changed before reservation")
@@ -79,7 +83,7 @@ func newClosedIntroductionServer(config runtimeConfig, snapshot dutyFacts) (*clo
 	if err != nil {
 		return nil, errors.Join(err, spends.Close())
 	}
-	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), snapshot.ProbeEndpoint, local.Certificate,
+	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
 		func(key [32]byte) bool {
 			updated, err := currentFacts(config)
 			return err == nil && closedSharedPeerCurrent(config, updated, key, config.now())
@@ -140,6 +144,9 @@ func (server *closedIntroductionServer) accept(ctx context.Context) error {
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
+			}
+			if route.IsClosedSharedPeerFailure(err) {
+				continue
 			}
 			return err
 		}

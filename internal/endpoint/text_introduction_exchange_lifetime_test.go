@@ -126,3 +126,26 @@ func TestTextServiceTransportExchangeRetainsCleanupAfterJobLoss(t *testing.T) {
 		t.Fatal("Close did not join retained transport cleanup")
 	}
 }
+
+func TestTextServiceTransportExchangeIgnoresDetachedCallerCancellation(t *testing.T) {
+	endpoint, principal := textContextEndpoint(t)
+	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	job := liveTextCapsuleJob(t, owner)
+	caller, cancel := context.WithCancel(t.Context())
+	lifetime, flight, detach, finish, err := owner.beginTextServiceTransportExchange(caller, job, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !detach() || !owner.retainTextServiceTransportExchange(job, flight) {
+		t.Fatal("accepted transport did not transfer its cleanup lifetime")
+	}
+	cancel()
+	select {
+	case <-lifetime.Done():
+		t.Fatal("detached caller interrupted retained transport cleanup")
+	default:
+	}
+	if err := finish(nil); err != nil {
+		t.Fatalf("detached caller changed transport cleanup: %v", err)
+	}
+}

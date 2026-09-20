@@ -198,10 +198,10 @@ Service-stream handover. It uses an unbuffered handover; cancellation joins the
 producer, bridge and worker. A refused malformed, unauthenticated or rate-limited
 capsule can leave the snapshot available only when the refusal acknowledgement
 succeeds and no cancellation or cleanup failure accompanies it.
-The Publisher startup owner qualifies the worker before opening its Source and
-Introduction prefixes, creates the initial registration, and waits for verified
-Descriptor publication before returning its Link. The returned owner retains
-the network producer under the job lifetime, independently of the completed
+The Publisher startup owner qualifies the worker before opening its Source,
+Introduction, and Responder prefixes, creates the initial registration, and
+waits for verified Descriptor publication before returning its Link. The
+returned owner retains the network producer under the job lifetime, independently of the completed
 startup request. Startup failure joins worker/context cleanup. Its Close is an
 abort. Its separate withdrawal operation stops new Introduction acceptance before
 network withdrawal and joins scheduled refresh before withdrawing the final
@@ -414,7 +414,13 @@ missing final control proof. The tail adds neither durable recovery state nor a
 headless recovery path. The Endpoint may publish that completed Application
 outcome before the tail ends, but explicit text-stream close cancels and joins
 the native tail, its current Attachment and the owning Introduction exchange
-before releasing the stream owner.
+before releasing the stream owner. TLS may map the admitted Route child's
+authenticated `CLOSE(0)` to transport truncation because Service TLS has no
+second close-notify exchange. The exact child exposes that already decoded
+clean retirement to the text-Service adapter; only that witness may end a
+peer's already complete tail without recovery. Raw EOF, local close, refusal,
+truncation without the witness and every other Carrier failure retain the
+bounded recovery path.
 
 The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
 write's complete frames precede the zero-length input-close frame; if the

@@ -16,8 +16,8 @@ func closedForwardRecipient(config runtimeConfig, snapshot dutyFacts, open route
 	if config.CurrentClosedRoute == nil || !now.Before(open.Deadline) || snapshot.Profile != route.ClosedRouteProfile || !snapshot.Fresh || snapshot.Conflicting {
 		return dutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 	}
-	view, available := config.CurrentClosedRoute()
-	if !available || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
+	view, err := config.CurrentClosedRoute()
+	if err != nil || !closedRouteProfileMatchesSnapshot(view.Profile, snapshot, now) {
 		return dutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 	}
 	var recipient state.ClosedRouteNodeView

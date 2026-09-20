@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,27 +14,157 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go:
+  select:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.selection.outputs.matrix }}
+      count: ${{ steps.selection.outputs.count }}
+      powershell: ${{ steps.selection.outputs.powershell }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 1.26.8
           cache: true
-      - name: Select pull-request checks
-        if: github.event_name == 'pull_request'
+      - name: Select affected tests and consumers
+        id: selection
         env:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
-        run: go run ./scripts/select-pr-checks.go --base "$PR_BASE" --head HEAD --execute
+        run: |
+          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --powershell "$RUNNER_TEMP/powershell.txt"
+          python3 - <<'PY'
+          import json, os
+          with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
+              matrix = json.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("matrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
+              output.write("count=" + str(len(matrix["include"])) + "\n")
+              with open(os.environ["RUNNER_TEMP"] + "/powershell.txt") as marker:
+                  output.write("powershell=" + marker.read().strip() + "\n")
+          PY
+  qualification-scripts:
+    needs: select
+    if: needs.select.outputs.powershell == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Parse affected qualification PowerShell surface
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem tests/qualification -Recurse -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [void][Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
+            foreach ($error in $errors) {
+              Write-Error "$($_.FullName):$($error.Extent.StartLineNumber):$($error.Extent.StartColumnNumber): $($error.Message)"
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
+  affected:
+    needs: select
+    if: needs.select.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+    name: affected-${{ matrix.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.8
+          cache: true
+      - name: Run selected group with bounded timeout
+        env:
+          TEST_PACKAGE: ${{ matrix.package }}
+          TEST_RUN: ${{ matrix.run }}
+          TEST_RACE: ${{ matrix.race }}
+        run: |
+          if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" ]]; then
+            export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
+            mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
+            go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-control ./cmd/ardents-custody
+          fi
+          args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
+          if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
+          test_log="$RUNNER_TEMP/selected-test.json"
+          set +e
+          timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if (( status != 0 )); then
+            failure=unclassified
+            if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
+            elif grep -q 'race detected' "$test_log"; then failure=race-detected
+            elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
+            elif grep -q '\.Done:.*run=.*context deadline exceeded' "$test_log"; then failure=retained-done-timeout
+            elif grep -q '\.Done:.*run=.*context canceled' "$test_log"; then failure=retained-done-canceled
+            elif grep -q '\.Done:.*run=.*integrity violation' "$test_log"; then failure=retained-done-integrity
+            elif grep -q '\.Done:.*run=.*invalid request' "$test_log"; then failure=retained-done-invalid-request
+            elif grep -q '\.Done:.*run=.*recovery' "$test_log"; then failure=retained-done-recovery
+            elif grep -q '\.Done:.*run=.*text Service job retired' "$test_log"; then failure=retained-done-job-retired
+            elif grep -q '\.Done:.*run=<nil>' "$test_log"; then failure=retained-done-cleanup
+            elif grep -q '\.Done:' "$test_log"; then failure=retained-done-other
+            elif grep -q '\.Close:' "$test_log"; then failure=retained-close
+            elif grep -q ' setup refill ' "$test_log"; then failure=qualification-refill
+            elif grep -q ' JOIN ' "$test_log"; then failure=qualification-join
+            elif grep -q ' Introduction ' "$test_log"; then failure=qualification-introduction
+            elif grep -q 'retained setup reached' "$test_log"; then failure=retained-setup-other
+            fi
+            echo "::error title=${{ matrix.name }} failed::selected test failure category: $failure"
+          fi
+          exit "$status"
+  full:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.8
+          cache: true
       - name: Install pinned quality tools
-        if: github.event_name == 'push'
         run: make tools-install
-      - name: Run mandatory quality gate
-        if: github.event_name == 'push'
+      - name: Run the complete maintained gate
         run: make check
+  go:
+    if: always()
+    needs: [select, qualification-scripts, affected, full]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Require the event's quality gate to complete successfully
+        env:
+          SELECTION: ${{ needs.select.result }}
+          GROUP_RESULT: ${{ needs.affected.result }}
+          POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
+          FULL_RESULT: ${{ needs.full.result }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT" == pull_request ]]; then
+            test "$SELECTION" = success
+            test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped
+            test "$POWERSHELL_RESULT" = success || test "$POWERSHELL_RESULT" = skipped
+            test "$FULL_RESULT" = skipped
+          else
+            test "$SELECTION" = skipped
+            test "$GROUP_RESULT" = skipped
+            test "$FULL_RESULT" = success
+          fi

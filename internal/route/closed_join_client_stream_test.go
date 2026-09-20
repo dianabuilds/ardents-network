@@ -12,6 +12,15 @@ import (
 	"time"
 )
 
+type joinedFailureSplitConn struct {
+	net.Conn
+	reader net.Conn
+}
+
+func (connection *joinedFailureSplitConn) Read(value []byte) (int, error) {
+	return connection.reader.Read(value)
+}
+
 // Exercise the joined framing through a real Source lane. The peer consumes
 // outer frames but grants no inner credit; cancellation must unblock both layers.
 func joinedClientStreamFixture(t *testing.T) (*ClosedJoinedStream, context.CancelFunc, <-chan struct{}, <-chan ClosedLaneFrame, net.Conn) {
@@ -93,6 +102,112 @@ func TestClosedJoinedClientAcceptsOuterLaneBeforeTransfer(t *testing.T) {
 	stream.outer.owner.mu.Unlock()
 	if status != 0 {
 		t.Fatalf("accepted JOIN retained refusal status %d", status)
+	}
+}
+
+func TestClosedJoinedPeerCloseJoinsLaneBeforeReleasingOuter(t *testing.T) {
+	stream, _, released, _, peer := joinedClientStreamFixture(t)
+	body, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, frame := range []ClosedLaneFrame{
+		{Kind: closedFrameBytes, Lane: stream.outer.id, Body: body},
+		{Kind: closedFrameClose, Lane: stream.outer.id, Body: []byte{0}},
+	} {
+		if err := WriteClosedLaneFrame(peer, frame); err != nil {
+			t.Fatal(err)
+		}
+	}
+	select {
+	case <-released:
+	case <-time.After(time.Second):
+		t.Fatal("clean peer close did not release joined reservation")
+	}
+	stream.channels.mu.Lock()
+	closed := stream.closedSourceLane.closed
+	stream.channels.mu.Unlock()
+	if !closed {
+		t.Fatal("outer transport retired before joined lane cleanup")
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestClosedJoinedReaderFailureInterruptsBlockedWriter(t *testing.T) {
+	for _, mode := range []string{"malformed", "raw-eof"} {
+		t.Run(mode, func(t *testing.T) { checkClosedJoinedReaderFailureInterruptsBlockedWriter(t, mode) })
+	}
+}
+
+func checkClosedJoinedReaderFailureInterruptsBlockedWriter(t *testing.T, mode string) {
+	owner, peer, end := sourceChannelsFixture(t)
+	opened := make(chan error, 1)
+	go func() { _, err := ReadClosedLaneFrame(peer); opened <- err }()
+	lane, err := owner.open(t.Context(), sourceIssuerOpen(end), time.Now().Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-opened; err != nil {
+		t.Fatal(err)
+	}
+	if err := lane.activate(); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	reader, readerPeer := net.Pipe()
+	defer reader.Close()
+	readerPeerClosed := false
+	defer func() {
+		if !readerPeerClosed {
+			_ = readerPeer.Close()
+		}
+	}()
+	released := make(chan struct{})
+	stream := newClosedJoinedStream(ctx, &joinedFailureSplitConn{Conn: lane, reader: reader}, lane, func() { close(released) })
+	written := make(chan error, 1)
+	go func() { _, writeErr := stream.Write([]byte{1}); written <- writeErr }()
+	waitSourceChannelState(t, owner, func() bool {
+		return owner.active != nil && owner.active.frame.Kind == closedFrameBytes
+	})
+	if mode == "raw-eof" {
+		if err := readerPeer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		readerPeerClosed = true
+	} else {
+		invalid, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameEOF, Lane: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		invalid[7] = 1
+		if _, err := readerPeer.Write(invalid); err != nil {
+			t.Fatal(err)
+		}
+	}
+	select {
+	case err := <-written:
+		if err == nil {
+			t.Fatalf("writer succeeded after %s nested failure", mode)
+		}
+	case <-time.After(2 * time.Second):
+		stream.channels.mu.Lock()
+		innerCause := stream.channels.terminal
+		stream.channels.mu.Unlock()
+		owner.mu.Lock()
+		outerCause, outerActive, outerClosed := owner.terminal, owner.active != nil, lane.closed
+		owner.mu.Unlock()
+		t.Fatalf("%s reader failure did not interrupt blocked writer: inner=%v outer=%v active=%t closed=%t", mode, innerCause, outerCause, outerActive, outerClosed)
+	}
+	select {
+	case <-released:
+	case <-time.After(2 * time.Second):
+		t.Fatal("reader failure leaked joined reservation")
+	}
+	if err := stream.Close(); err == nil {
+		t.Fatalf("%s nested failure disappeared from cleanup", mode)
 	}
 }
 
@@ -209,6 +324,35 @@ func TestClosedJoinedClientTransportEOFWaitsForOuterTerminal(t *testing.T) {
 	}
 	if err := stream.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestClosedJoinedClientExposesOnlyAuthenticatedPeerRetirement(t *testing.T) {
+	stream, _, released, _, peer := joinedClientStreamFixture(t)
+	if stream.AuthenticatedPeerRetired() {
+		t.Fatal("live child reported authenticated peer retirement")
+	}
+	body, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	var one [1]byte
+	if _, err := stream.Read(one[:]); err != io.EOF {
+		t.Fatalf("clean inner retirement read = %v", err)
+	}
+	if !stream.AuthenticatedPeerRetired() {
+		t.Fatal("clean inner CLOSE(0) was not exposed")
+	}
+	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-released:
+	case <-time.After(time.Second):
+		t.Fatal("outer terminal failed to release JOIN")
 	}
 }
 

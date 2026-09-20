@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -28,22 +29,67 @@ type textIntroductionAttempt struct {
 // floors. Neither the worker nor a Descriptor selects Rendezvous or supplies
 // a join secret, local-context identifier, HPKE input or shared authority tuple.
 func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64) (prepared *textIntroductionAttempt, outcome error) {
+	verified, err := owner.resolveTextIntroduction(ctx, job, destination)
+	if err != nil {
+		return nil, err
+	}
+	return owner.prepareResolvedTextIntroduction(ctx, job, destination, bounds, verified)
+}
+
+func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link) (verified reachability.Verified, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
-		return nil, errors.New("text Introduction caller unavailable")
+		return reachability.Verified{}, errors.New("text Introduction caller unavailable")
 	}
 	if _, err := targetlink.Encode(destination); err != nil || destination.Network != owner.endpoint.network {
-		return nil, errors.New("text Introduction destination unavailable")
+		return reachability.Verified{}, errors.New("text Introduction destination unavailable")
 	}
 	owner.mu.Lock()
 	if err := owner.retireTextPrefixLocked(); err != nil {
 		owner.mu.Unlock()
-		return nil, err
+		return reachability.Verified{}, err
 	}
 	live := owner.liveTextServiceJobLocked(job, broker.Connection)
 	needPrefix := owner.prefix == nil
 	owner.mu.Unlock()
 	if !live {
-		return nil, errors.New("text Introduction reader job unavailable")
+		return reachability.Verified{}, errors.New("text Introduction reader job unavailable")
+	}
+	// Resolution is part of this worker invocation. The independently
+	// authorized Endpoint context may outlive it, but job retirement must still
+	// interrupt an in-flight prefix opening or Descriptor exchange.
+	caller := ctx
+	attempt, cancel := context.WithCancel(job.context)
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(caller, func() { defer close(interrupted); cancel() })
+	defer func() {
+		cancel()
+		if !stop() {
+			<-interrupted
+		}
+		if outcome == nil && (caller.Err() != nil || job.context.Err() != nil) {
+			verified = reachability.Verified{}
+			outcome = errors.Join(outcome, caller.Err(), job.context.Err(), errors.New("text Introduction resolution ended before handover"))
+		}
+	}()
+	if caller.Err() != nil {
+		cancel()
+	}
+	ctx = attempt
+	if needPrefix {
+		if _, err := owner.openTextPrefix(ctx); err != nil {
+			return reachability.Verified{}, err
+		}
+	}
+	return owner.lookupTextDescriptor(ctx, destination.Target)
+}
+
+func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64,
+	verified reachability.Verified) (prepared *textIntroductionAttempt, outcome error) {
+	if owner == nil || ctx == nil || ctx.Err() != nil {
+		return nil, errors.New("text Introduction caller unavailable")
+	}
+	if _, err := targetlink.Encode(destination); err != nil || destination.Network != owner.endpoint.network {
+		return nil, errors.New("text Introduction destination unavailable")
 	}
 	// Network work belongs to this invocation even while its independently
 	// authorized Endpoint context remains live after worker retirement.
@@ -68,15 +114,6 @@ func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *text
 		cancel()
 	}
 	ctx = attempt
-	if needPrefix {
-		if _, err := owner.openTextPrefix(ctx); err != nil {
-			return nil, err
-		}
-	}
-	verified, err := owner.lookupTextDescriptor(ctx, destination.Target)
-	if err != nil {
-		return nil, err
-	}
 	binding, err := owner.newTextServiceBinding(job, destination, verified.Current, bounds)
 	if err != nil {
 		return nil, err
@@ -129,4 +166,61 @@ func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *text
 		return nil, errors.New("text Introduction job ended during sealing")
 	}
 	return &textIntroductionAttempt{binding: binding, plaintext: plaintext, operation: operation, digest: digest}, nil
+}
+
+// refreshTextIntroduction starts the capsule lifetime only after the local
+// JOIN and submission admission stock is ready. None of that prerequisite
+// work has exposed the earlier sealed bytes, so replacing them cannot create a
+// second wire attempt or weaken replay ownership.
+func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *textJobIdentity,
+	attempt *textIntroductionAttempt, prefix *route.ClosedSourcePrefix) error {
+	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil ||
+		attempt.binding.owner != owner || attempt.binding.job != job || prefix == nil ||
+		attempt.plaintext.AttachmentGeneration != 1 || attempt.submitted {
+		return errors.New("text Introduction refresh unavailable")
+	}
+	node, generation, until, err := prefix.DataJoinRecipient()
+	if err != nil {
+		return err
+	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	profile, now, err := owner.textPermissionProfileLocked()
+	introduction := attempt.binding.introduction
+	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || owner.prefix != prefix ||
+		ctx.Err() != nil || profile.Digest != attempt.plaintext.ProfileDigest ||
+		node != attempt.plaintext.RendezvousNode || generation != attempt.plaintext.RendezvousDutyGeneration ||
+		introduction.Slot == [32]byte{} || introduction.RecipientKey == [32]byte{} ||
+		introduction.Revision != attempt.plaintext.Revision {
+		return errors.Join(err, ctx.Err(), errors.New("text Introduction refresh authority changed"))
+	}
+	deadline := now.Add(10 * time.Second).UTC().Truncate(time.Second)
+	for _, bound := range []time.Time{until, introduction.NotAfter, time.Unix(attempt.binding.facts.WorkSafetyNotAfter, 0)} {
+		if bound.Before(deadline) {
+			deadline = bound.UTC().Truncate(time.Second)
+		}
+	}
+	if !now.Before(deadline) {
+		return errors.New("text Introduction refresh deadline unavailable")
+	}
+	plaintext := attempt.plaintext
+	plaintext.Deadline = deadline
+	capsule := route.ClosedIntroductionCapsule{Slot: introduction.Slot, Revision: introduction.Revision, Expiry: deadline}
+	var requestNonce [32]byte
+	for _, value := range []*[32]byte{&capsule.DeliveryNonce, &requestNonce} {
+		if _, err := rand.Read(value[:]); err != nil {
+			return err
+		}
+	}
+	capsule, digest, err := route.SealClosedIntroduction(capsule, introduction.RecipientKey, plaintext)
+	if err != nil {
+		return err
+	}
+	operation, err := route.EncodeClosedIntroductionSubmission(requestNonce, capsule)
+	if err != nil {
+		return err
+	}
+	clear(attempt.operation)
+	attempt.plaintext, attempt.operation, attempt.digest = plaintext, operation, digest
+	return nil
 }

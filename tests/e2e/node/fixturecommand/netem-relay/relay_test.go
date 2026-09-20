@@ -20,7 +20,7 @@ func TestCopyRelayDirectionCapsOneDirection(t *testing.T) {
 		err   error
 	}, 1)
 	go func() {
-		count, err := copyRelayDirection(destinationWriter, sourceReader)
+		count, err := copyRelayDirection(destinationWriter, sourceReader, relayDirectionByteLimit)
 		result <- struct {
 			count int64
 			err   error

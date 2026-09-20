@@ -9,13 +9,48 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // The calling Endpoint must be the installed system service's main process.
 // BindsTo plus After ties each worker to loss of this service, including an
 // uncatchable Endpoint exit. Socket EOF alone cannot terminate a hostile fork.
 func verifyTextEndpointService(ctx context.Context) error {
+	if ctx == nil {
+		return errors.New("text worker Endpoint service is unavailable")
+	}
+	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	return awaitTextEndpointServiceObservation(bounded, observeTextEndpointService)
+}
+
+func awaitTextEndpointServiceObservation(ctx context.Context, observe func(context.Context) error) error {
+	if ctx == nil || observe == nil {
+		return errors.New("text worker Endpoint service is unavailable")
+	}
+	ticker := time.NewTicker(25 * time.Millisecond)
+	defer ticker.Stop()
+	var last error
+	for {
+		if err := observe(ctx); err == nil {
+			return nil
+		} else {
+			last = err
+		}
+		select {
+		case <-ctx.Done():
+			return errors.Join(last, ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func observeTextEndpointService(ctx context.Context) error {
 	if err := verifyTextWorkerPlatform(ctx); err != nil {
+		return err
+	}
+	version, err := installedTextManagerVersion(ctx)
+	if err != nil {
 		return err
 	}
 	answer, err := textManagerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", "ardents-endpoint.service")
@@ -35,7 +70,7 @@ func verifyTextEndpointService(ctx context.Context) error {
 			}
 		} else if os.Geteuid() == 0 || !properties[0].exact("MainPID", "u", uint32(os.Getpid())) ||
 			!properties[0].exact("User", "s", "ardents-endpoint") || !properties[0].exact("Group", "s", "ardents-endpoint") ||
-			!textEndpointStopsWithMain(properties[0]) {
+			!textEndpointStopsWithMainVersion(properties[0], version) {
 			return errors.New("text worker caller is not the Endpoint service")
 		}
 	}
@@ -56,9 +91,22 @@ func textUnitAfterEndpoint(unit textManagerProperties) bool {
 	return false
 }
 
-func textEndpointStopsWithMain(service textManagerProperties) bool {
-	return service.exact("RemainAfterExit", "b", false) && service.exact("ExitType", "s", "main") &&
-		service.exact("RestartMode", "s", "normal")
+func textEndpointStopsWithMainVersion(service textManagerProperties, version uint16) bool {
+	if version != 249 && version != 255 || !service.exact("RemainAfterExit", "b", false) {
+		return false
+	}
+	for key, want := range map[string]string{"ExitType": "main", "RestartMode": "normal"} {
+		_, present := service[key]
+		// v249 has neither selectable cgroup exit nor direct restart modes.
+		// Only this observed manager version permits those absent properties.
+		if !present && version == 249 {
+			continue
+		}
+		if !service.exact(key, "s", want) {
+			return false
+		}
+	}
+	return true
 }
 
 func verifyTextWorkerPlatform(ctx context.Context) error {
@@ -94,13 +142,38 @@ func textUbuntuRelease(body []byte) bool {
 			version, versionSeen = value, true
 		}
 	}
-	return (id == "ubuntu" || id == `"ubuntu"`) && (version == "24.04" || version == `"24.04"`)
+	id, version = strings.Trim(id, "\""), strings.Trim(version, "\"")
+	return id == "ubuntu" && (version == "22.04" || version == "24.04")
 }
 
-func textSystemdVersion(answer textManagerValue) bool {
+func textSystemdVersion(answer textManagerValue) bool { return decodeTextManagerVersion(answer) != 0 }
+
+func decodeTextManagerVersion(answer textManagerValue) uint16 {
 	var variants []textManagerValue
 	var version string
-	return answer.Type == "v" && json.Unmarshal(answer.Data, &variants) == nil && len(variants) == 1 &&
-		variants[0].Type == "s" && json.Unmarshal(variants[0].Data, &version) == nil &&
-		(version == "255" || strings.HasPrefix(version, "255."))
+	if answer.Type != "v" || json.Unmarshal(answer.Data, &variants) != nil || len(variants) != 1 ||
+		variants[0].Type != "s" || json.Unmarshal(variants[0].Data, &version) != nil {
+		return 0
+	}
+	for _, major := range []struct {
+		text  string
+		value uint16
+	}{{"249", 249}, {"255", 255}} {
+		if version == major.text || strings.HasPrefix(version, major.text+".") {
+			return major.value
+		}
+	}
+	return 0
+}
+
+func installedTextManagerVersion(ctx context.Context) (uint16, error) {
+	answer, err := textManagerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties", "Get", "ss", "org.freedesktop.systemd1.Manager", "Version")
+	if err != nil {
+		return 0, err
+	}
+	version := decodeTextManagerVersion(answer)
+	if version == 0 {
+		return 0, errors.New("text worker systemd version unavailable")
+	}
+	return version, nil
 }

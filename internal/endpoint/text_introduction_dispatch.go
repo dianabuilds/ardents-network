@@ -5,6 +5,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
@@ -289,7 +290,7 @@ func (owner *textContext) retainTextIntroductionRecovery(binding *textServiceBin
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if !owner.liveTextServiceJobLocked(binding.job, broker.Administration) || binding.recovery != nil ||
-		len(owner.introductionRecovery) >= maximumTextIntroductionWaiters {
+		len(owner.introductionRecovery) >= owner.streamConnectionLimitLocked() {
 		return errors.New("text Introduction recovery owner capacity unavailable")
 	}
 	if owner.introductionRecovery == nil {
@@ -402,7 +403,7 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	}
 	select {
 	case <-registered.channel.Done():
-		return textIntroductionDeliveryKey{}, capsule.Expiry, errors.New("text Introduction registration ended")
+		return textIntroductionDeliveryKey{}, capsule.Expiry, fmt.Errorf("text Introduction registration ended: %s", registered.channel.EndReason())
 	default:
 	}
 	if err := owner.reserveTextIntroductionOpeningLocked(capsule.DeliveryNonce, now); err != nil {

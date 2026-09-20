@@ -13,13 +13,37 @@ import (
 	"unicode/utf8"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
+	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
+
+// The installed sockets and their PID/UID instance namespace belong to the
+// process, not to one Endpoint value. Keep the inventory baseline, activation
+// and identity observation serial across every Endpoint in this process.
+var textWorkerLaunchGate = make(chan struct{}, 1)
 
 // launchTextWorker owns a local job from reservation through verified readiness.
 // No caller supplies a worker identity, artifact digest, isolation flag, socket,
 // executable, Principal or Grant. All of those observations are obtained here.
 func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte) (*qualifiedTextWorker, error) {
+	return owner.launchInstalledWorker(ctx, snapshot, nil)
+}
+
+func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, profile streamqualification.Profile, seed [32]byte) (*qualifiedTextWorker, error) {
+	role := streamqualification.ReaderRole
+	if owner != nil && owner.surface == broker.Administration {
+		role = streamqualification.PublisherRole
+	}
+	if _, err := profile.Definition(role); err != nil {
+		return nil, err
+	}
+	if seed == [32]byte{} {
+		return nil, errors.New("qualification workload seed is absent")
+	}
+	return owner.launchInstalledWorker(ctx, nil, &streamqualification.Init{Role: role, Profile: profile, Seed: seed})
+}
+
+func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *streamqualification.Init) (*qualifiedTextWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
 	}
@@ -33,6 +57,13 @@ func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte)
 	job, err := owner.beginJob(owner.endpoint, owner.surface)
 	if err != nil {
 		return nil, err
+	}
+	inventory := textInventory
+	if qualification != nil {
+		inventory = streamInventory
+		copy := *qualification
+		copy.Nonce = job.nonce
+		job.qualification = &copy
 	}
 	// Before activation a refused launch has no process-cleanup obligation.
 	activated, transferred := false, false
@@ -68,16 +99,16 @@ func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte)
 	if err := verifyTextEndpointService(bounded); err != nil {
 		return nil, err
 	}
-	artifact, err := loadTextWorkerArtifact()
+	artifact, err := loadInstalledWorkerArtifact(inventory)
 	if err != nil {
 		return nil, err
 	}
-	path := "/run/ardents-text/" + role + ".sock"
+	path := inventory.socket(role)
 	socket, err := inspectTextWorkerSocket(path)
 	if err != nil {
 		return nil, err
 	}
-	before, err := listTextWorkerInstances(bounded, role)
+	before, err := listInstalledWorkerInstances(bounded, role, inventory)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +132,7 @@ func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte)
 	if err != nil || !os.SameFile(socket, afterSocket) {
 		return nil, errors.New("text worker activation socket changed")
 	}
-	observed, err := awaitTextWorkerInstance(bounded, before, role)
+	observed, err := awaitInstalledWorkerInstance(bounded, before, role, inventory)
 	if err != nil {
 		return nil, err
 	}
@@ -133,26 +164,20 @@ func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte)
 }
 
 func (endpoint *endpoint) acquireTextLaunch(ctx context.Context) (func(), error) {
-	endpoint.textMu.Lock()
-	if endpoint.textMu.launch == nil {
-		endpoint.textMu.launch = make(chan struct{}, 1)
-	}
-	gate := endpoint.textMu.launch
-	endpoint.textMu.Unlock()
 	select {
-	case gate <- struct{}{}:
+	case textWorkerLaunchGate <- struct{}{}:
 		if ctx.Err() != nil || !endpoint.textAvailable() {
-			<-gate
+			<-textWorkerLaunchGate
 			return nil, errors.New("text worker activation is unavailable")
 		}
-		return func() { <-gate }, nil
+		return func() { <-textWorkerLaunchGate }, nil
 	case <-ctx.Done():
 		return nil, errors.New("text worker activation was cancelled")
 	}
 }
 
 func inspectTextWorkerSocket(path string) (os.FileInfo, error) {
-	if path != "/run/ardents-text/reader.sock" && path != "/run/ardents-text/publisher.sock" || os.Geteuid() == 0 {
+	if path != textInventory.socket("reader") && path != textInventory.socket("publisher") && path != streamInventory.socket("reader") && path != streamInventory.socket("publisher") || os.Geteuid() == 0 {
 		return nil, errors.New("text worker activation address is unavailable")
 	}
 	if _, err := textInstalledPath(filepath.Dir(path), true); err != nil {
@@ -169,12 +194,12 @@ func inspectTextWorkerSocket(path string) (os.FileInfo, error) {
 	return info, nil
 }
 
-func awaitTextWorkerInstance(ctx context.Context, before textWorkerListing, role string) (textWorkerInstance, error) {
+func awaitInstalledWorkerInstance(ctx context.Context, before textWorkerListing, role string, inventory workerInventory) (textWorkerInstance, error) {
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
 	var candidate string
 	for {
-		after, err := listTextWorkerInstances(ctx, role)
+		after, err := listInstalledWorkerInstances(ctx, role, inventory)
 		if err != nil {
 			return textWorkerInstance{}, err
 		}

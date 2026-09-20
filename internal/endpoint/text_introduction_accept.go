@@ -5,6 +5,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
@@ -68,7 +69,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	}
 	select {
 	case <-registered.channel.Done():
-		return nil, errors.New("text Introduction registration ended")
+		return nil, fmt.Errorf("text Introduction registration ended: %s", registered.channel.EndReason())
 	default:
 	}
 	if !openingReserved {
@@ -123,7 +124,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	}
 	select {
 	case <-registered.channel.Done():
-		return nil, errors.New("text Introduction registration ended during opening")
+		return nil, fmt.Errorf("text Introduction registration ended during opening: %s", registered.channel.EndReason())
 	default:
 	}
 	at := endpoint.clock().UTC()

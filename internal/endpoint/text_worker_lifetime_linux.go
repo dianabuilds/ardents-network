@@ -15,6 +15,8 @@ import (
 // installed stop authority remain separate prerequisites for Grant delivery.
 // No Principal or Grant is created by initialization or possession of this owner.
 type textWorkerLifetime struct {
+	artifact      *textWorkerArtifact
+	cgroup        string
 	useMu         sync.Mutex
 	closing       bool
 	operationDone chan struct{}
@@ -55,7 +57,7 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *textWor
 		return nil, failTextWorkerInitialization(job, attachment, err)
 	}
 	bounded, cancel := context.WithCancel(job.context)
-	lifetime := &textWorkerLifetime{attachment: attachment, cancel: cancel, done: make(chan struct{}), context: bounded}
+	lifetime := &textWorkerLifetime{artifact: artifact, cgroup: instance.cgroup, attachment: attachment, cancel: cancel, done: make(chan struct{}), context: bounded}
 	// Join the parent's cancellation callback as well as worker cleanup. The
 	// callback only interrupts; it never waits for the lifetime it interrupted.
 	callbackDone := make(chan struct{})

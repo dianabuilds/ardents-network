@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"errors"
 	"net"
 	"sync"
@@ -29,7 +30,7 @@ func TestClosedCarrierPoolSharesOneRetainedCloseResultWithBorrower(t *testing.T)
 			t.Fatal(err)
 		}
 		physical := &poolCloseFixture{failure: failure}
-		lease, err := pool.Acquire(closedCarrierPoolKey(1), func() error { return nil }, func() (Carrier, error) { return physical, nil })
+		lease, err := pool.AcquireContext(context.Background(), closedCarrierPoolKey(1), func() error { return nil }, func() (Carrier, error) { return physical, nil })
 		if err != nil {
 			t.Fatal(err)
 		}

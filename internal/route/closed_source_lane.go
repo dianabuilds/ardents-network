@@ -13,11 +13,13 @@ import (
 )
 
 type closedSourceLane struct {
+	reservedControl                   bool
 	closePayloadEmissions             uint64
 	physicalWriteFailed               bool
 	writeEOF                          bool
 	emissions                         uint64 // Monotonic physical attempts, including failed or partial frames.
 	closeStatus                       byte
+	terminalWriters                   uint32
 	opened                            bool
 	owner                             *closedSourceChannels
 	id                                uint32
@@ -25,35 +27,16 @@ type closedSourceLane struct {
 	credit, receiveCredit, consumed   uint32
 	buffer                            []byte
 	active, eof, remoteClosed, closed bool
+	terminalRead                      bool
+	receivedData                      bool
 	failure                           error
 	reading, writing                  sync.Mutex
 	closeOnce                         sync.Once
 	closeErr                          error
 }
 
-// A verified peer CLOSE makes a later, unemitted CREDIT unnecessary. This
-// witness never treats a raw EOF, local close, or failed parent as peer success.
-func (lane *closedSourceLane) writeWitness() (uint64, bool, bool) {
-	owner := lane.owner
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	busy := owner.active != nil && owner.active.lane == lane
-	clean := !lane.closed && lane.remoteClosed && lane.failure == io.EOF && owner.terminal == nil && !lane.physicalWriteFailed
-	return lane.emissions, busy, clean
-}
+var errClosedSourceOutputQueueFull = errors.New("closed source output queue full")
 
-// Cleanup can overlap an independently successful CREDIT. Count every other
-// physical attempt; require all output joined and no failed physical write at
-// the final clean observation. This does not relax the data/CREDIT witness.
-func (lane *closedSourceLane) closeWriteWitness() (uint64, bool, bool) {
-	owner := lane.owner
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	active := owner.active != nil && owner.active.lane == lane
-	payload := active && owner.active.frame.Kind != closedFrameCredit
-	clean := !active && !lane.closed && lane.remoteClosed && lane.failure == io.EOF && owner.terminal == nil && !lane.physicalWriteFailed
-	return lane.closePayloadEmissions, payload, clean
-}
 func (lane *closedSourceLane) writeErrorLocked(terminal bool) error {
 	if lane.owner.terminal != nil {
 		return lane.owner.terminal
@@ -77,13 +60,18 @@ func (lane *closedSourceLane) enqueueLocked(frame ClosedLaneFrame, cleanup time.
 		return nil, err
 	}
 	control := frame.Kind != closedFrameBytes
-	if owner.queued+size > 4<<20 || control && owner.controlsSize+size > 16<<10 {
-		return nil, errors.New("closed source output queue full")
+	terminal := frame.Kind == closedFrameClose || lane.terminalWriters != 0
+	if control && owner.controlsSize+size > 16<<10 || !owner.reserveQueuedLocked(size, control) {
+		return nil, errClosedSourceOutputQueueFull
 	}
-	request := &closedSourceWrite{lane: lane, frame: frame, end: cleanup, done: make(chan struct{})}
+	request := &closedSourceWrite{lane: lane, frame: frame, end: cleanup, done: make(chan struct{}), control: control, terminal: terminal}
 	request.frame.Body = append([]byte(nil), frame.Body...)
-	owner.queued += size
-	if control {
+	if terminal {
+		if control {
+			owner.controlsSize += size
+		}
+		owner.terminals = append(owner.terminals, request)
+	} else if control {
 		owner.controlsSize += size
 		owner.controls = append(owner.controls, request)
 	} else {
@@ -140,15 +128,15 @@ func (owner *closedSourceChannels) awaitWrite(request *closedSourceWrite) error 
 }
 
 func (owner *closedSourceChannels) removeQueuedWriteLocked(request *closedSourceWrite, err error) {
-	for _, queue := range []*[]*closedSourceWrite{&owner.controls, &owner.data} {
+	for _, queue := range []*[]*closedSourceWrite{&owner.terminals, &owner.controls, &owner.data} {
 		for index, candidate := range *queue {
 			if candidate != request {
 				continue
 			}
 			*queue = append((*queue)[:index], (*queue)[index+1:]...)
 			size := uint64(16 + len(request.frame.Body))
-			owner.queued -= size
-			if request.frame.Kind != closedFrameBytes {
+			owner.releaseQueuedLocked(size)
+			if request.control {
 				owner.controlsSize -= size
 			}
 			request.err = err
@@ -158,6 +146,25 @@ func (owner *closedSourceChannels) removeQueuedWriteLocked(request *closedSource
 		}
 	}
 }
+
+// beginTerminalWrite carries an authenticated inner terminal's scheduling
+// class through its encrypted TLS record. It changes neither wire bytes nor
+// the request's ordinary queue reservation.
+func (lane *closedSourceLane) beginTerminalWrite() func() {
+	owner := lane.owner
+	owner.mu.Lock()
+	lane.terminalWriters++
+	owner.mu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			owner.mu.Lock()
+			lane.terminalWriters--
+			owner.mu.Unlock()
+		})
+	}
+}
+
 func waitClosedSourceChange(changed <-chan struct{}, deadline time.Time) error {
 	timer := time.NewTimer(time.Until(deadline))
 	defer timer.Stop()
@@ -199,7 +206,7 @@ func (lane *closedSourceLane) Read(value []byte) (int, error) {
 			count := copy(value, lane.buffer)
 			clear(lane.buffer[:count])
 			lane.buffer = lane.buffer[count:]
-			owner.queued -= uint64(count)
+			owner.releaseQueuedLocked(uint64(count))
 			lane.consumed += uint32(count)
 			if owner.retainClosedRead {
 				owner.signalLocked()
@@ -220,6 +227,10 @@ func (lane *closedSourceLane) Read(value []byte) (int, error) {
 			err = io.EOF
 		}
 		if err != nil {
+			if err == io.EOF {
+				lane.terminalRead = true
+				owner.signalLocked()
+			}
 			owner.mu.Unlock()
 			return 0, err
 		}
@@ -250,6 +261,18 @@ func (lane *closedSourceLane) returnCredit() error {
 	lane.receiveCredit += count
 	owner.mu.Unlock()
 	err := lane.send(ClosedLaneFrame{Kind: closedFrameCredit, Lane: lane.id, Body: binary.BigEndian.AppendUint32(nil, count)}, time.Time{})
+	// A joined outer parent can fail after these bytes were accepted but before
+	// CREDIT enters its queue. No credit is usable after that terminal state;
+	// retain the parent cause for the reader instead of replacing it with a
+	// local queue-capacity error.
+	if err != nil && owner.retainClosedRead && owner.queueParent != nil {
+		owner.queueParent.mu.Lock()
+		parentEnded := owner.queueParent.terminal != nil
+		owner.queueParent.mu.Unlock()
+		if parentEnded {
+			return nil
+		}
+	}
 	// CLOSE can win after the bytes were consumed and before credit queues.
 	owner.mu.Lock()
 	retired := lane.remoteClosed || lane.closed
@@ -308,7 +331,7 @@ func (lane *closedSourceLane) Close() error {
 		// Release this lane's queued readers/writers even while a sibling owns
 		// the physical writer. An already active frame must finish or retire
 		// the parent because its wire prefix may have been emitted.
-		for _, queue := range []*[]*closedSourceWrite{&owner.controls, &owner.data} {
+		for _, queue := range []*[]*closedSourceWrite{&owner.terminals, &owner.controls, &owner.data} {
 			for index := len(*queue) - 1; index >= 0; index-- {
 				request := (*queue)[index]
 				if request.lane == lane {
@@ -316,7 +339,7 @@ func (lane *closedSourceLane) Close() error {
 				}
 			}
 		}
-		owner.queued -= uint64(len(lane.buffer))
+		owner.releaseQueuedLocked(uint64(len(lane.buffer)))
 		clear(lane.buffer)
 		lane.buffer = nil
 		var activeCredit *closedSourceWrite
@@ -360,6 +383,12 @@ func (lane *closedSourceLane) Close() error {
 			terminal, lane.closeErr = lane.enqueueLocked(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{lane.closeStatus}}, cleanupEnd)
 		}
 		owner.mu.Unlock()
+		if terminal == nil && errors.Is(lane.closeErr, errClosedSourceOutputQueueFull) && owner.retainClosedRead && owner.queueParentEnded() {
+			// The outer joined owner already published retirement. Its cause is
+			// returned by the joined stream; an inner CLOSE can no longer enter
+			// that parent's queue and must not invent a local cleanup failure.
+			lane.closeErr = nil
+		}
 		if terminal != nil {
 			lane.closeErr = owner.awaitWrite(terminal)
 			if lane.closeErr != nil {
@@ -373,16 +402,32 @@ func (lane *closedSourceLane) Close() error {
 		}
 		owner.mu.Lock()
 		unemitted := owner.terminal != nil && (terminal == nil || !terminal.attempted || terminal.unwritten)
+		joinedPeerEnd := owner.retainClosedRead && owner.terminal == io.EOF &&
+			lane.remoteClosed && lane.failure == io.EOF && owner.framedParent != nil
 		owner.mu.Unlock()
-		if lane.closeErr != nil && (unemitted || errors.Is(lane.closeErr, ErrClosedSourceStopped)) {
+		joinedLowerClose, joinedLowerCredit := false, false
+		if (lane.closeErr != nil || creditErr != nil) && joinedPeerEnd {
+			<-owner.done
+			if lane.closeErr != nil {
+				_, active, clean := owner.framedParent.closeWriteWitness()
+				joinedLowerClose = !active && clean
+			}
+			if creditErr != nil && errors.Is(creditErr, io.EOF) {
+				_, active, clean := owner.framedParent.writeWitness()
+				joinedLowerCredit = !active && clean
+			}
+		}
+		if lane.closeErr != nil && (unemitted || joinedLowerClose || errors.Is(lane.closeErr, ErrClosedSourceStopped)) {
 			// Existing traffic errors remain at their operation/parent owner;
 			// actual physical retirement failures remain cleanup failures.
-			<-owner.done
+			if !joinedPeerEnd {
+				<-owner.done
+			}
 			lane.closeErr = owner.retire()
 		}
 		// Check the retained CREDIT even if its failure ended the parent before
 		// CLOSE could be queued. Whole-parent intentional stop remains distinct.
-		if creditErr != nil && !errors.Is(creditErr, ErrClosedSourceStopped) {
+		if creditErr != nil && !joinedLowerCredit && !errors.Is(creditErr, ErrClosedSourceStopped) {
 			lane.closeErr = errors.Join(lane.closeErr, errors.Join(errors.New("closed source in-flight CREDIT write failed"), creditErr))
 		}
 		if lane.closeErr != nil {

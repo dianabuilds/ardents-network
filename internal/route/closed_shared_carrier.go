@@ -44,6 +44,25 @@ type ClosedSharedCarrierListener interface {
 	Close() error
 }
 
+type closedSharedPeerFailure struct{ cause error }
+
+func (failure *closedSharedPeerFailure) Error() string { return failure.cause.Error() }
+func (failure *closedSharedPeerFailure) Unwrap() error { return failure.cause }
+
+// IsClosedSharedPeerFailure reports that an accepted remote connection failed
+// authentication or its bounded handshake. The listener itself remains usable.
+func IsClosedSharedPeerFailure(err error) bool {
+	var failure *closedSharedPeerFailure
+	return errors.As(err, &failure)
+}
+
+func markClosedSharedPeerFailure(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &closedSharedPeerFailure{cause: err}
+}
+
 // ListenClosedSharedCarrier creates the one v3 listener shared by direct role
 // and Node Carrier TLS. The verifier must read current authenticated State at
 // classification time; a rejected certificate is closed before ARDP work.
@@ -141,20 +160,20 @@ admitted:
 	secured := tls.Server(raw, closedSharedServerTLS(listener.certificate))
 	if err := secured.SetDeadline(deadline); err != nil {
 		_ = raw.Close()
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	if err := secured.HandshakeContext(ctx); err != nil {
 		_ = raw.Close()
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	classified, err := classifyClosedSharedTLS(secured.ConnectionState(), listener.verify)
 	if err != nil {
 		_ = raw.Close()
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	if err := secured.SetDeadline(time.Time{}); err != nil {
 		_ = raw.Close()
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	classified.Connection = secured
 	if classified.Kind == ClosedSharedNode {
@@ -198,23 +217,23 @@ admitted:
 	classified, err := classifyClosedSharedTLS(connection.ConnectionState().TLS, listener.verify)
 	if err != nil {
 		_ = connection.CloseWithError(1, "carrier-peer-invalid")
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	attempt, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
 	stream, err := connection.AcceptStream(attempt)
 	if err != nil {
 		_ = connection.CloseWithError(1, "carrier-stream-invalid")
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	carrier := &closedRoleQUICCarrier{stream: stream, connection: connection}
 	if err := carrier.SetDeadline(deadline); err != nil {
 		_ = carrier.Close()
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	if err := carrier.SetDeadline(time.Time{}); err != nil {
 		_ = carrier.Close()
-		return ClosedSharedCarrier{}, err
+		return ClosedSharedCarrier{}, markClosedSharedPeerFailure(err)
 	}
 	classified.Connection = carrier
 	return classified, nil

@@ -487,36 +487,41 @@
       "rationale": "The e2e fixture helpers are reached from the positive test inventory rather than from a maintained production executable.",
       "owner": "Product Owner and Codex",
       "retirement": "Remove them when the owning e2e profile is retired or replace them with an invoked fixture command path."
-    },
-    {
-      "symbols": [
-        "tests/epochfixture/assignment.Digest",
-        "tests/epochfixture/assignment.Select"
-      ],
-      "classification": "test fixture support",
-      "rationale": "The deterministic epoch fixture is reached from the positive test inventory rather than from a maintained production executable.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Remove it when the owning deterministic fixture is retired."
-    },
-    {
-      "symbols": [
-        "tests/epochfixture/merkle.HashedRoot",
-        "tests/epochfixture/merkle.Proof",
-        "tests/epochfixture/merkle.RejectionLeaf",
-        "tests/epochfixture/merkle.Root",
-        "tests/epochfixture/merkle.branch",
-        "tests/epochfixture/merkle.leaf",
-        "tests/epochfixture/merkle.splitAt"
-      ],
-      "classification": "test fixture support",
-      "rationale": "The deterministic Merkle fixture is reached from the positive test inventory rather than from a maintained production executable.",
-      "owner": "Product Owner and Codex",
-      "retirement": "Remove it when the owning deterministic fixture is retired."
     }
   ],
   "production": {
     "linux-amd64": [],
     "windows-amd64": [
+      {
+        "symbols": [
+          "tests/epochfixture/assignment.Digest",
+          "tests/epochfixture/assignment.Select",
+          "tests/epochfixture/merkle.HashedRoot",
+          "tests/epochfixture/merkle.Proof",
+          "tests/epochfixture/merkle.RejectionLeaf",
+          "tests/epochfixture/merkle.Root",
+          "tests/epochfixture/merkle.branch",
+          "tests/epochfixture/merkle.leaf",
+          "tests/epochfixture/merkle.splitAt",
+          "tests/epochfixture/network.BuildEpoch",
+          "tests/epochfixture/network.BuildRecord",
+          "tests/epochfixture/network.cloneBytes",
+          "tests/epochfixture/network.encodeEpochCommitment",
+          "tests/epochfixture/network.i64",
+          "tests/epochfixture/network.material",
+          "tests/epochfixture/network.signEpoch",
+          "tests/epochfixture/network.summarize",
+          "tests/epochfixture/network.text",
+          "tests/epochfixture/network.u16",
+          "tests/epochfixture/network.u32",
+          "tests/epochfixture/network.u64",
+          "tests/epochfixture/network.validateEpochSpec"
+        ],
+        "classification": "platform-specific qualification fixture",
+        "rationale": "The canonical Network State fixture is consumed by the Linux-only two-host qualification generator; Windows production analysis correctly sees the fixture builder as unreachable.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove it when the Linux two-host qualification fixture is retired or gains a maintained Windows consumer."
+      },
       {
         "symbols": [
           "internal/service/reachability.verifiedCurrent"
@@ -535,6 +540,15 @@
         "rationale": "These helpers are live only in the Linux runtime build; Windows analysis correctly sees them as unreachable.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove the probe when its Linux resource evidence is retired, or provide an accepted Windows implementation."
+      },
+      {
+        "symbols": [
+          "internal/service/connection.Stream.RetireTerminalTail"
+        ],
+        "classification": "platform-specific terminal-tail lifecycle",
+        "rationale": "The method is called by the Linux-only text Service endpoint after successful Application completion; Windows production has no selected text-Service runtime, while cross-platform connection tests cover the state machine.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove this Windows allowance if text Service gains a maintained Windows consumer, or remove the method with the Linux terminal-tail contract."
       }
     ]
   }

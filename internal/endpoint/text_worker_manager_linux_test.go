@@ -59,12 +59,12 @@ func TestTextWorkerExecutableObservationRejectsNullAndExtraCommands(t *testing.T
 		"[" + valid[1:len(valid)-1] + "," + valid[1:len(valid)-1] + "]",
 	} {
 		properties := textManagerProperties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: json.RawMessage(raw)}}
-		if verifyTextWorkerExec(properties, "publisher", 42) == nil {
+		if verifyInstalledWorkerExec(properties, "publisher", 42, textInventory) == nil {
 			t.Fatal("unverified executable observation admitted")
 		}
 	}
 	properties := textManagerProperties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: json.RawMessage(valid)}}
-	if err := verifyTextWorkerExec(properties, "publisher", 42); err != nil {
+	if err := verifyInstalledWorkerExec(properties, "publisher", 42, textInventory); err != nil {
 		t.Fatal(err)
 	}
 }

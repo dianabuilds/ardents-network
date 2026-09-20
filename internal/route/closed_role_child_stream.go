@@ -3,6 +3,7 @@
 package route
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -16,28 +17,31 @@ import (
 // Terminal children below the admitted Interior belong to closedSourceChannels.
 // This adapter's Close retires its parent and joins its reader.
 type closedRoleChildStream struct {
-	writeDeadline         time.Time
-	physicalWriting       bool
-	payloadFrames         uint64
-	physicalWriteFailed   bool
-	cleanPeerClose        bool
-	onTerminal            func(error)
-	inputEOF              bool
-	retire                func() error
-	active                bool
-	consumed              uint32
-	parent                net.Conn
-	deadline              time.Time
-	writer                chan struct{}
-	writeChanged          chan struct{}
-	mu                    sync.Mutex
-	changed               *sync.Cond
-	buffer                []byte
-	credit, receiveCredit uint32
-	terminal              error
-	done                  chan struct{}
-	closeOnce             sync.Once
-	closeErr              error
+	transferred, refillBase uint64
+	writeDeadline           time.Time
+	terminalWriters         uint32
+	physicalWriting         bool
+	payloadFrames           uint64
+	physicalWriteFailed     bool
+	cleanPeerClose          bool
+	onTerminal              func(error)
+	inputEOF                bool
+	retire                  func() error
+	active                  bool
+	consumed                uint32
+	parent                  net.Conn
+	deadline                time.Time
+	writer                  chan struct{}
+	refill                  chan error
+	writeChanged            chan struct{}
+	mu                      sync.Mutex
+	changed                 *sync.Cond
+	buffer                  []byte
+	credit, receiveCredit   uint32
+	terminal                error
+	done                    chan struct{}
+	closeOnce               sync.Once
+	closeErr                error
 }
 
 func newClosedRoleChildStream(parent net.Conn, deadline time.Time, retire func() error, onTerminal func(error)) *closedRoleChildStream {
@@ -73,11 +77,36 @@ func (stream *closedRoleChildStream) readFrames() {
 			stream.finish(err)
 			return
 		}
+		if frame.Lane == 0 {
+			stream.mu.Lock()
+			stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
+			refill := stream.refill
+			if refill == nil || frame.Kind != closedFrameAccept {
+				err = errors.New("closed bootstrap refill response is unavailable")
+			} else {
+				status, credit, decodeErr := DecodeClosedAcceptFrame(frame)
+				if decodeErr != nil || status != 0 || credit != 64<<10 {
+					err = errors.Join(decodeErr, errors.New("closed bootstrap refill refused"))
+				}
+			}
+			stream.refill = nil
+			stream.mu.Unlock()
+			if refill != nil {
+				refill <- err
+				close(refill)
+			}
+			if err != nil {
+				stream.finish(err)
+				return
+			}
+			continue
+		}
 		if frame.Lane != 1 {
 			stream.finish(errors.New("closed bootstrap unexpected lane"))
 			return
 		}
 		stream.mu.Lock()
+		stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
 		switch frame.Kind {
 		case closedFrameBytes:
 			if stream.inputEOF || uint32(len(frame.Body)) > stream.receiveCredit {
@@ -198,6 +227,64 @@ func (stream *closedRoleChildStream) Write(value []byte) (int, error) {
 	}
 	return written, nil
 }
+
+func (stream *closedRoleChildStream) beginTerminalWrite() func() {
+	stream.mu.Lock()
+	stream.terminalWriters++
+	stream.mu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			stream.mu.Lock()
+			stream.terminalWriters--
+			stream.mu.Unlock()
+		})
+	}
+}
+
+// replenish serializes the parent forwarding channel's lane-zero ADMIT and
+// consumes its one lane-zero ACCEPT. The same reader continues to own lane-one
+// child frames, so no second physical reader or protocol layer is introduced.
+func (stream *closedRoleChildStream) replenish(ctx context.Context, frame ClosedLaneFrame) error {
+	if frame.Kind != closedFrameAdmit || frame.Lane != 0 {
+		return errors.New("closed bootstrap refill frame is unavailable")
+	}
+	if err := stream.acquireWriter(true); err != nil {
+		return err
+	}
+	defer func() { <-stream.writer }()
+	result := make(chan error, 1)
+	stream.mu.Lock()
+	if stream.terminal != nil || stream.refill != nil {
+		err := stream.terminal
+		stream.mu.Unlock()
+		return errors.Join(err, errors.New("closed bootstrap refill is unavailable"))
+	}
+	stream.refill = result
+	stream.mu.Unlock()
+	if err := stream.writeFrame(frame, true); err != nil {
+		stream.mu.Lock()
+		if stream.refill == result {
+			stream.refill = nil
+		}
+		stream.mu.Unlock()
+		stream.finish(err)
+		return err
+	}
+	select {
+	case err := <-result:
+		return err
+	case <-ctx.Done():
+		stream.finish(ctx.Err())
+		return ctx.Err()
+	case <-stream.done:
+		stream.mu.Lock()
+		err := stream.terminal
+		stream.mu.Unlock()
+		return errors.Join(err, errors.New("closed bootstrap refill ended"))
+	}
+}
+
 func (stream *closedRoleChildStream) Close() error {
 	stream.closeOnce.Do(func() {
 		stream.finish(net.ErrClosed)
@@ -250,8 +337,10 @@ func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bo
 		deadline = stream.deadline
 	}
 	err := stream.terminal
+	terminal := stream.terminalWriters != 0
 	attempted := err == nil
 	if attempted {
+		stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
 		stream.physicalWriting = true
 		if !credit {
 			stream.payloadFrames++
@@ -259,9 +348,14 @@ func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bo
 		err = stream.parent.SetWriteDeadline(deadline)
 	}
 	stream.mu.Unlock()
+	finishTerminal := func() {}
+	if err == nil && terminal {
+		finishTerminal = beginClosedTerminalWrite(stream.parent)
+	}
 	if err == nil {
 		err = WriteClosedLaneFrame(stream.parent, frame)
 	}
+	finishTerminal()
 	stream.mu.Lock()
 	stream.physicalWriting = false
 	if attempted && err != nil {

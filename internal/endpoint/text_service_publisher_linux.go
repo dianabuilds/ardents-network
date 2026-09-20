@@ -13,6 +13,9 @@ import (
 // serveOperation consumes the already reserved worker operation. Startup may
 // reserve it before publication so readiness never races another worker use.
 func (worker *qualifiedTextWorker) serveOperation(ctx, bounded context.Context, finish func(), produce func(context.Context, chan<- connection.Stream) error) error {
+	if worker.job.qualification != nil {
+		return worker.serveQualification(ctx, bounded, finish, produce)
+	}
 	forwarding, cancel := context.WithCancel(bounded)
 	delivered := make(chan connection.Stream)
 	forwarded := make(chan error, 1)

@@ -90,6 +90,48 @@ func TestClosedSharedCarrierClassifiesDirectAndCurrentNode(t *testing.T) {
 	}
 }
 
+func TestClosedSharedTCPListenerAcceptsAfterSilentPeer(t *testing.T) {
+	serverCertificate := entryBindingCertificate(t, 185)
+	serverKey := identifierFromKey(serverCertificate.Leaf.PublicKey.(ed25519.PublicKey))
+	listener, err := ListenClosedSharedCarrier(ClosedCarrierTCP, closedRoleCarrierTestEndpoint(t, ClosedCarrierTCP), serverCertificate, func([32]byte) bool { return false }, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	first := make(chan error, 1)
+	go func() {
+		_, acceptErr := listener.Accept(t.Context(), 100*time.Millisecond)
+		first <- acceptErr
+	}()
+	raw, err := net.DialTimeout("tcp", closedSharedCarrierEndpoint(t, listener), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	if err := <-first; !IsClosedSharedPeerFailure(err) {
+		t.Fatalf("silent peer failure = %v", err)
+	}
+	next := make(chan error, 1)
+	go func() {
+		carrier, acceptErr := listener.Accept(t.Context(), time.Second)
+		if carrier.Connection != nil {
+			acceptErr = errors.Join(acceptErr, carrier.Connection.Close())
+		}
+		next <- acceptErr
+	}()
+	carrier, err := OpenClosedRoleCarrier(t.Context(), ClosedRoleCarrierRequest{CarrierProfile: ClosedCarrierTCP,
+		Endpoint: closedSharedCarrierEndpoint(t, listener), ExpectedServer: serverKey, Deadline: time.Now().Add(time.Second)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := carrier.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-next; err != nil {
+		t.Fatalf("valid peer after connection-local failure = %v", err)
+	}
+}
+
 func TestClosedSharedQUICHandshakeReservationPrecedesTLS(t *testing.T) {
 	slots := make(chan struct{}, 1)
 	reserve := closedSharedQUICHandshakeContext(slots)
@@ -155,6 +197,9 @@ func TestClosedSharedCarrierRejectsUnknownNodeBeforeARPDPayload(t *testing.T) {
 			}
 			select {
 			case acceptErr := <-accepted:
+				if !IsClosedSharedPeerFailure(acceptErr) {
+					t.Fatalf("unknown Node refusal is not classified as connection-local: %v", acceptErr)
+				}
 				var timeout net.Error
 				if attempt.Err() != nil || errors.Is(acceptErr, context.Canceled) ||
 					errors.Is(acceptErr, context.DeadlineExceeded) ||

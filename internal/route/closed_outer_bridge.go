@@ -17,7 +17,7 @@ type ClosedOuterBridge struct {
 	retiredNext         uint32
 	mu                  sync.Mutex
 	handshake           *ClosedOuterHandshake
-	write               func(ClosedLaneFrame, func() time.Time) error
+	write               func(ClosedLaneFrame, func() time.Time, bool, bool) error
 	updateWriteDeadline func(uint32, time.Time) error
 	lanes               map[uint32]*closedOuterBridgeLane
 	closed              bool
@@ -44,6 +44,9 @@ type closedOuterBridgeLane struct {
 	writeUpdate                        sync.Mutex
 	readDeadline                       time.Time
 	writeDeadline                      time.Time
+	terminalWriters                    uint32
+	closeOnce                          sync.Once
+	closeErr                           error
 	authorizedUntil                    time.Time
 	hardDeadline                       time.Time
 }
@@ -51,7 +54,7 @@ type closedOuterBridgeLane struct {
 // NewClosedOuterBridge binds one outer state machine to one serialized ARDP
 // writer. The writer must reject partial frames and must not call back into the
 // bridge while it holds its own transport lock.
-func NewClosedOuterBridge(handshake *ClosedOuterHandshake, update func(uint32, time.Time) error, write func(ClosedLaneFrame, func() time.Time) error) (*ClosedOuterBridge, error) {
+func NewClosedOuterBridge(handshake *ClosedOuterHandshake, update func(uint32, time.Time) error, write func(ClosedLaneFrame, func() time.Time, bool, bool) error) (*ClosedOuterBridge, error) {
 	if handshake == nil || write == nil || update == nil {
 		return nil, errors.New("closed outer bridge is invalid")
 	}
@@ -91,7 +94,7 @@ func (bridge *ClosedOuterBridge) Accept(frame ClosedLaneFrame) (*ClosedOuterBrid
 				end = bridge.handshake.receiver.Deadline
 			}
 			return end
-		})
+		}, true, false)
 	case closedFrameOpen:
 		open, _, _ := DecodeClosedNodeOpen(frame.Body) // Already checked by the handshake.
 		pending := bridge.handshake.clock().UTC().Add(10 * time.Second)
@@ -191,7 +194,7 @@ func (lane *ClosedOuterBridgeLane) Read(value []byte) (int, error) {
 				if err != nil {
 					return 0, err
 				}
-				if err := inner.bridge.write(credit, inner.currentWriteDeadline); err != nil {
+				if err := inner.bridge.write(credit, inner.currentWriteDeadline, true, false); err != nil {
 					return 0, err
 				}
 			}
@@ -318,23 +321,34 @@ func (bridge *ClosedOuterBridge) credit(frame ClosedLaneFrame) error {
 }
 
 func (bridge *ClosedOuterBridge) closeLocal(lane *closedOuterBridgeLane, status byte) error {
+	lane.closeOnce.Do(func() { lane.closeErr = bridge.closeLocalOnce(lane, status) })
+	return lane.closeErr
+}
+
+func (bridge *ClosedOuterBridge) closeLocalOnce(lane *closedOuterBridgeLane, status byte) error {
 	bridge.mu.Lock()
-	defer bridge.mu.Unlock()
 	if bridge.closed || bridge.lanes[lane.id] != lane {
+		bridge.mu.Unlock()
 		return nil
 	}
 	if _, err := bridge.handshake.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+		bridge.mu.Unlock()
 		return err
 	}
 	bridge.rememberRetired(lane.id)
 	delete(bridge.lanes, lane.id)
-	if err := lane.closeInput(); err != nil {
-		return err
-	}
+	bridge.mu.Unlock()
 	// Retirement may follow SetDeadline(now) used to interrupt child I/O.
 	// The terminal control frame gets its own finite write bound; it carries
-	// no child payload. It remains sendable after payload authority expires.
-	return bridge.write(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}, func() time.Time { return time.Now().Add(time.Second) })
+	// no child payload. Serialize it behind an already active CREDIT before
+	// interrupting this lane; otherwise the local deadline update can cut a
+	// valid flow-control frame in half and poison the shared Carrier.
+	cleanupEnd := time.Now().Add(time.Second)
+	if err := bridge.updateWriteDeadline(lane.id, cleanupEnd); err != nil {
+		return errors.Join(err, lane.closeInput())
+	}
+	writeErr := bridge.write(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}, func() time.Time { return cleanupEnd }, true, true)
+	return errors.Join(writeErr, lane.closeInput())
 }
 
 func (lane *closedOuterBridgeLane) feed(value []byte) error {

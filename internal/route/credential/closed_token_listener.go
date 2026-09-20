@@ -158,6 +158,9 @@ func (listener *ClosedTokenListener) serve(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				default:
+					if route.IsClosedSharedPeerFailure(err) {
+						continue
+					}
 					terminal = err
 					return
 				}

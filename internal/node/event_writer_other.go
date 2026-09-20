@@ -15,7 +15,7 @@ func writeEvent(ctx context.Context, output *os.File, raw []byte) (int, error) {
 		return 0, errors.New("node lifecycle event deadline is missing")
 	}
 	info, err := output.Stat()
-	if err != nil || info.Mode()&(os.ModeNamedPipe|os.ModeCharDevice) == 0 {
+	if err != nil || info.Mode()&(os.ModeNamedPipe|os.ModeCharDevice|os.ModeSocket) == 0 {
 		return 0, errors.New("node lifecycle output is not an interruptible stream")
 	}
 	if err := syscall.SetNonblock(int(output.Fd()), true); err != nil {
