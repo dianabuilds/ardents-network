@@ -57,10 +57,16 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		}
 	}
 	readerJobs := make([]*textJobIdentity, len(readers))
+	// The installed runner gives every Reader the same final-opening pacer.
+	// Independent preparation loops can drift together under a constrained
+	// scheduler, so their initial phase offsets alone do not enforce the
+	// Publisher's rolling four-openings-per-second admission boundary.
+	qualificationPacer := &StreamQualificationMeasurements{}
 	for index, owner := range readers {
 		job := liveTextCapsuleJob(t, owner)
 		job.qualification = &streamqualification.Init{Role: streamqualification.ReaderRole,
 			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}
+		job.qualificationAcquireIntroduction = qualificationPacer.acquireIntroductionOpening
 		readerJobs[index] = job
 	}
 
