@@ -127,7 +127,6 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 	}
 	opened := make(chan openingResult, qualificationPublisherOpeningParallelism)
 	var openings sync.WaitGroup
-	var setup sync.Mutex
 	inFlight := 0
 	batchStarted := 0
 	stopping := false
@@ -144,22 +143,12 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 		openings.Add(1)
 		go func() {
 			defer openings.Done()
-			setupHeld := false
-			attempt, err := owner.receiveTextIntroductionAfterDelivery(network, worker.job, func() {
-				setup.Lock()
-				setupHeld = true
-			})
+			attempt, err := owner.receiveTextIntroduction(network, worker.job)
 			if err != nil {
-				if setupHeld {
-					setup.Unlock()
-				}
 				opened <- openingResult{err: err}
 				return
 			}
-			var release sync.Once
-			releaseSetup := func() { release.Do(setup.Unlock) }
-			defer releaseSetup()
-			stream, err := owner.openTextJoinedServiceAfterSetup(network, worker.job, attempt, releaseSetup)
+			stream, err := owner.openTextJoinedService(network, worker.job, attempt)
 			opened <- openingResult{stream: stream, err: err}
 		}()
 		return true

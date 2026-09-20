@@ -42,6 +42,9 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 				t.Fatalf("qualification smoke capacity lost %q from %s", value, path)
 			}
 		}
+		if strings.HasSuffix(path, "text_publisher_network_linux.go") && strings.Contains(string(body), "var setup sync.Mutex") {
+			t.Fatal("qualification Publisher must not serialize already delivered ten-second Introduction capsules")
+		}
 		if strings.HasSuffix(path, "stream_qualification_connections_linux.go") {
 			reserve := strings.Index(string(body), "ensureQualificationTokenReserve(setup, joinReceiver")
 			prepare := strings.Index(string(body), "prepareResolvedTextIntroduction(setup, worker.job")
