@@ -14,6 +14,7 @@ import (
 // explicitly reserves the matching forwarding stock before releasing each
 // opening. The shared Reader admission owner enforces the same bound.
 const qualificationPublisherOpeningParallelism = streamQualificationSetupLimit
+const qualificationPublisherOpeningBatch = 16
 
 func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
 	if worker == nil || worker.job == nil {
@@ -83,9 +84,32 @@ func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Con
 	}
 }
 
+func (worker *qualifiedTextWorker) ensureQualificationPublisherJoinReserve(ctx context.Context, minimum int) error {
+	owner := worker.job.owner
+	owner.mu.Lock()
+	prefix := owner.responder.prefix
+	owner.mu.Unlock()
+	if prefix == nil {
+		var err error
+		prefix, err = owner.openTextPublisherPrefix(ctx, &owner.responder, 3)
+		if err != nil {
+			return errors.Join(err, errors.New("qualification Publisher JOIN reserve prefix unavailable"))
+		}
+	}
+	receiver, _, _, err := prefix.DataJoinRecipient()
+	if err != nil {
+		return err
+	}
+	return owner.ensureQualificationTokenReserve(ctx, receiver, 2, minimum)
+}
+
 func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
 	owner := worker.job.owner
 	network, cancel := context.WithCancel(lifetime)
+	if err := worker.ensureQualificationPublisherJoinReserve(network, 32); err != nil {
+		cancel()
+		return err
+	}
 	var retired sync.WaitGroup
 	owner.mu.Lock()
 	drain := owner.publicationDrain
@@ -105,6 +129,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 	var openings sync.WaitGroup
 	var setup sync.Mutex
 	inFlight := 0
+	batchStarted := 0
 	stopping := false
 	var failure error
 	networkDone := network.Done()
@@ -115,6 +140,7 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 			return false
 		}
 		inFlight++
+		batchStarted++
 		openings.Add(1)
 		go func() {
 			defer openings.Done()
@@ -127,24 +153,6 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 				if setupHeld {
 					setup.Unlock()
 				}
-				opened <- openingResult{err: err}
-				return
-			}
-			owner.mu.Lock()
-			prefix := owner.responder.prefix
-			owner.mu.Unlock()
-			if prefix == nil {
-				err = errors.New("qualification Publisher JOIN reserve prefix unavailable")
-			}
-			var receiver [32]byte
-			if err == nil {
-				receiver, _, _, err = prefix.DataJoinRecipient()
-			}
-			if err == nil {
-				err = owner.ensureQualificationTokenReserve(network, receiver, 2, qualificationPublisherOpeningParallelism)
-			}
-			if err != nil {
-				setup.Unlock()
 				opened <- openingResult{err: err}
 				return
 			}
@@ -165,7 +173,20 @@ func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.
 		cancel()
 	}()
 	for {
-		for !stopping && inFlight < qualificationPublisherOpeningParallelism && startOpening() {
+		if !stopping && batchStarted == qualificationPublisherOpeningBatch && inFlight == 0 {
+			// No accepted capsule is waiting while the slow issuer replenishes the
+			// next batch. Thirty-two tokens leave a full batch in reserve after
+			// every sixteen-opening window.
+			if err := worker.ensureQualificationPublisherJoinReserve(network, 32); err != nil {
+				failure = errors.Join(failure, err)
+				stopping = true
+				cancel()
+				networkDone = nil
+			} else {
+				batchStarted = 0
+			}
+		}
+		for !stopping && batchStarted < qualificationPublisherOpeningBatch && inFlight < qualificationPublisherOpeningParallelism && startOpening() {
 		}
 		if stopping && inFlight == 0 {
 			return failure

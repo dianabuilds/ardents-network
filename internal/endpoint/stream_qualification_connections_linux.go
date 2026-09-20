@@ -190,10 +190,6 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 			var release sync.Once
 			releaseOwner := func() { release.Do(ownerWork.Unlock) }
 			defer releaseOwner()
-			attempt, err := owner.prepareResolvedTextIntroduction(setup, worker.job, destination, [3]int64{until, until, until}, verified)
-			if err != nil {
-				return bound, fmt.Errorf("qualification Reader %d stream %d preparation: %w", reader, index, err)
-			}
 			owner.mu.Lock()
 			prefix := owner.prefix
 			owner.mu.Unlock()
@@ -222,6 +218,13 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 				}
 			}
 			defer releaseSetup()
+			// Token issuance and admission waits can take seconds on the shaped
+			// five-Node Route. Complete them before sealing the Introduction: its
+			// ten-second wire lifetime belongs only to delivery and JOIN.
+			attempt, err := owner.prepareResolvedTextIntroduction(setup, worker.job, destination, [3]int64{until, until, until}, verified)
+			if err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d preparation: %w", reader, index, err)
+			}
 			// The helper's setup context stops sibling preparation after an error.
 			// The returned Service Connection belongs to the enclosing Reader
 			// operation and must therefore retain that operation's lifetime.

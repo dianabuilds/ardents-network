@@ -24,6 +24,8 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 		},
 		filepath.Join("internal", "endpoint", "text_publisher_network_linux.go"): {
 			"qualificationPublisherOpeningParallelism = streamQualificationSetupLimit",
+			"qualificationPublisherOpeningBatch = 16",
+			"ensureQualificationPublisherJoinReserve(network, 32)",
 		},
 		filepath.Join("tests", "qualification", "stream-network-two-host", "run-windows.ps1"): {
 			"$smokeDeadline = [DateTime]::UtcNow.AddMinutes(6)",
@@ -38,6 +40,13 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 		for _, value := range required {
 			if !strings.Contains(string(body), value) {
 				t.Fatalf("qualification smoke capacity lost %q from %s", value, path)
+			}
+		}
+		if strings.HasSuffix(path, "stream_qualification_connections_linux.go") {
+			reserve := strings.Index(string(body), "ensureQualificationTokenReserve(setup, joinReceiver")
+			prepare := strings.Index(string(body), "prepareResolvedTextIntroduction(setup, worker.job")
+			if reserve < 0 || prepare < 0 || reserve > prepare {
+				t.Fatalf("qualification Reader must reserve slow token work before its ten-second Introduction lifetime")
 			}
 		}
 	}
