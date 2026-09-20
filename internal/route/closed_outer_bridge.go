@@ -45,6 +45,8 @@ type closedOuterBridgeLane struct {
 	readDeadline                       time.Time
 	writeDeadline                      time.Time
 	terminalWriters                    uint32
+	closeOnce                          sync.Once
+	closeErr                           error
 	authorizedUntil                    time.Time
 	hardDeadline                       time.Time
 }
@@ -319,22 +321,33 @@ func (bridge *ClosedOuterBridge) credit(frame ClosedLaneFrame) error {
 }
 
 func (bridge *ClosedOuterBridge) closeLocal(lane *closedOuterBridgeLane, status byte) error {
+	lane.closeOnce.Do(func() { lane.closeErr = bridge.closeLocalOnce(lane, status) })
+	return lane.closeErr
+}
+
+func (bridge *ClosedOuterBridge) closeLocalOnce(lane *closedOuterBridgeLane, status byte) error {
 	bridge.mu.Lock()
-	defer bridge.mu.Unlock()
 	if bridge.closed || bridge.lanes[lane.id] != lane {
+		bridge.mu.Unlock()
 		return nil
 	}
 	if _, err := bridge.handshake.Accept(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}); err != nil {
+		bridge.mu.Unlock()
 		return err
 	}
 	bridge.rememberRetired(lane.id)
 	delete(bridge.lanes, lane.id)
+	bridge.mu.Unlock()
 	// Retirement may follow SetDeadline(now) used to interrupt child I/O.
 	// The terminal control frame gets its own finite write bound; it carries
 	// no child payload. Serialize it behind an already active CREDIT before
 	// interrupting this lane; otherwise the local deadline update can cut a
 	// valid flow-control frame in half and poison the shared Carrier.
-	writeErr := bridge.write(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}, func() time.Time { return time.Now().Add(time.Second) }, true, true)
+	cleanupEnd := time.Now().Add(time.Second)
+	if err := bridge.updateWriteDeadline(lane.id, cleanupEnd); err != nil {
+		return errors.Join(err, lane.closeInput())
+	}
+	writeErr := bridge.write(ClosedLaneFrame{Kind: closedFrameClose, Lane: lane.id, Body: []byte{status}}, func() time.Time { return cleanupEnd }, true, true)
 	return errors.Join(writeErr, lane.closeInput())
 }
 

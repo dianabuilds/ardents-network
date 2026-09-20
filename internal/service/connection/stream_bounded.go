@@ -238,6 +238,13 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 				stream.mu.Unlock()
 				return nil
 			}
+			if stream.postClose && errors.Is(err, ErrAttachmentRetired) {
+				stream.tailRetiring = true
+				stream.cond.Broadcast()
+				stream.mu.Unlock()
+				stream.signalAcknowledgement()
+				return nil
+			}
 			writingTerminal := stream.terminalReplaying || stream.terminalWriting
 			stream.mu.Unlock()
 			if writingTerminal && stream.opener != nil {

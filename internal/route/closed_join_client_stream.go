@@ -32,6 +32,19 @@ type ClosedJoinedStream struct {
 	retireErr           error
 }
 
+// AuthenticatedPeerRetired reports only the clean CLOSE(0) decoded for this
+// exact admitted child. A TLS owner can preserve that distinction after TLS
+// maps its lower EOF to truncation; local close and raw Carrier loss are false.
+func (stream *ClosedJoinedStream) AuthenticatedPeerRetired() bool {
+	if stream == nil || stream.closedSourceLane == nil {
+		return false
+	}
+	owner := stream.closedSourceLane.owner
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	return stream.closedSourceLane.remoteClosed && stream.closedSourceLane.failure == io.EOF
+}
+
 func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSourceLane, release func()) *ClosedJoinedStream {
 	// A successful JOIN result accepted the outer Source operation. From this
 	// point its terminal status describes retirement of an admitted stream, not

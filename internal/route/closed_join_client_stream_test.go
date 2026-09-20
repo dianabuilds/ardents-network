@@ -327,6 +327,35 @@ func TestClosedJoinedClientTransportEOFWaitsForOuterTerminal(t *testing.T) {
 	}
 }
 
+func TestClosedJoinedClientExposesOnlyAuthenticatedPeerRetirement(t *testing.T) {
+	stream, _, released, _, peer := joinedClientStreamFixture(t)
+	if stream.AuthenticatedPeerRetired() {
+		t.Fatal("live child reported authenticated peer retirement")
+	}
+	body, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	var one [1]byte
+	if _, err := stream.Read(one[:]); err != io.EOF {
+		t.Fatalf("clean inner retirement read = %v", err)
+	}
+	if !stream.AuthenticatedPeerRetired() {
+		t.Fatal("clean inner CLOSE(0) was not exposed")
+	}
+	if err := WriteClosedLaneFrame(peer, ClosedLaneFrame{Kind: closedFrameClose, Lane: 1, Body: []byte{0}}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-released:
+	case <-time.After(time.Second):
+		t.Fatal("outer terminal failed to release JOIN")
+	}
+}
+
 func TestClosedJoinedClientDrainsBytesBeforeUnexpectedTransportEOF(t *testing.T) {
 	stream, _, released, _, peer := joinedClientStreamFixture(t)
 	body, err := EncodeClosedLaneFrame(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte("final authenticated record")})

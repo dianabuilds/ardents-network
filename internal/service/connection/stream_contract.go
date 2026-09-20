@@ -23,6 +23,11 @@ var (
 	errTerminalDataPending = errors.New("Terminal waits for accepted Data")
 	errWorkSafetyExpired   = errors.New("authenticated Work Safety expired")
 	errTerminalTailExpired = errors.New("terminal-control recovery period expired")
+	// ErrAttachmentRetired is returned only when an authenticated Attachment
+	// owner observed its peer's graceful transport retirement. A terminal-control
+	// tail may accept it after the complete native Terminal exchange; ordinary
+	// EOF and truncated transport loss still require bounded recovery.
+	ErrAttachmentRetired = errors.New("authenticated Attachment retired")
 )
 
 // Attachment is one already-authenticated Route byte carrier. TLS and Route

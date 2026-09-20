@@ -26,6 +26,11 @@ type textJoinedTransport struct {
 	err     error
 }
 
+func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
+	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
+	return ok && witness.AuthenticatedPeerRetired()
+}
+
 func (transport *textJoinedTransport) Close() error {
 	transport.once.Do(func() {
 		if transport.job != nil {

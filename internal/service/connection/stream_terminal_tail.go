@@ -2,6 +2,8 @@ package connection
 
 import (
 	"errors"
+	"io"
+	"net"
 	"time"
 )
 
@@ -116,7 +118,14 @@ func (stream *Stream) RetireTerminalTail() error {
 	if !ok {
 		return errors.New("terminal-control Attachment cannot interrupt its reader")
 	}
-	return reader.SetReadDeadline(time.Now())
+	err := reader.SetReadDeadline(time.Now())
+	if errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
+		// A concurrently retired peer already interrupted this exact reader.
+		// tailRetiring was published before the deadline attempt, so the joined
+		// tail treats that wake-up as the requested local retirement.
+		return nil
+	}
+	return err
 }
 
 func (stream *Stream) startTerminalTailReceive() <-chan error {

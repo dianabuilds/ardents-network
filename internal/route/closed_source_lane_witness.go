@@ -4,14 +4,15 @@ package route
 
 import "io"
 
-// A verified peer CLOSE makes a later, unemitted CREDIT unnecessary. This
-// witness never treats a raw EOF, local close, or failed parent as peer success.
+// A verified peer CLOSE makes a later, unemitted CREDIT unnecessary. The
+// caller also requires the attempted write itself to have returned EOF, so a
+// concurrent local close cannot manufacture success after this snapshot.
 func (lane *closedSourceLane) writeWitness() (uint64, bool, bool) {
 	owner := lane.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	busy := owner.active != nil && owner.active.lane == lane
-	clean := !lane.closed && lane.remoteClosed && lane.failure == io.EOF && owner.terminal == nil && !lane.physicalWriteFailed
+	clean := lane.remoteClosed && lane.failure == io.EOF && owner.terminal == nil && !lane.physicalWriteFailed
 	return lane.emissions, busy, clean
 }
 

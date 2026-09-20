@@ -5,11 +5,24 @@ package route
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"io"
+	"net"
 	"sync"
 	"testing"
 	"time"
 )
+
+type joinedCreditWitnessBoundary struct {
+	net.Conn
+	afterWrite func(error)
+}
+
+func (boundary *joinedCreditWitnessBoundary) Write(value []byte) (int, error) {
+	written, err := boundary.Conn.Write(value)
+	boundary.afterWrite(err)
+	return written, err
+}
 
 // A previously emitted outer CREDIT completes while the inner CREDIT waits.
 // The latter emits nothing after actual outer CLOSE and must preserve the tail.
@@ -118,5 +131,53 @@ func checkClosedJoinedOuterCreditOverlap(t *testing.T, failed bool) {
 	}
 	if err := stream.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestClosedJoinedCreditWitnessDistinguishesPeerEOFAndLocalClose(t *testing.T) {
+	for _, localFirst := range []bool{false, true} {
+		name := "peer EOF before concurrent local close"
+		if localFirst {
+			name = "local close before write"
+		}
+		t.Run(name, func(t *testing.T) {
+			end := time.Now().Add(time.Minute)
+			lower := newClosedSourceChannelOwner(nil, end, func() error { return nil })
+			parent := &closedSourceLane{owner: lower, id: 1, end: end, readEnd: end, writeEnd: end,
+				opened: true, active: true, remoteClosed: true, failure: io.EOF}
+			lower.lanes[1] = parent
+			if localFirst {
+				parent.closed = true
+			}
+			boundary := &joinedCreditWitnessBoundary{Conn: parent, afterWrite: func(err error) {
+				if errors.Is(err, io.EOF) {
+					lower.mu.Lock()
+					parent.closed = true
+					lower.mu.Unlock()
+				}
+			}}
+			owner := newClosedSourceChannelOwner(boundary, end, func() error { return nil })
+			owner.retainClosedRead = true
+			owner.framedParent = parent
+			lane := &closedSourceLane{owner: owner, id: 1, end: end, readEnd: end, writeEnd: end, opened: true, active: true}
+			owner.lanes[1] = lane
+			owner.workers.Add(1)
+			go owner.write()
+			err := lane.send(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, 1)}, time.Time{})
+			owner.mu.Lock()
+			if owner.terminal == nil {
+				owner.terminal = ErrClosedSourceStopped
+				owner.signalLocked()
+			}
+			owner.mu.Unlock()
+			owner.workers.Wait()
+			if localFirst {
+				if !errors.Is(err, net.ErrClosed) {
+					t.Fatalf("local close = %v, want net.ErrClosed", err)
+				}
+			} else if err != nil {
+				t.Fatalf("authenticated peer retirement became CREDIT failure: %v", err)
+			}
+		})
 	}
 }

@@ -98,6 +98,26 @@ func TestClosedSourceChannelsBoundControlPriorityBeforeQueuedData(t *testing.T) 
 	}
 }
 
+func TestClosedSourceChannelsTerminalPriorityYieldsToQueuedData(t *testing.T) {
+	owner := &closedSourceChannels{dataDue: true}
+	terminalOne := &closedSourceWrite{control: true, terminal: true}
+	terminalTwo := &closedSourceWrite{control: true, terminal: true}
+	dataOne := &closedSourceWrite{}
+	dataTwo := &closedSourceWrite{}
+	owner.terminals = []*closedSourceWrite{terminalOne, terminalTwo}
+	owner.data = []*closedSourceWrite{dataOne, dataTwo}
+
+	for index, want := range []struct {
+		request *closedSourceWrite
+		control bool
+	}{{terminalOne, true}, {dataOne, false}, {terminalTwo, true}, {dataTwo, false}} {
+		got, control := owner.nextWriteLocked()
+		if got != want.request || control != want.control {
+			t.Fatalf("schedule %d = %p/%t, want %p/%t", index, got, control, want.request, want.control)
+		}
+	}
+}
+
 func TestClosedSourceChannelsCancelQueuedOpenPreservesSibling(t *testing.T) {
 	owner, peer, end := sourceChannelsFixture(t)
 	opened := make(chan error, 1)

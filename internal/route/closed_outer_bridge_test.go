@@ -117,17 +117,18 @@ func TestClosedOuterBridgeCloseDoesNotInterruptActiveCredit(t *testing.T) {
 	creditEntered := make(chan struct{})
 	releaseCredit := make(chan struct{})
 	creditFinished := make(chan struct{})
+	deadlineUpdated := make(chan time.Time, 1)
+	closeAttempted := make(chan struct{})
 	closeWritten := make(chan struct{})
+	closeFailure := errors.New("terminal output failed")
 	var writer sync.Mutex
-	interrupted := errors.New("active CREDIT interrupted")
-	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error {
-		select {
-		case <-creditFinished:
-			return nil
-		default:
-			return interrupted
-		}
+	bridge, err := NewClosedOuterBridge(handshake, func(_ uint32, end time.Time) error {
+		deadlineUpdated <- end
+		return nil
 	}, func(frame ClosedLaneFrame, _ func() time.Time, _, _ bool) error {
+		if frame.Kind == closedFrameClose {
+			close(closeAttempted)
+		}
 		writer.Lock()
 		defer writer.Unlock()
 		switch frame.Kind {
@@ -137,6 +138,7 @@ func TestClosedOuterBridgeCloseDoesNotInterruptActiveCredit(t *testing.T) {
 			close(creditFinished)
 		case closedFrameClose:
 			close(closeWritten)
+			return closeFailure
 		}
 		return nil
 	})
@@ -183,23 +185,61 @@ func TestClosedOuterBridgeCloseDoesNotInterruptActiveCredit(t *testing.T) {
 	go func() { var value [1]byte; _, err := lane.Read(value[:]); read <- err }()
 	<-creditEntered
 	closed := make(chan error, 1)
+	closeStarted := time.Now()
 	go func() { closed <- lane.CloseWithStatus(0) }()
 	select {
+	case <-closeAttempted:
 	case err := <-closed:
-		if errors.Is(err, interrupted) {
-			close(releaseCredit)
-			<-read
-			t.Fatal("local CLOSE interrupted an active CREDIT before serialization")
-		}
 		t.Fatalf("local CLOSE returned before active CREDIT completed: %v", err)
-	case <-time.After(20 * time.Millisecond):
+	}
+	select {
+	case end := <-deadlineUpdated:
+		if end.Before(closeStarted) || end.After(closeStarted.Add(time.Second+100*time.Millisecond)) {
+			t.Fatalf("active CREDIT cleanup deadline = %v after close start %v", end, closeStarted)
+		}
+	default:
+		t.Fatal("local CLOSE did not bound the active CREDIT")
+	}
+	accepted := make(chan error, 1)
+	go func() {
+		_, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameCredit, Lane: 1, Body: []byte{0, 0, 0, 1}})
+		accepted <- err
+	}()
+	select {
+	case err := <-accepted:
+		if err != nil {
+			t.Fatalf("in-flight retired frame = %v", err)
+		}
+	case <-time.After(time.Second):
+		close(releaseCredit)
+		<-read
+		t.Fatal("local CLOSE held bridge admission while waiting for physical output")
+	}
+	joinedClose := make(chan error, 1)
+	go func() { joinedClose <- lane.CloseWithStatus(0) }()
+	select {
+	case err := <-joinedClose:
+		close(releaseCredit)
+		<-read
+		t.Fatalf("concurrent Close returned before owned cleanup: %v", err)
+	default:
+	}
+	select {
+	case err := <-closed:
+		close(releaseCredit)
+		<-read
+		t.Fatalf("local CLOSE returned while active CREDIT remained blocked: %v", err)
+	default:
 	}
 	close(releaseCredit)
 	if err := <-read; err != nil {
 		t.Fatal(err)
 	}
-	if err := <-closed; err != nil {
-		t.Fatal(err)
+	if err := <-closed; !errors.Is(err, closeFailure) {
+		t.Fatalf("first Close result = %v", err)
+	}
+	if err := <-joinedClose; !errors.Is(err, closeFailure) {
+		t.Fatalf("joined Close result = %v", err)
 	}
 	select {
 	case <-closeWritten:

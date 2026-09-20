@@ -274,8 +274,11 @@ For a joined stream, a late CREDIT may become unnecessary after the exact outer
 lane receives CLOSE(0). Discard only an unemitted CREDIT: the outer lane's
 monotonic physical-attempt count must be unchanged across the entire encoded
 write. An already counted outer write may finish between observations; the
-final observation requires no active writer, no local close, no parent failure,
-and no earlier failed physical write. Keep the reader and its bounded reservation alive to consume
+final observation requires no active writer, no parent failure and no earlier
+failed physical write. A concurrent local close may appear only after this
+attempted CREDIT itself returned EOF from the already authenticated CLOSE(0);
+the caller checks that exact result. A local close before the attempt returns
+its own closure error and cannot become peer success. Keep the reader and its bounded reservation alive to consume
 already accepted inner records and validate their terminal. Raw EOF, refusal,
 partial output and missing inner completion cannot become document success.
 For a wholly unemitted local JOIN CLOSE, the outer-lane cleanup witness counts all non-CREDIT physical attempts across the entire encoded write. A concurrent CREDIT may exist at the initial observation, but the final observation requires no active write, an unchanged count, actual CLOSE(0), no local close or parent failure, and no earlier failed physical write of any kind. Only then may joined parent retirement discharge that CLOSE. Refusal, partial output and failed CREDIT remain failures; cleanup grants no payload success.
@@ -452,6 +455,11 @@ Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve
 a separate 16 KiB/channel control queue. Give a newly available control frame
 first service, then one already queued data frame before another control frame,
 with control-rate admission to prevent priority flooding or data starvation.
+An authenticated terminal that becomes ready while another control is already
+physically active may take the next service before queued data so the active
+frame cannot strand teardown. That terminal consumes the one priority turn:
+one queued data frame precedes every further terminal or control frame. This is
+scheduling only and changes neither wire kind nor control/data accounting.
 The receiving-duty governor reserves that 16 KiB for each admitted channel
 inside its existing 64 MiB total before admitting data. Forward and reverse
 control frames share this reservation, including their complete headers;

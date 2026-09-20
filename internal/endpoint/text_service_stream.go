@@ -42,6 +42,11 @@ type textServiceTransport struct {
 	err  error
 }
 
+func (transport *textServiceTransport) AuthenticatedPeerRetired() bool {
+	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
+	return ok && witness.AuthenticatedPeerRetired()
+}
+
 // textServiceAttachmentOpener returns one already authorized protected Route
 // transport and its exact fresh capsule digest. The native Connection owns TLS,
 // exporter and retained-continuity verification before committing it.
@@ -159,7 +164,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	// TLS exporter used the fresh Attachment context. Native records must
 	// continue to bind the immutable logical context shared by both Endpoints.
 	secured.context = binding.logical
-	first, err := nativeAttachment(secured)
+	first, err := nativeTextAttachment(secured)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +228,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 			// The exporter was derived from the fresh Attachment context; native
 			// Continuity continues to authenticate the immutable logical context.
 			replacement.context = binding.logical
-			attached, err := nativeAttachment(replacement)
+			attached, err := nativeTextAttachment(replacement)
 			if err != nil {
 				replacement.close()
 				return nil, err
@@ -337,6 +342,12 @@ func (connection *textServiceStream) Close() error {
 }
 
 func waitTextServiceClose(finished <-chan struct{}) bool {
-	<-finished
-	return true
+	timer := time.NewTimer(time.Second)
+	defer timer.Stop()
+	select {
+	case <-finished:
+		return true
+	case <-timer.C:
+		return false
+	}
 }

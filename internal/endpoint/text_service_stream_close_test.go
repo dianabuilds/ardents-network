@@ -4,8 +4,10 @@ package endpoint
 
 import (
 	"io"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestTextServiceCloseDrainsOppositeDirectionBeforeFullClose(t *testing.T) {
@@ -105,5 +107,41 @@ func TestTextServiceCloseReleasesTailAfterBoundedRetirement(t *testing.T) {
 	}
 	if premature.Load() {
 		t.Fatal("terminal-control tail was canceled before bounded retirement")
+	}
+}
+
+func TestTextServiceCloseInterruptsAbandonedUnreadResponse(t *testing.T) {
+	application, native := newApplicationHalfClosePair()
+	retired := make(chan struct{})
+	finished := make(chan struct{})
+	var canceled atomic.Bool
+	var cancelOnce sync.Once
+	cancel := func() {
+		cancelOnce.Do(func() {
+			canceled.Store(true)
+			_ = native.Close()
+			close(finished)
+		})
+	}
+	stream := &textServiceStream{applicationHalfClose: application, retired: retired, finished: finished, cancel: cancel}
+	written := make(chan error, 1)
+	go func() { _, err := native.Write([]byte("unread response")); written <- err }()
+	closed := make(chan error, 1)
+	go func() { closed <- stream.Close() }()
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		cancel()
+		<-closed
+		t.Fatal("full Close did not interrupt an abandoned unread response")
+	}
+	if !canceled.Load() {
+		t.Fatal("full Close completed without canceling unfinished Application I/O")
+	}
+	if err := <-written; err == nil {
+		t.Fatal("abandoned native response write reported success")
 	}
 }

@@ -41,6 +41,7 @@ type closedSourceChannels struct {
 	terminals, controls, data         []*closedSourceWrite
 	active                            *closedSourceWrite
 	terminal                          error
+	terminalServed                    bool
 	workers                           sync.WaitGroup
 	done                              chan struct{}
 	closeOnce                         sync.Once
@@ -262,9 +263,11 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 // keeps admission and retirement responsive without allowing a sustained,
 // admitted control stream to starve an issuer or other bounded child payload.
 func (owner *closedSourceChannels) nextWriteLocked() (*closedSourceWrite, bool) {
-	if len(owner.terminals) > 0 {
+	if len(owner.terminals) > 0 && (len(owner.data) == 0 || !owner.terminalServed) {
 		request := owner.terminals[0]
 		owner.terminals = owner.terminals[1:]
+		owner.terminalServed = true
+		owner.dataDue = true
 		return request, request.control
 	}
 	if len(owner.controls) > 0 && (len(owner.data) == 0 || !owner.dataDue) {
@@ -277,6 +280,7 @@ func (owner *closedSourceChannels) nextWriteLocked() (*closedSourceWrite, bool) 
 		request := owner.data[0]
 		owner.data = owner.data[1:]
 		owner.dataDue = false
+		owner.terminalServed = false
 		return request, false
 	}
 	return nil, false
@@ -358,7 +362,11 @@ func (owner *closedSourceChannels) write() {
 					// A previously counted outer write may have completed. No new
 					// physical frame began, and no failed write passed the witness.
 					// Keep the reader alive to consume its already accepted tail.
-					err = nil
+					// The exact write must have observed peer EOF; a local close may
+					// race the final witness but cannot supply that result itself.
+					if errors.Is(err, io.EOF) {
+						err = nil
+					}
 				} else {
 					// Local CLOSE cannot emit on this already retired outer lane.
 					// Its owner joins that retirement below; no partial frame is forgiven.

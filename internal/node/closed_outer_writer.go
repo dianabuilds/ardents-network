@@ -14,20 +14,22 @@ import (
 // queued frame cannot restore a deadline invalidated by local cancellation.
 // Partial-frame failure poisons the physical framing boundary and closes it.
 type closedOuterWriter struct {
-	connection net.Conn
-	writer     sync.Mutex
-	state      sync.Mutex
-	active     *closedOuterWriteRequest
-	terminals  []*closedOuterWriteRequest
-	controls   []*closedOuterWriteRequest
-	data       []*closedOuterWriteRequest
-	dataDue    bool
-	running    bool
+	connection     net.Conn
+	writer         sync.Mutex
+	state          sync.Mutex
+	active         *closedOuterWriteRequest
+	terminals      []*closedOuterWriteRequest
+	controls       []*closedOuterWriteRequest
+	data           []*closedOuterWriteRequest
+	dataDue        bool
+	terminalServed bool
+	running        bool
 }
 
 type closedOuterWriteRequest struct {
 	frame             route.ClosedLaneFrame
 	deadline          func() time.Time
+	end               time.Time
 	control, terminal bool
 	done              chan struct{}
 	err               error
@@ -60,9 +62,11 @@ func (owner *closedOuterWriter) write(frame route.ClosedLaneFrame, deadline func
 }
 
 func (owner *closedOuterWriter) nextLocked() *closedOuterWriteRequest {
-	if len(owner.terminals) != 0 {
+	if len(owner.terminals) != 0 && (len(owner.data) == 0 || !owner.terminalServed) {
 		request := owner.terminals[0]
 		owner.terminals = owner.terminals[1:]
+		owner.terminalServed = true
+		owner.dataDue = true
 		return request
 	}
 	if len(owner.controls) != 0 && (len(owner.data) == 0 || !owner.dataDue) {
@@ -75,6 +79,7 @@ func (owner *closedOuterWriter) nextLocked() *closedOuterWriteRequest {
 		request := owner.data[0]
 		owner.data = owner.data[1:]
 		owner.dataDue = false
+		owner.terminalServed = false
 		return request
 	}
 	return nil
@@ -93,6 +98,7 @@ func (owner *closedOuterWriter) drain() {
 		}
 		owner.active = request
 		end := request.deadline()
+		request.end = end
 		// Cancellation while waiting for serialization has emitted no frame.
 		// Refuse that owner without damaging other lanes on the same Carrier.
 		// After a physical write is attempted, every failure still poisons it.
@@ -125,7 +131,10 @@ func (owner *closedOuterWriter) update(lane uint32, deadline time.Time) error {
 	owner.state.Lock()
 	defer owner.state.Unlock()
 	if owner.active != nil && owner.active.frame.Kind != 9 && owner.active.frame.Lane == lane {
-		return owner.connection.SetWriteDeadline(deadline)
+		if !deadline.IsZero() && (owner.active.end.IsZero() || deadline.Before(owner.active.end)) {
+			owner.active.end = deadline
+		}
+		return owner.connection.SetWriteDeadline(owner.active.end)
 	}
 	return nil
 }
