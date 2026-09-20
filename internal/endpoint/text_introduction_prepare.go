@@ -36,7 +36,7 @@ func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *text
 	return owner.prepareResolvedTextIntroduction(ctx, job, destination, bounds, verified)
 }
 
-func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link) (reachability.Verified, error) {
+func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link) (verified reachability.Verified, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return reachability.Verified{}, errors.New("text Introduction caller unavailable")
 	}
@@ -54,6 +54,27 @@ func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *text
 	if !live {
 		return reachability.Verified{}, errors.New("text Introduction reader job unavailable")
 	}
+	// Resolution is part of this worker invocation. The independently
+	// authorized Endpoint context may outlive it, but job retirement must still
+	// interrupt an in-flight prefix opening or Descriptor exchange.
+	caller := ctx
+	attempt, cancel := context.WithCancel(job.context)
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(caller, func() { defer close(interrupted); cancel() })
+	defer func() {
+		cancel()
+		if !stop() {
+			<-interrupted
+		}
+		if outcome == nil && (caller.Err() != nil || job.context.Err() != nil) {
+			verified = reachability.Verified{}
+			outcome = errors.Join(outcome, caller.Err(), job.context.Err(), errors.New("text Introduction resolution ended before handover"))
+		}
+	}()
+	if caller.Err() != nil {
+		cancel()
+	}
+	ctx = attempt
 	if needPrefix {
 		if _, err := owner.openTextPrefix(ctx); err != nil {
 			return reachability.Verified{}, err
