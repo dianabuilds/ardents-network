@@ -101,6 +101,36 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	return nil
 }
 
+func (owner *textContext) ensureQualificationTokenReserve(ctx context.Context, receiver [32]byte, class uint8, minimum int) error {
+	if owner == nil || ctx == nil || ctx.Err() != nil || receiver == [32]byte{} || class < 1 || class > 3 || minimum < 1 || minimum > 32 {
+		return errors.New("qualification token reserve unavailable")
+	}
+	owner.mu.Lock()
+	profile, _, err := owner.textPermissionProfileLocked()
+	if err != nil || owner.permission == nil {
+		owner.mu.Unlock()
+		return errors.Join(err, errors.New("qualification token reserve unavailable"))
+	}
+	ready := 0
+	for _, stock := range owner.permission.stock {
+		if stock.challenge.ReceiverNodeID == receiver && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == class &&
+			stock.challenge.WindowStart == owner.permission.accepted.NotBefore {
+			ready += len(stock.tokens)
+		}
+	}
+	remaining := owner.permission.accepted.Maxima[class-1] - owner.permission.reserved[class-1]
+	owner.mu.Unlock()
+	missing := min(minimum-ready, int(remaining))
+	if missing <= 0 {
+		return nil
+	}
+	receivers := make([][32]byte, missing)
+	for index := range receivers {
+		receivers[index] = receiver
+	}
+	return owner.issueTextTokens(ctx, receivers, class)
+}
+
 func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, minimum int) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()

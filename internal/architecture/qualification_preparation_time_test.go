@@ -404,36 +404,6 @@ func TestQualificationWaitsBeforeConsumingAClosingAdmissionWindow(t *testing.T) 
 	}
 }
 
-func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	reader, err := os.ReadFile(filepath.Join(root, "internal", "endpoint", "stream_qualification_connections_linux.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	readerText := string(reader)
-	for _, required := range []string{
-		"qualificationIntroductionInterval = 1250 * time.Millisecond",
-		"for index := 0; index < 64; index++",
-	} {
-		if !strings.Contains(readerText, required) {
-			t.Fatalf("retained Reader setup no longer has the qualified schedule %q", required)
-		}
-	}
-	runner, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "run-windows.ps1"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(runner), "$smokeDeadline = [DateTime]::UtcNow.AddMinutes(6)") {
-		t.Fatal("qualification smoke deadline cannot contain the measured retained Reader setup")
-	}
-	if !strings.Contains(string(runner), "$deadline = [DateTime]::UtcNow.AddMinutes($(if ($SmokeSeconds -gt 0) { 10 } else { 22 }))") {
-		t.Fatal("qualification smoke owner deadline cannot contain setup and observation")
-	}
-}
-
 func TestQualificationBoundsReaderPermissionSetupByPublisherRegistration(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

@@ -74,7 +74,11 @@ func textRouteStopOnly(err error) bool {
 // openTextJoinedService consumes the initial protected Route and installs its
 // bounded replacement owner before Application bytes become reachable.
 func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textServiceStream, outcome error) {
-	transport, err := owner.openTextJoinedTransport(ctx, job, attempt)
+	return owner.openTextJoinedServiceAfterSetup(ctx, job, attempt, nil)
+}
+
+func (owner *textContext) openTextJoinedServiceAfterSetup(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, setupComplete func()) (_ *textServiceStream, outcome error) {
+	transport, err := owner.openTextJoinedTransportAfterSetup(ctx, job, attempt, setupComplete)
 	if err != nil {
 		return nil, err
 	}
@@ -87,6 +91,10 @@ func (owner *textContext) openTextJoinedService(ctx context.Context, job *textJo
 // grants Service authority. Its returned transport joins the complete Route
 // exchange when the Service Attachment releases it.
 func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt) (_ *textJoinedTransport, outcome error) {
+	return owner.openTextJoinedTransportAfterSetup(ctx, job, attempt, nil)
+}
+
+func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, setupComplete func()) (_ *textJoinedTransport, outcome error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil || attempt.binding.owner != owner || attempt.binding.job != job {
 		return nil, errors.New("text JOIN owner unavailable")
 	}
@@ -154,6 +162,9 @@ func (owner *textContext) openTextJoinedTransport(ctx context.Context, job *text
 		if err := owner.refreshTextIntroduction(joining, job, attempt, prefix); err != nil {
 			return nil, err
 		}
+	}
+	if setupComplete != nil {
+		setupComplete()
 	}
 	type joinedResult struct {
 		stream *route.ClosedJoinedStream

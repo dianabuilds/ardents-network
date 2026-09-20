@@ -83,6 +83,7 @@ func (owner *textContext) reportTextWithdrawalFailure(failure string) {
 // cancellation during launch. Possession is not a qualified-launch receipt.
 type textJobIdentity struct {
 	qualificationAcquireIntroduction func(context.Context) error
+	qualificationAcquireSetup        func(context.Context) (func(), error)
 	qualificationStopSampling        func() error
 	qualificationJoins               map[*route.ClosedJoinedStream]struct{}
 	qualification                    *streamqualification.Init

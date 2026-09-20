@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 	"github.com/dianabuilds/ardents-network/internal/service/targetlink"
 )
 
@@ -28,22 +29,46 @@ type textIntroductionAttempt struct {
 // floors. Neither the worker nor a Descriptor selects Rendezvous or supplies
 // a join secret, local-context identifier, HPKE input or shared authority tuple.
 func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64) (prepared *textIntroductionAttempt, outcome error) {
+	verified, err := owner.resolveTextIntroduction(ctx, job, destination)
+	if err != nil {
+		return nil, err
+	}
+	return owner.prepareResolvedTextIntroduction(ctx, job, destination, bounds, verified)
+}
+
+func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link) (reachability.Verified, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
-		return nil, errors.New("text Introduction caller unavailable")
+		return reachability.Verified{}, errors.New("text Introduction caller unavailable")
 	}
 	if _, err := targetlink.Encode(destination); err != nil || destination.Network != owner.endpoint.network {
-		return nil, errors.New("text Introduction destination unavailable")
+		return reachability.Verified{}, errors.New("text Introduction destination unavailable")
 	}
 	owner.mu.Lock()
 	if err := owner.retireTextPrefixLocked(); err != nil {
 		owner.mu.Unlock()
-		return nil, err
+		return reachability.Verified{}, err
 	}
 	live := owner.liveTextServiceJobLocked(job, broker.Connection)
 	needPrefix := owner.prefix == nil
 	owner.mu.Unlock()
 	if !live {
-		return nil, errors.New("text Introduction reader job unavailable")
+		return reachability.Verified{}, errors.New("text Introduction reader job unavailable")
+	}
+	if needPrefix {
+		if _, err := owner.openTextPrefix(ctx); err != nil {
+			return reachability.Verified{}, err
+		}
+	}
+	return owner.lookupTextDescriptor(ctx, destination.Target)
+}
+
+func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, job *textJobIdentity, destination targetlink.Link, bounds [3]int64,
+	verified reachability.Verified) (prepared *textIntroductionAttempt, outcome error) {
+	if owner == nil || ctx == nil || ctx.Err() != nil {
+		return nil, errors.New("text Introduction caller unavailable")
+	}
+	if _, err := targetlink.Encode(destination); err != nil || destination.Network != owner.endpoint.network {
+		return nil, errors.New("text Introduction destination unavailable")
 	}
 	// Network work belongs to this invocation even while its independently
 	// authorized Endpoint context remains live after worker retirement.
@@ -68,15 +93,6 @@ func (owner *textContext) prepareTextIntroduction(ctx context.Context, job *text
 		cancel()
 	}
 	ctx = attempt
-	if needPrefix {
-		if _, err := owner.openTextPrefix(ctx); err != nil {
-			return nil, err
-		}
-	}
-	verified, err := owner.lookupTextDescriptor(ctx, destination.Target)
-	if err != nil {
-		return nil, err
-	}
 	binding, err := owner.newTextServiceBinding(job, destination, verified.Current, bounds)
 	if err != nil {
 		return nil, err

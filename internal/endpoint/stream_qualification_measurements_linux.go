@@ -14,7 +14,10 @@ import (
 // Publisher admits at most four new Introduction openings in a rolling second.
 // Qualification uses one opening every 300 ms so scheduling and shaped-network
 // jitter cannot compress the shared four-Reader cohort into a remote refusal.
-const streamQualificationIntroductionSpacing = 300 * time.Millisecond
+const (
+	streamQualificationIntroductionSpacing = 300 * time.Millisecond
+	streamQualificationSetupLimit          = 15
+)
 
 // StreamQualificationMeasurements owns the complete local runner process and
 // every verified worker launched by that runner. Sharing it across participants
@@ -26,14 +29,33 @@ const streamQualificationIntroductionSpacing = 300 * time.Millisecond
 type StreamQualificationMeasurements struct {
 	mu, sampleMu       sync.Mutex
 	openingMu          sync.Mutex
+	setupOnce          sync.Once
 	workers            map[string]bool
 	retired            bool
 	expected, finished int
 	ready              chan struct{}
 	nextOpening        time.Time
+	setupSlots         chan struct{}
 	sampledAt          time.Time
 	hostSample         resource.HostingSample
 	usageSample        resource.Sample
+}
+
+func (owner *StreamQualificationMeasurements) acquireIntroductionSetup(ctx context.Context) (func(), error) {
+	if owner == nil || ctx == nil {
+		return nil, errors.New("qualification Introduction setup canceled")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(errors.New("qualification Introduction setup canceled"), err)
+	}
+	owner.setupOnce.Do(func() { owner.setupSlots = make(chan struct{}, streamQualificationSetupLimit) })
+	select {
+	case owner.setupSlots <- struct{}{}:
+	case <-ctx.Done():
+		return nil, errors.Join(errors.New("qualification Introduction setup canceled"), ctx.Err())
+	}
+	var once sync.Once
+	return func() { once.Do(func() { <-owner.setupSlots }) }, nil
 }
 
 func (owner *StreamQualificationMeasurements) reserveIntroductionOpening(now time.Time) (time.Time, error) {

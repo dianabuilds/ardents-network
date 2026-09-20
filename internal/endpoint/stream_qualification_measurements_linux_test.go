@@ -43,6 +43,35 @@ func TestQualificationIntroductionPacerSpacesSharedParticipants(t *testing.T) {
 	}
 }
 
+func TestQualificationIntroductionSetupLeavesPublisherCapacity(t *testing.T) {
+	owner, err := NewStreamQualificationMeasurements(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releases := make([]func(), 0, streamQualificationSetupLimit)
+	for range streamQualificationSetupLimit {
+		release, err := owner.acquireIntroductionSetup(t.Context())
+		if err != nil {
+			t.Fatal(err)
+		}
+		releases = append(releases, release)
+	}
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := owner.acquireIntroductionSetup(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("full setup admission ignored cancellation: %v", err)
+	}
+	releases[0]()
+	replacement, err := owner.acquireIntroductionSetup(t.Context())
+	if err != nil {
+		t.Fatalf("released setup admission was not reusable: %v", err)
+	}
+	replacement()
+	for _, release := range releases[1:] {
+		release()
+	}
+}
+
 func TestQualificationOwnerBarrierRequiresEveryParticipant(t *testing.T) {
 	owner, err := NewStreamQualificationMeasurements(2)
 	if err != nil {

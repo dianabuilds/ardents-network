@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
@@ -19,12 +20,16 @@ import (
 )
 
 // Four qualification Readers share the Publisher's four-openings-per-second
-// dispatch ceiling. A 1.25-second per-Reader interval, phase-shifted below,
-// yields 3.2 openings per second and completes the 64-opening setup in about
-// 80 seconds, within the retained Source lifetime. Forwarding byte authority
-// is replenished from actual accounted traffic rather than reduced opening
-// frequency.
-const qualificationIntroductionInterval = 1250 * time.Millisecond
+// dispatch ceiling. A one-second per-Reader interval, phase-shifted below,
+// keeps preparation ahead of the shared 300 ms actual-opening pacer. Each
+// Reader may overlap four
+// unfinished Route setups, for at most the Publisher's sixteen admitted
+// Introduction waiters across the cohort. StreamQualificationMeasurements
+// still spaces the actual cryptographic openings by 300 ms, below that ceiling.
+const (
+	qualificationIntroductionInterval   = time.Second
+	qualificationReaderSetupParallelism = 4
+)
 
 func qualificationReaderOpeningDelay(reader int) time.Duration {
 	return time.Duration(reader) * qualificationIntroductionInterval / 4
@@ -41,6 +46,74 @@ func waitQualificationIntroductionOpening(ctx context.Context, next time.Time) e
 		}
 	}
 	return nil
+}
+
+type qualificationReaderOpening struct {
+	index int
+	bound streamqualification.BoundStream
+	err   error
+}
+
+func openQualificationReaderStreams(
+	ctx context.Context,
+	count, parallelism int,
+	first time.Time,
+	interval time.Duration,
+	open func(context.Context, int) (streamqualification.BoundStream, error),
+) ([]streamqualification.BoundStream, error) {
+	if ctx == nil || count < 1 || parallelism < 1 || parallelism > count || interval < 0 || open == nil {
+		return nil, errors.New("qualification Reader setup unavailable")
+	}
+	setup, cancel := context.WithCancel(ctx)
+	defer cancel()
+	results := make(chan qualificationReaderOpening, count)
+	slots := make(chan struct{}, parallelism)
+	var openings sync.WaitGroup
+	for index := 0; index < count; index++ {
+		index := index
+		openings.Add(1)
+		go func() {
+			defer openings.Done()
+			due := first
+			if !due.IsZero() {
+				due = due.Add(time.Duration(index) * interval)
+			}
+			if err := waitQualificationIntroductionOpening(setup, due); err != nil {
+				results <- qualificationReaderOpening{index: index, err: err}
+				return
+			}
+			select {
+			case slots <- struct{}{}:
+			case <-setup.Done():
+				results <- qualificationReaderOpening{index: index, err: setup.Err()}
+				return
+			}
+			defer func() { <-slots }()
+			if err := setup.Err(); err != nil {
+				results <- qualificationReaderOpening{index: index, err: err}
+				return
+			}
+			bound, err := open(setup, index)
+			if err != nil {
+				cancel()
+			}
+			results <- qualificationReaderOpening{index: index, bound: bound, err: err}
+		}()
+	}
+	done := make(chan struct{})
+	go func() {
+		openings.Wait()
+		close(done)
+	}()
+	streams := make([]streamqualification.BoundStream, count)
+	var outcome error
+	for received := 0; received < count; received++ {
+		result := <-results
+		streams[result.index] = result.bound
+		outcome = errors.Join(outcome, result.err)
+	}
+	<-done
+	return streams, outcome
 }
 
 func (owner *textContext) streamConnectionLimitLocked() int {
@@ -92,46 +165,88 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 	var streams []streamqualification.BoundStream
 	defer func() {
 		for _, bound := range streams {
-			outcome = errors.Join(outcome, bound.Stream.Close())
+			if bound.Stream != nil {
+				outcome = errors.Join(outcome, bound.Stream.Close())
+			}
 		}
 	}()
 	// Setup has its own finite budget; it does not consume the ten-minute useful
 	// workload interval and cannot extend the immutable forwarding lease.
 	until := owner.endpoint.clock().UTC().Add(15 * time.Minute).Unix()
+	verified, err := owner.resolveTextIntroduction(bounded, worker.job, destination)
+	if err != nil {
+		return report, fmt.Errorf("qualification Reader %d resolution: %w", reader, err)
+	}
 	// Keep the four independent Readers out of phase. Without this offset they
 	// exhaust and replenish their issuer stocks together, turning an otherwise
 	// bounded two-openings-per-second workload into a bootstrap refill herd.
 	// Reader validation above keeps the four phases evenly distributed within
 	// each qualification interval.
-	nextOpening := time.Now().Add(qualificationReaderOpeningDelay(reader))
-	for index := 0; index < 64; index++ {
-		// Four independent Readers share the Publisher's four-per-second
-		// cryptographic-opening allowance. A per-Reader interval greater than one
-		// second bounds every sliding second to at most one opening per Reader,
-		// without weakening the Publisher's hostile-input rate limit.
-		if err := waitQualificationIntroductionOpening(bounded, nextOpening); err != nil {
-			return report, fmt.Errorf("qualification Reader %d stream %d pacing: %w", reader, index, err)
-		}
-		attempt, err := owner.prepareTextIntroduction(bounded, worker.job, destination, [3]int64{until, until, until})
-		if err != nil {
-			return report, fmt.Errorf("qualification Reader %d stream %d preparation: %w", reader, index, err)
-		}
-		service, err := owner.openTextJoinedService(bounded, worker.job, attempt)
-		if err != nil {
-			return report, fmt.Errorf("qualification Reader %d stream %d join: %w", reader, index, err)
-		}
-		id := qualificationStreamID(reader, index)
-		streams = append(streams, streamqualification.BoundStream{ID: id, Stream: service})
-		if _, err := service.Write(qualificationHello(worker.job.qualification.Profile, worker.job.qualification.Seed, id)); err != nil {
-			return report, fmt.Errorf("qualification Reader %d stream %d hello: %w", reader, index, err)
-		}
-		// Setup traffic consumes the same finite forwarding allowances as the
-		// measured workload. Refill at this completed-operation boundary so the
-		// initial 32 MiB authority cannot expire before the retained set exists.
-		if err := worker.replenishStreams(bounded); err != nil {
-			return report, fmt.Errorf("qualification Reader %d stream %d replenishment: %w", reader, index, err)
-		}
-		nextOpening = time.Now().Add(qualificationIntroductionInterval)
+	firstOpening := time.Now().Add(qualificationReaderOpeningDelay(reader))
+	var ownerWork sync.Mutex
+	streams, err = openQualificationReaderStreams(bounded, 64, qualificationReaderSetupParallelism, firstOpening, qualificationIntroductionInterval,
+		func(setup context.Context, index int) (bound streamqualification.BoundStream, outcome error) {
+			ownerWork.Lock()
+			var release sync.Once
+			releaseOwner := func() { release.Do(ownerWork.Unlock) }
+			defer releaseOwner()
+			attempt, err := owner.prepareResolvedTextIntroduction(setup, worker.job, destination, [3]int64{until, until, until}, verified)
+			if err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d preparation: %w", reader, index, err)
+			}
+			owner.mu.Lock()
+			prefix := owner.prefix
+			owner.mu.Unlock()
+			if prefix == nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d JOIN reserve prefix unavailable", reader, index)
+			}
+			joinReceiver, _, _, err := prefix.DataJoinRecipient()
+			if err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d JOIN reserve recipient: %w", reader, index, err)
+			}
+			if err := owner.ensureQualificationTokenReserve(setup, joinReceiver, 2, qualificationReaderSetupParallelism); err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d JOIN reserve: %w", reader, index, err)
+			}
+			submissionReceiver, err := prefix.SubmissionRecipient()
+			if err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d submission reserve recipient: %w", reader, index, err)
+			}
+			if err := owner.ensureQualificationTokenReserve(setup, submissionReceiver, 1, qualificationReaderSetupParallelism); err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d submission reserve: %w", reader, index, err)
+			}
+			releaseSetup := func() {}
+			if worker.job.qualificationAcquireSetup != nil {
+				releaseSetup, err = worker.job.qualificationAcquireSetup(setup)
+				if err != nil {
+					return bound, fmt.Errorf("qualification Reader %d stream %d setup admission: %w", reader, index, err)
+				}
+			}
+			defer releaseSetup()
+			// The helper's setup context stops sibling preparation after an error.
+			// The returned Service Connection belongs to the enclosing Reader
+			// operation and must therefore retain that operation's lifetime.
+			service, err := owner.openTextJoinedServiceAfterSetup(bounded, worker.job, attempt, releaseOwner)
+			if err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d join: %w", reader, index, err)
+			}
+			releaseSetup()
+			id := qualificationStreamID(reader, index)
+			bound = streamqualification.BoundStream{ID: id, Stream: service}
+			if _, err := service.Write(qualificationHello(worker.job.qualification.Profile, worker.job.qualification.Seed, id)); err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d hello: %w", reader, index, err)
+			}
+			// Setup traffic consumes the same finite forwarding allowances as the
+			// measured workload. Refill at this completed-operation boundary so the
+			// initial 32 MiB authority cannot expire before the retained set exists.
+			ownerWork.Lock()
+			defer ownerWork.Unlock()
+			if err := worker.replenishStreams(setup); err != nil {
+				return bound, fmt.Errorf("qualification Reader %d stream %d replenishment: %w", reader, index, err)
+			}
+			return bound, nil
+		})
+	if err != nil {
+		return report, err
 	}
 	for _, bound := range streams {
 		var ready [1]byte

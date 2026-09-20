@@ -174,7 +174,7 @@ func TestTextRecoveryRefusalOutlivesCanceledAttempt(t *testing.T) {
 			func(context.Context, *textJobIdentity, []byte) (*textIntroductionAttempt, error) {
 				cancelAttempt()
 				return nil, refused
-			})
+			}, nil)
 		received <- receiveErr
 	}()
 	submitted := make(chan error, 1)

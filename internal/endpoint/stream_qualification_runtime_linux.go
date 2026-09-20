@@ -173,6 +173,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 		}
 		worker.job.qualificationReport = &report
 		worker.job.qualificationAcquireIntroduction = config.Measurements.acquireIntroductionOpening
+		worker.job.qualificationAcquireSetup = config.Measurements.acquireIntroductionSetup
 		worker.job.qualificationObserve = func(observeCtx context.Context, snapshot streamqualification.Report) error {
 			snapshot.StartedElapsed = snapshot.Started.Sub(origin)
 			return config.Observe(observeCtx, StreamQualificationEvent{Elapsed: time.Since(origin), Kind: "stream-progress", Report: &snapshot})

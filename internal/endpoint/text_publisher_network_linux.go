@@ -10,19 +10,30 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
 )
 
+// The qualification Publisher keeps one slot below the dispatch hard cap and
+// explicitly reserves the matching forwarding stock before releasing each
+// opening. The shared Reader admission owner enforces the same bound.
+const qualificationPublisherOpeningParallelism = streamQualificationSetupLimit
+
 func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
+	if worker == nil || worker.job == nil {
+		return errors.New("text Publisher producer unavailable")
+	}
+	if worker.job.qualification == nil {
+		return worker.produceNetworkSequential(lifetime, delivered)
+	}
+	return worker.produceQualificationNetwork(lifetime, delivered)
+}
+
+func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Context, delivered chan<- connection.Stream) error {
 	owner := worker.job.owner
 	network, cancel := context.WithCancel(lifetime)
 	var retired sync.WaitGroup
 	owner.mu.Lock()
 	drain := owner.publicationDrain
-	owner.mu.Unlock()
-	draining := false
-	// Each joined Service retains an Introduction exchange. Reserve space
-	// before receiving the next delivery, including its temporary exchange.
-	owner.mu.Lock()
 	slots := make(chan struct{}, owner.streamConnectionLimitLocked())
 	owner.mu.Unlock()
+	draining := false
 	defer func() {
 		if !draining {
 			cancel()
@@ -55,8 +66,6 @@ func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, deli
 		if err != nil {
 			return err
 		}
-		// This one in-flight stream remains producer-owned during backpressure.
-		// Service lifetime and the context's exchange limit bound its resources.
 		if err := network.Err(); err != nil {
 			return errors.Join(err, stream.Close())
 		}
@@ -72,5 +81,157 @@ func (worker *qualifiedTextWorker) produceNetwork(lifetime context.Context, deli
 			return errors.Join(network.Err(), stream.Close())
 		}
 	}
+}
 
+func (worker *qualifiedTextWorker) produceQualificationNetwork(lifetime context.Context, delivered chan<- connection.Stream) error {
+	owner := worker.job.owner
+	network, cancel := context.WithCancel(lifetime)
+	var retired sync.WaitGroup
+	owner.mu.Lock()
+	drain := owner.publicationDrain
+	connectionLimit := owner.streamConnectionLimitLocked()
+	owner.mu.Unlock()
+	draining := false
+	// Each pending or joined Service owns one connection slot. Concurrent
+	// receivers register the waiters that the Introduction dispatch already
+	// bounds; without them, a second honest submission can arrive before the
+	// sequential producer registers its matching owner and be refused.
+	slots := make(chan struct{}, connectionLimit)
+	type openingResult struct {
+		stream *textServiceStream
+		err    error
+	}
+	opened := make(chan openingResult, qualificationPublisherOpeningParallelism)
+	var openings sync.WaitGroup
+	var setup sync.Mutex
+	inFlight := 0
+	stopping := false
+	var failure error
+	networkDone := network.Done()
+	startOpening := func() bool {
+		select {
+		case slots <- struct{}{}:
+		default:
+			return false
+		}
+		inFlight++
+		openings.Add(1)
+		go func() {
+			defer openings.Done()
+			setupHeld := false
+			attempt, err := owner.receiveTextIntroductionAfterDelivery(network, worker.job, func() {
+				setup.Lock()
+				setupHeld = true
+			})
+			if err != nil {
+				if setupHeld {
+					setup.Unlock()
+				}
+				opened <- openingResult{err: err}
+				return
+			}
+			owner.mu.Lock()
+			prefix := owner.responder.prefix
+			owner.mu.Unlock()
+			if prefix == nil {
+				err = errors.New("qualification Publisher JOIN reserve prefix unavailable")
+			}
+			var receiver [32]byte
+			if err == nil {
+				receiver, _, _, err = prefix.DataJoinRecipient()
+			}
+			if err == nil {
+				err = owner.ensureQualificationTokenReserve(network, receiver, 2, qualificationPublisherOpeningParallelism)
+			}
+			if err != nil {
+				setup.Unlock()
+				opened <- openingResult{err: err}
+				return
+			}
+			var release sync.Once
+			releaseSetup := func() { release.Do(setup.Unlock) }
+			defer releaseSetup()
+			stream, err := owner.openTextJoinedServiceAfterSetup(network, worker.job, attempt, releaseSetup)
+			opened <- openingResult{stream: stream, err: err}
+		}()
+		return true
+	}
+	defer func() {
+		if !draining {
+			cancel()
+		}
+		openings.Wait()
+		retired.Wait()
+		cancel()
+	}()
+	for {
+		for !stopping && inFlight < qualificationPublisherOpeningParallelism && startOpening() {
+		}
+		if stopping && inFlight == 0 {
+			return failure
+		}
+		select {
+		case <-drain:
+			draining = true
+			stopping = true
+			drain = nil
+		case result := <-opened:
+			inFlight--
+			if result.err != nil {
+				<-slots
+				if onlyTextPublicationDraining(result.err) {
+					draining = true
+					stopping = true
+					drain = nil
+					continue
+				}
+				if onlyTextIntroductionRefusal(result.err) {
+					continue
+				}
+				if !stopping || !qualificationCancellationOnly(result.err) {
+					failure = errors.Join(failure, result.err)
+				}
+				if !stopping {
+					stopping = true
+					cancel()
+					networkDone = nil
+				}
+				continue
+			}
+			if stopping {
+				failure = errors.Join(failure, result.stream.Close())
+				<-slots
+				continue
+			}
+			if err := network.Err(); err != nil {
+				failure = errors.Join(failure, err, result.stream.Close())
+				<-slots
+				stopping = true
+				cancel()
+				networkDone = nil
+				continue
+			}
+			select {
+			case delivered <- result.stream:
+				retired.Add(1)
+				go func(stream *textServiceStream) {
+					defer retired.Done()
+					<-stream.finished
+					<-slots
+				}(result.stream)
+			case <-network.Done():
+				failure = errors.Join(failure, network.Err(), result.stream.Close())
+				<-slots
+				stopping = true
+				cancel()
+				networkDone = nil
+			}
+		case <-networkDone:
+			if !stopping {
+				failure = errors.Join(failure, network.Err())
+				stopping = true
+				networkDone = nil
+			}
+		}
+	}
 }

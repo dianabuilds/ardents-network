@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -67,6 +68,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		job.qualification = &streamqualification.Init{Role: streamqualification.ReaderRole,
 			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}
 		job.qualificationAcquireIntroduction = qualificationPacer.acquireIntroductionOpening
+		job.qualificationAcquireSetup = qualificationPacer.acquireIntroductionSetup
 		readerJobs[index] = job
 	}
 
@@ -82,7 +84,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 
 	type readerResult struct {
 		index   int
-		streams []*textServiceStream
+		streams []streamqualification.BoundStream
 		err     error
 	}
 	readerDone := make(chan readerResult, len(readers))
@@ -91,50 +93,76 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			result := readerResult{index: index}
 			worker := &qualifiedTextWorker{job: job, qualificationReader: index}
 			until := time.Now().UTC().Add(15 * time.Minute).Unix()
-			nextOpening := time.Now().Add(qualificationReaderOpeningDelay(index))
-			for streamIndex := 0; streamIndex < streamsPerReader; streamIndex++ {
-				if err := waitQualificationIntroductionOpening(ctx, nextOpening); err != nil {
-					result.err = err
-					break
-				}
-				attempt, err := owner.prepareTextIntroduction(ctx, job, destination, [3]int64{until, until, until})
-				if err != nil {
-					owner.mu.Lock()
-					state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
-						owner.prefix != nil, owner.resolution != nil, owner.prefixOpening != nil, owner.issuance != nil,
-						owner.permission != nil, owner.closed)
-					owner.mu.Unlock()
-					result.err = fmt.Errorf("Reader %d Introduction %d (%s): %w", index, streamIndex, state, err)
-					break
-				}
-				stream, err := owner.openTextJoinedService(ctx, job, attempt)
-				if err != nil {
+			verified, err := owner.resolveTextIntroduction(ctx, job, destination)
+			if err != nil {
+				result.err = fmt.Errorf("Reader %d resolution: %w", index, err)
+				readerDone <- result
+				return
+			}
+			var ownerWork sync.Mutex
+			result.streams, result.err = openQualificationReaderStreams(ctx, streamsPerReader, qualificationReaderSetupParallelism,
+				time.Now().Add(qualificationReaderOpeningDelay(index)), qualificationIntroductionInterval,
+				func(setup context.Context, streamIndex int) (bound streamqualification.BoundStream, outcome error) {
+					ownerWork.Lock()
+					var release sync.Once
+					releaseOwner := func() { release.Do(ownerWork.Unlock) }
+					defer releaseOwner()
+					attempt, err := owner.prepareResolvedTextIntroduction(setup, job, destination, [3]int64{until, until, until}, verified)
+					if err != nil {
+						owner.mu.Lock()
+						state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
+							owner.prefix != nil, owner.resolution != nil, owner.prefixOpening != nil, owner.issuance != nil,
+							owner.permission != nil, owner.closed)
+						owner.mu.Unlock()
+						return bound, fmt.Errorf("Reader %d Introduction %d (%s): %w", index, streamIndex, state, err)
+					}
 					owner.mu.Lock()
 					prefix := owner.prefix
 					owner.mu.Unlock()
-					if prefix != nil {
-						err = errors.Join(err, prefix.Close())
+					if prefix == nil {
+						return bound, fmt.Errorf("Reader %d JOIN reserve prefix unavailable", index)
 					}
-					result.err = fmt.Errorf("Reader %d JOIN %d: %w", index, streamIndex, err)
-					break
-				}
-				result.streams = append(result.streams, stream)
-				id := qualificationStreamID(index, streamIndex)
-				if _, err := stream.Write(qualificationHello(streamqualification.ClientToPublisher, fixtureID(246), id)); err != nil {
-					result.err = fmt.Errorf("Reader %d hello %d: %w", index, streamIndex, err)
-					break
-				}
-				if err := worker.replenishStreams(ctx); err != nil {
-					result.err = fmt.Errorf("Reader %d setup refill %d: %w", index, streamIndex, err)
-					break
-				}
-				nextOpening = time.Now().Add(qualificationIntroductionInterval)
-			}
+					joinReceiver, _, _, err := prefix.DataJoinRecipient()
+					if err == nil {
+						err = owner.ensureQualificationTokenReserve(setup, joinReceiver, 2, qualificationReaderSetupParallelism)
+					}
+					if err != nil {
+						return bound, fmt.Errorf("Reader %d JOIN reserve %d: %w", index, streamIndex, err)
+					}
+					submissionReceiver, err := prefix.SubmissionRecipient()
+					if err == nil {
+						err = owner.ensureQualificationTokenReserve(setup, submissionReceiver, 1, qualificationReaderSetupParallelism)
+					}
+					if err != nil {
+						return bound, fmt.Errorf("Reader %d submission reserve %d: %w", index, streamIndex, err)
+					}
+					releaseSetup, err := job.qualificationAcquireSetup(setup)
+					if err != nil {
+						return bound, fmt.Errorf("Reader %d setup admission %d: %w", index, streamIndex, err)
+					}
+					defer releaseSetup()
+					stream, err := owner.openTextJoinedServiceAfterSetup(ctx, job, attempt, releaseOwner)
+					if err != nil {
+						return bound, fmt.Errorf("Reader %d JOIN %d: %w", index, streamIndex, err)
+					}
+					releaseSetup()
+					id := qualificationStreamID(index, streamIndex)
+					bound = streamqualification.BoundStream{ID: id, Stream: stream}
+					if _, err := stream.Write(qualificationHello(streamqualification.ClientToPublisher, fixtureID(246), id)); err != nil {
+						return bound, fmt.Errorf("Reader %d hello %d: %w", index, streamIndex, err)
+					}
+					ownerWork.Lock()
+					defer ownerWork.Unlock()
+					if err := worker.replenishStreams(setup); err != nil {
+						return bound, fmt.Errorf("Reader %d setup refill %d: %w", index, streamIndex, err)
+					}
+					return bound, nil
+				})
 			readerDone <- result
 		}(index, owner, readerJobs[index])
 	}
 
-	var readerStreams []*textServiceStream
+	var readerStreams []connection.Stream
 	var publisherStreams []connection.Stream
 	readerStreamsByID := make(map[uint32]connection.Stream, readerCount*streamsPerReader)
 	publisherStreamsByID := make(map[uint32]connection.Stream, readerCount*streamsPerReader)
@@ -146,9 +174,11 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		select {
 		case result := <-readerDone:
 			readersFinished++
-			readerStreams = append(readerStreams, result.streams...)
-			for streamIndex, stream := range result.streams {
-				readerStreamsByID[qualificationStreamID(result.index, streamIndex)] = stream
+			for _, bound := range result.streams {
+				if bound.Stream != nil {
+					readerStreams = append(readerStreams, bound.Stream)
+					readerStreamsByID[bound.ID] = bound.Stream
+				}
 			}
 			setupErr = errors.Join(setupErr, result.err)
 		case stream := <-delivered:
@@ -156,9 +186,10 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 				setupErr = errors.New("Publisher producer ended before retained set")
 				continue
 			}
+			ordinal := len(publisherStreams)
 			var hello [45]byte
 			if _, err := io.ReadFull(stream, hello[:]); err != nil {
-				setupErr = errors.Join(setupErr, err)
+				setupErr = errors.Join(setupErr, fmt.Errorf("Publisher hello %d: %w", ordinal, err))
 			} else {
 				id := binary.BigEndian.Uint32(hello[9:13])
 				if id == 0 || publisherStreamsByID[id] != nil {
@@ -204,9 +235,11 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		for readersFinished < len(readers) {
 			result := <-readerDone
 			readersFinished++
-			readerStreams = append(readerStreams, result.streams...)
-			for streamIndex, stream := range result.streams {
-				readerStreamsByID[qualificationStreamID(result.index, streamIndex)] = stream
+			for _, bound := range result.streams {
+				if bound.Stream != nil {
+					readerStreams = append(readerStreams, bound.Stream)
+					readerStreamsByID[bound.ID] = bound.Stream
+				}
 			}
 			setupErr = errors.Join(setupErr, result.err)
 		}
@@ -346,7 +379,7 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 }
 
 func TestQualificationReaderOpeningDelayStaggersFourReaders(t *testing.T) {
-	want := []time.Duration{0, 312500 * time.Microsecond, 625 * time.Millisecond, 937500 * time.Microsecond}
+	want := []time.Duration{0, 250 * time.Millisecond, 500 * time.Millisecond, 750 * time.Millisecond}
 	for reader, expected := range want {
 		if got := qualificationReaderOpeningDelay(reader); got != expected {
 			t.Fatalf("Reader %d opening delay = %s, want %s", reader, got, expected)
