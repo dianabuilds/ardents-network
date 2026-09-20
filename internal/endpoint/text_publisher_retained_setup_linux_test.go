@@ -236,6 +236,10 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		select {
 		case outcome, open := <-stream.Done():
 			if !open || outcome.Class != connection.CleanClose {
+				if retained, ok := stream.(*textServiceStream); ok {
+					return fmt.Errorf("%s[%d].Done: open=%t outcome=%+v run=%v",
+						role, index, open, outcome, retained.runErr)
+				}
 				return fmt.Errorf("%s[%d].Done: open=%t outcome=%+v", role, index, open, outcome)
 			}
 			return nil

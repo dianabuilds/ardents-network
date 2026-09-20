@@ -111,7 +111,14 @@ jobs:
             if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
             elif grep -q 'race detected' "$test_log"; then failure=race-detected
             elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
-            elif grep -q '\.Done:' "$test_log"; then failure=retained-done-outcome
+            elif grep -q '\.Done:.*run=.*context deadline exceeded' "$test_log"; then failure=retained-done-timeout
+            elif grep -q '\.Done:.*run=.*context canceled' "$test_log"; then failure=retained-done-canceled
+            elif grep -q '\.Done:.*run=.*integrity violation' "$test_log"; then failure=retained-done-integrity
+            elif grep -q '\.Done:.*run=.*invalid request' "$test_log"; then failure=retained-done-invalid-request
+            elif grep -q '\.Done:.*run=.*recovery' "$test_log"; then failure=retained-done-recovery
+            elif grep -q '\.Done:.*run=.*text Service job retired' "$test_log"; then failure=retained-done-job-retired
+            elif grep -q '\.Done:.*run=<nil>' "$test_log"; then failure=retained-done-cleanup
+            elif grep -q '\.Done:' "$test_log"; then failure=retained-done-other
             elif grep -q '\.Close:' "$test_log"; then failure=retained-close
             elif grep -q ' setup refill ' "$test_log"; then failure=qualification-refill
             elif grep -q ' JOIN ' "$test_log"; then failure=qualification-join
