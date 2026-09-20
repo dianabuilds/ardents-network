@@ -101,7 +101,26 @@ jobs:
           fi
           args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
           if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
-          timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE"
+          test_log="$RUNNER_TEMP/selected-test.json"
+          set +e
+          timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if (( status != 0 )); then
+            failure=unclassified
+            if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
+            elif grep -q 'race detected' "$test_log"; then failure=race-detected
+            elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
+            elif grep -q '\.Done:' "$test_log"; then failure=retained-done-outcome
+            elif grep -q '\.Close:' "$test_log"; then failure=retained-close
+            elif grep -q ' setup refill ' "$test_log"; then failure=qualification-refill
+            elif grep -q ' JOIN ' "$test_log"; then failure=qualification-join
+            elif grep -q ' Introduction ' "$test_log"; then failure=qualification-introduction
+            elif grep -q 'retained setup reached' "$test_log"; then failure=retained-setup-other
+            fi
+            echo "::error title=${{ matrix.name }} failed::selected test failure category: $failure"
+          fi
+          exit "$status"
   full:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
