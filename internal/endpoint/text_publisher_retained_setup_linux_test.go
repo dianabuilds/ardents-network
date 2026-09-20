@@ -4,10 +4,10 @@ package endpoint
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 	"testing"
 	"time"
 
@@ -136,6 +136,8 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 
 	var readerStreams []*textServiceStream
 	var publisherStreams []connection.Stream
+	readerStreamsByID := make(map[uint32]connection.Stream, readerCount*streamsPerReader)
+	publisherStreamsByID := make(map[uint32]connection.Stream, readerCount*streamsPerReader)
 	readersFinished := 0
 	producerFinished := false
 	var setupErr error
@@ -145,6 +147,9 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		case result := <-readerDone:
 			readersFinished++
 			readerStreams = append(readerStreams, result.streams...)
+			for streamIndex, stream := range result.streams {
+				readerStreamsByID[qualificationStreamID(result.index, streamIndex)] = stream
+			}
 			setupErr = errors.Join(setupErr, result.err)
 		case stream := <-delivered:
 			if stream == nil {
@@ -154,6 +159,13 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			var hello [45]byte
 			if _, err := io.ReadFull(stream, hello[:]); err != nil {
 				setupErr = errors.Join(setupErr, err)
+			} else {
+				id := binary.BigEndian.Uint32(hello[9:13])
+				if id == 0 || publisherStreamsByID[id] != nil {
+					setupErr = errors.Join(setupErr, errors.New("Publisher received duplicate or empty qualification stream ID"))
+				} else {
+					publisherStreamsByID[id] = stream
+				}
 			}
 			publisherStreams = append(publisherStreams, stream)
 			if err := publisherWorker.replenishStreams(ctx); err != nil {
@@ -193,6 +205,9 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			result := <-readerDone
 			readersFinished++
 			readerStreams = append(readerStreams, result.streams...)
+			for streamIndex, stream := range result.streams {
+				readerStreamsByID[qualificationStreamID(result.index, streamIndex)] = stream
+			}
 			setupErr = errors.Join(setupErr, result.err)
 		}
 		for !producerFinished {
@@ -206,65 +221,39 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			}
 		}
 	}
-	var cleanup sync.WaitGroup
-	cleanupErrors := make(chan error, 3*(len(publisherStreams)+len(readerStreams)))
-	phaseError := func(role, phase string, index int, err error) error {
-		if err == nil {
-			return nil
-		}
-		return fmt.Errorf("%s[%d].%s: %w", role, index, phase, err)
-	}
-	// Give every retained direction an equal chance to put its authenticated
-	// Terminal in flight before any per-stream Close grace begins. Starting a
-	// timer in the same goroutine that announces EOF makes race-instrumented
-	// teardown depend on which of 512 cleanup goroutines the scheduler runs
-	// first, and an early fallback cancellation can then poison otherwise-live
-	// shared Source work.
-	for index, stream := range publisherStreams {
-		cleanup.Go(func() { cleanupErrors <- phaseError("publisher", "CloseInput", index, stream.CloseInput()) })
-	}
-	for index, stream := range readerStreams {
-		cleanup.Go(func() { cleanupErrors <- phaseError("reader", "CloseInput", index, stream.CloseInput()) })
-	}
-	cleanup.Wait()
-	// A successful native outcome is the boundary between Application
-	// completion and terminal-tail ownership. Do not let an early local outcome
-	// retire its Route transport while the peer is still consuming the final
-	// confirmation already queued on that transport. Once every retained side
-	// has crossed this boundary, full Close may release all tails concurrently.
-	waitOutcome := func(role string, index int, stream connection.Stream) error {
-		select {
-		case outcome, open := <-stream.Done():
-			if !open || outcome.Class != connection.CleanClose {
-				if retained, ok := stream.(*textServiceStream); ok {
-					return fmt.Errorf("%s[%d].Done: open=%t outcome=%+v run=%v",
-						role, index, open, outcome, retained.runErr)
+	var pairIDs []uint32
+	if setupErr == nil && len(publisherStreamsByID) == wanted && len(readerStreamsByID) == wanted {
+		for readerIndex := 0; readerIndex < readerCount; readerIndex++ {
+			for streamIndex := 0; streamIndex < streamsPerReader; streamIndex++ {
+				id := qualificationStreamID(readerIndex, streamIndex)
+				_, publisherOK := publisherStreamsByID[id]
+				_, readerOK := readerStreamsByID[id]
+				if !publisherOK || !readerOK {
+					setupErr = errors.Join(setupErr, fmt.Errorf("retained stream pair %d unavailable", id))
+					continue
 				}
-				return fmt.Errorf("%s[%d].Done: open=%t outcome=%+v", role, index, open, outcome)
+				pairIDs = append(pairIDs, id)
 			}
-			return nil
-		case <-ctx.Done():
-			return fmt.Errorf("%s[%d].Done: %w", role, index, ctx.Err())
+		}
+		// The installed Publisher declares its complete set ready before either
+		// owner starts the workload. Exercise that real barrier instead of leaving
+		// the earliest setup streams idle until teardown.
+		for _, id := range pairIDs {
+			if _, err := publisherStreamsByID[id].Write([]byte{1}); err != nil {
+				setupErr = errors.Join(setupErr, fmt.Errorf("Publisher ready %d: %w", id, err))
+				break
+			}
+			var ready [1]byte
+			if _, err := io.ReadFull(readerStreamsByID[id], ready[:]); err != nil || ready[0] != 1 {
+				setupErr = errors.Join(setupErr, err, fmt.Errorf("Reader ready %d unavailable", id))
+				break
+			}
 		}
 	}
-	for index, stream := range publisherStreams {
-		cleanup.Go(func() { cleanupErrors <- waitOutcome("publisher", index, stream) })
-	}
-	for index, stream := range readerStreams {
-		cleanup.Go(func() { cleanupErrors <- waitOutcome("reader", index, stream) })
-	}
-	cleanup.Wait()
-	for index, stream := range publisherStreams {
-		cleanup.Go(func() { cleanupErrors <- phaseError("publisher", "Close", index, stream.Close()) })
-	}
-	for index, stream := range readerStreams {
-		cleanup.Go(func() { cleanupErrors <- phaseError("reader", "Close", index, stream.Close()) })
-	}
-	cleanup.Wait()
-	close(cleanupErrors)
-	for err := range cleanupErrors {
-		setupErr = errors.Join(setupErr, err)
-	}
+	// The acceptance boundary is the complete authenticated set and its ready
+	// barrier. The installed workload owns graceful per-stream EOF. This setup
+	// fixture cancels its bounded lifetime once; the registered job, context and
+	// Endpoint owners then join their retained streams in ownership order.
 	cancel()
 	for !producerFinished {
 		select {

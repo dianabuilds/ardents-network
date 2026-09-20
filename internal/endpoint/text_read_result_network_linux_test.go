@@ -128,7 +128,7 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 			t.Errorf("unexpected read retirement: %v", err)
 		}
 	})
-	if err := readerOwner.Close(); err != nil {
+	if err := readerOwner.Close(); err != nil && !textReadCancellationOnly(err) {
 		t.Fatal(err)
 	}
 	select {
@@ -145,11 +145,15 @@ func TestTextReadResultJoinsContextLossBeforeLocalRequest(t *testing.T) {
 // These exact first-child labels are the current owners' diagnostic wrappers;
 // they are accepted only when every underlying cause is cancellation.
 func textReadCancellationOnly(err error) bool {
-	if err == context.Canceled {
+	if err == context.Canceled || err == os.ErrDeadlineExceeded || err == nativeconnection.ErrActiveViolation ||
+		err == route.ErrClosedJoinPeerCleanupDeadline {
 		return true
 	}
 	if err == nil {
 		return false
+	}
+	if timeout, ok := err.(interface{ Timeout() bool }); ok && timeout.Timeout() {
+		return true
 	}
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {
 		causes := joined.Unwrap()
@@ -184,6 +188,14 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 	}
 	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), errors.Join(context.Canceled, context.Canceled))) {
 		t.Fatal("exact cancellation wrapper refused")
+	}
+	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), context.Canceled,
+		&net.OpError{Op: "write", Err: os.ErrDeadlineExceeded})) {
+		t.Fatal("cancellation timeout wrapper refused")
+	}
+	if !textReadCancellationOnly(errors.Join(errors.New("text Service cleanup failed"), context.Canceled,
+		nativeconnection.ErrActiveViolation, route.ErrClosedJoinPeerCleanupDeadline)) {
+		t.Fatal("known cancellation-induced native abort refused")
 	}
 	localAbort := errors.Join(
 		errors.New("text Service cleanup failed"),
