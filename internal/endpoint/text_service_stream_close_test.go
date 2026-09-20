@@ -11,7 +11,7 @@ import (
 func TestTextServiceCloseDrainsOppositeDirectionBeforeFullClose(t *testing.T) {
 	application, native := newApplicationHalfClosePair()
 	finished := make(chan struct{})
-	stream := &textServiceStream{applicationHalfClose: application, cancel: func() {}, finished: finished,
+	stream := &textServiceStream{applicationHalfClose: application, cancel: func() {}, retired: finished, finished: finished,
 		waitClose: func(done <-chan struct{}) bool { <-done; return true }}
 	read := make(chan struct {
 		body []byte
@@ -56,9 +56,10 @@ func TestTextServiceCloseDrainsOppositeDirectionBeforeFullClose(t *testing.T) {
 func TestTextServiceCloseCancelsAndJoinsAfterGraceExpires(t *testing.T) {
 	application, native := newApplicationHalfClosePair()
 	defer native.Close()
+	retired := make(chan struct{})
 	finished := make(chan struct{})
 	var canceled atomic.Bool
-	stream := &textServiceStream{applicationHalfClose: application, finished: finished,
+	stream := &textServiceStream{applicationHalfClose: application, retired: retired, finished: finished,
 		waitClose: func(<-chan struct{}) bool { return false }, cancel: func() {
 			if canceled.CompareAndSwap(false, true) {
 				close(finished)
@@ -73,5 +74,36 @@ func TestTextServiceCloseCancelsAndJoinsAfterGraceExpires(t *testing.T) {
 	var one [1]byte
 	if _, err := native.Read(one[:]); err != io.EOF {
 		t.Fatalf("fallback canceled before directional EOF: %v", err)
+	}
+}
+
+func TestTextServiceCloseReleasesTailAfterBoundedRetirement(t *testing.T) {
+	application, native := newApplicationHalfClosePair()
+	defer native.Close()
+	retired := make(chan struct{})
+	finished := make(chan struct{})
+	var premature atomic.Bool
+	stream := &textServiceStream{applicationHalfClose: application, retired: retired, finished: finished,
+		waitClose: func(done <-chan struct{}) bool { <-done; return true }, cancel: func() {
+			select {
+			case <-retired:
+			default:
+				premature.Store(true)
+			}
+		}, retireTail: func() error {
+			select {
+			case <-retired:
+			default:
+				premature.Store(true)
+			}
+			close(finished)
+			return nil
+		}}
+	close(retired)
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if premature.Load() {
+		t.Fatal("terminal-control tail was canceled before bounded retirement")
 	}
 }

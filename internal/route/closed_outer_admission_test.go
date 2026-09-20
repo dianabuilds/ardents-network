@@ -36,7 +36,7 @@ func closedOuterAdmissionFixtureFor(t *testing.T, purpose ClosedPurpose, class u
 		t.Fatal(err)
 	}
 	t.Cleanup(outer.Close)
-	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time) error { return nil })
+	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestClosedOuterAdmissionRequiresActualTLSOnThisLane(t *testing.T) {
 func TestClosedOuterRetirementDoesNotWaitForBlockedChildWrite(t *testing.T) {
 	lane, bridge, _, _ := closedOuterAdmissionFixture(t)
 	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
-	bridge.write = func(frame ClosedLaneFrame, _ func() time.Time) error {
+	bridge.write = func(frame ClosedLaneFrame, _ func() time.Time, _, _ bool) error {
 		if frame.Kind == closedFrameBytes {
 			close(entered)
 			<-release
@@ -220,7 +220,7 @@ func TestClosedOuterTerminalControlRemainsWritableAfterPayloadExpiry(t *testing.
 	lane, bridge, _, _ := closedOuterAdmissionFixture(t)
 	lane.lane.hardDeadline = time.Now().Add(-time.Second)
 	wrote := false
-	bridge.write = func(frame ClosedLaneFrame, deadline func() time.Time) error {
+	bridge.write = func(frame ClosedLaneFrame, deadline func() time.Time, _, _ bool) error {
 		if frame.Kind != closedFrameClose {
 			t.Fatal("expiry emitted payload")
 		}

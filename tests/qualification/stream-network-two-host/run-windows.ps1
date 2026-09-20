@@ -101,6 +101,11 @@ function Invoke-Native([string]$Program, [string[]]$Arguments, [string]$Label, [
     }
     return $output
 }
+function Get-RemainingSeconds([DateTime]$Deadline, [string]$Label, [int]$Maximum) {
+    $remaining = [int][Math]::Floor(($Deadline - [DateTime]::UtcNow).TotalSeconds)
+    if ($remaining -lt 1) { throw "$Label exceeded its shared setup deadline." }
+    return [Math]::Min($remaining, $Maximum)
+}
 
 Assert-Host $PublisherHost 'PublisherHost'
 Assert-Host $ReaderHost 'ReaderHost'
@@ -330,14 +335,14 @@ $attemptMode = if ($SmokeSeconds -gt 0) { 'smoke' } else { 'acceptance' }
 Write-Utf8 (Join-Path $evidence 'input-digests.json') (([ordered]@{ Schema='ardents-qualification-two-host-inputs-v1'; SourceCommit=$SourceCommit; Mode=$attemptMode; SmokeSeconds=$SmokeSeconds; Files=$inputFiles } | ConvertTo-Json -Depth 5 -Compress) + "`n")
 
 function Remote([string]$HostName) { return "$User@$HostName" }
-function Invoke-SSH([string]$HostName, [string]$Command, [string]$Label) {
-    return @(Invoke-Native $ssh ($sshOptions + @('-n', (Remote $HostName), $Command)) $Label)
+function Invoke-SSH([string]$HostName, [string]$Command, [string]$Label, [int]$TimeoutSeconds = 180) {
+    return @(Invoke-Native $ssh ($sshOptions + @('-n', (Remote $HostName), $Command)) $Label $TimeoutSeconds)
 }
-function Send-File([string]$Source, [string]$HostName, [string]$Destination, [string]$Label) {
-    Invoke-Native $scp ($scpOptions + @($Source, "$(Remote $HostName):$Destination")) $Label
+function Send-File([string]$Source, [string]$HostName, [string]$Destination, [string]$Label, [int]$TimeoutSeconds = 180) {
+    Invoke-Native $scp ($scpOptions + @($Source, "$(Remote $HostName):$Destination")) $Label $TimeoutSeconds
 }
-function Receive-File([string]$HostName, [string]$Source, [string]$Destination, [string]$Label) {
-    Invoke-Native $scp ($scpOptions + @("$(Remote $HostName):$Source", $Destination)) $Label
+function Receive-File([string]$HostName, [string]$Source, [string]$Destination, [string]$Label, [int]$TimeoutSeconds = 180) {
+    Invoke-Native $scp ($scpOptions + @("$(Remote $HostName):$Source", $Destination)) $Label $TimeoutSeconds
 }
 function Deploy-Owner([string]$HostName, [string]$PlanPath) {
     [void](Invoke-SSH $HostName "install -d -m 700 '$remoteRoot' '$remoteRoot/package'" 'create remote staging')
@@ -820,7 +825,7 @@ function Wait-SmokeProgress([string]$HostName, [string]$Invocation, [int]$Partic
     }
     throw "Timed out waiting for complete smoke progress from participant $Participant."
 }
-function Issue-Permission([string]$EndpointHost, [object]$Files, [string]$Digest, [string]$Label) {
+function Issue-Permission([string]$EndpointHost, [object]$Files, [string]$Digest, [string]$Label, [DateTime]$Deadline) {
     Assert-Hex $Digest "$Label request digest"
     Assert-RemotePath ([string]$Files.RequestPath) "$Label request path"
     Assert-RemotePath ([string]$Files.ResponsePath) "$Label response path"
@@ -829,23 +834,23 @@ function Issue-Permission([string]$EndpointHost, [object]$Files, [string]$Digest
     $authorityRequest = "$remoteRoot/$Label.request"
     $authorityPermission = "$remoteRoot/$Label.permission"
     try {
-        Receive-File $EndpointHost ([string]$Files.RequestPath) $requestLocal "download $Label request"
+        Receive-File $EndpointHost ([string]$Files.RequestPath) $requestLocal "download $Label request" (Get-RemainingSeconds $Deadline "download $Label request" 180)
         $actual = (Get-FileHash -LiteralPath $requestLocal -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($actual -cne $Digest) { throw "$Label request differs from independently observed commitment." }
-        [void](Invoke-SSH ([string]$authority.Host) "install -d -m 700 '$remoteRoot'" 'create authority staging')
-        Send-File $requestLocal ([string]$authority.Host) $authorityRequest "upload $Label request to custody"
+        [void](Invoke-SSH ([string]$authority.Host) "install -d -m 700 '$remoteRoot'" 'create authority staging' (Get-RemainingSeconds $Deadline "create $Label authority staging" 180))
+        Send-File $requestLocal ([string]$authority.Host) $authorityRequest "upload $Label request to custody" (Get-RemainingSeconds $Deadline "upload $Label request to custody" 180)
         $args = @('issue-admission-permission', '--vault-root', $authority.VaultRoot, '--record', $authority.RecordID,
             '--request', $authorityRequest, '--permission-output', $authorityPermission,
             '--environment-commitment', $authority.EnvironmentCommitment, '--network-commitment', $authority.NetworkCommitment,
             '--root-commitment', $authority.RootCommitment, '--kind', 'admission', '--id-commitment', $authority.IDCommitment)
         $quoted = ($args | ForEach-Object { "'$($_)'" }) -join ' '
         $custodyCommand = "set +e; stty -echo; '$($authority.Binary)' $quoted; status=`$?; stty echo; exit `$status"
-        [void](Invoke-Native $ssh ($sshOptions + @('-tt', (Remote ([string]$authority.Host)), $custodyCommand)) "$Label custody issuance" 900 @($Digest, $admissionSecret))
-        Receive-File ([string]$authority.Host) $authorityPermission $permissionLocal "download $Label permission"
+        [void](Invoke-Native $ssh ($sshOptions + @('-tt', (Remote ([string]$authority.Host)), $custodyCommand)) "$Label custody issuance" (Get-RemainingSeconds $Deadline "$Label custody issuance" 900) @($Digest, $admissionSecret))
+        Receive-File ([string]$authority.Host) $authorityPermission $permissionLocal "download $Label permission" (Get-RemainingSeconds $Deadline "download $Label permission" 180)
         if ((Get-Item -LiteralPath $permissionLocal).Length -ne 228) { throw "$Label permission has the wrong size." }
-        Send-File $permissionLocal $EndpointHost "$remoteRoot/$Label.permission" "upload $Label permission"
+        Send-File $permissionLocal $EndpointHost "$remoteRoot/$Label.permission" "upload $Label permission" (Get-RemainingSeconds $Deadline "upload $Label permission" 180)
         $destination = [string]$Files.ResponsePath
-        [void](Invoke-SSH $EndpointHost "install -o ardents-endpoint -g ardents-endpoint -m 600 '$remoteRoot/$Label.permission' '$destination'" "publish $Label permission")
+        [void](Invoke-SSH $EndpointHost "install -o ardents-endpoint -g ardents-endpoint -m 600 '$remoteRoot/$Label.permission' '$destination'" "publish $Label permission" (Get-RemainingSeconds $Deadline "publish $Label permission" 180))
     } finally {
         if (Test-Path -LiteralPath $requestLocal) { [IO.File]::Delete($requestLocal) }
         if (Test-Path -LiteralPath $permissionLocal) { [IO.File]::Delete($permissionLocal) }
@@ -915,9 +920,13 @@ try {
     $deadline = [DateTime]::UtcNow.AddMinutes($(if ($SmokeSeconds -gt 0) { 10 } else { 22 }))
     $publisherPermission = $publisherPlanObject.Participants[0].Participant.PublisherPermission
     $event = Wait-Event $PublisherHost $publisherInvocation 'permission-required' 0 $deadline
-    Issue-Permission $PublisherHost $publisherPermission (Convert-Digest $event.RequestDigest 'publisher request digest') 'publisher'
+    Issue-Permission $PublisherHost $publisherPermission (Convert-Digest $event.RequestDigest 'publisher request digest') 'publisher' $deadline
     $ready = Wait-Event $PublisherHost $publisherInvocation 'publisher-ready' 0 $deadline
     if ([string]::IsNullOrWhiteSpace([string]$ready.Link)) { throw 'Publisher emitted no Target Link.' }
+    # Registration is bounded to 600 seconds. Bound deployment plus all four
+    # serial Reader permissions to three minutes, leaving over six minutes for
+    # the measured retained setup and a final registration margin.
+    $readerPermissionDeadline = [DateTime]::UtcNow.AddMinutes(3)
     foreach ($item in @($readerPlanObject.Participants)) { $item.Link = [string]$ready.Link }
     Write-Utf8 $readerPlanPath (($readerPlanObject | ConvertTo-Json -Depth 100 -Compress) + "`n")
     Deploy-Owner $ReaderHost $readerPlanPath
@@ -925,7 +934,7 @@ try {
     $readerInvocation = Start-Owner $ReaderHost
     for ($index = 0; $index -lt 4; $index++) {
         $event = Wait-Event $ReaderHost $readerInvocation 'permission-required' $index $deadline
-        Issue-Permission $ReaderHost $readerPlanObject.Participants[$index].Participant.ReaderPermission (Convert-Digest $event.RequestDigest "reader-$index request digest") "reader-$index"
+        Issue-Permission $ReaderHost $readerPlanObject.Participants[$index].Participant.ReaderPermission (Convert-Digest $event.RequestDigest "reader-$index request digest") "reader-$index" $readerPermissionDeadline
     }
     $smokeSummaries = @()
     if ($SmokeSeconds -gt 0) {

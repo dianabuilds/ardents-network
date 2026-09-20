@@ -63,7 +63,9 @@ func newClosedJoinedStream(ctx context.Context, parent net.Conn, lane *closedSou
 		// bounded reservation until consumed, caller close/cancel, or original expiry.
 		for {
 			owner.mu.Lock()
-			retain := owner.terminal == io.EOF && !joined.closed && (joined.failure == nil || joined.failure == io.EOF) && len(joined.buffer) != 0 && ctx.Err() == nil && time.Now().Before(joined.end)
+			retainPayload := len(joined.buffer) != 0 || joined.remoteClosed && joined.receivedData && !joined.terminalRead
+			retain := owner.terminal == io.EOF && !joined.closed && (joined.failure == nil || joined.failure == io.EOF) &&
+				retainPayload && ctx.Err() == nil && time.Now().Before(joined.end)
 			changed := owner.changed
 			owner.mu.Unlock()
 			if !retain {

@@ -19,7 +19,7 @@ func TestClosedOuterBridgeShutdownRetainsReservationsUntilHandlersJoin(t *testin
 	}
 	defer outer.Close()
 	writes := 0
-	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time) error { writes++; return nil })
+	bridge, err := NewClosedOuterBridge(outer, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { writes++; return nil })
 	if err != nil {
 		t.Fatal(err)
 	}

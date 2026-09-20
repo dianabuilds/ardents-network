@@ -234,6 +234,10 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 		record, err := ReadStream(attachment.carrier)
 		if err != nil {
 			stream.mu.Lock()
+			if stream.postClose && stream.tailRetiring {
+				stream.mu.Unlock()
+				return nil
+			}
 			writingTerminal := stream.terminalReplaying || stream.terminalWriting
 			stream.mu.Unlock()
 			if writingTerminal && stream.opener != nil {
@@ -362,6 +366,10 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 func (stream *Stream) sendBoundedAcknowledgements() error {
 	for {
 		stream.mu.Lock()
+		if stream.postClose && stream.tailRetiring {
+			stream.mu.Unlock()
+			return nil
+		}
 		if stream.terminal != nil {
 			err := stream.terminal
 			stream.mu.Unlock()

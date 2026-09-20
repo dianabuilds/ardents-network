@@ -160,7 +160,7 @@ type Stream struct {
 	terminalWritingGeneration                                                         uint64
 	terminalOffset                                                                    uint64
 	terminalAcknowledgedGeneration                                                    uint64
-	postClose                                                                         bool
+	postClose, tailRetiring                                                           bool
 	applicationWriting                                                                bool
 }
 

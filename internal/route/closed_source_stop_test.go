@@ -110,7 +110,7 @@ func testClosedSourceQueuedClose(t *testing.T, failedRetirement bool) {
 	}
 	closed := make(chan error, 1)
 	go func() { closed <- second.Close() }()
-	waitSourceChannelState(t, owner, func() bool { return len(owner.controls) == 1 && owner.controls[0].frame.Kind == closedFrameClose })
+	waitSourceChannelState(t, owner, func() bool { return len(owner.terminals) == 1 && owner.terminals[0].frame.Kind == closedFrameClose })
 	if err := peer.Close(); err != nil {
 		t.Fatal(err)
 	}

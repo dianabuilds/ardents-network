@@ -46,7 +46,7 @@ func TestClosedOuterExpiredQueuedWritePreservesSibling(t *testing.T) {
 			requested, completed := make(chan struct{}), make(chan error, 1)
 			helpers.Go(func() {
 				close(requested)
-				completed <- writer.write(route.ClosedLaneFrame{Kind: kind, Lane: 1, Body: body}, func() time.Time { mu.Lock(); defer mu.Unlock(); return end })
+				completed <- writer.write(route.ClosedLaneFrame{Kind: kind, Lane: 1, Body: body}, func() time.Time { mu.Lock(); defer mu.Unlock(); return end }, kind == 7, false)
 			})
 			<-requested
 			mu.Lock()
@@ -67,7 +67,7 @@ func TestClosedOuterExpiredQueuedWritePreservesSibling(t *testing.T) {
 				}
 				received <- err
 			})
-			if err := writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 3, Body: []byte{42}}, func() time.Time { return time.Now().Add(time.Second) }); err != nil {
+			if err := writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 3, Body: []byte{42}}, func() time.Time { return time.Now().Add(time.Second) }, false, false); err != nil {
 				t.Fatalf("unattempted expired frame closed sibling: %v", err)
 			}
 			if err := <-received; err != nil {
@@ -87,7 +87,7 @@ func TestClosedOuterPartialCreditStillClosesCarrier(t *testing.T) {
 	t.Cleanup(func() { local.Close(); peer.Close(); helpers.Wait() })
 	completed := make(chan error, 1)
 	helpers.Go(func() {
-		completed <- writer.write(route.ClosedLaneFrame{Kind: 7, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, 1)}, func() time.Time { return time.Now().Add(time.Second) })
+		completed <- writer.write(route.ClosedLaneFrame{Kind: 7, Lane: 1, Body: binary.BigEndian.AppendUint32(nil, 1)}, func() time.Time { return time.Now().Add(time.Second) }, true, false)
 	})
 	if err := peer.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestClosedOuterPartialCreditStillClosesCarrier(t *testing.T) {
 	if err := <-completed; err == nil {
 		t.Fatal("partially emitted CREDIT reported success")
 	}
-	if err := writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 3, Body: []byte{42}}, func() time.Time { return time.Now().Add(time.Second) }); err == nil {
+	if err := writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 3, Body: []byte{42}}, func() time.Time { return time.Now().Add(time.Second) }, false, false); err == nil {
 		t.Fatal("sibling reused a truncated physical frame")
 	}
 	helpers.Wait()

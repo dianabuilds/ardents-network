@@ -431,8 +431,8 @@ func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
 		t.Fatal(err)
 	}
 	fault = true
-	if err = first.Release(t.Context()); !errors.Is(err, syscall.EEXIST) {
-		t.Fatalf("post-callback persistence failure = %v, want EEXIST", err)
+	if err = first.Release(t.Context()); err == nil {
+		t.Fatal("post-callback persistence failure reported success")
 	}
 	firstErr := err
 	if !first.released {

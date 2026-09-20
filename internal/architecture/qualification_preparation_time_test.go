@@ -434,6 +434,28 @@ func TestQualificationSmokeAllowsCompleteRetainedSetup(t *testing.T) {
 	}
 }
 
+func TestQualificationBoundsReaderPermissionSetupByPublisherRegistration(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "tests", "qualification", "stream-network-two-host", "run-windows.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, required := range []string{
+		"function Issue-Permission([string]$EndpointHost, [object]$Files, [string]$Digest, [string]$Label, [DateTime]$Deadline)",
+		"Get-RemainingSeconds $Deadline \"$Label custody issuance\" 900",
+		"$readerPermissionDeadline = [DateTime]::UtcNow.AddMinutes(3)",
+		"Issue-Permission $ReaderHost $readerPlanObject.Participants[$index].Participant.ReaderPermission (Convert-Digest $event.RequestDigest \"reader-$index request digest\") \"reader-$index\" $readerPermissionDeadline",
+	} {
+		if !strings.Contains(text, required) {
+			t.Fatalf("qualification runner does not bind reader permission setup to the publisher registration: missing %q", required)
+		}
+	}
+}
+
 func TestQualificationResetsOnlyFailedEndpointUnit(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

@@ -201,12 +201,54 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		}
 	}
 	var cleanup sync.WaitGroup
-	cleanupErrors := make(chan error, len(publisherStreams)+len(readerStreams))
-	for _, stream := range publisherStreams {
-		cleanup.Go(func() { cleanupErrors <- stream.Close() })
+	cleanupErrors := make(chan error, 3*(len(publisherStreams)+len(readerStreams)))
+	phaseError := func(role, phase string, index int, err error) error {
+		if err == nil {
+			return nil
+		}
+		return fmt.Errorf("%s[%d].%s: %w", role, index, phase, err)
 	}
-	for _, stream := range readerStreams {
-		cleanup.Go(func() { cleanupErrors <- stream.Close() })
+	// Give every retained direction an equal chance to put its authenticated
+	// Terminal in flight before any per-stream Close grace begins. Starting a
+	// timer in the same goroutine that announces EOF makes race-instrumented
+	// teardown depend on which of 512 cleanup goroutines the scheduler runs
+	// first, and an early fallback cancellation can then poison otherwise-live
+	// shared Source work.
+	for index, stream := range publisherStreams {
+		cleanup.Go(func() { cleanupErrors <- phaseError("publisher", "CloseInput", index, stream.CloseInput()) })
+	}
+	for index, stream := range readerStreams {
+		cleanup.Go(func() { cleanupErrors <- phaseError("reader", "CloseInput", index, stream.CloseInput()) })
+	}
+	cleanup.Wait()
+	// A successful native outcome is the boundary between Application
+	// completion and terminal-tail ownership. Do not let an early local outcome
+	// retire its Route transport while the peer is still consuming the final
+	// confirmation already queued on that transport. Once every retained side
+	// has crossed this boundary, full Close may release all tails concurrently.
+	waitOutcome := func(role string, index int, stream connection.Stream) error {
+		select {
+		case outcome, open := <-stream.Done():
+			if !open || outcome.Class != connection.CleanClose {
+				return fmt.Errorf("%s[%d].Done: open=%t outcome=%+v", role, index, open, outcome)
+			}
+			return nil
+		case <-ctx.Done():
+			return fmt.Errorf("%s[%d].Done: %w", role, index, ctx.Err())
+		}
+	}
+	for index, stream := range publisherStreams {
+		cleanup.Go(func() { cleanupErrors <- waitOutcome("publisher", index, stream) })
+	}
+	for index, stream := range readerStreams {
+		cleanup.Go(func() { cleanupErrors <- waitOutcome("reader", index, stream) })
+	}
+	cleanup.Wait()
+	for index, stream := range publisherStreams {
+		cleanup.Go(func() { cleanupErrors <- phaseError("publisher", "Close", index, stream.Close()) })
+	}
+	for index, stream := range readerStreams {
+		cleanup.Go(func() { cleanupErrors <- phaseError("reader", "Close", index, stream.Close()) })
 	}
 	cleanup.Wait()
 	close(cleanupErrors)

@@ -21,15 +21,17 @@ import (
 // after its separate admission checks; this layer cannot establish reachability.
 type textServiceStream struct {
 	*applicationHalfClose
-	binding   *textServiceBinding
-	cancel    context.CancelFunc
-	done      chan applicationconnection.Outcome
-	finished  chan struct{}
-	waitClose func(<-chan struct{}) bool
-	once      sync.Once
-	closeErr  error
-	finishErr error
-	runErr    error // Internal terminal cause, read only after finished closes.
+	binding    *textServiceBinding
+	cancel     context.CancelFunc
+	done       chan applicationconnection.Outcome
+	retired    chan struct{}
+	finished   chan struct{}
+	waitClose  func(<-chan struct{}) bool
+	retireTail func() error
+	once       sync.Once
+	closeErr   error
+	finishErr  error
+	runErr     error // Internal terminal cause, read only after finished closes.
 }
 
 // textServiceTransport gives TLS, cancellation and final cleanup one physical
@@ -101,7 +103,8 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	stopCaller := context.AfterFunc(ctx, func() { defer close(callerDone); cancel() })
 	owned, application := newApplicationHalfClosePair()
 	connection := &textServiceStream{applicationHalfClose: application, binding: binding, cancel: cancel,
-		done: make(chan applicationconnection.Outcome, 1), finished: make(chan struct{}), waitClose: waitTextServiceClose}
+		done: make(chan applicationconnection.Outcome, 1), retired: make(chan struct{}),
+		finished: make(chan struct{}), waitClose: waitTextServiceClose}
 	var lease *publication.Lease
 	interrupted := make(chan struct{})
 	stopLifetime := context.AfterFunc(lifetime, func() {
@@ -236,6 +239,7 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	if err != nil {
 		return nil, err
 	}
+	connection.retireTail = stream.RetireTerminalTail
 	admissionErr := errors.Join(ctx.Err(), lifetime.Err(), binding.current())
 	if admissionErr != nil {
 		// The native lifecycle still owns its initial secret/receipt. Run it
@@ -278,6 +282,10 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		}
 		connection.done <- outcome
 		close(connection.done)
+		// RunBounded has completed the Application Terminal exchange. Its
+		// recovery-capable terminal-control tail may intentionally keep
+		// stream.Done open until the lifetime is canceled.
+		close(connection.retired)
 		if !nativeFinished {
 			<-stream.Done()
 			connection.finishErr = cleanup()
@@ -310,10 +318,17 @@ func (connection *textServiceStream) Close() error {
 		if wait == nil {
 			wait = waitTextServiceClose
 		}
-		if !wait(connection.finished) {
+		retired := wait(connection.retired)
+		if !retired {
 			connection.cancel()
-			<-connection.finished
+		} else if connection.retireTail != nil {
+			retireErr := connection.retireTail()
+			connection.closeErr = errors.Join(connection.closeErr, retireErr)
+			if retireErr != nil {
+				connection.cancel()
+			}
 		}
+		<-connection.finished
 		connection.cancel()
 		connection.closeErr = errors.Join(connection.closeErr, connection.applicationHalfClose.Close())
 		connection.closeErr = errors.Join(connection.closeErr, connection.finishErr)
@@ -322,12 +337,6 @@ func (connection *textServiceStream) Close() error {
 }
 
 func waitTextServiceClose(finished <-chan struct{}) bool {
-	timer := time.NewTimer(time.Second)
-	defer timer.Stop()
-	select {
-	case <-finished:
-		return true
-	case <-timer.C:
-		return false
-	}
+	<-finished
+	return true
 }

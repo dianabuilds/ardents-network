@@ -41,9 +41,10 @@ func (lane *ClosedOuterBridgeLane) Write(value []byte) (int, error) {
 		}
 		count := min(len(value), closedLaneMaximum, int(inner.outboundCredit))
 		inner.outboundCredit -= uint32(count)
+		terminal := inner.terminalWriters != 0
 		inner.mu.Unlock()
 		frame := ClosedLaneFrame{Kind: closedFrameBytes, Lane: inner.id, Body: append([]byte(nil), value[:count]...)}
-		if err := inner.bridge.write(frame, inner.currentWriteDeadline); err != nil {
+		if err := inner.bridge.write(frame, inner.currentWriteDeadline, false, terminal); err != nil {
 			return written, err
 		}
 		value = value[count:]

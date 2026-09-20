@@ -11,7 +11,7 @@ import (
 func TestClosedOuterWriterWaitsForReturnedCredit(t *testing.T) {
 	lane, bridge, _, _ := closedOuterAdmissionFixture(t)
 	frames := make(chan ClosedLaneFrame, 8)
-	bridge.write = func(frame ClosedLaneFrame, _ func() time.Time) error { frames <- frame; return nil }
+	bridge.write = func(frame ClosedLaneFrame, _ func() time.Time, _, _ bool) error { frames <- frame; return nil }
 	if err := lane.SetWriteDeadline(time.Now().Add(2 * time.Second)); err != nil {
 		t.Fatal(err)
 	}

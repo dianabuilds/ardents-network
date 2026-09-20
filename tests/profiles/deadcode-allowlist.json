@@ -540,6 +540,15 @@
         "rationale": "These helpers are live only in the Linux runtime build; Windows analysis correctly sees them as unreachable.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove the probe when its Linux resource evidence is retired, or provide an accepted Windows implementation."
+      },
+      {
+        "symbols": [
+          "internal/service/connection.Stream.RetireTerminalTail"
+        ],
+        "classification": "platform-specific terminal-tail lifecycle",
+        "rationale": "The method is called by the Linux-only text Service endpoint after successful Application completion; Windows production has no selected text-Service runtime, while cross-platform connection tests cover the state machine.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove this Windows allowance if text Service gains a maintained Windows consumer, or remove the method with the Linux terminal-tail contract."
       }
     ]
   }

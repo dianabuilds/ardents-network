@@ -1,6 +1,9 @@
 package connection
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // startTerminalTail retains only terminal-control ownership after RunBounded
 // has returned successfully. A final receipt confirmation has no further
@@ -59,6 +62,13 @@ func (stream *Stream) runTerminalTail(cleanup func(), receiver <-chan error) {
 	if err := <-receiver; err != nil {
 		stream.fail(err)
 	} else {
+		stream.mu.Lock()
+		retiring := stream.tailRetiring
+		stream.mu.Unlock()
+		if retiring {
+			<-results
+			return
+		}
 		// The ordinary receiver may have observed completion immediately before
 		// postClose was set. Replace it with a receiver that now owns only
 		// terminal-control records.
@@ -67,6 +77,46 @@ func (stream *Stream) runTerminalTail(cleanup func(), receiver <-chan error) {
 		}
 	}
 	<-results
+}
+
+// RetireTerminalTail releases an already successful terminal-control tail
+// without turning that local lifecycle decision into a protocol failure. It
+// interrupts only the tail reader; runTerminalTail joins its acknowledgement
+// worker before closing the Attachment through the ordinary cleanup path.
+func (stream *Stream) RetireTerminalTail() error {
+	if stream == nil {
+		return nil
+	}
+	stream.mu.Lock()
+	if stream.terminal != nil {
+		err := stream.terminal
+		stream.mu.Unlock()
+		return err
+	}
+	if !stream.postClose {
+		stream.mu.Unlock()
+		return errors.New("terminal-control tail is unavailable")
+	}
+	if stream.tailRetiring {
+		stream.mu.Unlock()
+		return nil
+	}
+	stream.tailRetiring = true
+	attachment := stream.current
+	stream.cond.Broadcast()
+	stream.mu.Unlock()
+	select {
+	case stream.ackSignal <- struct{}{}:
+	default:
+	}
+	if attachment == nil {
+		return errors.New("terminal-control Attachment is unavailable")
+	}
+	reader, ok := attachment.carrier.(interface{ SetReadDeadline(time.Time) error })
+	if !ok {
+		return errors.New("terminal-control Attachment cannot interrupt its reader")
+	}
+	return reader.SetReadDeadline(time.Now())
 }
 
 func (stream *Stream) startTerminalTailReceive() <-chan error {

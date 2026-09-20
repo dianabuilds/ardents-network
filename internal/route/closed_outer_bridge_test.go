@@ -3,7 +3,9 @@ package route
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"io"
+	"sync"
 	"testing"
 	"time"
 )
@@ -21,7 +23,7 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	}
 	defer handshake.Close()
 	written := make(chan ClosedLaneFrame, 8)
-	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(frame ClosedLaneFrame, _ func() time.Time) error { written <- frame; return nil })
+	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(frame ClosedLaneFrame, _ func() time.Time, _, _ bool) error { written <- frame; return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,6 +102,112 @@ func TestClosedOuterBridgeCarriesOpaqueInnerLaneWithCredit(t *testing.T) {
 	}
 }
 
+func TestClosedOuterBridgeCloseDoesNotInterruptActiveCredit(t *testing.T) {
+	now := time.Unix(1_800_300_000, 0).UTC()
+	receiver := closedOuterHandshakeReceiver(now)
+	limits, err := NewClosedDutyLimits(func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	handshake, err := NewClosedOuterHandshake(receiver, limits, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer handshake.Close()
+	creditEntered := make(chan struct{})
+	releaseCredit := make(chan struct{})
+	creditFinished := make(chan struct{})
+	closeWritten := make(chan struct{})
+	var writer sync.Mutex
+	interrupted := errors.New("active CREDIT interrupted")
+	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error {
+		select {
+		case <-creditFinished:
+			return nil
+		default:
+			return interrupted
+		}
+	}, func(frame ClosedLaneFrame, _ func() time.Time, _, _ bool) error {
+		writer.Lock()
+		defer writer.Unlock()
+		switch frame.Kind {
+		case closedFrameCredit:
+			close(creditEntered)
+			<-releaseCredit
+			close(creditFinished)
+		case closedFrameClose:
+			close(closeWritten)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hello := ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
+		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
+		Purpose: ClosedPurposeForwarding, ChannelNonce: [32]byte{31}, Deadline: receiver.Deadline}
+	helloBody, err := EncodeClosedHello(hello)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameHello, Body: helloBody}); err != nil {
+		t.Fatal(err)
+	}
+	openBody, err := EncodeClosedNodeOpen(ClosedOpen{NextNodeID: receiver.NodeID, NextDutyGeneration: receiver.DutyGeneration, Purpose: ClosedPurposeIssuer, Deadline: receiver.Deadline}, ClosedChildOrdinary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lane, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameOpen, Lane: 1, Body: openBody})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{1}}); err != nil {
+		t.Fatal(err)
+	}
+	var preface [1]byte
+	if _, err := io.ReadFull(lane, preface[:]); err != nil {
+		t.Fatal(err)
+	}
+	if err := lane.BeginInnerHello(); err != nil {
+		t.Fatal(err)
+	}
+	inner := hello
+	inner.Purpose, inner.ChannelNonce = ClosedPurposeIssuer, [32]byte{32}
+	if err := lane.Activate(inner); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Accept(ClosedLaneFrame{Kind: closedFrameBytes, Lane: 1, Body: []byte{7}}); err != nil {
+		t.Fatal(err)
+	}
+	read := make(chan error, 1)
+	go func() { var value [1]byte; _, err := lane.Read(value[:]); read <- err }()
+	<-creditEntered
+	closed := make(chan error, 1)
+	go func() { closed <- lane.CloseWithStatus(0) }()
+	select {
+	case err := <-closed:
+		if errors.Is(err, interrupted) {
+			close(releaseCredit)
+			<-read
+			t.Fatal("local CLOSE interrupted an active CREDIT before serialization")
+		}
+		t.Fatalf("local CLOSE returned before active CREDIT completed: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(releaseCredit)
+	if err := <-read; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-closed; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-closeWritten:
+	default:
+		t.Fatal("local CLOSE frame was not serialized after CREDIT")
+	}
+}
+
 func TestClosedOuterBridgeRefusesForeignOpenBeforeCreatingLane(t *testing.T) {
 	now := time.Unix(1_800_300_000, 0).UTC()
 	receiver := closedOuterHandshakeReceiver(now)
@@ -109,7 +217,7 @@ func TestClosedOuterBridgeRefusesForeignOpenBeforeCreatingLane(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer handshake.Close()
-	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time) error { return nil })
+	bridge, err := NewClosedOuterBridge(handshake, func(uint32, time.Time) error { return nil }, func(ClosedLaneFrame, func() time.Time, bool, bool) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}

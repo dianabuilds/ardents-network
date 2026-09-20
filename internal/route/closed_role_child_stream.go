@@ -19,6 +19,7 @@ import (
 type closedRoleChildStream struct {
 	transferred, refillBase uint64
 	writeDeadline           time.Time
+	terminalWriters         uint32
 	physicalWriting         bool
 	payloadFrames           uint64
 	physicalWriteFailed     bool
@@ -227,6 +228,20 @@ func (stream *closedRoleChildStream) Write(value []byte) (int, error) {
 	return written, nil
 }
 
+func (stream *closedRoleChildStream) beginTerminalWrite() func() {
+	stream.mu.Lock()
+	stream.terminalWriters++
+	stream.mu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			stream.mu.Lock()
+			stream.terminalWriters--
+			stream.mu.Unlock()
+		})
+	}
+}
+
 // replenish serializes the parent forwarding channel's lane-zero ADMIT and
 // consumes its one lane-zero ACCEPT. The same reader continues to own lane-one
 // child frames, so no second physical reader or protocol layer is introduced.
@@ -322,6 +337,7 @@ func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bo
 		deadline = stream.deadline
 	}
 	err := stream.terminal
+	terminal := stream.terminalWriters != 0
 	attempted := err == nil
 	if attempted {
 		stream.transferred += uint64(closedLaneHeaderSize + len(frame.Body))
@@ -332,9 +348,14 @@ func (stream *closedRoleChildStream) writeFrame(frame ClosedLaneFrame, credit bo
 		err = stream.parent.SetWriteDeadline(deadline)
 	}
 	stream.mu.Unlock()
+	finishTerminal := func() {}
+	if err == nil && terminal {
+		finishTerminal = beginClosedTerminalWrite(stream.parent)
+	}
 	if err == nil {
 		err = WriteClosedLaneFrame(stream.parent, frame)
 	}
+	finishTerminal()
 	stream.mu.Lock()
 	stream.physicalWriting = false
 	if attempted && err != nil {

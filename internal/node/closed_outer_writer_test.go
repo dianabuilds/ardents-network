@@ -28,7 +28,7 @@ func TestClosedOuterWriterUpdatesOnlyActiveChildDeadline(t *testing.T) {
 	writer := &closedOuterWriter{connection: observed}
 	done := make(chan error, 1)
 	go func() {
-		done <- writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { return time.Now().Add(time.Hour) })
+		done <- writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { return time.Now().Add(time.Hour) }, false, false)
 	}()
 	<-observed.started
 	if err := writer.update(3, time.Now()); err != nil {
@@ -63,7 +63,7 @@ func TestClosedOuterWriterReadsQueuedDeadlineAfterSerialization(t *testing.T) {
 	requested, done := make(chan struct{}), make(chan error, 1)
 	go func() {
 		close(requested)
-		done <- writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { mu.Lock(); defer mu.Unlock(); return end })
+		done <- writer.write(route.ClosedLaneFrame{Kind: 6, Lane: 1, Body: []byte{1}}, func() time.Time { mu.Lock(); defer mu.Unlock(); return end }, false, false)
 	}()
 	<-requested
 	mu.Lock()

@@ -19,6 +19,7 @@ type closedSourceLane struct {
 	writeEOF                          bool
 	emissions                         uint64 // Monotonic physical attempts, including failed or partial frames.
 	closeStatus                       byte
+	terminalWriters                   uint32
 	opened                            bool
 	owner                             *closedSourceChannels
 	id                                uint32
@@ -26,6 +27,8 @@ type closedSourceLane struct {
 	credit, receiveCredit, consumed   uint32
 	buffer                            []byte
 	active, eof, remoteClosed, closed bool
+	terminalRead                      bool
+	receivedData                      bool
 	failure                           error
 	reading, writing                  sync.Mutex
 	closeOnce                         sync.Once
@@ -57,12 +60,18 @@ func (lane *closedSourceLane) enqueueLocked(frame ClosedLaneFrame, cleanup time.
 		return nil, err
 	}
 	control := frame.Kind != closedFrameBytes
+	terminal := frame.Kind == closedFrameClose || lane.terminalWriters != 0
 	if control && owner.controlsSize+size > 16<<10 || !owner.reserveQueuedLocked(size, control) {
 		return nil, errClosedSourceOutputQueueFull
 	}
-	request := &closedSourceWrite{lane: lane, frame: frame, end: cleanup, done: make(chan struct{})}
+	request := &closedSourceWrite{lane: lane, frame: frame, end: cleanup, done: make(chan struct{}), control: control, terminal: terminal}
 	request.frame.Body = append([]byte(nil), frame.Body...)
-	if control {
+	if terminal {
+		if control {
+			owner.controlsSize += size
+		}
+		owner.terminals = append(owner.terminals, request)
+	} else if control {
 		owner.controlsSize += size
 		owner.controls = append(owner.controls, request)
 	} else {
@@ -119,7 +128,7 @@ func (owner *closedSourceChannels) awaitWrite(request *closedSourceWrite) error 
 }
 
 func (owner *closedSourceChannels) removeQueuedWriteLocked(request *closedSourceWrite, err error) {
-	for _, queue := range []*[]*closedSourceWrite{&owner.controls, &owner.data} {
+	for _, queue := range []*[]*closedSourceWrite{&owner.terminals, &owner.controls, &owner.data} {
 		for index, candidate := range *queue {
 			if candidate != request {
 				continue
@@ -127,7 +136,7 @@ func (owner *closedSourceChannels) removeQueuedWriteLocked(request *closedSource
 			*queue = append((*queue)[:index], (*queue)[index+1:]...)
 			size := uint64(16 + len(request.frame.Body))
 			owner.releaseQueuedLocked(size)
-			if request.frame.Kind != closedFrameBytes {
+			if request.control {
 				owner.controlsSize -= size
 			}
 			request.err = err
@@ -137,6 +146,25 @@ func (owner *closedSourceChannels) removeQueuedWriteLocked(request *closedSource
 		}
 	}
 }
+
+// beginTerminalWrite carries an authenticated inner terminal's scheduling
+// class through its encrypted TLS record. It changes neither wire bytes nor
+// the request's ordinary queue reservation.
+func (lane *closedSourceLane) beginTerminalWrite() func() {
+	owner := lane.owner
+	owner.mu.Lock()
+	lane.terminalWriters++
+	owner.mu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			owner.mu.Lock()
+			lane.terminalWriters--
+			owner.mu.Unlock()
+		})
+	}
+}
+
 func waitClosedSourceChange(changed <-chan struct{}, deadline time.Time) error {
 	timer := time.NewTimer(time.Until(deadline))
 	defer timer.Stop()
@@ -199,6 +227,10 @@ func (lane *closedSourceLane) Read(value []byte) (int, error) {
 			err = io.EOF
 		}
 		if err != nil {
+			if err == io.EOF {
+				lane.terminalRead = true
+				owner.signalLocked()
+			}
 			owner.mu.Unlock()
 			return 0, err
 		}
@@ -299,7 +331,7 @@ func (lane *closedSourceLane) Close() error {
 		// Release this lane's queued readers/writers even while a sibling owns
 		// the physical writer. An already active frame must finish or retire
 		// the parent because its wire prefix may have been emitted.
-		for _, queue := range []*[]*closedSourceWrite{&owner.controls, &owner.data} {
+		for _, queue := range []*[]*closedSourceWrite{&owner.terminals, &owner.controls, &owner.data} {
 			for index := len(*queue) - 1; index >= 0; index-- {
 				request := (*queue)[index]
 				if request.lane == lane {
@@ -370,11 +402,11 @@ func (lane *closedSourceLane) Close() error {
 		}
 		owner.mu.Lock()
 		unemitted := owner.terminal != nil && (terminal == nil || !terminal.attempted || terminal.unwritten)
-		joinedPeerEnd := owner.retainClosedRead && terminal != nil && owner.terminal == io.EOF &&
+		joinedPeerEnd := owner.retainClosedRead && owner.terminal == io.EOF &&
 			lane.remoteClosed && lane.failure == io.EOF && owner.framedParent != nil
 		owner.mu.Unlock()
 		joinedLower := false
-		if lane.closeErr != nil && joinedPeerEnd {
+		if (lane.closeErr != nil || creditErr != nil) && joinedPeerEnd {
 			<-owner.done
 			_, active, clean := owner.framedParent.closeWriteWitness()
 			joinedLower = !active && clean
@@ -389,7 +421,7 @@ func (lane *closedSourceLane) Close() error {
 		}
 		// Check the retained CREDIT even if its failure ended the parent before
 		// CLOSE could be queued. Whole-parent intentional stop remains distinct.
-		if creditErr != nil && !errors.Is(creditErr, ErrClosedSourceStopped) {
+		if creditErr != nil && !joinedLower && !errors.Is(creditErr, ErrClosedSourceStopped) {
 			lane.closeErr = errors.Join(lane.closeErr, errors.Join(errors.New("closed source in-flight CREDIT write failed"), creditErr))
 		}
 		if lane.closeErr != nil {

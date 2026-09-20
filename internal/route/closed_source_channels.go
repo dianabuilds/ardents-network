@@ -38,7 +38,7 @@ type closedSourceChannels struct {
 	lanes                             map[uint32]*closedSourceLane
 	last                              uint32
 	queued, controlsSize, transferred uint64
-	controls, data                    []*closedSourceWrite
+	terminals, controls, data         []*closedSourceWrite
 	active                            *closedSourceWrite
 	terminal                          error
 	workers                           sync.WaitGroup
@@ -50,6 +50,8 @@ type closedSourceChannels struct {
 type closedSourceWrite struct {
 	unwritten bool // A lower framing witness proves no physical frame began.
 	attempted bool // Guarded by owner.mu; physical frame emission began.
+	control   bool // Reservation class; encrypted terminal priority remains data.
+	terminal  bool // Scheduling class propagated through encrypted lower layers.
 	lane      *closedSourceLane
 	frame     ClosedLaneFrame
 	end       time.Time // Nonzero only for terminal cleanup.
@@ -78,15 +80,15 @@ func (owner *closedSourceChannels) fail(err error) {
 	owner.mu.Lock()
 	if owner.terminal == nil {
 		owner.terminal = err
-		for _, queue := range [][]*closedSourceWrite{owner.controls, owner.data} {
+		for _, queue := range [][]*closedSourceWrite{owner.terminals, owner.controls, owner.data} {
 			for _, request := range queue {
 				request.err = err
 				close(request.done)
 				owner.releaseQueuedLocked(uint64(16 + len(request.frame.Body)))
 			}
 		}
-		owner.controls, owner.data = nil, nil
-		if owner.active != nil && owner.active.frame.Kind != closedFrameBytes {
+		owner.terminals, owner.controls, owner.data = nil, nil, nil
+		if owner.active != nil && owner.active.control {
 			owner.controlsSize = uint64(16 + len(owner.active.frame.Body))
 		} else {
 			owner.controlsSize = 0
@@ -227,6 +229,7 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 		}
 		lane.receiveCredit -= uint32(size)
 		lane.buffer = append(lane.buffer, frame.Body...)
+		lane.receivedData = true
 	case closedFrameCredit:
 		increment := binary.BigEndian.Uint32(frame.Body)
 		if increment == 0 || increment > 64<<10-lane.credit {
@@ -259,6 +262,11 @@ func (owner *closedSourceChannels) receive(frame ClosedLaneFrame) error {
 // keeps admission and retirement responsive without allowing a sustained,
 // admitted control stream to starve an issuer or other bounded child payload.
 func (owner *closedSourceChannels) nextWriteLocked() (*closedSourceWrite, bool) {
+	if len(owner.terminals) > 0 {
+		request := owner.terminals[0]
+		owner.terminals = owner.terminals[1:]
+		return request, request.control
+	}
 	if len(owner.controls) > 0 && (len(owner.data) == 0 || !owner.dataDue) {
 		request := owner.controls[0]
 		owner.controls = owner.controls[1:]
@@ -331,9 +339,14 @@ func (owner *closedSourceChannels) write() {
 				parentBefore, parentBusy, _ = owner.framedParent.writeWitness()
 			}
 		}
+		finishTerminal := func() {}
+		if attempted && request.terminal {
+			finishTerminal = beginClosedTerminalWrite(owner.parent)
+		}
 		if attempted {
 			err = WriteClosedLaneFrame(owner.parent, request.frame)
 		}
+		finishTerminal()
 		unwritten := false
 		if err != nil && attempted && parentWitness {
 			after, active, clean := owner.framedParent.writeWitness()
