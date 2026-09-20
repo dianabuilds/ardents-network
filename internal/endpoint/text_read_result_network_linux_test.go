@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -188,7 +189,7 @@ func TestTextReadCancellationRejectsAdditionalCleanupFailure(t *testing.T) {
 		errors.New("text Service cleanup failed"),
 		nativeconnection.ErrActiveViolation,
 		errors.Join(errors.New("text Service transport retirement failed"), context.Canceled,
-			route.ErrClosedJoinPeerCleanupDeadline),
+			route.ErrClosedJoinPeerCleanupDeadline, &net.OpError{Op: "write", Err: os.ErrDeadlineExceeded}),
 	)
 	if !textCanceledBeforeRequestCleanupOnly(localAbort) {
 		t.Fatal("known cancellation-induced native abort refused")

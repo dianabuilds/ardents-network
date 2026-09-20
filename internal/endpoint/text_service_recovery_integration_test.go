@@ -27,7 +27,10 @@ func TestTextServiceRecoveryDoesNotReplayAcceptedDocumentRequest(t *testing.T) {
 	client, publisher, _ := textServiceFixture(t)
 	initialClient, initialPublisher := net.Pipe()
 	replacementClient, replacementPublisher := net.Pipe()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	// Recovery performs a fresh protected Route attachment under the race
+	// detector. Keep the test harness deadline above the accepted operation's
+	// own bounded stages so a loaded runner does not cancel valid recovery.
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	testOwner := newTextServiceRecoveryTestOwner(t, cancel, initialClient, initialPublisher, replacementClient, replacementPublisher)
 	testOwner.retainContext(client.owner)

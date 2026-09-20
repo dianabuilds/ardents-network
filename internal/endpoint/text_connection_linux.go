@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -244,10 +245,13 @@ func newTextReadResult(owner *textConnection, pending chan struct{}, lease *brok
 }
 
 func textCanceledBeforeRequestCleanupOnly(err error) bool {
-	if err == nil || err == context.Canceled || err == nativeconnection.ErrActiveViolation {
+	if err == nil || err == context.Canceled || err == os.ErrDeadlineExceeded || err == nativeconnection.ErrActiveViolation {
 		return true
 	}
-	if errors.Is(err, route.ErrClosedJoinPeerCleanupDeadline) {
+	if err == route.ErrClosedJoinPeerCleanupDeadline {
+		return true
+	}
+	if timeout, ok := err.(interface{ Timeout() bool }); ok && timeout.Timeout() {
 		return true
 	}
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {
