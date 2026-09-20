@@ -77,8 +77,11 @@ func main() {
 	}
 	var failures []error
 	for _, check := range checks {
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
-		args := []string{"test", "-count=1", "-timeout=3m", "-run", check.run}
+		// Endpoint network fixtures may deliberately wait up to two minutes for
+		// the next complete Permission hour before starting their bounded work.
+		// Keep that admission wait inside, rather than consuming, the test budget.
+		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
+		args := []string{"test", "-count=1", "-timeout=5m", "-run", check.run}
 		if check.race {
 			args = append(args, "-race")
 		}

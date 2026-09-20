@@ -229,9 +229,8 @@ func TestTextJoinedServiceRecoversAcceptedRequestAcrossFreshProtectedRoute(t *te
 			}
 			publisherErr := <-publisherDone
 			if err := errors.Join(readErr, publisherErr); err != nil || !bytes.Equal(received, body) {
-				t.Fatalf("recovered protected Route document=%d/%d: %v; client route=%v native=%v cleanup=%v; Publisher route=%v native=%v cleanup=%v",
-					len(received), len(body), err, clientRecovery.outcome(), clientStream.runErr, clientStream.finishErr,
-					publisherRecovery.outcome(), remote.stream.runErr, remote.stream.finishErr)
+				t.Fatalf("recovered protected Route document=%d/%d: %v; client route=%v; Publisher route=%v",
+					len(received), len(body), err, clientRecovery.outcome(), publisherRecovery.outcome())
 			}
 			recoveredTokens := textTokenAttemptSnapshot(t, reader.endpoint)
 			assertFreshRecoveryTokenAttempts(t, initialTokens, recoveredTokens)

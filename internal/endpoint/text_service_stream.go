@@ -244,7 +244,13 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 	if err != nil {
 		return nil, err
 	}
-	connection.retireTail = stream.RetireTerminalTail
+	// Only recovery-capable streams retain terminal-control ownership after
+	// RunBounded. A one-Attachment stream completes and closes immediately, so
+	// presenting its RetireTerminalTail method would turn an ordinary local
+	// Close into the false "terminal-control tail is unavailable" failure.
+	if open != nil {
+		connection.retireTail = stream.RetireTerminalTail
+	}
 	admissionErr := errors.Join(ctx.Err(), lifetime.Err(), binding.current())
 	if admissionErr != nil {
 		// The native lifecycle still owns its initial secret/receipt. Run it
@@ -328,6 +334,12 @@ func (connection *textServiceStream) Close() error {
 			connection.cancel()
 		} else if connection.retireTail != nil {
 			retireErr := connection.retireTail()
+			// Caller cancellation may already have ended an otherwise successful
+			// retained tail. The Application outcome owns that cancellation; Close
+			// reports only a distinct terminal or cleanup failure.
+			if retireErr == context.Canceled {
+				retireErr = nil
+			}
 			connection.closeErr = errors.Join(connection.closeErr, retireErr)
 			if retireErr != nil {
 				connection.cancel()

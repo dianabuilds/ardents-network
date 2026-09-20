@@ -76,18 +76,22 @@ func (owner *textContext) beginTextServiceTransportExchange(caller context.Conte
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(caller, func() { defer close(interrupted); cancel() })
 	var joinCaller sync.Once
+	detached := false
 	detach := func() bool {
 		joinCaller.Do(func() {
 			if !stop() {
 				<-interrupted
 			}
+			detached = caller.Err() == nil
 		})
-		return caller.Err() == nil
+		return detached
 	}
 	finish := func(outcome error) error {
 		cancel()
-		detach()
-		outcome = errors.Join(outcome, caller.Err(), job.context.Err())
+		if !detach() {
+			outcome = errors.Join(outcome, caller.Err())
+		}
+		outcome = errors.Join(outcome, job.context.Err())
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		if errors.Is(outcome, route.ErrClosedSourceCleanup) {

@@ -3,6 +3,7 @@
 package endpoint
 
 import (
+	"context"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -107,6 +108,21 @@ func TestTextServiceCloseReleasesTailAfterBoundedRetirement(t *testing.T) {
 	}
 	if premature.Load() {
 		t.Fatal("terminal-control tail was canceled before bounded retirement")
+	}
+}
+
+func TestTextServiceCloseDoesNotRepeatCanceledTailOutcome(t *testing.T) {
+	application, native := newApplicationHalfClosePair()
+	defer native.Close()
+	retired := make(chan struct{})
+	finished := make(chan struct{})
+	close(retired)
+	close(finished)
+	stream := &textServiceStream{applicationHalfClose: application, retired: retired, finished: finished,
+		waitClose: func(done <-chan struct{}) bool { <-done; return true }, cancel: func() {},
+		retireTail: func() error { return context.Canceled }}
+	if err := stream.Close(); err != nil {
+		t.Fatalf("caller cancellation was repeated as cleanup failure: %v", err)
 	}
 }
 
