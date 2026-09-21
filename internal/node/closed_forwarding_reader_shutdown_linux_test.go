@@ -78,6 +78,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 		fixture.snapshot.Candidates[index].AssignmentNotAfter = fixture.view.Profile.NotAfter
 	}
 	serverCertificate, serverKey := rendezvousCertificate(t, 291, "reader-shutdown-server")
+	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return now }
 	fixture.config.Current = func() (DutyView, error) { return fixture.snapshot, nil }
