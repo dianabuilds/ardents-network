@@ -2,6 +2,8 @@ package endpoint
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
@@ -31,6 +33,41 @@ type transitCredentialSubmission struct {
 type acquiredTransitCredential struct {
 	attempt transitAcquisitionAttempt
 	finish  func(bool) error
+}
+
+// applicationServiceAttachment verifies the fixed Grant carried by a retained
+// Descriptor v1 publisher path. Decode failure is rejected before an
+// attachment identifier can be allocated.
+func applicationServiceAttachment(authorization []byte, epoch state.ResolutionEpoch, introduction [32]byte, notAfter time.Time) ([32]byte, error) {
+	grant, err := route.DecodeTransitGrant(authorization)
+	if err != nil {
+		return [32]byte{}, errors.New("application Transit Grant is malformed")
+	}
+	var authority ed25519.PublicKey
+	for _, candidate := range epoch.Authorities {
+		if candidate.ID == grant.IssuerID {
+			authority = ed25519.PublicKey(candidate.PublicKey[:])
+			break
+		}
+	}
+	if authority == nil {
+		return [32]byte{}, errors.New("introduction transit grant issuer is absent from current state")
+	}
+	grant, err = route.VerifyTransitGrant(authorization, authority)
+	if err != nil || grant.NetworkID != epoch.NetworkID || grant.Digest != epoch.Digest || grant.Epoch != epoch.Number ||
+		grant.TransitRole != route.IntroductionRole || grant.TransitNodeID != introduction || grant.AttachmentID == [32]byte{} ||
+		notAfter.IsZero() || notAfter.After(grant.NotAfter) {
+		return [32]byte{}, errors.New("introduction transit grant does not bind the current Application route")
+	}
+	return grant.AttachmentID, nil
+}
+
+func applicationAttachmentID() ([32]byte, error) {
+	var value [32]byte
+	if _, err := rand.Read(value[:]); err != nil || value == [32]byte{} {
+		return [32]byte{}, errors.New("application Connection could not create a Route attachment identifier")
+	}
+	return value, nil
 }
 
 // acquireTransitCredentialLifecycle owns Endpoint's durable at-most-once

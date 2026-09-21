@@ -5,7 +5,10 @@ package connection_test
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
+	"errors"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,6 +105,50 @@ func TestReservedNameRefusesBeforeOwnerEffects(t *testing.T) {
 	stream, err := connection.Dial(ctx, path, connection.Request{Destination: connection.Name, Value: "reserved"})
 	if stream != nil || err == nil || !strings.Contains(err.Error(), "not-selected") || owner.calls.Load() != 0 {
 		t.Fatalf("reserved Name = %v, %v; calls=%d", stream, err, owner.calls.Load())
+	}
+}
+
+func TestAAI2RequestRefusesBeforeOwnerEffects(t *testing.T) {
+	owner := &echoOwner{}
+	path := shortSocketPath(t)
+	server, err := connection.Listen(path, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := server.Close(); err != nil {
+			t.Errorf("close AAI3 server: %v", err)
+		}
+	})
+	peer, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := peer.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			t.Errorf("close AAI2 peer: %v", err)
+		}
+	})
+	if err := peer.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	const target = "ardents-target:v1:retired"
+	request := make([]byte, 6+len(target)+4+len("forbidden frame"))
+	copy(request, "AAI2")
+	binary.BigEndian.PutUint16(request[4:6], uint16(len(target)))
+	copy(request[6:], target)
+	frame := request[6+len(target):]
+	binary.BigEndian.PutUint32(frame[:4], uint32(len("forbidden frame")))
+	copy(frame[4:], "forbidden frame")
+	if _, err := peer.Write(request); err != nil {
+		t.Fatal(err)
+	}
+	var status [1]byte
+	if _, err := io.ReadFull(peer, status[:]); err != nil || status[0] != 0 {
+		t.Fatalf("AAI2 refusal status = %d, %v", status[0], err)
+	}
+	if owner.calls.Load() != 0 {
+		t.Fatalf("AAI2 request reached Application owner %d times", owner.calls.Load())
 	}
 }
 

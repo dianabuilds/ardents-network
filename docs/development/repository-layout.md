@@ -108,8 +108,8 @@ cmd/
 internal/
   architecture/                executable repository and quality rules
   application/
-    interfacev1/connection/     versioned local Connection Interface and transport
     interfacev1/administration/ separate local Publish/Withdraw Interface and transport
+    interfacev2/connection/     protected text Connection Interface and transport
     broker/                     Network-owned local Connection implementation
   enrollment/                  Network-v1-v3 artifact verification
 scripts/
