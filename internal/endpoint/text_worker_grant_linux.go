@@ -53,8 +53,9 @@ func (owner *textContext) bindTextWorker(job *textJobIdentity, lifetime *textWor
 		grant.Close()
 		return nil, err
 	}
-	job.workerGrant = grant
-	owner.verifiedJob = job
+	if !job.handoffGrantLocked(owner, grant) {
+		return nil, errors.New("text worker Grant owner changed before handoff")
+	}
 	return &qualifiedTextWorker{job: job, lifetime: lifetime, grant: grant, lease: lease}, nil
 }
 

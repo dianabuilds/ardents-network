@@ -229,6 +229,12 @@ digest and generation. TLS 1.3 permits only the selected X25519MLKEM768 and
 X25519 groups. Publisher TLS and Instance proof use the currently acquired
 opaque publication lease.
 
+The private Job lifecycle owns its random invocation nonce, verified worker
+Grant handoff, retirement and first joined cleanup result. The text Context
+retains the exact admission reservation until that Job reports joined cleanup;
+it does not edit handoff fields. A late handoff is closed against its old Job
+and cannot supply a Grant or completion to a replacement.
+
 The initial text-Service stream invokes that real TLS/native Connection path
 and retains its opaque job binding. The reader holds its worker operation
 through authentication and document exchange. Publisher accepts only streams

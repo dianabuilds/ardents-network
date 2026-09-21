@@ -51,6 +51,43 @@ func TestCompletedTextWorkerResultCannotCrossReplacement(t *testing.T) {
 	}
 }
 
+func TestCancelledTextJobClosesLateGrantWithoutCrossingReplacement(t *testing.T) {
+	endpoint, principal := textContextEndpoint(t)
+	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner.mu.Lock()
+	claimed := job.claimWorkerLocked(owner)
+	owner.mu.Unlock()
+	if !claimed {
+		t.Fatal("current job did not claim its worker handoff")
+	}
+	owner.retireJob(job)
+	if err := owner.finishJobCleanup(job, nil); err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	late, err := broker.New(broker.Config{ID: fixtureID(197), Grants: []broker.Grant{{Principal: principal, Surface: broker.Connection}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner.mu.Lock()
+	accepted := job.handoffGrantLocked(owner, late)
+	replacementGrant := replacement.workerGrant
+	owner.mu.Unlock()
+	if accepted || replacementGrant != nil {
+		t.Fatal("late Grant crossed into replacement job")
+	}
+	if _, err := late.Admit(principal, broker.Connection); err == nil {
+		t.Fatal("rejected late Grant remained open")
+	}
+}
+
 func TestTextWorkerOperationCannotReserveTwiceOrAfterCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	lifetime := &textWorkerLifetime{context: ctx}
