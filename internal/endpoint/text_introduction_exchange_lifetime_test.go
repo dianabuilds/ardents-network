@@ -12,6 +12,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+func (owner *textContext) retainTextServiceTransportExchange(job *textJobIdentity, flight *textIntroductionExchange) bool {
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	return owner.retainTextServiceTransportExchangeLocked(job, flight)
+}
+
 func TestTextIntroductionExchangeCloseJoinsAndRetainsCleanupFailure(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)

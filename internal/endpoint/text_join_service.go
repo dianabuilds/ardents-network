@@ -16,8 +16,9 @@ import (
 // textJoinedTransport retains the bounded Endpoint exchange until the Service
 // owner has joined its physical transport. Finishing setup must not cancel it.
 type textJoinedTransport struct {
-	job    *textJobIdentity
-	joined *route.ClosedJoinedStream
+	job         *textJobIdentity
+	joined      *route.ClosedJoinedStream
+	acquisition textJoinAcquisition
 	net.Conn
 	once    sync.Once
 	revoked context.Context
@@ -31,7 +32,17 @@ type textJoinPrefix interface {
 	join(context.Context, route.ClosedTokenPresenter, route.ClosedJoinIntent) (*route.ClosedJoinedStream, error)
 }
 
-type textPublisherJoinPrefix struct{ prefix *route.ClosedSourcePrefix }
+type textJoinAcquisition interface {
+	textJoinPrefix
+	currentLocked(*textContext) bool
+	issuancePrefixLocked(*textContext) (*textSourceHandle, bool)
+	release()
+}
+
+type textPublisherJoinPrefix struct {
+	prefix *route.ClosedSourcePrefix
+	issuer *textSourceHandle
+}
 
 func (prefix textPublisherJoinPrefix) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
 	return prefix.prefix.DataJoinRecipient()
@@ -41,6 +52,20 @@ func (prefix textPublisherJoinPrefix) join(ctx context.Context, present route.Cl
 	intent route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
 	return prefix.prefix.Join(ctx, present, intent)
 }
+
+func (prefix textPublisherJoinPrefix) currentLocked(owner *textContext) bool {
+	return owner != nil && owner.surface == broker.Administration && owner.responder.prefix == prefix.prefix
+}
+
+func (prefix textPublisherJoinPrefix) issuancePrefixLocked(owner *textContext) (*textSourceHandle, bool) {
+	current := prefix.currentLocked(owner)
+	if prefix.issuer == nil {
+		return nil, current && owner.currentTextSourceLocked() == nil
+	}
+	return prefix.issuer, current && prefix.issuer.currentLocked(owner)
+}
+
+func (textPublisherJoinPrefix) release() {}
 
 func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
 	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
@@ -61,6 +86,10 @@ func (transport *textJoinedTransport) Close() error {
 		}
 		transport.stop()
 		transport.err = transport.finish(retirement)
+		if transport.acquisition != nil {
+			transport.acquisition.release()
+			transport.acquisition = nil
+		}
 	})
 	return transport.err
 }
@@ -127,6 +156,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	joining, stop := context.WithCancel(lifetime)
 	transferred := false
 	var raw *route.ClosedJoinedStream
+	var acquisition textJoinAcquisition
 	defer func() {
 		if !transferred {
 			if raw != nil {
@@ -137,22 +167,24 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 			if attempt.plaintext.AttachmentGeneration == 1 {
 				outcome = errors.Join(outcome, attempt.binding.releaseTextIntroductionRecovery())
 			}
+			if acquisition != nil {
+				acquisition.release()
+			}
 		}
 	}()
 	owner.mu.Lock()
 	source := owner.currentTextSourceLocked()
-	var prefix textJoinPrefix
-	if source != nil {
-		prefix = source
+	if owner.surface == broker.Connection {
+		acquisition = owner.source.acquireJoinLocked()
 	}
 	if owner.surface == broker.Administration {
 		if owner.responder.prefix != nil {
-			prefix = textPublisherJoinPrefix{prefix: owner.responder.prefix}
+			acquisition = textPublisherJoinPrefix{prefix: owner.responder.prefix, issuer: source}
 		} else {
-			prefix = nil
+			acquisition = nil
 		}
 	}
-	live := !attempt.joined && prefix != nil && owner.liveTextServiceJobLocked(job, owner.surface)
+	live := !attempt.joined && acquisition != nil && owner.liveTextServiceJobLocked(job, owner.surface)
 	if live {
 		attempt.joined = true
 	}
@@ -162,7 +194,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	}
 	// Issuance has one live exchange per context. Prepare JOIN stock before
 	// launching the independent submission and JOIN network operations.
-	if err := owner.prepareTextJoinStock(joining, attempt, prefix); err != nil {
+	if err := owner.prepareTextJoinStock(joining, attempt, acquisition); err != nil {
 		return nil, err
 	}
 	if owner.surface == broker.Connection {
@@ -196,7 +228,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	}
 	joined := make(chan joinedResult, 1)
 	go func() {
-		stream, err := owner.joinTextIntroduction(joining, job, attempt, prefix)
+		stream, err := owner.joinTextIntroduction(joining, job, attempt, acquisition)
 		joined <- joinedResult{stream, err}
 	}()
 	submitted := make(chan error, 1)
@@ -228,23 +260,15 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if !owner.retainTextServiceTransportExchange(job, flight) {
+	if !owner.retainTextJoinedTransport(job, attempt, flight, acquisition, raw) {
 		return nil, errors.New("text JOIN owner ended before stream transfer")
 	}
-	owner.mu.Lock()
-	if job.qualification != nil {
-		if job.qualificationJoins == nil {
-			job.qualificationJoins = make(map[*route.ClosedJoinedStream]struct{})
-		}
-		job.qualificationJoins[raw] = struct{}{}
-	}
-	owner.mu.Unlock()
-	transport := &textJoinedTransport{job: job, joined: raw, Conn: raw, revoked: job.context, stop: stop, finish: finish}
+	transport := &textJoinedTransport{job: job, joined: raw, acquisition: acquisition, Conn: raw, revoked: job.context, stop: stop, finish: finish}
 	transferred = true
 	return transport, nil
 }
 
-func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *textIntroductionAttempt, prefix textJoinPrefix) error {
+func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *textIntroductionAttempt, prefix textJoinAcquisition) error {
 	node, generation, until, err := prefix.dataJoinRecipient()
 	facts := attempt.plaintext
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration || facts.Deadline.After(until) {
@@ -254,7 +278,7 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
 	stocked := false
-	if err == nil && owner.permission != nil {
+	if err == nil && prefix.currentLocked(owner) && owner.permission != nil {
 		for _, stock := range owner.permission.stock {
 			if stock.challenge.ReceiverNodeID == node && stock.challenge.ProfileDigest == profile.Digest && stock.challenge.Class == 2 && stock.challenge.WindowStart == owner.permission.accepted.NotBefore && len(stock.tokens) != 0 {
 				stocked = true
@@ -263,20 +287,23 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	}
 	owner.mu.Unlock()
 	if err == nil && !stocked {
-		if attempt.plaintext.AttachmentGeneration > 1 {
-			err = owner.issueTextRecoveryTokens(bounded, [][32]byte{node}, 2)
-		} else {
-			err = owner.issueTextTokens(bounded, [][32]byte{node}, 2)
-		}
+		err = owner.issueTextJoinTokens(bounded, [][32]byte{node}, 2, prefix,
+			attempt.plaintext.AttachmentGeneration > 1)
 	}
 	cancel()
 	if err != nil {
 		return err
 	}
+	owner.mu.Lock()
+	current := prefix.currentLocked(owner)
+	owner.mu.Unlock()
+	if !current {
+		return errors.New("text JOIN Source acquisition changed during stock preparation")
+	}
 	return nil
 }
 
-func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, prefix textJoinPrefix) (*route.ClosedJoinedStream, error) {
+func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, prefix textJoinAcquisition) (*route.ClosedJoinedStream, error) {
 	facts := attempt.plaintext
 	node, generation, _, err := prefix.dataJoinRecipient()
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration {
@@ -295,20 +322,27 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
-		var selected textJoinPrefix
-		if source := owner.currentTextSourceLocked(); source != nil {
-			selected = source
-		}
-		if owner.surface == broker.Administration {
-			if owner.responder.prefix != nil {
-				selected = textPublisherJoinPrefix{prefix: owner.responder.prefix}
-			} else {
-				selected = nil
-			}
-		}
-		if err != nil || current != profile || current.Digest != facts.ProfileDigest || selected != prefix || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != route.ClosedPurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
+		if err != nil || current != profile || current.Digest != facts.ProfileDigest || !prefix.currentLocked(owner) || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != route.ClosedPurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
 			return nil, errors.New("text JOIN token authority changed")
 		}
 		return owner.takeTextTokenLocked(current, now, hello, class, ctx)
 	}, route.ClosedJoinIntent{Secret: facts.JoinSecret, Context: facts.HandshakeContext, SetupDeadline: facts.Deadline, WorkDeadline: time.Unix(facts.WorkSafetyNotAfter, 0).UTC()})
+}
+
+func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attempt *textIntroductionAttempt,
+	flight *textIntroductionExchange, acquisition textJoinAcquisition, joined *route.ClosedJoinedStream) bool {
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if attempt == nil || attempt.binding == nil || attempt.binding.owner != owner || attempt.binding.job != job ||
+		acquisition == nil || !acquisition.currentLocked(owner) || joined == nil ||
+		!owner.retainTextServiceTransportExchangeLocked(job, flight) {
+		return false
+	}
+	if job.qualification != nil {
+		if job.qualificationJoins == nil {
+			job.qualificationJoins = make(map[*route.ClosedJoinedStream]struct{})
+		}
+		job.qualificationJoins[joined] = struct{}{}
+	}
+	return true
 }

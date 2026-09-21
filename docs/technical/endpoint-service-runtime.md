@@ -55,6 +55,13 @@ Source JOIN and capsule submission; each exact HELLO still requires its own
 durable token transfer. Publisher JOIN consumes its independently accepted capsule
 and current Responder prefix. The worker receives no raw JOIN stream: the existing
 Service TLS and native Instance authentication precede Application I/O.
+Each initial or recovery Connection JOIN acquires an operation-local wrapper for
+the exact current Source handle before stock preparation. Token presentation and
+the final transport transfer recheck that same acquisition under the context
+lock. Failure joins any returned Route stream before releasing only that
+acquisition; success transfers the acquisition to the joined transport, whose
+close joins Route cleanup and then releases it. A replacement Source therefore
+cannot be used by a late old JOIN. Publisher Responder ownership is unchanged.
 
 Endpoint context composition serializes issuance admission with its retained
 Source-operation reservation, but one private issuance operation owns each

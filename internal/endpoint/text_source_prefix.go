@@ -180,7 +180,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 			return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuance", err)
 		}
 	}
-	if err := owner.prepareTextIssuerStock(ctx, nil, 0, opening); err != nil {
+	if err := owner.prepareTextIssuerStock(ctx, nil, 0, opening, nil, nil); err != nil {
 		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-issuer", err)
 	}
 	owner.mu.Lock()

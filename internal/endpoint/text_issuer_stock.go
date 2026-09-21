@@ -12,10 +12,12 @@ import (
 // prepareTextIssuerStock funds issuer admission only for current requested
 // work. Before the first admitted prefix this uses the second bootstrap batch;
 // thereafter the last Control token can replenish stock within its allocation.
-func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested [][32]byte, class uint8, opening *textPrefixOpeningOperation) error {
+func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested [][32]byte, class uint8,
+	opening *textPrefixOpeningOperation, acquisition textJoinAcquisition, expected *textSourceHandle) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.permission == nil || !opening.admittedLocked(owner) {
+	if err != nil || ctx.Err() != nil || owner.permission == nil || !opening.admittedLocked(owner) ||
+		!textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
 		owner.mu.Unlock()
 		return errors.New("text issuer stock owner unavailable")
 	}
@@ -36,7 +38,7 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 			receivers[index] = challenge.ReceiverNodeID
 		}
 		owner.mu.Unlock()
-		return owner.issueTextTokensForOpening(ctx, receivers, 1, opening, true)
+		return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
 	}
 	self := class == 1 && len(requested) != 0
 	for _, receiver := range requested {
@@ -64,7 +66,7 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 		receivers[index] = profile.IssuerNodeID
 	}
 	owner.mu.Unlock()
-	return owner.issueTextTokensForOpening(ctx, receivers, 1, opening, true)
+	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, 1, opening, true, false, acquisition, expected)
 }
 
 func (operation *textIssuanceOperation) presentTextIssuerToken(selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
