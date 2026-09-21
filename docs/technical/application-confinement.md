@@ -313,6 +313,13 @@ worker bytes are at most 8 MiB. Grant credit only when the actual consumer has
 released space. Unknown kinds, wrong directions, unsolicited streams or
 credit overflow close the job and its attachment. A malformed document request is scoped to its admitted Service stream: emit one non-clean CLOSE and retain the Publisher snapshot and other streams. Stop replenishing that rejected stream; discard only already credited in-flight input until Endpoint closes it.
 
+The verified Endpoint composition, not worker INIT or worker frames, assigns
+the Service stream's checked directional byte contract. Ordinary text keeps a
+512-byte reader request and a response of at most 4 MiB plus its 13-byte
+framing; the fixed qualification caller keeps 64 MiB in each direction. The
+reader/publisher mapping is one composition contract, and a replacement Route
+Attachment continues its existing counters rather than acquiring fresh limits.
+
 After complete Service response validation the reader emits RESULT=6 on ID 2:
 status u8 and content-length u32, then bounded BYTES and EOF for that result.
 Endpoint accepts at most 4 MiB and independently checks length, UTF-8, current

@@ -11,7 +11,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/interfacev2/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	nativeconnection "github.com/dianabuilds/ardents-network/internal/service/connection"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 )
@@ -97,6 +96,10 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		return nil, errors.New("text Service caller unavailable")
 	}
 	if err := binding.current(); err != nil {
+		return nil, err
+	}
+	send, receive, err := binding.job.workload.direction(binding.owner.surface)
+	if err != nil {
 		return nil, err
 	}
 	exporterContext, err := nativeconnection.ProtectedAttachmentContext(binding.logical, capsuleDigest, 1)
@@ -256,13 +259,6 @@ func (binding *textServiceBinding) openTextServiceStreamWithRecovery(ctx context
 		// The native lifecycle still owns its initial secret/receipt. Run it
 		// under cancellation and join it instead of abandoning the owner.
 		cancel()
-	}
-	send, receive := uint32(512), uint32(textdocument.MaximumBytes+13)
-	if !client {
-		send, receive = receive, send
-	}
-	if binding.job.qualification != nil {
-		send, receive = 64<<20, 64<<20
 	}
 	transferred = true
 	recoveryTransferred = true

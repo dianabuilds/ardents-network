@@ -26,7 +26,11 @@ var textWorkerLaunchGate = make(chan struct{}, 1)
 // No caller supplies a worker identity, artifact digest, isolation flag, socket,
 // executable, Principal or Grant. All of those observations are obtained here.
 func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte) (*qualifiedTextWorker, error) {
-	return owner.launchInstalledWorker(ctx, snapshot, nil)
+	workload, err := textDocumentServiceWorkloadBounds()
+	if err != nil {
+		return nil, err
+	}
+	return owner.launchInstalledWorker(ctx, snapshot, nil, workload)
 }
 
 func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, profile streamqualification.Profile, seed [32]byte) (*qualifiedTextWorker, error) {
@@ -40,12 +44,20 @@ func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, p
 	if seed == [32]byte{} {
 		return nil, errors.New("qualification workload seed is absent")
 	}
-	return owner.launchInstalledWorker(ctx, nil, &streamqualification.Init{Role: role, Profile: profile, Seed: seed})
+	workload, err := streamQualificationServiceWorkloadBounds()
+	if err != nil {
+		return nil, err
+	}
+	return owner.launchInstalledWorker(ctx, nil, &streamqualification.Init{Role: role, Profile: profile, Seed: seed}, workload)
 }
 
-func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *streamqualification.Init) (*qualifiedTextWorker, error) {
+func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *streamqualification.Init,
+	workload textServiceWorkloadBounds) (*qualifiedTextWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
+	}
+	if _, _, err := workload.direction(owner.surface); err != nil {
+		return nil, err
 	}
 	role := "reader"
 	if owner.surface == broker.Administration {
@@ -58,6 +70,7 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 	if err != nil {
 		return nil, err
 	}
+	job.workload = workload
 	inventory := textInventory
 	if qualification != nil {
 		inventory = streamInventory

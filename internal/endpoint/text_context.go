@@ -89,6 +89,7 @@ type textJobIdentity struct {
 	qualification                    *streamqualification.Init
 	qualificationObserve             func(context.Context, streamqualification.Report) error
 	qualificationReport              *streamqualification.Report
+	workload                         textServiceWorkloadBounds
 	owner                            *textContext
 	nonce                            [32]byte
 	context                          context.Context

@@ -67,6 +67,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 		job := liveTextCapsuleJob(t, owner)
 		job.qualification = &streamqualification.Init{Role: streamqualification.ReaderRole,
 			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}
+		job.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
 		job.qualificationAcquireIntroduction = qualificationPacer.acquireIntroductionOpening
 		job.qualificationAcquireSetup = qualificationPacer.acquireIntroductionSetup
 		readerJobs[index] = job
@@ -77,6 +78,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	publisherJob := liveTextCapsuleJob(t, publisher)
 	publisherJob.qualification = &streamqualification.Init{Role: streamqualification.PublisherRole,
 		Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(245), Seed: fixtureID(246)}
+	publisherJob.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
 	publisherWorker := &qualifiedTextWorker{job: publisherJob}
 	delivered := make(chan connection.Stream)
 	producerDone := make(chan error, 1)

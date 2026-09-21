@@ -28,6 +28,10 @@ func liveTextCapsuleJob(t *testing.T, owner *textContext) *textJobIdentity {
 	if err != nil {
 		t.Fatal(err)
 	}
+	job.workload, err = textDocumentServiceWorkloadBounds()
+	if err != nil {
+		t.Fatal(err)
+	}
 	grant, err := broker.New(broker.Config{ID: job.nonce, Grants: []broker.Grant{{Principal: fixtureID(218), Surface: broker.Connection}}})
 	if err != nil {
 		t.Fatal(err)
