@@ -388,11 +388,7 @@ func (owner *textContext) inspectTextIntroductionDelivery(ctx context.Context, j
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	registered := owner.registration
-	if prior := owner.previousRegistration; prior != nil && now.Before(owner.previousUntil) &&
-		prior.request.Slot == capsule.Slot && prior.request.Revision == capsule.Revision {
-		registered = prior
-	}
+	registered := owner.textPublicationPairLifecycle.selectLocked(now, capsule.Slot, capsule.Revision)
 	if err != nil || ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
 		registered == nil || owner.withdrawal != nil || endpoint.textPublisherOwner != owner ||
 		!endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||

@@ -86,12 +86,12 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 						t.Fatalf("refresh ended before replacement Store commit: %v", cause)
 					case <-time.After(10 * time.Second):
 						owner.mu.Lock()
-						cause, registered := refresh.err, owner.registration != nil && owner.registration != first
+						cause, registered := refresh.err, owner.pendingRegistration != nil && owner.pendingRegistration != first
 						owner.mu.Unlock()
 						t.Fatalf("replacement did not reach Store commit before ACK: registered=%t refresh=%v", registered, cause)
 					}
 					owner.mu.Lock()
-					second := owner.registration
+					second := owner.pendingRegistration
 					ready := first.published && second != nil && second != first && !second.published && second.recipient != nil
 					owner.mu.Unlock()
 					if !ready || first.recipient.Public(time.Now()) == [32]byte{} || second.recipient.Public(time.Now()) == [32]byte{} {
@@ -123,7 +123,7 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 						}
 					}
 					owner.mu.Lock()
-					retired := owner.registration == nil && owner.previousRegistration == nil && !second.published
+					retired := owner.registration == nil && owner.pendingRegistration == nil && owner.previousRegistration == nil && !second.published
 					cause := refresh.err
 					owner.mu.Unlock()
 					if !retired || failure != "context revoke" && cause == nil {

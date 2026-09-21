@@ -51,14 +51,11 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	defer endpoint.publisherMu.Unlock()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.publicationDraining {
+	if owner.textPublicationPairLifecycle.drainingLocked() {
 		return nil, errTextPublicationDraining
 	}
 	profile, now, err := owner.textPermissionProfileLocked()
-	registered := owner.registration
-	if prior := owner.previousRegistration; prior != nil && now.Before(owner.previousUntil) && prior.request.Slot == capsule.Slot && prior.request.Revision == capsule.Revision {
-		registered = prior
-	}
+	registered := owner.textPublicationPairLifecycle.selectLocked(now, capsule.Slot, capsule.Revision)
 	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || registered == nil || owner.withdrawal != nil ||
 		endpoint.textPublisherOwner != owner || !endpoint.textPublicationLive || endpoint.publisherBinding == nil || endpoint.publications == nil ||
 		!registered.published || registered.recipient == nil {
@@ -128,7 +125,7 @@ func (owner *textContext) acceptTextIntroductionGeneration(ctx context.Context, 
 	default:
 	}
 	at := endpoint.clock().UTC()
-	retained := registered == owner.registration || registered == owner.previousRegistration && at.Before(owner.previousUntil)
+	retained := owner.textPublicationPairLifecycle.retainedLocked(registered, at)
 	if ctx.Err() != nil || !owner.liveTextServiceJobLocked(job, broker.Administration) || !at.Before(capsule.Expiry) || !retained || registered.recipient.Public(at) == [32]byte{} {
 		return nil, errors.Join(ctx.Err(), errors.New("text Introduction authority ended during binding"))
 	}

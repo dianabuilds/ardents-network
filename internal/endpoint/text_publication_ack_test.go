@@ -142,7 +142,7 @@ func deliverTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, r
 func refuseTextBeforeDescriptorACK(t *testing.T, gate *textDescriptorACKGate, owner *textContext, job *textJobIdentity, prior *textIntroductionAttempt) []byte {
 	t.Helper()
 	owner.mu.Lock()
-	registered := owner.registration
+	registered := owner.pendingRegistration
 	raw := append([]byte(nil), registered.descriptor...)
 	owner.mu.Unlock()
 	proof, err := reachability.VerifyPrivatePublication(raw, prior.plaintext.Network, prior.plaintext.ProfileDigest, time.Now().UTC())

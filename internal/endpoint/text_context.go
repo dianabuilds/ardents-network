@@ -18,14 +18,11 @@ import (
 // It is never a wire identity or evidence of installed confinement. Only the
 // verified launch boundary may give a worker a Principal and Grant.
 type textContextState struct {
-	publicationDraining   bool
-	refreshFailure        func(string)
-	withdrawalFailure     func(string)
-	operationFailure      func(string)
-	refresh               *textPublicationRefresh
-	previousRegistration  *textIntroductionRegistration
-	previousUntil         time.Time
-	registrationChanged   chan struct{}
+	refreshFailure    func(string)
+	withdrawalFailure func(string)
+	operationFailure  func(string)
+	refresh           *textPublicationRefresh
+	textPublicationPairLifecycle
 	introductionDelivery  chan struct{}
 	introductionWaiters   map[*textIntroductionWaiter]struct{}
 	introductionRecovery  map[*textIntroductionRecoveryOwner]struct{}
@@ -34,7 +31,6 @@ type textContextState struct {
 	introductionOpenings  [4]time.Time
 	descriptorFloors      map[[32]byte]textDescriptorFloor
 	withdrawal            *textSourceFlight
-	registration          *textIntroductionRegistration
 	registrationOpening   *textRegistrationFlight
 	introduction          textIntroductionPrefixLifecycle
 	responder             textResponderPrefixLifecycle
@@ -221,11 +217,10 @@ func (owner *textContext) closeAfterAuthorization() {
 	if refresh != nil {
 		refresh.cancel()
 	}
-	previous := owner.previousRegistration
+	registered, pending, previous := owner.textPublicationPairLifecycle.detachLocked()
 	if previous != nil {
 		previous.cancel()
 	}
-	owner.previousRegistration = nil
 	owner.signalTextRegistrationsLocked()
 	exchanges := make([]*textIntroductionExchange, 0, len(owner.introductionExchanges))
 	for flight := range owner.introductionExchanges {
@@ -238,14 +233,16 @@ func (owner *textContext) closeAfterAuthorization() {
 	if withdrawal != nil {
 		withdrawal.cancel()
 	}
-	registered, registrationOpening := owner.registration, owner.registrationOpening
+	registrationOpening := owner.registrationOpening
 	if registered != nil {
 		registered.cancel()
+	}
+	if pending != nil {
+		pending.cancel()
 	}
 	if registrationOpening != nil {
 		registrationOpening.cancel()
 	}
-	owner.registration = nil
 	clear(owner.introductionWaiters)
 	owner.introductionWaiters = nil
 	clear(owner.introductionRecovery)
@@ -290,6 +287,9 @@ func (owner *textContext) closeAfterAuthorization() {
 	}
 	if registered != nil {
 		prefixErr = errors.Join(prefixErr, registered.close())
+	}
+	if pending != nil {
+		prefixErr = errors.Join(prefixErr, pending.close())
 	}
 	prefixErr = errors.Join(prefixErr, introduction.closePrefix())
 	prefixErr = errors.Join(prefixErr, responder.closePrefix())
