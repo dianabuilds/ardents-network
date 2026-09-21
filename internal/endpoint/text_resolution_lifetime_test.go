@@ -55,6 +55,12 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("resolution did not reach State selection")
 	}
+	owner.mu.Lock()
+	acquisition, acquired := owner.resolution.source.(*textSourceResolutionAcquisition)
+	owner.mu.Unlock()
+	if !acquired || acquisition == nil {
+		t.Fatal("lookup did not own an exact Source acquisition")
+	}
 	closed := make(chan error, 1)
 	go func() { closed <- owner.Close() }()
 	select {
@@ -84,6 +90,9 @@ func TestTextResolutionCloseJoinsInFlightStateSelection(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("context retained resolution")
+	}
+	if acquisition.handle.Load() != nil {
+		t.Fatal("cancelled lookup retained its Source acquisition")
 	}
 	select {
 	case <-prefix.Done():
@@ -118,5 +127,70 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 	}
 	if err := endpoint.Close(); !errors.Is(err, original) {
 		t.Fatalf("Endpoint lost failed resolution: %v", err)
+	}
+}
+
+func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testing.T) {
+	endpoint, owner, source := startTextControlNetwork(t, route.ClosedCarrierTCP, true)
+	defer func() { _ = endpoint.Close() }()
+	old, err := owner.openTextPrefix(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, raw := textResolutionProof(t, source)
+	defer clear(raw)
+
+	owner.mu.Lock()
+	profile, _, err := owner.textPermissionProfileLocked()
+	if err != nil {
+		owner.mu.Unlock()
+		t.Fatal(err)
+	}
+	acquisition := owner.source.acquireResolutionLocked()
+	if acquisition == nil {
+		owner.mu.Unlock()
+		t.Fatal("resolution acquisition unavailable")
+	}
+	attempt, cancel := context.WithCancel(owner.lease.Context())
+	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), source: acquisition, releaseSource: acquisition.release}
+	owner.resolution = flight
+	owner.mu.Unlock()
+	finished := false
+	defer func() {
+		if !finished {
+			cancel()
+			owner.finishTextResolution(flight, context.Canceled)
+		}
+	}()
+	if err := owner.prepareTextSourceReopen(t.Context(), flight); err != nil {
+		t.Fatal(err)
+	}
+	if err := old.Close(); err != nil {
+		t.Fatal(err)
+	}
+	owner.mu.Lock()
+	err = owner.retireTextPrefixLocked()
+	owner.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := owner.openTextPrefix(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	verified, commitErr := owner.acceptTextResolutionResult(t.Context(), flight, profile, target, raw)
+	owner.mu.Lock()
+	_, committed := owner.descriptorFloors[target]
+	retained := owner.currentTextSourceLocked() == replacement && owner.resolution == flight
+	owner.mu.Unlock()
+	if commitErr == nil || verified.Descriptor.Target != [32]byte{} || committed || !retained {
+		t.Fatalf("old acquisition committed after replacement: err=%v committed=%v retained=%v", commitErr, committed, retained)
+	}
+	cancel()
+	owner.finishTextResolution(flight, commitErr)
+	finished = true
+	if acquisition.handle.Load() != nil {
+		t.Fatal("resolution completion retained its acquisition")
 	}
 }

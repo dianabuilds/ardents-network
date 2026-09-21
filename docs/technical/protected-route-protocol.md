@@ -199,6 +199,12 @@ cleanup, so a retained consumer cannot act through a retired or replacement
 prefix. Opening completion publishes only while its exact reservation remains
 current. A late completion closes its own result without changing replacement
 state, retained members, allocation, deadline, or bootstrap-batch count.
+Descriptor lookup takes a separate exact Source acquisition for its one Control
+exchange. Its completion must still match the live Source and lookup operation
+before verified proof or conflict-floor state is committed. Stop, cancellation
+or Source replacement invalidates that acquisition; releasing it cannot release
+or revive the replacement. Descriptor publication and JOIN retain their current
+separate consumers until their bounded ownership slices.
 An idle Publisher checks an incoming capsule's independently selected current
 Rendezvous and control-family separation without opening a Source. Only an
 accepted capsule may prepare Source/Responder forwarding. Source readiness and

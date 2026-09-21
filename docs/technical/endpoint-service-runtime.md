@@ -84,6 +84,14 @@ cannot renew stock or the two-batch bootstrap allowance. The context lock and
 Source-operation serialization remain the admission boundary; Publisher
 Introduction and Responder prefixes keep their separate owners.
 
+Each Descriptor lookup acquires one operation-local view of the exact current
+Source handle. Recipient selection, stock preparation, token presentation and
+the returned proof all remain bound to that acquisition. Every lookup outcome
+releases only that view; publication continues to use the read-only compatibility
+handle. Cancellation, Source retirement or replacement makes the acquisition
+non-current, so a late response cannot commit a Descriptor floor or attach to
+later Source work.
+
 A clean JOIN peer CLOSE may precede consumption of the final authenticated
 Service record. The client retains those bounded received bytes and their original
 queue reservation until consumed, explicitly closed, cancelled, or expired under
