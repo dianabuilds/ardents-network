@@ -192,6 +192,13 @@ through the same terminal path as explicit Close before notifying Endpoint.
 Endpoint observes that completed retirement before new private work; it keeps
 the context's source members, allocation and exact pending-batch binding.
 Retirement never creates another bootstrap allowance or starts an idle refill.
+Endpoint retains that live Source and any in-progress opening in one concrete
+lifecycle owner. Other local operations receive only a read-only handle bound
+to the exact published opening; retirement invalidates it before joined Route
+cleanup, so a retained consumer cannot act through a retired or replacement
+prefix. Opening completion publishes only while its exact reservation remains
+current. A late completion closes its own result without changing replacement
+state, retained members, allocation, deadline, or bootstrap-batch count.
 An idle Publisher checks an incoming capsule's independently selected current
 Rendezvous and control-family separation without opening a Source. Only an
 accepted capsule may prepare Source/Responder forwarding. Source readiness and

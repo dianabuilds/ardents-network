@@ -113,13 +113,13 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					if err != nil {
 						owner.mu.Lock()
 						state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
-							owner.prefix != nil, owner.resolution != nil, owner.prefixOpening != nil, owner.issuance != nil,
+							owner.currentTextSourceLocked() != nil, owner.resolution != nil, owner.source.opening != nil, owner.issuance != nil,
 							owner.permission != nil, owner.closed)
 						owner.mu.Unlock()
 						return bound, fmt.Errorf("Reader %d Introduction %d (%s): %w", index, streamIndex, state, err)
 					}
 					owner.mu.Lock()
-					prefix := owner.prefix
+					prefix := owner.currentTextSourceLocked()
 					owner.mu.Unlock()
 					if prefix == nil {
 						return bound, fmt.Errorf("Reader %d JOIN reserve prefix unavailable", index)
@@ -204,9 +204,9 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 			if err := publisherWorker.replenishStreams(ctx); err != nil {
 				publisher.mu.Lock()
 				state := fmt.Sprintf("prefix=%t resolution=%t opening=%t issuance=%t permission=%t closed=%t",
-					publisher.prefix != nil, publisher.resolution != nil, publisher.prefixOpening != nil, publisher.issuance != nil,
+					publisher.currentTextSourceLocked() != nil, publisher.resolution != nil, publisher.source.opening != nil, publisher.issuance != nil,
 					publisher.permission != nil, publisher.closed)
-				prefix := publisher.prefix
+				prefix := publisher.currentTextSourceLocked()
 				publisher.mu.Unlock()
 				prefixDone := prefix == nil
 				if !prefixDone {
@@ -368,7 +368,7 @@ func TestQualificationReopensRetiredSourcePrefixForIssuerReserve(t *testing.T) {
 		t.Fatalf("retired Source prefix failed the issuer reserve: %v", err)
 	}
 	owner.mu.Lock()
-	reopened := owner.prefix
+	reopened := owner.currentTextSourceLocked()
 	owner.mu.Unlock()
 	if reopened == nil || reopened == prefix {
 		t.Fatalf("issuer reserve did not reopen the retired Source prefix: %p", reopened)

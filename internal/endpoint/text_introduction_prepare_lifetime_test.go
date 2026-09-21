@@ -75,7 +75,7 @@ func TestTextIntroductionPreparationRetirementInterruptsBootstrap(t *testing.T) 
 		t.Error("test cancelled broader authority instead of only the job")
 	}
 	owner.mu.Lock()
-	if joined && (owner.prefixOpening != nil || owner.issuance != nil || owner.resolution != nil) {
+	if joined && (owner.source.opening != nil || owner.issuance != nil || owner.resolution != nil) {
 		t.Error("preparation returned before joining its network flights")
 	}
 	owner.mu.Unlock()

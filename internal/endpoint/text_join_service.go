@@ -26,6 +26,22 @@ type textJoinedTransport struct {
 	err     error
 }
 
+type textJoinPrefix interface {
+	dataJoinRecipient() ([32]byte, uint64, time.Time, error)
+	join(context.Context, route.ClosedTokenPresenter, route.ClosedJoinIntent) (*route.ClosedJoinedStream, error)
+}
+
+type textPublisherJoinPrefix struct{ prefix *route.ClosedSourcePrefix }
+
+func (prefix textPublisherJoinPrefix) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+	return prefix.prefix.DataJoinRecipient()
+}
+
+func (prefix textPublisherJoinPrefix) join(ctx context.Context, present route.ClosedTokenPresenter,
+	intent route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
+	return prefix.prefix.Join(ctx, present, intent)
+}
+
 func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
 	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
 	return ok && witness.AuthenticatedPeerRetired()
@@ -124,9 +140,17 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		}
 	}()
 	owner.mu.Lock()
-	prefix := owner.prefix
+	source := owner.currentTextSourceLocked()
+	var prefix textJoinPrefix
+	if source != nil {
+		prefix = source
+	}
 	if owner.surface == broker.Administration {
-		prefix = owner.responder.prefix
+		if owner.responder.prefix != nil {
+			prefix = textPublisherJoinPrefix{prefix: owner.responder.prefix}
+		} else {
+			prefix = nil
+		}
 	}
 	live := !attempt.joined && prefix != nil && owner.liveTextServiceJobLocked(job, owner.surface)
 	if live {
@@ -147,7 +171,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		if attempt.plaintext.AttachmentGeneration > 1 {
 			prepare = owner.prepareTextRecoverySubmissionStock
 		}
-		_, _, err := prepare(bounded, prefix)
+		_, _, err := prepare(bounded, source)
 		cancel()
 		if err != nil {
 			return nil, err
@@ -159,7 +183,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 				return nil, err
 			}
 		}
-		if err := owner.refreshTextIntroduction(joining, job, attempt, prefix); err != nil {
+		if err := owner.refreshTextIntroduction(joining, job, attempt, source); err != nil {
 			return nil, err
 		}
 	}
@@ -220,8 +244,8 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 	return transport, nil
 }
 
-func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *textIntroductionAttempt, prefix *route.ClosedSourcePrefix) error {
-	node, generation, until, err := prefix.DataJoinRecipient()
+func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *textIntroductionAttempt, prefix textJoinPrefix) error {
+	node, generation, until, err := prefix.dataJoinRecipient()
 	facts := attempt.plaintext
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration || facts.Deadline.After(until) {
 		return errors.Join(err, errors.New("text JOIN capsule recipient changed"))
@@ -252,9 +276,9 @@ func (owner *textContext) prepareTextJoinStock(ctx context.Context, attempt *tex
 	return nil
 }
 
-func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, prefix *route.ClosedSourcePrefix) (*route.ClosedJoinedStream, error) {
+func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJobIdentity, attempt *textIntroductionAttempt, prefix textJoinPrefix) (*route.ClosedJoinedStream, error) {
 	facts := attempt.plaintext
-	node, generation, _, err := prefix.DataJoinRecipient()
+	node, generation, _, err := prefix.dataJoinRecipient()
 	if err != nil || node != facts.RendezvousNode || generation != facts.RendezvousDutyGeneration {
 		return nil, errors.Join(err, errors.New("text JOIN recipient changed before opening"))
 	}
@@ -267,13 +291,20 @@ func (owner *textContext) joinTextIntroduction(ctx context.Context, job *textJob
 	if err := attempt.binding.current(); err != nil {
 		return nil, err
 	}
-	return prefix.Join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	return prefix.join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
-		selected := owner.prefix
+		var selected textJoinPrefix
+		if source := owner.currentTextSourceLocked(); source != nil {
+			selected = source
+		}
 		if owner.surface == broker.Administration {
-			selected = owner.responder.prefix
+			if owner.responder.prefix != nil {
+				selected = textPublisherJoinPrefix{prefix: owner.responder.prefix}
+			} else {
+				selected = nil
+			}
 		}
 		if err != nil || current != profile || current.Digest != facts.ProfileDigest || selected != prefix || !owner.liveTextServiceJobLocked(job, owner.surface) || ctx.Err() != nil || !now.Before(facts.Deadline) || class != 2 || hello.Purpose != route.ClosedPurposeDataJoin || hello.RecipientNodeID != node || hello.RecipientDutyGeneration != generation || hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest || hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.Unix() > facts.WorkSafetyNotAfter {
 			return nil, errors.New("text JOIN token authority changed")

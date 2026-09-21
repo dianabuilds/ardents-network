@@ -377,7 +377,7 @@ func TestTextPrefixPreparesBothReceiversInOneRetryableBatch(t *testing.T) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.permission.pending != pending || owner.permission.batches != 1 || !bytes.Equal(original, pending.pending.Request()) ||
-		owner.issuance != nil || owner.prefixOpening != nil || len(owner.permission.stock) != 0 {
+		owner.issuance != nil || owner.source.opening != nil || len(owner.permission.stock) != 0 {
 		t.Fatal("retry changed receiver ordering, blinding, batch debit or lifecycle")
 	}
 }

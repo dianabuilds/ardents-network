@@ -10,8 +10,8 @@ import (
 )
 
 // textPrefixOpeningOperation owns the exact stock-to-Source-opening
-// reservation and its terminal completion identity. The context retains only
-// the single admission slot and cancels or joins this operation.
+// reservation and its terminal completion identity. The Source lifecycle
+// retains the single admission slot and cancels or joins this operation.
 type textPrefixOpeningOperation struct {
 	owner           *textContext
 	context         context.Context
@@ -28,9 +28,9 @@ func newTextPrefixOpeningOperation(owner *textContext) *textPrefixOpeningOperati
 // non-nil operation must be the exact live reservation retained by its owner.
 func (operation *textPrefixOpeningOperation) admittedLocked(owner *textContext) bool {
 	if operation == nil {
-		return owner.prefixOpening == nil
+		return owner.source.openingAdmittedLocked(nil)
 	}
-	return operation.owner == owner && owner.prefixOpening == operation && operation.context.Err() == nil
+	return operation.owner == owner && owner.source.openingAdmittedLocked(operation) && operation.context.Err() == nil
 }
 
 func (operation *textPrefixOpeningOperation) join() {
@@ -46,19 +46,19 @@ func (operation *textPrefixOpeningOperation) cancel() {
 }
 
 func (operation *textPrefixOpeningOperation) complete(caller context.Context, prefix *route.ClosedSourcePrefix,
-	openErr error) (*route.ClosedSourcePrefix, error) {
+	openErr error) (*textSourceHandle, error) {
 	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer close(operation.done)
-	if owner.prefixOpening != operation {
+	if !owner.source.openingAdmittedLocked(operation) {
 		operation.cancel()
 		cleanup := prefix.Close()
 		return nil, textPrefixPreparationFailureAt("completion-owner",
 			errors.Join(openErr, caller.Err(), cleanup, errors.New("text prefix completion owner changed")))
 	}
-	owner.prefixOpening = nil
-	if openErr != nil || caller.Err() != nil || !owner.liveLocked(owner.endpoint, owner.surface) {
+	if openErr != nil || prefix == nil || caller.Err() != nil || !owner.liveLocked(owner.endpoint, owner.surface) {
+		owner.source.finishOpeningLocked(operation, nil, nil, false)
 		operation.cancel()
 		cleanup := prefix.Close()
 		if errors.Is(openErr, route.ErrClosedSourceCleanup) || cleanup != nil {
@@ -72,6 +72,12 @@ func (operation *textPrefixOpeningOperation) complete(caller context.Context, pr
 		}
 		return nil, cause
 	}
-	owner.prefix, owner.prefixCancel = prefix, operation.cancel
-	return prefix, nil
+	handle, current := owner.source.finishOpeningLocked(operation, prefix, operation.cancel, true)
+	if !current {
+		operation.cancel()
+		cleanup := prefix.Close()
+		return nil, textPrefixPreparationFailureAt("completion-owner",
+			errors.Join(cleanup, errors.New("text prefix completion owner changed")))
+	}
+	return handle, nil
 }

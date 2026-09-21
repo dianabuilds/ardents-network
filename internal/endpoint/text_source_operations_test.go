@@ -64,12 +64,12 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	attempt, cancel := context.WithCancel(t.Context())
 	flight := &textPrefixOpeningOperation{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
-	owner.prefixOpening = flight
+	owner.source.opening = flight
 	profile := owner.permission.profile
 	owner.mu.Unlock()
 	defer func() {
 		owner.mu.Lock()
-		owner.prefixOpening = nil
+		owner.source.opening = nil
 		owner.mu.Unlock()
 		cancel()
 		close(flight.done)

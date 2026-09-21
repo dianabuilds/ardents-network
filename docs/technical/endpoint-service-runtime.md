@@ -65,13 +65,17 @@ publish usable stock after revocation; ordinary retry retention and the
 recovery-only canceled-batch discard remain distinct and consume the same
 existing reservation and bootstrap allowance.
 
-The stock-to-Source-opening transition has a separate private concrete handle.
-It validates the exact reservation for issuance, issuer-stock preparation and
-forwarding-token presentation, then alone commits terminal completion. A late
-completion from an obsolete handle cleans and joins its own result without
-clearing a replacement reservation or publishing over the replacement's stock
-and prefix. The existing context lock and Source-operation serialization remain
-the admission boundary; this handle does not move other prefix consumers.
+One private Source lifecycle owns the stock-to-opening reservation, the exact
+published Route prefix and its cancellation through joined retirement. It alone
+mutates those states. Existing Descriptor, JOIN, issuance and qualification
+consumers receive a read-only handle for the exact published opening; they can
+perform their existing Route operations and test that identity under the context
+lock, but cannot close or replace the prefix. Retirement invalidates the handle
+before closing its Route owner. A late completion from an obsolete opening
+cleans and joins only its own result, cannot publish over a replacement, and
+cannot renew stock or the two-batch bootstrap allowance. The context lock and
+Source-operation serialization remain the admission boundary; Publisher
+Introduction and Responder prefixes keep their separate owners.
 
 A clean JOIN peer CLOSE may precede consumption of the final authenticated
 Service record. The client retains those bounded received bytes and their original

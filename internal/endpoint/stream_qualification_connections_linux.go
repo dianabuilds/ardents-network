@@ -191,19 +191,19 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 			releaseOwner := func() { release.Do(ownerWork.Unlock) }
 			defer releaseOwner()
 			owner.mu.Lock()
-			prefix := owner.prefix
+			prefix := owner.currentTextSourceLocked()
 			owner.mu.Unlock()
 			if prefix == nil {
 				return bound, fmt.Errorf("qualification Reader %d stream %d JOIN reserve prefix unavailable", reader, index)
 			}
-			joinReceiver, _, _, err := prefix.DataJoinRecipient()
+			joinReceiver, _, _, err := prefix.dataJoinRecipient()
 			if err != nil {
 				return bound, fmt.Errorf("qualification Reader %d stream %d JOIN reserve recipient: %w", reader, index, err)
 			}
 			if err := owner.ensureQualificationTokenReserve(setup, joinReceiver, 2, qualificationReaderSetupParallelism); err != nil {
 				return bound, fmt.Errorf("qualification Reader %d stream %d JOIN reserve: %w", reader, index, err)
 			}
-			submissionReceiver, err := prefix.SubmissionRecipient()
+			submissionReceiver, err := prefix.submissionRecipient()
 			if err != nil {
 				return bound, fmt.Errorf("qualification Reader %d stream %d submission reserve recipient: %w", reader, index, err)
 			}

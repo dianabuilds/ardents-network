@@ -105,7 +105,10 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			agedDeadline := time.Now().UTC().Add(time.Second).Truncate(time.Second)
 			attempt.plaintext.Deadline = agedDeadline
 			oldOperation := append([]byte(nil), attempt.operation...)
-			if err := reader.refreshTextIntroduction(t.Context(), readerJob, attempt, reader.prefix); err != nil {
+			reader.mu.Lock()
+			sourcePrefix := reader.currentTextSourceLocked()
+			reader.mu.Unlock()
+			if err := reader.refreshTextIntroduction(t.Context(), readerJob, attempt, sourcePrefix); err != nil {
 				t.Fatal(err)
 			}
 			if !attempt.plaintext.Deadline.After(agedDeadline) || bytes.Equal(attempt.operation, oldOperation) {
@@ -174,7 +177,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			publisher.mu.Lock()
 			responder := publisher.responder.prefix
-			distinct := responder != nil && responder != publisher.prefix && responder != publisher.introduction.prefix &&
+			distinct := responder != nil && (publisher.currentTextSourceLocked() == nil || responder != publisher.currentTextSourceLocked().prefix.Load()) && responder != publisher.introduction.prefix &&
 				publisher.responder.set != nil && publisher.responder.set != publisher.sourceSet && publisher.responder.set != publisher.introduction.set &&
 				publisher.responder.set.interior[0].Domain == 3 && publisher.permission.reserved[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()

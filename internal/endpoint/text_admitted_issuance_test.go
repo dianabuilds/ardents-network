@@ -35,7 +35,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 			}
 			owner.mu.Lock()
 			permission := owner.permission
-			valid := owner.prefix == prefix && owner.issuance == nil && owner.prefixOpening == nil &&
+			valid := owner.currentTextSourceLocked() == prefix && owner.issuance == nil && owner.source.opening == nil &&
 				permission.pending == nil && permission.batches == 2 && permission.reserved == [3]uint32{34, 34, 0}
 			verified := 0
 			profile := source.view.Profile
@@ -96,7 +96,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal("retired prefix created unallocated work")
 			}
 			owner.mu.Lock()
-			retired := owner.prefix == nil && owner.prefixCancel == nil && owner.permission == permission &&
+			retired := owner.currentTextSourceLocked() == nil && owner.permission == permission &&
 				permission.pending == nil && permission.batches == 2 && permission.reserved == [3]uint32{34, 34, 0}
 			owner.mu.Unlock()
 			if !retired {
@@ -106,7 +106,7 @@ func TestTextIssuanceUsesRetainedPrefixAfterTwoBootstrapBatches(t *testing.T) {
 				t.Fatal(err)
 			}
 			owner.mu.Lock()
-			joined := owner.prefix == nil && owner.issuance == nil && owner.permission == nil
+			joined := owner.currentTextSourceLocked() == nil && owner.issuance == nil && owner.permission == nil
 			owner.mu.Unlock()
 			if !joined {
 				t.Fatal("context close retained prefix or private stock")
