@@ -265,6 +265,10 @@ held the lease. The failed opening publishes no token or registration; every
 retry repeats current authority, State, selection and admission checks after a
 fixed local delay. Other Source, Route, journal and cleanup failures remain
 terminal, and retry never extends the registration, permission or Route expiry.
+One private refresh lifecycle owns the single scheduler identity, coalesced
+wake-up, cancellation and joined terminal result. A verified Descriptor ACK may
+start it once or wake that same scheduler; context shutdown and withdrawal stop
+and join the same result before any later network attempt can begin.
 Producer drain preserves cancellation and cleanup failures, and context cleanup
 waits for withdrawal ownership to finish. This composition still requires full
 network lifecycle qualification and ordinary command adoption.

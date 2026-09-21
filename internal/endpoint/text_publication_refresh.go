@@ -5,6 +5,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
@@ -13,12 +14,122 @@ import (
 
 const textRefreshContentionRetryDelay = 100 * time.Millisecond
 
+// textPublicationRefreshLifecycle is the sole owner of scheduler identity,
+// wake-up, cancellation and its joined terminal result. The surrounding text
+// context supplies the rotation callback but never publishes or replaces a
+// flight directly.
+type textPublicationRefreshLifecycle struct {
+	mu      sync.Mutex
+	flight  *textPublicationRefresh
+	stopped bool
+}
+
 type textPublicationRefresh struct {
 	context context.Context
 	cancel  context.CancelFunc
 	done    chan struct{}
 	wake    chan struct{}
 	err     error
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) start(parent context.Context, run func(*textPublicationRefresh)) *textPublicationRefresh {
+	lifecycle.mu.Lock()
+	defer lifecycle.mu.Unlock()
+	if lifecycle.stopped {
+		return lifecycle.flight
+	}
+	if lifecycle.flight != nil {
+		select {
+		case <-lifecycle.flight.done:
+			lifecycle.flight = nil
+		default:
+			lifecycle.wakeLocked()
+			return lifecycle.flight
+		}
+	}
+	ctx, cancel := context.WithCancel(parent)
+	flight := &textPublicationRefresh{context: ctx, cancel: cancel, done: make(chan struct{}), wake: make(chan struct{}, 1)}
+	lifecycle.flight = flight
+	lifecycle.wakeLocked()
+	go func() {
+		run(flight)
+		lifecycle.mu.Lock()
+		if lifecycle.flight == flight {
+			lifecycle.stopped = true
+		}
+		lifecycle.mu.Unlock()
+		close(flight.done)
+	}()
+	return flight
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) wake() {
+	lifecycle.mu.Lock()
+	defer lifecycle.mu.Unlock()
+	lifecycle.wakeLocked()
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) wakeLocked() {
+	if lifecycle.flight == nil || lifecycle.flight.context.Err() != nil {
+		return
+	}
+	select {
+	case lifecycle.flight.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) current() *textPublicationRefresh {
+	lifecycle.mu.Lock()
+	defer lifecycle.mu.Unlock()
+	return lifecycle.flight
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) matchesContext(ctx context.Context) bool {
+	lifecycle.mu.Lock()
+	defer lifecycle.mu.Unlock()
+	return lifecycle.flight != nil && lifecycle.flight.context == ctx
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) cancel() *textPublicationRefresh {
+	lifecycle.mu.Lock()
+	defer lifecycle.mu.Unlock()
+	lifecycle.stopped = true
+	if lifecycle.flight != nil {
+		lifecycle.flight.cancel()
+	}
+	return lifecycle.flight
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) join(flight *textPublicationRefresh) error {
+	if flight == nil {
+		return nil
+	}
+	<-flight.done
+	return lifecycle.outcome(flight)
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) outcome(flight *textPublicationRefresh) error {
+	lifecycle.mu.Lock()
+	defer lifecycle.mu.Unlock()
+	if flight == nil {
+		return nil
+	}
+	return flight.err
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) stop() error {
+	return lifecycle.join(lifecycle.cancel())
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) fail(flight *textPublicationRefresh, err error) bool {
+	lifecycle.mu.Lock()
+	defer lifecycle.mu.Unlock()
+	if flight == nil || lifecycle.flight != flight {
+		return false
+	}
+	flight.err = err
+	return true
 }
 
 // textRefreshFailure retains a fixed, locally reportable stage while preserving
@@ -50,52 +161,17 @@ func (owner *textContext) startTextRefreshLocked(registered *textIntroductionReg
 	if registered.refreshAt.IsZero() {
 		registered.refreshAt = registered.createdAt.Add(300 * time.Second)
 	}
-	if owner.refresh != nil {
-		select {
-		case <-owner.refresh.done:
-			owner.refresh = nil
-		default:
-		}
-	}
-	if owner.refresh == nil {
-		ctx, cancel := context.WithCancel(owner.lease.Context())
-		flight := &textPublicationRefresh{context: ctx, cancel: cancel, done: make(chan struct{}), wake: make(chan struct{}, 1)}
-		owner.refresh = flight
-		go owner.runTextRefresh(flight)
-	}
-	select {
-	case owner.refresh.wake <- struct{}{}:
-	default:
-	}
+	owner.refresh.start(owner.lease.Context(), owner.runTextRefresh)
 }
 func (owner *textContext) signalTextRegistrationsLocked() {
 	owner.textPublicationPairLifecycle.signalLocked()
-	if owner.refresh != nil {
-		select {
-		case owner.refresh.wake <- struct{}{}:
-		default:
-		}
-	}
+	owner.refresh.wake()
 }
 func (owner *textContext) stopTextRefresh() {
-	owner.mu.Lock()
-	flight := owner.refresh
-	if flight != nil {
-		flight.cancel()
-	}
-	owner.mu.Unlock()
-	if flight != nil {
-		<-flight.done
-	}
-	owner.mu.Lock()
-	if owner.refresh == flight {
-		owner.refresh = nil
-	}
-	owner.mu.Unlock()
+	_ = owner.refresh.stop()
 }
 
 func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
-	defer close(flight.done)
 	for {
 		owner.mu.Lock()
 		registered := owner.textPublicationPairLifecycle.currentLocked()
@@ -105,7 +181,7 @@ func (owner *textContext) runTextRefresh(flight *textPublicationRefresh) {
 			refreshAt, expiry = registered.refreshAt, registered.request.Expiry
 		}
 		now := owner.endpoint.clock().UTC()
-		live := owner.liveLocked(owner.endpoint, broker.Administration) && owner.refresh == flight && registered != nil
+		live := owner.liveLocked(owner.endpoint, broker.Administration) && owner.refresh.current() == flight && registered != nil
 		owner.mu.Unlock()
 		if !live || flight.context.Err() != nil {
 			return
@@ -188,7 +264,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 	owner.mu.Lock()
 	_, now, err := owner.textPermissionProfileLocked()
 	retained, _ := owner.textPublicationPairLifecycle.previousLocked()
-	if err != nil || owner.refresh != flight || owner.textPublicationPairLifecycle.currentLocked() != previous || retained != nil ||
+	if err != nil || owner.refresh.current() != flight || owner.textPublicationPairLifecycle.currentLocked() != previous || retained != nil ||
 		previous.request.Revision == ^uint64(0) || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		owner.mu.Unlock()
 		return textRefreshFailureAt("rotation-authority", errors.New("text publication refresh owner unavailable"))
@@ -226,7 +302,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 // a fallback to an older revision or erase a failed transport cleanup outcome.
 func (owner *textContext) failTextRefresh(flight *textPublicationRefresh, failure string, cause error) {
 	owner.mu.Lock()
-	if owner.refresh != flight {
+	if owner.refresh.current() != flight {
 		owner.mu.Unlock()
 		return
 	}
@@ -248,7 +324,7 @@ func (owner *textContext) failTextRefresh(flight *textPublicationRefresh, failur
 		}
 	}
 	owner.mu.Lock()
-	flight.err = errors.Join(cause, cleanup)
+	owner.refresh.fail(flight, errors.Join(cause, cleanup))
 	if cleanup != nil {
 		owner.closeErr = errors.Join(owner.closeErr, cleanup)
 		owner.closed = true

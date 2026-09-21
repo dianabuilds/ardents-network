@@ -68,7 +68,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 	}
 	prefix := owner.introduction.currentLocked()
 	prior, _ := owner.textPublicationPairLifecycle.previousLocked()
-	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.openingInProgressLocked() || owner.registrationOpening != nil || owner.withdrawal != nil || !owner.textPublicationPairLifecycle.openingBaseLocked(previous) || previous != nil && (prior != nil || owner.refresh == nil || owner.refresh.context != ctx || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
+	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.openingInProgressLocked() || owner.registrationOpening != nil || owner.withdrawal != nil || !owner.textPublicationPairLifecycle.openingBaseLocked(previous) || previous != nil && (prior != nil || !owner.refresh.matchesContext(ctx) || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher registration owner unavailable")
 	}
@@ -185,9 +185,6 @@ func (owner *textContext) withdrawTextIntroduction(ctx context.Context) error {
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
 	owner.withdrawal = flight
-	if owner.refresh != nil {
-		owner.refresh.cancel()
-	}
 	owner.mu.Unlock()
 	owner.stopTextRefresh()
 	interrupted := make(chan struct{})
