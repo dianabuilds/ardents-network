@@ -237,6 +237,107 @@ installed-artifact inspection, and platform execution remain separate candidate
 and qualification evidence; Windows or cross-target analysis cannot replace
 them.
 
+### `cmd/ardents` Linux dependency projection
+
+Status: **dated import-closure evidence, not whole-repository or runtime-call
+reachability.** On 2026-09-22 the exact `dev` source revision
+`ebe30149d03e3b149ed0fed5b9d6ef1877185fc4` was projected for
+`./cmd/ardents` with Go 1.26.8, `GOOS=linux`, `GOARCH=amd64`,
+`GOAMD64=v1`, `CGO_ENABLED=0`, the toolchain-default experiment set,
+`GOFIPS140=off`, default build tags, module mode, no workspace and no
+downloads. The
+`go.exe` SHA-256 was
+`21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9`;
+`go.mod` and `go.sum` SHA-256 were respectively
+`a5e05aceb2ec1fa5afbfd7a9ff657cfca7ff04de43095fee692af7bb48872026`
+and
+`5167264d35ddb70683f5b7a3fbc6cffac8fa0ec6cb15d72c1d4747a7976627a2`.
+This owning change alters only this register, so the recorded source and module
+inputs are the ones classified below.
+
+The reproducible PowerShell command was:
+
+```powershell
+$env:GOOS = 'linux'
+$env:GOARCH = 'amd64'
+$env:GOAMD64 = 'v1'
+$env:CGO_ENABLED = '0'
+$env:GOEXPERIMENT = ''
+$env:GOFIPS140 = 'off'
+$env:GO111MODULE = 'on'
+$env:GOENV = 'off'
+$env:GOTOOLCHAIN = 'local'
+$env:GOWORK = 'off'
+$env:GOFLAGS = ''
+$env:GOPROXY = 'off'
+$env:GOSUMDB = 'off'
+go list -mod=readonly -deps -e -f '{{.ImportPath}}|{{with .Module}}{{.Path}}@{{.Version}}{{end}}|{{join .Imports ","}}|{{with .Error}}{{.Err}}{{end}}|{{range .DepsErrors}}{{.Err}} || {{end}}' ./cmd/ardents
+```
+
+The fourth and fifth fields retain each package `Error` and `DepsErrors`;
+stderr remains visible for Go warnings. The captured run returned 358
+packages—202 standard-library, 36 repository-owned and 120 external—from 22
+external module versions. All 358 lines parsed, both error fields were empty,
+and stderr contained no warning. `GOPROXY=off` makes a missing module-cache
+input a failed or incomplete observation rather than a download.
+
+Every external module present in this one projection is listed here. The
+package count is a classification aid, not a claim that every package symbol
+executes:
+
+| Module version | Packages |
+|---|---:|
+| `github.com/cespare/xxhash/v2@v2.3.0` | 1 |
+| `github.com/cloudflare/circl@v1.6.5` | 19 |
+| `github.com/google/go-containerregistry@v0.21.9` | 1 |
+| `github.com/opencontainers/go-digest@v1.0.0` | 1 |
+| `github.com/openpcc/bhttp@v0.0.80` | 1 |
+| `github.com/openpcc/ohttp@v0.0.80` | 3 |
+| `github.com/openpcc/twoway@v0.0.80` | 2 |
+| `github.com/quic-go/quic-go@v0.62.0` | 16 |
+| `github.com/secure-systems-lab/go-securesystemslib@v0.11.1` | 2 |
+| `github.com/sigstore/protobuf-specs@v0.5.2` | 1 |
+| `github.com/sigstore/sigstore@v1.10.9` | 4 |
+| `github.com/theupdateframework/go-tuf/v2@v2.4.2` | 2 |
+| `github.com/youmark/pkcs8@v0.0.0-20240726163527-a2c0da244d78` | 1 |
+| `go.opentelemetry.io/otel@v1.45.0` | 5 |
+| `go.opentelemetry.io/otel/trace@v1.45.0` | 4 |
+| `golang.org/x/crypto@v0.56.0` | 11 |
+| `golang.org/x/net@v0.58.0` | 7 |
+| `golang.org/x/sys@v0.47.0` | 2 |
+| `golang.org/x/term@v0.45.0` | 1 |
+| `golang.org/x/text@v0.41.0` | 4 |
+| `google.golang.org/genproto/googleapis/api@v0.0.0-20260819154853-08b0e4226688` | 2 |
+| `google.golang.org/protobuf@v1.36.12` | 30 |
+
+The direct `go.mod` requirements have the following exact status. A path is a
+shortest package-import path in this projection, not a runtime execution trace:
+
+| Direct module | Status in this projection | Representative import path |
+|---|---|---|
+| `github.com/aymanbagabas/go-pty@v0.2.3` | Absent | No path. This supports only the `cmd/ardents` Linux projection; the module remains required by repository test/qualification consumers. |
+| `github.com/cloudflare/circl@v1.6.5` | Present | `cmd/ardents → internal/naming/resolution → circl/hpke` |
+| `github.com/openpcc/ohttp@v0.0.80` | Present | `cmd/ardents → internal/naming/resolution → openpcc/ohttp` |
+| `github.com/quic-go/quic-go@v0.62.0` | Present | `cmd/ardents → internal/route → quic-go` |
+| `github.com/sigstore/sigstore@v1.10.9` | Present, transitively | `cmd/ardents → internal/release → go-tuf/v2/metadata → sigstore/pkg/cryptoutils` |
+| `github.com/theupdateframework/go-tuf/v2@v2.4.2` | Present | `cmd/ardents → internal/release → go-tuf/v2/metadata` |
+| `golang.org/x/crypto@v0.56.0` | Present | `cmd/ardents → internal/naming/resolution → circl/hpke → x/crypto/chacha20poly1305` |
+| `golang.org/x/sys@v0.47.0` | Present | `cmd/ardents → internal/endpoint/replacement → x/sys/unix` |
+| `golang.org/x/term@v0.45.0` | Present, transitively | `cmd/ardents → internal/release → go-tuf/v2/metadata → sigstore/pkg/cryptoutils → x/term` |
+
+Sigstore is therefore part of this product-shaped command closure even though
+Ardents has no direct production import of it. The four selected packages are
+`pkg/cryptoutils`, `pkg/signature`, `pkg/signature/options` and
+`pkg/signature/payload`; both `cryptoutils` and `signature` enter through
+`go-tuf/v2/metadata`. Conversely, absence of `go-pty`, `creack/pty` and
+`u-root` from this projection does not make them unnecessary to the repository
+or qualify their test execution environment.
+
+This evidence does not cover another command, target, architecture, cgo mode,
+build tag, test/build tool, runtime call reachability, linked artifact or
+vulnerability/support status. Any such claim requires its own projection or
+candidate evidence.
+
 The successor confidential control channels can replace OHTTP transport only
 with the explicit new grammar and migration. Existing OHTTP imports and their
 full closure remain subject to review for as long as any maintained use exists.
