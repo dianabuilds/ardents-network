@@ -28,18 +28,18 @@ func (owner *textContext) prepareTextResponder(ctx context.Context, job *textJob
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
 	live := err == nil && owner.liveTextServiceJobLocked(job, broker.Administration)
-	prefix := owner.responder.prefix
+	prefix := owner.responder.currentLocked()
 	owner.mu.Unlock()
 	if !live {
 		return errors.New("text Responder job unavailable")
 	}
 	if prefix == nil {
-		prefix, err = owner.openTextPublisherPrefix(bounded, &owner.responder, 3)
+		prefix, err = owner.openTextResponderPrefix(bounded)
 		if err != nil {
 			return err
 		}
 	}
-	node, generation, until, err := prefix.DataJoinRecipient()
+	node, generation, until, err := prefix.dataJoinRecipient()
 	if err != nil || node != accepted.plaintext.RendezvousNode || generation != accepted.plaintext.RendezvousDutyGeneration ||
 		accepted.plaintext.Deadline.After(until) || bounded.Err() != nil {
 		return errors.Join(err, bounded.Err(), errors.New("text Responder Rendezvous changed"))
@@ -49,14 +49,12 @@ func (owner *textContext) prepareTextResponder(ctx context.Context, job *textJob
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.responder.prefix != prefix || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
+	if !prefix.currentLocked(&owner.responder) || !owner.liveTextServiceJobLocked(job, broker.Administration) ||
 		bounded.Err() != nil || !owner.endpoint.clock().Before(accepted.plaintext.Deadline) {
 		return errors.New("text Responder owner retired before handover")
 	}
-	select {
-	case <-prefix.Done():
+	if prefix.retired() {
 		return errors.New("text Responder prefix retired before handover")
-	default:
-		return nil
 	}
+	return nil
 }

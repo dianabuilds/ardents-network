@@ -87,16 +87,16 @@ func (worker *qualifiedTextWorker) produceNetworkSequential(lifetime context.Con
 func (worker *qualifiedTextWorker) ensureQualificationPublisherJoinReserve(ctx context.Context, minimum int) error {
 	owner := worker.job.owner
 	owner.mu.Lock()
-	prefix := owner.responder.prefix
+	prefix := owner.responder.currentLocked()
 	owner.mu.Unlock()
 	if prefix == nil {
 		var err error
-		prefix, err = owner.openTextPublisherPrefix(ctx, &owner.responder, 3)
+		prefix, err = owner.openTextResponderPrefix(ctx)
 		if err != nil {
 			return errors.Join(err, errors.New("qualification Publisher JOIN reserve prefix unavailable"))
 		}
 	}
-	receiver, _, _, err := prefix.DataJoinRecipient()
+	receiver, _, _, err := prefix.dataJoinRecipient()
 	if err != nil {
 		return err
 	}

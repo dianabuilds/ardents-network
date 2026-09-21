@@ -304,6 +304,10 @@ opening and joined retirement. Registration and refresh use its read-only exact
 handle; cancellation or retirement invalidates that handle before cleanup, so
 a late opening or registration cannot attach to a replacement. This lifecycle
 does not close or recreate the sibling Source or Responder owners.
+The Responder has its own exact-handle lifecycle with the same isolation: a
+failed or cancelled opening cannot publish a usable prefix or close the sibling
+Introduction or borrowed Source. Publisher JOIN retains an acquisition for the
+exact admitted Responder handle and Source issuer until joined transport cleanup.
 
 A forwarding-channel admission reserves its own aggregate byte/time budget
 and permits at most 256 simultaneous work lanes and two reserved control lanes
@@ -714,7 +718,9 @@ a late completion rather than rebinding it. Failed completion joins any returned
 stream and releases only the acquisition. Successful completion transfers both
 the joined stream and acquisition to the Service transport until its joined
 close. This changes no JOIN bytes, secrets, authority or recovery state, and the
-Publisher continues to use its separately owned Responder prefix.
+Publisher continues to use its separately owned Responder prefix through an
+exact lifecycle handle; retirement or replacement refuses a late JOIN instead
+of rebinding it.
 Introduction keys and slots live for 600 seconds, with refresh at 300 seconds.
 The predecessor accepts already bounded capsules for at most 60 seconds after
 a replacement, never past its original signed expiry. Each delivery nonce has

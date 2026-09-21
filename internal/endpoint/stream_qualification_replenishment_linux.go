@@ -77,7 +77,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	owner.mu.Lock()
 	source := owner.currentTextSourceLocked()
 	introduction := owner.introduction.currentLocked()
-	prefixes := []*route.ClosedSourcePrefix{owner.responder.prefix}
+	responder := owner.responder.currentLocked()
 	owner.mu.Unlock()
 	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
@@ -92,11 +92,9 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 			return err
 		}
 	}
-	for _, prefix := range prefixes {
-		if prefix != nil {
-			if err := prefix.Replenish(ctx, present); err != nil {
-				return err
-			}
+	if responder != nil {
+		if err := responder.replenish(ctx, present); err != nil {
+			return err
 		}
 	}
 	for _, joined := range joins {

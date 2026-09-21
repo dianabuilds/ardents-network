@@ -60,7 +60,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 					t.Fatal("idle Publisher accepted foreign recipient facts")
 				}
 				publisher.mu.Lock()
-				noWork := publisher.currentTextSourceLocked() == nil && publisher.responder.prefix == nil && permission.reserved == reserved
+				noWork := publisher.currentTextSourceLocked() == nil && publisher.responder.currentLocked() == nil && permission.reserved == reserved
 				publisher.mu.Unlock()
 				if !noWork {
 					t.Fatal("refused capsule created Source work or consumed allocation")
@@ -71,7 +71,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 				t.Fatalf("registered Publisher after Source retirement: %v", err)
 			}
 			publisher.mu.Lock()
-			unchanged := publisher.currentTextSourceLocked() == nil && publisher.permission == permission && permission.reserved == reserved && publisher.responder.prefix == nil
+			unchanged := publisher.currentTextSourceLocked() == nil && publisher.permission == permission && permission.reserved == reserved && publisher.responder.currentLocked() == nil
 			publisher.mu.Unlock()
 			if !unchanged {
 				t.Fatal("pre-dial acceptance created network work or changed allocation")
@@ -81,7 +81,7 @@ func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
 					t.Fatalf("responder cycle %d: %v", cycle, err)
 				}
 				publisher.mu.Lock()
-				sourcePrefix, dataPrefix := publisher.currentTextSourceLocked(), publisher.responder.prefix
+				sourcePrefix, dataPrefix := publisher.currentTextSourceLocked(), publisher.responder.currentLocked()
 				same := publisher.permission == permission && permission.batches == 2
 				publisher.mu.Unlock()
 				if sourcePrefix == nil || dataPrefix == nil || !same {

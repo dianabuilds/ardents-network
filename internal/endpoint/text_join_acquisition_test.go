@@ -157,12 +157,13 @@ func TestTextJoinSourceReplacementBeforeStockIssuanceDoesNotReserveAllocation(t 
 
 func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 	owner := &textContext{textContextState: textContextState{surface: broker.Administration}}
-	responder := &route.ClosedSourcePrefix{}
+	responder := &textResponderPrefixHandle{owner: &owner.responder, cancel: func() {}}
+	responder.prefix.Store(&route.ClosedSourcePrefix{})
 	issuer := &textSourceHandle{owner: &owner.source, cancel: func() {}}
 	issuer.prefix.Store(&route.ClosedSourcePrefix{})
-	owner.responder.prefix = responder
+	owner.responder.live = responder
 	owner.source.live = issuer
-	acquisition := textPublisherJoinPrefix{prefix: responder, issuer: issuer}
+	acquisition := owner.responder.acquireJoinLocked(issuer)
 	if expected, current := acquisition.issuancePrefixLocked(owner); !current || expected != issuer ||
 		!textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
 		t.Fatal("Publisher JOIN issuance rejected its retained live Source")
@@ -171,6 +172,9 @@ func TestTextPublisherJoinIssuanceRetainsExactLiveSource(t *testing.T) {
 	replacement.prefix.Store(&route.ClosedSourcePrefix{})
 	owner.source.live = replacement
 	issuer.prefix.Store(nil)
+	if acquisition.currentLocked(owner) {
+		t.Fatal("Publisher JOIN acquisition accepted replacement Source on stocked path")
+	}
 	if expected, current := acquisition.issuancePrefixLocked(owner); current || expected != issuer ||
 		textJoinIssuanceCurrentLocked(owner, acquisition, expected) {
 		t.Fatal("Publisher JOIN issuance accepted a replacement Source")
