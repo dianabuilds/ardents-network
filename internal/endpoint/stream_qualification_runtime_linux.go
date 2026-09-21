@@ -59,6 +59,10 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 	if ctx == nil || ctx.Err() != nil || config.Observe == nil || config.Seed == [32]byte{} || config.HostingRoot == "" || config.Measurements == nil {
 		return report, errors.New("qualification configuration unavailable")
 	}
+	qualification, err := newTextQualificationRun(config.Role, config.Profile, config.Seed)
+	if err != nil {
+		return report, err
+	}
 	schedule, err := config.Profile.Definition(config.Role)
 	if err != nil {
 		return report, err
@@ -163,7 +167,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			return err
 		}
 		defer func() { operationErr = errors.Join(operationErr, owner.Close()) }()
-		worker, err := owner.launchStreamQualificationWorker(lifetime, config.Profile, config.Seed)
+		worker, err := owner.launchStreamQualificationWorker(lifetime, qualification)
 		if err != nil {
 			return err
 		}
@@ -171,10 +175,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 		if err := config.Observe(lifetime, StreamQualificationEvent{Elapsed: time.Since(origin), Kind: "verified-worker", Artifact: worker.lifetime.qualificationArtifact()}); err != nil {
 			return err
 		}
-		worker.job.qualificationReport = &report
-		worker.job.qualificationAcquireIntroduction = config.Measurements.acquireIntroductionOpening
-		worker.job.qualificationAcquireSetup = config.Measurements.acquireIntroductionSetup
-		worker.job.qualificationObserve = func(observeCtx context.Context, snapshot streamqualification.Report) error {
+		observe := func(observeCtx context.Context, snapshot streamqualification.Report) error {
 			snapshot.StartedElapsed = snapshot.Started.Sub(origin)
 			return config.Observe(observeCtx, StreamQualificationEvent{Elapsed: time.Since(origin), Kind: "stream-progress", Report: &snapshot})
 		}
@@ -182,7 +183,7 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			return err
 		}
 		defer config.Measurements.retire(worker.lifetime.cgroup)
-		worker.job.qualificationStopSampling = func() error {
+		stopQualificationSampling := func() error {
 			stopErr := stopSamples()
 			finalCtx, finish := context.WithTimeout(context.Background(), time.Second)
 			defer finish()
@@ -191,6 +192,10 @@ func RunStreamQualification(ctx context.Context, config StreamQualificationConfi
 			barrierCtx, stopBarrier := context.WithTimeout(lifetime, 30*time.Second)
 			defer stopBarrier()
 			return errors.Join(stopErr, sampleErr, config.Measurements.finish(barrierCtx))
+		}
+		if err := qualification.configure(&report, config.Measurements.acquireIntroductionOpening,
+			config.Measurements.acquireIntroductionSetup, stopQualificationSampling, observe); err != nil {
+			return err
 		}
 		if err := owner.provisionTextPermission(lifetime, permission.RequestPath, permission.ResponsePath, permission.Maxima, func(reportCtx context.Context, digest [32]byte) error {
 			return config.Participant.Observe(reportCtx, TextParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(surface), RequestDigest: digest})

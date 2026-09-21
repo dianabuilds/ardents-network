@@ -65,7 +65,7 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	endpoint, principal := textContextEndpoint(t)
 	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
 	job := liveTextCapsuleJob(t, owner)
-	job.qualification = &streamqualification.Init{Role: streamqualification.ReaderRole}
+	job.qualification = &textQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole}}
 	attempt := &textIntroductionAttempt{binding: &textServiceBinding{owner: owner, job: job}}
 
 	owner.mu.Lock()
@@ -112,8 +112,8 @@ func TestTextJoinOldAcquisitionCannotAttachAfterSourceReplacement(t *testing.T) 
 	if owner.retainTextJoinedTransport(job, attempt, flight, acquisition, joined) {
 		t.Fatal("late old JOIN acquisition attached after Source replacement")
 	}
+	attached := job.qualification.retains(joined)
 	owner.mu.Lock()
-	_, attached := job.qualificationJoins[joined]
 	retained := flight.retained
 	owner.mu.Unlock()
 	if attached || retained {

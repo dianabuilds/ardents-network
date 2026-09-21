@@ -8,32 +8,24 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
-	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 // textJobIdentity owns one invocation's nonce, verified worker Grant handoff,
 // retirement, and immutable joined cleanup result. The text context retains
 // only the admission reservation that points at this exact job.
 type textJobIdentity struct {
-	qualificationAcquireIntroduction func(context.Context) error
-	qualificationAcquireSetup        func(context.Context) (func(), error)
-	qualificationStopSampling        func() error
-	qualificationJoins               map[*route.ClosedJoinedStream]struct{}
-	qualification                    *streamqualification.Init
-	qualificationObserve             func(context.Context, streamqualification.Report) error
-	qualificationReport              *streamqualification.Report
-	workload                         textServiceWorkloadBounds
-	owner                            *textContext
-	nonce                            [32]byte
-	context                          context.Context
-	cancel                           context.CancelFunc
-	done                             chan struct{}
-	retired                          bool
-	bound                            bool
-	finished                         bool
-	cleanupErr                       error
-	workerGrant                      *broker.Broker
+	qualification *textQualificationRun
+	workload      textServiceWorkloadBounds
+	owner         *textContext
+	nonce         [32]byte
+	context       context.Context
+	cancel        context.CancelFunc
+	done          chan struct{}
+	retired       bool
+	bound         bool
+	finished      bool
+	cleanupErr    error
+	workerGrant   *broker.Broker
 }
 
 func newTextJobIdentity(owner *textContext) (*textJobIdentity, error) {
