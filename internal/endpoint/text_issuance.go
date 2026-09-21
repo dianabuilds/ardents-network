@@ -27,13 +27,6 @@ type textTokenStock struct {
 	tokens    [][]byte
 }
 
-type textIssuanceFlight struct {
-	context context.Context
-	prefix  *route.ClosedSourcePrefix
-	cancel  context.CancelFunc
-	done    chan struct{}
-}
-
 // issueTextTokens is the trusted context owner's issuance operation. The
 // retained Route members and intended receiver originate in Endpoint, never
 // on a worker attachment. There is at most one live exchange per context.
@@ -152,75 +145,8 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 			permission.batches++
 		}
 	}
-	request := batch.pending.Request()
-	attempt, cancel := context.WithDeadline(owner.lease.Context(), permission.accepted.NotAfter)
-	flight := &textIssuanceFlight{context: attempt, prefix: batch.prefix, cancel: cancel, done: make(chan struct{})}
-	owner.issuance = flight
+	operation := newTextIssuanceOperation(owner, permission, profile, batch, discardCanceled)
+	owner.issuance = operation
 	owner.mu.Unlock()
-	defer clear(request)
-	interrupted := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() { defer close(interrupted); cancel() })
-	var result route.ClosedIssuanceExchangeResult
-	var exchangeErr error
-	if batch.prefix == nil {
-		result, exchangeErr = route.ExchangeClosedBootstrap(attempt, source, selection, request)
-	} else {
-		result, exchangeErr = batch.prefix.ExchangeIssuer(attempt, func(hello route.ClosedHello, tokenClass uint8) ([]byte, error) {
-			return owner.presentTextIssuerToken(flight, selection, hello, tokenClass)
-		}, request)
-	}
-	cancel()
-	if !stop() {
-		<-interrupted
-	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	defer close(flight.done)
-	owner.issuance = nil
-	if errors.Is(exchangeErr, route.ErrClosedBootstrapCleanup) || errors.Is(exchangeErr, route.ErrClosedSourceCleanup) {
-		owner.closeErr = errors.Join(owner.closeErr, exchangeErr)
-		owner.closed = true
-		owner.endpoint.failTextContexts(exchangeErr)
-		return exchangeErr
-	}
-	current, currentTime, currentErr := owner.textPermissionProfileLocked()
-	if currentErr != nil || owner.permission != permission || current != profile || !currentTime.Before(permission.accepted.NotAfter) {
-		clear(result.Body)
-		return errors.New("text issuance owner changed before completion")
-	}
-
-	if err := ctx.Err(); err != nil {
-		clear(result.Body)
-		if discardCanceled && permission.pending == batch {
-			batch.pending.Discard()
-			permission.pending = nil
-		}
-		return err
-	}
-	if exchangeErr != nil {
-		// Preserve the original opaque blinding state and request ID for an explicit
-		// same-process retry. No new request, refund, fallback or resampling occurs.
-		return exchangeErr
-	}
-	tokens, err := batch.pending.FinalizeTerminalOperation(result.Nonce, result.Body)
-	clear(result.Body)
-	permission.pending = nil
-	if err != nil {
-		return err
-	}
-	for index, token := range tokens {
-		challenge := batch.challenges[index]
-		found := false
-		for slot := range permission.stock {
-			if permission.stock[slot].challenge == challenge {
-				permission.stock[slot].tokens = append(permission.stock[slot].tokens, token)
-				found = true
-				break
-			}
-		}
-		if !found {
-			permission.stock = append(permission.stock, textTokenStock{challenge: challenge, tokens: [][]byte{token}})
-		}
-	}
-	return nil
+	return operation.run(ctx, source, selection)
 }

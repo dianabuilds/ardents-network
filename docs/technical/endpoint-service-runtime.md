@@ -56,6 +56,15 @@ durable token transfer. Publisher JOIN consumes its independently accepted capsu
 and current Responder prefix. The worker receives no raw JOIN stream: the existing
 Service TLS and native Instance authentication precede Application I/O.
 
+Endpoint context composition serializes issuance admission with its retained
+Source-operation reservation, but one private issuance operation owns each
+admitted attempt's network context, cancellation, issuer presentation and
+terminal completion. Context or Endpoint revocation cancels and joins that
+operation before permission material is released. A delayed completion cannot
+publish usable stock after revocation; ordinary retry retention and the
+recovery-only canceled-batch discard remain distinct and consume the same
+existing reservation and bootstrap allowance.
+
 A clean JOIN peer CLOSE may precede consumption of the final authenticated
 Service record. The client retains those bounded received bytes and their original
 queue reservation until consumed, explicitly closed, cancelled, or expired under

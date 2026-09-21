@@ -44,7 +44,7 @@ type textContextState struct {
 	prefixOpening         *textSourceFlight
 	sourceSet             *textSourceSet
 	sourceOperations      chan struct{}
-	issuance              *textIssuanceFlight
+	issuance              *textIssuanceOperation
 	mu                    sync.Mutex
 	endpoint              *endpoint
 	lease                 *broker.ActiveSession
@@ -328,7 +328,7 @@ func (owner *textContext) closeAfterAuthorization() {
 		prefixErr = errors.Join(prefixErr, prefix.Close())
 	}
 	if issuance != nil {
-		<-issuance.done
+		issuance.join()
 	}
 	if resolution != nil {
 		<-resolution.done

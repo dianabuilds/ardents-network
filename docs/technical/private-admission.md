@@ -138,6 +138,17 @@ or a restored context. File paths are trusted composition inputs and are not
 accepted by Application transports. This adapter has local Linux/Custody
 behavior evidence; the ordinary command's provisioning lifecycle is not yet
 connected by its presence.
+The context admits at most one live issuance operation under its existing
+Source-operation reservation and derives the source selection before handing
+off. One private concrete issuance owner then retains the attempt context,
+transport callback, cancellation and terminal completion through join. Context
+revocation cancels and joins that owner without completing its fields itself;
+a late issuer result therefore cannot install usable stock after permission
+erasure. Ordinary caller cancellation retains the exact pending blind batch
+for an explicit same-process retry. Cancellation of a completed logical
+recovery instead discards only its pending batch while retaining the consumed
+reservation and batch allowance; neither path refunds authority.
+
 The issuance operation derives its source selection inside the context. The
 installation Entry owner commits both ordered alternatives under an exclusive
 root lease before returning either member. Its retained floor survives pointer
