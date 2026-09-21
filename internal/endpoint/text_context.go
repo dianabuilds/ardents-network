@@ -4,14 +4,11 @@ package endpoint
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
-	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 // textContextState owns platform-independent local authorization for a context.
@@ -73,29 +70,6 @@ func (owner *textContext) reportTextWithdrawalFailure(failure string) {
 	}
 }
 
-// textJobIdentity reserves one invocation through joined cleanup, including
-// cancellation during launch. Possession is not a qualified-launch receipt.
-type textJobIdentity struct {
-	qualificationAcquireIntroduction func(context.Context) error
-	qualificationAcquireSetup        func(context.Context) (func(), error)
-	qualificationStopSampling        func() error
-	qualificationJoins               map[*route.ClosedJoinedStream]struct{}
-	qualification                    *streamqualification.Init
-	qualificationObserve             func(context.Context, streamqualification.Report) error
-	qualificationReport              *streamqualification.Report
-	workload                         textServiceWorkloadBounds
-	owner                            *textContext
-	nonce                            [32]byte
-	context                          context.Context
-	cancel                           context.CancelFunc
-	done                             chan struct{}
-	retired                          bool
-	bound                            bool
-	finished                         bool
-	cleanupErr                       error
-	workerGrant                      *broker.Broker
-}
-
 // beginTextContext consumes existing local authority before any worker launch
 // or destination-dependent effect. Caller-supplied identifiers cannot create
 // a context or change a Connection authorization into a Publisher role.
@@ -129,11 +103,10 @@ func (owner *textContext) beginJob(endpoint *endpoint, surface broker.Surface) (
 	if !owner.liveLocked(endpoint, surface) || owner.job != nil {
 		return nil, errors.New("text context is unavailable or already has a worker")
 	}
-	job := &textJobIdentity{owner: owner, done: make(chan struct{})}
-	if _, err := rand.Read(job.nonce[:]); err != nil || job.nonce == [32]byte{} {
-		return nil, errors.New("text worker identity is unavailable")
+	job, err := newTextJobIdentity(owner)
+	if err != nil {
+		return nil, err
 	}
-	job.context, job.cancel = context.WithCancel(owner.lease.Context())
 	owner.job, owner.lastJob = job, job
 	return job, nil
 }
@@ -146,29 +119,14 @@ func (owner *textContext) currentJob(endpoint *endpoint, surface broker.Surface,
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	return owner.liveLocked(endpoint, surface) && job != nil && !job.retired && owner.job == job &&
-		job.owner == owner && nonce != [32]byte{} && job.nonce == nonce
+	return job.currentLocked(owner, endpoint, surface, nonce)
 }
 
 // retireJob invalidates completions and interrupts invocation I/O before
 // cleanup starts. The separately authorized Endpoint context survives.
 func (owner *textContext) retireJob(job *textJobIdentity) {
-	if owner == nil {
-		return
-	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	if job != nil && owner.job == job && job.owner == owner {
-		owner.retireJobLocked(job)
-	}
-}
-
-func (owner *textContext) retireJobLocked(job *textJobIdentity) {
-	clear(job.nonce[:])
-	job.retired = true
-	job.cancel()
-	if job.workerGrant != nil {
-		job.workerGrant.Close()
+	if job != nil {
+		job.retire()
 	}
 }
 
@@ -176,29 +134,10 @@ func (owner *textContext) retireJobLocked(job *textJobIdentity) {
 // cannot erase failure or release a replacement's reservation. This internal
 // completion is not installed confinement evidence.
 func (owner *textContext) finishJobCleanup(job *textJobIdentity, cleanupErr error) error {
-	if owner == nil {
+	if job == nil || job.owner != owner {
 		return errors.New("text context is unavailable")
 	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	if job == nil || job.owner != owner {
-		return errors.New("text worker cleanup does not match the retired job")
-	}
-	if job.finished {
-		return job.cleanupErr
-	}
-	if owner.job != job || !job.retired {
-		return errors.New("text worker cleanup does not match the retired job")
-	}
-	job.finished, job.cleanupErr = true, cleanupErr
-	if cleanupErr != nil {
-		owner.closed = true
-		owner.endpoint.failTextContexts(cleanupErr)
-	} else {
-		owner.job = nil
-	}
-	close(job.done)
-	return cleanupErr
+	return job.finishCleanup(cleanupErr)
 }
 
 func (owner *textContext) liveLocked(endpoint *endpoint, surface broker.Surface) bool {
@@ -264,7 +203,7 @@ func (owner *textContext) closeAfterAuthorization() {
 	}
 	job := owner.job
 	if job != nil {
-		owner.retireJobLocked(job)
+		job.retireLocked(owner)
 	}
 	owner.mu.Unlock()
 	if opening != nil {

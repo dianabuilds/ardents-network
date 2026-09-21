@@ -53,7 +53,11 @@ executable and sandbox-root identity against the selected local artifact.
 The system manager applies confinement before ExecStart. Only then can the
 fixed worker return its local HELLO. A per-job random nonce and the exact
 accepted socket instance bind the Broker's Application Principal and Local
-Grant. Worker HELLO alone is never proof of isolation on an unverified unit.
+Grant. One private Job lifecycle owns that nonce, consumes the verified Grant
+handoff, closes a rejected late Grant, retires the invocation and publishes its
+first joined cleanup result. The Context retains only the exact admission
+reservation; a replacement cannot inherit any of those Job-owned values.
+Worker HELLO alone is never proof of isolation on an unverified unit.
 
 ## Required installed properties
 
@@ -237,8 +241,10 @@ cleanup still occupies the finite context budget after its Broker lease is
 released. A cleanup failure closes text-job admission for this Endpoint
 generation, including previously idle contexts and late completions; creating
 another context cannot recover authority while an old cgroup may remain live.
-The original cleanup error survives context removal and repeated Endpoint
-close. The worker lifetime owner pins cleanup before INIT, closes the exact
+The Job owner publishes one immutable cleanup result: the original cleanup
+error survives context removal, repeated completion and repeated Endpoint
+close, while successful joined cleanup alone releases the Context reservation.
+The worker lifetime owner pins cleanup before INIT, closes the exact
 attachment on cancellation, joins initialization and cgroup cleanup, and
 publishes one immutable completion. This ownership is not a qualified launch
 receipt and does not supply installed stop permission or a worker Grant.

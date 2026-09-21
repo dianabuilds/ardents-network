@@ -41,11 +41,10 @@ func initializeOwnedTextWorker(ctx, startup context.Context, attachment *textWor
 	}
 	owner := job.owner
 	owner.mu.Lock()
-	if job.bound || job.finished {
+	if !job.claimWorkerLocked(owner) {
 		owner.mu.Unlock()
 		return nil, errors.New("text worker job was already consumed")
 	}
-	job.bound = true
 	current := ctx != nil && startup != nil && owner.liveLocked(owner.endpoint, surface) && owner.job == job && !job.retired &&
 		attachment != nil && attachment.connection != nil && attachment.pid == instance.pid && attachment.uid == instance.uid
 	owner.mu.Unlock()
