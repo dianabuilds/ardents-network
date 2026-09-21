@@ -149,6 +149,17 @@ the text-worker inventory declares its separately owned Application lane under
 graphs, the explicit [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
 
+The AAI2 retirement closure receipt has source `go list -deps -json`, profile
+`GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, and command `./cmd/ardents`. Its scope
+is limited to repository-owned production Go files in that one Linux command
+dependency closure. The architecture gate rejects the removed
+`internal/application/interfacev1/connection` dependency and every exact
+`RunParticipant` identifier while requiring the selected AAI3 Connection and
+Administration dependencies to remain. A temporary local module with the
+forbidden import and symbol proves that the gate fails on their return. This is
+not an all-platform, all-command, supply-chain, privacy, or release
+qualification.
+
 Canonical command builds use the non-overridable
 `-trimpath -buildvcs=false` policy. The public Make proof builds all four current
 headless artifacts from two independent normal clones, a linked worktree, and

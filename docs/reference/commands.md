@@ -48,6 +48,9 @@ Generic `endpoint open` is separately selected for
 [effect-free retirement](../technical/endpoint-service-runtime.md#generic-connection-command-retirement).
 Service Administration remains selected and is not carried by the removed AAI2
 or by the protected text AAI3 Connection.
+The architecture inventory independently guards this exact retirement through
+the [bounded closure receipt](../development/testing.md#reachability-audit),
+whose exact scope is owned by Testing.
 
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
