@@ -48,7 +48,7 @@ qualification owner and are rejected:
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
 | ardents endpoint headless with `ardents-headless-runtime-v1` | retired startup schema; refused before plan-owned runtime effects without converting retained roots or floors |
-| ardents endpoint open | retired generic AAI2 file client; the exact legacy syntax returns `endpoint open is retired` before file, IPC, Endpoint, Route, or Network effects |
+| ardents endpoint open | retired generic AAI2 route; the exact legacy syntax returns `endpoint open is retired` before effects, and its codec/server/client plus exclusive Endpoint adapter are absent |
 
 Removal of a command route does not remove the owning verification Module when
 that Module still has maintained callers. Wire and persisted identities are

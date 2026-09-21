@@ -130,8 +130,9 @@ typed Application with a fixed workload and confinement contract; it is not a
 generic successor. The retirement transition refuses the recognized command
 before opening either input or output path, dialing its local socket, or
 starting Endpoint or Network work. The accepting file client has been removed;
-the retained AAI2 implementation and bytes are transition-only compatibility
-debt and supply no C0 readiness evidence. The portable enrollment route
+the uncalled AAI2 codec/server/client and exclusive Endpoint adapter have also
+been removed. AAI2 supplies no C0 readiness or compatibility surface. The
+portable enrollment route
 receives only the bundle root and an independently
 delivered manifest SHA-256 pin; it verifies that pin before parsing the
 manifest and derives the remaining enrollment facts from its bound `RELEASE`
@@ -191,9 +192,9 @@ v1 contract in `internal/application/interfacev1/administration`. Each owns its
 versioned local contract, bounds, lifecycle, outcome grammar, local transport,
 and conformance evidence. Network implements the server behavior in
 `internal/endpoint`, and maintained commands use only the selected interface
-seam. `internal/application/interfacev1/connection` and its AAI2 grammar remain
-transition-only compatibility code until their separately bounded removal;
-they have no selected product caller. No Browser client, presentation, native
+seam. The former `internal/application/interfacev1/connection` AAI2 grammar and
+exclusive Endpoint adapter are absent; AAI3 rejects an AAI2 request before
+Application owner I/O. No Browser client, presentation, native
 host, extension, or enrollment-v4 artifact is a current product surface.
 
 [`ownership.json`](../development/ownership.json) is the machine-checked source,

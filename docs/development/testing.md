@@ -251,8 +251,8 @@ The C0 Network candidate is exercised by the deterministic/process/race lanes,
 `headless-check`, and the selected Network qualifications. This includes the
 Endpoint-owned `internal/application/broker`; its directory is not a separate
 Application product. Protected text AAI3 and the separate Administration v1
-Interface remain covered at their selected seams. AAI2 conformance vectors are
-transition evidence, not a generic Endpoint workload or candidate caller. No
+Interface remain covered at their selected seams. The deleted AAI2 package and
+vectors are neither a generic Endpoint workload nor compatibility surface. No
 Browser command, Browser implementation, Browser artifact, or Browser
 qualification is part of the current candidate.
 
@@ -371,8 +371,9 @@ conformance oracle writes every byte value exactly once through unequal input
 fragments, closes only the input direction, and then reads the reversed bytes
 through different response fragments. Existing client tests retain cancellation,
 concurrent close, and Write-before-CloseInput ordering coverage; request tests
-retain refused Name and now explicitly reject malformed magic. This mapping does
-not import the complete AAI2 test suite or claim generic Endpoint workloads.
+retain refused Name and explicitly send a complete AAI2 request plus data frame
+to prove refusal before the Application owner is called. This mapping does not
+retain the removed AAI2 test suite or claim generic Endpoint workloads.
 
 The headless command decoder rejects both a previously valid
 `ardents-headless-runtime-v1` plan and mixed v1/v2 fields before creating any
@@ -386,4 +387,6 @@ The exact legacy `endpoint open` syntax returns its stable retirement error at
 the command adapter. Its regression supplies missing and existing file paths
 and an available Unix socket, then proves no output creation or mutation and no
 IPC acceptance. The removed accepting client fixtures no longer qualify AAI2;
-the independent Administration client round trip remains covered.
+the AAI2 codec/server/client and exclusive Endpoint adapter are absent, while
+the independent Administration client round trip remains covered. Shared
+directional-close evidence remains with AAI3 and native Service Connection.

@@ -25,17 +25,6 @@ func (endpoint *endpoint) consume(capability, principal [32]byte, surface string
 	return endpoint.admission.Consume(capability, principal, broker.Surface(surface))
 }
 
-func (endpoint *endpoint) beginApplicationSession(ctx context.Context, principal [32]byte) (*applicationSession, error) {
-	if endpoint == nil || ctx == nil {
-		return nil, errors.New("local Application Connection admission is unavailable")
-	}
-	capability, err := endpoint.admission.Admit(principal, broker.Connection)
-	if err != nil {
-		return nil, errors.New("local Application Connection admission is unavailable")
-	}
-	return endpoint.activateApplicationSession(ctx, capability, principal)
-}
-
 func (endpoint *endpoint) activateApplicationSession(ctx context.Context, capability, principal [32]byte) (*applicationSession, error) {
 	if endpoint == nil || ctx == nil {
 		return nil, errors.New("local Application Connection authorization is unavailable")

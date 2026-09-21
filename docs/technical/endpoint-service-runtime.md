@@ -123,10 +123,9 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
-| internal/application/interfacev1/connection | Retain the exact AAI2 Target-Link, ordered-byte, directional-input-close, and terminal-outcome grammar only while its separately bounded removal is pending. It has no selected product caller. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev2/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
-| internal/endpoint | Compose the selected protected text participant and implement the shared Connection and Administration Interfaces. `RunTextParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
+| internal/endpoint | Compose the selected protected text participant and implement its AAI3 Connection Adapter plus the separate Administration Interface. `RunTextParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
@@ -441,8 +440,9 @@ bytes require a separately selected reader, recovery, or migration contract;
 startup retirement supplies none. The command decoder now enforces this before
 validating or opening any plan-owned path. The unreachable `RunParticipant`
 composition and its exclusive configuration/event wiring have been removed.
-This does not claim the separately callable v1 Connection or Administration
-interfaces have already been retired.
+That startup removal did not retire Administration, which remains selected.
+The separately callable AAI2 Connection was removed only after its own caller
+retirement and AAI3 version-refusal evidence.
 
 ## Generic Connection command retirement
 
@@ -475,9 +475,9 @@ fixed text AAI3 Interface remains selected. Service Administration remains a
 separately authorized Interface. The shared native Service Connection retains
 its directional half-close semantics for selected callers. None of those facts
 is a caller for AAI2, and qualification-only or conformance fixtures cannot
-supply one. The AAI2 implementation and vectors remain exact transition
-obligations until all production callers are closed and their separate removal
-is integrated; this decision alone does not pretend they are already absent.
+supply one. After both accepting callers closed, the AAI2 codec/server/client,
+vectors, and exclusive Endpoint adapter were removed. AAI3 now rejects a
+complete AAI2 request before calling its Application owner.
 
 The command adapter now implements that refusal with the stable diagnostic
 `endpoint open is retired`. The former accepting file client and its
@@ -486,20 +486,14 @@ missing and existing files plus an available local socket to prove the refusal
 precedes file validation or mutation and IPC connection. The separately
 callable Administration client and its behavior test remain unchanged.
 
-`internal/application/interfacev1/connection` owns the sole local Target-Link
-Connection Interface: one private Unix attachment carries a non-empty Target
-Link of at most 512 bytes, opaque frames of at most 16 KiB, and one UTF-8 typed
-terminal outcome with a 128-byte class and 512-byte diagnostic reason. EOF
-without that outcome is not success. Setup does not retry or select an
-alternate link. `internal/application/interfacev1/administration` separately
-owns only `publish` and `withdraw`; it cannot carry Connection data or silently
-turn a failure into another success state. Both packages declare
-`ardents-application-interface-v1` and execute checked vectors under
-`testdata/conformance-v1.json`. There is no result sideband or Endpoint-owned
-local grammar. The retired v1 process composition no longer opens either
-server. Separately callable clients and their shared Interface implementations
-remain until their own retirement decisions; no Browser client is selected in
-the maintained product.
+The removed AAI2 grammar accepted a non-empty Target Link, opaque frames and a
+typed terminal outcome. Those bytes have no maintained decoder, server, client,
+Endpoint adapter, persisted-state reader, or compatibility promise. The
+historical Service Connection v2 network identity is unrelated and remains
+unchanged. `internal/application/interfacev1/administration` separately owns
+only `publish` and `withdraw`; it cannot carry Connection data or silently turn
+a failure into another success state. No Browser client is selected in the
+maintained product.
 
 The Administration client owns its Unix socket from successful dial through the
 closed `publish` or `withdraw` response. Caller cancellation immediately
@@ -509,12 +503,12 @@ has already been stopped. This aborts local waiting, not a server operation
 already accepted by the peer: the client never invents an outcome, retry, or
 rollback for Publish or Withdraw.
 
-The `ardents-application-interface-v1` frame identity and its opaque link bytes
-remain persisted-interface obligations until their separate retirement. The
-historical Alpha corpus triple has no accepting runtime adapter: v1 plans are
-refused before path validation or owner startup, and v2 rejects those fields.
-Existing retained bytes require a separately selected reader, recovery, or
-migration contract; this removal creates none.
+The Administration `ardents-application-interface-v1` identity remains its own
+contract and is not an AAI2 Connection fallback. The historical Alpha corpus
+triple has no accepting runtime adapter: v1 plans are refused before path
+validation or owner startup, and v2 rejects those fields. Existing retained
+bytes require a separately selected reader, recovery, or migration contract;
+this removal creates none.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection
@@ -522,16 +516,15 @@ state. Route Attachments are already authenticated opaque carriers; Namespace
 and State facts arrive only in the typed inputs required for Connection
 binding.
 
-`Stream.CloseInput` is an orderly directional operation, distinct from
-`Stream.Close`. A local Application sends the accepted zero-length AAI2 input
-frame to state that no more request bytes will arrive; the local transport
-preserves it through Endpoint and native Service Connection as the existing
-authenticated Terminal record. Conversely, only a verified matching remote
-Terminal gives the local Application reader EOF. Either transition leaves the
-opposite direction available for a response, is safe to repeat, and rejects
-later writes in its closed input direction. Cancellation, malformed local
-input, carrier loss, and full close remain abort paths, and neither local nor
-native EOF is semantic success without the one typed terminal outcome.
+`Stream.CloseInput` remains an orderly directional operation in the selected
+AAI3 transport and native Service Connection, distinct from `Stream.Close`.
+The local transport preserves it through Endpoint as the authenticated native
+Terminal record. Conversely, only a verified matching remote Terminal gives
+the local Application reader EOF. Either transition leaves the opposite
+direction available for a response, is safe to repeat, and rejects later
+writes in its closed input direction. Cancellation, malformed local input,
+carrier loss, and full close remain abort paths, and neither local nor native
+EOF is semantic success without the one typed terminal outcome.
 
 A locally written Terminal is a directional completion obligation, not proof
 of peer receipt. Under the closed Service Connection v2 grammar selected by
@@ -568,35 +561,6 @@ peer's already complete tail without recovery. Raw EOF, local close, refusal,
 truncation without the witness and every other Carrier failure retain the
 bounded recovery path.
 
-The v1 Application Client serializes `Write` with `CloseInput`, so an accepted
-write's complete frames precede the zero-length input-close frame; if the
-directional close wins, the later write is rejected. Full `Close` and lifetime
-context cancellation are aborts and do not wait for that serialization lock:
-they close the owned Unix transport to interrupt any blocked read or write,
-reject later operations, and join Client-owned work before publishing `local
-cancellation`. A verified remote terminal outcome completed by the joined
-receiver remains authoritative; transport errors induced by the abort cannot
-replace it or become a second outcome. An interrupted `Write` may report only
-its completed payload prefix plus an error and can never become clean success.
-
-`Dial` owns the Unix transport and its cancellation from the instant a socket is
-opened through request write, status, and any refusal read. A setup cancellation
-guard closes that transport immediately and returns the originating cancellation
-or deadline error; no later setup deadline or silent peer can replace it. On an
-accepted status, one locked handoff changes that same guard from setup transport
-cleanup to `Client.Close` before `Dial` returns. If cancellation won first,
-setup joins its cleanup and returns no Client; if the successful handoff won,
-the returned Client owns the remaining context watch, transport, I/O joins, and
-terminal outcome. Thus neither an error branch nor the success/cancellation race
-leaves an unowned socket or a guard that can close a successfully transferred
-Client without a cancellation.
-
-Repeated and concurrent `Close` calls join the same cleanup and return its
-result. The headless `open`
-caller joins its response copier on input failure or cancellation and removes
-the partial output before returning; it neither receives nor closes the socket
-directly.
-
 Explicit publication withdrawal uses a fresh Service Administration capability
 and returns `unpublished` only for the exact Target/generation after retained
 connections drain; an established connection may therefore finish as `clean
@@ -622,9 +586,10 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 
 - Go tests for Broker, Endpoint, Publication, and Service Connection exercise
   the Module Interfaces and failure paths.
-- Application Connection and Administration behavior tests exercise framing,
-  typed refusal/outcome, cancellation, join, and exact socket cleanup through
-  their public Interfaces. Architecture tests forbid a second Endpoint-local
+- Protected text AAI3 Connection and Administration behavior tests exercise
+  framing, typed refusal/outcome, cancellation, join, and exact socket cleanup
+  through their public Interfaces. AAI3 rejects the removed AAI2 request before
+  Application owner I/O. Architecture tests forbid a second Endpoint-local
   transport owner and enforce the command dependency graphs.
 - [ADR-0024](../adr/0024-native-interactive-route-foundation.md) selects the
   native Route foundation; [ADR-0075](../adr/0075-service-connection-v2-terminal-receipt.md)

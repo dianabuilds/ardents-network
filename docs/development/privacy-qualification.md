@@ -187,8 +187,9 @@ candidate results. No such stronger claim is admitted by P9 here.
 | Endpoint/Broker/Application | Admit only verified confined workers for the successor; add typed Name/Link local Interface version 2 and the fixed text Application without arbitrary execution authority |
 | Resource/Release/install | Admit one complete candidate inventory with root-owned units and worker; enforce host periods, authenticated adoption and drain; preserve release/authority floors |
 
-Compatibility is explicit: the current C0 generation and local AAI2 remain
-their existing contracts before adoption. Prepare successor binaries,
+Compatibility is explicit: the current C0 generation retains its persisted and
+network identities, but the uncalled local AAI2 implementation is removed.
+Prepare successor binaries,
 configuration, units and validated state conversion without accepting new
 successor traffic. Quiesce new old-generation jobs, drain at most 5 seconds,
 terminate remaining work, then atomically adopt one generation and its exact
@@ -222,9 +223,10 @@ assigned work or authorization to start multiple C0 slices.
 [ADR-0086](../adr/0086-consolidate-protected-network-and-retire-predecessor-runtimes.md)
 preserves this entire acceptance contract for the changed consolidated candidate.
 Each bounded refactor/retirement includes its affected behavior checks and owner
-documents. Do not defer them into the final system campaign. Before removing
-AAI2, demonstrate the retained binary-stream, fragmentation, half-close,
-cancellation and terminal cases through AAI3 with strict version refusal.
+documents. Do not defer them into the final system campaign. The AAI2 removal
+is gated by retained binary-stream, fragmentation, half-close, cancellation
+and terminal cases through AAI3 with strict version refusal before Application
+owner I/O.
 
 Final qualification separates ordinary installed TCP/TLS and QUIC journeys,
 durable admission/adoption failures (P5/P7/P10), wire/volatile lifecycle (P2/P7),

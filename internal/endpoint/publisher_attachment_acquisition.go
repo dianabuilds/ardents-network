@@ -2,15 +2,30 @@ package endpoint
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/entry"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 	"github.com/dianabuilds/ardents-network/internal/service/publication"
 	"github.com/dianabuilds/ardents-network/internal/service/reachability"
 )
+
+type resolutionCandidateView interface {
+	Epoch(time.Time, time.Time) (state.ResolutionEpoch, bool)
+	Candidate([32]byte, time.Time, time.Time) (state.ResolutionCandidate, bool)
+}
+
+// applicationEntry is the Endpoint's already-imported Entry owner used by
+// retained Publisher transit acquisition. Entry retains invite validation,
+// retry, and durable contact state.
+type applicationEntry interface {
+	route.EntryAcquirer
+	Contact() (entry.Candidate, error)
+}
 
 type publisherAttachmentStateView interface {
 	resolutionCandidateView
@@ -164,6 +179,15 @@ func (endpoint *endpoint) planPublisherAcquisition(view publisherAttachmentState
 		SubmissionMode: reachability.SubmissionMembershipGrant}
 	return publisherAcquisitionPlan{epoch: epoch, entry: entry, initiator: initiator, introduction: introduction,
 		rendezvous: rendezvous, responder: responder, slot: slot, at: at, deadline: deadline}, nil
+}
+
+func applicationInitiator(view resolutionCandidateView, contact entry.Candidate, at, deadline time.Time) (transitPeer, error) {
+	candidate, available := view.Candidate(contact.NodeID, at, deadline)
+	if !available || candidate.Domain != "initiator" || candidate.PublicKey != contact.PublicKey || candidate.Endpoint != contact.Endpoint ||
+		sha256.Sum256([]byte(candidate.Family)) != contact.FamilyID {
+		return transitPeer{}, errors.New("user entry contact does not match current initiator state")
+	}
+	return transitPeer{NodeID: candidate.NodeID, PublicKey: candidate.PublicKey, Family: contact.FamilyID, Endpoint: candidate.Endpoint}, nil
 }
 
 func publisherTransitPeer(value state.PublisherTransitPeer) transitPeer {
