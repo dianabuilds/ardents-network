@@ -281,6 +281,15 @@ before transfer and after asynchronous opening. A successful proposal transfers
 the Route lifetime from its bounded opening attempt to the Service Connection,
 so normal attempt cancellation cannot retire the accepted Attachment.
 
+Trusted worker composition also supplies one checked directional byte contract
+before the job can receive a Service stream. The ordinary text composition
+retains the existing 512-byte reader request and 4 MiB plus 13-byte framing
+response bounds; the fixed qualification composition retains 64 MiB in each
+direction. Reader and Publisher derive their opposite directions from that one
+contract. The native Service stream therefore neither imports text-document
+policy nor inspects qualification job input, and recovery continues the same
+logical byte counters instead of resetting either bound.
+
 This is maintained component integration, not installed-host P7 or NET-14
 qualification. A path that supplies no Attachment opener retains its existing
 orderly half-close behavior and cannot recover.

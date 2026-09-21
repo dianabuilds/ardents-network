@@ -46,6 +46,10 @@ func textServiceFixture(t *testing.T) (*textServiceBinding, *textServiceBinding,
 		if err != nil {
 			t.Fatal(err)
 		}
+		job.workload, err = textDocumentServiceWorkloadBounds()
+		if err != nil {
+			t.Fatal(err)
+		}
 		grant, err := broker.New(broker.Config{ID: job.nonce, Grants: []broker.Grant{{Principal: principal, Surface: broker.Connection}}})
 		if err != nil {
 			t.Fatal(err)
@@ -145,6 +149,75 @@ func TestTextServiceRealTLSAndDocumentExchange(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTextServiceWorkloadBoundsPreserveCurrentDirectionalContracts(t *testing.T) {
+	for _, test := range []struct {
+		name                   string
+		open                   func() (textServiceWorkloadBounds, error)
+		readerSend, readerRead uint32
+	}{
+		{name: "document", open: textDocumentServiceWorkloadBounds,
+			readerSend: 512, readerRead: textdocument.MaximumBytes + 13},
+		{name: "qualification", open: streamQualificationServiceWorkloadBounds,
+			readerSend: 64 << 20, readerRead: 64 << 20},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			bounds, err := test.open()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, direction := range []struct {
+				name          string
+				surface       broker.Surface
+				send, receive uint32
+			}{
+				{name: "reader", surface: broker.Connection, send: test.readerSend, receive: test.readerRead},
+				{name: "publisher", surface: broker.Administration, send: test.readerRead, receive: test.readerSend},
+			} {
+				t.Run(direction.name, func(t *testing.T) {
+					send, receive, err := bounds.direction(direction.surface)
+					if err != nil || send != direction.send || receive != direction.receive {
+						t.Fatalf("directional bounds = %d/%d, %v; want %d/%d", send, receive, err, direction.send, direction.receive)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestTextServiceWorkloadBoundsRejectUncheckedValues(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		send, receive uint32
+	}{
+		{name: "missing-send", receive: 1},
+		{name: "missing-receive", send: 1},
+		{name: "send-too-large", send: maximumStreamBytes + 1, receive: 1},
+		{name: "receive-too-large", send: 1, receive: maximumStreamBytes + 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := newTextServiceWorkloadBounds(test.send, test.receive); err == nil {
+				t.Fatal("unchecked text Service workload bounds accepted")
+			}
+		})
+	}
+	if _, _, err := (textServiceWorkloadBounds{}).direction(broker.Connection); err == nil {
+		t.Fatal("missing text Service workload contract accepted")
+	}
+	valid := mustTextServiceWorkloadBounds(t, 1, 1)
+	if _, _, err := valid.direction(broker.Surface("unknown")); err == nil {
+		t.Fatal("unknown text Service workload direction accepted")
+	}
+}
+
+func mustTextServiceWorkloadBounds(t *testing.T, send, receive uint32) textServiceWorkloadBounds {
+	t.Helper()
+	bounds, err := newTextServiceWorkloadBounds(send, receive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bounds
 }
 
 func TestTextServiceRejectsForeignTupleAndExpiredLocalJob(t *testing.T) {
