@@ -1,8 +1,9 @@
-// Package route owns native Interactive Route v2 selection and volatile
-// attachment lifecycle behind Open, Attach, and Close. It creates opaque Entry
-// attachments through caller-owned resource reservations, owns their cleanup,
-// and provides closed v2 C-2 and one-use private-reachability setup/envelope
-// codecs. Adjacent Node legs use one exact caller-selected TCP/TLS or QUIC-v1
-// Carrier behind common TLS and LegBinding authentication; Route never chooses
-// a fallback. It has no H3 reader or peer runtime.
+// Package route retains the native Interactive Route v2 owner behind Open,
+// Attach, and Close. That legacy owner currently has no non-test caller; its
+// presence is not a maintained product path or evidence of successor-network
+// readiness. The package also implements the current closed Node Carrier and
+// wire mechanisms: Node's forwarding owner calls OpenClosedNodeCarrier for one
+// exact State-selected TCP/TLS or QUIC-v2 attempt and retains peer selection and
+// session lifetime. Route never chooses a fallback and has no H3 reader or peer
+// runtime.
 package route
