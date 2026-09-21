@@ -38,6 +38,15 @@ configuration format or an authority source.
 | `name resolve <input-file> <name> <context-hex>` | Perform one private resolution exchange through the selected Namespace and State views. |
 | `name control <input-file> <operation-file> <context-hex>` | Perform one admitted private Namespace control exchange. |
 
+The selected transition for `endpoint headless` retires
+`ardents-headless-runtime-v1` startup. The current binary still accepts its
+bounded persisted-v1 compatibility form; this is current behavior, not a
+compatibility promise for a new deployment. The selected refusal and effect
+boundary are defined by the
+[Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement).
+Generic `endpoint open` and Service Administration retain their separate
+dispositions.
+
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
 Module diagnostics, not a capacity or hosting claim.
