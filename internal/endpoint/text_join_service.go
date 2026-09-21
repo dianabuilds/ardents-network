@@ -46,11 +46,8 @@ func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
 
 func (transport *textJoinedTransport) Close() error {
 	transport.once.Do(func() {
-		if transport.job != nil {
-			owner := transport.job.owner
-			owner.mu.Lock()
-			delete(transport.job.qualificationJoins, transport.joined)
-			owner.mu.Unlock()
+		if transport.job != nil && transport.job.qualification != nil {
+			transport.job.qualification.releaseJoin(transport.joined)
 		}
 		retirement := transport.Conn.Close()
 		if transport.revoked != nil && transport.revoked.Err() != nil && textRouteStopOnly(retirement) {
@@ -178,8 +175,8 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		}
 	}
 	if attempt.plaintext.AttachmentGeneration == 1 && owner.surface == broker.Connection {
-		if job.qualificationAcquireIntroduction != nil {
-			if err := job.qualificationAcquireIntroduction(joining); err != nil {
+		if job.qualification != nil && job.qualification.acquireIntroduction != nil {
+			if err := job.qualification.acquireIntroduction(joining); err != nil {
 				return nil, err
 			}
 		}
@@ -307,10 +304,7 @@ func (owner *textContext) retainTextJoinedTransport(job *textJobIdentity, attemp
 		return false
 	}
 	if job.qualification != nil {
-		if job.qualificationJoins == nil {
-			job.qualificationJoins = make(map[*route.ClosedJoinedStream]struct{})
-		}
-		job.qualificationJoins[joined] = struct{}{}
+		job.qualification.retainJoin(joined)
 	}
 	return true
 }

@@ -33,25 +33,22 @@ func (owner *textContext) launchTextWorker(ctx context.Context, snapshot []byte)
 	return owner.launchInstalledWorker(ctx, snapshot, nil, workload)
 }
 
-func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, profile streamqualification.Profile, seed [32]byte) (*qualifiedTextWorker, error) {
+func (owner *textContext) launchStreamQualificationWorker(ctx context.Context, qualification *textQualificationRun) (*qualifiedTextWorker, error) {
 	role := streamqualification.ReaderRole
 	if owner != nil && owner.surface == broker.Administration {
 		role = streamqualification.PublisherRole
 	}
-	if _, err := profile.Definition(role); err != nil {
-		return nil, err
-	}
-	if seed == [32]byte{} {
-		return nil, errors.New("qualification workload seed is absent")
+	if qualification == nil || qualification.init.Role != role {
+		return nil, errors.New("qualification workload role is unavailable")
 	}
 	workload, err := streamQualificationServiceWorkloadBounds()
 	if err != nil {
 		return nil, err
 	}
-	return owner.launchInstalledWorker(ctx, nil, &streamqualification.Init{Role: role, Profile: profile, Seed: seed}, workload)
+	return owner.launchInstalledWorker(ctx, nil, qualification, workload)
 }
 
-func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *streamqualification.Init,
+func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []byte, qualification *textQualificationRun,
 	workload textServiceWorkloadBounds) (*qualifiedTextWorker, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text worker launch is unavailable")
@@ -69,14 +66,6 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 	job, err := owner.beginJob(owner.endpoint, owner.surface)
 	if err != nil {
 		return nil, err
-	}
-	job.workload = workload
-	inventory := textInventory
-	if qualification != nil {
-		inventory = streamInventory
-		copy := *qualification
-		copy.Nonce = job.nonce
-		job.qualification = &copy
 	}
 	// Before activation a refused launch has no process-cleanup obligation.
 	activated, transferred := false, false
@@ -98,6 +87,15 @@ func (owner *textContext) launchInstalledWorker(ctx context.Context, snapshot []
 			release()
 		}
 	}()
+	job.workload = workload
+	inventory := textInventory
+	if qualification != nil {
+		if err := qualification.bindInvocation(job.nonce); err != nil {
+			return nil, err
+		}
+		inventory = streamInventory
+		job.qualification = qualification
+	}
 	bounded, cancel := context.WithTimeout(job.context, 15*time.Second)
 	defer cancel()
 	stopCaller := context.AfterFunc(ctx, cancel)

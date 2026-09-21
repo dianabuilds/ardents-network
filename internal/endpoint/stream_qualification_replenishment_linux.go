@@ -40,8 +40,8 @@ func (worker *qualifiedTextWorker) runQualifiedStreams(ctx context.Context, stre
 			}
 		}
 	}()
-	attachment := &qualificationAttachment{ReadWriteCloser: worker.lifetime.attachment, sample: worker.job.qualificationStopSampling}
-	report, outcome = streamqualification.RunConnections(bounded, attachment, *worker.job.qualification, streams, worker.job.qualificationObserve)
+	attachment := &qualificationAttachment{ReadWriteCloser: worker.lifetime.attachment, sample: worker.job.qualification.stopSamples}
+	report, outcome = streamqualification.RunConnections(bounded, attachment, worker.job.qualification.init, streams, worker.job.qualification.observe)
 	cancel()
 	outcome = errors.Join(outcome, <-stopped)
 	return report, outcome
@@ -59,13 +59,10 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 		owner.mu.Unlock()
 		return nil
 	}
-	joins := make([]*route.ClosedJoinedStream, 0, len(worker.job.qualificationJoins))
-	for joined := range worker.job.qualificationJoins {
-		joins = append(joins, joined)
-	}
+	joins := worker.job.qualification.joinedStreams()
 	owner.mu.Unlock()
 	issuerReserve := qualificationIssuerReserve
-	if worker.job.qualification.Role == streamqualification.ReaderRole {
+	if worker.job.qualification.init.Role == streamqualification.ReaderRole {
 		issuerReserve += (3 - worker.qualificationReader) * 9
 	}
 	if err := owner.ensureQualificationIssuerReserve(ctx, issuerReserve); err != nil {
@@ -99,9 +96,7 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	}
 	for _, joined := range joins {
 		if err := joined.Replenish(ctx, present); err != nil {
-			owner.mu.Lock()
-			_, retained := worker.job.qualificationJoins[joined]
-			owner.mu.Unlock()
+			retained := worker.job.qualification.retains(joined)
 			// A retiring transport's Service owner retains its terminal cause.
 			if retained {
 				return err

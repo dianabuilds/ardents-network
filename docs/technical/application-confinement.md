@@ -59,6 +59,13 @@ first joined cleanup result. The Context retains only the exact admission
 reservation; a replacement cannot inherit any of those Job-owned values.
 Worker HELLO alone is never proof of isolation on an unverified unit.
 
+The separate fixed qualification caller creates one private qualification Run.
+Only that Run owns its Init, progress observer, report destination, sampling
+cleanup and retained joined-stream set. An ordinary text Job creates none of
+that state; it can retain only the exact Run supplied by the qualification
+caller. A delayed completion publishes to its original Run and cannot populate
+a replacement Job's report.
+
 ## Required installed properties
 
 The unit must include these effective properties; unknown or unavailable

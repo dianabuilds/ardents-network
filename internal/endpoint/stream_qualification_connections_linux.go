@@ -118,7 +118,7 @@ func openQualificationReaderStreams(
 
 func (owner *textContext) streamConnectionLimitLocked() int {
 	if owner.job != nil && owner.job.qualification != nil {
-		schedule, err := owner.job.qualification.Profile.Definition(owner.job.qualification.Role)
+		schedule, err := owner.job.qualification.init.Profile.Definition(owner.job.qualification.init.Role)
 		if err == nil {
 			return int(schedule.OpenConnections)
 		}
@@ -211,8 +211,8 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 				return bound, fmt.Errorf("qualification Reader %d stream %d submission reserve: %w", reader, index, err)
 			}
 			releaseSetup := func() {}
-			if worker.job.qualificationAcquireSetup != nil {
-				releaseSetup, err = worker.job.qualificationAcquireSetup(setup)
+			if worker.job.qualification.acquireSetup != nil {
+				releaseSetup, err = worker.job.qualification.acquireSetup(setup)
 				if err != nil {
 					return bound, fmt.Errorf("qualification Reader %d stream %d setup admission: %w", reader, index, err)
 				}
@@ -235,7 +235,7 @@ func (worker *qualifiedTextWorker) runQualificationReader(ctx context.Context, d
 			releaseSetup()
 			id := qualificationStreamID(reader, index)
 			bound = streamqualification.BoundStream{ID: id, Stream: service}
-			if _, err := service.Write(qualificationHello(worker.job.qualification.Profile, worker.job.qualification.Seed, id)); err != nil {
+			if _, err := service.Write(qualificationHello(worker.job.qualification.init.Profile, worker.job.qualification.init.Seed, id)); err != nil {
 				return bound, fmt.Errorf("qualification Reader %d stream %d hello: %w", reader, index, err)
 			}
 			// Setup traffic consumes the same finite forwarding allowances as the
@@ -299,7 +299,7 @@ func (worker *qualifiedTextWorker) serveQualification(ctx, bounded context.Conte
 				return errors.Join(readErr, stream.Close())
 			}
 			id := binary.BigEndian.Uint32(hello[9:13])
-			expected := qualificationHello(worker.job.qualification.Profile, worker.job.qualification.Seed, id)
+			expected := qualificationHello(worker.job.qualification.init.Profile, worker.job.qualification.init.Seed, id)
 			if id == 0 || id > 511 || id%2 != 1 || seen[id] || string(hello[:]) != string(expected) {
 				return errors.Join(errors.New("qualification workload binding invalid"), stream.Close())
 			}
@@ -319,9 +319,7 @@ func (worker *qualifiedTextWorker) serveQualification(ctx, bounded context.Conte
 		}
 	}
 	report, err := worker.runQualifiedStreams(network, streams)
-	if worker.job.qualificationReport != nil {
-		*worker.job.qualificationReport = report
-	}
+	worker.job.qualification.publishReport(report)
 	return err
 }
 

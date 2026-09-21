@@ -65,19 +65,19 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 	qualificationPacer := &StreamQualificationMeasurements{}
 	for index, owner := range readers {
 		job := liveTextCapsuleJob(t, owner)
-		job.qualification = &streamqualification.Init{Role: streamqualification.ReaderRole,
-			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}
+		job.qualification = &textQualificationRun{init: streamqualification.Init{Role: streamqualification.ReaderRole,
+			Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(byte(247 + index)), Seed: fixtureID(246)}}
 		job.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
-		job.qualificationAcquireIntroduction = qualificationPacer.acquireIntroductionOpening
-		job.qualificationAcquireSetup = qualificationPacer.acquireIntroductionSetup
+		job.qualification.acquireIntroduction = qualificationPacer.acquireIntroductionOpening
+		job.qualification.acquireSetup = qualificationPacer.acquireIntroductionSetup
 		readerJobs[index] = job
 	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 	publisherJob := liveTextCapsuleJob(t, publisher)
-	publisherJob.qualification = &streamqualification.Init{Role: streamqualification.PublisherRole,
-		Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(245), Seed: fixtureID(246)}
+	publisherJob.qualification = &textQualificationRun{init: streamqualification.Init{Role: streamqualification.PublisherRole,
+		Profile: streamqualification.ClientToPublisher, Nonce: fixtureID(245), Seed: fixtureID(246)}}
 	publisherJob.workload = mustTextServiceWorkloadBounds(t, 64<<20, 64<<20)
 	publisherWorker := &qualifiedTextWorker{job: publisherJob}
 	delivered := make(chan connection.Stream)
@@ -138,7 +138,7 @@ func TestTextPublisherBuildsRetainedQualificationSetAcrossFourReaders(t *testing
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d submission reserve %d: %w", index, streamIndex, err)
 					}
-					releaseSetup, err := job.qualificationAcquireSetup(setup)
+					releaseSetup, err := job.qualification.acquireSetup(setup)
 					if err != nil {
 						return bound, fmt.Errorf("Reader %d setup admission %d: %w", index, streamIndex, err)
 					}

@@ -313,6 +313,12 @@ or eventual-consistency oracles. Every goroutine, process, listener, file, lock,
 timer, and fixture has one owner, cancellation path, join, residue assertion,
 and cleanup-failure path.
 
+The fixed stream qualification uses a qualification-only Run seam: its report,
+observer callbacks, sampling cleanup and joined streams never belong to an
+ordinary text Job. Its cancellation oracle delays an old Run's completion
+until a replacement exists, then proves the completion remains on the old Run
+and that the first sampling cleanup error is immutable.
+
 Two tests are duplicate-removal candidates only when requirement, owning seam,
 oracle, transition/fault, platform/format, and independence role are all the
 same. A seam migration moves behavior tests to the new Module Interface,
