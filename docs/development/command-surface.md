@@ -47,6 +47,7 @@ qualification owner and are rejected:
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by ADR-0060 |
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
+| ardents endpoint headless with `ardents-headless-runtime-v1` | retired startup schema; refused before plan-owned runtime effects without converting retained roots or floors |
 
 Removal of a command route does not remove the owning verification Module when
 that Module still has maintained callers. Wire and persisted identities are

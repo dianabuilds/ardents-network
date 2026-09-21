@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -64,17 +65,16 @@ func TestHeadlessTextSourceConfigurationRetainsExplicitSigner(t *testing.T) {
 	}
 }
 
-func TestHeadlessLegacyPlanRejectsClosedSignerAlone(t *testing.T) {
+func TestHeadlessLegacyPlanRefusesBeforeClosedSignerValidation(t *testing.T) {
 	plan := headlessTextPlanFixture(t)
 	plan.Schema, plan.NetworkProfile = "ardents-headless-runtime-v1", route.Profile
 	plan.TextTokenRoot, plan.ClosedProfileAuthority = "", ""
 	plan.ReaderPermission, plan.PublisherPermission = headlessPermissionPlan{}, headlessPermissionPlan{}
 	plan.TransitAcquisitionRoot, plan.BytesEachDirection = filepath.Join(t.TempDir(), "transit"), 4096
-	if _, err := loadHeadlessRuntimePlan(writeHeadlessTextPlan(t, plan)); err != nil {
-		t.Fatalf("valid legacy baseline: %v", err)
-	}
-	plan.ClosedProfileAuthority = plan.NetworkAuthorities[0]
-	if _, err := loadHeadlessRuntimePlan(writeHeadlessTextPlan(t, plan)); err == nil || !strings.Contains(err.Error(), "closed profile authority requires text runtime plan v2") {
-		t.Fatalf("legacy plan accepted closed signer or failed elsewhere: %v", err)
+	for _, signer := range []string{"", plan.NetworkAuthorities[0]} {
+		plan.ClosedProfileAuthority = signer
+		if _, err := loadHeadlessRuntimePlan(writeHeadlessTextPlan(t, plan)); !errors.Is(err, errHeadlessRuntimeV1Retired) {
+			t.Fatalf("legacy plan with signer %q outcome = %v", signer, err)
+		}
 	}
 }

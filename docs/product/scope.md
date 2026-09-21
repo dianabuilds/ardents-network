@@ -138,9 +138,9 @@ composition. Existing root and floor bytes remain retained evidence, not
 authority for an automatic migration. The
 [Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement)
 owns the exact refusal and effect boundary. This selection does not retire the
-distinct Administration interface or generic Connection command. At the current
-revision, bounded persisted v1 plans remain accepted; the selected end state is
-not yet implemented.
+distinct Administration interface or generic Connection command. The command
+now implements that boundary: bounded persisted v1 plans are refused without
+runtime effects, while v2 remains the sole accepted headless startup schema.
 
 ## C0 Network candidate
 

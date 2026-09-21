@@ -371,3 +371,11 @@ through different response fragments. Existing client tests retain cancellation,
 concurrent close, and Write-before-CloseInput ordering coverage; request tests
 retain refused Name and now explicitly reject malformed magic. This mapping does
 not import the complete AAI2 test suite or claim generic Endpoint workloads.
+
+The headless command decoder rejects both a previously valid
+`ardents-headless-runtime-v1` plan and mixed v1/v2 fields before creating any
+named root or socket or emitting runtime output. A separate dispatch oracle
+shows valid and broken v2 plans reach the selected v2 runtime or decoder refusal
+without returning the retired-v1 outcome. The unreachable v1 composition is
+retained only for its separate removal boundary; these tests do not treat it as
+an accepting compatibility path.
