@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -22,6 +23,21 @@ type testStream struct {
 	inputOnce sync.Once
 	closeOnce sync.Once
 }
+
+type terminalInputTransport struct {
+	reader io.Reader
+}
+
+func (transport *terminalInputTransport) Read(destination []byte) (int, error) {
+	return transport.reader.Read(destination)
+}
+
+func (*terminalInputTransport) Write(source []byte) (int, error) {
+	return len(source), nil
+}
+
+func (*terminalInputTransport) CloseWrite() error { return nil }
+func (*terminalInputTransport) Close() error      { return nil }
 
 func (stream *testStream) Done() <-chan Outcome { return stream.done }
 
@@ -120,48 +136,36 @@ func TestLocalTransportPreservesTypedRefusal(t *testing.T) {
 	}
 }
 
-func TestLocalTransportDoesNotTreatAbruptOrMalformedTerminalAsClean(t *testing.T) {
+func TestClientDoesNotTreatAbruptOrMalformedTerminalAsClean(t *testing.T) {
 	for _, test := range []struct {
-		name      string
-		malformed bool
+		name  string
+		input []byte
 	}{
 		{name: "abrupt"},
-		{name: "malformed", malformed: true},
+		{name: "malformed", input: []byte{0, 0, 0, 0}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			path := filepath.Join(os.TempDir(), fmt.Sprintf("ae-%d.sock", time.Now().UnixNano()))
-			t.Cleanup(func() { _ = os.Remove(path) })
-			listener, err := net.Listen("unix", path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = listener.Close() })
-			go func() {
-				connection, acceptErr := listener.Accept()
-				if acceptErr != nil {
-					return
-				}
-				defer connection.Close()
-				header := make([]byte, len(localMagic)+2)
-				if _, err := io.ReadFull(connection, header); err != nil {
-					return
-				}
-				link := make([]byte, binary.BigEndian.Uint16(header[len(localMagic):]))
-				if _, err := io.ReadFull(connection, link); err != nil {
-					return
-				}
-				if _, err := connection.Write([]byte{1}); err != nil || !test.malformed {
-					return
-				}
-				_, _ = connection.Write([]byte{0, 0, 0, 0})
-			}()
-			client, err := Dial(t.Context(), path, "ardents-alpha://reference")
-			if err != nil {
-				t.Fatal(err)
-			}
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+			defer cancel()
+			client := newClientWithStop(
+				&terminalInputTransport{reader: bytes.NewReader(test.input)},
+				func() bool { return false },
+			)
 			defer client.Close()
+			go client.receive()
+			select {
+			case <-client.receiveDone:
+			case <-ctx.Done():
+				t.Fatalf("%s receiver did not finish before its bound: %v", test.name, ctx.Err())
+			}
 			_, _ = io.ReadAll(client)
-			outcome, open := <-client.Done()
+			var outcome Outcome
+			var open bool
+			select {
+			case outcome, open = <-client.Done():
+			case <-ctx.Done():
+				t.Fatalf("%s terminal outcome did not finish before its bound: %v", test.name, ctx.Err())
+			}
 			if !open || outcome.Class == CleanClose {
 				t.Fatalf("%s terminal outcome = %+v, open=%t", test.name, outcome, open)
 			}
