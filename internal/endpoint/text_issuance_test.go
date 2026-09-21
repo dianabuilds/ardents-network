@@ -7,11 +7,15 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"io"
+	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/credential"
 )
 
@@ -135,6 +139,105 @@ func TestTextIssuanceRetainsExactPendingBatchAcrossFailedAttempts(t *testing.T) 
 	}
 }
 
+func TestTextPermissionRevocationDefersActiveBatchDiscardUntilOperationCompletion(t *testing.T) {
+	_, owner, source := textSourceContextFixture(t)
+	prepareTextIssuancePermission(t, owner, source)
+	receiver := source.view.Nodes[0].NodeID
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	if err := owner.issueTextTokens(ctx, [][32]byte{receiver}, 2); err == nil {
+		t.Fatal("unavailable network issued tokens")
+	}
+
+	owner.mu.Lock()
+	permission := owner.permission
+	batch := permission.pending
+	operation := newTextIssuanceOperation(owner, permission, permission.profile, batch, false)
+	owner.issuance = operation
+	t.Cleanup(func() {
+		select {
+		case <-operation.done:
+			return
+		default:
+		}
+		operation.cancel()
+		canceled, stop := context.WithCancel(context.Background())
+		stop()
+		_ = operation.complete(canceled, route.ClosedIssuanceExchangeResult{}, context.Canceled)
+	})
+	owner.clearTextPermissionLocked()
+	if owner.permission != nil || !operation.discardPermission || len(batch.pending.Request()) == 0 {
+		owner.mu.Unlock()
+		t.Fatal("revocation did not detach permission while retaining the active operation batch")
+	}
+	owner.mu.Unlock()
+
+	canceled, stop := context.WithCancel(t.Context())
+	stop()
+	if err := operation.complete(canceled, route.ClosedIssuanceExchangeResult{}, context.Canceled); err == nil {
+		t.Fatal("revoked operation completed")
+	}
+	if len(batch.pending.Request()) != 0 {
+		t.Fatal("completed revoked operation retained its secret batch")
+	}
+}
+
+func TestTextRecoveryIssuanceCancellationDiscardsBatchWithoutRefund(t *testing.T) {
+	_, owner, source := textSourceContextFixture(t)
+	prepareTextIssuancePermission(t, owner, source)
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := listener.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	source.mu.Lock()
+	for index := 0; index < 2; index++ {
+		source.snapshot.Candidates[index].Endpoint = listener.Addr().String()
+	}
+	receiver := source.view.Nodes[0].NodeID
+	source.mu.Unlock()
+	ctx, cancel := context.WithCancel(t.Context())
+	result := make(chan error, 1)
+	workerDone := make(chan struct{})
+	t.Cleanup(func() {
+		cancel()
+		_ = listener.Close()
+		_ = owner.Close()
+		select {
+		case <-workerDone:
+		case <-time.After(time.Second):
+			t.Error("recovery cancellation worker did not join during cleanup")
+		}
+	})
+	go func() {
+		defer close(workerDone)
+		result <- owner.issueTextRecoveryTokens(ctx, [][32]byte{receiver}, 2)
+	}()
+	accepted, err := listener.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer accepted.Close()
+	cancel()
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("canceled recovery issuance succeeded")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("recovery cancellation did not join its request transport")
+	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if owner.issuance != nil || owner.permission.pending != nil || owner.permission.batches != 1 ||
+		owner.permission.reserved != [3]uint32{0, 1, 0} || len(owner.permission.stock) != 0 {
+		t.Fatalf("recovery cancellation state: issuance=%v pending=%v batches=%d reserved=%v stock=%d",
+			owner.issuance != nil, owner.permission.pending != nil, owner.permission.batches, owner.permission.reserved, len(owner.permission.stock))
+	}
+}
+
 func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 	endpoint, owner, source := textSourceContextFixture(t)
 	if err := owner.issueTextTokens(t.Context(), [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
@@ -150,6 +253,89 @@ func TestTextIssuanceRequiresPermissionBeforeSelectingAnyPeers(t *testing.T) {
 	}
 	if endpoint.closedEntries != nil {
 		t.Fatal("canceled caller claimed Entry root")
+	}
+}
+
+func TestTextIssuanceRevocationBeforeDelayedCompletionJoinsTransport(t *testing.T) {
+	_, owner, source := textSourceContextFixture(t)
+	prepareTextIssuancePermission(t, owner, source)
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := listener.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	source.mu.Lock()
+	for index := 0; index < 2; index++ {
+		source.snapshot.Candidates[index].Endpoint = listener.Addr().String()
+	}
+	receiver := source.view.Nodes[0].NodeID
+	source.mu.Unlock()
+	var workers sync.WaitGroup
+	t.Cleanup(func() {
+		_ = listener.Close()
+		_ = owner.Close()
+		joined := make(chan struct{})
+		go func() {
+			workers.Wait()
+			close(joined)
+		}()
+		select {
+		case <-joined:
+		case <-time.After(time.Second):
+			t.Error("revoked issuance workers did not join during cleanup")
+		}
+	})
+	issued := make(chan error, 1)
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		issued <- owner.issueTextTokens(t.Context(), [][32]byte{receiver}, 2)
+	}()
+	accepted, err := listener.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer accepted.Close()
+	owner.mu.Lock()
+	started := owner.issuance != nil && owner.permission != nil && owner.permission.pending != nil
+	owner.mu.Unlock()
+	if !started {
+		t.Fatal("issuance transport opened before its operation was retained")
+	}
+	closed := make(chan error, 1)
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		closed <- owner.Close()
+	}()
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("context revoke did not join delayed issuance transport")
+	}
+	select {
+	case err := <-issued:
+		if err == nil {
+			t.Fatal("revoked issuance returned usable tokens")
+		}
+	default:
+		t.Fatal("context Close returned before issuance operation joined")
+	}
+	if err := accepted.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.Copy(io.Discard, accepted); err != nil {
+		t.Fatalf("revoked issuance request transport did not close: %v", err)
+	}
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if owner.issuance != nil || owner.permission != nil {
+		t.Fatal("revoked issuance retained operation or usable token material")
 	}
 }
 

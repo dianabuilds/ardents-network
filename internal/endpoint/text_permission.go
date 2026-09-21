@@ -133,21 +133,27 @@ func (owner *textContext) textPermissionProfileLocked() (state.ClosedProfileView
 }
 
 func (owner *textContext) clearTextPermissionLocked() {
-	if owner.permission != nil {
-		if owner.issuance != nil {
-			owner.issuance.cancel()
-		}
-		if owner.permission.pending != nil {
-			owner.permission.pending.pending.Discard()
-		}
-		for _, stock := range owner.permission.stock {
-			for _, token := range stock.tokens {
-				clear(token)
-			}
-		}
-		clear(owner.permission.holder)
-		clear(owner.permission.public)
-		*owner.permission = textPermission{}
-		owner.permission = nil
+	permission := owner.permission
+	if permission == nil {
+		return
 	}
+	owner.permission = nil
+	if owner.issuance != nil && owner.issuance.retirePermissionLocked(permission) {
+		return
+	}
+	clearTextPermission(permission)
+}
+
+func clearTextPermission(permission *textPermission) {
+	if permission.pending != nil {
+		permission.pending.pending.Discard()
+	}
+	for _, stock := range permission.stock {
+		for _, token := range stock.tokens {
+			clear(token)
+		}
+	}
+	clear(permission.holder)
+	clear(permission.public)
+	*permission = textPermission{}
 }

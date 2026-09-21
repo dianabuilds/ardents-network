@@ -67,13 +67,14 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 	return owner.issueTextTokensForOpening(ctx, receivers, 1, opening, true)
 }
 
-func (owner *textContext) presentTextIssuerToken(flight *textIssuanceFlight, selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (operation *textIssuanceOperation) presentTextIssuerToken(selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
+	owner := operation.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || flight == nil || owner.issuance != flight || flight.context == nil || flight.context.Err() != nil ||
-		flight.prefix == nil || owner.prefix != flight.prefix || owner.permission == nil || owner.permission.pending == nil ||
-		owner.permission.pending.prefix != flight.prefix || hello.Purpose != route.ClosedPurposeIssuer || class != 1 ||
+	if err != nil || owner.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
+		operation.prefix == nil || owner.prefix != operation.prefix || owner.permission == nil || owner.permission.pending == nil ||
+		owner.permission.pending.prefix != operation.prefix || hello.Purpose != route.ClosedPurposeIssuer || class != 1 ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.RecipientNodeID != profile.IssuerNodeID || hello.RecipientDutyGeneration != profile.IssuerDutyGeneration ||
 		hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
@@ -83,5 +84,5 @@ func (owner *textContext) presentTextIssuerToken(flight *textIssuanceFlight, sel
 	if err != nil || current != selection {
 		return nil, errors.New("text issuer token source changed")
 	}
-	return owner.takeTextTokenLocked(profile, now, hello, class, flight.context)
+	return owner.takeTextTokenLocked(profile, now, hello, class, operation.context)
 }
