@@ -53,17 +53,17 @@ func (owner *textContext) issueTextTokensWithCancellation(ctx context.Context, r
 
 // A non-nil opening must be the exact retained prefix transition. Keeping it
 // across both bootstrap flights prevents unrelated issuance stealing its slot.
-func (owner *textContext) issueTextTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textSourceFlight, refill bool) error {
+func (owner *textContext) issueTextTokensForOpening(ctx context.Context, receivers [][32]byte, class uint8, opening *textPrefixOpeningOperation, refill bool) error {
 	return owner.issueTextTokensForOpeningWithCancellation(ctx, receivers, class, opening, refill, false)
 }
 
 func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.Context, receivers [][32]byte, class uint8,
-	opening *textSourceFlight, refill bool, discardCanceled bool) error {
+	opening *textPrefixOpeningOperation, refill bool, discardCanceled bool) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || class < 1 || class > 3 || len(receivers) == 0 || len(receivers) > 32 {
 		return errors.New("text issuance context is unavailable")
 	}
 	owner.mu.Lock()
-	if owner.prefixOpening != opening || opening != nil && opening.context.Err() != nil {
+	if !opening.admittedLocked(owner) {
 		owner.mu.Unlock()
 		return errors.New("text issuance prefix reservation unavailable")
 	}
@@ -83,7 +83,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 	permission := owner.permission
 	source, ok := owner.endpoint.closedState.(route.ClosedBootstrapState)
 	if !ok || permission == nil || permission.accepted == (credential.Permission{}) || permission.profile != profile ||
-		owner.issuance != nil || owner.prefixOpening != opening || opening != nil && opening.context.Err() != nil {
+		owner.issuance != nil || !opening.admittedLocked(owner) {
 		owner.mu.Unlock()
 		return errors.New("text issuance owner is unavailable")
 	}

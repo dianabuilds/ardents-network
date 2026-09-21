@@ -65,6 +65,14 @@ publish usable stock after revocation; ordinary retry retention and the
 recovery-only canceled-batch discard remain distinct and consume the same
 existing reservation and bootstrap allowance.
 
+The stock-to-Source-opening transition has a separate private concrete handle.
+It validates the exact reservation for issuance, issuer-stock preparation and
+forwarding-token presentation, then alone commits terminal completion. A late
+completion from an obsolete handle cleans and joins its own result without
+clearing a replacement reservation or publishing over the replacement's stock
+and prefix. The existing context lock and Source-operation serialization remain
+the admission boundary; this handle does not move other prefix consumers.
+
 A clean JOIN peer CLOSE may precede consumption of the final authenticated
 Service record. The client retains those bounded received bytes and their original
 queue reservation until consumed, explicitly closed, cancelled, or expired under

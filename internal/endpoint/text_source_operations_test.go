@@ -62,7 +62,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 	defer writer.Close()
 
 	attempt, cancel := context.WithCancel(t.Context())
-	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
+	flight := &textPrefixOpeningOperation{owner: owner, context: attempt, cancelOperation: cancel, done: make(chan struct{})}
 	owner.mu.Lock()
 	owner.prefixOpening = flight
 	profile := owner.permission.profile
@@ -78,7 +78,7 @@ func TestTextTokenPresentationClassifiesConcurrentRoleCommit(t *testing.T) {
 		ProfileDigest: profile.Digest, RecipientNodeID: selection.EntryNodeID, RecipientDutyGeneration: source.view.Nodes[0].DutyGeneration,
 		Purpose: route.ClosedPurposeForwarding, Deadline: time.Now().Add(10 * time.Second), ChannelNonce: fixtureID(199)}
 	started := time.Now()
-	_, err = owner.presentTextToken(selection, hello, 2)
+	_, err = flight.presentTextToken(selection, hello, 2)
 	if got := textTokenPresentationFailureStage(err); got != "selection-role-members-conflict-read" {
 		t.Fatalf("concurrent role commit stage = %q: %v", got, err)
 	}

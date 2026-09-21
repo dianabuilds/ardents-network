@@ -41,7 +41,7 @@ type textContextState struct {
 	resolution            *textResolutionFlight
 	prefix                *route.ClosedSourcePrefix
 	prefixCancel          context.CancelFunc
-	prefixOpening         *textSourceFlight
+	prefixOpening         *textPrefixOpeningOperation
 	sourceSet             *textSourceSet
 	sourceOperations      chan struct{}
 	issuance              *textIssuanceOperation
@@ -297,7 +297,7 @@ func (owner *textContext) closeAfterAuthorization() {
 	}
 	owner.mu.Unlock()
 	if opening != nil {
-		<-opening.done
+		opening.join()
 	}
 	if introductionOpening != nil {
 		<-introductionOpening.done

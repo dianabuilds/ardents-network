@@ -25,8 +25,9 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	defer cancel()
 	done := make(chan struct{})
 	close(done)
-	owner.prefixOpening = &textSourceFlight{context: flightContext, cancel: cancel, done: done}
-	returned, err := owner.presentTextToken(selection, hello, 2)
+	opening := &textPrefixOpeningOperation{owner: owner, context: flightContext, cancelOperation: cancel, done: done}
+	owner.prefixOpening = opening
+	returned, err := opening.presentTextToken(selection, hello, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +44,7 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 		t.Fatal("receipt lost attempt binding")
 	}
 	hello.ChannelNonce[0]++
-	if token, err := owner.presentTextToken(selection, hello, 2); err == nil || len(token) != 0 {
+	if token, err := opening.presentTextToken(selection, hello, 2); err == nil || len(token) != 0 {
 		t.Fatal("stock replayed")
 	}
 	if err := owner.Close(); err != nil {

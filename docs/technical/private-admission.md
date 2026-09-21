@@ -166,7 +166,12 @@ any challenge on a same-process retry is refused. One context reservation spans
 stock preparation, issuance and prefix opening, so concurrent opens cannot
 debit duplicate bootstrap batches from an obsolete stock observation.
 The reservation also excludes unrelated issuance between its bootstrap
-exchanges. The second batch can fund the selected issuer's class-1 stock.
+exchanges. One private concrete opening handle owns that exact reservation and
+its terminal completion identity. Issuance and stock preparation ask the handle
+to validate admission instead of comparing the context's opening pointer. An
+obsolete completion joins and cleans only its own result; it cannot clear a
+replacement reservation, publish its prefix, or change the replacement's
+stock. The second batch can fund the selected issuer's class-1 stock.
 Ordinary issuance opens a fresh terminal TLS child under the same admitted
 prefix; its presenter checks the actual issuer HELLO and durably marks the
 Control token before returning its bytes. Each pending batch retains its
@@ -431,8 +436,10 @@ The format stores no reusable token, holder, permission, Target or document.
 
 A fresh source prefix consumes distinct genuine class-2 stock for Entry and
 Interior on new authenticated channels after bootstrap retirement. The local
-context retains the opening operation and returned prefix; cancellation joins
-their physical transport and child readers before releasing the journal root.
+context retains the opening operation's admission slot and returned prefix; the
+private opening handle owns exact stock-to-opening completion, cancellation and
+join. Cancellation joins its physical transport and child readers before
+releasing the journal root.
 This transport composition does not itself provide a trusted participant
 command, terminal Service consumer, prefix idle policy or root migration.
 

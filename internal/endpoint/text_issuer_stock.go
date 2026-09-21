@@ -12,10 +12,10 @@ import (
 // prepareTextIssuerStock funds issuer admission only for current requested
 // work. Before the first admitted prefix this uses the second bootstrap batch;
 // thereafter the last Control token can replenish stock within its allocation.
-func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested [][32]byte, class uint8, opening *textSourceFlight) error {
+func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested [][32]byte, class uint8, opening *textPrefixOpeningOperation) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.permission == nil || owner.prefixOpening != opening || opening != nil && opening.context.Err() != nil {
+	if err != nil || ctx.Err() != nil || owner.permission == nil || !opening.admittedLocked(owner) {
 		owner.mu.Unlock()
 		return errors.New("text issuer stock owner unavailable")
 	}
