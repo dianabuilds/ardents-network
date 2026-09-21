@@ -5,13 +5,7 @@ import (
 	"path/filepath"
 )
 
-func validateHeadlessTextFields(plan headlessRuntimePlan, protected bool) error {
-	if !protected {
-		if plan.TextTokenRoot != "" || plan.ReaderPermission != (headlessPermissionPlan{}) || plan.PublisherPermission != (headlessPermissionPlan{}) {
-			return errors.New("text permission fields require runtime plan v2")
-		}
-		return nil
-	}
+func validateHeadlessTextFields(plan headlessRuntimePlan) error {
 	if plan.TransitAcquisitionRoot != "" || plan.BytesEachDirection != 0 || plan.AlphaCorpusStateRoot != "" || plan.AlphaCorpusAuthority != "" || plan.AlphaCohort != "" {
 		return errors.New("text runtime plan cannot select legacy acquisition or interfaces")
 	}

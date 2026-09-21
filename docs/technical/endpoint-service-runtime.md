@@ -125,7 +125,7 @@ The local runtime has separate Modules and Interfaces:
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
 | internal/application/interfacev1/connection | Carry one Target Link, one ordered byte stream with explicit directional input close, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
-| internal/endpoint | Compose one role-local participant and implement the shared Connection and Administration Interfaces. `RunParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
+| internal/endpoint | Compose the selected protected text participant and implement the shared Connection and Administration Interfaces. `RunTextParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
@@ -342,8 +342,8 @@ exposure, and joins servers, contexts and persistent owners on shutdown.
 `endpoint headless` selects this composition through an explicit v2 plan;
 missing permissions or mixed legacy fields fail without selecting another
 runtime. The decoder refuses persisted v1 plans under
-[v1 startup retirement](#v1-startup-retirement) before it can route them to
-`RunParticipant`. The protected composition still requires installed command
+[v1 startup retirement](#v1-startup-retirement) before runtime dispatch. The
+protected composition still requires installed command
 and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
@@ -436,9 +436,10 @@ permission, protected plan, or other authority. Malformed or incomplete v2
 input is refused by the v2 path and never falls back to v1. Existing retained
 bytes require a separately selected reader, recovery, or migration contract;
 startup retirement supplies none. The command decoder now enforces this before
-validating or opening any plan-owned path. `RunParticipant` remains as unreachable
-legacy composition until its separately bounded removal; this refusal does not
-claim its code or the v1 Administration interface has already been deleted.
+validating or opening any plan-owned path. The unreachable `RunParticipant`
+composition and its exclusive configuration/event wiring have been removed.
+This does not claim the separately callable v1 Connection or Administration
+interfaces have already been retired.
 
 `internal/application/interfacev1/connection` owns the sole local Target-Link
 Connection Interface: one private Unix attachment carries a non-empty Target
@@ -450,10 +451,10 @@ owns only `publish` and `withdraw`; it cannot carry Connection data or silently
 turn a failure into another success state. Both packages declare
 `ardents-application-interface-v1` and execute checked vectors under
 `testdata/conformance-v1.json`. There is no result sideband or Endpoint-owned
-local grammar. `RunParticipant` retains the Network server implementation and
-closes its exact socket paths after cancelling and joining active clients;
-external Applications use only the versioned client. No Browser client is
-selected in the maintained product.
+local grammar. The retired v1 process composition no longer opens either
+server. Separately callable clients and their shared Interface implementations
+remain until their own retirement decisions; no Browser client is selected in
+the maintained product.
 
 The Administration client owns its Unix socket from successful dial through the
 closed `publish` or `withdraw` response. Caller cancellation immediately
@@ -464,15 +465,11 @@ already accepted by the peer: the client never invents an outcome, retry, or
 rollback for Publish or Withdraw.
 
 The `ardents-application-interface-v1` frame identity and its opaque link bytes
-remain accepted persisted-interface obligations. A runtime plan carrying the
-complete historical Alpha corpus triple is therefore a narrow migration
-adapter: it recognizes only an exact `ardents-alpha://` Service Link, resolves
-it through that plan's already accepted local floor, and then supplies the
-bound Target to the same Endpoint/Route path. Fresh C0 plans omit that triple
-and accept only Target Links. A malformed Target Link never falls back to a
-Service Link, and the adapter ends only after an explicit versioned
-plan/interface migration. Its accepting command path and retained-data boundary
-are governed by [v1 startup retirement](#v1-startup-retirement).
+remain persisted-interface obligations until their separate retirement. The
+historical Alpha corpus triple has no accepting runtime adapter: v1 plans are
+refused before path validation or owner startup, and v2 rejects those fields.
+Existing retained bytes require a separately selected reader, recovery, or
+migration contract; this removal creates none.
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection

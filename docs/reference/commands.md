@@ -42,6 +42,8 @@ configuration format or an authority source.
 plan-owned runtime resource. The exact refusal and retained-data boundary are
 defined by the
 [Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement).
+The former v1 participant process composition has been removed; refusal does
+not retain a hidden fallback or migration runtime.
 Generic `endpoint open` and Service Administration retain their separate
 dispositions.
 
