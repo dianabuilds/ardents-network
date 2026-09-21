@@ -123,10 +123,16 @@ resource; cancellation or timeout; and closed Service Connection. A lower
 level diagnostic may add detail but cannot silently reinterpret one of these
 classes as success or fallback.
 
-The maintained `ardents endpoint open` route now accepts only an explicit
-Target Link. Its bounded two-Endpoint test proves the Target Link-to-Connection
-transition through the Endpoint-owned Resolution and Route boundaries. The
-portable enrollment route receives only the bundle root and an independently
+The generic `ardents endpoint open` route is selected for retirement rather
+than translation to AAI3. There is no current product consumer for its
+arbitrary binary file-to-file workload. The protected text reader is a distinct
+typed Application with a fixed workload and confinement contract; it is not a
+generic successor. The retirement transition refuses the recognized command
+before opening either input or output path, dialing its local socket, or
+starting Endpoint or Network work. Until that transition is integrated, the
+old command and AAI2 bytes remain executable compatibility debt and supply no
+C0 readiness evidence. The portable enrollment route receives only the bundle
+root and an independently
 delivered manifest SHA-256 pin; it verifies that pin before parsing the
 manifest and derives the remaining enrollment facts from its bound `RELEASE`
 descriptor. This does not bypass Endpoint-owned Resolution, Route, or
@@ -137,10 +143,12 @@ The selected Endpoint startup transition retires acceptance of
 composition. Existing root and floor bytes remain retained evidence, not
 authority for an automatic migration. The
 [Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement)
-owns the exact refusal and effect boundary. This selection does not retire the
-distinct Administration interface or generic Connection command. The command
-now implements that boundary: bounded persisted v1 plans are refused without
-runtime effects, while v2 remains the sole accepted headless startup schema.
+owns the exact refusal and effect boundary. The command now implements that
+boundary: bounded persisted v1 plans are refused without runtime effects, while
+v2 remains the sole accepted headless startup schema. The separate
+[generic Connection command](../technical/endpoint-service-runtime.md#generic-connection-command-retirement)
+has its own selected retirement boundary; neither decision retires the
+Administration interface.
 
 ## C0 Network candidate
 
@@ -152,9 +160,11 @@ The Network audit candidate is the headless maintained product surface:
   Release, Custody, contributor, control-inspection, and resource Modules;
 - the `internal/application/broker` used by the Network Endpoint for local
   Grant admission and session lifecycle;
-- the Network-owned server implementations of the versioned local Application
-  Interface in `internal/endpoint`, with the neutral v1 contract under
-  `internal/application/interfacev1`;
+- the Network-owned server implementations of the selected typed local
+  Application Interfaces in `internal/endpoint`: protected text Connection
+  under `internal/application/interfacev2/connection` and separately
+  authorized Administration under
+  `internal/application/interfacev1/administration`;
 - the enrollment-v3 headless artifact lane and the maintained deterministic,
   process, race, and fuzz profiles, the architecture gate, and purpose-named
   qualification profiles.
@@ -173,14 +183,18 @@ defined at activation by the [deep-audit method](../development/deep-audit.md).
 
 ## C0 Application Interface
 
-The maintained Application surface is the neutral v1 contract in
-`internal/application/interfacev1/connection` and
-`internal/application/interfacev1/administration`. It owns the small versioned
-local contract, bounds, lifecycle, error/outcome grammar, local transport, and
-conformance vectors. Network implements the server behavior in `internal/endpoint`
-and the maintained commands use only the selected interface seam. No Browser
-client, presentation, native host, extension, or enrollment-v4 artifact is a
-current product surface.
+The maintained Connection surface is the typed v2 contract in
+`internal/application/interfacev2/connection`; its Target-Link request is
+admitted only by the protected text composition and does not authorize a
+generic workload. The maintained Administration surface remains the separate
+v1 contract in `internal/application/interfacev1/administration`. Each owns its
+versioned local contract, bounds, lifecycle, outcome grammar, local transport,
+and conformance evidence. Network implements the server behavior in
+`internal/endpoint`, and maintained commands use only the selected interface
+seam. `internal/application/interfacev1/connection` and its AAI2 grammar remain
+transition-only compatibility code until their separately bounded removal;
+they have no selected product caller. No Browser client, presentation, native
+host, extension, or enrollment-v4 artifact is a current product surface.
 
 [`ownership.json`](../development/ownership.json) is the machine-checked source,
 test, command, packaging, qualification, Interface, and historical-evidence
