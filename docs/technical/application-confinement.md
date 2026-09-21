@@ -65,6 +65,13 @@ cleanup and retained joined-stream set. An ordinary text Job creates none of
 that state; it can retain only the exact Run supplied by the qualification
 caller. A delayed completion publishes to its original Run and cannot populate
 a replacement Job's report.
+Its predeclared SHA-256 scheduled-byte corpus is binary rather than text: the
+fixed conformance window contains every byte value, including NUL and invalid
+UTF-8, and exact offset verification survives unequal fragment boundaries.
+Changed bytes, wrong offsets and a one-byte-short workload fail their existing
+worker/verdict boundaries. These checks do not change the installed launch,
+Grant, duration, connection-count or bitrate contract and do not admit another
+worker inventory.
 
 ## Required installed properties
 

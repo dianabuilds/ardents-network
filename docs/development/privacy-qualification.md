@@ -107,6 +107,11 @@ It generates the predeclared useful byte schedule and canaries instead of the
 text grammar; it has no arbitrary egress or authority. The qualification runner
 is its sole caller. A normal text-job inventory cannot admit its executable,
 and there is no runtime flag, caller bool or arbitrary-program launch bypass.
+The deterministic scheduled-byte generator covers all 256 byte values in its
+fixed conformance window, including NUL and invalid UTF-8. Verification is
+offset-sensitive across unequal fragments; corruption and a one-byte-short
+workload cannot pass. This checks the laboratory corpus, not a text snapshot or
+an arbitrary Application payload contract.
 Register its exact test package/caller/profile with the implementing change.
 The real Endpoint, Node, Route and Service implementations remain unchanged
 between the text journey and these network measurements. Report Application

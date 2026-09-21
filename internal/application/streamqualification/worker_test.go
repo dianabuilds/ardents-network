@@ -7,6 +7,7 @@ import (
 	"net"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func TestSenderUsesOnlyEndpointOpenedCreditedStreams(t *testing.T) {
@@ -130,5 +131,38 @@ func TestScheduledStreamAcceptsReadFragmentation(t *testing.T) {
 		if err := acceptWorkerFrame(&output, streams, &order, &lastID, init, schedule, false, workerFrame{kind: frameBytes, id: 1, body: part}); err != nil {
 			t.Fatalf("valid ordered bytes were rejected after %d bytes: %v", streams[1].offset, err)
 		}
+	}
+}
+
+func TestScheduledCorpusCoversAllBytesAcrossFragmentBoundaries(t *testing.T) {
+	seed := [32]byte{2}
+	const streamID = uint32(1)
+	body := scheduledBytes(seed, streamID, 0, frameLimit)
+	var seen [256]bool
+	for _, value := range body {
+		seen[value] = true
+	}
+	for value, present := range seen {
+		if !present {
+			t.Fatalf("fixed qualification corpus omitted byte 0x%02x", value)
+		}
+	}
+	if utf8.Valid(body) {
+		t.Fatal("fixed qualification corpus unexpectedly contains only UTF-8")
+	}
+	boundaries := []int{0, 1, 257, 4093, len(body)}
+	for index := 1; index < len(boundaries); index++ {
+		start, end := boundaries[index-1], boundaries[index]
+		if !matchesScheduledBytes(seed, streamID, uint64(start), body[start:end]) {
+			t.Fatalf("exact corpus fragment %d:%d was rejected", start, end)
+		}
+	}
+	corrupted := append([]byte(nil), body...)
+	corrupted[257] ^= 0xff
+	if matchesScheduledBytes(seed, streamID, 0, corrupted) {
+		t.Fatal("corrupted qualification corpus was accepted")
+	}
+	if matchesScheduledBytes(seed, streamID, 1, body) {
+		t.Fatal("qualification corpus was accepted at the wrong stream offset")
 	}
 }

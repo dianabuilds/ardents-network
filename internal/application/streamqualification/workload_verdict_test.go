@@ -34,6 +34,7 @@ func TestWorkloadVerdictCannotHideAnIndividualFailureInAggregate(t *testing.T) {
 	}{
 		{"missing retained stream", func(r *Report) { r.Streams = r.Streams[:63] }},
 		{"lost active stream", func(r *Report) { r.Streams[0].Tx = 0; r.Streams[1].Tx *= 2 }},
+		{"one-byte truncation", func(r *Report) { r.Streams[0].Tx-- }},
 		{"progress gap", func(r *Report) { r.Streams[0].MaximumTxGap = 3 * time.Second }},
 		{"tail stall", func(r *Report) { r.Streams[0].LastTx = r.Stopped.Add(-3 * time.Second) }},
 		{"forged duplicate", func(r *Report) { r.Streams[1].ID = r.Streams[0].ID }},

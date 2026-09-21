@@ -226,6 +226,12 @@ The maintained local profiles are:
   cgroup profile invoked by `make text-worker-lifecycle-check`; its tagged test binary
   and exact temporary unit must be independently pinned. No-tests success is
   refused; this profile does not replace hostile-worker or Service journey tests.
+- the fixed stream-qualification worker's deterministic scheduled-byte corpus is
+  checked locally for all 256 byte values (including NUL and invalid UTF-8), exact
+  verification across unequal fragment boundaries, wrong-offset/corrupted-byte
+  refusal and a workload-verdict failure after one-byte truncation. This is
+  binary-corpus conformance for the pinned laboratory caller, not an installed
+  profile result or support for arbitrary Applications.
 - `text-worker-escape`, the separately pinned installed P6/P7 escape matrix invoked
   by `make text-worker-escape-check`; it tests hostile worker access attempts under
   the effective selected unit policy and does not establish whole-host qualification.
