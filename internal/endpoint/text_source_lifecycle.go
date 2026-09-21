@@ -18,6 +18,11 @@ type textSourceLifecycle struct {
 	opening *textPrefixOpeningOperation
 }
 
+type textSourceRetirement struct {
+	prefix  *route.ClosedSourcePrefix
+	opening *textPrefixOpeningOperation
+}
+
 // textSourceHandle is a read-only capability for one exact published Source
 // opening. It deliberately exposes neither Close nor the underlying prefix.
 type textSourceHandle struct {
@@ -295,4 +300,31 @@ func (lifecycle *textSourceLifecycle) detachLocked() (*route.ClosedSourcePrefix,
 		opening.cancel()
 	}
 	return prefix, opening
+}
+
+func (lifecycle *textSourceLifecycle) stopLocked() *textSourceRetirement {
+	prefix, opening := lifecycle.detachLocked()
+	return &textSourceRetirement{prefix: prefix, opening: opening}
+}
+
+func (retirement *textSourceRetirement) joinOpening() {
+	if retirement == nil {
+		return
+	}
+	if retirement.opening != nil {
+		retirement.opening.join()
+		retirement.opening = nil
+	}
+}
+
+func (retirement *textSourceRetirement) closePrefix() error {
+	if retirement == nil {
+		return nil
+	}
+	if retirement.prefix == nil {
+		return nil
+	}
+	prefix := retirement.prefix
+	retirement.prefix = nil
+	return prefix.Close()
 }

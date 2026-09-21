@@ -21,6 +21,12 @@ type textPublicationPairLifecycle struct {
 	publicationDraining  bool
 }
 
+type textPublicationPairRetirement struct {
+	current  *textIntroductionRegistration
+	pending  *textIntroductionRegistration
+	previous *textIntroductionRegistration
+}
+
 func (lifecycle *textPublicationPairLifecycle) currentLocked() *textIntroductionRegistration {
 	if lifecycle == nil {
 		return nil
@@ -163,6 +169,30 @@ func (lifecycle *textPublicationPairLifecycle) detachLocked() (current, pending,
 	lifecycle.registration, lifecycle.pendingRegistration, lifecycle.previousRegistration = nil, nil, nil
 	lifecycle.previousUntil = time.Time{}
 	return current, pending, previous
+}
+
+func (lifecycle *textPublicationPairLifecycle) stopLocked() *textPublicationPairRetirement {
+	current, pending, previous := lifecycle.detachLocked()
+	for _, registration := range []*textIntroductionRegistration{previous, current, pending} {
+		if registration != nil {
+			registration.cancel()
+		}
+	}
+	return &textPublicationPairRetirement{current: current, pending: pending, previous: previous}
+}
+
+func (retirement *textPublicationPairRetirement) join() error {
+	if retirement == nil {
+		return nil
+	}
+	var outcome error
+	for _, registration := range []*textIntroductionRegistration{retirement.previous, retirement.current, retirement.pending} {
+		if registration != nil {
+			outcome = errors.Join(outcome, registration.close())
+		}
+	}
+	retirement.previous, retirement.current, retirement.pending = nil, nil, nil
+	return outcome
 }
 
 func (lifecycle *textPublicationPairLifecycle) changedLocked() <-chan struct{} {

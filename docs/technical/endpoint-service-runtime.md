@@ -235,6 +235,22 @@ retains the exact admission reservation until that Job reports joined cleanup;
 it does not edit handoff fields. A late handoff is closed against its old Job
 and cannot supply a Grant or completion to a replacement.
 
+Context shutdown uses one explicit stop/join dependency table. Stop runs while
+the Context mutex is held and revokes every child before any wait; join runs
+after releasing that mutex. Extracted lifecycle owners detach and retire their
+own state, while Context-owned maps and flights remain with the Context:
+
+| Ordered phase | Owners or state | Required dependency |
+| --- | --- | --- |
+| Stop | refresh, Publication pair, Registration opening, Introduction/Responder/Source prefixes, issuance, resolution, withdrawal, exchanges and Job | Every admission/effect path observes revoke before the first join. |
+| Join openings | Source, Introduction and Responder openings; Registration opening | No Route prefix is closed while its opening can still publish it. |
+| Join producers | refresh and the Publication pair | No scheduler or registration producer remains before registrations close. |
+| Close prefixes and join Context flights | Introduction, Responder and Source prefixes; issuance, resolution, withdrawal and exchanges | Route and Context-owned operations finish in their established dependency order. |
+| Join Job, then release root | Job cleanup; durable Publication retirement; Context reservation | The first cleanup error and finite admission reservation survive until the last child is terminal. |
+
+No generic callback registry participates in this order. Repeated Context
+Close waits for and returns the one stored joined result.
+
 The initial text-Service stream invokes that real TLS/native Connection path
 and retains its opaque job binding. The reader holds its worker operation
 through authentication and document exchange. Publisher accepts only streams

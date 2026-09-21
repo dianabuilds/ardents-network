@@ -5,11 +5,118 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 )
+
+func TestTextContextCloseRevokesEveryChildBeforeOrderedJoin(t *testing.T) {
+	endpoint, principal := textContextEndpoint(t)
+	owner := admittedTextContext(t, endpoint, principal, broker.Connection)
+	job, err := beginTextTestJob(t, owner, endpoint, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolutionContext, cancelResolution := context.WithCancel(owner.lease.Context())
+	resolution := &textResolutionFlight{context: resolutionContext, cancel: cancelResolution, done: make(chan struct{})}
+	initialFailure := errors.New("initial context failure")
+	cleanupFailure := errors.New("job cleanup failure")
+	owner.mu.Lock()
+	owner.resolution = resolution
+	owner.closeErr = initialFailure
+	owner.mu.Unlock()
+
+	var finishResolution sync.Once
+	finishResolutionFlight := func() { finishResolution.Do(func() { close(resolution.done) }) }
+	closed := make(chan error, 1)
+	closeGoroutineDone := make(chan struct{})
+	go func() {
+		defer close(closeGoroutineDone)
+		closed <- owner.Close()
+	}()
+	t.Cleanup(func() {
+		finishResolutionFlight()
+		owner.retireJob(job)
+		_ = owner.finishJobCleanup(job, nil)
+		_ = owner.Close()
+		<-closeGoroutineDone
+		_ = endpoint.Close()
+	})
+	for name, cancelled := range map[string]<-chan struct{}{
+		"resolution": resolution.context.Done(),
+		"job":        job.context.Done(),
+	} {
+		select {
+		case <-cancelled:
+		case <-time.After(time.Second):
+			t.Fatalf("context close waited before revoking %s child", name)
+		}
+	}
+	stopDeadline := time.NewTimer(time.Second)
+	stopPoll := time.NewTicker(time.Millisecond)
+	defer stopDeadline.Stop()
+	defer stopPoll.Stop()
+	for {
+		owner.mu.Lock()
+		retired := job.retired
+		owner.mu.Unlock()
+		if retired {
+			break
+		}
+		select {
+		case <-stopPoll.C:
+		case <-stopDeadline.C:
+			t.Fatal("context close did not finish the stop phase before joining")
+		}
+	}
+	select {
+	case <-closed:
+		t.Fatal("Close returned before stalled resolution joined")
+	default:
+	}
+	endpoint.textMu.Lock()
+	_, retained := endpoint.textContexts[owner]
+	endpoint.textMu.Unlock()
+	if !retained {
+		t.Fatal("context root was released before stalled resolution joined")
+	}
+
+	finishResolutionFlight()
+	select {
+	case <-closed:
+		t.Fatal("Close returned before final job cleanup joined")
+	default:
+	}
+	endpoint.textMu.Lock()
+	_, retained = endpoint.textContexts[owner]
+	endpoint.textMu.Unlock()
+	if !retained {
+		t.Fatal("context root was released before final job cleanup joined")
+	}
+	if err := owner.finishJobCleanup(job, cleanupFailure); !errors.Is(err, cleanupFailure) {
+		t.Fatal(err)
+	}
+	var first error
+	select {
+	case first = <-closed:
+		if !errors.Is(first, initialFailure) || !errors.Is(first, cleanupFailure) {
+			t.Fatalf("Close lost an existing or joined failure: %v", first)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Close did not finish after every child joined")
+	}
+	if repeated := owner.Close(); repeated != first {
+		t.Fatalf("repeated Close returned a different joined result: %v", repeated)
+	}
+	endpoint.textMu.Lock()
+	_, retained = endpoint.textContexts[owner]
+	endpoint.textMu.Unlock()
+	if retained {
+		t.Fatal("context root remained after final child joined")
+	}
+}
 
 func TestTextContextCloseJoinsPendingLaunchAndRetainsFailure(t *testing.T) {
 	endpoint, principal := textContextEndpoint(t)
