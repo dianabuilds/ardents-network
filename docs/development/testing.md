@@ -376,6 +376,6 @@ The headless command decoder rejects both a previously valid
 `ardents-headless-runtime-v1` plan and mixed v1/v2 fields before creating any
 named root or socket or emitting runtime output. A separate dispatch oracle
 shows valid and broken v2 plans reach the selected v2 runtime or decoder refusal
-without returning the retired-v1 outcome. The unreachable v1 composition is
-retained only for its separate removal boundary; these tests do not treat it as
-an accepting compatibility path.
+without returning the retired-v1 outcome. An architecture oracle requires the
+command to delegate only to the protected text runtime and requires the retired
+v1 participant composition file to remain absent.

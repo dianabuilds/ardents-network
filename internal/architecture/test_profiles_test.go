@@ -274,13 +274,15 @@ func TestApplicationSeamsAreSharedByTheirAdapters(t *testing.T) {
 	}
 }
 
-func TestHeadlessCommandDelegatesParticipantRuntimeComposition(t *testing.T) {
+func TestHeadlessCommandDelegatesOnlyProtectedTextRuntimeComposition(t *testing.T) {
 	root := repositoryRoot(t)
 	source := string(readProjectFile(t, root, "cmd/ardents/endpoint_headless.go"))
-	if !strings.Contains(source, "endpointapi.RunParticipant(") {
-		t.Fatal("headless command does not delegate to the Endpoint participant runtime")
+	if !strings.Contains(source, "return runTextHeadlessRuntime(ctx, plan, output)") {
+		t.Fatal("headless command does not delegate to the protected text runtime")
 	}
 	for _, forbidden := range []string{
+		"RunParticipant(",
+		"ParticipantRuntimeConfig",
 		"state.Open(",
 		"entry.Open(",
 		"applicationconnection.Listen(",
@@ -288,8 +290,11 @@ func TestHeadlessCommandDelegatesParticipantRuntimeComposition(t *testing.T) {
 		"Authorities[0]",
 	} {
 		if strings.Contains(source, forbidden) {
-			t.Errorf("headless command retains runtime or authority decision %q", forbidden)
+			t.Errorf("headless command retains v1 composition or authority decision %q", forbidden)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(root, "internal", "endpoint", "participant_runtime.go")); err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Endpoint retains retired v1 participant composition: %v", err)
 	}
 }
 

@@ -4,15 +4,12 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
 	"time"
 
-	endpointapi "github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
@@ -44,8 +41,8 @@ type headlessRuntimePlan struct {
 	PublicationRoot        string `json:"publication_root"`
 	ServiceInstanceRoot    string `json:"service_instance_root,omitempty"`
 	// These three fields are decoded only so historical v1 input can receive
-	// its bounded retirement refusal. The retained legacy composition is not
-	// reachable from the command; current v2 plans omit all three fields.
+	// its bounded retirement refusal. There is no legacy runtime composition;
+	// current v2 plans omit all three fields.
 	AlphaCorpusStateRoot    string   `json:"alpha_corpus_state_root,omitempty"`
 	LocalRoleStateRoot      string   `json:"local_role_state_root"`
 	TimeConfidenceFile      string   `json:"time_confidence_file"`
@@ -72,31 +69,7 @@ func runHeadlessRuntime(ctx context.Context, path string, output io.Writer) erro
 	if err != nil {
 		return err
 	}
-	if plan.Schema == "ardents-headless-runtime-v2" {
-		return runTextHeadlessRuntime(ctx, plan, output)
-	}
-	clock := time.Now
-	networkConfig, refreshState, err := headlessNetworkConfig(plan, clock)
-	if err != nil {
-		return err
-	}
-	confident := freshOperatorRegularFile(plan.TimeConfidenceFile, clock, 2*time.Second)
-	encoder := json.NewEncoder(output)
-	encoder.SetEscapeHTML(false)
-	return endpointapi.RunParticipant(ctx, endpointapi.ParticipantRuntimeConfig{Network: networkConfig, RefreshNetwork: refreshState,
-		EntryRoot: plan.EntryStateRoot, TransitAcquisitionRoot: plan.TransitAcquisitionRoot,
-		LegacyServiceLinkRoot: plan.AlphaCorpusStateRoot, LegacyServiceLinkAuthority: plan.LegacyServiceLinkAuthority,
-		LegacyServiceLinkCohort: plan.AlphaCohort,
-		LocalRoleRoot:           plan.LocalRoleStateRoot, ApplicationAddress: plan.ApplicationSocket,
-		AdministrationAddress: plan.AdministrationSocket, PublicationRoot: plan.PublicationRoot,
-		ServiceInstanceRoot: plan.ServiceInstanceRoot, BrokerID: plan.BrokerID,
-		ConnectionPrincipal: plan.ConnectionPrincipal, AdministrationPrincipal: plan.AdministrationPrincipal,
-		BytesEachDirection: plan.BytesEachDirection, Clock: clock, TimeConfident: confident,
-		Observe: func(event endpointapi.ParticipantRuntimeEvent) error {
-			return encoder.Encode(headlessRuntimeEvent{Kind: "headless-runtime-" + event.Kind,
-				NetworkID: hex.EncodeToString(event.NetworkID[:]), ApplicationSocket: event.ApplicationAddress,
-				AdministrationSocket: event.AdministrationAddress})
-		}})
+	return runTextHeadlessRuntime(ctx, plan, output)
 }
 
 // headlessNetworkConfig preserves one owner for a State root. A static
@@ -152,18 +125,10 @@ func sameOperatorPath(left, right string) bool {
 	return leftErr == nil && rightErr == nil && leftPath == rightPath
 }
 
-type headlessRuntimeEvent struct {
-	Kind                 string `json:"kind"`
-	NetworkID            string `json:"network_id"`
-	ApplicationSocket    string `json:"application_socket,omitempty"`
-	AdministrationSocket string `json:"administration_socket,omitempty"`
-}
-
 type decodedHeadlessRuntimePlan struct {
 	headlessRuntimePlan
 	NetworkID, BrokerID, ConnectionPrincipal, AdministrationPrincipal [32]byte
 	NetworkAuthorities                                                map[[32]byte]ed25519.PublicKey
-	LegacyServiceLinkAuthority                                        ed25519.PublicKey
 	ClosedProfileAuthority                                            ed25519.PublicKey
 }
 
@@ -177,24 +142,15 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 	if raw.Schema == "ardents-headless-runtime-v1" {
 		return decodedHeadlessRuntimePlan{}, errHeadlessRuntimeV1Retired
 	}
-	protected := raw.Schema == "ardents-headless-runtime-v2"
-	expectedProfile := route.Profile
-	if protected {
-		expectedProfile = route.ClosedRouteProfile
-	}
-	if !protected || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" ||
+	if raw.Schema != "ardents-headless-runtime-v2" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" ||
 		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) || raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) ||
 		raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" ||
-		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != expectedProfile || raw.BrokerID == "" ||
-		raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" || (!protected && raw.BytesEachDirection == 0) {
+		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != route.ClosedRouteProfile || raw.BrokerID == "" ||
+		raw.ConnectionPrincipal == "" || raw.AdministrationPrincipal == "" {
 		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan is incomplete")
 	}
-	if err := validateHeadlessTextFields(raw, protected); err != nil {
+	if err := validateHeadlessTextFields(raw); err != nil {
 		return decodedHeadlessRuntimePlan{}, err
-	}
-	legacyServiceLink := raw.AlphaCorpusStateRoot != "" || raw.AlphaCorpusAuthority != "" || raw.AlphaCohort != ""
-	if legacyServiceLink && (raw.AlphaCorpusStateRoot == "" || raw.AlphaCorpusAuthority == "" || raw.AlphaCohort == "") {
-		return decodedHeadlessRuntimePlan{}, errors.New("headless runtime plan legacy Service Link transition is incomplete")
 	}
 	result := decodedHeadlessRuntimePlan{headlessRuntimePlan: raw}
 	for _, field := range []struct {
@@ -211,24 +167,13 @@ func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 		return decodedHeadlessRuntimePlan{}, err
 	}
 	result.NetworkAuthorities = authorities
-	if protected {
-		authority := make(ed25519.PublicKey, ed25519.PublicKeySize)
-		if err := decodeOperatorFixedHex(raw.ClosedProfileAuthority, authority); err != nil {
-			return decodedHeadlessRuntimePlan{}, fmt.Errorf("text State profile authority: %w", err)
-		}
-		if _, pinned := authorities[sha256.Sum256(authority)]; !pinned {
-			return decodedHeadlessRuntimePlan{}, errors.New("text State profile authority is not pinned by State")
-		}
-		result.ClosedProfileAuthority = authority
-	} else if raw.ClosedProfileAuthority != "" {
-		return decodedHeadlessRuntimePlan{}, errors.New("closed profile authority requires text runtime plan v2")
+	authority := make(ed25519.PublicKey, ed25519.PublicKeySize)
+	if err := decodeOperatorFixedHex(raw.ClosedProfileAuthority, authority); err != nil {
+		return decodedHeadlessRuntimePlan{}, fmt.Errorf("text State profile authority: %w", err)
 	}
-	if legacyServiceLink {
-		authority := make(ed25519.PublicKey, ed25519.PublicKeySize)
-		if err := decodeOperatorFixedHex(raw.AlphaCorpusAuthority, authority); err != nil {
-			return decodedHeadlessRuntimePlan{}, err
-		}
-		result.LegacyServiceLinkAuthority = authority
+	if _, pinned := authorities[sha256.Sum256(authority)]; !pinned {
+		return decodedHeadlessRuntimePlan{}, errors.New("text State profile authority is not pinned by State")
 	}
+	result.ClosedProfileAuthority = authority
 	return result, nil
 }

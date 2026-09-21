@@ -23,8 +23,3 @@ type endpointTextState struct {
 
 // textPublicationOwned is called with the enclosing Endpoint's publisherMu held.
 func (owner *endpointTextState) textPublicationOwned() bool { return owner.textPublisherOwner != nil }
-
-func (owner *endpointTextState) configureTextSources(source closedEndpointState, entryRoot, roleRoot string) {
-	owner.closedState = source
-	owner.closedEntryRoot, owner.closedRoleRoot = entryRoot, roleRoot
-}
