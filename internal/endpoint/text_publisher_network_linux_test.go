@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"runtime"
 	"testing"
 	"time"
 
@@ -26,6 +27,9 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 			defer cancel()
 			served := make(chan struct{})
 			var serveErr error
+			publisherOwner.mu.Lock()
+			initialWaiters := len(publisherOwner.introductionWaiters)
+			publisherOwner.mu.Unlock()
 			go func() { defer close(served); serveErr = publisher.serveNetwork(ctx) }()
 			t.Cleanup(func() {
 				cancel()
@@ -35,6 +39,7 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 					t.Error("Publisher producer did not join during test cleanup")
 				}
 			})
+			waitTextIntroductionWaiters(t, ctx, publisherOwner, initialWaiters+1)
 			// A syntactically valid capsule with broken authentication must be
 			// refused without terminating this snapshot's receive loop.
 			for _, fault := range []struct {
@@ -167,5 +172,23 @@ func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
 				t.Fatalf("Publisher retained %d exchanges after cancellation", pending)
 			}
 		})
+	}
+}
+
+func waitTextIntroductionWaiters(t *testing.T, ctx context.Context, owner *textContext, minimum int) {
+	t.Helper()
+	for {
+		owner.mu.Lock()
+		ready := len(owner.introductionWaiters) >= minimum
+		owner.mu.Unlock()
+		if ready {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("Publisher did not register %d Introduction waiters before the bound: %v", minimum, ctx.Err())
+		default:
+			runtime.Gosched()
+		}
 	}
 }
