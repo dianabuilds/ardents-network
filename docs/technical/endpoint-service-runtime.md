@@ -123,7 +123,8 @@ The local runtime has separate Modules and Interfaces:
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
-| internal/application/interfacev1/connection | Carry one Target Link, one ordered byte stream with explicit directional input close, and exactly one bounded terminal outcome under `ardents-application-interface-v1`; retain the accepted AAI2 bytes and executable conformance vectors. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/interfacev1/connection | Retain the exact AAI2 Target-Link, ordered-byte, directional-input-close, and terminal-outcome grammar only while its separately bounded removal is pending. It has no selected product caller. | State, Entry, Target, Route, Credential, Custody, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/interfacev2/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/interfacev1/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/endpoint | Compose the selected protected text participant and implement the shared Connection and Administration Interfaces. `RunTextParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
@@ -134,15 +135,17 @@ cannot include Route, Credential, signer, or Application facts, and an outbound
 connection cannot supply a Publisher binding. This keeps publication ownership, local admission, Route
 attachment, and logical-stream recovery out of one mutable request bag.
 
-The maintained Connection Interface adds one narrower consumer operation over
-that composition. A headless caller supplies one explicit Target Link; Endpoint
-retains the local Connection principal, authenticated State, Entry, Target
-authentication, Route inputs, the one-use Transit Grant/key, and the Broker
-admission input. After syntactic Target Link parsing and Network binding, Endpoint activates
-and consumes the Connection capability before it reads current State, touches
-Entry or private reachability, asks an issuer for a Transit Grant, opens Route,
-or sends Introduction. Only an authenticated ordered byte stream and bounded
-terminal class cross the Interface. The `Publish` and `Withdraw`
+The selected protected text Connection Interface adds one narrower consumer
+operation over that composition. Its typed AAI3 caller supplies one explicit
+Target Link and one fixed text request; Endpoint retains the local Connection
+principal, authenticated State, Entry, Target authentication, Route inputs,
+the one-use Transit Grant/key, worker qualification, and Broker admission
+input. After Target-Link parsing and Network binding, Endpoint activates and
+consumes the Connection capability before it reads current State, touches Entry
+or private reachability, asks an issuer for a Transit Grant, opens Route, or
+sends Introduction. Only the fixed text exchange and bounded terminal class
+cross the Interface. This does not preserve the generic AAI2 binary workload.
+The `Publish` and `Withdraw`
 Administration operations remain separately authorized; Publish dispatches the
 Endpoint-owned `StartPublisher` transaction, not a raw Credential/signer
 request. The Connection Interface cannot invoke either operation.
@@ -440,6 +443,41 @@ validating or opening any plan-owned path. The unreachable `RunParticipant`
 composition and its exclusive configuration/event wiring have been removed.
 This does not claim the separately callable v1 Connection or Administration
 interfaces have already been retired.
+
+## Generic Connection command retirement
+
+| Option | Authorizing consumer and finite workload | Product consequence | Decision |
+|---|---|---|---|
+| Preserve through a generic AAI3 caller | None exists. The selected AAI3 caller is the fixed protected text reader, not an arbitrary byte application. | Would widen the trusted Interface and confinement contract and make an unsupported generic Application a product surface. | Rejected. |
+| Retire generic `endpoint open` | No successor consumer is required; the command is closed at its adapter before effects. | Removes the file-to-file binary CLI contract while preserving protected text, Service Names, Administration, and shared native stream semantics. | Selected. |
+
+The generic `ardents endpoint open <application-socket> <target-link>
+<input-file> <output-file>` command is selected for retirement. No current
+product journey or maintained Application requires its arbitrary binary
+file-to-file workload, and no real generic AAI3 Endpoint caller exists. The
+AAI3 caller belongs to the protected text composition: it carries a typed
+Target-Link request, launches a qualified fixed worker, and enforces that
+workload's bounds. Treating it as a generic replacement would widen that
+Interface and its confinement claim without an authorizing consumer.
+
+The command's binary input, concurrent binary output, explicit input
+half-close, terminal-class rendering, and output-file commit are therefore
+retired as a caller contract, not translated. The bounded enforcement point is
+the command adapter: a recognized exact `endpoint open` invocation returns a
+deterministic non-success result before validating or opening either file,
+creating an output, dialing the Application socket, or causing Endpoint,
+Route, or Network work. It selects no alternate command, text request, Target,
+or migration path.
+
+This decision preserves four separate facts. Human-facing Service Names and
+Target Links remain product functions on the selected protected protocol. The
+fixed text AAI3 Interface remains selected. Service Administration remains a
+separately authorized Interface. The shared native Service Connection retains
+its directional half-close semantics for selected callers. None of those facts
+is a caller for AAI2, and qualification-only or conformance fixtures cannot
+supply one. The AAI2 implementation and vectors remain exact transition
+obligations until all production callers are closed and their separate removal
+is integrated; this decision alone does not pretend they are already absent.
 
 `internal/application/interfacev1/connection` owns the sole local Target-Link
 Connection Interface: one private Unix attachment carries a non-empty Target

@@ -22,7 +22,7 @@ configuration format or an authority source.
 | `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
 | `ardents-text link <administration-socket>` | Explicitly present the canonical Target Link of the currently committed text publication through the private Administration socket. Refuse unavailable, uncommitted or withdrawn publication; this operation does not publish or retry. Output is owned interruptible terminal/pipe presentation and is absent from ordinary diagnostics. |
 | `endpoint headless <headless-runtime.json>` | Only an explicit `ardents-headless-runtime-v2` plan selects the protected text participant with the closed Route profile, an explicit `closed_profile_authority` Ed25519 public key already present in `network_authorities`, existing `service_instance_root`, distinct absolute State/Entry/local-role/publication/token roots, two sockets, and `reader_permission`/`publisher_permission` objects containing `request_path`, `response_path`, and three-class `maxima`. Both actual offline permissions must be accepted before command exposure. Legacy acquisition and corpus fields are rejected in v2. Event output must be a pollable pipe or stream socket (including the systemd journal); cancellation and bounded writes retain descriptor ownership. Full installed command qualification remains required. |
-| `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Open one explicit Target Link through the local Application Interface, half-close after streaming the exact input bytes, and create one new output file from returned bytes. The command receives no State, Entry, Grant, raw Target, or Route input. |
+| `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Retiring generic route. The selected successor behavior is a non-success refusal before opening either file, dialing the local socket, or causing Endpoint/Network work; no generic AAI3 translation or fallback is selected. Binaries predating that enforcement may still execute the AAI2 path and are not C0 readiness evidence. |
 | `endpoint publish <administration-socket>` | Request publication through the exact local one-use Service Administration capability and render its bounded receipt. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
 | `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
@@ -44,8 +44,10 @@ defined by the
 [Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement).
 The former v1 participant process composition has been removed; refusal does
 not retain a hidden fallback or migration runtime.
-Generic `endpoint open` and Service Administration retain their separate
-dispositions.
+Generic `endpoint open` is separately selected for
+[effect-free retirement](../technical/endpoint-service-runtime.md#generic-connection-command-retirement).
+Service Administration remains selected and is not carried by either AAI2 or
+the protected text AAI3 Connection.
 
 The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
