@@ -48,7 +48,7 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 			}
 		}
 	}()
-	sessions := newClosedForwardingSessions(&sync.WaitGroup{})
+	sessions := newClosedForwardingSessions()
 	hello := func() (route.ClosedHello, error) {
 		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4},
 			RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: deadline}, nil
@@ -90,6 +90,9 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 	}
 	session.fail()
 	<-server
+	if err := sessions.joinedResult(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestClosedForwardingSessionsReadyCarrierProgressesWhileOtherHelloBlocks(t *testing.T) {
@@ -97,6 +100,7 @@ func TestClosedForwardingSessionsReadyCarrierProgressesWhileOtherHelloBlocks(t *
 	secondLocal, secondPeer := net.Pipe()
 	accept := mustClosedForwardAccept(t)
 	var workers sync.WaitGroup
+	var sessions *closedForwardingSessions
 	var releaseOnce sync.Once
 	releaseFirst := make(chan struct{})
 	t.Cleanup(func() {
@@ -106,6 +110,9 @@ func TestClosedForwardingSessionsReadyCarrierProgressesWhileOtherHelloBlocks(t *
 		_ = secondLocal.Close()
 		_ = secondPeer.Close()
 		workers.Wait()
+		if sessions != nil {
+			_ = sessions.joinedResult()
+		}
 	})
 	deadline := time.Now().Add(5 * time.Second)
 	helloDeadline := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
@@ -149,7 +156,7 @@ func TestClosedForwardingSessionsReadyCarrierProgressesWhileOtherHelloBlocks(t *
 	hello := func() (route.ClosedHello, error) {
 		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 6, Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{7}, Deadline: helloDeadline}, nil
 	}
-	sessions := newClosedForwardingSessions(&workers)
+	sessions = newClosedForwardingSessions()
 	firstResult := make(chan error, 1)
 	workers.Add(1)
 	go func() {
@@ -226,12 +233,16 @@ func TestClosedForwardingSessionsReuseReadyCarrierWhileOtherHelloBlocks(t *testi
 	firstLocal, firstPeer := net.Pipe()
 	secondLocal, secondPeer := net.Pipe()
 	var workers sync.WaitGroup
+	var sessions *closedForwardingSessions
 	t.Cleanup(func() {
 		_ = firstLocal.Close()
 		_ = firstPeer.Close()
 		_ = secondLocal.Close()
 		_ = secondPeer.Close()
 		workers.Wait()
+		if sessions != nil {
+			_ = sessions.joinedResult()
+		}
 	})
 	deadline := time.Now().Add(5 * time.Second)
 	helloDeadline := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
@@ -274,7 +285,7 @@ func TestClosedForwardingSessionsReuseReadyCarrierWhileOtherHelloBlocks(t *testi
 			_ = route.WriteClosedLaneFrame(secondPeer, route.ClosedLaneFrame{Kind: 6, Lane: frame.Lane, Body: []byte{1}})
 		}
 	}()
-	sessions := newClosedForwardingSessions(&workers)
+	sessions = newClosedForwardingSessions()
 	ready, err := sessions.acquire(t.Context(), secondKey, secondLease, deadline, hello)
 	if err != nil {
 		t.Fatal(err)
@@ -343,7 +354,7 @@ func TestClosedForwardingSessionCreatorCancellationInterruptsBlockedHello(t *tes
 	go func() { _, readErr := route.ReadClosedLaneFrame(peer); seen <- readErr }()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	sessions := newClosedForwardingSessions(&sync.WaitGroup{})
+	sessions := newClosedForwardingSessions()
 	result := make(chan error, 1)
 	deadline := time.Now().Add(5 * time.Second)
 	helloDeadline := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
@@ -437,7 +448,7 @@ func TestClosedForwardingQueueExhaustionTerminatesCarrierAndAllChildren(t *testi
 	}
 	first, second := newClosedForwardingQueue(68), newClosedForwardingQueue(68)
 	invalidated := make(chan struct{})
-	session := &closedForwardingSession{owner: newClosedForwardingSessions(&sync.WaitGroup{}), carrier: local,
+	session := &closedForwardingSession{owner: newClosedForwardingSessions(), carrier: local,
 		invalidate: func() error { close(invalidated); return nil },
 		children:   map[uint32]*closedForwardingQueue{1: first, 3: second}, retired: make(map[uint32]struct{})}
 	done := make(chan struct{})

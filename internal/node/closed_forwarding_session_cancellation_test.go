@@ -78,7 +78,7 @@ func TestClosedForwardingSessionCanceledLateAcceptWaitsForCloseAndReturnsNoSessi
 		<-allowAccept
 		acceptWritten <- route.WriteClosedLaneFrame(peer, accept)
 	}()
-	sessions := newClosedForwardingSessions(&workers)
+	sessions := newClosedForwardingSessions()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	type outcome struct {

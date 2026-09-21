@@ -84,7 +84,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		t.Fatal(err)
 	}
 	var workers sync.WaitGroup
-	server := &closedForwardingServer{config: fixture.config, certificate: serverCertificate, spends: spends, limits: limits, host: host, pool: pool, sessions: newClosedForwardingSessions(&workers), clock: func() time.Time { return now }}
+	server := &closedForwardingServer{config: fixture.config, certificate: serverCertificate, spends: spends, limits: limits, host: host, pool: pool, sessions: newClosedForwardingSessions(), clock: func() time.Time { return now }}
 	releaseA := make(chan struct{})
 	var releaseOnce sync.Once
 	release := func() { releaseOnce.Do(func() { close(releaseA) }) }
@@ -99,6 +99,7 @@ func TestClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		_ = bListener.Close()
 		_ = pool.Close()
 		workers.Wait()
+		_ = server.sessions.joinedResult()
 		_ = spends.Close()
 	}()
 	aOpen, aWriteStarted := make(chan struct{}), make(chan struct{})

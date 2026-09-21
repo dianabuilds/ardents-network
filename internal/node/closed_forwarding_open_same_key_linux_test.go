@@ -63,7 +63,7 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 		t.Fatal(err)
 	}
 	var workers sync.WaitGroup
-	server := &closedForwardingServer{config: fixture.config, certificate: clientCertificate, pool: pool, sessions: newClosedForwardingSessions(&workers), clock: time.Now}
+	server := &closedForwardingServer{config: fixture.config, certificate: clientCertificate, pool: pool, sessions: newClosedForwardingSessions(), clock: time.Now}
 	open := fixture.open
 	open.Deadline = deadline
 	releaseAccept := make(chan struct{})
@@ -160,6 +160,7 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 		}
 		releasePeerNow()
 		workers.Wait()
+		_ = server.sessions.joinedResult()
 	}()
 
 	responses := make(chan route.ClosedLaneFrame, 2)

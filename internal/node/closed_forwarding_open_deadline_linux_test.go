@@ -80,8 +80,7 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 		}
 	})
 	certificate, _ := rendezvousCertificate(t, 237, "forwarding-deadline")
-	var workers sync.WaitGroup
-	server := &closedForwardingServer{config: fixture.config, certificate: certificate, pool: pool, sessions: newClosedForwardingSessions(&workers), clock: time.Now}
+	server := &closedForwardingServer{config: fixture.config, certificate: certificate, pool: pool, sessions: newClosedForwardingSessions(), clock: time.Now}
 	open := fixture.open
 	open.Deadline = time.Now().Add(40 * time.Millisecond)
 	started := time.Now()
