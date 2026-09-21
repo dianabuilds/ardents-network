@@ -22,6 +22,18 @@ type textRegistrationFlight struct {
 	receiver [32]byte
 }
 
+func (flight *textRegistrationFlight) stop() {
+	if flight != nil {
+		flight.cancel()
+	}
+}
+
+func (flight *textRegistrationFlight) join() {
+	if flight != nil {
+		<-flight.done
+	}
+}
+
 type textIntroductionRegistration struct {
 	createdAt     time.Time
 	refreshAt     time.Time

@@ -28,6 +28,10 @@ type textJobIdentity struct {
 	workerGrant   *broker.Broker
 }
 
+type textJobRetirement struct {
+	job *textJobIdentity
+}
+
 func newTextJobIdentity(owner *textContext) (*textJobIdentity, error) {
 	if owner == nil || owner.lease == nil {
 		return nil, errors.New("text worker identity is unavailable")
@@ -95,6 +99,23 @@ func (job *textJobIdentity) retireLocked(owner *textContext) bool {
 		job.workerGrant.Close()
 	}
 	return true
+}
+
+func (job *textJobIdentity) stopLocked(owner *textContext) *textJobRetirement {
+	if !job.retireLocked(owner) {
+		return nil
+	}
+	return &textJobRetirement{job: job}
+}
+
+func (retirement *textJobRetirement) join() error {
+	if retirement == nil || retirement.job == nil {
+		return nil
+	}
+	job := retirement.job
+	<-job.done
+	retirement.job = nil
+	return job.cleanupErr
 }
 
 // finishCleanup publishes the first joined cleanup result and releases only

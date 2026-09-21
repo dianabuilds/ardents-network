@@ -32,6 +32,11 @@ type textPublicationRefresh struct {
 	err     error
 }
 
+type textPublicationRefreshRetirement struct {
+	owner  *textPublicationRefreshLifecycle
+	flight *textPublicationRefresh
+}
+
 func (lifecycle *textPublicationRefreshLifecycle) start(parent context.Context, run func(*textPublicationRefresh)) *textPublicationRefresh {
 	lifecycle.mu.Lock()
 	defer lifecycle.mu.Unlock()
@@ -120,6 +125,19 @@ func (lifecycle *textPublicationRefreshLifecycle) outcome(flight *textPublicatio
 
 func (lifecycle *textPublicationRefreshLifecycle) stop() error {
 	return lifecycle.join(lifecycle.cancel())
+}
+
+func (lifecycle *textPublicationRefreshLifecycle) stopAsync() *textPublicationRefreshRetirement {
+	return &textPublicationRefreshRetirement{owner: lifecycle, flight: lifecycle.cancel()}
+}
+
+func (retirement *textPublicationRefreshRetirement) join() error {
+	if retirement == nil || retirement.owner == nil {
+		return nil
+	}
+	outcome := retirement.owner.join(retirement.flight)
+	retirement.flight = nil
+	return outcome
 }
 
 func (lifecycle *textPublicationRefreshLifecycle) fail(flight *textPublicationRefresh, err error) bool {

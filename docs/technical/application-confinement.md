@@ -251,6 +251,12 @@ another context cannot recover authority while an old cgroup may remain live.
 The Job owner publishes one immutable cleanup result: the original cleanup
 error survives context removal, repeated completion and repeated Endpoint
 close, while successful joined cleanup alone releases the Context reservation.
+Within one Context, shutdown likewise stops every extracted child owner and
+every Context-owned flight before joining any of them. Those owners detach
+their own state; the Context does not clear their implementation fields. The
+Job joins last, and the Context remains in the Endpoint shutdown tree until
+that final join, durable Publication retirement and the stored result complete.
+Repeated Context Close returns that same joined result.
 The worker lifetime owner pins cleanup before INIT, closes the exact
 attachment on cancellation, joins initialization and cgroup cleanup, and
 publishes one immutable completion. This ownership is not a qualified launch
