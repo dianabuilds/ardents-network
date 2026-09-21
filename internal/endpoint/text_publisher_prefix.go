@@ -19,22 +19,40 @@ type textPublisherPrefix struct {
 	set     *textSourceSet
 }
 
-func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*route.ClosedSourcePrefix, error) {
+type textPublisherPrefixOpening interface {
+	openingAvailableLocked() bool
+	membersSlotLocked() **textSourceSet
+	reserveOpeningLocked(*textSourceFlight) bool
+	openingCurrentLocked(*textSourceFlight) bool
+	finishOpeningLocked(*textSourceFlight, *route.ClosedSourcePrefix, context.CancelFunc, bool) bool
+}
+
+func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*textIntroductionPrefixHandle, error) {
 	if owner == nil {
 		return nil, errors.New("text Publisher owner unavailable")
 	}
-	return owner.openTextPublisherPrefix(ctx, &owner.introduction, 4)
+	opened, err := owner.openTextPublisherPrefix(ctx, &owner.introduction, 4)
+	if err != nil {
+		return nil, err
+	}
+	owner.mu.Lock()
+	handle := owner.introduction.acquireOpenedLocked(opened)
+	owner.mu.Unlock()
+	if handle == nil {
+		return nil, errors.New("text Introduction prefix unavailable after opening")
+	}
+	return handle, nil
 }
 
 // Both Publisher domains share admission/lifetime rules but retain distinct
 // allocations, transports and stock. This private selector grants no authority.
-func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role *textPublisherPrefix, domain uint8) (*route.ClosedSourcePrefix, error) {
+func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role textPublisherPrefixOpening, domain uint8) (*route.ClosedSourcePrefix, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil || !(domain == 4 && role == &owner.introduction || domain == 3 && role == &owner.responder) {
 		return nil, errors.New("text Publisher role context unavailable")
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || owner.currentTextSourceLocked() == nil || owner.permission == nil || owner.source.openingInProgressLocked() || role.opening != nil || role.prefix != nil {
+	if err != nil || owner.surface != broker.Administration || owner.currentTextSourceLocked() == nil || owner.permission == nil || owner.source.openingInProgressLocked() || !role.openingAvailableLocked() {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher role owner unavailable")
 	}
@@ -43,14 +61,18 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role *tex
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher State unavailable")
 	}
-	selection, err := owner.selectTextAdjacentLocked(domain, &role.set)
+	selection, err := owner.selectTextAdjacentLocked(domain, role.membersSlotLocked())
 	if err != nil {
 		owner.mu.Unlock()
 		return nil, err
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
 	flight := &textSourceFlight{context: attempt, cancel: cancel, done: make(chan struct{})}
-	role.opening = flight
+	if !role.reserveOpeningLocked(flight) {
+		owner.mu.Unlock()
+		cancel()
+		return nil, errors.New("text Publisher role owner unavailable")
+	}
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); cancel() })
@@ -71,8 +93,9 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role *tex
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	defer close(flight.done)
-	role.opening = nil
-	if openErr != nil || ctx.Err() != nil || attempt.Err() != nil || !owner.liveLocked(owner.endpoint, broker.Administration) {
+	publish := openErr == nil && ctx.Err() == nil && attempt.Err() == nil && owner.liveLocked(owner.endpoint, broker.Administration)
+	owned := role.finishOpeningLocked(flight, prefix, cancel, publish)
+	if !owned || !publish {
 		cancel()
 		cleanup := prefix.Close()
 		if errors.Is(openErr, route.ErrClosedSourceCleanup) || cleanup != nil {
@@ -82,14 +105,13 @@ func (owner *textContext) openTextPublisherPrefix(ctx context.Context, role *tex
 		}
 		return nil, errors.Join(openErr, ctx.Err(), cleanup, errors.New("text Publisher role prefix unavailable"))
 	}
-	role.prefix, role.cancel = prefix, cancel
 	return prefix, nil
 }
 
-func (owner *textContext) ensureTextPublisherStock(role *textPublisherPrefix, flight *textSourceFlight, selection route.ClosedBootstrapSelection) error {
+func (owner *textContext) ensureTextPublisherStock(role textPublisherPrefixOpening, flight *textSourceFlight, selection route.ClosedBootstrapSelection) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || role.opening != flight || flight.context.Err() != nil || owner.permission == nil {
+	if err != nil || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.permission == nil {
 		owner.mu.Unlock()
 		return errors.New("text Publisher role stock unavailable")
 	}
@@ -118,18 +140,48 @@ func (owner *textContext) ensureTextPublisherStock(role *textPublisherPrefix, fl
 	return nil
 }
 
-func (owner *textContext) presentTextPublisherForwardingToken(role *textPublisherPrefix, domain uint8, flight *textSourceFlight, selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
+func (owner *textContext) presentTextPublisherForwardingToken(role textPublisherPrefixOpening, domain uint8, flight *textSourceFlight, selection route.ClosedBootstrapSelection, hello route.ClosedHello, class uint8) ([]byte, error) {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || role.opening != flight || flight.context.Err() != nil || owner.permission == nil ||
+	if err != nil || owner.surface != broker.Administration || !role.openingCurrentLocked(flight) || flight.context.Err() != nil || owner.permission == nil ||
 		class != 2 || hello.Purpose != route.ClosedPurposeForwarding || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher role forwarding authority unavailable")
 	}
-	current, err := owner.selectTextAdjacentLocked(domain, &role.set)
+	current, err := owner.selectTextAdjacentLocked(domain, role.membersSlotLocked())
 	if err != nil || current != selection || hello.RecipientNodeID != selection.EntryNodeID && hello.RecipientNodeID != selection.InteriorNodeID {
 		return nil, errors.New("text Publisher role selection changed")
 	}
 	return owner.takeTextTokenLocked(profile, now, hello, class, flight.context)
+}
+
+func (role *textPublisherPrefix) membersSlotLocked() **textSourceSet { return &role.set }
+
+func (role *textPublisherPrefix) openingAvailableLocked() bool {
+	return role != nil && role.opening == nil && role.prefix == nil
+}
+
+func (role *textPublisherPrefix) reserveOpeningLocked(flight *textSourceFlight) bool {
+	if role == nil || flight == nil || role.opening != nil || role.prefix != nil {
+		return false
+	}
+	role.opening = flight
+	return true
+}
+
+func (role *textPublisherPrefix) openingCurrentLocked(flight *textSourceFlight) bool {
+	return role != nil && role.opening == flight
+}
+
+func (role *textPublisherPrefix) finishOpeningLocked(flight *textSourceFlight, prefix *route.ClosedSourcePrefix,
+	cancel context.CancelFunc, publish bool) bool {
+	if role == nil || role.opening != flight {
+		return false
+	}
+	role.opening = nil
+	if publish {
+		role.prefix, role.cancel = prefix, cancel
+	}
+	return true
 }

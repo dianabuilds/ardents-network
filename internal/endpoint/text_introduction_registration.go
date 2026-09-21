@@ -18,7 +18,7 @@ type textRegistrationFlight struct {
 	context  context.Context
 	cancel   context.CancelFunc
 	done     chan struct{}
-	prefix   *route.ClosedSourcePrefix
+	prefix   *textIntroductionPrefixHandle
 	receiver [32]byte
 }
 
@@ -65,12 +65,13 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		default:
 		}
 	}
-	if err != nil || owner.surface != broker.Administration || owner.introduction.prefix == nil || owner.introduction.opening != nil || owner.registrationOpening != nil || owner.withdrawal != nil || owner.registration != previous || previous != nil && (owner.previousRegistration != nil || owner.refresh == nil || owner.refresh.context != ctx || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
+	prefix := owner.introduction.currentLocked()
+	if err != nil || owner.surface != broker.Administration || prefix == nil || owner.introduction.openingInProgressLocked() || owner.registrationOpening != nil || owner.withdrawal != nil || owner.registration != previous || previous != nil && (owner.previousRegistration != nil || owner.refresh == nil || owner.refresh.context != ctx || previous.recipient == nil || revision <= previous.request.Revision) || owner.permission == nil || !now.Before(expiry) || expiry.After(now.Add(600*time.Second)) {
 		owner.mu.Unlock()
 		return nil, errors.New("text Publisher registration owner unavailable")
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textRegistrationFlight{previous: previous, context: attempt, cancel: cancel, done: make(chan struct{}), prefix: owner.introduction.prefix}
+	flight := &textRegistrationFlight{previous: previous, context: attempt, cancel: cancel, done: make(chan struct{}), prefix: prefix}
 	owner.registrationOpening = flight
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
@@ -82,7 +83,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		}
 		registered, outcome = owner.finishTextRegistration(ctx, flight, registered, channel, outcome)
 	}()
-	receiver, until, err := flight.prefix.IntroductionRecipient()
+	receiver, until, err := flight.prefix.introductionRecipient()
 	if err != nil || expiry.After(until) {
 		return nil, errors.Join(err, errors.New("text Publisher registration expiry exceeds current duty"))
 	}
@@ -107,7 +108,7 @@ func (owner *textContext) openTextRegistration(ctx context.Context, revision uin
 		return nil, err
 	}
 	createdAt := owner.endpoint.clock().UTC().Truncate(time.Second)
-	channel, err = flight.prefix.RegisterIntroduction(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	channel, err = flight.prefix.register(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentTextRegistrationToken(flight, hello, class)
 	}, request)
 	if err != nil {
@@ -126,7 +127,8 @@ func (owner *textContext) finishTextRegistration(ctx context.Context, flight *te
 	defer owner.mu.Unlock()
 	defer close(flight.done)
 	owner.registrationOpening = nil
-	if outcome != nil || ctx.Err() != nil || flight.context.Err() != nil || owner.registration != flight.previous || !owner.liveLocked(owner.endpoint, broker.Administration) {
+	if outcome != nil || ctx.Err() != nil || flight.context.Err() != nil || !flight.prefix.currentLocked(&owner.introduction) ||
+		owner.registration != flight.previous || !owner.liveLocked(owner.endpoint, broker.Administration) {
 		flight.cancel()
 		cleanup := channel.Close()
 		if errors.Is(outcome, route.ErrClosedSourceCleanup) || cleanup != nil {
@@ -150,12 +152,12 @@ func (owner *textContext) presentTextRegistrationToken(flight *textRegistrationF
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.surface != broker.Administration || owner.registrationOpening != flight || owner.introduction.prefix != flight.prefix || flight.context.Err() != nil || owner.permission == nil ||
+	if err != nil || owner.surface != broker.Administration || owner.registrationOpening != flight || !flight.prefix.currentLocked(&owner.introduction) || flight.context.Err() != nil || owner.permission == nil ||
 		class != 3 || hello.Purpose != route.ClosedPurposeIntroduction || hello.RecipientNodeID != flight.receiver || hello.NetworkID != profile.NetworkID || hello.ProfileDigest != profile.Digest ||
 		hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) || hello.Deadline.After(profile.NotAfter) {
 		return nil, errors.New("text Publisher registration token authority unavailable")
 	}
-	receiver, _, err := flight.prefix.IntroductionRecipient()
+	receiver, _, err := flight.prefix.introductionRecipient()
 	if err != nil || receiver != flight.receiver {
 		return nil, errors.New("text Publisher registration recipient changed")
 	}

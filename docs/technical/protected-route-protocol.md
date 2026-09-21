@@ -298,7 +298,12 @@ For a wholly unemitted local JOIN CLOSE, the outer-lane cleanup witness counts a
 A registered Publisher may maintain one Introduction prefix and one data-role
 prefix as finite publication readiness. These count as publication background
 work; no unvisited Service is kept ready by an idle User. Publication refresh
-may renew this readiness; an idle User's expired prefix never self-refills.
+may renew this readiness; an idle User's expired prefix never self-refills. One
+private Introduction lifecycle owns the exact live prefix, its in-progress
+opening and joined retirement. Registration and refresh use its read-only exact
+handle; cancellation or retirement invalidates that handle before cleanup, so
+a late opening or registration cannot attach to a replacement. This lifecycle
+does not close or recreate the sibling Source or Responder owners.
 
 A forwarding-channel admission reserves its own aggregate byte/time budget
 and permits at most 256 simultaneous work lanes and two reserved control lanes

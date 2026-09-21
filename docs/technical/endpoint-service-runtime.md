@@ -27,8 +27,12 @@ withdrawing Publication and Instance. A committed Publication retains cleanup
 ownership even when cancellation prevents Lease handover. Failed withdrawal
 retains its binding and original error until cleanup completes. This tested
 composition consumes real recipient-confidential capsule delivery before opening
-its separate Responder-domain forwarding prefix. Both Publisher prefixes obtain
-genuine tokens through Source and share admission/cleanup code while retaining
+its separate Responder-domain forwarding prefix. A private Introduction
+lifecycle alone reserves and publishes its opening, exposes an exact read-only
+handle to registration/refresh/refill callers, invalidates that handle before
+retirement, and joins opening and Route cleanup without closing the borrowed
+Source. The Responder remains a separate owner. Both Publisher prefixes obtain
+genuine tokens through Source and share admission rules while retaining
 separate selections and transports. Known Node/key/family overlaps across live
 domains or subroles are excluded before selection and issuance; losing a member
 cannot resample a retained set. A final handover rechecks the exact live
@@ -82,7 +86,9 @@ before closing its Route owner. A late completion from an obsolete opening
 cleans and joins only its own result, cannot publish over a replacement, and
 cannot renew stock or the two-batch bootstrap allowance. The context lock and
 Source-operation serialization remain the admission boundary; Publisher
-Introduction and Responder prefixes keep their separate owners.
+Introduction and Responder prefixes keep their separate owners. The
+Introduction lifecycle similarly owns its own exact handle/opening/stop/join;
+context shutdown and registration no longer mutate its prefix fields.
 
 Each Descriptor lookup acquires one operation-local view of the exact current
 Source handle. Recipient selection, stock preparation, token presentation and

@@ -177,7 +177,8 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 			}
 			publisher.mu.Lock()
 			responder := publisher.responder.prefix
-			distinct := responder != nil && (publisher.currentTextSourceLocked() == nil || responder != publisher.currentTextSourceLocked().prefix.Load()) && responder != publisher.introduction.prefix &&
+			introduction := publisher.introduction.currentLocked()
+			distinct := responder != nil && introduction != nil && (publisher.currentTextSourceLocked() == nil || responder != publisher.currentTextSourceLocked().prefix.Load()) && responder != introduction.prefix.Load() &&
 				publisher.responder.set != nil && publisher.responder.set != publisher.sourceSet && publisher.responder.set != publisher.introduction.set &&
 				publisher.responder.set.interior[0].Domain == 3 && publisher.permission.reserved[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()
