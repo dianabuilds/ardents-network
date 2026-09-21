@@ -43,9 +43,9 @@ type headlessRuntimePlan struct {
 	AdministrationSocket   string `json:"administration_socket"`
 	PublicationRoot        string `json:"publication_root"`
 	ServiceInstanceRoot    string `json:"service_instance_root,omitempty"`
-	// These three fields occur only in persisted v1 runtime plans. A complete
-	// triple enables the bounded legacy Service Link transition; new C0 plans
-	// omit all three fields and accept Target Links only.
+	// These three fields are decoded only so historical v1 input can receive
+	// its bounded retirement refusal. The retained legacy composition is not
+	// reachable from the command; current v2 plans omit all three fields.
 	AlphaCorpusStateRoot    string   `json:"alpha_corpus_state_root,omitempty"`
 	LocalRoleStateRoot      string   `json:"local_role_state_root"`
 	TimeConfidenceFile      string   `json:"time_confidence_file"`
@@ -167,17 +167,22 @@ type decodedHeadlessRuntimePlan struct {
 	ClosedProfileAuthority                                            ed25519.PublicKey
 }
 
+var errHeadlessRuntimeV1Retired = errors.New("headless runtime plan v1 is retired")
+
 func loadHeadlessRuntimePlan(path string) (decodedHeadlessRuntimePlan, error) {
 	var raw headlessRuntimePlan
 	if err := decodeOperatorInput(path, 16<<10, &raw); err != nil {
 		return decodedHeadlessRuntimePlan{}, err
+	}
+	if raw.Schema == "ardents-headless-runtime-v1" {
+		return decodedHeadlessRuntimePlan{}, errHeadlessRuntimeV1Retired
 	}
 	protected := raw.Schema == "ardents-headless-runtime-v2"
 	expectedProfile := route.Profile
 	if protected {
 		expectedProfile = route.ClosedRouteProfile
 	}
-	if raw.Schema != "ardents-headless-runtime-v1" && !protected || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" || (!protected && raw.TransitAcquisitionRoot == "") ||
+	if !protected || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" ||
 		raw.ApplicationSocket == "" || !filepath.IsAbs(raw.ApplicationSocket) || raw.AdministrationSocket == "" || !filepath.IsAbs(raw.AdministrationSocket) ||
 		raw.ApplicationSocket == raw.AdministrationSocket || raw.PublicationRoot == "" ||
 		raw.LocalRoleStateRoot == "" || raw.TimeConfidenceFile == "" || raw.NetworkProfile != expectedProfile || raw.BrokerID == "" ||

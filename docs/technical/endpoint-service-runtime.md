@@ -341,11 +341,10 @@ snapshot Administration transports, rechecks permission currentness before
 exposure, and joins servers, contexts and persistent owners on shutdown.
 `endpoint headless` selects this composition through an explicit v2 plan;
 missing permissions or mixed legacy fields fail without selecting another
-runtime. The current decoder still routes persisted v1 plans to
-`RunParticipant`, but that compatibility input is selected for retirement.
-The exact selected effect boundary belongs to
-[v1 startup retirement](#v1-startup-retirement). The protected composition
-still requires installed command and full network lifecycle
+runtime. The decoder refuses persisted v1 plans under
+[v1 startup retirement](#v1-startup-retirement) before it can route them to
+`RunParticipant`. The protected composition still requires installed command
+and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
 The coalesced authenticated stream requires its directional Terminal receipt
@@ -436,8 +435,10 @@ root and floor byte unchanged. It does not synthesize or convert a Grant, key,
 permission, protected plan, or other authority. Malformed or incomplete v2
 input is refused by the v2 path and never falls back to v1. Existing retained
 bytes require a separately selected reader, recovery, or migration contract;
-startup retirement supplies none. The current decoder has not yet adopted this
-end state and still accepts bounded persisted v1 plans.
+startup retirement supplies none. The command decoder now enforces this before
+validating or opening any plan-owned path. `RunParticipant` remains as unreachable
+legacy composition until its separately bounded removal; this refusal does not
+claim its code or the v1 Administration interface has already been deleted.
 
 `internal/application/interfacev1/connection` owns the sole local Target-Link
 Connection Interface: one private Unix attachment carries a non-empty Target
