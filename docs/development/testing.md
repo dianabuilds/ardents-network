@@ -40,6 +40,11 @@ substitute for independent review.
 - Focused Linux race checks retain raw command, stdout, stderr, and exit status
   outside Git. They may compose existing owner tests for a bounded lifecycle
   fact, but do not turn that composition into an end-to-end qualification.
+- The retained text Publisher setup keeps its real 4-by-64 authenticated
+  loopback composition in the ordinary Linux profile. Its race counterpart
+  checks the same 256 workload bindings, retained identities, concurrent Reader
+  ownership, and ready barrier at an in-memory stream seam; race-detector
+  slowdown is not a wall-clock throughput verdict for the loopback fixture.
 - Its serial race inventory gives each package an explicit 15-minute terminal
   timeout. This keeps the race-instrumented Linux Endpoint's cryptographic
   fixtures inside the checked profile without inheriting Go's shorter default;
