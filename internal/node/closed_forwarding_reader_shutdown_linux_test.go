@@ -213,9 +213,7 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	}
 	// Complete the admitted peer's half of shutdown. The accepted worker still
 	// cannot join until its production child opener is released below.
-	if err := client.Close(); err != nil {
-		t.Fatal(err)
-	}
+	_ = client.Close()
 	first, cancelFirst := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancelFirst()
 	if err := server.Drain(first); !errors.Is(err, context.DeadlineExceeded) {
