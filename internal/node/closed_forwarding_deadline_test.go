@@ -5,7 +5,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"io"
 	"net"
-	"sync"
 	"testing"
 	"time"
 )
@@ -99,7 +98,7 @@ func TestClosedForwardingInitialAcceptKeepsOperationDeadline(t *testing.T) {
 	}
 	result := make(chan error, 1)
 	go func() {
-		_, err := newClosedForwardingSessions(&sync.WaitGroup{}).acquire(context.Background(), key, lease, time.Now().Add(100*time.Millisecond), hello)
+		_, err := newClosedForwardingSessions().acquire(context.Background(), key, lease, time.Now().Add(100*time.Millisecond), hello)
 		result <- err
 	}()
 	if err := <-read; err != nil {

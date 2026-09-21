@@ -43,7 +43,7 @@ func (idleForwardingListener) Accept(ctx context.Context, _ time.Duration) (rout
 }
 func (idleForwardingListener) Close() error { return nil }
 
-func TestClosedForwardingDrainRetainsRootUntilOutgoingReaderJoins(t *testing.T) {
+func TestClosedForwardingDrainJoinsLateSessionProducerBeforeReader(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		closeErr error
@@ -71,12 +71,16 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		idleForwardingListener{}, spends, nil, pool, nil, nil, 1)
 	local, peer := net.Pipe()
 	blocked := &delayedForwardingRead{Conn: local, gate: make(chan struct{}), interrupted: make(chan struct{}), closeErr: closeErr}
-	var release sync.Once
+	allowAccept := make(chan struct{})
+	allowProducer := make(chan struct{})
+	var releaseReader, releaseAccept, releaseProducer sync.Once
 	t.Cleanup(func() {
 		server.Stop()
+		releaseAccept.Do(func() { close(allowAccept) })
+		releaseProducer.Do(func() { close(allowProducer) })
 		_ = pool.Close()
 		_ = peer.Close()
-		release.Do(func() { close(blocked.gate) })
+		releaseReader.Do(func() { close(blocked.gate) })
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		_ = server.Drain(ctx)
@@ -88,10 +92,13 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	helloRead := make(chan error, 1)
 	handshake := make(chan error, 1)
 	go func() {
 		_, err := route.ReadClosedLaneFrame(peer)
+		helloRead <- err
 		if err == nil {
+			<-allowAccept
 			frame, encodeErr := route.ClosedAcceptFrame(0, 64<<10)
 			err = encodeErr
 			if err == nil {
@@ -101,15 +108,28 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		handshake <- err
 	}()
 	end := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
-	_, err = server.sessions.acquire(context.Background(), key, lease, time.Now().Add(time.Second), func() (route.ClosedHello, error) {
-		return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
-			ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 1,
-			Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{6}, Deadline: end}, nil
-	})
-	if err != nil {
+	producerResult := make(chan error, 1)
+	producerDone := make(chan struct{})
+	server.workers.Add(1)
+	go func() {
+		defer server.workers.Done()
+		_, acquireErr := server.sessions.acquire(context.Background(), key, lease, time.Now().Add(time.Second), func() (route.ClosedHello, error) {
+			return route.ClosedHello{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3},
+				ProfileDigest: [32]byte{4}, RecipientNodeID: [32]byte{5}, RecipientDutyGeneration: 1,
+				Purpose: route.ClosedPurposeForwarding, ChannelNonce: [32]byte{6}, Deadline: end}, nil
+		})
+		producerResult <- acquireErr
+		<-allowProducer
+		close(producerDone)
+	}()
+	if err := <-helloRead; err != nil {
 		t.Fatal(err)
 	}
+	releaseAccept.Do(func() { close(allowAccept) })
 	if err := <-handshake; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-producerResult; err != nil {
 		t.Fatal(err)
 	}
 	if err := lease.MarkUsed(); err != nil {
@@ -133,7 +153,22 @@ func checkForwardingReaderShutdown(t *testing.T, closeErr error) {
 		_ = replacement.Close()
 		t.Fatal("unjoined reader lost its root lease")
 	}
-	release.Do(func() { close(blocked.gate) })
+	releaseProducer.Do(func() { close(allowProducer) })
+	select {
+	case <-producerDone:
+	case <-time.After(time.Second):
+		t.Fatal("late successful handshake producer did not join")
+	}
+	readerOnly, cancelReaderOnly := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancelReaderOnly()
+	if err := server.Drain(readerOnly); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Drain completed without the retained reader after producer join: %v", err)
+	}
+	if replacement, err := route.OpenClosedSpendLedger(root, binding); err == nil {
+		_ = replacement.Close()
+		t.Fatal("unjoined reader lost its root lease after producer join")
+	}
+	releaseReader.Do(func() { close(blocked.gate) })
 	joined, cancelJoined := context.WithTimeout(t.Context(), time.Second)
 	defer cancelJoined()
 	for range 2 {

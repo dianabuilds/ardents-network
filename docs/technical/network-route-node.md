@@ -32,7 +32,10 @@ EOF and authenticated Service completion; direct role and inner TLS closure
 keep their existing semantics.
 On State loss or an accepted successor, the Node lifecycle stops the old
 forwarding duty, closes its listener and outgoing pool, and waits for every
-accepted handler and retained session reader before releasing the spend root.
+accepted handler before the outgoing-session owner performs the final wait for
+its retained Carrier readers and returns their joined cleanup result. The server
+retains the pool interruption and spend-root lifetime, so a timed-out Drain
+cannot release the root or turn a later physical close failure into success.
 While one child is pending downstream HELLO/ACCEPT, the parent reader still
 serves lane-zero control and independently selected children. A pending child's
 frames remain in Route's bounded accounted queues; CLOSE cancels and joins only
@@ -266,9 +269,12 @@ and confirmed removal. The operator contract is the
   cover durable reopen, corruption, replay, invitation replacement, successor-
   State admission rejection, active attachment cancellation and exactly-once
   cleanup, pressure, listener drain, cleanup fault propagation, and withdrawal.
-  Linux race checks additionally exercise State-successor drain, forwarding
-  Stop/root retention, cancellation racing a late outer ACCEPT, and late
-  Carrier invalidation against a replacement incarnation.
+  The forwarding shutdown regression joins a producer that completes a late
+  successful outer handshake before waiting on its delayed session reader; the
+  spend root remains held through both joins and repeated Drain retains the
+  physical close result. Linux race checks additionally exercise State-successor
+  drain, cancellation racing a late outer ACCEPT, and late Carrier invalidation
+  against a replacement incarnation.
 - The maintained Carrier cells cover exact TCP/TLS and QUIC peer/binding
   authentication, pending-admission reservation before QUIC authentication,
   signed v1/v2 State projection and unknown-profile rejection, both directions

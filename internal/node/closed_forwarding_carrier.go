@@ -17,7 +17,7 @@ type closedForwardingSessions struct {
 	mu         sync.Mutex
 	sessions   map[route.ClosedCarrierKey]*closedForwardingSession
 	pending    map[route.ClosedCarrierKey]*closedForwardingSessionPending
-	workers    *sync.WaitGroup
+	readers    sync.WaitGroup
 	cleanupErr error
 }
 
@@ -45,12 +45,12 @@ type closedForwardingSession struct {
 	closed      bool
 }
 
-func newClosedForwardingSessions(workers *sync.WaitGroup) *closedForwardingSessions {
-	return &closedForwardingSessions{sessions: make(map[route.ClosedCarrierKey]*closedForwardingSession), pending: make(map[route.ClosedCarrierKey]*closedForwardingSessionPending), workers: workers}
+func newClosedForwardingSessions() *closedForwardingSessions {
+	return &closedForwardingSessions{sessions: make(map[route.ClosedCarrierKey]*closedForwardingSession), pending: make(map[route.ClosedCarrierKey]*closedForwardingSessionPending)}
 }
 
 func (sessions *closedForwardingSessions) acquire(ctx context.Context, key route.ClosedCarrierKey, binding *route.ClosedCarrierLease, deadline time.Time, hello func() (route.ClosedHello, error)) (*closedForwardingSession, error) {
-	if sessions == nil || sessions.workers == nil || ctx == nil || binding == nil || hello == nil {
+	if sessions == nil || ctx == nil || binding == nil || hello == nil {
 		return nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
 	carrier, err := binding.Carrier()
@@ -139,9 +139,9 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key route.Cl
 		sessions.mu.Unlock()
 		returned, returnedErr = result, resultErr
 		if result != nil {
-			sessions.workers.Add(1)
+			sessions.readers.Add(1)
 			go func() {
-				defer sessions.workers.Done()
+				defer sessions.readers.Done()
 				result.copyReverse()
 			}()
 		}
@@ -196,6 +196,19 @@ func (sessions *closedForwardingSessions) open(ctx context.Context, key route.Cl
 	session := &closedForwardingSession{owner: sessions, key: key, carrier: carrier, binding: binding, invalidate: binding.Invalidate, children: make(map[uint32]*closedForwardingQueue), retired: make(map[uint32]struct{})}
 	result = session
 	return result, nil
+}
+
+// joinedResult waits for every reader owned by this session set and returns
+// their retained physical cleanup result. The caller must first join every
+// producer that can publish a session, so no reader can be added after Wait.
+func (sessions *closedForwardingSessions) joinedResult() error {
+	if sessions == nil {
+		return nil
+	}
+	sessions.readers.Wait()
+	sessions.mu.Lock()
+	defer sessions.mu.Unlock()
+	return sessions.cleanupErr
 }
 
 func (session *closedForwardingSession) attach(open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(route.ClosedLaneFrame) error, retired func() bool) (uint32, *closedForwardingQueue, error) {

@@ -15,15 +15,13 @@ func (server *closedForwardingServer) closeOutgoing(ctx context.Context) {
 	server.outgoingErr = server.pool.Close()
 }
 
-// Every producer of a session reader is itself a counted accepted handler.
-// Its Add therefore precedes the last Done, even when cancellation races an
-// outgoing handshake. A timeout waiting for drained does not release roots:
-// this sole owner retains them until the complete tree actually joins.
+// Join every accepted producer before the session owner waits for its readers.
+// A producer can publish a late successful handshake, but no reader can be
+// added after joinedResult starts its final Wait. A timeout waiting for drained
+// does not release roots: this sole owner retains them until both layers join.
 func (server *closedForwardingServer) finishShutdown() {
 	server.workers.Wait()
-	server.sessions.mu.Lock()
-	sessionErr := server.sessions.cleanupErr
-	server.sessions.mu.Unlock()
+	sessionErr := server.sessions.joinedResult()
 	var hostErr error
 	if server.host != nil {
 		hostErr = server.host.Close()

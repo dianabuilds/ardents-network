@@ -59,7 +59,7 @@ func testClosedForwardingLinkCompletion(t *testing.T, timing string) {
 	}
 	// Four complete fixture frames: CREDIT, response BYTES, EOF and CLOSE.
 	reverse := newClosedForwardingQueue(4*16 + 4 + len("response") + 1)
-	session := &closedForwardingSession{owner: newClosedForwardingSessions(&sync.WaitGroup{}), carrier: local, invalidate: func() error { return nil },
+	session := &closedForwardingSession{owner: newClosedForwardingSessions(), carrier: local, invalidate: func() error { return nil },
 		children: map[uint32]*closedForwardingQueue{3: reverse}, retired: make(map[uint32]struct{}),
 		queues: map[uint32]func(route.ClosedLaneFrame) error{3: func(frame route.ClosedLaneFrame) error { frame.Lane = 1; return channel.QueueReverse(frame) }}}
 	published := make(chan route.ClosedLaneFrame, 8)

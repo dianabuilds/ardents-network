@@ -117,7 +117,7 @@ func newClosedForwardingServerWithHost(config runtimeConfig, snapshot dutyFacts,
 	running := &closedForwardingServer{config: config, snapshot: snapshot, certificate: certificate, listener: listener, spends: spends, limits: limits, pool: pool, bootstrap: bootstrap,
 		host: host, cancel: cancel, drained: make(chan struct{}),
 		clock: config.now, limit: make(chan struct{}, limit), done: make(chan error, 1), stopped: make(chan struct{})}
-	running.sessions = newClosedForwardingSessions(&running.workers)
+	running.sessions = newClosedForwardingSessions()
 	running.workers.Add(3)
 	go running.reap()
 	go running.serve(ctx)
