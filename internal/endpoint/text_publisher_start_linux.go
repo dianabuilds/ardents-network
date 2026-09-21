@@ -47,7 +47,7 @@ func (worker *qualifiedTextWorker) startPublication(ctx context.Context) (_ *tex
 	}
 	owner := worker.job.owner
 	owner.mu.Lock()
-	current := owner.liveTextServiceJobLocked(worker.job, broker.Administration) && !owner.publicationStarting && !owner.publicationDraining && owner.registration == nil
+	current := owner.liveTextServiceJobLocked(worker.job, broker.Administration) && !owner.publicationStarting && !owner.textPublicationPairLifecycle.drainingLocked() && owner.textPublicationPairLifecycle.currentLocked() == nil
 	if current {
 		owner.publicationStarting = true
 		owner.publicationDrain = make(chan struct{})

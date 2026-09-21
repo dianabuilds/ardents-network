@@ -212,7 +212,10 @@ ordinary token issuance share a cancellable context-local operation reservation;
 Descriptor acknowledgement and Service streams do not hold it. Admission,
 registration and publication revalidate their own authority after waiting for
 actual issuance instead of treating another valid issuer operation as lost
-publication authority. Existing pending batches and finite allocations remain
+publication authority. A private local pair lifecycle makes a Registration
+current only after the Descriptor ACK is revalidated, preserves the monotonic
+durable Publication/Instance floors on failure, and rejects every late commit
+after the withdrawal drain barrier. Existing pending batches and finite allocations remain
 unchanged. A cancelled waiter cannot release the active operation's reservation.
 During explicit reader resolution or scheduled publication, Endpoint ensures
 an unspent forwarding token is available per retained Source receiver for the

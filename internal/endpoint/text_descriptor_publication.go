@@ -33,8 +33,8 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	}()
 	owner.mu.Lock()
 	profile, now, err := owner.textPermissionProfileLocked()
-	registered := owner.registration
-	if err != nil || owner.surface != broker.Administration || registered == nil || owner.withdrawal != nil ||
+	registered := owner.textPublicationPairLifecycle.publicationTargetLocked()
+	if err != nil || owner.surface != broker.Administration || registered == nil || owner.textPublicationPairLifecycle.drainingLocked() || owner.withdrawal != nil ||
 		owner.registrationOpening != nil || owner.permission == nil || owner.resolution != nil || owner.currentTextSourceLocked() == nil ||
 		endpoint.publisherBinding == nil || endpoint.publications == nil || endpoint.publisherSession != nil || endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner {
 		owner.mu.Unlock()
@@ -70,7 +70,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	current := lease.Current()
 	owner.mu.Lock()
 	live, at, err := owner.textPermissionProfileLocked()
-	if err != nil || live != profile || owner.registration != registered || !owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil {
+	if err != nil || live != profile || owner.textPublicationPairLifecycle.publicationTargetLocked() != registered || owner.textPublicationPairLifecycle.drainingLocked() || !owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil {
 		owner.mu.Unlock()
 		return verified, errors.New("text publication authority changed")
 	}
@@ -135,7 +135,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	live, at, err = owner.textPermissionProfileLocked()
-	if err != nil || live != profile || owner.registration != registered || !flight.source.currentLocked(owner) ||
+	if err != nil || live != profile || owner.textPublicationPairLifecycle.publicationTargetLocked() != registered || owner.textPublicationPairLifecycle.drainingLocked() || !flight.source.currentLocked(owner) ||
 		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive || endpoint.publisherSession != nil ||
 		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipient.Public(at) == [32]byte{} {
 		return reachability.Verified{}, errors.New("text Descriptor acknowledgement outlived its owner")
@@ -147,22 +147,11 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	}
 	verified, err = reachability.VerifyPrivate(raw, current.Credential.Target, profile.NetworkID, profile.Digest, at)
 	if err == nil {
-		if !registered.published {
-			if previous := owner.previousRegistration; previous != nil {
-				switchAt := at.UTC().Truncate(time.Second)
-				until := switchAt.Add(60 * time.Second)
-				if previous.request.Expiry.Before(until) {
-					until = previous.request.Expiry
-				}
-				if switchAt.Before(until) {
-					if err := previous.recipient.RetainPredecessor(switchAt, until); err != nil {
-						return reachability.Verified{}, err
-					}
-				}
-				owner.previousUntil = until
-			}
-			registered.publishedAt = at
-			registered.published = true
+		wasPublished := registered.published
+		if err := owner.textPublicationPairLifecycle.commitAcknowledgedLocked(ctx, registered, at); err != nil {
+			return reachability.Verified{}, err
+		}
+		if !wasPublished {
 			owner.signalTextRegistrationsLocked()
 		}
 		owner.startTextRefreshLocked(registered)
@@ -198,7 +187,7 @@ func (owner *textContext) acquireTextPublication(ctx context.Context, registered
 	_, err = endpoint.publications.PublishAfterReadiness(ctx, publication.PublishInput{Credential: credential, InstanceSigner: binding, At: now}, func(ctx context.Context) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
-		if ctx.Err() != nil || owner.registration != registered || !owner.liveLocked(endpoint, broker.Administration) {
+		if ctx.Err() != nil || owner.textPublicationPairLifecycle.publicationTargetLocked() != registered || owner.textPublicationPairLifecycle.drainingLocked() || !owner.liveLocked(endpoint, broker.Administration) {
 			return nil, errors.New("text registration owner changed")
 		}
 		select {

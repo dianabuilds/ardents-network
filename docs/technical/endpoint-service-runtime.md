@@ -42,7 +42,12 @@ Responder owner. Worker loss preserves a surviving context's allocation, while
 context loss joins both prefixes. Its refresh scheduler retains the old
 published registration while the replacement Descriptor awaits acknowledgement;
 the new registration cannot accept a capsule until that acknowledgement is
-verified against its still-live context, Instance, channel and profile. Network
+verified against its still-live context, Instance, channel and profile. One
+private Publication-pair lifecycle owns current/predecessor registration
+visibility and the withdrawal drain barrier. It commits the acknowledged local
+pair in one transition; cancellation after remote ACK leaves it non-accepting
+while the existing durable Publication owner retains cleanup. Withdrawal makes
+the barrier visible before drain, so a late ACK cannot revive the pair. Network
 publication does not hold the shared Publisher mutex: a checked context
 reservation retains exclusive Instance ownership against legacy publication
 operations. Only the first successful switch bounds predecessor overlap to
