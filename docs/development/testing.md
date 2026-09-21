@@ -153,8 +153,9 @@ Canonical command builds use the non-overridable
 `-trimpath -buildvcs=false` policy. The public Make proof builds all four current
 headless artifacts from two independent normal clones, a linked worktree, and
 two independent VCS-free ownership extractions,
-including the Endpoint source dependencies owned by both Application Interfaces
-and text-application without changing their ownership or the artifact lane,
+including the Endpoint source dependencies owned by the selected protected text
+Connection and Administration Interfaces and text-application without changing
+their ownership or the artifact lane,
 then requires byte-identical
 outputs without implicit `vcs.*` settings. Source revision and builder
 provenance remain explicit authenticated release-metadata,
@@ -249,10 +250,11 @@ product claim, environment, fixture, and Product Owner decision.
 The C0 Network candidate is exercised by the deterministic/process/race lanes,
 `headless-check`, and the selected Network qualifications. This includes the
 Endpoint-owned `internal/application/broker`; its directory is not a separate
-Application product. The neutral Application Interface v1 remains covered by
-its conformance vectors and the Endpoint's shared seam. No Browser command,
-Browser implementation, Browser artifact, or Browser qualification is part of
-the current candidate.
+Application product. Protected text AAI3 and the separate Administration v1
+Interface remain covered at their selected seams. AAI2 conformance vectors are
+transition evidence, not a generic Endpoint workload or candidate caller. No
+Browser command, Browser implementation, Browser artifact, or Browser
+qualification is part of the current candidate.
 
 ADR-0067 retires the completed release-seed and fixed State-genesis ceremony
 commands, their deterministic writers, and their separate artifact/process
@@ -379,3 +381,9 @@ shows valid and broken v2 plans reach the selected v2 runtime or decoder refusal
 without returning the retired-v1 outcome. An architecture oracle requires the
 command to delegate only to the protected text runtime and requires the retired
 v1 participant composition file to remain absent.
+
+The exact legacy `endpoint open` syntax returns its stable retirement error at
+the command adapter. Its regression supplies missing and existing file paths
+and an available Unix socket, then proves no output creation or mutation and no
+IPC acceptance. The removed accepting client fixtures no longer qualify AAI2;
+the independent Administration client round trip remains covered.

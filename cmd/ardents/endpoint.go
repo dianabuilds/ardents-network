@@ -18,6 +18,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
+var errEndpointOpenRetired = errors.New("endpoint open is retired")
+
 // runEndpoint adapts one bounded Endpoint process to the retained command
 // result projection. The Endpoint owns process and connection lifecycle; this
 // command only selects its explicit operator route.
@@ -41,7 +43,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 		return runHeadlessRuntime(ctx, arguments[2], output)
 	}
 	if len(arguments) == 6 && arguments[1] == "open" {
-		return runHeadlessOpen(ctx, arguments[2], arguments[3], arguments[4], arguments[5], output)
+		return errEndpointOpenRetired
 	}
 	if len(arguments) == 3 && (arguments[1] == "publish" || arguments[1] == "withdraw") {
 		return runHeadlessAdministration(ctx, arguments[1], arguments[2], output)
@@ -67,7 +69,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && arguments[1] == "rollback" {
 		return runEndpointRollback(ctx, arguments[2], output)
 	}
-	return errors.New("usage: ardents endpoint <enrollment-check <bundle-root> <manifest-sha256>|enroll <bundle-root> <manifest-sha256>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <target-link> <input-file> <output-file>|publish <administration-socket>|withdraw <administration-socket>|user-unit <bundle-root> <manifest-sha256>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
+	return errors.New("usage: ardents endpoint <enrollment-check <bundle-root> <manifest-sha256>|enroll <bundle-root> <manifest-sha256>|enroll-installed <package-enrollment.json>|headless <headless-runtime.json>|open <application-socket> <target-link> <input-file> <output-file> (retired; refuses before effects)|publish <administration-socket>|withdraw <administration-socket>|user-unit <bundle-root> <manifest-sha256>|installed-user-unit <package-enrollment.json>|replacement-self-test <replacement-state-root>|replacement-recovery|replace <replacement-bundle>|rollback <replacement-bundle>>")
 }
 
 // runReplacementSelfTest is the candidate-side, no-network Endpoint

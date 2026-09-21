@@ -258,22 +258,6 @@ func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	}
 }
 
-func TestApplicationSeamsAreSharedByTheirAdapters(t *testing.T) {
-	root := repositoryRoot(t)
-	connection := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
-	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
-		if !listedDependencies(t, root, packagePath)[connection] {
-			t.Errorf("%s does not use the shared Application Connection Module", packagePath)
-		}
-	}
-	administration := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/administration"
-	for _, packagePath := range []string{"./cmd/ardents", "./internal/endpoint"} {
-		if !listedDependencies(t, root, packagePath)[administration] {
-			t.Errorf("%s does not use the shared Application Administration Module", packagePath)
-		}
-	}
-}
-
 func TestHeadlessCommandDelegatesOnlyProtectedTextRuntimeComposition(t *testing.T) {
 	root := repositoryRoot(t)
 	source := string(readProjectFile(t, root, "cmd/ardents/endpoint_headless.go"))
