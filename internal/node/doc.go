@@ -1,5 +1,7 @@
 // Package node owns one authenticated Node duty from admission through terminal
-// cleanup. A closed forwarding server owns accepted producers, pool interruption,
-// and duty roots; its session set separately owns outgoing Carrier readers,
+// cleanup. Closed forwarding startup transfers its spend ledger, duty limits,
+// and bootstrap controller only as one fully initialized receiving-resource
+// owner. The server owns accepted producers, pool interruption, that resource
+// owner, and the host; its session set separately owns outgoing Carrier readers,
 // joins them after all producers, and retains their terminal cleanup result.
 package node

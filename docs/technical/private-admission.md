@@ -487,6 +487,14 @@ The protocol caller returns its existing unavailable outcome, without an
 automatic reopen/retry in the same request. This is a required correction,
 not a statement that the current implementation already satisfies it.
 
+The forwarding receiver opens its spend ledger, local duty limits and bootstrap
+controller through one private Node receiving-resource builder. The builder
+retains the exact spend-root lease until all three resources exist, then
+transfers only the complete concrete group to the server. Any later
+initialization failure closes that lease exactly once and reports both the
+initial and cleanup causes. Listener, outgoing-pool and host ownership remain
+outside this group; a borrowed host does not acquire another close path.
+
 Recovery may truncate exactly once, and only a valid final incomplete tail: a
 final zero commit marker or bytes short of one record after committed records.
 A nonzero/non-commit marker, or any bytes after an incomplete record, makes

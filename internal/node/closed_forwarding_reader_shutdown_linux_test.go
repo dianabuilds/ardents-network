@@ -164,7 +164,8 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	server = newClosedForwardingServerWithHost(fixture.config, fixture.snapshot, serverCertificate, listener, spends, limits, pool, nil, host, 1)
+	server = newClosedForwardingServerWithHost(fixture.config, fixture.snapshot, serverCertificate, listener,
+		&closedForwardingReceivingResources{spends: spends, limits: limits}, pool, host, 1)
 	seed, err = pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (route.Carrier, error) { return blockedChild, nil })
 	if err != nil {
 		t.Fatal(err)

@@ -101,7 +101,7 @@ func (server *closedForwardingServer) admitBootstrap(receiver route.ClosedRoleRe
 	if hello.Deadline.Before(deadline) {
 		deadline = hello.Deadline
 	}
-	lease, err := server.bootstrap.Admit(adjacency, deadline)
+	lease, err := server.receiving.bootstrap.Admit(adjacency, deadline)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -109,7 +109,7 @@ func (server *closedForwardingServer) admitBootstrap(receiver route.ClosedRoleRe
 	if err := lease.Receive(uint64(helloSize + 16 + len(frame.Body))); err != nil {
 		return nil, time.Time{}, err
 	}
-	channel, err := route.NewClosedBootstrapForwardingChannel(lease, server.limits, func(open route.ClosedOpen) error {
+	channel, err := route.NewClosedBootstrapForwardingChannel(lease, server.receiving.limits, func(open route.ClosedOpen) error {
 		current, err := currentFacts(server.config)
 		if err != nil {
 			return err

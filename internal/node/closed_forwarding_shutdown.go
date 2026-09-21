@@ -26,6 +26,6 @@ func (server *closedForwardingServer) finishShutdown() {
 	if server.host != nil {
 		hostErr = server.host.Close()
 	}
-	server.drainErr = errors.Join(server.outgoingErr, sessionErr, server.spends.Close(), hostErr)
+	server.drainErr = errors.Join(server.outgoingErr, sessionErr, server.receiving.Close(), hostErr)
 	close(server.drained)
 }
