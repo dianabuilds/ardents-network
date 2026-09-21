@@ -341,8 +341,11 @@ snapshot Administration transports, rechecks permission currentness before
 exposure, and joins servers, contexts and persistent owners on shutdown.
 `endpoint headless` selects this composition through an explicit v2 plan;
 missing permissions or mixed legacy fields fail without selecting another
-runtime. Persisted v1 plans retain `RunParticipant` compatibility. The protected
-composition still requires installed command and full network lifecycle
+runtime. The current decoder still routes persisted v1 plans to
+`RunParticipant`, but that compatibility input is selected for retirement.
+The exact selected effect boundary belongs to
+[v1 startup retirement](#v1-startup-retirement). The protected composition
+still requires installed command and full network lifecycle
 qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
 The coalesced authenticated stream requires its directional Terminal receipt
@@ -424,6 +427,18 @@ change this limitation, but the maintained runtime has no such recovery path.
 
 ## Endpoint process contract
 
+### v1 startup retirement
+
+The selected successor behavior for an `ardents-headless-runtime-v1` input is
+one bounded refusal before State, Entry, Route, Application sockets, network
+operations, or durable roots are opened. The refusal leaves every existing
+root and floor byte unchanged. It does not synthesize or convert a Grant, key,
+permission, protected plan, or other authority. Malformed or incomplete v2
+input is refused by the v2 path and never falls back to v1. Existing retained
+bytes require a separately selected reader, recovery, or migration contract;
+startup retirement supplies none. The current decoder has not yet adopted this
+end state and still accepts bounded persisted v1 plans.
+
 `internal/application/interfacev1/connection` owns the sole local Target-Link
 Connection Interface: one private Unix attachment carries a non-empty Target
 Link of at most 512 bytes, opaque frames of at most 16 KiB, and one UTF-8 typed
@@ -455,7 +470,8 @@ it through that plan's already accepted local floor, and then supplies the
 bound Target to the same Endpoint/Route path. Fresh C0 plans omit that triple
 and accept only Target Links. A malformed Target Link never falls back to a
 Service Link, and the adapter ends only after an explicit versioned
-plan/interface migration.
+plan/interface migration. Its accepting command path and retained-data boundary
+are governed by [v1 startup retirement](#v1-startup-retirement).
 
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection

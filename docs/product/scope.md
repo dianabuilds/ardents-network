@@ -132,6 +132,16 @@ manifest and derives the remaining enrollment facts from its bound `RELEASE`
 descriptor. This does not bypass Endpoint-owned Resolution, Route, or
 authority boundaries.
 
+The selected Endpoint startup transition retires acceptance of
+`ardents-headless-runtime-v1` rather than converting it into the protected v2
+composition. Existing root and floor bytes remain retained evidence, not
+authority for an automatic migration. The
+[Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement)
+owns the exact refusal and effect boundary. This selection does not retire the
+distinct Administration interface or generic Connection command. At the current
+revision, bounded persisted v1 plans remain accepted; the selected end state is
+not yet implemented.
+
 ## C0 Network candidate
 
 The Network audit candidate is the headless maintained product surface:
