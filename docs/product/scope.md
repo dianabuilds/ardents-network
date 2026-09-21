@@ -129,10 +129,10 @@ arbitrary binary file-to-file workload. The protected text reader is a distinct
 typed Application with a fixed workload and confinement contract; it is not a
 generic successor. The retirement transition refuses the recognized command
 before opening either input or output path, dialing its local socket, or
-starting Endpoint or Network work. Until that transition is integrated, the
-old command and AAI2 bytes remain executable compatibility debt and supply no
-C0 readiness evidence. The portable enrollment route receives only the bundle
-root and an independently
+starting Endpoint or Network work. The accepting file client has been removed;
+the retained AAI2 implementation and bytes are transition-only compatibility
+debt and supply no C0 readiness evidence. The portable enrollment route
+receives only the bundle root and an independently
 delivered manifest SHA-256 pin; it verifies that pin before parsing the
 manifest and derives the remaining enrollment facts from its bound `RELEASE`
 descriptor. This does not bypass Endpoint-owned Resolution, Route, or

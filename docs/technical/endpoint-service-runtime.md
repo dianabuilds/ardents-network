@@ -479,6 +479,13 @@ supply one. The AAI2 implementation and vectors remain exact transition
 obligations until all production callers are closed and their separate removal
 is integrated; this decision alone does not pretend they are already absent.
 
+The command adapter now implements that refusal with the stable diagnostic
+`endpoint open is retired`. The former accepting file client and its
+success/cancellation fixtures are absent. A command-level regression uses both
+missing and existing files plus an available local socket to prove the refusal
+precedes file validation or mutation and IPC connection. The separately
+callable Administration client and its behavior test remain unchanged.
+
 `internal/application/interfacev1/connection` owns the sole local Target-Link
 Connection Interface: one private Unix attachment carries a non-empty Target
 Link of at most 512 bytes, opaque frames of at most 16 KiB, and one UTF-8 typed
