@@ -42,7 +42,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 			}
 			endpoint.closedState = source
 			receiver := source.view.Nodes[7].NodeID
-			if err := owner.prepareTextIssuerStock(t.Context(), [][32]byte{receiver}, 2, nil); err != nil {
+			if err := owner.prepareTextIssuerStock(t.Context(), [][32]byte{receiver}, 2, nil, nil, nil); err != nil {
 				t.Fatal(err)
 			}
 			outage.unavailable.Store(true)

@@ -696,6 +696,14 @@ durably marked. Source does not await JOIN acknowledgement before delivering
 the capsule. Publisher independently validates the capsule and opens its
 Responder prefix before JOIN. Existing end-to-end Service authentication must
 complete before Application data is exposed.
+An Endpoint Connection admits each initial or recovery JOIN through one exact
+Source acquisition. Its recipient check, HELLO presentation and final stream
+transfer all refer to that acquisition; Source replacement or job loss refuses
+a late completion rather than rebinding it. Failed completion joins any returned
+stream and releases only the acquisition. Successful completion transfers both
+the joined stream and acquisition to the Service transport until its joined
+close. This changes no JOIN bytes, secrets, authority or recovery state, and the
+Publisher continues to use its separately owned Responder prefix.
 Introduction keys and slots live for 600 seconds, with refresh at 300 seconds.
 The predecessor accepts already bounded capsules for at most 60 seconds after
 a replacement, never past its original signed expiry. Each delivery nonce has

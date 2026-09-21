@@ -391,7 +391,7 @@ func TestTextIssuerStockRetryRetainsOriginalInternalBatch(t *testing.T) {
 	attempt := func() error {
 		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel()
-		return owner.prepareTextIssuerStock(ctx, nil, 0, nil)
+		return owner.prepareTextIssuerStock(ctx, nil, 0, nil, nil, nil)
 	}
 	if err := attempt(); err == nil {
 		t.Fatal("unavailable issuer unexpectedly funded stock")

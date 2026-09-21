@@ -26,6 +26,66 @@ type textSourceHandle struct {
 	cancel context.CancelFunc
 }
 
+// textSourceJoinAcquisition binds one JOIN exchange to the exact Source handle
+// current at admission. Releasing it cannot expose a replacement handle.
+type textSourceJoinAcquisition struct {
+	handle atomic.Pointer[textSourceHandle]
+}
+
+func (lifecycle *textSourceLifecycle) acquireJoinLocked() *textSourceJoinAcquisition {
+	if lifecycle == nil || lifecycle.live == nil || lifecycle.live.prefix.Load() == nil {
+		return nil
+	}
+	acquisition := &textSourceJoinAcquisition{}
+	acquisition.handle.Store(lifecycle.live)
+	return acquisition
+}
+
+func (acquisition *textSourceJoinAcquisition) release() {
+	if acquisition != nil {
+		acquisition.handle.Store(nil)
+	}
+}
+
+func (acquisition *textSourceJoinAcquisition) currentLocked(owner *textContext) bool {
+	if acquisition == nil {
+		return false
+	}
+	handle := acquisition.handle.Load()
+	return handle != nil && handle.currentLocked(owner)
+}
+
+func (acquisition *textSourceJoinAcquisition) issuancePrefixLocked(owner *textContext) (*textSourceHandle, bool) {
+	if acquisition == nil {
+		return nil, false
+	}
+	handle := acquisition.handle.Load()
+	return handle, handle != nil && handle.currentLocked(owner)
+}
+
+func (acquisition *textSourceJoinAcquisition) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
+	if acquisition == nil {
+		return [32]byte{}, 0, time.Time{}, errors.New("text Source JOIN acquisition unavailable")
+	}
+	handle := acquisition.handle.Load()
+	if handle == nil {
+		return [32]byte{}, 0, time.Time{}, errors.New("text Source JOIN acquisition unavailable")
+	}
+	return handle.dataJoinRecipient()
+}
+
+func (acquisition *textSourceJoinAcquisition) join(ctx context.Context, present route.ClosedTokenPresenter,
+	intent route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
+	if acquisition == nil {
+		return nil, errors.New("text Source JOIN acquisition unavailable")
+	}
+	handle := acquisition.handle.Load()
+	if handle == nil {
+		return nil, errors.New("text Source JOIN acquisition unavailable")
+	}
+	return handle.join(ctx, present, intent)
+}
+
 func (owner *textContext) currentTextSourceLocked() *textSourceHandle {
 	if owner == nil {
 		return nil

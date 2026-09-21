@@ -106,9 +106,7 @@ func (owner *textContext) beginTextServiceTransportExchange(caller context.Conte
 	return lifetime, flight, detach, finish, nil
 }
 
-func (owner *textContext) retainTextServiceTransportExchange(job *textJobIdentity, flight *textIntroductionExchange) bool {
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
+func (owner *textContext) retainTextServiceTransportExchangeLocked(job *textJobIdentity, flight *textIntroductionExchange) bool {
 	_, present := owner.introductionExchanges[flight]
 	if !present || flight == nil || flight.retained || owner.closed || !owner.liveTextServiceJobLocked(job, owner.surface) {
 		return false
