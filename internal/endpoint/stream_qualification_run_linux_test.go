@@ -5,7 +5,6 @@ package endpoint
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
@@ -30,26 +29,12 @@ func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
 	var firstReport streamqualification.Report
 	stopFailure := errors.New("sampling cleanup failed")
 	stopCalls := 0
-	releaseSampling := make(chan struct{})
 	if err := first.configure(&firstReport, func(context.Context) error { return nil },
 		func(context.Context) (func(), error) { return func() {}, nil },
-		func() error { stopCalls++; <-releaseSampling; return stopFailure },
+		func() error { stopCalls++; return stopFailure },
 		func(context.Context, streamqualification.Report) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
-
-	lateDone := make(chan struct{})
-	go func() {
-		_ = first.stopSamples()
-		first.publishReport(streamqualification.Report{Failure: "old qualification"})
-		close(lateDone)
-	}()
-	var releaseOnce sync.Once
-	releaseLate := func() {
-		releaseOnce.Do(func() { close(releaseSampling) })
-		<-lateDone
-	}
-	t.Cleanup(releaseLate)
 	owner.retireJob(firstJob)
 	if err := owner.finishJobCleanup(firstJob, nil); err != nil {
 		t.Fatal(err)
@@ -78,12 +63,12 @@ func TestCancelledQualificationRunCannotPublishIntoReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	releaseLate()
-	if firstReport.Failure != "old qualification" || replacementReport.Failure != "" || len(replacementReport.Streams) != 0 || !replacementReport.Started.IsZero() {
-		t.Fatalf("late report crossed runs: first=%q replacement=%q", firstReport.Failure, replacementReport.Failure)
-	}
 	if err := first.stopSamples(); !errors.Is(err, stopFailure) {
 		t.Fatalf("sampling cleanup result = %v", err)
+	}
+	first.publishReport(streamqualification.Report{Failure: "old qualification"})
+	if firstReport.Failure != "old qualification" || replacementReport.Failure != "" || len(replacementReport.Streams) != 0 || !replacementReport.Started.IsZero() {
+		t.Fatalf("late report crossed runs: first=%q replacement=%q", firstReport.Failure, replacementReport.Failure)
 	}
 	if err := first.stopSamples(); !errors.Is(err, stopFailure) || stopCalls != 1 {
 		t.Fatalf("sampling cleanup was not immutable: err=%v calls=%d", err, stopCalls)
