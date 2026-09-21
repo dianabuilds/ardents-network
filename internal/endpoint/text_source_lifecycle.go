@@ -41,6 +41,22 @@ func (lifecycle *textSourceLifecycle) acquireJoinLocked() *textSourceJoinAcquisi
 	return acquisition
 }
 
+// textSourceResolutionAcquisition binds one Descriptor lookup to the exact
+// Source handle current at admission. Release is local to this lookup and can
+// never expose a replacement handle.
+type textSourceResolutionAcquisition struct {
+	handle atomic.Pointer[textSourceHandle]
+}
+
+func (lifecycle *textSourceLifecycle) acquireResolutionLocked() *textSourceResolutionAcquisition {
+	if lifecycle == nil || lifecycle.live == nil || lifecycle.live.prefix.Load() == nil {
+		return nil
+	}
+	acquisition := &textSourceResolutionAcquisition{}
+	acquisition.handle.Store(lifecycle.live)
+	return acquisition
+}
+
 func (acquisition *textSourceJoinAcquisition) release() {
 	if acquisition != nil {
 		acquisition.handle.Store(nil)
@@ -84,6 +100,43 @@ func (acquisition *textSourceJoinAcquisition) join(ctx context.Context, present 
 		return nil, errors.New("text Source JOIN acquisition unavailable")
 	}
 	return handle.join(ctx, present, intent)
+}
+
+func (acquisition *textSourceResolutionAcquisition) release() {
+	if acquisition != nil {
+		acquisition.handle.Store(nil)
+	}
+}
+
+func (acquisition *textSourceResolutionAcquisition) currentLocked(owner *textContext) bool {
+	if acquisition == nil {
+		return false
+	}
+	handle := acquisition.handle.Load()
+	return handle != nil && handle.currentLocked(owner)
+}
+
+func (acquisition *textSourceResolutionAcquisition) resolutionRecipient() ([32]byte, error) {
+	if acquisition == nil {
+		return [32]byte{}, errors.New("text Source resolution acquisition unavailable")
+	}
+	handle := acquisition.handle.Load()
+	if handle == nil {
+		return [32]byte{}, errors.New("text Source resolution acquisition unavailable")
+	}
+	return handle.resolutionRecipient()
+}
+
+func (acquisition *textSourceResolutionAcquisition) exchangeDescriptor(ctx context.Context,
+	present route.ClosedTokenPresenter, target [32]byte, descriptor []byte) (uint8, []byte, error) {
+	if acquisition == nil {
+		return 0, nil, errors.New("text Source resolution acquisition unavailable")
+	}
+	handle := acquisition.handle.Load()
+	if handle == nil {
+		return 0, nil, errors.New("text Source resolution acquisition unavailable")
+	}
+	return handle.exchangeDescriptor(ctx, present, target, descriptor)
 }
 
 func (owner *textContext) currentTextSourceLocked() *textSourceHandle {

@@ -24,7 +24,7 @@ func (owner *textContext) prepareTextSourceReopen(ctx context.Context, flight *t
 func (owner *textContext) prepareTextSourceReopenOwned(ctx context.Context, flight *textResolutionFlight) error {
 	owner.mu.Lock()
 	profile, _, err := owner.textPermissionProfileLocked()
-	if err != nil || ctx.Err() != nil || owner.currentTextSourceLocked() == nil || flight != nil && (owner.resolution != flight || !flight.prefix.currentLocked(owner)) || owner.permission == nil {
+	if err != nil || ctx.Err() != nil || owner.currentTextSourceLocked() == nil || flight != nil && (owner.resolution != flight || flight.source == nil || !flight.source.currentLocked(owner)) || owner.permission == nil {
 		owner.mu.Unlock()
 		return textSourcePreparationFailureAt("stock", errors.New("text Source reopen stock unavailable"))
 	}
