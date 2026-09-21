@@ -36,22 +36,14 @@ func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServ
 			return nil, err
 		}
 	}
-	spends, err := route.OpenClosedSpendLedger(local.Root, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
-		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	receiving, err := openClosedForwardingReceivingResources(local.Root, route.ClosedSpendBinding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest,
+		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration}, config.now)
 	if err != nil {
 		return nil, errors.Join(err, host.Close())
 	}
-	limits, err := route.NewClosedDutyLimits(config.now)
-	if err != nil {
-		return nil, errors.Join(err, spends.Close(), host.Close())
-	}
-	bootstrap, err := route.NewClosedBootstrapController(config.now)
-	if err != nil {
-		return nil, errors.Join(err, spends.Close(), host.Close())
-	}
 	pool, err := route.NewClosedCarrierPool(config.now)
 	if err != nil {
-		return nil, errors.Join(err, spends.Close(), host.Close())
+		return nil, errors.Join(err, receiving.Close(), host.Close())
 	}
 	shared, err := route.ListenClosedSharedCarrier(route.CarrierProfile(snapshot.CarrierProfile), listen, local.Certificate,
 		func(key [32]byte) bool {
@@ -59,9 +51,9 @@ func startClosedForwarding(config runtimeConfig, snapshot dutyFacts) (*probeServ
 			return readErr == nil && closedSharedPeerCurrent(config, updated, key, config.now())
 		}, local.ConnectionLimit)
 	if err != nil {
-		return nil, errors.Join(err, pool.Close(), spends.Close(), host.Close())
+		return nil, errors.Join(err, pool.Close(), receiving.Close(), host.Close())
 	}
-	running := newClosedForwardingServerWithHost(config, snapshot, local.Certificate, shared, spends, limits, pool, bootstrap, host, local.ConnectionLimit)
+	running := newClosedForwardingServerWithHost(config, snapshot, local.Certificate, shared, receiving, pool, host, local.ConnectionLimit)
 	return &probeServer{Done: running.Done(), Protect: func(bool) {}, Usage: func() (uint64, uint64, uint64) {
 		return uint64(running.Active()), uint64(running.Active()), 0
 	}, Stop: func() { _ = running.Stop() }, Drain: func(ctx context.Context) error {
@@ -90,10 +82,8 @@ type closedForwardingServer struct {
 	snapshot    dutyFacts
 	certificate tls.Certificate
 	listener    route.ClosedSharedCarrierListener
-	spends      *route.ClosedSpendLedger
-	limits      *route.ClosedDutyLimits
+	receiving   *closedForwardingReceivingResources
 	pool        *route.ClosedCarrierPool
-	bootstrap   *route.ClosedBootstrapController
 	host        closedForwardingHost
 	sessions    *closedForwardingSessions
 	clock       func() time.Time
@@ -112,9 +102,9 @@ type closedForwardingServer struct {
 	reapErr     error
 }
 
-func newClosedForwardingServerWithHost(config runtimeConfig, snapshot dutyFacts, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, spends *route.ClosedSpendLedger, limits *route.ClosedDutyLimits, pool *route.ClosedCarrierPool, bootstrap *route.ClosedBootstrapController, host closedForwardingHost, limit uint16) *closedForwardingServer {
+func newClosedForwardingServerWithHost(config runtimeConfig, snapshot dutyFacts, certificate tls.Certificate, listener route.ClosedSharedCarrierListener, receiving *closedForwardingReceivingResources, pool *route.ClosedCarrierPool, host closedForwardingHost, limit uint16) *closedForwardingServer {
 	ctx, cancel := context.WithCancel(context.Background())
-	running := &closedForwardingServer{config: config, snapshot: snapshot, certificate: certificate, listener: listener, spends: spends, limits: limits, pool: pool, bootstrap: bootstrap,
+	running := &closedForwardingServer{config: config, snapshot: snapshot, certificate: certificate, listener: listener, receiving: receiving, pool: pool,
 		host: host, cancel: cancel, drained: make(chan struct{}),
 		clock: config.now, limit: make(chan struct{}, limit), done: make(chan error, 1), stopped: make(chan struct{})}
 	running.sessions = newClosedForwardingSessions()
@@ -272,7 +262,7 @@ func (server *closedForwardingServer) serveOuter(ctx context.Context, carrier ro
 	deadline := receiver.NotAfter
 	outer, err := route.NewClosedOuterHandshake(route.ClosedOuterReceiver{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, NodeID: receiver.NodeID, RecordDigest: receiver.RecordDigest, DutyGeneration: receiver.DutyGeneration,
-		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: deadline}, server.limits, server.clock)
+		RoleDomain: receiver.RoleDomain, Subrole: receiver.Subrole, Deadline: deadline}, server.receiving.limits, server.clock)
 	if err != nil {
 		return
 	}
@@ -330,7 +320,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 	if !available {
 		return errors.New("closed forwarding receiver is unavailable")
 	}
-	admission, err := route.NewClosedAdmissionChannel(receiver, server.spends, server.limits, exporter,
+	admission, err := route.NewClosedAdmissionChannel(receiver, server.receiving.spends, server.receiving.limits, exporter,
 		closedForwardingAdmissionVerifier(server.config, receiver, server.host, server.config.ClosedForwarding), server.clock)
 	if err != nil {
 		return err
@@ -437,7 +427,7 @@ func (server *closedForwardingServer) serveDirect(ctx context.Context, connectio
 				}
 				_, readErr = closedForwardRecipient(server.config, updated, open, server.clock())
 				return readErr
-			}, closedForwardingReplenisher(server.config, receiver, server.host, server.spends, server.config.ClosedForwarding), server.clock)
+			}, closedForwardingReplenisher(server.config, receiver, server.host, server.receiving.spends, server.config.ClosedForwarding), server.clock)
 			if admitErr != nil {
 				return errors.Join(admitErr, lease.Release())
 			}

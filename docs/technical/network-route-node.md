@@ -23,6 +23,13 @@ Carrier, adjacent/interior assignment and next peers. A legacy duty, issuer
 reservation or unrelated profile signer cannot be combined with that plan.
 This command binding does not implement the remaining Endpoint composition or
 establish whole-route qualification.
+Forwarding startup constructs the spend ledger, duty limits and bootstrap
+controller as one private concrete Node owner before it creates or transfers a
+server. Until that group is complete, its builder owns rollback and closes the
+exact spend-root lease once; an initialization failure retains both its initial
+cause and any cleanup cause. The listener, outgoing pool and borrowed-or-local
+host remain separate composition owners, so this grouping neither relocates
+their policy nor adds a hidden host close.
 For a generation-3 TCP Node Carrier, terminal retirement closes the owned
 physical socket once and retains its actual close result. It interrupts the
 multiplexed transport instead of initiating another TLS notification after a
@@ -269,6 +276,9 @@ and confirmed removal. The operator contract is the
   cover durable reopen, corruption, replay, invitation replacement, successor-
   State admission rejection, active attachment cancellation and exactly-once
   cleanup, pressure, listener drain, cleanup fault propagation, and withdrawal.
+  Forwarding startup tests fail each initialization step after opening the
+  spend root, require its exact lease to be released once, and retain the
+  combined initialization and cleanup causes before any server exists.
   The forwarding shutdown regression joins a producer that completes a late
   successful outer handshake before waiting on its delayed session reader; the
   spend root remains held through both joins and repeated Drain retains the
