@@ -65,12 +65,16 @@ func (job *textJobIdentity) claimWorkerLocked(owner *textContext) bool {
 
 // handoffGrantLocked publishes a Grant only to this exact live, claimed job.
 // Rejected late handoffs are closed here and cannot attach to a replacement.
-func (job *textJobIdentity) handoffGrantLocked(owner *textContext, grant *broker.Broker) bool {
-	if grant == nil {
+func (job *textJobIdentity) handoffGrantLocked(owner *textContext, grant *broker.Broker, lease *broker.ActiveSession) bool {
+	if grant == nil || lease == nil {
+		if grant != nil {
+			grant.Close()
+		}
 		return false
 	}
 	if job == nil || owner == nil || job.owner != owner || owner.job != job || job.retired || !job.bound ||
 		job.finished || job.workerGrant != nil || job.context.Err() != nil {
+		lease.Release()
 		grant.Close()
 		return false
 	}

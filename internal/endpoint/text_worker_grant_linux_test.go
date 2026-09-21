@@ -76,12 +76,25 @@ func TestCancelledTextJobClosesLateGrantWithoutCrossingReplacement(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(late.Close)
+	capability, err := late.Admit(principal, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease, _, err := late.Activate(t.Context(), capability, principal, broker.Connection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(lease.Release)
 	owner.mu.Lock()
-	accepted := job.handoffGrantLocked(owner, late)
+	accepted := job.handoffGrantLocked(owner, late, lease)
 	replacementGrant := replacement.workerGrant
 	owner.mu.Unlock()
 	if accepted || replacementGrant != nil {
 		t.Fatal("late Grant crossed into replacement job")
+	}
+	if late.Active() != 0 || lease.Context().Err() == nil {
+		t.Fatal("rejected late Grant retained its active session")
 	}
 	if _, err := late.Admit(principal, broker.Connection); err == nil {
 		t.Fatal("rejected late Grant remained open")
