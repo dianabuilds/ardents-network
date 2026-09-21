@@ -109,24 +109,68 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	limits, err := route.NewClosedDutyLimits(fixture.config.now)
-	if err != nil {
-		t.Fatal(err)
-	}
 	listener := &queuedForwardingListener{accepted: make(chan route.ClosedSharedCarrier), closed: make(chan struct{})}
-	server := newClosedForwardingServerWithHost(fixture.config, fixture.snapshot, serverCertificate, listener, spends, limits, pool, nil, host, 1)
-
 	local, peer := net.Pipe()
 	closeErr := errors.New("fixture physical close failed")
 	blockedRead := &delayedForwardingRead{Conn: local, gate: make(chan struct{}), interrupted: make(chan struct{}), closeErr: closeErr}
 	blockedChild := &delayedForwardingChildWrite{delayedForwardingRead: blockedRead, gate: make(chan struct{}), started: make(chan struct{})}
-	seed, err := pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (route.Carrier, error) { return blockedChild, nil })
+	serverRaw, clientRaw := net.Pipe()
+	tlsDone := make(chan error, 1)
+	peerDone := make(chan error, 1)
+	var server *closedForwardingServer
+	var seed *route.ClosedCarrierLease
+	var client net.Conn
+	var releaseChild, releaseReader sync.Once
+	tlsStarted, tlsJoined := false, false
+	peerStarted, joinedPeer := false, false
+	t.Cleanup(func() {
+		releaseChild.Do(func() { close(blockedChild.gate) })
+		releaseReader.Do(func() { close(blockedRead.gate) })
+		if client != nil {
+			_ = client.Close()
+		}
+		_ = clientRaw.Close()
+		_ = serverRaw.Close()
+		_ = peer.Close()
+		if seed != nil {
+			_ = seed.Release()
+		}
+		if server != nil {
+			_ = server.Stop()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_ = server.Drain(ctx)
+		} else {
+			_ = listener.Close()
+			_ = pool.Close()
+		}
+		if tlsStarted && !tlsJoined {
+			select {
+			case <-tlsDone:
+			case <-time.After(time.Second):
+				t.Error("forwarding TLS acceptor did not join")
+			}
+		}
+		if peerStarted && !joinedPeer {
+			select {
+			case <-peerDone:
+			case <-time.After(time.Second):
+				t.Error("forwarding peer did not join")
+			}
+		}
+		_ = spends.Close()
+	})
+	limits, err := route.NewClosedDutyLimits(fixture.config.now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server = newClosedForwardingServerWithHost(fixture.config, fixture.snapshot, serverCertificate, listener, spends, limits, pool, nil, host, 1)
+	seed, err = pool.AcquireContext(t.Context(), key, func() error { return nil }, func() (route.Carrier, error) { return blockedChild, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	serverRaw, clientRaw := net.Pipe()
-	tlsDone := make(chan error, 1)
+	tlsStarted = true
 	go func() {
 		secured, acceptErr := route.AcceptClosedRoleTLS(context.Background(), serverRaw, serverCertificate, time.Now().Add(5*time.Second))
 		if acceptErr == nil {
@@ -138,16 +182,18 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 		}
 		tlsDone <- acceptErr
 	}()
-	client, err := route.OpenClosedRoleTLS(t.Context(), clientRaw, serverKey, time.Now().Add(5*time.Second))
+	client, err = route.OpenClosedRoleTLS(t.Context(), clientRaw, serverKey, time.Now().Add(5*time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := <-tlsDone; err != nil {
-		t.Fatal(err)
+	tlsErr := <-tlsDone
+	tlsJoined = true
+	if tlsErr != nil {
+		t.Fatal(tlsErr)
 	}
 
-	peerDone := make(chan error, 1)
 	accept := mustClosedForwardAccept(t)
+	peerStarted = true
 	go func() {
 		frame, peerErr := route.ReadClosedLaneFrame(peer)
 		if peerErr == nil && (frame.Kind != 1 || frame.Lane != 0) {
@@ -158,27 +204,6 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 		}
 		peerDone <- peerErr
 	}()
-	var releaseChild, releaseReader sync.Once
-	joinedPeer := false
-	t.Cleanup(func() {
-		releaseChild.Do(func() { close(blockedChild.gate) })
-		releaseReader.Do(func() { close(blockedRead.gate) })
-		_ = client.Close()
-		_ = peer.Close()
-		_ = seed.Release()
-		_ = server.Stop()
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		_ = server.Drain(ctx)
-		if !joinedPeer {
-			select {
-			case <-peerDone:
-			case <-time.After(time.Second):
-				t.Error("forwarding peer did not join")
-			}
-		}
-		_ = spends.Close()
-	})
 
 	hello := route.ClosedHello{NetworkID: receiver.NetworkID, StateGeneration: receiver.StateGeneration, StateDigest: receiver.StateDigest,
 		ProfileDigest: receiver.ProfileDigest, RecipientNodeID: receiver.NodeID, RecipientDutyGeneration: receiver.DutyGeneration,
@@ -241,10 +266,11 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 		t.Fatal("Stop did not interrupt the outgoing Carrier")
 	}
 	releaseReader.Do(func() { close(blockedRead.gate) })
-	if err := <-peerDone; err != nil {
-		t.Fatal(err)
-	}
+	peerErr := <-peerDone
 	joinedPeer = true
+	if peerErr != nil {
+		t.Fatal(peerErr)
+	}
 	joined, cancelJoined := context.WithTimeout(t.Context(), time.Second)
 	defer cancelJoined()
 	for range 2 {
