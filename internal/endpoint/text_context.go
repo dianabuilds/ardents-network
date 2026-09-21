@@ -21,7 +21,7 @@ type textContextState struct {
 	refreshFailure    func(string)
 	withdrawalFailure func(string)
 	operationFailure  func(string)
-	refresh           *textPublicationRefresh
+	refresh           textPublicationRefreshLifecycle
 	textPublicationPairLifecycle
 	introductionDelivery  chan struct{}
 	introductionWaiters   map[*textIntroductionWaiter]struct{}
@@ -213,10 +213,7 @@ func (owner *textContext) closeAfterAuthorization() {
 	owner.lease.Release()
 	owner.mu.Lock()
 	owner.closed = true
-	refresh := owner.refresh
-	if refresh != nil {
-		refresh.cancel()
-	}
+	refresh := owner.refresh.cancel()
 	registered, pending, previous := owner.textPublicationPairLifecycle.detachLocked()
 	if previous != nil {
 		previous.cancel()
@@ -279,7 +276,7 @@ func (owner *textContext) closeAfterAuthorization() {
 		<-registrationOpening.done
 	}
 	if refresh != nil {
-		<-refresh.done
+		_ = owner.refresh.join(refresh)
 	}
 	var prefixErr error
 	if previous != nil {

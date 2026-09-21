@@ -73,20 +73,18 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					}
 					gate.arm(t)
 					owner.mu.Lock()
-					refresh := owner.refresh
+					refresh := owner.refresh.current()
 					first.refreshAt = time.Now().Add(-time.Second)
 					owner.signalTextRegistrationsLocked()
 					owner.mu.Unlock()
 					select {
 					case <-gate.held:
 					case <-refresh.done:
-						owner.mu.Lock()
-						cause := refresh.err
-						owner.mu.Unlock()
+						cause := owner.refresh.outcome(refresh)
 						t.Fatalf("refresh ended before replacement Store commit: %v", cause)
 					case <-time.After(10 * time.Second):
 						owner.mu.Lock()
-						cause, registered := refresh.err, owner.pendingRegistration != nil && owner.pendingRegistration != first
+						cause, registered := owner.refresh.outcome(refresh), owner.pendingRegistration != nil && owner.pendingRegistration != first
 						owner.mu.Unlock()
 						t.Fatalf("replacement did not reach Store commit before ACK: registered=%t refresh=%v", registered, cause)
 					}
@@ -124,7 +122,7 @@ func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T)
 					}
 					owner.mu.Lock()
 					retired := owner.registration == nil && owner.pendingRegistration == nil && owner.previousRegistration == nil && !second.published
-					cause := refresh.err
+					cause := owner.refresh.outcome(refresh)
 					owner.mu.Unlock()
 					if !retired || failure != "context revoke" && cause == nil {
 						t.Fatalf("late ACK retained readiness or lost failure: retired=%t cause=%v", retired, cause)

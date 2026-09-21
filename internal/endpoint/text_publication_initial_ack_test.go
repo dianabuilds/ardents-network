@@ -37,7 +37,7 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 					}
 					owner.mu.Lock()
 					recipient := registered.recipient
-					premature := registered.published || !registered.publishedAt.IsZero() || owner.refresh != nil
+					premature := registered.published || !registered.publishedAt.IsZero() || owner.refresh.current() != nil
 					owner.mu.Unlock()
 					if premature || recipient == nil || recipient.Public(time.Now()) == [32]byte{} {
 						t.Fatal("expected live initial recipient without acknowledged readiness or refresh")
@@ -59,7 +59,7 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 					}
 					if failure == "none" {
 						owner.mu.Lock()
-						ready := registered.published && !registered.publishedAt.IsZero() && owner.refresh != nil
+						ready := registered.published && !registered.publishedAt.IsZero() && owner.refresh.current() != nil
 						owner.mu.Unlock()
 						if outcome != nil || !ready {
 							t.Fatalf("positive control did not become ready: %v", outcome)
@@ -69,7 +69,7 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 							t.Fatal("lost initial registration accepted delayed ACK")
 						}
 						owner.mu.Lock()
-						revived := registered.published || !registered.publishedAt.IsZero() || owner.refresh != nil
+						revived := registered.published || !registered.publishedAt.IsZero() || owner.refresh.current() != nil
 						owner.mu.Unlock()
 						if revived {
 							t.Fatal("delayed initial ACK revived accepting readiness")

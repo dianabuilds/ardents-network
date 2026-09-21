@@ -302,7 +302,11 @@ A registered Publisher may maintain one Introduction prefix and one data-role
 prefix as finite publication readiness. These count as publication background
 work; no unvisited Service is kept ready by an idle User. Publication refresh
 may renew this readiness; an idle User's expired prefix never self-refills. One
-private Introduction lifecycle owns the exact live prefix, its in-progress
+private refresh lifecycle owns its single scheduler, coalesced wake-up and
+joined stop result. Repeated Descriptor acknowledgements or wake-ups cannot
+create another scheduler or move the original refresh and expiry bounds; stop
+prevents any subsequent network attempt. Separately, one private Introduction
+lifecycle owns the exact live prefix, its in-progress
 opening and joined retirement. Registration and refresh use its read-only exact
 handle; cancellation or retirement invalidates that handle before cleanup, so
 a late opening or registration cannot attach to a replacement. This lifecycle
