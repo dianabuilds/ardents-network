@@ -364,4 +364,10 @@ server framing tests remain portable; their failure checks are unchanged.
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their
 independent socket peer and explicit terminal-frame fixture; they do not require
-the selected Linux server to produce a response.
+the selected Linux server to produce a response. The public AAI3 client/server
+conformance oracle writes every byte value exactly once through unequal input
+fragments, closes only the input direction, and then reads the reversed bytes
+through different response fragments. Existing client tests retain cancellation,
+concurrent close, and Write-before-CloseInput ordering coverage; request tests
+retain refused Name and now explicitly reject malformed magic. This mapping does
+not import the complete AAI2 test suite or claim generic Endpoint workloads.

@@ -311,7 +311,12 @@ length, u16 reason length, UTF-8 class[1..128] and reason[0..512]. Reasons conta
 no destination or private bytes. The current Stream close/Done/order semantics
 and typed terminal classes remain unchanged. The old AAI2 request is not
 accepted as a protected job. Conformance vectors cover accepted Link and refused Name tags,
-all boundaries, terminal outcomes and incompatible old requests.
+all boundaries, terminal outcomes and incompatible old requests. The local AAI3
+public-Interface oracle preserves each of the 256 byte values exactly once across
+unequal request and response fragments, observes the response only after the
+caller closes its input direction, and opens the owner exactly once. It exercises
+Connection transport behavior only; Administration remains with the trusted
+Endpoint owner and is neither inferred from bytes nor delegated to the caller.
 
 ## Worker exchange
 
