@@ -63,13 +63,13 @@ func textPrefixPreparationFailureStage(cause error) string {
 
 // openTextPrefix uses only the context's retained members and finalized stock.
 // It never upgrades an issuance-bootstrap lane or accepts a worker peer list.
-func (owner *textContext) openTextPrefix(ctx context.Context) (*route.ClosedSourcePrefix, error) {
+func (owner *textContext) openTextPrefix(ctx context.Context) (*textSourceHandle, error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, textPrefixPreparationFailureAt("context", errors.New("text prefix context unavailable"))
 	}
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
-	if err != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) || owner.prefix != nil || owner.prefixOpening != nil || owner.issuance != nil {
+	if err != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) || owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil {
 		owner.mu.Unlock()
 		return nil, textPrefixPreparationFailureAt("authority", errors.Join(err, errors.New("text prefix owner unavailable")))
 	}
@@ -81,7 +81,12 @@ func (owner *textContext) openTextPrefix(ctx context.Context) (*route.ClosedSour
 	operation := newTextPrefixOpeningOperation(owner)
 	// Reserve the whole stock -> opening transition. Concurrent opens cannot
 	// spend a second bootstrap batch from an obsolete missing-stock snapshot.
-	owner.prefixOpening = operation
+	if !owner.source.reserveOpeningLocked(operation) {
+		owner.mu.Unlock()
+		operation.cancel()
+		close(operation.done)
+		return nil, textPrefixPreparationFailureAt("authority", errors.New("text prefix reservation unavailable"))
+	}
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(interrupted); operation.cancel() })
@@ -146,7 +151,7 @@ func (owner *textContext) ensureTextPrefixStock(ctx context.Context, opening *te
 	owner.mu.Lock()
 	_, _, err := owner.textPermissionProfileLocked()
 	if err != nil || ctx.Err() != nil || owner.permission == nil || owner.permission.accepted == (credential.Permission{}) ||
-		owner.prefix != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
+		owner.currentTextSourceLocked() != nil || !opening.admittedLocked(owner) || owner.issuance != nil {
 		owner.mu.Unlock()
 		return route.ClosedBootstrapSelection{}, textPrefixPreparationFailureAt("stock-authority", errors.Join(err, ctx.Err(), errors.New("text prefix stock owner unavailable")))
 	}

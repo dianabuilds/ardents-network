@@ -49,7 +49,7 @@ func (owner *textContext) resolveTextIntroduction(ctx context.Context, job *text
 		return reachability.Verified{}, err
 	}
 	live := owner.liveTextServiceJobLocked(job, broker.Connection)
-	needPrefix := owner.prefix == nil
+	needPrefix := owner.currentTextSourceLocked() == nil
 	owner.mu.Unlock()
 	if !live {
 		return reachability.Verified{}, errors.New("text Introduction reader job unavailable")
@@ -123,12 +123,13 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	floor := owner.descriptorFloors[destination.Target]
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || owner.prefix == nil ||
+	prefix := owner.currentTextSourceLocked()
+	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || ctx.Err() != nil || prefix == nil ||
 		profile.Digest != verified.Descriptor.ProfileDigest || floor.publicationConflict || floor.revisionConflict ||
 		floor.publication != verified.Current.Digest || floor.revision != verified.Descriptor.Private.Revision {
 		return nil, errors.New("text Introduction resolution or local authority changed")
 	}
-	node, generation, until, err := owner.prefix.DataJoinRecipient()
+	node, generation, until, err := prefix.dataJoinRecipient()
 	if err != nil {
 		return nil, err
 	}
@@ -173,13 +174,13 @@ func (owner *textContext) prepareResolvedTextIntroduction(ctx context.Context, j
 // work has exposed the earlier sealed bytes, so replacing them cannot create a
 // second wire attempt or weaken replay ownership.
 func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *textJobIdentity,
-	attempt *textIntroductionAttempt, prefix *route.ClosedSourcePrefix) error {
+	attempt *textIntroductionAttempt, prefix *textSourceHandle) error {
 	if owner == nil || ctx == nil || ctx.Err() != nil || attempt == nil || attempt.binding == nil ||
 		attempt.binding.owner != owner || attempt.binding.job != job || prefix == nil ||
 		attempt.plaintext.AttachmentGeneration != 1 || attempt.submitted {
 		return errors.New("text Introduction refresh unavailable")
 	}
-	node, generation, until, err := prefix.DataJoinRecipient()
+	node, generation, until, err := prefix.dataJoinRecipient()
 	if err != nil {
 		return err
 	}
@@ -187,7 +188,7 @@ func (owner *textContext) refreshTextIntroduction(ctx context.Context, job *text
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	introduction := attempt.binding.introduction
-	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || owner.prefix != prefix ||
+	if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || !prefix.currentLocked(owner) ||
 		ctx.Err() != nil || profile.Digest != attempt.plaintext.ProfileDigest ||
 		node != attempt.plaintext.RendezvousNode || generation != attempt.plaintext.RendezvousDutyGeneration ||
 		introduction.Slot == [32]byte{} || introduction.RecipientKey == [32]byte{} ||

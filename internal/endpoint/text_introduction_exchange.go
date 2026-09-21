@@ -18,8 +18,8 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 		return errors.New("text Introduction submission unavailable")
 	}
 	owner.mu.Lock()
-	live := owner.liveTextServiceJobLocked(job, broker.Connection) && owner.prefix != nil && !prepared.submitted
-	prefix := owner.prefix
+	prefix := owner.currentTextSourceLocked()
+	live := owner.liveTextServiceJobLocked(job, broker.Connection) && prefix != nil && !prepared.submitted
 	if live {
 		prepared.submitted = true
 	}
@@ -38,18 +38,18 @@ func (owner *textContext) submitTextIntroduction(ctx context.Context, job *textJ
 	if err != nil {
 		return err
 	}
-	status, err := prefix.SubmitIntroduction(bounded, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	status, err := prefix.submitIntroduction(bounded, func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		owner.mu.Lock()
 		defer owner.mu.Unlock()
 		current, now, err := owner.textPermissionProfileLocked()
-		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || owner.prefix != prefix ||
+		if err != nil || !owner.liveTextServiceJobLocked(job, broker.Connection) || bounded.Err() != nil || !prefix.currentLocked(owner) ||
 			current != profile || class != 1 || hello.Purpose != route.ClosedPurposeSubmission || hello.RecipientNodeID != receiver ||
 			hello.NetworkID != current.NetworkID || hello.StateGeneration != current.StateGeneration || hello.StateDigest != current.StateDigest ||
 			hello.ProfileDigest != current.Digest || hello.ChannelNonce == [32]byte{} || !now.Before(hello.Deadline) ||
 			hello.Deadline.After(prepared.plaintext.Deadline) {
 			return nil, errors.New("text Introduction token authority changed")
 		}
-		selected, err := prefix.SubmissionRecipient()
+		selected, err := prefix.submissionRecipient()
 		if err != nil || selected != receiver {
 			return nil, errors.New("text Introduction recipient changed")
 		}
@@ -164,18 +164,18 @@ func (owner *textContext) receiveTextIntroductionWith(ctx context.Context, job *
 	return prepared, outcome
 }
 
-func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix *route.ClosedSourcePrefix) ([32]byte, state.ClosedProfileView, error) {
+func (owner *textContext) prepareTextSubmissionStock(ctx context.Context, prefix *textSourceHandle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, false)
 }
 
 func (owner *textContext) prepareTextRecoverySubmissionStock(ctx context.Context,
-	prefix *route.ClosedSourcePrefix) ([32]byte, state.ClosedProfileView, error) {
+	prefix *textSourceHandle) ([32]byte, state.ClosedProfileView, error) {
 	return owner.prepareTextSubmissionStockWithCancellation(ctx, prefix, true)
 }
 
-func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context.Context, prefix *route.ClosedSourcePrefix,
+func (owner *textContext) prepareTextSubmissionStockWithCancellation(ctx context.Context, prefix *textSourceHandle,
 	discardCanceled bool) ([32]byte, state.ClosedProfileView, error) {
-	receiver, err := prefix.SubmissionRecipient()
+	receiver, err := prefix.submissionRecipient()
 	if err != nil {
 		return [32]byte{}, state.ClosedProfileView{}, err
 	}

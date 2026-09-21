@@ -75,10 +75,16 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	// on its finite post-work interval may have just been reopened by that
 	// inspection. Snapshotting before it would replenish a known-dead parent.
 	owner.mu.Lock()
-	prefixes := []*route.ClosedSourcePrefix{owner.prefix, owner.introduction.prefix, owner.responder.prefix}
+	source := owner.currentTextSourceLocked()
+	prefixes := []*route.ClosedSourcePrefix{owner.introduction.prefix, owner.responder.prefix}
 	owner.mu.Unlock()
 	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
+	}
+	if source != nil {
+		if err := source.replenish(ctx, present); err != nil {
+			return err
+		}
 	}
 	for _, prefix := range prefixes {
 		if prefix != nil {
@@ -148,7 +154,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		}
 	}
 	remaining := owner.permission.accepted.Maxima[0] - owner.permission.reserved[0]
-	prefixLive := owner.prefix != nil
+	prefixLive := owner.currentTextSourceLocked() != nil
 	owner.mu.Unlock()
 	if ready >= minimum || remaining == 0 {
 		// No new admission is due here, so a Source prefix retired on its
@@ -162,7 +168,7 @@ func (owner *textContext) ensureQualificationIssuerReserve(ctx context.Context, 
 		// refill; the next completed-stream boundary observes its result.
 		if _, openErr := owner.openTextPrefix(ctx); openErr != nil {
 			owner.mu.Lock()
-			inProgress := owner.prefix != nil || owner.prefixOpening != nil || owner.issuance != nil
+			inProgress := owner.currentTextSourceLocked() != nil || owner.source.openingInProgressLocked() || owner.issuance != nil
 			owner.mu.Unlock()
 			if !inProgress {
 				return errors.Join(openErr, errors.New("qualification issuer prefix rebirth failed"))

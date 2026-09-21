@@ -26,7 +26,7 @@ func TestTextTokenPresentationBurnsStockBeforeReturningBytes(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
 	opening := &textPrefixOpeningOperation{owner: owner, context: flightContext, cancelOperation: cancel, done: done}
-	owner.prefixOpening = opening
+	owner.source.opening = opening
 	returned, err := opening.presentTextToken(selection, hello, 2)
 	if err != nil {
 		t.Fatal(err)

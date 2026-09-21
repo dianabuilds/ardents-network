@@ -35,7 +35,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	profile, now, err := owner.textPermissionProfileLocked()
 	registered := owner.registration
 	if err != nil || owner.surface != broker.Administration || registered == nil || owner.withdrawal != nil ||
-		owner.registrationOpening != nil || owner.permission == nil || owner.resolution != nil || owner.prefix == nil ||
+		owner.registrationOpening != nil || owner.permission == nil || owner.resolution != nil || owner.currentTextSourceLocked() == nil ||
 		endpoint.publisherBinding == nil || endpoint.publications == nil || endpoint.publisherSession != nil || endpoint.textPublisherOwner != nil && endpoint.textPublisherOwner != owner {
 		owner.mu.Unlock()
 		return verified, errors.New("text publication owner unavailable")
@@ -47,7 +47,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	default:
 	}
 	attempt, cancel := context.WithCancel(owner.lease.Context())
-	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), prefix: owner.prefix}
+	flight := &textResolutionFlight{context: attempt, cancel: cancel, done: make(chan struct{}), prefix: owner.currentTextSourceLocked()}
 	owner.resolution = flight
 	owner.mu.Unlock()
 	interrupted := make(chan struct{})
@@ -113,7 +113,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	if err != nil {
 		return reachability.Verified{}, err
 	}
-	receiver, err := flight.prefix.ResolutionRecipient()
+	receiver, err := flight.prefix.resolutionRecipient()
 	if err != nil {
 		return reachability.Verified{}, err
 	}
@@ -124,7 +124,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	if err := owner.ensureTextResolutionStock(flight); err != nil {
 		return reachability.Verified{}, errors.Join(errors.New("text publication resolution token preparation failed"), err)
 	}
-	status, _, err := flight.prefix.ExchangeDescriptor(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+	status, _, err := flight.prefix.exchangeDescriptor(attempt, func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentTextResolutionToken(flight, hello, class)
 	}, [32]byte{}, raw)
 	if err != nil || status != 0 {
@@ -135,7 +135,7 @@ func (owner *textContext) publishTextDescriptor(ctx context.Context) (verified r
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	live, at, err = owner.textPermissionProfileLocked()
-	if err != nil || live != profile || owner.registration != registered || owner.prefix != flight.prefix ||
+	if err != nil || live != profile || owner.registration != registered || !flight.prefix.currentLocked(owner) ||
 		endpoint.textPublisherOwner != owner || endpoint.publisherBinding != binding || !endpoint.textPublicationLive || endpoint.publisherSession != nil ||
 		!owner.liveLocked(endpoint, broker.Administration) || attempt.Err() != nil || ctx.Err() != nil || registered.recipient.Public(at) == [32]byte{} {
 		return reachability.Verified{}, errors.New("text Descriptor acknowledgement outlived its owner")

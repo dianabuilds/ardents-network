@@ -64,10 +64,13 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 		err    error
 	}
 	results := make(chan opened, 2)
-	prefixes := []*route.ClosedSourcePrefix{reader.prefix, responder}
+	reader.mu.Lock()
+	readerPrefix := reader.currentTextSourceLocked()
+	reader.mu.Unlock()
+	prefixes := []textJoinPrefix{readerPrefix, textPublisherJoinPrefix{prefix: responder}}
 	for index, owner := range []*textContext{reader, publisher} {
 		go func() {
-			stream, err := prefixes[index].Join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {
+			stream, err := prefixes[index].join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {
 				owner.mu.Lock()
 				defer owner.mu.Unlock()
 				profile, now, err := owner.textPermissionProfileLocked()

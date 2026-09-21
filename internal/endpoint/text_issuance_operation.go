@@ -18,7 +18,7 @@ type textIssuanceOperation struct {
 	context           context.Context
 	cancelOperation   context.CancelFunc
 	done              chan struct{}
-	prefix            *route.ClosedSourcePrefix
+	prefix            *textSourceHandle
 	permission        *textPermission
 	profile           state.ClosedProfileView
 	batch             *textTokenBatch
@@ -71,7 +71,7 @@ func (operation *textIssuanceOperation) run(caller context.Context, source route
 	if operation.prefix == nil {
 		result, exchangeErr = route.ExchangeClosedBootstrap(operation.context, source, selection, operation.request)
 	} else {
-		result, exchangeErr = operation.prefix.ExchangeIssuer(operation.context, func(hello route.ClosedHello, tokenClass uint8) ([]byte, error) {
+		result, exchangeErr = operation.prefix.exchangeIssuer(operation.context, func(hello route.ClosedHello, tokenClass uint8) ([]byte, error) {
 			return operation.presentTextIssuerToken(selection, hello, tokenClass)
 		}, operation.request)
 	}

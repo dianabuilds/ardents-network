@@ -39,9 +39,7 @@ type textContextState struct {
 	introduction          textPublisherPrefix
 	responder             textPublisherPrefix
 	resolution            *textResolutionFlight
-	prefix                *route.ClosedSourcePrefix
-	prefixCancel          context.CancelFunc
-	prefixOpening         *textPrefixOpeningOperation
+	source                textSourceLifecycle
 	sourceSet             *textSourceSet
 	sourceOperations      chan struct{}
 	issuance              *textIssuanceOperation
@@ -274,14 +272,7 @@ func (owner *textContext) closeAfterAuthorization() {
 		responderOpening.cancel()
 	}
 	owner.responder.prefix = nil
-	prefix, opening := owner.prefix, owner.prefixOpening
-	if owner.prefixCancel != nil {
-		owner.prefixCancel()
-	}
-	if opening != nil {
-		opening.cancel()
-	}
-	owner.prefix = nil
+	prefix, opening := owner.source.detachLocked()
 	owner.clearTextPermissionLocked()
 	issuance := owner.issuance
 	if issuance != nil {

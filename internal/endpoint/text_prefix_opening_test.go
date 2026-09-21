@@ -45,7 +45,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	}
 	defer accepted.Close()
 	owner.mu.Lock()
-	flight := owner.prefixOpening
+	flight := owner.source.opening
 	reserved := flight != nil && owner.issuance != nil && owner.permission.batches == 1
 	owner.mu.Unlock()
 	if !reserved {
@@ -79,7 +79,7 @@ func TestTextPrefixReservesOpeningBeforeIssuanceAndJoinsCancellation(t *testing.
 	}
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	if owner.prefixOpening != nil || owner.issuance != nil || owner.prefix != nil || owner.permission.batches != 1 {
+	if owner.source.opening != nil || owner.issuance != nil || owner.currentTextSourceLocked() != nil || owner.permission.batches != 1 {
 		t.Fatal("cancellation leaked ownership or another batch debit")
 	}
 }
@@ -94,7 +94,7 @@ func TestTextPrefixOpeningExcludesUnrelatedIssuanceBetweenBatches(t *testing.T) 
 	// The reserved transition can be between its two network flights. The
 	// absence of a current issuance must not permit an unrelated batch.
 	flight := &textPrefixOpeningOperation{owner: owner, context: ctx, cancelOperation: cancel, done: done}
-	owner.prefixOpening = flight
+	owner.source.opening = flight
 	attempt, stop := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer stop()
 	if err := owner.issueTextTokens(attempt, [][32]byte{source.view.Nodes[0].NodeID}, 2); err == nil {
@@ -147,14 +147,14 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	close(replacementDone)
 	replacement := &textPrefixOpeningOperation{owner: owner, context: replacementContext, cancelOperation: replacementCancel, done: replacementDone}
 	owner.mu.Lock()
-	original := owner.prefixOpening
+	original := owner.source.opening
 	if original == nil {
 		owner.mu.Unlock()
 		cancel()
 		<-result
 		t.Fatal("opening transport started without a retained reservation")
 	}
-	owner.prefixOpening = replacement
+	owner.source.opening = replacement
 	permission := owner.permission
 	pending := permission.pending
 	batches, reserved, stock := permission.batches, permission.reserved, len(permission.stock)
@@ -172,10 +172,10 @@ func TestTextPrefixOpeningRejectsObsoleteCompletionWithoutTouchingReplacement(t 
 	}
 
 	owner.mu.Lock()
-	retained := owner.prefixOpening == replacement && owner.prefix == nil && owner.permission == permission &&
+	retained := owner.source.opening == replacement && owner.currentTextSourceLocked() == nil && owner.permission == permission &&
 		permission.pending == pending && permission.batches == batches && permission.reserved == reserved && len(permission.stock) == stock
-	if owner.prefixOpening == replacement {
-		owner.prefixOpening = nil
+	if owner.source.opening == replacement {
+		owner.source.opening = nil
 	}
 	owner.mu.Unlock()
 	replacementCancel()

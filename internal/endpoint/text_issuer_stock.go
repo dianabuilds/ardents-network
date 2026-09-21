@@ -54,7 +54,7 @@ func (owner *textContext) prepareTextIssuerStock(ctx context.Context, requested 
 		}
 	}
 	remaining := permission.accepted.Maxima[0] - permission.reserved[0]
-	if ready >= 2 || remaining == 0 || owner.prefix != nil && (ready == 0 || remaining < 2) {
+	if ready >= 2 || remaining == 0 || owner.currentTextSourceLocked() != nil && (ready == 0 || remaining < 2) {
 		owner.mu.Unlock()
 		return nil
 	}
@@ -73,7 +73,7 @@ func (operation *textIssuanceOperation) presentTextIssuerToken(selection route.C
 	defer owner.mu.Unlock()
 	profile, now, err := owner.textPermissionProfileLocked()
 	if err != nil || owner.issuance != operation || operation.context == nil || operation.context.Err() != nil ||
-		operation.prefix == nil || owner.prefix != operation.prefix || owner.permission == nil || owner.permission.pending == nil ||
+		operation.prefix == nil || !operation.prefix.currentLocked(owner) || owner.permission == nil || owner.permission.pending == nil ||
 		owner.permission.pending.prefix != operation.prefix || hello.Purpose != route.ClosedPurposeIssuer || class != 1 ||
 		hello.NetworkID != profile.NetworkID || hello.StateGeneration != profile.StateGeneration || hello.StateDigest != profile.StateDigest ||
 		hello.ProfileDigest != profile.Digest || hello.RecipientNodeID != profile.IssuerNodeID || hello.RecipientDutyGeneration != profile.IssuerDutyGeneration ||

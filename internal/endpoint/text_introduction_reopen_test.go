@@ -25,7 +25,7 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			}
 			clear(first.operation)
 			reader.mu.Lock()
-			prefix, permission := reader.prefix, reader.permission
+			prefix, permission := reader.currentTextSourceLocked(), reader.permission
 			reader.mu.Unlock()
 			if err := prefix.Close(); err != nil {
 				t.Fatal(err)
@@ -41,8 +41,8 @@ func TestTextIntroductionReopensJoinedSource(t *testing.T) {
 			}
 			clear(second.operation)
 			reader.mu.Lock()
-			valid := reader.prefix != nil && reader.prefix != prefix && reader.permission == permission && permission.batches == 2 &&
-				permission.pending == nil && reader.issuance == nil && reader.resolution == nil && reader.prefixOpening == nil
+			valid := reader.currentTextSourceLocked() != nil && reader.currentTextSourceLocked() != prefix && reader.permission == permission && permission.batches == 2 &&
+				permission.pending == nil && reader.issuance == nil && reader.resolution == nil && reader.source.opening == nil
 			reserved := permission.reserved
 			maxima := permission.accepted.Maxima
 			reader.mu.Unlock()

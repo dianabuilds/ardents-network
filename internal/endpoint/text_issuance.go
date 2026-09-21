@@ -16,7 +16,7 @@ import (
 // under owner.mu while cancellation interrupts and joins the transport tree.
 type textTokenBatch struct {
 	refill     bool // Retained internal stock work; never receiver admission authority.
-	prefix     *route.ClosedSourcePrefix
+	prefix     *textSourceHandle
 	challenges []credential.ClosedTokenContext
 	selection  route.ClosedBootstrapSelection
 	pending    *credential.PendingClosedTokenBatch
@@ -67,7 +67,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 		owner.mu.Unlock()
 		return errors.New("text issuance prefix reservation unavailable")
 	}
-	hasPrefix := owner.prefix != nil
+	hasPrefix := owner.currentTextSourceLocked() != nil
 	owner.mu.Unlock()
 	if hasPrefix && !refill {
 		if err := owner.prepareTextIssuerStock(ctx, receivers, class, opening); err != nil {
@@ -119,12 +119,12 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 	batch := permission.pending
 	if batch != nil {
 		if batch.refill != refill || !slices.Equal(batch.challenges, challenges) || batch.selection != selection ||
-			batch.prefix != nil && batch.prefix != owner.prefix {
+			batch.prefix != nil && !batch.prefix.currentLocked(owner) {
 			owner.mu.Unlock()
 			return errors.New("text issuance retry must retain the original batch")
 		}
 	} else {
-		if owner.prefix == nil && permission.batches >= 2 {
+		if owner.currentTextSourceLocked() == nil && permission.batches >= 2 {
 			owner.mu.Unlock()
 			return errors.New("text bootstrap batch allowance is exhausted")
 		}
@@ -138,7 +138,7 @@ func (owner *textContext) issueTextTokensForOpeningWithCancellation(ctx context.
 			owner.mu.Unlock()
 			return err
 		}
-		batch = &textTokenBatch{refill: refill, prefix: owner.prefix, challenges: challenges, selection: selection, pending: pending}
+		batch = &textTokenBatch{refill: refill, prefix: owner.currentTextSourceLocked(), challenges: challenges, selection: selection, pending: pending}
 		permission.pending = batch
 		permission.reserved[class-1] += uint32(len(challenges))
 		if batch.prefix == nil {
