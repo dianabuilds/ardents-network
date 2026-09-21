@@ -87,7 +87,7 @@ func TestTextIntroductionRetryResumesExactIssuance(t *testing.T) {
 				t.Fatalf("matching retry did not resume: %v", err)
 			}
 			owner.mu.Lock()
-			completed := owner.permission.pending == nil && owner.permission.reserved[1] == reserved[1] && owner.introduction.prefix == prefix
+			completed := owner.permission.pending == nil && owner.permission.reserved[1] == reserved[1] && owner.introduction.currentLocked() == prefix
 			owner.mu.Unlock()
 			if !completed {
 				t.Fatal("retry replaced or charged requested issuance again")

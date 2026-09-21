@@ -13,11 +13,11 @@ import (
 // rotate its retained members or issue tokens; a later explicit operation owns
 // any new open. Source and Publisher Introduction have separate lifetimes.
 func (owner *textContext) retireTextPrefixLocked() error {
-	result := owner.source.retireIdleLocked()
+	result := errors.Join(owner.source.retireIdleLocked(), owner.introduction.retireIdleLocked())
 	for _, role := range []struct {
 		prefix **route.ClosedSourcePrefix
 		cancel *context.CancelFunc
-	}{{&owner.introduction.prefix, &owner.introduction.cancel}, {&owner.responder.prefix, &owner.responder.cancel}} {
+	}{{&owner.responder.prefix, &owner.responder.cancel}} {
 		prefix := *role.prefix
 		if prefix == nil {
 			continue

@@ -196,7 +196,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 		owner.mu.Unlock()
 		return textRefreshFailureAt("rotation-authority", errors.New("text publication refresh owner unavailable"))
 	}
-	prefix := owner.introduction.prefix
+	prefix := owner.introduction.currentLocked()
 	owner.mu.Unlock()
 	if prefix == nil {
 		return textRefreshFailureAt("rotation-prefix", errors.New("text publication refresh prefix unavailable"))
@@ -204,7 +204,7 @@ func (owner *textContext) rotateTextPublication(flight *textPublicationRefresh, 
 	if err := owner.prepareTextSourceReady(flight.context); err != nil {
 		return textRefreshFailureAt("rotation-source-"+textSourcePreparationFailureStage(err), err)
 	}
-	_, until, err := prefix.IntroductionRecipient()
+	_, until, err := prefix.introductionRecipient()
 	if err != nil {
 		return textRefreshFailureAt("rotation-recipient", err)
 	}

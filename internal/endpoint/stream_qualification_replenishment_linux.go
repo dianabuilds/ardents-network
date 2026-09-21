@@ -76,13 +76,19 @@ func (worker *qualifiedTextWorker) replenishStreams(ctx context.Context) error {
 	// inspection. Snapshotting before it would replenish a known-dead parent.
 	owner.mu.Lock()
 	source := owner.currentTextSourceLocked()
-	prefixes := []*route.ClosedSourcePrefix{owner.introduction.prefix, owner.responder.prefix}
+	introduction := owner.introduction.currentLocked()
+	prefixes := []*route.ClosedSourcePrefix{owner.responder.prefix}
 	owner.mu.Unlock()
 	present := func(hello route.ClosedHello, class uint8) ([]byte, error) {
 		return owner.presentQualifiedRefill(ctx, worker.job, hello, class)
 	}
 	if source != nil {
 		if err := source.replenish(ctx, present); err != nil {
+			return err
+		}
+	}
+	if introduction != nil {
+		if err := introduction.replenish(ctx, present); err != nil {
 			return err
 		}
 	}
