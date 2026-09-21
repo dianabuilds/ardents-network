@@ -47,7 +47,7 @@ func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
 // ready callback observes both joined streams before either direction writes.
 func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receiver [32]byte, ready func()) {
 	t.Helper()
-	responder, err := publisher.openTextPublisherPrefix(t.Context(), &publisher.responder, 3)
+	responder, err := publisher.openTextResponderPrefix(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func exchangeTextRouteData(t *testing.T, reader, publisher *textContext, receive
 	reader.mu.Lock()
 	readerPrefix := reader.currentTextSourceLocked()
 	reader.mu.Unlock()
-	prefixes := []textJoinPrefix{readerPrefix, textPublisherJoinPrefix{prefix: responder}}
+	prefixes := []textJoinPrefix{readerPrefix, responder}
 	for index, owner := range []*textContext{reader, publisher} {
 		go func() {
 			stream, err := prefixes[index].join(ctx, func(hello route.ClosedHello, class uint8) ([]byte, error) {

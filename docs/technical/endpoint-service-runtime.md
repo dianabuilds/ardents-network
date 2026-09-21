@@ -31,7 +31,9 @@ its separate Responder-domain forwarding prefix. A private Introduction
 lifecycle alone reserves and publishes its opening, exposes an exact read-only
 handle to registration/refresh/refill callers, invalidates that handle before
 retirement, and joins opening and Route cleanup without closing the borrowed
-Source. The Responder remains a separate owner. Both Publisher prefixes obtain
+Source. A separate private Responder lifecycle owns its exact live handle,
+opening, idle retirement and context-stop cleanup without closing the sibling
+Introduction or borrowed Source. Both Publisher prefixes obtain
 genuine tokens through Source and share admission rules while retaining
 separate selections and transports. Known Node/key/family overlaps across live
 domains or subroles are excluded before selection and issuance; losing a member
@@ -60,12 +62,15 @@ durable token transfer. Publisher JOIN consumes its independently accepted capsu
 and current Responder prefix. The worker receives no raw JOIN stream: the existing
 Service TLS and native Instance authentication precede Application I/O.
 Each initial or recovery Connection JOIN acquires an operation-local wrapper for
-the exact current Source handle before stock preparation. Token presentation and
-the final transport transfer recheck that same acquisition under the context
-lock. Failure joins any returned Route stream before releasing only that
+the exact current Source handle before stock preparation. Publisher JOIN likewise
+acquires the exact current Responder handle and its exact retained Source issuer.
+Token presentation and the final transport transfer recheck that same
+acquisition under the context lock. Failure joins any returned Route stream
+before releasing only that
 acquisition; success transfers the acquisition to the joined transport, whose
 close joins Route cleanup and then releases it. A replacement Source therefore
-cannot be used by a late old JOIN. Publisher Responder ownership is unchanged.
+cannot be used by a late old JOIN, and a replacement Responder cannot be exposed
+through an older opening or JOIN acquisition.
 
 Endpoint context composition serializes issuance admission with its retained
 Source-operation reservation, but one private issuance operation owns each
@@ -86,9 +91,9 @@ before closing its Route owner. A late completion from an obsolete opening
 cleans and joins only its own result, cannot publish over a replacement, and
 cannot renew stock or the two-batch bootstrap allowance. The context lock and
 Source-operation serialization remain the admission boundary; Publisher
-Introduction and Responder prefixes keep their separate owners. The
-Introduction lifecycle similarly owns its own exact handle/opening/stop/join;
-context shutdown and registration no longer mutate its prefix fields.
+Introduction and Responder lifecycles keep separate exact handles, openings and
+stop/join cleanup. Context shutdown and their callers no longer mutate either
+prefix's fields.
 
 Each Descriptor lookup acquires one operation-local view of the exact current
 Source handle. Recipient selection, stock preparation, token presentation and

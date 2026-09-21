@@ -39,34 +39,6 @@ type textJoinAcquisition interface {
 	release()
 }
 
-type textPublisherJoinPrefix struct {
-	prefix *route.ClosedSourcePrefix
-	issuer *textSourceHandle
-}
-
-func (prefix textPublisherJoinPrefix) dataJoinRecipient() ([32]byte, uint64, time.Time, error) {
-	return prefix.prefix.DataJoinRecipient()
-}
-
-func (prefix textPublisherJoinPrefix) join(ctx context.Context, present route.ClosedTokenPresenter,
-	intent route.ClosedJoinIntent) (*route.ClosedJoinedStream, error) {
-	return prefix.prefix.Join(ctx, present, intent)
-}
-
-func (prefix textPublisherJoinPrefix) currentLocked(owner *textContext) bool {
-	return owner != nil && owner.surface == broker.Administration && owner.responder.prefix == prefix.prefix
-}
-
-func (prefix textPublisherJoinPrefix) issuancePrefixLocked(owner *textContext) (*textSourceHandle, bool) {
-	current := prefix.currentLocked(owner)
-	if prefix.issuer == nil {
-		return nil, current && owner.currentTextSourceLocked() == nil
-	}
-	return prefix.issuer, current && prefix.issuer.currentLocked(owner)
-}
-
-func (textPublisherJoinPrefix) release() {}
-
 func (transport *textJoinedTransport) AuthenticatedPeerRetired() bool {
 	witness, ok := transport.Conn.(interface{ AuthenticatedPeerRetired() bool })
 	return ok && witness.AuthenticatedPeerRetired()
@@ -178,11 +150,7 @@ func (owner *textContext) openTextJoinedTransportAfterSetup(ctx context.Context,
 		acquisition = owner.source.acquireJoinLocked()
 	}
 	if owner.surface == broker.Administration {
-		if owner.responder.prefix != nil {
-			acquisition = textPublisherJoinPrefix{prefix: owner.responder.prefix, issuer: source}
-		} else {
-			acquisition = nil
-		}
+		acquisition = owner.responder.acquireJoinLocked(source)
 	}
 	live := !attempt.joined && acquisition != nil && owner.liveTextServiceJobLocked(job, owner.surface)
 	if live {

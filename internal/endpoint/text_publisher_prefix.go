@@ -10,21 +10,29 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-// Each Publisher role retains a distinct tree funded through the Source
-// prefix. Neither a worker nor a receiver chooses its members or tokens.
-type textPublisherPrefix struct {
-	prefix  *route.ClosedSourcePrefix
-	cancel  context.CancelFunc
-	opening *textSourceFlight
-	set     *textSourceSet
-}
-
 type textPublisherPrefixOpening interface {
 	openingAvailableLocked() bool
 	membersSlotLocked() **textSourceSet
 	reserveOpeningLocked(*textSourceFlight) bool
 	openingCurrentLocked(*textSourceFlight) bool
 	finishOpeningLocked(*textSourceFlight, *route.ClosedSourcePrefix, context.CancelFunc, bool) bool
+}
+
+func (owner *textContext) openTextResponderPrefix(ctx context.Context) (*textResponderPrefixHandle, error) {
+	if owner == nil {
+		return nil, errors.New("text Publisher owner unavailable")
+	}
+	opened, err := owner.openTextPublisherPrefix(ctx, &owner.responder, 3)
+	if err != nil {
+		return nil, err
+	}
+	owner.mu.Lock()
+	handle := owner.responder.acquireOpenedLocked(opened)
+	owner.mu.Unlock()
+	if handle == nil {
+		return nil, errors.New("text Responder prefix unavailable after opening")
+	}
+	return handle, nil
 }
 
 func (owner *textContext) openTextIntroductionPrefix(ctx context.Context) (*textIntroductionPrefixHandle, error) {
@@ -154,34 +162,4 @@ func (owner *textContext) presentTextPublisherForwardingToken(role textPublisher
 		return nil, errors.New("text Publisher role selection changed")
 	}
 	return owner.takeTextTokenLocked(profile, now, hello, class, flight.context)
-}
-
-func (role *textPublisherPrefix) membersSlotLocked() **textSourceSet { return &role.set }
-
-func (role *textPublisherPrefix) openingAvailableLocked() bool {
-	return role != nil && role.opening == nil && role.prefix == nil
-}
-
-func (role *textPublisherPrefix) reserveOpeningLocked(flight *textSourceFlight) bool {
-	if role == nil || flight == nil || role.opening != nil || role.prefix != nil {
-		return false
-	}
-	role.opening = flight
-	return true
-}
-
-func (role *textPublisherPrefix) openingCurrentLocked(flight *textSourceFlight) bool {
-	return role != nil && role.opening == flight
-}
-
-func (role *textPublisherPrefix) finishOpeningLocked(flight *textSourceFlight, prefix *route.ClosedSourcePrefix,
-	cancel context.CancelFunc, publish bool) bool {
-	if role == nil || role.opening != flight {
-		return false
-	}
-	role.opening = nil
-	if publish {
-		role.prefix, role.cancel = prefix, cancel
-	}
-	return true
 }

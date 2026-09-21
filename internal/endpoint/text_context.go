@@ -37,7 +37,7 @@ type textContextState struct {
 	registration          *textIntroductionRegistration
 	registrationOpening   *textRegistrationFlight
 	introduction          textIntroductionPrefixLifecycle
-	responder             textPublisherPrefix
+	responder             textResponderPrefixLifecycle
 	resolution            *textResolutionFlight
 	source                textSourceLifecycle
 	sourceSet             *textSourceSet
@@ -255,16 +255,9 @@ func (owner *textContext) closeAfterAuthorization() {
 	owner.introductionOpenings = [4]time.Time{}
 	clear(owner.descriptorFloors)
 	owner.descriptorFloors = nil
-	owner.sourceSet, owner.responder.set = nil, nil
+	owner.sourceSet = nil
 	introduction := owner.introduction.stopLocked()
-	responder, responderOpening := owner.responder.prefix, owner.responder.opening
-	if owner.responder.cancel != nil {
-		owner.responder.cancel()
-	}
-	if responderOpening != nil {
-		responderOpening.cancel()
-	}
-	owner.responder.prefix = nil
+	responder := owner.responder.stopLocked()
 	prefix, opening := owner.source.detachLocked()
 	owner.clearTextPermissionLocked()
 	issuance := owner.issuance
@@ -284,9 +277,7 @@ func (owner *textContext) closeAfterAuthorization() {
 		opening.join()
 	}
 	introduction.joinOpening()
-	if responderOpening != nil {
-		<-responderOpening.done
-	}
+	responder.joinOpening()
 	if registrationOpening != nil {
 		<-registrationOpening.done
 	}
@@ -301,9 +292,7 @@ func (owner *textContext) closeAfterAuthorization() {
 		prefixErr = errors.Join(prefixErr, registered.close())
 	}
 	prefixErr = errors.Join(prefixErr, introduction.closePrefix())
-	if responder != nil {
-		prefixErr = errors.Join(prefixErr, responder.Close())
-	}
+	prefixErr = errors.Join(prefixErr, responder.closePrefix())
 	if prefix != nil {
 		prefixErr = errors.Join(prefixErr, prefix.Close())
 	}

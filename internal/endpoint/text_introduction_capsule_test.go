@@ -150,7 +150,7 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				}
 			}
 			publisher.mu.Lock()
-			noResponder := publisher.responder.prefix == nil && publisher.responder.set == nil
+			noResponder := publisher.responder.currentLocked() == nil && publisher.responder.set == nil
 			beforeForward := publisher.permission.reserved[1]
 			publisher.mu.Unlock()
 			if !noResponder {
@@ -176,9 +176,9 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				t.Fatal(err)
 			}
 			publisher.mu.Lock()
-			responder := publisher.responder.prefix
+			responder := publisher.responder.currentLocked()
 			introduction := publisher.introduction.currentLocked()
-			distinct := responder != nil && introduction != nil && (publisher.currentTextSourceLocked() == nil || responder != publisher.currentTextSourceLocked().prefix.Load()) && responder != introduction.prefix.Load() &&
+			distinct := responder != nil && introduction != nil && (publisher.currentTextSourceLocked() == nil || responder.prefix.Load() != publisher.currentTextSourceLocked().prefix.Load()) && responder.prefix.Load() != introduction.prefix.Load() &&
 				publisher.responder.set != nil && publisher.responder.set != publisher.sourceSet && publisher.responder.set != publisher.introduction.set &&
 				publisher.responder.set.interior[0].Domain == 3 && publisher.permission.reserved[1] > beforeForward && publisher.responder.opening == nil
 			publisher.mu.Unlock()
@@ -189,13 +189,13 @@ func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) 
 				t.Fatal(err)
 			}
 			publisher.mu.Lock()
-			reused := publisher.responder.prefix == responder
+			reused := publisher.responder.currentLocked() == responder
 			publisher.mu.Unlock()
 			if !reused {
 				t.Fatal("second accepted attempt replaced live Responder prefix")
 			}
 			checkTextResponderRetirementBoundary(t, publisher, publisherJob, accepted, source)
-			responder = publisher.responder.prefix
+			responder = publisher.responder.currentLocked()
 			if accepted.digest != attempt.digest || accepted.binding.logical != attempt.binding.logical || accepted.plaintext != attempt.plaintext {
 				t.Fatal("recipient changed the authenticated Attachment or logical context")
 			}
