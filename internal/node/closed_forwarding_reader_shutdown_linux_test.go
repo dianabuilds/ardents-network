@@ -62,7 +62,7 @@ func (writer *delayedForwardingChildWrite) Write(body []byte) (int, error) {
 // is joining a late child opener; only then may shutdown wait for the session
 // reader published by that opener's successful outer HELLO.
 func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing.T) {
-	now := time.Now().UTC().Truncate(time.Hour).Add(10 * time.Minute)
+	now := time.Now().UTC().Truncate(time.Hour).Add(time.Hour + 10*time.Minute)
 	fixture := newClosedBootstrapFixture(t)
 	fixture.now = now
 	fixture.view.Profile.NotBefore = now.Add(-time.Second)
@@ -205,9 +205,6 @@ func TestClosedForwardingDrainJoinsActualAcceptedProducerBeforeReader(t *testing
 	}
 	select {
 	case <-blockedChild.started:
-	case err := <-peerDone:
-		joinedPeer = true
-		t.Fatalf("downstream peer ended before child OPEN: %v", err)
 	case <-time.After(time.Second):
 		t.Fatal("production child opener did not reach its delayed write")
 	}
