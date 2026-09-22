@@ -16,11 +16,6 @@ func TestRoleDrainsReportListenerCleanupFailures(t *testing.T) {
 		name  string
 		drain func() error
 	}{
-		{name: "Initiator", drain: func() error {
-			running := &initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
-				pre: make(map[net.Conn]struct{}), active: make(map[route.Carrier]struct{})}
-			return running.Drain(context.Background())
-		}},
 		{name: "Introduction", drain: func() error {
 			running := &introduction{plan: introductionPlan{introductionConfig: introductionConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{err: injected},
 				pre: make(map[net.Conn]struct{}), active: make(map[net.Conn]struct{})}
@@ -52,15 +47,6 @@ func TestRoleDrainsReportListenerCleanupFailures(t *testing.T) {
 	}
 }
 
-func TestTerminalCleanupPreservesFailureJoinedWithClosed(t *testing.T) {
-	injected := errors.New("injected carrier cleanup failure")
-	running := &initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second}}, listener: terminalFailingListener{},
-		pre: make(map[net.Conn]struct{}), active: map[route.Carrier]struct{}{terminalFailingCarrier{err: errors.Join(net.ErrClosed, injected)}: {}}}
-	if err := running.Drain(context.Background()); !errors.Is(err, injected) {
-		t.Fatalf("Drain error = %v, want joined carrier cleanup failure", err)
-	}
-}
-
 func TestTerminalCleanupRetainsOneBoundedFailure(t *testing.T) {
 	first := errors.New("first cleanup failure")
 	second := errors.New("second cleanup failure")
@@ -78,16 +64,6 @@ func TestWorkerCleanupFailuresSurviveActiveRemoval(t *testing.T) {
 		name string
 		run  func() error
 	}{
-		{name: "Initiator", run: func() error {
-			raw := &terminalFailingNetConn{err: injected}
-			next := terminalFailingCarrier{err: injected}
-			running := &initiator{plan: initiatorPlan{initiatorConfig: initiatorConfig{DrainTimeout: time.Second, RelayByteLimit: 1}}, listener: terminalFailingListener{},
-				relays: make(chan struct{}, 1), pre: make(map[net.Conn]struct{}), active: map[route.Carrier]struct{}{raw: {}, next: {}}}
-			running.relays <- struct{}{}
-			running.work.Add(1)
-			running.relay(raw, raw, next)
-			return running.Drain(context.Background())
-		}},
 		{name: "Introduction", run: func() error {
 			connection := &terminalFailingNetConn{err: injected}
 			reachability := [32]byte{1}

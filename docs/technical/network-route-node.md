@@ -108,7 +108,14 @@ existing authority checks.
 Existing old roots, keys, floors, plans, and installation records remain
 unchanged evidence. Historical profile recognition may authenticate an already
 pinned owned installation for retirement only; it cannot authorize execution
-or rewrite persisted identity. No retirement path inherits a duty,
+of an old duty or rewrite persisted identity. The old Initiator engine, its
+Entry-admission adapter, and its command composition have been deleted after
+the command refusal became current.
+The remaining old engines are owned by separate bounded deletion slices.
+The adjacent production-dead Entry/relay/OHTTP closure is enumerated exactly by
+the deadcode registry and belongs to its dedicated closure audit; it is not
+silently deleted as part of the one-engine change.
+No retirement path inherits a duty,
 regenerates a key, resets a root or floor, converts state, or adopts foreign
 files. Exclusive old engines and compatibility readers remain until later
 bounded changes prove their accepting callers and other consumers absent.
@@ -208,9 +215,10 @@ migration operations, and cleanup mechanics remain private to each Adapter.
 
 Network State owns the supported choice. Signed Node Record v1 canonically
 means TCP/TLS; v2 contains one signed explicit Carrier Profile. Unknown
-profiles are rejected before assignment. Rendezvous listens with its own
-record's profile; Initiator and Responder use the selected Rendezvous
-candidate's profile. `OpenNodeLeg` and `ListenNodeCarrier` accept exactly one
+profiles are rejected before assignment. The retained old Rendezvous listens
+with its own record's profile, and the retained old Responder uses the selected
+Rendezvous candidate's profile. The deleted Initiator engine previously used
+the same selected-candidate rule. `OpenNodeLeg` and `ListenNodeCarrier` accept exactly one
 profile and never race or fall back. A State successor drains and withdraws the
 old duty; it does not rewrite an active attachment.
 
@@ -337,24 +345,11 @@ executing either generation.
   those cells from cross-built Linux bytes at 1 vCPU/1 GiB with no external
   network. Its recurring QUIC UDP-buffer warning forbids a throughput or
   capacity conclusion.
-- Process tests cover authenticated source-to-State and Node lifecycles; the
-  selected multi-host cells additionally put the exact product Rendezvous behind a
-  test-owned raw TCP Carrier relay, retain both PIDs/lifecycles, and inject
-  Carrier-reset and exact product-Node-kill faults without a fixture
-  Rendezvous or transit fallback. They remain bounded functional evidence, not
-  a public network or native host profile.
-- Product-command tests now start separate Initiator, Introduction, Rendezvous,
-  and Responder processes from one signed native Route Epoch, verify their
-  exact State assignments, and carry one local Service Connection journey through those
-  commands. The Linux Docker route test uses `SIGTERM` and requires
-  `DRAINING` then `WITHDRAWN` after the completed journey; a linked signed
-  State successor also withdraws all four commands. Its product-transit
-  offline case produces `service unavailable` without opening an Application
-  Connection, and a Linux Rendezvous process test drains a held authenticated
-  pair on `SIGTERM`.
-  Its neighbouring Route roles remain fixtures. This does not prove a full Route
-  active-work drain, multi-host operation, or a host profile. The Windows
-  compatibility harness retains forced cleanup.
+- Current process tests cover authenticated Source-to-State and closed Node
+  lifecycles. The superseded positive old-role command and multi-host
+  qualification procedures are absent; their historical receipts do not make
+  an old duty runnable. Direct behavior tests remain only for old engines that
+  still have their own pending deletion slices.
 - A [historical mixed-host run](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/technical/network-route-node.md#verification-and-decisions)
   retains bounded functional integration evidence for its exact candidate.
   It supplies no current Route, privacy, host-profile, or public-operation

@@ -316,7 +316,7 @@ func selectedDutyCarrier(snapshot dutyFacts) string {
 	if snapshot.Assignment == "rendezvous" {
 		return snapshot.CarrierProfile
 	}
-	if snapshot.Assignment != "initiator" && snapshot.Assignment != "responder" {
+	if snapshot.Assignment != "responder" {
 		return ""
 	}
 	for index := uint8(0); index < snapshot.CandidateCount; index++ {
