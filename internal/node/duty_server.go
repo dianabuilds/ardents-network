@@ -41,20 +41,6 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
 			return rendezvousPressureUsage(running.Usage())
 		}, Stop: running.Stop, Drain: running.Drain}, nil
-	case "introduction":
-		plan, err := introductionDuty(config.Introduction, snapshot, stateTransitGrantAdmitter(config.LocalRoleStateRoot, snapshot,
-			func() (dutyFacts, error) { return currentFacts(config) }, config.now))
-		if err != nil {
-			return nil, err
-		}
-		running, err := startIntroduction(plan)
-		if err != nil {
-			return nil, err
-		}
-		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
-			usage := running.Usage()
-			return uint64(usage.Handshakes + usage.Deliveries), uint64(usage.Connections), 0
-		}, Stop: running.Stop, Drain: running.Drain}, nil
 	case "transit-issuance":
 		return startTransitIssuer(config, snapshot)
 	default:
