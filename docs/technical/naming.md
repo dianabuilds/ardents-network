@@ -159,11 +159,12 @@ Target Links remain the complete current destination path.
 ## Alpha corpus compatibility
 
 The Alpha Name Corpus is a separately authenticated historical local overlay;
-it is not canonical Namespace state. Until the selected retirement is
-integrated, the [command reference](../reference/commands.md#ardents-control)
-describes the currently present corpus commands and accepted floors retain
-their existing monotonic rules. An authenticated total withdrawal makes alpha
-resolution unavailable without restoring older bytes or falling back.
+it is not canonical Namespace state. Fresh corpus intake is retired before any
+floor effect; the [command reference](../reference/commands.md#ardents-control)
+owns that observable refusal and the retained read-only inspection route.
+Existing accepted floor bytes remain unchanged evidence, including their
+serial, digest, withdrawal, rollback, and conflict facts; intake retirement
+does not make them authority for new acceptance or fallback.
 
 [ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md)
 retires fresh intake and live Alpha Service Links without grace or conversion.

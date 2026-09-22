@@ -59,7 +59,7 @@ func TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart(t *testing.T) {
 	}
 }
 
-func TestAlphaCorpusAcceptanceUsesV3EnrolledControlCompanion(t *testing.T) {
+func TestAlphaCorpusIntakeRetirementPreservesExistingFloor(t *testing.T) {
 	endpoint := buildArdents(t)
 	control := buildControl(t)
 	fixture := alphaControlBundle(t, endpoint, control)
@@ -73,66 +73,88 @@ func TestAlphaCorpusAcceptanceUsesV3EnrolledControlCompanion(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	catalogPath, corpusPath := filepath.Join(directory, "catalog.ac2"), filepath.Join(directory, "corpus.anc")
-	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 4, corpus), 0o600)
-	writeEnrollmentFile(t, corpusPath, corpus, 0o600)
 	controlRoot, corpusRoot := filepath.Join(directory, "control"), filepath.Join(directory, "corpus-floor")
-	arguments := []string{"accept-alpha-corpus", "--enrollment", fixture.input, "--artifact", fixture.artifact,
-		"--control-state-root", controlRoot, "--corpus-state-root", corpusRoot, "--catalog", catalogPath, "--corpus", corpusPath,
-		"--at", fixture.now.Format(time.RFC3339)}
-	if output, commandErr := exec.Command(control, arguments...).CombinedOutput(); commandErr == nil {
-		t.Fatalf("outside alpha control command unexpectedly accepted enrolled corpus: %s", output)
+	initialFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: corpusRoot, Authority: fixture.corpusPublic,
+		Cohort: "closed-cohort-1", Network: fixture.network})
+	if err != nil {
+		t.Fatal(err)
 	}
-	for attempt := 0; attempt < 2; attempt++ {
-		output, commandErr := exec.Command(fixture.control, arguments...).CombinedOutput()
-		if commandErr != nil {
-			t.Fatalf("alpha corpus acceptance attempt %d: %v\n%s", attempt, commandErr, output)
+	t.Cleanup(func() {
+		if err := initialFloor.Close(); err != nil {
+			t.Errorf("close initial alpha corpus floor: %v", err)
 		}
-		var report struct {
-			Schema  string `json:"schema"`
-			Corpus  string `json:"corpus"`
-			Network string `json:"network"`
-			Serial  uint64 `json:"serial"`
-		}
-		if err := json.Unmarshal(output, &report); err != nil || report.Schema != "ardents-alpha-corpus-acceptance-v1" ||
-			report.Corpus != "accepted" || report.Network != hex.EncodeToString(fixture.network[:]) || report.Serial != 4 {
-			t.Fatalf("alpha corpus acceptance attempt %d = %s / %+v / %v", attempt, output, report, err)
-		}
+	})
+	parsed, err := alpha.OpenCorpus(fixture.corpusPublic, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := initialFloor.Observe(parsed); err != nil {
+		t.Fatal(err)
+	}
+	if err := initialFloor.Close(); err != nil {
+		t.Fatal(err)
+	}
+	markerPath, floorPath := filepath.Join(corpusRoot, ".ardents-alpha-corpus-floor-v1"), filepath.Join(corpusRoot, "corpus-floor.bin")
+	markerBefore, err := os.ReadFile(markerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	floorBefore, err := os.ReadFile(floorPath)
+	if err != nil {
+		t.Fatal(err)
 	}
 	successor, err := alpha.IssueCorpus(alpha.CorpusInput{Cohort: "closed-cohort-1", Network: fixture.network, Serial: 5,
 		Bindings: []alpha.BindingInput{{Link: link, Target: [32]byte{8}}}, NotBefore: fixture.now.Add(-time.Minute), NotAfter: fixture.now.Add(10 * time.Minute)}, fixture.corpusPrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
+	catalogPath, corpusPath := filepath.Join(directory, "catalog.ac2"), filepath.Join(directory, "corpus.anc")
 	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 5, successor), 0o600)
 	writeEnrollmentFile(t, corpusPath, successor, 0o600)
-	output, commandErr := exec.Command(fixture.control, arguments...).CombinedOutput()
-	if commandErr != nil {
-		t.Fatalf("alpha corpus successor acceptance: %v\n%s", commandErr, output)
+	arguments := []string{"accept-alpha-corpus", "--enrollment", fixture.input, "--artifact", fixture.artifact,
+		"--control-state-root", controlRoot, "--corpus-state-root", corpusRoot, "--catalog", catalogPath, "--corpus", corpusPath,
+		"--at", fixture.now.Format(time.RFC3339)}
+	commandContext, cancelCommand := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancelCommand)
+	output, commandErr := exec.CommandContext(commandContext, fixture.control, arguments...).CombinedOutput()
+	commandContextErr := commandContext.Err()
+	cancelCommand()
+	if commandContextErr == context.DeadlineExceeded {
+		t.Fatalf("retired alpha corpus intake exceeded its deadline: %v\n%s", commandErr, output)
 	}
-	var successorReport struct {
-		Serial uint64 `json:"serial"`
+	if commandErr == nil || string(output) != "accept-alpha-corpus is retired\n" {
+		t.Fatalf("retired alpha corpus intake = %v\n%s", commandErr, output)
 	}
-	if err := json.Unmarshal(output, &successorReport); err != nil || successorReport.Serial != 5 {
-		t.Fatalf("alpha corpus successor report = %s / %+v / %v", output, successorReport, err)
+	if _, err := os.Stat(controlRoot); !os.IsNotExist(err) {
+		t.Fatalf("retired alpha corpus intake created control root: %v", err)
 	}
-	writeEnrollmentFile(t, catalogPath, alphaCorpusCatalog(t, fixture, 4, corpus), 0o600)
-	writeEnrollmentFile(t, corpusPath, corpus, 0o600)
-	if output, commandErr := exec.Command(fixture.control, arguments...).CombinedOutput(); commandErr == nil {
-		t.Fatalf("alpha corpus rollback unexpectedly accepted: %s", output)
-	}
-	floor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: corpusRoot, Authority: fixture.corpusPublic, Cohort: "closed-cohort-1", Network: fixture.network})
+	markerAfter, err := os.ReadFile(markerPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer floor.Close()
-	current, err := floor.Current()
-	if err != nil || current.Serial() != 5 {
-		t.Fatalf("alpha corpus floor after replacement = %+v / %v", current, err)
+	floorAfter, err := os.ReadFile(floorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(markerAfter, markerBefore) || !bytes.Equal(floorAfter, floorBefore) {
+		t.Fatal("retired alpha corpus intake changed retained floor bytes")
+	}
+	retainedFloor, err := alpha.OpenPersistentFloor(alpha.PersistentFloorConfig{Root: corpusRoot, Authority: fixture.corpusPublic, Cohort: "closed-cohort-1", Network: fixture.network})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := retainedFloor.Close(); err != nil {
+			t.Errorf("close retained alpha corpus floor: %v", err)
+		}
+	})
+	current, err := retainedFloor.Current()
+	if err != nil || current.Serial() != 4 {
+		t.Fatalf("alpha corpus floor after retired intake = %+v / %v", current, err)
 	}
 	binding, err := current.Resolve(link, fixture.now)
-	if err != nil || binding.Target() != [32]byte{8} {
-		t.Fatalf("alpha corpus successor binding = %+v / %v", binding, err)
+	if err != nil || binding.Target() != [32]byte{7} {
+		t.Fatalf("retained alpha corpus binding = %+v / %v", binding, err)
 	}
 }
 

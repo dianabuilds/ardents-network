@@ -21,7 +21,7 @@ import (
 )
 
 func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
-	const usage = "usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
+	const usage = "usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
 	for _, route := range []string{
 		"inspect",
 		"inspect-public-control",
@@ -39,6 +39,25 @@ func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
 				t.Fatalf("retired route output = %q", output.String())
 			}
 		})
+	}
+}
+
+func TestAcceptAlphaCorpusIsRetiredBeforeEffects(t *testing.T) {
+	directory := t.TempDir()
+	controlRoot := filepath.Join(directory, "control")
+	corpusRoot := filepath.Join(directory, "corpus")
+	var output bytes.Buffer
+	err := run([]string{"accept-alpha-corpus", "--control-state-root", controlRoot, "--corpus-state-root", corpusRoot}, &output)
+	if err == nil || err.Error() != "accept-alpha-corpus is retired" {
+		t.Fatalf("retired alpha corpus intake error = %v", err)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("retired alpha corpus intake output = %q", output.String())
+	}
+	for _, root := range []string{controlRoot, corpusRoot} {
+		if _, statErr := os.Stat(root); !os.IsNotExist(statErr) {
+			t.Fatalf("retired alpha corpus intake created %s: %v", root, statErr)
+		}
 	}
 }
 

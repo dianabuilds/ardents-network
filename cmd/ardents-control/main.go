@@ -17,6 +17,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
+const commandUsage = "usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
+
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -26,7 +28,7 @@ func main() {
 
 func run(arguments []string, output io.Writer) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile")
+		return errors.New(commandUsage)
 	}
 	switch arguments[0] {
 	case "inspect-bundle":
@@ -36,7 +38,7 @@ func run(arguments []string, output io.Writer) error {
 	case "inspect-alpha-corpus":
 		return inspectAlphaCorpus(arguments[1:], output)
 	case "accept-alpha-corpus":
-		return acceptAlphaCorpus(arguments[1:], output)
+		return errors.New("accept-alpha-corpus is retired")
 	case "prepare-closed-profile":
 		return prepareClosedProfile(arguments[1:], output)
 	case "sign-closed-profile":
@@ -46,7 +48,7 @@ func run(arguments []string, output io.Writer) error {
 	case "inspect-closed-profile":
 		return inspectClosedProfile(arguments[1:], output)
 	default:
-		return errors.New("usage: ardents-control inspect-bundle, inspect-transitions, inspect-alpha-corpus, accept-alpha-corpus, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile")
+		return errors.New(commandUsage)
 	}
 }
 

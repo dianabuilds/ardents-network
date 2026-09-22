@@ -66,6 +66,30 @@
     },
     {
       "symbols": [
+        "internal/enrollment.VerifyRunningCompanion"
+      ],
+      "classification": "retained enrollment-v3 compatibility verifier",
+      "rationale": "ADR-0042 keeps the enrollment-v3 grammar accepted while ADR-0088 supersedes only its accepting-command consequence; deleting Enrollment logic is outside #154.",
+      "owner": "Product Owner and Codex",
+      "retirement": "Remove with a separate accepted retirement of the enrollment-v3 compatibility contract after every maintained reader and migration obligation is named."
+    },
+    {
+      "symbols": [
+        "internal/naming/alpha.OpenPersistentFloor",
+        "internal/naming/alpha.acquirePersistentFloorLease",
+        "internal/naming/alpha.inspectPersistentFloorRoot",
+        "internal/naming/alpha.readPersistentFloor",
+        "internal/naming/alpha.recoverPersistentFloorRoot",
+        "internal/naming/alpha.validatePersistentFloorRootPermissions",
+        "internal/naming/alpha.writePersistentFloorMarker"
+      ],
+      "classification": "retained Alpha corpus floor/history reader",
+      "rationale": "ADR-0088 requires existing floor bytes and their cohesive reader implementation to remain a compatibility obligation after #154 removes the sole fresh-intake production caller.",
+      "owner": "Product Owner and Codex",
+      "retirement": "Remove only in a separate bounded change after all maintained consumers are proven absent and a Product Owner migration or data-retention decision defines serial, digest, withdrawal, rollback, and conflict evidence disposition."
+    },
+    {
+      "symbols": [
         "internal/naming/alpha/private.NewGateway",
         "internal/naming/alpha/private.NewRelay",
         "internal/naming/alpha/private.Open",
@@ -654,6 +678,22 @@
   "production": {
     "linux-amd64": [],
     "windows-amd64": [
+      {
+        "symbols": [
+          "internal/naming/alpha.Corpus.Bytes",
+          "internal/naming/alpha.Corpus.Digest",
+          "internal/naming/alpha.PersistentFloor.Close",
+          "internal/naming/alpha.PersistentFloor.Observe",
+          "internal/naming/alpha.durablePersistentFloorRename",
+          "internal/naming/alpha.persistentFloorLease.release",
+          "internal/naming/alpha.syncPersistentFloorDirectory",
+          "internal/naming/alpha.writePersistentFloor"
+        ],
+        "classification": "Windows projection of retained Alpha corpus floor/history implementation",
+        "rationale": "These cohesive floor helpers are additionally unreachable in the Windows production graph after #154; the Linux production dead-code projection does not report these platform-specific implementations separately from the retained Alpha compatibility closure.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove with the common retained floor/history reader only after the separate ADR-0088 data-retention and consumer-absence conditions are satisfied."
+      },
       {
         "symbols": [
           "tests/epochfixture/assignment.Digest",

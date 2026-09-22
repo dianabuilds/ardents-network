@@ -2,12 +2,10 @@ package inspection
 
 import (
 	"context"
-	"crypto/ed25519"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/alphacontrol"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/naming/alpha"
 )
 
 // Config identifies the independently pinned alpha bundle and the three
@@ -50,32 +48,9 @@ type ComponentDetails struct {
 	NotBefore, NotAfter time.Time
 }
 
-// CorpusConfig combines a verified ACA1 bundle inspection with explicitly
-// supplied ACA2/corpus bytes. Neither artifact contains a source location.
-type CorpusConfig struct {
-	Control Config
-	Catalog []byte
-	Corpus  []byte
-}
-
-// CorpusReport is a non-authorizing projection for a verified ACA2 Alpha Name
-// Corpus. An Endpoint-owned floor must separately decide whether to retain it.
-type CorpusReport struct {
-	Control         Report
-	Corpus          *alpha.Corpus
-	CorpusAuthority ed25519.PublicKey
-}
-
 // Inspect validates one enrollment-pinned bundle, invokes every component's
 // own verifier at the fixed time, and records only their dedicated inspection
 // floors. It never executes the candidate artifact.
 func Inspect(ctx context.Context, config Config) (Report, error) {
 	return inspect(ctx, config)
-}
-
-// InspectCorpus verifies the enrolled ACA1 bundle and every fixed control
-// component before checking the supplied ACA2 corpus under its independently
-// enrollment-pinned authority. It never opens an Endpoint or a corpus floor.
-func InspectCorpus(ctx context.Context, config CorpusConfig) (CorpusReport, error) {
-	return inspectCorpus(ctx, config)
 }
