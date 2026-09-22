@@ -65,6 +65,17 @@ the independently delivered manifest pin argument.
 
 ## `ardents-node`
 
+The accepted
+[old-start retirement contract](../technical/network-route-node.md#old-start-retirement)
+selects refusal of the old Node reservations, Source
+`native_rendezvous_profile`, Transit issuer initialize/serve, and Contributor
+`apply`/`restart` before their first root, key, listener, supervisor, or Network
+effect. It preserves the separately named closed duties, closed Source profile,
+and closed issuer. Existing owned Contributor installations retain only the
+[no-start retirement actions](rendezvous-contributor.md#selected-retirement-transition).
+These gates are selected but not yet integrated; descriptions of accepting old
+routes below document the current adapter gap, not supported forward authority.
+
 `ardents-node issuer initialize --config PATH` performs the owner-only bootstrap
 of one durable purpose-scoped Transit Grant issuer root. It emits only the
 stable public profile receipt; the retained root contains no Network State root
