@@ -143,6 +143,13 @@ owner either removes it or reviews it with a concrete retirement condition.
 An absent listed symbol also fails the gate, so the registry cannot silently
 accumulate stale exemptions. `make check` includes this audit.
 
+After removal of the old Initiator engine, the exact Entry-admission,
+relay-grammar, credential-forwarding, and reachability-forwarding symbols that
+lost their production caller are recorded as one temporary reviewed group.
+Their dedicated Entry/relay/OHTTP closure audit owns separate deletion; the
+one-engine change does not turn that wider Route/Entry/crypto closure into an
+implicit deletion.
+
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
@@ -409,5 +416,6 @@ must return the typed old-duty retirement outcome while deliberately absent
 key, certificate, Source-root, State-root, and role-root paths remain absent.
 The complete command package retains independent positive and refusal coverage
 for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
-`closed_introduction`, and `closed_data_join`. Retained direct old-engine tests
-are compatibility/deletion evidence only and do not make the command reachable.
+`closed_introduction`, and `closed_data_join`. The old Initiator engine and its
+direct tests are absent; direct tests for other retained old engines remain only
+until their separate deletion slices and do not make the command reachable.

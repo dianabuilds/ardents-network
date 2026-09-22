@@ -48,7 +48,7 @@ func TestFunctionalAlphaResourceProfileAcceptsOnlyRendezvousDuty(t *testing.T) {
 
 	base.ResourceProfile = "ardents-rendezvous-dedicated-host-v1"
 	base.Rendezvous = node.RendezvousProfile{}
-	base.Initiator = node.InitiatorProfile{Certificate: tls.Certificate{PrivateKey: identity}}
+	base.Introduction = node.IntroductionProfile{Certificate: tls.Certificate{PrivateKey: identity}}
 	if _, runErr := node.Run(context.Background(), base); runErr == nil || !strings.Contains(runErr.Error(), "Rendezvous duty") {
 		t.Fatalf("non-Rendezvous profile run error = %v", runErr)
 	}

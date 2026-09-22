@@ -158,7 +158,6 @@ func TestMaintainedTruthDoesNotClaimUnownedCompositionOrUnprovenCleanup(t *testi
 		{"internal/route/route.go", []string{"returns one atomic current fact", "Once Close returns, no Route selection or resource"}},
 		{"internal/route/native_attachment.go", []string{"Close releases the authenticated Entry attempt"}},
 		{"internal/node/lifecycle.go", []string{"returns only after terminal cleanup"}},
-		{"internal/node/initiator_relay.go", []string{"joins all duty-owned work before"}},
 		{"internal/node/introduction_listener.go", []string{"joins all TLS/control work"}},
 	}
 	for _, check := range checks {

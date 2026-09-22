@@ -90,10 +90,10 @@ func TestIssuerServeRejectsAnyOtherLocalDutyReservation(t *testing.T) {
 	if err := validateIssuerRuntime(nodeRuntime{node: node.Config{TransitIssuer: issuer}}); err != nil {
 		t.Fatalf("issuer-only runtime rejected: %v", err)
 	}
-	withInitiator := nodeRuntime{node: node.Config{TransitIssuer: issuer}}
-	withInitiator.node.Initiator.Certificate.PrivateKey = ed25519.PrivateKey{1}
-	if err := validateIssuerRuntime(withInitiator); err == nil {
-		t.Fatal("issuer serve accepted an Initiator reservation")
+	withIntroduction := nodeRuntime{node: node.Config{TransitIssuer: issuer}}
+	withIntroduction.node.Introduction.Certificate.PrivateKey = ed25519.PrivateKey{1}
+	if err := validateIssuerRuntime(withIntroduction); err == nil {
+		t.Fatal("issuer serve accepted an Introduction reservation")
 	}
 }
 

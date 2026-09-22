@@ -125,7 +125,6 @@ type Config struct {
 	Current              func() (DutyView, error)
 	Probe                ProbeConfig
 	Rendezvous           RendezvousProfile
-	Initiator            InitiatorProfile
 	Introduction         IntroductionProfile
 	Responder            ResponderProfile
 	TransitIssuer        TransitIssuerProfile
@@ -173,17 +172,6 @@ type RendezvousProfile struct {
 	PairByteLimit                           uint64
 	AdmissionTimeout                        time.Duration
 	DrainTimeout                            time.Duration
-}
-
-// InitiatorProfile contains the local cryptographic material, bounded
-// reservations, and narrow Entry admission port for one Initiator duty. State
-// supplies its endpoint, Rendezvous identity, and expiry.
-type InitiatorProfile struct {
-	Certificate                tls.Certificate
-	HandshakeLimit, RelayLimit uint16
-	RelayByteLimit             uint64
-	AdmissionTimeout           time.Duration
-	DrainTimeout               time.Duration
 }
 
 // IntroductionProfile contains only the local certificate, finite resource

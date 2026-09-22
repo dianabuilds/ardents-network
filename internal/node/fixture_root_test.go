@@ -38,25 +38,3 @@ func transitGrantRoot(t *testing.T) string {
 	}
 	return root
 }
-
-// reachabilityStoreRoot creates the owner-only directory for a reachability
-// store root, independent of the test process umask.
-func reachabilityStoreRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "reachability-store")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
-// entryAdmitterRoot creates the owner-only directory for an entry admitter root,
-// independent of the test process umask.
-func entryAdmitterRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "entry-admitter")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}

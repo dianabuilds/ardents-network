@@ -14,8 +14,6 @@ func retainLocalDuty(config runtimeConfig, snapshot dutyFacts, state string) err
 	}
 	class := "node-duty"
 	switch snapshot.Assignment {
-	case "initiator":
-		class = "ordinary-initiator"
 	case "rendezvous":
 		class = "route-rendezvous"
 	case "introduction":
