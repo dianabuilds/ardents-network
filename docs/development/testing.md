@@ -161,6 +161,15 @@ reviewed grammar group. Current closed TCP/TLS and QUIC tests prove exact peer
 rejection, cancellation before handshake, caller-owned lifetime after a
 completed handshake, and unchanged Carrier profile bounds.
 
+Removing the old cross-platform Rendezvous listener exposes the shared
+server-side Carrier and admission closure as production-dead while the current
+closed Node branches and behavior tests still own it; no selected C0 command
+starts their process. Its exact symbols therefore remain reviewed in the common
+deadcode allowlist. Additional shared framing leaves are unreachable only in
+the Windows projection and remain in its platform allowance because Linux
+production still has retained Route consumers. Neither classification permits
+removing or reconnecting shared mechanics in the one-engine retirement slice.
+
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
@@ -430,10 +439,11 @@ key, certificate, Source-root, State-root, and role-root paths remain absent.
 The complete command package retains independent positive and refusal coverage
 for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
 `closed_introduction`, and `closed_data_join`. The old Initiator, Responder,
-Introduction, and Transit-issuance engines and their direct server tests are
-absent; direct tests remain only for the old Rendezvous engine until its
-separate deletion slice and do not make the command reachable. The Transit
-retirement oracle keeps the typed command refusal, Endpoint acquisition client,
+Introduction, Transit-issuance, and Rendezvous engines and their direct server
+tests are absent. The Rendezvous retirement architecture oracle also forbids
+its old profile, dispatch, listener, and composition files while retaining the
+shared literal-endpoint validator and all five current closed dispatch branches.
+The Transit retirement oracle keeps the typed command refusal, Endpoint acquisition client,
 signed-profile decoder, and closed issuer/ledger while forbidding the old Node
 listener, signer, State-duty projection, Handler, and mutable root ledger. The
 Introduction retirement oracle also keeps the current

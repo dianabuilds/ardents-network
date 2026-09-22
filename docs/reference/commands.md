@@ -122,11 +122,10 @@ after bounded plan recognition and before any plan-owned key, certificate,
 Source root, State root, listener, resource, or duty effect. A mixed old and
 closed plan receives the same refusal; omission never selects an old default or
 a closed fallback. The retained old stanza fields identify refused input. The
-Initiator, Responder, and Introduction engines and their command composition
-are absent; their plan stanzas remain only so the adapter can classify and
-refuse bounded input. The old Transit-issuance engine is also absent while its
-stanza remains at that refusal boundary. Only the old Rendezvous engine retains
-a separate deletion slice; neither is a runnable command profile.
+Rendezvous, Initiator, Responder, Introduction, and Transit-issuance engines and
+their command composition are absent. Their plan stanzas remain only so the
+adapter can classify and refuse bounded input; none is a runnable command
+profile.
 
 A current closed Node process owns one admitted duty, pressure reaction, drain,
 withdrawal, and joined cleanup; lifecycle JSON uses

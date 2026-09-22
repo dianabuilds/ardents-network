@@ -6,6 +6,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
+const nativeRouteUnavailableReason = "native Route assignment is not implemented"
+
 func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 	if snapshot.Profile == route.ClosedRouteProfile {
 		if _, available := closedRouteReceiver(config, snapshot, route.ClosedPurposeIssuer, config.now()); available {
@@ -25,31 +27,8 @@ func startDuty(config runtimeConfig, snapshot dutyFacts) (*probeServer, error) {
 		}
 		return nil, errors.New("closed Route assignment is not locally implemented")
 	}
-	if snapshot.Profile != route.Profile {
-		return config.probe.startProbe(newProbeDuty(snapshot))
+	if snapshot.Profile == route.Profile {
+		return nil, errors.New(nativeRouteUnavailableReason)
 	}
-	switch snapshot.Assignment {
-	case "rendezvous":
-		plan, err := rendezvousDuty(config.Rendezvous, snapshot)
-		if err != nil {
-			return nil, err
-		}
-		running, err := startRendezvous(plan)
-		if err != nil {
-			return nil, err
-		}
-		return &probeServer{Done: running.Done(), Protect: running.Protect, Usage: func() (uint64, uint64, uint64) {
-			return rendezvousPressureUsage(running.Usage())
-		}, Stop: running.Stop, Drain: running.Drain}, nil
-	default:
-		return nil, errors.New("native Route assignment is not implemented")
-	}
-}
-
-func rendezvousPressureUsage(usage rendezvousUsage) (timers, queueItems, queueBytes uint64) {
-	// Completed pairs, connections, and relayed bytes are cumulative evidence,
-	// not live reservations. The Rendezvous implementation exposes its live
-	// bounded work as handshakes and waiting legs; active pairs are protected by
-	// the profile's own pair and byte limits.
-	return uint64(usage.Handshakes + usage.WaitingLegs), 0, 0
+	return config.probe.startProbe(newProbeDuty(snapshot))
 }

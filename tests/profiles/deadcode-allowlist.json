@@ -462,13 +462,51 @@
         "internal/node.dutyFacts.DutyRecordPresent",
         "internal/node.dutyFacts.DutyRecordValidFrom",
         "internal/node.dutyFacts.DutyRecordValidUntil",
-        "internal/node.dutyFacts.DutyValidUntil",
-        "internal/node.rendezvous.Close"
+        "internal/node.dutyFacts.DutyValidUntil"
       ],
       "classification": "unwired native-node tracer",
       "rationale": "The native Node duty projection and lifecycle helpers have deterministic behavior evidence but no selected C0 command starts a Node process.",
       "owner": "Product Owner and Codex",
       "retirement": "Connect it through an accepted closed-alpha Node command or remove it with the superseding Node decision."
+    },
+    {
+      "symbols": [
+        "internal/node.boundedAdmissionDeadline",
+        "internal/node.validAdmissionTimeout",
+        "internal/route.CarrierFailureClassOf",
+        "internal/route.DecodeLegBinding",
+        "internal/route.EncodeLegBinding",
+        "internal/route.ListenNodeCarrier",
+        "internal/route.ReadNodeLegBinding",
+        "internal/route.WriteNodeLegBinding",
+        "internal/route.authenticatedCarrier",
+        "internal/route.authenticatedNodeCarrier.Close",
+        "internal/route.authenticatedNodeCarrier.Read",
+        "internal/route.authenticatedNodeCarrier.SetDeadline",
+        "internal/route.authenticatedNodeCarrier.Write",
+        "internal/route.authenticatedNodeCarrier.openLane",
+        "internal/route.carrierFailure",
+        "internal/route.carrierFailureError.Error",
+        "internal/route.classifyCarrierFailure",
+        "internal/route.decodeLegBindingOrdered",
+        "internal/route.nativeNodeServerTLS",
+        "internal/route.nodeQUICConfig",
+        "internal/route.nodeQUICServerConfig",
+        "internal/route.quicNodeCarrierListener.Accept",
+        "internal/route.quicNodeCarrierListener.Close",
+        "internal/route.quicPendingCarrier.Authenticate",
+        "internal/route.quicPendingCarrier.Close",
+        "internal/route.tcpNodeCarrierListener.Accept",
+        "internal/route.tcpNodeCarrierListener.Close",
+        "internal/route.tcpPendingCarrier.Authenticate",
+        "internal/route.tcpPendingCarrier.Close",
+        "internal/route.validLegBinding",
+        "internal/route.validRouteRole"
+      ],
+      "classification": "retained shared closed-Node Carrier closure",
+      "rationale": "Issue #120 removes the old Rendezvous listener that supplied the last selected production reachability for this shared server-side Carrier and admission closure. The current closed Node branches and behavior tests still own it, but no selected C0 command starts their Node process; deleting or reconnecting the shared closure is outside the one-engine retirement slice.",
+      "owner": "Product Owner and Codex",
+      "retirement": "Connect the current closed Node branches through an accepted C0 command contract, or remove this exact closure only in a separate bounded consumer audit that also disposes of their behavior contract."
     },
     {
       "symbols": [
@@ -705,6 +743,25 @@
   "production": {
     "linux-amd64": [],
     "windows-amd64": [
+      {
+        "symbols": [
+          "internal/route.appendProfile",
+          "internal/route.appendUint16",
+          "internal/route.appendUint64",
+          "internal/route.routeBody",
+          "internal/route.routeEnvelope",
+          "internal/route.validRouteProfile",
+          "internal/route.wireIdentifier",
+          "internal/route.wireReader.take",
+          "internal/route.wireReader.uint16",
+          "internal/route.wireReader.uint64",
+          "internal/route.wireReader.uint8"
+        ],
+        "classification": "Windows projection of retained Route framing closure",
+        "rationale": "Removing the old cross-platform Rendezvous listener additionally makes these exact shared framing leaves unreachable in Windows production. Linux production still reaches them through retained Route consumers, and issue #120 does not authorize deleting shared Route grammar.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove this Windows allowance if a maintained Windows Route consumer is selected, or when a separate bounded consumer audit retires or assigns narrower platform ownership to this shared framing closure."
+      },
       {
         "symbols": [
           "internal/route.transitGrantBodyLength",

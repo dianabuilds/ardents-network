@@ -23,13 +23,6 @@ func loadNodeIdentity(plan nodePlan, networkID [32]byte) (node.Config, error) {
 	if err := decodeOperatorFixedHex(plan.NodeID, config.NodeID[:]); err != nil {
 		return config, err
 	}
-	if plan.Rendezvous != nil {
-		config.Rendezvous = node.RendezvousProfile{Certificate: certificate, LoopbackListenOverride: plan.Rendezvous.LoopbackListenOverride,
-			HandshakeLimit: plan.Rendezvous.HandshakeLimit,
-			WaitingLimit:   plan.Rendezvous.WaitingLimit, PairLimit: plan.Rendezvous.PairLimit,
-			PairByteLimit: plan.Rendezvous.PairByteLimit, AdmissionTimeout: time.Duration(plan.Rendezvous.AdmissionTimeoutMS) * time.Millisecond,
-			DrainTimeout: time.Duration(plan.Rendezvous.DrainTimeoutMS) * time.Millisecond}
-	}
 	if plan.ClosedIssuer != nil {
 		config.ClosedIssuer = node.ClosedIssuerProfile{Root: plan.ClosedIssuer.Root, AdmissionRoot: plan.ClosedIssuer.AdmissionRoot, Certificate: certificate,
 			ConnectionLimit: plan.ClosedIssuer.ConnectionLimit, DrainTimeout: time.Duration(plan.ClosedIssuer.DrainTimeoutMS) * time.Millisecond}

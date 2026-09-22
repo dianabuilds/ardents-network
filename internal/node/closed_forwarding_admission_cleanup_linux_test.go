@@ -49,7 +49,7 @@ func (reservation cleanupFailureReservation) Release(context.Context) error {
 
 func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 241, "forwarding-cleanup-server")
+	certificate, serverKey := nodeCertificate(t, 241, "forwarding-cleanup-server")
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
@@ -100,7 +100,7 @@ func TestClosedForwardingServeDirectRetainsDuplicateSpendCleanupFailure(t *testi
 
 func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 242, "forwarding-expiry-cleanup-server")
+	certificate, serverKey := nodeCertificate(t, 242, "forwarding-expiry-cleanup-server")
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
@@ -162,7 +162,7 @@ func TestClosedForwardingServeDirectRetainsExpiredLeaseCleanupFailure(t *testing
 
 func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 243, "forwarding-storage-cleanup-server")
+	certificate, serverKey := nodeCertificate(t, 243, "forwarding-storage-cleanup-server")
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
@@ -223,7 +223,7 @@ func TestClosedForwardingServeDirectRetainsSpendStorageCleanupFailure(t *testing
 
 func TestClosedForwardingServeDirectRetainsCapacityCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 244, "forwarding-capacity-cleanup-server")
+	certificate, serverKey := nodeCertificate(t, 244, "forwarding-capacity-cleanup-server")
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }

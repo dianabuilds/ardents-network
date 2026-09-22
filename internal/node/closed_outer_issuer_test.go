@@ -22,8 +22,8 @@ import (
 func TestClosedIssuerServesBootstrapInsideStateAuthorizedNodeCarrier(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	until := now.Truncate(time.Hour).Add(time.Hour)
-	serverCertificate, serverKey := rendezvousCertificate(t, 241, "closed-outer-issuer")
-	clientCertificate, clientKey := rendezvousCertificate(t, 242, "closed-outer-peer")
+	serverCertificate, serverKey := nodeCertificate(t, 241, "closed-outer-issuer")
+	clientCertificate, clientKey := nodeCertificate(t, 242, "closed-outer-peer")
 	network, issuerID, peerID := [32]byte{61}, [32]byte{62}, [32]byte{63}
 	generation, digest := sha256.Sum256([]byte("outer issuer generation")), sha256.Sum256([]byte("outer issuer digest"))
 	root := filepath.Join(t.TempDir(), "issuer")

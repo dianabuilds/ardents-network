@@ -19,8 +19,8 @@ func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testi
 		t.Run(string(transport), func(t *testing.T) {
 			fixture := newClosedBootstrapFixture(t)
 			token := closedRestrictionToken(t, fixture)
-			certificate, key := rendezvousCertificate(t, 211, "restricted-interior")
-			peerCertificate, peerKey := rendezvousCertificate(t, 212, "restricted-entry")
+			certificate, key := nodeCertificate(t, 211, "restricted-interior")
+			peerCertificate, peerKey := nodeCertificate(t, 212, "restricted-entry")
 			fixture.snapshot.ProbeEndpoint, fixture.snapshot.CarrierProfile = reserveClosedBootstrapAddress(t, transport), string(transport)
 			fixture.snapshot.NodePublicKey = key
 			fixture.snapshot.Candidates[0].PublicKey = peerKey

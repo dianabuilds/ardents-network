@@ -108,12 +108,12 @@ existing authority checks.
 Existing old roots, keys, floors, plans, and installation records remain
 unchanged evidence. Historical profile recognition may authenticate an already
 pinned owned installation for retirement only; it cannot authorize execution
-of an old duty or rewrite persisted identity. The old Initiator, Responder, and
-Introduction engines and their command composition have been deleted after the
-command refusal became current. Their old plan stanzas remain only at that
-typed refusal boundary. The Initiator Entry-admission adapter is also absent.
-The remaining old Rendezvous engine is owned by its separate bounded deletion
-slice. The old Transit-issuance signer/listener/root-mutation engine is absent;
+of an old duty or rewrite persisted identity. The old Rendezvous, Initiator,
+Responder, Introduction, and Transit-issuance engines and their command
+composition have been deleted after the command refusal became current. Their
+old plan stanzas remain only at that typed refusal boundary. The Initiator
+Entry-admission adapter is also absent. The old Transit-issuance
+signer/listener/root-mutation engine is absent;
 the typed command refusal, signed-profile decoder, and Endpoint-owned
 acquisition client remain without a Node receiving caller.
 The adjacent production-dead Initiator Entry admission, receiving relay grammar,
@@ -128,8 +128,9 @@ Shared Carrier profiles, the reciprocal decoder, listeners, TLS/QUIC
 mechanics, and closed Node Carrier behavior remain current.
 No retirement path inherits a duty,
 regenerates a key, resets a root or floor, converts state, or adopts foreign
-files. Exclusive old engines and compatibility readers remain until later
-bounded changes prove their accepting callers and other consumers absent.
+files. Compatibility readers and separately owned retirement surfaces remain
+until later bounded changes prove their accepting callers and other consumers
+absent.
 
 The Node-plan gate is integrated: all five old reservations return the stable
 `old Node duty reservation is retired` outcome immediately after bounded plan
@@ -156,7 +157,7 @@ still-accepting adapter is not a supported forward contract.
 | internal/resource | Resolve the current process's own cgroup-v2 directory, measure selected Linux process limits, and make the finite NORMAL, PROTECT, or DRAIN pressure decision. | Admission, listener shutdown, or a claim for unsupported platforms. |
 | internal/entry | Import and validate a signed State-referenced Entry Invite, maintain its bounded durable replay/replacement set, preserve decoding of retired admission history, and open an adjacent contact lifecycle. Local import verifies the signed recipient against its retained Entry-root recipient identity before consuming a slot or replacing a predecessor; no Initiator receiving admission engine remains. | Complete Route selection, receiving Entry admission, carrier choice, or User identity. |
 | internal/route | Implement the closed v3 Node Carrier/wire used by `internal/node` through `OpenClosedNodeCarrier` and retain only shared Attachment evidence, admission, listener, credential-relay, and wire mechanisms with current consumers. The production-dead Interactive User Route v2 Open/Attach owner is absent. The [package map](../development/package-map.md) records the exact consumer boundary. | Reintroducing the removed User-route composition as a maintained product path or treating its removal as successor-network readiness; candidate ranking, carrier policy/fallback, H3 compatibility, peer runtime, Node profile, or durable State/Duty/credential-journal writing. |
-| internal/node | Run one bounded Contributor duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. | State-root authority, assignment creation, or a separate probe runtime. |
+| internal/node | Run one bounded current closed Node duty from authenticated admission through listener readiness, pressure reaction, drain, withdrawal, and a bounded terminal cleanup outcome. All five old native duty engines are absent; their plan stanzas remain only at the command refusal boundary. | State-root authority, assignment creation, an old native duty listener, or a separate probe runtime. |
 | internal/contributor | Own the one pinned-bundle, fixed-path systemd lifecycle for the dedicated Rendezvous installation. | Duty selection, Network State authority, public admission, co-residence, arbitrary service control, or capacity claims. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,
@@ -231,12 +232,12 @@ migration operations, and cleanup mechanics remain private to each Adapter.
 
 Network State owns the supported choice. Signed Node Record v1 canonically
 means TCP/TLS; v2 contains one signed explicit Carrier Profile. Unknown
-profiles are rejected before assignment. The retained old Rendezvous listens
-with its own record's profile. The deleted Initiator and Responder engines
-previously used the selected-candidate rule. Their old `OpenNodeLeg` dialer is
-absent. Current `OpenClosedNodeCarrier` and the retained `ListenNodeCarrier`
-each accept exactly one profile and never race or fall back. A State successor
-drains and withdraws the old duty; it does not rewrite an active attachment.
+profiles are rejected before assignment. No old native duty listener remains.
+The deleted Initiator and Responder engines previously used the
+selected-candidate rule, and their old `OpenNodeLeg` dialer is absent. Current
+`OpenClosedNodeCarrier` and the retained `ListenNodeCarrier` each accept exactly
+one profile and never race or fall back. A State successor drains and withdraws
+the current duty; it does not rewrite an active attachment.
 
 One qualification-only operational seam admits a literal loopback or private
 IPv4 listen address for a State-selected closed Route duty. A host-owned,
@@ -366,10 +367,10 @@ foreign evidence fails without adoption or cleanup.
 - Current process tests cover authenticated Source-to-State and closed Node
   lifecycles. The superseded positive old-role command and multi-host
   qualification procedures are absent; their historical receipts do not make
-  an old duty runnable. Direct behavior tests remain only for the Rendezvous
-  engine, which still has its own deletion slice. Transit credential tests now
-  cover only its retained signed-profile/client grammar and the separately
-  owned Endpoint acquisition path.
+  an old duty runnable. All five old native duty engines and their direct
+  behavior tests are absent. Transit credential tests now cover only its
+  retained signed-profile/client grammar and the separately owned Endpoint
+  acquisition path.
 - A [historical mixed-host run](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/technical/network-route-node.md#verification-and-decisions)
   retains bounded functional integration evidence for its exact candidate.
   It supplies no current Route, privacy, host-profile, or public-operation

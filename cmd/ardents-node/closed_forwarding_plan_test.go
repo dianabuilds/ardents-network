@@ -102,7 +102,7 @@ func TestClosedForwardingPlanCannotSelectPeerOrDuty(t *testing.T) {
 }
 func forwardingNodePlan(t *testing.T) nodePlan {
 	t.Helper()
-	certificate, key, nodeID := writeRendezvousListenCredential(t)
+	certificate, key, nodeID := writeNodeCredential(t)
 	rootA := writeNodeProfileInput(t, "a.pem", "source A root")
 	rootB := writeNodeProfileInput(t, "b.pem", "source B root")
 	return nodePlan{

@@ -20,7 +20,7 @@ import (
 
 func TestClosedForwardingStartRefusesAmbiguousSpendJournal(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 253, "forwarding-recovery-server")
+	certificate, serverKey := nodeCertificate(t, 253, "forwarding-recovery-server")
 	fixture.snapshot.ProbeEndpoint = reserveAddress(t)
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
@@ -80,8 +80,8 @@ func closedForwardingCommittedSpendRecord(window time.Time) []byte {
 
 func TestClosedForwardingServerRefusesAfterJournalMutationFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	serverCertificate, serverKey := rendezvousCertificate(t, 251, "forwarding-spend-server")
-	peerCertificate, peerKey := rendezvousCertificate(t, 252, "forwarding-spend-peer")
+	serverCertificate, serverKey := nodeCertificate(t, 251, "forwarding-spend-server")
+	peerCertificate, peerKey := nodeCertificate(t, 252, "forwarding-spend-peer")
 	fixture.snapshot.ProbeEndpoint = reserveAddress(t)
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey

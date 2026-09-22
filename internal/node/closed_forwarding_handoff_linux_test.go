@@ -27,7 +27,7 @@ func TestClosedForwardingServeDirectOuterHealthyReleasePreservesPrimary(t *testi
 func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) {
 	t.Helper()
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 247, "forwarding-outer-cleanup-server")
+	certificate, serverKey := nodeCertificate(t, 247, "forwarding-outer-cleanup-server")
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
@@ -139,7 +139,7 @@ func testClosedForwardingServeDirectOuterAdmission(t *testing.T, cleanup error) 
 
 func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 245, "forwarding-constructor-cleanup-server")
+	certificate, serverKey := nodeCertificate(t, 245, "forwarding-constructor-cleanup-server")
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }
@@ -191,7 +191,7 @@ func TestClosedForwardingServeDirectRetainsConstructorCleanupFailure(t *testing.
 
 func TestClosedForwardingServeDirectSuccessfulHandoffLeavesCleanupToForwarding(t *testing.T) {
 	fixture := newClosedBootstrapFixture(t)
-	certificate, serverKey := rendezvousCertificate(t, 246, "forwarding-handoff-cleanup-server")
+	certificate, serverKey := nodeCertificate(t, 246, "forwarding-handoff-cleanup-server")
 	fixture.snapshot.CarrierProfile = string(route.ClosedCarrierTCP)
 	fixture.snapshot.NodePublicKey = serverKey
 	fixture.config.now = func() time.Time { return fixture.now }

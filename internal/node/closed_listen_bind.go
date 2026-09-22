@@ -25,3 +25,9 @@ func closedListenAddress(advertised, override string) (string, error) {
 	}
 	return override, nil
 }
+
+func literalNodeEndpoint(endpoint string) bool {
+	host, port, err := net.SplitHostPort(endpoint)
+	number, portErr := strconv.Atoi(port)
+	return err == nil && net.ParseIP(host) != nil && portErr == nil && number >= 1 && number <= 65535
+}

@@ -43,8 +43,8 @@ func testClosedForwardingOpenSameKeyActualCarrier(t *testing.T, profile route.Ca
 		fixture.snapshot.Candidates[index].ValidUntil = fixture.view.Profile.NotAfter
 		fixture.snapshot.Candidates[index].AssignmentNotAfter = fixture.view.Profile.NotAfter
 	}
-	clientCertificate, clientKey := rendezvousCertificate(t, 278, "forwarding-same-key-client")
-	peerCertificate, peerKey := rendezvousCertificate(t, 279, "forwarding-same-key-peer")
+	clientCertificate, clientKey := nodeCertificate(t, 278, "forwarding-same-key-client")
+	peerCertificate, peerKey := nodeCertificate(t, 279, "forwarding-same-key-peer")
 	endpoint := closedForwardingActualCarrierEndpoint(t, profile)
 	fixture.snapshot.Candidates[1].Endpoint = endpoint
 	fixture.snapshot.Candidates[1].CarrierProfile = string(profile)

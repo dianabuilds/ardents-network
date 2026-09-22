@@ -33,9 +33,9 @@ func TestClosedForwardingParentReaderServesControlWhileOpenBlocks(t *testing.T) 
 		fixture.snapshot.Candidates[index].ValidUntil = fixture.view.Profile.NotAfter
 		fixture.snapshot.Candidates[index].AssignmentNotAfter = fixture.view.Profile.NotAfter
 	}
-	serverCertificate, serverKey := rendezvousCertificate(t, 281, "parent-reader-server")
-	peerCertificate, peerKey := rendezvousCertificate(t, 282, "parent-reader-peer")
-	bCertificate, bKey := rendezvousCertificate(t, 283, "parent-reader-b")
+	serverCertificate, serverKey := nodeCertificate(t, 281, "parent-reader-server")
+	peerCertificate, peerKey := nodeCertificate(t, 282, "parent-reader-peer")
+	bCertificate, bKey := nodeCertificate(t, 283, "parent-reader-b")
 	endpoint := closedForwardingActualCarrierEndpoint(t, route.ClosedCarrierTCP)
 	bEndpoint := closedForwardingActualCarrierEndpoint(t, route.ClosedCarrierTCP)
 	fixture.snapshot.Candidates[0].Endpoint, fixture.snapshot.Candidates[0].PublicKey = bEndpoint, bKey
