@@ -1,7 +1,6 @@
 package route
 
 import (
-	"context"
 	"errors"
 	"sync"
 	"time"
@@ -9,6 +8,8 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+// quicNodeCarrier is the shared authenticated QUIC byte lane used by current
+// closed dial and listener adapters and by the retained native listener.
 type quicNodeCarrier struct {
 	stream     *quic.Stream
 	connection *quic.Conn
@@ -33,33 +34,6 @@ func (carrier *quicNodeCarrier) Close() error {
 		carrier.closeErr = errors.Join(carrier.stream.Close(), carrier.connection.CloseWithError(0, "carrier-close"))
 	})
 	return carrier.closeErr
-}
-
-func (carrier *quicNodeCarrier) abort() error {
-	carrier.closeOnce.Do(func() {
-		carrier.stream.CancelRead(1)
-		carrier.stream.CancelWrite(1)
-		carrier.closeErr = carrier.connection.CloseWithError(1, "carrier-abort")
-	})
-	return carrier.closeErr
-}
-
-func openQUICNodeCarrier(ctx context.Context, input NodeLegRequest) (nodeCarrierResult, error) {
-	connection, err := quic.DialAddr(ctx, input.Endpoint, nativeNodeTLS(input.Certificate, input.ExpectedPeerKey), nodeQUICConfig())
-	if err != nil {
-		return nodeCarrierResult{}, err
-	}
-	stream, err := connection.OpenStreamSync(ctx)
-	if err != nil {
-		_ = connection.CloseWithError(1, "carrier-open-failed")
-		return nodeCarrierResult{}, err
-	}
-	lane := &quicNodeCarrier{stream: stream, connection: connection}
-	if err := lane.SetDeadline(input.Deadline); err != nil {
-		_ = lane.Close()
-		return nodeCarrierResult{}, err
-	}
-	return nodeCarrierResult{lane: lane, state: connection.ConnectionState().TLS, abort: lane.abort}, nil
 }
 
 func nodeQUICConfig() *quic.Config {

@@ -14,7 +14,14 @@ func TestNativeNodeLegBindingExchangesOnlyReciprocalV1Records(t *testing.T) {
 	left, right := net.Pipe()
 	result := make(chan error, 1)
 	go func() { result <- AcceptNodeLegBinding(right, responder) }()
-	if err := ConfirmNodeLegBinding(left, initiator); err != nil {
+	if err := WriteNodeLegBinding(left, initiator); err != nil {
+		t.Fatal(err)
+	}
+	peer, err := ReadNodeLegBinding(left)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := initiator.VerifyReciprocal(peer); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-result; err != nil {

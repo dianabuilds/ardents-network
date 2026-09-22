@@ -20,11 +20,24 @@ func TestClosedNodeCarrierUsesV3MutualTLSOverBothCarriers(t *testing.T) {
 			endpoint, closeListener, accept := closedNodeCarrierTestServer(t, profile, serverCertificate, clientID)
 			defer closeListener()
 			deadline := time.Now().Add(10 * time.Second)
-			carrier, err := OpenClosedNodeCarrier(t.Context(), ClosedNodeCarrierRequest{CarrierProfile: profile, Endpoint: endpoint,
+			attempt, cancelAttempt := context.WithCancel(t.Context())
+			defer cancelAttempt()
+			carrier, err := OpenClosedNodeCarrier(attempt, ClosedNodeCarrierRequest{CarrierProfile: profile, Endpoint: endpoint,
 				Certificate: clientCertificate, ExpectedPeerKey: serverID, Deadline: deadline})
 			if err != nil {
 				t.Fatal(err)
 			}
+			carrierOpen := true
+			defer func() {
+				if carrierOpen {
+					if err := carrier.Close(); err != nil {
+						t.Errorf("close caller-owned Carrier after test failure: %v", err)
+					}
+				}
+			}()
+			// Dial cancellation after authentication must not steal the returned
+			// Carrier from its caller-owned lifetime.
+			cancelAttempt()
 			if _, err := carrier.Write([]byte{0x42}); err != nil {
 				t.Fatal(err)
 			}
@@ -32,11 +45,45 @@ func TestClosedNodeCarrierUsesV3MutualTLSOverBothCarriers(t *testing.T) {
 			if _, err := io.ReadFull(carrier, response); err != nil || response[0] != 0x42 {
 				t.Fatalf("v3 carrier response = %x / %v", response, err)
 			}
-			if err := carrier.Close(); err != nil {
-				t.Fatal(err)
+			closeErr := carrier.Close()
+			carrierOpen = false
+			if closeErr != nil {
+				t.Fatal(closeErr)
 			}
 			if err := <-accept; err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestClosedNodeCarrierRejectsWrongPeerOverBothCarriers(t *testing.T) {
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+		t.Run(string(profile), func(t *testing.T) {
+			serverCertificate := entryBindingCertificate(t, 124)
+			clientCertificate := entryBindingCertificate(t, 125)
+			clientID := identifierFromKey(clientCertificate.Leaf.PublicKey.(ed25519.PublicKey))
+			endpoint, closeListener, _ := closedNodeCarrierTestServer(t, profile, serverCertificate, clientID)
+			defer closeListener()
+			carrier, err := OpenClosedNodeCarrier(t.Context(), ClosedNodeCarrierRequest{CarrierProfile: profile, Endpoint: endpoint,
+				Certificate: clientCertificate, ExpectedPeerKey: identifier(126), Deadline: time.Now().Add(10 * time.Second)})
+			if err == nil || carrier != nil {
+				t.Fatal("wrong exact peer returned a closed Node Carrier")
+			}
+		})
+	}
+}
+
+func TestClosedNodeCarrierHonorsCancellationBeforeHandshake(t *testing.T) {
+	certificate := entryBindingCertificate(t, 127)
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+		t.Run(string(profile), func(t *testing.T) {
+			attempt, cancel := context.WithCancel(t.Context())
+			cancel()
+			carrier, err := OpenClosedNodeCarrier(attempt, ClosedNodeCarrierRequest{CarrierProfile: profile, Endpoint: "127.0.0.1:9",
+				Certificate: certificate, ExpectedPeerKey: identifier(128), Deadline: time.Now().Add(time.Second)})
+			if carrier != nil || !errors.Is(err, context.Canceled) {
+				t.Fatalf("pre-handshake cancellation = %v / %v, want nil / context canceled", carrier, err)
 			}
 		})
 	}

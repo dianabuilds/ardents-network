@@ -60,6 +60,15 @@ func TestQUICListenerReturnsPendingCarrierBeforeAuthenticationCompletes(t *testi
 	_ = pending.Close()
 }
 
+func TestNodeQUICCarrierProfileKeepsOptionalSemanticsDisabled(t *testing.T) {
+	profile := nodeQUICConfig()
+	if profile.Allow0RTT || profile.EnableDatagrams || profile.InitialPacketSize != 1200 ||
+		profile.MaxIncomingStreams != -1 || profile.MaxIncomingUniStreams != -1 ||
+		profile.KeepAlivePeriod <= 0 || profile.KeepAlivePeriod >= profile.MaxIdleTimeout {
+		t.Fatal("QUIC Carrier Profile optional or idle semantics are invalid")
+	}
+}
+
 func availableUDPNodeCarrierEndpoint(t *testing.T) string {
 	t.Helper()
 	connection, err := net.ListenPacket("udp", "127.0.0.1:0")

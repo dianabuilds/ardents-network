@@ -70,3 +70,30 @@ func TestRetiredResponderEngineIsAbsent(t *testing.T) {
 		t.Error("command composition still constructs the retired Responder engine profile")
 	}
 }
+
+func TestRetiredOpenNodeLegIsAbsent(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	for _, relative := range []string{
+		"internal/route/node_leg.go",
+		"internal/route/node_leg_tcp.go",
+		"internal/route/node_leg_quic.go",
+		"internal/route/node_leg_test.go",
+		"internal/route/node_leg_quic_test.go",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
+			t.Errorf("retired Node-leg dial file still exists: %s", relative)
+		}
+	}
+
+	binding := string(readProjectFile(t, root, "internal/route/node_binding.go"))
+	if strings.Contains(binding, "ConfirmNodeLegBinding") {
+		t.Error("Route still exports the retired Node-leg confirmation entrypoint")
+	}
+	carrier := string(readProjectFile(t, root, "internal/route/node_carrier_quic.go"))
+	for _, retired := range []string{"openQUICNodeCarrier", "func (carrier *quicNodeCarrier) abort"} {
+		if strings.Contains(carrier, retired) {
+			t.Errorf("shared QUIC Carrier file still contains retired dial helper %q", retired)
+		}
+	}
+}
