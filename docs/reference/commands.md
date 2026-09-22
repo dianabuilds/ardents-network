@@ -197,6 +197,12 @@ alpha name into canonical Namespace state.
 | `sign-closed-profile` | `--plan PATH --authority-key PATH --output PATH` | Reread the exact public plan and sign only `ARDCPR03` with the owner-only PKCS#8 Ed25519 State-authority file; write a new file and report its digest without printing key or profile bytes. |
 | `inspect-closed-profile` | `--plan PATH --profile PATH --authority HEX --at RFC3339` | Read-only verification of the signed profile against the independently pinned State authority and exact Network/Epoch/time context. Durable State acceptance is separate. |
 
+`accept-alpha-corpus` above remains the current command behavior until the
+selected retirement is integrated. The
+[Endpoint Alpha destination retirement contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
+owns its future refusal and retained-data boundary. The independent
+`inspect-alpha-corpus` route remains read-only.
+
 The caller-keyed low-level `inspect` route and the always-unqualified future
 `inspect-public-control` projection are not maintained command routes. Their
 underlying verification Modules and historical evidence remain available to

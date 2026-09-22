@@ -510,6 +510,27 @@ validation or owner startup, and v2 rejects those fields. Existing retained
 bytes require a separately selected reader, recovery, or migration contract;
 this removal creates none.
 
+### Alpha destination retirement
+
+Under
+[ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md),
+the Alpha Service Link transition is an explicit final refusal, not a grace
+period. Fresh `accept-alpha-corpus` intake is refused before the command opens,
+creates, or changes either named floor. The independent
+`inspect-alpha-corpus` command remains a read-only supplied-bytes diagnostic and
+does not confer Endpoint authority. Every accepting Alpha destination adapter
+is then removed or refuses before a corpus floor read, resolver call, Network
+or Route work, dial, Target-Link fallback, or conversion.
+
+The transition neither converts an Alpha Link or old Target nor resets or
+deletes existing corpus floor files. Those bytes retain their serial, digest,
+signed withdrawal, rollback, and conflict evidence, but do not authorize
+continued Alpha resolution. Removing the read-only parser or reader requires a
+separate bounded change that proves all non-test consumers absent and records a
+Product Owner migration or data-retention decision. Until the retirement is
+integrated, the command reference identifies the still-present accepting
+surface rather than presenting this selected boundary as implemented behavior.
+
 Endpoint is a composition Module, not a second durable domain owner. It owns
 no Namespace, Network State, Release, Update, Custody, or Route-selection
 state. Route Attachments are already authenticated opaque carriers; Namespace
