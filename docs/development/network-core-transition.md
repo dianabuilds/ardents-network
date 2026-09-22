@@ -1448,16 +1448,11 @@ experiments. Current owners:
 на неё ещё опирается исследовательский результат. История Git подходит для
 снятых воспроизводимых экспериментов; отдельный каталог дублей не создаётся.
 
-**Сверка dev 22 сентября:** `experiments/r-152-layered-tls/README.md`,
-`tls_cost.go`, `experiments/r-152-privacy-envelope/README.md` и
-`envelope.py` всё ещё tracked. Подготовленное ранее удаление не интегрировано.
-Не объявлять их уже снятыми по старой записке. Одна будущая docs-only карточка:
-сверить unique evidence двух завершённых probes, перенести ещё нужные выводы,
-прикрепить точные Git provenance, исправить входящие ссылки/команды и удалить
-эти четыре файла. Done — нет действующих ссылок на отсутствующие paths,
-сохранилось воспроизводимое основание current claims, architecture gate проходит.
-Это не задача удаления всех experiments; R-149 и current qualification evidence
-не включаются по сходству имени.
+**Сверка dev:** четыре named R-152 files removed by #213 after their unique
+facts and limits were retained in the R-152 record, with source pinned at
+commit `61941f41c2b1d71700bb441115e7e98bb66c4b63`. Current links no longer
+name the removed paths. This does not remove all experiments; R-149 and current
+qualification evidence are excluded by scope.
 
 Повторная сверка добавила отдельные #240/#241/#242 для трёх старых harness,
 перечисленных в §6. Их фактическая незавершённая приёмка фиксируется честно,
