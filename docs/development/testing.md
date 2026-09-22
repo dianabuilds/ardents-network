@@ -439,3 +439,15 @@ listener, signer, State-duty projection, Handler, and mutable root ledger. The
 Introduction retirement oracle also keeps the current
 `startClosedIntroduction` dispatch present rather than treating the shared
 domain term as a retired symbol.
+
+The `ardents-node contributor` start-retirement oracle submits recognized
+`apply` and `restart` command shapes through the real command adapter. Both
+must return `old Contributor start is retired` with no output before platform
+selection, bundle or installation access, root creation, or supervisor work;
+canonical and historical authentic bundle fixtures plus a foreign deployment
+identity all receive that outcome, the host-environment/supervisor trace stays
+empty, and an existing installation marker remains byte-for-byte unchanged.
+The existing grammar test independently keeps diagnose, drain, withdraw, and
+confirmed remove recognized. The exact now-unreachable Apply closure and its
+consumer-audit deletion condition are listed in the production deadcode
+registry; its behavior tests do not make either command route accepting.

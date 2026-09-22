@@ -19,24 +19,6 @@ func TestSourceModeRejectsIncompleteInvocation(t *testing.T) {
 	}
 }
 
-func TestContributorModeAcceptsOnlyItsClosedLifecycleGrammar(t *testing.T) {
-	t.Parallel()
-	for _, arguments := range [][]string{
-		{"diagnose"}, {"restart"}, {"drain"}, {"withdraw"},
-		{"remove", "--confirm", strings.Repeat("11", 32)},
-		{"apply", "--bundle", "/bundle", "--manifest-pin", strings.Repeat("12", 32)},
-	} {
-		if _, err := parseContributorRequest(arguments); err != nil {
-			t.Fatalf("arguments %v returned %v", arguments, err)
-		}
-	}
-	for _, arguments := range [][]string{nil, {"start"}, {"remove"}, {"remove", "--confirm", ""}, {"apply", "--manifest-pin", "x", "--bundle", "/bundle"}} {
-		if _, err := parseContributorRequest(arguments); err == nil || !strings.Contains(err.Error(), "usage:") {
-			t.Fatalf("arguments %v returned %v", arguments, err)
-		}
-	}
-}
-
 func TestNodeOwnedPlansRejectRetiredH3Schemas(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

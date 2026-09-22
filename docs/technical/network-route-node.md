@@ -136,9 +136,11 @@ The Node-plan gate is integrated: all five old reservations return the stable
 decoding and schema/completeness recognition, before key, certificate, Source
 root, State root, listener, resource, or duty construction. A mixed old and
 closed plan receives that same refusal and cannot use the closed reservation as
-a fallback. Source, Contributor, and no-start recovery gates remain separate
-integration changes; their still-accepting adapters are not a supported forward
-contract.
+a fallback. The Contributor start gate is also integrated: recognized `apply`
+and `restart` command shapes return `old Contributor start is retired` before
+platform, bundle, installation, root, supervisor, output, or Network effects.
+Source and no-start recovery gates remain separate integration changes; their
+still-accepting adapters are not a supported forward contract.
 
 ## Module ownership
 
@@ -320,12 +322,13 @@ bounded retirement operations. Retained engine tests and `h3-*` guard profiles
 are compatibility evidence pending their own deletion slices, not accepting
 command routes.
 
-The Linux Contributor command writes only the bounded last lifecycle and resource
-events into its private diagnostic directory. Its Contributor Module verifies
-an independently pinned closed bundle before parsing, owns fixed host paths and
-one hardened systemd unit, requires exact generation successors, rolls back a
-failed or interrupted update, and exposes only diagnose/restart/drain/withdraw
-and confirmed removal. The operator contract is the
+The Linux Contributor command exposes only diagnose, drain, withdraw and
+confirmed removal for an already owned installation. `apply` and explicit
+`restart` refuse before opening that installation or creating a supervisor.
+The Contributor Module retains its pinned-bundle/update implementation and
+behavior evidence temporarily pending a separate consumer/deletion audit; only
+internal behavior tests call those start operations, and no command route does.
+The operator contract is the
 [Rendezvous Contributor runbook](../reference/rendezvous-contributor.md).
 Under the selected retirement transition, that update recovery must be split:
 retained retirement actions may authenticate, inspect, Stop, Disable, and
