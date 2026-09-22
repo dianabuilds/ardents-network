@@ -452,6 +452,17 @@
     },
     {
       "symbols": [
+        "internal/route/credential.InitializeIssuerRoot",
+        "internal/route/credential.encodeIssuerMaterial",
+        "internal/route/credential.issuerRootStore.initialize"
+      ],
+      "classification": "retained old Transit issuer bootstrap fixture",
+      "rationale": "#155 removes the final production command caller. These exact constructors remain only to create authentic durable roots for the retained old Transit issuer engine's restart, conflict, and cleanup behavior evidence; moving them into tests would duplicate the persisted format and hide compatibility failures.",
+      "owner": "Product Owner and Codex",
+      "retirement": "Delete these constructors with the old Node-side Transit issuer engine in #117 after that slice disposes its authentic-root behavior tests; preserve existing root readers and floors until their named consumers are removed."
+    },
+    {
+      "symbols": [
         "internal/network/duty.store.SpendTransitGrant",
         "internal/route.AcceptEndpointTransitAttachment",
         "internal/route.AdmitEndpointTransitBinding",

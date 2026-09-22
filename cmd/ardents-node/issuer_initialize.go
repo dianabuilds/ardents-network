@@ -27,6 +27,8 @@ type issuerInitializationPlan struct {
 	Budget             uint16 `json:"budget"`
 }
 
+var errOldTransitIssuerRetired = errors.New("old Transit issuer start is retired")
+
 func runIssuer(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) == 3 && arguments[0] == "serve" && arguments[1] == "--config" {
 		return runIssuerNode(ctx, arguments[2], output)
@@ -38,6 +40,9 @@ func runIssuer(ctx context.Context, arguments []string, output io.Writer) error 
 	if err := decodeOperatorInput(arguments[2], 32<<10, &plan); err != nil {
 		return err
 	}
+	if plan.Schema == "ardents-transit-issuer-initialize-v1" {
+		return errOldTransitIssuerRetired
+	}
 	if !filepath.IsAbs(plan.Root) ||
 		filepath.Clean(plan.Root) != plan.Root || !filepath.IsAbs(plan.IdentityKey) || filepath.Clean(plan.IdentityKey) != plan.IdentityKey {
 		return errors.New("issuer initialization plan is not canonical")
@@ -45,46 +50,7 @@ func runIssuer(ctx context.Context, arguments []string, output io.Writer) error 
 	if plan.Schema == "ardents-closed-issuer-initialize-v1" {
 		return initializeClosedIssuer(ctx, plan, output)
 	}
-	if plan.Schema != "ardents-transit-issuer-initialize-v1" {
-		return errors.New("issuer initialization plan selects no supported profile")
-	}
-	config := credential.IssuerRootConfig{Root: plan.Root, Budget: plan.Budget, Clock: time.Now}
-	if err := decodeOperatorFixedHex(plan.NetworkID, config.NetworkID[:]); err != nil {
-		return err
-	}
-	if err := decodeOperatorFixedHex(plan.NodeID, config.NodeID[:]); err != nil {
-		return err
-	}
-	if err := decodeOperatorFixedHex(plan.InitiatorNodeID, config.InitiatorNodeID[:]); err != nil {
-		return err
-	}
-	if err := decodeOperatorFixedHex(plan.InitiatorPublicKey, config.InitiatorPublicKey[:]); err != nil {
-		return err
-	}
-	var err error
-	config.IdentityKey, err = node.IdentityKey(plan.IdentityKey)
-	if err != nil {
-		return err
-	}
-	config.AssignmentNotAfter, err = time.Parse(time.RFC3339, plan.AssignmentNotAfter)
-	if err != nil || config.AssignmentNotAfter.Format(time.RFC3339) != plan.AssignmentNotAfter {
-		return errors.New("transit issuer assignment deadline is invalid")
-	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	receipt, err := credential.InitializeIssuerRoot(config)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(output).Encode(struct {
-		Schema        string `json:"schema"`
-		Profile       []byte `json:"profile"`
-		ProfileSHA256 string `json:"profile_sha256"`
-	}{Schema: "ardents-transit-issuer-profile-v1", Profile: receipt.Profile,
-		ProfileSHA256: hex.EncodeToString(receipt.ProfileDigest[:])})
+	return errors.New("issuer initialization plan selects no supported profile")
 }
 
 func initializeClosedIssuer(ctx context.Context, plan issuerInitializationPlan, output io.Writer) error {
@@ -141,8 +107,7 @@ func runIssuerNode(ctx context.Context, path string, output io.Writer) error {
 }
 
 func validateIssuerRuntime(runtime nodeRuntime) error {
-	transit, closed := runtime.node.TransitIssuer.Root != "", runtime.node.ClosedIssuer.Root != ""
-	if transit == closed || runtime.node.Rendezvous.Certificate.PrivateKey != nil {
+	if runtime.node.TransitIssuer.Root != "" || runtime.node.ClosedIssuer.Root == "" || runtime.node.Rendezvous.Certificate.PrivateKey != nil {
 		return errors.New("issuer serve requires exactly one isolated issuer reservation")
 	}
 	return nil
