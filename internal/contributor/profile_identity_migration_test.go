@@ -15,7 +15,7 @@ const (
 	legacyRendezvousProfile    = "h4-5-rendezvous-alpha-v1"
 )
 
-func TestLegacyBundleInstallsAndReopensThroughInterruptedUpdateRecovery(t *testing.T) {
+func TestLegacyBundleReopensAndRejectsUnauthenticatedUpdateResidue(t *testing.T) {
 	hostRoot := t.TempDir()
 	deployment := strings.Repeat("41", 32)
 	bundle, pin := writeContributorBundleProfiles(t, 1, deployment, legacyRendezvousProfile, legacyRendezvousProfile)
@@ -37,27 +37,38 @@ func TestLegacyBundleInstallsAndReopensThroughInterruptedUpdateRecovery(t *testi
 	}
 
 	writePersistedContributorProfile(t, recordPath, legacyRendezvousProfile)
+	reopened, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reopenedReport, err := reopened.Control(t.Context(), contributor.Diagnose, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reopenedReport.Profile != canonicalRendezvousProfile || reopenedReport.Generation != 1 {
+		t.Fatalf("reopened legacy installation report = %+v", reopenedReport)
+	}
+	startsBefore := supervisor.startCount()
 	programNext := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor", "next")
 	configNext := filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor", "config", "next")
 	for _, path := range []string{programNext, configNext} {
 		if err := os.MkdirAll(path, 0o700); err != nil {
 			t.Fatal(err)
 		}
+		if err := os.WriteFile(filepath.Join(path, "foreign-evidence"), []byte("retain"), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
-	reopened, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
+	if _, err := reopened.Control(t.Context(), contributor.Diagnose, ""); err == nil {
+		t.Fatal("legacy installation accepted unauthenticated update residue")
 	}
-	recovered, err := reopened.Control(t.Context(), contributor.Diagnose, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if recovered.Profile != canonicalRendezvousProfile || recovered.Generation != 1 {
-		t.Fatalf("reopened legacy installation report = %+v", recovered)
+	if starts := supervisor.startCount(); starts != startsBefore {
+		t.Fatalf("legacy residue recovery started old bytes: calls = %d, want %d", starts, startsBefore)
 	}
 	for _, path := range []string{programNext, configNext} {
-		if _, err := os.Lstat(path); !os.IsNotExist(err) {
-			t.Fatalf("recovered update residue %s remains: %v", path, err)
+		raw, readErr := os.ReadFile(filepath.Join(path, "foreign-evidence"))
+		if readErr != nil || string(raw) != "retain" {
+			t.Fatalf("legacy update residue %s = %q, %v; want retained", path, raw, readErr)
 		}
 	}
 }
@@ -124,9 +135,13 @@ func TestContributorProfileReadersRefuseUnknownIdentity(t *testing.T) {
 		if _, err := profile.Apply(t.Context(), bundle, pin); err != nil {
 			t.Fatal(err)
 		}
+		startsBefore := supervisor.startCount()
 		writePersistedContributorProfile(t, contributorRecordPath(hostRoot), "unknown-profile-v1")
 		if _, err := profile.Control(t.Context(), contributor.Diagnose, ""); err == nil {
 			t.Fatal("unknown Contributor installation record profile was accepted")
+		}
+		if starts := supervisor.startCount(); starts != startsBefore {
+			t.Fatalf("foreign installation identity started old bytes: calls = %d, want %d", starts, startsBefore)
 		}
 	})
 }

@@ -139,8 +139,12 @@ closed plan receives that same refusal and cannot use the closed reservation as
 a fallback. The Contributor start gate is also integrated: recognized `apply`
 and `restart` command shapes return `old Contributor start is retired` before
 platform, bundle, installation, root, supervisor, output, or Network effects.
-Source and no-start recovery gates remain separate integration changes; their
-still-accepting adapters are not a supported forward contract.
+Contributor pre-Control recovery now authenticates and reconciles only owned
+interrupted-update evidence: it may Stop an active predecessor and clean exact
+residue, but never Starts, Restarts, or Enables either generation. An inactive
+installation remains inactive, while ambiguous or foreign evidence fails and
+is retained. The Source gate remains a separate integration change; its
+still-accepting adapter is not a supported forward contract.
 
 ## Module ownership
 
@@ -330,10 +334,11 @@ behavior evidence temporarily pending a separate consumer/deletion audit; only
 internal behavior tests call those start operations, and no command route does.
 The operator contract is the
 [Rendezvous Contributor runbook](../reference/rendezvous-contributor.md).
-Under the selected retirement transition, that update recovery must be split:
-retained retirement actions may authenticate, inspect, Stop, Disable, and
-remove owned state but may not Start, Restart, Enable, or finish an update by
-executing either generation.
+Under the selected retirement transition, pre-Control update recovery
+authenticates and reconciles only the current or predecessor generation. It
+may inspect, Stop, Disable, and remove owned state but does not Start, Restart,
+Enable, or finish an update by executing either generation. Ambiguous or
+foreign evidence fails without adoption or cleanup.
 
 ## Verification and decisions
 

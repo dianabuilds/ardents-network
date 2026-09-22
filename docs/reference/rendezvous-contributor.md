@@ -35,6 +35,15 @@ adopt foreign files, or direct manual systemd/filesystem mutation as a
 supported recovery. Historical profile recognition authenticates retained
 evidence only and never grants a new start.
 
+Before any retained Control action, recovery verifies the current generation
+or one exact authenticated predecessor under the root lease. A valid active
+current generation may remain observable; a predecessor that must be restored
+is stopped first and remains inactive and `WITHDRAWN`. A valid inactive
+generation is never started. Exact `previous`/`next` residue and its transition
+record are removed only after authentication and reconciliation; incomplete,
+conflicting, or foreign evidence fails with no Start/Restart and remains for
+operator-visible diagnosis.
+
 This contract does not assert that a real owned installation exists or know
 its host, profile, deployment/generation, active/enabled/update state, or
 external bundle, journal, and snapshot residue. Those facts must come from the

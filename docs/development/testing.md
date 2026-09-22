@@ -451,3 +451,13 @@ The existing grammar test independently keeps diagnose, drain, withdraw, and
 confirmed remove recognized. The exact now-unreachable Apply closure and its
 consumer-audit deletion condition are listed in the production deadcode
 registry; its behavior tests do not make either command route accepting.
+
+The Contributor no-start recovery oracle drives authentic active-current,
+inactive-current, and interrupted-predecessor fixtures through public
+`Profile.Control`, plus incomplete residue and a foreign persisted profile.
+The supervisor trace must gain no Start/Restart call. Authenticated predecessor
+reconciliation may Stop the owned unit and leaves it inactive and `WITHDRAWN`;
+inactive recovery remains inactive, while ambiguous or foreign evidence
+refuses. The retained Withdraw/Remove path additionally proves that a foreign
+confirmation cannot mutate the installation and that the exact deployment
+confirmation removes it without resetting ownership floors or reviving bytes.
