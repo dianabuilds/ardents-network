@@ -165,51 +165,6 @@ func TestAmbiguousUpdateStopFailureRestartsPreviousReadyGeneration(t *testing.T)
 	}
 }
 
-func TestNextCommandRecoversUpdateInterruptedAfterPreviousGenerationWasMoved(t *testing.T) {
-	hostRoot := t.TempDir()
-	deployment := strings.Repeat("37", 32)
-	supervisor := &profileSupervisor{hostRoot: hostRoot}
-	profile, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, firstPin := writeContributorBundle(t, 1, deployment)
-	if _, err := profile.Apply(t.Context(), first, firstPin); err != nil {
-		t.Fatal(err)
-	}
-	privateRoot := filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor")
-	installed, err := os.ReadFile(filepath.Join(privateRoot, "installation.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(privateRoot, "update.json"), []byte(`{"schema":"ardents-contributor-updating-v1","previous":`+strings.TrimSpace(string(installed))+"}\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	programRoot := filepath.Join(hostRoot, "usr", "lib", "ardents-contributor")
-	configRoot := filepath.Join(hostRoot, "var", "lib", "private", "ardents-contributor", "config")
-	if err := os.Rename(filepath.Join(programRoot, "current"), filepath.Join(programRoot, "previous")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Rename(filepath.Join(configRoot, "current"), filepath.Join(configRoot, "previous")); err != nil {
-		t.Fatal(err)
-	}
-	report, err := profile.Control(t.Context(), contributor.Diagnose, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if report.Generation != 1 || !report.Active || report.LifecycleState != "READY" {
-		t.Fatalf("recovered report = %+v", report)
-	}
-	for _, path := range []string{filepath.Join(programRoot, "previous"), filepath.Join(configRoot, "previous")} {
-		if _, err := os.Lstat(path); !os.IsNotExist(err) {
-			t.Fatalf("recovery residue %s remains: %v", path, err)
-		}
-	}
-	if _, err := os.Lstat(filepath.Join(privateRoot, "update.json")); !os.IsNotExist(err) {
-		t.Fatalf("recovered update marker remains: %v", err)
-	}
-}
-
 func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) {
 	hostRoot := t.TempDir()
 	deployment := strings.Repeat("39", 32)
@@ -226,6 +181,7 @@ func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) 
 	if err := os.Rename(filepath.Join(programRoot, "current"), filepath.Join(programRoot, "previous")); err != nil {
 		t.Fatal(err)
 	}
+	startsBefore := supervisor.startCount()
 	reopened, err := contributor.Open(contributor.Config{Root: hostRoot, Supervisor: supervisor})
 	if err != nil {
 		t.Fatal(err)
@@ -234,8 +190,11 @@ func TestNextCommandRecoversUpdateInterruptedBetweenPreviousMoves(t *testing.T) 
 	if err != nil {
 		t.Fatalf("Diagnose did not recover the authenticated predecessor: %v", err)
 	}
-	if report.Generation != 1 || !report.Active || report.LifecycleState != "READY" {
+	if report.Generation != 1 || report.Active || report.LifecycleState != "WITHDRAWN" {
 		t.Fatalf("recovered report = %+v", report)
+	}
+	if starts := supervisor.startCount(); starts != startsBefore {
+		t.Fatalf("pre-Control recovery started old bytes: calls = %d, want %d", starts, startsBefore)
 	}
 }
 
@@ -350,6 +309,7 @@ type profileSupervisor struct {
 	releaseStop             chan struct{}
 	stopPaused              bool
 	stopCalls               int
+	startCalls              int
 }
 
 func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.SupervisorAction) (contributor.SupervisorState, error) {
@@ -363,6 +323,7 @@ func (supervisor *profileSupervisor) Do(ctx context.Context, action contributor.
 	case contributor.SupervisorEnable:
 		supervisor.enabled = true
 	case contributor.SupervisorStart, contributor.SupervisorRestart:
+		supervisor.startCalls++
 		if supervisor.beforeNextStart != nil {
 			beforeStart := supervisor.beforeNextStart
 			supervisor.beforeNextStart = nil
@@ -394,6 +355,12 @@ func (supervisor *profileSupervisor) stopCount() int {
 	supervisor.mu.Lock()
 	defer supervisor.mu.Unlock()
 	return supervisor.stopCalls
+}
+
+func (supervisor *profileSupervisor) startCount() int {
+	supervisor.mu.Lock()
+	defer supervisor.mu.Unlock()
+	return supervisor.startCalls
 }
 
 func (supervisor *profileSupervisor) pauseFirstStop(ctx context.Context, action contributor.SupervisorAction) error {

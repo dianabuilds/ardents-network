@@ -74,9 +74,12 @@ effect. It preserves the separately named closed duties, closed Source profile,
 and closed issuer. Existing owned Contributor installations retain only the
 [no-start retirement actions](rendezvous-contributor.md#selected-retirement-transition).
 The Node-reservation, Transit issuer, and Contributor start command gates are
-integrated. Source and no-start recovery gates are selected but not yet integrated;
-descriptions of those accepting routes below document the current adapter gap,
-not supported forward authority.
+integrated. Contributor pre-Control recovery is also no-start: it may
+authenticate and reconcile only owned interrupted-update evidence, Stop an
+active predecessor, and clean exact residue, but cannot Start, Restart, or
+Enable either generation. Source retirement remains a separate adapter slice;
+descriptions of that accepting route below document the current gap, not
+supported forward authority.
 
 `ardents-node issuer initialize --config PATH` recognizes the bounded legacy
 `ardents-transit-issuer-initialize-v1` schema only to return

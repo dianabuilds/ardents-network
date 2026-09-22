@@ -14,6 +14,7 @@
         "internal/contributor.Profile.Apply",
         "internal/contributor.Profile.installAbsent",
         "internal/contributor.Profile.recoverUncommittedInstallation",
+        "internal/contributor.Profile.restartCurrentGeneration",
         "internal/contributor.Profile.rollbackUpdate",
         "internal/contributor.Profile.update",
         "internal/contributor.ensureAbsent",

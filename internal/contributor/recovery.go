@@ -21,14 +21,10 @@ func (profile *Profile) recoverInterruptedUpdate(ctx context.Context, record ins
 		if errors.Is(updateErr, os.ErrNotExist) {
 			previous, previousErr := pairedDirectories(previousProgram, previousConfig)
 			next, nextErr := pairedDirectories(nextProgram, nextConfig)
-			if previousErr != nil || nextErr != nil {
+			if previousErr != nil || nextErr != nil || previous || next {
 				return errors.New("contributor update residue has no authenticated transition record")
 			}
-			if !previous && !next {
-				return nil
-			}
-			return errors.Join(os.RemoveAll(previousProgram), os.RemoveAll(previousConfig),
-				os.RemoveAll(nextProgram), os.RemoveAll(nextConfig))
+			return nil
 		}
 		if !sameInstallationRecord(update.Previous, record) &&
 			(update.Previous.DeploymentID != record.DeploymentID || update.Previous.Generation+1 != record.Generation) {
@@ -37,15 +33,6 @@ func (profile *Profile) recoverInterruptedUpdate(ctx context.Context, record ins
 		if sameInstallationRecord(update.Previous, record) {
 			if err := profile.restoreManagementExecutableFromCurrent(); err != nil {
 				return err
-			}
-			state, err := profile.supervisor.Do(ctx, SupervisorStatus)
-			if err != nil {
-				return err
-			}
-			if !state.Active {
-				if err := profile.restartCurrentGeneration(); err != nil {
-					return err
-				}
 			}
 		}
 		if err := errors.Join(os.RemoveAll(previousProgram), os.RemoveAll(previousConfig),
@@ -94,14 +81,7 @@ func (profile *Profile) recoverInterruptedUpdate(ctx context.Context, record ins
 	if err := os.Rename(previousConfig, profile.paths.configCurrent); err != nil {
 		return errors.Join(err, os.Rename(profile.paths.programCurrent, previousProgram))
 	}
-	if err := errors.Join(os.RemoveAll(nextProgram), os.RemoveAll(nextConfig), removeIfPresent(profile.paths.lifecycle)); err != nil {
-		return err
-	}
-	state, err := profile.supervisor.Do(ctx, SupervisorStart)
-	if err != nil || !state.Active {
-		return errors.Join(err, errors.New("recovered Contributor generation did not become active"))
-	}
-	if _, err := profile.awaitLifecycle(ctx, profile.paths.lifecycle, "READY", 15*time.Second); err != nil {
+	if err := errors.Join(os.RemoveAll(nextProgram), os.RemoveAll(nextConfig)); err != nil {
 		return err
 	}
 	if updateErr == nil && sameInstallationRecord(update.Previous, record) {
