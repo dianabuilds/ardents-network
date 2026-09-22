@@ -1,8 +1,10 @@
 # Rendezvous Contributor dedicated-host profile
 
-Status: **accepted for the project-qualified dedicated-host Functional Alpha
-on 2026-08-29.** These commands are the complete dedicated-host operator
-surface, not a public Contributor offer or a capacity/availability claim.
+Status: **retirement-only after the project-qualified dedicated-host Functional
+Alpha accepted on 2026-08-29.** New `apply` and explicit `restart` are retired;
+the remaining commands exist only to inspect and remove an authenticated owned
+installation. This is not a public Contributor offer or a capacity/availability
+claim.
 
 The canonical profile identity is `ardents-rendezvous-dedicated-host-v1`.
 Readers accept the historical `h4-5-rendezvous-alpha-v1` identity only for
@@ -13,9 +15,8 @@ new records, and reports use the canonical identity.
 
 [ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
 retires `apply` and `restart` for both canonical and historical profile inputs.
-They must refuse before filesystem, systemd, supervisor, root, listener, or
-Network effects. The accepting behavior described below is the current
-pre-integration adapter and is not selected forward operator authority.
+They return `old Contributor start is retired` after command-shape recognition
+and before filesystem, systemd, supervisor, root, listener, or Network effects.
 
 An exactly authenticated existing installation retains `diagnose`, `drain`,
 `withdraw`, and confirmed `remove` solely to retire owned resources. Neither
@@ -85,29 +86,25 @@ The configuration authority supplies exactly two things by separate channels:
 The operator compares the second value with the independently received pin;
 the command verifies that pin before parsing the manifest, verifies every
 listed file digest, rejects extra/missing inventory, and accepts only the fixed
-Rendezvous plan and resource reservations. The bundle contains private keys.
-Place its transfer copy in an owner-only temporary directory outside the
-repository and remove that copy after a successful `apply`; the managed
-installation never treats the caller-owned transfer directory as its own and
-therefore never deletes it.
+Rendezvous plan and resource reservations. That format is now compatibility
+evidence for the retained implementation and its tests, not authority to
+transfer or apply a new bundle. Any pre-existing caller-owned transfer copy is
+external residue: retirement commands neither adopt nor delete it.
 
-Run every lifecycle command as root from the exact candidate executable. There
-are no environment-variable, interactive-shell, or arbitrary-systemd escape
-hatches.
+The historical command shape remains recognized so it can fail with the stable
+retirement result rather than being reinterpreted as another action:
 
 ```sh
 ./ardents-node contributor apply --bundle /absolute/owner-only/bundle --manifest-pin MANIFEST_SHA256
 ```
 
-Generation 1 requires an absent installation. A later `apply` must be the
-exact same 32-byte deployment ID and exactly the next generation. Success is
-reported only after the installed files and systemd unit match their recorded
-digests, the unit is active, and the product Node has written `READY`. A normal
-failure restores the prior authenticated generation; the next lifecycle
-command also detects and recovers an update interrupted between filesystem
-switches.
+It does not open or validate the bundle and cannot create or update an
+installation. The internal Apply and restart implementations remain temporarily
+pending a separate consumer/deletion audit; only their internal behavior tests
+call them, and neither has an accepting command caller. Retaining them is not
+authority to start an installation.
 
-## Diagnose, restart, drain, and withdrawal
+## Diagnose, drain, withdrawal, and retired restart
 
 Each successful command emits one `ardents-contributor-report-v1` JSON object
 containing only profile, deployment/generation and digest facts, lifecycle
@@ -115,19 +112,18 @@ state, and active/enabled state.
 
 ```sh
 /usr/lib/ardents-contributor/ardents-node contributor diagnose
-/usr/lib/ardents-contributor/ardents-node contributor restart
 /usr/lib/ardents-contributor/ardents-node contributor drain
 /usr/lib/ardents-contributor/ardents-node contributor withdraw
 ```
 
 `diagnose` re-authenticates every managed file and the fixed unit, reads the
 bounded last lifecycle diagnostic, and asks systemd for current state.
-`restart` requires a verified installed generation and returns only after a
-new `READY`. `drain` asks the Node to stop accepting handshakes, finish its
-finite drain, and reach `WITHDRAWN`; the service remains enabled for a later
-explicit restart. `withdraw` performs the same finite stop and then disables
-the unit. A command fails instead of reporting a partial transition as
-success.
+The recognized `restart` syntax returns the same stable retirement result
+before opening the installation or invoking systemd. `drain` asks the Node to
+stop accepting handshakes, finish its finite drain, and reach `WITHDRAWN`; the
+service remains enabled only for retirement handling, not for restart.
+`withdraw` performs the same finite stop and then disables the unit. A command
+fails instead of reporting a partial transition as success.
 
 The two bounded local diagnostics are:
 

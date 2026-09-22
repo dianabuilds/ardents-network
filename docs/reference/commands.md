@@ -73,8 +73,8 @@ selects refusal of the old Node reservations, Source
 effect. It preserves the separately named closed duties, closed Source profile,
 and closed issuer. Existing owned Contributor installations retain only the
 [no-start retirement actions](rendezvous-contributor.md#selected-retirement-transition).
-The Node-reservation and Transit issuer command gates are integrated. Source,
-Contributor, and no-start recovery gates are selected but not yet integrated;
+The Node-reservation, Transit issuer, and Contributor start command gates are
+integrated. Source and no-start recovery gates are selected but not yet integrated;
 descriptions of those accepting routes below document the current adapter gap,
 not supported forward authority.
 
@@ -153,14 +153,19 @@ listener opens. The stanza accepts no endpoint, peer, role, profile digest or
 verification/storage callback. Descriptor lookup and publication use actual
 Control admission and the durable Store; this configuration alone does not
 establish Publisher readiness or private Introduction registration.
-On Linux, `ardents-node contributor` exposes the complete
-`ardents-rendezvous-dedicated-host-v1` dedicated-host lifecycle: `apply`, `diagnose`,
-`restart`, `drain`, `withdraw`, and confirmed `remove`. It accepts no other
-duty or system-service operation. The exact prerequisites, authenticated
-bundle, commands, limits, diagnostics, update recovery, and residue contract
-are in the [Rendezvous Contributor runbook](rendezvous-contributor.md). The
-surface is accepted only for the project-qualified dedicated-host Functional
-Alpha; it is not a public Contributor offer or a capacity/availability claim.
+`ardents-node contributor apply --bundle PATH --manifest-pin SHA256` and
+`ardents-node contributor restart` return `old Contributor start is retired`
+after bounded command-shape recognition and before platform selection, bundle
+or installation access, supervisor creation, output, or Network effects. No
+profile or deployment identity can make either route accepting. On Linux, an
+already owned installation retains only `diagnose`, `drain`, `withdraw`, and
+confirmed `remove` for the bounded retirement contract. The internal legacy
+Apply/Restart implementations remain temporarily pending a separate
+consumer/deletion audit; only internal behavior tests call them, and no command
+route does.
+
+The exact ownership and residue contract is in the
+[Rendezvous Contributor runbook](rendezvous-contributor.md).
 
 ## `ardents-custody`
 
