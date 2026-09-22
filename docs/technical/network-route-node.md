@@ -124,8 +124,13 @@ and Introduction sender orchestration. Shared credential-relay grammar and the
 standalone reachability Relay remain with their actual consumers; test-local
 reciprocal fixtures do not restore a production receiving path.
 The old Node-leg dial and client confirmation entrypoint are also absent.
-Shared Carrier profiles, the reciprocal decoder, listeners, TLS/QUIC
-mechanics, and closed Node Carrier behavior remain current.
+The v1 `ListenNodeCarrier` remains in source but has no production caller;
+its only caller is its own test. Current Node duties use
+`ListenClosedSharedCarrier`; the direct role issuer uses
+`ListenClosedRoleCarrier`. Shared byte-lane and TLS/QUIC mechanics remain
+with those closed consumers. The v1 State/profile readers and reciprocal
+codec are separate compatibility questions and are not retired by this
+listener disposition.
 No retirement path inherits a duty,
 regenerates a key, resets a root or floor, converts state, or adopts foreign
 files. Compatibility readers and separately owned retirement surfaces remain
@@ -224,24 +229,50 @@ a cleanup error is returned and cannot be represented as a clean attachment.
 ### Adjacent-Node Carrier profiles
 
 `internal/route.Carrier` is the transport-neutral reliable ordered byte lane
-used by native Node duties. The release maintains exactly
-`ardents-carrier-tcp-tls-v1` and `ardents-carrier-quic-v1`. Both require TLS
-1.3, the native Route ALPN, the State-pinned Ed25519 peer, and reciprocal
-`LegBinding`. QUIC uses one bidirectional stream, an initial packet size of
-1200, no 0-RTT, no datagrams, and bounded keepalive inside its idle timeout.
-Failed post-open authentication aborts rather than masquerading as a graceful
-close. Carrier errors have stable transport-neutral failure classes. Transport
-sockets, QUIC connection IDs,
-migration operations, and cleanup mechanics remain private to each Adapter.
+used by current Node duties. The maintained closed Node path selects exactly
+`ardents-carrier-tcp-tls-v2` or `ardents-carrier-quic-v2`, TLS 1.3,
+`ardents-route-v3` ALPN, and the State-pinned Ed25519 peer. It does not
+exchange the old reciprocal `LegBinding`. QUIC uses one bidirectional
+stream, an initial packet size of 1200, no 0-RTT or datagrams, and bounded
+keepalive inside its idle timeout. Transport sockets, QUIC connection IDs,
+migration operations, and cleanup mechanics stay private to the adapters.
+The old v1 Carrier identifiers remain historical State and refusal inputs,
+not an accepting closed Node Carrier path.
 
-Network State owns the supported choice. Signed Node Record v1 canonically
-means TCP/TLS; v2 contains one signed explicit Carrier Profile. Unknown
-profiles are rejected before assignment. No old native duty listener remains.
-The deleted Initiator and Responder engines previously used the
-selected-candidate rule, and their old `OpenNodeLeg` dialer is absent. Current
-`OpenClosedNodeCarrier` and the retained `ListenNodeCarrier` each accept exactly
-one profile and never race or fall back. A State successor drains and withdraws
-the current duty; it does not rewrite an active attachment.
+Network State owns the supported choice. Historical signed Node Record v1
+canonically means TCP/TLS; v2 contains one signed explicit Carrier Profile.
+Unknown profiles are rejected before assignment. No old native duty listener
+has a production caller. The deleted Initiator and Responder engines previously
+used the selected-candidate rule, and their old `OpenNodeLeg` dialer is absent.
+Current `OpenClosedNodeCarrier`, `ListenClosedSharedCarrier`, and
+`ListenClosedRoleCarrier` accept one selected closed profile without fallback.
+A State successor drains and withdraws the current duty; it does not rewrite
+an active attachment.
+
+### Old native listener closure
+
+The one follow-up removal change can delete `node_carrier_listener.go`
+(`ListenNodeCarrier`, `CarrierListener`, `PendingCarrier`, its private
+TCP/QUIC adapters, v1 server TLS and QUIC configuration) and
+`node_carrier_listener_test.go`. It can also delete their exclusive
+`nodeQUICConfig` from `node_carrier_quic.go` and the otherwise uncalled
+failure-class wrapper in `node_carrier_failure.go`. These symbols have no
+production caller or separately retained test. This is a source closure,
+not a change to accepted Carrier selection or wire behavior.
+
+Retain `Carrier` and the v1 profile constants in `node_carrier.go`: the
+byte-lane Interface is used by the closed path, and v1 values remain typed
+compatibility/refusal inputs. Retain `quicNodeCarrier` and its deadline and
+close behavior for `OpenClosedNodeCarrier`. Retain
+`closedNodeQUICConfig`, the closed Node TLS verifier, and both closed
+listeners for current Node and direct-role callers. Retain the v1 reciprocal
+`LegBinding` codec and its canonical vectors pending a separate
+compatibility/provenance disposition; its test-only use does not justify
+deleting historical wire evidence within the listener change. Current
+behavior checks are the TCP/TLS and QUIC cases in
+`closed_node_carrier_test.go`, `closed_shared_carrier_test.go`, and
+`closed_role_carrier_test.go`, including peer rejection and QUIC handshake
+reservation. The old listener test does not substitute for these checks.
 
 One qualification-only operational seam admits a literal loopback or private
 IPv4 listen address for a State-selected closed Route duty. A host-owned,
